@@ -6,6 +6,7 @@ import numpy as np
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 
 def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, name: str = "ZIP_Load_EMT_3ph") -> EmtModelTemplate:
@@ -25,7 +26,11 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
     v_A = vf.add_var("v_A_" + name)
     v_B = vf.add_var("v_B_" + name)
     v_C = vf.add_var("v_C_" + name)
-    templ.block.in_vars = [v_A, v_B, v_C]
+    d_v_A = vf.add_diff_var(name=f"d_v_A_{name}", base_var=v_A)
+    d_v_B = vf.add_diff_var(name=f"d_v_B_{name}", base_var=v_B)
+    d_v_C = vf.add_diff_var(name=f"d_v_C_{name}", base_var=v_C)
+    templ.block.in_vars = [v_A, v_B, v_C, d_v_A, d_v_B, d_v_C]
+
 
     # Parameters: Nominal power (P0, Q0) and Voltage (V0)
     P0_A = vf.add_var("P0_A_" + name)
@@ -43,13 +48,17 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
     a4 = vf.add_var("a4_" + name)
     a5 = vf.add_var("a5_" + name)
     a6 = vf.add_var("a6_" + name)
-    f_nom = vf.add_var("f_nom_" + name)
     k_sogi = vf.add_var("k_sogi_" + name)
     eps = vf.add_var("eps_" + name)
+    omega = vf.add_var("omega_" + name)
 
     # Parameter Registration (event_dict) for the case P= 9.999999, Q= 0.999999
-    P0 = 1 / sbase
-    Q0 = 0.999999 / sbase
+    # P0 = 1.0 / sbase
+    # Q0 = 0.999999 / sbase
+    P0 = 0.0 / sbase
+    Q0 = 0.0/ sbase
+    # Fundamental angular frequency
+    w_const = (2.0 * np.pi) * fbase
     templ.block.event_dict[P0_A] = vf.add_const(P0 / 3.0)
     templ.block.event_dict[Q0_A] = vf.add_const(Q0 / 3.0)
     templ.block.event_dict[P0_B] = vf.add_const(P0/ 3.0)
@@ -58,9 +67,9 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
     templ.block.event_dict[Q0_C] = vf.add_const(Q0 / 3.0)
     # templ.block.event_dict[V0] = vf.add_const(1.0)
     templ.block.event_dict[V0] = vf.add_const(np.sqrt(2))
-    templ.block.event_dict[f_nom] = vf.add_const(fbase)
-    templ.block.event_dict[k_sogi] = vf.add_const(1.41421356)
+    templ.block.event_dict[k_sogi] = vf.add_const(np.sqrt(2))
     templ.block.event_dict[eps] = vf.add_const(1e-12)
+    templ.block.event_dict[omega] = vf.add_const(w_const)
 
     # Default ZIP coefficients: Constant Power behavior (a3=1, a6=1)
     for p in [a1, a2, a4, a5]: templ.block.event_dict[p] = c0
@@ -84,17 +93,24 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
     d_q_C = vf.add_diff_var("d_q_C_" + name, base_var=q_C)
     templ.block.diff_vars = [d_u_A, d_q_A, d_u_B, d_q_B, d_u_C, d_q_C]
 
-    # Fundamental angular frequency
-    w = (2.0 * np.pi) * f_nom
-
     # State Equations: SOGI Dynamics (Standard Orthogonal Filter)
     templ.block.state_eqs = [
-        (w * q_A),  # This is d_u_A
-        (k_sogi * w * (v_A - u_A) - w * q_A),  # This is d_q_A
-        (w * q_B),  # This is d_u_B
-        (k_sogi * w * (v_B - u_B) - w * q_B),  # This is d_q_B
-        (w * q_C),  # This is d_u_C
-        (k_sogi * w * (v_C - u_C) - w * q_C),  # This is d_q_C
+        # (-omega * q_A),
+        # (k_sogi * omega * (v_A - u_A) - omega * u_A),
+        #
+        # (-omega * q_B),
+        # (k_sogi * omega * (v_B - u_B) - omega * u_B),
+        #
+        # (-omega * q_C),
+        # (k_sogi * omega * (v_C - u_C) - omega * u_C),
+        (k_sogi * omega * (v_A - u_A) - omega * q_A),
+        (omega * u_A),
+
+        (k_sogi * omega * (v_B - u_B) - omega * q_B),
+        (omega * u_B),
+
+        (k_sogi * omega * (v_C - u_C) - omega * q_C),
+        (omega * u_C),
     ]
 
     # Algebraic Variables for ZIP model
@@ -138,28 +154,27 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
         rC - (VmC / V0),
 
         # CHANGE SIGN CONVENTION ! POWERS AND CURRENTS FROM POWERFLOW ARE NEGATIVE (sign convention injection leaving the bus is negative)
-        # ZIP Polynomials for P and Q
+        # # ZIP Polynomials for P and Q
         P_A + (P0_A * (a1 * rA ** 2 + a2 * rA + a3)),
         Q_A + (Q0_A * (a4 * rA ** 2 + a5 * rA + a6)),
         P_B + (P0_B * (a1 * rB ** 2 + a2 * rB + a3)),
         Q_B + (Q0_B * (a4 * rB ** 2 + a5 * rB + a6)),
         P_C + (P0_C * (a1 * rC ** 2 + a2 * rC + a3)),
         Q_C + (Q0_C * (a4 * rC ** 2 + a5 * rC + a6)),
+
         # Current injection: i = 2 * (u*P + q*Q) / V_peak^2
         i_A + (c2 * (u_A * (-P_A) + q_A * (-Q_A)) / (VA2 + eps)),
         i_B + (c2 * (u_B * (-P_B) + q_B * (-Q_B)) / (VB2 + eps)),
         i_C + (c2 * (u_C * (-P_C) + q_C * (-Q_C)) / (VC2 + eps)),
     ]
 
-    # FULL INITIALIZATION (30 Variables)
-    # This section ensures zero residuals at t=0 by accounting for AC steady state.
     templ.block.init_eqs = {
         u_A: v_A,
-        q_A: c0,
         u_B: v_B,
-        q_B: c0,
         u_C: v_C,
-        q_C: c0,
+        q_A: -d_v_A / omega,
+        q_B: -d_v_B / omega,
+        q_C: -d_v_C / omega,
 
         # 18 Algebraics: Complete chain for current injection
         VA2: (u_A ** 2 + q_A ** 2), VmA: ((VA2 + eps) ** c05), rA: (VmA / V0),
@@ -167,13 +182,21 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
         VC2: (u_C ** 2 + q_C ** 2), VmC: ((VC2 + eps) ** c05), rC: (VmC / V0),
     }
 
+    # Cálculo de las derivadas iniciales coherentes con la rotación (w * q y w * u)
+    # Esto elimina el residuo de 385 (frecuencia angular * amplitud)
     templ.block.diff_init_eqs = {
-        d_u_A: c0,
-        d_q_A: c0,
-        d_u_B: c0,
-        d_q_B: c0,
-        d_u_C: c0,
-        d_q_C: c0,
+        # d_u_A: d_v_A,
+        # d_q_A: -omega * u_A,  # Ahora coincide con el término de la eq de estado
+        # d_u_B: d_v_B,
+        # d_q_B: -omega * u_B,
+        # d_u_C: d_v_C,
+        # d_q_C: -omega * u_C,
+        d_u_A: d_v_A,
+        d_q_A: omega * u_A,
+        d_u_B: d_v_B,
+        d_q_B: omega * u_B,
+        d_u_C: d_v_C,
+        d_q_C: omega * u_C,
     }
 
 

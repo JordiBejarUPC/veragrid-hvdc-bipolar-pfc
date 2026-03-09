@@ -523,7 +523,7 @@ class JitAdSolver:
                  x0: Union[Vec | None] = None,
                  dx0: Union[Vec | None] = None,
                  params0: Union[Vec | None] = None,
-                 boundary_updater: Any | None = None) -> Tuple[Vec, Mat]:
+                 boundary_updater: Any | None = None) -> Tuple[Vec, Mat, Mat]:
         """
         Main JIT simulation loop using the Automatic Differentiation (AD) backend.
 

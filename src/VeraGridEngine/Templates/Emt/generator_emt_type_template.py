@@ -116,13 +116,24 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
     # --------------------------------------------------------------------------------------
     templ.block = Block(
         state_eqs=[
+            # v_d - Ra * i_d + omega * psi_q,
+            # v_q - Ra * i_q - omega * psi_d,
+            # v_0 - R0 * i_0,
+            # v_f - Rf * i_f,
 
-            v_d - Ra * i_d + omega * psi_q,
-            v_q - Ra * i_q - omega * psi_d,
-            v_0 - R0 * i_0,
+            # d_psi_d: -v_d - Ra * i_d + omega * psi_q
+            -v_d - Ra * i_d + omega * psi_q,
+            # d_psi_q: -v_q - Ra * i_q - omega * psi_d
+            -v_q - Ra * i_q - omega * psi_d,
+            # d_psi_0: -v_0 - R0 * i_0
+            -v_0 - R0 * i_0,
+            # d_psi_f: v_f - Rf * i_f
             v_f - Rf * i_f,
+            # d_theta: omega
             omega,
+            # d_omega: Swing Equation (Pm es motor, Te es freno eléctrico)
             (Tm - Te - D * (omega - omega_ref)) / (2 * H),
+            # d_et: Error del gobernador
             (omega_ref - omega),
         ],
         state_vars=[psi_d, psi_q, psi_0, psi_f, theta, omega, et],
@@ -132,24 +143,56 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
         # --------------------------------------------------------------------------------------
         algebraic_eqs=[
             # Flux-current relations (pu inductances)
-            psi_d - ((Lmd + La) * i_d + Lmd * i_f),
-            psi_q - ((Lmq + La) * i_q),
-            psi_0 - (L0 * i_0),
-            psi_f - (Lmd * i_d + (Lmd + Lf) * i_f),
+            # psi_d - ((Lmd + La) * i_d + Lmd * i_f),
+            # psi_q - ((Lmq + La) * i_q),
+            # psi_0 - (L0 * i_0),
+            # psi_f - (Lmd * i_d + (Lmd + Lf) * i_f),
+            psi_d - (Lmd * i_f - (Lmd + La) * i_d),
+            psi_q - (-(Lmq + La) * i_q),
+            psi_0 - (-L0 * i_0),
+            psi_f - ((Lmd + Lf) * i_f - Lmd * i_d),
 
-            # dq0 voltage from abc voltages using theta
-            v_d - (2 / 3) * (inputs[0] * sym.cos(theta) +
-                             inputs[1] * sym.cos(theta - 2 * np.pi / 3) +
-                             inputs[2] * sym.cos(theta + 2 * np.pi / 3)),
-            v_q - (2 / 3) * (inputs[0] * sym.sin(theta) +
-                             inputs[1] * sym.sin(theta - 2 * np.pi / 3) +
-                             inputs[2] * sym.sin(theta + 2 * np.pi / 3)),
-            v_0 - (2 / 3) * (0.5 * inputs[0] + 0.5 * inputs[1] + 0.5 * inputs[2]),
+            # # dq0 voltage from abc voltages using theta
+            # v_d - (2 / 3) * (inputs[0] * sym.cos(theta) +
+            #                  inputs[1] * sym.cos(theta - 2 * np.pi / 3) +
+            #                  inputs[2] * sym.cos(theta + 2 * np.pi / 3)),
+            # v_q - (2 / 3) * (inputs[0] * sym.sin(theta) +
+            #                  inputs[1] * sym.sin(theta - 2 * np.pi / 3) +
+            #                  inputs[2] * sym.sin(theta + 2 * np.pi / 3)),
+            # v_0 - (2 / 3) * (0.5 * inputs[0] + 0.5 * inputs[1] + 0.5 * inputs[2]),
+            #
+            # # abc currents from dq0 currents
+            # i_A - (i_d * sym.cos(theta) + i_q * sym.sin(theta) + i_0),
+            # i_B - (i_d * sym.cos(theta - 2 * np.pi / 3) + i_q * sym.sin(theta - 2 * np.pi / 3) + i_0),
+            # i_C - (i_d * sym.cos(theta + 2 * np.pi / 3) + i_q * sym.sin(theta + 2 * np.pi / 3) + i_0),
 
-            # abc currents from dq0 currents
-            i_A - (i_d * sym.cos(theta) + i_q * sym.sin(theta) + i_0),
-            i_B - (i_d * sym.cos(theta - 2 * np.pi / 3) + i_q * sym.sin(theta - 2 * np.pi / 3) + i_0),
-            i_C - (i_d * sym.cos(theta + 2 * np.pi / 3) + i_q * sym.sin(theta + 2 * np.pi / 3) + i_0),
+            # # dq0 voltage from abc voltages (Eje Q retrasado: usar -sin para v_q)
+            # v_d - (2 / 3) * (inputs[0] * sym.cos(theta) +
+            #                  inputs[1] * sym.cos(theta - 2 * np.pi / 3) +
+            #                  inputs[2] * sym.cos(theta + 2 * np.pi / 3)),
+            # v_q - (2 / 3) * (-inputs[0] * sym.sin(theta) -  # <--- NOTA EL MENOS
+            #                  inputs[1] * sym.sin(theta - 2 * np.pi / 3) -
+            #                  inputs[2] * sym.sin(theta + 2 * np.pi / 3)),
+            # v_0 - (1 / 3) * (inputs[0] + inputs[1] + inputs[2]),  # El factor suele ser 1/3 para v0
+
+            # dq0 voltage from abc voltages (Eje Q alineado con Fase A a theta=0)
+            v_d - (2 / 3) * (
+                    inputs[0] * sym.sin(theta) +
+                    inputs[1] * sym.sin(theta - 2 * np.pi / 3) +
+                    inputs[2] * sym.sin(theta + 2 * np.pi / 3)),
+
+            v_q - (2 / 3) * (
+                    inputs[0] * sym.cos(theta) +
+                    inputs[1] * sym.cos(theta - 2 * np.pi / 3) +
+                    inputs[2] * sym.cos(theta + 2 * np.pi / 3)),
+
+            v_0 - (1 / 3) * (inputs[0] + inputs[1] + inputs[2]),
+
+
+            # abc currents from dq0 currents (Se mantienen igual, ya están bien)
+            i_A - (i_d * sym.cos(theta) - i_q * sym.sin(theta) + i_0),
+            i_B - (i_d * sym.cos(theta - 2 * np.pi / 3) - i_q * sym.sin(theta - 2 * np.pi / 3) + i_0),
+            i_C - (i_d * sym.cos(theta + 2 * np.pi / 3) - i_q * sym.sin(theta + 2 * np.pi / 3) + i_0),
 
             # Electrical torque (sign consistent with your dq convention)
             Te - (3 / 2) * (psi_d * i_q - psi_q * i_d),
@@ -221,7 +264,8 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
         omega_ref:  vf.add_const(1.0),
         Kp:         vf.add_const(2.0),
         Ki:         vf.add_const(2.0),
-        v_f0:       vf.add_const(-0.000091),
+        # v_f0:       vf.add_const(-0.004548),-0.000001
+        v_f0:       vf.add_const(-0.015522),
     }
 
     # --------------------------------------------------------------------------------------
@@ -235,93 +279,133 @@ def get_generator_emt_template(vf: VarFactory, name: str = "emt_type_generator_t
     #
     # Note: these are "electrical steady-state" assumptions, not a full machine equilibrium.
     # --------------------------------------------------------------------------------------
+    # templ.block.init_eqs = {
+    #     # omega: omega_ref,
+    #     omega: vf.add_const(1.0),
+    #     et:    vf.add_const(0.0),
+    #
+    #     # 1. Get DQ voltages from PF
+    #     v_d: 2 / 3 * (sym.cos(theta) * inputs[0] +
+    #                   sym.cos(theta - 2 * np.pi / 3) * inputs[1] +
+    #                   sym.cos(theta + 2 * np.pi / 3) * inputs[2]),
+    #     v_q: 2 / 3 * (sym.sin(theta) * inputs[0] +
+    #                   sym.sin(theta - 2 * np.pi / 3) * inputs[1] +
+    #                   sym.sin(theta + 2 * np.pi / 3) * inputs[2]),
+    #     v_0: 2 / 3 * (0.5 * inputs[0] + 0.5 * inputs[1] + 0.5 * inputs[2]),
+    #
+    #     # 2. Get DQ currents from PF
+    #     i_d: 2 / 3 * (sym.cos(theta) * i_A +
+    #                   sym.cos(theta - 2 * np.pi / 3) * i_B +
+    #                   sym.cos(theta + 2 * np.pi / 3) * i_C),
+    #     i_q: 2 / 3 * (sym.sin(theta) * i_A +
+    #                   sym.sin(theta - 2 * np.pi / 3) * i_B +
+    #                   sym.sin(theta + 2 * np.pi / 3) * i_C),
+    #     i_0: 2 / 3 * (0.5 * i_A + 0.5 * i_B + 0.5 * i_C),
+    #
+    #     # 3. Calculate internal fluxes considering the voltage drop across Ra
+    #     # v = -Ra*i - dpsi/dt + omega*psi --> at steady state: psi_q = (v_d + Ra*i_d)/omega
+    #     psi_q: (v_d + Ra * i_d),
+    #     psi_d: -(v_q + Ra * i_q),  # Note the sign for the q-axis lead convention
+    #     psi_0: L0 * i_0,
+    #
+    #
+    #     # 4. Calculate Field Current (i_f) correctly to get positive v_f
+    #     # From psi_d = Lmd*if - Ld*id --> if = (psi_d + Ld*id)/Lmd
+    #     i_f: (psi_d + (Lmd + La) * i_d) / Lmd,
+    #     v_f: i_f * Rf,
+    #     psi_f: -Lmd * i_d + (Lmd + Lf) * i_f,
+    #
+    #     # 5. Torque matches at t=0
+    #     Te: (3 / 2) * (psi_q * i_d - psi_d * i_q),
+    #     Tm: Te,
+    #     Pm: Tm * omega,
+    #
+    #     # omega: vf.add_const(1.0),
+    #     # et: vf.add_const(0.0),
+    #     #
+    #     # # dq0 from abc voltages
+    #     # v_d: 2 / 3 * (sym.cos(theta) * inputs[0] +
+    #     #               sym.cos(theta - 2 * np.pi / 3) * inputs[1] +
+    #     #               sym.cos(theta + 2 * np.pi / 3) * inputs[2]),
+    #     # v_q: 2 / 3 * (sym.sin(theta) * inputs[0] +
+    #     #               sym.sin(theta - 2 * np.pi / 3) * inputs[1] +
+    #     #               sym.sin(theta + 2 * np.pi / 3) * inputs[2]),
+    #     # v_0: 2 / 3 * (0.5 * inputs[0] + 0.5 * inputs[1] + 0.5 * inputs[2]),
+    #     #
+    #     # # dq0 from abc currents (inverse-consistent with your algebraic abc reconstruction)
+    #     # i_d: 2 / 3 * (sym.cos(theta) * i_A +
+    #     #               sym.cos(theta - 2 * np.pi / 3) * i_B +
+    #     #               sym.cos(theta + 2 * np.pi / 3) * i_C),
+    #     # i_q: 2 / 3 * (sym.sin(theta) * i_A +
+    #     #               sym.sin(theta - 2 * np.pi / 3) * i_B +
+    #     #               sym.sin(theta + 2 * np.pi / 3) * i_C),
+    #     # i_0: 2 / 3 * (0.5 * i_A + 0.5 * i_B + 0.5 * i_C),
+    #     #
+    #     # # electrical steady-state fluxes (corrected signs!)
+    #     # psi_d: (v_q - Ra * i_q) / omega,
+    #     # psi_q: (Ra * i_d - v_d) / omega,
+    #     # # psi_d: ((Lmd + La) * i_d + Lmd * i_f),
+    #     # # psi_q: ((Lmq + La) * i_q),
+    #     #
+    #     # # choose i_f from psi_d relation (kept from your original approach)
+    #     # i_f: -((La + Lmd) * i_d - psi_d) / Lmd,
+    #     #
+    #     # # field voltage steady-state
+    #     # v_f: i_f * Rf,
+    #     #
+    #     # # remaining flux algebraic closures
+    #     # psi_f: Lmd * i_d + (Lmd + Lf) * i_f,
+    #     # psi_0: L0 * i_0,
+    #     #
+    #     # Te: (3 / 2) * (psi_d * i_q - psi_q * i_d),
+    #     #
+    #     # # close mechanical with Te at init
+    #     # # Pe: i_A * inputs[0] + i_B * inputs[1] + i_C * inputs[2],
+    #     # Tm: Te,
+    #     # Pm: Tm * omega,
+    #     # # Pm: Pe,
+    # }
     templ.block.init_eqs = {
-        # # omega: omega_ref,
-        # omega: vf.add_const(1.0),
-        # et:    vf.add_const(0.0),
-        #
-        # # dq0 from abc voltages
-        # v_d: 2 / 3 * (sym.cos(theta) * inputs[0] +
-        #               sym.cos(theta - 2 * np.pi / 3) * inputs[1] +
-        #               sym.cos(theta + 2 * np.pi / 3) * inputs[2]),
-        # v_q: 2 / 3 * (sym.sin(theta) * inputs[0] +
-        #               sym.sin(theta - 2 * np.pi / 3) * inputs[1] +
-        #               sym.sin(theta + 2 * np.pi / 3) * inputs[2]),
-        # v_0: 2 / 3 * (0.5 * inputs[0] + 0.5 * inputs[1] + 0.5 * inputs[2]),
-        #
-        # # dq0 from abc currents (inverse-consistent with your algebraic abc reconstruction)
-        # i_d: 2 / 3 * (sym.cos(theta) * i_A +
-        #               sym.cos(theta - 2 * np.pi / 3) * i_B +
-        #               sym.cos(theta + 2 * np.pi / 3) * i_C),
-        # i_q: 2 / 3 * (sym.sin(theta) * i_A +
-        #               sym.sin(theta - 2 * np.pi / 3) * i_B +
-        #               sym.sin(theta + 2 * np.pi / 3) * i_C),
-        # i_0: 2 / 3 * (0.5 * i_A + 0.5 * i_B + 0.5 * i_C),
-        #
-        # # electrical steady-state fluxes (corrected signs!)
-        # psi_d: (v_q - Ra * i_q) / omega,
-        # psi_q: (Ra * i_d - v_d) / omega,
-        # # psi_d: ((Lmd + La) * i_d + Lmd * i_f),
-        # # psi_q: ((Lmq + La) * i_q),
-        #
-        # # choose i_f from psi_d relation (kept from your original approach)
-        # i_f: -((La + Lmd) * i_d - psi_d) / Lmd,
-        #
-        # # field voltage steady-state
-        # v_f: i_f * Rf,
-        #
-        # # remaining flux algebraic closures
-        # psi_f: Lmd * i_d + (Lmd + Lf) * i_f,
-        # psi_0: L0 * i_0,
-        #
-        # Te: (3 / 2) * (psi_d * i_q - psi_q * i_d),
-        #
-        # # close mechanical with Te at init
-        # Tm: Te,
-        # Pm: Tm * omega,
-        # # Pm: Pe,
-
         omega: vf.add_const(1.0),
         et: vf.add_const(0.0),
 
-        # dq0 from abc terminal voltages
-        v_d: 2 / 3 * (sym.cos(theta) * inputs[0] +
-                      sym.cos(theta - 2 * np.pi / 3) * inputs[1] +
-                      sym.cos(theta + 2 * np.pi / 3) * inputs[2]),
-        v_q: 2 / 3 * (sym.sin(theta) * inputs[0] +
+        # 1. Park Transform (D alineado con A, pero V cae en Q)
+        # Usamos senos para v_q para que el 1.41 de la red caiga aquí
+        v_d: 2 / 3 * (sym.sin(theta) * inputs[0] +
                       sym.sin(theta - 2 * np.pi / 3) * inputs[1] +
                       sym.sin(theta + 2 * np.pi / 3) * inputs[2]),
-        v_0: 2 / 3 * (0.5 * inputs[0] + 0.5 * inputs[1] + 0.5 * inputs[2]),
+        v_q: 2 / 3 * (sym.cos(theta) * inputs[0] +
+                      sym.cos(theta - 2 * np.pi / 3) * inputs[1] +
+                      sym.cos(theta + 2 * np.pi / 3) * inputs[2]),
 
-        # dq0 currents from abc currents
-        i_d: 2 / 3 * (sym.cos(theta) * i_A +
-                      sym.cos(theta - 2 * np.pi / 3) * i_B +
-                      sym.cos(theta + 2 * np.pi / 3) * i_C),
-        i_q: 2 / 3 * (sym.sin(theta) * i_A +
+        # 2. Corrientes (Misma lógica de proyección)
+        i_d: 2 / 3 * (sym.sin(theta) * i_A +
                       sym.sin(theta - 2 * np.pi / 3) * i_B +
                       sym.sin(theta + 2 * np.pi / 3) * i_C),
-        i_0: 2 / 3 * (0.5 * i_A + 0.5 * i_B + 0.5 * i_C),
+        i_q: 2 / 3 * (sym.cos(theta) * i_A +
+                      sym.cos(theta - 2 * np.pi / 3) * i_B +
+                      sym.cos(theta + 2 * np.pi / 3) * i_C),
 
-        # q-axis flux from algebraic closure
-        psi_q: (Lmq + La) * i_q,
+        # 3. Flujos (Física: v_q es generado por psi_d)
+        # Ecuaciones de estado estacionario:
+        # v_d = -Ra*i_d + omega*psi_q
+        # v_q = -Ra*i_q - omega*psi_d (depende del convenio de signos de tu DAE)
+        psi_q: (v_d + Ra * i_d),
+        psi_d: -(v_q + Ra * i_q),
 
-        # d-axis flux from steady-state voltage equation
-        psi_d: (v_q - Ra * i_q) / omega,
+        # 4. Excitación en Eje D
+        # i_f debe compensar el flujo psi_d y la reacción de armadura i_d
+        i_f: (psi_d + (Lmd + La) * i_d) / Lmd,
+        v_f: i_f * Rf,
+        psi_f: (Lmd + Lf) * i_f - Lmd * i_d,
 
-        # field current from d-axis flux algebraic closure
-        i_f: (psi_d - (Lmd + La) * i_d) / Lmd,
-
-        # remaining magnetic closures
-        psi_f: Lmd * i_d + (Lmd + Lf) * i_f,
-        psi_0: L0 * i_0,
-
-        # field voltage steady-state
-        v_f: Rf * i_f,
-
-        # torque/power consistency
+        # 5. Potencia y Torque
+        # En p.u., con esta convención de Park, el factor es 1.0 (o 3/2 si no es invariante en potencia)
+        # Si tu modelo dinámico usa Pe = vd*id + vq*iq, usa 1.0.
+        # Si usa la potencia total trifásica, usa 3/2.
         Te: (3 / 2) * (psi_d * i_q - psi_q * i_d),
         Tm: Te,
-        Pm: Tm * omega
+        Pm: Tm * omega,
     }
 
     # --------------------------------------------------------------------------------------
