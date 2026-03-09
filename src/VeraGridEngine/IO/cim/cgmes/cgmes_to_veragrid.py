@@ -7,6 +7,7 @@ from __future__ import annotations
 from typing import Dict, List, Tuple, Union
 import numpy as np
 import VeraGridEngine.IO.cim.cgmes.cgmes_enums as cgmes_enums
+from VeraGridEngine import ShuntControlMode
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import CGMESVersions, CgmesTopologyMode, ConverterControlType
 import VeraGridEngine.Devices as gcdev
@@ -2094,14 +2095,13 @@ def get_gcdev_controllable_shunts(
                 name=cgmes_elm.name,
                 code=cgmes_elm.description,
                 active=True,
-                is_nonlinear=False,  # it is Linear!
                 number_of_steps=cgmes_elm.maximumSections,
                 g_per_step=g,
                 b_per_step=b,
                 G0=g0,
                 B0=b0,
                 vset=v_set,
-                is_controlled=is_controlled,
+                control_mode=ShuntControlMode.Continuous if is_controlled else ShuntControlMode.Locked,
                 control_bus=controlled_bus,
             )
             # B, G is calculated when step is set: only if .sections >= 1
@@ -2150,7 +2150,6 @@ def get_gcdev_controllable_shunts(
                 name=cgmes_elm.name,
                 code=cgmes_elm.description,
                 active=True,
-                is_nonlinear=True,  # it is NonLinear!
                 number_of_steps=cgmes_elm.maximumSections,
                 step=cgmes_elm.sections,
                 # g_per_step=G,
@@ -2158,7 +2157,7 @@ def get_gcdev_controllable_shunts(
                 # G=G,
                 # B=B,
                 vset=v_set,
-                is_controlled=is_controlled,
+                control_mode=ShuntControlMode.Continuous if is_controlled else ShuntControlMode.Locked,
                 control_bus=controlled_bus,
             )
 

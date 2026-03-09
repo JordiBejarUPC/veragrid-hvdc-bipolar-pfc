@@ -7,7 +7,8 @@ import numpy as np
 from scipy.sparse import csc_matrix, coo_matrix
 import VeraGridEngine.Topology.topology as tp
 from VeraGridEngine.Utils.Sparse.sparse_array import SparseObjectArray
-from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, StrVec, BoolVec
+from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, StrVec, BoolVec, ObjVec
+from VeraGridEngine.enumerations import ShuntControlMode
 
 
 class ShuntData:
@@ -29,7 +30,8 @@ class ShuntData:
 
         self.active: BoolVec = np.zeros(nelm, dtype=bool)
 
-        self.controllable: BoolVec = np.zeros(nelm, dtype=bool)
+        self.control_mode: ObjVec = np.full(self.nelm, fill_value=ShuntControlMode.Locked, dtype=object)
+        self.is_pv_control: BoolVec = np.zeros(nelm, dtype=bool)  # quick proxy to not making searches
 
         self.Y: CxVec = np.zeros(nelm, dtype=complex)
 
@@ -58,6 +60,8 @@ class ShuntData:
 
         self.original_idx: IntVec = np.zeros(nelm, dtype=int)
         self.vset: Vec = np.zeros(nelm, dtype=float)
+        self.vmin: Vec = np.zeros(nelm, dtype=float)
+        self.vmax: Vec = np.zeros(nelm, dtype=float)
 
     def size(self) -> int:
         """
@@ -83,7 +87,8 @@ class ShuntData:
 
         data.active = self.active[elm_idx]
 
-        data.controllable = self.controllable[elm_idx]
+        data.control_mode = self.control_mode[elm_idx]
+        data.is_pv_control = self.is_pv_control[elm_idx]
 
         data.Y = self.Y[elm_idx]
 
@@ -117,6 +122,8 @@ class ShuntData:
 
         data.original_idx = elm_idx
         data.vset = self.vset[elm_idx]
+        data.vmin = self.vmin[elm_idx]
+        data.vmax = self.vmax[elm_idx]
 
         return data
 
@@ -140,7 +147,8 @@ class ShuntData:
         data.names = self.names.copy()
         data.idtag = self.idtag.copy()
         data.active = self.active.copy()
-        data.controllable = self.controllable.copy()
+        data.control_mode = self.control_mode.copy()
+        data.is_pv_control = self.is_pv_control.copy()
 
         data.Y = self.Y.copy()
         data.Y3_star = self.Y3_star.copy()
@@ -162,6 +170,8 @@ class ShuntData:
 
         data.original_idx = self.original_idx.copy()
         data.vset = self.vset.copy()
+        data.vmin = self.vmin.copy()
+        data.vmax = self.vmax.copy()
 
         return data
 
@@ -187,7 +197,7 @@ class ShuntData:
         :return:
         """
         return tp.sum_per_bus_cx(nbus=self.nbus, bus_indices=self.bus_idx,
-                                 magnitude=self.Y * self.active * (1 - self.controllable))
+                                 magnitude=self.Y * self.active * (1 - self.is_pv_control))
 
     def get_qmax_per_bus(self) -> Vec:
         """
@@ -218,7 +228,8 @@ class ShuntData:
         Get the indices of controllable generators
         :return: idx_controllable, idx_non_controllable
         """
-        return np.where(self.controllable == 1)[0], np.where(self.controllable == 0)[0]
+        return (np.where(self.is_pv_control == True)[0],
+                np.where(self.is_pv_control == False)[0])
 
     def get_C_bus_elm(self) -> csc_matrix:
         """
@@ -233,3 +244,4 @@ class ShuntData:
         j = np.arange(self.nelm, dtype=int)
         data = np.ones(self.nelm, dtype=int)
         return coo_matrix((data, (self.bus_idx, j)), shape=(self.nbus, self.nelm), dtype=int).tocsc()
+

@@ -66,14 +66,17 @@ def build_q_limits(nbus: int, Sbase: float,
     :param q_min_gen:
     :param q_max_gen:
     :param active_gen:
+    :param controllable_gen:
     :param batt_idx:
     :param q_min_batt:
     :param q_max_batt:
     :param active_batt:
+    :param controllable_batt:
     :param sh_idx:
     :param q_min_sh:
     :param q_max_sh:
     :param active_sh:
+    :param controllable_sh:
     :param hvdc_f:
     :param hvdc_t:
     :param q_min_hvdc_f:
@@ -843,7 +846,7 @@ class NumericalCircuit:
             q_min_sh=self.shunt_data.qmin,
             q_max_sh=self.shunt_data.qmax,
             active_sh=self.shunt_data.active,
-            controllable_sh=self.shunt_data.controllable,
+            controllable_sh=self.shunt_data.is_pv_control,
 
             hvdc_f=self.hvdc_data.F,
             hvdc_t=self.hvdc_data.T,

@@ -44,8 +44,8 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_utils import (find_object_by_uuid,
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import compute_zip_power
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.data_logger import DataLogger
-from VeraGridEngine.enumerations import CGMESVersions
-from VeraGridEngine.enumerations import (TapChangerTypes, TapPhaseControl, TapModuleControl)
+from VeraGridEngine.enumerations import (TapChangerTypes, TapPhaseControl, TapModuleControl, CGMESVersions,
+                                         ShuntControlMode)
 
 
 def find_fallback_voltage_level_for_bus(cgmes_model: CgmesCircuit,
@@ -1757,7 +1757,7 @@ def get_cgmes_linear_and_non_linear_shunts(multicircuit_model: MultiCircuit,
 
     for mc_elm in multicircuit_model.controllable_shunts:
 
-        if mc_elm.is_nonlinear:
+        if mc_elm.control_mode == ShuntControlMode.Continuous:
 
             if ver == CGMESVersions.v2_4_15:
                 non_lin_sc = cgmes24.NonlinearShuntCompensator(rdfid=form_rdfid(mc_elm.idtag))
@@ -1794,7 +1794,7 @@ def get_cgmes_linear_and_non_linear_shunts(multicircuit_model: MultiCircuit,
             # CONTROL
             # control_type: voltage or power control, ..
             # is_controlled: enabling flag (already have)
-            if mc_elm.is_controlled:
+            if mc_elm.control_mode != ShuntControlMode.Locked:
                 non_lin_sc.RegulatingControl = (
                     create_cgmes_regulating_control(non_lin_sc, mc_elm, cgmes_model, ver, logger)
                 )
@@ -1898,7 +1898,7 @@ def get_cgmes_linear_and_non_linear_shunts(multicircuit_model: MultiCircuit,
             )
 
             # CONTROL
-            if mc_elm.is_controlled:
+            if mc_elm.control_mode != ShuntControlMode.Locked:
                 lsc.RegulatingControl = (
                     create_cgmes_regulating_control(lsc, mc_elm, cgmes_model, ver, logger)
                 )
