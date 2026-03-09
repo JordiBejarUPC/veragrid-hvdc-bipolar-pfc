@@ -1744,9 +1744,11 @@ def get_cgmes_linear_and_non_linear_shunts(multicircuit_model: MultiCircuit,
                                            ver: CGMESVersions,
                                            logger: DataLogger):
     """
-    Converts Multi Circuit Controllable Shunts
-    into CGMES Linear or Non-Linear shunt compensators
-    (depending on is_linear flag)
+    Convert VeraGrid controllable shunts to CGMES NonlinearShuntCompensator.
+
+    VeraGrid keeps the full stepped shunt characteristic. Exporting every
+    controllable shunt as a nonlinear compensator preserves that complete
+    section curve and avoids making a lossy linear/non-linear class decision.
 
     :param multicircuit_model: MultiCircuit model in VeraGrid
     :param cgmes_model: CgmesModel
@@ -1757,156 +1759,78 @@ def get_cgmes_linear_and_non_linear_shunts(multicircuit_model: MultiCircuit,
 
     for mc_elm in multicircuit_model.controllable_shunts:
 
-        if mc_elm.control_mode == ShuntControlMode.Continuous:
+        if ver == CGMESVersions.v2_4_15:
+            non_lin_sc = cgmes24.NonlinearShuntCompensator(rdfid=form_rdfid(mc_elm.idtag))
+        elif ver == CGMESVersions.v3_0_0:
+            non_lin_sc = cgmes30.NonlinearShuntCompensator(rdfid=form_rdfid(mc_elm.idtag))
+        else:
+            raise NotImplemented()
 
-            if ver == CGMESVersions.v2_4_15:
-                non_lin_sc = cgmes24.NonlinearShuntCompensator(rdfid=form_rdfid(mc_elm.idtag))
-            elif ver == CGMESVersions.v3_0_0:
-                non_lin_sc = cgmes30.NonlinearShuntCompensator(rdfid=form_rdfid(mc_elm.idtag))
-            else:
-                raise NotImplemented()
-
-            non_lin_sc.name = mc_elm.name
-            non_lin_sc.description = mc_elm.code
-            if mc_elm.bus.voltage_level:
-                vl = find_object_by_uuid(
-                    cgmes_model=cgmes_model,
-                    object_list=cgmes_model.cgmes_assets.VoltageLevel_list,
-                    target_uuid=mc_elm.bus.voltage_level.idtag
-                )
-                if isinstance(vl, cgmes_model.assets.VoltageLevel):
-                    non_lin_sc.EquipmentContainer = vl
-
-            non_lin_sc.BaseVoltage = find_object_by_vnom(
+        non_lin_sc.name = mc_elm.name
+        non_lin_sc.description = mc_elm.code
+        if mc_elm.bus.voltage_level:
+            vl = find_object_by_uuid(
                 cgmes_model=cgmes_model,
-                object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
-                target_vnom=mc_elm.bus.Vnom)
-
-            non_lin_sc.Terminals = (
-                create_cgmes_terminal(mc_bus=mc_elm.bus,
-                                      seq_num=1,
-                                      cond_eq=non_lin_sc,
-                                      cgmes_model=cgmes_model,
-                                      ver=ver,
-                                      logger=logger)
+                object_list=cgmes_model.cgmes_assets.VoltageLevel_list,
+                target_uuid=mc_elm.bus.voltage_level.idtag
             )
+            if isinstance(vl, cgmes_model.assets.VoltageLevel):
+                non_lin_sc.EquipmentContainer = vl
 
-            # CONTROL
-            # control_type: voltage or power control, ..
-            # is_controlled: enabling flag (already have)
-            if mc_elm.control_mode != ShuntControlMode.Locked:
-                non_lin_sc.RegulatingControl = (
-                    create_cgmes_regulating_control(non_lin_sc, mc_elm, cgmes_model, ver, logger)
-                )
-                non_lin_sc.controlEnabled = True
-            else:
-                non_lin_sc.controlEnabled = False
+        non_lin_sc.BaseVoltage = find_object_by_vnom(
+            cgmes_model=cgmes_model,
+            object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
+            target_vnom=mc_elm.bus.Vnom)
 
-            # SSH: sections: Shunt compensator sections in use.
-            if mc_elm.active:
-                non_lin_sc.sections = mc_elm.step + 1
-            else:
-                non_lin_sc.sections = 0
+        non_lin_sc.Terminals = (
+            create_cgmes_terminal(mc_bus=mc_elm.bus,
+                                  seq_num=1,
+                                  cond_eq=non_lin_sc,
+                                  cgmes_model=cgmes_model,
+                                  ver=ver,
+                                  logger=logger)
+        )
 
-            # EQ
-            non_lin_sc.nomU = mc_elm.bus.Vnom
-            b_points_mva, g_points_mva = mc_elm.get_block_points()
-            b_points = [b / (non_lin_sc.nomU ** 2) for b in b_points_mva]
-            g_points = [g / (non_lin_sc.nomU ** 2) for g in g_points_mva]
-            for i in range(len(b_points)):
-                create_cgmes_nonlinear_sc_point(
-                    section_num=i + 1,
-                    b=b_points[i],
-                    g=g_points[i],
-                    nl_sc=non_lin_sc,
-                    cgmes_model=cgmes_model,
-                    ver=ver
-                )
-            non_lin_sc.normalSections = non_lin_sc.sections
-            non_lin_sc.maximumSections = len(b_points)
-            if non_lin_sc.maximumSections < non_lin_sc.sections:
-                logger.add_error(
-                    msg="Number or sections is out of range",
-                    device=non_lin_sc,
-                    device_class=non_lin_sc.tpe,
-                    value=non_lin_sc.sections,
-                    expected_value=non_lin_sc.maximumSections,
-                    comment="maxSections < sections"
-                )
-            non_lin_sc.aggregate = False
-
-            cgmes_model.add(non_lin_sc)
-
-        else:  # LINEAR controllable shunts
-
-            # object_template = cgmes_model.get_class_type("LinearShuntCompensator")
-            if ver == CGMESVersions.v2_4_15:
-                lsc = cgmes24.LinearShuntCompensator(rdfid=form_rdfid(mc_elm.idtag))
-            elif ver == CGMESVersions.v3_0_0:
-                lsc = cgmes30.LinearShuntCompensator(rdfid=form_rdfid(mc_elm.idtag))
-            else:
-                raise NotImplemented()
-
-            lsc.name = mc_elm.name
-            lsc.description = mc_elm.code
-            if mc_elm.bus.voltage_level:
-                vl = find_object_by_uuid(
-                    cgmes_model=cgmes_model,
-                    object_list=cgmes_model.cgmes_assets.VoltageLevel_list,
-                    target_uuid=mc_elm.bus.voltage_level.idtag
-                )
-
-                if isinstance(vl, cgmes_model.assets.VoltageLevel):
-                    lsc.EquipmentContainer = vl
-
-            base_voltage = find_object_by_vnom(cgmes_model=cgmes_model,
-                                               object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
-                                               target_vnom=mc_elm.bus.Vnom)
-
-            if isinstance(base_voltage, cgmes_model.assets.BaseVoltage):
-                lsc.BaseVoltage = base_voltage
-
-            if mc_elm.active:
-                lsc.sections = mc_elm.step + 1
-            else:
-                lsc.sections = 0
-
-            # EQ
-            lsc.nomU = mc_elm.bus.Vnom
-            lsc.bPerSection = mc_elm.get_linear_b_steps()[0] / (lsc.nomU ** 2)
-            lsc.gPerSection = mc_elm.get_linear_g_steps()[0] / (lsc.nomU ** 2)
-            lsc.normalSections = lsc.sections
-            lsc.maximumSections = len(mc_elm.b_steps)
-            if lsc.maximumSections < lsc.sections:
-                logger.add_error(
-                    msg="Number or sections is out of range",
-                    device=lsc,
-                    device_class=lsc.tpe,
-                    value=lsc.sections,
-                    expected_value=lsc.maximumSections,
-                    comment="maxSections < sections"
-                )
-            lsc.aggregate = False
-
-            lsc.Terminals = (
-                create_cgmes_terminal(mc_bus=mc_elm.bus,
-                                      seq_num=1,
-                                      cond_eq=lsc,
-                                      cgmes_model=cgmes_model,
-                                      ver=ver,
-                                      logger=logger)
+        if mc_elm.control_mode != ShuntControlMode.Locked:
+            non_lin_sc.RegulatingControl = (
+                create_cgmes_regulating_control(non_lin_sc, mc_elm, cgmes_model, ver, logger)
             )
+            non_lin_sc.controlEnabled = True
+        else:
+            non_lin_sc.controlEnabled = False
 
-            # CONTROL
-            if mc_elm.control_mode != ShuntControlMode.Locked:
-                lsc.RegulatingControl = (
-                    create_cgmes_regulating_control(lsc, mc_elm, cgmes_model, ver, logger)
-                )
-                lsc.controlEnabled = True
-            else:
-                lsc.controlEnabled = False
+        if mc_elm.active:
+            non_lin_sc.sections = mc_elm.step + 1
+        else:
+            non_lin_sc.sections = 0
 
-            cgmes_model.add(lsc)
+        non_lin_sc.nomU = mc_elm.bus.Vnom
+        b_points_mva, g_points_mva = mc_elm.get_block_points()
+        b_points = [b / (non_lin_sc.nomU ** 2) for b in b_points_mva]
+        g_points = [g / (non_lin_sc.nomU ** 2) for g in g_points_mva]
+        for i in range(len(b_points)):
+            create_cgmes_nonlinear_sc_point(
+                section_num=i + 1,
+                b=b_points[i],
+                g=g_points[i],
+                nl_sc=non_lin_sc,
+                cgmes_model=cgmes_model,
+                ver=ver
+            )
+        non_lin_sc.normalSections = non_lin_sc.sections
+        non_lin_sc.maximumSections = len(b_points)
+        if non_lin_sc.maximumSections < non_lin_sc.sections:
+            logger.add_error(
+                msg="Number or sections is out of range",
+                device=non_lin_sc,
+                device_class=non_lin_sc.tpe,
+                value=non_lin_sc.sections,
+                expected_value=non_lin_sc.maximumSections,
+                comment="maxSections < sections"
+            )
+        non_lin_sc.aggregate = False
+
+        cgmes_model.add(non_lin_sc)
 
 
 def get_cgmes_breakers(multicircuit_model: MultiCircuit,
