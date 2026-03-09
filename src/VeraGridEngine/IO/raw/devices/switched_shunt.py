@@ -28,6 +28,9 @@ class RawSwitchedShunt(RawObject):
                      description='Controlled voltage upper limit', unit=Unit.get_pu()),
         PsseProperty(property_name='SWREG', rawx_key='swreg', class_type=int, description='Controlled voltage bus',
                      min_value=0, max_value=999997),
+        PsseProperty(property_name='SWREM', rawx_key='swrem', class_type=int,
+                     description='Controlled bus or plant bus for pre-35 switched shunt formats',
+                     min_value=0, max_value=999997),
         PsseProperty(property_name='NREG', rawx_key='nreg', class_type=int,
                      description="Node number of bus IREG when IREG's bus is a substation", min_value=0,
                      max_value=999997),
@@ -245,19 +248,19 @@ class RawSwitchedShunt(RawObject):
 
         if version >= 35:
 
-            var = ["N1", "B1",
-                   "N2", "B2",
-                   "N3", "B3",
-                   "N4", "B4",
-                   "N5", "B5",
-                   "N6", "B6",
-                   "N7", "B7",
-                   "N8", "B8"]
+            var = ["S1", "N1", "B1",
+                   "S2", "N2", "B2",
+                   "S3", "N3", "B3",
+                   "S4", "N4", "B4",
+                   "S5", "N5", "B5",
+                   "S6", "N6", "B6",
+                   "S7", "N7", "B7",
+                   "S8", "N8", "B8"]
 
             return self.format_raw_line(["I", "ID", "MODSW", "ADJM", "STAT", "VSWHI", "VSWLO",
                                          "SWREG", "NREG", "RMPCT", "RMIDNT", "BINIT"] + var)
 
-        elif version >= 29 <= 34:
+        elif 29 <= version <= 34:
 
             var = ["N1", "B1",
                    "N2", "B2",
@@ -269,7 +272,7 @@ class RawSwitchedShunt(RawObject):
                    "N8", "B8"]
 
             return self.format_raw_line(["I", "MODSW", "ADJM", "STAT", "VSWHI", "VSWLO",
-                                         "SWREG", "RMPCT", "RMIDNT", "BINIT"] + var)
+                                         "SWREM", "RMPCT", "RMIDNT", "BINIT"] + var)
         else:
             raise Exception('Shunt not implemented for the version ' + str(version))
 

@@ -396,15 +396,19 @@ class Line(BranchParent):
         """
         # If the user is setting the circuit index, ensure that the template exists and is valid
         if obj is None:
-            raise Exception("Template must be set before changing the circuit index.")
+            raise ValueError("Template must be set before changing the circuit index.")
+
         if not isinstance(obj, (OverheadLineType, UndergroundLineType, SequenceLineType)):
-            raise Exception(
-                "Invalid template type. Must be OverheadLineType, UndergroundLineType, or SequenceLineType.")
+            raise ValueError(
+                "Invalid template type. Must be OverheadLineType, UndergroundLineType, or SequenceLineType."
+            )
+
         if isinstance(obj, OverheadLineType):
             if val > obj.n_circuits:
-                raise Exception("Circuit index exceeds the number of circuits in the template.")
+                raise ValueError("Circuit index exceeds the number of circuits in the template.")
+
         if val <= 0:
-            raise Exception("Circuit index must be greater than 0.")
+            raise ValueError("Circuit index must be greater than 0.")
         else:
             if val > 0:
                 self._circuit_idx = int(val)
@@ -426,43 +430,9 @@ class Line(BranchParent):
         """
         self.set_length(val)
 
-    # @BranchParent.rms_model.setter
-    # def rms_model(self, value: DynamicModelHost):
-    #     if isinstance(value, DynamicModelHost):
-    #         value.model.set_parameter(
-    #             ParamPowerFlowRefferenceType.g,
-    #             Const(float(self.R / (self.R ** 2 + self.X ** 2)))
-    #         )
-    #
-    #         value.model.set_parameter(
-    #             ParamPowerFlowRefferenceType.b,
-    #             Const(float(-self.X / (self.R ** 2 + self.X ** 2)))
-    #         )
-    #
-    #         value.model.set_parameter(
-    #             ParamPowerFlowRefferenceType.bsh,
-    #             Const(self.B)
-    #         )
-    #         self._rms_model = value
-
     @BranchParent.emt_model.setter
     def emt_model(self, value: DynamicModelHost):
         if isinstance(value, DynamicModelHost):
-            # TODO: add here line properties !?!
-            # value.model.set_parameter(
-            #     ParamPowerFlowRefferenceType.g,
-            #     Const(float(self.R / (self.R ** 2 + self.X ** 2)))
-            # )
-            #
-            # value.model.set_parameter(
-            #     ParamPowerFlowRefferenceType.b,
-            #     Const(float(-self.X / (self.R ** 2 + self.X ** 2)))
-            # )
-            #
-            # value.model.set_parameter(
-            #     ParamPowerFlowRefferenceType.bsh,
-            #     Const(self.B)
-            # )
             self._emt_model = value
 
     def set_length(self, val: float):
@@ -579,13 +549,15 @@ class Line(BranchParent):
     def apply_template(self,
                        obj: Union[OverheadLineType, UndergroundLineType, SequenceLineType],
                        Sbase: float, freq: float,
-                       logger=Logger()):
+                       logger=Logger(),
+                       decimals_rounding: int = 6):
         """
         Apply a line template to this object
         :param obj: OverheadLineType, UndergroundLineType, SequenceLineType
         :param Sbase: Nominal power in MVA
         :param freq: Frequency in Hz
         :param logger: Logger
+        :param decimals_rounding: Number of decimals to round to
         """
 
         if isinstance(obj, OverheadLineType):
@@ -631,7 +603,8 @@ class Line(BranchParent):
              self.rate) = obj.get_values(Sbase=Sbase,
                                          freq=freq,
                                          length=self.length,
-                                         line_Vnom=self.get_max_bus_nominal_voltage())
+                                         line_Vnom=self.get_max_bus_nominal_voltage(),
+                                         decimals_rounding=decimals_rounding)
 
             self.ys = obj.get_ys_nabc()
             self.ysh = obj.get_ysh_nabc()
