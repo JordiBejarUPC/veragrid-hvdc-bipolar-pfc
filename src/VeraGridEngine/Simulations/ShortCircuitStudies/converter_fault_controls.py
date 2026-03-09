@@ -60,7 +60,7 @@ def reec_d(u,
     Pref_WGO = Ppf  # Input 14
 
     # Current Blocking
-    vblkl = 0.1 # Voltage below which the converter is blocked in [pu]
+    vblkl = 0.65 # Voltage below which the converter is blocked in [pu]
     vblkh = 1.2 # Voltage above which the converter is blocked in [pu]
     is_blocked = float((Vt >= vblkh) or (Vt <= vblkl))
 
@@ -121,7 +121,7 @@ def reec_d(u,
     return Iqcmd, Ipcmd, is_blocked
 
 
-def regc_c(Iqcmd, Ipcmd, is_blocked):
+def regc_c(Iqcmd, Ipcmd):
 
     iq_ref = - Iqcmd
 
@@ -129,21 +129,27 @@ def regc_c(Iqcmd, Ipcmd, is_blocked):
 
     return iq_ref, id_ref
 
-def genstat(ur, ui, iq_ref, id_ref, Sn):
+def genstat(ur, ui, iq_ref, id_ref, Sn, is_blocked):
 
-    u1 = ur + 1j * ui
+    if is_blocked == 1.0:
 
-    cos_u1 = np.real(u1) / abs(u1)
-    sin_u1 = np.imag(u1) / abs(u1)
+        return 0.0, 0.0
 
-    i1 = (id_ref * cos_u1 - iq_ref * sin_u1) + 1j * (id_ref * sin_u1 + iq_ref * cos_u1)
+    else:
 
-    s1 = u1 * np.conj(i1)
+        u1 = ur + 1j * ui
 
-    Pref = np.real(s1) * Sn  # MW
-    Qref = np.imag(s1) * Sn  # MVAr
+        cos_u1 = np.real(u1) / abs(u1)
+        sin_u1 = np.imag(u1) / abs(u1)
 
-    return Pref, Qref
+        i1 = (id_ref * cos_u1 - iq_ref * sin_u1) + 1j * (id_ref * sin_u1 + iq_ref * cos_u1)
+
+        s1 = u1 * np.conj(i1)
+
+        Pref = np.real(s1) * Sn  # MW
+        Qref = np.imag(s1) * Sn  # MVAr
+
+        return Pref, Qref
 
 def wecc_wt_type_4b(V_measured, Vpf, St_vsc_pf, S_base_vg, S_rated_vsc):
 
@@ -161,14 +167,14 @@ def wecc_wt_type_4b(V_measured, Vpf, St_vsc_pf, S_base_vg, S_rated_vsc):
 
     iq_ref, id_ref = regc_c(Iqcmd=Iqcmd, # Current reference from REEC_D [pu]
                             Ipcmd=Ipcmd, # Current reference from REEC_D [pu]
-                            is_blocked=is_blocked # Converter's disconnection = 1
                             )
 
-    Pref, Qref = genstat(ur=Vt_r, # Real component of the converter's voltage [pu]
-                         ui=Vt_i, # Imaginary component of the converter's voltage [pu]
-                         iq_ref=iq_ref, # Current reference from REGC_C [pu]
-                         id_ref=id_ref, # Current reference from REGC_C [pu]
-                         Sn=S_rated_vsc # Converter's nominal power [MVA]
+    Pref, Qref = genstat(ur=Vt_r,  # Real component of the converter's voltage [pu]
+                         ui=Vt_i,  # Imaginary component of the converter's voltage [pu]
+                         iq_ref=iq_ref,  # Current reference from REGC_C [pu]
+                         id_ref=id_ref,  # Current reference from REGC_C [pu]
+                         Sn=S_rated_vsc,  # Converter's nominal power [MVA]
+                         is_blocked=is_blocked  # Converter's disconnection = 1
                          )
 
     return -Pref/S_base_vg, -Qref/S_base_vg

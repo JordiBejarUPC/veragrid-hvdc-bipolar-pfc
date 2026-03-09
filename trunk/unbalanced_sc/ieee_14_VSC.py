@@ -10,6 +10,8 @@ for i in range(len(grid.vsc_devices)):
     grid.vsc_devices[i].control1_val = -10.0
     grid.vsc_devices[i].control2_val = 0.0
 
+grid.buses[12].r_fault = 10 / (33**2 / 100)
+
 # ----------------------------------------------------------------------------------------------------------------------
 #   AC/DC Power Flow under healthy conditions
 # ----------------------------------------------------------------------------------------------------------------------
@@ -33,7 +35,7 @@ pf_options_2 = PowerFlowOptions(solver_type=SolverType.NR,
 
 grid.add_short_circuit_event(
     vge.ShortCircuitEvent(
-        device=grid.buses[9],
+        device=grid.buses[12], # Bus11[9], Bus14[12]
         method=MethodShortCircuit.sequences_vsc,
     )
 )
@@ -48,4 +50,7 @@ sc_driver.run()
 res_sc = sc_driver.results
 
 print('\n --- Short-circuit Results --- ')
-print(res_sc.get_voltage_df())
+# print(res_sc.get_voltage_df(sc_idx=0))
+print(res_sc.get_voltage_df(sc_idx=1))
+
+vge.save_file(grid, 'ieee14_voltage_disconnection.veragrid')
