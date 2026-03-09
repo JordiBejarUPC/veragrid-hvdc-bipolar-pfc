@@ -6,6 +6,10 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 logger = vge.Logger()
 grid = vge.open_file('test_ieee_14_VSC.veragrid')
 
+for i in range(len(grid.vsc_devices)):
+    grid.vsc_devices[i].control1_val = -10.0
+    grid.vsc_devices[i].control2_val = 0.0
+
 # ----------------------------------------------------------------------------------------------------------------------
 #   AC/DC Power Flow under healthy conditions
 # ----------------------------------------------------------------------------------------------------------------------
