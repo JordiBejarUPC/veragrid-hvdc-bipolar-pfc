@@ -5,7 +5,7 @@
 
 import os
 import zipfile
-from typing import BinaryIO, Dict, List, Union, Callable, Tuple
+from typing import BinaryIO, Dict, List, Union, Callable, Tuple, Optional
 import xml.etree.ElementTree as ET
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.base.base_circuit import BaseCircuit
@@ -250,7 +250,7 @@ def process_cgmes_file_data(file_name: str,
                             file_cgmes_data: Dict[str, Dict[str, Dict[str, str]]],
                             cgmes2_4_15_uri: List[str],
                             cgmes3_0_0_uri: List[str],
-                            parsed_data: Dict[str, Dict[str, Dict[str, str]]],
+                            parsed_data: Optional[Dict[str, Dict[str, Dict[str, str]]]],
                             data: Dict[str, Dict[str, Dict[str, str]]],
                             boundary_set: Dict[str, Dict[str, Dict[str, str]]],
                             logger: DataLogger) -> Union[CGMESVersions, None]:
@@ -261,7 +261,7 @@ def process_cgmes_file_data(file_name: str,
     :param file_cgmes_data: Parsed CGMES dictionary
     :param cgmes2_4_15_uri: Known CGMES v2.4.15 profile URIs
     :param cgmes3_0_0_uri: Known CGMES v3.0.0 profile URIs
-    :param parsed_data: Per-file parsed dictionary output
+    :param parsed_data: Optional per-file parsed dictionary output
     :param data: Normal model dictionary store
     :param boundary_set: Boundary model dictionary store
     :param logger: Logger instance
@@ -275,7 +275,8 @@ def process_cgmes_file_data(file_name: str,
         model_keys = list(file_cgmes_data['FullModel'])
         if len(model_keys) == 1:  # there must be exacly one FullModel
             model_info = file_cgmes_data['FullModel'][model_keys[0]]
-            parsed_data[file_name] = file_cgmes_data
+            if parsed_data is not None:
+                parsed_data[file_name] = file_cgmes_data
             profile = model_info.get('profile', '')
 
             if isinstance(profile, list):
@@ -309,7 +310,8 @@ def process_cgmes_file_data(file_name: str,
         model_keys = list(file_cgmes_data['DifferenceModel'])
         if len(model_keys) == 1:  # there must be exacly one Ontology
             model_info = file_cgmes_data['DifferenceModel'][model_keys[0]]
-            parsed_data[file_name] = file_cgmes_data
+            if parsed_data is not None:
+                parsed_data[file_name] = file_cgmes_data
             profile = model_info.get('priorVersion', '')
 
             for prof in profile:
@@ -346,20 +348,24 @@ class CgmesDataParser(BaseCircuit):
     def __init__(self,
                  text_func: Union[Callable, None] = None,
                  progress_func: Union[Callable, None] = None,
+                 keep_parsed_data: bool = False,
                  logger=DataLogger()):
         """
         CIM circuit constructor
         :param text_func: text callback function (optional)
         :param progress_func: progress callback function (optional)
+        :param keep_parsed_data: Keep per-file parsed dictionaries in memory
         :param logger: DataLogger
         """
         BaseCircuit.__init__(self)
 
         self.text_func = text_func
         self.progress_func = progress_func
+        self.keep_parsed_data: bool = keep_parsed_data
         self.logger: DataLogger = logger
 
-        # file: Cim data of the file
+        # Optional per-file parsed snapshots. This is useful for debugging,
+        # but it duplicates the parsed model in memory, so it is disabled by default.
         self.parsed_data = dict()
 
         # merged CGMES data (dictionary representation of the xml data)
@@ -392,6 +398,10 @@ class CgmesDataParser(BaseCircuit):
         Load CIM file
         :param files: list of CIM files (.xml or .zip)
         """
+        self.parsed_data = dict()
+        self.data = dict()
+        self.boundary_set = dict()
+        self.cgmes_version = None
 
         cgmes2_4_15_uri = ["http://entsoe.eu/CIM/EquipmentCore/3/1",
                            "http://entsoe.eu/CIM/EquipmentOperation/3/1",
@@ -403,40 +413,47 @@ class CgmesDataParser(BaseCircuit):
                           "http://iec.ch/TC57/ns/CIM/SteadyStateHypothesis-EU/3.0",
                           "http://iec.ch/TC57/ns/CIM/StateVariables-EU/3.0",
                           "http://iec.ch/TC57/ns/CIM/Topology-EU/3.0"]
-        xml_files: List[str] = list()
-        zip_members: Dict[str, List[str]] = dict()
+        parse_jobs: List[Tuple[str, Union[str, None], str]] = list()
         for path in files:
             _, file_extension = os.path.splitext(path)
             ext = file_extension.lower()
             if ext == ".xml":
-                xml_files.append(path)
+                parse_jobs.append((path, None, os.path.basename(path)))
             elif ext == ".zip":
                 try:
                     with zipfile.ZipFile(path) as zip_ptr:
-                        members: List[str] = list()
                         for member in zip_ptr.namelist():
                             _, member_ext = os.path.splitext(member)
                             if member_ext.lower() == ".xml":
-                                members.append(member)
-                        zip_members[path] = members
+                                parse_jobs.append((path, member, os.path.basename(member)))
                 except zipfile.BadZipFile:
                     self.logger.add_error("BadZipFile", value=path)
                     print(f"BadZipFile {path}")
 
-        n_items = len(xml_files) + sum(len(members) for members in zip_members.values())
-        i = 0
+        n_items = len(parse_jobs)
+        parsed_data_store: Optional[Dict[str, Dict[str, Dict[str, str]]]]
+        if self.keep_parsed_data:
+            parsed_data_store = self.parsed_data
+        else:
+            parsed_data_store = None
 
-        for xml_path in xml_files:
-            file_name = os.path.basename(xml_path)
+        for i, (path, member_name, file_name) in enumerate(parse_jobs):
             name, _ = os.path.splitext(file_name)
             self.emit_text('Parsing xml structure of ' + name)
-            with open(xml_path, "rb") as file_ptr:
-                file_cgmes_data = parse_xml_stream_to_dict(file_ptr)
+
+            if member_name is None:
+                with open(path, "rb") as file_ptr:
+                    file_cgmes_data = parse_xml_stream_to_dict(file_ptr)
+            else:
+                with zipfile.ZipFile(path) as zip_ptr:
+                    with zip_ptr.open(member_name) as file_ptr:
+                        file_cgmes_data = parse_xml_stream_to_dict(file_ptr)
+
             detected_version = process_cgmes_file_data(file_name=file_name,
                                                        file_cgmes_data=file_cgmes_data,
                                                        cgmes2_4_15_uri=cgmes2_4_15_uri,
                                                        cgmes3_0_0_uri=cgmes3_0_0_uri,
-                                                       parsed_data=self.parsed_data,
+                                                       parsed_data=parsed_data_store,
                                                        data=self.data,
                                                        boundary_set=self.boundary_set,
                                                        logger=self.logger)
@@ -444,29 +461,6 @@ class CgmesDataParser(BaseCircuit):
                 self.cgmes_version = detected_version
             if n_items > 0:
                 self.emit_progress((i + 1) / n_items * 100)
-            i += 1
-
-        for zip_path, members in zip_members.items():
-            with zipfile.ZipFile(zip_path) as zip_ptr:
-                for member_name in members:
-                    file_name = os.path.basename(member_name)
-                    name, _ = os.path.splitext(file_name)
-                    self.emit_text('Parsing xml structure of ' + name)
-                    with zip_ptr.open(member_name) as file_ptr:
-                        file_cgmes_data = parse_xml_stream_to_dict(file_ptr)
-                    detected_version = process_cgmes_file_data(file_name=file_name,
-                                                               file_cgmes_data=file_cgmes_data,
-                                                               cgmes2_4_15_uri=cgmes2_4_15_uri,
-                                                               cgmes3_0_0_uri=cgmes3_0_0_uri,
-                                                               parsed_data=self.parsed_data,
-                                                               data=self.data,
-                                                               boundary_set=self.boundary_set,
-                                                               logger=self.logger)
-                    if detected_version is not None:
-                        self.cgmes_version = detected_version
-                    if n_items > 0:
-                        self.emit_progress((i + 1) / n_items * 100)
-                    i += 1
 
         self.emit_text('Parsing done!')
 

@@ -6,7 +6,6 @@
 import numpy as np
 import pandas as pd
 from typing import Union, List, Tuple
-from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import (BuildStatus, SubObjectType, DeviceType,
@@ -93,39 +92,39 @@ class Line(BranchParent):
         GCProp(key='X2', units='p.u.', tpe=float, definition='Total negative sequence reactance.'),
         GCProp(key='B2', units='p.u.', tpe=float, definition='Total negative sequence shunt susceptance.'),
         GCProp('ys', units="p.u.", tpe=SubObjectType.AdmittanceMatrix,
-                      definition='Series admittance matrix of the branch', editable=False, display=False),
+               definition='Series admittance matrix of the branch', editable=False, display=False),
         GCProp('ysh', units="p.u.", tpe=SubObjectType.AdmittanceMatrix,
-                      definition='Shunt admittance matrix of the branch', editable=False, display=False),
+               definition='Shunt admittance matrix of the branch', editable=False, display=False),
         GCProp(key='tolerance', units='%', tpe=float,
-                      definition='Tolerance expected for the impedance values % is expected '
-                                 'for transformers0% for lines.'),
+               definition='Tolerance expected for the impedance values % is expected '
+                          'for transformers0% for lines.'),
         GCProp(key='circuit_idx', units='', tpe=int,
-                      definition='Circuit index, used for multiple circuits sharing towers (starts at zero)',
-                      editable=False),
+               definition='Circuit index, used for multiple circuits sharing towers (starts at zero)',
+               editable=False),
         GCProp(key='length', units='km', tpe=float, definition='Length of the line (not used for calculation)'),
         GCProp(key='r_fault', units='p.u.', tpe=float,
-                      definition='Resistance of the mid-line fault.Used in short circuit studies.'),
+               definition='Resistance of the mid-line fault.Used in short circuit studies.'),
         GCProp(key='x_fault', units='p.u.', tpe=float,
-                      definition='Reactance of the mid-line fault.Used in short circuit studies.'),
+               definition='Reactance of the mid-line fault.Used in short circuit studies.'),
         GCProp(key='fault_pos', units='p.u.', tpe=float,
-                      definition='Per-unit positioning of the fault:'
-                                 '0 would be at the "from" side,'
-                                 '1 would be at the "to" side,'
-                                 'therefore 0.5 is at the middle.'),
+               definition='Per-unit positioning of the fault:'
+                          '0 would be at the "from" side,'
+                          '1 would be at the "to" side,'
+                          'therefore 0.5 is at the middle.'),
         GCProp(key='template', units='', tpe=DeviceType.AnyLineTemplateDevice, definition='', editable=False),
         GCProp(key='locations', units='', tpe=SubObjectType.LineLocations, definition='', editable=False),
         GCProp(key='possible_tower_types', units='', tpe=SubObjectType.Associations,
-                      definition='Possible overhead line types (>1 to denote association), - to denote no association',
-                      display=False),
+               definition='Possible overhead line types (>1 to denote association), - to denote no association',
+               display=False),
         GCProp(key='possible_underground_line_types', units='', tpe=SubObjectType.Associations,
-                      definition='Possible underground line types (>1 to denote association), '
-                                 '- to denote no association',
-                      display=False),
+               definition='Possible underground line types (>1 to denote association), '
+                          '- to denote no association',
+               display=False),
         GCProp(key='possible_sequence_line_types', units='', tpe=SubObjectType.Associations,
-                      definition='Possible sequence line types (>1 to denote association), - to denote no association',
-                      display=False),
+               definition='Possible sequence line types (>1 to denote association), - to denote no association',
+               display=False),
         GCProp(key='emt_model_type', units='', tpe=EmtLineTypes,
-                      definition='Line EMT model'),
+               definition='Line EMT model'),
     )
 
     def __init__(self,
@@ -252,7 +251,7 @@ class Line(BranchParent):
         self._circuit_idx: int = int(circuit_idx)
 
         # type template
-        self.template: Union[OverheadLineType, SequenceLineType, UndergroundLineType] = template
+        self.template: OverheadLineType | SequenceLineType | UndergroundLineType | None = template
 
         # association with various templates
         self.possible_tower_types: Associations = Associations(device_type=DeviceType.OverheadLineTypeDevice)
@@ -263,17 +262,6 @@ class Line(BranchParent):
         self._locations: LineLocations = LineLocations()
 
         self.emt_model_type: EmtLineTypes = EmtLineTypes.Bergeron
-
-
-
-
-
-
-
-
-
-
-
 
     @property
     def R(self):
@@ -396,15 +384,19 @@ class Line(BranchParent):
         """
         # If the user is setting the circuit index, ensure that the template exists and is valid
         if obj is None:
-            raise Exception("Template must be set before changing the circuit index.")
+            raise ValueError("Template must be set before changing the circuit index.")
+
         if not isinstance(obj, (OverheadLineType, UndergroundLineType, SequenceLineType)):
-            raise Exception(
-                "Invalid template type. Must be OverheadLineType, UndergroundLineType, or SequenceLineType.")
+            raise ValueError(
+                "Invalid template type. Must be OverheadLineType, UndergroundLineType, or SequenceLineType."
+            )
+
         if isinstance(obj, OverheadLineType):
             if val > obj.n_circuits:
-                raise Exception("Circuit index exceeds the number of circuits in the template.")
+                raise ValueError("Circuit index exceeds the number of circuits in the template.")
+
         if val <= 0:
-            raise Exception("Circuit index must be greater than 0.")
+            raise ValueError("Circuit index must be greater than 0.")
         else:
             if val > 0:
                 self._circuit_idx = int(val)
@@ -426,43 +418,9 @@ class Line(BranchParent):
         """
         self.set_length(val)
 
-    # @BranchParent.rms_model.setter
-    # def rms_model(self, value: DynamicModelHost):
-    #     if isinstance(value, DynamicModelHost):
-    #         value.model.set_parameter(
-    #             ParamPowerFlowRefferenceType.g,
-    #             Const(float(self.R / (self.R ** 2 + self.X ** 2)))
-    #         )
-    #
-    #         value.model.set_parameter(
-    #             ParamPowerFlowRefferenceType.b,
-    #             Const(float(-self.X / (self.R ** 2 + self.X ** 2)))
-    #         )
-    #
-    #         value.model.set_parameter(
-    #             ParamPowerFlowRefferenceType.bsh,
-    #             Const(self.B)
-    #         )
-    #         self._rms_model = value
-
     @BranchParent.emt_model.setter
     def emt_model(self, value: DynamicModelHost):
         if isinstance(value, DynamicModelHost):
-            # TODO: add here line properties !?!
-            # value.model.set_parameter(
-            #     ParamPowerFlowRefferenceType.g,
-            #     Const(float(self.R / (self.R ** 2 + self.X ** 2)))
-            # )
-            #
-            # value.model.set_parameter(
-            #     ParamPowerFlowRefferenceType.b,
-            #     Const(float(-self.X / (self.R ** 2 + self.X ** 2)))
-            # )
-            #
-            # value.model.set_parameter(
-            #     ParamPowerFlowRefferenceType.bsh,
-            #     Const(self.B)
-            # )
             self._emt_model = value
 
     def set_length(self, val: float):
@@ -579,13 +537,15 @@ class Line(BranchParent):
     def apply_template(self,
                        obj: Union[OverheadLineType, UndergroundLineType, SequenceLineType],
                        Sbase: float, freq: float,
-                       logger=Logger()):
+                       logger=Logger(),
+                       decimals_rounding: int = 6):
         """
         Apply a line template to this object
         :param obj: OverheadLineType, UndergroundLineType, SequenceLineType
         :param Sbase: Nominal power in MVA
         :param freq: Frequency in Hz
         :param logger: Logger
+        :param decimals_rounding: Number of decimals to round to
         """
 
         if isinstance(obj, OverheadLineType):
@@ -631,7 +591,8 @@ class Line(BranchParent):
              self.rate) = obj.get_values(Sbase=Sbase,
                                          freq=freq,
                                          length=self.length,
-                                         line_Vnom=self.get_max_bus_nominal_voltage())
+                                         line_Vnom=self.get_max_bus_nominal_voltage(),
+                                         decimals_rounding=decimals_rounding)
 
             self.ys = obj.get_ys_nabc()
             self.ysh = obj.get_ysh_nabc()
@@ -820,16 +781,8 @@ class Line(BranchParent):
         if self.R0 > 1e-10 and self.X0 > 1e-10:
             obj = SequenceLineType(R=self.R, R0=self.R0, X=self.X, X0=self.X0, B=self.B, B0=self.B0)
         else:
-            obj = SequenceLineType(R=self.R, R0=2.0 * self.R, X=self.X, X0=2.0 * self.X, B=self.B * 1e6, B0=self.B * 1e6)
+            obj = SequenceLineType(R=self.R, R0=2.0 * self.R, X=self.X, X0=2.0 * self.X, B=self.B * 1e6,
+                                   B0=self.B * 1e6)
             obj = SequenceLineType(R=self.R, R0=self.R, X=self.X, X0=self.X, B=self.B * 1e6, B0=self.B * 1e6)
         self.ys = obj.get_ys_nabc()
         self.ysh = obj.get_ysh_nabc()
-
-    def initialize_rms(self) -> None:
-        """
-
-        :return:
-        """
-        if self._rms_model.empty():
-            line_template = get_line_rms_template()
-            self.rms_model.model = line_template.block
