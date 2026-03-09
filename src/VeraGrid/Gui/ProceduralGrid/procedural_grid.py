@@ -83,17 +83,19 @@ class ProceduralGridWindow(QtWidgets.QDialog):
                     lon2=se_graphic_target.lon
                 )
 
-        distances2 = np.min(distances, axis=1)
-        sorted_indices = np.argsort(distances2, axis=0)
+        if distances.shape[0] > 0:
 
-        self.candidate_list.clear()
-        for i in sorted_indices[:top_n]:
-            self.candidate_list.append(self.all_substations_graphics_in_diagram_list[i])
+            distances2 = np.min(distances, axis=1)
+            sorted_indices = np.argsort(distances2, axis=0)
 
-        # display the candidates list
-        self.ui.candidateSubstationListView.setModel(get_list_model(
-            [se_graphic.api_object for se_graphic in self.candidate_list]
-        ))
+            self.candidate_list.clear()
+            for i in sorted_indices[:top_n]:
+                self.candidate_list.append(self.all_substations_graphics_in_diagram_list[i])
+
+            # display the candidates list
+            self.ui.candidateSubstationListView.setModel(get_list_model(
+                [se_graphic.api_object for se_graphic in self.candidate_list]
+            ))
 
     def compute(self):
         """

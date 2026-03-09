@@ -47,7 +47,7 @@ class BusEmtTemplateNABC(EmtModelTemplate):
 
         self._block = Block(
             state_vars=v_list,
-            state_eqs = d_v_list,
+            # state_eqs = d_v_list,
             # algebraic_vars=v_list,
             diff_vars = d_v_list,
             out_vars=v_list + d_v_list

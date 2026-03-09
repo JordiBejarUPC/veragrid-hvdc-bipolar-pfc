@@ -50,8 +50,6 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
     # Parameter Registration (event_dict) for the case P= 9.999999, Q= 0.999999
     P0 = 1 / sbase
     Q0 = 0.999999 / sbase
-    # P0 = -0.0 / sbase
-    # Q0 = -0.0 / sbase
     templ.block.event_dict[P0_A] = vf.add_const(P0 / 3.0)
     templ.block.event_dict[Q0_A] = vf.add_const(Q0 / 3.0)
     templ.block.event_dict[P0_B] = vf.add_const(P0/ 3.0)
@@ -90,14 +88,6 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
     w = (2.0 * np.pi) * f_nom
 
     # State Equations: SOGI Dynamics (Standard Orthogonal Filter)
-    # templ.block.state_eqs = [
-    #     (k_sogi * w * (v_A - u_A) - w * q_A),
-    #     (w * u_A),
-    #     (k_sogi * w * (v_B - u_B) - w * q_B),
-    #     (w * u_B),
-    #     (k_sogi * w * (v_C - u_C) - w * q_C),
-    #     (w * u_C),
-    # ]
     templ.block.state_eqs = [
         (w * q_A),  # This is d_u_A
         (k_sogi * w * (v_A - u_A) - w * q_A),  # This is d_q_A
@@ -146,17 +136,6 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
         rA - (VmA / V0),
         rB - (VmB / V0),
         rC - (VmC / V0),
-        # # ZIP Polynomials for P and Q
-        # P_A - (P0_A * (a1 * rA ** 2 + a2 * rA + a3)),
-        # Q_A - (Q0_A * (a4 * rA ** 2 + a5 * rA + a6)),
-        # P_B - (P0_B * (a1 * rB ** 2 + a2 * rB + a3)),
-        # Q_B - (Q0_B * (a4 * rB ** 2 + a5 * rB + a6)),
-        # P_C - (P0_C * (a1 * rC ** 2 + a2 * rC + a3)),
-        # Q_C - (Q0_C * (a4 * rC ** 2 + a5 * rC + a6)),
-        # # Current injection: i = 2 * (u*P + q*Q) / V_peak^2
-        # i_A - (c2 * (u_A * P_A + q_A * Q_A) / (VA2 + eps)),
-        # i_B - (c2 * (u_B * P_B + q_B * Q_B) / (VB2 + eps)),
-        # i_C - (c2 * (u_C * P_C + q_C * Q_C) / (VC2 + eps)),
 
         # CHANGE SIGN CONVENTION ! POWERS AND CURRENTS FROM POWERFLOW ARE NEGATIVE (sign convention injection leaving the bus is negative)
         # ZIP Polynomials for P and Q
@@ -175,13 +154,6 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
     # FULL INITIALIZATION (30 Variables)
     # This section ensures zero residuals at t=0 by accounting for AC steady state.
     templ.block.init_eqs = {
-        # 6 States: u follows grid voltage, q is the orthogonal component
-        # u_A: v_A,
-        # q_A: ((V0 ** 2 - v_A ** 2 + eps) ** c05),
-        # u_B: v_B,
-        # q_B: ((V0 ** 2 - v_B ** 2 + eps) ** c05),
-        # u_C: v_C,
-        # q_C: ((V0 ** 2 - v_C ** 2 + eps) ** c05),
         u_A: v_A,
         q_A: c0,
         u_B: v_B,
@@ -196,13 +168,6 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
     }
 
     templ.block.diff_init_eqs = {
-        # 6 Derivatives: MUST be non-zero in EMT to match harmonic motion
-        # d_u_A: -w * q_A,
-        # d_q_A: w * u_A,
-        # d_u_B: -w * q_B,
-        # d_q_B: w * u_B,
-        # d_u_C: -w * q_C,
-        # d_q_C: w * u_C,
         d_u_A: c0,
         d_q_A: c0,
         d_u_B: c0,
@@ -211,24 +176,7 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory, sbase: float, fbase: float, na
         d_q_C: c0,
     }
 
-    # Complete External Mapping (Interface with the simulation engine)
-    # templ.block.external_mapping = {
-    #     VarPowerFlowRefferenceType.P: None,
-    #     VarPowerFlowRefferenceType.Q: None,
-    #     VarPowerFlowRefferenceType.P_N: None,
-    #     VarPowerFlowRefferenceType.Q_N: None,
-    #     VarPowerFlowRefferenceType.P_A: -P_A,
-    #     VarPowerFlowRefferenceType.Q_A: -Q_A,
-    #     VarPowerFlowRefferenceType.P_B: -P_B,
-    #     VarPowerFlowRefferenceType.Q_B: -Q_B,
-    #     VarPowerFlowRefferenceType.P_C: -P_C,
-    #     VarPowerFlowRefferenceType.Q_C: -Q_C,
-    #     VarPowerFlowRefferenceType.i_N: None,
-    #     VarPowerFlowRefferenceType.i_A: -i_A,
-    #     VarPowerFlowRefferenceType.i_B: -i_B,
-    #     VarPowerFlowRefferenceType.i_C: -i_C,
-    #     VarPowerFlowRefferenceType.theta: None
-    # }
+
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.P: None,
         VarPowerFlowRefferenceType.Q: None,

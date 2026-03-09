@@ -25,7 +25,7 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
-from VeraGridEngine.basic_structures import ObjVec, BoolVec, Logger
+from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
@@ -277,25 +277,25 @@ class EmtProblemDae(EmtProblemTemplate):
         Sbase = getattr(grid, "Sbase", 1.0)
         fbase = getattr(grid, "fBase", 50.0)
 
-        # -------------------------
-        # 1) BUSES
-        # -------------------------
+        # # -------------------------
+        # # 1) BUSES
+        # # -------------------------
         for bus_idx, bus in enumerate(grid.buses):
             bus_dict[bus] = bus_idx
-            mdl = bus.emt_model.model
-            mdl.unify_blocks()
-
-            self._apply_piecewise_events_if_any(dev = bus, mdl =mdl, grid= grid, glob_time = glob_time)
-
-            self._add_model_to_system_mappings(bus, mdl)
-            sys_block.add(mdl)
-
-            # register init_eqs blocks
-            self._register_init_model(mdl)
-            self._register_diff_init_model(mdl)
-
-            if pf_results is not None:
-                self._try_set_bus_pf_init(mdl=mdl, bus_index=bus_idx, pf_results=pf_results)
+        #     mdl = bus.emt_model.model
+        #     mdl.unify_blocks()
+        #
+        #     self._apply_piecewise_events_if_any(dev = bus, mdl =mdl, grid= grid, glob_time = glob_time)
+        #
+        #     self._add_model_to_system_mappings(bus, mdl)
+        #     sys_block.add(mdl)
+        #
+        #     # register init_eqs blocks
+        #     self._register_init_model(mdl)
+        #     self._register_diff_init_model(mdl)
+        #
+        #     if pf_results is not None:
+        #         self._try_set_bus_pf_init(mdl=mdl, bus_index=bus_idx, pf_results=pf_results)
 
         # -------------------------
         # 2) BRANCHES
@@ -408,6 +408,26 @@ class EmtProblemDae(EmtProblemTemplate):
                     pf_results=pf_results,
                     sbase=getattr(grid, "Sbase", 1.0),
                 )
+        # -------------------------
+        # 1) BUSES
+        # -------------------------
+        for bus_idx, bus in enumerate(grid.buses):
+            # bus_dict[bus] = bus_idx
+            mdl = bus.emt_model.model
+            mdl.unify_blocks()
+
+            self._apply_piecewise_events_if_any(dev = bus, mdl =mdl, grid= grid, glob_time = glob_time)
+
+            self._add_model_to_system_mappings(bus, mdl)
+            sys_block.add(mdl)
+
+            # register init_eqs blocks
+            self._register_init_model(mdl)
+            self._register_diff_init_model(mdl)
+
+            if pf_results is not None:
+                self._try_set_bus_pf_init(mdl=mdl, bus_index=bus_idx, pf_results=pf_results)
+
         # -------------------------
         # 4) FINAL: stamp KCL equations into each bus model (per existing phase)
         # -------------------------

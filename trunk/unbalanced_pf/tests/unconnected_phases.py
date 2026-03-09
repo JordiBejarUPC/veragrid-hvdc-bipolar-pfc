@@ -8,14 +8,14 @@ grid = vge.MultiCircuit()
 # -----------------------------------------------------------------------------------------------------------------
 # Buses
 # -----------------------------------------------------------------------------------------------------------------
-bus_slack = vge.Bus(name='Slack Bus ABC', xpos=0, ypos=0)
+bus_slack = vge.Bus(name='Slack Bus', xpos=0, ypos=0)
 bus_slack.is_slack = True
 grid.add_bus(obj=bus_slack)
 
-bus_middle = vge.Bus(name='Middle Bus CB', xpos=1000, ypos=0)
+bus_middle = vge.Bus(name='Middle Bus', xpos=500, ypos=0)
 grid.add_bus(obj=bus_middle)
 
-bus_load = vge.Bus(name='Load Bus CB', xpos=1000, ypos=0)
+bus_load = vge.Bus(name='Load Bus', xpos=1000, ypos=0)
 grid.add_bus(obj=bus_load)
 
 # -----------------------------------------------------------------------------------------------------------------

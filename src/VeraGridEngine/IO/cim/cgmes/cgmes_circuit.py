@@ -5,7 +5,6 @@
 
 from typing import Dict, List, Set, Union, Tuple, Callable
 from enum import Enum, EnumMeta
-import pandas as pd
 import VeraGridEngine.IO.cim.cgmes.cgmes_assets.cgmes_2_4_15_assets as cgmes24
 import VeraGridEngine.IO.cim.cgmes.cgmes_assets.cgmes_3_0_0_assets as cgmes30
 from VeraGridEngine.data_logger import DataLogger
@@ -354,17 +353,21 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
         recovery_mode=recovery_mode
     )
 
-    # Store dictionary values in local variables
-    elements_by_type_items = elements_by_type.items()
-    # find cross-references
-    for class_name, elements in elements_by_type_items:
+    # Resolve only properties that were actually present in the XML.
+    # Missing mandatory properties are reported explicitly in a second pass.
+    for class_name, elements in elements_by_type.items():
         for element in elements:  # for every element of the type
             element_dict = element.__dict__
             if mark_used:
                 element.used = True
 
-            # check the declared properties
-            for property_name, cim_prop in element.declared_properties.items():
+            parsed_property_names = set(element.parsed_properties.keys())
+
+            for property_name in parsed_property_names:
+                cim_prop = element.declared_properties.get(property_name, None)
+                if cim_prop is None:
+                    continue
+
                 use_direct_storage = property_name in element_dict
 
                 # try to get the property value, else, fill with None
@@ -584,16 +587,14 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                            value=value,
                                            expected_value="")
 
-                else:
-                    if cim_prop.mandatory:
-                        logger.add_error(msg='Required property not provided',
-                                         device=element.rdfid,
-                                         device_class=class_name,
-                                         device_property=property_name,
-                                         value='not provided',
-                                         expected_value=property_name)
-                    else:
-                        pass
+            for property_name, cim_prop in element.declared_properties.items():
+                if cim_prop.mandatory and property_name not in parsed_property_names:
+                    logger.add_error(msg='Required property not provided',
+                                     device=element.rdfid,
+                                     device_class=class_name,
+                                     device_property=property_name,
+                                     value='not provided',
+                                     expected_value=property_name)
 
     # modify the elements_by_type here adding the elements from the boundary set
     # all_elements_dict was modified in the previous loop
@@ -817,12 +818,12 @@ class CgmesCircuit(BaseCircuit):
         Assign the data from all_objects_dict to the appropriate lists in the circuit
         :return: Nothing
         """
-        for object_id, parsed_object in self.all_objects_dict.items():
-
-            # add to its list
-            list_name = parsed_object.tpe + '_list'
+        for class_name, elements in self.elements_by_type.items():
+            list_name = class_name + '_list'
             if hasattr(self.cgmes_assets, list_name):
-                getattr(self.cgmes_assets, list_name).append(parsed_object)
+                target_list = getattr(self.cgmes_assets, list_name)
+                target_list.clear()
+                target_list.extend(elements)
             else:
                 print('Missing list:', list_name)
 
@@ -1132,6 +1133,8 @@ class CgmesCircuit(BaseCircuit):
         Get dictionary of DataFrames
         :return: dictionary of DataFrames
         """
+        import pandas as pd
+
         dfs = dict()
         for class_name, elements in self.elements_by_type.items():
             values = [element.get_dict() for element in elements]
@@ -1145,6 +1148,8 @@ class CgmesCircuit(BaseCircuit):
         :param fname:
         :return:
         """
+        import pandas as pd
+
         if self.text_func is not None:
             self.text_func('Saving to excel')
 
