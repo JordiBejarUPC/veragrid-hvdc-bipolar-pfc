@@ -1587,8 +1587,8 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
     to_delete: List[ALL_DEV_TYPES] = list()
     all_elements_dict: Dict[str, ALL_DEV_TYPES] = dict()
     for dtype in [
-        DeviceType.PMeasurementDevice,
-        DeviceType.QMeasurementDevice,
+        DeviceType.PiMeasurementDevice,
+        DeviceType.QiMeasurementDevice,
         DeviceType.PfMeasurementDevice,
         DeviceType.QfMeasurementDevice,
         DeviceType.PtMeasurementDevice,

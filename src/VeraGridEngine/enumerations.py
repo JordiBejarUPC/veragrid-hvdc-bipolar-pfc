@@ -1067,8 +1067,8 @@ class DeviceType(Enum):
     GovernorDevice = "Governor"
     StabilizerDevice = "Stabilizer"
 
-    PMeasurementDevice = 'Pi Measurement'
-    QMeasurementDevice = 'Qi Measurement'
+    PiMeasurementDevice = 'Pi Measurement'
+    QiMeasurementDevice = 'Qi Measurement'
     PgMeasurementDevice = 'Pg Measurement'
     QgMeasurementDevice = 'Qg Measurement'
     PfMeasurementDevice = 'Pf Measurement'
