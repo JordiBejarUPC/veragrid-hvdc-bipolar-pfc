@@ -28,9 +28,9 @@ trafo_3w = vge.Transformer3W(V1=110,
                              x12=0.03,
                              x23=0.03,
                              x31=0.03,
-                             rate12=1.0,
-                             rate23=1.0,
-                             rate31=1.0)
+                             rate12=100.0,
+                             rate23=100.0,
+                             rate31=100.0)
 grid.add_transformer3w(obj=trafo_3w)
 trafo_3w.compute_delta_to_star()
 
@@ -52,5 +52,3 @@ res = vge.power_flow(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverT
                                                              retry_with_other_methods=False,
                                                              verbose=True))
 print(res.get_voltage_df())
-
-vge.save_file(grid, 'three_winding_v1.veragrid')
