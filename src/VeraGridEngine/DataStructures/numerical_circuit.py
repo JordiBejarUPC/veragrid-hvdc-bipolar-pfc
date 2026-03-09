@@ -916,12 +916,14 @@ class NumericalCircuit:
             for island in islands:
                 if len(island):
                     i0 = island[0]
-                    for ii in range(1, len(island)):
-                        i = island[ii]
-                        self.__bus_map_arr[i] = i0
+
+                    if len(island) > 1:
+
+                        # set the mapping to the first index of the island to the reduced buses
+                        self.__bus_map_arr[island[1:]] = i0
 
                         # deactivate the reduced buses
-                        self.bus_data.active[i] = False
+                        self.bus_data.active[island[1:]] = False
 
             # remap
             self.passive_branch_data.remap(self.__bus_map_arr)
