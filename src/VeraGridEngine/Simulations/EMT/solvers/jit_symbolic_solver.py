@@ -590,13 +590,15 @@ class JitSymbolicSolver:
             t_curr = self.t0 + (i + 1) * self.h
             self.t[i + 1] = t_curr
 
-            ev_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
-            full_params = np.concatenate((ev_params, static_vals))
+            runtime_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
+            full_params = np.concatenate((runtime_params, static_vals))
 
             if boundary_updater is not None:
                 boundary_updater.update(t_curr, x_prev, full_params)
             else:
                 pass
+
+            ev_params[:] = full_params[:self.problem.get_variable_parameter_number()]
 
             # PREDICTOR
             if i == 0 and method == DynamicIntegrationMethod.DaeTrapezoidal:

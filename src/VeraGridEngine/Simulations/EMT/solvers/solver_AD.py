@@ -601,13 +601,15 @@ class JitAdSolver:
             t_curr = t[i + 1]
 
             # Parameter update via Problem
-            ev_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
-            full_params = np.concatenate((ev_params, static_vals))
+            runtime_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
+            full_params = np.concatenate((runtime_params, static_vals))
 
             if boundary_updater is not None:
                 boundary_updater.update(t_curr, x_prev, full_params)
             else:
                 pass
+
+            ev_params[:] = full_params[:self.problem.get_variable_parameter_number()]
 
             x_iter[:] = x_prev
 

@@ -751,6 +751,8 @@ class StructuralVectorizedSolver:
             else:
                 pass
 
+            ev_params[:] = full_params[:len(ev_params)]
+
             x_iter[:] = x_prev
             last_res_norm: float = 1.0
 
