@@ -9,6 +9,8 @@ import numpy as np
 import sys
 import os
 
+import matplotlib.pyplot as plt
+
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
@@ -56,7 +58,7 @@ def find_name_in_block(name: str, block: Block):
 
 
 
-grid = gce.MultiCircuit(Sbase=100.0, fbase=50.0)
+grid = gce.MultiCircuit(Sbase=2.0, fbase=50.0)
 
 # Buses
 bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
@@ -86,13 +88,16 @@ tower.compute()
 line0.apply_template(tower, grid.Sbase, grid.fBase)
 
 # load
-P=1
-Q= 0.999999
+# P=1.0
+# Q= 0.999999
+P = 0.0
+Q = 0.0
 load = gce.Load(name="load",P1= P/3, P2= P/3, P3= P/3, Q1= Q/3, Q2= Q/3, Q3= Q/3)
 load.conn = ShuntConnectionType.GroundedStar
 
 # Generators
-gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase)
+gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq = 50, r1=0.001, x1=1.7)
+# r1=Ra, x1=xd'
 
 grid.add_line(line0)
 grid.add_generator(bus=bus0, api_obj=gen0)
@@ -146,6 +151,9 @@ line_mdl.connect([line_mdl.in_vars[11]], [bus1.emt_model.model.out_vars[5]]) # l
 load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.model.out_vars[0]]) # v_A
 load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.model.out_vars[1]]) # v_B
 load_mdl.connect([load_mdl.in_vars[2]], [bus1.emt_model.model.out_vars[2]]) # v_C
+load_mdl.connect([load_mdl.in_vars[3]], [bus1.emt_model.model.out_vars[3]]) # d_v_A
+load_mdl.connect([load_mdl.in_vars[4]], [bus1.emt_model.model.out_vars[4]]) # d_v_B
+load_mdl.connect([load_mdl.in_vars[5]], [bus1.emt_model.model.out_vars[5]]) # d_v_C
 
 # external mapping
 big_gen1 = Block(children=[gen_mdl])
@@ -235,10 +243,10 @@ problem = EmtProblemDae(grid=grid,
                         pf_results=res)
 problem.set_newton_trace_collector(NewtonTraceCollector())
 
-sv = problem.get_state_vars()
-dv = problem.get_diff_vars()
-
-assert len(sv) == len(dv)
+# sv = problem.get_state_vars()
+# dv = problem.get_diff_vars()
+#
+# assert len(sv) == len(dv)
 
 
 df = problem.get_init_guess_table()
@@ -247,21 +255,21 @@ print(f"init_guess_table{df}")
 # print(f"state_vars = {problem.get_state_vars()}")
 # print(f"diff_vars = {problem.get_diff_vars()}")
 
-x0 = problem.get_x0()
-print("x0 =", x0)
-print("len(x0) =", len(x0))
-print("nans =", np.isnan(x0).sum())
-print("infs =", np.isinf(x0).sum())
-print("nonzeros =", np.count_nonzero(x0))
-print("len(init_guess) =", len(problem.init_guess))
-
-dx0 = problem.get_dx0()
-print("dx0 =",dx0)
-print("len(dx0) =", len(dx0))
-print("nans =", np.isnan(dx0).sum())
-print("infs =", np.isinf(dx0).sum())
-print("nonzeros =", np.count_nonzero(dx0))
-print("len(diff_init_guess) =", len(problem.diff_init_guess))
+# x0 = problem.get_x0()
+# print("x0 =", x0)
+# print("len(x0) =", len(x0))
+# print("nans =", np.isnan(x0).sum())
+# print("infs =", np.isinf(x0).sum())
+# print("nonzeros =", np.count_nonzero(x0))
+# print("len(init_guess) =", len(problem.init_guess))
+#
+# dx0 = problem.get_dx0()
+# print("dx0 =",dx0)
+# print("len(dx0) =", len(dx0))
+# print("nans =", np.isnan(dx0).sum())
+# print("infs =", np.isinf(dx0).sum())
+# print("nonzeros =", np.count_nonzero(dx0))
+# print("len(diff_init_guess) =", len(problem.diff_init_guess))
 
 
 solver = JitSymbolicSolver(problem = problem,
@@ -274,17 +282,21 @@ solver = JitSymbolicSolver(problem = problem,
                            verbose = True)
 
 # solver = StructuralVectorizedSolver(problem = problem,
-#                                     t0 = 0.0,
-#                                     t_end = options.simulation_time,
-#                                     h = options.time_step,
-#                                     method = options.integration_method,
-#                                     verbose = True)
+#                            t0 = 0.0,
+#                            t_end = options.simulation_time,
+#                            h = options.time_step,
+#                            method=options.integration_method,
+#                            pred_method=DynamicIntegrationMethod.OdeEuler,
+#                            # pred_method=None,
+#                            verbose = True)
 # solver = JitAdSolver(problem = problem,
-#                      t0 = 0.0,
-#                      t_end = options.simulation_time,
-#                      h = options.time_step,
-#                      method=options.integration_method,
-#                      verbose = True)
+#                            t0 = 0.0,
+#                            t_end = options.simulation_time,
+#                            h = options.time_step,
+#                            method=options.integration_method,
+#                            pred_method=DynamicIntegrationMethod.OdeEuler,
+#                            # pred_method=None,
+#                            verbose = True)
 
 t, y, dy = solver.simulate()
 
@@ -302,81 +314,169 @@ print("Diagnostics written to newton_diagnostics_demo.csv")
 # profiler.disable()
 # profiler.dump_stats("profiling_stats.prof")
 
-# xlim = options.simulation_time
-#
-# omega = find_name_in_block("omega", gen_mdl)
-# Pg = gen_mdl.out_vars[0]
-# Qg = gen_mdl.out_vars[1]
-# Ir = find_name_in_block("Ir", gen_mdl)
-# Efd = find_name_in_block("Efd", gen_mdl)
-# Te = find_name_in_block("Te", gen_mdl)
-# Vm = find_name_in_block("Vm", gen_mdl)
-#
-# u_gov1 = find_name_in_block("u_gov1", gen_mdl)
-# y_subexciter = find_name_in_block("y_subexciter1", gen_mdl)
-# y_exciter1 = find_name_in_block("y_exciter1", gen_mdl)
-# y_exciter4 = find_name_in_block("y_exciter4", gen_mdl)
-# Efe = find_name_in_block("Efe", gen_mdl)
-# delta = find_name_in_block("delta", gen_mdl)
-#
-#
-# # Generator state variables
-# plt.plot(t, y[:, problem.get_var_idx(omega)], label="omega (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(delta)], label="delta (pu)")
-# # plt.plot(t, y[:, problem.get_var_idx(Vm)], label="Vm (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Pg)], label="P (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Qg)], label="Q (pu)")
-# # plt.plot(t, y[:, solver.get_var_idx(Ir)], label="Ir (pu)")
-#
-# plt.legend(loc='upper right', ncol=2)
-# plt.xlabel("Time (s)")
-# plt.ylabel("Values (pu)")
-# plt.xlim([0, xlim])
-# # plt.ylim([0.85, 1.15])
-# plt.grid(True)
-# plt.tight_layout()
-# plt.show()
+xlim = options.simulation_time
 
-
+t_end = options.simulation_time
+h = options.time_step
+steps: int = int(t_end / h)
+tme: np.ndarray = np.linspace(0, t_end, steps)
 
 #
-# Eq_prime = find_name_in_block("Eq_prime", gen_mdl)
-# Ed_prime = find_name_in_block("Ed_prime", gen_mdl)
-# Psiq_prime = find_name_in_block("Psiq_prime", gen_mdl)
-# Psid_prime = find_name_in_block("Psid_prime", gen_mdl)
-#
-# Ed1 = find_name_in_block("Ed1", gen_mdl)
-# Eq1 = find_name_in_block("Eq1", gen_mdl)
+v_A_0 = find_name_in_block("v_ABus0_emt_template", bus0.emt_model.model)
+v_B_0 = find_name_in_block("v_BBus0_emt_template", bus0.emt_model.model)
+v_C_0 = find_name_in_block("v_CBus0_emt_template", bus0.emt_model.model)
+v_A_0_plt = y[:, problem.get_var_idx(v_A_0)]
+v_B_0_plt = y[:, problem.get_var_idx(v_B_0)]
+v_C_0_plt = y[:, problem.get_var_idx(v_C_0)]
 
-# Generator state variables
-# plt.plot(t, y[:, problem.get_var_idx(Eq_prime)], label="Eq_prime (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Ed_prime)], label="Ed_prime (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Psiq_prime)], label="Eq_2prime (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Psid_prime)], label="Ed_2prime (pu)")
-#
-# plt.plot(t, y[:, problem.get_var_idx(Ed1)], label="Ed1 (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Eq1)], label="Eq1 (pu)")
-# plt.legend(loc='upper right', ncol=2)
-# plt.xlabel("Time (s)")
-# plt.ylabel("Values (pu)")
-# plt.xlim([0, xlim])
-# # plt.ylim([0.85, 1.15])
-# plt.grid(True)
-# plt.tight_layout()
-# plt.show()
+v_A_1 = find_name_in_block("v_ABus1_emt_template", bus1.emt_model.model)
+v_B_1 = find_name_in_block("v_BBus1_emt_template", bus1.emt_model.model)
+v_C_1 = find_name_in_block("v_CBus1_emt_template", bus1.emt_model.model)
+v_A_1_plt = y[:, problem.get_var_idx(v_A_1)]
+v_B_1_plt = y[:, problem.get_var_idx(v_B_1)]
+v_C_1_plt = y[:, problem.get_var_idx(v_C_1)]
 
-# Generator state variables
-# plt.plot(t, y[:, problem.get_var_idx(u_gov1)], label="u_gov1 (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(y_subexciter)], label="y_subexciter (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Efe)], label="Efe (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(y_exciter1)], label="y_exciter1 (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(y_exciter4)], label="y_exciter4 (pu)")
+plt.figure(figsize=(12, 8))
 
-# plt.legend(loc='upper right', ncol=2)
-# plt.xlabel("Time (s)")
-# plt.ylabel("Values (pu)")
-# plt.xlim([0, xlim])
-# # plt.ylim([0.85, 1.15])
-# plt.grid(True)
-# plt.tight_layout()
-# plt.show()
+plt.subplot(2, 1, 1)
+plt.plot(tme, v_A_0_plt[:len(tme)], label='Voltage phase A bus 0', color='blue')
+plt.plot(tme, v_B_0_plt[:len(tme)], label='Voltage phase B bus 0', color='red')
+plt.plot(tme, v_C_0_plt[:len(tme)], label='Voltage phase C bus 0', color='green')
+plt.title("Voltage bus 0")
+plt.xlabel("Time")
+plt.ylabel("Voltage [p.u.]")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.subplot(2, 1, 2)
+plt.plot(tme, v_A_1_plt[:len(tme)], label='Voltage phase A bus 1', color='blue')
+plt.plot(tme, v_B_1_plt[:len(tme)], label='Voltage phase B bus 1', color='red')
+plt.plot(tme, v_C_1_plt[:len(tme)], label='Voltage phase C bus 1', color='green')
+plt.title("Voltage bus 1")
+plt.xlabel("Time")
+plt.ylabel("Voltage [p.u.]")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.tight_layout()
+print("Generating plots...")
+plt.show()
+
+theta = find_name_in_block("theta_emt_type_generator_template", gen_mdl)
+omega_gen = find_name_in_block("omega_emt_type_generator_template", gen_mdl)
+theta_plt = y[:, problem.get_var_idx(theta)]
+omega_plt = y[:, problem.get_var_idx(omega_gen)]
+
+plt.figure(figsize=(12, 8))
+
+plt.subplot(2, 1, 1)
+plt.plot(tme, theta_plt[:len(tme)], label='Theta generator [rad]', color='blue')
+plt.title("Theta generator")
+plt.xlabel("Time")
+plt.ylabel("Theta generator")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.subplot(2, 1, 2)
+plt.plot(tme, omega_plt[:len(tme)], label='Speed generator [rad/s]', color='blue')
+plt.title("Omega generator")
+plt.xlabel("Time")
+plt.ylabel("Omega generator [rad/s]")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.tight_layout()
+print("Generating plots...")
+plt.show()
+
+i_A_gen = find_name_in_block("i_A_emt_type_generator_template", gen_mdl)
+i_B_gen = find_name_in_block("i_B_emt_type_generator_template", gen_mdl)
+i_C_gen = find_name_in_block("i_C_emt_type_generator_template", gen_mdl)
+i_A_gen_plt = y[:, problem.get_var_idx(i_A_gen)]
+i_B_gen_plt = y[:, problem.get_var_idx(i_B_gen)]
+i_C_gen_plt = y[:, problem.get_var_idx(i_C_gen)]
+
+i_A_load = find_name_in_block("i_A_ZIP_Load_EMT_3ph", load_mdl)
+i_B_load = find_name_in_block("i_B_ZIP_Load_EMT_3ph", load_mdl)
+i_C_load = find_name_in_block("i_C_ZIP_Load_EMT_3ph", load_mdl)
+i_A_load_plt = y[:, problem.get_var_idx(i_A_load)]
+i_B_load_plt = y[:, problem.get_var_idx(i_B_load)]
+i_C_load_plt = y[:, problem.get_var_idx(i_C_load)]
+
+plt.figure(figsize=(12, 8))
+
+plt.subplot(2, 1, 1)
+plt.plot(tme, i_A_gen_plt[:len(tme)], label='Current phase A from generator', color='blue')
+plt.plot(tme, i_B_gen_plt[:len(tme)], label='Current phase B from generator', color='red')
+plt.plot(tme, i_C_gen_plt[:len(tme)], label='Current phase C from generator', color='green')
+plt.title("Current generator")
+plt.xlabel("Time")
+plt.ylabel("Current generator")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.subplot(2, 1, 2)
+plt.plot(tme, i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
+plt.plot(tme, i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
+plt.plot(tme, i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
+plt.title("Current load")
+plt.xlabel("Time")
+plt.ylabel("Current load")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.tight_layout()
+print("Generating plots...")
+plt.show()
+
+Pm_gen = find_name_in_block("Pm_emt_type_generator_template", gen_mdl)
+Pe_gen = find_name_in_block("Pe_emt_type_generator_template", gen_mdl)
+Tm_gen = find_name_in_block("Tm_emt_type_generator_template", gen_mdl)
+Te_gen = find_name_in_block("Te_emt_type_generator_template", gen_mdl)
+et_gen = find_name_in_block("et_emt_type_generator_template", gen_mdl)
+Pm_gen_plt = y[:, problem.get_var_idx(Pm_gen)]
+Pe_gen_plt = y[:, problem.get_var_idx(Pe_gen)]
+Tm_gen_plt = y[:, problem.get_var_idx(Tm_gen)]
+Te_gen_plt = y[:, problem.get_var_idx(Te_gen)]
+et_gen_plt = y[:, problem.get_var_idx(et_gen)]
+
+plt.figure(figsize=(12, 8))
+
+plt.subplot(2, 2, 1)
+plt.plot(tme, Pm_gen_plt[:len(tme)], label='Mechanical power Pm from generator', color='blue')
+plt.plot(tme, Pe_gen_plt[:len(tme)], label='Electrical power Pe from generator', color='red')
+plt.title("power generator")
+plt.xlabel("Time")
+plt.ylabel("power generator")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.subplot(2, 2, 2)
+plt.plot(tme, Tm_gen_plt[:len(tme)], label='Mechanical torque Tm from generator', color='blue')
+plt.plot(tme, Te_gen_plt[:len(tme)], label='Electrical torque Te from generator', color='red')
+plt.title("torque generator")
+plt.xlabel("Time")
+plt.ylabel("torque generator")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.subplot(2, 2, 3)
+plt.plot(tme, et_gen[:len(tme)], label='PI error at generator', color='blue')
+plt.title("et generator")
+plt.xlabel("Time")
+plt.ylabel("et generator")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.tight_layout()
+print("Generating plots...")
+plt.show()

@@ -206,23 +206,23 @@ class PiLineEmtTemplate(EmtModelTemplate):
         # -----------------------------
         alg_eqs = []
 
-        # (4) q_f - C_end * vf = 0
-        for a in range(m):
-            rhs = c0
-            for b in range(m):
-                Cab = float(C_end[a, b])
-                if Cab != 0.0:
-                    rhs = rhs + Cab * vf_vars[b]
-            alg_eqs.append(q_f[a] - rhs)
-
-        # (5) q_t - C_end * vt = 0
-        for a in range(m):
-            rhs = c0
-            for b in range(m):
-                Cab = float(C_end[a, b])
-                if Cab != 0.0:
-                    rhs = rhs + Cab * vt_vars[b]
-            alg_eqs.append(q_t[a] - rhs)
+        # # (4) q_f - C_end * vf = 0
+        # for a in range(m):
+        #     rhs = c0
+        #     for b in range(m):
+        #         Cab = float(C_end[a, b])
+        #         if Cab != 0.0:
+        #             rhs = rhs + Cab * vf_vars[b]
+        #     alg_eqs.append(q_f[a] - rhs)
+        #
+        # # (5) q_t - C_end * vt = 0
+        # for a in range(m):
+        #     rhs = c0
+        #     for b in range(m):
+        #         Cab = float(C_end[a, b])
+        #         if Cab != 0.0:
+        #             rhs = rhs + Cab * vt_vars[b]
+        #     alg_eqs.append(q_t[a] - rhs)
 
         # (6) i_cap_f - C_end * d_vf = 0
         # NOTE: d_vf_vars must be the bus diff_vars (shared), not duplicated inputs.
@@ -380,8 +380,10 @@ class PiLineEmtTemplate(EmtModelTemplate):
         # - Set dq_f, dq_t to 0 as an initial guess.
         # - They will be reconciled by Newton via state_eqs (dq = i_cap) and algebraic (i_cap = C*d_v).
         for a in range(m):
-            diff_init_eqs[dq_f[a]] = c0
-            diff_init_eqs[dq_t[a]] = c0
+            # diff_init_eqs[dq_f[a]] = c0
+            # diff_init_eqs[dq_t[a]] = c0
+            diff_init_eqs[dq_f[a]] = i_cap_f[a]
+            diff_init_eqs[dq_t[a]] = i_cap_t[a]
 
         self._block.diff_init_eqs = diff_init_eqs
 
