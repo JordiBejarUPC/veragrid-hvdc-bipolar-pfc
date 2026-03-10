@@ -9,7 +9,7 @@ import numpy as np
 import VeraGridEngine.IO.cim.cgmes.cgmes_enums as cgmes_enums
 from VeraGridEngine import ShuntControlMode
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import CGMESVersions, CgmesTopologyMode, ConverterControlType
+from VeraGridEngine.enumerations import CGMESVersions, CgmesTopologyMode, ConverterControlType, ExternalGridMode
 import VeraGridEngine.Devices as gcdev
 import VeraGridEngine.IO.cim.cgmes.cgmes_assets.cgmes_2_4_15_assets as cgmes24
 import VeraGridEngine.IO.cim.cgmes.cgmes_assets.cgmes_3_0_0_assets as cgmes30
@@ -1286,9 +1286,13 @@ def get_gcdev_external_grids(cgmes_model: CgmesCircuit,
     TopologicalNode_tpe = cgmes_model.cgmes_assets.class_dict.get("TopologicalNode")
     DCTopologicalNode_tpe = cgmes_model.cgmes_assets.class_dict.get("DCTopologicalNode")
 
-    # convert loads
-    for device_list in [cgmes_model.cgmes_assets.EquivalentInjection_list]:
-        # TODO ExternalNetworkInjection
+    # Import both equivalent and explicit external-network boundary devices.
+    external_device_lists = [cgmes_model.cgmes_assets.EquivalentInjection_list]
+    external_network_injection_list = getattr(cgmes_model.cgmes_assets, "ExternalNetworkInjection_list", None)
+    if external_network_injection_list is not None:
+        external_device_lists.append(external_network_injection_list)
+
+    for device_list in external_device_lists:
         for cgmes_elm in device_list:
             calc_nodes = find_associated_buses(cgmes_elm=cgmes_elm,
                                                device_to_terminal_dict=device_to_terminal_dict,
@@ -1301,12 +1305,30 @@ def get_gcdev_external_grids(cgmes_model: CgmesCircuit,
             if len(calc_nodes) == 1:
                 calc_node = calc_nodes[0]
 
-                # TODO define ExternalGrid.mode
+                mode = ExternalGridMode.PQ
+                vm = 1.0
+
+                if hasattr(cgmes_elm, "regulationCapability") and getattr(cgmes_elm, "regulationCapability", False):
+                    mode = ExternalGridMode.VD
+                    regulation_target = getattr(cgmes_elm, "regulationTarget", None)
+                    if regulation_target is not None and calc_node.Vnom > 0.0:
+                        vm = float(regulation_target) / float(calc_node.Vnom)
+                elif getattr(cgmes_elm, "controlEnabled", False):
+                    mode = ExternalGridMode.VD
+                    regulating_control = getattr(cgmes_elm, "RegulatingControl", None)
+                    if regulating_control is not None:
+                        target_value = getattr(regulating_control, "targetValue", None)
+                        if target_value is not None and calc_node.Vnom > 0.0:
+                            vm = float(target_value) / float(calc_node.Vnom)
+                elif getattr(cgmes_elm, "referencePriority", 0) == 1:
+                    mode = ExternalGridMode.VD
+
                 gcdev_elm = gcdev.ExternalGrid(idtag=cgmes_elm.uuid,
                                                code=cgmes_elm.description,
                                                name=cgmes_elm.name,
                                                active=True,
-                                               # mode=enum.PQ/PV/VD
+                                               mode=mode,
+                                               Vm=vm,
                                                P=cgmes_elm.p,
                                                Q=cgmes_elm.q)
 
