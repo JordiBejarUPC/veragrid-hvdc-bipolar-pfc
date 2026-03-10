@@ -85,7 +85,8 @@ def find_terminal_bus(cgmes_terminal: CGMES_TERMINAL,
                       TopologicalNode_tpe,
                       DCTopologicalNode_tpe) -> gcdev.Bus | None:
     """
-    Find the bus associated to a terminal
+    Find the bus associated to a terminal.
+
     :param cgmes_terminal:
     :param bus_dict:
     :param TopologicalNode_tpe: TopologicalNode type
@@ -95,17 +96,17 @@ def find_terminal_bus(cgmes_terminal: CGMES_TERMINAL,
     :return:
     """
     if cgmes_terminal is not None:
-        if hasattr(cgmes_terminal, "TopologicalNode"):  # Try for AC terminal
-            # get the rosetta calculation node if exists
+        if hasattr(cgmes_terminal, "TopologicalNode"):
             if isinstance(cgmes_terminal.TopologicalNode, TopologicalNode_tpe):
                 return bus_dict.get(cgmes_terminal.TopologicalNode.uuid, None)
             else:
-                topological_node_uuid = normalize_cgmes_reference_uuid(cgmes_terminal.TopologicalNode)
+                topological_node_uuid: str | None = normalize_cgmes_reference_uuid(
+                    cgmes_terminal.TopologicalNode
+                )
                 if topological_node_uuid is not None:
                     return bus_dict.get(topological_node_uuid, None)
                 else:
                     return None
-
         elif hasattr(cgmes_terminal, "DCTopologicalNode"):  # get the rosetta calculation node if exists
             if isinstance(cgmes_terminal.DCTopologicalNode, DCTopologicalNode_tpe):
                 return bus_dict.get(cgmes_terminal.DCTopologicalNode.uuid, None)
@@ -119,6 +120,43 @@ def find_terminal_bus(cgmes_terminal: CGMES_TERMINAL,
             return None
     else:
         return None
+
+
+def find_terminal_bus_connectivity_priority(cgmes_terminal: CGMES_TERMINAL,
+                                            bus_dict: Dict[str, gcdev.Bus],
+                                            TopologicalNode_tpe,
+                                            DCTopologicalNode_tpe) -> gcdev.Bus | None:
+    """
+    Find the bus associated to a terminal while prioritizing ConnectivityNode.
+
+    This helper exists specifically for the CGMES 3.0 conversion path. VeraGrid
+    models the physical topology through connection points and later reduces
+    closed reducible branches. Therefore, when a valid ConnectivityNode has been
+    imported as a bus, that association must win over any TopologicalNode
+    reference.
+
+    :param cgmes_terminal:
+    :param bus_dict:
+    :param TopologicalNode_tpe: TopologicalNode type
+                                (might come from different cgmes versions, hence we need to pass the type)
+    :param DCTopologicalNode_tpe: DCTopologicalNode type
+                                  (might come from different cgmes versions, hence we need to pass the type)
+    :return:
+    """
+    if cgmes_terminal is not None:
+        if hasattr(cgmes_terminal, "ConnectivityNode"):
+            connectivity_node_uuid: str | None = normalize_cgmes_reference_uuid(
+                cgmes_terminal.ConnectivityNode
+            )
+            if connectivity_node_uuid is not None:
+                connectivity_bus: gcdev.Bus | None = bus_dict.get(connectivity_node_uuid, None)
+                if connectivity_bus is not None:
+                    return connectivity_bus
+
+    return find_terminal_bus(cgmes_terminal=cgmes_terminal,
+                             bus_dict=bus_dict,
+                             TopologicalNode_tpe=TopologicalNode_tpe,
+                             DCTopologicalNode_tpe=DCTopologicalNode_tpe)
 
 
 def find_object_by_idtag(object_list: List[ALL_DEV_TYPES], target_idtag: str) -> ALL_DEV_TYPES | None:
@@ -183,6 +221,27 @@ def get_slack_id(machines):
     return None
 
 
+def get_operational_limit_kind(op_lim_type) -> LimitTypeKind | None:
+    """
+    Read the operational limit kind across CGMES versions.
+
+    CGMES 2.4.15 uses ``limitType`` while CGMES 3.0 uses ``kind`` for the
+    same concept. This helper keeps the import logic version agnostic.
+
+    :param op_lim_type: OperationalLimitType object
+    :return: Limit kind if available, otherwise None
+    """
+    limit_kind = getattr(op_lim_type, "limitType", None)
+    if limit_kind is not None:
+        return limit_kind
+
+    limit_kind = getattr(op_lim_type, "kind", None)
+    if limit_kind is not None:
+        return limit_kind
+
+    return None
+
+
 def build_cgmes_limit_dicts(cgmes_model: CgmesCircuit,
                             device_type,
                             logger: DataLogger):
@@ -230,8 +289,9 @@ def build_cgmes_limit_dicts(cgmes_model: CgmesCircuit,
 
                 if isinstance(op_lim_set.Terminal.ConductingEquipment, device_type):
                     branch_id = op_lim_set.Terminal.ConductingEquipment.uuid
+                    limit_kind = get_operational_limit_kind(op_lim_type=op_lim_type)
 
-                    if op_lim_type.limitType == LimitTypeKind.patl:
+                    if limit_kind == LimitTypeKind.patl:
 
                         act_lim = patl_dict.get(branch_id, None)
                         if act_lim is None:
@@ -239,7 +299,7 @@ def build_cgmes_limit_dicts(cgmes_model: CgmesCircuit,
                         elif rate_mva < act_lim:
                             patl_dict[branch_id] = rate_mva
 
-                    elif op_lim_type.limitType == LimitTypeKind.tatl:
+                    elif limit_kind == LimitTypeKind.tatl:
 
                         if op_lim_type.acceptableDuration == 900:
 
@@ -267,10 +327,10 @@ def build_cgmes_limit_dicts(cgmes_model: CgmesCircuit,
                             )
                     else:
                         logger.add_warning(
-                            msg="Not supported .limitType duration for OperationalLimitType",
+                            msg="Not supported operational limit kind for OperationalLimitType",
                             device=op_lim_type,
                             device_class=op_lim_type.tpe,
-                            value=op_lim_type.limitType,
+                            value=limit_kind,
                             comment="Currently only PATL and TATL (900, 60) type are imported",
                         )
 
@@ -520,9 +580,11 @@ def get_voltage_shunt(shunt: CGMES_NON_LINEAR_SHUNT_COMPENSATOR | CGMES_EQUIVALE
     """
     if shunt.BaseVoltage is not None:
         return shunt.BaseVoltage.nominalVoltage
-    elif shunt.nomU is not None:
-        return shunt.nomU
     else:  # TODO look at EquipmentContainer/VoltageLevel/BaseVoltage
+        if hasattr(shunt, "nomU"):
+            if shunt.nomU is not None:
+                return shunt.nomU
+
         if 'Terminal' in shunt.references_to_me.keys():
             tps = list(shunt.references_to_me['Terminal'])
 
@@ -935,7 +997,8 @@ def get_regulating_control_params(cgmes_elm,
                                   bus_dict,
                                   TopologicalNode_tpe,
                                   DCTopologicalNode_tpe,
-                                  logger: DataLogger):
+                                  logger: DataLogger,
+                                  prefer_connectivity_node: bool = False):
     """
 
     :param cgmes_elm:
@@ -998,12 +1061,20 @@ def get_regulating_control_params(cgmes_elm,
 
             equipment_container = cgmes_elm.EquipmentContainer
             control_terminal = cgmes_elm.RegulatingControl.Terminal
-            control_bus = find_terminal_bus(
-                cgmes_terminal=control_terminal,
-                bus_dict=bus_dict,
-                TopologicalNode_tpe=TopologicalNode_tpe,
-                DCTopologicalNode_tpe=DCTopologicalNode_tpe
-            )
+            if prefer_connectivity_node:
+                control_bus = find_terminal_bus_connectivity_priority(
+                    cgmes_terminal=control_terminal,
+                    bus_dict=bus_dict,
+                    TopologicalNode_tpe=TopologicalNode_tpe,
+                    DCTopologicalNode_tpe=DCTopologicalNode_tpe
+                )
+            else:
+                control_bus = find_terminal_bus(
+                    cgmes_terminal=control_terminal,
+                    bus_dict=bus_dict,
+                    TopologicalNode_tpe=TopologicalNode_tpe,
+                    DCTopologicalNode_tpe=DCTopologicalNode_tpe
+                )
             control_node = None
 
             if equipment_container is None:

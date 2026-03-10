@@ -13,7 +13,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Aggregation.area import Area
 from VeraGridEngine.enumerations import (BusMode, BranchImpedanceMode, ExternalGridMode, DeviceType,
                                          TapModuleControl, TapPhaseControl, HvdcControlType, ConverterControlType,
-                                         ShuntConnectionType)
+                                         ShuntConnectionType, ShuntControlMode)
 from VeraGridEngine.basic_structures import BoolVec, IntVec
 from VeraGridEngine.Devices.types import BRANCH_TYPES
 from VeraGridEngine.DataStructures.battery_data import BatteryData
@@ -893,10 +893,17 @@ def get_shunt_data(
             data.mttf[ii] = elm.mttf
             data.mttr[ii] = elm.mttr
 
-            data.controllable[ii] = elm.is_controlled
+            data.control_mode[ii] = elm.control_mode
+            data.is_pv_control[ii] = elm.control_mode == ShuntControlMode.Continuous
             data.vset[ii] = elm.Vset
+            data.vmin[ii] = elm.Vmin
+            data.vmax[ii] = elm.Vmax
             data.qmin[ii] = elm.Bmin
             data.qmax[ii] = elm.Bmax
+
+            data.step[ii] = elm.step
+            data.g_steps.insert(i=ii, x=elm.g_steps)
+            data.b_steps.insert(i=ii, x=elm.b_steps)
 
             data.Y[ii] += elm.get_Y_at(t_idx)
             data.active[ii] = elm.get_active_at(t_idx)
@@ -920,7 +927,7 @@ def get_shunt_data(
                 else:
                     raise Exception(f"Unhandled connection type {elm.conn}")
 
-            if elm.is_controlled and elm.active:
+            if elm.control_mode == ShuntControlMode.Continuous and elm.active:
                 if elm.control_bus is not None:
                     remote_control = True
                     j = bus_dict[elm.control_bus]
@@ -946,7 +953,7 @@ def get_shunt_data(
 
             # reactive power sharing data
             if data.active[ii]:
-                if data.controllable[ii]:
+                if data.control_mode[ii] == ShuntControlMode.Locked:
                     bus_data.q_shared_total[i] += data.Y[ii].imag
                     data.q_share[ii] = data.Y[ii].imag
                 else:

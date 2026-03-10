@@ -65,7 +65,7 @@ grid.add_bus(bus0)
 grid.add_bus(bus1)
 
 # Lines
-line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
+line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
 line0.emt_model_type = gce.EmtLineTypes.PI
 
 # physical configuration (Overhead line tower)
@@ -85,10 +85,10 @@ tower.compute()
 line0.apply_template(tower, grid.Sbase, grid.fBase)
 
 # load
-# P=1.0
-# Q= 0.999999
-P = 0.0
-Q = 0.0
+P=1.0
+Q= 0.999999
+# P = 0.0
+# Q = 0.0
 load = gce.Load(name="load",P1= P/3, P2= P/3, P3= P/3, Q1= Q/3, Q2= Q/3, Q3= Q/3)
 load.conn = ShuntConnectionType.GroundedStar
 
@@ -115,13 +115,13 @@ load_dynhost = DynamicModelHost()
 gen_dynhost = DynamicModelHost()
 
 # generator
-gen_mdl = get_generator_emt_template(grid.var_factory).block
+gen_mdl = get_generator_emt_template(grid=grid, gen = gen0).block
 
 # line
 line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 
 # load
-load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.var_factory, sbase = grid.Sbase, fbase = grid.fBase).block
+load_mdl = get_load_ZIP_3ph_emt_template(grid = grid, load = load).block
 
 # connection with buses
 gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]]) # v_A
@@ -228,7 +228,7 @@ print(f"Converged: {res.converged}")
 print(res.get_bus_df())
 print(res.get_branch_df())
 
-options = EmtOptions(time_step = 5e-6,
+options = EmtOptions(time_step = 5e-7, # 5e-7,
                      simulation_time =  0.01,  #5e-6*10, # s
                      tolerance = 1e-6,
                      solver = EmtSolverTypes.Symbolic,
@@ -412,7 +412,7 @@ i_C_load_plt = y[:, problem.get_var_idx(i_C_load)]
 
 plt.figure(figsize=(12, 8))
 
-plt.subplot(2, 1, 1)
+plt.subplot(2, 2, 1)
 plt.plot(tme, i_A_gen_plt[:len(tme)], label='Current phase A from generator', color='blue')
 plt.plot(tme, i_B_gen_plt[:len(tme)], label='Current phase B from generator', color='red')
 plt.plot(tme, i_C_gen_plt[:len(tme)], label='Current phase C from generator', color='green')
@@ -423,7 +423,7 @@ plt.legend(loc='upper left')
 plt.grid(True)
 plt.legend()
 
-plt.subplot(2, 1, 2)
+plt.subplot(2, 2, 2)
 plt.plot(tme, i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
 plt.plot(tme, i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
 plt.plot(tme, i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
@@ -439,11 +439,13 @@ print("Generating plots...")
 plt.show()
 
 Pm_gen = find_name_in_block("Pm_emt_type_generator_template", gen_mdl)
+Qe_gen = find_name_in_block("Qe_emt_type_generator_template", gen_mdl)
 Pe_gen = find_name_in_block("Pe_emt_type_generator_template", gen_mdl)
 Tm_gen = find_name_in_block("Tm_emt_type_generator_template", gen_mdl)
 Te_gen = find_name_in_block("Te_emt_type_generator_template", gen_mdl)
 et_gen = find_name_in_block("et_emt_type_generator_template", gen_mdl)
 Pm_gen_plt = y[:, problem.get_var_idx(Pm_gen)]
+Qe_gen_plt = y[:, problem.get_var_idx(Qe_gen)]
 Pe_gen_plt = y[:, problem.get_var_idx(Pe_gen)]
 Tm_gen_plt = y[:, problem.get_var_idx(Tm_gen)]
 Te_gen_plt = y[:, problem.get_var_idx(Te_gen)]
@@ -454,6 +456,7 @@ plt.figure(figsize=(12, 8))
 plt.subplot(2, 2, 1)
 plt.plot(tme, Pm_gen_plt[:len(tme)], label='Mechanical power Pm from generator', color='blue')
 plt.plot(tme, Pe_gen_plt[:len(tme)], label='Electrical power Pe from generator', color='red')
+plt.plot(tme, Qe_gen_plt[:len(tme)], label='Electrical reactive power Qe from generator', color='purple')
 plt.title("power generator")
 plt.xlabel("Time")
 plt.ylabel("power generator")
@@ -476,6 +479,176 @@ plt.plot(tme, et_gen_plt[:len(tme)], label='PI error at generator', color='blue'
 plt.title("et generator")
 plt.xlabel("Time")
 plt.ylabel("et generator")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.tight_layout()
+print("Generating plots...")
+plt.show()
+
+P_A_load = find_name_in_block("P_A_ZIP_Load_EMT_3ph", load_mdl)
+P_B_load = find_name_in_block("P_B_ZIP_Load_EMT_3ph", load_mdl)
+P_C_load = find_name_in_block("P_C_ZIP_Load_EMT_3ph", load_mdl)
+P_A_load_plt = y[:, problem.get_var_idx(P_A_load)]
+P_B_load_plt = y[:, problem.get_var_idx(P_B_load)]
+P_C_load_plt = y[:, problem.get_var_idx(P_C_load)]
+P_tot_load = P_A_load_plt +  P_B_load_plt + P_C_load_plt
+
+Q_A_load = find_name_in_block("Q_A_ZIP_Load_EMT_3ph", load_mdl)
+Q_B_load = find_name_in_block("Q_B_ZIP_Load_EMT_3ph", load_mdl)
+Q_C_load = find_name_in_block("Q_C_ZIP_Load_EMT_3ph", load_mdl)
+Q_A_load_plt = y[:, problem.get_var_idx(Q_A_load)]
+Q_B_load_plt = y[:, problem.get_var_idx(Q_B_load)]
+Q_C_load_plt = y[:, problem.get_var_idx(Q_C_load)]
+Q_tot_load = Q_A_load_plt +  Q_B_load_plt + Q_C_load_plt
+
+plt.figure(figsize=(12, 8))
+
+plt.subplot(2, 1, 1)
+plt.plot(tme, P_A_load_plt[:len(tme)], label='Active power phase A load', color='blue')
+plt.plot(tme, P_B_load_plt[:len(tme)], label='Active power phase B load', color='red')
+plt.plot(tme, P_C_load_plt[:len(tme)], label='Active power phase C load', color='green')
+# plt.plot(tme, P_tot_load[:len(tme)], label='Active power total load', color='black')
+plt.title("Active power load")
+plt.xlabel("Time")
+plt.ylabel("power load")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.subplot(2, 1, 2)
+plt.plot(tme, Q_A_load_plt[:len(tme)], label='Reactive power phase A load', color='blue')
+plt.plot(tme, Q_B_load_plt[:len(tme)], label='Reactive power phase B load', color='red')
+plt.plot(tme, Q_C_load_plt[:len(tme)], label='Reactive power phase C load', color='green')
+# plt.plot(tme, Q_tot_load[:len(tme)], label='Reactive power total load', color='black')
+plt.title("Reactive power load")
+plt.xlabel("Time")
+plt.ylabel("power load")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.tight_layout()
+print("Generating plots...")
+plt.show()
+
+i_f_A_line = find_name_in_block("if_line0_0", load_mdl)
+i_f_B_line = find_name_in_block("if_line0_1", load_mdl)
+i_f_C_line = find_name_in_block("if_line0_2", load_mdl)
+i_f_A_line_plt = y[:, problem.get_var_idx(i_f_A_line)]
+i_f_B_line_plt = y[:, problem.get_var_idx(i_f_B_line)]
+i_f_C_line_plt = y[:, problem.get_var_idx(i_f_C_line)]
+
+i_t_A_line = find_name_in_block("it_line0_0", load_mdl)
+i_t_B_line = find_name_in_block("it_line0_1", load_mdl)
+i_t_C_line = find_name_in_block("it_line0_2", load_mdl)
+i_t_A_line_plt = y[:, problem.get_var_idx(i_t_A_line)]
+i_t_B_line_plt = y[:, problem.get_var_idx(i_t_B_line)]
+i_t_C_line_plt = y[:, problem.get_var_idx(i_t_C_line)]
+
+plt.figure(figsize=(12, 8))
+
+plt.subplot(2, 2, 1)
+plt.plot(tme, i_A_gen_plt[:len(tme)], label='Current phase A from generator', color='blue')
+plt.plot(tme, i_B_gen_plt[:len(tme)], label='Current phase B from generator', color='red')
+plt.plot(tme, i_C_gen_plt[:len(tme)], label='Current phase C from generator', color='green')
+plt.title("Current generator")
+plt.xlabel("Time")
+plt.ylabel("Current generator")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.subplot(2, 2, 2)
+plt.plot(tme, i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
+plt.plot(tme, i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
+plt.plot(tme, i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
+plt.title("Current load")
+plt.xlabel("Time")
+plt.ylabel("Current load")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.subplot(2, 1, 1)
+plt.plot(tme, i_f_A_line_plt[:len(tme)], label='Current FROM phase A from line', color='blue')
+plt.plot(tme, i_f_B_line_plt[:len(tme)], label='Current FROM phase B from line', color='red')
+plt.plot(tme, i_f_C_line_plt[:len(tme)], label='Current FROM phase C from line', color='green')
+plt.title("Current from line")
+plt.xlabel("Time")
+plt.ylabel("Current from")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.subplot(2, 1, 2)
+plt.plot(tme, i_t_A_line_plt[:len(tme)], label='Current TO phase A from line', color='blue')
+plt.plot(tme, i_t_B_line_plt[:len(tme)], label='Current TO phase B from line', color='red')
+plt.plot(tme, i_t_C_line_plt[:len(tme)], label='Current TO phase C from line', color='green')
+plt.title("Current to line")
+plt.xlabel("Time")
+plt.ylabel("Current to")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.tight_layout()
+print("Generating plots...")
+plt.show()
+
+i_ser_A = find_name_in_block("i_ser_line0_0", line_mdl)
+i_ser_B = find_name_in_block("i_ser_line0_1", line_mdl)
+i_ser_C = find_name_in_block("i_ser_line0_2", line_mdl)
+i_ser_A_plt = y[:, problem.get_var_idx(i_ser_A)]
+i_ser_B_plt = y[:, problem.get_var_idx(i_ser_B)]
+i_ser_C_plt = y[:, problem.get_var_idx(i_ser_C)]
+
+i_f_cap_A = find_name_in_block("i_cap_f_line0_0", line_mdl)
+i_f_cap_B = find_name_in_block("i_cap_f_line0_1", line_mdl)
+i_f_cap_C = find_name_in_block("i_cap_f_line0_2", line_mdl)
+i_f_cap_A_plt = y[:, problem.get_var_idx(i_f_cap_A)]
+i_f_cap_B_plt = y[:, problem.get_var_idx(i_f_cap_B)]
+i_f_cap_C_plt = y[:, problem.get_var_idx(i_f_cap_C)]
+
+i_t_cap_A = find_name_in_block("i_cap_t_line0_0", line_mdl)
+i_t_cap_B = find_name_in_block("i_cap_t_line0_1", line_mdl)
+i_t_cap_C = find_name_in_block("i_cap_t_line0_2", line_mdl)
+i_t_cap_A_plt = y[:, problem.get_var_idx(i_t_cap_A)]
+i_t_cap_B_plt = y[:, problem.get_var_idx(i_t_cap_B)]
+i_t_cap_C_plt = y[:, problem.get_var_idx(i_t_cap_C)]
+
+plt.figure(figsize=(12, 8))
+
+plt.subplot(2, 2, 1)
+plt.plot(tme, i_ser_A_plt[:len(tme)], label='Phase A series current line', color='blue')
+plt.plot(tme, i_ser_B_plt[:len(tme)], label='Phase B series current line', color='red')
+plt.plot(tme, i_ser_C_plt[:len(tme)], label='Phase C series current line', color='green')
+plt.title("Series current in line")
+plt.xlabel("Time")
+plt.ylabel("Current")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.subplot(2, 2, 3)
+plt.plot(tme, i_f_cap_A_plt[:len(tme)], label='Shunt current at from line phase A', color='blue')
+plt.plot(tme, i_f_cap_B_plt[:len(tme)], label='Shunt current at from line phase B', color='red')
+plt.plot(tme, i_f_cap_C_plt[:len(tme)], label='Shunt current at from line phase C', color='green')
+plt.title("From shunt currents in line")
+plt.xlabel("Time")
+plt.ylabel("Current")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.subplot(2, 2, 4)
+plt.plot(tme, i_t_cap_A_plt[:len(tme)], label='Shunt current at to line phase A', color='blue')
+plt.plot(tme, i_t_cap_B_plt[:len(tme)], label='Shunt current at to line phase B', color='red')
+plt.plot(tme, i_t_cap_C_plt[:len(tme)], label='Shunt current at to line phase C', color='green')
+plt.title("To shunt currents in line")
+plt.xlabel("Time")
+plt.ylabel("Current")
 plt.legend(loc='upper left')
 plt.grid(True)
 plt.legend()
