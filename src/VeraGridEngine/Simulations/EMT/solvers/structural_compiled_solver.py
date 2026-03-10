@@ -568,11 +568,11 @@ def _copy_negated_vector(values: Float64Vector, out: Float64Vector) -> None:
         index += 1
 
 
-class FastBoundaryUpdateWrapper:
+class StructuralCompiledBoundaryUpdateWrapper:
     """
-    Boundary update interface for the fast structural solver.
+    Boundary update interface for the structural compiled solver.
 
-    The fast solver keeps the linear algebra outside Numba, but it still needs a
+    The structural compiled solver keeps the linear algebra outside Numba, but it still needs a
     typed boundary update object to refresh runtime parameters between local
     substeps.
     """
@@ -610,7 +610,7 @@ class FastBoundaryUpdateWrapper:
         return None
 
 
-class FastPredictor:
+class StructuralCompiledPredictor:
     """
     Explicit predictor used to initialize the Newton iteration.
     """
@@ -664,7 +664,7 @@ class FastPredictor:
         return x_iter
 
 
-class FastEquationGroup:
+class StructuralCompiledEquationGroup:
     """
     Structural group of equations that share the same vectorized template.
     """
@@ -748,7 +748,7 @@ class FastEquationGroup:
         return self._template_vars
 
 
-class FastVectorKernel:
+class StructuralCompiledVectorKernel:
     """
     Typed container for one vectorized residual kernel.
     """
@@ -810,25 +810,25 @@ class FastVectorKernel:
         return self._row_count
 
 
-def _compile_fused_residual_kernel(kernel_specs: List[FastVectorKernel], cache_token: str) -> Callable[..., Any]:
+def _compile_fused_residual_kernel(kernel_specs: List[StructuralCompiledVectorKernel], cache_token: str) -> Callable[..., Any]:
     """
     Build the eager residual dispatcher that reuses preallocated work buffers.
 
     :param kernel_specs: Vectorized residual kernels.
-    :type kernel_specs: List[FastVectorKernel]
+    :type kernel_specs: List[StructuralCompiledVectorKernel]
     :return: Compiled fused residual dispatcher.
     :rtype: Callable[..., Any]
     """
     lines: List[str] = list()
     kernel_index: int = 0
-    func_name: str = f"fast_fused_residual_{cache_token}"
+    func_name: str = f"structural_compiled_fused_residual_{cache_token}"
 
     # The dispatcher clears the global residual first and then reuses one work row per group.
     lines.append(f"def {func_name}(states, params, history, d_history, h, history2, data_out, work_buffers):")
     lines.append("    data_out[:] = 0.0")
 
     while kernel_index < len(kernel_specs):
-        kernel_spec: FastVectorKernel = kernel_specs[kernel_index]
+        kernel_spec: StructuralCompiledVectorKernel = kernel_specs[kernel_index]
         function_name: str = f"kernel_{kernel_index}"
         indices_name: str = f"indices_{kernel_index}"
         target_name: str = f"target_{kernel_index}"
@@ -878,7 +878,7 @@ def _compile_master_jacobian_kernel(
     """
     lines: List[str] = list()
     color_index: int = 0
-    func_name: str = f"fast_master_jacobian_{cache_token}"
+    func_name: str = f"structural_compiled_master_jacobian_{cache_token}"
 
     # The dispatcher reuses one JVP buffer per color and then scatters into CSC storage.
     lines.append(
@@ -910,31 +910,31 @@ def _compile_master_jacobian_kernel(
     )
 
 
-class FastVectorResidualAssembler:
+class StructuralCompiledResidualAssembler:
     """
     Residual dispatcher that reuses preallocated grouped work buffers.
     """
 
     __slots__ = ["_kernel_specs", "_dispatcher", "_work_buffer", "_build_stats"]
 
-    def __init__(self, kernel_specs: List[FastVectorKernel], cache_token: str) -> None:
+    def __init__(self, kernel_specs: List[StructuralCompiledVectorKernel], cache_token: str) -> None:
         """
         Create the residual assembler.
 
         :param kernel_specs: Vectorized residual kernels.
-        :type kernel_specs: List[FastVectorKernel]
+        :type kernel_specs: List[StructuralCompiledVectorKernel]
         :return: None
         :rtype: None
         """
         t_start: float = time.perf_counter()
-        self._kernel_specs: List[FastVectorKernel] = kernel_specs
+        self._kernel_specs: List[StructuralCompiledVectorKernel] = kernel_specs
 
         t_dispatcher_start: float = time.perf_counter()
         self._dispatcher: Callable[..., Any] = _compile_fused_residual_kernel(kernel_specs, cache_token)
         dispatcher_build_s: float = time.perf_counter() - t_dispatcher_start
 
         max_kernel_size: int = 0
-        kernel_spec: FastVectorKernel
+        kernel_spec: StructuralCompiledVectorKernel
         for kernel_spec in kernel_specs:
             if kernel_spec.get_row_count() > max_kernel_size:
                 max_kernel_size = kernel_spec.get_row_count()
@@ -1004,7 +1004,7 @@ class FastVectorResidualAssembler:
         return dict(self._build_stats)
 
 
-class FastSparseADJacobian:
+class StructuralCompiledSparseADJacobian:
     """
     Sparse structural AD Jacobian that writes directly into CSC storage.
     """
@@ -1291,7 +1291,7 @@ class FastSparseADJacobian:
         while color_index < self._n_colors:
             active_columns: Set[int] = set(self._color_groups[color_index])
             kernel_name: str = (
-                f"fast_ad_color_{self._method.name}_{self._n_rows}_{self._n_cols}_{color_index}"
+                f"structural_compiled_ad_color_{self._method.name}_{self._n_rows}_{self._n_cols}_{color_index}"
             )
             py_func: Callable[..., Any]
             signature_tpe: Any
@@ -1382,7 +1382,7 @@ class FastSparseADJacobian:
         return dict(self._build_stats)
 
 
-class FastStructuralSolver:
+class StructuralCompiledSolver:
     """
     Standalone structural EMT solver with eager kernels and reusable buffers.
 
@@ -1440,7 +1440,7 @@ class FastStructuralSolver:
             auto_build: bool = True,
     ) -> None:
         """
-        Create the fast structural EMT solver.
+        Create the structural compiled EMT solver.
 
         :param problem: EMT problem wrapper.
         :type problem: EmtProblemTemplate
@@ -1517,11 +1517,11 @@ class FastStructuralSolver:
             dtype=np.float64,
         )
 
-        self._residual_assembler: FastVectorResidualAssembler | None = None
-        self._jacobian_evaluator: FastSparseADJacobian | None = None
+        self._residual_assembler: StructuralCompiledResidualAssembler | None = None
+        self._jacobian_evaluator: StructuralCompiledSparseADJacobian | None = None
         self._vectorized_ready = False
         self._last_sim_loop_time = 0.0
-        self._predictor = FastPredictor(self._n_state)
+        self._predictor = StructuralCompiledPredictor(self._n_state)
         self._backend_build_stats: Dict[str, float] = dict()
 
         if auto_build:
@@ -1539,7 +1539,7 @@ class FastStructuralSolver:
         :rtype: None
         """
         t_start: float = time.perf_counter()
-        groups: Dict[str, FastEquationGroup] = dict()
+        groups: Dict[str, StructuralCompiledEquationGroup] = dict()
         runtime_uids: Set[int] = set(self._uid2idx_vars.keys())
         parameter_uids: Set[int] = _build_parameter_uid_set(self._event_parameters, self._constant_parameters)
         full_eqs: List[Expr] = _build_full_residual_equations(
@@ -1556,7 +1556,7 @@ class FastStructuralSolver:
             equation: Expr = full_eqs[equation_index]
             signature_str: str
             runtime_vars: List[Var]
-            group: FastEquationGroup
+            group: StructuralCompiledEquationGroup
             variable_indices: List[int] = list()
             runtime_var_index: int = 0
 
@@ -1565,7 +1565,7 @@ class FastStructuralSolver:
             if signature_str in groups:
                 group = groups[signature_str]
             else:
-                group = FastEquationGroup()
+                group = StructuralCompiledEquationGroup()
                 groups[signature_str] = group
 
             while runtime_var_index < len(runtime_vars):
@@ -1598,7 +1598,7 @@ class FastStructuralSolver:
         grouping_s: float = time.perf_counter() - t_grouping_start
 
         if self._verbose:
-            print(f"--- [FAST-AUTO-VEC] Detected {len(groups)} structural groups ---")
+            print(f"--- [STRUCT-COMPILED] Detected {len(groups)} structural groups ---")
         else:
             pass
 
@@ -1614,7 +1614,7 @@ class FastStructuralSolver:
         # Group kernels are compiled in deterministic order so disk cache keys remain stable.
         group_keys: List[str] = sorted(list(groups.keys()))
         backend_cache_token: str = _build_backend_cache_token(method, len(full_eqs), self._n_vars, group_keys)
-        kernel_specs: List[FastVectorKernel] = list()
+        kernel_specs: List[StructuralCompiledVectorKernel] = list()
         group_key_index: int = 0
 
         t_vec_kernel_compile_start: float = time.perf_counter()
@@ -1622,7 +1622,7 @@ class FastStructuralSolver:
         while group_key_index < len(group_keys):
             group_key: str = group_keys[group_key_index]
             group_hash: str = hashlib.md5(group_key.encode("utf-8")).hexdigest()[:16]
-            group: FastEquationGroup = groups[group_key]
+            group: StructuralCompiledEquationGroup = groups[group_key]
             template_eq: Expr | None = group.get_template_eq()
             template_vars: List[Var] | None = group.get_template_vars()
 
@@ -1631,7 +1631,7 @@ class FastStructuralSolver:
             else:
                 pass
 
-            kernel_name: str = f"fast_vec_{method.name}_{group_hash}"
+            kernel_name: str = f"structural_compiled_vec_{method.name}_{group_hash}"
             py_func: Callable[..., Any]
             signature_tpe: Any
             compiled_kernel: Callable[..., Any]
@@ -1644,7 +1644,7 @@ class FastStructuralSolver:
                 template_vars=template_vars,
             )
             compiled_kernel = _safe_njit(py_func, signature_tpe=signature_tpe, fastmath=True, cache=True)
-            kernel_specs.append(FastVectorKernel(compiled_kernel, indices, target_rows))
+            kernel_specs.append(StructuralCompiledVectorKernel(compiled_kernel, indices, target_rows))
 
             group_key_index += 1
 
@@ -1652,12 +1652,12 @@ class FastStructuralSolver:
 
         # The residual assembler owns the reusable grouped work buffers.
         t_residual_assembler_start: float = time.perf_counter()
-        self._residual_assembler = FastVectorResidualAssembler(kernel_specs, backend_cache_token)
+        self._residual_assembler = StructuralCompiledResidualAssembler(kernel_specs, backend_cache_token)
         residual_assembler_s: float = time.perf_counter() - t_residual_assembler_start
 
         # The sparse Jacobian evaluator owns the reusable CSC numeric storage.
         t_jacobian_evaluator_start: float = time.perf_counter()
-        self._jacobian_evaluator = FastSparseADJacobian(
+        self._jacobian_evaluator = StructuralCompiledSparseADJacobian(
             equations=full_eqs,
             variables=self._sorted_vars,
             parameters=all_parameters,
@@ -1690,7 +1690,7 @@ class FastStructuralSolver:
 
         if self._verbose:
             elapsed: float = self._backend_build_stats["total_s"]
-            print(f"--- [FAST-AUTO-VEC] Backend ready in {elapsed:.4f}s ---")
+            print(f"--- [STRUCT-COMPILED] Backend ready in {elapsed:.4f}s ---")
         else:
             pass
 
@@ -1732,7 +1732,7 @@ class FastStructuralSolver:
 
     def get_backend_build_stats(self) -> Dict[str, float]:
         """
-        Return setup timings for the fast backend build.
+        Return setup timings for the structural compiled backend build.
 
         :return: Setup timings grouped by build phase.
         :rtype: Dict[str, float]
@@ -1744,7 +1744,7 @@ class FastStructuralSolver:
             x0: Vec | None = None,
             dx0: Vec | None = None,
             params0: Vec | None = None,
-            boundary_updater: FastBoundaryUpdateWrapper | None = None,
+            boundary_updater: StructuralCompiledBoundaryUpdateWrapper | None = None,
     ) -> Tuple[Vec, Mat, Mat]:
         """
         Run the implicit EMT simulation with eager structural kernels.
@@ -1756,7 +1756,7 @@ class FastStructuralSolver:
         :param params0: Optional initial runtime parameters.
         :type params0: Vec | None
         :param boundary_updater: Optional boundary updater.
-        :type boundary_updater: FastBoundaryUpdateWrapper | None
+        :type boundary_updater: StructuralCompiledBoundaryUpdateWrapper | None
         :return: Time vector, state trajectory and differential trajectory.
         :rtype: Tuple[Vec, Mat, Mat]
         """
@@ -1766,7 +1766,7 @@ class FastStructuralSolver:
             self._build_vectorized_backend(self._method)
 
         if self._residual_assembler is None or self._jacobian_evaluator is None:
-            raise RuntimeError("Fast structural backend was not built correctly")
+            raise RuntimeError("Structural compiled backend was not built correctly")
         else:
             pass
 
@@ -1828,7 +1828,7 @@ class FastStructuralSolver:
         loop_start: float = time.time()
 
         if self._verbose:
-            print("-> FAST structural simulation started")
+            print("-> StructuralCompiled simulation started")
         else:
             pass
 
@@ -1864,7 +1864,7 @@ class FastStructuralSolver:
 
                 if self._method == DynamicIntegrationMethod.DaeBDF2 and is_aligned_substep:
                     raise NotImplementedError(
-                        "force_step_alignment is not implemented for DaeBDF2 in FastStructuralSolver"
+                        "force_step_alignment is not implemented for DaeBDF2 in StructuralCompiledSolver"
                     )
                 else:
                     pass
@@ -1994,7 +1994,7 @@ class FastStructuralSolver:
         self._last_sim_loop_time = time.time() - loop_start
 
         if self._verbose:
-            print(f"-> FAST structural simulation finished in {self._last_sim_loop_time:.4f}s")
+            print(f"-> StructuralCompiled simulation finished in {self._last_sim_loop_time:.4f}s")
         else:
             pass
 

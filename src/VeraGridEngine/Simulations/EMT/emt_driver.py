@@ -17,7 +17,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlo
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
-from VeraGridEngine.Simulations.EMT.solvers.fast_structural_solver import FastStructuralSolver
+from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 
@@ -47,7 +47,7 @@ class EmtSimulationDriver(DriverTemplate):
         self.solvers_dict = {EmtSolverTypes.Symbolic: JitSymbolicSolver,
                              EmtSolverTypes.Automatic: JitAdSolver,
                              EmtSolverTypes.StructuralAD: StructuralVectorizedSolver,
-                             EmtSolverTypes.FastStructural: FastStructuralSolver
+                             EmtSolverTypes.StructuralCompiled: StructuralCompiledSolver
                              }
 
         self.grid = grid

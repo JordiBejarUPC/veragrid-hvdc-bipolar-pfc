@@ -9,9 +9,9 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EagerEquationCompiler
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
-from VeraGridEngine.Simulations.EMT.solvers.fast_structural_solver import (
-    FastBoundaryUpdateWrapper,
-    FastStructuralSolver,
+from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import (
+    StructuralCompiledBoundaryUpdateWrapper,
+    StructuralCompiledSolver,
 )
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
@@ -69,7 +69,7 @@ def array_ptr(arr: np.ndarray) -> int:
     return int(arr.__array_interface__["data"][0])
 
 
-class ForcedEventTracker(FastBoundaryUpdateWrapper):
+class ForcedEventTracker(StructuralCompiledBoundaryUpdateWrapper):
     __slots__ = ["_forced_times", "_tol", "_cursor", "query_calls", "update_calls"]
 
     def __init__(self, forced_times: Sequence[float], tol: float = 1e-12) -> None:
@@ -103,7 +103,7 @@ class ForcedEventTracker(FastBoundaryUpdateWrapper):
                 break
 
 
-class TestFastStructuralSolver(unittest.TestCase):
+class TestStructuralCompiledSolver(unittest.TestCase):
 
     def test_eager_compiler_smoke_for_residual_ad_and_matrix_kernels(self) -> None:
         x: Var = Var("x")
@@ -125,7 +125,7 @@ class TestFastStructuralSolver(unittest.TestCase):
 
         py_res, sig_res = compiler.compile(
             equations=[eq],
-            func_name="unit_test_fast_eager_residual",
+            func_name="unit_test_compiled_eager_residual",
             use_cse=True,
             offset=0,
             inplace=True,
@@ -138,7 +138,7 @@ class TestFastStructuralSolver(unittest.TestCase):
 
         py_ad, sig_ad = compiler.compile_ad_kernel(
             equations=[eq],
-            func_name="unit_test_fast_eager_ad",
+            func_name="unit_test_compiled_eager_ad",
             use_cse=True,
             active_indices={0},
         )
@@ -151,7 +151,7 @@ class TestFastStructuralSolver(unittest.TestCase):
 
         py_mat, sig_mat = compiler.compile_matrix_kernel(
             template_eq=eq,
-            func_name="unit_test_fast_eager_matrix",
+            func_name="unit_test_compiled_eager_matrix",
             template_vars=[x],
         )
         mat_fn = nb.njit(sig_mat, cache=False, fastmath=True)(py_mat)
@@ -181,11 +181,11 @@ class TestFastStructuralSolver(unittest.TestCase):
             atol=1e-12,
         )
 
-    def test_fast_backend_builds_and_collapses_repeated_structure(self) -> None:
+    def test_structural_compiled_backend_builds_and_collapses_repeated_structure(self) -> None:
         block, _ = build_repeated_decay_block(n_states=4, k_val=2.0)
         problem = GenericEmtProblem(block, Var("t_glob"))
 
-        solver = FastStructuralSolver(
+        solver = StructuralCompiledSolver(
             problem=problem,
             t0=0.0,
             t_end=1e-3,
@@ -210,11 +210,11 @@ class TestFastStructuralSolver(unittest.TestCase):
         )
         self.assertEqual(solver._residual_assembler.get_work_buffer().shape[0], 1)
 
-    def test_fast_residual_and_jacobian_buffers_are_reused_in_place(self) -> None:
+    def test_structural_compiled_residual_and_jacobian_buffers_are_reused_in_place(self) -> None:
         block, _ = build_repeated_decay_block(n_states=3, k_val=2.0)
         problem = GenericEmtProblem(block, Var("t_glob"))
 
-        solver = FastStructuralSolver(
+        solver = StructuralCompiledSolver(
             problem=problem,
             t0=0.0,
             t_end=1e-3,
@@ -280,14 +280,14 @@ class TestFastStructuralSolver(unittest.TestCase):
         self.assertTrue(np.all(np.isfinite(solver.get_residual_buffer())))
         self.assertTrue(np.all(np.isfinite(jacobian_2.data)))
 
-    def test_fast_jacobian_matches_structural_vectorized_backend_and_csc_layout(self) -> None:
+    def test_structural_compiled_jacobian_matches_structural_vectorized_backend_and_csc_layout(self) -> None:
         block_fast, _ = build_repeated_decay_block(n_states=4, k_val=2.0)
         block_base, _ = build_repeated_decay_block(n_states=4, k_val=2.0)
 
         problem_fast = GenericEmtProblem(block_fast, Var("t_fast"))
         problem_base = GenericEmtProblem(block_base, Var("t_base"))
 
-        fast_solver = FastStructuralSolver(
+        compiled_solver = StructuralCompiledSolver(
             problem=problem_fast,
             t0=0.0,
             t_end=1e-3,
@@ -314,7 +314,7 @@ class TestFastStructuralSolver(unittest.TestCase):
         full_params_base = build_full_params(problem_base)
         history2 = x.copy()
 
-        j_fast = fast_solver._jacobian_evaluator.evaluate(
+        j_compiled = compiled_solver._jacobian_evaluator.evaluate(
             x,
             full_params_fast,
             x,
@@ -331,12 +331,12 @@ class TestFastStructuralSolver(unittest.TestCase):
             history2=history2,
         )
 
-        self.assertEqual(j_fast.shape, j_base.shape)
-        self.assertTrue(np.array_equal(j_fast.indptr, j_base.indptr))
-        self.assertTrue(np.array_equal(j_fast.indices, j_base.indices))
-        np.testing.assert_allclose(j_fast.data, j_base.data, rtol=1e-11, atol=1e-12)
+        self.assertEqual(j_compiled.shape, j_base.shape)
+        self.assertTrue(np.array_equal(j_compiled.indptr, j_base.indptr))
+        self.assertTrue(np.array_equal(j_compiled.indices, j_base.indices))
+        np.testing.assert_allclose(j_compiled.data, j_base.data, rtol=1e-11, atol=1e-12)
 
-    def test_fast_simulation_matches_structural_vectorized_solver(self) -> None:
+    def test_structural_compiled_simulation_matches_structural_vectorized_solver(self) -> None:
         block_fast, k_fast = build_repeated_decay_block(n_states=3, k_val=1.5)
         block_base, _ = build_repeated_decay_block(n_states=3, k_val=1.5)
 
@@ -348,7 +348,7 @@ class TestFastStructuralSolver(unittest.TestCase):
         p0_fast = np.zeros(problem_fast.get_variable_parameter_number(), dtype=np.float64)
         p0_base = np.zeros(problem_base.get_variable_parameter_number(), dtype=np.float64)
 
-        fast_solver = FastStructuralSolver(
+        compiled_solver = StructuralCompiledSolver(
             problem=problem_fast,
             t0=0.0,
             t_end=0.2,
@@ -371,19 +371,19 @@ class TestFastStructuralSolver(unittest.TestCase):
             auto_vectorization=True,
         )
 
-        t_fast, y_fast, dy_fast = fast_solver.simulate(x0=x0, dx0=dx0, params0=p0_fast)
+        t_compiled, y_compiled, dy_compiled = compiled_solver.simulate(x0=x0, dx0=dx0, params0=p0_fast)
         t_base, y_base, dy_base = base_solver.simulate(x0=x0.copy(), dx0=dx0.copy(), params0=p0_base)
 
-        np.testing.assert_allclose(t_fast, t_base, rtol=0.0, atol=0.0)
-        np.testing.assert_allclose(y_fast, y_base, rtol=1e-9, atol=1e-10)
-        np.testing.assert_allclose(dy_fast, dy_base, rtol=1e-9, atol=1e-10)
-        self.assertGreater(fast_solver.get_last_sim_loop_time(), 0.0)
+        np.testing.assert_allclose(t_compiled, t_base, rtol=0.0, atol=0.0)
+        np.testing.assert_allclose(y_compiled, y_base, rtol=1e-9, atol=1e-10)
+        np.testing.assert_allclose(dy_compiled, dy_base, rtol=1e-9, atol=1e-10)
+        self.assertGreater(compiled_solver.get_last_sim_loop_time(), 0.0)
 
-    def test_fast_solver_uses_forced_alignment_and_boundary_updates(self) -> None:
+    def test_structural_compiled_solver_uses_forced_alignment_and_boundary_updates(self) -> None:
         block = build_zero_dynamics_block()
         problem = GenericEmtProblem(block, Var("t_glob"))
 
-        solver = FastStructuralSolver(
+        solver = StructuralCompiledSolver(
             problem=problem,
             t0=0.0,
             t_end=0.2,

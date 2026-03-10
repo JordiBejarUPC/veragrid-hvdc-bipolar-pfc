@@ -26,7 +26,7 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProb
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
-from VeraGridEngine.Simulations.EMT.solvers.fast_structural_solver import FastStructuralSolver
+from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
 
@@ -34,12 +34,12 @@ class GenericEmtProblem(EmtProblemTemplate):
     __slots__ = list()
 
 
-BACKEND_ORDER: Tuple[str, ...] = ("SD", "AD", "VEC", "FAST")
+BACKEND_ORDER: Tuple[str, ...] = ("SD", "AD", "VEC", "COMPILED")
 BACKEND_LABELS: Dict[str, str] = {
     "SD": "Symbolic",
     "AD": "AD",
     "VEC": "StructuralVec",
-    "FAST": "FastStructural",
+    "COMPILED": "StructuralCompiled",
 }
 
 CASE_DEFINITIONS: List[Dict[str, Any]] = [
@@ -160,8 +160,8 @@ def make_solver(
         return JitAdSolver(**common_kwargs)
     if backend == "VEC":
         return StructuralVectorizedSolver(auto_vectorization=False, **common_kwargs)
-    if backend == "FAST":
-        return FastStructuralSolver(auto_build=False, **common_kwargs)
+    if backend == "COMPILED":
+        return StructuralCompiledSolver(auto_build=False, **common_kwargs)
 
     raise ValueError(f"Unknown backend: {backend}")
 
@@ -174,7 +174,7 @@ def build_backend(solver: Any, backend: str, method: DynamicIntegrationMethod) -
         solver.build_jit_ad()
     elif backend == "VEC":
         solver.auto_detect_vectorization(method)
-    elif backend == "FAST":
+    elif backend == "COMPILED":
         solver._build_vectorized_backend(method)
     else:
         raise ValueError(f"Unknown backend: {backend}")
@@ -421,16 +421,16 @@ def print_subprocess_protocol_summary(
             f"{warm['steady_run_s']:>14.6f}"
         )
 
-    fast_cold = cold_results["FAST"]
-    fast_warm = warm_results["FAST"]
+    compiled_cold = cold_results["COMPILED"]
+    compiled_warm = warm_results["COMPILED"]
     vec_cold = cold_results["VEC"]
     vec_warm = warm_results["VEC"]
 
-    print("\nFAST vs StructuralVec")
-    print(f"  Cold one-shot speedup : {speedup(vec_cold['setup_s'] + vec_cold['first_run_s'], fast_cold['setup_s'] + fast_cold['first_run_s']):.2f}x")
-    print(f"  Warm one-shot speedup : {speedup(vec_warm['setup_s'] + vec_warm['first_run_s'], fast_warm['setup_s'] + fast_warm['first_run_s']):.2f}x")
-    print(f"  Cold steady speedup   : {speedup(vec_cold['steady_run_s'], fast_cold['steady_run_s']):.2f}x")
-    print(f"  Warm steady speedup   : {speedup(vec_warm['steady_run_s'], fast_warm['steady_run_s']):.2f}x")
+    print("\nStructuralCompiled vs StructuralVec")
+    print(f"  Cold one-shot speedup : {speedup(vec_cold['setup_s'] + vec_cold['first_run_s'], compiled_cold['setup_s'] + compiled_cold['first_run_s']):.2f}x")
+    print(f"  Warm one-shot speedup : {speedup(vec_warm['setup_s'] + vec_warm['first_run_s'], compiled_warm['setup_s'] + compiled_warm['first_run_s']):.2f}x")
+    print(f"  Cold steady speedup   : {speedup(vec_cold['steady_run_s'], compiled_cold['steady_run_s']):.2f}x")
+    print(f"  Warm steady speedup   : {speedup(vec_warm['steady_run_s'], compiled_warm['steady_run_s']):.2f}x")
 
 
 def run_subprocess_protocol(method: DynamicIntegrationMethod) -> None:
@@ -492,37 +492,37 @@ def print_case_summary(case_name: str, results: Dict[str, Dict[str, Any]]) -> No
     sd = results["SD"]
     ad = results["AD"]
     vec = results["VEC"]
-    fast = results["FAST"]
+    compiled = results["COMPILED"]
 
     print("\nSpeedups (one-shot)")
-    print(f"  FAST vs Symbolic      : {speedup(sd['one_shot_s'], fast['one_shot_s']):.2f}x")
-    print(f"  FAST vs AD            : {speedup(ad['one_shot_s'], fast['one_shot_s']):.2f}x")
-    print(f"  FAST vs StructuralVec : {speedup(vec['one_shot_s'], fast['one_shot_s']):.2f}x")
+    print(f"  StructuralCompiled vs Symbolic      : {speedup(sd['one_shot_s'], compiled['one_shot_s']):.2f}x")
+    print(f"  StructuralCompiled vs AD            : {speedup(ad['one_shot_s'], compiled['one_shot_s']):.2f}x")
+    print(f"  StructuralCompiled vs StructuralVec : {speedup(vec['one_shot_s'], compiled['one_shot_s']):.2f}x")
 
     print("\nSpeedups (steady run)")
-    print(f"  FAST vs Symbolic      : {speedup(sd['steady_run_s'], fast['steady_run_s']):.2f}x")
-    print(f"  FAST vs AD            : {speedup(ad['steady_run_s'], fast['steady_run_s']):.2f}x")
-    print(f"  FAST vs StructuralVec : {speedup(vec['steady_run_s'], fast['steady_run_s']):.2f}x")
+    print(f"  StructuralCompiled vs Symbolic      : {speedup(sd['steady_run_s'], compiled['steady_run_s']):.2f}x")
+    print(f"  StructuralCompiled vs AD            : {speedup(ad['steady_run_s'], compiled['steady_run_s']):.2f}x")
+    print(f"  StructuralCompiled vs StructuralVec : {speedup(vec['steady_run_s'], compiled['steady_run_s']):.2f}x")
 
     be_fast_vs_vec: float = break_even_runs(
-        fast_setup=fast["setup_s"],
-        fast_run=fast["steady_run_s"],
+        fast_setup=compiled["setup_s"],
+        fast_run=compiled["steady_run_s"],
         base_setup=vec["setup_s"],
         base_run=vec["steady_run_s"],
     )
 
     if np.isfinite(be_fast_vs_vec):
-        print(f"\nBreak-even FAST vs StructuralVec: ~{be_fast_vs_vec:.2f} runs")
+        print(f"\nBreak-even StructuralCompiled vs StructuralVec: ~{be_fast_vs_vec:.2f} runs")
     else:
-        print("\nBreak-even FAST vs StructuralVec: no crossover")
+        print("\nBreak-even StructuralCompiled vs StructuralVec: no crossover")
 
-    max_fast_err: float = float(np.max(np.abs(reference_y - fast["y"])))
-    if max_fast_err > 1e-6:
-        print(f"[WARNING] FAST deviates from SD by {max_fast_err:.3e}")
+    max_compiled_err: float = float(np.max(np.abs(reference_y - compiled["y"])))
+    if max_compiled_err > 1e-6:
+        print(f"[WARNING] StructuralCompiled deviates from SD by {max_compiled_err:.3e}")
 
-    fast_build_stats: Dict[str, float] = fast.get("build_stats", dict())
-    if fast_build_stats:
-        print("\nFAST build breakdown")
+    compiled_build_stats: Dict[str, float] = compiled.get("build_stats", dict())
+    if compiled_build_stats:
+        print("\nStructuralCompiled build breakdown")
         ordered_keys: Tuple[str, ...] = (
             "grouping_s",
             "vec_kernel_compile_s",
@@ -540,8 +540,8 @@ def print_case_summary(case_name: str, results: Dict[str, Dict[str, Any]]) -> No
         )
 
         for key in ordered_keys:
-            if key in fast_build_stats:
-                print(f"  {key:<24}: {fast_build_stats[key]:.6f} s")
+            if key in compiled_build_stats:
+                print(f"  {key:<24}: {compiled_build_stats[key]:.6f} s")
 
 
 def run_case(

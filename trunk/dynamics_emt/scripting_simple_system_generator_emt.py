@@ -41,7 +41,7 @@ from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
-from VeraGridEngine.Simulations.EMT.solvers.fast_structural_solver import FastStructuralSolver
+from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
@@ -239,9 +239,9 @@ print(res.get_bus_df())
 print(res.get_branch_df())
 
 # ==============================================================================
-# SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED", "FAST")
+# SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")
 # ==============================================================================
-CHOSEN_SOLVER = "FAST"
+CHOSEN_SOLVER = "COMPILED"
 RUN_ALL_SOLVERS = True
 ENABLE_PLOTS = True
 ENABLE_NEWTON_TRACE = False
@@ -252,13 +252,13 @@ SOLVER_TYPE_MAP = {
     "SYMBOLIC": EmtSolverTypes.Symbolic,
     "AD": EmtSolverTypes.Automatic,
     "VECTORIZED": EmtSolverTypes.StructuralAD,
-    "FAST": EmtSolverTypes.FastStructural,
+    "COMPILED": EmtSolverTypes.StructuralCompiled,
 }
 
-ALL_SOLVER_KEYS = ["SYMBOLIC", "AD", "VECTORIZED", "FAST"]
+ALL_SOLVER_KEYS = ["SYMBOLIC", "AD", "VECTORIZED", "COMPILED"]
 
 if CHOSEN_SOLVER not in SOLVER_TYPE_MAP:
-    raise ValueError(f"Solver '{CHOSEN_SOLVER}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o FAST.")
+    raise ValueError(f"Solver '{CHOSEN_SOLVER}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
 
 options = EmtOptions(time_step = 5e-7, # 5e-7,
                      simulation_time =  0.01,  #5e-6*10, # s
@@ -311,8 +311,8 @@ def create_solver(solver_key: str, local_problem: EmtProblemDae):
                                           verbose = SOLVER_VERBOSE,
                                           auto_vectorization=False)
 
-    if solver_key == "FAST":
-        return FastStructuralSolver(problem = local_problem,
+    if solver_key == "COMPILED":
+        return StructuralCompiledSolver(problem = local_problem,
                                     t0 = 0.0,
                                     t_end = options.simulation_time,
                                     h = options.time_step,
@@ -322,7 +322,7 @@ def create_solver(solver_key: str, local_problem: EmtProblemDae):
                                     verbose = SOLVER_VERBOSE,
                                     auto_build=False)
 
-    raise ValueError(f"Solver '{solver_key}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o FAST.")
+    raise ValueError(f"Solver '{solver_key}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
 
 
 def build_solver_backend(solver_key: str, solver, local_problem: EmtProblemDae) -> None:
@@ -346,11 +346,11 @@ def build_solver_backend(solver_key: str, solver, local_problem: EmtProblemDae) 
         solver.auto_detect_vectorization(options.integration_method)
         return
 
-    if solver_key == "FAST":
+    if solver_key == "COMPILED":
         solver._build_vectorized_backend(options.integration_method)
         return
 
-    raise ValueError(f"Solver '{solver_key}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o FAST.")
+    raise ValueError(f"Solver '{solver_key}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
 
 
 def benchmark_all_solvers() -> None:
@@ -421,8 +421,8 @@ def benchmark_all_solvers() -> None:
     print("Fastest by simulate only:", fastest_sim["solver"], f"({fastest_sim['simulate_s']:.6f}s)")
 
     for item in results:
-        if item["solver"] == "FAST" and item["build_stats"]:
-            print("\nFAST backend build stats")
+        if item["solver"] == "COMPILED" and item["build_stats"]:
+            print("\nStructuralCompiled backend build stats")
             for key, value in item["build_stats"].items():
                 print(f"  {key}: {value:.6f}s")
             break
@@ -453,7 +453,7 @@ boundary_updater = cast(Any, problem)
 t, y, dy = solver.simulate(boundary_updater=boundary_updater)
 
 if hasattr(solver, "get_backend_build_stats"):
-    print("FAST backend build stats")
+    print("StructuralCompiled backend build stats")
     for key, value in solver.get_backend_build_stats().items():
         print(f"  {key}: {value:.6f}s")
 

@@ -2499,7 +2499,7 @@ class EmtSolverTypes(Enum):
     Symbolic = "symbolic"  # Symbolic differentiation (SD)
     Automatic = "automatic"  # Sparse forward-mode AD + graph coloring
     StructuralAD = "structuralAD"  # Sparse structural automatic differentiation
-    FastStructural = "fastStructural"  # Eager structural kernels + reusable buffers
+    StructuralCompiled = "structuralCompiled"  # Eager structural kernels + reusable buffers
 
     def __str__(self) -> str:
         return str(self.value)
