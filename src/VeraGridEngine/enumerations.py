@@ -155,7 +155,7 @@ class ExternalGridMode(Enum):
 
 class ShuntControlMode(Enum):
     """
-    Modes of operation of external grids
+    Modes of operation of shunt control modes
     """
     Locked = "Locked"
     Continuous = "Continuous"
