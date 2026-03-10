@@ -18,7 +18,8 @@ from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
-
+import VeraGridEngine.Utils.Symbolic.symbolic_ml as sym_ml
+from VeraGridEngine.Templates.templates_common_functions import to_implicit
 
 def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     """
@@ -174,6 +175,13 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         sym.conj(Pg + 1j * Qg) / sym.conj(Vm_init * sym.exp(1j * Va_init))) * Ra - sym.imag(
         sym.conj(Pg + 1j * Qg) / sym.conj(Vm_init * sym.exp(1j * Va_init))) * (Xl)
 
+    # Multilinear blocks (from generation_tensygrid_ml.py)
+    # We call trig_transform only on delta to get cos(delta) and sin(delta)
+    ml_trig_block, cos_delta, sin_delta = sym_ml.trig_transform(vfactory, delta)
+    
+    # We call ml_positive_part to get (Psi_ag-B)^+ := max(Psi_ag-B, 0)
+    ml_positive_part, Psi_plus, Psi_minus = sym_ml.ml_positive_part(vfactory, Psi_ag - B)
+
     templ.block = Block(
         state_eqs=[
             (omega - vfactory.add_const(1)) * ws,  # dδ/dt
@@ -185,9 +193,11 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         ],
         state_vars=[delta, omega, Eq_prime, Ed_prime, Psiq_prime, Psid_prime],
         algebraic_eqs=[
-            # Park transformation from Vr, Vi to Vd, Vq
-            Vd - (Vr * sym.sin(delta) - Vi * sym.cos(delta)),
-            Vq - (Vr * sym.cos(delta) + Vi * sym.sin(delta)),
+            # Park transformation from Vr, Vi to Vd, Vq using multilinear trig_transform on delta only
+            # Vd = Vr*sin(delta) - Vi*cos(delta)
+            # Vq = Vr*cos(delta) + Vi*sin(delta)
+            Vd - ( Vr * sin_delta - Vi * cos_delta),
+            Vq - ( Vr * cos_delta + Vi * sin_delta),
             
             Pg - (Vd * Id + Vq * Iq),  # active power
             Qg - (Vq * Id - Vd * Iq),  # reactive power
@@ -213,8 +223,8 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
             V_dag - (Vd + Id * Ra - Iq * Xl),
             V_qag - (Vq + Iq * Ra + Id * Xl),
             omega * Psi_ag - sym.sqrt(V_qag * V_qag + V_dag * V_dag),
-            # saturations (quadratic)
-            Sa - A / 2 * ((Psi_ag - B) + sym.sqrt((Psi_ag - B) ** 2 + vfactory.add_const(1e-5))) ** 2,
+            # saturations using multilinear ml_positive_part
+            Sa - A * Psi_plus,
 
             # Eq1, Eq2, Ed1, Ed2 exciter
             IRPu - Eq1 * Sat,
@@ -226,10 +236,10 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
                         Sa, Sat, V_dag, V_qag, Psi_ag,
                         IRPu],
         init_eqs={
-            # Air Gap Voltages and delta
+            # Air Gap Voltages and delta (must come first as others depend on these)
             omega: vfactory.add_const(1),
             Psi_ag: sym.sqrt(Viag_expr ** 2 + Vrag_expr ** 2),
-            Sa: A / 2 * ((Psi_ag - B) + sym.sqrt((Psi_ag - B) ** 2 + vfactory.add_const(1e-5))) ** 2,
+            Sa: A * Psi_plus,
             Sat: vfactory.add_const(1) + Sa,
             delta: sym.atan(
                 (Vm_init * sym.sin(Va_init) + sym.imag(
@@ -240,6 +250,8 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
                     sym.conj(Pg + 1j * Qg) / sym.conj(Vm_init * sym.exp(1j * Va_init))) * Ra - sym.imag(
                     sym.conj(Pg + 1j * Qg) / sym.conj(Vm_init * sym.exp(1j * Va_init))) *
                  ((Xq - Xl) / (vfactory.add_const(1) + Sa) + Xl))),
+            
+            # Multilinear block variables (depend on delta and Psi_ag)
 
             # Saturated Resistances
             Xd_2prime_sat: (Xd_2prime - Xl + Xl * Sat) / Sat,
@@ -318,7 +330,8 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         out_vars=[Pg, Qg, omega, IRPu, Te],
         in_vars=inputs,
         event_dict=event_dict,
-        name="genqec_phasor"
+        name="genqec_phasor",
+        children=[ml_trig_block, ml_positive_part]
     )
 
     return templ
@@ -332,6 +345,8 @@ def get_complete_generator_template_phasor(vfactory: VarFactory, name="complete 
     The governor, exciter, and stabilizer models are internally connected to the generator.
     The exciter's Vm input is computed internally as Vm = sqrt(Vr^2 + Vi^2).
     
+    Uses models from generation_tensygrid_ml.py (GenqecBuild, GovernorBuild, StabilizerBuild, ExciterBuild).
+    
     Args:
         vfactory: VarFactory instance for creating variables
         name: Name of the template
@@ -339,17 +354,17 @@ def get_complete_generator_template_phasor(vfactory: VarFactory, name="complete 
     Returns:
         RmsModelTemplate: Complete generator model template for phasor simulation
     """
-    from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_governor, get_stabilizer, get_exciter
+    from VeraGridEngine.Templates.Rms.generation_tensygrid_ml import GenqecBuild, GovernorBuild, StabilizerBuild, ExciterBuild
     
     templ = RmsModelTemplate(name=name)
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
 
-    # Generate models
-    genqec_mdl = get_genqec_phasor(vfactory=vfactory, name=name).block
-    exciter_mdl = get_exciter(vfactory=vfactory, name=name).block
-    governor_mdl = get_governor(vfactory=vfactory, name=name).block
-    stabilizer_mdl = get_stabilizer(vfactory=vfactory, name=name).block
+    # Generate models from generation_tensygrid_ml.py
+    genqec_mdl = GenqecBuild(vfactory=vfactory, name=name).block
+    governor_mdl = GovernorBuild(vfactory=vfactory, name=name).block
+    stabilizer_mdl = StabilizerBuild(vfactory=vfactory, name=name).block
+    exciter_mdl = ExciterBuild(vfactory=vfactory, name=name).block
 
     # Create Vm calculation block: Vm = sqrt(Vr^2 + Vi^2)
     # This computes the voltage magnitude from phasor components for the exciter
@@ -358,10 +373,17 @@ def get_complete_generator_template_phasor(vfactory: VarFactory, name="complete 
     
     # Create a block to compute Vm = sqrt(Vr^2 + Vi^2)
     Vm_calc = vfactory.add_var(f"Vm_calc_{name}")
+    Vm_calc_aux = vfactory.add_var(f"Vm_calc_{name}")
     vm_calc_block = Block(
-        algebraic_eqs=[Vm_calc - sym.sqrt(Vr_input * Vr_input + Vi_input * Vi_input)],
-        algebraic_vars=[Vm_calc],
+        algebraic_eqs=[
+            Vm_calc*Vm_calc_aux - (Vr_input * Vr_input + Vi_input * Vi_input),
+            Vm_calc -Vm_calc_aux],
+        algebraic_vars=[Vm_calc, Vm_calc_aux],
         out_vars=[Vm_calc],
+        init_eqs={
+                Vm_calc: sym.sqrt(Vr_input * Vr_input + Vi_input * Vi_input),  
+                Vm_calc_aux: Vm_calc,
+        },
         name=f"vm_calc_{name}"
     )
 
@@ -386,6 +408,9 @@ def get_complete_generator_template_phasor(vfactory: VarFactory, name="complete 
     templ.block.children.append(exciter_mdl)
     templ.block.children.append(vm_calc_block)
 
+    # Flatten all blocks before converting to implicit form
+    templ.block.unify_blocks()
+    # templ.block = to_implicit(templ.block, vfactory)
     # External mapping for phasor coordinates
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Vr: genqec_mdl.in_vars[0],
