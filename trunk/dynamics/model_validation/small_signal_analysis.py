@@ -69,12 +69,12 @@ def small_signal_analysis():
     line_mdl.connect([line_mdl.in_vars[3]], [bus1.rms_model.model.out_vars[1]])
     
     # Attach line model to the line device
-    set_rms_model(device=line, model=line_mdl)
+    set_rms_model(device=line, model=line_mdl, var_factory=grid.var_factory)
     
     genqec.connect([genqec.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
     genqec.connect([genqec.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
     
-    set_rms_model(device=gen, model=genqec)
+    set_rms_model(device=gen, model=genqec, var_factory=grid.var_factory)
     
     load_mdl = get_load_phasor_current_rms_template(grid.var_factory).block
     load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
@@ -83,7 +83,7 @@ def small_signal_analysis():
     # For V ≈ 1.0, Ir ≈ P, Ii ≈ Q
     load_mdl.set_parameter_in_model(var_name="Ir0", new_value=-0.1)
     load_mdl.set_parameter_in_model(var_name="Ii0", new_value=-0.01)
-    set_rms_model(device=load, model=load_mdl)
+    set_rms_model(device=load, model=load_mdl, var_factory=grid.var_factory)
     
     print("  ✓ Grid created with multilinear generator")
     
@@ -219,8 +219,6 @@ def small_signal_analysis():
         ax2.grid(True, alpha=0.3, axis='y')
     
     plt.tight_layout()
-    plt.savefig('small_signal_phasor.png', dpi=150, bbox_inches='tight')
-    print(f"  ✓ Plot saved to small_signal_phasor.png")
     plt.show()
     
     return True

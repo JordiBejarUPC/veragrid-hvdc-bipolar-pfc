@@ -312,6 +312,21 @@ class BoundaryUpdateWrapper:
         """
         pass  # Explicit no-op for base class
 
+    def get_next_forced_event_time(self, t_prev: float, t_target: float) -> float | None:
+        """
+        Returns the next forced-alignment event time inside (t_prev, t_target].
+        Returns None if no forced event exists in that interval.
+
+        :param t_prev: Start of the current local substep.
+        :type t_prev: float
+        :param t_target: End of the current macro-step.
+        :type t_target: float
+        :return: Next forced event time or None.
+        :rtype: float | None
+        """
+        _unused: Tuple["BoundaryUpdateWrapper", float, float] = (self, t_prev, t_target)
+        return None
+
 # ==============================================================================
 # Sparse AD Jacobian
 # ==============================================================================
@@ -809,92 +824,160 @@ class StructuralVectorizedSolver:
             history2=x_prev2
         )
 
-        cached_lu_dense: Tuple[np.ndarray, np.ndarray] | None = None
-        cached_lu_sparse: SuperLU | None = None
-
         t_start_loop = time.time()  # Timer local para debug
 
         if verbose: print(f"-> Starting VECTORIZED Simulation (Integration loop)...")
 
         for i in range(steps):
-            if verbose: print(f"Simulating at step {i}")
-            t_curr: float = float(t[i + 1])
+            if verbose:
+                print(f"Simulating at step {i}")
 
-            # Update params in-place
-            full_params[:len(ev_params)] = self.problem.def_event_params_fn(ev_params, float(t_curr))
+            t_step_start: float = float(t[i])
+            t_step_target: float = float(t[i + 1])
 
-            if boundary_updater is not None:
-                boundary_updater.update(t_curr, x_prev, full_params)
-            else:
-                pass
+            t_local_prev: float = t_step_start
+            is_first_local_step: bool = True
 
-            ev_params[:] = full_params[:len(ev_params)]
+            while t_local_prev < (t_step_target - 1e-15):
 
-            x_iter[:] = x_prev
-            last_res_norm: float = 1.0
-
-            # PREDICTOR
-            if i == 0 and method == DynamicIntegrationMethod.DaeTrapezoidal:
-                n_states = self.problem.get_states_number()
-                predictor = Predictor(n_states=n_states)
-                predictor.predict(
-                    x_iter=x_iter,
-                    x_prev=x_prev,
-                    dx_prev=dx_prev,
-                    h=self.h,
-                    pred_method=self.pred_method,
-                )
-
-            for k in range(15):
-                self.fused_residual(x_iter, full_params, x_prev, dx_prev, h, self.vec_flat_args, res_global, x_prev2)
-                res_norm: float = np.max(np.abs(res_global))
-
-                if res_norm < 1e-6:
-                    break
-
-                recompute: bool = (cached_lu_dense is None and cached_lu_sparse is None) or \
-                                  (k > 0 and (res_norm / (last_res_norm + 1e-16)) > 0.5)
-
-                if recompute:
-                    cached_J: csc_matrix = self.vec_jacobian(
-                        states=x_iter,
-                        params=full_params,
-                        history=x_prev,
-                        d_history=dx_prev,
-                        h=h,
-                        history2=x_prev2
+                forced_event_time: float | None = None
+                if boundary_updater is None:
+                    pass
+                else:
+                    forced_event_time = boundary_updater.get_next_forced_event_time(
+                        t_prev=float(t_local_prev),
+                        t_target=float(t_step_target),
                     )
 
-                    if use_dense:
-                        cached_lu_dense = lu_factor(cached_J.toarray())
-                        cached_lu_sparse = None
-                    else:
-                        cached_lu_sparse = splu(cached_J)
-                        cached_lu_dense = None
-
-                if use_dense:
-                    delta = lu_solve(cached_lu_dense, -res_global)
+                if forced_event_time is None:
+                    t_curr = t_step_target
                 else:
-                    delta = cached_lu_sparse.solve(-res_global)
+                    t_curr = min(float(forced_event_time), t_step_target)
 
-                x_iter += delta
-                last_res_norm = res_norm
+                    if t_curr <= t_local_prev + 1e-15:
+                        t_curr = t_step_target
+                    else:
+                        pass
 
-            y[i + 1] = x_iter
-            dy[i+1] = dx_prev
+                is_aligned_substep: bool = t_curr < (t_step_target - 1e-15)
 
-            if method == DynamicIntegrationMethod.DaeTrapezoidal:
-                dx_prev[:self._n_state] = (2.0 / h) * (x_iter[:self._n_state] - x_prev[:self._n_state]) - dx_prev[
-                    :self._n_state]
-            elif method == DynamicIntegrationMethod.DaeBDF2:
-                x_prev2[:] = x_prev
-                dx_prev[:self._n_state] = (1.5 * x_iter[:self._n_state] - 2.0 * x_prev[:self._n_state] + 0.5 * x_prev2[
-                    :self._n_state]) / h
-            else:
-                dx_prev[:self._n_state] = (x_iter[:self._n_state] - x_prev[:self._n_state]) / h
+                if method == DynamicIntegrationMethod.DaeBDF2 and is_aligned_substep:
+                    raise NotImplementedError(
+                        "force_step_alignment is not implemented for DaeBDF2 in StructuralVectorizedSolver."
+                    )
+                else:
+                    pass
 
-            if method != DynamicIntegrationMethod.DaeBDF2: x_prev2[:] = x_prev
-            x_prev[:] = x_iter
+                h_eff: float = float(t_curr - t_local_prev)
+
+                # Update params in-place for the local substep end
+                full_params[:len(ev_params)] = self.problem.def_event_params_fn(ev_params, float(t_curr))
+
+                if boundary_updater is not None:
+                    boundary_updater.update(t_curr, x_prev, full_params)
+                else:
+                    pass
+
+                ev_params[:] = full_params[:len(ev_params)]
+
+                x_iter[:] = x_prev
+                last_res_norm: float = 1.0
+
+                # IMPORTANT:
+                # LU factors must be local to each substep, because x_prev, params and h_eff may change.
+                cached_lu_dense: Tuple[np.ndarray, np.ndarray] | None = None
+                cached_lu_sparse: SuperLU | None = None
+
+                # PREDICTOR
+                if i == 0 and is_first_local_step and method == DynamicIntegrationMethod.DaeTrapezoidal:
+                    n_states = self.problem.get_states_number()
+                    predictor = Predictor(n_states=n_states)
+                    predictor.predict(
+                        x_iter=x_iter,
+                        x_prev=x_prev,
+                        dx_prev=dx_prev,
+                        h=h_eff,
+                        pred_method=self.pred_method,
+                    )
+                else:
+                    pass
+
+                for k in range(15):
+                    self.fused_residual(
+                        x_iter,
+                        full_params,
+                        x_prev,
+                        dx_prev,
+                        h_eff,
+                        self.vec_flat_args,
+                        res_global,
+                        x_prev2
+                    )
+                    res_norm: float = np.max(np.abs(res_global))
+
+                    if res_norm < 1e-6:
+                        break
+                    else:
+                        pass
+
+                    recompute: bool = (cached_lu_dense is None and cached_lu_sparse is None) or \
+                                      (k > 0 and (res_norm / (last_res_norm + 1e-16)) > 0.5)
+
+                    if recompute:
+                        cached_J: csc_matrix = self.vec_jacobian(
+                            states=x_iter,
+                            params=full_params,
+                            history=x_prev,
+                            d_history=dx_prev,
+                            h=h_eff,
+                            history2=x_prev2
+                        )
+
+                        if use_dense:
+                            cached_lu_dense = lu_factor(cached_J.toarray())
+                            cached_lu_sparse = None
+                        else:
+                            cached_lu_sparse = splu(cached_J)
+                            cached_lu_dense = None
+                    else:
+                        pass
+
+                    if use_dense:
+                        delta = lu_solve(cached_lu_dense, -res_global)
+                    else:
+                        delta = cached_lu_sparse.solve(-res_global)
+
+                    x_iter += delta
+                    last_res_norm = res_norm
+
+                if method == DynamicIntegrationMethod.DaeTrapezoidal:
+                    dx_prev[:self._n_state] = (
+                            (2.0 / h_eff) * (x_iter[:self._n_state] - x_prev[:self._n_state])
+                            - dx_prev[:self._n_state]
+                    )
+                elif method == DynamicIntegrationMethod.DaeBDF2:
+                    x_prev2[:] = x_prev
+                    dx_prev[:self._n_state] = (
+                                                      1.5 * x_iter[:self._n_state]
+                                                      - 2.0 * x_prev[:self._n_state]
+                                                      + 0.5 * x_prev2[:self._n_state]
+                                              ) / h_eff
+                else:
+                    dx_prev[:self._n_state] = (
+                                                      x_iter[:self._n_state] - x_prev[:self._n_state]
+                                              ) / h_eff
+
+                if method != DynamicIntegrationMethod.DaeBDF2:
+                    x_prev2[:] = x_prev
+                else:
+                    pass
+
+                x_prev[:] = x_iter
+                t_local_prev = t_curr
+                is_first_local_step = False
+
+            y[i + 1] = x_prev
+            dy[i + 1] = dx_prev
 
         self._last_sim_loop_time = time.time() - t_start_loop
         if verbose: print(f"VECTORIZED INTEGRATION LOOP Finished: {self._last_sim_loop_time:.4f}s")

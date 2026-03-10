@@ -248,7 +248,7 @@ print(f"init_guess_table\n{df}")
 # ==============================================================================
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED")
 # ==============================================================================
-CHOSEN_SOLVER = "AD"
+CHOSEN_SOLVER = "VECTORIZED"
 
 print(f"\n======================================")
 print(f"Initializing Solver: {CHOSEN_SOLVER}")
