@@ -49,6 +49,7 @@ class ResultsMain(SimulationsMain):
         self.ui.copy_numpy_button.clicked.connect(self.copy_results_data_as_numpy)
         self.ui.plot_data_pushButton.clicked.connect(self.plot_results)
         self.ui.search_results_Button.clicked.connect(self.search_in_results)
+        self.ui.search_dynamic_objects_Button.clicked.connect(self.search_dynamic_objects)
         self.ui.deleteDriverButton.clicked.connect(self.delete_results_driver)
         self.ui.saveResultsLogsButton.clicked.connect(self.save_results_logs)
 
@@ -61,6 +62,7 @@ class ResultsMain(SimulationsMain):
 
         # line edit enter
         self.ui.search_results_lineEdit.returnPressed.connect(self.search_in_results)
+        self.ui.search_dynamic_objects_lineEdit.returnPressed.connect(self.search_dynamic_objects)
 
         # wrap headers
         self.ui.resultsTableView.setHorizontalHeader(HeaderViewWithWordWrap(self.ui.resultsTableView))
@@ -103,8 +105,8 @@ class ResultsMain(SimulationsMain):
                 ))
 
                 # set the tree model
-                tree_model = self.dynamic_results_handler.get_tree_model()
-                self.ui.dynamicsDeviceTreeView.setModel(tree_model)
+                self.ui.dynamicsDeviceTreeView.setModel(self.dynamic_results_handler.get_view_model())
+                # self.ui.dynamicsDeviceTreeView.expandAll()
 
             if len(path) > 1:
 
@@ -177,7 +179,8 @@ class ResultsMain(SimulationsMain):
         """
         # The handler owns the mapping between tree nodes and simulation variable objects.
         if self.dynamic_results_handler is not None:
-            selected_var = self.dynamic_results_handler.get_var_from_index(index=index)
+            source_index: QtCore.QModelIndex = self.dynamic_results_handler.map_to_source(index=index)
+            selected_var = self.dynamic_results_handler.get_var_from_index(index=source_index)
             if selected_var is not None:
                 print(selected_var)
                 return selected_var
@@ -194,7 +197,8 @@ class ResultsMain(SimulationsMain):
         """
         # The handler owns the mapping between tree nodes and simulation variable objects.
         if self.dynamic_results_handler is not None:
-            selected_var = self.dynamic_results_handler.get_var_from_index(index=index)
+            source_index: QtCore.QModelIndex = self.dynamic_results_handler.map_to_source(index=index)
+            selected_var = self.dynamic_results_handler.get_var_from_index(index=source_index)
             if selected_var is not None:
                 group_name = self.ui.eventsGroupComboBox.currentText()
                 self.dynamic_results_handler.plot_var(var=selected_var, group_name=group_name)
@@ -203,6 +207,22 @@ class ResultsMain(SimulationsMain):
                 return None
         else:
             return None
+
+    def search_dynamic_objects(self) -> None:
+        """
+        Filter the dynamics tree view using the text entered by the user.
+
+        :return: Nothing.
+        """
+        # Without an active handler, there is no loaded dynamics tree to search.
+        if self.dynamic_results_handler is not None:
+            search_text: str = self.ui.search_dynamic_objects_lineEdit.text().strip()
+            self.dynamic_results_handler.set_search_text(search_text=search_text)
+
+            # Expanding after filtering keeps matching branches visible, and resetting the filter remains trivial.
+            self.ui.dynamicsDeviceTreeView.expandAll()
+        else:
+            pass
 
 
     def plot_results(self):

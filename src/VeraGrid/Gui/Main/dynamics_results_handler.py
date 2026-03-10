@@ -6,6 +6,7 @@ from typing import Dict, List
 
 from PySide6 import QtCore, QtGui
 
+from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
@@ -95,6 +96,24 @@ def _append_devices(parent_item: QtGui.QStandardItem,
         _append_variables(parent_item=device_item, variables=variables)
 
 
+def _set_item_icon(item: QtGui.QStandardItem, icon_key: str) -> None:
+    """
+    Set the item icon from the shared device-type icon dictionary.
+
+    :param item: Tree item that should receive the icon.
+    :param icon_key: Key used to search in ``device_type_icons``.
+    :return: Nothing.
+    """
+    # The GUI keeps the icon associations in a shared dictionary, so this tree reuses the same mapping.
+    icon_path: str | None = device_type_icons.get(icon_key, None)
+    if icon_path is not None:
+        icon: QtGui.QIcon = QtGui.QIcon()
+        icon.addPixmap(QtGui.QPixmap(icon_path))
+        item.setIcon(icon)
+    else:
+        pass
+
+
 def build_dynamics_tree_model(
         tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]]) -> QtGui.QStandardItemModel:
     """
@@ -115,6 +134,7 @@ def build_dynamics_tree_model(
     for device_tpe, devices_data in tree_data.items():
         # The first level groups all devices by their type so the tree remains navigable.
         device_type_item: QtGui.QStandardItem = _build_tree_item(text=_get_device_type_label(device_tpe=device_tpe))
+        _set_item_icon(item=device_type_item, icon_key=_get_device_type_label(device_tpe=device_tpe))
         root_item.appendRow(device_type_item)
         _append_devices(parent_item=device_type_item, devices_data=devices_data)
 
@@ -126,7 +146,7 @@ class DynamicsResultsHandler:
     Prepare GUI structures from RMS dynamics results.
     """
 
-    __slots__ = ("results", "tree_data", "tree_model", "group_idx")
+    __slots__ = ("results", "tree_data", "tree_model", "proxy_model", "group_idx")
 
     def __init__(self, results: RmsResults):
         """
@@ -145,6 +165,19 @@ class DynamicsResultsHandler:
         # The tree model is created once and then reused by the view and the click lookup logic.
         self.tree_model: QtGui.QStandardItemModel = build_dynamics_tree_model(tree_data=self.tree_data)
 
+        # The proxy model owns the reversible filtering state used by the tree view.
+        self.proxy_model: QtCore.QSortFilterProxyModel = QtCore.QSortFilterProxyModel()
+        self.proxy_model.setSourceModel(self.tree_model)
+        self.proxy_model.setRecursiveFilteringEnabled(True)
+        self.proxy_model.setFilterCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
+        self.proxy_model.setFilterKeyColumn(0)
+
+        # When a parent matches, the full subtree should remain navigable in the filtered view.
+        if hasattr(self.proxy_model, "setAutoAcceptChildRows"):
+            self.proxy_model.setAutoAcceptChildRows(True)
+        else:
+            pass
+
     def get_tree_model(self) -> QtGui.QStandardItemModel:
         """
         Get the tree-view model built from the RMS results tree.
@@ -153,6 +186,38 @@ class DynamicsResultsHandler:
         """
         # The model instance is reused because the handler owns a fixed snapshot of the results tree.
         return self.tree_model
+
+    def get_view_model(self) -> QtCore.QSortFilterProxyModel:
+        """
+        Get the proxy model used by the dynamics tree view.
+
+        :return: Filter proxy model wrapping the source dynamics tree.
+        """
+        # The view consumes the proxy model so filtering can be updated without rebuilding the source tree.
+        return self.proxy_model
+
+    def set_search_text(self, search_text: str) -> None:
+        """
+        Update the proxy-model filter with the given search text.
+
+        :param search_text: Text used to filter the tree nodes.
+        :return: Nothing.
+        """
+        # Escaping the text keeps the search literal and avoids accidental regular-expression semantics.
+        escaped_text: str = QtCore.QRegularExpression.escape(search_text.strip())
+        regex: QtCore.QRegularExpression = QtCore.QRegularExpression(escaped_text)
+        regex.setPatternOptions(QtCore.QRegularExpression.PatternOption.CaseInsensitiveOption)
+        self.proxy_model.setFilterRegularExpression(regex)
+
+    def map_to_source(self, index: QtCore.QModelIndex) -> QtCore.QModelIndex:
+        """
+        Map a view index from the proxy model back to the source tree model.
+
+        :param index: Index received from the tree-view signal.
+        :return: Source-model index understood by the handler internals.
+        """
+        # The tree view is expected to use the proxy, so clicks must be translated before item lookup.
+        return self.proxy_model.mapToSource(index)
 
     def get_var_from_index(self, index: QtCore.QModelIndex) -> Var | None:
         """
