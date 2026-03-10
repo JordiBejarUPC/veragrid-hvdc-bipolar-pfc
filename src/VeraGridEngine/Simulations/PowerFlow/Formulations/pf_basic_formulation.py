@@ -212,23 +212,23 @@ class PfBasicFormulation(PfFormulationTemplate):
             # discrete shunt logic
             for bus_i, sh_i in self.buses_with_discrete_shunts_control:
                 if self.Vm[bus_i] > self.nc.shunt_data.vmax[sh_i]:
-                    # lower B
+                    # decrease B
                     if self.shunt_step[sh_i] > 0:
                         b_steps: IntVec = self.nc.shunt_data.b_steps[sh_i]
-                        prev_b = b_steps[self.shunt_step[sh_i]]
+                        prev_b = b_steps[self.shunt_step[sh_i]] / self.nc.Sbase
                         self.shunt_step[sh_i] -= 1
-                        b = b_steps[self.shunt_step[sh_i]]
-                        self.modify_y_diagonal(prev_val=prev_b, new_val=b, i=bus_i)
+                        b = prev_b - b_steps[self.shunt_step[sh_i]] / self.nc.Sbase
+                        self.modify_y_diagonal(prev_val=(0.0 + 1j * prev_b), new_val=(0.0 + 1j * b), i=bus_i)
                         any_change = True
 
                 elif self.Vm[bus_i] < self.nc.shunt_data.vmin[sh_i]:
                     # increase B
                     b_steps: IntVec = self.nc.shunt_data.b_steps[sh_i]
                     if self.shunt_step[sh_i] < (len(b_steps) - 1):
-                        prev_b = b_steps[self.shunt_step[sh_i]]
+                        prev_b = b_steps[self.shunt_step[sh_i]] / self.nc.Sbase
                         self.shunt_step[sh_i] += 1
-                        b = b_steps[self.shunt_step[sh_i]]
-                        self.modify_y_diagonal(prev_val=prev_b, new_val=b, i=bus_i)
+                        b = prev_b + b_steps[self.shunt_step[sh_i]] / self.nc.Sbase
+                        self.modify_y_diagonal(prev_val=(0.0 + 1j * prev_b), new_val=(0.0 + 1j * b), i=bus_i)
                         any_change = True
                 else:
                     # within boundaries
