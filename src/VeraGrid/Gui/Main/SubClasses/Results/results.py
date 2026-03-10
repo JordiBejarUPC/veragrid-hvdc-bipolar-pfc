@@ -3,9 +3,11 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import numpy as np
-from PySide6 import QtWidgets, QtGui
+from PySide6 import QtCore, QtWidgets, QtGui
 from matplotlib import pyplot as plt
 from typing import Union
+
+from VeraGrid.Gui.Main.dynamics_results_handler import DynamicsResultsHandler
 from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap
 import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
@@ -14,7 +16,8 @@ from VeraGrid.Gui.results_model import ResultsModel
 from VeraGrid.Gui.general_dialogues import fill_tree_from_logs
 import VeraGridEngine.Utils.Filtering as flt
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import ResultTypes
+from VeraGridEngine.enumerations import ResultTypes, SimulationTypes
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
 
 class ResultsMain(SimulationsMain):
@@ -35,6 +38,8 @@ class ResultsMain(SimulationsMain):
 
         self.current_results_logger: Union[None, Logger] = None
 
+        self.dynamic_results_handler: DynamicsResultsHandler | None = None
+
         # --------------------------------------------------------------------------------------------------------------
         self.ui.actionSet_OPF_generation_to_profiles.triggered.connect(self.copy_opf_to_profiles)
 
@@ -49,6 +54,10 @@ class ResultsMain(SimulationsMain):
 
         # tree-click
         self.ui.results_treeView.clicked.connect(self.results_tree_view_click)
+        self.ui.dynamicsDeviceTreeView.clicked.connect(self.dynamic_results_tree_view_click)
+
+        # tree double click
+        self.ui.dynamicsDeviceTreeView.doubleClicked.connect(self.dynamic_results_tree_view_dbl_click)
 
         # line edit enter
         self.ui.search_results_lineEdit.returnPressed.connect(self.search_in_results)
@@ -83,6 +92,19 @@ class ResultsMain(SimulationsMain):
 
             # set the report
             self.ui.resultsReportTextEdit.setText(driver.results.report_text)
+
+            # set the dynamics model handler
+            if driver.tpe == SimulationTypes.RmsDynamic_run:
+                self.dynamic_results_handler = DynamicsResultsHandler(results=driver.results)
+
+                # set the groups combobox
+                self.ui.eventsGroupComboBox.setModel(gf.get_list_model(
+                    self.dynamic_results_handler.results.rms_events_group_names
+                ))
+
+                # set the tree model
+                tree_model = self.dynamic_results_handler.get_tree_model()
+                self.ui.dynamicsDeviceTreeView.setModel(tree_model)
 
             if len(path) > 1:
 
@@ -146,6 +168,42 @@ class ResultsMain(SimulationsMain):
             # set the logs
             self.current_results_logger = None
             self.ui.resultsLogsTreeView.setModel(None)
+
+    def dynamic_results_tree_view_click(self, index: QtCore.QModelIndex) -> Var | None:
+        """
+        Resolve the clicked dynamics tree node into an RMS variable.
+
+        :param index: Clicked tree index.
+        """
+        # The handler owns the mapping between tree nodes and simulation variable objects.
+        if self.dynamic_results_handler is not None:
+            selected_var = self.dynamic_results_handler.get_var_from_index(index=index)
+            if selected_var is not None:
+                print(selected_var)
+                return selected_var
+            else:
+                return None
+        else:
+            return None
+
+    def dynamic_results_tree_view_dbl_click(self, index: QtCore.QModelIndex):
+        """
+
+        :param index:
+        :return:
+        """
+        # The handler owns the mapping between tree nodes and simulation variable objects.
+        if self.dynamic_results_handler is not None:
+            selected_var = self.dynamic_results_handler.get_var_from_index(index=index)
+            if selected_var is not None:
+                group_name = self.ui.eventsGroupComboBox.currentText()
+                self.dynamic_results_handler.plot_var(var=selected_var, group_name=group_name)
+                return None
+            else:
+                return None
+        else:
+            return None
+
 
     def plot_results(self):
         """

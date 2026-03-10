@@ -16,7 +16,8 @@ from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod, ResultTypes
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod, \
+    ResultTypes
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 import VeraGridEngine.api as gce
 
@@ -30,6 +31,7 @@ def find_name_in_block(name: str, block: Block):
         res = find_name_in_block(name, mdl)
         if res is not None:
             return res
+
 
 def test_simulation_with_event():
     """
@@ -50,9 +52,6 @@ def test_simulation_with_event():
 
     ###########################################################################################################################
     # Build VeraGrid object
-
-
-
 
     grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
 
@@ -133,7 +132,6 @@ def test_simulation_with_event():
     grid.add_line(line0)
     grid.add_load(bus=bus1, api_obj=load)
     grid.add_generator(bus=bus0, api_obj=gen0)
-
 
     options = gce.PowerFlowOptions(
         solver_type=gce.SolverType.NR,
