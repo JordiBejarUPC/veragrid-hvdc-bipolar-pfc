@@ -63,6 +63,10 @@ class ShuntData:
         self.vmin: Vec = np.zeros(nelm, dtype=float)
         self.vmax: Vec = np.zeros(nelm, dtype=float)
 
+        self.step = np.zeros(nelm, dtype=int)
+        self.g_steps = SparseObjectArray(n=self.nelm)
+        self.b_steps = SparseObjectArray(n=self.nelm)
+
     def size(self) -> int:
         """
         Get size of the structure
@@ -125,6 +129,10 @@ class ShuntData:
         data.vmin = self.vmin[elm_idx]
         data.vmax = self.vmax[elm_idx]
 
+        data.step = self.step[elm_idx]
+        data.g_steps = self.g_steps.slice(elm_idx)
+        data.b_steps = self.b_steps.slice(elm_idx)
+
         return data
 
     def remap(self, bus_map_arr: IntVec):
@@ -172,6 +180,10 @@ class ShuntData:
         data.vset = self.vset.copy()
         data.vmin = self.vmin.copy()
         data.vmax = self.vmax.copy()
+
+        data.step = self.step.copy()
+        data.g_steps = self.g_steps.copy()
+        data.b_steps = self.b_steps.copy()
 
         return data
 

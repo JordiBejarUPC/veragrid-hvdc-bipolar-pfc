@@ -901,6 +901,10 @@ def get_shunt_data(
             data.qmin[ii] = elm.Bmin
             data.qmax[ii] = elm.Bmax
 
+            data.step[ii] = elm.step
+            data.g_steps.insert(i=ii, x=elm.g_steps)
+            data.b_steps.insert(i=ii, x=elm.b_steps)
+
             data.Y[ii] += elm.get_Y_at(t_idx)
             data.active[ii] = elm.get_active_at(t_idx)
             data.cost[ii] = elm.get_Cost_at(t_idx)
