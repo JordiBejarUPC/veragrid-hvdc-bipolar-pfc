@@ -35,7 +35,6 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
-from VeraGridEngine.Devices.Aggregation import RmsEvent
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -229,7 +228,7 @@ print(res.get_bus_df())
 print(res.get_branch_df())
 
 options = EmtOptions(time_step = 5e-7, # 5e-7,
-                     simulation_time =  0.01,  #5e-6*10, # s
+                     simulation_time =  0.005,  #5e-6*10, # s
                      tolerance = 1e-6,
                      solver = EmtSolverTypes.Symbolic,
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
@@ -248,7 +247,7 @@ print(f"init_guess_table\n{df}")
 # ==============================================================================
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED")
 # ==============================================================================
-CHOSEN_SOLVER = "AD"
+CHOSEN_SOLVER = "SYMBOLIC"
 
 print(f"\n======================================")
 print(f"Initializing Solver: {CHOSEN_SOLVER}")

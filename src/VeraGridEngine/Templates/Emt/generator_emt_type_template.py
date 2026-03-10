@@ -47,6 +47,12 @@ def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "
     psi_0 = vf.add_var("psi_0_" + name)
     et    = vf.add_var("et_" + name)     # PI integrator state (units: pu*s or equivalent)
 
+    delta = vf.add_var("delta_" + name) # difference between rotor angle and grid angle
+    phi_v = vf.add_var("phi_v_" + name)
+    phi = vf.add_var("phi_" + name)
+    Vpk = vf.add_var("Vpk_" + name)
+    Ipk = vf.add_var("Ipk_" + name)
+
     # Diff vars (derivatives)
     d_omega = vf.add_diff_var(name = f"d_omega_{name}", base_var=omega)
     d_theta = vf.add_diff_var(name = f"d_theta_{name}", base_var=theta)
@@ -101,10 +107,15 @@ def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "
     L0  = vf.add_var("L0")
 
     omega_ref = vf.add_var("omega_ref")  # pu
-    Kp        = vf.add_var("Kp")
-    Ki        = vf.add_var("Ki")
+    Kp = vf.add_var("Kp")
+    Ki = vf.add_var("Ki")
 
     v_f0 = vf.add_var("v_f0")  # temporary fixed exciter output
+
+    Ipk = vf.add_var("Ipk")
+    Vpk = vf.add_var("Vpk")
+    phi = vf.add_var("phi")
+    phi_v = vf.add_var("phi_v")
 
     templ.block = Block(
         # --------------------------------------------------------------------------------------
@@ -139,25 +150,11 @@ def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "
                     inputs[1] * sym.cos(theta - 2 * np.pi / 3) +
                     inputs[2] * sym.cos(theta + 2 * np.pi / 3)),
             v_0 - (1 / 3) * (inputs[0] + inputs[1] + inputs[2]),
-            # v_d - (2 / 3) * (
-            #         inputs[0] * sym.cos(theta) +
-            #         inputs[1] * sym.cos(theta - 2 * np.pi / 3) +
-            #         inputs[2] * sym.cos(theta + 2 * np.pi / 3)),
-            # v_q + (2 / 3) * (
-            #         inputs[0] * sym.sin(theta) +
-            #         inputs[1] * sym.sin(theta - 2 * np.pi / 3) +
-            #         inputs[2] * sym.sin(theta + 2 * np.pi / 3)),
-            # v_0 - (1 / 3) * (inputs[0] + inputs[1] + inputs[2]),
-
-            # i_A - (i_d * sym.cos(theta) - i_q * sym.sin(theta) + i_0),
-            # i_B - (i_d * sym.cos(theta - 2 * np.pi / 3) - i_q * sym.sin(theta - 2 * np.pi / 3) + i_0),
-            # i_C - (i_d * sym.cos(theta + 2 * np.pi / 3) - i_q * sym.sin(theta + 2 * np.pi / 3) + i_0),
 
             i_A - (i_d * sym.sin(theta) + i_q * sym.cos(theta) + i_0),
             i_B - (i_d * sym.sin(theta - 2 * np.pi / 3) + i_q * sym.cos(theta - 2 * np.pi / 3) + i_0),
             i_C - (i_d * sym.sin(theta + 2 * np.pi / 3) + i_q * sym.cos(theta + 2 * np.pi / 3) + i_0),
 
-            # Te - (3 / 2) * (psi_d * i_q - psi_q * i_d),
             Te - (3 / 2) * (psi_q * i_d - psi_d * i_q),
             Pe - (i_A * inputs[0] + i_B * inputs[1] + i_C * inputs[2]),
             Qe - (1 / np.sqrt(3)) * ((inputs[0] - inputs[1]) * i_C +
@@ -189,7 +186,6 @@ def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "
         VarPowerFlowRefferenceType.P: Pe,
         VarPowerFlowRefferenceType.Q: Qe,
         VarPowerFlowRefferenceType.P_N: None,
-        VarPowerFlowRefferenceType.P_N: None,
         VarPowerFlowRefferenceType.Q_N: None,
         VarPowerFlowRefferenceType.P_A: None,
         VarPowerFlowRefferenceType.Q_A: None,
@@ -201,7 +197,10 @@ def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "
         VarPowerFlowRefferenceType.i_A: i_A,
         VarPowerFlowRefferenceType.i_B: i_B,
         VarPowerFlowRefferenceType.i_C: i_C,
-        VarPowerFlowRefferenceType.theta: theta,
+        VarPowerFlowRefferenceType.phi_v: phi_v,
+        VarPowerFlowRefferenceType.phi: phi,
+        VarPowerFlowRefferenceType.Vpk: Vpk,
+        VarPowerFlowRefferenceType.Ipk: Ipk,
     }
 
     # --------------------------------------------------------------------------------------
@@ -228,7 +227,16 @@ def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "
         omega_ref:  vf.add_const(1.0),
         Kp:         vf.add_const(2.0),
         Ki:         vf.add_const(2.0),
-        v_f0:       vf.add_const(-0.010654), #-0.015522
+        v_f0:       vf.add_const(-0.011581), #-0.015522
+
+        # init-only external values
+        phi_v: vf.add_const(None),
+        phi: vf.add_const(None),
+        Vpk: vf.add_const(None),
+        Ipk: vf.add_const(None),
+
+        # init-only auxiliary variable
+        delta: vf.add_const(None),
     }
 
     # --------------------------------------------------------------------------------------
@@ -238,7 +246,12 @@ def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "
     templ.block.init_eqs = {
         omega: vf.add_const(1.0),
         et: vf.add_const(0.0),
-        # theta: ,
+        delta: sym.atan(
+            ( Ra * Ipk * sym.sin(phi) - omega * (Lmq + La) * Ipk * sym.cos(phi)) /
+            (Vpk + Ra * Ipk * sym.cos(phi) + omega * (Lmq + La) * Ipk * sym.sin(phi))
+        ),
+        theta: sym.sin(phi_v + delta) / sym.cos(phi_v + delta),
+
         v_d: 2 / 3 * (sym.sin(theta) * inputs[0] +
                       sym.sin(theta - 2 * np.pi / 3) * inputs[1] +
                       sym.sin(theta + 2 * np.pi / 3) * inputs[2]),
@@ -283,4 +296,3 @@ def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "
     }
 
     return templ
-

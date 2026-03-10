@@ -339,12 +339,6 @@ class JitSymbolicSolver:
                 "state_idx": var_uid_to_global_idx[sv.uid],
             })
 
-
-        if len(self.algebraic_eqs) != len(self.algebraic_vars):
-            print("[WARNING] len(algebraic_eqs) != len(algebraic_vars)")
-            print(f"          algebraic_eqs  = {len(self.algebraic_eqs)}")
-            print(f"          algebraic_vars = {len(self.algebraic_vars)}")
-
         equations.extend(self.algebraic_eqs)
 
         for j, eq in enumerate(self.algebraic_eqs):
@@ -683,6 +677,16 @@ class JitSymbolicSolver:
 
                 x_iter[:] = x_prev
                 x_iter[:n_states] = x_prev[:n_states] + h_eff * dx_prev[:n_states]
+
+                # if i == 0 and method == DynamicIntegrationMethod.DaeTrapezoidal:
+                #     predictor = Predictor(n_states=n_states)
+                #     predictor.predict(
+                #         x_iter=x_iter,
+                #         x_prev=x_prev,
+                #         dx_prev=dx_prev,
+                #         h=self.h,
+                #         pred_method=self.pred_method,
+                #     )
 
                 for k in range(15):
                     ctx = NewtonSolveContext(

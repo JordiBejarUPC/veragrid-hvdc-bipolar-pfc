@@ -211,7 +211,10 @@ def get_load_ZIP_3ph_emt_template(grid : MultiCircuit, load: Load,  name: str = 
         VarPowerFlowRefferenceType.i_A: i_A,
         VarPowerFlowRefferenceType.i_B: i_B,
         VarPowerFlowRefferenceType.i_C: i_C,
-        VarPowerFlowRefferenceType.theta: None
+        VarPowerFlowRefferenceType.phi_v: None,
+        VarPowerFlowRefferenceType.phi: None,
+        VarPowerFlowRefferenceType.Vpk: None,
+        VarPowerFlowRefferenceType.Ipk: None,
     }
 
     return templ

@@ -375,6 +375,8 @@ class EmtProblemDae(EmtProblemTemplate):
                     self.logger.add_debug(
                         f"[EMT][init_explicit] failed for block '{block_name}'. Error: {error_detail}")
 
+                    print(f"EMT explicit initialization failed for block {block_name}. Error detail: {error_detail}")
+
         self._build_runtime_param_vectors()
 
     def _process_device_model(self, dev: Any, sys_block: Block, grid: MultiCircuit, glob_time: Var) -> Block:
@@ -993,16 +995,40 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-        if mdl.E(VarPowerFlowRefferenceType.theta) is not None:
+        if mdl.E(VarPowerFlowRefferenceType.phi) is not None:
+            a = np.exp(1j * 2.0 * np.pi / 3.0)
+
+            # Terminal voltage phasors
             VA = pf_results.voltage_A[bus_index]
             VB = pf_results.voltage_B[bus_index]
             VC = pf_results.voltage_C[bus_index]
 
-            a = np.exp(1j * 2.0 * np.pi / 3.0)
-            V1 = (1.0 / 3.0) * (VA + a * VB + (a * a) * VC)
-            theta: float = np.angle(V1)
+            # Terminal complex powers (generator convention must match PF sign)
+            SA = pf_results.Sbus_A[bus_index] / sbase
+            SB = pf_results.Sbus_B[bus_index] / sbase
+            SC = pf_results.Sbus_C[bus_index] / sbase
 
-            self.set_init_guess(mdl, VarPowerFlowRefferenceType.theta, float(theta))
+            # Terminal current phasors leaving the generator
+            IA = 0.0 + 0.0j if VA == 0 else np.conj(SA / VA)
+            IB = 0.0 + 0.0j if VB == 0 else np.conj(SB / VB)
+            IC = 0.0 + 0.0j if VC == 0 else np.conj(SC / VC)
+
+            # Positive-sequence phasors
+            V1 = (VA + a * VB + (a * a) * VC) / 3.0
+            I1 = (IA + a * IB + (a * a) * IC) / 3.0
+
+            phi_V = float(np.angle(V1))
+            phi_I = float(np.angle(I1))
+            ang = phi_I - phi_V
+            phi = float(np.arctan2(np.sin(ang), np.cos(ang)))
+
+            Vpk = np.sqrt(2) * np.abs(V1)
+            Ipk = np.sqrt(2) * np.abs(I1)
+
+            self.set_external_param(mdl, VarPowerFlowRefferenceType.phi_v, float(phi_V))
+            self.set_external_param(mdl, VarPowerFlowRefferenceType.phi, float(phi))
+            self.set_external_param(mdl, VarPowerFlowRefferenceType.Vpk, float(Vpk))
+            self.set_external_param(mdl, VarPowerFlowRefferenceType.Ipk, float(Ipk))
         else:
             pass
 
@@ -1152,6 +1178,20 @@ class EmtProblemDae(EmtProblemTemplate):
                 pass
             else:
                 self._temp_diff_init_guess[diff_var.uid] = float(val)
+
+    def set_external_param(self, mdl: Block, key: VarPowerFlowRefferenceType, value: float) -> None:
+        """
+        Set a PF-derived value either as an event parameter if the mapped variable belongs to mdl.event_dict.
+        """
+        var = mdl.E(key)
+
+        if var is None:
+            return
+
+        if var in mdl.event_dict:
+            mdl.event_dict[var] = self.grid.var_factory.add_const(float(value))
+        else:
+            pass
 
     def get_init_guess_info(self) -> pd.DataFrame:
         """
@@ -1366,3 +1406,4 @@ class EmtProblemDae(EmtProblemTemplate):
             df = df.sort_values(["type", "idx"], ascending=[False, True])
 
         return df
+
