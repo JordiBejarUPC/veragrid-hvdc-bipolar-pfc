@@ -110,7 +110,7 @@ grid.add_bus(bus2)
 grid.add_bus(bus3)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.var_factory)
+    initialize_bus_rms(bus, vf=grid.rms_var_factory)
 
 grid.add_line(line12)
 grid.add_generator(bus=bus1, api_obj=gen1)
@@ -217,17 +217,17 @@ load_dynhost = DynamicModelHost()
 gen_dynhost = DynamicModelHost()
 
 #Initialise the RMS
-line12_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+line12_mdl = block_deep_copy(get_line_rms_template(grid.rms_var_factory).block)
 trafo_1.initialize_rms(name = "trafo1")
 trafo_2.initialize_rms(name = "trafo2")
 
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = block_deep_copy(ZIPLoadBuild(grid.var_factory, Pl0 =-0.1, Ql0 =-0.02).block)
+    load_mdl = block_deep_copy(ZIPLoadBuild(grid.rms_var_factory, Pl0 =-0.1, Ql0 =-0.02).block)
 else:
     raise ValueError(f"Unknown load type: {load_type}")
     
-genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.var_factory).block)
+genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.rms_var_factory).block)
 
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
 genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])

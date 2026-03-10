@@ -26,7 +26,7 @@ def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
 
-    vf: VarFactory = grid.var_factory
+    vf: VarFactory = grid.rms_var_factory
 
     # --------------------------------------------------------------------------------------
     # Inputs: instantaneous abc terminal voltages in pu (at bus)

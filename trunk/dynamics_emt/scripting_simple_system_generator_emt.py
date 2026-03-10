@@ -35,6 +35,7 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
+from VeraGridEngine.Devices.Aggregation import RmsEvent
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -101,7 +102,7 @@ grid.add_load(bus=bus1, api_obj=load)
 
 
 for bus in grid.buses:
-    get_bus_emt_template(grid, bus, vf=grid.var_factory)
+    get_bus_emt_template(grid, bus, vf=grid.rms_var_factory)
 
 ######################################################################################################
 # Build EMT models
@@ -247,7 +248,7 @@ print(f"init_guess_table\n{df}")
 # ==============================================================================
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED")
 # ==============================================================================
-CHOSEN_SOLVER = "SYMBOLIC"
+CHOSEN_SOLVER = "AD"
 
 print(f"\n======================================")
 print(f"Initializing Solver: {CHOSEN_SOLVER}")

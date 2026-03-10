@@ -6,10 +6,9 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+from typing import List, Dict
 
-import cProfile
-import pstats
-
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
@@ -28,7 +27,8 @@ class RmsSimulationDriver(DriverTemplate):
     Dynamic wrapper to use with Qt
     """
 
-    def __init__(self, grid: MultiCircuit,
+    def __init__(self,
+                 grid: MultiCircuit,
                  options: RmsOptions,
                  pf_results: PowerFlowResults | None,
                  engine: EngineType = EngineType.VeraGrid):
@@ -42,17 +42,15 @@ class RmsSimulationDriver(DriverTemplate):
 
         DriverTemplate.__init__(self, grid=grid, engine=engine)
 
-        self.integration_methods_dict = {DynamicIntegrationMethod.DaeBackEuler: BackEulerImplicitIntegration}
-
         self.grid = grid
 
         self.pf_results: PowerFlowResults | None = pf_results
 
         self.options = options
 
-        self.results = RmsResults(empty_rms_models=list(),
+        self.results = RmsResults(rms_events_group_names=list(),
                                   well_initialized=True,
-                                  converged=True,
+                                  converged=[True],
                                   values=np.empty(0),
                                   time_array=pd.DatetimeIndex(pd.to_datetime(np.empty(0))),
                                   variables=list(),
@@ -76,56 +74,74 @@ class RmsSimulationDriver(DriverTemplate):
         Performs the numerical integration using the chosen method.
         :return:
         """
+
         self.progress_signal.emit(0)
 
-        if len(self.grid.check_rms_models()) != 0:
-            self.results = RmsResults(
-                empty_rms_models=self.grid.check_rms_models(),
-                well_initialized=False,
-                converged=False,
-                values=np.empty(0),
-                time_array=pd.DatetimeIndex(pd.to_datetime(np.empty(0))),
-                variables=list(),
-                uid2idx=dict(),
-                vars_glob_name2uid=dict(),
-                devices_vars_info=dict()
-            )
-        else:
+        rms_events_group_results: List[RmsEventsGroup] = list()
+        empty_rms_models_results: List[str] = list()
+        well_initialized_results: bool = True
+        converged_results: List[bool] = list()
+        values_results: List[np.ndarray] = list()
 
-            res = self.pf_results
+        for rms_events_group in self.grid.rms_events_groups:
 
-            print(f"Converged: {res.converged}")
-            print(res.get_bus_df())
-            print(res.get_branch_df())
+            self.report_text("Simulating RMS event group " + rms_events_group.name)
+
             self.progress_signal.emit(5)
 
             problem = RmsProblemDae(
+                rms_events_group=rms_events_group,
                 grid=self.grid,
                 options=self.options,
                 pf_results=self.pf_results,
-                progress_signal=self.progress_signal)
-
-            solver = self.integration_methods_dict[self.options.integration_method](
-                problem=problem,
-                t0=0,
-                t_end=self.options.simulation_time,
-                h=self.options.time_step,
-                max_iter=self.options.max_iter
+                progress_signal=self.progress_signal
             )
+
+            # DaeTrapezoidal = "DAE_Trapezoidal"
+            # DaeBackEuler = "DAE_BackEuler"
+            # DaeBDF2 = "DAE_bdf2"
+            # DaeContinuous = "DAE_Continuous"
+            # OdeRungeKutta4 = "ODE_Runge_Kutta 4"
+            # OdeEuler = "ODE_Euler"
+
+            if self.options.integration_method == DynamicIntegrationMethod.DaeBackEuler:
+
+                solver = BackEulerImplicitIntegration(
+                    problem=problem,
+                    t0=0,
+                    t_end=self.options.simulation_time,
+                    h=self.options.time_step,
+                    max_iter=self.options.max_iter
+                )
+
+            else:
+                self.logger.add_info("Falling back to DAE-BackEuler method")
+
+                solver = BackEulerImplicitIntegration(
+                    problem=problem,
+                    t0=0,
+                    t_end=self.options.simulation_time,
+                    h=self.options.time_step,
+                    max_iter=self.options.max_iter
+                )
 
             t, y, well_initialized, converged = solver.simulate()
 
+            # rms_events_group_results.append(rms_events_group)
+            # converged_results.append(converged)
+            # values_results.append(solver.y)
+
             self.progress_signal.emit(90)
 
-            self.results = RmsResults(
-                empty_rms_models=list(),
-                well_initialized=well_initialized,
-                converged=converged,
-                values=solver.y,
-                time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
-                variables=problem.state_and_algebraic_vars,
-                uid2idx=problem.uid2idx_vars,
-                vars_glob_name2uid=problem.vars_glob_name2uid,
-                devices_vars_info=problem.get_device_vars_dict()
-            )
-            self.progress_signal.emit(100)
+        self.results = RmsResults(
+            rms_events_group_names=rms_events_group_results,
+            well_initialized=well_initialized,
+            converged=converged_results,
+            values=np.stack([values for values in values_results], axis=0),
+            time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
+            variables=problem.state_and_algebraic_vars,
+            uid2idx=problem.uid2idx_vars,
+            vars_glob_name2uid=problem.vars_glob_name2uid,
+            devices_vars_info=problem.get_device_vars_dict()
+        )
+        self.progress_signal.emit(100)

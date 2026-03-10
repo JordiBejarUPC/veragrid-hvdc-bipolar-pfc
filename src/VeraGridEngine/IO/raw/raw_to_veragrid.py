@@ -20,7 +20,7 @@ from VeraGridEngine.IO.raw.devices.transformer import RawTransformer
 from VeraGridEngine.IO.raw.devices.two_terminal_dc_line import RawTwoTerminalDCLine
 from VeraGridEngine.IO.raw.devices.vsc_dc_line import RawVscDCLine
 from VeraGridEngine.IO.raw.devices.psse_circuit import PsseCircuit
-from VeraGridEngine.enumerations import TapChangerTypes, TapPhaseControl, TapModuleControl
+from VeraGridEngine.enumerations import TapChangerTypes, TapPhaseControl, TapModuleControl, ShuntControlMode
 
 
 def get_veragrid_bus(psse_bus: RawBus,
@@ -209,18 +209,23 @@ def get_veragrid_shunt_switched(
     vset = 1.0
 
     if psse_elm.MODSW == 0:  # locked
-        is_controlled = False
+        control_mode = ShuntControlMode.Locked
         b_init = psse_elm.BINIT
 
-    elif psse_elm.MODSW in [1, 2]:
+    elif psse_elm.MODSW == 1:
         # 1 - discrete adjustment, controlling voltage locally or at bus SWREG
+        control_mode = ShuntControlMode.Discrete
+        b_init = psse_elm.BINIT * psse_elm.RMPCT / 100.0
+        vset = (psse_elm.VSWHI + psse_elm.VSWLO) / 2.0
+
+    elif psse_elm.MODSW == 2:
         # 2 - continuous adjustment, controlling voltage locally or at bus SWREG
-        is_controlled = True
+        control_mode = ShuntControlMode.Continuous
         b_init = psse_elm.BINIT * psse_elm.RMPCT / 100.0
         vset = (psse_elm.VSWHI + psse_elm.VSWLO) / 2.0
 
     elif psse_elm.MODSW in [3, 4, 5, 6]:
-        is_controlled = True
+        control_mode = ShuntControlMode.Continuous
         b_init = psse_elm.BINIT
         logger.add_warning(
             msg="Not supported control mode for Switched Shunt",
@@ -228,7 +233,7 @@ def get_veragrid_shunt_switched(
         )
 
     else:
-        is_controlled = False
+        control_mode = ShuntControlMode.Locked
         b_init = psse_elm.BINIT
         logger.add_warning(
             msg="Invalid control mode for Switched Shunt.",
@@ -237,21 +242,24 @@ def get_veragrid_shunt_switched(
             value=psse_elm.MODSW,
         )
 
-    elm = dev.ControllableShunt(name='Switched shunt ' + busnum_id,
-                                active=bool(psse_elm.STAT),
-                                B=b_init,
-                                step=0,
-                                vset=vset,
-                                code=busnum_id,
-                                is_nonlinear=True,
-                                is_controlled=is_controlled, )
+    elm = dev.ControllableShunt(
+        name='Switched shunt ' + busnum_id,
+        code=busnum_id,
+        active=bool(psse_elm.STAT),
+        B=b_init,
+        step=0,
+        vset=vset,
+        vmin=float(psse_elm.VSWLO),
+        vmax=float(psse_elm.VSWHI),
+        control_mode=control_mode,
+    )
 
     if psse_elm.SWREG > 0:
         if psse_elm.SWREG != psse_elm.I:
             elm.control_bus = psse_bus_dict[psse_elm.SWREG]
 
-    n_list = []
-    b_list = []
+    n_list: list[int] = list()
+    b_list: list[float] = list()
 
     for i in range(1, 9):
         s = getattr(psse_elm, f"S{i}")
@@ -260,9 +268,6 @@ def get_veragrid_shunt_switched(
         if s == 1:
             n_list.append(n)
             b_list.append(getattr(psse_elm, f"B{i}"))
-
-    if len(n_list) == 1:
-        elm.is_nonlinear = False
 
     elm.set_blocks(n_list, b_list)
 

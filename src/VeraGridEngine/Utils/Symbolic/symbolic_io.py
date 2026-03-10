@@ -566,7 +566,7 @@ class BlockParser:
             key = ParamPowerFlowRefferenceType(key_str)
             api_obj_mapping[key] = self.var_factory.get_var(var_uid)
 
-        reformulated_vars = [self.var_dict[v] for v in data["reformulated_vars"]]
+        reformulated_vars = [self.var_factory.get_var(v_uid) for v_uid in data["reformulated_vars"]]
 
         block = Block(
             state_vars=state_vars,

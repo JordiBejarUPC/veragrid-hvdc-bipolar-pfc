@@ -27,7 +27,7 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     templ.tpe = DeviceType.LineDevice
     templ.name = name
 
-    vf: VarFactory = grid.var_factory
+    vf: VarFactory = grid.rms_var_factory
     fbase: float = grid.fBase
     sbase: float = grid.Sbase
 

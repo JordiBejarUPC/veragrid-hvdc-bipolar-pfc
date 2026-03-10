@@ -1,3 +1,4 @@
+import os
 import VeraGridEngine.api as vge
 from VeraGridEngine import SolverType
 import numpy as np
@@ -77,7 +78,7 @@ def test_transformer_3w_dgs():
     # -----------------------------------------------------------------------------------------------------------------
     #   Grid Import
     # -----------------------------------------------------------------------------------------------------------------
-    grid = vge.open_file('data/grids/three_winding_transformer.dgs')
+    grid = vge.open_file(os.path.join('data','grids','three_winding_transformer.dgs'))
     grid.buses[0].is_slack = True
 
     # -----------------------------------------------------------------------------------------------------------------

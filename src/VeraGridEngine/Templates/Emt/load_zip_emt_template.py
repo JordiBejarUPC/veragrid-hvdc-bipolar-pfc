@@ -24,7 +24,7 @@ def get_load_ZIP_3ph_emt_template(grid : MultiCircuit, load: Load,  name: str = 
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
 
-    vf: VarFactory = grid.var_factory
+    vf: VarFactory = grid.rms_var_factory
     fbase: float = grid.fBase
     sbase: float = grid.Sbase
 

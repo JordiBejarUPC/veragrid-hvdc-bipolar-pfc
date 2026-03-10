@@ -91,7 +91,7 @@ def main():
     
     # Initialize with complex phasor
     for bus in grid.buses:
-        initialize_bus_complex_rms(bus, vf=grid.var_factory)
+        initialize_bus_complex_rms(bus, vf=grid.rms_var_factory)
     
     # Run power flow
     print("Running power flow...")

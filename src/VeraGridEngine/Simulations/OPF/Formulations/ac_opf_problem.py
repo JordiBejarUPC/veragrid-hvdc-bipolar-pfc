@@ -206,7 +206,7 @@ class NonLinearOptimalPfProblem:
         # Shunt elements are treated as generators with fixed P.
         # As such, their limits are added in the generator limits array.
 
-        self.id_sh = np.where(nc.shunt_data.controllable == True)[0]
+        self.id_sh = np.where(nc.shunt_data.is_pv_control == True)[0]
         self.sh_bus_idx = nc.shunt_data.get_bus_indices()[self.id_sh]
         self.nsh = len(self.id_sh)
 
