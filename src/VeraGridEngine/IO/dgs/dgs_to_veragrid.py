@@ -2616,7 +2616,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
     grid = dev.MultiCircuit()
 
-    baseMVA = 100.0
+    baseMVA = grid.Sbase
 
     # --- frequency ---
     if len(dgs_grid.elmnets) > 0:

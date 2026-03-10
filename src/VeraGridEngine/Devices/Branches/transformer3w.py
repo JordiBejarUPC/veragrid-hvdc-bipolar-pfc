@@ -41,8 +41,10 @@ def delta_to_star(z12: float, z23: float, z31: float) -> Tuple[float, float, flo
     •Z23
     •Z31
     
-    These are the driving-point impedances seen between pairs of terminals when the third winding is open in the standard leakage-equivalent model.
-    If the transformer is modeled by a star equivalent with internal node 0, then the branch impedances are Z1, Z2, Z3 and the terminal pair impedances are:
+    These are the driving-point impedances seen between pairs of terminals when the third winding is open in 
+    the standard leakage-equivalent model.
+    If the transformer is modeled by a star equivalent with internal node 0, then the branch 
+    impedances are Z1, Z2, Z3 and the terminal pair impedances are:
     • between 1 and 2: Z12 = Z1 + Z2
     • between 2 and 3: Z23 = Z2 + Z3
     • between 3 and 1: Z31 = Z3 + Z1
@@ -65,8 +67,9 @@ def delta_to_star(z12: float, z23: float, z31: float) -> Tuple[float, float, flo
     Z1 = (Z12 + Z31 - Z23)/2
     Z2 = (Z12 + Z23 - Z31)/2
     Z3 = (Z23 + Z31 - Z12)/2
+    
+    Validated against PowerFactory.
     """
-
 
     # zt = z12 + z23 + z31
     # if zt > 0:
@@ -81,7 +84,6 @@ def delta_to_star(z12: float, z23: float, z31: float) -> Tuple[float, float, flo
     z2 = (z12 + z23 - z31) / 2.0
     z3 = (z31 + z23 - z12) / 2.0
     return z1, z2, z3
-
 
 
 def star_to_delta(z1: float, z2: float, z3: float) -> Tuple[float, float, float]:
@@ -142,7 +144,7 @@ class Transformer3W(PhysicalDevice):
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key='bus0', units='', tpe=DeviceType.BusDevice, definition='Middle point connection bus.',
-                      editable=False),
+               editable=False),
         GCProp(key='bus1', units='', tpe=DeviceType.BusDevice, definition='Bus 1.', editable=False),
         GCProp(key='bus2', units='', tpe=DeviceType.BusDevice, definition='Bus 2.', editable=False),
         GCProp(key='bus3', units='', tpe=DeviceType.BusDevice, definition='Bus 3.', editable=False),
@@ -275,15 +277,6 @@ class Transformer3W(PhysicalDevice):
 
         self.x = float(x)
         self.y = float(y)
-
-
-
-
-
-
-
-
-
 
     @property
     def winding1(self) -> Winding:
@@ -725,7 +718,7 @@ class Transformer3W(PhysicalDevice):
         :return:
         """
         z_series12, y_shunt12 = get_impedances(VH_bus=max(self.bus1.Vnom, self.bus2.Vnom),
-                                               VL_bus=max(self.bus1.Vnom, self.bus2.Vnom),
+                                               VL_bus=min(self.bus1.Vnom, self.bus2.Vnom),
                                                Sn=self.rate1,
                                                HV=max(self.V1, self.V2),
                                                LV=min(self.V1, self.V2),
@@ -737,7 +730,7 @@ class Transformer3W(PhysicalDevice):
                                                GR_hv1=0.5)
 
         z_series23, y_shunt23 = get_impedances(VH_bus=max(self.bus2.Vnom, self.bus3.Vnom),
-                                               VL_bus=max(self.bus2.Vnom, self.bus3.Vnom),
+                                               VL_bus=min(self.bus2.Vnom, self.bus3.Vnom),
                                                Sn=self.rate2,
                                                HV=max(self.V2, self.V3),
                                                LV=min(self.V2, self.V3),
@@ -749,7 +742,7 @@ class Transformer3W(PhysicalDevice):
                                                GR_hv1=0.5)
 
         z_series31, y_shunt31 = get_impedances(VH_bus=max(self.bus3.Vnom, self.bus1.Vnom),
-                                               VL_bus=max(self.bus3.Vnom, self.bus1.Vnom),
+                                               VL_bus=min(self.bus3.Vnom, self.bus1.Vnom),
                                                Sn=self.rate3,
                                                HV=max(self.V3, self.V1),
                                                LV=min(self.V3, self.V1),
