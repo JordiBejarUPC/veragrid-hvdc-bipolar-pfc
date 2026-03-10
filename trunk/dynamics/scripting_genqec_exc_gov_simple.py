@@ -62,7 +62,7 @@ grid.add_bus(bus1)
 
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.var_factory)
+    initialize_bus_rms(bus, vf=grid.rms_var_factory)
 
 
 # Lines
@@ -91,13 +91,13 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 
 
 # generator
-genqec_mdl = get_complete_generator_template(grid.var_factory).block
+genqec_mdl = get_complete_generator_template(grid.rms_var_factory).block
 
 # line
-line_mdl = get_line_rms_template(grid.var_factory).block
+line_mdl = get_line_rms_template(grid.rms_var_factory).block
 
 # load
-load_mdl = get_load_rms_template(grid.var_factory).block
+load_mdl = get_load_rms_template(grid.rms_var_factory).block
 
 # set models parameters
 load_mdl.set_parameter_in_model(var_name="Pl0", new_value=-0.0999999)
@@ -107,11 +107,11 @@ load_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
 # Add models to devices
 ######################################################################################################
 
-set_rms_model(device=gen0, model=genqec_mdl, var_factory= grid.var_factory)
+set_rms_model(device=gen0, model=genqec_mdl, var_factory= grid.rms_var_factory)
 
-set_rms_model(device=line0, model=line_mdl, var_factory= grid.var_factory)
+set_rms_model(device=line0, model=line_mdl, var_factory= grid.rms_var_factory)
 
-set_rms_model(device=load, model=load_mdl, var_factory= grid.var_factory)
+set_rms_model(device=load, model=load_mdl, var_factory= grid.rms_var_factory)
 
 
 ######################################################################################################

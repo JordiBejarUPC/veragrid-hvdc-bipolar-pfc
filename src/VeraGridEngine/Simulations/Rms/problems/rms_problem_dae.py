@@ -451,7 +451,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # add the nodal balance equations
         for i, elm in enumerate(self.grid.buses):
-            mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
+            mdl = block_deep_copy(elm.rms_model.model, grid.rms_var_factory)
             if len(mdl.algebraic_eqs) == 0:
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)

@@ -102,7 +102,7 @@ grid.add_load(bus=bus1, api_obj=load)
 
 
 for bus in grid.buses:
-    get_bus_emt_template(grid, bus, vf=grid.var_factory)
+    get_bus_emt_template(grid, bus, vf=grid.rms_var_factory)
 
 ######################################################################################################
 # Build EMT models

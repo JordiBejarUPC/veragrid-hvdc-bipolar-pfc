@@ -116,7 +116,8 @@ class Assets:
         'device_associations',
         '_rms_events',
         '_rms_events_groups',
-        '_var_factory'
+        '_rms_var_factory',
+        '_emt_var_factory'
     )
 
     def __init__(self):
@@ -297,7 +298,8 @@ class Assets:
         self._diagrams: List[Union[dev.MapDiagram, dev.SchematicDiagram]] = list()
 
         # Class to handle the dynamic Vars and Consts
-        self._var_factory: dev.VarFactory = dev.VarFactory()
+        self._rms_var_factory: dev.VarFactory = dev.VarFactory()
+        self._emt_var_factory: dev.VarFactory = dev.VarFactory()
 
         # objects with profiles
         self.template_objects_dict = {
@@ -730,12 +732,12 @@ class Assets:
     # Var Factory
     # ------------------------------------------------------------------------------------------------------------------
     @property
-    def var_factory(self) -> dev.VarFactory:
+    def rms_var_factory(self) -> dev.VarFactory:
         """
         Get the VarFactory object
         :return: VarFactory
         """
-        return self._var_factory
+        return self._rms_var_factory
 
     # ------------------------------------------------------------------------------------------------------------------
     # AC line
@@ -7691,12 +7693,12 @@ class Assets:
         :return:
         """
         self.rms_models = [
-            tem.get_genqec(vfactory=self._var_factory),
-            tem.get_governor(vfactory=self._var_factory),
-            tem.get_stabilizer(vfactory=self._var_factory),
-            tem.get_exciter(vfactory=self._var_factory),
-            tem.get_complete_generator_template(vfactory=self._var_factory),
-            tem.get_genrow_rms_template(vfactory=self._var_factory),
-            tem.get_line_rms_template(vfactory=self._var_factory),
-            tem.get_load_rms_template(vfactory=self._var_factory)
+            tem.get_genqec(vfactory=self._rms_var_factory),
+            tem.get_governor(vfactory=self._rms_var_factory),
+            tem.get_stabilizer(vfactory=self._rms_var_factory),
+            tem.get_exciter(vfactory=self._rms_var_factory),
+            tem.get_complete_generator_template(vfactory=self._rms_var_factory),
+            tem.get_genrow_rms_template(vfactory=self._rms_var_factory),
+            tem.get_line_rms_template(vfactory=self._rms_var_factory),
+            tem.get_load_rms_template(vfactory=self._rms_var_factory)
         ]

@@ -58,7 +58,7 @@ grid.add_bus(bus3)
 
 # Initialize EMT models for buses
 for bus in grid.buses:
-    get_bus_emt_template(grid, bus, vf=grid.var_factory)
+    get_bus_emt_template(grid, bus, vf=grid.rms_var_factory)
 
 # Define AC lines
 line12 = gce.Line(name="line 1-2", bus_from=bus1, bus_to=bus2, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
@@ -130,20 +130,20 @@ gen_dynhost = DynamicModelHost()
 gen3_dynhost = DynamicModelHost()
 
 #Initialise the EMT
-line12_mdl = get_pi_line_emt_template(grid.var_factory).block
+line12_mdl = get_pi_line_emt_template(grid.rms_var_factory).block
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = ZIPLoadEmtBuild(grid.var_factory, Pl0=-0.1, Ql0=-0.01).block
+    load_mdl = ZIPLoadEmtBuild(grid.rms_var_factory, Pl0=-0.1, Ql0=-0.01).block
 else:
     raise ValueError(f"Unknown load type: {load_type}")
     
-genrow_mdl1 = get_generator_emt_template(grid.var_factory).block
+genrow_mdl1 = get_generator_emt_template(grid.rms_var_factory).block
 
 # Build VSC EMT model with the same control modes used in the VSC device
-vsc_mdl = VscGflEmtBuild(grid.var_factory, control1=CONTROL1_MODE, control2=CONTROL2_MODE).block
+vsc_mdl = VscGflEmtBuild(grid.rms_var_factory, control1=CONTROL1_MODE, control2=CONTROL2_MODE).block
 
-pv_cell_block = PVCellBuild(grid.var_factory).block
-dc_source = DCVoltageSource(grid.var_factory, bus3.emt_model.model.out_vars[0]).block
+pv_cell_block = PVCellBuild(grid.rms_var_factory).block
+dc_source = DCVoltageSource(grid.rms_var_factory, bus3.emt_model.model.out_vars[0]).block
 
 # Connect generator to bus1 (three-phase voltages)
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.emt_model.model.out_vars[0]])  # v_A

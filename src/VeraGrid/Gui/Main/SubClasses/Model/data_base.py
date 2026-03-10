@@ -1038,7 +1038,7 @@ class DataBaseTableMain(DiagramsMain):
                     elif elm_type == DeviceType.DynamicModelHostDevice.value:
 
                         self.rms_model_Editor_window = RmsModelEditorGUI(
-                            var_factory=self.circuit.var_factory,
+                            var_factory=self.circuit.rms_var_factory,
                             templates_list=self.circuit.rms_models,
                             model_host=elm
                         )

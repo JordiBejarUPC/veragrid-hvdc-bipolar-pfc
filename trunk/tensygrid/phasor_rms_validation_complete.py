@@ -72,7 +72,7 @@ def test_phasor_validation():
     grid_polar.add_bus(bus1_polar)
     
     for bus in grid_polar.buses:
-        initialize_bus_rms(bus, vf=grid_polar.var_factory)
+        initialize_bus_rms(bus, vf=grid_polar.rms_var_factory)
     
     line_polar = gce.Line(name="Line", bus_from=bus0_polar, bus_to=bus1_polar, 
                           r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=900.0)
@@ -85,18 +85,18 @@ def test_phasor_validation():
     grid_polar.add_generator(bus=bus0_polar, api_obj=gen_polar)
     
     # Build RMS models for polar grid
-    genqec_polar = get_complete_generator_template(grid_polar.var_factory).block
-    line_mdl_polar = get_line_rms_template(grid_polar.var_factory).block
-    load_mdl_polar = get_load_rms_template(grid_polar.var_factory).block
+    genqec_polar = get_complete_generator_template(grid_polar.rms_var_factory).block
+    line_mdl_polar = get_line_rms_template(grid_polar.rms_var_factory).block
+    load_mdl_polar = get_load_rms_template(grid_polar.rms_var_factory).block
     
     # Set load parameters (negative for consumption)
     load_mdl_polar.set_parameter_in_model(var_name="Pl0", new_value=-0.0999999)
     load_mdl_polar.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
     
     # Attach models to devices
-    set_rms_model(device=gen_polar, model=genqec_polar, var_factory=grid_polar.var_factory)
-    set_rms_model(device=line_polar, model=line_mdl_polar, var_factory=grid_polar.var_factory)
-    set_rms_model(device=load_polar, model=load_mdl_polar, var_factory=grid_polar.var_factory)
+    set_rms_model(device=gen_polar, model=genqec_polar, var_factory=grid_polar.rms_var_factory)
+    set_rms_model(device=line_polar, model=line_mdl_polar, var_factory=grid_polar.rms_var_factory)
+    set_rms_model(device=load_polar, model=load_mdl_polar, var_factory=grid_polar.rms_var_factory)
     
     print("  Polar grid created and models attached")
     
@@ -112,7 +112,7 @@ def test_phasor_validation():
     grid_phasor.add_bus(bus1_phasor)
     
     for bus in grid_phasor.buses:
-        initialize_bus_phasor_rms(bus, vf=grid_phasor.var_factory)
+        initialize_bus_phasor_rms(bus, vf=grid_phasor.rms_var_factory)
     
     line_phasor = gce.Line(name="Line", bus_from=bus0_phasor, bus_to=bus1_phasor,
                            r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=900.0)
@@ -125,23 +125,23 @@ def test_phasor_validation():
     grid_phasor.add_generator(bus=bus0_phasor, api_obj=gen_phasor)
     
     # Build RMS models for phasor grid
-    genqec_phasor = get_complete_generator_template_phasor(grid_phasor.var_factory, name="Gen0").block
+    genqec_phasor = get_complete_generator_template_phasor(grid_phasor.rms_var_factory, name="Gen0").block
     
     # For phasor grid, use current-based load model
-    load_mdl_phasor = get_load_phasor_current_rms_template(grid_phasor.var_factory).block
+    load_mdl_phasor = get_load_phasor_current_rms_template(grid_phasor.rms_var_factory).block
     load_mdl_phasor.connect([load_mdl_phasor.in_vars[0]], [bus1_phasor.rms_model.model.out_vars[0]])
     load_mdl_phasor.connect([load_mdl_phasor.in_vars[1]], [bus1_phasor.rms_model.model.out_vars[1]])
     # Current values will be set after power flow
-    set_rms_model(device=load_phasor, model=load_mdl_phasor, var_factory=grid_phasor.var_factory)
+    set_rms_model(device=load_phasor, model=load_mdl_phasor, var_factory=grid_phasor.rms_var_factory)
     
     # Attach models to devices
-    line_phasor_mdl = get_line_phasor_rms_template(grid_phasor.var_factory).block
+    line_phasor_mdl = get_line_phasor_rms_template(grid_phasor.rms_var_factory).block
     # Use set_rms_model for proper current balance accumulation
-    set_rms_model(device=line_phasor, model=line_phasor_mdl, var_factory=grid_phasor.var_factory)
+    set_rms_model(device=line_phasor, model=line_phasor_mdl, var_factory=grid_phasor.rms_var_factory)
 
     genqec_phasor.connect([genqec_phasor.in_vars[0]], [bus0_phasor.rms_model.model.out_vars[0]])
     genqec_phasor.connect([genqec_phasor.in_vars[1]], [bus0_phasor.rms_model.model.out_vars[1]])
-    set_rms_model(device=gen_phasor, model=genqec_phasor, var_factory=grid_phasor.var_factory)
+    set_rms_model(device=gen_phasor, model=genqec_phasor, var_factory=grid_phasor.rms_var_factory)
     # Note: line and load models attached via set_rms_model for proper current balance
     
     print("  Phasor grid created and models attached (lines handled internally)")

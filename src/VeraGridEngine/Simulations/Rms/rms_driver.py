@@ -8,9 +8,6 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict
 
-import cProfile
-import pstats
-
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
@@ -45,16 +42,13 @@ class RmsSimulationDriver(DriverTemplate):
 
         DriverTemplate.__init__(self, grid=grid, engine=engine)
 
-        self.integration_methods_dict = {DynamicIntegrationMethod.DaeBackEuler: BackEulerImplicitIntegration}
-
         self.grid = grid
 
         self.pf_results: PowerFlowResults | None = pf_results
 
         self.options = options
 
-        self.results = RmsResults(rms_events_group_results=list(),
-                                  empty_rms_models=list(),
+        self.results = RmsResults(rms_events_group_names=list(),
                                   well_initialized=True,
                                   converged=[True],
                                   values=np.empty(0),
@@ -91,38 +85,28 @@ class RmsSimulationDriver(DriverTemplate):
 
         for rms_events_group in self.grid.rms_events_groups:
 
-            print(rms_events_group.name)
+            self.report_text("Simulating RMS event group " + rms_events_group.name)
 
-            if len(self.grid.check_rms_models()) != 0:
-                self.results = RmsResults(
-                    rms_events_group_results=list(),
-                    empty_rms_models=self.grid.check_rms_models(),
-                    well_initialized=False,
-                    converged=[False],
-                    values=np.empty(0),
-                    time_array=pd.DatetimeIndex(pd.to_datetime(np.empty(0))),
-                    variables=list(),
-                    uid2idx=dict(),
-                    vars_glob_name2uid=dict(),
-                    devices_vars_info=dict()
-                )
-            else:
+            self.progress_signal.emit(5)
 
-                res = self.pf_results
+            problem = RmsProblemDae(
+                rms_events_group=rms_events_group,
+                grid=self.grid,
+                options=self.options,
+                pf_results=self.pf_results,
+                progress_signal=self.progress_signal
+            )
 
-                print(f"Converged: {res.converged}")
-                print(res.get_bus_df())
-                print(res.get_branch_df())
-                self.progress_signal.emit(5)
+            # DaeTrapezoidal = "DAE_Trapezoidal"
+            # DaeBackEuler = "DAE_BackEuler"
+            # DaeBDF2 = "DAE_bdf2"
+            # DaeContinuous = "DAE_Continuous"
+            # OdeRungeKutta4 = "ODE_Runge_Kutta 4"
+            # OdeEuler = "ODE_Euler"
 
-                problem = RmsProblemDae(
-                    rms_events_group=rms_events_group,
-                    grid=self.grid,
-                    options=self.options,
-                    pf_results=self.pf_results,
-                    progress_signal=self.progress_signal)
+            if self.options.integration_method == DynamicIntegrationMethod.DaeBackEuler:
 
-                solver = self.integration_methods_dict[self.options.integration_method](
+                solver = BackEulerImplicitIntegration(
                     problem=problem,
                     t0=0,
                     t_end=self.options.simulation_time,
@@ -130,17 +114,27 @@ class RmsSimulationDriver(DriverTemplate):
                     max_iter=self.options.max_iter
                 )
 
-                t, y, well_initialized, converged = solver.simulate()
+            else:
+                self.logger.add_info("Falling back to DAE-BackEuler method")
 
-                rms_events_group_results.append(rms_events_group)
-                converged_results.append(converged)
-                values_results.append(solver.y)
+                solver = BackEulerImplicitIntegration(
+                    problem=problem,
+                    t0=0,
+                    t_end=self.options.simulation_time,
+                    h=self.options.time_step,
+                    max_iter=self.options.max_iter
+                )
 
-                self.progress_signal.emit(90)
+            t, y, well_initialized, converged = solver.simulate()
+
+            # rms_events_group_results.append(rms_events_group)
+            # converged_results.append(converged)
+            # values_results.append(solver.y)
+
+            self.progress_signal.emit(90)
 
         self.results = RmsResults(
-            rms_events_group_results=rms_events_group_results,
-            empty_rms_models=self.grid.check_rms_models(),
+            rms_events_group_names=rms_events_group_results,
             well_initialized=well_initialized,
             converged=converged_results,
             values=np.stack([values for values in values_results], axis=0),

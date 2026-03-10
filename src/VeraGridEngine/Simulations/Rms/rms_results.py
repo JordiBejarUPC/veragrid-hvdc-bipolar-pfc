@@ -10,7 +10,7 @@ from typing import List, Dict
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate
-from VeraGridEngine.basic_structures import Vec, DateVec
+from VeraGridEngine.basic_structures import Vec, DateVec, StrVec
 from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -19,20 +19,22 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 class RmsResults(ResultsTemplate):
 
     def __init__(self,
-                 rms_events_group_results: List[RmsEventsGroup],
-                 empty_rms_models: List[str],
+                 time_array: DateVec,
+                 rms_events_group_names: StrVec,
+                 variables: StrVec,
+
                  well_initialized: bool,
                  converged: List[bool],
                  values: np.ndarray,
-                 time_array: DateVec,
-                 variables: List[Var],
+
+
                  uid2idx: Dict[int, int],
                  vars_glob_name2uid: Dict[str, int],
                  devices_vars_info: Dict[ALL_DEV_TYPES, List[Var]],
                  units: str = ""):
         """
 
-        :param rms_events_group_results:
+        :param rms_events_group_names:
         :param empty_rms_models:
         :param well_initialized:
         :param converged:
@@ -80,8 +82,8 @@ class RmsResults(ResultsTemplate):
         #     clustering_results=None,
         #     study_results_type=StudyResultsType.RmsSimulation
         # )
-        self.rms_events_group_results = rms_events_group_results
-        self.empty_rms_models = empty_rms_models
+        self.rms_events_group_results = rms_events_group_names
+
         self.well_initialized = well_initialized
         self.converged = converged
         self.uid2vars_glob_name = {uid: name for name, uid in vars_glob_name2uid.items()}

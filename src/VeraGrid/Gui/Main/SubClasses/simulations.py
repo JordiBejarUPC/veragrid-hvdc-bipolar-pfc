@@ -3284,34 +3284,34 @@ class SimulationsMain(TimeEventsMain):
                     dlg.setModal(True)
                     dlg.exec()
                     return
-
-
-                self.remove_simulation(SimulationTypes.RmsDynamic_run)
-
-                _, pf_results = self.session.power_flow
-
-                if pf_results is not None:
-
-                    # self.add_simulation(SimulationTypes.RmsDynamic_run)
-                    self.ui.progress_label.setText('Running rms simulation...')
-                    QtGui.QGuiApplication.processEvents()
-                    self.LOCK()
-
-                    drv = sim.RmsSimulationDriver(grid=self.circuit,
-                                                  options=self.get_selected_rms_simulation_options(),
-                                                  pf_results=pf_results)
-
-                    self.session.run(drv,
-                                     post_func=self.post_rms,
-                                     prog_func=self.ui.progressBar.setValue,
-                                     text_func=self.ui.progress_label.setText)
-
-
-
-
                 else:
-                    info_msg('Run a power flow simulation first.\n'
-                             'The results are needed to initialize this simulation.')
+
+                    self.remove_simulation(SimulationTypes.RmsDynamic_run)
+
+                    _, pf_results = self.session.power_flow
+
+                    if pf_results is not None:
+
+                        # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                        self.ui.progress_label.setText('Running rms simulation...')
+                        QtGui.QGuiApplication.processEvents()
+                        self.LOCK()
+
+                        drv = sim.RmsSimulationDriver(grid=self.circuit,
+                                                      options=self.get_selected_rms_simulation_options(),
+                                                      pf_results=pf_results)
+
+                        self.session.run(drv,
+                                         post_func=self.post_rms,
+                                         prog_func=self.ui.progressBar.setValue,
+                                         text_func=self.ui.progress_label.setText)
+
+
+
+
+                    else:
+                        info_msg('Run a power flow simulation first.\n'
+                                 'The results are needed to initialize this simulation.')
             else:
                 self.show_warning_toast('Another rms simulation is running already...')
 
