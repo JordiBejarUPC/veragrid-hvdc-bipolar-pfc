@@ -184,8 +184,8 @@ class DataBaseTableMain(DiagramsMain):
             DeviceType.Owner.value: ":/Icons/icons/owner.png",
 
             "Measurements": ":/Icons/icons/measurement.png",
-            DeviceType.PMeasurementDevice.value: ":/Icons/icons/measurement.png",
-            DeviceType.QMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.PiMeasurementDevice.value: ":/Icons/icons/measurement.png",
+            DeviceType.QiMeasurementDevice.value: ":/Icons/icons/measurement.png",
             DeviceType.PfMeasurementDevice.value: ":/Icons/icons/measurement.png",
             DeviceType.QfMeasurementDevice.value: ":/Icons/icons/measurement.png",
             DeviceType.PtMeasurementDevice.value: ":/Icons/icons/measurement.png",

@@ -513,8 +513,8 @@ class SimulationsMain(TimeEventsMain):
                 self.ui.contingency_filter_by_comboBox.setCurrentIndex(0)
             else:
                 threshold = self.ui.lodf_threshold_doubleSpinBox.value()
-                sensitive_idx = self.circuit.get_contingency_groups_sensitive_to_moitoring(LODF=res.LODF,
-                                                                                           threshold=threshold)
+                sensitive_idx = self.circuit.get_contingency_groups_sensitive_to_monitoring(LODF=res.LODF,
+                                                                                            threshold=threshold)
                 mdl = gf.get_elm_chck_list_model(self.circuit.contingency_groups, sensitive_idx)
         else:
             raise Exception('Unsupported ContingencyFilteringMethod ' + str(filter_mode.value))

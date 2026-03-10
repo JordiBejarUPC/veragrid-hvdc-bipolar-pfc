@@ -11,8 +11,9 @@ from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 
-from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.Substation.bus import Bus
@@ -53,10 +54,8 @@ class BusPhasorRmsTemplate(RmsModelTemplate):
 
         else:
             # Use phasor representation: V = Vr + j*Vi
-            self.Vr = vf.add_var("Vr")
-            self.Vi = vf.add_var("Vi")
-            self.P = vf.add_var("P")
-            self.Q = vf.add_var("Q")
+            self.Vr = vf.add_var("Vr", VarPowerFlowRefferenceType.Vr)
+            self.Vi = vf.add_var("Vi", VarPowerFlowRefferenceType.Vi)
 
             self._block = Block(
                 algebraic_vars=[self.Vr, self.Vi],
@@ -65,9 +64,7 @@ class BusPhasorRmsTemplate(RmsModelTemplate):
     
             self._block.external_mapping = {
                 VarPowerFlowRefferenceType.Vr: self.Vr,
-                VarPowerFlowRefferenceType.Vi: self.Vi,
-                VarPowerFlowRefferenceType.P: self.P,
-                VarPowerFlowRefferenceType.Q: self.Q
+                VarPowerFlowRefferenceType.Vi: self.Vi
             }
 
 
