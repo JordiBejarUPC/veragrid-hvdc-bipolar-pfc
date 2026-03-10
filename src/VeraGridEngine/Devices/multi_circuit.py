@@ -3233,22 +3233,29 @@ class MultiCircuit(Assets):
 
         return other
 
-    def check_rms_models(self) -> List[str]:
+    def check_rms_models(self) -> Logger:
         """
         This function checks that a device has a valid rms model
         :return:
         """
-        empty_elem:List[str] = list()
+        logger = Logger()
         for elm in self.buses:
             if elm.rms_model.model.empty():
-                empty_elem.append(elm.name)
+                logger.add_error("Missing RMS model",
+                                 device_class=elm.device_type.value,
+                                 device=elm.name)
+
         for elm in self.get_branches_iter():
             if elm.rms_model.model.empty():
-                empty_elem.append(elm.name)
+                logger.add_error("Missing RMS model",
+                                 device_class=elm.device_type.value,
+                                 device=elm.name)
         for elm in self.get_injection_devices_iter():
             if elm.rms_model.model.empty():
-                empty_elem.append(elm.name)
-        return empty_elem
+                logger.add_error("Missing RMS model",
+                                 device_class=elm.device_type.value,
+                                 device=elm.name)
+        return logger
 
 
 

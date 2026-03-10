@@ -32,13 +32,16 @@ class RmsResults(ResultsTemplate):
                  units: str = ""):
         """
 
+        :param rms_events_group_results:
+        :param empty_rms_models:
+        :param well_initialized:
+        :param converged:
         :param values:
         :param time_array:
-        :param stat_vars:
-        :param algeb_vars:
+        :param variables:
         :param uid2idx:
         :param vars_glob_name2uid:
-        :param devices:
+        :param devices_vars_info:
         :param units:
         """
         ResultsTemplate.__init__(

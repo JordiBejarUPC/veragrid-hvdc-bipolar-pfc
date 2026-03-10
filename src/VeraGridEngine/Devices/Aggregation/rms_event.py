@@ -26,7 +26,8 @@ class RmsEvent(PointerDeviceParent):
         'parameter',
         'time',
         'value',
-        '_group'
+        '_group',
+        'force_step_alignment'
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -37,6 +38,8 @@ class RmsEvent(PointerDeviceParent):
         GCProp(key='value', units='', tpe=float,
                       definition='New value for the parameter'),
         GCProp(key='group', units='', tpe=DeviceType.RmsEventsGroupDevice, definition='RmsEvent group'),
+        GCProp(key='force_step_alignment', units='', tpe=bool,
+               definition='Force step alignment'),
     )
 
     def __init__(self,

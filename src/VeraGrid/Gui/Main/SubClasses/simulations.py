@@ -3276,6 +3276,16 @@ class SimulationsMain(TimeEventsMain):
 
             if not self.session.is_this_running(SimulationTypes.RmsDynamic_run):
 
+                logger = self.circuit.check_rms_models()
+                if logger.has_errors():
+                    # Show dialogue
+                    dlg = LogsDialogue(name="RMS pre simulation check",
+                                       logger=logger)
+                    dlg.setModal(True)
+                    dlg.exec()
+                    return
+
+
                 self.remove_simulation(SimulationTypes.RmsDynamic_run)
 
                 _, pf_results = self.session.power_flow
@@ -3287,7 +3297,9 @@ class SimulationsMain(TimeEventsMain):
                     QtGui.QGuiApplication.processEvents()
                     self.LOCK()
 
-                    drv = sim.RmsSimulationDriver(grid=self.circuit, options=self.get_selected_rms_simulation_options(), pf_results=pf_results)
+                    drv = sim.RmsSimulationDriver(grid=self.circuit,
+                                                  options=self.get_selected_rms_simulation_options(),
+                                                  pf_results=pf_results)
 
                     self.session.run(drv,
                                      post_func=self.post_rms,
