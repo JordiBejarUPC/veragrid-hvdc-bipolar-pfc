@@ -91,13 +91,11 @@ class PfBasicFormulation(PfFormulationTemplate):
         """
         Alter the Ybus diagonal.
         Used in shunt discrete controls
-        :param prev_val:
-        :param new_val:
-        :param i:
-        :return:
+        :param prev_val: Old shunt value
+        :param new_val: New shunt value
+        :param i: column or row (Ybus is square)
         """
-        self.adm.Ybus[i, i] -= prev_val
-        self.adm.Ybus[i, i] += new_val
+        self.adm.Ybus[i, i] += new_val - prev_val
 
     def update_bus_types(self, pq: IntVec, pv: IntVec, pqv: IntVec, p: IntVec):
         """
