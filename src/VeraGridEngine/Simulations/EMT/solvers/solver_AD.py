@@ -123,6 +123,13 @@ def greedy_color_columns(col_rows: List[List[int]], n_rows: int) -> Tuple[np.nda
 
     return colors, int(max_color + 1)
 
+class BoundaryUpdaterInterface:
+    def update(self, t: float, x_prev: Vec, full_params: Vec) -> None:
+        raise NotImplementedError
+
+    def get_next_forced_event_time(self, t_prev: float, t_target: float) -> float | None:
+        raise NotImplementedError
+
 class Predictor:
     """
     Computes an explicit predictor for the Newton initial guess x_iter.
@@ -523,7 +530,7 @@ class JitAdSolver:
                  x0: Union[Vec | None] = None,
                  dx0: Union[Vec | None] = None,
                  params0: Union[Vec | None] = None,
-                 boundary_updater: Any | None = None) -> Tuple[Vec, Mat]:
+                 boundary_updater: BoundaryUpdaterInterface | None = None) -> Tuple[Vec, Mat, Mat]:
         """
         Main JIT simulation loop using the Automatic Differentiation (AD) backend.
 
@@ -545,7 +552,6 @@ class JitAdSolver:
         current_jacobian = self.jit_jacobian_ad[method]
 
         n_eqs = self.problem.get_all_vars_number()
-        n_diff = self.problem.get_diff_var_number()
         n_states = self.problem.get_states_number()
 
         use_dense_solver = (n_eqs <= self.dense_threshold)
@@ -598,70 +604,124 @@ class JitAdSolver:
             else:
                 pass
 
-            t_curr = t[i + 1]
+            t_step_start = float(t[i])
+            t_step_target = float(t[i + 1])
 
-            # Parameter update via Problem
-            ev_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
-            full_params = np.concatenate((ev_params, static_vals))
+            t_local_prev = t_step_start
+            is_first_local_step = True
 
-            if boundary_updater is not None:
-                boundary_updater.update(t_curr, x_prev, full_params)
-            else:
-                pass
+            while t_local_prev < (t_step_target - 1e-15):
 
-            x_iter[:] = x_prev
+                forced_event_time = None
+                if boundary_updater is None:
+                    pass
+                else:
+                    forced_event_time = boundary_updater.get_next_forced_event_time(
+                        t_prev=float(t_local_prev),
+                        t_target=float(t_step_target),
+                    )
 
-            # PREDICTOR
-            if i == 0 and method == DynamicIntegrationMethod.DaeTrapezoidal:
-                predictor = Predictor(n_states=n_states)
-                predictor.predict(
-                    x_iter=x_iter,
-                    x_prev=x_prev,
-                    dx_prev=dx_prev,
-                    h=self.h,
-                    pred_method=self.pred_method,
-                )
+                if forced_event_time is None:
+                    t_curr = t_step_target
+                else:
+                    t_curr = min(float(forced_event_time), t_step_target)
 
-            for k in range(15):
-                ctx = NewtonSolveContext(t=float(t_curr), step_idx=int(i), newton_iter=int(k), phase="jit_ad",
-                                         method=str(method))
+                    if t_curr <= t_local_prev + 1e-15:
+                        t_curr = t_step_target
 
-                # Execute batched residuals
-                res = np.zeros(n_eqs, dtype=np.float64)
-                for kn in kernel_list:
-                    kn(x_iter, full_params, x_prev, dx_prev, self.h, res, x_prev2)
+                is_aligned_substep = t_curr < (t_step_target - 1e-15)
 
-                if np.linalg.norm(res, np.inf) < 1e-5:
-                    break
+                if method == DynamicIntegrationMethod.DaeBDF2 and is_aligned_substep:
+                    raise NotImplementedError(
+                        "force_step_alignment is not implemented for DaeBDF2 in JitAdSolver."
+                    )
                 else:
                     pass
 
-                # Evaluate AD Jacobian
-                J = current_jacobian(states=x_iter, params=full_params, history=x_prev, d_history=dx_prev, h=self.h,
-                                     history2=x_prev2)
+                h_eff = float(t_curr - t_local_prev)
 
-                if use_dense_solver:
-                    delta = dense_solve(J.toarray(), -res, ctx)
+                # Parameter update via Problem
+                runtime_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
+                full_params = np.concatenate((runtime_params, static_vals))
+
+                if boundary_updater is not None:
+                    boundary_updater.update(t_curr, x_prev, full_params)
                 else:
-                    delta = sparse_solve(J, -res, ctx)
-                x_iter += delta
+                    pass
 
-            self.y[i + 1, :] = x_iter
-            self.dy[i, :] = dx_prev
+                ev_params[:] = full_params[:self.problem.get_variable_parameter_number()]
 
-            if method == DynamicIntegrationMethod.DaeTrapezoidal:
-                dx_prev[:n_states] = ((2.0 / self.h) * (x_iter[:n_states] - x_prev[:n_states]) - dx_prev[:n_states])
-            elif method == DynamicIntegrationMethod.DaeBDF2:
-                x_prev2 = x_prev.copy()
-            else:
-                dx_prev[:n_states] = ((x_iter[:n_states] - x_prev[:n_states]) / self.h)
+                x_iter[:] = x_prev
 
-            if method != DynamicIntegrationMethod.DaeBDF2:
-                x_prev2 = x_prev.copy()
-            else:
-                pass
+                # PREDICTOR
+                if i == 0 and is_first_local_step and method == DynamicIntegrationMethod.DaeTrapezoidal:
+                    predictor = Predictor(n_states=n_states)
+                    predictor.predict(
+                        x_iter=x_iter,
+                        x_prev=x_prev,
+                        dx_prev=dx_prev,
+                        h=h_eff,
+                        pred_method=self.pred_method,
+                    )
 
-            x_prev = x_iter.copy()
+                for k in range(15):
+                    ctx = NewtonSolveContext(
+                        t=float(t_curr),
+                        step_idx=int(i),
+                        newton_iter=int(k),
+                        phase="jit_ad",
+                        method=str(method),
+                    )
+
+                    # Execute batched residuals
+                    res = np.zeros(n_eqs, dtype=np.float64)
+                    for kn in kernel_list:
+                        kn(x_iter, full_params, x_prev, dx_prev, h_eff, res, x_prev2)
+
+                    if np.linalg.norm(res, np.inf) < 1e-5:
+                        break
+                    else:
+                        pass
+
+                    # Evaluate AD Jacobian
+                    J = current_jacobian(
+                        states=x_iter,
+                        params=full_params,
+                        history=x_prev,
+                        d_history=dx_prev,
+                        h=h_eff,
+                        history2=x_prev2,
+                    )
+
+                    if use_dense_solver:
+                        delta = dense_solve(J.toarray(), -res, ctx)
+                    else:
+                        delta = sparse_solve(J, -res, ctx)
+
+                    x_iter += delta
+
+                if method == DynamicIntegrationMethod.DaeTrapezoidal:
+                    dx_prev[:n_states] = (
+                            (2.0 / h_eff) * (x_iter[:n_states] - x_prev[:n_states]) - dx_prev[:n_states]
+                    )
+                elif method == DynamicIntegrationMethod.DaeBDF2:
+                    x_prev2 = x_prev.copy()
+                else:
+                    dx_prev[:n_states] = (
+                            (x_iter[:n_states] - x_prev[:n_states]) / h_eff
+                    )
+
+                if method != DynamicIntegrationMethod.DaeBDF2:
+                    x_prev2 = x_prev.copy()
+                else:
+                    pass
+
+                x_prev[:] = x_iter
+                t_local_prev = t_curr
+                is_first_local_step = False
+
+            self.y[i + 1, :] = x_prev
+            self.dy[i + 1, :] = dx_prev
 
         if self.verbose:
             print(f"JIT (AD) Finished: {time.time() - t_start:.4f}s")

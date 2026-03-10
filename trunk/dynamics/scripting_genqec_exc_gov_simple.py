@@ -7,18 +7,23 @@ import cProfile
 import copy
 
 import time
-
+import sys, os
+import numpy as np
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
+import pandas as pd
 from matplotlib import pyplot as plt
 
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
+from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
@@ -59,7 +64,7 @@ grid.add_bus(bus1)
 
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.var_factory)
+    initialize_bus_rms(bus, vf=grid.rms_var_factory)
 
 
 # Lines
@@ -88,13 +93,13 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 
 
 # generator
-genqec_mdl = get_complete_generator_template(grid.var_factory).block
+genqec_mdl = get_complete_generator_template(grid.rms_var_factory).block
 
 # line
-line_mdl = get_line_rms_template(grid.var_factory).block
+line_mdl = get_line_rms_template(grid.rms_var_factory).block
 
 # load
-load_mdl = get_load_rms_template(grid.var_factory).block
+load_mdl = get_load_rms_template(grid.rms_var_factory).block
 
 # set models parameters
 load_mdl.set_parameter_in_model(var_name="Pl0", new_value=-0.0999999)
@@ -104,11 +109,11 @@ load_mdl.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
 # Add models to devices
 ######################################################################################################
 
-set_rms_model(device=gen0, model=genqec_mdl)
+set_rms_model(device=gen0, model=genqec_mdl, var_factory= grid.rms_var_factory)
 
-set_rms_model(device=line0, model=line_mdl)
+set_rms_model(device=line0, model=line_mdl, var_factory= grid.rms_var_factory)
 
-set_rms_model(device=load, model=load_mdl)
+set_rms_model(device=load, model=load_mdl, var_factory= grid.rms_var_factory)
 
 
 ######################################################################################################
@@ -116,8 +121,23 @@ set_rms_model(device=load, model=load_mdl)
 ######################################################################################################
 
 Pl0 = find_name_in_block('Pl0', load_mdl)
-event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098)
+events_group = RmsEventsGroup("simulation1")
+event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group)
 grid.add_rms_event(event)
+
+rms_events_group_names = np.array(0)
+
+# choose variables to save values
+# vars_to_save = list()
+# vars_to_save.extend(grid.var_factory.get_vars_to_save(gen0, ["delta", "omega"]))
+# vars_to_save.extend(grid.var_factory.get_vars_to_save(load, ["Pl", "Ql"]))
+#
+#
+# uid_save = [var.uid for var in vars_to_save]
+
+
+
+
 
 
 ######################################################################################################
@@ -172,16 +192,27 @@ problem = RmsProblemDae(grid=grid,
                         options=options,
                         pf_results=res)
 
+problem.set_events_group(events_group)
+
 
 solver = BackEulerImplicitIntegration(
     problem=problem,
     t0=0,
     t_end=options.simulation_time,
     h=options.time_step,
-    max_iter=options.max_iter
+    max_iter=options.max_iter,
 )
 
 t, y, well_initialized, converged = solver.simulate()
+
+# results = RmsResults(
+#             time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
+#             rms_events_group_names = rms_events_group_names,
+#             variables=problem.state_and_algebraic_vars,
+#             uid2idx=problem.uid2idx_vars,
+#             vars_glob_name2uid=problem.vars_glob_name2uid,
+#             devices_vars_info=problem.get_device_vars_dict()
+#             )
 
 
 

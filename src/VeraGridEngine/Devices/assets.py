@@ -116,7 +116,8 @@ class Assets:
         'device_associations',
         '_rms_events',
         '_rms_events_groups',
-        '_var_factory'
+        '_rms_var_factory',
+        '_emt_var_factory'
     )
 
     def __init__(self):
@@ -297,7 +298,8 @@ class Assets:
         self._diagrams: List[Union[dev.MapDiagram, dev.SchematicDiagram]] = list()
 
         # Class to handle the dynamic Vars and Consts
-        self._var_factory: dev.VarFactory = dev.VarFactory()
+        self._rms_var_factory: dev.VarFactory = dev.VarFactory()
+        self._emt_var_factory: dev.VarFactory = dev.VarFactory()
 
         # objects with profiles
         self.template_objects_dict = {
@@ -730,12 +732,20 @@ class Assets:
     # Var Factory
     # ------------------------------------------------------------------------------------------------------------------
     @property
-    def var_factory(self) -> dev.VarFactory:
+    def rms_var_factory(self) -> dev.VarFactory:
         """
-        Get the VarFactory object
+        Get the RMS VarFactory object
         :return: VarFactory
         """
-        return self._var_factory
+        return self._rms_var_factory
+
+    @property
+    def emt_var_factory(self) -> dev.VarFactory:
+        """
+        Get the EMT VarFactory object
+        :return: VarFactory
+        """
+        return self._emt_var_factory
 
     # ------------------------------------------------------------------------------------------------------------------
     # AC line
@@ -4189,7 +4199,7 @@ class Assets:
         :return: Sorted group filtered ContingencyGroup elements
         """
 
-        # declare the reults
+        # declare the results
         filtered_groups_idx: Set[int] = set()
 
         group2index = {g: i for i, g in enumerate(self._contingency_groups)}
@@ -4223,7 +4233,7 @@ class Assets:
 
         return [self._contingency_groups[i] for i in sorted(filtered_groups_idx)]
 
-    def get_contingency_groups_sensitive_to_moitoring(self, LODF: Mat, threshold: float) -> IntVec:
+    def get_contingency_groups_sensitive_to_monitoring(self, LODF: Mat, threshold: float) -> BoolVec:
         """
         Get a list of contingency groups that are sensitive to the monitoring rule
         :param LODF: LODF matrix (nbr, nbr)
@@ -4457,8 +4467,8 @@ class Assets:
 
     def get_rms_event_by_groups(self) -> List[Tuple[dev.RmsEventsGroup, List[dev.RmsEvent]]]:
         """
-        Get a dictionary of investments groups and their
-        :return: list of investment groups and their list of associated investments
+        Get a dictionary of RMS event groups and their
+        :return: list of RMS event groups and their list of associated RMS events
         """
         d = {e: list() for e in self._rms_events_groups}
 
@@ -6380,10 +6390,10 @@ class Assets:
         elif device_type == DeviceType.FluidInjectionDevice:
             return self.get_fluid_injections()
 
-        elif device_type == DeviceType.PMeasurementDevice:
+        elif device_type == DeviceType.PiMeasurementDevice:
             return self.get_p_measurements()
 
-        elif device_type == DeviceType.QMeasurementDevice:
+        elif device_type == DeviceType.QiMeasurementDevice:
             return self.get_q_measurements()
 
         elif device_type == DeviceType.PgMeasurementDevice:
@@ -6619,10 +6629,10 @@ class Assets:
             for d in devices:
                 self.add_branch(d)  # each branch needs to be converted accordingly
 
-        elif device_type == DeviceType.PMeasurementDevice:
+        elif device_type == DeviceType.PiMeasurementDevice:
             self._pi_measurements = devices
 
-        elif device_type == DeviceType.QMeasurementDevice:
+        elif device_type == DeviceType.QiMeasurementDevice:
             self._qi_measurements = devices
 
         elif device_type == DeviceType.PgMeasurementDevice:
@@ -6824,10 +6834,10 @@ class Assets:
         elif obj.device_type == DeviceType.FluidPathDevice:
             self.add_fluid_path(obj=obj)
 
-        elif obj.device_type == DeviceType.PMeasurementDevice:
+        elif obj.device_type == DeviceType.PiMeasurementDevice:
             self.add_pi_measurement(obj=obj)
 
-        elif obj.device_type == DeviceType.QMeasurementDevice:
+        elif obj.device_type == DeviceType.QiMeasurementDevice:
             self.add_qi_measurement(obj=obj)
 
         elif obj.device_type == DeviceType.PgMeasurementDevice:
@@ -7037,10 +7047,10 @@ class Assets:
         elif obj.device_type == DeviceType.FluidPathDevice:
             self.delete_fluid_path(obj)
 
-        elif obj.device_type == DeviceType.PMeasurementDevice:
+        elif obj.device_type == DeviceType.PiMeasurementDevice:
             self.delete_pi_measurement(obj)
 
-        elif obj.device_type == DeviceType.QMeasurementDevice:
+        elif obj.device_type == DeviceType.QiMeasurementDevice:
             self.delete_qi_measurement(obj)
 
         elif obj.device_type == DeviceType.PgMeasurementDevice:
@@ -7591,11 +7601,11 @@ class Assets:
             elm = dev.RmsEventsGroup()
             dictionary_of_lists = dict()
 
-        elif elm_type == DeviceType.PMeasurementDevice:
+        elif elm_type == DeviceType.PiMeasurementDevice:
             elm = dev.PiMeasurement()
             dictionary_of_lists = dict()
 
-        elif elm_type == DeviceType.QMeasurementDevice:
+        elif elm_type == DeviceType.QiMeasurementDevice:
             elm = dev.QiMeasurement()
             dictionary_of_lists = dict()
 
@@ -7691,12 +7701,12 @@ class Assets:
         :return:
         """
         self.rms_models = [
-            tem.get_genqec(vfactory=self._var_factory),
-            tem.get_governor(vfactory=self._var_factory),
-            tem.get_stabilizer(vfactory=self._var_factory),
-            tem.get_exciter(vfactory=self._var_factory),
-            tem.get_complete_generator_template(vfactory=self._var_factory),
-            tem.get_genrow_rms_template(vfactory=self._var_factory),
-            tem.get_line_rms_template(vfactory=self._var_factory),
-            tem.get_load_rms_template(vfactory=self._var_factory)
+            tem.get_genqec(vfactory=self._rms_var_factory),
+            tem.get_governor(vfactory=self._rms_var_factory),
+            tem.get_stabilizer(vfactory=self._rms_var_factory),
+            tem.get_exciter(vfactory=self._rms_var_factory),
+            tem.get_complete_generator_template(vfactory=self._rms_var_factory),
+            tem.get_genrow_rms_template(vfactory=self._rms_var_factory),
+            tem.get_line_rms_template(vfactory=self._rms_var_factory),
+            tem.get_load_rms_template(vfactory=self._rms_var_factory)
         ]

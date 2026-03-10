@@ -26,7 +26,8 @@ class RmsEvent(PointerDeviceParent):
         'parameter',
         'time',
         'value',
-        '_group'
+        '_group',
+        'force_step_alignment'
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -37,6 +38,8 @@ class RmsEvent(PointerDeviceParent):
         GCProp(key='value', units='', tpe=float,
                       definition='New value for the parameter'),
         GCProp(key='group', units='', tpe=DeviceType.RmsEventsGroupDevice, definition='RmsEvent group'),
+        GCProp(key='force_step_alignment', units='', tpe=bool,
+               definition='Force step alignment'),
     )
 
     def __init__(self,
@@ -44,21 +47,24 @@ class RmsEvent(PointerDeviceParent):
                  parameter: Var = None,
                  time: float = None,
                  value: float = None,
+                 group: RmsEventsGroup = None,
+                 force_step_alignment: bool = False,
                  idtag: Union[str, None] = None,
                  name="RmsEvent",
                  code='',
-                 group: RmsEventsGroup = None,
+
                  comment: str = ""):
         """
-        Investment
+        Rms Event
         :param device: Some device to point at
-        :param idtag: String. Element unique identifier
-        :param name: String. Contingency name
-        :param code: String. Contingency code name
-        :param group: RmsEventsGroup. RmsEvent group
         :param parameter: parameter
         :param time: time
         :param value: value
+        :param force_step_alignment: Trigger time-step subdivision for this event (EMT)
+        :param idtag: String. Element unique identifier
+        :param name: String. Event name
+        :param code: String. Event code name
+        :param group: RmsEventsGroup. RmsEvent group
         :param comment: Comment
         """
 
@@ -73,14 +79,15 @@ class RmsEvent(PointerDeviceParent):
 
         self._group: RmsEventsGroup = group
         self.parameter: Any = parameter
-        self.time: float = time
-        self.value: float = value
+        self.time: float = float(time) if time is not None else 0.0
+        self.value: float = float(value) if value is not None else 0.0
+        self.force_step_alignment: bool = bool(force_step_alignment)
 
 
     @property
     def group(self) -> RmsEventsGroup:
         """
-        Group of investments
+        Group of events
         :return:
         """
         return self._group

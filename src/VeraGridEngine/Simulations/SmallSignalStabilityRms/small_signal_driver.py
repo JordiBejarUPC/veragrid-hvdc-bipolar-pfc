@@ -14,6 +14,7 @@ import scipy.sparse as sp
 
 from typing import Union, Any
 
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
@@ -52,13 +53,13 @@ def compute_state_matrix(problem: RmsProblemTemplate, x: Vec, dx: Vec) -> tuple[
     return A_bal, A
 
 @nb.njit(cache=True)
-def compute_participation_factors(v: Vec,
-                                  w: Vec) -> Mat:
+def compute_participation_factors(v: np.ndarray,
+                                  w: np.ndarray) -> np.ndarray:
     """
     Calculates normalized participation factors correctly for both dense and sparse.
     Compatible with strict Numba (without keep dims).
-    :param v: right eigenvectors (columns)
-    :param w: left eigenvectors (columns)
+    :param v: right eigenvectors (columns) - should be complex128
+    :param w: left eigenvectors (columns) - should be complex128
     :return PF_norm: Return normalized participation factors
     """
     n_rows = v.shape[0]
@@ -232,6 +233,10 @@ def run_dense_small_signal_stability(problem: RmsProblemTemplate,
     v = eig_results[2]
 
     w = w_raw.conj()
+    
+    # Ensure eigenvectors are complex (scipy may return float64 for real eigenvalues)
+    v = v.astype(np.complex128, copy=False)
+    w = w.astype(np.complex128, copy=False)
 
     participation_factors = compute_participation_factors(v=v, w=w)
 
@@ -344,6 +349,9 @@ def run_sparse_small_signal_stability(problem: RmsProblemTemplate,
     eigenvalues = eigenvalues_R
 
     # 6. PARTICIPATION
+    # Ensure eigenvectors are complex (scipy may return float64 for real eigenvalues)
+    v_valid = v_valid.astype(np.complex128, copy=False)
+    w_valid = w_valid.astype(np.complex128, copy=False)
     participation_factors = compute_participation_factors(v=v_valid, w=w_valid)
 
     eig_no_conjugates = select_eigs_without_conjugates(eigenvalues)
@@ -433,9 +441,13 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
 
         DriverTemplate.__init__(self, grid=grid, engine=engine)
 
+        events_group = RmsEventsGroup("simulation1")
+
         self.problem = RmsProblemDae(grid=grid,
                                      options=rms_options,
                                      pf_results=pf_results)
+
+        self.problem.set_events_group(events_group)
 
         self.sss_options: SmallSignalStabilityRmsOptions = SmallSignalStabilityRmsOptions() if sss_options is None else sss_options
         self.assessment_time = self.sss_options.ss_assessment_time

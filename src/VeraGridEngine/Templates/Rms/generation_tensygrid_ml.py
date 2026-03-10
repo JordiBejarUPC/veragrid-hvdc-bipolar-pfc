@@ -238,7 +238,7 @@ def GenqecBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
             # Air Gap Voltages and delta
             omega: vfactory.add_const(1),
             Psi_ag: sym.sqrt(Viag_expr ** 2 + Vrag_expr ** 2),
-            Sa: A / 2 * ((Psi_ag - B) + sym.sqrt((Psi_ag - B) ** 2 + vfactory.add_const(1e-11))) ** 2,
+            Sa: A * sym.max(Psi_ag - B, vfactory.add_const(0)),
             Sat: vfactory.add_const(1) + Sa,
             delta: sym.atan(
                 (inputs[0] * sym.sin(inputs[1]) + sym.imag(

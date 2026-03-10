@@ -10,6 +10,7 @@ from VeraGridEngine import VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
+# from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
 
 class VarFactory(EditableDevice):
@@ -20,7 +21,8 @@ class VarFactory(EditableDevice):
     __slots__ = (
         '_var_dict',
         '_const_dict',
-        '_diff_var_dict'
+        '_diff_var_dict',
+        '_vars_info'
 
     )
 
@@ -47,6 +49,25 @@ class VarFactory(EditableDevice):
         self._var_dict: Dict[int, Var] = dict()
         self._const_dict: Dict[int, Const] = dict()
         self._diff_var_dict: Dict[int, Var] = dict()
+        self._vars_info: Dict[Any, List[Var]] = dict()
+
+    @property
+    def vars_info(self) -> Dict[Any, List[Var]]:
+        return self._vars_info
+
+    def get_vars_to_save(self,
+                         dev:Any,
+                         names: List[str]) -> List[Var]:
+        """
+        this function returns a list of variables which names are in names
+        :param dev:
+        :type dev:
+        :param names:
+        :type names:
+        :return:
+        :rtype:
+        """
+        return [v for v in self._vars_info[dev] if v.name in names]
 
     def add_var(self,
                 name: str,
@@ -220,3 +241,18 @@ class VarFactory(EditableDevice):
             obj_dict[obj.uid] = obj
 
         self._diff_var_dict = obj_dict
+
+    def register_var(self, dev:Any, var:Var):
+
+        """
+        Associate a variable with a device
+        :param dev: Device
+        :param var: Variable
+        """
+
+        var_list = self._vars_info.get(dev, None)
+
+        if var_list is None:
+            self._vars_info[dev] = [var]
+        else:
+            var_list.append(var)
