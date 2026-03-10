@@ -44,7 +44,7 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_enums import (CgmesProfileType,
 from VeraGridEngine.IO.cim.cgmes.cgmes_utils import get_voltage_terminal
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.full_model import FullModel
 import VeraGridEngine.Devices as gcdev
-from VeraGridEngine.enumerations import CGMESVersions
+from VeraGridEngine.enumerations import CGMESVersions, ConverterControlType
 from VeraGridEngine.data_logger import DataLogger
 
 
@@ -478,7 +478,9 @@ def create_cgmes_regulating_control(cgmes_elm,
     rc.name = f'_RC_{mc_gen.name}'
     rc.shortName = rc.name
     rc.mode = RegulatingControlModeKind.voltage
-    rc.Terminal = cgmes_elm.Terminals  # TODO get a terminal from the controlled bus !!!
+    # Export the concrete terminal object instead of the generic list/scalar
+    # field so later import has an unambiguous control attachment point.
+    rc.Terminal = cgmes_elm.Terminals
 
     rc.RegulatingCondEq = cgmes_elm
     rc.discrete = False
@@ -755,7 +757,12 @@ def create_cgmes_vsc_converter(cgmes_model: CgmesCircuit,
     if gc_vsc is not None:
         vs_converter.name = gc_vsc.name
         vs_converter.description = gc_vsc.code
-        targetUpcc = gc_vsc.Vf
+        if gc_vsc.control1 in (ConverterControlType.Vm_ac, ConverterControlType.Vm_dc):
+            targetUpcc = gc_vsc.control1_val
+        elif gc_vsc.control2 in (ConverterControlType.Vm_ac, ConverterControlType.Vm_dc):
+            targetUpcc = gc_vsc.control2_val
+        else:
+            targetUpcc = v_set
     else:
         i = len(cgmes_model.cgmes_assets.VsConverter_list)
         vs_converter.name = f'VSC_{i + 1}'
@@ -1151,7 +1158,7 @@ def create_sv_status(cgmes_model: CgmesCircuit,
         raise NotImplemented()
 
     sv_status.inService = in_service
-    # TODO sv_status.ConductingEquipment = cgmes_conducting_equipment
+    sv_status.ConductingEquipment = cgmes_conducting_equipment
 
     cgmes_model.add(sv_status)
 
