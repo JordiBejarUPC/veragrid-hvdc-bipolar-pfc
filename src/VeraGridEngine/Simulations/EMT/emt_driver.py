@@ -5,6 +5,7 @@
 
 import numpy as np
 import pandas as pd
+from typing import Any, cast
 
 from VeraGridEngine import EmtSolverTypes
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -12,13 +13,13 @@ from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
-from VeraGridEngine.enumerations import EngineType, SimulationTypes
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
-from VeraGridEngine.enumerations import EngineType, SimulationTypes, DynamicIntegrationMethod
-from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.Simulations.EMT.solvers.fast_structural_solver import FastStructuralSolver
+
+from VeraGridEngine.enumerations import EngineType, SimulationTypes
 
 
 class EmtSimulationDriver(DriverTemplate):
@@ -45,7 +46,9 @@ class EmtSimulationDriver(DriverTemplate):
 
         self.solvers_dict = {EmtSolverTypes.Symbolic: JitSymbolicSolver,
                              EmtSolverTypes.Automatic: JitAdSolver,
-                             EmtSolverTypes.StructuralAD: StructuralVectorizedSolver}
+                             EmtSolverTypes.StructuralAD: StructuralVectorizedSolver,
+                             EmtSolverTypes.FastStructural: FastStructuralSolver
+                             }
 
         self.grid = grid
 
@@ -83,6 +86,9 @@ class EmtSimulationDriver(DriverTemplate):
 
         res = self.pf_results
 
+        if res is None:
+            raise ValueError("EMT simulation requires 3-phase power flow results")
+
         print(f"Converged: {res.converged}")
         print(res.get_bus_df())
         print(res.get_branch_df())
@@ -99,10 +105,11 @@ class EmtSimulationDriver(DriverTemplate):
             t0=0.0,
             t_end=self.options.simulation_time,
             h=self.options.time_step,
-            method = self.options.integration_method
+            method=self.options.integration_method,
         )
 
-        t, y = solver.simulate(boundary_update_fn = problem.emt_boundary_update)
+        boundary_updater = cast(Any, problem)
+        t, y, dy = solver.simulate(boundary_updater=boundary_updater)
 
         # profiler.disable()
         # stats = pstats.Stats(profiler).sort_stats('cumtime')
@@ -114,4 +121,5 @@ class EmtSimulationDriver(DriverTemplate):
             time_array=pd.DatetimeIndex(pd.to_datetime(t * 1e9)),
             uid2idx=problem.uid2idx_vars,
             vars_glob_name2uid=problem.vars_glob_name2uid,
+            devices=[],
         )
