@@ -23,7 +23,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.MultiLinear.multilinearize import *
 from VeraGridEngine.Utils.MultiLinear.differential_var import DiffVar, LagVar
 from VeraGridEngine.Utils.MultiLinear.diff_blocksolver import DiffBlock, DiffBlockSolver
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 import VeraGridEngine.api as gce
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -305,7 +305,7 @@ sys = Block(
 # ----------------------------------------------------------------------------------------------------------------------
 # Solver
 # ----------------------------------------------------------------------------------------------------------------------
-slv = BlockSolver(sys)
+slv = BlockSolverNoDiff(sys)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Intialization
@@ -472,7 +472,7 @@ sys = Block(
 # Solver
 # ----------------------------------------------------------------------------------------------------------------------
 slv = DiffBlockSolver(sys)
-slv = BlockSolver(sys)
+slv = BlockSolverNoDiff(sys)
 
 
 diff_vars_mapping = {

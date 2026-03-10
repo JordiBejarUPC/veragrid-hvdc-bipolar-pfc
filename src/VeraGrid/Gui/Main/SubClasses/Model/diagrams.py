@@ -14,7 +14,7 @@ from matplotlib import pyplot as plt
 from pandas.plotting import register_matplotlib_converters
 
 import VeraGridEngine.Devices.Diagrams.palettes as palettes
-from VeraGridEngine import ContingencyOperationTypes
+from VeraGridEngine import ContingencyOperationTypes, MapDiagram
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.IO.file_system import tiles_path
@@ -673,7 +673,7 @@ class DiagramsMain(CompiledArraysMain):
             hvdc_losses=results.losses_hvdc,
             hvdc_loading=results.loading_hvdc,
             hvdc_active=hvdc_active,
-            vsc_Pf=results.Pfp_vsc,
+            vsc_Pf=results.Pf_vsc,
             vsc_Pt=results.St_vsc.real,
             vsc_Qt=results.St_vsc.imag,
             vsc_losses=results.losses_vsc,
@@ -2158,52 +2158,60 @@ class DiagramsMain(CompiledArraysMain):
             DeviceType.ExternalGridDevice
         ]
 
-        self.new_se_dlg = CheckListDialogue(
-            objects_list=[e.value for e in tpes]
-        )
-
-        if self.circuit.get_substation_number() > 0:
-            # showing this menu only makes sense if there is anything there
-            self.new_se_dlg.exec()
-        else:
-            self.show_warning_toast("No substations to draw...")
-            return
-
-        # if ok:
         cmap_text = self.ui.palette_comboBox.currentText()
         cmap = self.cmap_dict[cmap_text]
 
-        diagram = generate_map_diagram(
-            substations=self.circuit.get_substations() if self.new_se_dlg.selected(DeviceType.SubstationDevice.value) else list(),
-            voltage_levels=self.circuit.get_voltage_levels() if self.new_se_dlg.selected(DeviceType.SubstationDevice.value) else list(),
-            lines=self.circuit.get_lines() if self.new_se_dlg.selected(DeviceType.LineDevice.value) else list(),
-            dc_lines=self.circuit.get_dc_lines() if self.new_se_dlg.selected(DeviceType.DCLineDevice.value) else list(),
-            hvdc_lines=self.circuit.get_hvdc() if self.new_se_dlg.selected(DeviceType.HVDCLineDevice.value) else list(),
-            fluid_nodes=self.circuit.get_fluid_nodes(),
-            fluid_paths=self.circuit.get_fluid_paths(),
-            external_grids=self.circuit.external_grids if self.new_se_dlg.selected(DeviceType.ExternalGridDevice.value) else list(),
-            static_generators=self.circuit.static_generators if self.new_se_dlg.selected(DeviceType.StaticGeneratorDevice.value) else list(),
-            loads=self.circuit.loads if self.new_se_dlg.selected(DeviceType.LoadDevice.value) else list(),
-            batteries=self.circuit.batteries if self.new_se_dlg.selected(DeviceType.BatteryDevice.value) else list(),
-            generators=self.circuit.generators if self.new_se_dlg.selected(DeviceType.GeneratorDevice.value) else list(),
-            prog_func=None,
-            text_func=None,
-            name='Map diagram',
-            use_flow_based_width=self.ui.branch_width_based_on_flow_checkBox.isChecked(),
-            min_branch_width=self.ui.min_branch_size_spinBox.value(),
-            max_branch_width=self.ui.max_branch_size_spinBox.value(),
-            min_bus_width=self.ui.min_node_size_spinBox.value(),
-            max_bus_width=self.ui.max_node_size_spinBox.value(),
-            arrow_size=self.ui.arrow_size_size_spinBox.value(),
-            palette=cmap,
-            default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value()
-        )
+
+
+        if self.circuit.get_substation_number() > 0:
+            # showing this menu only makes sense if there is anything there
+
+            self.new_se_dlg = CheckListDialogue(
+                objects_list=[e.value for e in tpes]
+            )
+
+            self.new_se_dlg.exec()
+
+            diagram = generate_map_diagram(
+                substations=self.circuit.get_substations() if self.new_se_dlg.selected(
+                    DeviceType.SubstationDevice.value) else list(),
+                voltage_levels=self.circuit.get_voltage_levels() if self.new_se_dlg.selected(
+                    DeviceType.SubstationDevice.value) else list(),
+                lines=self.circuit.get_lines() if self.new_se_dlg.selected(DeviceType.LineDevice.value) else list(),
+                dc_lines=self.circuit.get_dc_lines() if self.new_se_dlg.selected(
+                    DeviceType.DCLineDevice.value) else list(),
+                hvdc_lines=self.circuit.get_hvdc() if self.new_se_dlg.selected(
+                    DeviceType.HVDCLineDevice.value) else list(),
+                fluid_nodes=self.circuit.get_fluid_nodes(),
+                fluid_paths=self.circuit.get_fluid_paths(),
+                external_grids=self.circuit.external_grids if self.new_se_dlg.selected(
+                    DeviceType.ExternalGridDevice.value) else list(),
+                static_generators=self.circuit.static_generators if self.new_se_dlg.selected(
+                    DeviceType.StaticGeneratorDevice.value) else list(),
+                loads=self.circuit.loads if self.new_se_dlg.selected(DeviceType.LoadDevice.value) else list(),
+                batteries=self.circuit.batteries if self.new_se_dlg.selected(
+                    DeviceType.BatteryDevice.value) else list(),
+                generators=self.circuit.generators if self.new_se_dlg.selected(
+                    DeviceType.GeneratorDevice.value) else list(),
+                prog_func=None,
+                text_func=None,
+                name='Map diagram',
+                use_flow_based_width=self.ui.branch_width_based_on_flow_checkBox.isChecked(),
+                min_branch_width=self.ui.min_branch_size_spinBox.value(),
+                max_branch_width=self.ui.max_branch_size_spinBox.value(),
+                min_bus_width=self.ui.min_node_size_spinBox.value(),
+                max_bus_width=self.ui.max_node_size_spinBox.value(),
+                arrow_size=self.ui.arrow_size_size_spinBox.value(),
+                palette=cmap,
+                default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value()
+            )
+        else:
+            # self.show_warning_toast("No substations to draw...")
+            diagram = MapDiagram(name='Map diagram')
 
         # set other default properties of the diagram
         diagram.tile_source = self.ui.tile_provider_comboBox.currentText()
         diagram.start_level = 5
-        # else:
-        # diagram = dev.MapDiagram(name='Map diagram')
 
         # select the tile source
         tile_source = self.tile_name_dict[self.ui.tile_provider_comboBox.currentText()]
@@ -2521,7 +2529,7 @@ class DiagramsMain(CompiledArraysMain):
 
     def set_big_bus_marker_colours(self,
                                    buses: List[dev.Bus],
-                                   colors: Iterable[type(QtGui.QColor)],
+                                   colors: Iterable[QtGui.QColor],
                                    tool_tips: Union[None, List[str]] = None):
         """
         Set a big marker at the selected buses with the matching colours
@@ -2747,8 +2755,7 @@ class DiagramsMain(CompiledArraysMain):
                 if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
                     # create a new events group
                     group = dev.RmsEventsGroup(idtag=None,
-                                               name='Rms Events Group 1',
-                                               category="single" if len(target_devices) == 1 else "multiple")
+                                               name='Rms Events Group 1')
                     self.circuit.add_rms_events_group(group)
 
                     events_data = rms_events_dialog.get_data()  # data for all the events affecting a device, it is structured in lists of floats for time and value info, and lists of parameters for parameter info

@@ -4,14 +4,14 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Union
+from typing import Union, Tuple, Any
 import numpy as np
 
-from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType
+from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType, ShuntControlMode
 from VeraGridEngine.Devices.Parents.shunt_parent import ShuntParent
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Devices.Parents.editable_device import get_at
+from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 from VeraGridEngine.basic_structures import Vec
 
 
@@ -20,8 +20,6 @@ class ControllableShunt(ShuntParent):
     Controllable Shunt
     """
     __slots__ = (
-        'is_controlled',
-        'is_nonlinear',
         'Bmin',
         'Bmax',
         'Gmin',
@@ -36,14 +34,45 @@ class ControllableShunt(ShuntParent):
         'control_bus',
         '_control_bus_prof',
         'Vset',
+        'Vmin',
+        'Vmax',
         '_Vset_prof',
+        'control_mode'
+    )
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='control_mode', units='', tpe=ShuntControlMode, definition='Shunt control mode'),
+        GCProp(key='control_bus', units='', tpe=DeviceType.BusDevice, definition='Alternative control bus'),
+        GCProp(key='g_steps', units='MW@v=1p.u.', tpe=SubObjectType.Array,
+               definition='Conductance steps', editable=False),
+        GCProp(key='b_steps', units='MVAr@v=1p.u.', tpe=SubObjectType.Array,
+               definition='Susceptance steps', editable=False),
+        GCProp(key='Gmax', units='MW', tpe=float,
+               definition='Maximum conductance', editable=True),
+        GCProp(key='Gmin', units='MW', tpe=float,
+               definition='Minimum conductance', editable=True),
+        GCProp(key='Bmax', units='MVAr', tpe=float,
+               definition='Maximum susceptance', editable=True),
+        GCProp(key='Bmin', units='MVAr', tpe=float,
+               definition='Minimum susceptance', editable=True),
+        GCProp(key='active_steps', units='', tpe=SubObjectType.Array,
+               definition='steps active?', editable=False),
+        GCProp(key='step', units='', tpe=int,
+               definition='Device step position (0~N-1)',
+               profile_name='step_prof'),
+        GCProp(key='Vmin', units='p.u.', tpe=float,
+               definition='Lower range voltage value when regulating with Discrete mode'),
+        GCProp(key='Vset', units='p.u.', tpe=float,
+               definition='Set voltage. This is used for controlled shunts.',
+               profile_name='Vset_prof'),
+        GCProp(key='Vmax', units='p.u.', tpe=float,
+               definition='Upper range voltage value when regulating with Discrete mode.'),
     )
 
     def __init__(self,
                  name='Controllable Shunt',
                  idtag: Union[None, str] = None,
                  code: str = '',
-                 is_nonlinear: bool = False,
                  number_of_steps: int = 1,
                  step: int = 1,
                  g_per_step: float = 0.0,
@@ -65,12 +94,14 @@ class ControllableShunt(ShuntParent):
                  G0: float = 1e-20,
                  B0: float = 1e-20,
                  vset: float = 1.0,
+                 vmin: float = 0.9,
+                 vmax: float = 1.1,
                  mttf: float = 0.0,
                  mttr: float = 0.0,
                  capex: float = 0.0,
                  opex: float = 0.0,
-                 is_controlled: bool = True,
                  control_bus: Bus = None,
+                 control_mode: ShuntControlMode = ShuntControlMode.Continuous,
                  build_status: BuildStatus = BuildStatus.Commissioned):
         """
         The controllable shunt object implements the so-called ZIP model, in which the load can be
@@ -108,9 +139,6 @@ class ControllableShunt(ShuntParent):
                              build_status=build_status,
                              device_type=DeviceType.ControllableShuntDevice)
 
-        self.is_controlled = bool(is_controlled)
-        self.is_nonlinear = bool(is_nonlinear)
-
         self.Bmin = Bmin
         self.Bmax = Bmax
 
@@ -141,38 +169,26 @@ class ControllableShunt(ShuntParent):
         # voltage set profile for this load in p.u.
         self._Vset_prof = Profile(default_value=self.Vset, data_type=float)
 
-        self.register(key='is_nonlinear', units='', tpe=bool, definition='Is non-linear?')
+        self.Vmin = float(vmin)
+        self.Vmax = float(vmax)
 
-        self.register(key='control_bus', units='', tpe=DeviceType.BusDevice, definition='Alternative control bus')
+        self.control_mode: ShuntControlMode = control_mode
 
-        self.register(key='g_steps', units='MW@v=1p.u.', tpe=SubObjectType.Array,
-                      definition='Conductance steps', editable=False)
-
-        self.register(key='b_steps', units='MVAr@v=1p.u.', tpe=SubObjectType.Array,
-                      definition='Susceptance steps', editable=False)
-
-        self.register(key='Gmax', units='MW', tpe=float,
-                      definition='Maximum conductance', editable=True)
-
-        self.register(key='Gmin', units='MW', tpe=float,
-                      definition='Minimum conductance', editable=True)
-
-        self.register(key='Bmax', units='MVAr', tpe=float,
-                      definition='Maximum susceptance', editable=True)
-
-        self.register(key='Bmin', units='MVAr', tpe=float,
-                      definition='Minimum susceptance', editable=True)
-
-        self.register(key='active_steps', units='', tpe=SubObjectType.Array,
-                      definition='steps active?', editable=False)
-
-        self.register(key='step', units='', tpe=int,
-                      definition='Device step position (0~N-1)',
-                      profile_name='step_prof')
-
-        self.register(key='Vset', units='p.u.', tpe=float,
-                      definition='Set voltage. This is used for controlled shunts.',
-                      profile_name='Vset_prof')
+    # def set_snapshot_value(self, property_name, value: Any) -> None:
+    #     """
+    #     Set the value of a snapshot property
+    #     :param property_name: name of the property
+    #     :param value: Any
+    #     """
+    #     # handle legacy props that disappeared
+    #     try:
+    #         super().set_snapshot_value(property_name, value)
+    #     except AttributeError:
+    #         if property_name == 'is_controllable':
+    #             if bool(value):
+    #                 self.control_bus.is_controllable = ShuntControlMode.Continuous
+    #             else:
+    #                 self.control_bus.is_controllable = ShuntControlMode.Locked
 
     @property
     def step(self):

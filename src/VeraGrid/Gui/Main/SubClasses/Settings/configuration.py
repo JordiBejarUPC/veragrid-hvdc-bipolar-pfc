@@ -341,6 +341,7 @@ class ConfigurationMain(ResultsMain):
             },
             "dyn": {
                 "rms_int_method_comboBox": self.ui.rms_integration_method_comboBox,
+                "rms_initialization_method": self.ui.rms_initialization_method_comboBox,
                 "tolerance_rms_spinBox": self.ui.tolerance_rms_spinBox,
                 "sim_time_spinBox": self.ui.sim_time_spinBox,
                 "h_spinBox": self.ui.h_spinBox,

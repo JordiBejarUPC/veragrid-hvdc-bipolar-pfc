@@ -19,6 +19,7 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
 from VeraGridEngine.Topology.simulation_indices import compile_types
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec
 from VeraGridEngine.Utils.Sparse.csc2 import CSC
+from VeraGridEngine.enumerations import ShuntControlMode
 
 
 class PfBasicFormulation(PfFormulationTemplate):
@@ -58,6 +59,12 @@ class PfBasicFormulation(PfFormulationTemplate):
         self.idx_dP = self.idx_dVa
         self.idx_dQ = np.r_[self.pq, self.pqv]
 
+        self.buses_with_discrete_shunts_control: List[Tuple[int, int]] = list()
+        self.shunt_step = self.nc.shunt_data.step.copy()
+        for sh_i, bus_i in enumerate(self.nc.shunt_data.bus_idx):
+            if self.nc.shunt_data.control_mode[sh_i] == ShuntControlMode.Discrete:
+                self.buses_with_discrete_shunts_control.append((bus_i, sh_i))
+
     def x2var(self, x: Vec):
         """
         Convert X to decision variables
@@ -79,6 +86,18 @@ class PfBasicFormulation(PfFormulationTemplate):
             self.Va[self.idx_dVa],
             self.Vm[self.idx_dVm]
         ]
+
+    def modify_y_diagonal(self, prev_val: complex, new_val: complex, i: int):
+        """
+        Alter the Ybus diagonal.
+        Used in shunt discrete controls
+        :param prev_val:
+        :param new_val:
+        :param i:
+        :return:
+        """
+        self.adm.Ybus[i, i] -= prev_val
+        self.adm.Ybus[i, i] += new_val
 
     def update_bus_types(self, pq: IntVec, pv: IntVec, pqv: IntVec, p: IntVec):
         """
@@ -191,6 +210,31 @@ class PfBasicFormulation(PfFormulationTemplate):
 
                     # the composition of x may have changed, so recompute
                     x = self.var2x()
+
+            # discrete shunt logic
+            for bus_i, sh_i in self.buses_with_discrete_shunts_control:
+                if self.Vm[bus_i] > self.nc.shunt_data.vmax[sh_i]:
+                    # lower B
+                    if self.shunt_step[sh_i] > 0:
+                        b_steps: IntVec = self.nc.shunt_data.b_steps[sh_i]
+                        prev_b = b_steps[self.shunt_step[sh_i]]
+                        self.shunt_step[sh_i] -= 1
+                        b = b_steps[self.shunt_step[sh_i]]
+                        self.modify_y_diagonal(prev_val=prev_b, new_val=b, i=bus_i)
+                        any_change = True
+
+                elif self.Vm[bus_i] < self.nc.shunt_data.vmin[sh_i]:
+                    # increase B
+                    b_steps: IntVec = self.nc.shunt_data.b_steps[sh_i]
+                    if self.shunt_step[sh_i] < (len(b_steps) - 1):
+                        prev_b = b_steps[self.shunt_step[sh_i]]
+                        self.shunt_step[sh_i] += 1
+                        b = b_steps[self.shunt_step[sh_i]]
+                        self.modify_y_diagonal(prev_val=prev_b, new_val=b, i=bus_i)
+                        any_change = True
+                else:
+                    # within boundaries
+                    pass
 
             # update Slack control
             if self.options.distributed_slack:

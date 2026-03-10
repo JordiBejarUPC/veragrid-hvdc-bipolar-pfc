@@ -7,6 +7,7 @@ import time
 import numpy as np
 from typing import List, Dict, Union, Tuple, TYPE_CHECKING
 
+from VeraGridEngine import ShuntControlMode
 from VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation import (pg, build_status_dict, tap_module_control_mode_dict,
                                                                   tap_phase_control_mode_dict, hvdc_control_mode_dict,
                                                                   group_type_dict, contingency_ops_type_dict,
@@ -22,7 +23,7 @@ import VeraGridEngine.Devices as dev
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.enumerations import TapModuleControl, TapPhaseControl
-from VeraGridEngine.enumerations import SolverType
+from VeraGridEngine.enumerations import SolverType, OpfDispatchMode, MIPSolvers, ZonalGrouping, TimeGrouping
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 
 from VeraGridEngine.basic_structures import Logger
@@ -317,7 +318,7 @@ def add_municipalities(circuit: MultiCircuit,
     return d
 
 
-def convert_region(country: dev.Municipality) -> "pg.Region":
+def convert_region(country: dev.Region) -> "pg.Region":
     """
 
     :param country:
@@ -336,10 +337,10 @@ def add_regions(circuit: MultiCircuit,
     """
     d = dict()
 
-    for i, municipality in enumerate(circuit.regions):
-        elm = convert_region(municipality)
+    for region in circuit.regions:
+        elm = convert_region(region)
         gslv_grid.add_region(elm)
-        d[municipality] = elm
+        d[region] = elm
 
     return d
 
@@ -1042,6 +1043,112 @@ def add_shunts(circuit: MultiCircuit,
         sh = convert_shunt(elm=elm, bus_dict=bus_dict, n_time=n_time,
                            use_time_series=time_series, time_indices=time_indices)
         gslv_grid.add_shunt(sh)
+
+
+def convert_controllable_shunt(elm: dev.ControllableShunt, bus_dict: Dict[str, "pg.Bus"], n_time: int,
+                               use_time_series: bool,
+                               shunt_control_mode_dict: Dict[ShuntControlMode, "pg.ShuntControlMode"],
+                               time_indices: IntVec | None = None) -> "pg.ControllableShunt":
+    """
+
+    :param elm:
+    :param bus_dict:
+    :param n_time:
+    :param use_time_series:
+    :param shunt_control_mode_dict:
+    :param time_indices:
+    :return:
+    """
+    sh = pg.ControllableShunt(
+        nt=n_time,
+        bus=None if elm.bus is None else bus_dict[elm.bus.idtag],
+        name=elm.name,
+        idtag=elm.idtag,
+        code=str(elm.code),
+        number_of_steps=elm.g_steps.size(),
+        step=elm.step,
+        g_per_step=elm.g_per_step,
+        b_per_step=elm.b_per_step,
+        Cost=elm.Cost,
+        active=elm.active,
+        G=elm.G,
+        B=elm.B,
+        G0=elm.G0,
+        B0=elm.B0,
+        vset=elm.Vset,
+        vmin=elm.Vmin,
+        vmax=elm.Vmax,
+        mttf=elm.mttf,
+        mttr=elm.mttr,
+        capex=elm.capex,
+        opex=elm.opex,
+        control_bus=None if elm.bus is None else bus_dict[elm.control_bus.idtag],
+        control_mode=shunt_control_mode_dict[elm.control_mode],
+        build_status=build_status_dict[elm.build_status],
+    )
+
+    fill_profile(gslv_profile=sh.active,
+                 gc_profile=elm.active_prof,
+                 use_time_series=use_time_series,
+                 time_indices=time_indices,
+                 n_time=n_time,
+                 default_val=elm.active)
+
+    fill_profile(gslv_profile=sh.G,
+                 gc_profile=elm.G_prof,
+                 use_time_series=use_time_series,
+                 time_indices=time_indices,
+                 n_time=n_time,
+                 default_val=elm.G)
+
+    fill_profile(gslv_profile=sh.B,
+                 gc_profile=elm.B_prof,
+                 use_time_series=use_time_series,
+                 time_indices=time_indices,
+                 n_time=n_time,
+                 default_val=elm.B)
+
+    fill_profile(gslv_profile=sh.cost,
+                 gc_profile=elm.Cost_prof,
+                 use_time_series=use_time_series,
+                 time_indices=time_indices,
+                 n_time=n_time,
+                 default_val=elm.Cost)
+
+    return sh
+
+
+def add_controllable_shunts(circuit: MultiCircuit,
+                            gslv_grid: "pg.MultiCircuit",
+                            bus_dict: Dict[str, "pg.Bus"],
+                            time_series: bool,
+                            n_time=1,
+                            time_indices: Union[IntVec, None] = None):
+    """
+
+    :param circuit: VeraGrid circuit
+    :param gslv_grid: GSLV circuit
+    :param time_series: compile the time series from VeraGrid? otherwise just the snapshot
+    :param bus_dict: dictionary of bus id to GSLV bus object
+    :param n_time: number of time steps
+    :param time_indices: Array of time indices
+    """
+
+    shunt_control_mode_dict = {
+        ShuntControlMode.Locked: pg.ShuntControlMode.Locked,
+        ShuntControlMode.Continuous: pg.ShuntControlMode.Continuous,
+        ShuntControlMode.Discrete: pg.ShuntControlMode.Discrete,
+    }
+
+    devices = circuit.get_controllable_shunts()
+    for k, elm in enumerate(devices):
+        sh = convert_controllable_shunt(elm=elm,
+                                        bus_dict=bus_dict,
+                                        n_time=n_time,
+                                        use_time_series=time_series,
+                                        time_indices=time_indices,
+                                        shunt_control_mode_dict=shunt_control_mode_dict)
+        gslv_grid.add_controllable_shunt(sh)
 
 
 def convert_generator(k: int, elm: dev.Generator, bus_dict: Dict[str, "pg.Bus"], n_time: int,
@@ -2052,6 +2159,15 @@ def to_gslv(circuit: MultiCircuit,
         time_indices=time_indices
     )
 
+    add_controllable_shunts(
+        circuit=circuit,
+        gslv_grid=pg_grid,
+        bus_dict=bus_dict,
+        time_series=use_time_series,
+        n_time=n_time,
+        time_indices=time_indices
+    )
+
     add_generators(
         circuit=circuit,
         gslv_grid=pg_grid,
@@ -2434,9 +2550,126 @@ def translate_gslv_pf_results(grid: MultiCircuit, res: "pg.PowerFlowResults", lo
     return results
 
 
+def get_gslv_opf_options(opt: OptimalPowerFlowOptions,
+                         circuit: MultiCircuit,
+                         gslv_circuit: "pg.MultiCircuit") -> "pg.OptimalPowerFlowOptions":
+    """
+    Translate VeraGrid power flow options to GSLV power flow options
+    :param opt:
+    :return:
+    """
+    # OpfDispatchMode, MIPSolvers, ZonalGrouping, TimeGrouping
+
+    dispatch_mode_dict = {
+        OpfDispatchMode.Normal: pg.OpfDispatchMode.Normal,
+        OpfDispatchMode.InterAreaRedispatch: pg.OpfDispatchMode.InterAreaRedispatch,
+        OpfDispatchMode.UnitCommitment: pg.OpfDispatchMode.UnitCommitment,
+        OpfDispatchMode.NodalCapacity: pg.OpfDispatchMode.NodalCapacity,
+        OpfDispatchMode.GenerationExpansionPlanning: pg.OpfDispatchMode.GenerationExpansionPlanning,
+    }
+
+    mip_solver_dict = {
+        MIPSolvers.HIGHS: pg.MIPSolvers.HIGHS,
+        MIPSolvers.SCIP: pg.MIPSolvers.SCIP,
+        MIPSolvers.CPLEX: pg.MIPSolvers.CPLEX,
+        MIPSolvers.GUROBI: pg.MIPSolvers.GUROBI,
+        MIPSolvers.XPRESS: pg.MIPSolvers.XPRESS,
+        # MIPSolvers.CBC: pg.MIPSolvers.CBC,
+        # MIPSolvers.PDLP: pg.MIPSolvers.PDLP,
+    }
+
+    zonal_grouping_dict = {
+        ZonalGrouping.NoGrouping: pg.ZonalGrouping.NoGrouping,
+        ZonalGrouping.Area: pg.ZonalGrouping.Area,
+        ZonalGrouping.All: pg.ZonalGrouping.All,
+    }
+
+    time_grouping_dict = {
+        TimeGrouping.NoGrouping: pg.TimeGrouping.NoGrouping,
+        TimeGrouping.Monthly: pg.TimeGrouping.Monthly,
+        TimeGrouping.Weekly: pg.TimeGrouping.Weekly,
+        TimeGrouping.Daily: pg.TimeGrouping.Daily,
+        TimeGrouping.Hourly: pg.TimeGrouping.Hourly,
+    }
+
+    cg_dict = {elm.get_idtag(): elm for elm in gslv_circuit.contingency_groups}
+
+    contingency_groups_used = [cg_dict[cg.idtag] for cg in opt.contingency_groups_used]
+
+    return pg.OptimalPowerFlowOptions(
+        dispatch_mode=dispatch_mode_dict[opt.dispatch_mode],
+        solver_type=mip_solver_dict[opt.mip_solver],
+        zonal_grouping=zonal_grouping_dict[opt.zonal_grouping],
+        time_grouping=time_grouping_dict[opt.time_grouping],
+        skip_generation_limits=opt.skip_generation_limits,
+        consider_contingencies=opt.consider_contingencies,
+        contingency_groups_used=contingency_groups_used,
+        ramp_constraints=opt.consider_ramps,
+        consider_time_up_down=opt.consider_time_up_down,
+        area_spinning_reserve=opt.area_spinning_reserve,
+        lodf_threshold=opt.lodf_tolerance,
+        inter_aggregation_info=opt.inter_aggregation_info,  # translate
+        nodal_capacity_sign=1.0,
+        capacity_nodes_idx_in=None,
+        use_glsk_as_cost=opt.use_glsk_as_cost,
+        add_losses_approximation=opt.add_losses_approximation,
+        verbose=opt.verbose,
+        robust=opt.robust,
+    )
+
+
+def gslv_opf(circuit: MultiCircuit,
+             opf_opt: OptimalPowerFlowOptions,
+             time_series: bool = False,
+             time_indices: Union[IntVec, None] = None,
+             opf_results: Union[None, OptimalPowerFlowResults] = None,
+             logger: Logger = Logger()) -> "pg.OptimalPowerFlowResults":
+    """
+    GSLV power flow
+    :param logger:
+    :param circuit: MultiCircuit instance
+    :param opf_opt: Power Flow Options
+    :param time_series: Compile with VeraGrid time series?
+    :param time_indices: Array of time indices
+    :param opf_results: Instance of
+    :return: GSLV Power flow results object
+    """
+    gslv_grid, _ = to_gslv(circuit,
+                           use_time_series=time_series,
+                           time_indices=None,
+                           override_branch_controls=False,
+                           opf_results=opf_results)
+
+    opf_options = get_gslv_opf_options(opf_opt)
+
+    if time_series:
+        # it is already sliced to the relevant time indices
+        if time_indices is None:
+            time_indices = [i for i in range(circuit.get_time_number())]
+        else:
+            time_indices = list(time_indices)
+        n_threads = 0  # max threads
+    else:
+        time_indices = [0]
+        n_threads = 1
+
+    t0 = time.time()
+
+    opf_res = pg.optimal_power_flow(
+        grid=gslv_grid,
+        options=opf_options,
+        n_threads=0
+    )
+
+    logger.add_info("gslv time", value=f"{(time.time() - t0)} s")
+
+    return opf_res
+
+
 def gslv_contingencies_snapshot(circuit: MultiCircuit,
                                 con_opt: ContingencyAnalysisOptions,
-                                opf_results: Union[None, OptimalPowerFlowResults] = None,) -> "pg.ContingencyResultsSnapshot":
+                                opf_results: Union[
+                                    None, OptimalPowerFlowResults] = None, ) -> "pg.ContingencyResultsSnapshot":
     """
     GSLV power flow
     :param circuit: MultiCircuit instance
