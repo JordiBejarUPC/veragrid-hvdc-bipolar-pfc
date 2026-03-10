@@ -18,6 +18,7 @@ from VeraGridEngine.enumerations import (
     TapChangerTypes,
     TapModuleControl,
     WindingType,
+    ShuntControlMode
 )
 from VeraGridEngine.Devices.Branches.transformer_type import reverse_transformer_short_circuit_study
 
@@ -196,7 +197,8 @@ def _get_tr3_winding_tap_fields_from_vgrid(winding: dev.Winding) -> Tuple[int, i
         tc_type=winding.tap_changer.tc_type,
         asymmetry_angle_deg=float(winding.tap_changer.asymmetry_angle),
     )
-    return int(current_position), int(minimum_position), int(maximum_position), int(neutral_position), step_percent, phase_angle
+    return int(current_position), int(minimum_position), int(maximum_position), int(
+        neutral_position), step_percent, phase_angle
 
 
 def _get_transformer3w_side_sort_key(
@@ -698,7 +700,6 @@ def convert_transformer_type(tr: dev.TransformerType, new_id: str) -> TypTr2:
     return typtr2
 
 
-
 def _set_tr2_tap_fields_from_vgrid(tr: dev.Transformer2W, tpe: TypTr2, e: ElmTr2) -> None:
     """Set tap fields in TypTr2 and ElmTr2.
 
@@ -725,8 +726,8 @@ def _set_tr2_tap_fields_from_vgrid(tr: dev.Transformer2W, tpe: TypTr2, e: ElmTr2
     tap_changer = tr.tap_changer
     total_positions: int = int(tap_changer.total_positions)
     has_discrete_tap: bool = (
-        tap_changer.tc_type != TapChangerTypes.NoRegulation
-        or int(tap_changer.tap_position) != int(tap_changer.neutral_position)
+            tap_changer.tc_type != TapChangerTypes.NoRegulation
+            or int(tap_changer.tap_position) != int(tap_changer.neutral_position)
     )
 
     if has_discrete_tap:
@@ -969,7 +970,7 @@ def _convert_controllable_shunt_to_dgs(
         element.ushnm = 0.0
         element.ncapx = int(len(step_increments))
         element.ncapa = int(shunt.step)
-        element.iswitch = 1 if shunt.is_controlled else 0
+        element.iswitch = 0 if shunt.control_mode == ShuntControlMode.Locked else 1
         element.usetp = float(shunt.get_Vset_at(t))
         element.outserv = 0 if shunt.get_active_at(t) else 1
         element.qtotn = abs(float(np.sum(step_increments)))
@@ -1112,7 +1113,6 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
     typlod.kqu = 2.0
 
     dgs_grid.typlods.append(typlod)
-
 
     # buses
     bus2term_dict: Dict[dev.Bus, ElmTerm] = dict()
@@ -1440,6 +1440,5 @@ def circuit_to_dgs(grid: dev.MultiCircuit, t: int | None = None, convert_gen_to_
                        bus2term_dict[ordered_buses[1]],
                        bus2term_dict[ordered_buses[2]]],
         )
-
 
     return dgs_grid
