@@ -5,16 +5,7 @@ from typing import List, Dict, Any, Optional, Tuple, Final
 import numpy as np
 import sympy as sp
 from enum import Enum, auto
-
-# Local imports must use full module paths.
-# It is assumed that the execution environment has PYTHONPATH configured correctly.
-parent_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
-
-if parent_dir not in sys.path:
-
-    sys.path.insert(0, parent_dir)
-
-import PolynomialMatrixBuilder_class as PMB
+from trunk.tensygrid.files._PolynomialMatrixBuilder_class import PolynomialMatrixBuilder
 
 class StabilityResult(object):
     """
@@ -69,7 +60,7 @@ class TestPolynomialStability(unittest.TestCase):
             '-xp20 + 0.5101*u4 + 0.3917'
         ])
         
-        builder: PMB.PolynomialMatrixBuilder = PMB.PolynomialMatrixBuilder(eqs, ineqs=list(), verbose=False)
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(eqs, ineqs=list(), verbose=False)
         
         xOP: np.ndarray = np.array([-0.1668, -0.459, 0.5462, -1.3023, -0.4115, -0.5401, 1.3665, 0.7068, 0.6076, 0.9198,
                                     0.8994, 0.0327, -1.4159, -1.6809, 0.0378, 1.6635, 0.831, 1.0477, 1.7938, -0.4851])
@@ -107,7 +98,7 @@ class TestPolynomialStability(unittest.TestCase):
             'y2 - x2'
         ])
 
-        builder: PMB.PolynomialMatrixBuilder = PMB.PolynomialMatrixBuilder(eqs, ineqs=list(), verbose=False)
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(eqs, ineqs=list(), verbose=False)
         
         xOP: np.ndarray = np.array([-0.5737, -0.8193, -0.1597])
         uOP: np.ndarray = np.array([-100.6109, -217.5716, 318.1824])
@@ -146,7 +137,7 @@ class TestPolynomialStability(unittest.TestCase):
             "y1 - dx1"
         ])
 
-        builder: PMB.PolynomialMatrixBuilder = PMB.PolynomialMatrixBuilder(eqs, ineqs=list(), verbose=False)
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(eqs, ineqs=list(), verbose=False)
 
         # Operating point provided in the snippet
         v_dict: Dict[str, float] = {'dx1': 1.0, 'x1': 2.0, 'u1': 3.0, 'y1': 4.0, 'z1': 5.0}

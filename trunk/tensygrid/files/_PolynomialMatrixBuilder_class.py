@@ -54,14 +54,22 @@ class PolynomialMatrixBuilder:
     # Finalizing the class to prevent dynamic attribute assignment and save memory
     __slots__ = [
         'verbose', 'eqs', 'ineqs', 'all_symbols', 'sym_to_idx',
-        'S_H', 'Phi_H', 'S_W', 'Phi_W', '_E', '_A', '_B'
+        'S_H', 'Phi_H', 'S_W', 'Phi_W', '_E', '_A', '_B',
+        'state_vars', 'algebraic_vars'
     ]
 
     # ------------------------------------------------------------------
     # Construction
     # ------------------------------------------------------------------
 
-    def __init__(self, eqs: list, ineqs: list, verbose: bool = False) -> None:
+    def __init__(
+            self,
+            eqs: list,
+            ineqs: list,
+            state_vars: list | None = None,
+            algebraic_vars: list | None = None,
+            verbose: bool = False
+    ) -> None:
         """
         Initializes the PolynomialMatrixBuilder.
 
@@ -69,6 +77,10 @@ class PolynomialMatrixBuilder:
         :type eqs: list
         :param ineqs: Polynomial inequality constraints as strings.
         :type ineqs: list
+        :param state_vars: Optional list of state variable names (have derivatives).
+        :type state_vars: list | None
+        :param algebraic_vars: Optional list of algebraic variable names (no derivatives).
+        :type algebraic_vars: list | None
         :param verbose: Print debugging information.
         :type verbose: bool
         :return: None
@@ -76,22 +88,77 @@ class PolynomialMatrixBuilder:
         """
         self.verbose: bool = verbose
 
-        # Initialize lists explicitly
+        # Initialize explicit lists for variables
         self.eqs: list = list()
         self.ineqs: list = list()
+        self.state_vars: list = list()
+        self.algebraic_vars: list = list()
+
+        # Rule: Explicit state. Define global dictionary for the parser
+        parsing_context: dict = dict()
+        parsing_context['cos'] = sp.cos
+        parsing_context['sin'] = sp.sin
+        parsing_context['tan'] = sp.tan
+        parsing_context['exp'] = sp.exp
+        parsing_context['sqrt'] = sp.sqrt
+        parsing_context['pi'] = sp.pi
+
+        # EXPLICIT OVERRIDES: Prevent SymPy from shadowing electrical variables
+        parsing_context['Id'] = sp.Symbol('Id')
+        parsing_context['Iq'] = sp.Symbol('Iq')
+        parsing_context['I'] = sp.Symbol('I')
+        parsing_context['E'] = sp.Symbol('E')
+        parsing_context['Q'] = sp.Symbol('Q')
+        parsing_context['N'] = sp.Symbol('N')
+        parsing_context['O'] = sp.Symbol('O')
+        parsing_context['S'] = sp.Symbol('S')
+
+        # Parse State Variables explicitly
+        parsed_predefined: list = list()
+
+        if state_vars is not None:
+            s_name: str
+            for s_name in state_vars:
+                new_sym: sp.Symbol = sp.Symbol(s_name)
+                parsing_context[s_name] = new_sym
+                parsed_predefined.append(new_sym)
+                self.state_vars.append(new_sym)
+        else:
+            pass
+
+        # Parse Algebraic Variables explicitly
+        if algebraic_vars is not None:
+            a_name: str
+            for a_name in algebraic_vars:
+                new_sym: sp.Symbol = sp.Symbol(a_name)
+                parsing_context[a_name] = new_sym
+                parsed_predefined.append(new_sym)
+                self.algebraic_vars.append(new_sym)
+        else:
+            pass
 
         # Parse equations with explicit loops
+        eq_str: str
         for eq_str in eqs:
-            parsed_eq: sp.Expr = parse_expr(eq_str, evaluate=False)
+            parsed_eq: sp.Expr = parse_expr(
+                eq_str,
+                local_dict=parsing_context,
+                evaluate=True
+            )
             self.eqs.append(parsed_eq)
 
+        ineq_str: str
         for ineq_str in ineqs:
-            parsed_ineq: sp.Expr = parse_expr(ineq_str, evaluate=False)
+            parsed_ineq: sp.Expr = parse_expr(
+                ineq_str,
+                local_dict=parsing_context,
+                evaluate=True
+            )
             self.ineqs.append(parsed_ineq)
 
         self.all_symbols: list = list()
         self.sym_to_idx: dict = dict()
-        
+
         # We merge lists for symbol extraction
         combined_exprs: list = list()
         for eq in self.eqs:
@@ -99,7 +166,8 @@ class PolynomialMatrixBuilder:
         for ineq in self.ineqs:
             combined_exprs.append(ineq)
 
-        self.extract_symbols(combined_exprs)
+        # Pass the pre-parsed known symbols to the extractor
+        self.extract_symbols(combined_exprs, predefined=parsed_predefined)
 
         # Build the symbol dictionary index explicitly
         idx: int = 0
@@ -277,39 +345,52 @@ class PolynomialMatrixBuilder:
     # Symbol extraction
     # ------------------------------------------------------------------
 
-    def extract_symbols(self, all_exprs: list) -> list:
+    def extract_symbols(self, all_exprs: list, predefined: list | None = None) -> list:
         """
-        Extracts and sorts symbols from a list of SymPy expressions.
-
-        Ordering convention (TenSyGrid deliverable 1.1):
-            dx* < x* < u* < y* < z* < everything else
+        Extracts and sorts symbols from a list of SymPy expressions, incorporating
+        any predefined state and algebraic symbols passed by the user.
 
         :param all_exprs: SymPy expressions to scan.
         :type all_exprs: list
+        :param predefined: Optional list of pre-parsed SymPy symbols to include.
+        :type predefined: list | None
         :return: Sorted list of unique symbols.
         :rtype: list
         """
         seen: set = set()
         extracted_symbols: list = list()
 
+        # Explicitly inject predefined symbols first
+        if predefined is not None:
+            sym_p: sp.Symbol
+            for sym_p in predefined:
+                if sym_p not in seen:
+                    seen.add(sym_p)
+                    extracted_symbols.append(sym_p)
+                else:
+                    pass
+        else:
+            pass
+
+        # Scan expressions for any additional symbols not predefined
         for eq in all_exprs:
-            # We explicitly gather and sort the free symbols to avoid lambdas inline
             eq_symbols: list = list(eq.free_symbols)
             eq_symbols.sort(key=self._get_symbol_name)
-            
+
             for sym in eq_symbols:
                 if sym not in seen:
                     seen.add(sym)
                     extracted_symbols.append(sym)
                 else:
-                    pass  # State must be explicit
+                    pass
 
+        # Apply priority sorting strictly to all gathered symbols
         extracted_symbols.sort(key=self._sort_symbol)
 
         if self.verbose:
             print(f"Unified symbols order: {extracted_symbols}\n")
         else:
-            pass  # State must be explicit
+            pass
 
         self.all_symbols = extracted_symbols
         return extracted_symbols
@@ -448,9 +529,22 @@ class PolynomialMatrixBuilder:
                 if len(f_vars_inner) == 1:
                     s: sp.Symbol = f_vars_inner[0]
                     idx_val: int | None = self.sym_to_idx.get(s.name, None)
-                    
+
                     if idx_val is not None:
-                        b_val: float = float(sp.diff(f, s))
+                        b_val_sym: sp.Expr = sp.diff(f, s)
+
+                        # MULTILINEARITY CHECK: Prevent TypeError on float() cast
+                        if not b_val_sym.is_number:
+                            raise ValueError(
+                                f"\n[TenSyGrid Error] Non-multilinear term detected: '{f}'.\n"
+                                f"Variable '{s.name}' has a degree higher than 1.\n"
+                                f"The iMTI representation requires strictly multilinear equations. "
+                                f"Please define an auxiliary algebraic variable to perform the 'lifting'."
+                            )
+                        else:
+                            pass
+
+                        b_val: float = float(b_val_sym)
                         a_val: float = float(f.subs(s, 0))
 
                         scale: float = abs(a_val) + abs(b_val)
@@ -462,7 +556,7 @@ class PolynomialMatrixBuilder:
                         weights[idx_val] = b_val / scale
                         global_phi = global_phi * scale
                     else:
-                        pass 
+                        pass
 
                 elif len(f_vars_inner) == 0:
                     global_phi = global_phi * float(f)
