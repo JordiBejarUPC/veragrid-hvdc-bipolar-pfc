@@ -119,13 +119,64 @@
              <property name="currentIndex">
               <number>0</number>
              </property>
+             <widget class="QWidget" name="tab_2">
+              <attribute name="icon">
+               <iconset resource="../Icons/icons.qrc">
+                <normaloff>:/Icons/icons/array.png</normaloff>:/Icons/icons/array.png</iconset>
+              </attribute>
+              <attribute name="title">
+               <string>Tree view</string>
+              </attribute>
+              <layout class="QVBoxLayout" name="verticalLayout_5">
+               <item>
+                <widget class="QFrame" name="frame_5">
+                 <property name="frameShape">
+                  <enum>QFrame::Shape::NoFrame</enum>
+                 </property>
+                 <property name="frameShadow">
+                  <enum>QFrame::Shadow::Raised</enum>
+                 </property>
+                 <layout class="QHBoxLayout" name="horizontalLayout_3">
+                  <property name="leftMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="topMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="rightMargin">
+                   <number>0</number>
+                  </property>
+                  <property name="bottomMargin">
+                   <number>0</number>
+                  </property>
+                  <item>
+                   <widget class="QLineEdit" name="treeFilterLineEdit"/>
+                  </item>
+                  <item>
+                   <widget class="QComboBox" name="treeFilterComboBox"/>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="treeFilterButton">
+                    <property name="text">
+                     <string>Filter</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item>
+                <widget class="QTreeView" name="mainTreeView"/>
+               </item>
+              </layout>
+             </widget>
              <widget class="QWidget" name="modelTab">
               <attribute name="icon">
                <iconset resource="../Icons/icons.qrc">
                 <normaloff>:/Icons/icons/array.png</normaloff>:/Icons/icons/array.png</iconset>
               </attribute>
               <attribute name="title">
-               <string>Model</string>
+               <string>Table view</string>
               </attribute>
               <layout class="QVBoxLayout" name="verticalLayout_10">
                <item>
@@ -471,86 +522,8 @@ QProgressBar::chunk{
     </property>
     <addaction name="actionSave_logs"/>
    </widget>
-   <widget class="QMenu" name="menuView">
-    <property name="title">
-     <string>View</string>
-    </property>
-    <addaction name="actionNavigation_tree"/>
-   </widget>
-   <widget class="QMenu" name="menuHelp">
-    <property name="title">
-     <string>Help</string>
-    </property>
-    <addaction name="actionDocumentation"/>
-    <addaction name="actionAbout"/>
-   </widget>
    <addaction name="menuFile"/>
-   <addaction name="menuView"/>
-   <addaction name="menuHelp"/>
   </widget>
-  <action name="actionOpen">
-   <property name="icon">
-    <iconset resource="../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/loadc.png</normaloff>:/Icons/icons/loadc.png</iconset>
-   </property>
-   <property name="text">
-    <string>Open</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+O</string>
-   </property>
-  </action>
-  <action name="actionConvert_to_psse">
-   <property name="icon">
-    <iconset>
-     <normaloff>:/Icons/icons/to_psse.png</normaloff>:/Icons/icons/to_psse.png</iconset>
-   </property>
-   <property name="text">
-    <string>Convert to PSS/e</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+T, Ctrl+P</string>
-   </property>
-  </action>
-  <action name="actionConvert_to_CGMES">
-   <property name="icon">
-    <iconset>
-     <normaloff>:/Icons/icons/to_cgmes.png</normaloff>:/Icons/icons/to_cgmes.png</iconset>
-   </property>
-   <property name="text">
-    <string>Convert to CGMES</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+T, Ctrl+C</string>
-   </property>
-  </action>
-  <action name="actionConvert_to_Roseta">
-   <property name="icon">
-    <iconset>
-     <normaloff>:/Icons/icons/to_roseta.png</normaloff>:/Icons/icons/to_roseta.png</iconset>
-   </property>
-   <property name="text">
-    <string>Convert to Roseta</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+T, Ctrl+R</string>
-   </property>
-  </action>
-  <action name="actionSave">
-   <property name="icon">
-    <iconset resource="../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/savec.png</normaloff>:/Icons/icons/savec.png</iconset>
-   </property>
-   <property name="text">
-    <string>Save</string>
-   </property>
-   <property name="toolTip">
-    <string>Save grid, the format will be propted</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+S</string>
-   </property>
-  </action>
   <action name="actionSave_logs">
    <property name="icon">
     <iconset resource="../Icons/icons.qrc">
@@ -558,81 +531,6 @@ QProgressBar::chunk{
    </property>
    <property name="text">
     <string>Save logs</string>
-   </property>
-  </action>
-  <action name="actionNavigation_tree">
-   <property name="icon">
-    <iconset>
-     <normaloff>:/Icons/icons/tree.png</normaloff>:/Icons/icons/tree.png</iconset>
-   </property>
-   <property name="text">
-    <string>Navigation tree</string>
-   </property>
-  </action>
-  <action name="actionNew">
-   <property name="icon">
-    <iconset resource="../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/new2c.png</normaloff>:/Icons/icons/new2c.png</iconset>
-   </property>
-   <property name="text">
-    <string>New</string>
-   </property>
-   <property name="shortcut">
-    <string>Ctrl+N</string>
-   </property>
-  </action>
-  <action name="actionDocumentation">
-   <property name="icon">
-    <iconset resource="../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/new2.png</normaloff>:/Icons/icons/new2.png</iconset>
-   </property>
-   <property name="text">
-    <string>Documentation</string>
-   </property>
-   <property name="shortcut">
-    <string>F1</string>
-   </property>
-  </action>
-  <action name="actionAbout">
-   <property name="icon">
-    <iconset>
-     <normaloff>:/Icons/icons/roseta.png</normaloff>:/Icons/icons/roseta.png</iconset>
-   </property>
-   <property name="text">
-    <string>About</string>
-   </property>
-  </action>
-  <action name="actionProcess_topology">
-   <property name="icon">
-    <iconset resource="../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/schematic.png</normaloff>:/Icons/icons/schematic.png</iconset>
-   </property>
-   <property name="text">
-    <string>Process topology</string>
-   </property>
-   <property name="shortcut">
-    <string>F3</string>
-   </property>
-  </action>
-  <action name="actionRun_power_flow">
-   <property name="icon">
-    <iconset resource="../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/automatic_layout.png</normaloff>:/Icons/icons/automatic_layout.png</iconset>
-   </property>
-   <property name="text">
-    <string>Run power flow</string>
-   </property>
-   <property name="shortcut">
-    <string>F5</string>
-   </property>
-  </action>
-  <action name="actionGenerate_PSSe_look_up_database">
-   <property name="icon">
-    <iconset resource="../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/import_models.png</normaloff>:/Icons/icons/import_models.png</iconset>
-   </property>
-   <property name="text">
-    <string>Generate PSSe look-up database</string>
    </property>
   </action>
  </widget>

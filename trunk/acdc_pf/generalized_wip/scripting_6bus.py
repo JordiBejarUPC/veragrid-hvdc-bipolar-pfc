@@ -37,11 +37,19 @@ gen2 = gce.Generator(name='Gen2', P=1.0, vset=1.02)
 # Define loads
 load1 = gce.Load(name='Load1', P=3.0, Q=0.3)
 load2 = gce.Load(name='Load2', P=2.0, Q=0.5)
+load3 = gce.Load(name='Load3', G=0.5, B=0.3)  # DC load
+
+
+#Grid modifications
+#grid.add_load(bus = bus3, api_obj=load3)
+gen3 = gce.CurrentInjection(name='Gen3', Ir =0.2)
+grid.add_current_injection(bus=bus3, api_obj=gen3)
+
 
 ###############
 # Add to the grid
 grid.add_bus(bus1)
-grid.add_bus(bus2)
+grid.add_bus(bus2) 
 grid.add_bus(bus3)
 grid.add_bus(bus4)
 grid.add_bus(bus5)
