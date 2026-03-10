@@ -26,6 +26,7 @@ def get_load_ZIP_3ph_emt_template(grid : MultiCircuit, load: Load,  name: str = 
 
     vf: VarFactory = grid.var_factory
     fbase: float = grid.fBase
+    sbase: float = grid.Sbase
 
     # Symbolic constants for math operations
     c0 = vf.add_const(0.0)
@@ -61,12 +62,12 @@ def get_load_ZIP_3ph_emt_template(grid : MultiCircuit, load: Load,  name: str = 
     eps = vf.add_var("eps_" + name)
     omega = vf.add_var("omega_" + name)
 
-    PA0 = load.Pa
-    QA0 = load.Qa
-    PB0 = load.Pb
-    QB0 = load.Qb
-    PC0 = load.Pc
-    QC0 = load.Qc
+    PA0 = load.Pa / sbase
+    QA0 = load.Qa / sbase
+    PB0 = load.Pb / sbase
+    QB0 = load.Qb / sbase
+    PC0 = load.Pc / sbase
+    QC0 = load.Qc / sbase
     # Fundamental angular frequency
     w_const = (2.0 * np.pi) * fbase
     templ.block.event_dict[P0_A] = vf.add_const(PA0)
@@ -160,6 +161,13 @@ def get_load_ZIP_3ph_emt_template(grid : MultiCircuit, load: Load,  name: str = 
         Q_B + (Q0_B * (a4 * rB ** 2 + a5 * rB + a6)),
         P_C + (P0_C * (a1 * rC ** 2 + a2 * rC + a3)),
         Q_C + (Q0_C * (a4 * rC ** 2 + a5 * rC + a6)),
+
+        # P_A - (P0_A * (a1 * rA ** 2 + a2 * rA + a3)),
+        # Q_A - (Q0_A * (a4 * rA ** 2 + a5 * rA + a6)),
+        # P_B - (P0_B * (a1 * rB ** 2 + a2 * rB + a3)),
+        # Q_B - (Q0_B * (a4 * rB ** 2 + a5 * rB + a6)),
+        # P_C - (P0_C * (a1 * rC ** 2 + a2 * rC + a3)),
+        # Q_C - (Q0_C * (a4 * rC ** 2 + a5 * rC + a6)),
         # Current injection: i = 2 * (u*P + q*Q) / V_peak^2
         i_A + (c2 * (u_A * (-P_A) + q_A * (-Q_A)) / (VA2 + eps)),
         i_B + (c2 * (u_B * (-P_B) + q_B * (-Q_B)) / (VB2 + eps)),
