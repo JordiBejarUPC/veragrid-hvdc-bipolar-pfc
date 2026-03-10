@@ -2633,6 +2633,15 @@ class VarPowerFlowRefferenceType(Enum):
     Qf = "Qf"  # Branch reactive power from in p.u.
     Pt = "Pt"  # Branch active power to in p.u.
     Qt = "Qt"  # Branch reactive power to in p.u.
+    
+    # Phasor current references for RMS formulation
+    Ir = "Ir"  # Real part of bus injection current
+    Ii = "Ii"  # Imaginary part of bus injection current
+    Irf = "Irf"  # Real current at branch from end
+    Iif = "Iif"  # Imaginary current at branch from end
+    Irt = "Irt"  # Real current at branch to end
+    Iit = "Iit"  # Imaginary current at branch to end
+    
     Vdc = "Vdc"  # Bus voltage for DC voltage in p.u.
     Idc = "Idc"  # Bus current for DC Bus in p.u.
 
@@ -2729,6 +2738,10 @@ class ParamPowerFlowRefferenceType(Enum):
     bsh = "bsh"  # Branch shunt susceptance in per unit
     Pl0 = "Pl0"  # Load active power
     Ql0 = "Ql0"  # Load reactive power
+    
+    # Phasor current parameters for current balance formulation
+    Ir0 = "Ir0"  # Load real current injection
+    Ii0 = "Ii0"  # Load imaginary current injection
 
     # 3phase load power
     Pl0_A = "Pl0_A"  # Load active power phase A

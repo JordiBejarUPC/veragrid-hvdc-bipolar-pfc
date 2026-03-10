@@ -26,6 +26,7 @@ from VeraGridEngine.Templates.Rms.bus_phasor_rms_template import initialize_bus_
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.line_phasor_rms_template import get_line_phasor_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
+from VeraGridEngine.Templates.Rms.load_phasor_current_rms_template import get_load_phasor_current_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template, get_genqec
 from VeraGridEngine.Templates.Rms.genqec_phasor_rms_template import get_genqec_phasor, get_complete_generator_template_phasor
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
@@ -124,28 +125,22 @@ def test_phasor_validation():
     grid_phasor.add_generator(bus=bus0_phasor, api_obj=gen_phasor)
     
     # Build RMS models for phasor grid
-    # Use simple phasor generator (with Vr, Vi inputs) - more stable than complete generator
     genqec_phasor = get_complete_generator_template_phasor(grid_phasor.var_factory, name="Gen0").block
     
-    # For phasor grid, attach only generator and load models
-    # Lines are handled internally by RmsProblemPhasor
-    load_mdl_phasor = get_load_rms_template(grid_phasor.var_factory).block
-    load_mdl_phasor.set_parameter_in_model(var_name="Pl0", new_value=-0.0999999)
-    load_mdl_phasor.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
+    # For phasor grid, use current-based load model
+    load_mdl_phasor = get_load_phasor_current_rms_template(grid_phasor.var_factory).block
+    # Convert power to current: I ≈ S/V (assuming V ≈ 1)
     set_rms_model(device=load_phasor, model=load_mdl_phasor)
     
     # Attach models to devices
     line_phasor_mdl = get_line_phasor_rms_template(grid_phasor.var_factory).block
-    line_phasor_mdl.connect([line_phasor_mdl.in_vars[0]], [bus0_phasor.rms_model.model.out_vars[0]])
-    line_phasor_mdl.connect([line_phasor_mdl.in_vars[1]], [bus0_phasor.rms_model.model.out_vars[1]])
-    line_phasor_mdl.connect([line_phasor_mdl.in_vars[2]], [bus1_phasor.rms_model.model.out_vars[0]])
-    line_phasor_mdl.connect([line_phasor_mdl.in_vars[3]], [bus1_phasor.rms_model.model.out_vars[1]])
+    # Use set_rms_model for proper current balance accumulation
+    set_rms_model(device=line_phasor, model=line_phasor_mdl)
 
     genqec_phasor.connect([genqec_phasor.in_vars[0]], [bus0_phasor.rms_model.model.out_vars[0]])
     genqec_phasor.connect([genqec_phasor.in_vars[1]], [bus0_phasor.rms_model.model.out_vars[1]])
-    gen_phasor.rms_model.model = genqec_phasor  # Attach generator model to generator device
-    line_phasor.rms_model.model = line_phasor_mdl  # Attach line model to line device
-    # Note: line_phasor.rms_model will be created automatically by RmsProblemPhasor
+    set_rms_model(device=gen_phasor, model=genqec_phasor)
+    # Note: line and load models attached via set_rms_model for proper current balance
     
     print("  Phasor grid created and models attached (lines handled internally)")
     
@@ -179,9 +174,9 @@ def test_phasor_validation():
     event_polar = RmsEvent(device=load_polar, parameter=Pl0_polar, time=0.05, value=-0.098)
     grid_polar.add_rms_event(event_polar)
     
-    # Add event to phasor grid
-    Pl0_phasor = find_name_in_block('Pl0', load_mdl_phasor)
-    event_phasor = RmsEvent(device=load_phasor, parameter=Pl0_phasor, time=0.05, value=-0.098)
+    # Add event to phasor grid (current-based load)
+    Ir0_phasor = find_name_in_block('Ir0', load_mdl_phasor)
+    event_phasor = RmsEvent(device=load_phasor, parameter=Ir0_phasor, time=0.05, value=-0.098)
     grid_phasor.add_rms_event(event_phasor)
     
     print("  Events added to both grids")

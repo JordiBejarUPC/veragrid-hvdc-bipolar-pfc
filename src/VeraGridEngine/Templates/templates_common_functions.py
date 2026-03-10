@@ -22,6 +22,7 @@ def tf_to_block(var_factory: VarFactory,
                 den: List[Var | float],
                 x: Var | Expr,
                 y: Var = None,
+                create_state: bool = False,
                 name: Optional[str] = '') -> Tuple[Block, Var]:
     """
     "transform definition" to block
@@ -56,7 +57,7 @@ def tf_to_block(var_factory: VarFactory,
     init_eqs = dict()
     base_var = x
     for i in range(1, len(num)):
-        if i == 1:
+        if i == 1 and create_state:
             x_new = var_factory.add_var(f"x_{i}_" + x.name)
             state_vars.append(x_new)
             state_eqs.append(x_save)  # x is already a Var
@@ -99,6 +100,7 @@ def tf_to_diffblock_with_output(
         den: List[Var | float],
         x: Var | Expr,
         y: Var = None,
+        create_state: bool = False,
         name: Optional[str] = ''):
     """
     num: list of numerator coefficients [b0, b1, ..., bm]
@@ -133,13 +135,7 @@ def tf_to_diffblock_with_output(
     init_eqs = dict()
     base_var = x
     for i in range(1, len(num)):
-        if i != 1:
-            if base_var.diff_var is None:
-                new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + x.name, base_var=base_var)
-                diff_vars.append(new_diff)
-            diff_vars_x.append(base_var.diff_var)
-            base_var = base_var.diff_var
-        else:
+        if i == 1 and create_state:
             x_new = var_factory.add_var(f"x_{i}_" + x.name)
             state_vars.append(x_new)
             # x_save only exists if x was an expression (not a Var)
@@ -150,6 +146,13 @@ def tf_to_diffblock_with_output(
             diff_vars_x.append(x_new)
             base_var = x_new
             init_eqs[x_new] = Const(0.0)
+
+        else:
+            if base_var.diff_var is None:
+                new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + x.name, base_var=base_var)
+                diff_vars.append(new_diff)
+            diff_vars_x.append(base_var.diff_var)
+            base_var = base_var.diff_var
     base_var = y
     for i in range(1, len(den)):
         if base_var.diff_var is None:
@@ -747,6 +750,58 @@ def connect_line_rms_to(mdl1: Block, mdl2: Block):
         mdl2.connect([inpt], [outp])
 
 
+def connect_line_phasor_rms_from(mdl1: Block, mdl2: Block):
+    """
+    Connect phasor RMS models for the 'from' end of a line.
+    Connects Vr, Vi from bus to line inputs.
+    """
+    # connect Vr
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref == VarPowerFlowRefferenceType.Vr and inpt.ref == VarPowerFlowRefferenceType.Vrf
+    ]
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
+
+    # connect Vi
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref == VarPowerFlowRefferenceType.Vi and inpt.ref == VarPowerFlowRefferenceType.Vif
+    ]
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
+
+
+def connect_line_phasor_rms_to(mdl1: Block, mdl2: Block):
+    """
+    Connect phasor RMS models for the 'to' end of a line.
+    Connects Vr, Vi from bus to line inputs.
+    """
+    # connect Vr
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref == VarPowerFlowRefferenceType.Vr and inpt.ref == VarPowerFlowRefferenceType.Vrt
+    ]
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
+
+    # connect Vi
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref == VarPowerFlowRefferenceType.Vi and inpt.ref == VarPowerFlowRefferenceType.Vit
+    ]
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
+
+
 def connect_rms_models(mdl1: Block, mdl2: Block):
     """
     This function substitutes input variables for output variables to connect two rms models
@@ -790,13 +845,26 @@ def set_rms_model(device: Any, model:Block):
     # connect bus variables
 
     if device.device_type in [DeviceType.BranchDevice, DeviceType.LineDevice, DeviceType.Transformer2WDevice, DeviceType.Transformer3WDevice]:
-        if not device.bus_from.rms_model.model.empty():
-            connect_line_rms_from(device.bus_from.rms_model.model, model)
+        # Check if using phasor or polar coordinates by looking at bus model outputs
+        bus_model = device.bus_from.rms_model.model
+        if not bus_model.empty():
+            # Check if bus has Vr/Vi (phasor) or Vm/Va (polar) outputs
+            has_phasor = any(v.ref == VarPowerFlowRefferenceType.Vr for v in bus_model.out_vars)
+            if has_phasor:
+                connect_line_phasor_rms_from(device.bus_from.rms_model.model, model)
+            else:
+                connect_line_rms_from(device.bus_from.rms_model.model, model)
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus_from.name} RMS model")
 
-        if not device.bus_to.rms_model.model.empty():
-            connect_line_rms_to(device.bus_to.rms_model.model, model)
+        bus_model = device.bus_to.rms_model.model
+        if not bus_model.empty():
+            # Check if bus has Vr/Vi (phasor) or Vm/Va (polar) outputs
+            has_phasor = any(v.ref == VarPowerFlowRefferenceType.Vr for v in bus_model.out_vars)
+            if has_phasor:
+                connect_line_phasor_rms_to(device.bus_to.rms_model.model, model)
+            else:
+                connect_line_rms_to(device.bus_to.rms_model.model, model)
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus_to.name} RMS model")
 

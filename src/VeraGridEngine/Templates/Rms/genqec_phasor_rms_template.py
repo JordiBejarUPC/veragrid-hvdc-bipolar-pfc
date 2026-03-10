@@ -82,6 +82,10 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     V_qag = vfactory.add_var('V_qag' + name)
     V_dag = vfactory.add_var('V_dag' + name)
     Psi_ag = vfactory.add_var('Psi_ag' + name)
+    
+    # Phasor current outputs for current balance formulation
+    Irg = vfactory.add_var('Irg' + name)  # Real current injection
+    Iig = vfactory.add_var('Iig' + name)  # Imaginary current injection
 
     # ______________________________________________________________________________________
     #                                    parameters
@@ -181,6 +185,12 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     
     # We call ml_positive_part to get (Psi_ag-B)^+ := max(Psi_ag-B, 0)
     ml_positive_part, Psi_plus, Psi_minus = sym_ml.ml_positive_part(vfactory, Psi_ag - B)
+    
+    # Get multilinear block internal variables for initialization
+    u_plus1_ml = ml_positive_part.algebraic_vars[0]  # u_plus1
+    u_plus2_ml = ml_positive_part.algebraic_vars[1]  # u_plus2
+    u_minus1_ml = ml_positive_part.algebraic_vars[2]  # u_minus1
+    u_minus2_ml = ml_positive_part.algebraic_vars[3]  # u_minus2
 
     templ.block = Block(
         state_eqs=[
@@ -194,8 +204,6 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
         state_vars=[delta, omega, Eq_prime, Ed_prime, Psiq_prime, Psid_prime],
         algebraic_eqs=[
             # Park transformation from Vr, Vi to Vd, Vq using multilinear trig_transform on delta only
-            # Vd = Vr*sin(delta) - Vi*cos(delta)
-            # Vq = Vr*cos(delta) + Vi*sin(delta)
             Vd - ( Vr * sin_delta - Vi * cos_delta),
             Vq - ( Vr * cos_delta + Vi * sin_delta),
             
@@ -228,19 +236,34 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
 
             # Eq1, Eq2, Ed1, Ed2 exciter
             IRPu - Eq1 * Sat,
+            
+            # Phasor current outputs (inverse Park transformation)
+            # Ir = Id*sin(delta) + Iq*cos(delta)
+            # Ii = -Id*cos(delta) + Iq*sin(delta)
+            Irg - (Id * sin_delta + Iq * cos_delta),
+            Iig - (-Id * cos_delta + Iq * sin_delta),
         ],
         algebraic_vars=[Pg, Qg, Vd, Vq, Psid, Psiq, Te, Ed1, Eq1, Id, Iq,
                         # saturated resistance
                         Xq_2prime_sat, Xd_2prime_sat, Id_sat, Iq_sat,
                         # flux
                         Sa, Sat, V_dag, V_qag, Psi_ag,
-                        IRPu],
+                        IRPu,
+                        # Phasor current outputs for current balance
+                        Irg, Iig],
         init_eqs={
             # Air Gap Voltages and delta (must come first as others depend on these)
             omega: vfactory.add_const(1),
             Psi_ag: sym.sqrt(Viag_expr ** 2 + Vrag_expr ** 2),
-            Sa: A * Psi_plus,
+            # Saturation initialization: Sa = A * max(Psi_ag - B, 0)
+            # Since Psi_ag > B at init, use direct formula: Sa = A * (Psi_ag - B)
+            Sa: A * sym.max(Psi_ag - B, vfactory.add_const(0)),
             Sat: vfactory.add_const(1) + Sa,
+            # Multilinear block internal variables
+            u_plus1_ml: sym.sqrt(sym.max(Psi_ag - B, vfactory.add_const(0))),
+            u_plus2_ml: u_plus1_ml,
+            u_minus1_ml: vfactory.add_const(0),  # sqrt(max(-(Psi_ag-B), 0)) = 0 when Psi_ag > B
+            u_minus2_ml: u_minus1_ml,
             delta: sym.atan(
                 (Vm_init * sym.sin(Va_init) + sym.imag(
                     sym.conj(Pg + 1j * Qg) / sym.conj(Vm_init * sym.exp(1j * Va_init))) * Ra + sym.real(
@@ -285,8 +308,8 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
             Id_sat: Id / Sat,
         },
         external_mapping={
-            VarPowerFlowRefferenceType.P: Pg,
-            VarPowerFlowRefferenceType.Q: Qg,
+            VarPowerFlowRefferenceType.Ir: Irg,
+            VarPowerFlowRefferenceType.Ii: Iig,
             VarPowerFlowRefferenceType.Vr: inputs[0],
             VarPowerFlowRefferenceType.Vi: inputs[1],
         },
@@ -327,7 +350,7 @@ def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
             ParamPowerFlowRefferenceType.B: B,
         },
 
-        out_vars=[Pg, Qg, omega, IRPu, Te],
+        out_vars=[Irg, Iig, omega, IRPu, Te],
         in_vars=inputs,
         event_dict=event_dict,
         name="genqec_phasor",
@@ -411,12 +434,12 @@ def get_complete_generator_template_phasor(vfactory: VarFactory, name="complete 
     # Flatten all blocks before converting to implicit form
     templ.block.unify_blocks()
     # templ.block = to_implicit(templ.block, vfactory)
-    # External mapping for phasor coordinates
+    # External mapping for phasor coordinates (current balance)
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Vr: genqec_mdl.in_vars[0],
         VarPowerFlowRefferenceType.Vi: genqec_mdl.in_vars[1],
-        VarPowerFlowRefferenceType.P: genqec_mdl.out_vars[0],
-        VarPowerFlowRefferenceType.Q: genqec_mdl.out_vars[1],
+        VarPowerFlowRefferenceType.Ir: genqec_mdl.out_vars[0],
+        VarPowerFlowRefferenceType.Ii: genqec_mdl.out_vars[1],
     }
 
     templ.block.in_vars = [genqec_mdl.in_vars[0], genqec_mdl.in_vars[1]]

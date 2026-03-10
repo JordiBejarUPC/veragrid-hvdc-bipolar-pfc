@@ -59,6 +59,28 @@ def setQ(Q: ObjVec, Q_used: BoolVec, k: int, val: object):
         Q[k] += val
 
 
+def setIr(Ir: ObjVec, Ir_used: BoolVec, k: int, val: object):
+    """
+    Set or add to Ir (real current) value at index k.
+    """
+    if not Ir_used[k]:
+        Ir[k] = val
+        Ir_used[k] = True
+    else:
+        Ir[k] += val
+
+
+def setIi(Ii: ObjVec, Ii_used: BoolVec, k: int, val: object):
+    """
+    Set or add to Ii (imaginary current) value at index k.
+    """
+    if not Ii_used[k]:
+        Ii[k] = val
+        Ii_used[k] = True
+    else:
+        Ii[k] += val
+
+
 class RmsProblemPhasor(RmsProblemTemplate):
     """
     Phasor-based DAE (Differential-Algebraic Equation) class.
@@ -154,6 +176,12 @@ class RmsProblemPhasor(RmsProblemTemplate):
         P_used: BoolVec = np.zeros(n, dtype=bool)
         Q_used: BoolVec = np.zeros(n, dtype=bool)
 
+        # Phasor current balance arrays (using current instead of power)
+        Ir: ObjVec = np.zeros(n, dtype=object)
+        Ii: ObjVec = np.zeros(n, dtype=object)
+        Ir_used: BoolVec = np.zeros(n, dtype=bool)
+        Ii_used: BoolVec = np.zeros(n, dtype=bool)
+
         # general indexes for variables and parameters
         self._n_vars = 0
         self._n_params = 0
@@ -211,11 +239,32 @@ class RmsProblemPhasor(RmsProblemTemplate):
 
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model.model)
 
+                # Convert power flow results (S = P + jQ) to currents (I = S* / V*)
+                # I = (P - jQ) / (Vr - jVi) = (P*Vr + Q*Vi) / |V|^2 + j*(P*Vi - Q*Vr) / |V|^2
+                f_idx = bus_dict[elm.bus_from]
+                t_idx = bus_dict[elm.bus_to]
+                
+                Vf = self.power_flow_results.voltage[f_idx]
+                Vt = self.power_flow_results.voltage[t_idx]
+                
+                Sf = self.Sf[branch_num]
+                St = self.St[branch_num]
+                
+                # From end current
+                Vf_mag_sq = np.abs(Vf)**2
+                Irf = (Sf.real * Vf.real + Sf.imag * Vf.imag) / Vf_mag_sq
+                Iif = (Sf.real * Vf.imag - Sf.imag * Vf.real) / Vf_mag_sq
+                
+                # To end current
+                Vt_mag_sq = np.abs(Vt)**2
+                Irt = (St.real * Vt.real + St.imag * Vt.imag) / Vt_mag_sq
+                Iit = (St.real * Vt.imag - St.imag * Vt.real) / Vt_mag_sq
+                
                 # add init values from powerflow to initial guess
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Pf, self.Sf[branch_num].real)
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Qf, self.Sf[branch_num].imag)
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Pt, self.St[branch_num].real)
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Qt, self.St[branch_num].imag)
+                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Irf, Irf)
+                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Iif, Iif)
+                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Irt, Irt)
+                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Iit, Iit)
 
                 # Run explicit initialization for branches to solve algebraic equations
                 if isinstance(elm, Transformer2W):
@@ -246,10 +295,11 @@ class RmsProblemPhasor(RmsProblemTemplate):
                 f = bus_dict[elm.bus_from]
                 t = bus_dict[elm.bus_to]
 
-                setP(P, P_used, f, -elm.rms_model.model.E(VarPowerFlowRefferenceType.Pf))
-                setP(P, P_used, t, -elm.rms_model.model.E(VarPowerFlowRefferenceType.Pt))
-                setQ(Q, Q_used, f, -elm.rms_model.model.E(VarPowerFlowRefferenceType.Qf))
-                setQ(Q, Q_used, t, -elm.rms_model.model.E(VarPowerFlowRefferenceType.Qt))
+                # Phasor formulation: use current balance instead of power balance
+                setIr(Ir, Ir_used, f, -elm.rms_model.model.E(VarPowerFlowRefferenceType.Irf))
+                setIr(Ir, Ir_used, t, -elm.rms_model.model.E(VarPowerFlowRefferenceType.Irt))
+                setIi(Ii, Ii_used, f, -elm.rms_model.model.E(VarPowerFlowRefferenceType.Iif))
+                setIi(Ii, Ii_used, t, -elm.rms_model.model.E(VarPowerFlowRefferenceType.Iit))
 
         # Populating VSCs init guess
         for i, elm in enumerate(self.grid.get_vsc()):
@@ -374,19 +424,45 @@ class RmsProblemPhasor(RmsProblemTemplate):
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model.model)
 
                 if elm.bus.is_dc:
-                    self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.P,
-                        np.real(self.power_flow_results.Sbus[bus_index] ))
+                    # DC buses: use power directly if supported, otherwise skip
+                    Sbus_dc = self.power_flow_results.Sbus[bus_index]
+                    if VarPowerFlowRefferenceType.P in elm.rms_model.model.external_mapping:
+                        self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.P, np.real(Sbus_dc))
+                    if VarPowerFlowRefferenceType.Ir in elm.rms_model.model.external_mapping:
+                        # Approximate: I = P/V (assuming V ≈ 1)
+                        self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Ir, np.real(Sbus_dc))
                 else:
-                    self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.P,
-                                        np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
-                    self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Q,
-                                        np.imag(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+                    # Phasor formulation: convert power injection to current
+                    # I = S* / V* where S is the injection power
+                    Vbus = self.power_flow_results.voltage[bus_index]
+                    Sbus = self.power_flow_results.Sbus[bus_index] / grid.Sbase
+                    
+                    Vbus_mag_sq = np.abs(Vbus)**2
+                    if Vbus_mag_sq > 0:
+                        Ir_val = (Sbus.real * Vbus.real + Sbus.imag * Vbus.imag) / Vbus_mag_sq
+                        Ii_val = (Sbus.real * Vbus.imag - Sbus.imag * Vbus.real) / Vbus_mag_sq
+                    else:
+                        Ir_val = 0.0
+                        Ii_val = 0.0
+                    
+                    # Only set current init guess if the model expects it
+                    if VarPowerFlowRefferenceType.Ir in elm.rms_model.model.external_mapping:
+                        self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Ir, Ir_val)
+                    if VarPowerFlowRefferenceType.Ii in elm.rms_model.model.external_mapping:
+                        self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Ii, Ii_val)
+                    
+                    # Also set P/Q init guess for backward compatibility
+                    if VarPowerFlowRefferenceType.P in elm.rms_model.model.external_mapping:
+                        self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.P, Sbus.real)
+                    if VarPowerFlowRefferenceType.Q in elm.rms_model.model.external_mapping:
+                        self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Q, Sbus.imag)
 
                 k = bus_dict[elm.bus]
-                if VarPowerFlowRefferenceType.P in elm.rms_model.model.external_mapping:
-                    setP(P, P_used, k, elm.rms_model.model.E(VarPowerFlowRefferenceType.P))
-                if VarPowerFlowRefferenceType.Q in elm.rms_model.model.external_mapping:
-                    setQ(Q, Q_used, k, elm.rms_model.model.E(VarPowerFlowRefferenceType.Q))
+                # Phasor formulation: use current balance
+                if VarPowerFlowRefferenceType.Ir in elm.rms_model.model.external_mapping:
+                    setIr(Ir, Ir_used, k, elm.rms_model.model.E(VarPowerFlowRefferenceType.Ir))
+                if VarPowerFlowRefferenceType.Ii in elm.rms_model.model.external_mapping:
+                    setIi(Ii, Ii_used, k, elm.rms_model.model.E(VarPowerFlowRefferenceType.Ii))
 
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
 
@@ -441,16 +517,16 @@ class RmsProblemPhasor(RmsProblemTemplate):
         if self.progress_signal is not None:
             self.progress_signal.emit(10)
 
-        # add the nodal balance equations
+        # add the nodal balance equations (current balance for phasor formulation)
         for i, elm in enumerate(self.grid.buses):
             mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
             if len(mdl.algebraic_eqs) == 0:
-                if not P_used[i] and not Q_used[i]:
+                if not Ir_used[i] and not Ii_used[i]:
                     self.logger.add_error("Isolated bus", value=i)
                 else:
-                    if not elm.is_dc:
-                        self._algebraic_eqs.append(Q[i])
-                    self._algebraic_eqs.append(P[i])
+                    # Phasor formulation uses current balance equations
+                    self._algebraic_eqs.append(Ir[i])
+                    self._algebraic_eqs.append(Ii[i])
 
         # self._variable_parameters: List[Var] = list()
         # self._event_parameters_eqs: List[Expr | Const] = list()
