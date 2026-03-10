@@ -8,6 +8,7 @@ import copy
 
 import time
 import sys, os
+import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -22,6 +23,7 @@ from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
@@ -119,8 +121,11 @@ set_rms_model(device=load, model=load_mdl, var_factory= grid.rms_var_factory)
 ######################################################################################################
 
 Pl0 = find_name_in_block('Pl0', load_mdl)
-event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098)
+events_group = RmsEventsGroup("simulation1")
+event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group)
 grid.add_rms_event(event)
+
+rms_events_group_names = np.array(0)
 
 # choose variables to save values
 # vars_to_save = list()
@@ -187,6 +192,8 @@ problem = RmsProblemDae(grid=grid,
                         options=options,
                         pf_results=res)
 
+problem.set_events_group(events_group)
+
 
 solver = BackEulerImplicitIntegration(
     problem=problem,
@@ -198,17 +205,14 @@ solver = BackEulerImplicitIntegration(
 
 t, y, well_initialized, converged = solver.simulate()
 
-results = RmsResults(
-            empty_rms_models=list(),
-            well_initialized=well_initialized,
-            converged=converged,
-            values=solver.y,
-            time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
-            variables=problem.state_and_algebraic_vars,
-            uid2idx=problem.uid2idx_vars,
-            vars_glob_name2uid=problem.vars_glob_name2uid,
-            devices_vars_info=problem.get_device_vars_dict()
-            )
+# results = RmsResults(
+#             time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
+#             rms_events_group_names = rms_events_group_names,
+#             variables=problem.state_and_algebraic_vars,
+#             uid2idx=problem.uid2idx_vars,
+#             vars_glob_name2uid=problem.vars_glob_name2uid,
+#             devices_vars_info=problem.get_device_vars_dict()
+#             )
 
 
 

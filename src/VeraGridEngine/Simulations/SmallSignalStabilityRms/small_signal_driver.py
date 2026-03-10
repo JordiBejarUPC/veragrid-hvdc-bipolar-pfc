@@ -14,6 +14,7 @@ import scipy.sparse as sp
 
 from typing import Union, Any
 
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
@@ -440,9 +441,13 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
 
         DriverTemplate.__init__(self, grid=grid, engine=engine)
 
+        events_group = RmsEventsGroup("simulation1")
+
         self.problem = RmsProblemDae(grid=grid,
                                      options=rms_options,
                                      pf_results=pf_results)
+
+        self.problem.set_events_group(events_group)
 
         self.sss_options: SmallSignalStabilityRmsOptions = SmallSignalStabilityRmsOptions() if sss_options is None else sss_options
         self.assessment_time = self.sss_options.ss_assessment_time
