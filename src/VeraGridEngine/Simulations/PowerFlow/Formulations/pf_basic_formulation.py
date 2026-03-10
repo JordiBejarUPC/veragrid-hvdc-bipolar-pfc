@@ -218,7 +218,7 @@ class PfBasicFormulation(PfFormulationTemplate):
                         prev_b = b_steps[self.shunt_step[sh_i]] / self.nc.Sbase
                         self.shunt_step[sh_i] -= 1
                         b = prev_b - b_steps[self.shunt_step[sh_i]] / self.nc.Sbase
-                        self.modify_y_diagonal(prev_val=(0.0 + 1j * prev_b), new_val=(0.0 + 1j * b), i=bus_i)
+                        self.modify_y_diagonal(prev_val=complex(0.0, prev_b), new_val=complex(0.0, b), i=bus_i)
                         any_change = True
 
                 elif self.Vm[bus_i] < self.nc.shunt_data.vmin[sh_i]:
@@ -228,7 +228,7 @@ class PfBasicFormulation(PfFormulationTemplate):
                         prev_b = b_steps[self.shunt_step[sh_i]] / self.nc.Sbase
                         self.shunt_step[sh_i] += 1
                         b = prev_b + b_steps[self.shunt_step[sh_i]] / self.nc.Sbase
-                        self.modify_y_diagonal(prev_val=(0.0 + 1j * prev_b), new_val=(0.0 + 1j * b), i=bus_i)
+                        self.modify_y_diagonal(prev_val=complex(0.0, prev_b), new_val=complex(0.0, b), i=bus_i)
                         any_change = True
                 else:
                     # within boundaries
