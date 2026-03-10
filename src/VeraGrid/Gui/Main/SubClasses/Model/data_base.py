@@ -30,7 +30,6 @@ from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
-from VeraGrid.Gui.rms_events_editor_dialog import RmsEventEditor
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, generate_map_diagram
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget, make_diagram_from_buses
@@ -1067,26 +1066,26 @@ class DataBaseTableMain(DiagramsMain):
                         if dlg.exec():
                             pass
 
-                    elif elm_type == DeviceType.RmsEventDevice.value:
-                        lines = []
-                        injections = []
-                        for line in self.circuit.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-                            lines.append(line)
-                        for injection in self.circuit.get_injection_devices_iter():
-                            injections.append(injection)
-
-                        all_devices = lines + injections
-
-                        idx = self.ui.dataStructureTableView.currentIndex()
-
-                        self.rms_events_Editor_window = RmsEventEditor(devices=all_devices,
-                                                                       event=elm)
-                        self.rms_events_Editor_window.resize(int(1.81 * 700.0), 700)
-
-                        # TODO: check if we are actually editing the object directly
-                        if self.rms_events_Editor_window.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-                            # update event
-                            self.circuit.rms_events[idx_proxy] = self.rms_events_Editor_window.get_updated_event()
+                    # elif elm_type == DeviceType.RmsEventDevice.value:
+                    #     lines = []
+                    #     injections = []
+                    #     for line in self.circuit.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+                    #         lines.append(line)
+                    #     for injection in self.circuit.get_injection_devices_iter():
+                    #         injections.append(injection)
+                    #
+                    #     all_devices = lines + injections
+                    #
+                    #     idx = self.ui.dataStructureTableView.currentIndex()
+                    #
+                    #     self.rms_events_Editor_window = RmsEventEditor(devices=all_devices,
+                    #                                                    event=elm)
+                    #     self.rms_events_Editor_window.resize(int(1.81 * 700.0), 700)
+                    #
+                    #     # TODO: check if we are actually editing the object directly
+                    #     if self.rms_events_Editor_window.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+                    #         # update event
+                    #         self.circuit.rms_events[idx_proxy] = self.rms_events_Editor_window.get_updated_event()
 
                     else:
 

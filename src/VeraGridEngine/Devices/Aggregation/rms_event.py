@@ -44,10 +44,10 @@ class RmsEvent(PointerDeviceParent):
                  parameter: Var = None,
                  time: float = None,
                  value: float = None,
+                 group: RmsEventsGroup = None,
                  idtag: Union[str, None] = None,
                  name="RmsEvent",
                  code='',
-                 group: RmsEventsGroup = None,
                  comment: str = ""):
         """
         Investment
