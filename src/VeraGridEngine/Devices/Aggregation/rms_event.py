@@ -20,23 +20,27 @@ from VeraGridEngine.enumerations import DeviceType
 
 class RmsEvent(PointerDeviceParent):
     """
-    Investment
+    Rms Event (Used for both RMS and EMT dynamic events)
     """
     __slots__ = (
         'parameter',
         'time',
         'value',
+        'force_step_alignment',
         '_group'
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key='parameter', units='', tpe=SubObjectType.VarType,
-                      definition='parameter that the event changes'),
-        GCProp(key='time', units='', tpe=float,
-                      definition='Time when the event occurs'),
+               definition='parameter that the event changes'),
+        GCProp(key='time', units='s', tpe=float,
+               definition='Time when the event occurs'),
         GCProp(key='value', units='', tpe=float,
-                      definition='New value for the parameter'),
-        GCProp(key='group', units='', tpe=DeviceType.RmsEventsGroupDevice, definition='RmsEvent group'),
+               definition='New value for the parameter'),
+        GCProp(key='group', units='', tpe=DeviceType.RmsEventsGroupDevice,
+               definition='RmsEvent group'),
+        GCProp(key='force_step_alignment', units='', tpe=bool,
+               definition='For EMT: Forces the solver to subdivide the integration step exactly at t=time to prevent order degradation.'),
     )
 
     def __init__(self,
@@ -44,21 +48,23 @@ class RmsEvent(PointerDeviceParent):
                  parameter: Var = None,
                  time: float = None,
                  value: float = None,
+                 force_step_alignment: bool = False,
                  idtag: Union[str, None] = None,
                  name="RmsEvent",
                  code='',
                  group: RmsEventsGroup = None,
                  comment: str = ""):
         """
-        Investment
+        Rms Event
         :param device: Some device to point at
-        :param idtag: String. Element unique identifier
-        :param name: String. Contingency name
-        :param code: String. Contingency code name
-        :param group: RmsEventsGroup. RmsEvent group
         :param parameter: parameter
         :param time: time
         :param value: value
+        :param force_step_alignment: Trigger time-step subdivision for this event (EMT)
+        :param idtag: String. Element unique identifier
+        :param name: String. Event name
+        :param code: String. Event code name
+        :param group: RmsEventsGroup. RmsEvent group
         :param comment: Comment
         """
 
@@ -73,14 +79,15 @@ class RmsEvent(PointerDeviceParent):
 
         self._group: RmsEventsGroup = group
         self.parameter: Any = parameter
-        self.time: float = time
-        self.value: float = value
+        self.time: float = float(time) if time is not None else 0.0
+        self.value: float = float(value) if value is not None else 0.0
+        self.force_step_alignment: bool = bool(force_step_alignment)
 
 
     @property
     def group(self) -> RmsEventsGroup:
         """
-        Group of investments
+        Group of events
         :return:
         """
         return self._group

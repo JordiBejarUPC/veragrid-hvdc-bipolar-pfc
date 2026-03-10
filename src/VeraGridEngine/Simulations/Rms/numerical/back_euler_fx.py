@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import numpy as np
+from typing import List
 import scipy.sparse as sp
 import time
 import scipy.sparse as sp
@@ -231,6 +232,9 @@ class BackEulerImplicitIntegration:
                 self.y[step_idx + 1, :] = x_new
 
                 self.t[step_idx + 1] = self.t[step_idx] + self.h
+
+                # add results to reduced results matrix
+                # self.y_red[step_idx + 1, :] = x_new[self.index_to_save] # only the indices of the variables that we want to save
 
                 dx_last = dx.copy()
                 lag_update_end = time.time()

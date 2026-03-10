@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Set, Tuple, Callable, List, Any, Union
+from typing import Set, Tuple, Callable, List, Any, Union, Optional
 import numpy as np
 import numba as nb
 import scipy.sparse as sp
@@ -131,7 +131,6 @@ class Predictor:
         return x_iter
 
 
-
 class BoundaryUpdateWrapper:
     """
     Interface for injecting boundary conditions and events before the Newton step.
@@ -152,6 +151,17 @@ class BoundaryUpdateWrapper:
         :rtype: None
         """
         pass  # Explicit no-op for base class
+
+    def get_next_forced_event_time(self, t_prev: float, t_target: float) -> Optional[float]:
+        """
+        Return the earliest forced-alignment event time in the interval (t_prev, t_target].
+
+        :param t_prev: Previous solver time.
+        :param t_target: Nominal target time.
+        :return: Earliest forced event time or None.
+        """
+        _unused: Tuple["BoundaryUpdateWrapper", float, float] = (self, t_prev, t_target)
+        return None
 
 class HybridJacobianEvaluator:
     """
@@ -510,7 +520,7 @@ class JitSymbolicSolver:
                  x0: Union[Vec | None] = None,
                  dx0: Union[Vec | None] = None,
                  params0: Union[Vec | None] = None,
-                 boundary_updater: BoundaryUpdateWrapper| None = None) -> Tuple[Vec, Mat, Mat]:
+                 boundary_updater: BoundaryUpdateWrapper | None = None) -> Tuple[Vec, Mat, Mat]:
         """
         Main JIT simulation loop using the Symbolic Differentiation (SD) backend.
         :param x0: Initial state vector.
@@ -522,20 +532,30 @@ class JitSymbolicSolver:
         t_start = time.time()
         method = self.method
 
-        if method not in self.jit_kernels:
-            self.build_jit_kernel(method)
-        else:
-            pass
-
-        kernel_list = self.jit_kernels[method]
-
         n_eqs = self.problem.get_all_vars_number()
         n_states = self.problem.get_states_number()
 
         use_dense_solver = (n_eqs <= self.dense_threshold)
-        self._build_jit_symbolic_hybrid(method, use_sparse=not use_dense_solver)
-        jac_key = f"{method}_{not use_dense_solver}"
-        current_jacobian = self.jit_jacobian_symbolic[jac_key]
+        is_sparse = not use_dense_solver
+
+        # Prepare main method kernels and Jacobian
+        if method not in self.jit_kernels:
+            self.build_jit_kernel(method)
+        else:
+            pass
+        self._build_jit_symbolic_hybrid(method, use_sparse=is_sparse)
+        jac_key_main = f"{method}_{is_sparse}"
+
+        # Prepare BackEuler fallback kernels for initial step or events
+        if method == DynamicIntegrationMethod.DaeTrapezoidal:
+            if DynamicIntegrationMethod.DaeBackEuler not in self.jit_kernels:
+                self.build_jit_kernel(DynamicIntegrationMethod.DaeBackEuler)
+            else:
+                pass
+            self._build_jit_symbolic_hybrid(DynamicIntegrationMethod.DaeBackEuler, use_sparse=is_sparse)
+        else:
+            pass
+        jac_key_be = f"{DynamicIntegrationMethod.DaeBackEuler}_{is_sparse}"
 
         if self.verbose:
             mode_str = "DENSE" if use_dense_solver else "SPARSE"
@@ -554,9 +574,11 @@ class JitSymbolicSolver:
 
         self.t[0] = self.t0
         self.y[0, :] = x0.copy()
-        self.dy[0,:] = dx0.copy()
+        self.dy[0, :] = dx0.copy()
 
-        x_prev, dx_prev, x_prev2 = x0.copy(), dx0.copy(), x0.copy()
+        x_prev = x0.copy()
+        dx_prev = dx0.copy()
+        x_prev2 = x0.copy()
         x_iter = x0.copy()
 
         static_vals = np.array([c.value for c in self.problem.get_parameters_values()])
@@ -569,7 +591,7 @@ class JitSymbolicSolver:
 
         trace_collector = self.problem.get_newton_trace_collector()
 
-        diag_cfg = NewtonDiagnosticsConfig(step_norm_explode=1e6, dense_cond_warn=1e12, compute_dense_cond=True,
+        diag_cfg = NewtonDiagnosticsConfig(step_norm_explode=1e6, dense_cond_warn=1e12, compute_dense_cond=False,
                                            enable_fallback=True)
         dense_solve = with_newton_diagnostics(np.linalg.solve, fallback_solve=dense_lstsq_fallback,
                                               collector=trace_collector, config=diag_cfg, solver_name="dense")
@@ -587,175 +609,254 @@ class JitSymbolicSolver:
             else:
                 pass
 
-            t_curr = self.t0 + (i + 1) * self.h
-            self.t[i + 1] = t_curr
+            t_step_start: float = self.t0 + i * self.h
+            t_step_target: float = self.t0 + (i + 1) * self.h
+            self.t[i + 1] = t_step_target
 
-            ev_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
-            full_params = np.concatenate((ev_params, static_vals))
+            t_local_prev: float = t_step_start
+            is_first_local_step: bool = True
 
-            if boundary_updater is not None:
-                boundary_updater.update(t_curr, x_prev, full_params)
-            else:
-                pass
+            while t_local_prev < (t_step_target - 1e-15):
+                forced_event_time: Optional[float] = None
 
-            # PREDICTOR
-            if i == 0 and method == DynamicIntegrationMethod.DaeTrapezoidal:
-                predictor = Predictor(n_states=n_states)
-                predictor.predict(
-                    x_iter=x_iter,
-                    x_prev=x_prev,
-                    dx_prev=dx_prev,
-                    h=self.h,
-                    pred_method= self.pred_method,
-                )
-
-
-            for k in range(15):
-                ctx = NewtonSolveContext(t=float(t_curr), step_idx=int(i), newton_iter=int(k), phase="jit",
-                                         method=str(method))
-
-                res = np.zeros(n_eqs, dtype=np.float64)
-                for kn in kernel_list:
-                    kn(x_iter, full_params, x_prev, dx_prev, self.h, res, x_prev2)
-
-                if i == 0 and self.verbose:
-                    dbg = getattr(self, "_residual_debug_info", None)
-
-                    print("\n[Residual Debug] Sizes:")
-                    print(f"  n_eqs(res)       = {n_eqs}")
-                    print(f"  len(debug_info)  = {len(dbg) if dbg is not None else 'None'}")
-                    print(f"  n_states(vec)    = {len(x_iter)}")
-
-                    if dbg is None:
-                        print("  [WARNING] self._residual_debug_info is missing.")
-                    elif len(dbg) != n_eqs:
-                        print("  [WARNING] len(self._residual_debug_info) != n_eqs")
-                        print("            residual table labels may be wrong.\n")
-
-                    abs_res = np.abs(res)
-                    # top_indices = np.argsort(abs_res)[-20:][::-1]
-                    top_indices = np.argsort(abs_res)[:][::-1]
-
-                    W_IDX = 4
-                    W_KIND = 6
-                    W_STATEIDX = 8
-                    W_VARNAME = 40
-                    W_LABEL = 62
-                    W_RES = 13
-                    W_ABS = 13
-                    W_XIT = 13
-                    W_XPR = 13
-                    W_DXPR = 13
-
-                    def _clip(s: str, width: int) -> str:
-                        s = str(s)
-                        if len(s) <= width:
-                            return s.ljust(width)
-                        if width <= 3:
-                            return s[:width]
-                        return s[:width - 3] + "..."
-
-                    def _fmt_num(x, width: int = 13) -> str:
-                        if x is None:
-                            return " " * width
-                        try:
-                            xf = float(x)
-                        except Exception:
-                            return str(x).rjust(width)
-                        if np.isnan(xf):
-                            return "nan".rjust(width)
-                        return f"{xf: .6e}".rjust(width)
-
-                    title = f">>> TOP 20 LARGEST RESIDUALS (Step {i}, Iter {k}) <<<"
-                    print("\n" + title)
-                    header = (
-                        f"{'idx':>{W_IDX}} | "
-                        f"{'kind':<{W_KIND}} | "
-                        f"{'state_i':>{W_STATEIDX}} | "
-                        f"{'var_name':<{W_VARNAME}} | "
-                        f"{'label':<{W_LABEL}} | "
-                        f"{'res':>{W_RES}} | "
-                        f"{'|res|':>{W_ABS}} | "
-                        f"{'x_iter':>{W_XIT}} | "
-                        f"{'x_prev':>{W_XPR}} | "
-                        f"{'dx_prev':>{W_DXPR}}"
-                    )
-                    print(header)
-                    print("-" * len(header))
-
-                    for idx in top_indices:
-                        if dbg is not None and idx < len(dbg):
-                            info = dbg[idx]
-                            kind = info.get("kind", "UNK")
-                            var_name = info.get("var_name", "<?>")
-                            label = info.get("label", f"residual_{idx}")
-                            state_idx = info.get("state_idx", None)
-                        else:
-                            kind = "UNK"
-                            var_name = "<?>"
-                            label = f"residual_{idx}"
-                            state_idx = None
-
-                        if state_idx is not None and 0 <= state_idx < len(x_iter):
-                            x_it = x_iter[state_idx]
-                            x_pr = x_prev[state_idx]
-                        else:
-                            x_it = np.nan
-                            x_pr = np.nan
-
-                        if kind == "STATE" and state_idx is not None and 0 <= state_idx < len(dx_prev):
-                            dx_pr = dx_prev[state_idx]
-                        else:
-                            dx_pr = np.nan
-
-                        row = (
-                            f"{idx:>{W_IDX}d} | "
-                            f"{kind:<{W_KIND}} | "
-                            f"{state_idx if state_idx is not None else -1:>{W_STATEIDX}d} | "
-                            f"{_clip(var_name, W_VARNAME)} | "
-                            f"{_clip(label, W_LABEL)} | "
-                            f"{_fmt_num(res[idx], W_RES)} | "
-                            f"{_fmt_num(abs_res[idx], W_ABS)} | "
-                            f"{_fmt_num(x_it, W_XIT)} | "
-                            f"{_fmt_num(x_pr, W_XPR)} | "
-                            f"{_fmt_num(dx_pr, W_DXPR)}"
+                if boundary_updater is None:
+                    pass
+                else:
+                    if hasattr(boundary_updater, 'get_next_forced_event_time'):
+                        forced_event_time = boundary_updater.get_next_forced_event_time(
+                            t_prev=t_local_prev,
+                            t_target=t_step_target
                         )
-                        print(row)
+                    else:
+                        pass
 
-                    print("-" * len(header))
-                    print("=" * len(header) + "\n")
+                if forced_event_time is None:
+                    t_curr: float = t_step_target
+                else:
+                    t_curr = forced_event_time
 
-                if np.linalg.norm(res, np.inf) < 1e-6:
-                    break
+                h_eff: float = t_curr - t_local_prev
+
+                if h_eff <= 0.0:
+                    raise RuntimeError(
+                        f"Invalid EMT substep size h_eff={h_eff} at macro step {i}."
+                    )
                 else:
                     pass
 
-                J_final = current_jacobian.evaluate(states=x_iter, params=full_params, history=x_prev,
-                                                    d_history=dx_prev,h=self.h, history2=x_prev2)
-
-                if use_dense_solver:
-                    delta = dense_solve(J_final, -res, ctx)
+                if method == DynamicIntegrationMethod.DaeBDF2 and t_curr != t_step_target:
+                    raise NotImplementedError(
+                        "force_step_alignment with DAE BDF2 is not implemented yet. "
+                        "Use DaeTrapezoidal or implement variable-step BDF2 coefficients."
+                    )
                 else:
-                    delta = sparse_solve(J_final, -res, ctx)
-                x_iter += delta
+                    pass
 
-            self.y[i + 1, :] = x_iter
-            self.dy[i , :] = dx_prev
+                method_eff = method
+                if i == 0 and is_first_local_step and method == DynamicIntegrationMethod.DaeTrapezoidal:
+                    method_eff = DynamicIntegrationMethod.DaeBackEuler
+                else:
+                    pass
 
-            if method == DynamicIntegrationMethod.DaeTrapezoidal:
-                alpha = 2.0 / self.h
-                dx_prev[:n_states] = alpha * (x_iter[:n_states] - x_prev[:n_states]) - dx_prev[:n_states]
-            elif method == DynamicIntegrationMethod.DaeBDF2:
-                x_prev2 = x_prev.copy()
-            else:
-                dx_prev[:n_states] = (x_iter[:n_states] - x_prev[:n_states]) / self.h
+                kernel_list_eff = self.jit_kernels[method_eff]
+                jac_key_eff = jac_key_main if method_eff == method else jac_key_be
+                current_jacobian_eff = self.jit_jacobian_symbolic[jac_key_eff]
 
-            if method != DynamicIntegrationMethod.DaeBDF2:
-                x_prev2 = x_prev.copy()
-            else:
-                pass
+                ev_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
+                full_params = np.concatenate((ev_params, static_vals))
 
-            x_prev = x_iter.copy()
+                if i == 0 and is_first_local_step and self.verbose:
+                    print("\nFULL params[] ORDER (objects + values):")
+                    for idx, pobj in enumerate(full_params):
+                        val = full_params[idx] if idx < len(full_params) else None
+                        name = getattr(pobj, "name", str(pobj))
+                        uid = getattr(pobj, "uid", None)
+                        print(f"{idx:3d}  {name:40s}  uid={uid}  val={val}")
+                else:
+                    pass
+
+                if boundary_updater is None:
+                    pass
+                else:
+                    boundary_updater.update(t_curr, x_prev, full_params)
+                    ev_params[:] = full_params[:len(ev_params)]
+
+                x_iter[:] = x_prev
+                x_iter[:n_states] = x_prev[:n_states] + h_eff * dx_prev[:n_states]
+
+                for k in range(15):
+                    ctx = NewtonSolveContext(
+                        t=float(t_curr),
+                        step_idx=int(i),
+                        newton_iter=int(k),
+                        phase="jit",
+                        method=str(method)
+                    )
+
+                    res = np.zeros(n_eqs, dtype=np.float64)
+
+                    for kn in kernel_list_eff:
+                        kn(x_iter, full_params, x_prev, dx_prev, h_eff, res, x_prev2)
+
+                    if i == 0 and self.verbose:
+                        dbg = getattr(self, "_residual_debug_info", None)
+
+                        print("\n[Residual Debug] Sizes:")
+                        print(f"  n_eqs(res)       = {n_eqs}")
+                        print(f"  len(debug_info)  = {len(dbg) if dbg is not None else 'None'}")
+                        print(f"  n_states(vec)    = {len(x_iter)}")
+
+                        if dbg is None:
+                            print("  [WARNING] self._residual_debug_info is missing.")
+                        elif len(dbg) != n_eqs:
+                            print("  [WARNING] len(self._residual_debug_info) != n_eqs")
+                            print("            residual table labels may be wrong.\n")
+
+                        abs_res = np.abs(res)
+                        top_indices = np.argsort(abs_res)[:][::-1]
+
+                        W_IDX = 4
+                        W_KIND = 6
+                        W_STATEIDX = 8
+                        W_VARNAME = 40
+                        W_LABEL = 62
+                        W_RES = 13
+                        W_ABS = 13
+                        W_XIT = 13
+                        W_XPR = 13
+                        W_DXPR = 13
+
+                        def _clip(s: str, width: int) -> str:
+                            s = str(s)
+                            if len(s) <= width:
+                                return s.ljust(width)
+                            if width <= 3:
+                                return s[:width]
+                            return s[:width - 3] + "..."
+
+                        def _fmt_num(x, width: int = 13) -> str:
+                            if x is None:
+                                return " " * width
+                            try:
+                                xf = float(x)
+                            except Exception:
+                                return str(x).rjust(width)
+                            if np.isnan(xf):
+                                return "nan".rjust(width)
+                            return f"{xf: .6e}".rjust(width)
+
+                        title = f">>> TOP 20 LARGEST RESIDUALS (Step {i}, Iter {k}) <<<"
+                        print("\n" + title)
+                        header = (
+                            f"{'idx':>{W_IDX}} | "
+                            f"{'kind':<{W_KIND}} | "
+                            f"{'state_i':>{W_STATEIDX}} | "
+                            f"{'var_name':<{W_VARNAME}} | "
+                            f"{'label':<{W_LABEL}} | "
+                            f"{'res':>{W_RES}} | "
+                            f"{'|res|':>{W_ABS}} | "
+                            f"{'x_iter':>{W_XIT}} | "
+                            f"{'x_prev':>{W_XPR}} | "
+                            f"{'dx_prev':>{W_DXPR}}"
+                        )
+                        print(header)
+                        print("-" * len(header))
+
+                        for idx in top_indices:
+                            if dbg is not None and idx < len(dbg):
+                                info = dbg[idx]
+                                kind = info.get("kind", "UNK")
+                                var_name = info.get("var_name", "<?>")
+                                label = info.get("label", f"residual_{idx}")
+                                state_idx = info.get("state_idx", None)
+                            else:
+                                kind = "UNK"
+                                var_name = "<?>"
+                                label = f"residual_{idx}"
+                                state_idx = None
+
+                            if state_idx is not None and 0 <= state_idx < len(x_iter):
+                                x_it = x_iter[state_idx]
+                                x_pr = x_prev[state_idx]
+                            else:
+                                x_it = np.nan
+                                x_pr = np.nan
+
+                            if kind == "STATE" and state_idx is not None and 0 <= state_idx < len(dx_prev):
+                                dx_pr = dx_prev[state_idx]
+                            else:
+                                dx_pr = np.nan
+
+                            row = (
+                                f"{idx:>{W_IDX}d} | "
+                                f"{kind:<{W_KIND}} | "
+                                f"{state_idx if state_idx is not None else -1:>{W_STATEIDX}d} | "
+                                f"{_clip(var_name, W_VARNAME)} | "
+                                f"{_clip(label, W_LABEL)} | "
+                                f"{_fmt_num(res[idx], W_RES)} | "
+                                f"{_fmt_num(abs_res[idx], W_ABS)} | "
+                                f"{_fmt_num(x_it, W_XIT)} | "
+                                f"{_fmt_num(x_pr, W_XPR)} | "
+                                f"{_fmt_num(dx_pr, W_DXPR)}"
+                            )
+                            print(row)
+
+                        print("-" * len(header))
+                        print("=" * len(header) + "\n")
+
+                    if np.linalg.norm(res, np.inf) < 1e-6:
+                        break
+                    else:
+                        pass
+
+                    J_final = current_jacobian_eff.evaluate(
+                        states=x_iter,
+                        params=full_params,
+                        history=x_prev,
+                        d_history=dx_prev,
+                        h=h_eff,
+                        history2=x_prev2
+                    )
+
+                    if use_dense_solver:
+                        delta = dense_solve(J_final, -res, ctx)
+                    else:
+                        delta = sparse_solve(J_final, -res, ctx)
+
+                    x_iter += delta
+
+                if method == DynamicIntegrationMethod.DaeTrapezoidal:
+                    dx_prev[:n_states] = (
+                            (2.0 / h_eff) * (x_iter[:n_states] - x_prev[:n_states])
+                            - dx_prev[:n_states]
+                    )
+                elif method == DynamicIntegrationMethod.DaeBackEuler:
+                    dx_prev[:n_states] = (
+                            (x_iter[:n_states] - x_prev[:n_states]) / h_eff
+                    )
+                elif method == DynamicIntegrationMethod.DaeBDF2:
+                    x_prev2[:] = x_prev
+                    dx_prev[:n_states] = (
+                                                 1.5 * x_iter[:n_states]
+                                                 - 2.0 * x_prev[:n_states]
+                                                 + 0.5 * x_prev2[:n_states]
+                                         ) / h_eff
+                else:
+                    dx_prev[:n_states] = (
+                            (x_iter[:n_states] - x_prev[:n_states]) / h_eff
+                    )
+
+                if method != DynamicIntegrationMethod.DaeBDF2:
+                    x_prev2[:] = x_prev
+                else:
+                    pass
+
+                x_prev[:] = x_iter
+                t_local_prev = t_curr
+                is_first_local_step = False
+
+            self.y[i + 1, :] = x_prev
+            self.dy[i + 1, :] = dx_prev
 
         if self.verbose:
             print(f"JIT Finished: {time.time() - t_start:.4f}s")

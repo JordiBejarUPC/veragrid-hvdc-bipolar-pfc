@@ -45,14 +45,14 @@ class Transformer2W(ControllableBranchParent):
         GCProp(key='I0', units='%', tpe=float, definition='No-load current (optional)'),
         GCProp(key='Vsc', units='%', tpe=float, definition='Short-circuit voltage (optional)'),
         GCProp(key='conn', units='', tpe=WindingsConnection,
-                      definition='Windings connection (from, to):G: grounded starS: ungrounded starD: delta'),
+               definition='Windings connection (from, to):G: grounded starS: ungrounded starD: delta'),
         GCProp(key='conn_f', units='', tpe=WindingType,
-                      definition='Winding 3 phase connection at the from side'),
+               definition='Winding 3 phase connection at the from side'),
         GCProp(key='conn_t', units='', tpe=WindingType,
-                      definition='Winding 3 phase connection at the to side'),
+               definition='Winding 3 phase connection at the to side'),
         GCProp(key='vector_group_number', units='', tpe=int,
-                      definition='Vector group number. It indicates the structural phase:'
-                                 'phase = vector_group_number · 30º'),
+               definition='Vector group number. It indicates the structural phase:'
+                          'phase = vector_group_number · 30º'),
         # GCProp(key='phases', units='', tpe=IntVec, definition='Which phases are present at the transformer'),
         GCProp(key='template', units='', tpe=DeviceType.TransformerTypeDevice, definition='', editable=False),
     )
@@ -249,7 +249,7 @@ class Transformer2W(ControllableBranchParent):
         self.conn: WindingsConnection = conn
 
         # type template
-        self.template: TransformerType = template
+        self.template: TransformerType | None = template
 
         # association with transformer templates
         # self.possible_transformer_types: Associations = Associations(device_type=DeviceType.TransformerTypeDevice)
@@ -261,12 +261,7 @@ class Transformer2W(ControllableBranchParent):
 
         # register
 
-
-
-
-
         # TODO: do we need to edit the phases vector?
-
 
     @property
     def conn_f(self) -> WindingType:
@@ -602,7 +597,6 @@ class Transformer2W(ControllableBranchParent):
 
         return phaseN, phaseA, phaseB, phaseC
 
-
     def transformer_admittance(self,
                                vtap_f: float,
                                vtap_t: float,
@@ -619,10 +613,10 @@ class Transformer2W(ControllableBranchParent):
         conn_y_to = self.conn_t == WindingType.NeutralStar or self.conn_t == WindingType.GroundedStar
 
         # phase_displacement = np.deg2rad(self.vector_group_number * 30.0)
-        if self.conn_f == WindingType.Delta and conn_y_to: # Dy
+        if self.conn_f == WindingType.Delta and conn_y_to:  # Dy
             phase_displacement = np.deg2rad(60.0)
 
-        elif conn_y_from and self.conn_t == WindingType.Delta: # Yd
+        elif conn_y_from and self.conn_t == WindingType.Delta:  # Yd
             phase_displacement = np.deg2rad(0.0)
 
         else:
@@ -769,14 +763,14 @@ class Transformer2W(ControllableBranchParent):
                 [-yff / 3, -yff / 3, 2 * yff / 3]
             ])
             Yft = np.array([
-                [yft / (2*np.sqrt(3)), yft / (2*np.sqrt(3)), -yft / np.sqrt(3)],
-                [-yft / np.sqrt(3), yft / (2*np.sqrt(3)), yft / (2*np.sqrt(3))],
-                [yft / (2*np.sqrt(3)), -yft / np.sqrt(3), yft / (2*np.sqrt(3))]
+                [yft / (2 * np.sqrt(3)), yft / (2 * np.sqrt(3)), -yft / np.sqrt(3)],
+                [-yft / np.sqrt(3), yft / (2 * np.sqrt(3)), yft / (2 * np.sqrt(3))],
+                [yft / (2 * np.sqrt(3)), -yft / np.sqrt(3), yft / (2 * np.sqrt(3))]
             ])
             Ytf = np.array([
-                [yft / (2*np.sqrt(3)), -yft / np.sqrt(3), yft / (2*np.sqrt(3))],
-                [yft / (2*np.sqrt(3)), yft / (2*np.sqrt(3)), -yft / np.sqrt(3)],
-                [-yft / np.sqrt(3), yft / (2*np.sqrt(3)), yft / (2*np.sqrt(3))]
+                [yft / (2 * np.sqrt(3)), -yft / np.sqrt(3), yft / (2 * np.sqrt(3))],
+                [yft / (2 * np.sqrt(3)), yft / (2 * np.sqrt(3)), -yft / np.sqrt(3)],
+                [-yft / np.sqrt(3), yft / (2 * np.sqrt(3)), yft / (2 * np.sqrt(3))]
             ])
             Ytt = np.array([
                 [ytt, 0, 0],
@@ -813,14 +807,14 @@ class Transformer2W(ControllableBranchParent):
                 [0, 0, yff]
             ])
             Yft = np.array([
-                [yft / (2*np.sqrt(3)), -yft / np.sqrt(3), yft / (2*np.sqrt(3))],
-                [yft / (2*np.sqrt(3)), yft / (2*np.sqrt(3)), -yft / np.sqrt(3)],
-                [-yft / np.sqrt(3), yft / (2*np.sqrt(3)), yft / (2*np.sqrt(3))]
+                [yft / (2 * np.sqrt(3)), -yft / np.sqrt(3), yft / (2 * np.sqrt(3))],
+                [yft / (2 * np.sqrt(3)), yft / (2 * np.sqrt(3)), -yft / np.sqrt(3)],
+                [-yft / np.sqrt(3), yft / (2 * np.sqrt(3)), yft / (2 * np.sqrt(3))]
             ])
             Ytf = np.array([
-                [yft / (2*np.sqrt(3)), yft / (2*np.sqrt(3)), -yft / np.sqrt(3)],
-                [-yft / np.sqrt(3), yft / (2*np.sqrt(3)), yft / (2*np.sqrt(3))],
-                [yft / (2*np.sqrt(3)), -yft / np.sqrt(3), yft / (2*np.sqrt(3))]
+                [yft / (2 * np.sqrt(3)), yft / (2 * np.sqrt(3)), -yft / np.sqrt(3)],
+                [-yft / np.sqrt(3), yft / (2 * np.sqrt(3)), yft / (2 * np.sqrt(3))],
+                [yft / (2 * np.sqrt(3)), -yft / np.sqrt(3), yft / (2 * np.sqrt(3))]
             ])
             Ytt = np.array([
                 [2 * ytt / 3, -ytt / 3, -ytt / 3],
@@ -856,4 +850,3 @@ class Transformer2W(ControllableBranchParent):
             return zeros, zeros, zeros, zeros
 
         return Yff, Yft, Ytf, Ytt
-

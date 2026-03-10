@@ -77,8 +77,7 @@ class RmsSimulationDriver(DriverTemplate):
         :return:
         """
         self.progress_signal.emit(0)
-        # Check that every element in the grid has a valid rms model
-        # empty_rms_models =  self.grid.check_rms_models()
+
         if len(self.grid.check_rms_models()) != 0:
             self.results = RmsResults(
                 empty_rms_models=self.grid.check_rms_models(),
