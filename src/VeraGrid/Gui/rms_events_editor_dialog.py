@@ -313,7 +313,10 @@ class RmsEventDialogue(QtWidgets.QDialog):
             target_times.append(t)
             values.append(v)
             groups.append(group)
-
+        self.data["parameters"] = parameters
+        self.data["target_times"] = target_times
+        self.data["values"] = values
+        self.data["groups"] = groups
         self.accept()
 
     def get_data(self) -> Dict[str, List]:

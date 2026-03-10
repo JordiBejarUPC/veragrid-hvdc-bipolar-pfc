@@ -2769,7 +2769,7 @@ class DiagramsMain(CompiledArraysMain):
 
                     if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
 
-                        events_data = rms_events_dialog.get_data()  # data for all the events affecting a device, it is structured in lists of floats for time and value info, and lists of parameters for parameter info
+                        events_data = rms_events_dialog.get_data()
                         events_list = []
                         for i, event in enumerate(events_data["parameters"]):
                             events_list.append(dev.RmsEvent(device=target_device,
