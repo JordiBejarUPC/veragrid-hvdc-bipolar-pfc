@@ -300,16 +300,28 @@ def create_cgmes_load_response_char(load: gcdev.Load,
         raise NotImplemented()
 
     lrc.name = f'LoadRespChar_{load.name}'
-    # lrc.shortName = load.name
     lrc.exponentModel = False
-    # SUPPOSING that
-    lrc.pConstantImpedance = 0.0
-    lrc.qConstantImpedance = 0.0
-    # Expression got simpler
-    lrc.pConstantPower = np.round(load.P / (load.Ir + load.P), 4)
-    lrc.qConstantPower = np.round(load.Q / (load.Ii + load.Q), 4)
-    lrc.pConstantCurrent = np.round(1 - lrc.pConstantPower, 4)
-    lrc.qConstantCurrent = np.round(1 - lrc.qConstantPower, 4)
+
+    total_active: float = float(load.P + load.Ir + load.G)
+    total_reactive: float = float(load.Q + load.Ii + load.B)
+
+    if total_active != 0.0:
+        lrc.pConstantPower = np.round(load.P / total_active, 4)
+        lrc.pConstantCurrent = np.round(load.Ir / total_active, 4)
+        lrc.pConstantImpedance = np.round(load.G / total_active, 4)
+    else:
+        lrc.pConstantPower = 1.0
+        lrc.pConstantCurrent = 0.0
+        lrc.pConstantImpedance = 0.0
+
+    if total_reactive != 0.0:
+        lrc.qConstantPower = np.round(load.Q / total_reactive, 4)
+        lrc.qConstantCurrent = np.round(load.Ii / total_reactive, 4)
+        lrc.qConstantImpedance = np.round(load.B / total_reactive, 4)
+    else:
+        lrc.qConstantPower = 1.0
+        lrc.qConstantCurrent = 0.0
+        lrc.qConstantImpedance = 0.0
 
     # Legacy
     # lrc.pConstantCurrent = load.Ir / load.P if load.P != 0.0 else 0
