@@ -1914,12 +1914,6 @@ class Ui_mainWindow(object):
 
         self.horizontalLayout_2.addWidget(self.saveResultsButton)
 
-        self.plot_dyn_data_pushButton = QPushButton(self.frame_8)
-        self.plot_dyn_data_pushButton.setObjectName(u"plot_dyn_data_pushButton")
-        self.plot_dyn_data_pushButton.setIcon(icon78)
-
-        self.horizontalLayout_2.addWidget(self.plot_dyn_data_pushButton)
-
         self.plot_data_pushButton = QPushButton(self.frame_8)
         self.plot_data_pushButton.setObjectName(u"plot_data_pushButton")
         self.plot_data_pushButton.setIcon(icon111)
@@ -1933,6 +1927,97 @@ class Ui_mainWindow(object):
         self.verticalLayout_40.addWidget(self.frame_5)
 
         self.resultsTabWidget.addTab(self.tab_7, icon93, "")
+        self.tab_5 = QWidget()
+        self.tab_5.setObjectName(u"tab_5")
+        self.verticalLayout_43 = QVBoxLayout(self.tab_5)
+        self.verticalLayout_43.setObjectName(u"verticalLayout_43")
+        self.verticalLayout_43.setContentsMargins(0, 6, 0, 7)
+        self.splitter_3 = QSplitter(self.tab_5)
+        self.splitter_3.setObjectName(u"splitter_3")
+        self.splitter_3.setOrientation(Qt.Orientation.Horizontal)
+        self.frame_22 = QFrame(self.splitter_3)
+        self.frame_22.setObjectName(u"frame_22")
+        self.frame_22.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_22.setFrameShadow(QFrame.Shadow.Raised)
+        self.verticalLayout_36 = QVBoxLayout(self.frame_22)
+        self.verticalLayout_36.setObjectName(u"verticalLayout_36")
+        self.verticalLayout_36.setContentsMargins(0, 0, -1, 0)
+        self.dynamicsDeviceTreeView = QTreeView(self.frame_22)
+        self.dynamicsDeviceTreeView.setObjectName(u"dynamicsDeviceTreeView")
+
+        self.verticalLayout_36.addWidget(self.dynamicsDeviceTreeView)
+
+        self.frame_3 = QFrame(self.frame_22)
+        self.frame_3.setObjectName(u"frame_3")
+        self.frame_3.setMaximumSize(QSize(16777215, 16777215))
+        self.frame_3.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_3.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout_15 = QHBoxLayout(self.frame_3)
+        self.horizontalLayout_15.setObjectName(u"horizontalLayout_15")
+        self.horizontalLayout_15.setContentsMargins(0, 0, 0, 0)
+        self.eventsGroupComboBox = QComboBox(self.frame_3)
+        self.eventsGroupComboBox.setObjectName(u"eventsGroupComboBox")
+
+        self.horizontalLayout_15.addWidget(self.eventsGroupComboBox)
+
+        self.label_45 = QLabel(self.frame_3)
+        self.label_45.setObjectName(u"label_45")
+
+        self.horizontalLayout_15.addWidget(self.label_45)
+
+        self.horizontalSpacer_15 = QSpacerItem(248, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_15.addItem(self.horizontalSpacer_15)
+
+        self.addResultsVarToTableButton = QPushButton(self.frame_3)
+        self.addResultsVarToTableButton.setObjectName(u"addResultsVarToTableButton")
+        self.addResultsVarToTableButton.setIcon(icon7)
+
+        self.horizontalLayout_15.addWidget(self.addResultsVarToTableButton)
+
+
+        self.verticalLayout_36.addWidget(self.frame_3)
+
+        self.splitter_3.addWidget(self.frame_22)
+        self.frame_30 = QFrame(self.splitter_3)
+        self.frame_30.setObjectName(u"frame_30")
+        self.frame_30.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_30.setFrameShadow(QFrame.Shadow.Raised)
+        self.verticalLayout_17 = QVBoxLayout(self.frame_30)
+        self.verticalLayout_17.setObjectName(u"verticalLayout_17")
+        self.verticalLayout_17.setContentsMargins(-1, 0, 0, 0)
+        self.dynamicsTableView = QTableView(self.frame_30)
+        self.dynamicsTableView.setObjectName(u"dynamicsTableView")
+
+        self.verticalLayout_17.addWidget(self.dynamicsTableView)
+
+        self.frame_39 = QFrame(self.frame_30)
+        self.frame_39.setObjectName(u"frame_39")
+        self.frame_39.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_39.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout_18 = QHBoxLayout(self.frame_39)
+        self.horizontalLayout_18.setObjectName(u"horizontalLayout_18")
+        self.horizontalLayout_18.setContentsMargins(0, 0, 0, 0)
+        self.horizontalSpacer_17 = QSpacerItem(419, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_18.addItem(self.horizontalSpacer_17)
+
+        self.dynamicsTablePlotButton = QPushButton(self.frame_39)
+        self.dynamicsTablePlotButton.setObjectName(u"dynamicsTablePlotButton")
+        self.dynamicsTablePlotButton.setIcon(icon111)
+
+        self.horizontalLayout_18.addWidget(self.dynamicsTablePlotButton)
+
+
+        self.verticalLayout_17.addWidget(self.frame_39)
+
+        self.splitter_3.addWidget(self.frame_30)
+
+        self.verticalLayout_43.addWidget(self.splitter_3)
+
+        icon126 = QIcon()
+        icon126.addFile(u":/Icons/icons/dyn_gray.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.resultsTabWidget.addTab(self.tab_5, icon126, "")
         self.tab_14 = QWidget()
         self.tab_14.setObjectName(u"tab_14")
         self.verticalLayout_41 = QVBoxLayout(self.tab_14)
@@ -2042,9 +2127,9 @@ class Ui_mainWindow(object):
 
         self.runSourceCodeButton = QPushButton(self.frame_55)
         self.runSourceCodeButton.setObjectName(u"runSourceCodeButton")
-        icon126 = QIcon()
-        icon126.addFile(u":/Icons/icons/next.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.runSourceCodeButton.setIcon(icon126)
+        icon127 = QIcon()
+        icon127.addFile(u":/Icons/icons/next.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.runSourceCodeButton.setIcon(icon127)
 
         self.horizontalLayout_3.addWidget(self.runSourceCodeButton)
 
@@ -2113,9 +2198,9 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_33.addWidget(self.consoleFrame)
 
-        icon127 = QIcon()
-        icon127.addFile(u":/Icons/icons/console.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tabWidget_2.addTab(self.pythonConsoleTab, icon127, "")
+        icon128 = QIcon()
+        icon128.addFile(u":/Icons/icons/console.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget_2.addTab(self.pythonConsoleTab, icon128, "")
         self.sourceCodeTab = QWidget()
         self.sourceCodeTab.setObjectName(u"sourceCodeTab")
         self.verticalLayout_39 = QVBoxLayout(self.sourceCodeTab)
@@ -2139,7 +2224,7 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_22.addWidget(self.frame_10)
 
-        self.mainTabWidget.addTab(self.main_console_tab, icon127, "")
+        self.mainTabWidget.addTab(self.main_console_tab, icon128, "")
         self.SettingsTab = QWidget()
         self.SettingsTab.setObjectName(u"SettingsTab")
         self.gridLayout_8 = QGridLayout(self.SettingsTab)
@@ -5074,7 +5159,7 @@ class Ui_mainWindow(object):
         self.tabWidget_6.setCurrentIndex(0)
         self.tabWidget.setCurrentIndex(0)
         self.tabWidget_5.setCurrentIndex(0)
-        self.resultsTabWidget.setCurrentIndex(2)
+        self.resultsTabWidget.setCurrentIndex(0)
         self.tabWidget_2.setCurrentIndex(0)
         self.settingsTabWidget.setCurrentIndex(0)
 
@@ -5761,14 +5846,23 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.saveResultsButton.setText("")
 #if QT_CONFIG(tooltip)
-        self.plot_dyn_data_pushButton.setToolTip(QCoreApplication.translate("mainWindow", u"Lauch the dynamic plotter window", None))
-#endif // QT_CONFIG(tooltip)
-        self.plot_dyn_data_pushButton.setText("")
-#if QT_CONFIG(tooltip)
         self.plot_data_pushButton.setToolTip(QCoreApplication.translate("mainWindow", u"Plot the data in a separated window", None))
 #endif // QT_CONFIG(tooltip)
         self.plot_data_pushButton.setText("")
         self.resultsTabWidget.setTabText(self.resultsTabWidget.indexOf(self.tab_7), QCoreApplication.translate("mainWindow", u"Tables", None))
+#if QT_CONFIG(tooltip)
+        self.eventsGroupComboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Select the events group to view", None))
+#endif // QT_CONFIG(tooltip)
+        self.label_45.setText(QCoreApplication.translate("mainWindow", u"Events group", None))
+#if QT_CONFIG(tooltip)
+        self.addResultsVarToTableButton.setToolTip(QCoreApplication.translate("mainWindow", u"Add seleted var to plot", None))
+#endif // QT_CONFIG(tooltip)
+        self.addResultsVarToTableButton.setText("")
+#if QT_CONFIG(tooltip)
+        self.dynamicsTablePlotButton.setToolTip(QCoreApplication.translate("mainWindow", u"Plot selected variables", None))
+#endif // QT_CONFIG(tooltip)
+        self.dynamicsTablePlotButton.setText("")
+        self.resultsTabWidget.setTabText(self.resultsTabWidget.indexOf(self.tab_5), QCoreApplication.translate("mainWindow", u"Dynamics", None))
 #if QT_CONFIG(tooltip)
         self.saveResultsLogsButton.setToolTip(QCoreApplication.translate("mainWindow", u"Save the logs to a file", None))
 #endif // QT_CONFIG(tooltip)

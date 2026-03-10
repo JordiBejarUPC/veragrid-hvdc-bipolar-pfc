@@ -12,7 +12,6 @@ from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
 from VeraGrid.Gui.Main.SubClasses.simulations import SimulationsMain
 from VeraGrid.Gui.results_model import ResultsModel
 from VeraGrid.Gui.general_dialogues import fill_tree_from_logs
-from VeraGrid.Gui.rms_plot_variables_dialog import RmsPlotDialog
 import VeraGridEngine.Utils.Filtering as flt
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import ResultTypes
@@ -44,7 +43,6 @@ class ResultsMain(SimulationsMain):
         self.ui.copy_results_pushButton.clicked.connect(self.copy_results_data)
         self.ui.copy_numpy_button.clicked.connect(self.copy_results_data_as_numpy)
         self.ui.plot_data_pushButton.clicked.connect(self.plot_results)
-        self.ui.plot_dyn_data_pushButton.clicked.connect(self.plot_dyn_results)
         self.ui.search_results_Button.clicked.connect(self.search_in_results)
         self.ui.deleteDriverButton.clicked.connect(self.delete_results_driver)
         self.ui.saveResultsLogsButton.clicked.connect(self.save_results_logs)
@@ -203,21 +201,6 @@ class ResultsMain(SimulationsMain):
                 plt.show()
             else:
                 pass
-
-    def plot_dyn_results(self):
-        """
-        Show the dynamic results plot wizard
-        """
-
-        drv, results = self.session.rms_dynamic_simulation
-
-        if results:
-
-            dlg = RmsPlotDialog(grid=self.circuit, results=results)
-            dlg.exec()
-
-        else:
-            self.show_warning_toast("No RMS simulation")
 
     def save_results_df(self):
         """
