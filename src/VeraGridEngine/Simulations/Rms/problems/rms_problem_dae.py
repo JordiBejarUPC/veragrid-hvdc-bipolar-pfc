@@ -25,6 +25,7 @@ from VeraGridEngine.Simulations.Rms.initialization import init_explicit, init_ps
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 
@@ -90,6 +91,7 @@ class RmsProblemDae(RmsProblemTemplate):
                  grid: MultiCircuit,
                  options: RmsOptions,
                  pf_results: PowerFlowResults | None,
+                 rms_events_group: RmsEventsGroup | None,
                  progress_signal: DummySignal | None = None):
         """
 
@@ -101,6 +103,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
         self.logger = Logger()
         self.progress_signal = progress_signal
+        self.rms_events_group = rms_events_group
         self.grid: MultiCircuit = grid
         self.power_flow_results: PowerFlowResults = pf_results
         self.Sf = self.power_flow_results.Sf / self.grid.Sbase
@@ -553,24 +556,25 @@ class RmsProblemDae(RmsProblemTemplate):
             self._stability_eqs.append(eq)
 
         # add events modifying values of event_parameters equations
+        if self.rms_events_group is not None:
 
-        collect_events = {
-            param: {"times": [], "values": []}
-            for param in self._variable_parameters
-        }
-
-        for rms_evt in self.grid.rms_events:
-            collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
-            collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
-            # TODO: implement the function in block: apply_event
-        for param, events_info in collect_events.items():
-            default_value = self._event_parameters_eqs[self._variable_parameters.index(param)]
-            self._event_parameters_eqs[self._variable_parameters.index(param)] = piecewise(
-                time_var=self._glob_time,
-                t_events=np.array(events_info["times"]),
-                new_values=np.array(events_info["values"]),
-                default_value=default_value
-            )
+            collect_events = {
+                param: {"times": [], "values": []}
+                for param in self._variable_parameters
+            }
+            rms_evts = [evt for evt in self.grid.rms_events if evt.group.idtag == self.rms_events_group.idtag]
+            for rms_evt in rms_evts:
+                collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
+                collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
+                # TODO: implement the function in block: apply_event
+            for param, events_info in collect_events.items():
+                default_value = self._event_parameters_eqs[self._variable_parameters.index(param)]
+                self._event_parameters_eqs[self._variable_parameters.index(param)] = piecewise(
+                    time_var=self._glob_time,
+                    t_events=np.array(events_info["times"]),
+                    new_values=np.array(events_info["values"]),
+                    default_value=default_value
+                )
 
         # --------------------------------------------------------------------------------------------------------------
         # Compile RHS and Jacobian using JIT Compiler adaptation

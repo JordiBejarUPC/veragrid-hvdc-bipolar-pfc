@@ -3329,11 +3329,11 @@ class SimulationsMain(TimeEventsMain):
                     self.show_info_toast("System well initialized:)")
                 else:
                     self.show_warning_toast("System bad initialized :/")
-
-                if results.converged:
-                    self.show_info_toast("Simulation converged :)")
-                else:
-                    self.show_warning_toast("Simulation did not converge :/")
+                for conv_res in results.converged:
+                    if conv_res:
+                        self.show_info_toast("Simulation converged :)")
+                    else:
+                        self.show_warning_toast("Simulation did not converge :/")
 
         else:
             warning_msg('There are no rms simulation results.', 'Rms simulation')

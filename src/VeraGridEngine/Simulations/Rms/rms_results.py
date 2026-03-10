@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 from typing import List, Dict
 
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate
 from VeraGridEngine.basic_structures import Vec, DateVec
@@ -18,9 +19,10 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 class RmsResults(ResultsTemplate):
 
     def __init__(self,
+                 rms_events_group_results: List[RmsEventsGroup],
                  empty_rms_models: List[str],
                  well_initialized: bool,
-                 converged: bool,
+                 converged: List[bool],
                  values: np.ndarray,
                  time_array: DateVec,
                  variables: List[Var],
@@ -75,7 +77,7 @@ class RmsResults(ResultsTemplate):
         #     clustering_results=None,
         #     study_results_type=StudyResultsType.RmsSimulation
         # )
-
+        self.rms_events_group_results = rms_events_group_results
         self.empty_rms_models = empty_rms_models
         self.well_initialized = well_initialized
         self.converged = converged
