@@ -75,16 +75,22 @@ class EmtProblemTemplate(ABC):
         self._variable_parameters: List[Var] = list()
         self._event_parameters_eqs: List[Any] = list()
 
+        self._variable_parameters: List[Var] = list()
+        self._event_parameters_eqs: List[Any] = list()
+        self._runtime_mode_uids: set[int] = set()
+
         if self.sys_block.event_dict:
-            self._variable_parameters = list(self.sys_block.event_dict.keys())
-            self._event_parameters_eqs = list(self.sys_block.event_dict.values())
-        else:
-            pass
+            self._variable_parameters.extend(list(self.sys_block.event_dict.keys()))
+            self._event_parameters_eqs.extend(list(self.sys_block.event_dict.values()))
+
+        if hasattr(self.sys_block, 'mode_dict') and self.sys_block.mode_dict:
+            self._variable_parameters.extend(list(self.sys_block.mode_dict.keys()))
+            self._event_parameters_eqs.extend(list(self.sys_block.mode_dict.values()))
+            for v in self.sys_block.mode_dict.keys():
+                self._runtime_mode_uids.add(v.uid)
 
         self._runtime_all_parameters_source: List[Var] = list(self._variable_parameters)
         self._runtime_all_eqs_source: List[Any] = list(self._event_parameters_eqs)
-
-        self._runtime_mode_uids: set[int] = set()
 
         self._runtime_continuous_parameters: List[Var] = list()
         self._runtime_mode_parameters: List[Var] = list()

@@ -1151,6 +1151,9 @@ class DeviceType(Enum):
     RmsEventDevice = "Rms Event"
     RmsEventsGroupDevice = "Rms Events Group"
 
+    EmtEventDevice = "Emt Event"
+    EmtEventsGroupDevice = "Emt Events Group"
+
     VarFactory = "Var Factory"
 
     def __str__(self) -> str:

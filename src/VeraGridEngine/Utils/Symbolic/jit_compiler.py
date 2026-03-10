@@ -473,7 +473,7 @@ class SymbolicToPythonVisitor:
 # =============================================================================================
 
 class ADVisitor(SymbolicToPythonVisitor):
-    __slots__ = ['seeds_var', 'active_indices']
+    __slots__ = ['seeds_var', 'active_indices', 'cse_has_dot']
 
     def __init__(self, var_map: Dict[int, int], param_map: Dict[int, int],
                  method: DiscretizationMethod, seeds_var: str = 'seeds',
@@ -481,6 +481,7 @@ class ADVisitor(SymbolicToPythonVisitor):
         super().__init__(var_map, param_map, method)
         self.seeds_var = seeds_var
         self.active_indices = active_indices
+        self.cse_has_dot: Set[str] = set()
         self._str_cache: Dict[Tuple[int, int], Tuple[str, str]] = dict()
 
     def generic_visit(self, node: Expr, _: int) -> Tuple[str, str]:
@@ -495,7 +496,9 @@ class ADVisitor(SymbolicToPythonVisitor):
             if not isinstance(node, (Var, Const)):
                 h_hash: str = self.analyzer.hash_expr(node)
                 if h_hash in self.cse_map:
-                    return self.cse_map[h_hash], f"{self.cse_map[h_hash]}_d"
+                    var_name = self.cse_map[h_hash]
+                    dot_name = f"{var_name}_d" if var_name in self.cse_has_dot else "0.0"
+                    return var_name, dot_name
                 else:
                     pass
             else:
@@ -638,7 +641,9 @@ class ADVisitor(SymbolicToPythonVisitor):
             if not _is_zero(rd): t2 = lv if _is_one(rd) else (rd if _is_one(lv) else f"({lv})*({rd})")
             d = t2 if t1 == "0.0" else (t1 if t2 == "0.0" else f"({t1} + {t2})")
         elif op == '/':
-            if _is_zero(ld) and _is_zero(rd):
+            if _is_zero(lv):
+                d = "0.0"
+            elif _is_zero(ld) and _is_zero(rd):
                 d = "0.0"
             elif _is_zero(rd):
                 d = ld if _is_one(rv) else f"({ld}) / ({rv})"
@@ -671,19 +676,22 @@ class ADVisitor(SymbolicToPythonVisitor):
 
     def visit_func(self, node: Func, _: int) -> Tuple[str, str]:
         av, ad = self.visit(node.arg, 0)
+        eps_str = "1e-15"
+
         if _is_zero(ad):
             if node.op == 'heaviside': return f"_heaviside({av})", "0.0"
             if node.op == 'abs': return f"np.abs({av})", "0.0"
             return f"np.{node.op}({av})", "0.0"
 
-        if node.op == 'heaviside': return f"_heaviside({av})", "0.0"
-        if node.op == 'abs': return f"np.abs({av})", f"(np.sign({av})*({ad}))"
         if node.op == 'sin': return f"np.sin({av})", f"(np.cos({av})*({ad}))"
         if node.op == 'cos': return f"np.cos({av})", f"(-np.sin({av})*({ad}))"
-        if node.op == 'exp': return f"np.exp({av})", f"({f'np.exp({av})'})*({ad})"
-        if node.op == 'log': return f"np.log({av})", f"({ad})/({av})"
-        if node.op == 'sqrt': return f"np.sqrt({av})", f"0.5*({ad})/({f'np.sqrt({av})'})"
-        raise NotImplementedError
+
+        if node.op == 'log':
+            return f"np.log({av})", f"({ad})/({av} + {eps_str})"
+        if node.op == 'sqrt':
+            return f"np.sqrt({av})", f"0.5*({ad})/(np.sqrt({av}) + {eps_str})"
+
+        raise NotImplementedError(f"Function {node.op} not supported in AD")
 
 # ==============================================================================
 # 5. Compiler (sym-num)(discretized)
@@ -802,6 +810,7 @@ class EquationCompiler:
 
                     if expr_dot != "0.0":
                         lines.append(f"    {var_name}_d = {expr_dot}")
+                        adv.cse_has_dot.add(var_name)
                     else:
                         pass
             else:

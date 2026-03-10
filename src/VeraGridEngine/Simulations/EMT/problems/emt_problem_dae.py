@@ -67,20 +67,6 @@ def _unique_keep_order(seq: List[Var]) -> List[Var]:
 
     return out
 
-
-def _get_runtime_parameter_name(parameter: Any) -> str:
-    """
-    Return a normalized runtime parameter name.
-
-    :param parameter: Runtime parameter key.
-    :return: Normalized parameter name.
-    """
-    if isinstance(parameter, Var):
-        return parameter.name.lower()
-    else:
-        return str(parameter).lower()
-
-
 def _deduplicate_block_entities(block: Block)->None:
     """
     Removes duplicated symbolic objects within the block by UID
@@ -92,50 +78,58 @@ def _deduplicate_block_entities(block: Block)->None:
     block.algebraic_vars = _unique_keep_order(block.algebraic_vars)
     block.diff_vars = _unique_keep_order(block.diff_vars)
 
-
-def _is_mode_runtime_parameter(parameter: Any) -> bool:
-    """
-    Return whether a runtime parameter should be treated as retained mode.
-
-    :param parameter: Runtime parameter key.
-    :return: True if the parameter is a retained mode parameter, False otherwise.
-    """
-    name: str = _get_runtime_parameter_name(parameter)
-
-    explicit_mode_names: Set[str] = {
-        "fault_enabled",
-        "switch_closed",
-        "breaker_closed",
-        "converter_blocked",
-        "relay_latched",
-        "diode_conducting",
-    }
-
-    if name in explicit_mode_names:
-        return True
-    elif name.endswith("_enabled"):
-        return True
-    elif name.endswith("_closed"):
-        return True
-    elif name.endswith("_blocked"):
-        return True
-    elif name.endswith("_latched"):
-        return True
-    elif name.endswith("_conducting"):
-        return True
-    else:
-        return False
-
-
-def _get_mode_event_sort_key(event: Tuple[float, float]) -> float:
+def _get_mode_event_sort_key(event: Tuple[float, float, bool]) -> float:
     """
     Return the sorting key of a mode event.
 
-    :param event: Mode event tuple (time, value).
+    :param event: Mode event tuple (time, value, force_step_alignment).
     :return: Event time.
     """
     return event[0]
 
+def _is_time_aligned(t_curr: float, event_time: float) -> bool:
+    """
+    Return whether the current solver time is aligned with the event time.
+
+    :param t_curr: Current solver time.
+    :param event_time: Scheduled event time.
+    :return: True if the current time is aligned with the event time.
+    """
+    time_tol = 10.0 * np.finfo(np.float64).eps * max(1.0, abs(event_time))
+    return abs(t_curr - event_time) <= time_tol
+
+def _get_next_forced_mode_event_time(t_prev: float, t_target: float) -> Optional[float]:
+    """
+    Return the earliest forced-alignment mode event time in the interval
+    (t_prev, t_target].
+
+    :param t_prev: Previous solver time.
+    :param t_target: Nominal target time.
+    :return: Earliest forced event time or None.
+    """
+    next_time: Optional[float] = None
+
+    for _, event_list in self._scheduled_mode_events.items():
+        event_idx: int = 0
+
+        while event_idx < len(event_list):
+            event_time: float = event_list[event_idx][0]
+            force_step_alignment: bool = event_list[event_idx][2]
+
+            if force_step_alignment and (t_prev < event_time <= t_target):
+                if next_time is None:
+                    next_time = event_time
+                else:
+                    if event_time < next_time:
+                        next_time = event_time
+                    else:
+                        pass
+            else:
+                pass
+
+            event_idx += 1
+
+    return next_time
 
 def _get_block_name(mdl: Block) -> str:
     """
@@ -154,19 +148,15 @@ def _get_grid_runtime_events(grid: MultiCircuit) -> List[Any]:
     """
     Return the list of scheduled runtime events available in the grid.
 
-    EMT events take precedence. If they are not available, RMS events are used
-    as a fallback.
-
     :param grid: MultiCircuit instance.
     :return: List of scheduled runtime events.
     """
-    if grid.emt_events is not None:
-        return list(grid.emt_events)
-    elif grid.rms_events is not None:
-        return list(grid.rms_events)
+    rms_events = getattr(grid, "rms_events", None)
+
+    if rms_events is not None:
+        return list(rms_events)
     else:
         return list()
-
 
 def _get_bus_v_list(
         grid: MultiCircuit,
@@ -193,6 +183,13 @@ def _get_bus_v_list(
             out.append(vk)
 
     return out
+
+def _get_external_mapping(mdl: Block) -> Optional[Dict[Any, Var]]:
+    external_mapping: Optional[Dict[Any, Var]] = mdl.external_mapping
+    if external_mapping is None:
+        return None
+    else:
+        return external_mapping
 
 
 class EmtProblemDae(EmtProblemTemplate):
@@ -230,7 +227,7 @@ class EmtProblemDae(EmtProblemTemplate):
         self._temp_init_guess: Dict[int, float] = dict()
         self._temp_diff_init_guess: Dict[int, float] = dict()
 
-        self._scheduled_mode_events: Dict[int, List[Tuple[float, float]]] = dict()
+        self._scheduled_mode_events: Dict[int, List[Tuple[float, float, bool]]] = dict()
         self._mode_event_cursor: Dict[int, int] = dict()
 
         # for init_explicit
@@ -256,13 +253,8 @@ class EmtProblemDae(EmtProblemTemplate):
         # initialize template with the complete block
         super().__init__(sys_block=sys_block, glob_time=glob_time)
 
-        mode_parameters: List[Var] = self._collect_runtime_mode_parameters()
-
-        if len(mode_parameters) > 0:
-            self.set_runtime_mode_parameters(mode_parameters)
+        if len(self._runtime_mode_parameters) > 0:
             self._initialize_mode_event_state()
-        else:
-            pass
 
         # 1) PF guesses
         self.init_guess.update(self._temp_init_guess)
@@ -626,73 +618,86 @@ class EmtProblemDae(EmtProblemTemplate):
             glob_time: Var
     ) -> None:
         """
-        Apply scheduled runtime events.
+        Apply scheduled runtime events to the model using explicit Block dictionaries.
 
-        Continuous runtime parameters are converted to piecewise(time) expressions.
-        Retained mode parameters are stored as scheduled mode events and are later
-        applied by the EMT boundary update layer.
+        This function processes two types of events based on their registration in the Block:
+        1. Continuous events (found in `mdl.event_dict`): Converted to `piecewise(time)` expressions.
+        2. Discrete mode events (found in `mdl.mode_dict`): Stored as scheduled mode events to be
+           applied dynamically by the EMT boundary update layer.
 
-        :param dev: Device object.
-        :param mdl: Device symbolic block.
-        :param grid: MultiCircuit instance.
-        :param glob_time: Global time variable.
+        :param dev: Device object from the grid.
+        :param mdl: Device symbolic block containing `event_dict` and `mode_dict`.
+        :param grid: MultiCircuit instance containing the scheduled events.
+        :param glob_time: Global time symbolic variable.
         :return: None
         """
-        emt_events: List[Any] = _get_grid_runtime_events(grid)
+        runtime_events: List[Any] = _get_grid_runtime_events(grid)
 
-        if mdl.event_dict is None or len(mdl.event_dict) == 0:
+        # Fast exit if the block defines no parameters that can be changed
+        if not mdl.event_dict and not mdl.mode_dict:
             return
         else:
             pass
 
-        collect_events: Dict[Any, Dict[str, List[float]]] = dict()
+        # Prepare containers to collect time-value pairs for continuous parameters
+        collect_events: Dict[Var, Dict[str, List[float]]] = dict()
         for key in mdl.event_dict.keys():
             collect_events[key] = {"times": list(), "values": list()}
 
+        # Filter events belonging to this specific device
         dev_events: List[Any] = list()
-        for evt in emt_events:
-            if evt.device_idtag == dev.idtag:
+        for evt in runtime_events:
+            if getattr(evt, "device_idtag", None) == dev.idtag:
                 dev_events.append(evt)
             else:
                 pass
 
+        # Classify and store events based on explicit Block dictionaries
         for evt in dev_events:
-            if evt.parameter in collect_events:
-                parameter: Any = evt.parameter
+            parameter: Any = evt.parameter
 
-                if _is_mode_runtime_parameter(parameter):
-                    if isinstance(parameter, Var):
-                        uid: int = parameter.uid
-                        event_list: Optional[List[Tuple[float, float]]] = self._scheduled_mode_events.get(uid, None)
+            if parameter in mdl.mode_dict:
+                # Process as a Discrete Mode event (breakers, faults, limits)
+                if isinstance(parameter, Var):
+                    uid: int = parameter.uid
+                    event_list: Optional[List[Tuple[float, float, bool]]] = self._scheduled_mode_events.get(uid, None)
 
-                        if event_list is None:
-                            self._scheduled_mode_events[uid] = [(float(evt.time), float(evt.value))]
-                        else:
-                            event_list.append((float(evt.time), float(evt.value)))
+                    force_step_alignment: bool = bool(getattr(evt, "force_step_alignment", False))
+
+                    if event_list is None:
+                        self._scheduled_mode_events[uid] = [
+                            (float(evt.time), float(evt.value), force_step_alignment)
+                        ]
                     else:
-                        raise TypeError(
-                            f"Mode runtime event parameter '{parameter}' must be a Var instance."
+                        event_list.append(
+                            (float(evt.time), float(evt.value), force_step_alignment)
                         )
                 else:
-                    collect_events[parameter]["times"].append(float(evt.time))
-                    collect_events[parameter]["values"].append(float(evt.value))
+                    raise TypeError(
+                        f"Mode runtime event parameter '{parameter}' must be a Var instance."
+                    )
+
+            elif parameter in mdl.event_dict:
+                # Process as a Continuous Piecewise event (ramps, setpoints)
+                collect_events[parameter]["times"].append(float(evt.time))
+                collect_events[parameter]["values"].append(float(evt.value))
+
             else:
+                # Parameter not registered in either dict; safely ignore
                 pass
 
+        # Construct piecewise functions for continuous parameters
         for param, info in collect_events.items():
-            if _is_mode_runtime_parameter(param):
-                pass
+            if len(info["times"]) != 0:
+                default_value: Any = mdl.event_dict[param]
+                mdl.event_dict[param] = piecewise(
+                    time_var=glob_time,
+                    t_events=np.array(info["times"], dtype=np.float64),
+                    new_values=np.array(info["values"], dtype=np.float64),
+                    default_value=default_value,
+                )
             else:
-                if len(info["times"]) != 0:
-                    default_value = mdl.event_dict[param]
-                    mdl.event_dict[param] = piecewise(
-                        time_var=glob_time,
-                        t_events=np.array(info["times"], dtype=np.float64),
-                        new_values=np.array(info["values"], dtype=np.float64),
-                        default_value=default_value,
-                    )
-                else:
-                    pass
+                pass
 
     # ---------------------------------------------------------------------
     # MAPPINGS
@@ -1009,9 +1014,26 @@ class EmtProblemDae(EmtProblemTemplate):
     def set_if_exists(self,
                       mdl: Block,
                       key: VarPowerFlowRefferenceType,
-                      value: float)-> None:
-        if mdl.E(key) is not None:
-            self.set_init_guess(mdl, key, value)
+                      value: float) -> None:
+        """
+        Set an initialization value only if the external mapping contains the key.
+
+        :param mdl: Model block containing the external mapping.
+        :param key: External mapping key.
+        :param value: Initialization value.
+        :return: None
+        """
+        external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
+
+        if external_mapping is None:
+            pass
+        else:
+            mapped_var: Optional[Var] = external_mapping.get(key, None)
+
+            if mapped_var is None:
+                pass
+            else:
+                self._temp_init_guess[mapped_var.uid] = float(value)
 
     def _collect_runtime_mode_parameters(self) -> List[Var]:
         """
@@ -1051,12 +1073,29 @@ class EmtProblemDae(EmtProblemTemplate):
             event_idx: int = self._mode_event_cursor.get(uid, 0)
 
             while event_idx < len(event_list) and t_curr >= event_list[event_idx][0]:
-                runtime_idx: Optional[int] = self.uid2idx_event_params.get(uid, None)
+                event_time: float = event_list[event_idx][0]
+                event_value: float = event_list[event_idx][1]
+                force_step_alignment: bool = event_list[event_idx][2]
 
-                if runtime_idx is not None:
-                    full_params[runtime_idx] = event_list[event_idx][1]
+                runtime_idx: Optional[int] = self.uid2idx_event_params.get(uid, None)
+                is_time_aligned: bool = self._is_time_aligned(t_curr, event_time)
+
+                if force_step_alignment:
+                    if is_time_aligned:
+                        if runtime_idx is not None:
+                            full_params[runtime_idx] = event_value
+                        else:
+                            pass
+                    else:
+                        raise RuntimeError(
+                            f"Scheduled EMT mode event at t={event_time} requires exact step alignment, "
+                            f"but current solver time is t={t_curr}. Adjust the EMT time step or enable step splitting."
+                        )
                 else:
-                    pass
+                    if runtime_idx is not None:
+                        full_params[runtime_idx] = event_value
+                    else:
+                        pass
 
                 event_idx += 1
 
@@ -1081,7 +1120,7 @@ class EmtProblemDae(EmtProblemTemplate):
         :param val: Initialization value.
         :return: None
         """
-        external_mapping: Optional[Dict[Any, Var]] = self._get_external_mapping(mdl)
+        external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
 
         if external_mapping is None:
             pass
@@ -1102,7 +1141,7 @@ class EmtProblemDae(EmtProblemTemplate):
         :param val: Initialization value.
         :return: None
         """
-        external_mapping: Optional[Dict[Any, Var]] = self._get_external_mapping(mdl)
+        external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
 
         if external_mapping is None:
             pass
@@ -1177,6 +1216,28 @@ class EmtProblemDae(EmtProblemTemplate):
             rt.update_history(self.step_counter, x_prev, full_params)
 
         self.step_counter += 1
+
+    def get_next_forced_event_time(self, t_prev: float, t_target: float) -> Optional[float]:
+        """
+        Return the earliest forced-alignment event time in the interval
+        (t_prev, t_target].
+
+        :param t_prev: Previous solver time.
+        :param t_target: Nominal target time.
+        :return: Earliest forced event time or None.
+        """
+        return self._get_next_forced_mode_event_time(t_prev, t_target)
+
+    def update(self, t: float, x: np.ndarray, params: np.ndarray) -> None:
+        """
+        Boundary update entry point compatible with BoundaryUpdateWrapper.
+
+        :param t: Current simulation time.
+        :param x: Previous accepted state vector.
+        :param params: Flat full parameter vector.
+        :return: None
+        """
+        self.emt_boundary_update(t, x, params)
 
     def get_floquet_ak_stack(
             self,
