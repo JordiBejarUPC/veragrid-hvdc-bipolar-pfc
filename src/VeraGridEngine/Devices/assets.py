@@ -734,10 +734,18 @@ class Assets:
     @property
     def rms_var_factory(self) -> dev.VarFactory:
         """
-        Get the VarFactory object
+        Get the RMS VarFactory object
         :return: VarFactory
         """
         return self._rms_var_factory
+
+    @property
+    def emt_var_factory(self) -> dev.VarFactory:
+        """
+        Get the EMT VarFactory object
+        :return: VarFactory
+        """
+        return self._emt_var_factory
 
     # ------------------------------------------------------------------------------------------------------------------
     # AC line
