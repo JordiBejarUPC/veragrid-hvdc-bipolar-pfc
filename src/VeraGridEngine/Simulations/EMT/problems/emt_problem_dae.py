@@ -947,7 +947,6 @@ class EmtProblemDae(EmtProblemTemplate):
         :param sbase: Base power of the grid.
         :return: None
         """
-        Sbus_total: complex = 0.0 + 0.0j
 
         phase_specs: List[Tuple[
             str, Any, Any, VarPowerFlowRefferenceType, VarPowerFlowRefferenceType, VarPowerFlowRefferenceType]] = [
@@ -991,7 +990,6 @@ class EmtProblemDae(EmtProblemTemplate):
                     self.set_if_exists(mdl=mdl, key=P_key, value=float(np.real(S)))
                     self.set_if_exists(mdl=mdl, key=Q_key, value=float(np.imag(S)))
 
-                    Sbus_total += S
             else:
                 pass
 
@@ -1031,9 +1029,6 @@ class EmtProblemDae(EmtProblemTemplate):
             self.set_external_param(mdl, VarPowerFlowRefferenceType.Ipk, float(Ipk))
         else:
             pass
-
-        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.P, value=float(np.real(Sbus_total)))
-        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Q, value=float(np.imag(Sbus_total)))
     # ---------------------------------------------------------------------
     # UTILS
     # ---------------------------------------------------------------------
@@ -1189,7 +1184,7 @@ class EmtProblemDae(EmtProblemTemplate):
             return
 
         if var in mdl.event_dict:
-            mdl.event_dict[var] = self.grid.var_factory.add_const(float(value))
+            mdl.event_dict[var] = self.grid.rms_var_factory.add_const(float(value))
         else:
             pass
 

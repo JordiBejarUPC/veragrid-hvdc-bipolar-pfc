@@ -27,6 +27,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_3ph_emt_template
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_generator_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
@@ -35,7 +36,6 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
-from VeraGridEngine.Devices.Aggregation import RmsEvent
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -93,7 +93,8 @@ load = gce.Load(name="load",P1= P/3, P2= P/3, P3= P/3, Q1= Q/3, Q2= Q/3, Q3= Q/3
 load.conn = ShuntConnectionType.GroundedStar
 
 # Generators
-gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq = 50, r1=0.001, x1=1.7)
+# gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq = 50, r1=0.001, x1=1.7)
+gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq = 50, r1=0.01, x1=1.7)
 # r1=Ra, x1=xd'
 
 grid.add_line(line0)
@@ -102,7 +103,7 @@ grid.add_load(bus=bus1, api_obj=load)
 
 
 for bus in grid.buses:
-    get_bus_emt_template(grid, bus, vf=grid.rms_var_factory)
+    get_bus_emt_template(grid, bus, vf=grid.emt_var_factory)
 
 ######################################################################################################
 # Build EMT models
@@ -115,7 +116,8 @@ load_dynhost = DynamicModelHost()
 gen_dynhost = DynamicModelHost()
 
 # generator
-gen_mdl = get_generator_emt_template(grid=grid, gen = gen0).block
+# gen_mdl = get_generator_emt_template(grid=grid, gen = gen0).block
+gen_mdl = get_generator_thevenin_rl_emt_template(grid=grid, gen = gen0).block
 
 # line
 line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
@@ -163,15 +165,12 @@ line_dynhost.model = line_mdl
 load_dynhost.model = load_mdl
 gen_dynhost.model = big_gen1
 
-# attach rms models to Veragrid objects
+# attach emt models to Veragrid objects
 line0.emt_model= line_dynhost
 load.emt_model= load_dynhost
 gen0.emt_model= gen_dynhost
 
-# apply event
-# Pl0 = find_name_in_block('Pl0', load_mdl)
-# event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.09)
-# grid.add_rms_event(event)
+
 
 
 # gce.save_file(grid=grid, filename="grid_save_event.veragrid")
@@ -228,8 +227,8 @@ print(f"Converged: {res.converged}")
 print(res.get_bus_df())
 print(res.get_branch_df())
 
-options = EmtOptions(time_step = 5e-7, # 5e-7,
-                     simulation_time =  0.005,  #5e-6*10, # s
+options = EmtOptions(time_step = 1e-6, # 5e-6,
+                     simulation_time =  0.04, #  0.005 # s
                      tolerance = 1e-6,
                      solver = EmtSolverTypes.Symbolic,
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
@@ -248,7 +247,7 @@ print(f"init_guess_table\n{df}")
 # ==============================================================================
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED")
 # ==============================================================================
-CHOSEN_SOLVER = "AD"
+CHOSEN_SOLVER = "SYMBOLIC"
 
 print(f"\n======================================")
 print(f"Initializing Solver: {CHOSEN_SOLVER}")
@@ -368,9 +367,9 @@ print("Generating plots...")
 plt.show()
 
 theta = find_name_in_block("theta_emt_type_generator_template", gen_mdl)
-omega_gen = find_name_in_block("omega_emt_type_generator_template", gen_mdl)
+# omega_gen = find_name_in_block("omega_emt_type_generator_template", gen_mdl)
 theta_plt = y[:, problem.get_var_idx(theta)]
-omega_plt = y[:, problem.get_var_idx(omega_gen)]
+# omega_plt = y[:, problem.get_var_idx(omega_gen)]
 
 plt.figure(figsize=(12, 8))
 
@@ -382,15 +381,15 @@ plt.ylabel("Theta generator")
 plt.legend(loc='upper left')
 plt.grid(True)
 plt.legend()
-
-plt.subplot(2, 1, 2)
-plt.plot(tme, omega_plt[:len(tme)], label='Speed generator [rad/s]', color='blue')
-plt.title("Omega generator")
-plt.xlabel("Time")
-plt.ylabel("Omega generator [rad/s]")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
+#
+# plt.subplot(2, 1, 2)
+# plt.plot(tme, omega_plt[:len(tme)], label='Speed generator [rad/s]', color='blue')
+# plt.title("Omega generator")
+# plt.xlabel("Time")
+# plt.ylabel("Omega generator [rad/s]")
+# plt.legend(loc='upper left')
+# plt.grid(True)
+# plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
@@ -430,6 +429,52 @@ plt.plot(tme, i_C_load_plt[:len(tme)], label='Current phase C from load', color=
 plt.title("Current load")
 plt.xlabel("Time")
 plt.ylabel("Current load")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.tight_layout()
+print("Generating plots...")
+plt.show()
+
+P_A_load = find_name_in_block("P_A_ZIP_Load_EMT_3ph", load_mdl)
+P_B_load = find_name_in_block("P_B_ZIP_Load_EMT_3ph", load_mdl)
+P_C_load = find_name_in_block("P_C_ZIP_Load_EMT_3ph", load_mdl)
+P_A_load_plt = y[:, problem.get_var_idx(P_A_load)]
+P_B_load_plt = y[:, problem.get_var_idx(P_B_load)]
+P_C_load_plt = y[:, problem.get_var_idx(P_C_load)]
+P_tot_load = P_A_load_plt +  P_B_load_plt + P_C_load_plt
+
+Q_A_load = find_name_in_block("Q_A_ZIP_Load_EMT_3ph", load_mdl)
+Q_B_load = find_name_in_block("Q_B_ZIP_Load_EMT_3ph", load_mdl)
+Q_C_load = find_name_in_block("Q_C_ZIP_Load_EMT_3ph", load_mdl)
+Q_A_load_plt = y[:, problem.get_var_idx(Q_A_load)]
+Q_B_load_plt = y[:, problem.get_var_idx(Q_B_load)]
+Q_C_load_plt = y[:, problem.get_var_idx(Q_C_load)]
+Q_tot_load = Q_A_load_plt +  Q_B_load_plt + Q_C_load_plt
+
+plt.figure(figsize=(12, 8))
+
+plt.subplot(2, 1, 1)
+plt.plot(tme, P_A_load_plt[:len(tme)], label='Active power phase A load', color='blue')
+plt.plot(tme, P_B_load_plt[:len(tme)], label='Active power phase B load', color='red')
+plt.plot(tme, P_C_load_plt[:len(tme)], label='Active power phase C load', color='green')
+# plt.plot(tme, P_tot_load[:len(tme)], label='Active power total load', color='black')
+plt.title("Active power load")
+plt.xlabel("Time")
+plt.ylabel("power load")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.subplot(2, 1, 2)
+plt.plot(tme, Q_A_load_plt[:len(tme)], label='Reactive power phase A load', color='blue')
+plt.plot(tme, Q_B_load_plt[:len(tme)], label='Reactive power phase B load', color='red')
+plt.plot(tme, Q_C_load_plt[:len(tme)], label='Reactive power phase C load', color='green')
+# plt.plot(tme, Q_tot_load[:len(tme)], label='Reactive power total load', color='black')
+plt.title("Reactive power load")
+plt.xlabel("Time")
+plt.ylabel("power load")
 plt.legend(loc='upper left')
 plt.grid(True)
 plt.legend()
@@ -487,51 +532,7 @@ plt.tight_layout()
 print("Generating plots...")
 plt.show()
 
-P_A_load = find_name_in_block("P_A_ZIP_Load_EMT_3ph", load_mdl)
-P_B_load = find_name_in_block("P_B_ZIP_Load_EMT_3ph", load_mdl)
-P_C_load = find_name_in_block("P_C_ZIP_Load_EMT_3ph", load_mdl)
-P_A_load_plt = y[:, problem.get_var_idx(P_A_load)]
-P_B_load_plt = y[:, problem.get_var_idx(P_B_load)]
-P_C_load_plt = y[:, problem.get_var_idx(P_C_load)]
-P_tot_load = P_A_load_plt +  P_B_load_plt + P_C_load_plt
 
-Q_A_load = find_name_in_block("Q_A_ZIP_Load_EMT_3ph", load_mdl)
-Q_B_load = find_name_in_block("Q_B_ZIP_Load_EMT_3ph", load_mdl)
-Q_C_load = find_name_in_block("Q_C_ZIP_Load_EMT_3ph", load_mdl)
-Q_A_load_plt = y[:, problem.get_var_idx(Q_A_load)]
-Q_B_load_plt = y[:, problem.get_var_idx(Q_B_load)]
-Q_C_load_plt = y[:, problem.get_var_idx(Q_C_load)]
-Q_tot_load = Q_A_load_plt +  Q_B_load_plt + Q_C_load_plt
-
-plt.figure(figsize=(12, 8))
-
-plt.subplot(2, 1, 1)
-plt.plot(tme, P_A_load_plt[:len(tme)], label='Active power phase A load', color='blue')
-plt.plot(tme, P_B_load_plt[:len(tme)], label='Active power phase B load', color='red')
-plt.plot(tme, P_C_load_plt[:len(tme)], label='Active power phase C load', color='green')
-# plt.plot(tme, P_tot_load[:len(tme)], label='Active power total load', color='black')
-plt.title("Active power load")
-plt.xlabel("Time")
-plt.ylabel("power load")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
-
-plt.subplot(2, 1, 2)
-plt.plot(tme, Q_A_load_plt[:len(tme)], label='Reactive power phase A load', color='blue')
-plt.plot(tme, Q_B_load_plt[:len(tme)], label='Reactive power phase B load', color='red')
-plt.plot(tme, Q_C_load_plt[:len(tme)], label='Reactive power phase C load', color='green')
-# plt.plot(tme, Q_tot_load[:len(tme)], label='Reactive power total load', color='black')
-plt.title("Reactive power load")
-plt.xlabel("Time")
-plt.ylabel("power load")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
-
-plt.tight_layout()
-print("Generating plots...")
-plt.show()
 
 i_f_A_line = find_name_in_block("if_line0_0", load_mdl)
 i_f_B_line = find_name_in_block("if_line0_1", load_mdl)

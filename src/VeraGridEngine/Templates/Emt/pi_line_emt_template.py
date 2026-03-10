@@ -83,6 +83,9 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     X_full = np.imag(Z_pu)
     L_full = X_full / (w0 + 1e-20)
 
+    print(f"R line:{R_full}")
+    print(f"L line:{L_full}")
+
     Gsh_full = np.real(Y_pu)
     Bsh_full = np.imag(Y_pu)
     C_full = Bsh_full / (w0 + 1e-20)

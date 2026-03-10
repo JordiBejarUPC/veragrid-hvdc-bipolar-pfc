@@ -26,7 +26,7 @@ def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
 
-    vf: VarFactory = grid.rms_var_factory
+    vf: VarFactory = grid.emt_var_factory
 
     # --------------------------------------------------------------------------------------
     # Inputs: instantaneous abc terminal voltages in pu (at bus)
@@ -111,6 +111,7 @@ def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "
     Ki = vf.add_var("Ki")
 
     v_f0 = vf.add_var("v_f0")  # temporary fixed exciter output
+    Tm0 = vf.add_var("Tm0")  # temporary fixed exciter output
 
     Ipk = vf.add_var("Ipk")
     Vpk = vf.add_var("Vpk")
@@ -160,10 +161,11 @@ def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "
             Qe - (1 / np.sqrt(3)) * ((inputs[0] - inputs[1]) * i_C +
                                      (inputs[1] - inputs[2]) * i_A +
                                      (inputs[2] - inputs[0]) * i_B),
-            Tm - (Te + Kp * (omega_ref - omega) + Ki * et),
+            # Tm - (Te + Kp * (omega_ref - omega) + Ki * et),
+            Tm - Tm0,
             v_f - v_f0,
-            # Pm - Tm * omega,
-            Pe - Pm,
+            Pm - Tm * omega,
+            # Pe - Pm,
         ],
         algebraic_vars=[
             i_d, i_q, i_0, i_f,
@@ -183,8 +185,6 @@ def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "
     # --------------------------------------------------------------------------------------
 
     templ.block.external_mapping = {
-        VarPowerFlowRefferenceType.P: Pe,
-        VarPowerFlowRefferenceType.Q: Qe,
         VarPowerFlowRefferenceType.P_N: None,
         VarPowerFlowRefferenceType.Q_N: None,
         VarPowerFlowRefferenceType.P_A: None,
@@ -228,6 +228,7 @@ def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "
         Kp:         vf.add_const(2.0),
         Ki:         vf.add_const(2.0),
         v_f0:       vf.add_const(-0.011581), #-0.015522
+        Tm0: vf.add_const(0.517280),
 
         # init-only external values
         phi_v: vf.add_const(None),
@@ -275,6 +276,11 @@ def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "
         i_f: (psi_d + (Lmd + La) * i_d) / Lmd,
         v_f: i_f * Rf,
         psi_f: (Lmd + Lf) * i_f - Lmd * i_d,
+
+        Pe: (i_A * inputs[0] + i_B * inputs[1] + i_C * inputs[2]),
+        Qe: (1 / np.sqrt(3)) * ((inputs[0] - inputs[1]) * i_C +
+                                     (inputs[1] - inputs[2]) * i_A +
+                                     (inputs[2] - inputs[0]) * i_B),
 
         Te: (3 / 2) * (psi_q * i_d - psi_d * i_q),
         Tm: Te,
