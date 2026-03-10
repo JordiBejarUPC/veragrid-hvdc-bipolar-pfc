@@ -53,4 +53,6 @@ print('\n --- Short-circuit Results --- ')
 # print(res_sc.get_voltage_df(sc_idx=0))
 print(res_sc.get_voltage_df(sc_idx=1))
 
-vge.save_file(grid, 'ieee14_voltage_disconnection.veragrid')
+vge.save_file(grid, '../../src/tests/data/grids/ieee14_voltage_disconnection.veragrid')
+
+print()

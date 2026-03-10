@@ -129,3 +129,41 @@ def test_short_circuit_vsc_14buses():
 
 
     assert np.allclose(abs(res_sc.voltage1[:, 0]), Usc_reference, atol=1e-6)
+
+
+def test_short_circuit_vsc_14buses_disconnection():
+
+    grid = vge.open_file('data/grids/ieee14_voltage_disconnection.veragrid')
+
+    # ----------------------------------------------------------------------------------------------------------------------
+    #   AC/DC Power Flow under healthy conditions
+    # ----------------------------------------------------------------------------------------------------------------------
+    pf_options_1 = PowerFlowOptions(solver_type=SolverType.NR,
+                                    retry_with_other_methods=False,
+                                    limit_i_vsc=False,
+                                    verbose=1)
+    res_pf = vge.power_flow(grid=grid, options=pf_options_1)
+
+    # ----------------------------------------------------------------------------------------------------------------------
+    #   AC/DC Short-Circuit with converter's current limitation
+    # ----------------------------------------------------------------------------------------------------------------------
+    pf_options_2 = PowerFlowOptions(solver_type=SolverType.NR,
+                                    retry_with_other_methods=False,
+                                    limit_i_vsc=False,
+                                    verbose=1,
+                                    max_iter=150,
+                                    tolerance=1e-6)
+
+    sc_driver = vge.ShortCircuitDriver(grid=grid,
+                                       options=ShortCircuitOptions(),
+                                       pf_options=pf_options_2,
+                                       pf_results=res_pf,
+                                       pf_results3ph=None)
+    sc_driver.run()
+    res_sc = sc_driver.results
+
+    Usc_reference = np.array(
+        [0.999995, 0.889860, 0.784740, 0.795609, 0.817928, 0.707190, 0.715203, 0.678870, 0.674796, 0.685194, 0.686982, 0.661633, 0.580896,
+         0.885126, 0.781599, 0.709719, 0.717729, 0.678525, 0.690968, 0.667667, 0.580896, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
+
+    assert np.allclose(abs(res_sc.voltage1[:, 1]), Usc_reference, atol=1e-6)
