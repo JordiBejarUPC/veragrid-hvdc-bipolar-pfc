@@ -9,7 +9,7 @@ from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, Devic
 
 class RmsEventsGroup(EditableDevice):
     """
-    Investments group
+    Rms Events Group (Used for both RMS and EMT dynamic events)
     """
     __slots__ = (
 

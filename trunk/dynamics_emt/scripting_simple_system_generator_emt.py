@@ -55,9 +55,6 @@ def find_name_in_block(name: str, block: Block):
         if res is not None:
             return res
 
-
-
-
 grid = gce.MultiCircuit(Sbase=2.0, fbase=50.0)
 
 # Buses
@@ -243,77 +240,83 @@ problem = EmtProblemDae(grid=grid,
                         pf_results=res)
 problem.set_newton_trace_collector(NewtonTraceCollector())
 
-# sv = problem.get_state_vars()
-# dv = problem.get_diff_vars()
-#
-# assert len(sv) == len(dv)
-
 
 df = problem.get_init_guess_table()
-print(f"init_guess_table{df}")
-
-# print(f"state_vars = {problem.get_state_vars()}")
-# print(f"diff_vars = {problem.get_diff_vars()}")
-
-# x0 = problem.get_x0()
-# print("x0 =", x0)
-# print("len(x0) =", len(x0))
-# print("nans =", np.isnan(x0).sum())
-# print("infs =", np.isinf(x0).sum())
-# print("nonzeros =", np.count_nonzero(x0))
-# print("len(init_guess) =", len(problem.init_guess))
-#
-# dx0 = problem.get_dx0()
-# print("dx0 =",dx0)
-# print("len(dx0) =", len(dx0))
-# print("nans =", np.isnan(dx0).sum())
-# print("infs =", np.isinf(dx0).sum())
-# print("nonzeros =", np.count_nonzero(dx0))
-# print("len(diff_init_guess) =", len(problem.diff_init_guess))
+print(f"init_guess_table\n{df}")
 
 
-solver = JitSymbolicSolver(problem = problem,
-                           t0 = 0.0,
-                           t_end = options.simulation_time,
-                           h = options.time_step,
-                           method=options.integration_method,
-                           pred_method=DynamicIntegrationMethod.OdeEuler,
-                           # pred_method=None,
-                           verbose = True)
+# ==============================================================================
+# SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED")
+# ==============================================================================
+CHOSEN_SOLVER = "AD"
 
-# solver = StructuralVectorizedSolver(problem = problem,
-#                            t0 = 0.0,
-#                            t_end = options.simulation_time,
-#                            h = options.time_step,
-#                            method=options.integration_method,
-#                            pred_method=DynamicIntegrationMethod.OdeEuler,
-#                            # pred_method=None,
-#                            verbose = True)
-# solver = JitAdSolver(problem = problem,
-#                            t0 = 0.0,
-#                            t_end = options.simulation_time,
-#                            h = options.time_step,
-#                            method=options.integration_method,
-#                            pred_method=DynamicIntegrationMethod.OdeEuler,
-#                            # pred_method=None,
-#                            verbose = True)
+print(f"\n======================================")
+print(f"Initializing Solver: {CHOSEN_SOLVER}")
+print(f"======================================\n")
 
+if CHOSEN_SOLVER == "SYMBOLIC":
+    solver = JitSymbolicSolver(problem = problem,
+                               t0 = 0.0,
+                               t_end = options.simulation_time,
+                               h = options.time_step,
+                               method=options.integration_method,
+                               pred_method=DynamicIntegrationMethod.OdeEuler,
+                               dense_threshold=0,
+                               verbose = True)
+
+elif CHOSEN_SOLVER == "AD":
+    solver = JitAdSolver(problem = problem,
+                         t0 = 0.0,
+                         t_end = options.simulation_time,
+                         h = options.time_step,
+                         method=options.integration_method,
+                         pred_method=DynamicIntegrationMethod.OdeEuler,
+                         dense_threshold=0,
+                         verbose = True)
+
+elif CHOSEN_SOLVER == "VECTORIZED":
+    solver = StructuralVectorizedSolver(problem = problem,
+                                        t0 = 0.0,
+                                        t_end = options.simulation_time,
+                                        h = options.time_step,
+                                        method=options.integration_method,
+                                        pred_method=DynamicIntegrationMethod.OdeEuler,
+                                        dense_threshold=0,
+                                        verbose = True)
+else:
+    raise ValueError(f"Solver '{CHOSEN_SOLVER}' no reconocido. Usa SYMBOLIC, AD o VECTORIZED.")
+
+# ==============================================================================
+# RUN SIMULATION
+# ==============================================================================
 t, y, dy = solver.simulate()
+
 
 collector = problem.get_newton_trace_collector()
 if collector:
     print(f"Newton iters : {len(collector.records)}")
 
-#  Convert collected diagnostics to DataFrame
-df = collector.to_dataframe()  # o pd.DataFrame(collector.records)
+# Convert collected diagnostics to DataFrame
+df = collector.to_dataframe()
 
 # Save full diagnostics
 df.to_csv("newton_diagnostics_demo.csv", index=False)
 print("Diagnostics written to newton_diagnostics_demo.csv")
 
-# profiler.disable()
-# profiler.dump_stats("profiling_stats.prof")
+# ==============================================================================
+# PROFILING REPORT
+# ==============================================================================
+profiler.disable()
+stats = pstats.Stats(profiler).sort_stats('cumtime')
+print("\n" + "="*50)
+print("--- PROFILER REPORT (Top 15 slowest functions) ---")
+print("="*50)
+stats.print_stats(15)
+print("="*50 + "\n")
 
+# ==============================================================================
+# PLOTTING
+# ==============================================================================
 xlim = options.simulation_time
 
 t_end = options.simulation_time
