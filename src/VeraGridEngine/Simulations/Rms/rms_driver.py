@@ -17,6 +17,7 @@ from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDa
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.enumerations import EngineType, SimulationTypes, DynamicIntegrationMethod
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
+from VeraGridEngine.basic_structures import Vec, StrVec
 
 
 class RmsSimulationDriver(DriverTemplate):
@@ -30,12 +31,12 @@ class RmsSimulationDriver(DriverTemplate):
     def __init__(self,
                  grid: MultiCircuit,
                  options: RmsOptions,
-                 pf_results: PowerFlowResults | None,
+                 pf_results: PowerFlowResults,
                  engine: EngineType = EngineType.VeraGrid):
         """
         DynamicDriver class constructor
         :param grid: MultiCircuit instance
-        :param options: RmsOptions instance (optional)
+        :param options: RmsOptions instance
         :param pf_results: PowerFlowResults
         :param engine: EngineType (i.e., EngineType.VeraGrid) (optional)
         """
@@ -44,19 +45,11 @@ class RmsSimulationDriver(DriverTemplate):
 
         self.grid = grid
 
-        self.pf_results: PowerFlowResults | None = pf_results
+        self.pf_results: PowerFlowResults = pf_results
 
         self.options = options
 
-        self.results = RmsResults(rms_events_group_names=list(),
-                                  well_initialized=True,
-                                  converged=[True],
-                                  values=np.empty(0),
-                                  time_array=pd.DatetimeIndex(pd.to_datetime(np.empty(0))),
-                                  variables=list(),
-                                  uid2idx=dict(),
-                                  vars_glob_name2uid=dict(),
-                                  devices_vars_info=dict())
+        self.results: RmsResults | None = None
 
     def run(self):
         """
@@ -77,25 +70,39 @@ class RmsSimulationDriver(DriverTemplate):
 
         self.progress_signal.emit(0)
 
-        rms_events_group_results: List[RmsEventsGroup] = list()
-        empty_rms_models_results: List[str] = list()
-        well_initialized_results: bool = True
-        converged_results: List[bool] = list()
-        values_results: List[np.ndarray] = list()
+        rms_events_groups = (self.grid.rms_events_groups
+                             if self.grid.rms_events_groups is None
+                             else self.grid.rms_events_groups)
 
-        for rms_events_group in self.grid.rms_events_groups:
+        steps = int(np.ceil((self.options.simulation_time - 0) / self.options.time_step))
+        t: Vec = np.arange(steps + 1) * self.options.time_step
+
+        rms_events_group_names: StrVec = np.array([elm.name for elm in rms_events_groups])
+
+        problem = RmsProblemDae(
+            grid=self.grid,
+            options=self.options,
+            pf_results=self.pf_results,
+            progress_signal=self.progress_signal,
+        )
+
+        self.results = RmsResults(
+            time_array=t,
+            rms_events_group_names=rms_events_group_names,
+            variables=problem.state_and_algebraic_vars,
+            uid2idx=problem.uid2idx_vars,
+            vars_glob_name2uid=problem.vars_glob_name2uid,
+            devices_vars_info=problem.get_device_vars_dict()
+        )
+
+        for group_idx, rms_events_group in enumerate(rms_events_groups):
 
             self.report_text("Simulating RMS event group " + rms_events_group.name)
 
             self.progress_signal.emit(5)
 
-            problem = RmsProblemDae(
-                rms_events_group=rms_events_group,
-                grid=self.grid,
-                options=self.options,
-                pf_results=self.pf_results,
-                progress_signal=self.progress_signal
-            )
+            self.report_text("Simulating RMS event group " + rms_events_group.name)
+            problem.set_events_group(rms_events_group=rms_events_group)
 
             # DaeTrapezoidal = "DAE_Trapezoidal"
             # DaeBackEuler = "DAE_BackEuler"
@@ -106,6 +113,10 @@ class RmsSimulationDriver(DriverTemplate):
 
             if self.options.integration_method == DynamicIntegrationMethod.DaeBackEuler:
 
+                self.report_text(
+                    f"Simulating RMS event group  {rms_events_group.name} with "
+                    f"{self.options.integration_method.value}"
+                )
                 solver = BackEulerImplicitIntegration(
                     problem=problem,
                     t0=0,
@@ -117,6 +128,10 @@ class RmsSimulationDriver(DriverTemplate):
             else:
                 self.logger.add_info("Falling back to DAE-BackEuler method")
 
+                self.report_text(
+                    f"Simulating RMS event group  {rms_events_group.name} with back euler as fallback"
+                )
+
                 solver = BackEulerImplicitIntegration(
                     problem=problem,
                     t0=0,
@@ -127,21 +142,16 @@ class RmsSimulationDriver(DriverTemplate):
 
             t, y, well_initialized, converged = solver.simulate()
 
-            # rms_events_group_results.append(rms_events_group)
-            # converged_results.append(converged)
-            # values_results.append(solver.y)
+            self.results.converged[group_idx] = converged
+            self.results.well_initialized[group_idx] = well_initialized
+            self.results.values[:, :, group_idx] = y
+
+            if not well_initialized:
+                self.logger.add_warning("Not well initialized", device=rms_events_group.name)
+
+            if not converged:
+                self.logger.add_warning("Not converged", device=rms_events_group.name)
 
             self.progress_signal.emit(90)
 
-        self.results = RmsResults(
-            rms_events_group_names=rms_events_group_results,
-            well_initialized=well_initialized,
-            converged=converged_results,
-            values=np.stack([values for values in values_results], axis=0),
-            time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
-            variables=problem.state_and_algebraic_vars,
-            uid2idx=problem.uid2idx_vars,
-            vars_glob_name2uid=problem.vars_glob_name2uid,
-            devices_vars_info=problem.get_device_vars_dict()
-        )
         self.progress_signal.emit(100)

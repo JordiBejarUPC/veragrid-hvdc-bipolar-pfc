@@ -21,12 +21,7 @@ class RmsResults(ResultsTemplate):
     def __init__(self,
                  time_array: DateVec,
                  rms_events_group_names: StrVec,
-                 variables: StrVec,
-
-                 well_initialized: bool,
-                 converged: List[bool],
-                 values: np.ndarray,
-
+                 variables: List[Var],
 
                  uid2idx: Dict[int, int],
                  vars_glob_name2uid: Dict[str, int],
@@ -35,10 +30,6 @@ class RmsResults(ResultsTemplate):
         """
 
         :param rms_events_group_names:
-        :param empty_rms_models:
-        :param well_initialized:
-        :param converged:
-        :param values:
         :param time_array:
         :param variables:
         :param uid2idx:
@@ -58,34 +49,14 @@ class RmsResults(ResultsTemplate):
             study_results_type=StudyResultsType.RmsSimulation
         )
 
-        # when categorizing results
-        # ResultsTemplate.__init__(
-        #     self,
-        #     name='RMS simulation',
-        #     available_results=
-        #     {
-        #         ResultTypes.RmsGeneratorResults: [
-        #             ResultTypes.RmsGeneratorOmegaResults,
-        #             ResultTypes.RmsGeneratorDeltaResults],
-        #
-        #         ResultTypes.RmsLoadResults: [
-        #             ResultTypes.RmsLoadPResults,
-        #             ResultTypes.RmsLoadQResults],
-        #
-        #         ResultTypes.RmsLineResults: [
-        #             ResultTypes.RmsLinePResults,
-        #             ResultTypes.RmsLineQResults
-        #         ]
-        #
-        #     },
-        #     time_array=time_array,
-        #     clustering_results=None,
-        #     study_results_type=StudyResultsType.RmsSimulation
-        # )
-        self.rms_events_group_results = rms_events_group_names
+        self.nt = len(time_array)
+        self.nv = len(variables)
+        self.ng = len(rms_events_group_names)
 
-        self.well_initialized = well_initialized
-        self.converged = converged
+        self.rms_events_group_names = rms_events_group_names
+
+        self.well_initialized = np.zeros(self.ng, dtype=bool)
+        self.converged = np.zeros(self.ng, dtype=bool)
         self.uid2vars_glob_name = {uid: name for name, uid in vars_glob_name2uid.items()}
         self.devices_vars_info = devices_vars_info
         self.devices =devices_vars_info.keys()
@@ -93,7 +64,7 @@ class RmsResults(ResultsTemplate):
         self.vars_glob_name2uid = vars_glob_name2uid
         self.variable_array = np.array([self.uid2vars_glob_name[var.uid] for var in variables], dtype=str)
 
-        self.values = values
+        self.values = np.zeros((self.nt, self.nv, self.ng), dtype=float)
         self.units = units
         self.register(name='values', tpe=Vec)
 

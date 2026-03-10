@@ -256,7 +256,6 @@ def init_explicit(mdl: Block,
             if event_parameters_eqs[index].value is None:
                 event_parameters_eqs[index] = Const(result)
 
-
         else:
             # check if implicit equation
             is_self_implicit = var in dependencies[var]
