@@ -51,7 +51,8 @@ class RmsResults(ResultsTemplate):
 
         self.well_initialized = np.zeros(self.ng, dtype=bool)
         self.converged = np.zeros(self.ng, dtype=bool)
-
+        
+        self.variables = variables
         self.uid2vars_glob_name = {uid: name for name, uid in vars_glob_name2uid.items()}
         self.devices_vars_info: Dict[ALL_DEV_TYPES, List[Var]] = devices_vars_info
         self.uid2idx: Dict[int, int] = uid2idx
@@ -60,6 +61,15 @@ class RmsResults(ResultsTemplate):
         self.values = np.zeros((self.nt, self.nv, self.ng), dtype=float)
 
         self.register(name='values', tpe=Vec)
+        
+    def get_var(self, uid: int) -> Var:
+        """
+        
+        :param uid: 
+        :return: 
+        """
+        idx = self.uid2idx[uid]
+        return self.variables[idx]
 
     def get_devices_dict_tree(self) -> Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]]:
         """

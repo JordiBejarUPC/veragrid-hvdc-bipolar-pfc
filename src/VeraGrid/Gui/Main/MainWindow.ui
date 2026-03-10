@@ -184,7 +184,7 @@ QProgressBar::chunk{
            <enum>QTabWidget::TabShape::Rounded</enum>
           </property>
           <property name="currentIndex">
-           <number>1</number>
+           <number>0</number>
           </property>
           <property name="elideMode">
            <enum>Qt::TextElideMode::ElideNone</enum>
@@ -2916,7 +2916,7 @@ QProgressBar::chunk{
                       </size>
                      </property>
                      <property name="toolTip">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Subjects:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;col, idx, val, colobj, idxobj&lt;/p&gt;&lt;p&gt;colobj and idxobj allow accessing the objects that may be represented at the index or the columns. With these you can access their internal properties for filtering.&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Operators:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&amp;gt;, &amp;lt;, &amp;gt;=, &amp;lt;=, !=, =, like, notlike, starts, ends&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Examples:&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;The columns should not be column1 or column2, the values should be &amp;gt; 5 and the index be like ab of mn&lt;/span&gt;&lt;/p&gt;&lt;p&gt;-&amp;gt; &lt;span style=&quot; font-style:italic;&quot;&gt;col != [column1, column2] and val &amp;gt; 5 or idx like [ab, mn]&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-style:italic;&quot;&gt;Filter the table values that are between 0.5 and 20&lt;/span&gt;&lt;/p&gt;&lt;p&gt;-&amp;gt; &lt;span style=&quot; font-style:italic;&quot;&gt;val &amp;gt; 0.5 and val &amp;lt; 20.0&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      <string>Type the search term</string>
                      </property>
                     </widget>
                    </item>
@@ -2950,7 +2950,7 @@ QProgressBar::chunk{
                    <item>
                     <widget class="QPushButton" name="addDynamicPlotButton">
                      <property name="toolTip">
-                      <string>Add seleted var to plot</string>
+                      <string>Add new plot</string>
                      </property>
                      <property name="text">
                       <string/>
@@ -2964,7 +2964,7 @@ QProgressBar::chunk{
                    <item>
                     <widget class="QPushButton" name="deleteDynamicPlotButton">
                      <property name="toolTip">
-                      <string>Add seleted var to plot</string>
+                      <string>Remove selected plot</string>
                      </property>
                      <property name="text">
                       <string/>
@@ -2978,7 +2978,7 @@ QProgressBar::chunk{
                    <item>
                     <widget class="QPushButton" name="dynamicsTablePlotButton">
                      <property name="toolTip">
-                      <string>Plot selected variables</string>
+                      <string>Display selected plot</string>
                      </property>
                      <property name="text">
                       <string/>
@@ -3021,7 +3021,11 @@ QProgressBar::chunk{
                      <number>0</number>
                     </property>
                     <item>
-                     <widget class="QTreeView" name="dynamicsDeviceTreeView"/>
+                     <widget class="QTreeView" name="dynamicsDeviceTreeView">
+                      <property name="toolTip">
+                       <string>Drag and drop the Var to the desired plot. Double click to plot directly.</string>
+                      </property>
+                     </widget>
                     </item>
                    </layout>
                   </widget>
