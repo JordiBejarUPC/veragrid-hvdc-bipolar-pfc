@@ -153,6 +153,33 @@ class ExternalGridMode(Enum):
             return s
 
 
+class ShuntControlMode(Enum):
+    """
+    Modes of operation of shunt control modes
+    """
+    Locked = "Locked"
+    Continuous = "Continuous"
+    Discrete = "Discrete"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return ShuntControlMode[s]
+        except KeyError:
+            return s
+
+
 class InvestmentEvaluationMethod(Enum):
     """
     Investment evaluation methods

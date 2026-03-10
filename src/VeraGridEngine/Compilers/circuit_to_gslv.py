@@ -7,6 +7,7 @@ import time
 import numpy as np
 from typing import List, Dict, Union, Tuple, TYPE_CHECKING
 
+from VeraGridEngine import ShuntControlMode
 from VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation import (pg, build_status_dict, tap_module_control_mode_dict,
                                                                   tap_phase_control_mode_dict, hvdc_control_mode_dict,
                                                                   group_type_dict, contingency_ops_type_dict,
@@ -317,7 +318,7 @@ def add_municipalities(circuit: MultiCircuit,
     return d
 
 
-def convert_region(country: dev.Municipality) -> "pg.Region":
+def convert_region(country: dev.Region) -> "pg.Region":
     """
 
     :param country:
@@ -336,10 +337,10 @@ def add_regions(circuit: MultiCircuit,
     """
     d = dict()
 
-    for i, municipality in enumerate(circuit.regions):
-        elm = convert_region(municipality)
+    for region in circuit.regions:
+        elm = convert_region(region)
         gslv_grid.add_region(elm)
-        d[municipality] = elm
+        d[region] = elm
 
     return d
 
@@ -1042,6 +1043,112 @@ def add_shunts(circuit: MultiCircuit,
         sh = convert_shunt(elm=elm, bus_dict=bus_dict, n_time=n_time,
                            use_time_series=time_series, time_indices=time_indices)
         gslv_grid.add_shunt(sh)
+
+
+def convert_controllable_shunt(elm: dev.ControllableShunt, bus_dict: Dict[str, "pg.Bus"], n_time: int,
+                               use_time_series: bool,
+                               shunt_control_mode_dict: Dict[ShuntControlMode, "pg.ShuntControlMode"],
+                               time_indices: IntVec | None = None) -> "pg.ControllableShunt":
+    """
+
+    :param elm:
+    :param bus_dict:
+    :param n_time:
+    :param use_time_series:
+    :param shunt_control_mode_dict:
+    :param time_indices:
+    :return:
+    """
+    sh = pg.ControllableShunt(
+        nt=n_time,
+        bus=None if elm.bus is None else bus_dict[elm.bus.idtag],
+        name=elm.name,
+        idtag=elm.idtag,
+        code=str(elm.code),
+        number_of_steps=elm.g_steps.size(),
+        step=elm.step,
+        g_per_step=elm.g_per_step,
+        b_per_step=elm.b_per_step,
+        Cost=elm.Cost,
+        active=elm.active,
+        G=elm.G,
+        B=elm.B,
+        G0=elm.G0,
+        B0=elm.B0,
+        vset=elm.Vset,
+        vmin=elm.Vmin,
+        vmax=elm.Vmax,
+        mttf=elm.mttf,
+        mttr=elm.mttr,
+        capex=elm.capex,
+        opex=elm.opex,
+        control_bus=None if elm.bus is None else bus_dict[elm.control_bus.idtag],
+        control_mode=shunt_control_mode_dict[elm.control_mode],
+        build_status=build_status_dict[elm.build_status],
+    )
+
+    fill_profile(gslv_profile=sh.active,
+                 gc_profile=elm.active_prof,
+                 use_time_series=use_time_series,
+                 time_indices=time_indices,
+                 n_time=n_time,
+                 default_val=elm.active)
+
+    fill_profile(gslv_profile=sh.G,
+                 gc_profile=elm.G_prof,
+                 use_time_series=use_time_series,
+                 time_indices=time_indices,
+                 n_time=n_time,
+                 default_val=elm.G)
+
+    fill_profile(gslv_profile=sh.B,
+                 gc_profile=elm.B_prof,
+                 use_time_series=use_time_series,
+                 time_indices=time_indices,
+                 n_time=n_time,
+                 default_val=elm.B)
+
+    fill_profile(gslv_profile=sh.cost,
+                 gc_profile=elm.Cost_prof,
+                 use_time_series=use_time_series,
+                 time_indices=time_indices,
+                 n_time=n_time,
+                 default_val=elm.Cost)
+
+    return sh
+
+
+def add_controllable_shunts(circuit: MultiCircuit,
+                            gslv_grid: "pg.MultiCircuit",
+                            bus_dict: Dict[str, "pg.Bus"],
+                            time_series: bool,
+                            n_time=1,
+                            time_indices: Union[IntVec, None] = None):
+    """
+
+    :param circuit: VeraGrid circuit
+    :param gslv_grid: GSLV circuit
+    :param time_series: compile the time series from VeraGrid? otherwise just the snapshot
+    :param bus_dict: dictionary of bus id to GSLV bus object
+    :param n_time: number of time steps
+    :param time_indices: Array of time indices
+    """
+
+    shunt_control_mode_dict = {
+        ShuntControlMode.Locked: pg.ShuntControlMode.Locked,
+        ShuntControlMode.Continuous: pg.ShuntControlMode.Continuous,
+        ShuntControlMode.Discrete: pg.ShuntControlMode.Discrete,
+    }
+
+    devices = circuit.get_controllable_shunts()
+    for k, elm in enumerate(devices):
+        sh = convert_controllable_shunt(elm=elm,
+                                        bus_dict=bus_dict,
+                                        n_time=n_time,
+                                        use_time_series=time_series,
+                                        time_indices=time_indices,
+                                        shunt_control_mode_dict=shunt_control_mode_dict)
+        gslv_grid.add_controllable_shunt(sh)
 
 
 def convert_generator(k: int, elm: dev.Generator, bus_dict: Dict[str, "pg.Bus"], n_time: int,
@@ -2044,6 +2151,15 @@ def to_gslv(circuit: MultiCircuit,
     )
 
     add_shunts(
+        circuit=circuit,
+        gslv_grid=pg_grid,
+        bus_dict=bus_dict,
+        time_series=use_time_series,
+        n_time=n_time,
+        time_indices=time_indices
+    )
+
+    add_controllable_shunts(
         circuit=circuit,
         gslv_grid=pg_grid,
         bus_dict=bus_dict,
