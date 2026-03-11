@@ -110,6 +110,7 @@ class Assets:
         '_p2xs',
         '_diagrams',
         '_rms_models',
+        '_emt_models',
         'template_objects_dict',
         'profile_magnitudes',
         'device_type_name_dict',
@@ -307,8 +308,11 @@ class Assets:
         # list of power to gas devices
         self._p2xs: List[dev.FluidP2x] = list()
 
-        # list of wire types
+        # list of RMS models
         self._rms_models: List[dev.RmsModelTemplate] = list()
+
+        # list of EMT models
+        self._emt_models: List[dev.EmtModelTemplate] = list()
 
         # list of declared diagrams
         self._diagrams: List[Union[dev.MapDiagram, dev.SchematicDiagram]] = list()
@@ -385,12 +389,12 @@ class Assets:
                 dev.Investment(),
             ],
             "Dynamic": [
-                dev.RmsEvent(),
                 dev.RmsEventsGroup(),
-                dev.EmtEvent(),
+                dev.RmsEvent(),
                 dev.EmtEventsGroup(),
-                dev.DynamicPlot(),
-                dev.DynamicPlotEntry()
+                dev.EmtEvent(),
+                # dev.DynamicPlotEntry()
+                # dev.DynamicPlot(),
             ],
             "Catalogue": [
                 dev.Wire(),
@@ -398,7 +402,8 @@ class Assets:
                 dev.UndergroundLineType(),
                 dev.SequenceLineType(),
                 dev.TransformerType(),
-                dev.RmsModelTemplate()
+                dev.RmsModelTemplate(),
+                dev.EmtModelTemplate()
             ],
             "Measurements": [
                 dev.PiMeasurement(),
@@ -5911,6 +5916,61 @@ class Assets:
             pass
 
     # ------------------------------------------------------------------------------------------------------------------
+    # EmtModel
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def emt_models(self) -> List[dev.EmtModelTemplate]:
+        """
+        list of emt models
+        :return:
+        """
+        return self._emt_models
+
+    @emt_models.setter
+    def emt_models(self, value: List[dev.EmtModelTemplate]):
+        self._emt_models = value
+
+    def get_emt_models_number(self) -> int:
+        """
+        Get number of EMT models
+        """
+        return len(self._emt_models)
+
+    def add_emt_model(self, obj: dev.EmtModelTemplate):
+        """
+        Add emt model to the collection
+        :param obj: DynamicModel instance
+        """
+        if obj is not None:
+            if isinstance(obj, dev.EmtModelTemplate):
+                self._emt_models.append(obj)
+            else:
+                print('The template is not a EmtModelTemplate!')
+
+    def delete_emt_model(self, obj: dev.EmtModelTemplate):
+        """
+        Delete EMT model from the collection
+        :param obj: DynamicModel object
+        """
+        for elm in self.buses:
+            if elm.emt_model.template == obj:
+                elm.emt_model.template = None
+
+        for elm in self.get_injection_devices_iter():
+            if elm.emt_model.template == obj:
+                elm.emt_model.template = None
+
+        for elm in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+            if elm.emt_model.template == obj:
+                elm.emt_model.template = None
+
+        try:
+            self._emt_models.remove(obj)
+        except ValueError:
+            pass
+
+    # ------------------------------------------------------------------------------------------------------------------
     #
     #
     # Functions of aggregations of devices
@@ -6728,6 +6788,9 @@ class Assets:
         elif device_type == DeviceType.RmsModelTemplateDevice:
             return self.rms_models
 
+        elif device_type == DeviceType.EmtModelTemplateDevice:
+            return self.emt_models
+
         elif device_type == DeviceType.RmsEventDevice:
             return self.rms_events
 
@@ -6961,6 +7024,9 @@ class Assets:
         elif device_type == DeviceType.RmsModelTemplateDevice:
             self._rms_models = devices
 
+        elif device_type == DeviceType.EmtModelTemplateDevice:
+            self._emt_models = devices
+
         elif device_type == DeviceType.RmsEventDevice:
             self._rms_events = devices
 
@@ -7177,6 +7243,9 @@ class Assets:
 
         elif obj.device_type == DeviceType.RmsModelTemplateDevice:
             self.add_rms_model(obj=obj)
+
+        elif obj.device_type == DeviceType.EmtModelTemplateDevice:
+            self.add_emt_model(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventDevice:
             self.add_rms_event(obj=obj)
@@ -7405,6 +7474,9 @@ class Assets:
 
         elif obj.device_type == DeviceType.RmsModelTemplateDevice:
             self.delete_rms_model(obj=obj)
+
+        elif obj.device_type == DeviceType.EmtModelTemplateDevice:
+            self.delete_emt_model(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventDevice:
             self.delete_rms_event(obj=obj)
@@ -7914,6 +7986,10 @@ class Assets:
 
         elif elm_type == DeviceType.RmsModelTemplateDevice:
             elm = dev.RmsModelTemplate()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.EmtModelTemplateDevice:
+            elm = dev.EmtModelTemplate()
             dictionary_of_lists = dict()
 
         elif elm_type == DeviceType.RmsEventDevice:
