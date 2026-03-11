@@ -9,7 +9,7 @@ from typing import List, Dict
 from matplotlib import pyplot as plt
 
 from VeraGridEngine.Simulations.results_template import ResultsTemplate
-from VeraGridEngine.basic_structures import Vec, DateVec, StrVec
+from VeraGridEngine.basic_structures import Vec, DateVec, StrVec, Mat
 from VeraGridEngine.enumerations import StudyResultsType, DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -103,6 +103,21 @@ class RmsResults(ResultsTemplate):
         plt.plot(self.time_array, y, label=var.name)
         plt.legend()
         plt.show()
+
+    def get_vars_data(self, var_list: List[Var], group_idx: int = 0) -> Mat:
+        """
+        Get time, vars data matrix for the vars selection
+        :param var_list: List of vars
+        :param group_idx: group index
+        :return: data (time, vars)
+        """
+        data = np.empty((self.nt, len(var_list)), dtype=float)
+
+        for i, var in enumerate(var_list):
+            idx = self.uid2idx[var.uid]
+            data[:, i] = self.values[:, idx, group_idx]
+
+        return data
 
     # def mdl(self, result_type: ResultTypes) -> ResultsTable:
     #     """
