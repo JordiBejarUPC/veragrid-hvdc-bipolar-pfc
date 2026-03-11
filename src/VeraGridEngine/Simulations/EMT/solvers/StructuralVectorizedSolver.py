@@ -17,10 +17,24 @@ from scipy.linalg import lu_factor, lu_solve
 from scipy.sparse.linalg import splu, SuperLU
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, BinOp, UnOp, Func
+from VeraGridEngine.Utils.Symbolic.diagnostic import (
+    NewtonDiagnosticsConfig,
+    NewtonSolveContext,
+    dense_lstsq_fallback,
+    maybe_apply_backtracking,
+    maybe_check_index1,
+    sparse_lsqr_fallback,
+    with_newton_diagnostics,
+)
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler, MatrixVectorizedCompiler
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.basic_structures import Vec, Mat
+
+
+DenseFactorization = Tuple[Any, Any]
+DenseSolveBundle = Tuple[DenseFactorization, np.ndarray]
+SparseSolveBundle = Tuple[SuperLU, csc_matrix]
 
 
 # ==============================================================================
@@ -534,7 +548,7 @@ class StructuralVectorizedSolver:
         '_state_vars', '_algebraic_vars', '_diff_vars', '_state_eqs', '_algebraic_eqs',
         'sorted_vars', '_n_state', '_n_vars', '_n_diff', 'uid2idx_vars',
         '_event_parameters', '_parameters', '_parameters_values', '_event_params_fn',
-        'jit_jacobians_ad', 'vectorized_ready', '_last_sim_loop_time'
+        'jit_jacobians_ad', 'vectorized_ready', '_last_sim_loop_time', '_newton_diag_config'
     ]
 
     def __init__(self,
@@ -546,7 +560,8 @@ class StructuralVectorizedSolver:
                  pred_method:DynamicIntegrationMethod = None,
                  dense_threshold: int = 100,
                  verbose: bool = False,
-                 auto_vectorization: bool = True)-> None:
+                 auto_vectorization: bool = True,
+                 newton_diag_config: NewtonDiagnosticsConfig | None = None)-> None:
         """
         :param problem: The DAE problem definition.
         :param t0: Initial time.
@@ -565,6 +580,12 @@ class StructuralVectorizedSolver:
         self.pred_method = pred_method
         self.dense_threshold = dense_threshold
         self.verbose = verbose
+        self._newton_diag_config = newton_diag_config or NewtonDiagnosticsConfig(
+            compute_dense_cond=False,
+            enable_fallback=False,
+            enable_index1_check=False,
+            enable_backtracking=False,
+        )
 
         self.vec_jacobian = None
         self.vec_flat_args = None
@@ -792,6 +813,8 @@ class StructuralVectorizedSolver:
         x_prev2: Vec = x0.copy()
         x_iter: Vec = x0.copy()
         res_global: Vec = np.zeros(self._n_vars, dtype=np.float64)
+        trial_state: Vec = np.zeros(self._n_vars, dtype=np.float64)
+        trial_residual: Vec = np.zeros(self._n_vars, dtype=np.float64)
 
         static_params = np.array([c.value for c in self._parameters_values], dtype=np.float64)
         ev_params = np.asarray(params0, dtype=np.float64)
@@ -810,6 +833,38 @@ class StructuralVectorizedSolver:
             ev_params[:] = full_params[:len(ev_params)]
 
         use_dense: bool = (self._n_vars <= dense_threshold)
+        trace_collector = self.problem.get_newton_trace_collector()
+        diag_cfg = self._newton_diag_config
+        diagnostics_enabled: bool = (
+            trace_collector is not None
+            or diag_cfg.compute_dense_cond
+            or diag_cfg.enable_fallback
+            or diag_cfg.enable_index1_check
+            or diag_cfg.enable_backtracking
+        )
+
+        dense_solve: Callable[..., Vec] | None = None
+        sparse_solve: Callable[..., Vec] | None = None
+
+        if diagnostics_enabled:
+            dense_solve = with_newton_diagnostics(
+                lambda bundle, rhs: lu_solve(bundle[0], rhs),
+                fallback_solve=lambda bundle, rhs: dense_lstsq_fallback(bundle[1], rhs),
+                collector=trace_collector,
+                config=diag_cfg,
+                solver_name="dense_lu",
+                matrix_getter=lambda bundle: bundle[1],
+            )
+            sparse_solve = with_newton_diagnostics(
+                lambda bundle, rhs: bundle[0].solve(rhs),
+                fallback_solve=lambda bundle, rhs: sparse_lsqr_fallback(bundle[1], rhs),
+                collector=trace_collector,
+                config=diag_cfg,
+                solver_name="superlu",
+                matrix_getter=lambda bundle: bundle[1],
+            )
+        else:
+            pass
 
         if verbose:
             print("-> JIT Warmup.")
@@ -885,8 +940,8 @@ class StructuralVectorizedSolver:
 
                 # IMPORTANT:
                 # LU factors must be local to each substep, because x_prev, params and h_eff may change.
-                cached_lu_dense: Tuple[np.ndarray, np.ndarray] | None = None
-                cached_lu_sparse: SuperLU | None = None
+                cached_lu_dense: DenseSolveBundle | None = None
+                cached_lu_sparse: SparseSolveBundle | None = None
 
                 # PREDICTOR
                 if i == 0 and is_first_local_step and method == DynamicIntegrationMethod.DaeTrapezoidal:
@@ -903,6 +958,7 @@ class StructuralVectorizedSolver:
                     pass
 
                 for k in range(15):
+                    ctx: NewtonSolveContext | None = None
                     self.fused_residual(
                         x_iter,
                         full_params,
@@ -920,6 +976,18 @@ class StructuralVectorizedSolver:
                     else:
                         pass
 
+                    if diagnostics_enabled:
+                        ctx = NewtonSolveContext(
+                            t=float(t_curr),
+                            step_idx=int(i),
+                            newton_iter=int(k),
+                            phase="jit_vec",
+                            method=str(method),
+                        )
+                        ctx.res_norm_inf = res_norm
+                    else:
+                        pass
+
                     recompute: bool = (cached_lu_dense is None and cached_lu_sparse is None) or \
                                       (k > 0 and (res_norm / (last_res_norm + 1e-16)) > 0.5)
 
@@ -934,20 +1002,69 @@ class StructuralVectorizedSolver:
                         )
 
                         if use_dense:
-                            cached_lu_dense = lu_factor(cached_J.toarray())
+                            dense_jacobian = cached_J.toarray()
+
+                            if diagnostics_enabled and ctx is not None:
+                                maybe_check_index1(dense_jacobian, self._n_state, ctx=ctx, config=diag_cfg)
+                            else:
+                                pass
+
+                            cached_lu_dense = (lu_factor(dense_jacobian), dense_jacobian)
                             cached_lu_sparse = None
                         else:
-                            cached_lu_sparse = splu(cached_J)
+                            if diagnostics_enabled and ctx is not None:
+                                maybe_check_index1(cached_J, self._n_state, ctx=ctx, config=diag_cfg)
+                            else:
+                                pass
+
+                            cached_lu_sparse = (splu(cached_J), cached_J)
                             cached_lu_dense = None
                     else:
                         pass
 
                     if use_dense:
-                        delta = lu_solve(cached_lu_dense, -res_global)
+                        if diagnostics_enabled and ctx is not None:
+                            assert dense_solve is not None
+                            assert cached_lu_dense is not None
+                            delta = dense_solve(cached_lu_dense, -res_global, ctx)
+                        else:
+                            assert cached_lu_dense is not None
+                            delta = lu_solve(cached_lu_dense[0], -res_global)
                     else:
-                        delta = cached_lu_sparse.solve(-res_global)
+                        if diagnostics_enabled and ctx is not None:
+                            assert sparse_solve is not None
+                            assert cached_lu_sparse is not None
+                            delta = sparse_solve(cached_lu_sparse, -res_global, ctx)
+                        else:
+                            assert cached_lu_sparse is not None
+                            delta = cached_lu_sparse[0].solve(-res_global)
 
-                    x_iter += delta
+                    if diag_cfg.enable_backtracking:
+                        def _evaluate_trial_residual(trial_x: Vec, out_res: Vec) -> float:
+                            self.fused_residual(
+                                trial_x,
+                                full_params,
+                                x_prev,
+                                dx_prev,
+                                h_eff,
+                                self.vec_flat_args,
+                                out_res,
+                                x_prev2,
+                            )
+                            return float(np.max(np.abs(out_res)))
+
+                        maybe_apply_backtracking(
+                            x_iter,
+                            delta,
+                            res_norm,
+                            trial_state,
+                            trial_residual,
+                            evaluate_residual=_evaluate_trial_residual,
+                            config=diag_cfg,
+                        )
+                    else:
+                        x_iter += delta
+
                     last_res_norm = res_norm
 
                 if method == DynamicIntegrationMethod.DaeTrapezoidal:

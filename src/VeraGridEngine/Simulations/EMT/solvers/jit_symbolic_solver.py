@@ -15,8 +15,9 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, BinOp, UnOp
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import (with_newton_diagnostics, NewtonDiagnosticsConfig,
-                                                      NewtonSolveContext, dense_lstsq_fallback,
-                                                      sparse_lsqr_fallback)
+                                                       NewtonSolveContext, dense_lstsq_fallback,
+                                                       sparse_lsqr_fallback, maybe_check_index1,
+                                                       maybe_apply_backtracking)
 from VeraGridEngine.basic_structures import Vec, Mat, IntVec, CscMat
 
 
@@ -241,7 +242,7 @@ class JitSymbolicSolver:
         'problem', 't0', 't_end', 'h', 'method', 'pred_method', 'dense_threshold', 'verbose',
         'steps', 't', 'y', 'dy', 'jit_kernels', 'jit_jacobian_symbolic',
         'state_vars', 'algebraic_vars', 'state_eqs', 'algebraic_eqs', 'diff_vars',
-        'jit_compiler', '_residual_debug_info'
+        'jit_compiler', '_residual_debug_info', '_newton_diag_config'
     ]
 
     def __init__(self,
@@ -252,7 +253,8 @@ class JitSymbolicSolver:
                  method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
                  pred_method:DynamicIntegrationMethod = None,
                  dense_threshold: int = 100,
-                 verbose: bool = False)-> None:
+                 verbose: bool = False,
+                 newton_diag_config: NewtonDiagnosticsConfig | None = None)-> None:
         """
         :param problem: The DAE problem definition.
         :param t0: Initial time.
@@ -271,6 +273,12 @@ class JitSymbolicSolver:
         self.pred_method = pred_method
         self.dense_threshold = dense_threshold
         self.verbose = verbose
+        self._newton_diag_config = newton_diag_config or NewtonDiagnosticsConfig(
+            compute_dense_cond=False,
+            enable_fallback=False,
+            enable_index1_check=False,
+            enable_backtracking=False,
+        )
 
         self.steps = int(np.ceil((t_end - t0) / h))
         self.t: Vec = np.empty(self.steps + 1)
@@ -580,6 +588,8 @@ class JitSymbolicSolver:
         dx_prev = dx0.copy()
         x_prev2 = x0.copy()
         x_iter = x0.copy()
+        trial_x = np.zeros_like(x_iter)
+        trial_res = np.zeros(n_eqs, dtype=np.float64)
 
         static_vals = np.array([c.value for c in self.problem.get_parameters_values()])
         n_event_params = self.problem.get_variable_parameter_number()
@@ -590,13 +600,33 @@ class JitSymbolicSolver:
             ev_params = np.zeros(n_event_params, dtype=np.float64)
 
         trace_collector = self.problem.get_newton_trace_collector()
+        diag_cfg = self._newton_diag_config
+        diagnostics_enabled: bool = (
+            trace_collector is not None
+            or diag_cfg.compute_dense_cond
+            or diag_cfg.enable_fallback
+            or diag_cfg.enable_index1_check
+            or diag_cfg.enable_backtracking
+        )
 
-        diag_cfg = NewtonDiagnosticsConfig(step_norm_explode=1e6, dense_cond_warn=1e12, compute_dense_cond=False,
-                                           enable_fallback=True)
-        dense_solve = with_newton_diagnostics(np.linalg.solve, fallback_solve=dense_lstsq_fallback,
-                                              collector=trace_collector, config=diag_cfg, solver_name="dense")
-        sparse_solve = with_newton_diagnostics(sp.linalg.spsolve, fallback_solve=sparse_lsqr_fallback,
-                                               collector=trace_collector, config=diag_cfg, solver_name="sparse")
+        dense_solve = None
+        sparse_solve = None
+
+        if diagnostics_enabled:
+            dense_solve = with_newton_diagnostics(
+                np.linalg.solve,
+                fallback_solve=dense_lstsq_fallback,
+                collector=trace_collector,
+                config=diag_cfg,
+                solver_name="dense",
+            )
+            sparse_solve = with_newton_diagnostics(
+                sp.linalg.spsolve,
+                fallback_solve=sparse_lsqr_fallback,
+                collector=trace_collector,
+                config=diag_cfg,
+                solver_name="sparse",
+            )
 
         if self.verbose:
             print(f"-> Starting JIT Simulation ({method}, {self.steps} steps)...")
@@ -818,12 +848,38 @@ class JitSymbolicSolver:
                         history2=x_prev2
                     )
 
-                    if use_dense_solver:
-                        delta = dense_solve(J_final, -res, ctx)
-                    else:
-                        delta = sparse_solve(J_final, -res, ctx)
+                    if diagnostics_enabled:
+                        maybe_check_index1(J_final, n_states, ctx=ctx, config=diag_cfg)
 
-                    x_iter += delta
+                    if use_dense_solver:
+                        if diagnostics_enabled:
+                            delta = dense_solve(J_final, -res, ctx)
+                        else:
+                            delta = np.linalg.solve(J_final, -res)
+                    else:
+                        if diagnostics_enabled:
+                            delta = sparse_solve(J_final, -res, ctx)
+                        else:
+                            delta = sp.linalg.spsolve(J_final, -res)
+
+                    if diag_cfg.enable_backtracking:
+                        def _evaluate_trial_residual(candidate_x: Vec, out_res: Vec) -> float:
+                            out_res[:] = 0.0
+                            for candidate_kernel in kernel_list_eff:
+                                candidate_kernel(candidate_x, full_params, x_prev, dx_prev, h_eff, out_res, x_prev2)
+                            return float(np.linalg.norm(out_res, np.inf))
+
+                        maybe_apply_backtracking(
+                            x_iter,
+                            delta,
+                            float(np.linalg.norm(res, np.inf)),
+                            trial_x,
+                            trial_res,
+                            evaluate_residual=_evaluate_trial_residual,
+                            config=diag_cfg,
+                        )
+                    else:
+                        x_iter += delta
 
                 if method == DynamicIntegrationMethod.DaeTrapezoidal:
                     dx_prev[:n_states] = (
