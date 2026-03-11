@@ -36,7 +36,9 @@ computation requirements of Electromagnetic Transient (EMT) simulations.
 # Import libraries for utils
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import Dict, List, Callable, Tuple, Set
+from enum import Enum
+from numba import types
+from typing import Dict, List, Callable, Tuple, Set, Any
 import os
 import importlib.util
 import hashlib
@@ -47,6 +49,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import expression2numba
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 #Totally integrated
 from VeraGridEngine.Utils.Symbolic.symbolic import Expr, BinOp, UnOp, Func, Var, Const
+from VeraGridEngine.basic_structures import Vec
 
 
 def _is_zero(s: str) -> bool:
@@ -473,7 +476,7 @@ class SymbolicToPythonVisitor:
 # =============================================================================================
 
 class ADVisitor(SymbolicToPythonVisitor):
-    __slots__ = ['seeds_var', 'active_indices']
+    __slots__ = ['seeds_var', 'active_indices', 'cse_has_dot']
 
     def __init__(self, var_map: Dict[int, int], param_map: Dict[int, int],
                  method: DiscretizationMethod, seeds_var: str = 'seeds',
@@ -481,6 +484,7 @@ class ADVisitor(SymbolicToPythonVisitor):
         super().__init__(var_map, param_map, method)
         self.seeds_var = seeds_var
         self.active_indices = active_indices
+        self.cse_has_dot: Set[str] = set()
         self._str_cache: Dict[Tuple[int, int], Tuple[str, str]] = dict()
 
     def generic_visit(self, node: Expr, _: int) -> Tuple[str, str]:
@@ -495,7 +499,9 @@ class ADVisitor(SymbolicToPythonVisitor):
             if not isinstance(node, (Var, Const)):
                 h_hash: str = self.analyzer.hash_expr(node)
                 if h_hash in self.cse_map:
-                    return self.cse_map[h_hash], f"{self.cse_map[h_hash]}_d"
+                    var_name = self.cse_map[h_hash]
+                    dot_name = f"{var_name}_d" if var_name in self.cse_has_dot else "0.0"
+                    return var_name, dot_name
                 else:
                     pass
             else:
@@ -638,7 +644,9 @@ class ADVisitor(SymbolicToPythonVisitor):
             if not _is_zero(rd): t2 = lv if _is_one(rd) else (rd if _is_one(lv) else f"({lv})*({rd})")
             d = t2 if t1 == "0.0" else (t1 if t2 == "0.0" else f"({t1} + {t2})")
         elif op == '/':
-            if _is_zero(ld) and _is_zero(rd):
+            if _is_zero(lv):
+                d = "0.0"
+            elif _is_zero(ld) and _is_zero(rd):
                 d = "0.0"
             elif _is_zero(rd):
                 d = ld if _is_one(rv) else f"({ld}) / ({rv})"
@@ -671,19 +679,22 @@ class ADVisitor(SymbolicToPythonVisitor):
 
     def visit_func(self, node: Func, _: int) -> Tuple[str, str]:
         av, ad = self.visit(node.arg, 0)
+        eps_str = "1e-15"
+
         if _is_zero(ad):
             if node.op == 'heaviside': return f"_heaviside({av})", "0.0"
             if node.op == 'abs': return f"np.abs({av})", "0.0"
             return f"np.{node.op}({av})", "0.0"
 
-        if node.op == 'heaviside': return f"_heaviside({av})", "0.0"
-        if node.op == 'abs': return f"np.abs({av})", f"(np.sign({av})*({ad}))"
         if node.op == 'sin': return f"np.sin({av})", f"(np.cos({av})*({ad}))"
         if node.op == 'cos': return f"np.cos({av})", f"(-np.sin({av})*({ad}))"
-        if node.op == 'exp': return f"np.exp({av})", f"({f'np.exp({av})'})*({ad})"
-        if node.op == 'log': return f"np.log({av})", f"({ad})/({av})"
-        if node.op == 'sqrt': return f"np.sqrt({av})", f"0.5*({ad})/({f'np.sqrt({av})'})"
-        raise NotImplementedError
+
+        if node.op == 'log':
+            return f"np.log({av})", f"({ad})/({av} + {eps_str})"
+        if node.op == 'sqrt':
+            return f"np.sqrt({av})", f"0.5*({ad})/(np.sqrt({av}) + {eps_str})"
+
+        raise NotImplementedError(f"Function {node.op} not supported in AD")
 
 # ==============================================================================
 # 5. Compiler (sym-num)(discretized)
@@ -802,6 +813,7 @@ class EquationCompiler:
 
                     if expr_dot != "0.0":
                         lines.append(f"    {var_name}_d = {expr_dot}")
+                        adv.cse_has_dot.add(var_name)
                     else:
                         pass
             else:
@@ -931,6 +943,378 @@ class MatrixVectorizedCompiler(EquationCompiler):
         # 4. Compile to file (enabling Numba's persistent cache)
         return _compile_to_file(full_source, func_name)
 
+
+class EagerKernelKind(Enum):
+    """
+    Enumeration of eager kernel application binary interfaces.
+
+    The eager compiler needs an explicit kernel family because the Python source
+    and the Numba signature differ between residual kernels, AD kernels and
+    vectorized matrix kernels.
+    """
+
+    Residual = "residual"
+    AutomaticDifferentiation = "automatic_differentiation"
+    MatrixVectorized = "matrix_vectorized"
+
+
+def _get_cse_sort_index(cse_item: Tuple[str, str]) -> int:
+    """
+    Return the numeric order of a generated CSE temporary.
+
+    :param cse_item: Pair ``(expr_hash, temp_name)`` produced by the analyzer.
+    :type cse_item: Tuple[str, str]
+    :return: Numeric suffix of the temporary variable.
+    :rtype: int
+    """
+    temp_name: str = cse_item[1]
+    numeric_part: str = temp_name[2:]
+    return int(numeric_part)
+
+
+def _reset_symbolic_codegen_state(visitor: Any) -> None:
+    """
+    Reset visitor caches before and after eager code generation.
+
+    :param visitor: Symbolic or AD visitor instance.
+    :type visitor: Any
+    :return: None
+    :rtype: None
+    """
+    visitor.cse_map = dict()
+    visitor.analyzer = None
+    visitor.in_cse_def = False
+    visitor._str_cache = dict()
+
+    if isinstance(visitor, ADVisitor):
+        visitor.cse_has_dot = set()
+    else:
+        pass
+
+
+class EagerEquationCompiler(EquationCompiler):
+    """
+    Strict eager compiler that emits in-place kernels with explicit signatures.
+
+    The generated functions do not allocate or return temporary arrays. Instead,
+    they receive a caller-provided ``data_out`` vector and write their results in
+    place. This removes Numba's type inference cost at first call and reduces the
+    runtime allocation pressure inside Newton iterations.
+    """
+
+    __slots__ = []
+
+    def generate_signature(
+            self,
+            kernel_tpe: EagerKernelKind,
+            n_variables: int,
+            n_parameters: int,
+            nnz: int,
+            with_history2: bool = True,
+    ) -> Any:
+        """
+        Build the eager Numba signature for a generated kernel.
+
+        :param kernel_tpe: Kernel family to be compiled eagerly.
+        :type kernel_tpe: EagerKernelKind
+        :param n_variables: Number of runtime variables of the DAE system.
+        :type n_variables: int
+        :param n_parameters: Number of parameters visible to the kernel.
+        :type n_parameters: int
+        :param nnz: Number of output values written by the kernel.
+        :type nnz: int
+        :param with_history2: Whether the generated ABI includes ``history2``.
+        :type with_history2: bool
+        :return: Numba eager signature object.
+        :rtype: Any
+        """
+        float64_vector_tpe: Any = types.Array(types.float64, 1, "C")
+        int32_matrix_tpe: Any = types.Array(types.int32, 2, "C", readonly=True)
+
+        if n_variables <= 0:
+            raise ValueError("n_variables must be greater than zero")
+        else:
+            pass
+
+        if n_parameters < 0:
+            raise ValueError("n_parameters must be greater than or equal to zero")
+        else:
+            pass
+
+        if nnz < 0:
+            raise ValueError("nnz must be greater than or equal to zero")
+        else:
+            pass
+
+        if with_history2:
+            pass
+        else:
+            raise ValueError(
+                "EagerEquationCompiler requires an explicit history2 array to keep a strict ABI."
+            )
+
+        signature_tpe: Any
+        if kernel_tpe == EagerKernelKind.Residual:
+            signature_tpe = types.void(
+                float64_vector_tpe,
+                float64_vector_tpe,
+                float64_vector_tpe,
+                float64_vector_tpe,
+                types.float64,
+                float64_vector_tpe,
+                float64_vector_tpe,
+            )
+        elif kernel_tpe == EagerKernelKind.AutomaticDifferentiation:
+            signature_tpe = types.void(
+                float64_vector_tpe,
+                float64_vector_tpe,
+                float64_vector_tpe,
+                float64_vector_tpe,
+                float64_vector_tpe,
+                types.float64,
+                float64_vector_tpe,
+                float64_vector_tpe,
+            )
+        elif kernel_tpe == EagerKernelKind.MatrixVectorized:
+            signature_tpe = types.void(
+                float64_vector_tpe,
+                float64_vector_tpe,
+                float64_vector_tpe,
+                float64_vector_tpe,
+                types.float64,
+                int32_matrix_tpe,
+                float64_vector_tpe,
+                float64_vector_tpe,
+            )
+        else:
+            raise ValueError(f"Unsupported eager kernel kind: {kernel_tpe}")
+
+        return signature_tpe
+
+    def compile(
+            self,
+            equations: List[Expr],
+            func_name: str = "step_fn",
+            use_cse: bool = True,
+            offset: int = 0,
+            inplace: bool = True,
+    ) -> Tuple[Callable, Any]:
+        """
+        Compile residual equations into an in-place eager kernel.
+
+        :param equations: Residual equations to be emitted.
+        :type equations: List[Expr]
+        :param func_name: Deterministic function name used in the source file.
+        :type func_name: str
+        :param use_cse: Whether to emit common subexpressions.
+        :type use_cse: bool
+        :param offset: Output offset inside ``data_out``.
+        :type offset: int
+        :param inplace: Compatibility argument that must stay ``True``.
+        :type inplace: bool
+        :return: Pair ``(python_function, eager_signature)``.
+        :rtype: Tuple[Callable, Any]
+        """
+        lines: List[str] = list()
+        py_func: Callable
+        signature_tpe: Any
+        full_source: str
+
+        if inplace:
+            pass
+        else:
+            raise ValueError("EagerEquationCompiler only supports inplace residual kernels")
+
+        _reset_symbolic_codegen_state(self.visitor)
+
+        # The eager ABI receives an explicit output vector and writes residuals in place.
+        lines.append(f"def {func_name}(states, params, history, d_history, h, data_out, history2):")
+
+        # Common subexpressions are emitted first so the body performs direct writes only once.
+        if use_cse:
+            analyzer: SubexpressionAnalyzer = SubexpressionAnalyzer()
+            cse_map: Dict[str, str] = analyzer.analyze(equations)
+            sorted_cse: List[Tuple[str, str]] = sorted(cse_map.items(), key=_get_cse_sort_index)
+
+            self.visitor.analyzer = analyzer
+            self.visitor.cse_map = cse_map
+            self.visitor._str_cache = dict()
+
+            for expr_hash, var_name in sorted_cse:
+                expr_obj: Expr = analyzer.expr_objects[expr_hash]
+                expr_code: str
+
+                self.visitor.in_cse_def = True
+                expr_code = self.visitor.visit(expr_obj)
+                self.visitor.in_cse_def = False
+                lines.append(f"    {var_name} = {expr_code}")
+        else:
+            pass
+
+        # Each equation writes directly into the preallocated output buffer.
+        for i, eq in enumerate(equations):
+            expr_code = self.visitor.visit(eq)
+            lines.append(f"    data_out[{offset + i}] = {expr_code}")
+
+        full_source = "\n".join(lines)
+        py_func = _compile_to_file(full_source, func_name)
+        signature_tpe = self.generate_signature(
+            kernel_tpe=EagerKernelKind.Residual,
+            n_variables=len(self.variables_objs),
+            n_parameters=len(self.parameters_objs),
+            nnz=offset + len(equations),
+            with_history2=True,
+        )
+
+        _reset_symbolic_codegen_state(self.visitor)
+        return py_func, signature_tpe
+
+    def compile_ad_kernel(
+            self,
+            equations: List[Expr],
+            func_name: str = "ad_step",
+            use_cse: bool = True,
+            active_indices: set | None = None,
+    ) -> Tuple[Callable, Any]:
+        """
+        Compile a sparse forward-mode AD kernel into an in-place eager function.
+
+        :param equations: Residual equations to differentiate.
+        :type equations: List[Expr]
+        :param func_name: Deterministic function name used in the source file.
+        :type func_name: str
+        :param use_cse: Whether to emit common subexpressions.
+        :type use_cse: bool
+        :param active_indices: Colored column subset activated in the current JVP sweep.
+        :type active_indices: set | None
+        :return: Pair ``(python_function, eager_signature)``.
+        :rtype: Tuple[Callable, Any]
+        """
+        adv: ADVisitor = ADVisitor(
+            self.var_map,
+            self.param_map,
+            self.strategy,
+            seeds_var='seeds',
+            active_indices=active_indices,
+        )
+        lines: List[str] = list()
+        py_func: Callable
+        signature_tpe: Any
+        full_source: str
+
+        _reset_symbolic_codegen_state(adv)
+
+        # The eager AD ABI also writes into a caller-owned buffer to avoid JVP allocations.
+        lines.append(f"def {func_name}(states, seeds, params, history, d_history, h, data_out, history2):")
+
+        # Emit CSE definitions first so both values and directional derivatives can be reused.
+        if use_cse:
+            analyzer = SubexpressionAnalyzer()
+            cse_map = analyzer.analyze(equations)
+            sorted_cse = sorted(cse_map.items(), key=_get_cse_sort_index)
+
+            adv.analyzer = analyzer
+            adv.cse_map = cse_map
+            adv._str_cache = dict()
+
+            for expr_hash, var_name in sorted_cse:
+                expr_obj = analyzer.expr_objects[expr_hash]
+                expr_val: str
+                expr_dot: str
+
+                adv.in_cse_def = True
+                expr_val, expr_dot = adv.visit(expr_obj)
+                adv.in_cse_def = False
+
+                lines.append(f"    {var_name} = {expr_val}")
+
+                if expr_dot != "0.0":
+                    lines.append(f"    {var_name}_d = {expr_dot}")
+                    adv.cse_has_dot.add(var_name)
+                else:
+                    pass
+        else:
+            pass
+
+        # The JVP values are written directly in CSC scatter order by the caller later on.
+        for i, eq in enumerate(equations):
+            _value_code: str
+            dot_code: str
+            _value_code, dot_code = adv.visit(eq)
+
+            if dot_code != "0.0":
+                lines.append(f"    data_out[{i}] = {dot_code}")
+            else:
+                lines.append(f"    data_out[{i}] = 0.0")
+
+        full_source = "\n".join(lines)
+        py_func = _compile_to_file(full_source, func_name)
+        signature_tpe = self.generate_signature(
+            kernel_tpe=EagerKernelKind.AutomaticDifferentiation,
+            n_variables=len(self.variables_objs),
+            n_parameters=len(self.parameters_objs),
+            nnz=len(equations),
+            with_history2=True,
+        )
+
+        _reset_symbolic_codegen_state(adv)
+        return py_func, signature_tpe
+
+    def compile_matrix_kernel(
+            self,
+            template_eq: Expr,
+            func_name: str,
+            template_vars: List[Var],
+    ) -> Tuple[Callable, Any]:
+        """
+        Compile a vectorized matrix kernel into an in-place eager function.
+
+        :param template_eq: Canonical template equation for a structural group.
+        :type template_eq: Expr
+        :param func_name: Deterministic function name used in the source file.
+        :type func_name: str
+        :param template_vars: Ordered runtime variables of the structural group.
+        :type template_vars: List[Var]
+        :return: Pair ``(python_function, eager_signature)``.
+        :rtype: Tuple[Callable, Any]
+        """
+        col_map: Dict[str, int] = dict()
+        visitor: MatrixVectorizedVisitor
+        rhs_code: str
+        lines: List[str] = list()
+        py_func: Callable
+        signature_tpe: Any
+        full_source: str
+
+        # The template variables define the deterministic position of each grouped runtime value.
+        for i, v in enumerate(template_vars):
+            mapped_name: str
+            if v.base_var is None:
+                mapped_name = v.name
+            else:
+                mapped_name = v.base_var.name
+            col_map[mapped_name] = i
+
+        # The matrix visitor resolves vectorized gather operations through the grouped index matrix.
+        visitor = MatrixVectorizedVisitor(self.var_map, self.param_map, self.strategy, col_map)
+        rhs_code = visitor.visit(template_eq)
+
+        # The eager matrix ABI writes directly into the caller-owned batch buffer.
+        lines.append(f"def {func_name}(states, params, history, d_history, h, indices, data_out, history2):")
+        lines.append(f"    data_out[:indices.shape[0]] = {rhs_code}")
+
+        full_source = "\n".join(lines)
+        py_func = _compile_to_file(full_source, func_name)
+        signature_tpe = self.generate_signature(
+            kernel_tpe=EagerKernelKind.MatrixVectorized,
+            n_variables=len(self.variables_objs),
+            n_parameters=len(self.parameters_objs),
+            nnz=len(template_vars),
+            with_history2=True,
+        )
+
+        return py_func, signature_tpe
+
 # ==============================================================================
 # 7. RMS Native Compiler (Continuous Time & Sparse Jacobians)
 # ==============================================================================
@@ -971,7 +1355,7 @@ class RMSCompiler(EquationCompiler):
         self.diff_vars = diff_vars
         self.v_params = v_params
 
-    def compile_rhs(self, equations: List[Expr], func_name: str) -> Callable:
+    def compile_rhs(self, equations: List[Expr], func_name: str) -> Callable[[Vec, Vec, Vec, Vec], Vec]:
         """
         Compiles the residual equations (RHS) into a fast, executable JIT function.
 
@@ -995,7 +1379,9 @@ class RMSCompiler(EquationCompiler):
 
         return _compile_to_file("\n".join(lines), func_name)
 
-    def compile_sparse_jacobian(self, eqs: List[Expr], wrt_vars: List[Var], func_name: str) -> Callable:
+    def compile_sparse_jacobian(self, eqs: List[Expr],
+                                wrt_vars: List[Var],
+                                func_name: str) -> Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]:
         """
         Compiles a sparse Jacobian evaluator using an O(N) structural extraction algorithm.
 

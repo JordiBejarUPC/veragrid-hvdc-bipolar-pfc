@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 import numpy as np
-from typing import Dict, List, Union, Any, Tuple, TYPE_CHECKING, Set
+from typing import Dict, List, Union, Any, Tuple, TYPE_CHECKING, Set, Sequence
 from PySide6 import QtCore, QtWidgets, QtGui
 from collections import defaultdict, OrderedDict
 
@@ -636,7 +636,7 @@ class DateTimeDelegate(QtWidgets.QItemDelegate):
         model.setData(index, epoch_seconds)
 
 
-def get_list_model(lst: List[Union[str, ALL_DEV_TYPES]],
+def get_list_model(lst: Sequence[Union[str, ALL_DEV_TYPES]],
                    checks=False,
                    check_value=False) -> QtGui.QStandardItemModel:
     """

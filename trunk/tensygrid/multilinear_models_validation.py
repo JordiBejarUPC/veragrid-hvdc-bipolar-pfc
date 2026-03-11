@@ -59,7 +59,7 @@ grid.add_bus(bus0)
 grid.add_bus(bus1)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.var_factory)
+    initialize_bus_rms(bus, vf=grid.rms_var_factory)
 
 # Lines
 line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
@@ -94,13 +94,13 @@ load_dynhost = DynamicModelHost()
 gen_dynhost = DynamicModelHost()
 
 # line
-line0_mdl = get_line_rms_template(grid.var_factory).block
+line0_mdl = get_line_rms_template(grid.rms_var_factory).block
 
 # load
-load_mdl = get_load_rms_template(grid.var_factory).block
+load_mdl = get_load_rms_template(grid.rms_var_factory).block
 
 # generator
-genqec1_mdl = get_complete_generator_template(grid.var_factory).block
+genqec1_mdl = get_complete_generator_template(grid.rms_var_factory).block
 
 # connection with buses
 
@@ -225,7 +225,7 @@ plt.xlim([0, xlim])
 # plt.ylim([0.85, 1.15])
 plt.grid(True)
 plt.tight_layout()
-plt.show()
+#plt.show()
 
 pr.dump_stats('profile.pstat')
 
@@ -263,4 +263,4 @@ plt.xlim([0, xlim])
 # plt.ylim([0.85, 1.15])
 plt.grid(True)
 plt.tight_layout()
-plt.show()
+#plt.show()

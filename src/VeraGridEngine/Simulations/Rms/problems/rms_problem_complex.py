@@ -174,11 +174,11 @@ class RmsProblemComplex(RmsProblemTemplate):
             bus_dict[elm] = bus_num
 
             # Initialize complex phasor-based bus model
-            initialize_bus_complex_rms(bus=elm, vf=grid.var_factory)
+            initialize_bus_complex_rms(bus=elm, vf=grid.rms_var_factory)
 
             # Flatten model
             elm.rms_model.model.unify_blocks()
-            mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
+            mdl = block_deep_copy(elm.rms_model.model, grid.rms_var_factory)
 
             self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -218,7 +218,7 @@ class RmsProblemComplex(RmsProblemTemplate):
                     elm.rms_model = DynamicModelHost()
                 
                 elm.rms_model.model = get_line_complex_rms_template(
-                    vfactory=grid.var_factory, 
+                    vfactory=grid.rms_var_factory,
                     name=f"Line_complex_{elm.name}"
                 ).block
                 
@@ -353,7 +353,7 @@ class RmsProblemComplex(RmsProblemTemplate):
                 bus_index = bus_dict[elm.bus]
 
                 elm.rms_model.model.unify_blocks()
-                mdl = block_deep_copy(elm.rms_model.model, self.grid.var_factory)
+                mdl = block_deep_copy(elm.rms_model.model, self.grid.rms_var_factory)
 
                 self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -420,7 +420,7 @@ class RmsProblemComplex(RmsProblemTemplate):
 
         # Add the nodal balance equations
         for i, elm in enumerate(self.grid.buses):
-            mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
+            mdl = block_deep_copy(elm.rms_model.model, grid.rms_var_factory)
             if len(mdl.algebraic_eqs) == 0:
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)
@@ -437,7 +437,11 @@ class RmsProblemComplex(RmsProblemTemplate):
         self._compile_system()
 
     def add_variables_to_compilation_dicts(self, elm: ALL_DEV_TYPES, mdl: Block):
-        """Add variables and parameters to the compilation dictionaries."""
+        """
+        Add variables and parameters to the compilation dictionaries.
+        :param elm: Device type to add variables to
+        :param mdl: Block type to add variables to
+        """
         for v in mdl.state_vars:
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"

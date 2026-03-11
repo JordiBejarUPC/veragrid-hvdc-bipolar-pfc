@@ -1289,6 +1289,7 @@ class TemplateEditor(QtWidgets.QWidget):
             return
 
         selected_template = self.templates_catalogue[template_name]
+        # Todo: here we can use the function set_rms_model from templates common functions and it would simplify the code significantly.
         self.selected_block = Block()
         if self.api_object is not None:
             if selected_template.tpe == DeviceType.GeneratorDevice:
