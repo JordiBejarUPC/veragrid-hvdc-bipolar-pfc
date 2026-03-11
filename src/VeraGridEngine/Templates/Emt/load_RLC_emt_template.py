@@ -123,6 +123,7 @@ def get_shunt_l_3ph_emt_template(vf: VarFactory, name: str = "Shunt_L_3ph") -> E
     L_B = vf.add_var("L_B_" + name)
     L_C = vf.add_var("L_C_" + name)
 
+    # TODO: connect to static model
     templ.block.event_dict[L_A] = vf.add_const(0.01)  # H
     templ.block.event_dict[L_B] = vf.add_const(0.01)
     templ.block.event_dict[L_C] = vf.add_const(0.01)
@@ -160,7 +161,14 @@ def get_shunt_l_3ph_emt_template(vf: VarFactory, name: str = "Shunt_L_3ph") -> E
         VarPowerFlowRefferenceType.i_A: i_A,
         VarPowerFlowRefferenceType.i_B: i_B,
         VarPowerFlowRefferenceType.i_C: i_C,
-        VarPowerFlowRefferenceType.theta: None,
+        VarPowerFlowRefferenceType.phi_v: None,
+        VarPowerFlowRefferenceType.phi: None,
+        VarPowerFlowRefferenceType.Vpk: None,
+        VarPowerFlowRefferenceType.Ipk: None,
+        VarPowerFlowRefferenceType.d_v_N: None,
+        VarPowerFlowRefferenceType.d_v_A: None,
+        VarPowerFlowRefferenceType.d_v_B: None,
+        VarPowerFlowRefferenceType.d_v_C: None,
     }
 
     templ.block.api_obj_mapping = {}
@@ -203,6 +211,7 @@ def get_shunt_c_3ph_emt_template(vf: VarFactory, name: str = "Shunt_C_3ph") -> E
     i_B = vf.add_var("i_B_" + name)
     i_C = vf.add_var("i_C_" + name)
 
+    # TODO: connect to static model
     templ.block.event_dict[C_A] = vf.add_const(10e-6)  # F
     templ.block.event_dict[C_B] = vf.add_const(10e-6)
     templ.block.event_dict[C_C] = vf.add_const(10e-6)
@@ -249,7 +258,14 @@ def get_shunt_c_3ph_emt_template(vf: VarFactory, name: str = "Shunt_C_3ph") -> E
         VarPowerFlowRefferenceType.i_A: i_A,
         VarPowerFlowRefferenceType.i_B: i_B,
         VarPowerFlowRefferenceType.i_C: i_C,
-        VarPowerFlowRefferenceType.theta: None,
+        VarPowerFlowRefferenceType.phi_v: None,
+        VarPowerFlowRefferenceType.phi: None,
+        VarPowerFlowRefferenceType.Vpk: None,
+        VarPowerFlowRefferenceType.Ipk: None,
+        VarPowerFlowRefferenceType.d_v_N: None,
+        VarPowerFlowRefferenceType.d_v_A: None,
+        VarPowerFlowRefferenceType.d_v_B: None,
+        VarPowerFlowRefferenceType.d_v_C: None,
     }
 
     templ.block.api_obj_mapping = {}

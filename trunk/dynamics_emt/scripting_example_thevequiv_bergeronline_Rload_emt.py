@@ -33,7 +33,7 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDa
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
 
 
-from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import get_pi_line_emt_template
+from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import get_bergeron_line_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
@@ -75,8 +75,8 @@ grid.add_bus(bus0)
 grid.add_bus(bus1)
 
 # Lines
-line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
-line0.emt_model_type = gce.EmtLineTypes.PI
+line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, length=100.0, rate=900.0)
+line0.emt_model_type = gce.EmtLineTypes.Bergeron
 
 # physical configuration (Overhead line tower)
 tower = gce.OverheadLineType(name="Tower", Vnom=vnom)
@@ -130,7 +130,7 @@ gen_dynhost = DynamicModelHost()
 gen_mdl = get_generator_thevenin_rl_emt_template(grid=grid, gen = gen0).block
 
 # line
-line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
+line_mdl = get_bergeron_line_emt_template(grid = grid, line = line0).block
 
 # load
 load_mdl = get_shunt_r_3ph_emt_template(grid = grid, load = load).block
@@ -140,14 +140,14 @@ gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]]) # v_A
 gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.model.out_vars[1]]) # v_B
 gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.model.out_vars[2]]) # v_C
 
-
-line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]]) # line vf_A
-line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.model.out_vars[1]]) # line vf_B
-line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.model.out_vars[2]]) # line vf_C
-
-line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.model.out_vars[0]]) # line vt_A
-line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.model.out_vars[1]]) # line vt_B
-line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.model.out_vars[2]]) # line vt_C
+#
+# line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]]) # line vf_A
+# line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.model.out_vars[1]]) # line vf_B
+# line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.model.out_vars[2]]) # line vf_C
+#
+# line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.model.out_vars[0]]) # line vt_A
+# line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.model.out_vars[1]]) # line vt_B
+# line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.model.out_vars[2]]) # line vt_C
 
 # u_gov = find_name_in_block("u_gov1", gov1_mdl)
 
@@ -247,7 +247,7 @@ if CHOSEN_SOLVER not in SOLVER_TYPE_MAP:
     raise ValueError(f"Solver '{CHOSEN_SOLVER}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
 
 options = EmtOptions(time_step = 5e-6,
-                     simulation_time =  0.01, # s
+                     simulation_time =  0.05, # s
                      tolerance = 1e-6,
                      solver = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
@@ -476,6 +476,88 @@ h = options.time_step
 steps: int = int(t_end / h)
 tme: np.ndarray = np.linspace(0, t_end, steps)
 
+# plot history and vars from the bergeron line
+rt = None
+for candidate in problem.history_models:
+    if candidate.line.name == line0.name:
+        rt = candidate
+        break
+
+if rt is None:
+    raise ValueError(f"Bergeron runtime for line '{line0.name}' not found.")
+print(f"ndelay = {rt.n_delay}")
+print(f"rt.n_delay * rt.h = {rt.n_delay * rt.h}")
+print(f"tme[-1] - tme[0] :{tme[-1] - tme[0]}")
+
+if_hist = np.array(rt.hist_if)
+it_hist = np.array(rt.hist_it)
+Ihf_hist = np.array(rt.hist_Ih_f)
+Iht_hist = np.array(rt.hist_Ih_t)
+
+n_plot = min(len(tme) - 1, len(if_hist))
+t_plot = tme[1:n_plot + 1]
+
+if_hist = if_hist[:n_plot, :]
+it_hist = it_hist[:n_plot, :]
+Ihf_hist = Ihf_hist[:n_plot, :]
+Iht_hist = Iht_hist[:n_plot, :]
+
+plt.figure(figsize=(12, 8))
+
+plt.subplot(2, 2, 1)
+for k, ph in enumerate(rt.active_ph):
+    plt.plot(t_plot, if_hist[:, k], label=f'Current phase {ph} from side f')
+plt.title("Bergeron current from side")
+plt.xlabel("Time")
+plt.ylabel("Current")
+plt.legend(loc='upper left')
+plt.grid(True)
+
+plt.subplot(2, 2, 2)
+for k, ph in enumerate(rt.active_ph):
+    plt.plot(t_plot, it_hist[:, k], label=f'Current phase {ph} from side t')
+plt.title("Bergeron current to side")
+plt.xlabel("Time")
+plt.ylabel("Current")
+plt.legend(loc='upper left')
+plt.grid(True)
+
+plt.subplot(2, 2, 3)
+for k, ph in enumerate(rt.active_ph):
+    plt.plot(t_plot, Ihf_hist[:, k], label=f'Ih_f phase {ph}')
+plt.title("Bergeron history current from side")
+plt.xlabel("Time")
+plt.ylabel("History current")
+plt.legend(loc='upper left')
+plt.grid(True)
+
+plt.subplot(2, 2, 4)
+for k, ph in enumerate(rt.active_ph):
+    plt.plot(t_plot, Iht_hist[:, k], label=f'Ih_t phase {ph}')
+plt.title("Bergeron history current to side")
+plt.xlabel("Time")
+plt.ylabel("History current")
+plt.legend(loc='upper left')
+plt.grid(True)
+
+plt.tight_layout()
+plt.show()
+
+plt.plot()
+for k, ph in enumerate(rt.active_ph):
+    plt.plot(t_plot, if_hist[:, k], label=f'Current phase {ph} from side f')
+for k, ph in enumerate(rt.active_ph):
+    plt.plot(t_plot, -it_hist[:, k], label=f'Current phase {ph} from side to')
+plt.title("Bergeron current from side")
+plt.xlabel("Time")
+plt.ylabel("Current")
+plt.legend(loc='upper left')
+plt.grid(True)
+
+plt.tight_layout()
+plt.show()
+
+
 #
 v_A_0 = find_name_in_block("v_ABus0_emt_template", bus0.emt_model.model)
 v_B_0 = find_name_in_block("v_BBus0_emt_template", bus0.emt_model.model)
@@ -575,131 +657,22 @@ plt.legend(loc='upper left')
 plt.grid(True)
 plt.legend()
 
-plt.tight_layout()
-print("Generating plots...")
-plt.show()
-
-
-i_f_A_line = find_name_in_block("if_line0_0", line0.emt_model.model)
-i_f_B_line = find_name_in_block("if_line0_1", line0.emt_model.model)
-i_f_C_line = find_name_in_block("if_line0_2", line0.emt_model.model)
-i_f_A_line_plt = y[:, problem.get_var_idx(i_f_A_line)]
-i_f_B_line_plt = y[:, problem.get_var_idx(i_f_B_line)]
-i_f_C_line_plt = y[:, problem.get_var_idx(i_f_C_line)]
-
-i_t_A_line = find_name_in_block("it_line0_0", line0.emt_model.model)
-i_t_B_line = find_name_in_block("it_line0_1", line0.emt_model.model)
-i_t_C_line = find_name_in_block("it_line0_2", line0.emt_model.model)
-i_t_A_line_plt = y[:, problem.get_var_idx(i_t_A_line)]
-i_t_B_line_plt = y[:, problem.get_var_idx(i_t_B_line)]
-i_t_C_line_plt = y[:, problem.get_var_idx(i_t_C_line)]
-
-plt.figure(figsize=(12, 8))
-
-plt.subplot(2, 2, 1)
+plt.subplot(2, 2, 3)
 plt.plot(tme, i_A_gen_plt[:len(tme)], label='Current phase A from generator', color='blue')
 plt.plot(tme, i_B_gen_plt[:len(tme)], label='Current phase B from generator', color='red')
 plt.plot(tme, i_C_gen_plt[:len(tme)], label='Current phase C from generator', color='green')
-plt.title("Current generator")
-plt.xlabel("Time")
-plt.ylabel("Current generator")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
-
-plt.subplot(2, 2, 2)
-plt.plot(tme, i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
-plt.plot(tme, i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
-plt.plot(tme, i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
-plt.title("Current load")
+plt.plot(tme, -i_A_load_plt[:len(tme)], label='Current phase A from load', color='orange')
+plt.plot(tme, -i_B_load_plt[:len(tme)], label='Current phase B from load', color='purple')
+plt.plot(tme, -i_C_load_plt[:len(tme)], label='Current phase C from load', color='brown')
+plt.title("Current from and to line")
 plt.xlabel("Time")
 plt.ylabel("Current load")
 plt.legend(loc='upper left')
 plt.grid(True)
 plt.legend()
 
-plt.subplot(2, 2, 3)
-plt.plot(tme, i_f_A_line_plt[:len(tme)], label='Current FROM phase A from line', color='blue')
-plt.plot(tme, i_f_B_line_plt[:len(tme)], label='Current FROM phase B from line', color='red')
-plt.plot(tme, i_f_C_line_plt[:len(tme)], label='Current FROM phase C from line', color='green')
-plt.title("Current from line")
-plt.xlabel("Time")
-plt.ylabel("Current from")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
-
-plt.subplot(2, 2, 4)
-plt.plot(tme, i_t_A_line_plt[:len(tme)], label='Current TO phase A from line', color='blue')
-plt.plot(tme, i_t_B_line_plt[:len(tme)], label='Current TO phase B from line', color='red')
-plt.plot(tme, i_t_C_line_plt[:len(tme)], label='Current TO phase C from line', color='green')
-plt.title("Current to line")
-plt.xlabel("Time")
-plt.ylabel("Current to")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
-
 plt.tight_layout()
 print("Generating plots...")
 plt.show()
 
-i_ser_A = find_name_in_block("i_ser_line0_0", line0.emt_model.model)
-i_ser_B = find_name_in_block("i_ser_line0_1", line0.emt_model.model)
-i_ser_C = find_name_in_block("i_ser_line0_2", line0.emt_model.model)
-i_ser_A_plt = y[:, problem.get_var_idx(i_ser_A)]
-i_ser_B_plt = y[:, problem.get_var_idx(i_ser_B)]
-i_ser_C_plt = y[:, problem.get_var_idx(i_ser_C)]
 
-i_f_cap_A = find_name_in_block("i_cap_f_line0_0", line0.emt_model.model)
-i_f_cap_B = find_name_in_block("i_cap_f_line0_1", line0.emt_model.model)
-i_f_cap_C = find_name_in_block("i_cap_f_line0_2", line0.emt_model.model)
-i_f_cap_A_plt = y[:, problem.get_var_idx(i_f_cap_A)]
-i_f_cap_B_plt = y[:, problem.get_var_idx(i_f_cap_B)]
-i_f_cap_C_plt = y[:, problem.get_var_idx(i_f_cap_C)]
-
-i_t_cap_A = find_name_in_block("i_cap_t_line0_0", line0.emt_model.model)
-i_t_cap_B = find_name_in_block("i_cap_t_line0_1", line0.emt_model.model)
-i_t_cap_C = find_name_in_block("i_cap_t_line0_2", line0.emt_model.model)
-i_t_cap_A_plt = y[:, problem.get_var_idx(i_t_cap_A)]
-i_t_cap_B_plt = y[:, problem.get_var_idx(i_t_cap_B)]
-i_t_cap_C_plt = y[:, problem.get_var_idx(i_t_cap_C)]
-
-plt.figure(figsize=(12, 8))
-
-plt.subplot(2, 2, 1)
-plt.plot(tme, i_ser_A_plt[:len(tme)], label='Phase A series current line', color='blue')
-plt.plot(tme, i_ser_B_plt[:len(tme)], label='Phase B series current line', color='red')
-plt.plot(tme, i_ser_C_plt[:len(tme)], label='Phase C series current line', color='green')
-plt.title("Series current in line")
-plt.xlabel("Time")
-plt.ylabel("Current")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
-
-plt.subplot(2, 2, 3)
-plt.plot(tme, i_f_cap_A_plt[:len(tme)], label='Shunt current at from line phase A', color='blue')
-plt.plot(tme, i_f_cap_B_plt[:len(tme)], label='Shunt current at from line phase B', color='red')
-plt.plot(tme, i_f_cap_C_plt[:len(tme)], label='Shunt current at from line phase C', color='green')
-plt.title("From shunt currents in line")
-plt.xlabel("Time")
-plt.ylabel("Current")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
-
-plt.subplot(2, 2, 4)
-plt.plot(tme, i_t_cap_A_plt[:len(tme)], label='Shunt current at to line phase A', color='blue')
-plt.plot(tme, i_t_cap_B_plt[:len(tme)], label='Shunt current at to line phase B', color='red')
-plt.plot(tme, i_t_cap_C_plt[:len(tme)], label='Shunt current at to line phase C', color='green')
-plt.title("To shunt currents in line")
-plt.xlabel("Time")
-plt.ylabel("Current")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
-
-plt.tight_layout()
-print("Generating plots...")
-plt.show()

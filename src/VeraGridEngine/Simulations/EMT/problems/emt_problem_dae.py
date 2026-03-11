@@ -155,10 +155,10 @@ def _get_grid_runtime_events(grid: MultiCircuit) -> List[Any]:
     :param grid: MultiCircuit instance.
     :return: List of scheduled runtime events.
     """
-    rms_events = getattr(grid, "rms_events", None)
+    emt_events = getattr(grid, "emt_events", None)
 
-    if rms_events is not None:
-        return list(rms_events)
+    if emt_events is not None:
+        return list(emt_events)
     else:
         return list()
 
@@ -168,21 +168,20 @@ def _get_bus_v_list(
         ph_v_keys: List[VarPowerFlowRefferenceType]
 ) -> List[Any]:
     """
-    Return the ordered list of bus phase voltages, filling missing phases with zero.
+    Return the ordered list of bus phase voltages, using None for missing phases.
 
     :param grid: MultiCircuit instance.
     :param bus_block: Bus symbolic block.
     :param ph_v_keys: Ordered list of phase voltage keys.
-    :return: Ordered list of phase voltage expressions.
+    :return: Ordered list of bus phase voltage expressions or None.
     """
     out: List[Any] = list()
-    c0 = grid.emt_var_factory.add_const(0.0)
 
     for key in ph_v_keys:
         vk = bus_block.E(key)
 
         if vk is None:
-            out.append(c0)
+            out.append(None)
         else:
             out.append(vk)
 
@@ -257,8 +256,28 @@ class EmtProblemDae(EmtProblemTemplate):
         # initialize template with the complete block
         super().__init__(sys_block=sys_block, glob_time=glob_time)
 
+        # Mark retained runtime parameters:
+        #   - scheduled mode parameters
+        #   - Bergeron history parameters
+        mode_parameters: List[Var] = self._collect_runtime_mode_parameters()
+        if len(mode_parameters) > 0:
+            self.set_runtime_mode_parameters(mode_parameters)
+        else:
+            pass
+
+        # Runtime parameter indices may have changed after repartitioning,
+        # so Bergeron runtimes must bind their parameter indices afterwards.
+        for rt in self.history_models:
+            rt.setup_indices(
+                uid2idx_vars=self.uid2idx_vars,
+                uid2idx_event_params=self.uid2idx_event_params,
+                params_offset=0,
+            )
+
         if len(self._runtime_mode_parameters) > 0:
             self._initialize_mode_event_state()
+        else:
+            pass
 
         # 1) PF guesses
         self.init_guess.update(self._temp_init_guess)
@@ -515,14 +534,28 @@ class EmtProblemDae(EmtProblemTemplate):
                                                                     fbase=fbase)
                 rt.bind_terminals(v_f_vars, v_t_vars)
 
+                if pf_results is not None:
+                    self._try_set_bergeron_pf_init(
+                        mdl=mdl,
+                        rt=rt,
+                        branch_index=branch_idx,
+                        f_bus_idx=f,
+                        t_bus_idx=t,
+                        pf_results=pf_results,
+                        sbase=grid.Sbase,
+                    )
+                else:
+                    pass
+
                 i_f_exprs: List[Any]
                 i_t_exprs: List[Any]
                 i_f_exprs, i_t_exprs = rt.get_nodal_injections()
 
                 for ph in range(4):
-                    # currents in branches are defined as going out of the bus (sign convention)
-                    I_kcl[f][ph] = I_kcl[f][ph] - i_f_exprs[ph]
-                    I_kcl[t][ph] = I_kcl[t][ph] - i_t_exprs[ph]
+                    if i_f_exprs[ph] is not None:
+                        I_kcl[f][ph] = I_kcl[f][ph] - i_f_exprs[ph]
+                    if i_t_exprs[ph] is not None:
+                        I_kcl[t][ph] = I_kcl[t][ph] - i_t_exprs[ph]
 
                 self.history_models.append(rt)
 
@@ -1078,6 +1111,103 @@ class EmtProblemDae(EmtProblemTemplate):
             V_C = pf_results.voltage_C[bus_index]
             d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
             self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
+
+    def _try_set_bergeron_pf_init(
+            self,
+            mdl: Block,
+            rt: BergeronHistoryRuntime,
+            branch_index: int,
+            f_bus_idx: int,
+            t_bus_idx: int,
+            pf_results: PowerFlowResults3Ph,
+            sbase: float
+    ) -> None:
+        """
+        Initialize Bergeron history terms from three-phase power-flow results.
+
+        The history sources are initialized so that, at t = 0:
+            i_f(0) = Gc * v_f(0) + Ih_f(0)
+            i_t(0) = Gc * v_t(0) + Ih_t(0)
+
+        Hence:
+            Ih_f(0) = i_f(0) - Gc * v_f(0)
+            Ih_t(0) = i_t(0) - Gc * v_t(0)
+
+        Only active phases in the Bergeron runtime are considered.
+        """
+        voltage_dict: Dict[str, Optional[np.ndarray]] = {
+            "N": pf_results.voltage_N,
+            "A": pf_results.voltage_A,
+            "B": pf_results.voltage_B,
+            "C": pf_results.voltage_C,
+        }
+
+        sf_array_dict: Dict[str, Optional[np.ndarray]] = {
+            "N": None,
+            "A": pf_results.Sf_A,
+            "B": pf_results.Sf_B,
+            "C": pf_results.Sf_C,
+        }
+
+        st_array_dict: Dict[str, Optional[np.ndarray]] = {
+            "N": None,
+            "A": pf_results.St_A,
+            "B": pf_results.St_B,
+            "C": pf_results.St_C,
+        }
+
+        v_f0_red = np.zeros(rt.m, dtype=np.float64)
+        v_t0_red = np.zeros(rt.m, dtype=np.float64)
+        i_f0_red = np.zeros(rt.m, dtype=np.float64)
+        i_t0_red = np.zeros(rt.m, dtype=np.float64)
+
+        for k, ph in enumerate(rt.active_ph):
+            voltage_array = voltage_dict[ph]
+
+            if voltage_array is None:
+                vf_ph = 0.0 + 0.0j
+                vt_ph = 0.0 + 0.0j
+            else:
+                vf_ph = voltage_array[f_bus_idx]
+                vt_ph = voltage_array[t_bus_idx]
+
+            # Instantaneous voltage at t = 0 with your EMT convention
+            v_f0_red[k] = float(np.sqrt(2.0) * np.imag(vf_ph))
+            v_t0_red[k] = float(np.sqrt(2.0) * np.imag(vt_ph))
+
+            sf_array = sf_array_dict[ph]
+            st_array = st_array_dict[ph]
+
+            if sf_array is None or abs(vf_ph) <= 1e-12:
+                i_f = 0.0 + 0.0j
+            else:
+                sf_ph = sf_array[branch_index] / sbase
+                i_f = np.conj(sf_ph / vf_ph)
+
+            if st_array is None or abs(vt_ph) <= 1e-12:
+                i_t = 0.0 + 0.0j
+            else:
+                st_ph = st_array[branch_index] / sbase
+                i_t = np.conj(st_ph / vt_ph)
+
+            # Instantaneous current at t = 0 with your EMT convention
+            i_f0_red[k] = float(np.sqrt(2.0) * np.imag(i_f))
+            i_t0_red[k] = float(np.sqrt(2.0) * np.imag(i_t))
+
+        Ih_f0_red = i_f0_red - rt.Gc_red @ v_f0_red
+        Ih_t0_red = i_t0_red - rt.Gc_red @ v_t0_red
+
+        for k in range(rt.m):
+            mdl.event_dict[rt.Ih_f[k]] = self.grid.emt_var_factory.add_const(float(Ih_f0_red[k]))
+            mdl.event_dict[rt.Ih_t[k]] = self.grid.emt_var_factory.add_const(float(Ih_t0_red[k]))
+
+        rt.initialize_buffers_from_initial_point(
+            v_f0_red=v_f0_red,
+            v_t0_red=v_t0_red,
+            i_f0_red=i_f0_red,
+            i_t0_red=i_t0_red,
+        )
+
     # ---------------------------------------------------------------------
     # UTILS
     # ---------------------------------------------------------------------
@@ -1114,7 +1244,7 @@ class EmtProblemDae(EmtProblemTemplate):
         mode_parameters: List[Var] = list()
 
         for parameter in self.get_variable_parameters():
-            if _is_mode_runtime_parameter(parameter):
+            if _is_mode_runtime_parameter(parameter): # TODO: function not found! is this used?
                 mode_parameters.append(parameter)
             else:
                 pass
@@ -1170,6 +1300,37 @@ class EmtProblemDae(EmtProblemTemplate):
                 event_idx += 1
 
             self._mode_event_cursor[uid] = event_idx
+
+    def _collect_runtime_mode_parameters(self) -> List[Var]:
+        """
+        Collect runtime parameters that must be retained between steps.
+
+        This includes:
+          - scheduled discrete mode parameters,
+          - Bergeron line history parameters, which are updated explicitly by the runtime.
+        """
+        mode_parameters: List[Var] = list()
+        seen: Set[int] = set()
+
+        # 1) Scheduled mode parameters already registered through mode_dict
+        for parameter in self.get_runtime_mode_parameters():
+            if parameter.uid not in seen:
+                seen.add(parameter.uid)
+                mode_parameters.append(parameter)
+
+        # 2) Bergeron history parameters must also be retained
+        for rt in self.history_models:
+            for parameter in rt.Ih_f:
+                if parameter.uid not in seen:
+                    seen.add(parameter.uid)
+                    mode_parameters.append(parameter)
+
+            for parameter in rt.Ih_t:
+                if parameter.uid not in seen:
+                    seen.add(parameter.uid)
+                    mode_parameters.append(parameter)
+
+        return mode_parameters
 
     def add_device_var(self, dev: ALL_DEV_TYPES, var: Var)->None:
         """
@@ -1298,6 +1459,10 @@ class EmtProblemDae(EmtProblemTemplate):
 
         for rt in self.history_models:
             rt.update_history(self.step_counter, x_prev, full_params)
+
+        # Persist the updated runtime parameters so the next step sees them
+        n_runtime: int = self.get_variable_parameter_number()
+        self._event_params_values[:] = full_params[:n_runtime]
 
         self.step_counter += 1
 
