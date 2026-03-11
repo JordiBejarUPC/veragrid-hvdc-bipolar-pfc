@@ -1029,6 +1029,24 @@ class EmtProblemDae(EmtProblemTemplate):
             self.set_external_param(mdl, VarPowerFlowRefferenceType.Ipk, float(Ipk))
         else:
             pass
+
+        omega_base: float = 2.0 * np.pi * self.grid.fBase
+        if mdl.E(VarPowerFlowRefferenceType.d_v_N) is not None:
+            V_N = pf_results.voltage_N[bus_index]
+            d_v_N: float = -omega_base * np.sqrt(2.0) * np.imag(V_N)
+            self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
+        if mdl.E(VarPowerFlowRefferenceType.d_v_A) is not None:
+            V_A = pf_results.voltage_A[bus_index]
+            d_v_A: float = -omega_base * np.sqrt(2.0) * np.imag(V_A)
+            self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
+        if mdl.E(VarPowerFlowRefferenceType.d_v_B) is not None:
+            V_B = pf_results.voltage_B[bus_index]
+            d_v_B: float = -omega_base * np.sqrt(2.0) * np.imag(V_B)
+            self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
+        if mdl.E(VarPowerFlowRefferenceType.d_v_C) is not None:
+            V_C = pf_results.voltage_C[bus_index]
+            d_v_C: float = -omega_base * np.sqrt(2.0) * np.imag(V_C)
+            self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
     # ---------------------------------------------------------------------
     # UTILS
     # ---------------------------------------------------------------------

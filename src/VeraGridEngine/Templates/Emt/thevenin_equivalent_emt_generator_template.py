@@ -177,6 +177,10 @@ def get_generator_thevenin_rl_emt_template(
         VarPowerFlowRefferenceType.phi: phi,
         VarPowerFlowRefferenceType.Vpk: Vpk,
         VarPowerFlowRefferenceType.Ipk: Ipk,
+        VarPowerFlowRefferenceType.d_v_N: None,
+        VarPowerFlowRefferenceType.d_v_A: None,
+        VarPowerFlowRefferenceType.d_v_B: None,
+        VarPowerFlowRefferenceType.d_v_C: None,
     }
 
     # ----------------------------------------------------------------------------------
