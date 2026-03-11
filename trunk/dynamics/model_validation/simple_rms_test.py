@@ -91,7 +91,7 @@ def setup_rms_models_expanded(grid):
     print("\n1. Setting up Bus RMS models...")
     for i, bus in enumerate(grid.buses):
         initialize_bus_rms(bus, vf=grid.rms_var_factory)
-        print(f"   Bus {bus.name}: {[v.name for v in bus.rms_model.model.out_vars]}")
+        print(f"   Bus {bus.name}: {[v.name for v in bus.rms_model.out_vars]}")
     
     # Step 2: Generator RMS models
     print("\n2. Setting up Generator RMS models...")
@@ -102,8 +102,8 @@ def setup_rms_models_expanded(grid):
         
         bus = gen.bus
         print(f"   Connecting Gen {gen.name} to Bus {bus.name}...")
-        genrow_mdl.connect([genrow_mdl.in_vars[0]], [bus.rms_model.model.out_vars[0]])  # Vm
-        genrow_mdl.connect([genrow_mdl.in_vars[1]], [bus.rms_model.model.out_vars[1]])  # Va
+        genrow_mdl.connect([genrow_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])  # Vm
+        genrow_mdl.connect([genrow_mdl.in_vars[1]], [bus.rms_model.out_vars[1]])  # Va
         genrow_mdl.unify_blocks()
         
         big_gen = Block(children=[genrow_mdl])
@@ -128,7 +128,7 @@ def setup_rms_models_expanded(grid):
         
         bus = load.bus
         print(f"   Connecting Load {load.name} to Bus {bus.name}...")
-        load_mdl.connect([load_mdl.in_vars[0]], [bus.rms_model.model.out_vars[0]])  # Vm
+        load_mdl.connect([load_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])  # Vm
         load_mdl.unify_blocks()
         
         host.model = load_mdl
@@ -145,10 +145,10 @@ def setup_rms_models_expanded(grid):
         to_bus = line.bus_to
         print(f"   Connecting Line {line.name} ({from_bus.name} → {to_bus.name})...")
         
-        line_mdl.connect([line_mdl.in_vars[0]], [from_bus.rms_model.model.out_vars[0]])  # Vmf
-        line_mdl.connect([line_mdl.in_vars[1]], [from_bus.rms_model.model.out_vars[1]])  # Vaf
-        line_mdl.connect([line_mdl.in_vars[2]], [to_bus.rms_model.model.out_vars[0]])    # Vmt
-        line_mdl.connect([line_mdl.in_vars[3]], [to_bus.rms_model.model.out_vars[1]])    # Vat
+        line_mdl.connect([line_mdl.in_vars[0]], [from_bus.rms_model.out_vars[0]])  # Vmf
+        line_mdl.connect([line_mdl.in_vars[1]], [from_bus.rms_model.out_vars[1]])  # Vaf
+        line_mdl.connect([line_mdl.in_vars[2]], [to_bus.rms_model.out_vars[0]])    # Vmt
+        line_mdl.connect([line_mdl.in_vars[3]], [to_bus.rms_model.out_vars[1]])    # Vat
         line_mdl.unify_blocks()
         
         host.model = line_mdl

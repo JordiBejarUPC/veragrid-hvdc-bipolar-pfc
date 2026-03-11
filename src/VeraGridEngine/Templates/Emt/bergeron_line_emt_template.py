@@ -14,7 +14,7 @@ from VeraGridEngine.Devices.Branches.line import Line
 class BergeronLineEmtTemplate(EmtModelTemplate):
     """
     EMT Bergeron line template:
-      - ONLY builds the Block stored in line.emt_model.model
+      - ONLY builds the Block stored in line.emt_model
       - provides event_dict with Ih history parameters
       - NO runtime state, NO update_history here
     """

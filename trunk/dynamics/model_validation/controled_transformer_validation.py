@@ -229,16 +229,16 @@ else:
     
 genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.rms_var_factory).block)
 
-genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus3.rms_model.model.out_vars[0]])
+load_mdl.connect([load_mdl.in_vars[0]], [bus3.rms_model.out_vars[0]])
 
-line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]])
+line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]])
 
 # external mapping
 big_gen1 = Block(children=[genrow_mdl1])
@@ -303,10 +303,10 @@ plt.xlim([0, xlim])
 plt.grid(True)
 
 plt.subplot(2, 1, 2)
-Pf1 = find_name_in_block('Pf', trafo_1.rms_model.model)
-Qf1 = find_name_in_block('Qf', trafo_1.rms_model.model)
-Pf2 = find_name_in_block('Pf', trafo_2.rms_model.model)
-Qf2 = find_name_in_block('Qf', trafo_2.rms_model.model)
+Pf1 = find_name_in_block('Pf', trafo_1.rms_model)
+Qf1 = find_name_in_block('Qf', trafo_1.rms_model)
+Pf2 = find_name_in_block('Pf', trafo_2.rms_model)
+Qf2 = find_name_in_block('Qf', trafo_2.rms_model)
 
 plt.plot(t, y[:, problem.get_var_idx(Pf1)], label="Pf Trafo 1 (pu)")
 plt.plot(t, y[:, problem.get_var_idx(Qf1)], label="Qf Trafo 1 (pu)")

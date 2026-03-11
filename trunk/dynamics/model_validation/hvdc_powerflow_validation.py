@@ -117,8 +117,8 @@ def setup_rms_models(grid):
         genrow_mdl = template.block
         
         bus = gen.bus
-        genrow_mdl.connect([genrow_mdl.in_vars[0]], [bus.rms_model.model.out_vars[0]])
-        genrow_mdl.connect([genrow_mdl.in_vars[1]], [bus.rms_model.model.out_vars[1]])
+        genrow_mdl.connect([genrow_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])
+        genrow_mdl.connect([genrow_mdl.in_vars[1]], [bus.rms_model.out_vars[1]])
         genrow_mdl.unify_blocks()
         
         big_gen = Block(children=[genrow_mdl])
@@ -136,10 +136,10 @@ def setup_rms_models(grid):
         
         from_bus = line.bus_from
         to_bus = line.bus_to
-        line_mdl.connect([line_mdl.in_vars[0]], [from_bus.rms_model.model.out_vars[0]])
-        line_mdl.connect([line_mdl.in_vars[1]], [from_bus.rms_model.model.out_vars[1]])
-        line_mdl.connect([line_mdl.in_vars[2]], [to_bus.rms_model.model.out_vars[0]])
-        line_mdl.connect([line_mdl.in_vars[3]], [to_bus.rms_model.model.out_vars[1]])
+        line_mdl.connect([line_mdl.in_vars[0]], [from_bus.rms_model.out_vars[0]])
+        line_mdl.connect([line_mdl.in_vars[1]], [from_bus.rms_model.out_vars[1]])
+        line_mdl.connect([line_mdl.in_vars[2]], [to_bus.rms_model.out_vars[0]])
+        line_mdl.connect([line_mdl.in_vars[3]], [to_bus.rms_model.out_vars[1]])
         line_mdl.unify_blocks()
         
         host.model = line_mdl
@@ -156,7 +156,7 @@ def setup_rms_models(grid):
         load_mdl = load_template.block
         
         bus = load.bus
-        load_mdl.connect([load_mdl.in_vars[0]], [bus.rms_model.model.out_vars[0]])
+        load_mdl.connect([load_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])
         load_mdl.unify_blocks()
         
         host.model = load_mdl
@@ -166,13 +166,13 @@ def setup_rms_models(grid):
     nc = compile_numerical_circuit_at(circuit=grid)
     for hvdc_idx, hvdc in enumerate(grid.hvdc_lines):
         initialize_hvdc_rms(hvdc, hvdc_idx=hvdc_idx, vf=grid.rms_var_factory, nc=nc)
-        hvdc_mdl = hvdc.rms_model.model
+        hvdc_mdl = hvdc.rms_model
         from_bus = hvdc.bus_from
         to_bus = hvdc.bus_to
-        hvdc_mdl.connect([hvdc_mdl.in_vars[0]], [from_bus.rms_model.model.out_vars[0]])
-        hvdc_mdl.connect([hvdc_mdl.in_vars[1]], [from_bus.rms_model.model.out_vars[1]])
-        hvdc_mdl.connect([hvdc_mdl.in_vars[2]], [to_bus.rms_model.model.out_vars[0]])
-        hvdc_mdl.connect([hvdc_mdl.in_vars[3]], [to_bus.rms_model.model.out_vars[1]])
+        hvdc_mdl.connect([hvdc_mdl.in_vars[0]], [from_bus.rms_model.out_vars[0]])
+        hvdc_mdl.connect([hvdc_mdl.in_vars[1]], [from_bus.rms_model.out_vars[1]])
+        hvdc_mdl.connect([hvdc_mdl.in_vars[2]], [to_bus.rms_model.out_vars[0]])
+        hvdc_mdl.connect([hvdc_mdl.in_vars[3]], [to_bus.rms_model.out_vars[1]])
         hvdc_mdl.unify_blocks()
         print(f"    Added HVDC model: {hvdc.name}")
     

@@ -80,10 +80,10 @@ class TrafoRmsTemplate(RmsModelTemplate):
             print(f"vtap  t is {vtap_t}")
             print(f'ys is {ys} ysh is {ysh}')
 
-            Vmf = trafo.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-            Vaf = trafo.bus_from.rms_model.model.E(VarPowerFlowRefferenceType.Va)
-            Vmt = trafo.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-            Vat = trafo.bus_to.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+            Vmf = trafo.bus_from.rms_model.E(VarPowerFlowRefferenceType.Vm)
+            Vaf = trafo.bus_from.rms_model.E(VarPowerFlowRefferenceType.Va)
+            Vmt = trafo.bus_to.rms_model.E(VarPowerFlowRefferenceType.Vm)
+            Vat = trafo.bus_to.rms_model.E(VarPowerFlowRefferenceType.Va)
 
             # Calculate phase displacement matching transformer_admittance logic
             # Use conn attribute (preserves user intent) instead of conn_f/conn_t (may be overwritten by template)
@@ -236,4 +236,4 @@ def initialize_trafo_rms(trafo: Transformer2W, vf: VarFactory, Sbase: float = 10
     :param Sbase:
     :return:
     """
-    trafo.rms_model.model = TrafoRmsTemplate(vf=vf, trafo=trafo, Sbase=Sbase).block
+    trafo.rms_model = TrafoRmsTemplate(vf=vf, trafo=trafo, Sbase=Sbase).block

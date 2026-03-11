@@ -71,10 +71,10 @@ def initialize_emt(grid: MultiCircuit,
     for elm in grid.get_injection_devices_iter():
         # TODO resolve events
         elm.initialize_emt(emt_options.time_step, grid.Sbase)
-        if elm.emt_model.model.event_dict is not None:
+        if elm.emt_model.event_dict is not None:
             collect_events = {
                 key: {"times": [], "values": []}
-                for key in elm.emt_model.model.event_dict.keys()
+                for key in elm.emt_model.event_dict.keys()
             }
             # find out if there are events affecting the device parameters
             rms_evts = [rms_evt for rms_evt in rms_events if rms_evt.device_idtag == elm.idtag]
@@ -84,13 +84,13 @@ def initialize_emt(grid: MultiCircuit,
                     collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
                     # TODO: implement the function in block: apply_event
                 for param, events_info in collect_events.items():
-                    default_value = copy.deepcopy(elm.emt_model.model.event_dict[param])
-                    elm.emt_model.model.event_dict[param] = piecewise(time, np.array(events_info["times"]),
+                    default_value = copy.deepcopy(elm.emt_model.event_dict[param])
+                    elm.emt_model.event_dict[param] = piecewise(time, np.array(events_info["times"]),
                                                                       np.array(events_info["values"]), default_value)
-        for state_var in elm.emt_model.model.state_vars:
+        for state_var in elm.emt_model.state_vars:
             vars2device[state_var.uid] = elm
             vars_glob_name2uid[state_var.name + elm.name] = state_var.uid
-        for algeb_var in elm.emt_model.model.algebraic_vars:
+        for algeb_var in elm.emt_model.algebraic_vars:
             vars2device[algeb_var.uid] = elm
             vars_glob_name2uid[algeb_var.name + elm.name] = algeb_var.uid
 
@@ -254,7 +254,7 @@ def init_explicit_regions(grid: MultiCircuit,
     uid2idx_alterparams: Dict[int, int] = dict()
 
     # bus: only has alter_params to initialize.
-    mdl = bus.emt_model.model
+    mdl = bus.emt_model
     alterparam_array_index = 0
     for i in range(len(mdl.alter_params)):
         altparam = mdl.alter_params[i]
@@ -362,7 +362,7 @@ def init_explicit_regions(grid: MultiCircuit,
 
     for dev_type, dev_list in region.items():
         for elm in dev_list:
-            mdl = elm.emt_model.model
+            mdl = elm.emt_model
             # mdl.unify_blocks()
             mdl_vars = mdl.state_vars + mdl.algebraic_vars + mdl.diff_vars
 

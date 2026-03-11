@@ -31,7 +31,7 @@ grid.add_bus(bus1)
 
 gen1 = Generator(name="Gen1", P=160, vset=1.0, Sbase = 160, Snom = 160)
 gen1_template = get_generator_emt_template()
-gen1.emt_model.model = gen1_template.block
+gen1.emt_model = gen1_template.block
 
 grid.add_generator(bus=bus1, api_obj=gen1)
 

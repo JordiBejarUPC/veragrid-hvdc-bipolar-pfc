@@ -24,6 +24,7 @@ from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import (get_genqec
                                                                       get_stabilizer,
                                                                       get_exciter)
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
@@ -43,7 +44,7 @@ from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, ge
 from VeraGrid.Gui.RmsModelEditor.rms_model_editor import Ui_MainWindow
 from VeraGrid.Gui.messages import error_msg
 from VeraGridEngine.Utils.Symbolic.symbolic import symbolic_to_string, Expr, Var, Const
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import BlockDiagram, DynamicModelHost
+from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, BlockType
 
 
@@ -410,7 +411,7 @@ class ModelHostItem(QGraphicsRectItem):
 
     def __init__(self,
                  var_factory: VarFactory,
-                 model_host_sys: DynamicModelHost,
+                 block_sys: Block,
                  api_object_name,
                  api_object,
                  templates_list,
@@ -418,7 +419,7 @@ class ModelHostItem(QGraphicsRectItem):
         """
 
         :param var_factory:
-        :param model_host_sys:
+        :param block_sys:
         :param api_object_name:
         :param api_object:
         :param templates_list:
@@ -430,7 +431,7 @@ class ModelHostItem(QGraphicsRectItem):
         # API
         # ------------------------
         self.var_factory = var_factory
-        self.model_host = model_host_sys
+        self.model_host = block_sys
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle = False
         self.api_object_name = api_object_name
@@ -1293,11 +1294,11 @@ class TemplateEditor(QtWidgets.QWidget):
         self.selected_block = Block()
         if self.api_object is not None:
             if selected_template.tpe == DeviceType.GeneratorDevice:
-                if self.api_object.bus.rms_model.model.empty():
+                if self.api_object.bus.rms_model.empty():
                     initialize_bus_rms(self.api_object.bus, self.var_factory)
                 self.selected_block = selected_template.block.deep_copy()
 
-                Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model.model)
+                Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
                 # substitute variables in block equations
                 self.selected_block.update_model(
                     self.selected_block.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
@@ -1305,11 +1306,11 @@ class TemplateEditor(QtWidgets.QWidget):
                     self.selected_block.external_mapping[VarPowerFlowRefferenceType.Va], Va)
 
             if selected_template.tpe == DeviceType.LoadDevice:
-                if self.api_object.bus.rms_model.model.empty():
+                if self.api_object.bus.rms_model.empty():
                     initialize_bus_rms(self.api_object.bus, self.var_factory)
                 self.selected_block = selected_template.block.deep_copy()
 
-                Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model.model)
+                Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
                 # substitute variables in block equations
                 self.selected_block.update_model(
                     self.selected_block.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
@@ -1318,16 +1319,16 @@ class TemplateEditor(QtWidgets.QWidget):
 
             if selected_template.tpe == DeviceType.LineDevice:
                 # bus connection variables
-                if self.api_object.bus_from.rms_model.model.empty():
+                if self.api_object.bus_from.rms_model.empty():
                     initialize_bus_rms(self.api_object.bus_from, self.var_factory)
                 self.selected_block = selected_template.block.deep_copy()
 
-                Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model.model)
+                Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
 
-                if self.api_object.bus_to.rms_model.model.empty():
+                if self.api_object.bus_to.rms_model.empty():
                     initialize_bus_rms(self.api_object.bus_to, self.var_factory)
 
-                Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model.model)
+                Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
 
                 self.selected_block.update_model(
                     self.selected_block.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
@@ -1557,10 +1558,10 @@ class BlockBoxesEditor(QSplitter):
             name = "Conn From"
             bus_from_con_item = BlockItem(var_factory=self.var_factory, name=name)
 
-            if self.api_object.bus_from.rms_model.model.empty():
+            if self.api_object.bus_from.rms_model.empty():
                 initialize_bus_rms(self.api_object.bus_from, self.var_factory)
 
-            Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model.model)
+            Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
 
             bus_from_con_blk = Block(
                 algebraic_vars=[Vmf, Vaf],
@@ -1596,10 +1597,10 @@ class BlockBoxesEditor(QSplitter):
 
             bus_to_con_item = BlockItem(var_factory=self.var_factory, name=name)
 
-            if self.api_object.bus_to.rms_model.model.empty():
+            if self.api_object.bus_to.rms_model.empty():
                 initialize_bus_rms(self.api_object.bus_to, self.var_factory)
 
-            Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model.model)
+            Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
 
             bus_to_con_blk = Block(
                 algebraic_vars=[Vmt, Vat],
@@ -1636,10 +1637,10 @@ class BlockBoxesEditor(QSplitter):
             name = "Conn Bus"
 
             bus_con_item = BlockItem(var_factory=self.var_factory, name=name)
-            if self.api_object.bus.rms_model.model.empty():
+            if self.api_object.bus.rms_model.empty():
                 initialize_bus_rms(self.api_object.bus, self.var_factory)
 
-            Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model.model)
+            Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
 
             bus_con_blk = Block(
                 out_vars=[Vm, Va],
@@ -1962,7 +1963,7 @@ class BlockBoxesEditor(QSplitter):
                 self.main_block.add(model_host.model)
                 item = ModelHostItem(
                     var_factory=self.var_factory,
-                    model_host_sys=model_host,
+                    block_sys=model_host,
                     api_object_name=self.api_object_name,
                     templates_list=self.templates_list,
                     templates_catalogue=self.templates_catalogue,
@@ -2040,7 +2041,7 @@ class BlockBoxesEditor(QSplitter):
                 model_host.diagram = node.sub_diagram
                 item = ModelHostItem(
                     var_factory=self.var_factory,
-                    model_host_sys=model_host,
+                    block_sys=model_host,
                     api_object_name=node.api_object_name,
                     api_object=self.api_object,
                     templates_list=self.templates_list,
@@ -2236,7 +2237,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
                  templates_list,
                  templates_catalogue,
                  api_object_name,
-                 api_object=None,
+                 api_object: ALL_DEV_TYPES | None = None,
                  main_editor=False,
                  parent=None):
         """
@@ -2280,20 +2281,20 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
         # --- templates editor layout ---
         self.template_editor = TemplateEditor(self.var_factory,
-            self.templates_list, self.templates_catalogue,
-            self.api_object
-        )
+                                              self.templates_list, self.templates_catalogue,
+                                              self.api_object
+                                              )
         # self.ui.templatesLayout.addWidget(self.template_editor)
 
         # --- block boxes editor layout ---
         self.blockboxes_editor = BlockBoxesEditor(self.var_factory,
-            api_object_name=self.api_object_name,
-            block=self.model_host.model,  # .copy(),
-            diagram=self.model_host.diagram,  # .copy(),
-            templates_list=self.templates_list,
-            templates_catalogue=self.templates_catalogue,
-            api_object=self.api_object
-        )
+                                                  api_object_name=self.api_object_name,
+                                                  block=self.model_host.model,  # .copy(),
+                                                  diagram=self.model_host.diagram,  # .copy(),
+                                                  templates_list=self.templates_list,
+                                                  templates_catalogue=self.templates_catalogue,
+                                                  api_object=self.api_object
+                                                  )
 
         # _____ Add user init guess dialog ______
 

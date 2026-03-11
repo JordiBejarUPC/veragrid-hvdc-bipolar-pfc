@@ -1635,7 +1635,7 @@ class MultiCircuit(Assets):
             bus_block = Block(children=[], in_vars=[])
             for dev_type, dev_list in region.items():
                 for elm in dev_list:
-                    elm_mdl = elm.rms_model.model
+                    elm_mdl = elm.rms_model
                     bus_block.add(elm_mdl)
             syst_blocks[bus] = bus_block
 
@@ -3240,18 +3240,18 @@ class MultiCircuit(Assets):
         """
         logger = Logger()
         for elm in self.buses:
-            if elm.rms_model.model.empty():
+            if elm.rms_model.empty():
                 logger.add_error("Missing RMS model",
                                  device_class=elm.device_type.value,
                                  device=elm.name)
 
         for elm in self.get_branches_iter():
-            if elm.rms_model.model.empty():
+            if elm.rms_model.empty():
                 logger.add_error("Missing RMS model",
                                  device_class=elm.device_type.value,
                                  device=elm.name)
         for elm in self.get_injection_devices_iter():
-            if elm.rms_model.model.empty():
+            if elm.rms_model.empty():
                 logger.add_error("Missing RMS model",
                                  device_class=elm.device_type.value,
                                  device=elm.name)

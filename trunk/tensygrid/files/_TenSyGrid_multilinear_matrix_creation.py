@@ -108,19 +108,19 @@ genqec1_mdl = get_complete_generator_template(grid.var_factory).block
 
 # connection with buses
 
-genqec1_mdl.connect([genqec1_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
-genqec1_mdl.connect([genqec1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
+genqec1_mdl.connect([genqec1_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+genqec1_mdl.connect([genqec1_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
+line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-line0_mdl.connect([line0_mdl.in_vars[2]], [bus1.rms_model.model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[3]], [bus1.rms_model.model.out_vars[1]])
+line0_mdl.connect([line0_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
+line0_mdl.connect([line0_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
 
 u_gov = find_name_in_block("u_gov1", genqec1_mdl)
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
 # external mapping
 big_gen1 = Block(children=[genqec1_mdl])

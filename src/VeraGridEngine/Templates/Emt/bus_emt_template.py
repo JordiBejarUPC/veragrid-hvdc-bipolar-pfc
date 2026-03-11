@@ -94,7 +94,7 @@ def get_bus_emt_template(grid: MultiCircuit,
             mask[3] |= bool(branch.ys.phC)
 
     # choose template depending on the number of phases
-    bus.emt_model.model = BusEmtTemplateNABC(vf=vf, mask = mask, name = f"{bus.name}_emt_template").block
+    bus.emt_model = BusEmtTemplateNABC(vf=vf, mask = mask, name = f"{bus.name}_emt_template").block
 
 
 

@@ -215,7 +215,7 @@ gen_dynhost = DynamicModelHost()
 line12_mdl = (get_line_rms_template(grid.rms_var_factory).block)
 line13_mdl = (get_line_rms_template(grid.rms_var_factory).block)
 initialize_trafo_rms(trafo_1, grid.rms_var_factory, Sbase=grid.Sbase)
-trafo_mdl = trafo_1.rms_model.model
+trafo_mdl = trafo_1.rms_model
 load_type = 'zip'
 if load_type == 'zip':
     load_mdl = (ZIPLoadBuild(grid.rms_var_factory, Pl0 =-0.1, Ql0 =-0.02).block) # Match load 10MW (0.1 pu)
@@ -224,28 +224,28 @@ else:
 
 genrow_mdl1 = (get_complete_generator_template(grid.rms_var_factory).block)
 
-genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus3.rms_model.model.out_vars[0]])
+load_mdl.connect([load_mdl.in_vars[0]], [bus3.rms_model.out_vars[0]])
 
-line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]])
+line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]])
 
-line13_mdl.connect([line13_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-line13_mdl.connect([line13_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+line13_mdl.connect([line13_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+line13_mdl.connect([line13_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-line13_mdl.connect([line13_mdl.in_vars[2]], [bus3.rms_model.model.out_vars[0]])
-line13_mdl.connect([line13_mdl.in_vars[3]], [bus3.rms_model.model.out_vars[1]])
+line13_mdl.connect([line13_mdl.in_vars[2]], [bus3.rms_model.out_vars[0]])
+line13_mdl.connect([line13_mdl.in_vars[3]], [bus3.rms_model.out_vars[1]])
 
-trafo_mdl.connect([trafo_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
-trafo_mdl.connect([trafo_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
+trafo_mdl.connect([trafo_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
+trafo_mdl.connect([trafo_mdl.in_vars[1]], [bus2.rms_model.out_vars[1]])
 
-trafo_mdl.connect([trafo_mdl.in_vars[2]], [bus3.rms_model.model.out_vars[0]])
-trafo_mdl.connect([trafo_mdl.in_vars[3]], [bus3.rms_model.model.out_vars[1]])
+trafo_mdl.connect([trafo_mdl.in_vars[2]], [bus3.rms_model.out_vars[0]])
+trafo_mdl.connect([trafo_mdl.in_vars[3]], [bus3.rms_model.out_vars[1]])
 
 # external mapping
 big_gen1 = Block(children=[genrow_mdl1])
@@ -312,8 +312,8 @@ plt.xlim([0, xlim])
 plt.grid(True)
 
 plt.subplot(2, 1, 2)
-Pf1 = find_name_in_block('Pf', trafo_1.rms_model.model)
-Qf1 = find_name_in_block('Qf', trafo_1.rms_model.model)
+Pf1 = find_name_in_block('Pf', trafo_1.rms_model)
+Qf1 = find_name_in_block('Qf', trafo_1.rms_model)
 
 plt.plot(t, y[:, problem.get_var_idx(Pf1)], label="Pf Trafo 1 (pu)")
 plt.plot(t, y[:, problem.get_var_idx(Qf1)], label="Qf Trafo 1 (pu)")

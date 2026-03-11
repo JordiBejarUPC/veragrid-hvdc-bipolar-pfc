@@ -8,6 +8,7 @@ from __future__ import annotations
 import uuid
 from typing import List, Dict
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr
+from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 
 
@@ -110,6 +111,28 @@ class Block:
         # this is the dictionary of "parameters" that may change and their equations
         self.event_dict: Dict[Var, Expr | Const] = dict() if event_dict is None else event_dict
         self.mode_dict: Dict[Var, Expr | Const] = dict() if mode_dict is None else mode_dict
+
+        self._diagram: BlockDiagram = BlockDiagram()
+
+    @property
+    def diagram(self) -> BlockDiagram:
+        """
+
+        :return:
+        """
+        return self._diagram
+
+    @diagram.setter
+    def diagram(self, val: BlockDiagram | Dict[str, Any]):
+
+        if isinstance(val, BlockDiagram):
+            self._diagram = val
+        elif isinstance(val, dict):
+            diagram = BlockDiagram()
+
+            self._diagram = diagram
+        else:
+            raise ValueError(f"Cannot set diagram with {val}")
 
     def to_dict(self) -> dict:
         return {

@@ -177,8 +177,8 @@ class RmsProblemComplex(RmsProblemTemplate):
             initialize_bus_complex_rms(bus=elm, vf=grid.rms_var_factory)
 
             # Flatten model
-            elm.rms_model.model.unify_blocks()
-            mdl = block_deep_copy(elm.rms_model.model, grid.rms_var_factory)
+            elm.rms_model.unify_blocks()
+            mdl = block_deep_copy(elm.rms_model, grid.rms_var_factory)
 
             self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -217,35 +217,35 @@ class RmsProblemComplex(RmsProblemTemplate):
                 if elm.rms_model is None:
                     elm.rms_model = DynamicModelHost()
                 
-                elm.rms_model.model = get_line_complex_rms_template(
+                elm.rms_model = get_line_complex_rms_template(
                     vfactory=grid.rms_var_factory,
                     name=f"Line_complex_{elm.name}"
                 ).block
                 
                 # Connect line inputs to bus outputs (complex voltages)
-                bus_from_model = elm.bus_from.rms_model.model
-                bus_to_model = elm.bus_to.rms_model.model
+                bus_from_model = elm.bus_from.rms_model
+                bus_to_model = elm.bus_to.rms_model
                 
                 # Connect: line.in_vars[0:3] -> [Vrf, Vif, Vrt, Vit]
-                elm.rms_model.model.connect(
-                    [elm.rms_model.model.in_vars[0]], 
+                elm.rms_model.connect(
+                    [elm.rms_model.in_vars[0]], 
                     [bus_from_model.out_vars[0]]  # Vrf -> bus.Vr
                 )
-                elm.rms_model.model.connect(
-                    [elm.rms_model.model.in_vars[1]], 
+                elm.rms_model.connect(
+                    [elm.rms_model.in_vars[1]], 
                     [bus_from_model.out_vars[1]]  # Vif -> bus.Vi
                 )
-                elm.rms_model.model.connect(
-                    [elm.rms_model.model.in_vars[2]], 
+                elm.rms_model.connect(
+                    [elm.rms_model.in_vars[2]], 
                     [bus_to_model.out_vars[0]]    # Vrt -> bus.Vr
                 )
-                elm.rms_model.model.connect(
-                    [elm.rms_model.model.in_vars[3]], 
+                elm.rms_model.connect(
+                    [elm.rms_model.in_vars[3]], 
                     [bus_to_model.out_vars[1]]    # Vit -> bus.Vi
                 )
                 
-                elm.rms_model.model.unify_blocks()
-                mdl = elm.rms_model.model
+                elm.rms_model.unify_blocks()
+                mdl = elm.rms_model
                 
                 # Set line parameters
                 mdl.parameters[mdl.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(float(elm.R / (elm.R ** 2 + elm.X ** 2)))
@@ -275,15 +275,15 @@ class RmsProblemComplex(RmsProblemTemplate):
                 if not elm.bus_to.is_dc:
                     setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
                     
-            elif elm.rms_model is None or elm.rms_model.model.empty():
+            elif elm.rms_model is None or elm.rms_model.empty():
                 self.logger.add_error("No RMS model",
                                      device_class=elm.device_type.value,
                                      device=elm.name)
                 continue
             else:
                 # Non-line branches (VSC, HVDC, etc.) - use existing model
-                elm.rms_model.model.unify_blocks()
-                mdl = elm.rms_model.model
+                elm.rms_model.unify_blocks()
+                mdl = elm.rms_model
 
                 self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -316,10 +316,10 @@ class RmsProblemComplex(RmsProblemTemplate):
 
         # Process VSCs
         for i, elm in enumerate(self.grid.get_vsc()):
-            if elm.rms_model is None or elm.rms_model.model is None or elm.rms_model.model.empty():
+            if elm.rms_model is None or elm.rms_model is None or elm.rms_model.empty():
                 self.logger.add_warning(f"VSC {elm.name} has no RMS model, skipping initialization")
                 continue
-            mdl = elm.rms_model.model
+            mdl = elm.rms_model
             mdl.unify_blocks()
             self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -335,7 +335,7 @@ class RmsProblemComplex(RmsProblemTemplate):
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qt, St_vsc[i].imag)
 
             # Initialize Vdc from DC bus
-            dc_bus_model = elm.bus_from.rms_model.model
+            dc_bus_model = elm.bus_from.rms_model
             if VarPowerFlowRefferenceType.Vdc in mdl.external_mapping and VarPowerFlowRefferenceType.Vdc in dc_bus_model.external_mapping:
                 dc_bus_vdc_var = dc_bus_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
                 if dc_bus_vdc_var.uid in self.init_guess:
@@ -345,15 +345,15 @@ class RmsProblemComplex(RmsProblemTemplate):
 
         # Process injections
         for elm in self.grid.get_injection_devices_iter():
-            if elm.rms_model.model.empty():
+            if elm.rms_model.empty():
                 self.logger.add_error("No RMS model",
                                      device_class=elm.device_type.value,
                                      device=elm.name)
             else:
                 bus_index = bus_dict[elm.bus]
 
-                elm.rms_model.model.unify_blocks()
-                mdl = block_deep_copy(elm.rms_model.model, self.grid.rms_var_factory)
+                elm.rms_model.unify_blocks()
+                mdl = block_deep_copy(elm.rms_model, self.grid.rms_var_factory)
 
                 self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -404,7 +404,7 @@ class RmsProblemComplex(RmsProblemTemplate):
                             collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
                             collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
                         for param, events_info in collect_events.items():
-                            default_value = elm.rms_model.model.event_dict[param]
+                            default_value = elm.rms_model.event_dict[param]
                             if isinstance(default_value, Const) and default_value.value is None:
                                 default_value = Const(0.0)
                             elif default_value is None:
@@ -420,7 +420,7 @@ class RmsProblemComplex(RmsProblemTemplate):
 
         # Add the nodal balance equations
         for i, elm in enumerate(self.grid.buses):
-            mdl = block_deep_copy(elm.rms_model.model, grid.rms_var_factory)
+            mdl = block_deep_copy(elm.rms_model, grid.rms_var_factory)
             if len(mdl.algebraic_eqs) == 0:
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)

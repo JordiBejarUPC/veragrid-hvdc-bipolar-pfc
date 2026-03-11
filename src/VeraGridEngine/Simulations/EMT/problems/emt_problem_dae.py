@@ -394,7 +394,7 @@ class EmtProblemDae(EmtProblemTemplate):
         :param glob_time: Global time variable.
         :return: The unified device block.
         """
-        mdl = dev.emt_model.model
+        mdl = dev.emt_model
         mdl.unify_blocks()
 
         self._apply_piecewise_events_if_any(dev=dev, mdl=mdl, grid=grid, glob_time=glob_time)
@@ -505,9 +505,9 @@ class EmtProblemDae(EmtProblemTemplate):
 
             if is_bergeron:
                 # Build voltage lists from bus blocks: [vN,vA,vB,vC], missing -> Const(0)
-                v_f_vars: List[Any] = _get_bus_v_list(grid=self.grid, bus_block=br.bus_from.emt_model.model,
+                v_f_vars: List[Any] = _get_bus_v_list(grid=self.grid, bus_block=br.bus_from.emt_model,
                                                       ph_v_keys=ph_v_keys)
-                v_t_vars: List[Any] = _get_bus_v_list(grid=self.grid, bus_block=br.bus_to.emt_model.model,
+                v_t_vars: List[Any] = _get_bus_v_list(grid=self.grid, bus_block=br.bus_to.emt_model,
                                                       ph_v_keys=ph_v_keys)
 
                 # Create runtime companion that owns buffers + update_history
@@ -600,7 +600,7 @@ class EmtProblemDae(EmtProblemTemplate):
         # -------------------------
         # The accumulated KCL for each phase is assigned as the algebraic equation for the respective bus voltage
         for bus_idx, bus in enumerate(grid.buses):
-            mdl: Block = bus.emt_model.model
+            mdl: Block = bus.emt_model
 
             # EMT: bus equations must be KCL per existing phase.
             mdl.algebraic_eqs = list()

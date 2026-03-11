@@ -635,4 +635,4 @@ class Generator(GeneratorParent):
     #
     #     if self._rms_model.empty():
     #         generator_template = get_complete_generator_template(var_factory)
-    #         self.rms_model.model = generator_template.block
+    #         self.rms_model = generator_template.block

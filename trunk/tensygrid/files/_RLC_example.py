@@ -122,20 +122,20 @@ load_mdl = get_load_rms_template(grid.rms_var_factory).block
 # -----------------------------
 line_mdl.connect(
     [line_mdl.in_vars[0]],
-    [bus_src.rms_model.model.out_vars[0]],
+    [bus_src.rms_model.out_vars[0]],
 )
 line_mdl.connect(
     [line_mdl.in_vars[1]],
-    [bus_src.rms_model.model.out_vars[1]],
+    [bus_src.rms_model.out_vars[1]],
 )
 
 line_mdl.connect(
     [line_mdl.in_vars[2]],
-    [bus_rlc.rms_model.model.out_vars[0]],
+    [bus_rlc.rms_model.out_vars[0]],
 )
 line_mdl.connect(
     [line_mdl.in_vars[3]],
-    [bus_rlc.rms_model.model.out_vars[1]],
+    [bus_rlc.rms_model.out_vars[1]],
 )
 
 # -----------------------------
@@ -143,11 +143,11 @@ line_mdl.connect(
 # -----------------------------
 load_mdl.connect(
     [load_mdl.in_vars[0]],
-    [bus_rlc.rms_model.model.out_vars[0]],
+    [bus_rlc.rms_model.out_vars[0]],
 )
 load_mdl.connect(
     [load_mdl.in_vars[1]],
-    [bus_rlc.rms_model.model.out_vars[1]],
+    [bus_rlc.rms_model.out_vars[1]],
 )
 
 # Attach models
