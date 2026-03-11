@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1255</width>
+    <width>1208</width>
     <height>772</height>
    </rect>
   </property>
@@ -81,44 +81,7 @@
        <enum>QFrame::Shadow::Raised</enum>
       </property>
       <layout class="QGridLayout" name="gridLayout_7">
-       <item row="2" column="3">
-        <widget class="QLabel" name="progress_label">
-         <property name="font">
-          <font>
-           <pointsize>10</pointsize>
-          </font>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="3">
-        <widget class="QProgressBar" name="progressBar">
-         <property name="font">
-          <font>
-           <pointsize>10</pointsize>
-          </font>
-         </property>
-         <property name="styleSheet">
-          <string notr="true">QProgressBar {
-	border: 1px solid rgb(186, 189, 182);
-    border-radius: 5px;
-	text-align: center;
-}
-QProgressBar::chunk{
-	background-color: rgb(0, 180, 136)
-}</string>
-         </property>
-         <property name="value">
-          <number>20</number>
-         </property>
-         <property name="invertedAppearance">
-          <bool>false</bool>
-         </property>
-        </widget>
-       </item>
-       <item row="5" column="0">
+       <item row="6" column="0">
         <widget class="QPushButton" name="cancelButton">
          <property name="minimumSize">
           <size>
@@ -140,6 +103,43 @@ QProgressBar::chunk{
          <property name="icon">
           <iconset resource="../Icons/icons.qrc">
            <normaloff>:/Icons/icons/delete.png</normaloff>:/Icons/icons/delete.png</iconset>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="3">
+        <widget class="QLabel" name="progress_label">
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item row="6" column="3">
+        <widget class="QProgressBar" name="progressBar">
+         <property name="font">
+          <font>
+           <pointsize>10</pointsize>
+          </font>
+         </property>
+         <property name="styleSheet">
+          <string notr="true">QProgressBar {
+	border: 1px solid rgb(186, 189, 182);
+    border-radius: 5px;
+	text-align: center;
+}
+QProgressBar::chunk{
+	background-color: rgb(0, 180, 136)
+}</string>
+         </property>
+         <property name="value">
+          <number>20</number>
+         </property>
+         <property name="invertedAppearance">
+          <bool>false</bool>
          </property>
         </widget>
        </item>
@@ -2215,7 +2215,7 @@ QProgressBar::chunk{
           <property name="frameShadow">
            <enum>QFrame::Shadow::Raised</enum>
           </property>
-          <layout class="QVBoxLayout" name="verticalLayout_28">
+          <layout class="QVBoxLayout" name="verticalLayout_45">
            <property name="leftMargin">
             <number>0</number>
            </property>
@@ -2233,126 +2233,178 @@ QProgressBar::chunk{
              <property name="orientation">
               <enum>Qt::Orientation::Horizontal</enum>
              </property>
-             <widget class="QSplitter" name="splitter">
-              <property name="orientation">
-               <enum>Qt::Orientation::Vertical</enum>
+             <widget class="QTabWidget" name="tabWidget_3">
+              <property name="minimumSize">
+               <size>
+                <width>240</width>
+                <height>0</height>
+               </size>
               </property>
-              <widget class="QFrame" name="frame_61">
-               <property name="frameShape">
-                <enum>QFrame::Shape::NoFrame</enum>
+              <property name="toolTip">
+               <string/>
+              </property>
+              <property name="tabPosition">
+               <enum>QTabWidget::TabPosition::South</enum>
+              </property>
+              <property name="currentIndex">
+               <number>0</number>
+              </property>
+              <property name="documentMode">
+               <bool>true</bool>
+              </property>
+              <property name="tabsClosable">
+               <bool>false</bool>
+              </property>
+              <property name="movable">
+               <bool>false</bool>
+              </property>
+              <property name="tabBarAutoHide">
+               <bool>true</bool>
+              </property>
+              <widget class="QWidget" name="tab_8">
+               <property name="toolTip">
+                <string>List of current reults</string>
                </property>
-               <property name="frameShadow">
-                <enum>QFrame::Shadow::Raised</enum>
-               </property>
-               <layout class="QVBoxLayout" name="verticalLayout_10">
+               <attribute name="icon">
+                <iconset resource="../Icons/icons.qrc">
+                 <normaloff>:/Icons/icons/data.png</normaloff>:/Icons/icons/data.png</iconset>
+               </attribute>
+               <attribute name="title">
+                <string>Results</string>
+               </attribute>
+               <layout class="QVBoxLayout" name="verticalLayout_28">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
                 <property name="topMargin">
-                 <number>6</number>
+                 <number>0</number>
                 </property>
                 <property name="rightMargin">
+                 <number>6</number>
+                </property>
+                <property name="bottomMargin">
                  <number>0</number>
                 </property>
                 <item>
-                 <widget class="QTreeView" name="results_treeView">
-                  <property name="animated">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QFrame" name="frame_62">
+                 <widget class="QFrame" name="frame_61">
                   <property name="frameShape">
                    <enum>QFrame::Shape::NoFrame</enum>
                   </property>
                   <property name="frameShadow">
                    <enum>QFrame::Shadow::Raised</enum>
                   </property>
-                  <layout class="QHBoxLayout" name="horizontalLayout_34">
-                   <property name="leftMargin">
-                    <number>0</number>
-                   </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_10">
                    <property name="topMargin">
-                    <number>0</number>
+                    <number>6</number>
                    </property>
                    <property name="rightMargin">
                     <number>0</number>
                    </property>
-                   <property name="bottomMargin">
-                    <number>1</number>
-                   </property>
                    <item>
-                    <widget class="QLabel" name="label_16">
-                     <property name="minimumSize">
-                      <size>
-                       <width>0</width>
-                       <height>24</height>
-                      </size>
+                    <widget class="QFrame" name="frame_62">
+                     <property name="frameShape">
+                      <enum>QFrame::Shape::NoFrame</enum>
                      </property>
-                     <property name="palette">
-                      <palette>
-                       <active>
-                        <colorrole role="WindowText">
-                         <brush brushstyle="SolidPattern">
-                          <color alpha="255">
-                           <red>119</red>
-                           <green>118</green>
-                           <blue>123</blue>
-                          </color>
-                         </brush>
-                        </colorrole>
-                       </active>
-                       <inactive>
-                        <colorrole role="WindowText">
-                         <brush brushstyle="SolidPattern">
-                          <color alpha="255">
-                           <red>119</red>
-                           <green>118</green>
-                           <blue>123</blue>
-                          </color>
-                         </brush>
-                        </colorrole>
-                       </inactive>
-                       <disabled>
-                        <colorrole role="WindowText">
-                         <brush brushstyle="SolidPattern">
-                          <color alpha="255">
-                           <red>190</red>
-                           <green>190</green>
-                           <blue>190</blue>
-                          </color>
-                         </brush>
-                        </colorrole>
-                       </disabled>
-                      </palette>
+                     <property name="frameShadow">
+                      <enum>QFrame::Shadow::Raised</enum>
                      </property>
-                     <property name="text">
-                      <string>Session results</string>
-                     </property>
+                     <layout class="QHBoxLayout" name="horizontalLayout_34">
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>1</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="label_16">
+                        <property name="minimumSize">
+                         <size>
+                          <width>0</width>
+                          <height>24</height>
+                         </size>
+                        </property>
+                        <property name="palette">
+                         <palette>
+                          <active>
+                           <colorrole role="WindowText">
+                            <brush brushstyle="SolidPattern">
+                             <color alpha="255">
+                              <red>119</red>
+                              <green>118</green>
+                              <blue>123</blue>
+                             </color>
+                            </brush>
+                           </colorrole>
+                          </active>
+                          <inactive>
+                           <colorrole role="WindowText">
+                            <brush brushstyle="SolidPattern">
+                             <color alpha="255">
+                              <red>119</red>
+                              <green>118</green>
+                              <blue>123</blue>
+                             </color>
+                            </brush>
+                           </colorrole>
+                          </inactive>
+                          <disabled>
+                           <colorrole role="WindowText">
+                            <brush brushstyle="SolidPattern">
+                             <color alpha="255">
+                              <red>190</red>
+                              <green>190</green>
+                              <blue>190</blue>
+                             </color>
+                            </brush>
+                           </colorrole>
+                          </disabled>
+                         </palette>
+                        </property>
+                        <property name="text">
+                         <string>Session results</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <spacer name="horizontalSpacer_22">
+                        <property name="orientation">
+                         <enum>Qt::Orientation::Horizontal</enum>
+                        </property>
+                        <property name="sizeHint" stdset="0">
+                         <size>
+                          <width>40</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="deleteDriverButton">
+                        <property name="toolTip">
+                         <string>Delete selected driver</string>
+                        </property>
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="icon">
+                         <iconset resource="../Icons/icons.qrc">
+                          <normaloff>:/Icons/icons/minus.png</normaloff>:/Icons/icons/minus.png</iconset>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
                     </widget>
                    </item>
                    <item>
-                    <spacer name="horizontalSpacer_22">
-                     <property name="orientation">
-                      <enum>Qt::Orientation::Horizontal</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>40</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                    </spacer>
-                   </item>
-                   <item>
-                    <widget class="QPushButton" name="deleteDriverButton">
-                     <property name="toolTip">
-                      <string>Delete selected driver</string>
-                     </property>
-                     <property name="text">
-                      <string/>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../Icons/icons.qrc">
-                       <normaloff>:/Icons/icons/minus.png</normaloff>:/Icons/icons/minus.png</iconset>
+                    <widget class="QTreeView" name="results_treeView">
+                     <property name="animated">
+                      <bool>true</bool>
                      </property>
                     </widget>
                    </item>
@@ -2361,113 +2413,141 @@ QProgressBar::chunk{
                 </item>
                </layout>
               </widget>
-              <widget class="QFrame" name="frame_14">
-               <property name="frameShape">
-                <enum>QFrame::Shape::NoFrame</enum>
+              <widget class="QWidget" name="tab_12">
+               <property name="toolTip">
+                <string>Saved sessions on the disk file</string>
                </property>
-               <property name="frameShadow">
-                <enum>QFrame::Shadow::Raised</enum>
-               </property>
-               <layout class="QVBoxLayout" name="verticalLayout_6">
+               <attribute name="icon">
+                <iconset resource="../Icons/icons.qrc">
+                 <normaloff>:/Icons/icons/load.png</normaloff>:/Icons/icons/load.png</iconset>
+               </attribute>
+               <attribute name="title">
+                <string>Saved</string>
+               </attribute>
+               <layout class="QVBoxLayout" name="verticalLayout_44">
+                <property name="leftMargin">
+                 <number>0</number>
+                </property>
+                <property name="topMargin">
+                 <number>0</number>
+                </property>
                 <property name="rightMargin">
+                 <number>6</number>
+                </property>
+                <property name="bottomMargin">
                  <number>0</number>
                 </property>
                 <item>
-                 <widget class="QTreeView" name="diskSessionsTreeView">
-                  <property name="animated">
-                   <bool>true</bool>
-                  </property>
-                 </widget>
-                </item>
-                <item>
-                 <widget class="QFrame" name="frame_60">
+                 <widget class="QFrame" name="frame_14">
                   <property name="frameShape">
                    <enum>QFrame::Shape::NoFrame</enum>
                   </property>
                   <property name="frameShadow">
                    <enum>QFrame::Shadow::Raised</enum>
                   </property>
-                  <layout class="QHBoxLayout" name="horizontalLayout_33">
-                   <property name="leftMargin">
-                    <number>0</number>
-                   </property>
-                   <property name="topMargin">
-                    <number>0</number>
-                   </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_6">
                    <property name="rightMargin">
                     <number>0</number>
                    </property>
-                   <property name="bottomMargin">
-                    <number>0</number>
-                   </property>
                    <item>
-                    <widget class="QLabel" name="label_37">
-                     <property name="palette">
-                      <palette>
-                       <active>
-                        <colorrole role="WindowText">
-                         <brush brushstyle="SolidPattern">
-                          <color alpha="255">
-                           <red>119</red>
-                           <green>118</green>
-                           <blue>123</blue>
-                          </color>
-                         </brush>
-                        </colorrole>
-                       </active>
-                       <inactive>
-                        <colorrole role="WindowText">
-                         <brush brushstyle="SolidPattern">
-                          <color alpha="255">
-                           <red>119</red>
-                           <green>118</green>
-                           <blue>123</blue>
-                          </color>
-                         </brush>
-                        </colorrole>
-                       </inactive>
-                       <disabled>
-                        <colorrole role="WindowText">
-                         <brush brushstyle="SolidPattern">
-                          <color alpha="255">
-                           <red>190</red>
-                           <green>190</green>
-                           <blue>190</blue>
-                          </color>
-                         </brush>
-                        </colorrole>
-                       </disabled>
-                      </palette>
+                    <widget class="QFrame" name="frame_60">
+                     <property name="frameShape">
+                      <enum>QFrame::Shape::NoFrame</enum>
                      </property>
-                     <property name="text">
-                      <string>Disk persistance</string>
+                     <property name="frameShadow">
+                      <enum>QFrame::Shadow::Raised</enum>
                      </property>
+                     <layout class="QHBoxLayout" name="horizontalLayout_33">
+                      <property name="leftMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="topMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="rightMargin">
+                       <number>0</number>
+                      </property>
+                      <property name="bottomMargin">
+                       <number>0</number>
+                      </property>
+                      <item>
+                       <widget class="QLabel" name="label_37">
+                        <property name="palette">
+                         <palette>
+                          <active>
+                           <colorrole role="WindowText">
+                            <brush brushstyle="SolidPattern">
+                             <color alpha="255">
+                              <red>119</red>
+                              <green>118</green>
+                              <blue>123</blue>
+                             </color>
+                            </brush>
+                           </colorrole>
+                          </active>
+                          <inactive>
+                           <colorrole role="WindowText">
+                            <brush brushstyle="SolidPattern">
+                             <color alpha="255">
+                              <red>119</red>
+                              <green>118</green>
+                              <blue>123</blue>
+                             </color>
+                            </brush>
+                           </colorrole>
+                          </inactive>
+                          <disabled>
+                           <colorrole role="WindowText">
+                            <brush brushstyle="SolidPattern">
+                             <color alpha="255">
+                              <red>190</red>
+                              <green>190</green>
+                              <blue>190</blue>
+                             </color>
+                            </brush>
+                           </colorrole>
+                          </disabled>
+                         </palette>
+                        </property>
+                        <property name="text">
+                         <string>Disk persistance</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <spacer name="horizontalSpacer_21">
+                        <property name="orientation">
+                         <enum>Qt::Orientation::Horizontal</enum>
+                        </property>
+                        <property name="sizeHint" stdset="0">
+                         <size>
+                          <width>40</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="loadResultFromDiskButton">
+                        <property name="toolTip">
+                         <string>Load result from the VeraGrid file</string>
+                        </property>
+                        <property name="text">
+                         <string/>
+                        </property>
+                        <property name="icon">
+                         <iconset resource="../Icons/icons.qrc">
+                          <normaloff>:/Icons/icons/loadc.png</normaloff>:/Icons/icons/loadc.png</iconset>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
                     </widget>
                    </item>
                    <item>
-                    <spacer name="horizontalSpacer_21">
-                     <property name="orientation">
-                      <enum>Qt::Orientation::Horizontal</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>40</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                    </spacer>
-                   </item>
-                   <item>
-                    <widget class="QPushButton" name="loadResultFromDiskButton">
-                     <property name="toolTip">
-                      <string>Load result from the VeraGrid file</string>
-                     </property>
-                     <property name="text">
-                      <string/>
-                     </property>
-                     <property name="icon">
-                      <iconset resource="../Icons/icons.qrc">
-                       <normaloff>:/Icons/icons/loadc.png</normaloff>:/Icons/icons/loadc.png</iconset>
+                    <widget class="QTreeView" name="diskSessionsTreeView">
+                     <property name="animated">
+                      <bool>true</bool>
                      </property>
                     </widget>
                    </item>
@@ -2479,7 +2559,7 @@ QProgressBar::chunk{
              </widget>
              <widget class="QTabWidget" name="resultsTabWidget">
               <property name="tabPosition">
-               <enum>QTabWidget::TabPosition::East</enum>
+               <enum>QTabWidget::TabPosition::South</enum>
               </property>
               <property name="currentIndex">
                <number>0</number>
@@ -2542,7 +2622,7 @@ QProgressBar::chunk{
                   </property>
                   <layout class="QVBoxLayout" name="verticalLayout_24">
                    <property name="leftMargin">
-                    <number>0</number>
+                    <number>6</number>
                    </property>
                    <property name="topMargin">
                     <number>0</number>
@@ -2553,19 +2633,6 @@ QProgressBar::chunk{
                    <property name="bottomMargin">
                     <number>8</number>
                    </property>
-                   <item>
-                    <widget class="QTableView" name="resultsTableView">
-                     <property name="alternatingRowColors">
-                      <bool>true</bool>
-                     </property>
-                     <property name="selectionMode">
-                      <enum>QAbstractItemView::SelectionMode::ExtendedSelection</enum>
-                     </property>
-                     <property name="selectionBehavior">
-                      <enum>QAbstractItemView::SelectionBehavior::SelectItems</enum>
-                     </property>
-                    </widget>
-                   </item>
                    <item>
                     <widget class="QFrame" name="frame_8">
                      <property name="frameShape">
@@ -2752,6 +2819,19 @@ QProgressBar::chunk{
                      </layout>
                     </widget>
                    </item>
+                   <item>
+                    <widget class="QTableView" name="resultsTableView">
+                     <property name="alternatingRowColors">
+                      <bool>true</bool>
+                     </property>
+                     <property name="selectionMode">
+                      <enum>QAbstractItemView::SelectionMode::ExtendedSelection</enum>
+                     </property>
+                     <property name="selectionBehavior">
+                      <enum>QAbstractItemView::SelectionBehavior::SelectItems</enum>
+                     </property>
+                    </widget>
+                   </item>
                   </layout>
                  </widget>
                 </item>
@@ -2765,21 +2845,149 @@ QProgressBar::chunk{
                <attribute name="title">
                 <string>Dynamics</string>
                </attribute>
-               <layout class="QVBoxLayout" name="verticalLayout_43">
-                <property name="leftMargin">
-                 <number>0</number>
-                </property>
-                <property name="topMargin">
-                 <number>6</number>
-                </property>
-                <property name="rightMargin">
-                 <number>0</number>
-                </property>
-                <property name="bottomMargin">
-                 <number>7</number>
-                </property>
+               <layout class="QVBoxLayout" name="verticalLayout_46">
+                <item>
+                 <widget class="QFrame" name="frame_3">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="maximumSize">
+                   <size>
+                    <width>16777215</width>
+                    <height>16777215</height>
+                   </size>
+                  </property>
+                  <property name="frameShape">
+                   <enum>QFrame::Shape::NoFrame</enum>
+                  </property>
+                  <property name="frameShadow">
+                   <enum>QFrame::Shadow::Raised</enum>
+                  </property>
+                  <layout class="QHBoxLayout" name="horizontalLayout_15">
+                   <property name="sizeConstraint">
+                    <enum>QLayout::SizeConstraint::SetDefaultConstraint</enum>
+                   </property>
+                   <property name="leftMargin">
+                    <number>6</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>0</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>6</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>0</number>
+                   </property>
+                   <item>
+                    <widget class="QComboBox" name="eventsGroupComboBox">
+                     <property name="minimumSize">
+                      <size>
+                       <width>140</width>
+                       <height>0</height>
+                      </size>
+                     </property>
+                     <property name="toolTip">
+                      <string>Select the events group to view</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLineEdit" name="search_dynamic_objects_lineEdit">
+                     <property name="maximumSize">
+                      <size>
+                       <width>240</width>
+                       <height>16777215</height>
+                      </size>
+                     </property>
+                     <property name="toolTip">
+                      <string>Type the search term</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="search_dynamic_objects_Button">
+                     <property name="toolTip">
+                      <string>Smart search</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="../Icons/icons.qrc">
+                       <normaloff>:/Icons/icons/magnifying_glass.png</normaloff>:/Icons/icons/magnifying_glass.png</iconset>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_15">
+                     <property name="orientation">
+                      <enum>Qt::Orientation::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>248</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="addDynamicPlotButton">
+                     <property name="toolTip">
+                      <string>Add new plot</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="../Icons/icons.qrc">
+                       <normaloff>:/Icons/icons/plus (gray).png</normaloff>:/Icons/icons/plus (gray).png</iconset>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="deleteDynamicPlotButton">
+                     <property name="toolTip">
+                      <string>Remove selected plot</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="../Icons/icons.qrc">
+                       <normaloff>:/Icons/icons/minus (gray).png</normaloff>:/Icons/icons/minus (gray).png</iconset>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="dynamicsTablePlotButton">
+                     <property name="toolTip">
+                      <string>Display selected plot</string>
+                     </property>
+                     <property name="text">
+                      <string/>
+                     </property>
+                     <property name="icon">
+                      <iconset resource="../Icons/icons.qrc">
+                       <normaloff>:/Icons/icons/plot.png</normaloff>:/Icons/icons/plot.png</iconset>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
                 <item>
                  <widget class="QSplitter" name="splitter_3">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
                   <property name="orientation">
                    <enum>Qt::Orientation::Horizontal</enum>
                   </property>
@@ -2792,7 +3000,7 @@ QProgressBar::chunk{
                    </property>
                    <layout class="QVBoxLayout" name="verticalLayout_36">
                     <property name="leftMargin">
-                     <number>0</number>
+                     <number>6</number>
                     </property>
                     <property name="topMargin">
                      <number>0</number>
@@ -2801,153 +3009,68 @@ QProgressBar::chunk{
                      <number>0</number>
                     </property>
                     <item>
-                     <widget class="QTreeView" name="dynamicsDeviceTreeView"/>
-                    </item>
-                    <item>
-                     <widget class="QFrame" name="frame_3">
-                      <property name="maximumSize">
-                       <size>
-                        <width>16777215</width>
-                        <height>16777215</height>
-                       </size>
+                     <widget class="QTreeView" name="dynamicsDeviceTreeView">
+                      <property name="toolTip">
+                       <string>Drag and drop the Var to the desired plot. Double click to plot directly.</string>
                       </property>
-                      <property name="frameShape">
-                       <enum>QFrame::Shape::NoFrame</enum>
-                      </property>
-                      <property name="frameShadow">
-                       <enum>QFrame::Shadow::Raised</enum>
-                      </property>
-                      <layout class="QHBoxLayout" name="horizontalLayout_15">
-                       <property name="leftMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="topMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="rightMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="bottomMargin">
-                        <number>0</number>
-                       </property>
-                       <item>
-                        <widget class="QComboBox" name="eventsGroupComboBox">
-                         <property name="toolTip">
-                          <string>Select the events group to view</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QLabel" name="label_45">
-                         <property name="text">
-                          <string>Events group</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <spacer name="horizontalSpacer_15">
-                         <property name="orientation">
-                          <enum>Qt::Orientation::Horizontal</enum>
-                         </property>
-                         <property name="sizeHint" stdset="0">
-                          <size>
-                           <width>248</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                        </spacer>
-                       </item>
-                       <item>
-                        <widget class="QPushButton" name="addResultsVarToTableButton">
-                         <property name="toolTip">
-                          <string>Add seleted var to plot</string>
-                         </property>
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="icon">
-                          <iconset resource="../Icons/icons.qrc">
-                           <normaloff>:/Icons/icons/plus (gray).png</normaloff>:/Icons/icons/plus (gray).png</iconset>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
                      </widget>
                     </item>
                    </layout>
                   </widget>
-                  <widget class="QFrame" name="frame_30">
-                   <property name="frameShape">
-                    <enum>QFrame::Shape::NoFrame</enum>
+                  <widget class="QSplitter" name="splitter">
+                   <property name="orientation">
+                    <enum>Qt::Orientation::Horizontal</enum>
                    </property>
-                   <property name="frameShadow">
-                    <enum>QFrame::Shadow::Raised</enum>
-                   </property>
-                   <layout class="QVBoxLayout" name="verticalLayout_17">
-                    <property name="topMargin">
-                     <number>0</number>
+                   <widget class="QFrame" name="frame_30">
+                    <property name="frameShape">
+                     <enum>QFrame::Shape::NoFrame</enum>
                     </property>
-                    <property name="rightMargin">
-                     <number>0</number>
+                    <property name="frameShadow">
+                     <enum>QFrame::Shadow::Raised</enum>
                     </property>
-                    <property name="bottomMargin">
-                     <number>0</number>
+                    <layout class="QVBoxLayout" name="verticalLayout_17">
+                     <property name="leftMargin">
+                      <number>6</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>6</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="QTreeView" name="dynamicsPlotsTreeView"/>
+                     </item>
+                    </layout>
+                   </widget>
+                   <widget class="QFrame" name="frame_39">
+                    <property name="frameShape">
+                     <enum>QFrame::Shape::NoFrame</enum>
                     </property>
-                    <item>
-                     <widget class="QTableView" name="dynamicsTableView"/>
-                    </item>
-                    <item>
-                     <widget class="QFrame" name="frame_39">
-                      <property name="frameShape">
-                       <enum>QFrame::Shape::NoFrame</enum>
-                      </property>
-                      <property name="frameShadow">
-                       <enum>QFrame::Shadow::Raised</enum>
-                      </property>
-                      <layout class="QHBoxLayout" name="horizontalLayout_18">
-                       <property name="leftMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="topMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="rightMargin">
-                        <number>0</number>
-                       </property>
-                       <property name="bottomMargin">
-                        <number>0</number>
-                       </property>
-                       <item>
-                        <spacer name="horizontalSpacer_17">
-                         <property name="orientation">
-                          <enum>Qt::Orientation::Horizontal</enum>
-                         </property>
-                         <property name="sizeHint" stdset="0">
-                          <size>
-                           <width>419</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                        </spacer>
-                       </item>
-                       <item>
-                        <widget class="QPushButton" name="dynamicsTablePlotButton">
-                         <property name="toolTip">
-                          <string>Plot selected variables</string>
-                         </property>
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="icon">
-                          <iconset resource="../Icons/icons.qrc">
-                           <normaloff>:/Icons/icons/plot.png</normaloff>:/Icons/icons/plot.png</iconset>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </widget>
-                    </item>
-                   </layout>
+                    <property name="frameShadow">
+                     <enum>QFrame::Shadow::Raised</enum>
+                    </property>
+                    <layout class="QVBoxLayout" name="verticalLayout_43">
+                     <property name="leftMargin">
+                      <number>6</number>
+                     </property>
+                     <property name="topMargin">
+                      <number>0</number>
+                     </property>
+                     <property name="rightMargin">
+                      <number>6</number>
+                     </property>
+                     <property name="bottomMargin">
+                      <number>0</number>
+                     </property>
+                     <item>
+                      <widget class="QTableView" name="dynamicsTableView"/>
+                     </item>
+                    </layout>
+                   </widget>
                   </widget>
                  </widget>
                 </item>
@@ -2965,13 +3088,6 @@ QProgressBar::chunk{
                 <property name="topMargin">
                  <number>6</number>
                 </property>
-                <item>
-                 <widget class="QTreeView" name="resultsLogsTreeView">
-                  <property name="frameShape">
-                   <enum>QFrame::Shape::StyledPanel</enum>
-                  </property>
-                 </widget>
-                </item>
                 <item>
                  <widget class="QFrame" name="frame_56">
                   <property name="frameShape">
@@ -3021,6 +3137,13 @@ QProgressBar::chunk{
                     </widget>
                    </item>
                   </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QTreeView" name="resultsLogsTreeView">
+                  <property name="frameShape">
+                   <enum>QFrame::Shape::StyledPanel</enum>
+                  </property>
                  </widget>
                 </item>
                </layout>
@@ -10129,7 +10252,7 @@ QProgressBar::chunk{
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1255</width>
+     <width>1208</width>
      <height>23</height>
     </rect>
    </property>

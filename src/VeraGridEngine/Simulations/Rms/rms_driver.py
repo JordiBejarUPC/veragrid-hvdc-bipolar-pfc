@@ -2,9 +2,11 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from __future__ import annotations
 
+from __future__ import annotations
+import pandas as pd
 import numpy as np
+
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
@@ -83,7 +85,7 @@ class RmsSimulationDriver(DriverTemplate):
         )
 
         self.results = RmsResults(
-            time_array=t,
+            time_array=pd.DatetimeIndex(pd.to_datetime(t * 1e9)),
             rms_events_group_names=rms_events_group_names,
             variables=problem.state_and_algebraic_vars,
             uid2idx=problem.uid2idx_vars,
