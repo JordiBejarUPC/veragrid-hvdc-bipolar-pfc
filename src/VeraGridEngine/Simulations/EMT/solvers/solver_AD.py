@@ -206,7 +206,7 @@ class SparseADJacobian:
                  dtype: Any=np.float64)-> None:
 
         t_start = time.perf_counter()
-        print(f"   [AD-Debug] Init started for {len(equations)} eqs...")
+        print_enabled: bool = False
 
         self.equations = equations
         self.variables = variables
@@ -227,7 +227,8 @@ class SparseADJacobian:
             self.param_map[p.uid] = i
 
         t_maps: float = time.perf_counter()
-        print(f"   [AD-Debug] Maps built in {t_maps - t_start:.4f}s")
+        if print_enabled:
+            print(f"   [AD-Debug] Maps built in {t_maps - t_start:.4f}s")
 
         # 1) Sparsity Detection
         col_rows: List[List[int]] = [list() for _ in range(self.n_cols)]
@@ -274,7 +275,8 @@ class SparseADJacobian:
         self.col_rows = [sorted(set(rows)) for rows in col_rows]
 
         t_sparsity = time.perf_counter()
-        print(f"   [AD-Debug] Sparsity Analysis done in {t_sparsity - t_maps:.4f}s. Edges found: {count_edges}")
+        if print_enabled:
+            print(f"   [AD-Debug] Sparsity Analysis done in {t_sparsity - t_maps:.4f}s. Edges found: {count_edges}")
 
         # 2) CSC Structure
         indptr = np.zeros(self.n_cols + 1, dtype=np.int32)
@@ -294,7 +296,8 @@ class SparseADJacobian:
         self.J = csc_matrix((data, indices, indptr), shape=(self.n_rows, self.n_cols))
 
         t_csc = time.perf_counter()
-        print(f"   [AD-Debug] CSC Matrix built in {t_csc - t_sparsity:.4f}s")
+        if print_enabled:
+            print(f"   [AD-Debug] CSC Matrix built in {t_csc - t_sparsity:.4f}s")
 
         # 3) Coloring
         self.colors, self.n_colors = greedy_color_columns(self.col_rows, self.n_rows)
@@ -304,7 +307,8 @@ class SparseADJacobian:
         self.color_groups = groups
 
         t_color = time.perf_counter()
-        print(f"   [AD-Debug] Graph Coloring done in {t_color - t_csc:.4f}s. Colors: {self.n_colors}")
+        if print_enabled:
+            print(f"   [AD-Debug] Graph Coloring done in {t_color - t_csc:.4f}s. Colors: {self.n_colors}")
 
         # 4) Precompute scatter map
         color_cols: List[int] = list()
@@ -339,13 +343,15 @@ class SparseADJacobian:
         self.data_idx = data_idx
 
         t_scatter = time.perf_counter()
-        print(f"   [AD-Debug] Scatter Map built in {t_scatter - t_color:.4f}s")
+        if print_enabled:
+            print(f"   [AD-Debug] Scatter Map built in {t_scatter - t_color:.4f}s")
 
         # 5) Compile Optimization: Colored Kernels
         self._compiler = EquationCompiler(variables=variables, parameters=parameters, method=method)
         self.ad_kernels: List[Callable] = list()
 
-        print(f"   [AD-Opt] Compiling {self.n_colors} specialized color kernels...")
+        if print_enabled:
+            print(f"   [AD-Opt] Compiling {self.n_colors} specialized color kernels...")
         t_comp_start = time.perf_counter()
 
         for c in range(self.n_colors):
@@ -363,8 +369,9 @@ class SparseADJacobian:
             self.ad_kernels.append(kernel)
 
         t_comp_end = time.perf_counter()
-        print(f"   [AD-Opt] Kernels compiled in {t_comp_end - t_comp_start:.4f}s")
-        print(f"   [AD-Debug] Total Init Time: {t_comp_end - t_start:.4f}s")
+        if print_enabled:
+            print(f"   [AD-Opt] Kernels compiled in {t_comp_end - t_comp_start:.4f}s")
+            print(f"   [AD-Debug] Total Init Time: {t_comp_end - t_start:.4f}s")
 
         self._seeds = np.zeros(self.n_cols, dtype=self.dtype)
 
@@ -486,8 +493,9 @@ class JitAdSolver:
         else:
             pass
 
-        print(
-            f"--- [JIT-AD] Compiling {'Jacobian ONLY' if only_jacobian else 'Implicit Kernel + AD Jacobian'} ({self.method}) ---")
+        if self.verbose:
+            print(
+                f"--- [JIT-AD] Compiling {'Jacobian ONLY' if only_jacobian else 'Implicit Kernel + AD Jacobian'} ({self.method}) ---")
 
         sorted_vars: List[Any] = list()
         sorted_vars.extend(self.state_vars)
@@ -511,7 +519,8 @@ class JitAdSolver:
             n_eqs = len(equations)
             batched_kernels: List[Callable] = list()
 
-            print(f"   [JIT-AD] Splitting {n_eqs} residual eqs into {int(np.ceil(n_eqs / BATCH_SIZE))} batches...")
+            if self.verbose:
+                print(f"   [JIT-AD] Splitting {n_eqs} residual eqs into {int(np.ceil(n_eqs / BATCH_SIZE))} batches...")
             t0 = time.time()
 
             for i in range(0, n_eqs, BATCH_SIZE):
@@ -521,7 +530,8 @@ class JitAdSolver:
                 jit_func = _safe_njit(py_func, cache=True, fastmath=True)
                 batched_kernels.append(jit_func)
 
-            print(f"   [JIT-AD] Residual Batches compiled in {time.time() - t0:.4f}s")
+            if self.verbose:
+                print(f"   [JIT-AD] Residual Batches compiled in {time.time() - t0:.4f}s")
             self.jit_kernels_ad[self.method] = batched_kernels
         else:
             pass

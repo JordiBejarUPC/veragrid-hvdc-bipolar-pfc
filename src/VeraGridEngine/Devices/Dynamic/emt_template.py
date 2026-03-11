@@ -33,7 +33,7 @@ class EmtModelTemplate(PointerDeviceParent):
                          code="",
                          device=None,
                          comment="",
-                         device_type=DeviceType.RmsModelTemplateDevice)
+                         device_type=DeviceType.EmtModelTemplateDevice)
 
         self._tpe: DeviceType = DeviceType.NoDevice
         self._block: Block = Block()

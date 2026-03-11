@@ -379,7 +379,8 @@ class EmtProblemDae(EmtProblemTemplate):
                     TIME_NAME=self.TIME_NAME,
                     VARS_NAME=self.VARS_NAME,
                     DIFF_NAME=self.DIFF_NAME,
-                    CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
+                    CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+                    verbose=bool(self.options.verbose > 0),
                 )
             except Exception as e:
                 block_name: str = _get_block_name(mdl)

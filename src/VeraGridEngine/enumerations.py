@@ -1178,6 +1178,7 @@ class DeviceType(Enum):
     RmsEventDevice = "Rms Event"
     RmsEventsGroupDevice = "Rms Events Group"
 
+    EmtModelTemplateDevice = "EMT template"
     EmtEventDevice = "Emt Event"
     EmtEventsGroupDevice = "Emt Events Group"
 

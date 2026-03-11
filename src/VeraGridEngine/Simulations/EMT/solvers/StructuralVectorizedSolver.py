@@ -704,7 +704,8 @@ class StructuralVectorizedSolver:
 
             group.add_indices(var_indices, i)
 
-        print(f"   [AUTO-VEC] Detected {len(groups)} patterns in {len(full_eq_list)} total equations.")
+        if self.verbose:
+            print(f"   [AUTO-VEC] Detected {len(groups)} patterns in {len(full_eq_list)} total equations.")
 
         # -----------------------------
         # PHASE 3: KERNEL COMPILATION
@@ -754,7 +755,8 @@ class StructuralVectorizedSolver:
         self.vec_jacobian = self.jit_jacobians_ad[method]
         self.vectorized_ready = True
 
-        print(f"   [AUTO-VEC] Setup finished in {time.time() - t0:.4f}s")
+        if self.verbose:
+            print(f"   [AUTO-VEC] Setup finished in {time.time() - t0:.4f}s")
 
     def simulate(self,
                  x0: Union[Vec| None] = None,
