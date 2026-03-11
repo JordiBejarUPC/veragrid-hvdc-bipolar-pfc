@@ -19,6 +19,8 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter, QIcon, QStandardItemModel, QStandardItem,
                            QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QModelIndex, QMimeData, Signal
+
+from VeraGridEngine import RmsModelTemplate
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import (get_genqec,
                                                                       get_governor,
                                                                       get_stabilizer,
@@ -443,7 +445,7 @@ class ModelHostItem(QGraphicsRectItem):
         self.outputs: List[PortItem] = list()
         self.editor_window = RmsModelEditorGUI(
             var_factory=self.var_factory,
-            api_object_model_host=self.block,
+            block=self.block,
             templates_list=self.templates_list,
             templates_catalogue=self.templates_catalogue,
             api_object_name=self.api_object_name,
@@ -1246,7 +1248,7 @@ class TemplateEditor(QtWidgets.QWidget):
 
         self.var_factory = var_factory
         self.templates_catalogue = templates_catalogue
-        self.model = Block()
+        self.block = Block()
         self.api_object = api_object
         self.selected_block = None
         self._vars_order = []
@@ -1453,7 +1455,7 @@ class TemplateEditor(QtWidgets.QWidget):
             QtWidgets.QMessageBox.warning(self, "Error", "No template selected.")
             return
         try:
-            self.model = self.selected_block
+            self.block = self.selected_block
         except Exception as e:
             QtWidgets.QMessageBox.warning(self, "Error", f"Failed to apply template:\n{e}")
             return
@@ -1718,10 +1720,9 @@ class BlockBoxesEditor(QSplitter):
 
             bus_to_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
 
-
             bus_to_mapping_blk = Block(
                 in_vars=[
-                    self.var_factory.add_var('Pt_placeholder'), # Pt
+                    self.var_factory.add_var('Pt_placeholder'),  # Pt
                     self.var_factory.add_var('Qt_placeholder')  # Qt
                 ],
                 name=name
@@ -2143,10 +2144,10 @@ class EditEquations(QWidget):
     EditEquations (still under construction)
     """
 
-    def __init__(self, model, parent=None):
+    def __init__(self, block: Block, parent=None):
         super().__init__(parent)
 
-        self.model = model  # DynamicModelHost
+        self.block = block  # DynamicModelHost
 
         main_layout = QHBoxLayout(self)
         self.setLayout(main_layout)
@@ -2196,12 +2197,12 @@ class EditEquations(QWidget):
         # self.btn_add_param.clicked.connect(self.add_parameter)
         # self.btn_add_eqn.clicked.connect(self.add_equation)
 
-        self.refresh_lists(self.model)
+        self.refresh_lists(self.block)
 
     def refresh_lists(self, model=None, clear=True):
         """Load current model variables, parameters, equations into lists."""
         if model is None:
-            model = self.model
+            model = self.block
 
         # Only clear at the top-level call
         if clear:
@@ -2240,8 +2241,8 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
     def __init__(self,
                  var_factory: VarFactory,
-                 api_object_model_host,
-                 templates_list,
+                 block: Block,
+                 templates_list: List[RmsModelTemplate],
                  templates_catalogue,
                  api_object_name,
                  api_object: ALL_DEV_TYPES | None = None,
@@ -2249,7 +2250,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
                  parent=None):
         """
 
-        :param api_object_model_host:
+        :param block:
         :param templates_list:
         :param templates_catalogue:
         :param api_object_name:
@@ -2267,7 +2268,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
         self.var_factory = var_factory
         self.api_object_name = api_object_name
-        self.block = api_object_model_host
+        self.block = block
         self.templates_list = templates_list
         self.templates_catalogue = templates_catalogue
         self.api_object = api_object
@@ -2277,13 +2278,13 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
         self.templates_name = "Templates"
         self.block_editor_name = "Block Editor"
-        self.equationseditor_name = "Equations editor"
+        self.equations_editor_name = "Equations editor"
 
         # set modes
         self.ui.model_selector_comboBox.setModel(gf.get_list_model([
             self.templates_name,
             self.block_editor_name,
-            self.equationseditor_name
+            self.equations_editor_name
         ]))
 
         # --- templates editor layout ---
@@ -2294,33 +2295,34 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         # self.ui.templatesLayout.addWidget(self.template_editor)
 
         # --- block boxes editor layout ---
-        self.blockboxes_editor = BlockBoxesEditor(self.var_factory,
-                                                  api_object_name=self.api_object_name,
-                                                  block=self.block,  # .copy(),
-                                                  diagram=self.block.diagram,  # .copy(),
-                                                  templates_list=self.templates_list,
-                                                  templates_catalogue=self.templates_catalogue,
-                                                  api_object=self.api_object
-                                                  )
+        self.block_boxes_editor = BlockBoxesEditor(
+            self.var_factory,
+            api_object_name=self.api_object_name,
+            block=self.block,  # .copy(),
+            diagram=self.block.diagram,  # .copy(),
+            templates_list=self.templates_list,
+            templates_catalogue=self.templates_catalogue,
+            api_object=self.api_object
+        )
 
         # _____ Add user init guess dialog ______
 
         # === Add default bus connection block if diagram is empty ===
-        if not self.blockboxes_editor.diagram.node_data and self.main_editor:
-            self.blockboxes_editor.add_connection_vars()
-            self.blockboxes_editor.add_external_mapping_block()
-            self.blockboxes_editor.add_api_obj_mapping()
+        if not self.block_boxes_editor.diagram.node_data and self.main_editor:
+            self.block_boxes_editor.add_connection_vars()
+            self.block_boxes_editor.add_external_mapping_block()
+            self.block_boxes_editor.add_api_obj_mapping()
         # === Add pf parameters ===
-        self.blockboxes_editor.rebuild_scene_from_diagram()
-        self.blockboxes_editor.view.setSceneRect(0, 0, 2000, 2000)  # tamaño arbitrario de escena
-        self.blockboxes_editor.view.centerOn(0, 0)
-        self.blockboxes_editor.view.ensureVisible(0, 0, 100, 100)
-        self.blockboxes_editor.view.horizontalScrollBar().setValue(0)
-        self.blockboxes_editor.view.verticalScrollBar().setValue(0)
+        self.block_boxes_editor.rebuild_scene_from_diagram()
+        self.block_boxes_editor.view.setSceneRect(0, 0, 2000, 2000)  # tamaño arbitrario de escena
+        self.block_boxes_editor.view.centerOn(0, 0)
+        self.block_boxes_editor.view.ensureVisible(0, 0, 100, 100)
+        self.block_boxes_editor.view.horizontalScrollBar().setValue(0)
+        self.block_boxes_editor.view.verticalScrollBar().setValue(0)
         # self.ui.editorLayout.addWidget(self.blockboxes_editor)
 
         # --- equations editor layout ---
-        self.equations_editor = EditEquations(self.block.model)
+        self.equations_editor = EditEquations(self.block)
         # self.ui.equations_editor_layout.addWidget(self.equations_editor)
 
         # --- status bar setup ---
@@ -2366,10 +2368,10 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
             self.current_editor = self.template_editor
 
         elif self.ui.model_selector_comboBox.currentText() == self.block_editor_name:
-            self.ui.mainLayout.addWidget(self.blockboxes_editor)
-            self.current_editor = self.blockboxes_editor
+            self.ui.mainLayout.addWidget(self.block_boxes_editor)
+            self.current_editor = self.block_boxes_editor
 
-        elif self.ui.model_selector_comboBox.currentText() == self.equationseditor_name:
+        elif self.ui.model_selector_comboBox.currentText() == self.equations_editor_name:
             # TODO: add model host logic
             self.ui.mainLayout.addWidget(self.equations_editor)
             self.current_editor = self.equations_editor
@@ -2381,7 +2383,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
 
     def do_it(self) -> None:
         """
-        Logic when aplying the window
+        Logic when applying the window
         :return:
         """
         if self.ui.model_selector_comboBox.currentText() == self.templates_name:
@@ -2393,15 +2395,13 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
                 return
 
         elif self.ui.model_selector_comboBox.currentText() == self.block_editor_name:
-            if self.blockboxes_editor.main_block is not None:
-                self.block.template = None
-                self.block.diagram = self.blockboxes_editor.diagram
-                # self.model_host.model = self.blockboxes_editor.block_system
+            if self.block_boxes_editor.main_block is not None:
+                self.block.diagram = self.block_boxes_editor.diagram
             else:
                 error_msg("Empty model :(", "Model apply")
                 return
 
-        elif self.ui.model_selector_comboBox.currentText() == self.equationseditor_name:
+        elif self.ui.model_selector_comboBox.currentText() == self.equations_editor_name:
             # TODO: add model host logic
             pass
 
