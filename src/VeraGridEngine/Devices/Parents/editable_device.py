@@ -22,7 +22,7 @@ from VeraGridEngine.enumerations import (DeviceType, TimeFrame, BuildStatus, Win
                                          BranchImpedanceMode, FaultType, TapChangerTypes, ContingencyOperationTypes,
                                          WindingType, MethodShortCircuit, PhasesShortCircuit, ShuntConnectionType,
                                          BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod, OpfDispatchMode,
-                                         EmtLineTypes,SmallSignalEmtBuildTypes, ShuntControlMode)
+                                         EmtLineTypes,SmallSignalEmtBuildTypes,EraSvdSolverType, ShuntControlMode)
 
 # types that can be assigned to a VeraGrid property
 GCPROP_TYPES = Union[
@@ -70,7 +70,8 @@ GCPROP_TYPES = Union[
     Type[OpfDispatchMode],
     Type[EmtLineTypes],
     Type[EmtSolverTypes],
-    Type[SmallSignalEmtBuildTypes]
+    Type[SmallSignalEmtBuildTypes],
+    Type[EraSvdSolverType]
 ]
 
 

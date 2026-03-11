@@ -244,13 +244,13 @@ print(res.get_branch_df())
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")
 # ==============================================================================
 CHOSEN_SOLVER = "COMPILED"
-RUN_ALL_SOLVERS = True
+RUN_ALL_SOLVERS = False
 ENABLE_PLOTS = False
 ENABLE_NEWTON_TRACE = False
 SHOW_INIT_GUESS_TABLE = False
 DENSE_THRESHOLD = 0
 SOLVER_VERBOSE = False
-VALIDATE_BACKEND_EQUIVALENCE = True
+VALIDATE_BACKEND_EQUIVALENCE = False
 
 SOLVER_TYPE_MAP = {
     "SYMBOLIC": EmtSolverTypes.Symbolic,
@@ -396,6 +396,49 @@ def evaluate_final_residual(problem: EmtProblemDae, solver_key: str, solver, t_a
     raise ValueError(f"Unknown solver key: {solver_key}")
 
 
+def wrap_angle_difference(raw_diff: np.ndarray) -> np.ndarray:
+    return (raw_diff + np.pi) % (2.0 * np.pi) - np.pi
+
+
+def build_discrepancy_report(
+    reference_problem: EmtProblemDae,
+    reference_y: np.ndarray,
+    reference_dy: np.ndarray,
+    candidate_y: np.ndarray,
+    candidate_dy: np.ndarray,
+    top_n: int = 10,
+) -> dict[str, list[tuple[str, float, float]]]:
+    var_names = [v.name for v in (reference_problem.get_state_vars() + reference_problem.get_algebraic_vars())]
+    diff_names = [dv.name for dv in reference_problem.get_diff_vars()]
+
+    var_rows: list[tuple[str, float, float]] = list()
+    for idx, name in enumerate(var_names):
+        raw_diff = candidate_y[:, idx] - reference_y[:, idx]
+        raw_max = float(np.max(np.abs(raw_diff)))
+        wrapped_max = raw_max
+
+        lowered = name.lower()
+        if "theta" in lowered or lowered.startswith("phi") or "_phi_" in lowered:
+            wrapped_max = float(np.max(np.abs(wrap_angle_difference(raw_diff))))
+
+        var_rows.append((name, raw_max, wrapped_max))
+
+    diff_rows: list[tuple[str, float, float]] = list()
+    for idx, name in enumerate(diff_names):
+        raw_diff = candidate_dy[:, idx] - reference_dy[:, idx]
+        raw_max = float(np.max(np.abs(raw_diff)))
+        wrapped_max = raw_max
+        diff_rows.append((name, raw_max, wrapped_max))
+
+    var_rows.sort(key=lambda item: item[2], reverse=True)
+    diff_rows.sort(key=lambda item: item[1], reverse=True)
+
+    return {
+        "vars": var_rows[:top_n],
+        "diffs": diff_rows[:top_n],
+    }
+
+
 def benchmark_all_solvers() -> None:
     print("\n" + "=" * 110)
     print("EMT SOLVER BENCHMARK (REAL DEMO)")
@@ -406,6 +449,7 @@ def benchmark_all_solvers() -> None:
     results = list()
     reference_y = None
     reference_dy = None
+    reference_problem = None
 
     for solver_key in ALL_SOLVER_KEYS:
         print(f"\n--- Running {solver_key} ---")
@@ -432,9 +476,15 @@ def benchmark_all_solvers() -> None:
             max_abs_diff_dy = 0.0
             reference_y = y_arr.copy()
             reference_dy = dy_arr.copy()
+            reference_problem = local_problem
+            discrepancy_report = {"vars": [], "diffs": []}
         else:
+            assert reference_problem is not None
+            assert reference_y is not None
+            assert reference_dy is not None
             max_abs_diff = float(np.max(np.abs(y_arr - reference_y)))
             max_abs_diff_dy = float(np.max(np.abs(dy_arr - reference_dy)))
+            discrepancy_report = build_discrepancy_report(reference_problem, reference_y, reference_dy, y_arr, dy_arr)
 
         final_residual = evaluate_final_residual(local_problem, solver_key, solver, t_arr, y_arr, dy_arr)
         collector = local_problem.get_newton_trace_collector()
@@ -456,6 +506,7 @@ def benchmark_all_solvers() -> None:
             "final_residual": final_residual,
             "newton_iters": total_newton_iters,
             "build_stats": build_stats_fn() if callable(build_stats_fn) else dict(),
+            "discrepancy_report": discrepancy_report,
             "steps": len(t_arr) - 1,
             "shape": y_arr.shape,
             "dy_shape": dy_arr.shape,
@@ -480,6 +531,23 @@ def benchmark_all_solvers() -> None:
             for key, value in item["build_stats"].items():
                 print(f"  {key}: {value:.6f}s")
             break
+
+    if VALIDATE_BACKEND_EQUIVALENCE:
+        for item in results:
+            if item["solver"] == ALL_SOLVER_KEYS[0]:
+                continue
+
+            print(f"\nTop discrepancies vs SYMBOLIC for {item['solver']}")
+
+            if item["discrepancy_report"]["vars"]:
+                print("  Vars (raw vs wrapped where applicable):")
+                for name, raw_max, wrapped_max in item["discrepancy_report"]["vars"]:
+                    print(f"    {name:<45} raw={raw_max:>12.3e}  adj={wrapped_max:>12.3e}")
+
+            if item["discrepancy_report"]["diffs"]:
+                print("  DiffVars:")
+                for name, raw_max, _ in item["discrepancy_report"]["diffs"]:
+                    print(f"    {name:<45} raw={raw_max:>12.3e}")
 
     raise SystemExit(0)
 
