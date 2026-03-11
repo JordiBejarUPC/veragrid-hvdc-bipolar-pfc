@@ -3,6 +3,8 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from typing import List
+from VeraGridEngine import MultiCircuit
+from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
@@ -15,12 +17,13 @@ from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 #               and injected current i = -C * dv_cap/dt
 # --------------------------------------------------------------------------------------
 
-def get_shunt_r_3ph_emt_template( vf: VarFactory, name: str = "Shunt_R_3ph") -> EmtModelTemplate:
+def get_shunt_r_3ph_emt_template( grid : MultiCircuit, load: Load, name: str = "Shunt_R_3ph") -> EmtModelTemplate:
     """
     3-phase shunt resistor (wye to ground), phase-decoupled.
     Inputs:  vA, vB, vC  (instantaneous phase-to-ground voltages)
     Outputs: i_A, i_B, i_C (injected currents into the bus; negative for consumption)
     """
+    vf: VarFactory = grid.emt_var_factory
 
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LoadDevice
@@ -37,14 +40,29 @@ def get_shunt_r_3ph_emt_template( vf: VarFactory, name: str = "Shunt_R_3ph") -> 
     R_B = vf.add_var("R_B_" + name)
     R_C = vf.add_var("R_C_" + name)
 
-    templ.block.event_dict[R_A] = vf.add_const(10.0)
-    templ.block.event_dict[R_B] = vf.add_const(10.0)
-    templ.block.event_dict[R_C] = vf.add_const(10.0)
+    # Vnom in kW, load.P_ph in MW
+    sbase = grid.Sbase
+    vnom = load.bus.Vnom
+    z_base = (vnom ** 2) / sbase
+    v_ph = vnom / (3 ** 0.5)
+    RA = (v_ph**2) / load.Pa
+    RB = (v_ph ** 2) / load.Pb
+    RC = (v_ph ** 2) / load.Pc
+
+    RA_pu = RA / z_base
+    RB_pu = RB / z_base
+    RC_pu = RC / z_base
+    print(f"RA = {RA}")
+    print(f"RA_pu = {RA_pu}")
+
+    templ.block.event_dict[R_A] = vf.add_const(RA_pu)
+    templ.block.event_dict[R_B] = vf.add_const(RB_pu)
+    templ.block.event_dict[R_C] = vf.add_const(RC_pu)
 
     # Algebraic injected currents
-    i_A = vf.add_var("iA_" + name)
-    i_B = vf.add_var("iB_" + name)
-    i_C = vf.add_var("iC_" + name)
+    i_A = vf.add_var("i_A_" + name)
+    i_B = vf.add_var("i_B_" + name)
+    i_C = vf.add_var("i_C_" + name)
 
     templ.block.algebraic_vars = [i_A, i_B, i_C]
     templ.block.algebraic_eqs = [
@@ -68,7 +86,14 @@ def get_shunt_r_3ph_emt_template( vf: VarFactory, name: str = "Shunt_R_3ph") -> 
         VarPowerFlowRefferenceType.i_A: i_A,
         VarPowerFlowRefferenceType.i_B: i_B,
         VarPowerFlowRefferenceType.i_C: i_C,
-        VarPowerFlowRefferenceType.theta: None,
+        VarPowerFlowRefferenceType.phi_v: None,
+        VarPowerFlowRefferenceType.phi: None,
+        VarPowerFlowRefferenceType.Vpk: None,
+        VarPowerFlowRefferenceType.Ipk: None,
+        VarPowerFlowRefferenceType.d_v_N: None,
+        VarPowerFlowRefferenceType.d_v_A: None,
+        VarPowerFlowRefferenceType.d_v_B: None,
+        VarPowerFlowRefferenceType.d_v_C: None,
     }
 
     templ.block.api_obj_mapping = {}

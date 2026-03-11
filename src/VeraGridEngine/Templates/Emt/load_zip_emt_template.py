@@ -37,10 +37,12 @@ def get_load_ZIP_3ph_emt_template(grid : MultiCircuit, load: Load,  name: str = 
     v_A = vf.add_var("v_A_" + name)
     v_B = vf.add_var("v_B_" + name)
     v_C = vf.add_var("v_C_" + name)
-    d_v_A = vf.add_diff_var(name=f"d_v_A_{name}", base_var=v_A)
-    d_v_B = vf.add_diff_var(name=f"d_v_B_{name}", base_var=v_B)
-    d_v_C = vf.add_diff_var(name=f"d_v_C_{name}", base_var=v_C)
-    templ.block.in_vars = [v_A, v_B, v_C, d_v_A, d_v_B, d_v_C]
+    templ.block.in_vars = [v_A, v_B, v_C]
+
+    # Used for initialization:
+    d_v_A = vf.add_var(name=f"d_v_A_{name}")
+    d_v_B = vf.add_var(name=f"d_v_B_{name}")
+    d_v_C = vf.add_var(name=f"d_v_C_{name}")
 
     # Parameters: Nominal power (P0, Q0) and Voltage (V0)
     P0_A = vf.add_var("P0_A_" + name)
@@ -80,6 +82,10 @@ def get_load_ZIP_3ph_emt_template(grid : MultiCircuit, load: Load,  name: str = 
     templ.block.event_dict[k_sogi] = vf.add_const(np.sqrt(2))
     templ.block.event_dict[eps] = vf.add_const(1e-12)
     templ.block.event_dict[omega] = vf.add_const(w_const)
+    templ.block.event_dict[d_v_A] = vf.add_const(None)
+    templ.block.event_dict[d_v_B] = vf.add_const(None)
+    templ.block.event_dict[d_v_C] = vf.add_const(None)
+
 
     # Default ZIP coefficients: Constant Power behavior (a3=1, a6=1)
     for p in [a1, a2, a4, a5]: templ.block.event_dict[p] = c0
@@ -162,12 +168,6 @@ def get_load_ZIP_3ph_emt_template(grid : MultiCircuit, load: Load,  name: str = 
         P_C + (P0_C * (a1 * rC ** 2 + a2 * rC + a3)),
         Q_C + (Q0_C * (a4 * rC ** 2 + a5 * rC + a6)),
 
-        # P_A - (P0_A * (a1 * rA ** 2 + a2 * rA + a3)),
-        # Q_A - (Q0_A * (a4 * rA ** 2 + a5 * rA + a6)),
-        # P_B - (P0_B * (a1 * rB ** 2 + a2 * rB + a3)),
-        # Q_B - (Q0_B * (a4 * rB ** 2 + a5 * rB + a6)),
-        # P_C - (P0_C * (a1 * rC ** 2 + a2 * rC + a3)),
-        # Q_C - (Q0_C * (a4 * rC ** 2 + a5 * rC + a6)),
         # Current injection: i = 2 * (u*P + q*Q) / V_peak^2
         i_A + (c2 * (u_A * (-P_A) + q_A * (-Q_A)) / (VA2 + eps)),
         i_B + (c2 * (u_B * (-P_B) + q_B * (-Q_B)) / (VB2 + eps)),
@@ -211,7 +211,14 @@ def get_load_ZIP_3ph_emt_template(grid : MultiCircuit, load: Load,  name: str = 
         VarPowerFlowRefferenceType.i_A: i_A,
         VarPowerFlowRefferenceType.i_B: i_B,
         VarPowerFlowRefferenceType.i_C: i_C,
-        VarPowerFlowRefferenceType.theta: None
+        VarPowerFlowRefferenceType.phi_v: None,
+        VarPowerFlowRefferenceType.phi: None,
+        VarPowerFlowRefferenceType.Vpk: None,
+        VarPowerFlowRefferenceType.Ipk: None,
+        VarPowerFlowRefferenceType.d_v_N: None,
+        VarPowerFlowRefferenceType.d_v_A: d_v_A,
+        VarPowerFlowRefferenceType.d_v_B: d_v_B,
+        VarPowerFlowRefferenceType.d_v_C: d_v_C,
     }
 
     return templ

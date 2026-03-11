@@ -126,7 +126,7 @@ def test_simulation_with_event():
     # apply event
     Pl0 = find_name_in_block('Pl0', load_mdl)
     events_group = RmsEventsGroup("simulation1")
-    event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group)
+    event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.09, group=events_group)
     grid.add_rms_event(event)
 
     grid.add_line(line0)

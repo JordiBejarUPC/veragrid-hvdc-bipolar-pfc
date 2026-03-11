@@ -6,7 +6,6 @@
 from typing import Dict
 import numpy as np
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
@@ -57,10 +56,10 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     # -----------------------------
     vf_vars = [vf.add_var(f"vf_{ph}_{line.name}") for ph in active_ph]
     vt_vars = [vf.add_var(f"vt_{ph}_{line.name}") for ph in active_ph]
-    d_vf_vars = [vf.add_diff_var(name=f"d_vf_{ph}_{line.name}", base_var=v_base) for ph, v_base in
-                 zip(active_ph, vf_vars)]
-    d_vt_vars = [vf.add_diff_var(name=f"d_vt_{ph}_{line.name}", base_var=v_base) for ph, v_base in
-                 zip(active_ph, vt_vars)]
+    # d_vf_vars = [vf.add_diff_var(name=f"d_vf_{ph}_{line.name}", base_var=v_base) for ph, v_base in
+    #              zip(active_ph, vf_vars)]
+    # d_vt_vars = [vf.add_diff_var(name=f"d_vt_{ph}_{line.name}", base_var=v_base) for ph, v_base in
+    #              zip(active_ph, vt_vars)]
 
     # -----------------------------
     # Compute continuous parameters in pu (R, L, G_end, C_end) in ACTIVE subspace
@@ -131,7 +130,7 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     # -----------------------------
     # Build block
     # -----------------------------
-    templ.block.in_vars = vf_vars + vt_vars + d_vf_vars + d_vt_vars
+    templ.block.in_vars = vf_vars + vt_vars
     templ.block.state_vars = i_ser + q_f + q_t
     templ.block.diff_vars = di_ser + dq_f + dq_t
     templ.block.algebraic_vars = i_cap_f + i_cap_t + if_act + it_act
@@ -174,34 +173,65 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     # Algebraic equations
     # -----------------------------
     alg_eqs = []
-    #i_cap_f - C_end * d_vf = 0
+
+    # #i_cap_f - C_end * d_vf = 0
+    # for a in range(m):
+    #     rhs = c0
+    #     for b in range(m):
+    #         Cab = float(C_end[a, b])
+    #         if Cab != 0.0:
+    #             rhs = rhs + Cab * d_vf_vars[b]
+    #     alg_eqs.append(i_cap_f[a] - rhs)
+    # # i_cap_t - C_end * d_vt = 0
+    # for a in range(m):
+    #     rhs = c0
+    #     for b in range(m):
+    #         Cab = float(C_end[a, b])
+    #         if Cab != 0.0:
+    #             rhs = rhs + Cab * d_vt_vars[b]
+    #     alg_eqs.append(i_cap_t[a] - rhs)
+
+    # En lugar de i_cap = C * dv, usamos q = C * v
+    # Esto elimina la dependencia de la derivada numérica
     for a in range(m):
-        rhs = c0
+        rhs_q = c0
         for b in range(m):
             Cab = float(C_end[a, b])
             if Cab != 0.0:
-                rhs = rhs + Cab * d_vf_vars[b]
-        alg_eqs.append(i_cap_f[a] - rhs)
-    # i_cap_t - C_end * d_vt = 0
+                rhs_q = rhs_q + Cab * vf_vars[b]
+        alg_eqs.append(q_f[a] - rhs_q)  # El solver ajusta i_cap para que q sea C*v
+
     for a in range(m):
-        rhs = c0
+        rhs_q = c0
         for b in range(m):
             Cab = float(C_end[a, b])
             if Cab != 0.0:
-                rhs = rhs + Cab * d_vt_vars[b]
-        alg_eqs.append(i_cap_t[a] - rhs)
+                rhs_q = rhs_q + Cab * vt_vars[b]
+        alg_eqs.append(q_t[a] - rhs_q)
 
-    # Terminal current at from-bus:
-    # if = i_ser + i_cap_f
-    for a in range(m):
-        gv = c0
-        alg_eqs.append(if_act[a] - (i_ser[a] + gv + i_cap_f[a]))
+    # Corrientes terminales con un pequeño damping (amortiguamiento numérico)
+    # G_damp ayuda a "limpiar" oscilaciones de alta frecuencia en buses inductivos
+    G_damp = 1e-6
 
-    # Terminal current at to-bus:
-    # it = -i_ser + i_cap_t
+    # Terminal current at from-bus: if = i_ser + i_cap_f + G_damp*v
     for a in range(m):
-        gv = c0
-        alg_eqs.append(it_act[a] - (-i_ser[a] + gv + i_cap_t[a]))
+        alg_eqs.append(if_act[a] - (i_ser[a] + i_cap_f[a] + G_damp * vf_vars[a]))
+
+    # Terminal current at to-bus: it = -i_ser + i_cap_t + G_damp*v
+    for a in range(m):
+        alg_eqs.append(it_act[a] - (-i_ser[a] + i_cap_t[a] + G_damp * vt_vars[a]))
+
+    # # Terminal current at from-bus:
+    # # if = i_ser + i_cap_f
+    # for a in range(m):
+    #     gv = c0
+    #     alg_eqs.append(if_act[a] - (i_ser[a] + gv + i_cap_f[a]))
+    #
+    # # Terminal current at to-bus:
+    # # it = -i_ser + i_cap_t
+    # for a in range(m):
+    #     gv = c0
+    #     alg_eqs.append(it_act[a] - (-i_ser[a] + gv + i_cap_t[a]))
 
     templ.block.algebraic_eqs = alg_eqs
 
@@ -254,30 +284,42 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     # -----------------------------
     init_eqs: Dict[Var, Expr] = {}
 
-    # q_f = C_end * vf
+    # q = C * v (inicialización de carga)
     for a in range(m):
-        rhs = c0
+        rhs_f = c0
+        rhs_t = c0
         for b in range(m):
             Cab = float(C_end[a, b])
             if Cab != 0.0:
-                rhs = rhs + Cab * vf_vars[b]
-        init_eqs[q_f[a]] = rhs
+                rhs_f += Cab * vf_vars[b]
+                rhs_t += Cab * vt_vars[b]
+        init_eqs[q_f[a]] = rhs_f
+        init_eqs[q_t[a]] = rhs_t
 
-    # q_t = C_end * vt
-    for a in range(m):
-        rhs = c0
-        for b in range(m):
-            Cab = float(C_end[a, b])
-            if Cab != 0.0:
-                rhs = rhs + Cab * vt_vars[b]
-        init_eqs[q_t[a]] = rhs
+    # # q_f = C_end * vf
+    # for a in range(m):
+    #     rhs = c0
+    #     for b in range(m):
+    #         Cab = float(C_end[a, b])
+    #         if Cab != 0.0:
+    #             rhs = rhs + Cab * vf_vars[b]
+    #     init_eqs[q_f[a]] = rhs
+
+    # # q_t = C_end * vt
+    # for a in range(m):
+    #     rhs = c0
+    #     for b in range(m):
+    #         Cab = float(C_end[a, b])
+    #         if Cab != 0.0:
+    #             rhs = rhs + Cab * vt_vars[b]
+    #     init_eqs[q_t[a]] = rhs
 
     # i_cap seeds
     for a in range(m):
         init_eqs[i_cap_f[a]] = c0
         init_eqs[i_cap_t[a]] = c0
 
-    # i_ser seed using KLC
+    # i_ser seed using KLC i_ser = if - i_cap_f
     for a in range(m):
         init_eqs[i_ser[a]] = if_act[a] - i_cap_f[a]
 

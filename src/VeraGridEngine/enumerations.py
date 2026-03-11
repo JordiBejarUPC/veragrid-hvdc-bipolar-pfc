@@ -2702,7 +2702,10 @@ class VarPowerFlowRefferenceType(Enum):
     i_A = "i_A"  # Injection current at phase A in p.u.
     i_B = "i_B"  # Injection current at phase B in p.u.
     i_C = "i_C"  # Injection current at phase C in p.u.
-    theta = "theta"  # Rotor angle in a synchronous generator in rad
+    phi_v = "phi_v"  # voltage angle in the network
+    phi = "phi" # network angle
+    Vpk = "Vpk" # rms peak value of voltage
+    Ipk = "Ipk"  # rms peak value of current
 
     P_N = "P_N"  # Bus active power in phase N in p.u.
     P_A = "P_A"  # Bus active power in phase A in p.u.

@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from typing import Dict, List
-
+import numpy as np
 from matplotlib import pyplot as plt
 from PySide6 import QtCore, QtGui
 
@@ -12,6 +12,8 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.Simulations.results_table import ResultsTable
+from VeraGrid.Gui.results_model import ResultsModel
 
 
 def _build_tree_item(text: str) -> QtGui.QStandardItem:
@@ -876,3 +878,40 @@ class DynamicsResultsHandler:
                 return self.plot_group(plot_group_name=plot_group_name, rms_group_name=rms_group_name)
             else:
                 return False
+
+    def get_data_from_plot_index(self, index: QtCore.QModelIndex, rms_group_name: str) -> ResultsModel | None:
+        """
+
+        :param index:
+        :param rms_group_name:
+        :return:
+        """
+        plot_group_name: str | None = self.get_plot_group_name_from_index(index=index)
+
+        if plot_group_name is not None:
+
+            plot_group: DynamicsPlotGroup | None = self.plot_groups.get_group(name=plot_group_name)
+            variables: List[Var] = plot_group.get_vars()
+            if len(variables) > 0:
+                group_idx: int = self.group_idx[rms_group_name]
+                data = self.results.get_vars_data(var_list=variables, group_idx=group_idx)
+
+                var_names = np.array([v.name for v in variables])
+
+                table = ResultsTable(
+                    data=data,
+                    index=self.results.time_array,
+                    columns=var_names,
+                    title=plot_group_name,
+                    ylabel="",
+                    cols_device_type=DeviceType.NoDevice,
+                    idx_device_type=DeviceType.NoDevice
+                )
+
+                mdl = ResultsModel(table=table)
+
+                return mdl
+            else:
+                return None
+        else:
+            return None

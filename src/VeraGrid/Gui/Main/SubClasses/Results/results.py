@@ -59,6 +59,7 @@ class ResultsMain(SimulationsMain):
         # tree-click
         self.ui.results_treeView.clicked.connect(self.results_tree_view_click)
         self.ui.dynamicsDeviceTreeView.clicked.connect(self.dynamic_results_tree_view_click)
+        self.ui.dynamicsPlotsTreeView.clicked.connect(self.dynamic_plots_tree_view_click)
 
         # tree double click
         self.ui.dynamicsDeviceTreeView.doubleClicked.connect(self.dynamic_results_tree_view_dbl_click)
@@ -243,6 +244,21 @@ class ResultsMain(SimulationsMain):
         del index
         self.plot_dynamic_plot_entry()
 
+    def dynamic_plots_tree_view_click(self, index: QtCore.QModelIndex):
+        """
+        On dynamics plot tree click...
+        :param index:
+        :return:
+        """
+        if self.dynamic_results_handler is not None:
+            selected_indexes = self.ui.dynamicsPlotsTreeView.selectedIndexes()
+            if len(selected_indexes) > 0:
+                group_name: str = self.ui.eventsGroupComboBox.currentText()
+                mdl = self.dynamic_results_handler.get_data_from_plot_index(index=selected_indexes[0],
+                                                                            rms_group_name=group_name)
+
+                self.ui.dynamicsTableView.setModel(mdl)
+
     def expand_dynamic_plots_tree(self,
                                   parent: QtCore.QModelIndex,
                                   first: int,
@@ -320,10 +336,13 @@ class ResultsMain(SimulationsMain):
                     return None
                 else:
                     self.show_warning_toast("The selected dynamic plot entry could not be plotted.")
+                    return None
             else:
                 self.show_warning_toast("Select a plot group or variable first.")
+                return None
         else:
             self.show_warning_toast("There are no RMS dynamics results loaded.")
+            return None
 
     def search_dynamic_objects(self) -> None:
         """
