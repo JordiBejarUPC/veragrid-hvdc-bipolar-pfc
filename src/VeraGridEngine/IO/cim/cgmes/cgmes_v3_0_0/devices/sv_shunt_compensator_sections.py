@@ -15,6 +15,7 @@ class SvShuntCompensatorSections(Base):
 		CgmesProperty(property_name='ShuntCompensator', class_type='ShuntCompensator', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The shunt compensator for which the state applies.''', profiles=[]),
 		CgmesProperty(property_name='sections', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The number of sections in service as a continuous variable. The attribute shall be a positive value or zero. To get integer value scale with ShuntCompensator.bPerSection.''', profiles=[]),
 	)
+	__slots__ = ('ShuntCompensator', 'sections')
 	def __init__(self, rdfid, tpe="SvShuntCompensatorSections", resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 

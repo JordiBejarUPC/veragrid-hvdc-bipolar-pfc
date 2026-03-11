@@ -16,6 +16,7 @@ class SvSwitch(Base):
 		CgmesProperty(property_name='open', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The attribute tells if the computed state of the switch is considered open.''', profiles=[]),
 		CgmesProperty(property_name='Switch', class_type='Switch', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The switch associated with the switch state.''', profiles=[]),
 	)
+	__slots__ = ('open', 'Switch')
 	def __init__(self, rdfid, tpe, resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 

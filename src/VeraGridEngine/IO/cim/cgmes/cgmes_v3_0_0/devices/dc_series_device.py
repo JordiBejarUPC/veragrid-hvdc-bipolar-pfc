@@ -13,6 +13,7 @@ class DCSeriesDevice(DCConductingEquipment):
 		CgmesProperty(property_name='inductance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.H, description='''Inductive part of reactance (imaginary part of impedance), at rated frequency.''', profiles=[]),
 		CgmesProperty(property_name='resistance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Resistance (real part of impedance).''', profiles=[]),
 	)
+	__slots__ = ('inductance', 'resistance')
 	def __init__(self, rdfid='', tpe='DCSeriesDevice'):
 		DCConductingEquipment.__init__(self, rdfid, tpe)
 

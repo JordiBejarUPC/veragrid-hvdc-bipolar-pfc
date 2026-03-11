@@ -18,6 +18,7 @@ class PetersenCoil(EarthFaultCompensator):
 		CgmesProperty(property_name='xGroundMin', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', profiles=[]),
 		CgmesProperty(property_name='xGroundNominal', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', profiles=[]),
 	)
+	__slots__ = ('mode', 'nominalU', 'offsetCurrent', 'positionCurrent', 'xGroundMax', 'xGroundMin', 'xGroundNominal')
 	def __init__(self, rdfid='', tpe='PetersenCoil'):
 		EarthFaultCompensator.__init__(self, rdfid, tpe)
 

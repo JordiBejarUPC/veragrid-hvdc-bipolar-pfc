@@ -18,6 +18,7 @@ class BusNameMarker(IdentifiedObject):
 		CgmesProperty(property_name='ReportingGroup', class_type='ReportingGroup', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The bus name markers that belong to this reporting group.''', profiles=[]),
 		CgmesProperty(property_name='Terminal', class_type='ACDCTerminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The terminals associated with this bus name marker.''', profiles=[]),
 	)
+	__slots__ = ('priority', 'ReportingGroup', 'Terminal')
 	def __init__(self, rdfid='', tpe='BusNameMarker'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

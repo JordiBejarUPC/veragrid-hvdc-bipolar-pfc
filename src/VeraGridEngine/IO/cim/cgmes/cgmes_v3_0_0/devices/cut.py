@@ -18,6 +18,7 @@ class Cut(Switch):
 		CgmesProperty(property_name='ACLineSegment', class_type='ACLineSegment', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The line segment to which the cut is applied.''', profiles=[]),
 		CgmesProperty(property_name='lengthFromTerminal1', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.m, description='''Unit of length. It shall be a positive value or zero.''', profiles=[]),
 	)
+	__slots__ = ('ACLineSegment', 'lengthFromTerminal1')
 	def __init__(self, rdfid='', tpe='Cut'):
 		Switch.__init__(self, rdfid, tpe)
 

@@ -15,6 +15,7 @@ class Switch(ConductingEquipment):
 		CgmesProperty(property_name='retained', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Branch is retained in a bus branch model.  The flow through retained switches will normally be calculated in power flow.''', profiles=[]),
 		CgmesProperty(property_name='open', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The attribute tells if the switch is considered open when used as input to topology processing.''', profiles=[]),
 	)
+	__slots__ = ('normalOpen', 'ratedCurrent', 'retained', 'open')
 	def __init__(self, rdfid='', tpe='Switch'):
 		ConductingEquipment.__init__(self, rdfid, tpe)
 

@@ -14,6 +14,7 @@ class WindPowerPlant(PowerSystemResource):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='WindGeneratingUnits', class_type='WindGeneratingUnit', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A wind generating unit or units may be a member of a wind power plant.''', profiles=[]),
 	)
+	__slots__ = ('WindGeneratingUnits',)
 	def __init__(self, rdfid='', tpe='WindPowerPlant'):
 		PowerSystemResource.__init__(self, rdfid, tpe)
 

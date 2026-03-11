@@ -37,6 +37,7 @@ The phase code on terminals connecting same ConnectivityNode or same Topological
 		CgmesProperty(property_name='HasSecondMutualCoupling', class_type='MutualCoupling', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Mutual couplings with the branch associated as the first branch.''', profiles=[]),
 		CgmesProperty(property_name='HasFirstMutualCoupling', class_type='MutualCoupling', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Mutual couplings associated with the branch as the first branch.''', profiles=[]),
 	)
+	__slots__ = ('ConverterDCSides', 'AuxiliaryEquipment', 'ConductingEquipment', 'ConnectivityNode', 'RegulatingControl', 'phases', 'TransformerEnd', 'TieFlow', 'SvPowerFlow', 'TopologicalNode', 'HasSecondMutualCoupling', 'HasFirstMutualCoupling')
 	def __init__(self, rdfid='', tpe='Terminal'):
 		ACDCTerminal.__init__(self, rdfid, tpe)
 

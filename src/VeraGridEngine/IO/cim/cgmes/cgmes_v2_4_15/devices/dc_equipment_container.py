@@ -16,6 +16,7 @@ class DCEquipmentContainer(EquipmentContainer):
 		CgmesProperty(property_name='DCNodes', class_type='DCNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', profiles=[]),
 		CgmesProperty(property_name='DCTopologicalNode', class_type='DCTopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', profiles=[]),
 	)
+	__slots__ = ('DCNodes', 'DCTopologicalNode')
 	def __init__(self, rdfid='', tpe='DCEquipmentContainer'):
 		EquipmentContainer.__init__(self, rdfid, tpe)
 

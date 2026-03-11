@@ -27,6 +27,7 @@ class PowerTransformerEnd(TransformerEnd):
 		CgmesProperty(property_name='x', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', profiles=[]),
 		CgmesProperty(property_name='x0', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', profiles=[]),
 	)
+	__slots__ = ('PowerTransformer', 'b', 'connectionKind', 'b0', 'phaseAngleClock', 'ratedS', 'g', 'ratedU', 'g0', 'r', 'r0', 'x', 'x0')
 	def __init__(self, rdfid='', tpe='PowerTransformerEnd'):
 		TransformerEnd.__init__(self, rdfid, tpe)
 

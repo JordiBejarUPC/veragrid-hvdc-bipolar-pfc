@@ -18,6 +18,7 @@ class PositionPoint(Base):
 		CgmesProperty(property_name='yPosition', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Y axis position.''', profiles=[]),
 		CgmesProperty(property_name='zPosition', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''(if applicable) Z axis position.''', profiles=[]),
 	)
+	__slots__ = ('Location', 'sequenceNumber', 'xPosition', 'yPosition', 'zPosition')
 	def __init__(self, rdfid, tpe="PositionPoint", resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 

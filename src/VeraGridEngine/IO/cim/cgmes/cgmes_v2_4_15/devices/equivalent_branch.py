@@ -27,6 +27,7 @@ class EquivalentBranch(EquivalentEquipment):
 		CgmesProperty(property_name='zeroX12', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', profiles=[]),
 		CgmesProperty(property_name='zeroX21', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', profiles=[]),
 	)
+	__slots__ = ('negativeR12', 'negativeR21', 'negativeX12', 'negativeX21', 'positiveR12', 'positiveR21', 'positiveX12', 'positiveX21', 'r', 'r21', 'x', 'x21', 'zeroR12', 'zeroR21', 'zeroX12', 'zeroX21')
 	def __init__(self, rdfid='', tpe='EquivalentBranch'):
 		EquivalentEquipment.__init__(self, rdfid, tpe)
 

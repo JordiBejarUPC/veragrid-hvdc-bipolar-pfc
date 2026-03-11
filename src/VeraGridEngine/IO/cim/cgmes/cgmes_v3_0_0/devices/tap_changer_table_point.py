@@ -18,6 +18,7 @@ For example, if the ratio at step 1 is 1.01, and the rated voltage of the transf
 		CgmesProperty(property_name='step', class_type=int, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The tap step.''', profiles=[]),
 		CgmesProperty(property_name='x', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Percentage on a defined base.   For example, specify as 100 to indicate at the defined base.''', profiles=[]),
 	)
+	__slots__ = ('b', 'g', 'r', 'ratio', 'step', 'x')
 	def __init__(self, rdfid, tpe, resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 

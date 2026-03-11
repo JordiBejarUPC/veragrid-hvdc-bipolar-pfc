@@ -16,6 +16,7 @@ class HydroGeneratingUnit(GeneratingUnit):
 		CgmesProperty(property_name='energyConversionCapability', class_type=HydroEnergyConversionKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Energy conversion capability for generating.''', profiles=[]),
 		CgmesProperty(property_name='HydroPowerPlant', class_type='HydroPowerPlant', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The hydro generating unit belongs to a hydro power plant.''', profiles=[]),
 	)
+	__slots__ = ('energyConversionCapability', 'HydroPowerPlant')
 	def __init__(self, rdfid='', tpe='HydroGeneratingUnit'):
 		GeneratingUnit.__init__(self, rdfid, tpe)
 

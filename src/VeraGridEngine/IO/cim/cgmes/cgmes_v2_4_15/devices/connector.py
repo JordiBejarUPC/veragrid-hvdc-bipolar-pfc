@@ -7,6 +7,7 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.conducting_equipment impo
 
 
 class Connector(ConductingEquipment):
+	__slots__ = ()
 	def __init__(self, rdfid='', tpe='Connector'):
 		ConductingEquipment.__init__(self, rdfid, tpe)
 

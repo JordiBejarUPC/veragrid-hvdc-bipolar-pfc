@@ -16,6 +16,7 @@ class CogenerationPlant(PowerSystemResource):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='ThermalGeneratingUnits', class_type='ThermalGeneratingUnit', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A thermal generating unit may be a member of a cogeneration plant.''', profiles=[]),
 	)
+	__slots__ = ('ThermalGeneratingUnits',)
 	def __init__(self, rdfid='', tpe='CogenerationPlant'):
 		PowerSystemResource.__init__(self, rdfid, tpe)
 

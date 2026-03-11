@@ -7,5 +7,6 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.identified_object import 
 
 
 class MergingAgent(IdentifiedObject):
+    __slots__ = ()
     def __init__(self, rdfid: str = '', tpe: str = 'MergingAgent'):
         IdentifiedObject.__init__(self, rdfid=rdfid, tpe=tpe)
