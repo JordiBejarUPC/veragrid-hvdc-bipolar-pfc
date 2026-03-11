@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from typing import Dict, List, Tuple
+from typing import Dict, List, Set, Tuple
 from uuid import uuid4, UUID
 from VeraGridEngine.IO.cim.cgmes.cgmes_property import CgmesProperty
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
@@ -141,7 +141,7 @@ class Base:
 
         self.declared_properties: Dict[str, CgmesProperty] = cls.CLASS_REGISTERED_PROPERTIES
 
-        self.parsed_properties = dict()
+        self.parsed_properties: Set[str] = set()
 
         self.boundary_set = False
 
@@ -167,7 +167,7 @@ class Base:
         :param data:
         :param logger:
         """
-        self.parsed_properties = data
+        self.parsed_properties = set()
         declared_properties: Dict[str, CgmesProperty] = self.declared_properties
 
         for prop_name, prop_value in data.items():
@@ -175,6 +175,7 @@ class Base:
             if prop is not None:
                 try:
                     self.store_parsed_property_value(prop_name=prop_name, prop_value=prop_value)
+                    self.parsed_properties.add(prop_name)
                 except AttributeError:
                     if not self.boundary_set:
                         logger.add_error("Declared property has no storage in CGMES class",
@@ -249,6 +250,15 @@ class Base:
         for property_name in self.get_declared_property_names():
             property_map[property_name] = getattr(self, property_name)
         return property_map
+
+    def has_parsed_property(self, prop_name: str) -> bool:
+        """
+        Check whether one declared property was present in the parsed XML.
+
+        :param prop_name: Declared property name
+        :return: ``True`` if the property was present in the parsed XML
+        """
+        return prop_name in self.parsed_properties
 
     def __repr__(self):
         return self.rdfid

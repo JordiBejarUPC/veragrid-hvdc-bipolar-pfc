@@ -2511,7 +2511,7 @@ def get_gcdev_voltage_levels(cgmes_model: CgmesCircuit,
                 volt_lev_dict[gcdev_elm.idtag] = gcdev_elm
             else:
                 logger.add_error(msg='Base voltage not found for VoltageLevel',
-                                 device=cgmes_elm.parsed_properties.get("BaseVoltage", "not provided"),
+                                 device="provided" if cgmes_elm.has_parsed_property("BaseVoltage") else "not provided",
                                  comment="get_gcdev_voltage_levels")
         else:
             logger.add_error(msg='Base voltage not found for VoltageLevel',

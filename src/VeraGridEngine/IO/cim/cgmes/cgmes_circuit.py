@@ -464,7 +464,7 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
             if mark_used:
                 element.used = True
 
-            parsed_property_names = set(element.parsed_properties.keys())
+            parsed_property_names = element.parsed_properties
 
             for property_name in parsed_property_names:
                 if class_meta is None:
