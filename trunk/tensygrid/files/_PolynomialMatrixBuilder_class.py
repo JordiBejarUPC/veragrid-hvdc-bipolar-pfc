@@ -420,10 +420,12 @@ class PolynomialMatrixBuilder:
 
         eq_idx: int = 0
         for eq in all_exprs:
+            """
             if self.verbose:
                 print(f"\nEquation {eq_idx + 1}: {eq}")
             else:
                 pass
+            """
 
             terms: list
             if eq.is_Add:

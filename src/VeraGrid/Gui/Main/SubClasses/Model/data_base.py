@@ -876,6 +876,18 @@ class DataBaseTableMain(DiagramsMain):
                 obj = dev.RmsEventsGroup(name=name)
                 self.circuit.add_rms_events_group(obj)
 
+            elif elm_type == DeviceType.EmtEventDevice.value:
+
+                name = f'EMT event {len(self.circuit.rms_events)}'
+                obj = dev.EmtEvent(name=name)
+                self.circuit.add_emt_event(obj)
+
+            elif elm_type == DeviceType.EmtEventsGroupDevice.value:
+
+                name = f'EMT event group {len(self.circuit.rms_events_groups)}'
+                obj = dev.EmtEventsGroup(name=name)
+                self.circuit.add_emt_events_group(obj)
+
             else:
                 info_msg("This object does not support table-like addition.\nUse the schematic instead.")
                 return

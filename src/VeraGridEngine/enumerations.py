@@ -1178,8 +1178,12 @@ class DeviceType(Enum):
     RmsEventDevice = "Rms Event"
     RmsEventsGroupDevice = "Rms Events Group"
 
+    EmtModelTemplateDevice = "EMT template"
     EmtEventDevice = "Emt Event"
     EmtEventsGroupDevice = "Emt Events Group"
+
+    DynamicPlotEntry = "Plot Event"
+    DynamicPlotGroupDevice = "Plot Group"
 
     VarFactory = "Var Factory"
 
