@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from typing import Union, Any, Tuple
-from VeraGridEngine.Devices.types import ALL_DEV_TYPES
+# from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCProp
 from VeraGridEngine.Devices.Aggregation.dynamic_plot import DynamicPlot
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
@@ -33,7 +33,7 @@ class DynamicPlotEntry(EditableDevice):
                  variable: Var = None,
                  plot: DynamicPlot = None,
                  group: RmsEventsGroup = None,
-                 device: ALL_DEV_TYPES = None,
+                 device: Any = None,
                  idtag: Union[str, None] = None,
                  name="RmsEvent",
                  code='',
@@ -57,6 +57,6 @@ class DynamicPlotEntry(EditableDevice):
                                 comment=comment)
 
         self.variable: Any = variable
-        self.device: ALL_DEV_TYPES = device
+        self.device: Any = device
         self.group: RmsEventsGroup = group
         self.plot: DynamicPlot = plot
