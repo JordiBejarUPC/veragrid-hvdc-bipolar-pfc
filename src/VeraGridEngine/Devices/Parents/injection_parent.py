@@ -342,6 +342,8 @@ class InjectionParent(PhysicalDevice):
 
             if self.auto_update_enabled:
                 self.rms_model = val.block.copy()
+        elif val is None:
+            self._rms_template = None
         else:
             raise ValueError(f"RMS template cannot accept {val}")
 
@@ -359,6 +361,8 @@ class InjectionParent(PhysicalDevice):
 
             if self.auto_update_enabled:
                 self.emt_model = val.block.copy()
+        elif val is None:
+            self._emt_template = None
         else:
             raise ValueError(f"EMT template cannot accept {val}")
 
