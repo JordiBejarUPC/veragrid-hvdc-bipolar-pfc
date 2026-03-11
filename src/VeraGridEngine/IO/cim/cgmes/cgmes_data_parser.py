@@ -6,7 +6,15 @@
 import os
 import zipfile
 from typing import BinaryIO, Dict, List, Union, Callable, Tuple, Optional
-import xml.etree.ElementTree as ET
+
+try:
+    # Prefer lxml when it is available because CGMES import is dominated by large
+    # RDF/XML streams, and lxml's iterparse implementation is usually faster.
+    # The rest of the parser stays backend-agnostic and falls back to the
+    # standard library XML implementation if lxml is not installed.
+    from lxml import etree as ET
+except ImportError:
+    import xml.etree.ElementTree as ET
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.base.base_circuit import BaseCircuit
 from VeraGridEngine.enumerations import CGMESVersions
