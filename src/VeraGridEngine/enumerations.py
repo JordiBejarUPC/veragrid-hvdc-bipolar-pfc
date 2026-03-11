@@ -1181,6 +1181,9 @@ class DeviceType(Enum):
     EmtEventDevice = "Emt Event"
     EmtEventsGroupDevice = "Emt Events Group"
 
+    DynamicPlotEntry = "Plot Event"
+    DynamicPlotGroupDevice = "Plot Group"
+
     VarFactory = "Var Factory"
 
     def __str__(self) -> str:

@@ -2,9 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
-import cProfile
-
 from typing import Dict, List, Callable
 import time
 import numpy as np
@@ -28,8 +25,6 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
-from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
-from VeraGridEngine.basic_structures import Vec
 
 
 def _tic():
@@ -94,7 +89,7 @@ class RmsProblemDae(RmsProblemTemplate):
                  options: RmsOptions,
                  pf_results: PowerFlowResults | None,
                  progress_signal: DummySignal | None = None,
-                 progress_text: DummySignal | None = None,):
+                 progress_text: DummySignal | None = None, ):
         """
 
         :param grid:
@@ -878,40 +873,70 @@ class RmsProblemDae(RmsProblemTemplate):
         :param t:
         :return:
         """
+        if self._event_params_fn is None:
+            raise ValueError("_event_params_fn is None")
+
         self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
 
     def get_dx(self, x: Vec, xn: Vec, dx: Vec, h: float) -> Vec:
+
+        if self._derivative_fn is None:
+            raise ValueError("_derivative_fn is None")
+
         return self._derivative_fn(x, xn, dx, h)
 
     def rhs_state(self, x: Vec, dx: Vec) -> Vec:
+
+        if self._rhs_state_fn is None:
+            raise ValueError("_rhs_state_fn is None")
+
         return self._rhs_state_fn(x, dx,
                                   self._variable_parameters_values,
                                   self._constant_params)
 
     def rhs_algebraic(self, x: Vec, dx: Vec) -> Vec:
+        if self._rhs_algeb_fn is None:
+            raise ValueError("_rhs_algeb_fn is None")
+
         return self._rhs_algeb_fn(x, dx,
                                   self._variable_parameters_values,
                                   self._constant_params)
 
     def get_j11(self, x: Vec, dx: Vec, h: float):
+
+        if self._j11_fn is None:
+            raise ValueError("_j11_fn is None")
+
         return self._j11_fn(x, dx,
                             self._variable_parameters_values,
                             self._constant_params,
                             h)
 
     def get_j12(self, x: Vec, dx: Vec, h: float):
+
+        if self._j12_fn is None:
+            raise ValueError("_j12_fn is None")
+
         return self._j12_fn(x, dx,
                             self._variable_parameters_values,
                             self._constant_params,
                             h)
 
     def get_j21(self, x: Vec, dx: Vec, h: float):
+
+        if self._j21_fn is None:
+            raise ValueError("_j21_fn is None")
+
         return self._j21_fn(x, dx,
                             self._variable_parameters_values,
                             self._constant_params,
                             h)
 
     def get_j22(self, x: Vec, dx: Vec, h: float):
+
+        if self._j22_fn is None:
+            raise ValueError("_j22_fn is None")
+
         return self._j22_fn(x, dx,
                             self._variable_parameters_values,
                             self._constant_params,

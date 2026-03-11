@@ -264,7 +264,7 @@ class Assets:
         # owners
         self._owners: List[dev.Owner] = list()
 
-        # Modelling authority
+        # Modeling authority
         self._modelling_authorities: List[dev.ModellingAuthority] = list()
 
         # fuels
