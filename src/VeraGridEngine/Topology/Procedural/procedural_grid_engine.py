@@ -7,8 +7,9 @@ from typing import Dict, List, TYPE_CHECKING
 
 import numpy as np
 import VeraGridEngine.Devices as dev
+from VeraGridEngine import Substation
 from VeraGridEngine.Devices.types import BRANCH_TYPES
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, ProceduralGridMethods
 from VeraGridEngine.basic_structures import Mat
 import matplotlib.pyplot as plt
 from scipy.spatial.distance import cdist
@@ -18,43 +19,124 @@ from scipy.special import gammaincinv
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 
-class InterNodeDevices:
+class ProceduralGridComputationEngine:
+    """
+    Core engine for procedural grid expansion calculations.
+    """
 
-    def __init__(self, bus_from: str, bus_to: str, tpe: str, subtpe: str,
-                 catalogue_entry: str, length: float, x: float, y: float,
-                 candidates: list):
-
-        # For connections AND buses
-        self.catalogue_entry = catalogue_entry
-        self.length = length
-        self.tpe = tpe # "connection" or "bus"
-
-        # For connections
-        self.bus_from = bus_from
-        self.bus_to = bus_to
-        self.subtpe = subtpe  # "cable" or "transformer"
+    def __init__(
+        self,
+        method: ProceduralGridMethods,
+        targets: List[Substation],
+        candidates: List[Substation]
+    ):
+        self.method = method
+        self.targets = targets
         self.candidates = candidates
 
-        # For buses
-        self.x = x
-        self.y = y
+    def run_steiner_alone(self):
+        """
+        Executes the Steiner Tree algorithm without further optimization.
+        """
+        print("Running Steiner Tree calculation")
+        # Add your Steiner Tree logic here
+        # 1. Fetch coordinates
+        M = len(self.candidates)
+        N = len(self.targets)
 
-    def add_element(self, candidate: CandidateDevice):
-        self.candidates.append(candidate)
+        coord_M = np.array([[sg.lat, sg.lon] for sg in self.candidates])
+        coord_N = np.array([[sg.lat, sg.lon] for sg in self.targets])
+        # TODO: Get the voltages you inputed in the substations.
+        #  The idea is to get the electrical element form the graphic element and then use get_substaiton_buses()
+        # print(MultiCircuit.get_substation_buses(self.candidate_list[0].api_object))
+        Vnom_kV_M = None
+        Vnom_kV_N = None
 
-    def add_template(self, candidate: CandidateDevice):
-        self.candidates.append(candidate)
+        load_MW_M = None
+        load_MW_N = None
 
+        # 2A. Run VSA: Create an initial radial topology with a Steiner tree approach
+        network = Graph(coord_M, coord_N, max_iteration=15000)
+        raw_vector, history = network.run_vsa()
+        raw_steiner_pts = network.decode_solution(raw_vector)
 
-class Node:
+        # 2B. Prune redundant nodes
+        final_steiner_pts = network.prune_redundant_nodes(raw_steiner_pts)
 
-    def __init__(self, name: str, load: float):
-        self.name = name
-        self.load = load
+        # 2C. Get edges of the final network
+        coords_final_network = np.vstack((network.all_coords, final_steiner_pts))
+        _, final_mst = network.get_mst_cost(coords_final_network)
+        edges = network.generate_edges(final_mst)
+
+        # 2E. Assign voltages to Steiner Points
+        closest_voltage = []
+        for i in range(len(final_steiner_pts)):
+            steiner_coord = final_steiner_pts[i]
+            dists_to_M = np.linalg.norm(coord_M - steiner_coord, axis=1)
+            dists_to_N = np.linalg.norm(coord_N - steiner_coord, axis=1)
+            min_dist_M = np.min(dists_to_M)
+            min_dist_N = np.min(dists_to_N)
+            if min_dist_M < min_dist_N:
+                closest_bus_idx = np.argmin(dists_to_M)
+                closest_voltage.append(Vnom_kV_M[closest_bus_idx])
+            else:
+                closest_bus_idx = np.argmin(dists_to_N)
+                closest_voltage.append(Vnom_kV_N[closest_bus_idx])
+
+        node_objects = []
+        for i in range(len(coords_final_network)):
+            if 0 <= i <= M - 1:
+                tpe = 0
+                id_number = i
+                x, y = coords_final_network[i]
+                voltage = Vnom_kV_M[i]
+                load = load_MW_M[i]
+
+            elif M <= i <= M + N - 1:
+                tpe  = 1
+                id_number = i - M
+                x, y = coords_final_network[i]
+                voltage = Vnom_kV_N[i - M]
+                load = load_MW_N[i - M]
+
+            else:
+                # For now, each Steiner Point will have the voltage of the closest M or N bus
+                tpe = 2
+                id_number = i - (M + N) + 1
+                x, y = coords_final_network[i]
+                voltage = closest_voltage[i - (M + N)]
+                load = None
+
+            node_objects.append(Node(tpe, id_number, x, y, load, voltage))
+
+        edge_objects = []
+        for edge in edges:
+            edge_objects.append(Edge(node_objects[edge[0]],node_objects[edge[1]]))
+
+        topology = Topology(network, node_objects, edge_objects)
+
+        # 3. Convert to VeraGrid object
+        grid = Grid(topology)
+
+        # 4. Display in the diagram
+        # TODO: Display in the diagram
+
+        return None
+
+    def run_optimization(self):
+        """
+        Executes the Steiner Tree algorithm followed by an optimization pass.
+        """
+        print("Running Steiner Tree plus Optimization")
+        # Add your Steiner Tree plus Optimization logic here
+        # TODO: Implement steiner tree + optimization
+
+        return None
 
 class Graph:
     """
     Class to create the Graph
+    A graph is a set of nodes and edges
     """
     def __init__(self, m_coords, n_coords, max_iteration=1500):
         # to do: Add all hardcoded values to constructor
@@ -249,58 +331,80 @@ class Graph:
 class Topology(Graph):
     """
     Class to create the Topology
+    A Topology is a set of nodes, edges, buses and connections.
     """
-
-    def __init__(self, m_coords, n_coords, max_iteration=1500):
+    def __init__(self, m_coords, n_coords, max_iteration=1500, Nodes: List[Node], Edges: List[Edge]):
         super().__init__(m_coords, n_coords, max_iteration)
         # Additional attributes for Topology can be added here
-        self.M = len(self.m_coords)
-        self.N = len(self.n_coords)
-        self.Node = Node
-        self.InterNodeDevices = InterNodeDevices
+        self.Nodes = Nodes
+        self.Edges = Edges
 
     def generate_2D_markov(self):
-        for edge in self.edges:  # edge is a tuple (i,j)
-            if 0 <= edge[0] <= self.M - 1:
-                label_bus1 = Vnom_kV_M[edge[0]]
-                coord_bus1 = coords_final_network[edge[0]]
-                name_bus1 = f"M_{edge[0]}"
 
-            elif self.M <= edge[0] <= self.M + self.N - 1:
-                label_bus1 = Vnom_kV_N[edge[0] - self.M]
-                coord_bus1 = coords_final_network[edge[0]]
-                name_bus1 = f"N_{edge[0] - self.M}"
-            else:
-                # For now, each Steiner Point will have the voltage of the closest M or N bus
-                label_bus1 = closest_voltage[edge[0] - (self.M + self.N)]
-                coord_bus1 = coords_final_network[edge[0]]
-                name_bus1 = f"Sp_{edge[0] - (self.M + self.N) + 1}"
-
-            if 0 <= edge[1] <= self.M - 1:
-                label_bus2 = Vnom_kV_M[edge[1]]
-                coord_bus2 = coords_final_network[edge[1]]
-                name_bus2 = f"M_{edge[1]}"
-
-            elif M <= edge[1] <= self.M + self.N - 1:
-                label_bus2 = Vnom_kV_N[edge[1] - self.M]
-                coord_bus2 = coords_final_network[edge[1]]
-                name_bus2 = f"N_{edge[1] - self.M}"
-
-            else:
-                # For now, each Steiner Point will have the voltage of the closest M or N bus
-                label_bus2 = closest_voltage[edge[1] - (self.M + self.N)]
-                coord_bus2 = coords_final_network[edge[1]]
-                name_bus2 = f"Sp_{edge[1] - (self.M + self.N) + 1}"
+        for edge in self.edges:
+            bus_from = edge[0]
+            bus_to = edge[1]
+        combination, lengths, coords = generate_1D_markov(input_bus=label_bus1,
+                                                          output_bus=label_bus2,
+                                                          coord_input=coord_bus1,
+                                                          coord_output=coord_bus2,
+                                                          n_combinations=1,
+                                                          seed=26)
 
 class Grid(Topology):
     """
     Class to create the Grid
+    A grid contains the data to create a VeraGrid object modeling the grid
     """
 
     def __init__(self, m_coords, n_coords, max_iteration=1500):
         super().__init__(m_coords, n_coords, max_iteration)
         # Additional attributes for Grid can be added here
 
+class Node:
+
+    def __init__(self, tpe: int, id_number: int, x: float, y: float, load: float, voltage: int):
+        self.tpe = tpe # 0 for M, 1 for N, 2 for Steiner Point
+        self.id_number = id_number
+        self.x = x
+        self.y = y
+        self.load = load
+        self.voltage = voltage
+
+    #def add_node(self, candidate: int):
+    #    self.candidates.append(candidate)
+
+class Edge:
+
+    def __init__(self, start_node: Node, end_node: Node):
+        self.start_node = start_node
+        self.end_node = end_node
+
+class Bus:
+
+    def __init__(self, id_number: int, x: float, y: float, load: float, voltage: int):
+        self.id_number = id_number
+        self.x = x
+        self.y = y
+        self.voltage = voltage
+
+    #def add_bus(self, candidate: CandidateDevice):
+    #    self.candidates.append(candidate)
+
+class Connection:
+
+    def __init__(self, bus_from: Bus, bus_to: Bus, tpe: int, catalogue_entry: str, length: float):
+        self.bus_from = bus_from
+        self.bus_to = bus_to
+        self.tpe = tpe  # 0 for cable, 1 for transformer
+        self.catalogue_entry = catalogue_entry
+        self.length = length
+
+    #def add_connection(self, candidate: CandidateDevice):
+    #    self.candidates.append(candidate)
+
+    #def add_template(self, candidate: CandidateDevice):
+    #    self.candidates.append(candidate)
 
 if __name__ == '__main__':
 

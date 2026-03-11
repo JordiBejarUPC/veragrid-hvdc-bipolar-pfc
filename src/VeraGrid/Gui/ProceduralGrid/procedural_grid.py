@@ -13,7 +13,7 @@ from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import haversine_distance
 from VeraGrid.Gui.ProceduralGrid.procedural_grid_ui import Ui_Dialog
 from VeraGrid.Gui.gui_functions import get_list_model, enums_to_model
 from VeraGridEngine.enumerations import ProceduralGridMethods
-from VeraGridEngine.Topology.Procedural.procedural_grid_engine import Graph
+from VeraGridEngine.Topology.Procedural.procedural_grid_engine import ProceduralGridComputationEngine
 #from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 
 if TYPE_CHECKING:
@@ -104,51 +104,22 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         Computation
         :return:
         """
+        # 1. Get the chosen method
         method: ProceduralGridMethods = self.methods_dict[self.ui.methodComboBox.currentText()]
 
+        # 2. Extract the raw API objects from the graphic items
+        target_objects = [se.api_object for se in self.connection_substations_graphics_list]
+        candidate_objects = [se.api_object for se in self.candidate_list]
+
+        # 3. Instantiate your engine with the required inputs
+        engine = ProceduralGridComputationEngine(
+            method=method,
+            targets=target_objects,
+            candidates=candidate_objects
+        )
+
         if method == ProceduralGridMethods.SteinerAlone:
-            # 1. Fetch coordinates
-            coord_M = np.array([[sg.lat, sg.lon] for sg in self.candidate_list])
-            coord_N = np.array([[sg.lat, sg.lon] for sg in self.connection_substations_graphics_list])
-            # TODO: Get the voltages you inputed in the substations.
-            #  The idea is to get the electrical element form the graphic element and then use get_substaiton_buses()
-            # print(MultiCircuit.get_substation_buses(self.candidate_list[0].api_object))
-            Vnom_kV_M = None
-            Vnom_kV_N = None
+            engine.run_steiner_alone()
 
-            # 2A. Run VSA: Create an initial radial topology with a Steiner tree approach
-            network = Graph(coord_M, coord_N, max_iteration=15000)
-            raw_vector, history = network.run_vsa()
-            raw_steiner_pts = network.decode_solution(raw_vector)
-
-            # 2B. Prune redundant nodes
-            final_steiner_pts = network.prune_redundant_nodes(raw_steiner_pts)
-
-            # 2C. Get edges of the final network
-            coords_final_network = np.vstack((network.all_coords, final_steiner_pts))
-            _, final_mst = network.get_mst_cost(coords_final_network)
-            edges = network.generate_edges(final_mst)
-
-            # 2E. Assign voltages to Steiner Points
-            closest_voltage = []
-            for i in range(len(final_steiner_pts)):
-                steiner_coord = final_steiner_pts[i]
-                dists_to_M = np.linalg.norm(coord_M - steiner_coord, axis=1)
-                dists_to_N = np.linalg.norm(coord_N - steiner_coord, axis=1)
-                min_dist_M = np.min(dists_to_M)
-                min_dist_N = np.min(dists_to_N)
-                if min_dist_M < min_dist_N:
-                    closest_bus_idx = np.argmin(dists_to_M)
-                    closest_voltage.append(Vnom_kV_M[closest_bus_idx])
-                else:
-                    closest_bus_idx = np.argmin(dists_to_N)
-                    closest_voltage.append(Vnom_kV_N[closest_bus_idx])
-
-            # 3. Convert to VeraGrid object
-            # TODO: Convert to VeraGrid object
-
-            # 4. Display in the diagram
-            # TODO: Display in the diagram
-
-        # elif method == ProceduralGridMethods.SteinerAndOptimization:
-            # TODO: Implement steiner tree + optimization
+        elif method == ProceduralGridMethods.SteinerAndOptimization:
+            engine.run_optimization()
