@@ -17,6 +17,15 @@ from scipy.linalg import lu_factor, lu_solve
 from scipy.sparse import csc_matrix
 from scipy.sparse.linalg import SuperLU, splu
 
+from VeraGridEngine.Utils.Symbolic.diagnostic import (
+    NewtonDiagnosticsConfig,
+    NewtonSolveContext,
+    dense_lstsq_fallback,
+    maybe_apply_backtracking,
+    maybe_check_index1,
+    sparse_lsqr_fallback,
+    with_newton_diagnostics,
+)
 from VeraGridEngine.Utils.Symbolic.symbolic import BinOp, Const, Expr, Func, UnOp, Var
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EagerEquationCompiler, _compile_to_file
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
@@ -28,6 +37,9 @@ Float64Vector = npt.NDArray[np.float64]
 Float64Matrix = npt.NDArray[np.float64]
 Int32Vector = npt.NDArray[np.int32]
 Int32Matrix = npt.NDArray[np.int32]
+DenseFactorization = Tuple[Any, Any]
+DenseSolveBundle = Tuple[DenseFactorization, np.ndarray]
+SparseSolveBundle = Tuple[SuperLU, csc_matrix]
 
 
 def _safe_njit(
@@ -1425,6 +1437,7 @@ class StructuralCompiledSolver:
         "_last_sim_loop_time",
         "_predictor",
         "_backend_build_stats",
+        "_newton_diag_config",
     ]
 
     def __init__(
@@ -1438,6 +1451,7 @@ class StructuralCompiledSolver:
             dense_threshold: int = 100,
             verbose: bool = False,
             auto_build: bool = True,
+            newton_diag_config: NewtonDiagnosticsConfig | None = None,
     ) -> None:
         """
         Create the structural compiled EMT solver.
@@ -1471,6 +1485,12 @@ class StructuralCompiledSolver:
         self._pred_method = pred_method
         self._dense_threshold = dense_threshold
         self._verbose = verbose
+        self._newton_diag_config = newton_diag_config or NewtonDiagnosticsConfig(
+            compute_dense_cond=False,
+            enable_fallback=False,
+            enable_index1_check=False,
+            enable_backtracking=False,
+        )
 
         # The solver captures the problem structure once so all hot loops use local buffers only.
         self._state_vars = self._problem.get_state_vars()
@@ -1787,6 +1807,8 @@ class StructuralCompiledSolver:
 
         x_prev2: Vec = x_prev.copy()
         x_iter: Vec = x_prev.copy()
+        trial_state: Vec = np.zeros(self._n_vars, dtype=np.float64)
+        trial_residual: Vec = np.zeros(self._n_vars, dtype=np.float64)
 
         if params0 is None:
             runtime_params: Vec = np.zeros(self._n_event_parameters, dtype=np.float64)
@@ -1820,6 +1842,38 @@ class StructuralCompiledSolver:
             pass
 
         use_dense_solver: bool = self._n_vars <= self._dense_threshold
+        trace_collector = self._problem.get_newton_trace_collector()
+        diag_cfg = self._newton_diag_config
+        diagnostics_enabled: bool = (
+            trace_collector is not None
+            or diag_cfg.compute_dense_cond
+            or diag_cfg.enable_fallback
+            or diag_cfg.enable_index1_check
+            or diag_cfg.enable_backtracking
+        )
+
+        dense_solve: Callable[..., Vec] | None = None
+        sparse_solve: Callable[..., Vec] | None = None
+
+        if diagnostics_enabled:
+            dense_solve = with_newton_diagnostics(
+                lambda bundle, rhs: lu_solve(bundle[0], rhs),
+                fallback_solve=lambda bundle, rhs: dense_lstsq_fallback(bundle[1], rhs),
+                collector=trace_collector,
+                config=diag_cfg,
+                solver_name="dense_lu",
+                matrix_getter=lambda bundle: bundle[1],
+            )
+            sparse_solve = with_newton_diagnostics(
+                lambda bundle, rhs: bundle[0].solve(rhs),
+                fallback_solve=lambda bundle, rhs: sparse_lsqr_fallback(bundle[1], rhs),
+                collector=trace_collector,
+                config=diag_cfg,
+                solver_name="superlu",
+                matrix_getter=lambda bundle: bundle[1],
+            )
+        else:
+            pass
 
         # Warm up the eager kernels once so the integration loop sees only machine-code execution.
         self._residual_assembler.evaluate(x_prev, full_params, x_prev, dx_prev, self._h, x_prev2, self._residual_buffer)
@@ -1889,8 +1943,8 @@ class StructuralCompiledSolver:
 
                 x_iter[:] = x_prev
                 last_res_norm: float = 1.0
-                cached_lu_dense: Tuple[np.ndarray, np.ndarray] | None = None
-                cached_lu_sparse: SuperLU | None = None
+                cached_lu_dense: DenseSolveBundle | None = None
+                cached_lu_sparse: SparseSolveBundle | None = None
 
                 # The first trapezoidal step benefits from a cheap explicit predictor.
                 if step_index == 0 and is_first_local_step and self._method == DynamicIntegrationMethod.DaeTrapezoidal:
@@ -1900,6 +1954,7 @@ class StructuralCompiledSolver:
 
                 newton_index: int = 0
                 while newton_index < 15:
+                    ctx: NewtonSolveContext | None = None
                     # Residual assembly is fully in-place and reuses the grouped work buffers.
                     self._residual_assembler.evaluate(
                         x_iter,
@@ -1914,6 +1969,18 @@ class StructuralCompiledSolver:
 
                     if res_norm < 1e-6:
                         break
+                    else:
+                        pass
+
+                    if diagnostics_enabled:
+                        ctx = NewtonSolveContext(
+                            t=float(t_curr),
+                            step_idx=int(step_index),
+                            newton_iter=int(newton_index),
+                            phase="jit_structural_compiled",
+                            method=str(self._method),
+                        )
+                        ctx.res_norm_inf = res_norm
                     else:
                         pass
 
@@ -1934,10 +2001,22 @@ class StructuralCompiledSolver:
                         )
 
                         if use_dense_solver:
-                            cached_lu_dense = lu_factor(cached_jacobian.toarray())
+                            dense_jacobian = cached_jacobian.toarray()
+
+                            if diagnostics_enabled and ctx is not None:
+                                maybe_check_index1(dense_jacobian, self._n_state, ctx=ctx, config=diag_cfg)
+                            else:
+                                pass
+
+                            cached_lu_dense = (lu_factor(dense_jacobian), dense_jacobian)
                             cached_lu_sparse = None
                         else:
-                            cached_lu_sparse = splu(cached_jacobian)
+                            if diagnostics_enabled and ctx is not None:
+                                maybe_check_index1(cached_jacobian, self._n_state, ctx=ctx, config=diag_cfg)
+                            else:
+                                pass
+
+                            cached_lu_sparse = (splu(cached_jacobian), cached_jacobian)
                             cached_lu_dense = None
                     else:
                         pass
@@ -1949,14 +2028,46 @@ class StructuralCompiledSolver:
                         if cached_lu_dense is None:
                             delta: Vec = np.zeros(self._n_vars, dtype=np.float64)
                         else:
-                            delta = lu_solve(cached_lu_dense, self._linear_rhs_buffer)
+                            if diagnostics_enabled and ctx is not None:
+                                assert dense_solve is not None
+                                delta = dense_solve(cached_lu_dense, self._linear_rhs_buffer, ctx)
+                            else:
+                                delta = lu_solve(cached_lu_dense[0], self._linear_rhs_buffer)
                     else:
                         if cached_lu_sparse is None:
                             delta = np.zeros(self._n_vars, dtype=np.float64)
                         else:
-                            delta = cached_lu_sparse.solve(self._linear_rhs_buffer)
+                            if diagnostics_enabled and ctx is not None:
+                                assert sparse_solve is not None
+                                delta = sparse_solve(cached_lu_sparse, self._linear_rhs_buffer, ctx)
+                            else:
+                                delta = cached_lu_sparse[0].solve(self._linear_rhs_buffer)
 
-                    x_iter += delta
+                    if diag_cfg.enable_backtracking:
+                        def _evaluate_trial_residual(trial_x: Vec, out_res: Vec) -> float:
+                            self._residual_assembler.evaluate(
+                                trial_x,
+                                full_params,
+                                x_prev,
+                                dx_prev,
+                                h_eff,
+                                x_prev2,
+                                out_res,
+                            )
+                            return _max_abs_value(out_res)
+
+                        maybe_apply_backtracking(
+                            x_iter,
+                            delta,
+                            res_norm,
+                            trial_state,
+                            trial_residual,
+                            evaluate_residual=_evaluate_trial_residual,
+                            config=diag_cfg,
+                        )
+                    else:
+                        x_iter += delta
+
                     last_res_norm = res_norm
                     newton_index += 1
 

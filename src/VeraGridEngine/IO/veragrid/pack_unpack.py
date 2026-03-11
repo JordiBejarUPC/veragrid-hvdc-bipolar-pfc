@@ -57,10 +57,6 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
 
         'rms_model_template': dev.RmsModelTemplate(),
 
-        'rms_event_group': dev.RmsEventsGroup(),
-
-        'rms_event': dev.RmsEvent(),
-
         'bus': dev.Bus(),
 
         'bus_bar': dev.BusBar(),
@@ -116,6 +112,15 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
 
         'investments_group': dev.InvestmentsGroup(),
         'investment': dev.Investment(),
+
+        'rms_event_group': dev.RmsEventsGroup(),
+        'rms_event': dev.RmsEvent(),
+
+        'emt_event_group': dev.EmtEventsGroup(),
+        'emt_event': dev.EmtEvent(),
+
+        'dynamic_plot': dev.DynamicPlot(),
+        'dynamic_plot_entry': dev.DynamicPlotEntry(),
 
         'fluid_node': dev.FluidNode(),
         'fluid_path': dev.FluidPath(),
@@ -483,7 +488,7 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
     return data
 
 
-def gather_model_as_jsons(circuit: MultiCircuit) -> Dict[str, Dict[str, str]]:
+def gather_model_as_jsons(circuit: MultiCircuit) -> Dict[str, Dict[str, str | float | List[int]]]:
     """
     Transform a MultiCircuit into a collection of Json files
     :param circuit:
@@ -526,10 +531,10 @@ def gather_model_as_jsons(circuit: MultiCircuit) -> Dict[str, Dict[str, str]]:
     # gather the circuit
     circuit.model_version += 1
     data['circuit'] = circuit.to_dict()
-    blocks = block_saver.get_blocks()
-    vars = block_saver.get_vars_to_save()
-    consts = block_saver.get_const_to_save()
-    diff_vars = block_saver.get_diff_vars_to_save()
+    # blocks = block_saver.get_blocks()
+    # vars = block_saver.get_vars_to_save()
+    # consts = block_saver.get_const_to_save()
+    # diff_vars = block_saver.get_diff_vars_to_save()
 
     # At this point I already have the symbolic data stored in block_saver
 
