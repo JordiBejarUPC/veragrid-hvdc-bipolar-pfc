@@ -2665,7 +2665,18 @@ class VarPowerFlowRefferenceType(Enum):
     Qf = "Qf"  # Branch reactive power from in p.u.
     Pt = "Pt"  # Branch active power to in p.u.
     Qt = "Qt"  # Branch reactive power to in p.u.
-    
+
+    # HVDC
+    Pf_hvdc = "Pf_hvdc"
+    Pt_hvdc = "Pt_hvdc"
+
+    # VSC
+    Pfp_vsc = "Pfp_vsc"
+    Pfn_vsc = "Pfn_vsc"
+    St_vsc = "St_vsc"
+    If_vsc = "If_vsc"
+    It_vsc = "It_vsc"
+
     # Phasor current references for RMS formulation
     Ir = "Ir"  # Real part of bus injection current
     Ii = "Ii"  # Imaginary part of bus injection current

@@ -54,7 +54,7 @@ grid.add_bus(bus1)
 grid.add_bus(bus2)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.var_factory)
+    initialize_bus_rms(bus, vf=grid.rms_var_factory)
 
 # Lines
 line0 = gce.Line(name="line 0-1", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
@@ -95,23 +95,23 @@ load2_dynhost = DynamicModelHost()
 gen_dynhost = DynamicModelHost()
 
 # line
-line0_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
-line1_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+line0_mdl = block_deep_copy(get_line_rms_template(grid.rms_var_factory).block)
+line1_mdl = block_deep_copy(get_line_rms_template(grid.rms_var_factory).block)
 
 # load
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = block_deep_copy(ZIPLoadBuild(grid.var_factory, Pl0 =-0.0999999, Ql0 =-0.00999999).block)
+    load_mdl = block_deep_copy(ZIPLoadBuild(grid.rms_var_factory, Pl0 =-0.0999999, Ql0 =-0.00999999).block)
 elif load_type == 'exponential':
-    load_mdl = block_deep_copy(ExponentialLoadBuild(grid.var_factory, Pl0 =-0.0999999, Ql0 =-0.00999999).block)
+    load_mdl = block_deep_copy(ExponentialLoadBuild(grid.rms_var_factory, Pl0 =-0.0999999, Ql0 =-0.00999999).block)
 elif load_type == 'motor':
-    load_mdl = block_deep_copy(MotorLoadBuild(grid.var_factory).block)
+    load_mdl = block_deep_copy(MotorLoadBuild(grid.rms_var_factory).block)
 else:
     raise ValueError(f"Unknown load type: {load_type}")
 
-motor_mdl = block_deep_copy(MotorLoadBuild(grid.var_factory).block)
+motor_mdl = block_deep_copy(MotorLoadBuild(grid.rms_var_factory).block)
 
-genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.var_factory).block)
+genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.rms_var_factory).block)
 
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
 genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])

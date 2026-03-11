@@ -72,7 +72,7 @@ def test_phasor_validation():
     grid_polar.add_bus(bus1_polar)
     
     for bus in grid_polar.buses:
-        initialize_bus_rms(bus, vf=grid_polar.var_factory)
+        initialize_bus_rms(bus, vf=grid_polar.rms_var_factory)
     
     line_polar = gce.Line(name="Line", bus_from=bus0_polar, bus_to=bus1_polar, 
                           r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=900.0)
@@ -85,18 +85,18 @@ def test_phasor_validation():
     grid_polar.add_generator(bus=bus0_polar, api_obj=gen_polar)
     
     # Build RMS models for polar grid
-    genqec_polar = get_complete_generator_template(grid_polar.var_factory).block
-    line_mdl_polar = get_line_rms_template(grid_polar.var_factory).block
-    load_mdl_polar = get_load_rms_template(grid_polar.var_factory).block
+    genqec_polar = get_complete_generator_template(grid_polar.rms_var_factory).block
+    line_mdl_polar = get_line_rms_template(grid_polar.rms_var_factory).block
+    load_mdl_polar = get_load_rms_template(grid_polar.rms_var_factory).block
     
     # Set load parameters (negative for consumption)
     load_mdl_polar.set_parameter_in_model(var_name="Pl0", new_value=-0.0999999)
     load_mdl_polar.set_parameter_in_model(var_name="Ql0", new_value=-0.009999999862208533)
     
     # Attach models to devices
-    set_rms_model(device=gen_polar, model=genqec_polar)
-    set_rms_model(device=line_polar, model=line_mdl_polar)
-    set_rms_model(device=load_polar, model=load_mdl_polar)
+    set_rms_model(device=gen_polar, model=genqec_polar, var_factory=grid_polar.rms_var_factory)
+    set_rms_model(device=line_polar, model=line_mdl_polar, var_factory=grid_polar.rms_var_factory)
+    set_rms_model(device=load_polar, model=load_mdl_polar, var_factory=grid_polar.rms_var_factory)
     
     print("  Polar grid created and models attached")
     
@@ -112,7 +112,7 @@ def test_phasor_validation():
     grid_phasor.add_bus(bus1_phasor)
     
     for bus in grid_phasor.buses:
-        initialize_bus_phasor_rms(bus, vf=grid_phasor.var_factory)
+        initialize_bus_phasor_rms(bus, vf=grid_phasor.rms_var_factory)
     
     line_phasor = gce.Line(name="Line", bus_from=bus0_phasor, bus_to=bus1_phasor,
                            r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=900.0)
@@ -125,21 +125,23 @@ def test_phasor_validation():
     grid_phasor.add_generator(bus=bus0_phasor, api_obj=gen_phasor)
     
     # Build RMS models for phasor grid
-    genqec_phasor = get_complete_generator_template_phasor(grid_phasor.var_factory, name="Gen0").block
+    genqec_phasor = get_complete_generator_template_phasor(grid_phasor.rms_var_factory, name="Gen0").block
     
     # For phasor grid, use current-based load model
-    load_mdl_phasor = get_load_phasor_current_rms_template(grid_phasor.var_factory).block
-    # Convert power to current: I ≈ S/V (assuming V ≈ 1)
-    set_rms_model(device=load_phasor, model=load_mdl_phasor)
+    load_mdl_phasor = get_load_phasor_current_rms_template(grid_phasor.rms_var_factory).block
+    load_mdl_phasor.connect([load_mdl_phasor.in_vars[0]], [bus1_phasor.rms_model.model.out_vars[0]])
+    load_mdl_phasor.connect([load_mdl_phasor.in_vars[1]], [bus1_phasor.rms_model.model.out_vars[1]])
+    # Current values will be set after power flow
+    set_rms_model(device=load_phasor, model=load_mdl_phasor, var_factory=grid_phasor.rms_var_factory)
     
     # Attach models to devices
-    line_phasor_mdl = get_line_phasor_rms_template(grid_phasor.var_factory).block
+    line_phasor_mdl = get_line_phasor_rms_template(grid_phasor.rms_var_factory).block
     # Use set_rms_model for proper current balance accumulation
-    set_rms_model(device=line_phasor, model=line_phasor_mdl)
+    set_rms_model(device=line_phasor, model=line_phasor_mdl, var_factory=grid_phasor.rms_var_factory)
 
     genqec_phasor.connect([genqec_phasor.in_vars[0]], [bus0_phasor.rms_model.model.out_vars[0]])
     genqec_phasor.connect([genqec_phasor.in_vars[1]], [bus0_phasor.rms_model.model.out_vars[1]])
-    set_rms_model(device=gen_phasor, model=genqec_phasor)
+    set_rms_model(device=gen_phasor, model=genqec_phasor, var_factory=grid_phasor.rms_var_factory)
     # Note: line and load models attached via set_rms_model for proper current balance
     
     print("  Phasor grid created and models attached (lines handled internally)")
@@ -164,6 +166,28 @@ def test_phasor_validation():
     
     print(f"  Power flow converged (polar: {res_polar.converged}, phasor: {res_phasor.converged})")
     
+    # Update load current initialization based on power flow results
+    # Get Bus1 voltage from power flow
+    bus1_idx_phasor = grid_phasor.buses.index(bus1_phasor)
+    V_bus1 = res_phasor.voltage[bus1_idx_phasor]
+    S_load = res_phasor.Sbus[bus1_idx_phasor] / grid_phasor.Sbase  # Load injection (negative for load)
+    
+    # Convert power to current: I = conj(S) / conj(V)
+    # For V = Vr + j*Vi and S = P + j*Q:
+    # Ir = (P*Vr + Q*Vi) / |V|^2
+    # Ii = (P*Vi - Q*Vr) / |V|^2
+    V_mag_sq = abs(V_bus1)**2
+    if V_mag_sq > 1e-10:
+        Ir_init = (S_load.real * V_bus1.real + S_load.imag * V_bus1.imag) / V_mag_sq
+        Ii_init = (S_load.real * V_bus1.imag - S_load.imag * V_bus1.real) / V_mag_sq
+    else:
+        Ir_init = -0.1
+        Ii_init = -0.01
+    
+    print(f"  Load current initialization: Ir={Ir_init:.6f}, Ii={Ii_init:.6f}")
+    load_mdl_phasor.set_parameter_in_model(var_name="Ir0", new_value=Ir_init)
+    load_mdl_phasor.set_parameter_in_model(var_name="Ii0", new_value=Ii_init)
+    
     # ===================================================================
     # ADD EVENT
     # ===================================================================
@@ -174,9 +198,9 @@ def test_phasor_validation():
     event_polar = RmsEvent(device=load_polar, parameter=Pl0_polar, time=0.05, value=-0.098)
     grid_polar.add_rms_event(event_polar)
     
-    # Add event to phasor grid (current-based load)
+    # Add event to phasor grid (current-based load) - step Ir
     Ir0_phasor = find_name_in_block('Ir0', load_mdl_phasor)
-    event_phasor = RmsEvent(device=load_phasor, parameter=Ir0_phasor, time=0.05, value=-0.098)
+    event_phasor = RmsEvent(device=load_phasor, parameter=Ir0_phasor, time=0.05, value=Ir_init * 0.98)
     grid_phasor.add_rms_event(event_phasor)
     
     print("  Events added to both grids")

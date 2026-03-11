@@ -20,27 +20,26 @@ from VeraGridEngine.enumerations import DeviceType
 
 class RmsEvent(PointerDeviceParent):
     """
-    Rms Event (Used for both RMS and EMT dynamic events)
+    Investment
     """
     __slots__ = (
         'parameter',
         'time',
         'value',
-        'force_step_alignment',
-        '_group'
+        '_group',
+        'force_step_alignment'
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key='parameter', units='', tpe=SubObjectType.VarType,
-               definition='parameter that the event changes'),
-        GCProp(key='time', units='s', tpe=float,
-               definition='Time when the event occurs'),
+                      definition='parameter that the event changes'),
+        GCProp(key='time', units='', tpe=float,
+                      definition='Time when the event occurs'),
         GCProp(key='value', units='', tpe=float,
-               definition='New value for the parameter'),
-        GCProp(key='group', units='', tpe=DeviceType.RmsEventsGroupDevice,
-               definition='RmsEvent group'),
+                      definition='New value for the parameter'),
+        GCProp(key='group', units='', tpe=DeviceType.RmsEventsGroupDevice, definition='RmsEvent group'),
         GCProp(key='force_step_alignment', units='', tpe=bool,
-               definition='For EMT: Forces the solver to subdivide the integration step exactly at t=time to prevent order degradation.'),
+               definition='Force step alignment'),
     )
 
     def __init__(self,
@@ -48,11 +47,12 @@ class RmsEvent(PointerDeviceParent):
                  parameter: Var = None,
                  time: float = None,
                  value: float = None,
+                 group: RmsEventsGroup = None,
                  force_step_alignment: bool = False,
                  idtag: Union[str, None] = None,
                  name="RmsEvent",
                  code='',
-                 group: RmsEventsGroup = None,
+
                  comment: str = ""):
         """
         Rms Event

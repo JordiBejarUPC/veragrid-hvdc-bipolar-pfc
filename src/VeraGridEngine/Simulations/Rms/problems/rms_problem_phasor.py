@@ -519,7 +519,7 @@ class RmsProblemPhasor(RmsProblemTemplate):
 
         # add the nodal balance equations (current balance for phasor formulation)
         for i, elm in enumerate(self.grid.buses):
-            mdl = block_deep_copy(elm.rms_model.model, grid.var_factory)
+            mdl = block_deep_copy(elm.rms_model.model, grid.rms_var_factory)
             if len(mdl.algebraic_eqs) == 0:
                 if not Ir_used[i] and not Ii_used[i]:
                     self.logger.add_error("Isolated bus", value=i)

@@ -30,7 +30,8 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_create_instances import (create_cgmes_dc_
                                                                 create_cgmes_sub_load_area,
                                                                 create_cgmes_non_conform_load_group,
                                                                 create_cgmes_nonlinear_sc_point,
-                                                                create_sv_shunt_compensator_sections)
+                                                                create_sv_shunt_compensator_sections,
+                                                                create_sv_status)
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import (RegulatingControlModeKind,
                                                      TransformerControlMode)
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import (SynchronousMachineOperatingMode,
@@ -45,7 +46,7 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.enumerations import (TapChangerTypes, TapPhaseControl, TapModuleControl, CGMESVersions,
-                                         ShuntControlMode)
+                                         ExternalGridMode, ShuntControlMode)
 
 
 def find_fallback_voltage_level_for_bus(cgmes_model: CgmesCircuit,
@@ -331,7 +332,257 @@ def create_cgmes_tap_changer_for_transformer_end(mc_elm: gcdev.Transformer2W | g
     sv_tap_step.TapChanger = tap_changer
 
     cgmes_model.add(tap_changer)
-    cgmes_model.add(sv_tap_step)
+
+
+def find_terminals_by_conducting_equipment_uuid(cgmes_model: CgmesCircuit,
+                                                cond_eq_target_uuid: str) -> list:
+    """
+    Return every terminal associated to the given conducting-equipment UUID.
+    """
+    terminals = []
+    for terminal in cgmes_model.cgmes_assets.Terminal_list:
+        cond_eq = getattr(terminal, "ConductingEquipment", None)
+        if cond_eq is not None and getattr(cond_eq, "uuid", None) == cond_eq_target_uuid:
+            terminals.append(terminal)
+    return terminals
+
+
+def get_vsc_voltage_target(gc_vsc: gcdev.VSC) -> float:
+    """
+    Derive the VSC AC-side target voltage in per unit from the VeraGrid controls.
+    """
+    if gc_vsc.control1 in (ConverterControlType.Vm_ac, ConverterControlType.Vm_dc):
+        return float(gc_vsc.control1_val)
+    if gc_vsc.control2 in (ConverterControlType.Vm_ac, ConverterControlType.Vm_dc):
+        return float(gc_vsc.control2_val)
+    if gc_vsc.bus_to is not None and gc_vsc.bus_to.Vnom > 0.0:
+        return 1.0
+    return 1.0
+
+
+def get_vsc_power_target(gc_vsc: gcdev.VSC) -> float:
+    """
+    Derive the VSC active-power target in MW from the VeraGrid controls.
+    """
+    if gc_vsc.control1 in (ConverterControlType.Pac, ConverterControlType.Pdc):
+        return float(gc_vsc.control1_val)
+    if gc_vsc.control2 in (ConverterControlType.Pac, ConverterControlType.Pdc):
+        return float(gc_vsc.control2_val)
+    return 0.0
+
+
+def get_or_create_dc_topological_node(cgmes_model: CgmesCircuit,
+                                      dc_bus: gcdev.Bus,
+                                      ver: CGMESVersions,
+                                      logger: DataLogger):
+    """
+    Reuse the exported DC topological node for a DC bus or create it if missing.
+    """
+    for dc_tp in cgmes_model.cgmes_assets.DCTopologicalNode_list:
+        if dc_tp.name == dc_bus.name and dc_tp.description == dc_bus.code:
+            return dc_tp
+
+    return create_cgmes_dc_tp_node(
+        tp_name=dc_bus.name,
+        tp_description=dc_bus.code,
+        cgmes_model=cgmes_model,
+        ver=ver,
+        logger=logger
+    )
+
+
+def get_or_create_dc_node(cgmes_model: CgmesCircuit,
+                          dc_bus: gcdev.Bus,
+                          dc_tp,
+                          dc_equipment_container,
+                          ver: CGMESVersions,
+                          logger: DataLogger):
+    """
+    Reuse the exported DC node for a DC bus or create it if missing.
+    """
+    for dc_node in cgmes_model.cgmes_assets.DCNode_list:
+        if dc_node.name == dc_bus.name and dc_node.description == dc_bus.code:
+            return dc_node
+
+    return create_cgmes_dc_node(
+        cn_name=dc_bus.name,
+        cn_description=dc_bus.code,
+        cgmes_model=cgmes_model,
+        dc_tp=dc_tp,
+        dc_ec=dc_equipment_container,
+        ver=ver,
+        logger=logger
+    )
+
+
+def get_or_create_external_network_injection(multicircuit_model: MultiCircuit,
+                                             cgmes_model: CgmesCircuit,
+                                             ver: CGMESVersions,
+                                             logger: DataLogger):
+    """
+    Export every VeraGrid external grid as an ExternalNetworkInjection.
+    """
+    for mc_elm in multicircuit_model.external_grids:
+        if ver == CGMESVersions.v2_4_15:
+            eni = cgmes24.ExternalNetworkInjection(rdfid=form_rdfid(mc_elm.idtag))
+        elif ver == CGMESVersions.v3_0_0:
+            eni = cgmes30.ExternalNetworkInjection(rdfid=form_rdfid(mc_elm.idtag))
+        else:
+            raise NotImplemented()
+
+        eni.description = mc_elm.code
+        eni.name = mc_elm.name
+        eni.p = mc_elm.P
+        eni.q = mc_elm.Q
+        eni.maxP = mc_elm.P
+        eni.minP = mc_elm.P
+        eni.maxQ = mc_elm.Q
+        eni.minQ = mc_elm.Q
+        eni.BaseVoltage = find_object_by_vnom(cgmes_model=cgmes_model,
+                                              object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
+                                              target_vnom=mc_elm.bus.Vnom)
+        eni.Terminals = create_cgmes_terminal(mc_elm.bus, None, eni, cgmes_model, ver, logger)
+
+        if mc_elm.mode == ExternalGridMode.VD:
+            eni.controlEnabled = True
+            eni.referencePriority = 1
+            eni.RegulatingControl = create_cgmes_regulating_control(
+                cgmes_elm=eni,
+                mc_gen=mc_elm,
+                cgmes_model=cgmes_model,
+                ver=ver,
+                logger=logger
+            )
+        else:
+            eni.controlEnabled = False
+            eni.referencePriority = 0
+
+        cgmes_model.add(eni)
+
+
+def convert_vsc_devices_to_cgmes(multicircuit_model: MultiCircuit,
+                                 cgmes_model: CgmesCircuit,
+                                 ver: CGMESVersions,
+                                 logger: DataLogger) -> None:
+    """
+    Export native VeraGrid VSC devices to CGMES VsConverter objects.
+    """
+    for gc_vsc in multicircuit_model.vsc_devices:
+        if gc_vsc.bus_from is None or gc_vsc.bus_to is None:
+            logger.add_error(msg='VSC export skipped due missing AC/DC buses',
+                             device=gc_vsc.idtag,
+                             device_class=gc_vsc.device_type.value)
+            continue
+
+        p_set = get_vsc_power_target(gc_vsc)
+        v_set = get_vsc_voltage_target(gc_vsc)
+        vs_converter, dc_conv_unit = create_cgmes_vsc_converter(
+            cgmes_model=cgmes_model,
+            gc_vsc=gc_vsc,
+            p_set=p_set,
+            v_set=v_set,
+            ver=ver,
+            logger=logger
+        )
+
+        dc_tp = get_or_create_dc_topological_node(cgmes_model, gc_vsc.bus_from, ver, logger)
+        dc_node = get_or_create_dc_node(cgmes_model, gc_vsc.bus_from, dc_tp, dc_conv_unit, ver, logger)
+
+        create_cgmes_acdc_converter_terminal(
+            cgmes_model=cgmes_model,
+            mc_dc_bus=gc_vsc.bus_from,
+            seq_num=2,
+            dc_node=dc_node,
+            dc_cond_eq=vs_converter,
+            ver=ver,
+            logger=logger
+        )
+        create_cgmes_terminal(
+            cgmes_model=cgmes_model,
+            mc_bus=gc_vsc.bus_to,
+            seq_num=None,
+            cond_eq=vs_converter,
+            ver=ver,
+            logger=logger
+        )
+
+        if gc_vsc.bus_dc_n is not None:
+            logger.add_warning(
+                msg='Native VSC export currently uses one DC pole; negative DC pole is not exported separately',
+                device=gc_vsc.idtag,
+                device_class=gc_vsc.device_type.value,
+                value=gc_vsc.bus_dc_n.idtag
+            )
+
+
+def convert_dc_lines_to_cgmes(multicircuit_model: MultiCircuit,
+                              cgmes_model: CgmesCircuit,
+                              ver: CGMESVersions,
+                              logger: DataLogger) -> None:
+    """
+    Export native VeraGrid DC lines to CGMES DCLine/DCLineSegment objects.
+    """
+    for dc_line_model in multicircuit_model.dc_lines:
+        if dc_line_model.bus_from is None or dc_line_model.bus_to is None:
+            logger.add_error(msg='DC line export skipped due missing buses',
+                             device=dc_line_model.idtag,
+                             device_class=dc_line_model.device_type.value)
+            continue
+
+        dc_line = create_cgmes_dc_line(cgmes_model=cgmes_model, ver=ver, logger=logger)
+        dc_line.name = dc_line_model.name
+        dc_line.description = dc_line_model.code
+
+        dc_tp_1 = get_or_create_dc_topological_node(cgmes_model, dc_line_model.bus_from, ver, logger)
+        dc_tp_2 = get_or_create_dc_topological_node(cgmes_model, dc_line_model.bus_to, ver, logger)
+        dc_node_1 = get_or_create_dc_node(cgmes_model, dc_line_model.bus_from, dc_tp_1, dc_line, ver, logger)
+        dc_node_2 = get_or_create_dc_node(cgmes_model, dc_line_model.bus_to, dc_tp_2, dc_line, ver, logger)
+
+        create_cgmes_dc_line_segment(cgmes_model=cgmes_model,
+                                     mc_elm=dc_line_model,
+                                     dc_tp_1=dc_tp_1,
+                                     dc_node_1=dc_node_1,
+                                     dc_tp_2=dc_tp_2,
+                                     dc_node_2=dc_node_2,
+                                     eq_cont=dc_line,
+                                     ver=ver,
+                                     logger=logger)
+
+
+def export_sv_statuses(gc_model: MultiCircuit,
+                       cgmes_model: CgmesCircuit,
+                       ver: CGMESVersions) -> None:
+    """
+    Export SvStatus for every source object that maps directly to a CGMES conducting equipment.
+    """
+    devices = []
+    devices.extend(gc_model.lines)
+    devices.extend(gc_model.transformers2w)
+    devices.extend(gc_model.transformers3w)
+    devices.extend(gc_model.vsc_devices)
+    devices.extend(gc_model.dc_lines)
+    devices.extend(gc_model.hvdc_lines)
+    devices.extend(gc_model.generators)
+    devices.extend(gc_model.loads)
+    devices.extend(gc_model.external_grids)
+    devices.extend(gc_model.shunts)
+    devices.extend(gc_model.controllable_shunts)
+    devices.extend(gc_model.switch_devices)
+
+    exported_ids = set()
+    for device in devices:
+        if device.idtag in exported_ids:
+            continue
+        exported_ids.add(device.idtag)
+        cgmes_obj = cgmes_model.all_objects_dict.get(form_rdfid(device.idtag))
+        if cgmes_obj is None:
+            continue
+        create_sv_status(
+            cgmes_model=cgmes_model,
+            in_service=int(bool(getattr(device, "active", True))),
+            cgmes_conducting_equipment=cgmes_obj,
+            ver=ver
+        )
     return
 
 
@@ -2135,20 +2386,28 @@ def get_cgmes_sv_power_flow_2(multi_circuit: MultiCircuit,
 
     for (branch, pf_res_from, pf_res_to) in zip(branch_objects, pf_results.Sf, pf_results.St):
 
-        term = find_object_by_cond_eq_uuid(
-            object_list=cgmes_model.cgmes_assets.Terminal_list,
+        terminals = find_terminals_by_conducting_equipment_uuid(
+            cgmes_model=cgmes_model,
             cond_eq_target_uuid=branch.idtag
         )
-        if is_term(term[0]):
+        if len(terminals) >= 1:
 
             create_sv_power_flow(
                 cgmes_model=cgmes_model,
                 p=pf_res_from.real,
                 q=pf_res_from.imag,
-                terminal=term,
+                terminal=terminals[0],
                 ver=ver
             )
 
+            if len(terminals) >= 2:
+                create_sv_power_flow(
+                    cgmes_model=cgmes_model,
+                    p=pf_res_to.real,
+                    q=pf_res_to.imag,
+                    terminal=terminals[1],
+                    ver=ver
+                )
         else:
             logger.add_error(msg='No Terminal found for Branch',
                              device=branch,
@@ -2456,7 +2715,7 @@ def veragrid_to_cgmes(gc_model: MultiCircuit,
     # get_cgmes_cn_nodes_from_cns(gc_model, cgmes_model, logger)
 
     get_cgmes_loads(gc_model, cgmes_model, ver, logger)
-    get_cgmes_equivalent_injections(gc_model, cgmes_model, ver, logger)
+    get_or_create_external_network_injection(gc_model, cgmes_model, ver, logger)
     get_cgmes_generators(gc_model, cgmes_model, ver, logger)
 
     # Get operational limit types
@@ -2478,8 +2737,8 @@ def veragrid_to_cgmes(gc_model: MultiCircuit,
 
     # DC elements
     convert_hvdc_line_to_cgmes(gc_model, cgmes_model, ver, logger)
-    # TODO get_cgmes_vsc_from_vsc()
-    # TODO get_dc_line_from_dc_line()
+    convert_vsc_devices_to_cgmes(gc_model, cgmes_model, ver, logger)
+    convert_dc_lines_to_cgmes(gc_model, cgmes_model, ver, logger)
 
     # RESULTS: sv classes
     if pf_results:
@@ -2490,11 +2749,10 @@ def veragrid_to_cgmes(gc_model: MultiCircuit,
 
         # PowerFlow: P, Q results for every terminal
         get_cgmes_sv_power_flow_1(gc_model, num_circ, cgmes_model, pf_results, ver, logger)
-        # get_cgmes_sv_power_flow_2(gc_model, num_circ, cgmes_model, pf_results,
-        #                           logger)
+        get_cgmes_sv_power_flow_2(gc_model, num_circ, cgmes_model, pf_results, ver, logger)
 
         # SV Status: for ConductingEquipment
-        # TODO create_sv_status() elements.active parameter
+        export_sv_statuses(gc_model, cgmes_model, ver)
 
         # SVTapStep: handled at transformer function
         # TODO get it from results

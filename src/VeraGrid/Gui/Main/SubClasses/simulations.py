@@ -3276,30 +3276,42 @@ class SimulationsMain(TimeEventsMain):
 
             if not self.session.is_this_running(SimulationTypes.RmsDynamic_run):
 
-                self.remove_simulation(SimulationTypes.RmsDynamic_run)
-
-                _, pf_results = self.session.power_flow
-
-                if pf_results is not None:
-
-                    # self.add_simulation(SimulationTypes.RmsDynamic_run)
-                    self.ui.progress_label.setText('Running rms simulation...')
-                    QtGui.QGuiApplication.processEvents()
-                    self.LOCK()
-
-                    drv = sim.RmsSimulationDriver(grid=self.circuit, options=self.get_selected_rms_simulation_options(), pf_results=pf_results)
-
-                    self.session.run(drv,
-                                     post_func=self.post_rms,
-                                     prog_func=self.ui.progressBar.setValue,
-                                     text_func=self.ui.progress_label.setText)
-
-
-
-
+                logger = self.circuit.check_rms_models()
+                if logger.has_errors():
+                    # Show dialogue
+                    dlg = LogsDialogue(name="RMS pre simulation check",
+                                       logger=logger)
+                    dlg.setModal(True)
+                    dlg.exec()
+                    return
                 else:
-                    info_msg('Run a power flow simulation first.\n'
-                             'The results are needed to initialize this simulation.')
+
+                    self.remove_simulation(SimulationTypes.RmsDynamic_run)
+
+                    _, pf_results = self.session.power_flow
+
+                    if pf_results is not None:
+
+                        # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                        self.ui.progress_label.setText('Running rms simulation...')
+                        QtGui.QGuiApplication.processEvents()
+                        self.LOCK()
+
+                        drv = sim.RmsSimulationDriver(grid=self.circuit,
+                                                      options=self.get_selected_rms_simulation_options(),
+                                                      pf_results=pf_results)
+
+                        self.session.run(drv,
+                                         post_func=self.post_rms,
+                                         prog_func=self.ui.progressBar.setValue,
+                                         text_func=self.ui.progress_label.setText)
+
+
+
+
+                    else:
+                        info_msg('Run a power flow simulation first.\n'
+                                 'The results are needed to initialize this simulation.')
             else:
                 self.show_warning_toast('Another rms simulation is running already...')
 
@@ -3318,22 +3330,6 @@ class SimulationsMain(TimeEventsMain):
             # delete from the current simulations
             self.remove_simulation(SimulationTypes.RmsDynamic_run)
             self.update_available_results()
-
-            if len(results.empty_rms_models) != 0:
-                self.show_info_toast(
-                    f"Missing RMS models in the following grid elements: "
-                    f"{', '.join(results.empty_rms_models)}"
-                )
-            else:
-                if results.well_initialized:
-                    self.show_info_toast("System well initialized:)")
-                else:
-                    self.show_warning_toast("System bad initialized :/")
-
-                if results.converged:
-                    self.show_info_toast("Simulation converged :)")
-                else:
-                    self.show_warning_toast("Simulation did not converge :/")
 
         else:
             warning_msg('There are no rms simulation results.', 'Rms simulation')

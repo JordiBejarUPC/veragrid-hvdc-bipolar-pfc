@@ -49,6 +49,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import expression2numba
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 #Totally integrated
 from VeraGridEngine.Utils.Symbolic.symbolic import Expr, BinOp, UnOp, Func, Var, Const
+from VeraGridEngine.basic_structures import Vec
 
 
 def _is_zero(s: str) -> bool:
@@ -1354,7 +1355,7 @@ class RMSCompiler(EquationCompiler):
         self.diff_vars = diff_vars
         self.v_params = v_params
 
-    def compile_rhs(self, equations: List[Expr], func_name: str) -> Callable:
+    def compile_rhs(self, equations: List[Expr], func_name: str) -> Callable[[Vec, Vec, Vec, Vec], Vec]:
         """
         Compiles the residual equations (RHS) into a fast, executable JIT function.
 
@@ -1378,7 +1379,9 @@ class RMSCompiler(EquationCompiler):
 
         return _compile_to_file("\n".join(lines), func_name)
 
-    def compile_sparse_jacobian(self, eqs: List[Expr], wrt_vars: List[Var], func_name: str) -> Callable:
+    def compile_sparse_jacobian(self, eqs: List[Expr],
+                                wrt_vars: List[Var],
+                                func_name: str) -> Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix]:
         """
         Compiles a sparse Jacobian evaluator using an O(N) structural extraction algorithm.
 

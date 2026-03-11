@@ -8,6 +8,7 @@ from pandas.testing import assert_frame_equal
 
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
@@ -15,7 +16,8 @@ from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod, ResultTypes
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod, \
+    ResultTypes
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 import VeraGridEngine.api as gce
 
@@ -29,6 +31,7 @@ def find_name_in_block(name: str, block: Block):
         res = find_name_in_block(name, mdl)
         if res is not None:
             return res
+
 
 def test_simulation_with_event():
     """
@@ -50,9 +53,6 @@ def test_simulation_with_event():
     ###########################################################################################################################
     # Build VeraGrid object
 
-
-
-
     grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
 
     # Buses
@@ -63,7 +63,7 @@ def test_simulation_with_event():
     grid.add_bus(bus1)
 
     for bus in grid.buses:
-        initialize_bus_rms(bus, vf=grid.var_factory)
+        initialize_bus_rms(bus, vf=grid.rms_var_factory)
 
     # Lines
     line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
@@ -87,13 +87,13 @@ def test_simulation_with_event():
     ######################################################################################################
 
     # generator
-    genqec_mdl = get_complete_generator_template(grid.var_factory).block
+    genqec_mdl = get_complete_generator_template(grid.rms_var_factory).block
 
     # line
-    line_mdl = get_line_rms_template(grid.var_factory).block
+    line_mdl = get_line_rms_template(grid.rms_var_factory).block
 
     # load
-    load_mdl = get_load_rms_template(grid.var_factory).block
+    load_mdl = get_load_rms_template(grid.rms_var_factory).block
 
     # connection with buses
 
@@ -125,13 +125,13 @@ def test_simulation_with_event():
 
     # apply event
     Pl0 = find_name_in_block('Pl0', load_mdl)
-    event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.09)
+    events_group = RmsEventsGroup("simulation1")
+    event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group)
     grid.add_rms_event(event)
 
     grid.add_line(line0)
     grid.add_load(bus=bus1, api_obj=load)
     grid.add_generator(bus=bus0, api_obj=gen0)
-
 
     options = gce.PowerFlowOptions(
         solver_type=gce.SolverType.NR,
@@ -175,6 +175,8 @@ def test_simulation_with_event():
     problem = RmsProblemDae(grid=grid,
                             options=options,
                             pf_results=res)
+
+    problem.set_events_group(events_group)
 
     solver = BackEulerImplicitIntegration(
         problem=problem,

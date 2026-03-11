@@ -176,7 +176,7 @@ def _get_bus_v_list(
     :return: Ordered list of phase voltage expressions.
     """
     out: List[Any] = list()
-    c0 = grid.var_factory.add_const(0.0)
+    c0 = grid.rms_var_factory.add_const(0.0)
 
     for key in ph_v_keys:
         vk = bus_block.E(key)
@@ -462,7 +462,7 @@ class EmtProblemDae(EmtProblemTemplate):
             VarPowerFlowRefferenceType.it_C,
         ])
 
-        c0: Any = grid.var_factory.add_const(0.0)
+        c0: Any = grid.rms_var_factory.add_const(0.0)
 
         # KCL accumulator per bus-phase
         I_kcl: Dict[int, List[Any]] = dict()
