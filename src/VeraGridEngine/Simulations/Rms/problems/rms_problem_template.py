@@ -9,12 +9,24 @@ import numpy as np
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.basic_structures import Vec
+from VeraGridEngine.Simulations.driver_template import DummySignal
 
 
 class RmsProblemTemplate(ABC):
 
-    def __init__(self):
-        pass
+    def __init__(self,
+                 progress_signal: DummySignal | None = None,
+                 progress_text: DummySignal | None = None,):
+
+        self._is_initialized = False
+        self.progress_signal =  DummySignal() if progress_signal is None else progress_signal
+        self.progress_text = DummySignal(str) if progress_text is None else progress_text
+
+    def set_initialize_flag(self):
+        self._is_initialized = True
+
+    def is_initialized(self) -> bool:
+        return self._is_initialized
 
     def get_vars_info(self) -> Dict[ALL_DEV_TYPES, List[Var]]:
         raise NotImplementedError("get_device_vars_dict")
@@ -78,3 +90,26 @@ class RmsProblemTemplate(ABC):
 
     def get_dt_value(self):
         return NotImplementedError("get_dt_value")
+
+    def report_progress(self, val: float):
+        """
+        Report progress
+        :param val: float value
+        """
+        self.progress_signal.emit(val)
+
+    def report_progress2(self, current: int, total: int):
+        """
+        Report progress
+        :param current: current value (zero based)
+        :param total: total value
+        """
+        val = ((current + 1) / total) * 100
+        self.progress_signal.emit(val)
+
+    def report_text(self, val: str):
+        """
+        Report text
+        :param val: text value
+        """
+        self.progress_text.emit(val)

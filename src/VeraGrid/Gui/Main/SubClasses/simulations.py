@@ -3331,22 +3331,6 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.RmsDynamic_run)
             self.update_available_results()
 
-            if len(results.empty_rms_models) != 0:
-                self.show_info_toast(
-                    f"Missing RMS models in the following grid elements: "
-                    f"{', '.join(results.empty_rms_models)}"
-                )
-            else:
-                if results.well_initialized:
-                    self.show_info_toast("System well initialized:)")
-                else:
-                    self.show_warning_toast("System bad initialized :/")
-                for conv_res in results.converged:
-                    if conv_res:
-                        self.show_info_toast("Simulation converged :)")
-                    else:
-                        self.show_warning_toast("Simulation did not converge :/")
-
         else:
             warning_msg('There are no rms simulation results.', 'Rms simulation')
 

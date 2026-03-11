@@ -437,7 +437,11 @@ class RmsProblemComplex(RmsProblemTemplate):
         self._compile_system()
 
     def add_variables_to_compilation_dicts(self, elm: ALL_DEV_TYPES, mdl: Block):
-        """Add variables and parameters to the compilation dictionaries."""
+        """
+        Add variables and parameters to the compilation dictionaries.
+        :param elm: Device type to add variables to
+        :param mdl: Block type to add variables to
+        """
         for v in mdl.state_vars:
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
