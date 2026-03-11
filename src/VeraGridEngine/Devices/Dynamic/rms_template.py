@@ -47,7 +47,7 @@ class RmsModelTemplate(PointerDeviceParent):
         result._tpe = self._tpe
 
         # deepcopy block safely
-        result._block = self._block.deep_copy()
+        result._block = self._block.copy()
 
         return result
 

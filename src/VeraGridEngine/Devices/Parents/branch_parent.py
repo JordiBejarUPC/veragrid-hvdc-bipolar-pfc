@@ -281,7 +281,7 @@ class BranchParent(PhysicalDevice):
             self._rms_template = val
 
             if self.auto_update_enabled:
-                self.rms_model = val.block.deep_copy()
+                self.rms_model = val.block.copy()
         else:
             raise ValueError(f"RMS template cannot accept {val}")
 
@@ -298,7 +298,7 @@ class BranchParent(PhysicalDevice):
             self._emt_template = val
 
             if self.auto_update_enabled:
-                self.emt_model = val.block.deep_copy()
+                self.emt_model = val.block.copy()
         else:
             raise ValueError(f"EMT template cannot accept {val}")
 

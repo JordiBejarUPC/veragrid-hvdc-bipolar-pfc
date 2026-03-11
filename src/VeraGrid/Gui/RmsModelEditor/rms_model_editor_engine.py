@@ -1296,7 +1296,7 @@ class TemplateEditor(QtWidgets.QWidget):
             if selected_template.tpe == DeviceType.GeneratorDevice:
                 if self.api_object.bus.rms_model.empty():
                     initialize_bus_rms(self.api_object.bus, self.var_factory)
-                self.selected_block = selected_template.block.deep_copy()
+                self.selected_block = selected_template.block.copy()
 
                 Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
                 # substitute variables in block equations
@@ -1308,7 +1308,7 @@ class TemplateEditor(QtWidgets.QWidget):
             if selected_template.tpe == DeviceType.LoadDevice:
                 if self.api_object.bus.rms_model.empty():
                     initialize_bus_rms(self.api_object.bus, self.var_factory)
-                self.selected_block = selected_template.block.deep_copy()
+                self.selected_block = selected_template.block.copy()
 
                 Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
                 # substitute variables in block equations
@@ -1321,7 +1321,7 @@ class TemplateEditor(QtWidgets.QWidget):
                 # bus connection variables
                 if self.api_object.bus_from.rms_model.empty():
                     initialize_bus_rms(self.api_object.bus_from, self.var_factory)
-                self.selected_block = selected_template.block.deep_copy()
+                self.selected_block = selected_template.block.copy()
 
                 Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
 

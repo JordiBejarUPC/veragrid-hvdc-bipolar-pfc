@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import List, Dict
+from typing import List, Dict, Any
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
@@ -293,7 +293,7 @@ class Block:
 
         return block
 
-    def deep_copy(self) -> "Block":
+    def copy(self) -> "Block":
         """
         Deep copy preserving UIDs.
         Completely structural clone using to_dict + parse.
