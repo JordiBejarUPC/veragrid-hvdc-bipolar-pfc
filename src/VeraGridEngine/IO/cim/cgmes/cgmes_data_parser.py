@@ -165,56 +165,42 @@ def parse_xml_stream_to_dict(xml_stream: BinaryIO) -> Dict[str, Dict[str, Dict[s
 
 def merge(A: Dict[str, Dict[str, Dict[str, str]]],
           B: Dict[str, Dict[str, Dict[str, str]]],
-          logger: DataLogger):
+          logger: DataLogger,
+          log_overwriting_values: bool) -> None:
     """
     Modify A using B
+
     :param A: CIM data dictionary to be modified in-place
     :param B: CIM data dictionary used to modify A
     :param logger: DataLogger to fill in logs
+    :param log_overwriting_values: Emit one warning for every overwritten value
     """
-    # for each category in B
+    add_warning = logger.add_warning
+
     for class_name_b, class_obj_dict_b in B.items():
-
         class_obj_dict_a = A.get(class_name_b, None)
-
         if class_obj_dict_a is None:
-            # the category does not exist in A, just copy it from B
             A[class_name_b] = class_obj_dict_b
-
         else:
-
-            # for every object in the category from B
             for rdfid, obj_b in class_obj_dict_b.items():
-
                 obj_a = class_obj_dict_a.get(rdfid, None)
-
                 if obj_a is None:
-                    # the object in B does not exist in A, copy it
                     class_obj_dict_a[rdfid] = obj_b
                 else:
-                    # the object in B already has an entry in A, modify it
-
-                    # for each property
                     for prop_name, value_b in obj_b.items():
-
                         value_a = obj_a.get(prop_name, None)
-
                         if value_a is None:
-                            # the property does not exist in A, add it
                             obj_a[prop_name] = value_b
                         else:
                             if value_b != value_a:
-                                # the value exists in A, and the value in B is not None, add it
                                 obj_a[prop_name] = value_b
-                                logger.add_warning("Overwriting value",
-                                                   device=str(obj_a),
-                                                   device_class=class_name_b,
-                                                   device_property=prop_name,
-                                                   value=value_b,
-                                                   expected_value=value_a)
-                            else:
-                                # the assigning value from B is the same as the already stored in A
-                                pass
+                                if log_overwriting_values:
+                                    add_warning("Overwriting value",
+                                                device=rdfid,
+                                                device_class=class_name_b,
+                                                device_property=prop_name,
+                                                value=value_b,
+                                                expected_value=value_a)
 
 
 def sort_cgmes_files(links: List[Tuple[str, str, str]]) -> List[str]:
@@ -261,7 +247,8 @@ def process_cgmes_file_data(file_name: str,
                             parsed_data: Optional[Dict[str, Dict[str, Dict[str, str]]]],
                             data: Dict[str, Dict[str, Dict[str, str]]],
                             boundary_set: Dict[str, Dict[str, Dict[str, str]]],
-                            logger: DataLogger) -> Union[CGMESVersions, None]:
+                            logger: DataLogger,
+                            log_overwriting_values: bool) -> Union[CGMESVersions, None]:
     """
     Process one parsed CGMES file dictionary and route objects to normal/boundary stores.
 
@@ -273,6 +260,7 @@ def process_cgmes_file_data(file_name: str,
     :param data: Normal model dictionary store
     :param boundary_set: Boundary model dictionary store
     :param logger: Logger instance
+    :param log_overwriting_values: Emit one warning for every overwritten value
     :return: Detected CGMES version for this file, or None
     """
     detected_version: Union[CGMESVersions, None] = None
@@ -295,9 +283,9 @@ def process_cgmes_file_data(file_name: str,
                         detected_version = CGMESVersions.v3_0_0
 
                 if len(profile) > 0 and 'Boundary' in profile[0]:
-                    merge(boundary_set, file_cgmes_data, logger)
+                    merge(boundary_set, file_cgmes_data, logger, log_overwriting_values)
                 else:
-                    merge(data, file_cgmes_data, logger)
+                    merge(data, file_cgmes_data, logger, log_overwriting_values)
             else:
                 if profile in cgmes2_4_15_uri:
                     detected_version = CGMESVersions.v2_4_15
@@ -305,9 +293,9 @@ def process_cgmes_file_data(file_name: str,
                     detected_version = CGMESVersions.v3_0_0
 
                 if 'Boundary' in profile:
-                    merge(boundary_set, file_cgmes_data, logger)
+                    merge(boundary_set, file_cgmes_data, logger, log_overwriting_values)
                 else:
-                    merge(data, file_cgmes_data, logger)
+                    merge(data, file_cgmes_data, logger, log_overwriting_values)
         else:
             logger.add_error("File does not contain exactly one FullModel",
                              device=file_name,
@@ -329,9 +317,9 @@ def process_cgmes_file_data(file_name: str,
                     detected_version = CGMESVersions.v3_0_0
 
             if 'Boundary' in profile:
-                merge(boundary_set, file_cgmes_data, logger)
+                merge(boundary_set, file_cgmes_data, logger, log_overwriting_values)
             else:
-                merge(data, file_cgmes_data, logger)
+                merge(data, file_cgmes_data, logger, log_overwriting_values)
         else:
             logger.add_error("File does not contain exactly one DifferenceModel",
                              device=file_name,
@@ -357,12 +345,14 @@ class CgmesDataParser(BaseCircuit):
                  text_func: Union[Callable, None] = None,
                  progress_func: Union[Callable, None] = None,
                  keep_parsed_data: bool = False,
+                 log_overwriting_values: bool = False,
                  logger=DataLogger()):
         """
         CIM circuit constructor
         :param text_func: text callback function (optional)
         :param progress_func: progress callback function (optional)
         :param keep_parsed_data: Keep per-file parsed dictionaries in memory
+        :param log_overwriting_values: Emit one warning for every overwritten value during merge
         :param logger: DataLogger
         """
         BaseCircuit.__init__(self)
@@ -370,6 +360,7 @@ class CgmesDataParser(BaseCircuit):
         self.text_func = text_func
         self.progress_func = progress_func
         self.keep_parsed_data: bool = keep_parsed_data
+        self.log_overwriting_values: bool = log_overwriting_values
         self.logger: DataLogger = logger
 
         # Optional per-file parsed snapshots. This is useful for debugging,
@@ -464,7 +455,8 @@ class CgmesDataParser(BaseCircuit):
                                                        parsed_data=parsed_data_store,
                                                        data=self.data,
                                                        boundary_set=self.boundary_set,
-                                                       logger=self.logger)
+                                                       logger=self.logger,
+                                                       log_overwriting_values=self.log_overwriting_values)
             if detected_version is not None:
                 self.cgmes_version = detected_version
             if n_items > 0:
