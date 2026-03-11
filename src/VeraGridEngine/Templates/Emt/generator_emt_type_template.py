@@ -232,7 +232,7 @@ def get_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "
         omega_ref:  vf.add_const(1.0),
         Kp:         vf.add_const(2.0),
         Ki:         vf.add_const(2.0),
-        v_f0:       vf.add_const(-0.011581), #-0.015522
+        v_f0:       vf.add_const(-0.015946), #-0.015522
         Tm0: vf.add_const(0.517280),
 
         # init-only external values

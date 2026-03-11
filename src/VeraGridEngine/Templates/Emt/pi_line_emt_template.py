@@ -26,7 +26,7 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     templ.tpe = DeviceType.LineDevice
     templ.name = name
 
-    vf: VarFactory = grid.rms_var_factory
+    vf: VarFactory = grid.emt_var_factory
     fbase: float = grid.fBase
     sbase: float = grid.Sbase
 
@@ -43,8 +43,8 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     ], dtype=bool)
 
     ph_labels = ["N", "A", "B", "C"]
-    idx = np.where(ph_mask)[0]  # indices in [0..3]
-    active_ph = [ph_labels[i] for i in idx]  # names in canonical order
+    idx_global = np.where(ph_mask)[0]  # indices in global NABC convention
+    active_ph = [ph_labels[i] for i in idx_global]
     m = len(active_ph)
 
     if m == 0:
@@ -56,10 +56,17 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     # -----------------------------
     vf_vars = [vf.add_var(f"vf_{ph}_{line.name}") for ph in active_ph]
     vt_vars = [vf.add_var(f"vt_{ph}_{line.name}") for ph in active_ph]
-    # d_vf_vars = [vf.add_diff_var(name=f"d_vf_{ph}_{line.name}", base_var=v_base) for ph, v_base in
-    #              zip(active_ph, vf_vars)]
-    # d_vt_vars = [vf.add_diff_var(name=f"d_vt_{ph}_{line.name}", base_var=v_base) for ph, v_base in
-    #              zip(active_ph, vt_vars)]
+
+    # diff vars used for initialization
+    d_vf_vars = [vf.add_diff_var(name=f"d_vf_{ph}_{line.name}", base_var=v_base) for ph, v_base in
+                 zip(active_ph, vf_vars)]
+    d_vt_vars = [vf.add_diff_var(name=f"d_vt_{ph}_{line.name}", base_var=v_base) for ph, v_base in
+                 zip(active_ph, vt_vars)]
+
+    for d_var in d_vf_vars:
+        templ.block.event_dict[d_var] = vf.add_const(None)
+    for d_var in d_vt_vars:
+        templ.block.event_dict[d_var] = vf.add_const(None)
 
     # -----------------------------
     # Compute continuous parameters in pu (R, L, G_end, C_end) in ACTIVE subspace
@@ -89,23 +96,38 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     G_end_full = 0.5 * Gsh_full
     C_end_full = 0.5 * C_full
 
-    idx_global = idx
     n_mat = R_full.shape[0]
 
+    if R_full.shape[0] != R_full.shape[1]:
+        raise ValueError(
+            f"Line '{line.name}' has a non-square Z matrix with shape {R_full.shape}."
+        )
+
+    if L_full.shape != R_full.shape or C_end_full.shape != R_full.shape:
+        raise ValueError(
+            f"Line '{line.name}' has inconsistent matrix shapes: "
+            f"R={R_full.shape}, L={L_full.shape}, C_end={C_end_full.shape}."
+        )
+
     if n_mat == 3:
-        # Matrices are ABC only
+        # Matrices are stored in compact ABC order
         if 0 in idx_global:
             raise ValueError(
                 f"Line '{line.name}' has N phase enabled but template matrices are 3x3 (ABC)."
             )
         idx_mat = idx_global - 1  # A->0, B->1, C->2
+
     elif n_mat == 4:
-        # Matrices are NABC
+        # Matrices are stored in full NABC order
         idx_mat = idx_global
+
     else:
         raise ValueError(
-            f"Unsupported template matrix size {n_mat} for line '{line.name}' (expected 3 or 4)."
+            f"Unsupported template matrix size {R_full.shape} for line '{line.name}' "
+            f"(expected 3x3 or 4x4)."
         )
+
+    idx_mat = np.array(idx_mat, dtype=int)
 
     R = R_full[np.ix_(idx_mat, idx_mat)]
     L = L_full[np.ix_(idx_mat, idx_mat)]
@@ -174,32 +196,13 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     # -----------------------------
     alg_eqs = []
 
-    # #i_cap_f - C_end * d_vf = 0
-    # for a in range(m):
-    #     rhs = c0
-    #     for b in range(m):
-    #         Cab = float(C_end[a, b])
-    #         if Cab != 0.0:
-    #             rhs = rhs + Cab * d_vf_vars[b]
-    #     alg_eqs.append(i_cap_f[a] - rhs)
-    # # i_cap_t - C_end * d_vt = 0
-    # for a in range(m):
-    #     rhs = c0
-    #     for b in range(m):
-    #         Cab = float(C_end[a, b])
-    #         if Cab != 0.0:
-    #             rhs = rhs + Cab * d_vt_vars[b]
-    #     alg_eqs.append(i_cap_t[a] - rhs)
-
-    # En lugar de i_cap = C * dv, usamos q = C * v
-    # Esto elimina la dependencia de la derivada numérica
     for a in range(m):
         rhs_q = c0
         for b in range(m):
             Cab = float(C_end[a, b])
             if Cab != 0.0:
                 rhs_q = rhs_q + Cab * vf_vars[b]
-        alg_eqs.append(q_f[a] - rhs_q)  # El solver ajusta i_cap para que q sea C*v
+        alg_eqs.append(q_f[a] - rhs_q)
 
     for a in range(m):
         rhs_q = c0
@@ -209,29 +212,14 @@ def get_pi_line_emt_template(grid: MultiCircuit,
                 rhs_q = rhs_q + Cab * vt_vars[b]
         alg_eqs.append(q_t[a] - rhs_q)
 
-    # Corrientes terminales con un pequeño damping (amortiguamiento numérico)
-    # G_damp ayuda a "limpiar" oscilaciones de alta frecuencia en buses inductivos
-    G_damp = 1e-6
+    # small numerical damping to clean up high freq oscillations
+    G_damp = 1e-5
 
-    # Terminal current at from-bus: if = i_ser + i_cap_f + G_damp*v
     for a in range(m):
+        # Terminal current at from-bus: if = i_ser + i_cap_f + G_damp*v
         alg_eqs.append(if_act[a] - (i_ser[a] + i_cap_f[a] + G_damp * vf_vars[a]))
-
-    # Terminal current at to-bus: it = -i_ser + i_cap_t + G_damp*v
-    for a in range(m):
+        # Terminal current at to-bus: it = -i_ser + i_cap_t + G_damp*v
         alg_eqs.append(it_act[a] - (-i_ser[a] + i_cap_t[a] + G_damp * vt_vars[a]))
-
-    # # Terminal current at from-bus:
-    # # if = i_ser + i_cap_f
-    # for a in range(m):
-    #     gv = c0
-    #     alg_eqs.append(if_act[a] - (i_ser[a] + gv + i_cap_f[a]))
-    #
-    # # Terminal current at to-bus:
-    # # it = -i_ser + i_cap_t
-    # for a in range(m):
-    #     gv = c0
-    #     alg_eqs.append(it_act[a] - (-i_ser[a] + gv + i_cap_t[a]))
 
     templ.block.algebraic_eqs = alg_eqs
 
@@ -263,6 +251,18 @@ def get_pi_line_emt_template(grid: MultiCircuit,
         "B": VarPowerFlowRefferenceType.St_B,
         "C": VarPowerFlowRefferenceType.St_C,
     }
+    d_vf_keys = {
+        "N": VarPowerFlowRefferenceType.d_v_N_f,
+        "A": VarPowerFlowRefferenceType.d_v_A_f,
+        "B": VarPowerFlowRefferenceType.d_v_B_f,
+        "C": VarPowerFlowRefferenceType.d_v_C_f,
+    }
+    d_vt_keys = {
+        "N": VarPowerFlowRefferenceType.d_v_N_t,
+        "A": VarPowerFlowRefferenceType.d_v_A_t,
+        "B": VarPowerFlowRefferenceType.d_v_B_t,
+        "C": VarPowerFlowRefferenceType.d_v_C_t,
+    }
 
     # Start with all phases present as None
     mapping: Dict[VarPowerFlowRefferenceType, Var | None] = {
@@ -270,14 +270,16 @@ def get_pi_line_emt_template(grid: MultiCircuit,
         it_keys["N"]: None, it_keys["A"]: None, it_keys["B"]: None, it_keys["C"]: None,
         Sf_keys["A"]: None, Sf_keys["B"]: None, Sf_keys["C"]: None,
         St_keys["A"]: None, St_keys["B"]: None, St_keys["C"]: None,
+        d_vf_keys["N"]: None, d_vf_keys["A"]: None, d_vf_keys["B"]: None, d_vf_keys["C"]: None,
+        d_vt_keys["N"]: None, d_vt_keys["A"]: None, d_vt_keys["B"]: None, d_vt_keys["C"]: None,
     }
 
     # Fill only active phases
     for k, ph in enumerate(active_ph):
         mapping[if_keys[ph]] = if_act[k]
         mapping[it_keys[ph]] = it_act[k]
-
-    templ.block.external_mapping = mapping
+        mapping[d_vf_keys[ph]] = d_vf_vars[k]
+        mapping[d_vt_keys[ph]] = d_vt_vars[k]
 
     # -----------------------------
     # init equations (ALL internal vars)
@@ -295,24 +297,6 @@ def get_pi_line_emt_template(grid: MultiCircuit,
                 rhs_t += Cab * vt_vars[b]
         init_eqs[q_f[a]] = rhs_f
         init_eqs[q_t[a]] = rhs_t
-
-    # # q_f = C_end * vf
-    # for a in range(m):
-    #     rhs = c0
-    #     for b in range(m):
-    #         Cab = float(C_end[a, b])
-    #         if Cab != 0.0:
-    #             rhs = rhs + Cab * vf_vars[b]
-    #     init_eqs[q_f[a]] = rhs
-
-    # # q_t = C_end * vt
-    # for a in range(m):
-    #     rhs = c0
-    #     for b in range(m):
-    #         Cab = float(C_end[a, b])
-    #         if Cab != 0.0:
-    #             rhs = rhs + Cab * vt_vars[b]
-    #     init_eqs[q_t[a]] = rhs
 
     # i_cap seeds
     for a in range(m):
@@ -348,6 +332,18 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     for a in range(m):
         diff_init_eqs[dq_f[a]] = i_cap_f[a]
         diff_init_eqs[dq_t[a]] = i_cap_t[a]
+
+    for a in range(m):
+        rhs_icap_f = c0
+        rhs_icap_t = c0
+        for b in range(m):
+            Cab = float(C_end[a, b])
+            if Cab != 0.0:
+                rhs_icap_f += Cab * d_vf_vars[b]  # Usamos la dV/dt del PF
+                rhs_icap_t += Cab * d_vt_vars[b]
+
+        init_eqs[i_cap_f[a]] = rhs_icap_f
+        init_eqs[i_cap_t[a]] = rhs_icap_t
 
     templ.block.diff_init_eqs = diff_init_eqs
 

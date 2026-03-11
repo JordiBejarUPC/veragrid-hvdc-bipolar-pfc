@@ -311,7 +311,8 @@ class JitSymbolicSolver:
         :type method: DynamicIntegrationMethod
         :rtype: None
         """
-        print(f"--- [JIT] Compiling Implicit Kernel ({method}) ---")
+        if self.verbose:
+            print(f"--- [JIT] Compiling Implicit Kernel ({method}) ---")
 
         sorted_vars: List[Any] = list()
         sorted_vars.extend(self.state_vars)
@@ -411,7 +412,8 @@ class JitSymbolicSolver:
         else:
             pass
 
-        print(f"--- [JIT-SD] Compiling Hybrid Symbolic Jacobian ({'SPARSE' if use_sparse else 'DENSE'}) ---")
+        if self.verbose:
+            print(f"--- [JIT-SD] Compiling Hybrid Symbolic Jacobian ({'SPARSE' if use_sparse else 'DENSE'}) ---")
         t0 = time.time()
 
         sorted_vars: List[Any] = list()
@@ -475,7 +477,8 @@ class JitSymbolicSolver:
                     else:
                         pass
 
-            print(f"   [JIT-SD] Topology Analysis: {nnz} non-zeros (Sparsity: {1.0 - nnz / (N ** 2):.2%})")
+            if self.verbose:
+                print(f"   [JIT-SD] Topology Analysis: {nnz} non-zeros (Sparsity: {1.0 - nnz / (N ** 2):.2%})")
         else:
             for r, eq in enumerate(equations):
                 for c, v in enumerate(sorted_vars):
@@ -516,7 +519,8 @@ class JitSymbolicSolver:
         )
 
         self.jit_jacobian_symbolic[cache_key] = evaluator_obj
-        print(f"   [JIT-SD] Compilation finished in {time.time() - t0:.4f}s")
+        if self.verbose:
+            print(f"   [JIT-SD] Compilation finished in {time.time() - t0:.4f}s")
 
     def simulate(self,
                  x0: Union[Vec | None] = None,

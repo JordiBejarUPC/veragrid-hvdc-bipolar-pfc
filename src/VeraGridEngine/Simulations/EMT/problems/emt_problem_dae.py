@@ -155,10 +155,10 @@ def _get_grid_runtime_events(grid: MultiCircuit) -> List[Any]:
     :param grid: MultiCircuit instance.
     :return: List of scheduled runtime events.
     """
-    rms_events = getattr(grid, "rms_events", None)
+    emt_events = getattr(grid, "emt_events", None)
 
-    if rms_events is not None:
-        return list(rms_events)
+    if emt_events is not None:
+        return list(emt_events)
     else:
         return list()
 
@@ -168,21 +168,20 @@ def _get_bus_v_list(
         ph_v_keys: List[VarPowerFlowRefferenceType]
 ) -> List[Any]:
     """
-    Return the ordered list of bus phase voltages, filling missing phases with zero.
+    Return the ordered list of bus phase voltages, using None for missing phases.
 
     :param grid: MultiCircuit instance.
     :param bus_block: Bus symbolic block.
     :param ph_v_keys: Ordered list of phase voltage keys.
-    :return: Ordered list of phase voltage expressions.
+    :return: Ordered list of bus phase voltage expressions or None.
     """
     out: List[Any] = list()
-    c0 = grid.rms_var_factory.add_const(0.0)
 
     for key in ph_v_keys:
         vk = bus_block.E(key)
 
         if vk is None:
-            out.append(c0)
+            out.append(None)
         else:
             out.append(vk)
 
@@ -257,8 +256,28 @@ class EmtProblemDae(EmtProblemTemplate):
         # initialize template with the complete block
         super().__init__(sys_block=sys_block, glob_time=glob_time)
 
+        # Mark retained runtime parameters:
+        #   - scheduled mode parameters
+        #   - Bergeron history parameters
+        mode_parameters: List[Var] = self._collect_runtime_mode_parameters()
+        if len(mode_parameters) > 0:
+            self.set_runtime_mode_parameters(mode_parameters)
+        else:
+            pass
+
+        # Runtime parameter indices may have changed after repartitioning,
+        # so Bergeron runtimes must bind their parameter indices afterwards.
+        for rt in self.history_models:
+            rt.setup_indices(
+                uid2idx_vars=self.uid2idx_vars,
+                uid2idx_event_params=self.uid2idx_event_params,
+                params_offset=0,
+            )
+
         if len(self._runtime_mode_parameters) > 0:
             self._initialize_mode_event_state()
+        else:
+            pass
 
         # 1) PF guesses
         self.init_guess.update(self._temp_init_guess)
@@ -360,7 +379,8 @@ class EmtProblemDae(EmtProblemTemplate):
                     TIME_NAME=self.TIME_NAME,
                     VARS_NAME=self.VARS_NAME,
                     DIFF_NAME=self.DIFF_NAME,
-                    CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
+                    CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+                    verbose=bool(self.options.verbose > 0),
                 )
             except Exception as e:
                 block_name: str = _get_block_name(mdl)
@@ -464,7 +484,7 @@ class EmtProblemDae(EmtProblemTemplate):
             VarPowerFlowRefferenceType.it_C,
         ])
 
-        c0: Any = grid.rms_var_factory.add_const(0.0)
+        c0: Any = grid.emt_var_factory.add_const(0.0)
 
         # KCL accumulator per bus-phase
         I_kcl: Dict[int, List[Any]] = dict()
@@ -515,14 +535,28 @@ class EmtProblemDae(EmtProblemTemplate):
                                                                     fbase=fbase)
                 rt.bind_terminals(v_f_vars, v_t_vars)
 
+                if pf_results is not None:
+                    self._try_set_bergeron_pf_init(
+                        mdl=mdl,
+                        rt=rt,
+                        branch_index=branch_idx,
+                        f_bus_idx=f,
+                        t_bus_idx=t,
+                        pf_results=pf_results,
+                        sbase=grid.Sbase,
+                    )
+                else:
+                    pass
+
                 i_f_exprs: List[Any]
                 i_t_exprs: List[Any]
                 i_f_exprs, i_t_exprs = rt.get_nodal_injections()
 
                 for ph in range(4):
-                    # currents in branches are defined as going out of the bus (sign convention)
-                    I_kcl[f][ph] = I_kcl[f][ph] - i_f_exprs[ph]
-                    I_kcl[t][ph] = I_kcl[t][ph] - i_t_exprs[ph]
+                    if i_f_exprs[ph] is not None:
+                        I_kcl[f][ph] = I_kcl[f][ph] - i_f_exprs[ph]
+                    if i_t_exprs[ph] is not None:
+                        I_kcl[t][ph] = I_kcl[t][ph] - i_t_exprs[ph]
 
                 self.history_models.append(rt)
 
@@ -747,8 +781,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         if mdl.E(VarPowerFlowRefferenceType.v_N) is not None:
             V_N = pf_results.voltage_N[bus_index]
-            v_N: float = np.sqrt(2.0) * np.real(V_N)
-            d_v_N: float = -omega_base * np.sqrt(2.0) * np.imag(V_N)
+            v_N: float = np.sqrt(2.0) * np.imag(V_N)
+            d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
 
             self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_N, v_N)
             self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
@@ -757,8 +791,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         if mdl.E(VarPowerFlowRefferenceType.v_A) is not None:
             V_A = pf_results.voltage_A[bus_index]
-            v_A: float = np.sqrt(2.0) * np.real(V_A)
-            d_v_A: float = -omega_base * np.sqrt(2.0) * np.imag(V_A)
+            v_A: float = np.sqrt(2.0) * np.imag(V_A)
+            d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
 
             self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_A, v_A)
             self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
@@ -767,8 +801,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         if mdl.E(VarPowerFlowRefferenceType.v_B) is not None:
             V_B = pf_results.voltage_B[bus_index]
-            v_B: float = np.sqrt(2.0) * np.real(V_B)
-            d_v_B: float = -omega_base * np.sqrt(2.0) * np.imag(V_B)
+            v_B: float = np.sqrt(2.0) * np.imag(V_B)
+            d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
 
             self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_B, v_B)
             self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
@@ -777,8 +811,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         if mdl.E(VarPowerFlowRefferenceType.v_C) is not None:
             V_C = pf_results.voltage_C[bus_index]
-            v_C: float = np.sqrt(2.0) * np.real(V_C)
-            d_v_C: float = -omega_base * np.sqrt(2.0) * np.imag(V_C)
+            v_C: float = np.sqrt(2.0) * np.imag(V_C)
+            d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
 
             self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_C, v_C)
             self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
@@ -840,6 +874,18 @@ class EmtProblemDae(EmtProblemTemplate):
             "B": VarPowerFlowRefferenceType.it_B,
             "C": VarPowerFlowRefferenceType.it_C,
         }
+        d_vf_key_dict: Dict[str, VarPowerFlowRefferenceType] = {
+            "N": VarPowerFlowRefferenceType.d_v_N_f,
+            "A": VarPowerFlowRefferenceType.d_v_A_f,
+            "B": VarPowerFlowRefferenceType.d_v_B_f,
+            "C": VarPowerFlowRefferenceType.d_v_C_f,
+        }
+        d_vt_key_dict: Dict[str, VarPowerFlowRefferenceType] = {
+            "N": VarPowerFlowRefferenceType.d_v_N_t,
+            "A": VarPowerFlowRefferenceType.d_v_A_t,
+            "B": VarPowerFlowRefferenceType.d_v_B_t,
+            "C": VarPowerFlowRefferenceType.d_v_C_t,
+        }
 
         voltage_dict: Dict[str, Optional[np.ndarray]] = {
             "N": pf_results.voltage_N,
@@ -860,6 +906,7 @@ class EmtProblemDae(EmtProblemTemplate):
             "B": pf_results.St_B,
             "C": pf_results.St_C,
         }
+
 
         sf_sum: complex = 0.0 + 0.0j
         st_sum: complex = 0.0 + 0.0j
@@ -924,13 +971,27 @@ class EmtProblemDae(EmtProblemTemplate):
                     else:
                         i_t = np.conj(st_ph / vt_ph)
 
-                    i_f0: float = np.sqrt(2.0) * np.real(i_f)
-                    i_t0: float = np.sqrt(2.0) * np.real(i_t)
+                    i_f0: float = np.sqrt(2.0) * np.imag(i_f)
+                    i_t0: float = np.sqrt(2.0) * np.imag(i_t)
 
                     self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0))
                     self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0))
             else:
                 pass
+
+        omega_base: float = 2.0 * np.pi * self.grid.fBase
+        for ph in phases:
+            d_vf_key: VarPowerFlowRefferenceType = d_vf_key_dict[ph]
+            d_vt_key: VarPowerFlowRefferenceType = d_vt_key_dict[ph]
+            voltage_array = voltage_dict[ph]
+            if mdl.E(d_vf_key) is not None:
+                vf_ph = voltage_array[f_bus_idx]
+                d_vf: float = omega_base * np.sqrt(2.0) * np.real(vf_ph)
+                self.set_external_param(mdl, d_vf_key, d_vf)
+            if mdl.E(d_vt_key) is not None:
+                vt_ph = voltage_array[t_bus_idx]
+                d_vt: float = omega_base * np.sqrt(2.0) * np.real(vt_ph)
+                self.set_external_param(mdl, d_vt_key, d_vt)
 
         self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pf, value=float(np.real(sf_sum)))
         self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qf, value=float(np.imag(sf_sum)))
@@ -988,7 +1049,7 @@ class EmtProblemDae(EmtProblemTemplate):
                     else:
                         I = np.conj(S / V)
 
-                    i0: float = np.sqrt(2.0) * np.real(I)
+                    i0: float = np.sqrt(2.0) * np.imag(I)
 
                     self.set_if_exists(mdl=mdl, key=i_key, value=float(i0))
                     self.set_if_exists(mdl=mdl, key=P_key, value=float(np.real(S)))
@@ -1037,20 +1098,117 @@ class EmtProblemDae(EmtProblemTemplate):
         omega_base: float = 2.0 * np.pi * self.grid.fBase
         if mdl.E(VarPowerFlowRefferenceType.d_v_N) is not None:
             V_N = pf_results.voltage_N[bus_index]
-            d_v_N: float = -omega_base * np.sqrt(2.0) * np.imag(V_N)
+            d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
             self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
         if mdl.E(VarPowerFlowRefferenceType.d_v_A) is not None:
             V_A = pf_results.voltage_A[bus_index]
-            d_v_A: float = -omega_base * np.sqrt(2.0) * np.imag(V_A)
+            d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
             self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
         if mdl.E(VarPowerFlowRefferenceType.d_v_B) is not None:
             V_B = pf_results.voltage_B[bus_index]
-            d_v_B: float = -omega_base * np.sqrt(2.0) * np.imag(V_B)
+            d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
             self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
         if mdl.E(VarPowerFlowRefferenceType.d_v_C) is not None:
             V_C = pf_results.voltage_C[bus_index]
-            d_v_C: float = -omega_base * np.sqrt(2.0) * np.imag(V_C)
+            d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
             self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
+
+    def _try_set_bergeron_pf_init(
+            self,
+            mdl: Block,
+            rt: BergeronHistoryRuntime,
+            branch_index: int,
+            f_bus_idx: int,
+            t_bus_idx: int,
+            pf_results: PowerFlowResults3Ph,
+            sbase: float
+    ) -> None:
+        """
+        Initialize Bergeron history terms from three-phase power-flow results.
+
+        The history sources are initialized so that, at t = 0:
+            i_f(0) = Gc * v_f(0) + Ih_f(0)
+            i_t(0) = Gc * v_t(0) + Ih_t(0)
+
+        Hence:
+            Ih_f(0) = i_f(0) - Gc * v_f(0)
+            Ih_t(0) = i_t(0) - Gc * v_t(0)
+
+        Only active phases in the Bergeron runtime are considered.
+        """
+        voltage_dict: Dict[str, Optional[np.ndarray]] = {
+            "N": pf_results.voltage_N,
+            "A": pf_results.voltage_A,
+            "B": pf_results.voltage_B,
+            "C": pf_results.voltage_C,
+        }
+
+        sf_array_dict: Dict[str, Optional[np.ndarray]] = {
+            "N": None,
+            "A": pf_results.Sf_A,
+            "B": pf_results.Sf_B,
+            "C": pf_results.Sf_C,
+        }
+
+        st_array_dict: Dict[str, Optional[np.ndarray]] = {
+            "N": None,
+            "A": pf_results.St_A,
+            "B": pf_results.St_B,
+            "C": pf_results.St_C,
+        }
+
+        v_f0_red = np.zeros(rt.m, dtype=np.float64)
+        v_t0_red = np.zeros(rt.m, dtype=np.float64)
+        i_f0_red = np.zeros(rt.m, dtype=np.float64)
+        i_t0_red = np.zeros(rt.m, dtype=np.float64)
+
+        for k, ph in enumerate(rt.active_ph):
+            voltage_array = voltage_dict[ph]
+
+            if voltage_array is None:
+                vf_ph = 0.0 + 0.0j
+                vt_ph = 0.0 + 0.0j
+            else:
+                vf_ph = voltage_array[f_bus_idx]
+                vt_ph = voltage_array[t_bus_idx]
+
+            # Instantaneous voltage at t = 0 with your EMT convention
+            v_f0_red[k] = float(np.sqrt(2.0) * np.imag(vf_ph))
+            v_t0_red[k] = float(np.sqrt(2.0) * np.imag(vt_ph))
+
+            sf_array = sf_array_dict[ph]
+            st_array = st_array_dict[ph]
+
+            if sf_array is None or abs(vf_ph) <= 1e-12:
+                i_f = 0.0 + 0.0j
+            else:
+                sf_ph = sf_array[branch_index] / sbase
+                i_f = np.conj(sf_ph / vf_ph)
+
+            if st_array is None or abs(vt_ph) <= 1e-12:
+                i_t = 0.0 + 0.0j
+            else:
+                st_ph = st_array[branch_index] / sbase
+                i_t = np.conj(st_ph / vt_ph)
+
+            # Instantaneous current at t = 0 with your EMT convention
+            i_f0_red[k] = float(np.sqrt(2.0) * np.imag(i_f))
+            i_t0_red[k] = float(np.sqrt(2.0) * np.imag(i_t))
+
+        Ih_f0_red = i_f0_red - rt.Gc_red @ v_f0_red
+        Ih_t0_red = i_t0_red - rt.Gc_red @ v_t0_red
+
+        for k in range(rt.m):
+            mdl.event_dict[rt.Ih_f[k]] = self.grid.emt_var_factory.add_const(float(Ih_f0_red[k]))
+            mdl.event_dict[rt.Ih_t[k]] = self.grid.emt_var_factory.add_const(float(Ih_t0_red[k]))
+
+        rt.initialize_buffers_from_initial_point(
+            v_f0_red=v_f0_red,
+            v_t0_red=v_t0_red,
+            i_f0_red=i_f0_red,
+            i_t0_red=i_t0_red,
+        )
+
     # ---------------------------------------------------------------------
     # UTILS
     # ---------------------------------------------------------------------
@@ -1087,7 +1245,7 @@ class EmtProblemDae(EmtProblemTemplate):
         mode_parameters: List[Var] = list()
 
         for parameter in self.get_variable_parameters():
-            if _is_mode_runtime_parameter(parameter):
+            if _is_mode_runtime_parameter(parameter): # TODO: function not found! is this used?
                 mode_parameters.append(parameter)
             else:
                 pass
@@ -1143,6 +1301,37 @@ class EmtProblemDae(EmtProblemTemplate):
                 event_idx += 1
 
             self._mode_event_cursor[uid] = event_idx
+
+    def _collect_runtime_mode_parameters(self) -> List[Var]:
+        """
+        Collect runtime parameters that must be retained between steps.
+
+        This includes:
+          - scheduled discrete mode parameters,
+          - Bergeron line history parameters, which are updated explicitly by the runtime.
+        """
+        mode_parameters: List[Var] = list()
+        seen: Set[int] = set()
+
+        # 1) Scheduled mode parameters already registered through mode_dict
+        for parameter in self.get_runtime_mode_parameters():
+            if parameter.uid not in seen:
+                seen.add(parameter.uid)
+                mode_parameters.append(parameter)
+
+        # 2) Bergeron history parameters must also be retained
+        for rt in self.history_models:
+            for parameter in rt.Ih_f:
+                if parameter.uid not in seen:
+                    seen.add(parameter.uid)
+                    mode_parameters.append(parameter)
+
+            for parameter in rt.Ih_t:
+                if parameter.uid not in seen:
+                    seen.add(parameter.uid)
+                    mode_parameters.append(parameter)
+
+        return mode_parameters
 
     def add_device_var(self, dev: ALL_DEV_TYPES, var: Var)->None:
         """
@@ -1206,7 +1395,7 @@ class EmtProblemDae(EmtProblemTemplate):
             return
 
         if var in mdl.event_dict:
-            mdl.event_dict[var] = self.grid.rms_var_factory.add_const(float(value))
+            mdl.event_dict[var] = self.grid.emt_var_factory.add_const(float(value))
         else:
             pass
 
@@ -1271,6 +1460,10 @@ class EmtProblemDae(EmtProblemTemplate):
 
         for rt in self.history_models:
             rt.update_history(self.step_counter, x_prev, full_params)
+
+        # Persist the updated runtime parameters so the next step sees them
+        n_runtime: int = self.get_variable_parameter_number()
+        self._event_params_values[:] = full_params[:n_runtime]
 
         self.step_counter += 1
 
