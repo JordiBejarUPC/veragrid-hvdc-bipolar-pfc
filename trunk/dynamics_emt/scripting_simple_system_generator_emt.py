@@ -103,8 +103,6 @@ R_ph =100 #ohm
 v_ph = vnom / (3**0.5)
 P_ph = (v_ph**2) / R_ph # kv*kv/ohm = MW
 
-print(f"P_ph = {P_ph}")
-
 # load = gce.Load(name="load",P1= P/3, P2= P/3, P3= P/3, Q1= Q/3, Q2= Q/3, Q3= Q/3)
 load = gce.Load(name="load",P1= P_ph, P2= P_ph, P3= P_ph, Q1= 0.0, Q2= 0.0, Q3= 0.0)
 load.conn = ShuntConnectionType.GroundedStar
@@ -247,10 +245,12 @@ print(res.get_branch_df())
 # ==============================================================================
 CHOSEN_SOLVER = "COMPILED"
 RUN_ALL_SOLVERS = True
-ENABLE_PLOTS = True
+ENABLE_PLOTS = False
 ENABLE_NEWTON_TRACE = False
+SHOW_INIT_GUESS_TABLE = False
 DENSE_THRESHOLD = 0
-SOLVER_VERBOSE = True
+SOLVER_VERBOSE = False
+VALIDATE_BACKEND_EQUIVALENCE = True
 
 SOLVER_TYPE_MAP = {
     "SYMBOLIC": EmtSolverTypes.Symbolic,
@@ -269,7 +269,7 @@ options = EmtOptions(time_step = 5e-7, # 5e-7,
                      tolerance = 1e-6,
                      solver = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
-                     verbose = 1)
+                     verbose = 0)
 
 
 def create_problem() -> EmtProblemDae:
@@ -277,7 +277,7 @@ def create_problem() -> EmtProblemDae:
                                   options=options,
                                   pf_results=res)
 
-    if ENABLE_NEWTON_TRACE:
+    if ENABLE_NEWTON_TRACE or VALIDATE_BACKEND_EQUIVALENCE:
         local_problem.set_newton_trace_collector(NewtonTraceCollector())
 
     return local_problem
@@ -357,6 +357,45 @@ def build_solver_backend(solver_key: str, solver, local_problem: EmtProblemDae) 
     raise ValueError(f"Solver '{solver_key}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
 
 
+def build_full_params(problem: EmtProblemDae, t_curr: float) -> np.ndarray:
+    event_params = problem._event_params_values.copy()
+    event_params = problem.def_event_params_fn(event_params, float(t_curr))
+    const_params = np.array([float(c.value) for c in problem.get_parameters_values()], dtype=np.float64)
+    return np.concatenate((event_params, const_params))
+
+
+def evaluate_final_residual(problem: EmtProblemDae, solver_key: str, solver, t_arr: np.ndarray, y_arr: np.ndarray, dy_arr: np.ndarray) -> float:
+    x_final = y_arr[-1].copy()
+    x_prev = y_arr[-2].copy()
+    dx_prev = dy_arr[-2].copy()
+    x_prev2 = y_arr[-2].copy() if len(y_arr) < 3 else y_arr[-3].copy()
+    full_params = build_full_params(problem, float(t_arr[-1]))
+
+    if solver_key == "SYMBOLIC":
+        res = np.zeros(problem.get_all_vars_number(), dtype=np.float64)
+        for kernel in solver.jit_kernels[solver.method]:
+            kernel(x_final, full_params, x_prev, dx_prev, options.time_step, res, x_prev2)
+        return float(np.max(np.abs(res)))
+
+    if solver_key == "AD":
+        res = np.zeros(problem.get_all_vars_number(), dtype=np.float64)
+        for kernel in solver.jit_kernels_ad[solver.method]:
+            kernel(x_final, full_params, x_prev, dx_prev, options.time_step, res, x_prev2)
+        return float(np.max(np.abs(res)))
+
+    if solver_key == "VECTORIZED":
+        res = np.zeros(problem.get_all_vars_number(), dtype=np.float64)
+        solver.fused_residual(x_final, full_params, x_prev, dx_prev, options.time_step, solver.vec_flat_args, res, x_prev2)
+        return float(np.max(np.abs(res)))
+
+    if solver_key == "COMPILED":
+        res = np.zeros(problem.get_all_vars_number(), dtype=np.float64)
+        solver._residual_assembler.evaluate(x_final, full_params, x_prev, dx_prev, options.time_step, x_prev2, res)
+        return float(np.max(np.abs(res)))
+
+    raise ValueError(f"Unknown solver key: {solver_key}")
+
+
 def benchmark_all_solvers() -> None:
     print("\n" + "=" * 110)
     print("EMT SOLVER BENCHMARK (REAL DEMO)")
@@ -366,6 +405,7 @@ def benchmark_all_solvers() -> None:
 
     results = list()
     reference_y = None
+    reference_dy = None
 
     for solver_key in ALL_SOLVER_KEYS:
         print(f"\n--- Running {solver_key} ---")
@@ -389,9 +429,16 @@ def benchmark_all_solvers() -> None:
 
         if reference_y is None:
             max_abs_diff = 0.0
+            max_abs_diff_dy = 0.0
             reference_y = y_arr.copy()
+            reference_dy = dy_arr.copy()
         else:
             max_abs_diff = float(np.max(np.abs(y_arr - reference_y)))
+            max_abs_diff_dy = float(np.max(np.abs(dy_arr - reference_dy)))
+
+        final_residual = evaluate_final_residual(local_problem, solver_key, solver, t_arr, y_arr, dy_arr)
+        collector = local_problem.get_newton_trace_collector()
+        total_newton_iters = len(collector.records) if collector is not None else 0
 
         loop_time = getattr(solver, "_last_sim_loop_time", np.nan)
         build_stats_fn = getattr(solver, "get_backend_build_stats", None)
@@ -405,6 +452,9 @@ def benchmark_all_solvers() -> None:
             "solver_total_s": solver_init_s + solver_build_s + simulate_s,
             "loop_s": float(loop_time) if loop_time == loop_time else np.nan,
             "max_abs_diff": max_abs_diff,
+            "max_abs_diff_dy": max_abs_diff_dy,
+            "final_residual": final_residual,
+            "newton_iters": total_newton_iters,
             "build_stats": build_stats_fn() if callable(build_stats_fn) else dict(),
             "steps": len(t_arr) - 1,
             "shape": y_arr.shape,
@@ -412,11 +462,11 @@ def benchmark_all_solvers() -> None:
         })
 
     print("\n" + "-" * 140)
-    print(f"{'Solver':<12}{'Problem[s]':>12}{'Init[s]':>12}{'Build[s]':>12}{'Sim[s]':>12}{'Total[s]':>12}{'Loop[s]':>12}{'MaxDiff':>18}")
+    print(f"{'Solver':<12}{'Problem[s]':>12}{'Init[s]':>12}{'Build[s]':>12}{'Sim[s]':>12}{'Total[s]':>12}{'Loop[s]':>12}{'MaxDiff(y)':>14}{'MaxDiff(dy)':>14}{'ResInf':>14}{'Newtons':>10}")
     print("-" * 140)
 
     for item in results:
-        print(f"{item['solver']:<12}{item['problem_build_s']:>12.6f}{item['solver_init_s']:>12.6f}{item['solver_build_s']:>12.6f}{item['simulate_s']:>12.6f}{item['solver_total_s']:>12.6f}{item['loop_s']:>12.6f}{item['max_abs_diff']:>18.3e}")
+        print(f"{item['solver']:<12}{item['problem_build_s']:>12.6f}{item['solver_init_s']:>12.6f}{item['solver_build_s']:>12.6f}{item['simulate_s']:>12.6f}{item['solver_total_s']:>12.6f}{item['loop_s']:>12.6f}{item['max_abs_diff']:>14.3e}{item['max_abs_diff_dy']:>14.3e}{item['final_residual']:>14.3e}{item['newton_iters']:>10d}")
 
     fastest_total = min(results, key=lambda x: x["solver_total_s"])
     fastest_sim = min(results, key=lambda x: x["simulate_s"])
@@ -440,8 +490,9 @@ if RUN_ALL_SOLVERS:
 problem = create_problem()
 
 
-df = problem.get_init_guess_table()
-print(f"init_guess_table\n{df}")
+if SHOW_INIT_GUESS_TABLE:
+    df = problem.get_init_guess_table()
+    print(f"init_guess_table\n{df}")
 
 print(f"\n======================================")
 print(f"Initializing Solver: {CHOSEN_SOLVER}")

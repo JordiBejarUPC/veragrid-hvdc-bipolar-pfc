@@ -52,9 +52,6 @@ def get_shunt_r_3ph_emt_template( grid : MultiCircuit, load: Load, name: str = "
     RA_pu = RA / z_base
     RB_pu = RB / z_base
     RC_pu = RC / z_base
-    print(f"RA = {RA}")
-    print(f"RA_pu = {RA_pu}")
-
     templ.block.event_dict[R_A] = vf.add_const(RA_pu)
     templ.block.event_dict[R_B] = vf.add_const(RB_pu)
     templ.block.event_dict[R_C] = vf.add_const(RC_pu)

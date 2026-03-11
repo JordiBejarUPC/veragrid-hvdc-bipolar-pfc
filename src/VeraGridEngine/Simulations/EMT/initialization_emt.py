@@ -155,7 +155,8 @@ def init_explicit_emt(
         TIME_NAME: str,
         VARS_NAME: str,
         DIFF_NAME: str,
-        CONSTANT_PARAMS_NAME: str):
+        CONSTANT_PARAMS_NAME: str,
+        verbose: bool = False):
 # ) -> Union[None, Tuple[Dict[int, float], Block]]:
     """
     Initializes the EMT model by solving initialization and differential equations.
@@ -193,11 +194,13 @@ def init_explicit_emt(
 
     # Hydrate buffers with existing user-provided guesses
     for uid, val in init_guess.items():
-        print(f"Var {sys_vars[uid].name} with uid= {uid} initialized with val: {val} ")
+        if verbose:
+            print(f"Var {sys_vars[uid].name} with uid= {uid} initialized with val: {val} ")
         x[uid2idx_vars[uid]] = val
 
     for uid, val in diff_init_guess.items():
-        print(f"Diff var {sys_diff_vars[uid].name} with uid= {uid} initialized with val: {val} ")
+        if verbose:
+            print(f"Diff var {sys_diff_vars[uid].name} with uid= {uid} initialized with val: {val} ")
         dx[uid2idx_diff[uid]] = val
 
     # Setup constant parameter array
@@ -223,7 +226,8 @@ def init_explicit_emt(
 
             result: float = eq.eval_uid(uid_bindings)
             event_params_array[uid2idx_event_params[event_param.uid]] = result
-            print(f"event_param:{event_param.name} initialized from events_dict with: {result}")
+            if verbose:
+                print(f"event_param:{event_param.name} initialized from events_dict with: {result}")
         else:
             pass
 
