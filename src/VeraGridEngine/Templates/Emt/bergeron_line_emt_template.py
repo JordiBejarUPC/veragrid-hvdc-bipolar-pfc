@@ -4,40 +4,88 @@
 # SPDX-License-Identifier: MPL-2.0
 import numpy as np
 import scipy.linalg as spla
+from typing import Dict
 
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.block import Block, Var
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Branches.line import Line
 
-class BergeronLineEmtTemplate(EmtModelTemplate):
+
+
+def get_bergeron_line_emt_template(grid: MultiCircuit,
+                                   line: Line,
+                                   name: str = "bergeron_line_template") -> EmtModelTemplate:
     """
-    EMT Bergeron line template:
-      - ONLY builds the Block stored in line.emt_model.model
-      - provides event_dict with Ih history parameters
-      - NO runtime state, NO update_history here
+    :param grid: Multicircuit
+    :param line: Line object to apply the template
+    :param name: string to identify the line and model
+    :return: EmtModelTemplate
+    I history are defined as constant parameters at each timestep. Runtime will update them externally.
     """
+    templ = EmtModelTemplate()
+    templ.tpe = DeviceType.LineDevice
+    templ.name = name or f"emt_bergeron_template_{line.name}"
 
-    def __init__(self,
-                 line: Line,
-                 vf: VarFactory,
-                 name: str = ""):
+    vf: VarFactory = grid.emt_var_factory
+
+    # ---------------------------------------------------------
+    # Inputs: Voltatges instantanis dels busos (abcN)
+    # ---------------------------------------------------------
+
+    # phase mask
+    ph_mask = np.array([
+        bool(line.ys.phN),
+        bool(line.ys.phA),
+        bool(line.ys.phB),
+        bool(line.ys.phC),
+    ], dtype=bool)
+    ph_labels = ["N", "A", "B", "C"]
+    idx = np.where(ph_mask)[0]  # indices in [0..3]
+    active_ph = [ph_labels[i] for i in idx]
+    m = len(active_ph)
+
+    if m == 0:
+        raise ValueError(f"PI line '{line.name}' has no enabled phases in line.ys")
+
+    Ih_f = [vf.add_var(f"Ih_f_{line.name}_{i}") for i in range(m)]  # [N,A,B,C]
+    Ih_t = [vf.add_var(f"Ih_t_{line.name}_{i}") for i in range(m)]
+
+    templ.block.event_dict = {p: vf.add_const(0.0) for p in (Ih_f + Ih_t)}
+
+    return templ
 
 
-        super().__init__(name=name or f"emt_bergeron_{line.name}")
-        self.tpe = DeviceType.LineDevice
-
-        # History params as EVENT PARAMS (Var keys in event_dict)
-        self.Ih_f = [vf.add_var(f"Ih_f_{line.name}_{i}") for i in range(4)]  # [N,A,B,C]
-        self.Ih_t = [vf.add_var(f"Ih_t_{line.name}_{i}") for i in range(4)]
-
-        event_dict = {p: vf.add_const(0.0) for p in (self.Ih_f + self.Ih_t)}
-
-        self._block = Block(
-            name=f"Bergeron_{line.name}",
-            event_dict=event_dict,
-        )
+# class BergeronLineEmtTemplate(EmtModelTemplate):
+#     """
+#     EMT Bergeron line template:
+#       - ONLY builds the Block stored in line.emt_model.model
+#       - provides event_dict with Ih history parameters
+#       - NO runtime state, NO update_history here
+#     """
+#
+#     def __init__(self,
+#                  grid: MultiCircuit,
+#                  line: Line,
+#                  name: str = ""):
+#
+#         vf: VarFactory = grid.emt_var_factory
+#         super().__init__(name=name or f"emt_bergeron_{line.name}")
+#         self.tpe = DeviceType.LineDevice
+#
+#         # History params as EVENT PARAMS (Var keys in event_dict)
+#         self.Ih_f = [vf.add_var(f"Ih_f_{line.name}_{i}") for i in range(4)]  # [N,A,B,C]
+#         self.Ih_t = [vf.add_var(f"Ih_t_{line.name}_{i}") for i in range(4)]
+#
+#         event_dict = {p: vf.add_const(0.0) for p in (self.Ih_f + self.Ih_t)}
+#
+#         self._block = Block(
+#             name=f"Bergeron_{line.name}",
+#             event_dict=event_dict,
+#         )
 
 class BergeronHistoryRuntime:
     """
