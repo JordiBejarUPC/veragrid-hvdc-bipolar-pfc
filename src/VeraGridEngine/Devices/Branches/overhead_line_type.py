@@ -71,7 +71,7 @@ class WireInTower:
         :param ypos: y position in m
         :param phase: 0->Neutral, 1->A, 2->B, 3->C
         """
-        self.wire: Wire = wire
+        self.wire: Wire | None = wire
 
         self.name: str = wire.name
 

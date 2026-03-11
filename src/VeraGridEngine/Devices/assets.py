@@ -15,7 +15,7 @@ import VeraGridEngine.Devices as dev
 import VeraGridEngine.Templates as tem
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, BRANCH_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES
 from VeraGridEngine.Devices.Parents.editable_device import GCPROP_TYPES
-from VeraGridEngine.enumerations import DeviceType, ActionType, SubObjectType
+from VeraGridEngine.enumerations import DeviceType, ActionType
 from VeraGridEngine.basic_structures import Logger, ListSet
 from VeraGridEngine.data_logger import DataLogger
 
