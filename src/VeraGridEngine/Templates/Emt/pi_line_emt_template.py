@@ -56,10 +56,17 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     # -----------------------------
     vf_vars = [vf.add_var(f"vf_{ph}_{line.name}") for ph in active_ph]
     vt_vars = [vf.add_var(f"vt_{ph}_{line.name}") for ph in active_ph]
-    # d_vf_vars = [vf.add_diff_var(name=f"d_vf_{ph}_{line.name}", base_var=v_base) for ph, v_base in
-    #              zip(active_ph, vf_vars)]
-    # d_vt_vars = [vf.add_diff_var(name=f"d_vt_{ph}_{line.name}", base_var=v_base) for ph, v_base in
-    #              zip(active_ph, vt_vars)]
+
+    # diff vars used for initialization
+    d_vf_vars = [vf.add_diff_var(name=f"d_vf_{ph}_{line.name}", base_var=v_base) for ph, v_base in
+                 zip(active_ph, vf_vars)]
+    d_vt_vars = [vf.add_diff_var(name=f"d_vt_{ph}_{line.name}", base_var=v_base) for ph, v_base in
+                 zip(active_ph, vt_vars)]
+
+    for d_var in d_vf_vars:
+        templ.block.event_dict[d_var] = vf.add_const(None)
+    for d_var in d_vt_vars:
+        templ.block.event_dict[d_var] = vf.add_const(None)
 
     # -----------------------------
     # Compute continuous parameters in pu (R, L, G_end, C_end) in ACTIVE subspace
@@ -211,15 +218,17 @@ def get_pi_line_emt_template(grid: MultiCircuit,
 
     # Corrientes terminales con un pequeño damping (amortiguamiento numérico)
     # G_damp ayuda a "limpiar" oscilaciones de alta frecuencia en buses inductivos
-    G_damp = 1e-6
+    # Conductancia de amortiguamiento pequeña (ajusta el valor si es necesario)
+    # Un valor de 1e-4 a 1e-6 pu suele ser suficiente.
+    G_damp = 1e-5
 
-    # Terminal current at from-bus: if = i_ser + i_cap_f + G_damp*v
     for a in range(m):
+        # Modificamos la corriente que la línea "inyecta" al bus
+        # Terminal current at from-bus: if = i_ser + i_cap_f + G_damp*v
         alg_eqs.append(if_act[a] - (i_ser[a] + i_cap_f[a] + G_damp * vf_vars[a]))
-
-    # Terminal current at to-bus: it = -i_ser + i_cap_t + G_damp*v
-    for a in range(m):
+        # Terminal current at to-bus: it = -i_ser + i_cap_t + G_damp*v
         alg_eqs.append(it_act[a] - (-i_ser[a] + i_cap_t[a] + G_damp * vt_vars[a]))
+
 
     # # Terminal current at from-bus:
     # # if = i_ser + i_cap_f
@@ -263,6 +272,19 @@ def get_pi_line_emt_template(grid: MultiCircuit,
         "B": VarPowerFlowRefferenceType.St_B,
         "C": VarPowerFlowRefferenceType.St_C,
     }
+    d_vf_keys = {
+        "N": VarPowerFlowRefferenceType.d_v_N_f,
+        "A": VarPowerFlowRefferenceType.d_v_A_f,
+        "B": VarPowerFlowRefferenceType.d_v_B_f,
+        "C": VarPowerFlowRefferenceType.d_v_C_f,
+    }
+    d_vt_keys = {
+        "N": VarPowerFlowRefferenceType.d_v_N_t,
+        "A": VarPowerFlowRefferenceType.d_v_A_t,
+        "B": VarPowerFlowRefferenceType.d_v_B_t,
+        "C": VarPowerFlowRefferenceType.d_v_C_t,
+    }
+
 
     # Start with all phases present as None
     mapping: Dict[VarPowerFlowRefferenceType, Var | None] = {
@@ -270,12 +292,18 @@ def get_pi_line_emt_template(grid: MultiCircuit,
         it_keys["N"]: None, it_keys["A"]: None, it_keys["B"]: None, it_keys["C"]: None,
         Sf_keys["A"]: None, Sf_keys["B"]: None, Sf_keys["C"]: None,
         St_keys["A"]: None, St_keys["B"]: None, St_keys["C"]: None,
+        d_vf_keys["N"]: None, d_vf_keys["A"]: None, d_vf_keys["B"]: None, d_vf_keys["C"]: None,
+        d_vt_keys["N"]: None, d_vt_keys["A"]: None, d_vt_keys["B"]: None, d_vt_keys["C"]: None,
     }
 
     # Fill only active phases
     for k, ph in enumerate(active_ph):
         mapping[if_keys[ph]] = if_act[k]
         mapping[it_keys[ph]] = it_act[k]
+
+    for k, ph in enumerate(active_ph):
+        mapping[d_vf_keys[ph]] = d_vf_vars[k]
+        mapping[d_vt_keys[ph]] = d_vt_vars[k]
 
     templ.block.external_mapping = mapping
 
@@ -348,6 +376,25 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     for a in range(m):
         diff_init_eqs[dq_f[a]] = i_cap_f[a]
         diff_init_eqs[dq_t[a]] = i_cap_t[a]
+
+    for a in range(m):
+        # En lugar de 0.0, estimamos la corriente reactiva inicial
+        # i = C * dv/dt. Si v = V*sin(w*t + phi), dv/dt = w*V*cos(w*t + phi)
+        # Una forma de obtener el cos(phi) es usar la tensión "en cuadratura"
+        # si tu assembler la proporciona.
+
+        # Si no, puedes intentar vincularla a la derivada que calculaste:
+        # d_vf_vars es el parámetro que dijiste que importas del PF
+        rhs_icap_f = c0
+        rhs_icap_t = c0
+        for b in range(m):
+            Cab = float(C_end[a, b])
+            if Cab != 0.0:
+                rhs_icap_f += Cab * d_vf_vars[b]  # Usamos la dV/dt del PF
+                rhs_icap_t += Cab * d_vt_vars[b]
+
+        init_eqs[i_cap_f[a]] = rhs_icap_f
+        init_eqs[i_cap_t[a]] = rhs_icap_t
 
     templ.block.diff_init_eqs = diff_init_eqs
 

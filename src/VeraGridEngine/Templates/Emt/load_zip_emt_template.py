@@ -88,8 +88,22 @@ def get_load_ZIP_3ph_emt_template(grid : MultiCircuit, load: Load,  name: str = 
 
 
     # Default ZIP coefficients: Constant Power behavior (a3=1, a6=1)
-    for p in [a1, a2, a4, a5]: templ.block.event_dict[p] = c0
-    for p in [a3, a6]: templ.block.event_dict[p] = vf.add_const(1.0)
+    # for p in [a1, a2, a4, a5]: templ.block.event_dict[p] = c0
+    # for p in [a3, a6]: templ.block.event_dict[p] = vf.add_const(1.0)
+
+    # templ.block.event_dict[a1] = vf.add_const(0.4) # Z
+    # templ.block.event_dict[a2] = vf.add_const(0.4) # I
+    # templ.block.event_dict[a3] = vf.add_const(0.2) # P
+    # templ.block.event_dict[a4] = vf.add_const(0.4) # Z
+    # templ.block.event_dict[a5] = vf.add_const(0.4) # I
+    # templ.block.event_dict[a6] = vf.add_const(0.2) # P
+
+    templ.block.event_dict[a1] = vf.add_const(1.0)  # Z
+    templ.block.event_dict[a2] = vf.add_const(0.0)  # I
+    templ.block.event_dict[a3] = vf.add_const(0.0)  # P
+    templ.block.event_dict[a4] = vf.add_const(1.0)  # Z
+    templ.block.event_dict[a5] = vf.add_const(0.0)  # I
+    templ.block.event_dict[a6] = vf.add_const(0.0)  # P
 
     # State Variables (SOGI output and its quadrature signal)
     u_A = vf.add_var("u_A_" + name)

@@ -747,8 +747,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         if mdl.E(VarPowerFlowRefferenceType.v_N) is not None:
             V_N = pf_results.voltage_N[bus_index]
-            v_N: float = np.sqrt(2.0) * np.real(V_N)
-            d_v_N: float = -omega_base * np.sqrt(2.0) * np.imag(V_N)
+            v_N: float = np.sqrt(2.0) * np.imag(V_N)
+            d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
 
             self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_N, v_N)
             self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
@@ -757,8 +757,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         if mdl.E(VarPowerFlowRefferenceType.v_A) is not None:
             V_A = pf_results.voltage_A[bus_index]
-            v_A: float = np.sqrt(2.0) * np.real(V_A)
-            d_v_A: float = -omega_base * np.sqrt(2.0) * np.imag(V_A)
+            v_A: float = np.sqrt(2.0) * np.imag(V_A)
+            d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
 
             self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_A, v_A)
             self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
@@ -767,8 +767,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         if mdl.E(VarPowerFlowRefferenceType.v_B) is not None:
             V_B = pf_results.voltage_B[bus_index]
-            v_B: float = np.sqrt(2.0) * np.real(V_B)
-            d_v_B: float = -omega_base * np.sqrt(2.0) * np.imag(V_B)
+            v_B: float = np.sqrt(2.0) * np.imag(V_B)
+            d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
 
             self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_B, v_B)
             self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
@@ -777,8 +777,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         if mdl.E(VarPowerFlowRefferenceType.v_C) is not None:
             V_C = pf_results.voltage_C[bus_index]
-            v_C: float = np.sqrt(2.0) * np.real(V_C)
-            d_v_C: float = -omega_base * np.sqrt(2.0) * np.imag(V_C)
+            v_C: float = np.sqrt(2.0) * np.imag(V_C)
+            d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
 
             self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_C, v_C)
             self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
@@ -840,6 +840,18 @@ class EmtProblemDae(EmtProblemTemplate):
             "B": VarPowerFlowRefferenceType.it_B,
             "C": VarPowerFlowRefferenceType.it_C,
         }
+        d_vf_key_dict: Dict[str, VarPowerFlowRefferenceType] = {
+            "N": VarPowerFlowRefferenceType.d_v_N_f,
+            "A": VarPowerFlowRefferenceType.d_v_A_f,
+            "B": VarPowerFlowRefferenceType.d_v_B_f,
+            "C": VarPowerFlowRefferenceType.d_v_C_f,
+        }
+        d_vt_key_dict: Dict[str, VarPowerFlowRefferenceType] = {
+            "N": VarPowerFlowRefferenceType.d_v_N_t,
+            "A": VarPowerFlowRefferenceType.d_v_A_t,
+            "B": VarPowerFlowRefferenceType.d_v_B_t,
+            "C": VarPowerFlowRefferenceType.d_v_C_t,
+        }
 
         voltage_dict: Dict[str, Optional[np.ndarray]] = {
             "N": pf_results.voltage_N,
@@ -860,6 +872,7 @@ class EmtProblemDae(EmtProblemTemplate):
             "B": pf_results.St_B,
             "C": pf_results.St_C,
         }
+
 
         sf_sum: complex = 0.0 + 0.0j
         st_sum: complex = 0.0 + 0.0j
@@ -924,13 +937,27 @@ class EmtProblemDae(EmtProblemTemplate):
                     else:
                         i_t = np.conj(st_ph / vt_ph)
 
-                    i_f0: float = np.sqrt(2.0) * np.real(i_f)
-                    i_t0: float = np.sqrt(2.0) * np.real(i_t)
+                    i_f0: float = np.sqrt(2.0) * np.imag(i_f)
+                    i_t0: float = np.sqrt(2.0) * np.imag(i_t)
 
                     self.set_if_exists(mdl=mdl, key=if_key, value=float(i_f0))
                     self.set_if_exists(mdl=mdl, key=it_key, value=float(i_t0))
             else:
                 pass
+
+        omega_base: float = 2.0 * np.pi * self.grid.fBase
+        for ph in phases:
+            d_vf_key: VarPowerFlowRefferenceType = d_vf_key_dict[ph]
+            d_vt_key: VarPowerFlowRefferenceType = d_vt_key_dict[ph]
+            voltage_array = voltage_dict[ph]
+            if mdl.E(d_vf_key) is not None:
+                vf_ph = voltage_array[f_bus_idx]
+                d_vf: float = omega_base * np.sqrt(2.0) * np.real(vf_ph)
+                self.set_external_param(mdl, d_vf_key, d_vf)
+            if mdl.E(d_vt_key) is not None:
+                vt_ph = voltage_array[t_bus_idx]
+                d_vt: float = omega_base * np.sqrt(2.0) * np.real(vt_ph)
+                self.set_external_param(mdl, d_vt_key, d_vt)
 
         self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pf, value=float(np.real(sf_sum)))
         self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qf, value=float(np.imag(sf_sum)))
@@ -988,7 +1015,7 @@ class EmtProblemDae(EmtProblemTemplate):
                     else:
                         I = np.conj(S / V)
 
-                    i0: float = np.sqrt(2.0) * np.real(I)
+                    i0: float = np.sqrt(2.0) * np.imag(I)
 
                     self.set_if_exists(mdl=mdl, key=i_key, value=float(i0))
                     self.set_if_exists(mdl=mdl, key=P_key, value=float(np.real(S)))
@@ -1037,19 +1064,19 @@ class EmtProblemDae(EmtProblemTemplate):
         omega_base: float = 2.0 * np.pi * self.grid.fBase
         if mdl.E(VarPowerFlowRefferenceType.d_v_N) is not None:
             V_N = pf_results.voltage_N[bus_index]
-            d_v_N: float = -omega_base * np.sqrt(2.0) * np.imag(V_N)
+            d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
             self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
         if mdl.E(VarPowerFlowRefferenceType.d_v_A) is not None:
             V_A = pf_results.voltage_A[bus_index]
-            d_v_A: float = -omega_base * np.sqrt(2.0) * np.imag(V_A)
+            d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
             self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
         if mdl.E(VarPowerFlowRefferenceType.d_v_B) is not None:
             V_B = pf_results.voltage_B[bus_index]
-            d_v_B: float = -omega_base * np.sqrt(2.0) * np.imag(V_B)
+            d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
             self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
         if mdl.E(VarPowerFlowRefferenceType.d_v_C) is not None:
             V_C = pf_results.voltage_C[bus_index]
-            d_v_C: float = -omega_base * np.sqrt(2.0) * np.imag(V_C)
+            d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
             self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
     # ---------------------------------------------------------------------
     # UTILS

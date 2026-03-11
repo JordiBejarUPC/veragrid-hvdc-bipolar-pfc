@@ -103,15 +103,12 @@ R_ph =100 #ohm
 v_ph = vnom / (3**0.5)
 P_ph = (v_ph**2) / R_ph # kv*kv/ohm = MW
 
-print(f"P_ph = {P_ph}")
-
 # load = gce.Load(name="load",P1= P/3, P2= P/3, P3= P/3, Q1= Q/3, Q2= Q/3, Q3= Q/3)
 load = gce.Load(name="load",P1= P_ph, P2= P_ph, P3= P_ph, Q1= 0.0, Q2= 0.0, Q3= 0.0)
 load.conn = ShuntConnectionType.GroundedStar
 
-# Generators
-# gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq = 50, r1=0.001, x1=1.7)
-gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq = 50, r1=0.01, x1=1.7)
+# Generator
+gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq = 50, r1=0.001, x1=1.7)
 # r1=Ra, x1=xd'
 
 grid.add_line(line0)
@@ -133,8 +130,7 @@ load_dynhost = DynamicModelHost()
 gen_dynhost = DynamicModelHost()
 
 # generator
-# gen_mdl = get_generator_emt_template(grid=grid, gen = gen0).block
-gen_mdl = get_generator_thevenin_rl_emt_template(grid=grid, gen = gen0).block
+gen_mdl = get_generator_emt_template(grid=grid, gen = gen0).block
 
 # line
 line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
@@ -152,25 +148,14 @@ gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.model.out_vars[2]]) # v_C
 line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.model.out_vars[0]]) # line vf_A
 line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.model.out_vars[1]]) # line vf_B
 line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.model.out_vars[2]]) # line vf_C
-# line_mdl.connect([line_mdl.in_vars[6]], [bus0.emt_model.model.out_vars[3]]) # line d_vf_A
-# line_mdl.connect([line_mdl.in_vars[7]], [bus0.emt_model.model.out_vars[4]]) # line d_vf_B
-# line_mdl.connect([line_mdl.in_vars[8]], [bus0.emt_model.model.out_vars[5]]) # line d_vf_C
 
 line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.model.out_vars[0]]) # line vt_A
 line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.model.out_vars[1]]) # line vt_B
 line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.model.out_vars[2]]) # line vt_C
-# line_mdl.connect([line_mdl.in_vars[9]], [bus1.emt_model.model.out_vars[3]]) # line d_vt_A
-# line_mdl.connect([line_mdl.in_vars[10]], [bus1.emt_model.model.out_vars[4]]) # line d_vt_B
-# line_mdl.connect([line_mdl.in_vars[11]], [bus1.emt_model.model.out_vars[5]]) # line d_vt_C
-
-# u_gov = find_name_in_block("u_gov1", gov1_mdl)
 
 load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.model.out_vars[0]]) # v_A
 load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.model.out_vars[1]]) # v_B
 load_mdl.connect([load_mdl.in_vars[2]], [bus1.emt_model.model.out_vars[2]]) # v_C
-# load_mdl.connect([load_mdl.in_vars[3]], [bus1.emt_model.model.out_vars[3]]) # d_v_A
-# load_mdl.connect([load_mdl.in_vars[4]], [bus1.emt_model.model.out_vars[4]]) # d_v_B
-# load_mdl.connect([load_mdl.in_vars[5]], [bus1.emt_model.model.out_vars[5]]) # d_v_C
 
 # external mapping
 big_gen1 = Block(children=[gen_mdl])
@@ -246,7 +231,7 @@ print(res.get_branch_df())
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")
 # ==============================================================================
 CHOSEN_SOLVER = "COMPILED"
-RUN_ALL_SOLVERS = True
+RUN_ALL_SOLVERS = False
 ENABLE_PLOTS = True
 ENABLE_NEWTON_TRACE = False
 DENSE_THRESHOLD = 0
@@ -509,20 +494,6 @@ v_A_1_plt = y[:, problem.get_var_idx(v_A_1)]
 v_B_1_plt = y[:, problem.get_var_idx(v_B_1)]
 v_C_1_plt = y[:, problem.get_var_idx(v_C_1)]
 
-# d_v_A_0 = find_name_in_block("d_v_A_Bus0_emt_template", bus0.emt_model.model)
-# d_v_B_0 = find_name_in_block("d_v_B_Bus0_emt_template", bus0.emt_model.model)
-# d_v_C_0 = find_name_in_block("d_v_C_Bus0_emt_template", bus0.emt_model.model)
-# d_v_A_0_plt = dy[:, problem.get_diff_var_idx(d_v_A_0)]
-# d_v_B_0_plt = dy[:, problem.get_diff_var_idx(d_v_B_0)]
-# d_v_C_0_plt = dy[:, problem.get_diff_var_idx(d_v_C_0)]
-#
-# d_v_A_1 = find_name_in_block("d_v_A_Bus1_emt_template", bus1.emt_model.model)
-# d_v_B_1 = find_name_in_block("d_v_B_Bus1_emt_template", bus1.emt_model.model)
-# d_v_C_1 = find_name_in_block("d_v_C_Bus1_emt_template", bus1.emt_model.model)
-# d_v_A_1_plt = dy[:, problem.get_diff_var_idx(d_v_A_1)]
-# d_v_B_1_plt = dy[:, problem.get_diff_var_idx(d_v_B_1)]
-# d_v_C_1_plt = dy[:, problem.get_diff_var_idx(d_v_C_1)]
-
 plt.figure(figsize=(12, 8))
 
 plt.subplot(2, 1, 1)
@@ -552,9 +523,9 @@ print("Generating plots...")
 plt.show()
 
 theta = find_name_in_block("theta_emt_type_generator_template", gen_mdl)
-# omega_gen = find_name_in_block("omega_emt_type_generator_template", gen_mdl)
+omega_gen = find_name_in_block("omega_emt_type_generator_template", gen_mdl)
 theta_plt = y[:, problem.get_var_idx(theta)]
-# omega_plt = y[:, problem.get_var_idx(omega_gen)]
+omega_plt = y[:, problem.get_var_idx(omega_gen)]
 
 plt.figure(figsize=(12, 8))
 
@@ -567,14 +538,14 @@ plt.legend(loc='upper left')
 plt.grid(True)
 plt.legend()
 #
-# plt.subplot(2, 1, 2)
-# plt.plot(tme, omega_plt[:len(tme)], label='Speed generator [rad/s]', color='blue')
-# plt.title("Omega generator")
-# plt.xlabel("Time")
-# plt.ylabel("Omega generator [rad/s]")
-# plt.legend(loc='upper left')
-# plt.grid(True)
-# plt.legend()
+plt.subplot(2, 1, 2)
+plt.plot(tme, omega_plt[:len(tme)], label='Speed generator [rad/s]', color='blue')
+plt.title("Omega generator")
+plt.xlabel("Time")
+plt.ylabel("Omega generator [rad/s]")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
 
 plt.tight_layout()
 print("Generating plots...")
@@ -671,54 +642,54 @@ plt.show()
 # print("Generating plots...")
 # plt.show()
 
-# Pm_gen = find_name_in_block("Pm_emt_type_generator_template", gen_mdl)
-# Qe_gen = find_name_in_block("Qe_emt_type_generator_template", gen_mdl)
-# Pe_gen = find_name_in_block("Pe_emt_type_generator_template", gen_mdl)
-# Tm_gen = find_name_in_block("Tm_emt_type_generator_template", gen_mdl)
-# Te_gen = find_name_in_block("Te_emt_type_generator_template", gen_mdl)
-# et_gen = find_name_in_block("et_emt_type_generator_template", gen_mdl)
-# Pm_gen_plt = y[:, problem.get_var_idx(Pm_gen)]
-# Qe_gen_plt = y[:, problem.get_var_idx(Qe_gen)]
-# Pe_gen_plt = y[:, problem.get_var_idx(Pe_gen)]
-# Tm_gen_plt = y[:, problem.get_var_idx(Tm_gen)]
-# Te_gen_plt = y[:, problem.get_var_idx(Te_gen)]
-# et_gen_plt = y[:, problem.get_var_idx(et_gen)]
-#
-# plt.figure(figsize=(12, 8))
-#
-# plt.subplot(2, 2, 1)
-# plt.plot(tme, Pm_gen_plt[:len(tme)], label='Mechanical power Pm from generator', color='blue')
-# plt.plot(tme, Pe_gen_plt[:len(tme)], label='Electrical power Pe from generator', color='red')
-# plt.plot(tme, Qe_gen_plt[:len(tme)], label='Electrical reactive power Qe from generator', color='purple')
-# plt.title("power generator")
-# plt.xlabel("Time")
-# plt.ylabel("power generator")
-# plt.legend(loc='upper left')
-# plt.grid(True)
-# plt.legend()
-#
-# plt.subplot(2, 2, 2)
-# plt.plot(tme, Tm_gen_plt[:len(tme)], label='Mechanical torque Tm from generator', color='blue')
-# plt.plot(tme, Te_gen_plt[:len(tme)], label='Electrical torque Te from generator', color='red')
-# plt.title("torque generator")
-# plt.xlabel("Time")
-# plt.ylabel("torque generator")
-# plt.legend(loc='upper left')
-# plt.grid(True)
-# plt.legend()
-#
-# plt.subplot(2, 2, 3)
-# plt.plot(tme, et_gen_plt[:len(tme)], label='PI error at generator', color='blue')
-# plt.title("et generator")
-# plt.xlabel("Time")
-# plt.ylabel("et generator")
-# plt.legend(loc='upper left')
-# plt.grid(True)
-# plt.legend()
-#
-# plt.tight_layout()
-# print("Generating plots...")
-# plt.show()
+Pm_gen = find_name_in_block("Pm_emt_type_generator_template", gen_mdl)
+Qe_gen = find_name_in_block("Qe_emt_type_generator_template", gen_mdl)
+Pe_gen = find_name_in_block("Pe_emt_type_generator_template", gen_mdl)
+Tm_gen = find_name_in_block("Tm_emt_type_generator_template", gen_mdl)
+Te_gen = find_name_in_block("Te_emt_type_generator_template", gen_mdl)
+et_gen = find_name_in_block("et_emt_type_generator_template", gen_mdl)
+Pm_gen_plt = y[:, problem.get_var_idx(Pm_gen)]
+Qe_gen_plt = y[:, problem.get_var_idx(Qe_gen)]
+Pe_gen_plt = y[:, problem.get_var_idx(Pe_gen)]
+Tm_gen_plt = y[:, problem.get_var_idx(Tm_gen)]
+Te_gen_plt = y[:, problem.get_var_idx(Te_gen)]
+et_gen_plt = y[:, problem.get_var_idx(et_gen)]
+
+plt.figure(figsize=(12, 8))
+
+plt.subplot(2, 2, 1)
+plt.plot(tme, Pm_gen_plt[:len(tme)], label='Mechanical power Pm from generator', color='blue')
+plt.plot(tme, Pe_gen_plt[:len(tme)], label='Electrical power Pe from generator', color='red')
+plt.plot(tme, Qe_gen_plt[:len(tme)], label='Electrical reactive power Qe from generator', color='purple')
+plt.title("power generator")
+plt.xlabel("Time")
+plt.ylabel("power generator")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.subplot(2, 2, 2)
+plt.plot(tme, Tm_gen_plt[:len(tme)], label='Mechanical torque Tm from generator', color='blue')
+plt.plot(tme, Te_gen_plt[:len(tme)], label='Electrical torque Te from generator', color='red')
+plt.title("torque generator")
+plt.xlabel("Time")
+plt.ylabel("torque generator")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.subplot(2, 2, 3)
+plt.plot(tme, et_gen_plt[:len(tme)], label='PI error at generator', color='blue')
+plt.title("et generator")
+plt.xlabel("Time")
+plt.ylabel("et generator")
+plt.legend(loc='upper left')
+plt.grid(True)
+plt.legend()
+
+plt.tight_layout()
+print("Generating plots...")
+plt.show()
 
 
 
