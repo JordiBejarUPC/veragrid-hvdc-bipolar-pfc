@@ -31,7 +31,7 @@ class Ui_mainWindow(object):
     def setupUi(self, mainWindow):
         if not mainWindow.objectName():
             mainWindow.setObjectName(u"mainWindow")
-        mainWindow.resize(1346, 772)
+        mainWindow.resize(1208, 772)
         mainWindow.setMinimumSize(QSize(1198, 742))
         mainWindow.setBaseSize(QSize(0, 0))
         font = QFont()
@@ -1950,9 +1950,8 @@ class Ui_mainWindow(object):
         self.resultsTabWidget.addTab(self.tab_7, icon93, "")
         self.tab_5 = QWidget()
         self.tab_5.setObjectName(u"tab_5")
-        self.verticalLayout_43 = QVBoxLayout(self.tab_5)
-        self.verticalLayout_43.setObjectName(u"verticalLayout_43")
-        self.verticalLayout_43.setContentsMargins(0, 6, 0, 7)
+        self.verticalLayout_46 = QVBoxLayout(self.tab_5)
+        self.verticalLayout_46.setObjectName(u"verticalLayout_46")
         self.frame_3 = QFrame(self.tab_5)
         self.frame_3.setObjectName(u"frame_3")
         sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
@@ -2008,7 +2007,7 @@ class Ui_mainWindow(object):
         self.horizontalLayout_15.addWidget(self.dynamicsTablePlotButton)
 
 
-        self.verticalLayout_43.addWidget(self.frame_3)
+        self.verticalLayout_46.addWidget(self.frame_3)
 
         self.splitter_3 = QSplitter(self.tab_5)
         self.splitter_3.setObjectName(u"splitter_3")
@@ -2028,7 +2027,10 @@ class Ui_mainWindow(object):
         self.verticalLayout_36.addWidget(self.dynamicsDeviceTreeView)
 
         self.splitter_3.addWidget(self.frame_22)
-        self.frame_30 = QFrame(self.splitter_3)
+        self.splitter = QSplitter(self.splitter_3)
+        self.splitter.setObjectName(u"splitter")
+        self.splitter.setOrientation(Qt.Orientation.Horizontal)
+        self.frame_30 = QFrame(self.splitter)
         self.frame_30.setObjectName(u"frame_30")
         self.frame_30.setFrameShape(QFrame.Shape.NoFrame)
         self.frame_30.setFrameShadow(QFrame.Shadow.Raised)
@@ -2040,9 +2042,23 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_17.addWidget(self.dynamicsPlotsTreeView)
 
-        self.splitter_3.addWidget(self.frame_30)
+        self.splitter.addWidget(self.frame_30)
+        self.frame_39 = QFrame(self.splitter)
+        self.frame_39.setObjectName(u"frame_39")
+        self.frame_39.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_39.setFrameShadow(QFrame.Shadow.Raised)
+        self.verticalLayout_43 = QVBoxLayout(self.frame_39)
+        self.verticalLayout_43.setObjectName(u"verticalLayout_43")
+        self.verticalLayout_43.setContentsMargins(6, 0, 6, 0)
+        self.dynamicsTableView = QTableView(self.frame_39)
+        self.dynamicsTableView.setObjectName(u"dynamicsTableView")
 
-        self.verticalLayout_43.addWidget(self.splitter_3)
+        self.verticalLayout_43.addWidget(self.dynamicsTableView)
+
+        self.splitter.addWidget(self.frame_39)
+        self.splitter_3.addWidget(self.splitter)
+
+        self.verticalLayout_46.addWidget(self.splitter_3)
 
         icon126 = QIcon()
         icon126.addFile(u":/Icons/icons/dyn_gray.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
@@ -4980,7 +4996,7 @@ class Ui_mainWindow(object):
         mainWindow.setCentralWidget(self.centralwidget)
         self.menuBar = QMenuBar(mainWindow)
         self.menuBar.setObjectName(u"menuBar")
-        self.menuBar.setGeometry(QRect(0, 0, 1346, 23))
+        self.menuBar.setGeometry(QRect(0, 0, 1208, 23))
         self.menuBar.setFont(font)
         self.menuProject = QMenu(self.menuBar)
         self.menuProject.setObjectName(u"menuProject")

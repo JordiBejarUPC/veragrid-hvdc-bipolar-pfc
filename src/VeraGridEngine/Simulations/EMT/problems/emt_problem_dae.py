@@ -98,7 +98,11 @@ def _is_time_aligned(t_curr: float, event_time: float) -> bool:
     time_tol = 10.0 * np.finfo(np.float64).eps * max(1.0, abs(event_time))
     return abs(t_curr - event_time) <= time_tol
 
-def _get_next_forced_mode_event_time(t_prev: float, t_target: float) -> Optional[float]:
+def _get_next_forced_mode_event_time(
+        scheduled_mode_events: Dict[int, List[Tuple[float, float, bool]]],
+        t_prev: float,
+        t_target: float,
+) -> Optional[float]:
     """
     Return the earliest forced-alignment mode event time in the interval
     (t_prev, t_target].
@@ -109,7 +113,7 @@ def _get_next_forced_mode_event_time(t_prev: float, t_target: float) -> Optional
     """
     next_time: Optional[float] = None
 
-    for _, event_list in self._scheduled_mode_events.items():
+    for _, event_list in scheduled_mode_events.items():
         event_idx: int = 0
 
         while event_idx < len(event_list):
@@ -1279,7 +1283,7 @@ class EmtProblemDae(EmtProblemTemplate):
         :param t_target: Nominal target time.
         :return: Earliest forced event time or None.
         """
-        return self._get_next_forced_mode_event_time(t_prev, t_target)
+        return _get_next_forced_mode_event_time(self._scheduled_mode_events, t_prev, t_target)
 
     def update(self, t: float, x: np.ndarray, params: np.ndarray) -> None:
         """
@@ -1419,4 +1423,5 @@ class EmtProblemDae(EmtProblemTemplate):
             df = df.sort_values(["type", "idx"], ascending=[False, True])
 
         return df
+
 
