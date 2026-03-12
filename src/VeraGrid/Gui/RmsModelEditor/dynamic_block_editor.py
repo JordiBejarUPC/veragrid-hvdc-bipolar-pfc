@@ -199,28 +199,26 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
                                block_role: int,
                                mime_type: str) -> DynamicsLibraryTreeModel:
 
-        model = DynamicsLibraryTreeModel(block_role, mime_type)
-        root = model.invisibleRootItem()
+        model:DynamicsLibraryTreeModel = DynamicsLibraryTreeModel(block_role, mime_type)
+        model.setHorizontalHeaderLabels(["Dynamic library"])
+        root_item: QtGui.QStandardItem = model.invisibleRootItem()
 
         for category, blocks in self.tree_structure.items():
-
-            # nodo categoria
-            cat_item = QtGui.QStandardItem(category)
+            cat_item: QtGui.QStandardItem = QtGui.QStandardItem(category)
             cat_item.setEditable(False)
-            root.appendRow(cat_item)
+            root_item.appendRow(cat_item)
 
             for label, block_type in blocks:
-                item = QtGui.QStandardItem(label)
+                item:QtGui.QStandardItem = QtGui.QStandardItem(label)
                 item.setEditable(False)
 
-                # guardamos el BlockType en el role
                 item.setData(block_type, block_role)
-
-                item.setToolTip(f"Drag & drop {label}")
-
                 cat_item.appendRow(item)
 
         return model
+
+
+
 if __name__ == "__main__":
     import sys
     import VeraGridEngine.Devices as dev
