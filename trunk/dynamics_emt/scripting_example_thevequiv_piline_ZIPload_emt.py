@@ -214,12 +214,13 @@ print(res.get_branch_df())
 # ==============================================================================
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")
 # ==============================================================================
-CHOSEN_SOLVER = "SYMBOLIC"
+CHOSEN_SOLVER = "VECTORIZED"
 RUN_ALL_SOLVERS = False
 ENABLE_PLOTS = True
 ENABLE_NEWTON_TRACE = False
+SHOW_INIT_GUESS_TABLE = False
 DENSE_THRESHOLD = 0
-SOLVER_VERBOSE = True
+SOLVER_VERBOSE = False
 
 SOLVER_TYPE_MAP = {
     "SYMBOLIC": EmtSolverTypes.Symbolic,
@@ -238,7 +239,7 @@ options = EmtOptions(time_step = 5e-6,
                      tolerance = 1e-6,
                      solver = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
-                     verbose = 1)
+                     verbose = 0)
 
 
 def create_problem() -> EmtProblemDae:
@@ -409,21 +410,35 @@ if RUN_ALL_SOLVERS:
 problem = create_problem()
 
 
-df = problem.get_init_guess_table()
-print(f"init_guess_table\n{df}")
+if SHOW_INIT_GUESS_TABLE:
+    df = problem.get_init_guess_table()
+    print(f"init_guess_table\n{df}")
 
 print(f"\n======================================")
 print(f"Initializing Solver: {CHOSEN_SOLVER}")
 print(f"======================================\n")
 
+solver_init_t0 = perf_counter()
 solver = create_solver(CHOSEN_SOLVER, problem)
+solver_init_s = perf_counter() - solver_init_t0
+
+build_t0 = perf_counter()
 build_solver_backend(CHOSEN_SOLVER, solver, problem)
+solver_build_s = perf_counter() - build_t0
 
 # ==============================================================================
 # RUN SIMULATION
 # ==============================================================================
 boundary_updater = cast(Any, problem)
+sim_t0 = perf_counter()
 t, y, dy = solver.simulate(boundary_updater=boundary_updater)
+solver_sim_s = perf_counter() - sim_t0
+
+print("Single-solver benchmark")
+print(f"  init  = {solver_init_s:.6f}s")
+print(f"  build = {solver_build_s:.6f}s")
+print(f"  sim   = {solver_sim_s:.6f}s")
+print(f"  total = {solver_init_s + solver_build_s + solver_sim_s:.6f}s")
 
 if hasattr(solver, "get_backend_build_stats"):
     print("StructuralCompiled backend build stats")
