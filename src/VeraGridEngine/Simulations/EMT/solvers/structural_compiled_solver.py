@@ -107,7 +107,7 @@ def _build_master_jacobian_signature() -> Any:
 
     return types.void(
         float64_vector_tpe,
-        float64_vector_tpe,
+        float64_matrix_tpe,
         float64_vector_tpe,
         float64_vector_tpe,
         float64_vector_tpe,
@@ -148,7 +148,7 @@ def _canonicalize_symbolic_node(
         runtime_slots: Dict[int, str],
         parameter_slots: Dict[int, str],
         ordered_runtime_vars: List[Var],
-        visited_runtime_nodes: Set[int],
+        visited_runtime_uids: Set[int],
 ) -> str:
     """
     Convert a symbolic expression into a structural canonical string.
@@ -172,18 +172,16 @@ def _canonicalize_symbolic_node(
     """
     if isinstance(node, Var):
         runtime_uid: int = _get_runtime_uid(node)
-        node_identifier: int = id(node)
-
         if runtime_uid in runtime_uids:
             if runtime_uid in runtime_slots:
                 pass
             else:
                 runtime_slots[runtime_uid] = f"__RVAR_{len(runtime_slots)}__"
 
-            if node_identifier in visited_runtime_nodes:
+            if runtime_uid in visited_runtime_uids:
                 pass
             else:
-                visited_runtime_nodes.add(node_identifier)
+                visited_runtime_uids.add(runtime_uid)
                 ordered_runtime_vars.append(node)
 
             return runtime_slots[runtime_uid]
@@ -191,7 +189,8 @@ def _canonicalize_symbolic_node(
             if runtime_uid in parameter_slots:
                 pass
             else:
-                parameter_slots[runtime_uid] = f"__PARAM_{len(parameter_slots)}__"
+                parameter_name: str = getattr(node, 'name', f'uid_{runtime_uid}')
+                parameter_slots[runtime_uid] = f"__PARAM_{parameter_name}_{runtime_uid}__"
 
             return parameter_slots[runtime_uid]
         else:
@@ -206,7 +205,7 @@ def _canonicalize_symbolic_node(
             runtime_slots,
             parameter_slots,
             ordered_runtime_vars,
-            visited_runtime_nodes,
+            visited_runtime_uids,
         )
         right_str: str = _canonicalize_symbolic_node(
             node.right,
@@ -215,8 +214,12 @@ def _canonicalize_symbolic_node(
             runtime_slots,
             parameter_slots,
             ordered_runtime_vars,
-            visited_runtime_nodes,
+            visited_runtime_uids,
         )
+
+        if node.op in ['+', '*'] and left_str > right_str:
+            left_str, right_str = right_str, left_str
+
         return f"({left_str}{node.op}{right_str})"
     elif isinstance(node, UnOp):
         operand_str: str = _canonicalize_symbolic_node(
@@ -226,7 +229,7 @@ def _canonicalize_symbolic_node(
             runtime_slots,
             parameter_slots,
             ordered_runtime_vars,
-            visited_runtime_nodes,
+            visited_runtime_uids,
         )
         return f"{node.op}({operand_str})"
     elif isinstance(node, Func):
@@ -237,7 +240,7 @@ def _canonicalize_symbolic_node(
             runtime_slots,
             parameter_slots,
             ordered_runtime_vars,
-            visited_runtime_nodes,
+            visited_runtime_uids,
         )
         return f"{node.op}({argument_str})"
     else:
@@ -264,7 +267,7 @@ def canonicalize_expression(
     runtime_slots: Dict[int, str] = dict()
     parameter_slots: Dict[int, str] = dict()
     ordered_runtime_vars: List[Var] = list()
-    visited_runtime_nodes: Set[int] = set()
+    visited_runtime_uids: Set[int] = set()
     signature_str: str = _canonicalize_symbolic_node(
         expr,
         runtime_uids,
@@ -272,7 +275,7 @@ def canonicalize_expression(
         runtime_slots,
         parameter_slots,
         ordered_runtime_vars,
-        visited_runtime_nodes,
+        visited_runtime_uids,
     )
     return signature_str, ordered_runtime_vars
 
@@ -361,7 +364,7 @@ def _build_backend_cache_token(
     :return: Stable cache token.
     :rtype: str
     """
-    payload: str = "|".join([method.name, str(n_rows), str(n_cols), *group_keys])
+    payload: str = "|".join([method.name, str(n_rows), str(n_cols), str(len(group_keys))])
     return hashlib.md5(payload.encode("utf-8")).hexdigest()[:16]
 
 
@@ -874,52 +877,46 @@ def _compile_fused_residual_kernel(kernel_specs: List[StructuralCompiledVectorKe
 
 
 def _compile_master_jacobian_kernel(
-        ad_kernels: List[Callable[..., Any]],
+        ad_kernel: Callable[..., Any],
         n_colors: int,
         cache_token: str,
 ) -> Callable[..., Any]:
     """
     Build the eager sparse Jacobian dispatcher.
 
-    :param ad_kernels: Color-specific AD kernels.
-    :type ad_kernels: List[Callable[..., Any]]
+    :param ad_kernel: Generic AD kernel reused across colors.
+    :type ad_kernel: Callable[..., Any]
     :param n_colors: Number of graph colors.
     :type n_colors: int
     :return: Compiled master Jacobian dispatcher.
     :rtype: Callable[..., Any]
     """
-    lines: List[str] = list()
-    color_index: int = 0
-    func_name: str = f"structural_compiled_master_jacobian_{cache_token}"
+    _unused = cache_token
 
-    # The dispatcher reuses one JVP buffer per color and then scatters into CSC storage.
-    lines.append(
-        f"def {func_name}(states, seeds, params, history, d_history, h, history2, data, color_ptr, col_ptr, row_idx, data_idx, work_jvp):"
-    )
+    def master_jacobian(
+            states: Vec,
+            seed_matrix: Float64Matrix,
+            params: Vec,
+            history: Vec,
+            d_history: Vec,
+            h: float,
+            history2: Vec,
+            data: Vec,
+            color_ptr: Int32Vector,
+            col_ptr: Int32Vector,
+            row_idx: Int32Vector,
+            data_idx: Int32Vector,
+            work_jvp: Float64Matrix,
+    ) -> None:
+        color_index: int = 0
 
-    while color_index < n_colors:
-        kernel_name: str = f"kernel_{color_index}"
-        lines.append(f"    local_jvp_{color_index} = work_jvp[{color_index}]")
-        lines.append(
-            f"    {kernel_name}(states, seeds, params, history, d_history, h, local_jvp_{color_index}, history2)"
-        )
-        lines.append(
-            f"    _scatter(local_jvp_{color_index}, data, color_ptr, col_ptr, row_idx, data_idx, {color_index})"
-        )
-        color_index += 1
+        while color_index < n_colors:
+            local_jvp: Float64Vector = work_jvp[color_index]
+            ad_kernel(states, seed_matrix[color_index], params, history, d_history, h, local_jvp, history2)
+            _scatter_color_jvp_to_csc_data(local_jvp, data, color_ptr, col_ptr, row_idx, data_idx, color_index)
+            color_index += 1
 
-    py_func: Callable[..., Any] = _compile_to_file("\n".join(lines), func_name)
-    py_func.__globals__["_scatter"] = _scatter_color_jvp_to_csc_data
-
-    for color_index in range(n_colors):
-        py_func.__globals__[f"kernel_{color_index}"] = ad_kernels[color_index]
-
-    return _safe_njit(
-        py_func,
-        signature_tpe=_build_master_jacobian_signature(),
-        fastmath=True,
-        cache=True,
-    )
+    return master_jacobian
 
 
 class StructuralCompiledResidualAssembler:
@@ -1016,6 +1013,40 @@ class StructuralCompiledResidualAssembler:
         return dict(self._build_stats)
 
 
+class StructuralCompiledDirectResidualAssembler:
+    """
+    Residual assembler backed by one monolithic in-place kernel.
+    """
+
+    __slots__ = ["_kernel", "_build_stats"]
+
+    def __init__(self, kernel: Callable[..., Any]) -> None:
+        self._kernel = kernel
+        self._build_stats = {
+            "dispatcher_build_s": 0.0,
+            "buffer_alloc_s": 0.0,
+            "total_s": 0.0,
+        }
+
+    def evaluate(
+            self,
+            states: Vec,
+            params: Vec,
+            history: Vec,
+            d_history: Vec,
+            h: float,
+            history2: Vec,
+            data_out: Vec,
+    ) -> None:
+        self._kernel(states, params, history, d_history, h, data_out, history2)
+
+    def get_work_buffer(self) -> None:
+        return None
+
+    def get_build_stats(self) -> Dict[str, float]:
+        return dict(self._build_stats)
+
+
 class StructuralCompiledSparseADJacobian:
     """
     Sparse structural AD Jacobian that writes directly into CSC storage.
@@ -1039,9 +1070,9 @@ class StructuralCompiledSparseADJacobian:
         "_row_idx",
         "_data_idx",
         "_compiler",
-        "_ad_kernels",
+        "_ad_kernel",
         "_master_dispatcher",
-        "_seed_buffer",
+        "_seed_matrix",
         "_jvp_work_buffer",
         "_data_buffer",
         "_build_stats",
@@ -1106,15 +1137,19 @@ class StructuralCompiledSparseADJacobian:
         self._compiler = EagerEquationCompiler(variables=variables, parameters=parameters, method=method)
 
         t_ad_kernels_start: float = time.perf_counter()
-        self._ad_kernels = self._build_ad_kernels(use_cse)
+        self._ad_kernel = self._build_ad_kernel(use_cse)
         ad_kernels_s: float = time.perf_counter() - t_ad_kernels_start
 
         t_dispatcher_start: float = time.perf_counter()
-        self._master_dispatcher = _compile_master_jacobian_kernel(self._ad_kernels, self._n_colors, cache_token)
+        self._master_dispatcher = _compile_master_jacobian_kernel(self._ad_kernel, self._n_colors, cache_token)
         dispatcher_build_s: float = time.perf_counter() - t_dispatcher_start
 
-        # The seed buffer remains zero because each color kernel already hardcodes its active columns.
-        self._seed_buffer = np.zeros(self._n_cols, dtype=self._dtype)
+        self._seed_matrix = np.zeros((self._n_colors, self._n_cols), dtype=self._dtype)
+        color_index = 0
+        while color_index < self._n_colors:
+            for column_index in self._color_groups[color_index]:
+                self._seed_matrix[color_index, column_index] = 1.0
+            color_index += 1
 
         # One JVP row per color is enough because colors are executed sequentially.
         self._jvp_work_buffer = np.zeros((self._n_colors, self._n_rows), dtype=self._dtype)
@@ -1288,39 +1323,23 @@ class StructuralCompiledSparseADJacobian:
 
         return color_ptr, col_ptr, row_idx, data_idx
 
-    def _build_ad_kernels(self, use_cse: bool) -> List[Callable[..., Any]]:
+    def _build_ad_kernel(self, use_cse: bool) -> Callable[..., Any]:
         """
-        Compile one eager AD kernel per graph color.
+        Compile one generic eager AD kernel reused for every graph color.
 
         :param use_cse: Whether color kernels should emit CSE temporaries.
         :type use_cse: bool
-        :return: Compiled AD kernels.
-        :rtype: List[Callable[..., Any]]
+        :return: Compiled generic AD kernel.
+        :rtype: Callable[..., Any]
         """
-        kernels: List[Callable[..., Any]] = list()
-        color_index: int = 0
-
-        while color_index < self._n_colors:
-            active_columns: Set[int] = set(self._color_groups[color_index])
-            kernel_name: str = (
-                f"structural_compiled_ad_color_{self._method.name}_{self._n_rows}_{self._n_cols}_{color_index}"
-            )
-            py_func: Callable[..., Any]
-            signature_tpe: Any
-            compiled_kernel: Callable[..., Any]
-
-            py_func, signature_tpe = self._compiler.compile_ad_kernel(
-                equations=self._equations,
-                func_name=kernel_name,
-                use_cse=use_cse,
-                active_indices=active_columns,
-            )
-            compiled_kernel = _safe_njit(py_func, signature_tpe=signature_tpe, fastmath=True, cache=True)
-            kernels.append(compiled_kernel)
-
-            color_index += 1
-
-        return kernels
+        kernel_name: str = f"structural_compiled_ad_generic_{self._method.name}_{self._n_rows}_{self._n_cols}"
+        py_func, signature_tpe = self._compiler.compile_ad_kernel(
+            equations=self._equations,
+            func_name=kernel_name,
+            use_cse=False,
+            active_indices=None,
+        )
+        return _safe_njit(py_func, signature_tpe=signature_tpe, fastmath=True, cache=True)
 
     def evaluate(
             self,
@@ -1351,7 +1370,7 @@ class StructuralCompiledSparseADJacobian:
         """
         self._master_dispatcher(
             states,
-            self._seed_buffer,
+            self._seed_matrix,
             params,
             history,
             d_history,
@@ -1634,45 +1653,60 @@ class StructuralCompiledSolver:
         # Group kernels are compiled in deterministic order so disk cache keys remain stable.
         group_keys: List[str] = sorted(list(groups.keys()))
         backend_cache_token: str = _build_backend_cache_token(method, len(full_eqs), self._n_vars, group_keys)
+        avg_group_size: float = float(len(full_eqs) / max(len(group_keys), 1))
+        use_direct_residual: bool = len(group_keys) >= 20 and avg_group_size <= 3.0
         kernel_specs: List[StructuralCompiledVectorKernel] = list()
         group_key_index: int = 0
 
         t_vec_kernel_compile_start: float = time.perf_counter()
 
-        while group_key_index < len(group_keys):
-            group_key: str = group_keys[group_key_index]
-            group_hash: str = hashlib.md5(group_key.encode("utf-8")).hexdigest()[:16]
-            group: StructuralCompiledEquationGroup = groups[group_key]
-            template_eq: Expr | None = group.get_template_eq()
-            template_vars: List[Var] | None = group.get_template_vars()
-
-            if template_eq is None or template_vars is None:
-                raise RuntimeError("Invalid structural group without template information")
-            else:
-                pass
-
-            kernel_name: str = f"structural_compiled_vec_{method.name}_{group_hash}"
-            py_func: Callable[..., Any]
-            signature_tpe: Any
-            compiled_kernel: Callable[..., Any]
-            indices: Int32Matrix = np.asarray(group.get_index_matrix(), dtype=np.int32)
-            target_rows: Int32Vector = np.asarray(group.get_row_indices(), dtype=np.int32)
-
-            py_func, signature_tpe = eager_compiler.compile_matrix_kernel(
-                template_eq=template_eq,
-                func_name=kernel_name,
-                template_vars=template_vars,
+        if use_direct_residual:
+            direct_name: str = f"structural_compiled_residual_{backend_cache_token}"
+            py_func, signature_tpe = eager_compiler.compile(
+                equations=full_eqs,
+                func_name=direct_name,
+                use_cse=False,
+                offset=0,
+                inplace=True,
             )
-            compiled_kernel = _safe_njit(py_func, signature_tpe=signature_tpe, fastmath=True, cache=True)
-            kernel_specs.append(StructuralCompiledVectorKernel(compiled_kernel, indices, target_rows))
+            compiled_residual = _safe_njit(py_func, signature_tpe=signature_tpe, fastmath=True, cache=True)
+        else:
+            while group_key_index < len(group_keys):
+                group_key: str = group_keys[group_key_index]
+                group: StructuralCompiledEquationGroup = groups[group_key]
+                template_eq: Expr | None = group.get_template_eq()
+                template_vars: List[Var] | None = group.get_template_vars()
 
-            group_key_index += 1
+                if template_eq is None or template_vars is None:
+                    raise RuntimeError("Invalid structural group without template information")
+                else:
+                    pass
+
+                kernel_name: str = f"structural_compiled_vec_{method.name}_{group_key_index}"
+                py_func: Callable[..., Any]
+                signature_tpe: Any
+                compiled_kernel: Callable[..., Any]
+                indices: Int32Matrix = np.asarray(group.get_index_matrix(), dtype=np.int32)
+                target_rows: Int32Vector = np.asarray(group.get_row_indices(), dtype=np.int32)
+
+                py_func, signature_tpe = eager_compiler.compile_matrix_kernel(
+                    template_eq=template_eq,
+                    func_name=kernel_name,
+                    template_vars=template_vars,
+                )
+                compiled_kernel = _safe_njit(py_func, signature_tpe=signature_tpe, fastmath=True, cache=True)
+                kernel_specs.append(StructuralCompiledVectorKernel(compiled_kernel, indices, target_rows))
+
+                group_key_index += 1
 
         vec_kernel_compile_s: float = time.perf_counter() - t_vec_kernel_compile_start
 
         # The residual assembler owns the reusable grouped work buffers.
         t_residual_assembler_start: float = time.perf_counter()
-        self._residual_assembler = StructuralCompiledResidualAssembler(kernel_specs, backend_cache_token)
+        if use_direct_residual:
+            self._residual_assembler = StructuralCompiledDirectResidualAssembler(compiled_residual)
+        else:
+            self._residual_assembler = StructuralCompiledResidualAssembler(kernel_specs, backend_cache_token)
         residual_assembler_s: float = time.perf_counter() - t_residual_assembler_start
 
         # The sparse Jacobian evaluator owns the reusable CSC numeric storage.

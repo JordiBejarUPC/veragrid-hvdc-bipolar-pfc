@@ -208,7 +208,7 @@ print(res.get_branch_df())
 # ==============================================================================
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")
 # ==============================================================================
-CHOSEN_SOLVER = "SYMBOLIC"
+CHOSEN_SOLVER = "VECTORIZED"
 RUN_ALL_SOLVERS = False
 ENABLE_PLOTS = True
 ENABLE_NEWTON_TRACE = False
