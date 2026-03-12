@@ -15,6 +15,68 @@ from numpy.lib.stride_tricks import sliding_window_view
 from typing import Tuple, List
 
 
+def _build_system_matrix() -> np.ndarray:
+    """
+    Builds a 6x6 continuous-time state matrix A with 3 specific complex
+    conjugate pole pairs perfectly decoupled.
+    """
+    poles: List[Tuple[float, float]] = list([
+        (-0.5, 15.0),  # Mode 1: Subsynchronous
+        (-1.0, 120.0),  # Mode 2: Supersynchronous
+        (-5.0, 850.0)  # Mode 3: High Frequency
+    ])
+
+    n_states: int = len(poles) * 2
+    a_mat: np.ndarray = np.zeros((n_states, n_states), dtype=np.float64)
+
+    for i in range(len(poles)):
+        sigma: float = poles[i][0]
+        omega: float = 2.0 * np.pi * poles[i][1]
+        idx: int = i * 2
+
+        a_mat[idx, idx] = sigma
+        a_mat[idx, idx + 1] = omega
+        a_mat[idx + 1, idx] = -omega
+        a_mat[idx + 1, idx + 1] = sigma
+
+    return a_mat
+
+
+def _extract_matrix_pencil_poles(y_signal: np.ndarray, dt: float) -> np.ndarray:
+    """
+    Core Matrix Pencil algorithm (Zero-Copy Hankel + SVD).
+    """
+    mu: float = float(np.mean(y_signal))
+    y_norm: np.ndarray = y_signal - mu
+
+    window_length: int = y_norm.shape[0] // 3
+    h_matrix: np.ndarray = sliding_window_view(y_norm, window_shape=window_length)
+
+    U: np.ndarray
+    S: np.ndarray
+    Vh: np.ndarray
+    U, S, Vh = la.svd(h_matrix, full_matrices=False)
+
+    # Robust relative deflation
+    tol: float = float(S[0]) * 1e-8
+    rank: int = int(np.sum(S > tol))
+
+    V_n: np.ndarray = Vh[:rank, :].T
+    V1: np.ndarray = V_n[:-1, :]
+    V2: np.ndarray = V_n[1:, :]
+
+    Z_mat: np.ndarray
+    residuals: np.ndarray
+    rank_lstsq: int
+    s_lstsq: np.ndarray
+    Z_mat, residuals, rank_lstsq, s_lstsq = la.lstsq(V1, V2)
+
+    z_poles: np.ndarray = la.eigvals(Z_mat)
+    s_poles: np.ndarray = np.log(z_poles) / dt
+
+    return s_poles
+
+
 class AliasingBenchmark:
     """
     Encapsulates the mathematical comparison between Floquet and ERA.
@@ -30,33 +92,7 @@ class AliasingBenchmark:
         self._f_grid: float = f_grid
         self._t_period: float = 1.0 / f_grid
         self._h_step: float = h_step
-        self._a_matrix: np.ndarray = self._build_system_matrix()
-
-    def _build_system_matrix(self) -> np.ndarray:
-        """
-        Builds a 6x6 continuous-time state matrix A with 3 specific complex
-        conjugate pole pairs perfectly decoupled.
-        """
-        poles: List[Tuple[float, float]] = list([
-            (-0.5, 15.0),  # Mode 1: Subsynchronous
-            (-1.0, 120.0),  # Mode 2: Supersynchronous
-            (-5.0, 850.0)  # Mode 3: High Frequency
-        ])
-
-        n_states: int = len(poles) * 2
-        a_mat: np.ndarray = np.zeros((n_states, n_states), dtype=np.float64)
-
-        for i in range(len(poles)):
-            sigma: float = poles[i][0]
-            omega: float = 2.0 * np.pi * poles[i][1]
-            idx: int = i * 2
-
-            a_mat[idx, idx] = sigma
-            a_mat[idx, idx + 1] = omega
-            a_mat[idx + 1, idx] = -omega
-            a_mat[idx + 1, idx + 1] = sigma
-
-        return a_mat
+        self._a_matrix: np.ndarray = _build_system_matrix()
 
     def run_floquet_analysis(self) -> Tuple[np.ndarray, np.ndarray]:
         """
@@ -86,46 +122,12 @@ class AliasingBenchmark:
             # FIX: Sum all states to ensure Observability of all decoupled modes
             y_signal[k] = np.sum(x_k)
 
-        s_poles: np.ndarray = self._extract_matrix_pencil_poles(y_signal, self._h_step)
+        s_poles: np.ndarray = _extract_matrix_pencil_poles(y_signal, self._h_step)
 
         real_parts: np.ndarray = s_poles.real
         frequencies_hz: np.ndarray = np.abs(s_poles.imag) / (2.0 * np.pi)
 
         return real_parts, frequencies_hz
-
-    def _extract_matrix_pencil_poles(self, y_signal: np.ndarray, dt: float) -> np.ndarray:
-        """
-        Core Matrix Pencil algorithm (Zero-Copy Hankel + SVD).
-        """
-        mu: float = float(np.mean(y_signal))
-        y_norm: np.ndarray = y_signal - mu
-
-        window_length: int = y_norm.shape[0] // 3
-        h_matrix: np.ndarray = sliding_window_view(y_norm, window_shape=window_length)
-
-        U: np.ndarray
-        S: np.ndarray
-        Vh: np.ndarray
-        U, S, Vh = la.svd(h_matrix, full_matrices=False)
-
-        # Robust relative deflation
-        tol: float = float(S[0]) * 1e-8
-        rank: int = int(np.sum(S > tol))
-
-        V_n: np.ndarray = Vh[:rank, :].T
-        V1: np.ndarray = V_n[:-1, :]
-        V2: np.ndarray = V_n[1:, :]
-
-        Z_mat: np.ndarray
-        residuals: np.ndarray
-        rank_lstsq: int
-        s_lstsq: np.ndarray
-        Z_mat, residuals, rank_lstsq, s_lstsq = la.lstsq(V1, V2)
-
-        z_poles: np.ndarray = la.eigvals(Z_mat)
-        s_poles: np.ndarray = np.log(z_poles) / dt
-
-        return s_poles
 
 
 def print_formatted_poles(real_parts: np.ndarray, frequencies: np.ndarray) -> None:

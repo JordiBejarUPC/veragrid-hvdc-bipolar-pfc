@@ -245,7 +245,7 @@ print(res.get_branch_df())
 # ==============================================================================
 CHOSEN_SOLVER = "COMPILED"
 RUN_ALL_SOLVERS = False
-ENABLE_PLOTS = False
+ENABLE_PLOTS = True
 ENABLE_NEWTON_TRACE = False
 SHOW_INIT_GUESS_TABLE = False
 DENSE_THRESHOLD = 0

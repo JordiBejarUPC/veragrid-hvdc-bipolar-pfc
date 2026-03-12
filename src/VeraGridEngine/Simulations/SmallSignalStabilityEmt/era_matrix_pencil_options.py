@@ -1,18 +1,10 @@
 # SPDX-License-Identifier: MPL-2.0
 
-from enum import Enum
+from VeraGridEngine.Devices.Parents.editable_device import EraSvdSolverType
 from typing import Tuple
 
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
-
-
-class EraSvdSolverType(Enum):
-    """
-    Enumeration for the SVD solver backend.
-    """
-    FullSvd = 0
-    TruncatedRandomized = 1
 
 
 class EraMatrixPencilOptions(OptionsTemplate):

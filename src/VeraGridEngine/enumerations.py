@@ -2566,6 +2566,41 @@ class SmallSignalEmtBuildTypes(Enum):
         return list(map(lambda c: c.value, cls))
 
 
+class EraSvdSolverType(Enum):
+    """
+    Enumeration for the SVD solver backend.
+    """
+    FullSvd = 0
+    TruncatedRandomized = 1
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return EraSvdSolverType[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
+
+
+
 class RmsInitializationMethod(Enum):
     Explicit = "Explicit"
     PseudoTransient = "PseudoTransient"
