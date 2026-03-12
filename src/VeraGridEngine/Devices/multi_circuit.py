@@ -2337,14 +2337,18 @@ class MultiCircuit(Assets):
         for new_elm in self.items():  # for every device...
 
             action = ActionType.NoAction
-            changed_props = []
 
             # try to search for the counterpart in the base circuit
             elm_from_base = base_elements_dict.get(new_elm.idtag, None)
 
             if elm_from_base is None:
                 # not found in the base, add it
-                action = ActionType.Add
+                new_element = new_elm.copy(forced_new_idtag=False)
+                new_element.action = ActionType.Add
+                dgrid.add_element(obj=new_element)
+                logger.add_info(msg="Device added in the diff circuit",
+                                device_class=new_element.device_type.value,
+                                device_property=new_element.name, )
 
             elif type(new_elm) == type(elm_from_base):
                 # check differences
@@ -2355,23 +2359,22 @@ class MultiCircuit(Assets):
                     nt=nt
                 )
 
+                if action != ActionType.NoAction:
+                    new_element = new_elm.copy(forced_new_idtag=False)
+                    new_element.action = action
+                    dgrid.add_element(obj=new_element)
+                    for prop in changed_props:
+                        new_element.set_diff_change(property_name=prop.name, selected=True)
+                    logger.add_info(msg="Device added in the diff circuit",
+                                    device_class=new_element.device_type.value,
+                                    device_property=new_element.name, )
+
             else:
                 # Same iftag, different classes, probably some consequence of CGMES
                 logger.add_info(msg="Same idtag, different types",
                                 device_class=new_elm.device_type.value,
                                 device_property=new_elm.name,
                                 expected_value=elm_from_base.device_type.value)
-
-            if action != ActionType.NoAction:
-                new_element = new_elm.copy(forced_new_idtag=False)
-                new_element.action = action
-                for prop in changed_props:
-                    new_element.set_property_selected_to_merge(property_name=prop.name, selected=True)
-
-                dgrid.add_element(obj=new_element)
-                logger.add_info(msg="Device added in the diff circuit",
-                                device_class=new_element.device_type.value,
-                                device_property=new_element.name, )
 
         # --------------------------------------------------------------------------------------------------------------
         # Pass 2: compare base with this grid to discover deleted elements

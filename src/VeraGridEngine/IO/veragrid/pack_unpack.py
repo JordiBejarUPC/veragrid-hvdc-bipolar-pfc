@@ -362,7 +362,6 @@ def profile_todict_str(profile: Profile) -> Dict[str, str]:
 
 def get_profile_from_dict(profile: Profile,
                           data: Dict[str, Union[str, Union[Any, Dict[str, Any]]]],
-                          gc_prop: GCProp,
                           collection: Union[None, Dict[str, Any]] = None):
     """
     Create a profile from json dict data
@@ -397,7 +396,7 @@ def get_profile_from_dict(profile: Profile,
             arr = data['dense_data']
         else:
             arr = [collection.get(i, default_value) for i in data['dense_data']]
-        profile.set(np.array(arr, dtype=gc_prop.tpe))
+        profile.set(np.array(arr))
 
     # mark as initialized
     profile.set_initialized()
@@ -421,8 +420,8 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
             if prop.has_profile():
                 data[name + '_prof'] = profile_todict(elm.get_profile_by_prop(prop=prop))
 
-        if prop.tpe == dict:
-            data[name] = obj
+        elif prop.tpe == SubObjectType.MergeInformation:
+            data[name] = obj.to_dict()
 
         elif prop.tpe == SubObjectType.GeneratorQCurve:
             data[name] = obj.to_list()
@@ -1045,8 +1044,7 @@ def search_and_apply_json_profile(json_entry: Dict[str, Dict[str, Union[str, Uni
         else:
             get_profile_from_dict(profile=profile,
                                   data=json_profile,
-                                  collection=collection,
-                                  gc_prop=gc_prop)
+                                  collection=collection)
 
 
 def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
@@ -1224,6 +1222,10 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                         elm_name=elm.name
                                     )
 
+                                elif gc_prop.tpe == SubObjectType.MergeInformation:
+                                    # set the value directly
+                                    elm.diff_changes.parse(property_value)
+
                                 else:
                                     raise Exception(f"SubObjectType {gc_prop.tpe} not implemented")
 
@@ -1262,11 +1264,6 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                                               gc_prop=gc_prop,
                                                               elm=elm,
                                                               property_value=val)
-
-                            elif gc_prop.tpe == dict:
-                                # set the value directly
-                                val = property_value
-                                elm.set_snapshot_value(gc_prop.name, val)
 
                             elif isinstance(gc_prop.tpe, EnumType):
 
