@@ -640,6 +640,9 @@ class ElmShnt(DGSElement):
         # If absent in the file, it will remain at its default value (1.0).
         DgsProperty('usetp', 'r', 'Voltage Setpoint in p.u.', py_name='usetp'),
         DgsProperty('rpara', 'r', 'Parallel Damping Resistance in Ohm', py_name='rpara'),
+        DgsProperty('i_cont', 'i', 'Tap Changer (Discrete=0, Continuous=1)', py_name='i_cont'),
+        DgsProperty('usetp_mx', 'r', 'Upper Voltage Limit in p.u.', py_name='usetp_mx'),
+        DgsProperty('usetp_mn', 'r', 'Lower Voltage Limit in p.u.', py_name='usetp_mn'),
     ]
 
     def __init__(self) -> None:
@@ -663,6 +666,9 @@ class ElmShnt(DGSElement):
         self.tandc: float = 0.0
         self.usetp: float = 1.0
         self.rpara: float = 0.0
+        self.i_cont: int = 0
+        self.usetp_mx: float = 1.0
+        self.usetp_mn: float = 1.0
 
 
 class ElmSvs(DGSElement):

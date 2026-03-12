@@ -12,6 +12,7 @@ from VeraGridEngine.enumerations import (
     TapChangerTypes,
     TapModuleControl,
     WindingType,
+    ShuntControlMode
 )
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Branches.wire import Wire
@@ -2217,39 +2218,55 @@ def convert_dgs_to_controllable_shunt_from_elmshnt(elmshnt: ElmShnt,
                                      cubics_by_objid=cubics_by_objid,
                                      bus_by_term_id=bus_by_term_id)
 
-    b_steps, initial_step, bmin, bmax = _build_elmshnt_step_model(elmshnt=elmshnt, logger=logger)
+    if elmshnt.i_cont == 1: # Continuous
 
-    if int(elmshnt.iswitch) != 0:
-        is_controlled = True
-    else:
-        is_controlled = False
-    vset: float = float(elmshnt.usetp)
+        b_steps, initial_step, bmin, bmax = _build_elmshnt_step_model(elmshnt=elmshnt, logger=logger)
 
-    cshunt: dev.ControllableShunt = dev.ControllableShunt(
-        name=name,
-        idtag=_ref_id(elmshnt.ID),
-        is_nonlinear=False,
-        number_of_steps=int(len(b_steps)),
-        step=int(initial_step),
-        g_per_step=0.0,
-        b_per_step=0.0,
-        Bmin=bmin,
-        Bmax=bmax,
-        Gmin=0.0,
-        Gmax=0.0,
-        active=(elmshnt.outserv == 0),
-        vset=vset,
-        is_controlled=is_controlled,
-        control_bus=bus,
-    )
+        if int(elmshnt.iswitch) != 0:
+            is_controlled = True
+        else:
+            is_controlled = False
+        vset: float = float(elmshnt.usetp)
 
-    # Override step arrays to match the DGS stepped-bank model (OFF + ncapx identical increments).
-    cshunt.b_steps = b_steps
-    cshunt.g_steps = np.zeros(len(b_steps), dtype=float)
-    cshunt.active_steps = np.ones(len(b_steps), dtype=int)
+        cshunt: dev.ControllableShunt = dev.ControllableShunt(
+            name=name,
+            idtag=_ref_id(elmshnt.ID),
+            is_nonlinear=False,
+            number_of_steps=int(len(b_steps)),
+            step=int(initial_step),
+            g_per_step=0.0,
+            b_per_step=0.0,
+            Bmin=bmin,
+            Bmax=bmax,
+            Gmin=0.0,
+            Gmax=0.0,
+            active=(elmshnt.outserv == 0),
+            vset=vset,
+            is_controlled=is_controlled,
+            control_bus=bus,
+        )
 
-    # Ensure B/G are coherent with the initial step after overriding arrays
-    cshunt.step = int(initial_step)
+        # Override step arrays to match the DGS stepped-bank model (OFF + ncapx identical increments).
+        cshunt.b_steps = b_steps
+        cshunt.g_steps = np.zeros(len(b_steps), dtype=float)
+        cshunt.active_steps = np.ones(len(b_steps), dtype=int)
+
+        # Ensure B/G are coherent with the initial step after overriding arrays
+        cshunt.step = int(initial_step)
+
+    elif elmshnt.i_cont == 0: # Discrete
+        cshunt: dev.ControllableShunt = dev.ControllableShunt(
+            name=name,
+            idtag=_ref_id(elmshnt.ID),
+            number_of_steps=elmshnt.ncapx,
+            step=elmshnt.ncapa,
+            g_per_step=0.0,
+            b_per_step=elmshnt.qcapn,
+            active=(elmshnt.outserv == 0),
+            vmax=elmshnt.usetp_mx,
+            vmin=elmshnt.usetp_mn,
+            control_mode=ShuntControlMode.Discrete
+        )
 
     return bus, cshunt
 
