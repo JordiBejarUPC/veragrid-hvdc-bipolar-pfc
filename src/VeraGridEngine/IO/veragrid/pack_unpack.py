@@ -420,6 +420,9 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
             if prop.has_profile():
                 data[name + '_prof'] = profile_todict(elm.get_profile_by_prop(prop=prop))
 
+        if prop.tpe == dict:
+            data[name] = obj
+
         elif prop.tpe == SubObjectType.GeneratorQCurve:
             data[name] = obj.to_list()
 
@@ -1257,6 +1260,11 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                                               gc_prop=gc_prop,
                                                               elm=elm,
                                                               property_value=val)
+
+                            elif gc_prop.tpe == dict:
+                                # set the value directly
+                                val = property_value
+                                elm.set_snapshot_value(gc_prop.name, val)
 
                             elif isinstance(gc_prop.tpe, EnumType):
 
