@@ -240,7 +240,7 @@ class LineGraphicItem(LineGraphicTemplateItem):
         # prompt RmsModelEditorGUI
         rms_model_editor = RmsModelEditorGUI(
             var_factory=self.editor.circuit.rms_var_factory,
-            api_object_model_host=self.api_object.rms_model,
+            block=self.api_object.rms_model,
             templates_list=templ_list,
             templates_catalogue=templ_catalogue,
             api_object_name=self.api_object.name,

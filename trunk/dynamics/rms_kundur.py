@@ -403,134 +403,134 @@ def rms_kundur():
 
 
 
-    genqec_mdl1.connect([genqec_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-    genqec_mdl1.connect([genqec_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+    genqec_mdl1.connect([genqec_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
+    genqec_mdl1.connect([genqec_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-    genqec_mdl2.connect([genqec_mdl2.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
-    genqec_mdl2.connect([genqec_mdl2.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
+    genqec_mdl2.connect([genqec_mdl2.in_vars[0]], [bus2.rms_model.out_vars[0]])
+    genqec_mdl2.connect([genqec_mdl2.in_vars[1]], [bus2.rms_model.out_vars[1]])
 
-    genqec_mdl3.connect([genqec_mdl3.in_vars[0]], [bus3.rms_model.model.out_vars[0]])
-    genqec_mdl3.connect([genqec_mdl3.in_vars[1]], [bus3.rms_model.model.out_vars[1]])
+    genqec_mdl3.connect([genqec_mdl3.in_vars[0]], [bus3.rms_model.out_vars[0]])
+    genqec_mdl3.connect([genqec_mdl3.in_vars[1]], [bus3.rms_model.out_vars[1]])
 
-    genqec_mdl4.connect([genqec_mdl4.in_vars[0]], [bus4.rms_model.model.out_vars[0]])
-    genqec_mdl4.connect([genqec_mdl4.in_vars[1]], [bus4.rms_model.model.out_vars[1]])
-
-
-    line0_mdl.connect([line0_mdl.in_vars[0]], [bus5.rms_model.model.out_vars[0]])
-    line0_mdl.connect([line0_mdl.in_vars[1]], [bus5.rms_model.model.out_vars[1]])
-
-    line0_mdl.connect([line0_mdl.in_vars[2]], [bus6.rms_model.model.out_vars[0]])
-    line0_mdl.connect([line0_mdl.in_vars[3]], [bus6.rms_model.model.out_vars[1]])
-
-    line1_mdl.connect([line1_mdl.in_vars[0]], [bus5.rms_model.model.out_vars[0]])
-    line1_mdl.connect([line1_mdl.in_vars[1]], [bus5.rms_model.model.out_vars[1]])
-
-    line1_mdl.connect([line1_mdl.in_vars[2]], [bus6.rms_model.model.out_vars[0]])
-    line1_mdl.connect([line1_mdl.in_vars[3]], [bus6.rms_model.model.out_vars[1]])
-
-    line2_mdl.connect([line2_mdl.in_vars[0]], [bus6.rms_model.model.out_vars[0]])
-    line2_mdl.connect([line2_mdl.in_vars[1]], [bus6.rms_model.model.out_vars[1]])
-
-    line2_mdl.connect([line2_mdl.in_vars[2]], [bus7.rms_model.model.out_vars[0]])
-    line2_mdl.connect([line2_mdl.in_vars[3]], [bus7.rms_model.model.out_vars[1]])
-
-    line3_mdl.connect([line3_mdl.in_vars[0]], [bus6.rms_model.model.out_vars[0]])
-    line3_mdl.connect([line3_mdl.in_vars[1]], [bus6.rms_model.model.out_vars[1]])
-
-    line3_mdl.connect([line3_mdl.in_vars[2]], [bus7.rms_model.model.out_vars[0]])
-    line3_mdl.connect([line3_mdl.in_vars[3]], [bus7.rms_model.model.out_vars[1]])
-
-    line4_mdl.connect([line4_mdl.in_vars[0]], [bus6.rms_model.model.out_vars[0]])
-    line4_mdl.connect([line4_mdl.in_vars[1]], [bus6.rms_model.model.out_vars[1]])
-
-    line4_mdl.connect([line4_mdl.in_vars[2]], [bus7.rms_model.model.out_vars[0]])
-    line4_mdl.connect([line4_mdl.in_vars[3]], [bus7.rms_model.model.out_vars[1]])
-
-    line5_mdl.connect([line5_mdl.in_vars[0]], [bus7.rms_model.model.out_vars[0]])
-    line5_mdl.connect([line5_mdl.in_vars[1]], [bus7.rms_model.model.out_vars[1]])
-
-    line5_mdl.connect([line5_mdl.in_vars[2]], [bus8.rms_model.model.out_vars[0]])
-    line5_mdl.connect([line5_mdl.in_vars[3]], [bus8.rms_model.model.out_vars[1]])
-
-    line6_mdl.connect([line6_mdl.in_vars[0]], [bus7.rms_model.model.out_vars[0]])
-    line6_mdl.connect([line6_mdl.in_vars[1]], [bus7.rms_model.model.out_vars[1]])
-
-    line6_mdl.connect([line6_mdl.in_vars[2]], [bus8.rms_model.model.out_vars[0]])
-    line6_mdl.connect([line6_mdl.in_vars[3]], [bus8.rms_model.model.out_vars[1]])
-
-    line7_mdl.connect([line7_mdl.in_vars[0]], [bus8.rms_model.model.out_vars[0]])
-    line7_mdl.connect([line7_mdl.in_vars[1]], [bus8.rms_model.model.out_vars[1]])
-
-    line7_mdl.connect([line7_mdl.in_vars[2]], [bus9.rms_model.model.out_vars[0]])
-    line7_mdl.connect([line7_mdl.in_vars[3]], [bus9.rms_model.model.out_vars[1]])
-
-    line8_mdl.connect([line8_mdl.in_vars[0]], [bus8.rms_model.model.out_vars[0]])
-    line8_mdl.connect([line8_mdl.in_vars[1]], [bus8.rms_model.model.out_vars[1]])
-
-    line8_mdl.connect([line8_mdl.in_vars[2]], [bus9.rms_model.model.out_vars[0]])
-    line8_mdl.connect([line8_mdl.in_vars[3]], [bus9.rms_model.model.out_vars[1]])
-
-    line9_mdl.connect([line9_mdl.in_vars[0]], [bus9.rms_model.model.out_vars[0]])
-    line9_mdl.connect([line9_mdl.in_vars[1]], [bus9.rms_model.model.out_vars[1]])
-
-    line9_mdl.connect([line9_mdl.in_vars[2]], [bus10.rms_model.model.out_vars[0]])
-    line9_mdl.connect([line9_mdl.in_vars[3]], [bus10.rms_model.model.out_vars[1]])
-
-    line10_mdl.connect([line10_mdl.in_vars[0]], [bus9.rms_model.model.out_vars[0]])
-    line10_mdl.connect([line10_mdl.in_vars[1]], [bus9.rms_model.model.out_vars[1]])
-
-    line10_mdl.connect([line10_mdl.in_vars[2]], [bus10.rms_model.model.out_vars[0]])
-    line10_mdl.connect([line10_mdl.in_vars[3]], [bus10.rms_model.model.out_vars[1]])
-
-    line11_mdl.connect([line11_mdl.in_vars[0]], [bus9.rms_model.model.out_vars[0]])
-    line11_mdl.connect([line11_mdl.in_vars[1]], [bus9.rms_model.model.out_vars[1]])
-
-    line11_mdl.connect([line11_mdl.in_vars[2]], [bus10.rms_model.model.out_vars[0]])
-    line11_mdl.connect([line11_mdl.in_vars[3]], [bus10.rms_model.model.out_vars[1]])
-
-    line12_mdl.connect([line12_mdl.in_vars[0]], [bus10.rms_model.model.out_vars[0]])
-    line12_mdl.connect([line12_mdl.in_vars[1]], [bus10.rms_model.model.out_vars[1]])
-
-    line12_mdl.connect([line12_mdl.in_vars[2]], [bus11.rms_model.model.out_vars[0]])
-    line12_mdl.connect([line12_mdl.in_vars[3]], [bus11.rms_model.model.out_vars[1]])
-
-    line13_mdl.connect([line13_mdl.in_vars[0]], [bus10.rms_model.model.out_vars[0]])
-    line13_mdl.connect([line13_mdl.in_vars[1]], [bus10.rms_model.model.out_vars[1]])
-
-    line13_mdl.connect([line13_mdl.in_vars[2]], [bus11.rms_model.model.out_vars[0]])
-    line13_mdl.connect([line13_mdl.in_vars[3]], [bus11.rms_model.model.out_vars[1]])
-
-    trafo1_mdl.connect([trafo1_mdl.in_vars[0]], [bus5.rms_model.model.out_vars[0]])
-    trafo1_mdl.connect([trafo1_mdl.in_vars[1]], [bus5.rms_model.model.out_vars[1]])
-
-    trafo1_mdl.connect([trafo1_mdl.in_vars[2]], [bus1.rms_model.model.out_vars[0]])
-    trafo1_mdl.connect([trafo1_mdl.in_vars[3]], [bus1.rms_model.model.out_vars[1]])
-
-    trafo2_mdl.connect([trafo2_mdl.in_vars[0]], [bus6.rms_model.model.out_vars[0]])
-    trafo2_mdl.connect([trafo2_mdl.in_vars[1]], [bus6.rms_model.model.out_vars[1]])
-
-    trafo2_mdl.connect([trafo2_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
-    trafo2_mdl.connect([trafo2_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]])
-
-    trafo3_mdl.connect([trafo3_mdl.in_vars[0]], [bus11.rms_model.model.out_vars[0]])
-    trafo3_mdl.connect([trafo3_mdl.in_vars[1]], [bus11.rms_model.model.out_vars[1]])
-
-    trafo3_mdl.connect([trafo3_mdl.in_vars[2]], [bus3.rms_model.model.out_vars[0]])
-    trafo3_mdl.connect([trafo3_mdl.in_vars[3]], [bus3.rms_model.model.out_vars[1]])
-
-    trafo4_mdl.connect([trafo4_mdl.in_vars[0]], [bus10.rms_model.model.out_vars[0]])
-    trafo4_mdl.connect([trafo4_mdl.in_vars[1]], [bus10.rms_model.model.out_vars[1]])
-
-    trafo4_mdl.connect([trafo4_mdl.in_vars[2]], [bus4.rms_model.model.out_vars[0]])
-    trafo4_mdl.connect([trafo4_mdl.in_vars[3]], [bus4.rms_model.model.out_vars[1]])
+    genqec_mdl4.connect([genqec_mdl4.in_vars[0]], [bus4.rms_model.out_vars[0]])
+    genqec_mdl4.connect([genqec_mdl4.in_vars[1]], [bus4.rms_model.out_vars[1]])
 
 
+    line0_mdl.connect([line0_mdl.in_vars[0]], [bus5.rms_model.out_vars[0]])
+    line0_mdl.connect([line0_mdl.in_vars[1]], [bus5.rms_model.out_vars[1]])
 
-    load1_mdl.connect([load1_mdl.in_vars[0]], [bus7.rms_model.model.out_vars[0]])
-    load1_mdl.connect([load1_mdl.in_vars[1]], [bus7.rms_model.model.out_vars[1]])
+    line0_mdl.connect([line0_mdl.in_vars[2]], [bus6.rms_model.out_vars[0]])
+    line0_mdl.connect([line0_mdl.in_vars[3]], [bus6.rms_model.out_vars[1]])
 
-    load2_mdl.connect([load2_mdl.in_vars[0]], [bus9.rms_model.model.out_vars[0]])
-    load2_mdl.connect([load2_mdl.in_vars[1]], [bus9.rms_model.model.out_vars[1]])
+    line1_mdl.connect([line1_mdl.in_vars[0]], [bus5.rms_model.out_vars[0]])
+    line1_mdl.connect([line1_mdl.in_vars[1]], [bus5.rms_model.out_vars[1]])
+
+    line1_mdl.connect([line1_mdl.in_vars[2]], [bus6.rms_model.out_vars[0]])
+    line1_mdl.connect([line1_mdl.in_vars[3]], [bus6.rms_model.out_vars[1]])
+
+    line2_mdl.connect([line2_mdl.in_vars[0]], [bus6.rms_model.out_vars[0]])
+    line2_mdl.connect([line2_mdl.in_vars[1]], [bus6.rms_model.out_vars[1]])
+
+    line2_mdl.connect([line2_mdl.in_vars[2]], [bus7.rms_model.out_vars[0]])
+    line2_mdl.connect([line2_mdl.in_vars[3]], [bus7.rms_model.out_vars[1]])
+
+    line3_mdl.connect([line3_mdl.in_vars[0]], [bus6.rms_model.out_vars[0]])
+    line3_mdl.connect([line3_mdl.in_vars[1]], [bus6.rms_model.out_vars[1]])
+
+    line3_mdl.connect([line3_mdl.in_vars[2]], [bus7.rms_model.out_vars[0]])
+    line3_mdl.connect([line3_mdl.in_vars[3]], [bus7.rms_model.out_vars[1]])
+
+    line4_mdl.connect([line4_mdl.in_vars[0]], [bus6.rms_model.out_vars[0]])
+    line4_mdl.connect([line4_mdl.in_vars[1]], [bus6.rms_model.out_vars[1]])
+
+    line4_mdl.connect([line4_mdl.in_vars[2]], [bus7.rms_model.out_vars[0]])
+    line4_mdl.connect([line4_mdl.in_vars[3]], [bus7.rms_model.out_vars[1]])
+
+    line5_mdl.connect([line5_mdl.in_vars[0]], [bus7.rms_model.out_vars[0]])
+    line5_mdl.connect([line5_mdl.in_vars[1]], [bus7.rms_model.out_vars[1]])
+
+    line5_mdl.connect([line5_mdl.in_vars[2]], [bus8.rms_model.out_vars[0]])
+    line5_mdl.connect([line5_mdl.in_vars[3]], [bus8.rms_model.out_vars[1]])
+
+    line6_mdl.connect([line6_mdl.in_vars[0]], [bus7.rms_model.out_vars[0]])
+    line6_mdl.connect([line6_mdl.in_vars[1]], [bus7.rms_model.out_vars[1]])
+
+    line6_mdl.connect([line6_mdl.in_vars[2]], [bus8.rms_model.out_vars[0]])
+    line6_mdl.connect([line6_mdl.in_vars[3]], [bus8.rms_model.out_vars[1]])
+
+    line7_mdl.connect([line7_mdl.in_vars[0]], [bus8.rms_model.out_vars[0]])
+    line7_mdl.connect([line7_mdl.in_vars[1]], [bus8.rms_model.out_vars[1]])
+
+    line7_mdl.connect([line7_mdl.in_vars[2]], [bus9.rms_model.out_vars[0]])
+    line7_mdl.connect([line7_mdl.in_vars[3]], [bus9.rms_model.out_vars[1]])
+
+    line8_mdl.connect([line8_mdl.in_vars[0]], [bus8.rms_model.out_vars[0]])
+    line8_mdl.connect([line8_mdl.in_vars[1]], [bus8.rms_model.out_vars[1]])
+
+    line8_mdl.connect([line8_mdl.in_vars[2]], [bus9.rms_model.out_vars[0]])
+    line8_mdl.connect([line8_mdl.in_vars[3]], [bus9.rms_model.out_vars[1]])
+
+    line9_mdl.connect([line9_mdl.in_vars[0]], [bus9.rms_model.out_vars[0]])
+    line9_mdl.connect([line9_mdl.in_vars[1]], [bus9.rms_model.out_vars[1]])
+
+    line9_mdl.connect([line9_mdl.in_vars[2]], [bus10.rms_model.out_vars[0]])
+    line9_mdl.connect([line9_mdl.in_vars[3]], [bus10.rms_model.out_vars[1]])
+
+    line10_mdl.connect([line10_mdl.in_vars[0]], [bus9.rms_model.out_vars[0]])
+    line10_mdl.connect([line10_mdl.in_vars[1]], [bus9.rms_model.out_vars[1]])
+
+    line10_mdl.connect([line10_mdl.in_vars[2]], [bus10.rms_model.out_vars[0]])
+    line10_mdl.connect([line10_mdl.in_vars[3]], [bus10.rms_model.out_vars[1]])
+
+    line11_mdl.connect([line11_mdl.in_vars[0]], [bus9.rms_model.out_vars[0]])
+    line11_mdl.connect([line11_mdl.in_vars[1]], [bus9.rms_model.out_vars[1]])
+
+    line11_mdl.connect([line11_mdl.in_vars[2]], [bus10.rms_model.out_vars[0]])
+    line11_mdl.connect([line11_mdl.in_vars[3]], [bus10.rms_model.out_vars[1]])
+
+    line12_mdl.connect([line12_mdl.in_vars[0]], [bus10.rms_model.out_vars[0]])
+    line12_mdl.connect([line12_mdl.in_vars[1]], [bus10.rms_model.out_vars[1]])
+
+    line12_mdl.connect([line12_mdl.in_vars[2]], [bus11.rms_model.out_vars[0]])
+    line12_mdl.connect([line12_mdl.in_vars[3]], [bus11.rms_model.out_vars[1]])
+
+    line13_mdl.connect([line13_mdl.in_vars[0]], [bus10.rms_model.out_vars[0]])
+    line13_mdl.connect([line13_mdl.in_vars[1]], [bus10.rms_model.out_vars[1]])
+
+    line13_mdl.connect([line13_mdl.in_vars[2]], [bus11.rms_model.out_vars[0]])
+    line13_mdl.connect([line13_mdl.in_vars[3]], [bus11.rms_model.out_vars[1]])
+
+    trafo1_mdl.connect([trafo1_mdl.in_vars[0]], [bus5.rms_model.out_vars[0]])
+    trafo1_mdl.connect([trafo1_mdl.in_vars[1]], [bus5.rms_model.out_vars[1]])
+
+    trafo1_mdl.connect([trafo1_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
+    trafo1_mdl.connect([trafo1_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
+
+    trafo2_mdl.connect([trafo2_mdl.in_vars[0]], [bus6.rms_model.out_vars[0]])
+    trafo2_mdl.connect([trafo2_mdl.in_vars[1]], [bus6.rms_model.out_vars[1]])
+
+    trafo2_mdl.connect([trafo2_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
+    trafo2_mdl.connect([trafo2_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]])
+
+    trafo3_mdl.connect([trafo3_mdl.in_vars[0]], [bus11.rms_model.out_vars[0]])
+    trafo3_mdl.connect([trafo3_mdl.in_vars[1]], [bus11.rms_model.out_vars[1]])
+
+    trafo3_mdl.connect([trafo3_mdl.in_vars[2]], [bus3.rms_model.out_vars[0]])
+    trafo3_mdl.connect([trafo3_mdl.in_vars[3]], [bus3.rms_model.out_vars[1]])
+
+    trafo4_mdl.connect([trafo4_mdl.in_vars[0]], [bus10.rms_model.out_vars[0]])
+    trafo4_mdl.connect([trafo4_mdl.in_vars[1]], [bus10.rms_model.out_vars[1]])
+
+    trafo4_mdl.connect([trafo4_mdl.in_vars[2]], [bus4.rms_model.out_vars[0]])
+    trafo4_mdl.connect([trafo4_mdl.in_vars[3]], [bus4.rms_model.out_vars[1]])
+
+
+
+    load1_mdl.connect([load1_mdl.in_vars[0]], [bus7.rms_model.out_vars[0]])
+    load1_mdl.connect([load1_mdl.in_vars[1]], [bus7.rms_model.out_vars[1]])
+
+    load2_mdl.connect([load2_mdl.in_vars[0]], [bus9.rms_model.out_vars[0]])
+    load2_mdl.connect([load2_mdl.in_vars[1]], [bus9.rms_model.out_vars[1]])
 
     # external mapping
 
@@ -552,33 +552,33 @@ def rms_kundur():
     big_gen4.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl4.out_vars[1]})
 
     # attach rms models to Veragrid objects
-    gen1.rms_model.model = big_gen1
-    gen2.rms_model.model = big_gen2
-    gen3.rms_model.model = big_gen3
-    gen4.rms_model.model = big_gen4
+    gen1.rms_model = big_gen1
+    gen2.rms_model = big_gen2
+    gen3.rms_model = big_gen3
+    gen4.rms_model = big_gen4
 
-    line0.rms_model.model = line0_mdl
-    line1.rms_model.model = line1_mdl
-    line2.rms_model.model = line2_mdl
-    line3.rms_model.model = line3_mdl
-    line4.rms_model.model = line4_mdl
-    line5.rms_model.model = line5_mdl
-    line6.rms_model.model = line6_mdl
-    line7.rms_model.model = line7_mdl
-    line8.rms_model.model = line8_mdl
-    line9.rms_model.model = line9_mdl
-    line10.rms_model.model = line10_mdl
-    line11.rms_model.model = line11_mdl
-    line12.rms_model.model = line12_mdl
-    line13.rms_model.model = line13_mdl
+    line0.rms_model = line0_mdl
+    line1.rms_model = line1_mdl
+    line2.rms_model = line2_mdl
+    line3.rms_model = line3_mdl
+    line4.rms_model = line4_mdl
+    line5.rms_model = line5_mdl
+    line6.rms_model = line6_mdl
+    line7.rms_model = line7_mdl
+    line8.rms_model = line8_mdl
+    line9.rms_model = line9_mdl
+    line10.rms_model = line10_mdl
+    line11.rms_model = line11_mdl
+    line12.rms_model = line12_mdl
+    line13.rms_model = line13_mdl
 
-    trafo_G1.rms_model.model = trafo1_mdl
-    trafo_G2.rms_model.model = trafo2_mdl
-    trafo_G3.rms_model.model = trafo3_mdl
-    trafo_G4.rms_model.model = trafo4_mdl
+    trafo_G1.rms_model = trafo1_mdl
+    trafo_G2.rms_model = trafo2_mdl
+    trafo_G3.rms_model = trafo3_mdl
+    trafo_G4.rms_model = trafo4_mdl
 
-    load1.rms_model.model = load1_mdl
-    load2.rms_model.model = load2_mdl
+    load1.rms_model = load1_mdl
+    load2.rms_model = load2_mdl
 
     grid.add_line(line0)
     grid.add_line(line1)

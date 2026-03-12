@@ -2,10 +2,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
+from __future__ import annotations
+from typing import TYPE_CHECKING
 from VeraGridEngine.Devices.Diagrams.base_diagram import BaseDiagram
-from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.enumerations import DiagramType
+
+if TYPE_CHECKING:
+    from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
 
 class SchematicDiagram(BaseDiagram):

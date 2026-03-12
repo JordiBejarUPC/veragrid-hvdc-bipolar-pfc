@@ -195,10 +195,10 @@ def load_save_load_rms() -> None:
     grid2_rms_lines = list()
 
     for elm in grid1.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-        grid1_rms_lines.append(elm.rms_model.model)
+        grid1_rms_lines.append(elm.rms_model)
 
     for elm in grid2.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-        grid2_rms_lines.append(elm.rms_model.model)
+        grid2_rms_lines.append(elm.rms_model)
 
     # create the blocks that will be compared
     blocks_grid1: Block = Block()
@@ -208,11 +208,11 @@ def load_save_load_rms() -> None:
     # add injections and bus models
     for bus, block in grid1_rms_system_dict.items():
         blocks_grid1.children.extend(block.children)
-        blocks_grid1.children.append(bus.rms_model.model)
+        blocks_grid1.children.append(bus.rms_model)
 
     for bus, block in grid2_rms_system_dict.items():
         blocks_grid2.children.extend(block.children)
-        blocks_grid2.children.append(bus.rms_model.model)
+        blocks_grid2.children.append(bus.rms_model)
 
     # add line models
     blocks_grid1.children.extend(grid1_rms_lines)

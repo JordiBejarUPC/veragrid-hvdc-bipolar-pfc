@@ -288,25 +288,25 @@ for i, b in enumerate(vsc_mdl.get_all_blocks()):
     print(f"  diff_vars: {[v.name for v in b.diff_vars]}")
     print(f"  init_eqs keys: {[v.name for v in b.init_eqs.keys()]}")
 
-dc_source = (DCVoltageSource(grid.rms_var_factory, bus3.rms_model.model.out_vars[0]).block)
+dc_source = (DCVoltageSource(grid.rms_var_factory, bus3.rms_model.out_vars[0]).block)
 
 # VSC host
 vsc_dynhost = DynamicModelHost()
 
 # Connections
-genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
+load_mdl.connect([load_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
 
-line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
-line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]]) 
+line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
+line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]]) 
 
-vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
-vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
-vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.model.out_vars[0]])
+vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
+vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.out_vars[1]])
+vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.out_vars[0]])
 
 # external mapping
 big_gen1 = Block(children=[genrow_mdl1])

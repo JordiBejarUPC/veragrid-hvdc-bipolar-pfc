@@ -2764,7 +2764,7 @@ class DiagramsMain(CompiledArraysMain):
 
                 else:
                     rms_events_dialog = RmsEventDialogue(circuit=self.circuit,
-                                                         parameters_list=[var for var in target_device.rms_model.model.event_dict.keys()],
+                                                         parameters_list=[var for var in target_device.rms_model.event_dict.keys()],
                                                          target_device_name=target_device.type_name + ": " + target_device.name)
 
                     if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:

@@ -55,14 +55,14 @@ bus1.ph_b = True
 bus1.ph_c = True
 
 bus1_template = get_bus_emt_template(grid.rms_var_factory)
-bus1.emt_model.model = bus1_template.block
+bus1.emt_model = bus1_template.block
 
 gen1 = Generator(name="Gen1",freq = 50, Snom=grid.Sbase)
 gen1_template = get_generator_emt_template()
-gen1.emt_model.model = gen1_template.block
+gen1.emt_model = gen1_template.block
 
-gen1_mdl = gen1.emt_model.model
-bus1_mdl = bus1.emt_model.model
+gen1_mdl = gen1.emt_model
+bus1_mdl = bus1.emt_model
 gen1_mdl.connect(gen1_mdl.in_vars, bus1_mdl.out_vars)
 
 # load
@@ -197,7 +197,7 @@ offset = 0
 
 for gen_idx, gen in enumerate(grid.get_generators(), start=1):
 
-    model = gen.emt_model.model
+    model = gen.emt_model
     state_vars     = model.state_vars        # list of names
     algebraic_vars = model.algebraic_vars    # list of names
 
@@ -219,7 +219,7 @@ dx_cols = []
 offset = 0
 for gen_idx, gen in enumerate(grid.get_generators(), start=1):
 
-    model = gen.emt_model.model
+    model = gen.emt_model
     state_vars = model.state_vars  # only variables with derivative
 
     for name in state_vars:

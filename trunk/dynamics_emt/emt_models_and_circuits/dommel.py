@@ -122,7 +122,7 @@ def predict_Is(n: int,
 
                     i_s_bus: Vec = np.zeros(4, dtype=float)
 
-                    for var in elm.emt_model.model.out_vars:
+                    for var in elm.emt_model.out_vars:
                         if str(var) == 'i_n':
                             i_n_idx = slv.uid2idx_vars[var.uid]
                             i_s_bus[0] = y[1, i_n_idx]
@@ -611,7 +611,7 @@ def update_Is(dta:EmtCircuit,
             for dev_type, dev_list in emt.devices.items():
                 for elm in dev_list:
                     i_s_bus = np.zeros(4, dtype=float)
-                    for var in elm.emt_model.model.out_vars:
+                    for var in elm.emt_model.out_vars:
                         if str(var) == 'i_n':
                             i_n_idx = slv.uid2idx_vars[var.uid]
                             i_s_bus[0] = y[1, i_n_idx]
@@ -865,7 +865,7 @@ def set_V0_bus(alter_params_mapping: Dict[int, Const],
     :return :
     """
     v_n = v_a = v_b = v_c = 0.0
-    alter_params = bus.emt_model.model.alter_params
+    alter_params = bus.emt_model.alter_params
 
     for uid, const in alter_params_mapping.items():
         idx = uid2idx_alterparams[uid]

@@ -18,7 +18,6 @@ from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Branches.line_locations import LineLocations
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.Utils.Symbolic.block import Const
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
@@ -272,12 +271,12 @@ class Line(BranchParent):
         self._R = float(value)
         if self.auto_update_enabled:
             if not self.rms_model.empty():
-                g_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]
-                self.rms_model.model.parameters[g_param] = Const(float(self._R / (self._R ** 2 + self._X ** 2)))
-                b_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]
-                self.rms_model.model.parameters[b_param] = Const(float(-self._X / (self._R ** 2 + self._X ** 2)))
-                bsh_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]
-                self.rms_model.model.parameters[bsh_param] = Const(float(self._B))
+                g_param = self.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]
+                self.rms_model.parameters[g_param] = Const(float(self._R / (self._R ** 2 + self._X ** 2)))
+                b_param = self.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b]
+                self.rms_model.parameters[b_param] = Const(float(-self._X / (self._R ** 2 + self._X ** 2)))
+                bsh_param = self.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]
+                self.rms_model.parameters[bsh_param] = Const(float(self._B))
 
     @property
     def X(self):
@@ -288,12 +287,12 @@ class Line(BranchParent):
         self._X = float(value)
         if self.auto_update_enabled:
             if not self.rms_model.empty():
-                g_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]
-                self.rms_model.model.parameters[g_param] = Const(float(self._R / (self._R ** 2 + self._X ** 2)))
-                b_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]
-                self.rms_model.model.parameters[b_param] = Const(float(-self._X / (self._R ** 2 + self._X ** 2)))
-                bsh_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]
-                self.rms_model.model.parameters[bsh_param] = Const(float(self._B))
+                g_param = self.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]
+                self.rms_model.parameters[g_param] = Const(float(self._R / (self._R ** 2 + self._X ** 2)))
+                b_param = self.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b]
+                self.rms_model.parameters[b_param] = Const(float(-self._X / (self._R ** 2 + self._X ** 2)))
+                bsh_param = self.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]
+                self.rms_model.parameters[bsh_param] = Const(float(self._B))
 
     @property
     def B(self):
@@ -304,12 +303,12 @@ class Line(BranchParent):
         self._B = float(value)
         if self.auto_update_enabled:
             if not self.rms_model.empty():
-                g_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]
-                self.rms_model.model.parameters[g_param] = Const(float(self._R / (self._R ** 2 + self._X ** 2)))
-                b_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]
-                self.rms_model.model.parameters[b_param] = Const(float(-self._X / (self._R ** 2 + self._X ** 2)))
-                bsh_param = self.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]
-                self.rms_model.model.parameters[bsh_param] = Const(float(self._B))
+                g_param = self.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]
+                self.rms_model.parameters[g_param] = Const(float(self._R / (self._R ** 2 + self._X ** 2)))
+                b_param = self.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b]
+                self.rms_model.parameters[b_param] = Const(float(-self._X / (self._R ** 2 + self._X ** 2)))
+                bsh_param = self.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]
+                self.rms_model.parameters[bsh_param] = Const(float(self._B))
 
     @property
     def R0(self):
@@ -417,11 +416,6 @@ class Line(BranchParent):
         :return:
         """
         self.set_length(val)
-
-    @BranchParent.emt_model.setter
-    def emt_model(self, value: DynamicModelHost):
-        if isinstance(value, DynamicModelHost):
-            self._emt_model = value
 
     def set_length(self, val: float):
         """
@@ -679,7 +673,7 @@ class Line(BranchParent):
                             x=self.X,
                             b=self.B
                             )
-        elm.rms_model.model = self.rms_model.model
+        elm.rms_model = self.rms_model
 
         if index is not None:
             elm.ensure_profiles_exist(index=index)

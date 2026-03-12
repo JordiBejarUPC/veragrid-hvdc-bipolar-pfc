@@ -15,7 +15,6 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.Utils.Symbolic.symbolic_io import BlockSaver, BlockParser, Block
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, VERAGRID_FILE_TYPE
 from VeraGridEngine.enumerations import (DiagramType, DeviceType, SubObjectType, TapPhaseControl, TapModuleControl,
@@ -443,11 +442,6 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
 
         elif prop.tpe == SubObjectType.AdmittanceMatrix:
             data[name] = obj.to_dict()
-
-        elif prop.tpe == SubObjectType.DynamicModelHostType:
-            data[name] = obj.to_dict()
-            if obj.model is not None:
-                block_saver.save_block(blk=obj.model, main=True)
 
         elif prop.tpe == SubObjectType.DaeBlockType:
             block_saver.save_block(blk=obj, main=True)
@@ -1188,19 +1182,30 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                     adm_mat.parse(property_value)
 
                                 elif gc_prop.tpe == SubObjectType.DynamicModelHostType:
-
-                                    # get the line locations object and fill it with the json data
-                                    dyn_module: DynamicModelHost = elm.get_snapshot_value(prop=gc_prop)
-                                    dyn_module.parse(
-                                        data=property_value,
-                                        blocks_dict=block_parser.block_dict
-                                    )
+                                    pass
+                                #
+                                #     # get the line locations object and fill it with the json data
+                                #     dyn_module: DynamicModelHost = elm.get_snapshot_value(prop=gc_prop)
+                                #     dyn_module.parse(
+                                #         data=property_value,
+                                #         blocks_dict=block_parser.block_dict
+                                #     )
 
                                 elif gc_prop.tpe == SubObjectType.DaeBlockType:
 
-                                    # set the value of the property
-                                    blk = block_parser.block_dict.get(property_value, None)
-                                    elm.set_snapshot_value(gc_prop.name, blk)
+                                    # handle the ModelHost
+                                    if isinstance(property_value, dict):
+
+                                        key = property_value.get("model", None)
+                                        if key is None:
+                                            logger.add_error("Could not locate model", value=property_value)
+                                        else:
+                                            blk = block_parser.block_dict.get(key, None)
+                                            elm.set_snapshot_value(gc_prop.name, blk)
+                                    else:
+                                        blk = block_parser.block_dict.get(property_value, None)
+                                        elm.set_snapshot_value(gc_prop.name, blk)
+
 
                                 elif gc_prop.tpe == SubObjectType.VarType:
 

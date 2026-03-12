@@ -858,11 +858,25 @@ class DataBaseTableMain(DiagramsMain):
                 obj = dev.Facility(name=name)
                 self.circuit.add_facility(obj)
 
-            elif elm_type == DeviceType.DynamicModelHostDevice.value:
+            # elif elm_type == DeviceType.DynamicModelHostDevice.value:
+            #
+            #     name = f'RMS model {self.circuit.get_rms_models_number()}'
+            #     obj = dev.DynamicModelHost(name=name)
+            #     self.circuit.add_rms_model(obj)
 
-                name = f'RMS model {self.circuit.get_rms_models_number()}'
-                obj = dev.DynamicModelHost(name=name)
+            elif elm_type == DeviceType.EmtModelTemplateDevice.value:
+
+                name = f'EMT template {len(self.circuit.rms_events)}'
+                obj = dev.EmtModelTemplate(name=name)
+                self.circuit.add_emt_model(obj)
+
+
+            elif elm_type == DeviceType.RmsModelTemplateDevice.value:
+
+                name = f'RMS event {len(self.circuit.rms_events)}'
+                obj = dev.RmsModelTemplate(name=name)
                 self.circuit.add_rms_model(obj)
+
 
             elif elm_type == DeviceType.RmsEventDevice.value:
 
@@ -957,10 +971,19 @@ class DataBaseTableMain(DiagramsMain):
 
                     elif elm_type == DeviceType.DynamicModelHostDevice.value:
 
+                        # var_factory: VarFactory,
+                        # api_object_model_host,
+                        # templates_list,
+                        # templates_catalogue,
+                        # api_object_name,
+                        # api_object = None,
+                        # main_editor = False,
+
                         self.rms_model_Editor_window = RmsModelEditorGUI(
                             var_factory=self.circuit.rms_var_factory,
                             templates_list=self.circuit.rms_models,
-                            model_host=elm
+                            templates_catalogue=self.circuit.rms_models,
+                            block=elm
                         )
 
                         self.rms_model_Editor_window.resize(int(1.81 * 700.0), 700)

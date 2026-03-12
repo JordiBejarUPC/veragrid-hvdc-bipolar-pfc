@@ -16,7 +16,7 @@ from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType
 def get_generator_thevenin_rl_emt_template(
         grid: MultiCircuit,
         gen: Generator,
-        name: str = "emt_type_generator_template"
+        name: str = "emt_thevenin_eq_generator_template"
 ) -> EmtModelTemplate:
     """
     Simple EMT three-phase Thevenin generator behind series R-X.
@@ -136,9 +136,9 @@ def get_generator_thevenin_rl_emt_template(
         state_vars=[i_A, i_B, i_C, theta],
 
         algebraic_eqs=[
-            e_A - Epk * sym.cos(theta),
-            e_B - Epk * sym.cos(theta - 2 * np.pi / 3),
-            e_C - Epk * sym.cos(theta + 2 * np.pi / 3),
+            e_A - Epk * sym.sin(theta),
+            e_B - Epk * sym.sin(theta - 2 * np.pi / 3),
+            e_C - Epk * sym.sin(theta + 2 * np.pi / 3),
 
             Pe - (i_A * v_A + i_B * v_B + i_C * v_C),
             Qe - (1 / np.sqrt(3)) * (
@@ -250,9 +250,9 @@ def get_generator_thevenin_rl_emt_template(
 
         theta: phi_v + delta,
 
-        e_A: Epk * sym.cos(theta),
-        e_B: Epk * sym.cos(theta - 2 * np.pi / 3),
-        e_C: Epk * sym.cos(theta + 2 * np.pi / 3),
+        e_A: Epk * sym.sin(theta),
+        e_B: Epk * sym.sin(theta - 2 * np.pi / 3),
+        e_C: Epk * sym.sin(theta + 2 * np.pi / 3),
 
         Pe: (i_A * v_A + i_B * v_B + i_C * v_C),
         Qe: (1 / np.sqrt(3)) * (
