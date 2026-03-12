@@ -17,7 +17,7 @@ def test_add_stuff_roundtrip() -> None:
     original = vge.open_file(filename=os.path.join("data", "grids", "IEEE57.gridcal"))  # we use this for diff
 
     # NOTE: it may fail if new properties are added, just save the original file
-    # gce.save_file(original, os.path.join("data", "grids", "IEEE57.gridcal"))
+    # vge.save_file(original, os.path.join("data", "grids", "IEEE57.gridcal"))
 
     grid1 = vge.open_file(filename=os.path.join("data", "grids", "IEEE57.gridcal"))  # we modify this one in place
 

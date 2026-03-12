@@ -440,6 +440,11 @@ class PropertyChanges:
     def __eq__(self, other):
         return self.__property_merge_selections == other.__property_merge_selections
 
+    def copy(self):
+        elm = PropertyChanges()
+        elm.__property_merge_selections = self.__property_merge_selections.copy()
+        return elm
+
 
 class EditableDevice(metaclass=EditableDeviceMeta):
     """
@@ -1141,6 +1146,8 @@ class EditableDevice(metaclass=EditableDeviceMeta):
         """
         Create a deep copy of this object
         """
+
+        # Create a new instance of the object
         tpe = self.__class__
 
         try:
@@ -1154,10 +1161,12 @@ class EditableDevice(metaclass=EditableDeviceMeta):
             new_obj = tpe()
             new_obj.disable_auto_updates()
 
+        # deep-copy each property
         for prop_name, gc_prop in self.registered_properties.items():
             value = getattr(self, prop_name)
 
-            if gc_prop.tpe == SubObjectType.DynamicModelHostType:
+            if isinstance(gc_prop.tpe, SubObjectType):
+                # This is a complex object, make a deep copy
                 setattr(new_obj, prop_name, value.copy())
             else:
                 setattr(new_obj, prop_name, value)
