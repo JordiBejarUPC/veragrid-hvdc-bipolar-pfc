@@ -43,7 +43,6 @@ from VeraGridEngine.Templates.predefined_blocks import (
 )
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 
-from VeraGrid.Gui.RmsModelEditor.block_editor import Ui_MainWindow
 from VeraGrid.Gui.messages import error_msg
 from VeraGridEngine.Utils.Symbolic.symbolic import symbolic_to_string, Expr, Var, Const
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
@@ -2160,230 +2159,230 @@ class EditEquations(QWidget):
             self.refresh_lists(submodel, clear=False)
 
 
-class RmsModelEditorGUI(QtWidgets.QMainWindow):
-    """
-    RmsModelEditorGUI
-    """
-
-    def __init__(self,
-                 var_factory: VarFactory,
-                 block: Block,
-                 templates_list: List[RmsModelTemplate],
-                 templates_catalogue,
-                 api_object_name,
-                 api_object: ALL_DEV_TYPES | None = None,
-                 main_editor=False,
-                 parent=None):
-        """
-
-        :param block:
-        :param templates_list:
-        :param templates_catalogue:
-        :param api_object_name:
-        :param api_object:
-        :param main_editor:
-        :param parent:
-        """
-        super().__init__(parent)
-
-        self.ui = Ui_MainWindow()
-        self.ui.setupUi(self)
-
-        self.setWindowTitle("RMS Model Editor")
-        self.resize(1000, 700)
-
-        self.var_factory = var_factory
-        self.api_object_name = api_object_name
-        self.block = block
-        self.templates_list = templates_list
-        self.templates_catalogue = templates_catalogue
-        self.api_object = api_object
-        self.main_editor = main_editor
-
-        self.current_editor = None
-
-        self.templates_name = "Templates"
-        self.block_editor_name = "Block Editor"
-        self.equations_editor_name = "Equations editor"
-
-        # set modes
-        self.ui.model_selector_comboBox.setModel(gf.get_list_model([
-            self.templates_name,
-            self.block_editor_name,
-            self.equations_editor_name
-        ]))
-
-        # --- templates editor layout ---
-        self.template_editor = TemplateEditor(self.var_factory,
-                                              self.templates_list, self.templates_catalogue,
-                                              self.api_object
-                                              )
-        # self.ui.templatesLayout.addWidget(self.template_editor)
-
-        # --- block boxes editor layout ---
-        self.block_boxes_editor = BlockBoxesEditor(
-            self.var_factory,
-            api_object_name=self.api_object_name,
-            block=self.block,  # .copy(),
-            diagram=self.block.diagram,  # .copy(),
-            templates_list=self.templates_list,
-            templates_catalogue=self.templates_catalogue,
-            api_object=self.api_object
-        )
-
-        # _____ Add user init guess dialog ______
-
-        # === Add default bus connection block if diagram is empty ===
-        if not self.block_boxes_editor.diagram.node_data and self.main_editor:
-            self.block_boxes_editor.add_connection_vars()
-            self.block_boxes_editor.add_external_mapping_block()
-            self.block_boxes_editor.add_api_obj_mapping()
-        # === Add pf parameters ===
-        self.block_boxes_editor.rebuild_scene_from_diagram()
-        self.block_boxes_editor.view.setSceneRect(0, 0, 2000, 2000)  # tamaño arbitrario de escena
-        self.block_boxes_editor.view.centerOn(0, 0)
-        self.block_boxes_editor.view.ensureVisible(0, 0, 100, 100)
-        self.block_boxes_editor.view.horizontalScrollBar().setValue(0)
-        self.block_boxes_editor.view.verticalScrollBar().setValue(0)
-        # self.ui.editorLayout.addWidget(self.blockboxes_editor)
-
-        # --- equations editor layout ---
-        self.equations_editor = EditEquations(self.block)
-        # self.ui.equations_editor_layout.addWidget(self.equations_editor)
-
-        # --- status bar setup ---
-        self.status_label = QtWidgets.QLabel("🔵 No model applied")
-        if self.block.diagram.status is not None:
-            self.status_label.setText(f"🟢 Current model: {self.block.diagram.status}")
-        self.statusBar().addPermanentWidget(self.status_label)
-        self.statusBar().showMessage("Ready")
-
-        # --- connections ---
-        self.ui.doItButton.clicked.connect(self.do_it)
-        self.ui.InitGuessButton.clicked.connect(self.add_init_guess)
-
-        # current editor view change
-        self.ui.model_selector_comboBox.currentIndexChanged.connect(self.editor_change)
-
-        # select the template view
-        self.ui.model_selector_comboBox.setCurrentIndex(0)
-        self.editor_change()
-
-        # innit guess button
-
-        if not self.main_editor:
-            self.ui.InitGuessButton.setVisible(False)
-
-    def editor_change(self):
-        """
-        On change the editor mode
-        """
-        # delete all widgets from the layout
-        for i in reversed(range(self.ui.mainLayout.count())):
-            # get the widget
-            widget_to_remove = self.ui.mainLayout.itemAt(i).widget()
-
-            # delete it from the layout list
-            self.ui.mainLayout.removeWidget(widget_to_remove)
-
-            # delete it from the gui
-            widget_to_remove.setParent(None)
-
-        if self.ui.model_selector_comboBox.currentText() == self.templates_name:
-            self.ui.mainLayout.addWidget(self.template_editor)
-            self.current_editor = self.template_editor
-
-        elif self.ui.model_selector_comboBox.currentText() == self.block_editor_name:
-            self.ui.mainLayout.addWidget(self.block_boxes_editor)
-            self.current_editor = self.block_boxes_editor
-
-        elif self.ui.model_selector_comboBox.currentText() == self.equations_editor_name:
-            # TODO: add model host logic
-            self.ui.mainLayout.addWidget(self.equations_editor)
-            self.current_editor = self.equations_editor
-
-        else:
-            raise ValueError("Unsupported RMS editor!")
-
-        self.ui.currently_editing_object_label.setText(self.api_object_name)
-
-    def do_it(self) -> None:
-        """
-        Logic when applying the window
-        :return:
-        """
-        if self.ui.model_selector_comboBox.currentText() == self.templates_name:
-            if self.template_editor.selected_block is not None:
-                self.template_editor.apply_template()
-                self.block.template = self.template_editor.block
-            else:
-                error_msg("Empty template :(", "Model apply")
-                return
-
-        elif self.ui.model_selector_comboBox.currentText() == self.block_editor_name:
-            if self.block_boxes_editor.main_block is not None:
-                self.block.diagram = self.block_boxes_editor.diagram
-            else:
-                error_msg("Empty model :(", "Model apply")
-                return
-
-        elif self.ui.model_selector_comboBox.currentText() == self.equations_editor_name:
-            # TODO: add model host logic
-            pass
-
-        else:
-            raise ValueError("Unsupported RMS editor!")
-
-        self.close()
-
-    def add_init_guess(self):
-        """
-
-        :return:
-        """
-        if isinstance(self.current_editor, TemplateEditor):
-            if self.current_editor.selected_template is None:
-                QtWidgets.QMessageBox.warning(self, "Error", "No template selected.")
-                return
-            try:
-                template = self.current_editor.selected_template
-                if template.block.init_values:
-                    values_dict = template.block.init_values.copy()
-                else:
-                    model = template.block
-                    values_dict: Dict[Var, Const] = dict()
-                    variables = model.get_all_vars()
-                    for var in variables:
-                        values_dict.update({var: self.var_factory.add_const(0)})
-
-                init_guess_editor = InitialValuesDialog(var_factory=self.var_factory, var_const_dict=values_dict)
-                result = init_guess_editor.exec()
-                if result == QDialog.DialogCode.Accepted:
-                    init_values_dict = init_guess_editor.get_values_dict()
-                    template.block.init_values = init_values_dict
-
-            except Exception as e:
-                QtWidgets.QMessageBox.warning(self, "Error", f"Failed get variables from template:\n{e}")
-                return
-        elif isinstance(self.current_editor, BlockBoxesEditor):
-            model = self.current_editor.main_block
-
-            if model.init_values:
-                values_dict = model.init_values.copy()
-            else:
-                values_dict: Dict[Var, Const] = dict()
-                variables = model.get_all_vars()
-                for var in variables:
-                    values_dict.update({var: self.var_factory.add_const(0)})
-
-            # TODO: add logic to get all variables from the model and pass them to InitialValuesDialog
-
-            init_guess_editor = InitialValuesDialog(var_factory=self.var_factory, var_const_dict=values_dict)
-            result = init_guess_editor.exec()
-            if result == QDialog.DialogCode.Accepted:
-                init_values_dict = init_guess_editor.get_values_dict()
-                model.init_values = init_values_dict
-
-        elif isinstance(self.current_editor, EditEquations):
-            # TODO: add logic for this case
-            pass
+# class RmsModelEditorGUI(QtWidgets.QMainWindow):
+#     """
+#     RmsModelEditorGUI
+#     """
+#
+#     def __init__(self,
+#                  var_factory: VarFactory,
+#                  block: Block,
+#                  templates_list: List[RmsModelTemplate],
+#                  templates_catalogue,
+#                  api_object_name,
+#                  api_object: ALL_DEV_TYPES | None = None,
+#                  main_editor=False,
+#                  parent=None):
+#         """
+#
+#         :param block:
+#         :param templates_list:
+#         :param templates_catalogue:
+#         :param api_object_name:
+#         :param api_object:
+#         :param main_editor:
+#         :param parent:
+#         """
+#         super().__init__(parent)
+#
+#         self.ui = Ui_MainWindow()
+#         self.ui.setupUi(self)
+#
+#         self.setWindowTitle("RMS Model Editor")
+#         self.resize(1000, 700)
+#
+#         self.var_factory = var_factory
+#         self.api_object_name = api_object_name
+#         self.block = block
+#         self.templates_list = templates_list
+#         self.templates_catalogue = templates_catalogue
+#         self.api_object = api_object
+#         self.main_editor = main_editor
+#
+#         self.current_editor = None
+#
+#         self.templates_name = "Templates"
+#         self.block_editor_name = "Block Editor"
+#         self.equations_editor_name = "Equations editor"
+#
+#         # set modes
+#         self.ui.model_selector_comboBox.setModel(gf.get_list_model([
+#             self.templates_name,
+#             self.block_editor_name,
+#             self.equations_editor_name
+#         ]))
+#
+#         # --- templates editor layout ---
+#         self.template_editor = TemplateEditor(self.var_factory,
+#                                               self.templates_list, self.templates_catalogue,
+#                                               self.api_object
+#                                               )
+#         # self.ui.templatesLayout.addWidget(self.template_editor)
+#
+#         # --- block boxes editor layout ---
+#         self.block_boxes_editor = BlockBoxesEditor(
+#             self.var_factory,
+#             api_object_name=self.api_object_name,
+#             block=self.block,  # .copy(),
+#             diagram=self.block.diagram,  # .copy(),
+#             templates_list=self.templates_list,
+#             templates_catalogue=self.templates_catalogue,
+#             api_object=self.api_object
+#         )
+#
+#         # _____ Add user init guess dialog ______
+#
+#         # === Add default bus connection block if diagram is empty ===
+#         if not self.block_boxes_editor.diagram.node_data and self.main_editor:
+#             self.block_boxes_editor.add_connection_vars()
+#             self.block_boxes_editor.add_external_mapping_block()
+#             self.block_boxes_editor.add_api_obj_mapping()
+#         # === Add pf parameters ===
+#         self.block_boxes_editor.rebuild_scene_from_diagram()
+#         self.block_boxes_editor.view.setSceneRect(0, 0, 2000, 2000)  # tamaño arbitrario de escena
+#         self.block_boxes_editor.view.centerOn(0, 0)
+#         self.block_boxes_editor.view.ensureVisible(0, 0, 100, 100)
+#         self.block_boxes_editor.view.horizontalScrollBar().setValue(0)
+#         self.block_boxes_editor.view.verticalScrollBar().setValue(0)
+#         # self.ui.editorLayout.addWidget(self.blockboxes_editor)
+#
+#         # --- equations editor layout ---
+#         self.equations_editor = EditEquations(self.block)
+#         # self.ui.equations_editor_layout.addWidget(self.equations_editor)
+#
+#         # --- status bar setup ---
+#         self.status_label = QtWidgets.QLabel("🔵 No model applied")
+#         if self.block.diagram.status is not None:
+#             self.status_label.setText(f"🟢 Current model: {self.block.diagram.status}")
+#         self.statusBar().addPermanentWidget(self.status_label)
+#         self.statusBar().showMessage("Ready")
+#
+#         # --- connections ---
+#         self.ui.doItButton.clicked.connect(self.do_it)
+#         self.ui.InitGuessButton.clicked.connect(self.add_init_guess)
+#
+#         # current editor view change
+#         self.ui.model_selector_comboBox.currentIndexChanged.connect(self.editor_change)
+#
+#         # select the template view
+#         self.ui.model_selector_comboBox.setCurrentIndex(0)
+#         self.editor_change()
+#
+#         # innit guess button
+#
+#         if not self.main_editor:
+#             self.ui.InitGuessButton.setVisible(False)
+#
+#     def editor_change(self):
+#         """
+#         On change the editor mode
+#         """
+#         # delete all widgets from the layout
+#         for i in reversed(range(self.ui.mainLayout.count())):
+#             # get the widget
+#             widget_to_remove = self.ui.mainLayout.itemAt(i).widget()
+#
+#             # delete it from the layout list
+#             self.ui.mainLayout.removeWidget(widget_to_remove)
+#
+#             # delete it from the gui
+#             widget_to_remove.setParent(None)
+#
+#         if self.ui.model_selector_comboBox.currentText() == self.templates_name:
+#             self.ui.mainLayout.addWidget(self.template_editor)
+#             self.current_editor = self.template_editor
+#
+#         elif self.ui.model_selector_comboBox.currentText() == self.block_editor_name:
+#             self.ui.mainLayout.addWidget(self.block_boxes_editor)
+#             self.current_editor = self.block_boxes_editor
+#
+#         elif self.ui.model_selector_comboBox.currentText() == self.equations_editor_name:
+#             # TODO: add model host logic
+#             self.ui.mainLayout.addWidget(self.equations_editor)
+#             self.current_editor = self.equations_editor
+#
+#         else:
+#             raise ValueError("Unsupported RMS editor!")
+#
+#         self.ui.currently_editing_object_label.setText(self.api_object_name)
+#
+#     def do_it(self) -> None:
+#         """
+#         Logic when applying the window
+#         :return:
+#         """
+#         if self.ui.model_selector_comboBox.currentText() == self.templates_name:
+#             if self.template_editor.selected_block is not None:
+#                 self.template_editor.apply_template()
+#                 self.block.template = self.template_editor.block
+#             else:
+#                 error_msg("Empty template :(", "Model apply")
+#                 return
+#
+#         elif self.ui.model_selector_comboBox.currentText() == self.block_editor_name:
+#             if self.block_boxes_editor.main_block is not None:
+#                 self.block.diagram = self.block_boxes_editor.diagram
+#             else:
+#                 error_msg("Empty model :(", "Model apply")
+#                 return
+#
+#         elif self.ui.model_selector_comboBox.currentText() == self.equations_editor_name:
+#             # TODO: add model host logic
+#             pass
+#
+#         else:
+#             raise ValueError("Unsupported RMS editor!")
+#
+#         self.close()
+#
+#     def add_init_guess(self):
+#         """
+#
+#         :return:
+#         """
+#         if isinstance(self.current_editor, TemplateEditor):
+#             if self.current_editor.selected_template is None:
+#                 QtWidgets.QMessageBox.warning(self, "Error", "No template selected.")
+#                 return
+#             try:
+#                 template = self.current_editor.selected_template
+#                 if template.block.init_values:
+#                     values_dict = template.block.init_values.copy()
+#                 else:
+#                     model = template.block
+#                     values_dict: Dict[Var, Const] = dict()
+#                     variables = model.get_all_vars()
+#                     for var in variables:
+#                         values_dict.update({var: self.var_factory.add_const(0)})
+#
+#                 init_guess_editor = InitialValuesDialog(var_factory=self.var_factory, var_const_dict=values_dict)
+#                 result = init_guess_editor.exec()
+#                 if result == QDialog.DialogCode.Accepted:
+#                     init_values_dict = init_guess_editor.get_values_dict()
+#                     template.block.init_values = init_values_dict
+#
+#             except Exception as e:
+#                 QtWidgets.QMessageBox.warning(self, "Error", f"Failed get variables from template:\n{e}")
+#                 return
+#         elif isinstance(self.current_editor, BlockBoxesEditor):
+#             model = self.current_editor.main_block
+#
+#             if model.init_values:
+#                 values_dict = model.init_values.copy()
+#             else:
+#                 values_dict: Dict[Var, Const] = dict()
+#                 variables = model.get_all_vars()
+#                 for var in variables:
+#                     values_dict.update({var: self.var_factory.add_const(0)})
+#
+#             # TODO: add logic to get all variables from the model and pass them to InitialValuesDialog
+#
+#             init_guess_editor = InitialValuesDialog(var_factory=self.var_factory, var_const_dict=values_dict)
+#             result = init_guess_editor.exec()
+#             if result == QDialog.DialogCode.Accepted:
+#                 init_values_dict = init_guess_editor.get_values_dict()
+#                 model.init_values = init_values_dict
+#
+#         elif isinstance(self.current_editor, EditEquations):
+#             # TODO: add logic for this case
+#             pass
