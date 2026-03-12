@@ -22,24 +22,6 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import LimitTypeKind
 
 
-def get_parsed_property_log_value(cgmes_object: object, prop_name: str) -> str:
-    """
-    Describe whether a declared property was present in the parsed XML.
-
-    The CGMES loader stores the values themselves directly in the declared
-    slots. For diagnostics we only need to know whether the property was
-    present, not to keep a second copy of the raw XML value.
-
-    :param cgmes_object: CGMES object instance
-    :param prop_name: Declared property name
-    :return: Human-readable presence token
-    """
-    if hasattr(cgmes_object, "has_parsed_property") and cgmes_object.has_parsed_property(prop_name):
-        return "provided"
-    else:
-        return "not provided"
-
-
 def normalize_cgmes_reference_uuid(reference) -> str | None:
     """
     Normalize a CGMES reference into VeraGrid UUID format (no hyphens/underscores).
@@ -702,7 +684,7 @@ def get_nominal_voltage(topological_node: CGMES_TOPOLOGICAL_NODE, logger: DataLo
                              device=topological_node.rdfid,
                              device_class=topological_node.tpe,
                              device_property="BaseVoltage",
-                             value=get_parsed_property_log_value(topological_node, "BaseVoltage"),
+                             value=topological_node.parsed_properties.get("BaseVoltage", "not provided"),
                              expected_value='object')
             return 0.0
     else:
@@ -710,7 +692,7 @@ def get_nominal_voltage(topological_node: CGMES_TOPOLOGICAL_NODE, logger: DataLo
                          device=topological_node.rdfid,
                          device_class=topological_node.tpe,
                          device_property="BaseVoltage",
-                         value=get_parsed_property_log_value(topological_node, "BaseVoltage"),
+                         value=topological_node.parsed_properties.get("BaseVoltage", "not provided"),
                          expected_value='object')
         return 0.0
 
@@ -739,7 +721,7 @@ def get_nominal_voltage_for_cn(cn: CGMES_CONNECTIVITY_NODE, logger: DataLogger) 
                                      device=cn.rdfid,
                                      device_class=cn.tpe,
                                      device_property="ConnectivityNodeContainer",
-                                     value=get_parsed_property_log_value(cn, "ConnectivityNodeContainer"),
+                                     value=cn.parsed_properties.get("ConnectivityNodeContainer", "not provided"),
                                      expected_value='object')
                     return 0.0
             else:
@@ -747,7 +729,7 @@ def get_nominal_voltage_for_cn(cn: CGMES_CONNECTIVITY_NODE, logger: DataLogger) 
                                  device=cn.rdfid,
                                  device_class=cn.tpe,
                                  device_property="ConnectivityNodeContainer",
-                                 value=get_parsed_property_log_value(cn, "ConnectivityNodeContainer"),
+                                 value=cn.parsed_properties.get("ConnectivityNodeContainer", "not provided"),
                                  expected_value='object')
                 return 0.0
         else:
@@ -760,7 +742,8 @@ def get_nominal_voltage_for_cn(cn: CGMES_CONNECTIVITY_NODE, logger: DataLogger) 
                                          device=cn.rdfid,
                                          device_class=cn.tpe,
                                          device_property="BaseVoltage",
-                                         value=get_parsed_property_log_value(cn.ConnectivityNodeContainer, "BaseVoltage"),
+                                         value=cn.ConnectivityNodeContainer.parsed_properties.get("BaseVoltage",
+                                                                                                  "not provided"),
                                          expected_value='object')
                         return 0.0
                 else:
@@ -768,7 +751,8 @@ def get_nominal_voltage_for_cn(cn: CGMES_CONNECTIVITY_NODE, logger: DataLogger) 
                                      device=cn.rdfid,
                                      device_class=cn.tpe,
                                      device_property="BaseVoltage",
-                                     value=get_parsed_property_log_value(cn.ConnectivityNodeContainer, "BaseVoltage"),
+                                     value=cn.ConnectivityNodeContainer.parsed_properties.get("BaseVoltage",
+                                                                                              "not provided"),
                                      expected_value='object')
                     return 0.0
             else:
