@@ -57,10 +57,10 @@ def test_discrete_shunt():
     #   Shunt
     # ----------------------------------------------------------------------------------------------------------------------
     shunt = vge.ControllableShunt(name='Shunt',
-                                  number_of_steps=2,
+                                  number_of_steps=3,
                                   step=0,
                                   g_per_step=0.0,
-                                  b_per_step=3.0,
+                                  b_per_step=2.0,
                                   vmin=0.95,
                                   vmax=1.05,
                                   control_mode=ShuntControlMode.Discrete)
