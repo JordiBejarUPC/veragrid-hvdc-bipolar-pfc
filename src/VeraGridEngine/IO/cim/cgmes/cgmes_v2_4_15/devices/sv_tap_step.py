@@ -15,6 +15,7 @@ class SvTapStep(Base):
 		CgmesProperty(property_name='position', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
 		CgmesProperty(property_name='TapChanger', class_type='TapChanger', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The tap changer associated with the tap step state.''', profiles=[]),
 	)
+	__slots__ = ('position', 'TapChanger')
 	def __init__(self, rdfid, tpe='SvTapStep', resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 

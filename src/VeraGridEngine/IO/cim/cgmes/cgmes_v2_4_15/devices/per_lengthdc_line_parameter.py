@@ -18,6 +18,7 @@ class PerLengthDCLineParameter(Base):
 		CgmesProperty(property_name='inductance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.H, description='''Inductance per unit of length.''', profiles=[]),
 		CgmesProperty(property_name='resistance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Resistance (real part of impedance) per unit of length.''', profiles=[]),
 	)
+	__slots__ = ('DCLineSegments', 'capacitance', 'inductance', 'resistance')
 	def __init__(self, rdfid, tpe, resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 

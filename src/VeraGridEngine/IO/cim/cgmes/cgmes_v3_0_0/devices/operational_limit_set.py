@@ -18,6 +18,7 @@ class OperationalLimitSet(IdentifiedObject):
 		CgmesProperty(property_name='Equipment', class_type='Equipment', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The equipment to which the limit set applies.''', profiles=[]),
 		CgmesProperty(property_name='OperationalLimitValue', class_type='OperationalLimit', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Values of equipment limits.''', profiles=[]),
 	)
+	__slots__ = ('Terminal', 'Equipment', 'OperationalLimitValue')
 	def __init__(self, rdfid='', tpe='OperationalLimitSet'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

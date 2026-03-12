@@ -27,6 +27,7 @@ class ShuntCompensator(RegulatingCondEq):
 For LinearShuntConpensator the value shall be between zero and ShuntCompensator.maximumSections. At value zero the shunt compensator conductance and admittance is zero. Linear interpolation of conductance and admittance between the previous and next integer section is applied in case of non-integer values.
 For NonlinearShuntCompensator-s shall only be set to one of the NonlinearShuntCompenstorPoint.sectionNumber. There is no interpolation between NonlinearShuntCompenstorPoint-s.''', profiles=[]),
 	)
+	__slots__ = ('aVRDelay', 'grounded', 'maximumSections', 'nomU', 'normalSections', 'voltageSensitivity', 'SvShuntCompensatorSections', 'sections')
 	def __init__(self, rdfid='', tpe='ShuntCompensator'):
 		RegulatingCondEq.__init__(self, rdfid, tpe)
 

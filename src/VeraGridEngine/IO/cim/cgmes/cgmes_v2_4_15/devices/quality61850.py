@@ -23,6 +23,7 @@ class Quality61850(Base):
 		CgmesProperty(property_name='test', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Measurement value is transmitted for test purposes.''', profiles=[]),
 		CgmesProperty(property_name='validity', class_type=Validity, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Validity of the measurement value.''', profiles=[]),
 	)
+	__slots__ = ('badReference', 'estimatorReplaced', 'failure', 'oldData', 'operatorBlocked', 'oscillatory', 'outOfRange', 'overFlow', 'source', 'suspect', 'test', 'validity')
 	def __init__(self, rdfid, tpe, resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 

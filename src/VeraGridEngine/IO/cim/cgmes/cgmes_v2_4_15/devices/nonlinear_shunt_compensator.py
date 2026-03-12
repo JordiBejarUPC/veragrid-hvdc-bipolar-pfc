@@ -15,6 +15,7 @@ class NonlinearShuntCompensator(ShuntCompensator):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='NonlinearShuntCompensatorPoints', class_type='NonlinearShuntCompensatorPoint', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''All points of the non-linear shunt compensator.''', profiles=[]),
 	)
+	__slots__ = ('NonlinearShuntCompensatorPoints',)
 	def __init__(self, rdfid='', tpe='NonlinearShuntCompensator'):
 		ShuntCompensator.__init__(self, rdfid, tpe)
 

@@ -14,6 +14,7 @@ class ThermalGeneratingUnit(GeneratingUnit):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='FossilFuels', class_type='FossilFuel', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A thermal generating unit may have one or more fossil fuels.''', profiles=[]),
 	)
+	__slots__ = ('FossilFuels',)
 	def __init__(self, rdfid='', tpe='ThermalGeneratingUnit'):
 		GeneratingUnit.__init__(self, rdfid, tpe)
 

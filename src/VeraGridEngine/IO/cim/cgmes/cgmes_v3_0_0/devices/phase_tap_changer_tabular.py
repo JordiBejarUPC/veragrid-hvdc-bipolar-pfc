@@ -14,6 +14,7 @@ class PhaseTapChangerTabular(PhaseTapChanger):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='PhaseTapChangerTable', class_type='PhaseTapChangerTable', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The phase tap changer table for this phase tap changer.''', profiles=[]),
 	)
+	__slots__ = ('PhaseTapChangerTable',)
 	def __init__(self, rdfid='', tpe='PhaseTapChangerTabular'):
 		PhaseTapChanger.__init__(self, rdfid, tpe)
 

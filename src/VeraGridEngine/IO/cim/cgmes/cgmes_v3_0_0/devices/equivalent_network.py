@@ -14,6 +14,7 @@ class EquivalentNetwork(ConnectivityNodeContainer):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='EquivalentEquipments', class_type='EquivalentEquipment', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The associated reduced equivalents.''', profiles=[]),
 	)
+	__slots__ = ('EquivalentEquipments',)
 	def __init__(self, rdfid='', tpe='EquivalentNetwork'):
 		ConnectivityNodeContainer.__init__(self, rdfid, tpe)
 

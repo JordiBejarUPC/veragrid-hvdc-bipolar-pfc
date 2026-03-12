@@ -25,6 +25,7 @@ class IdentifiedObject(Base):
         CgmesProperty(property_name='shortName', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description="The attribute is used for an exchange of a human readable short name "
                         "with length of the string 12 characters maximum.", profiles=[]),
     )
+    __slots__ = ('description', 'energyIdentCodeEic', 'mRID', 'name', 'shortName')
     def __init__(self, rdfid, tpe, resources=list(), class_replacements=dict()):
         Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 

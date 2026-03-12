@@ -1052,8 +1052,13 @@ def create_cgmes_location(cgmes_model: CgmesCircuit,
     else:
         raise NotImplemented()
 
-    location.CoordinateSystem = cgmes_model.cgmes_assets.CoordinateSystem_list[0]
-    location.PowerSystemResource = device
+    coordinate_system = cgmes_model.cgmes_assets.CoordinateSystem_list[0]
+
+    location.CoordinateSystem = coordinate_system
+    if "PowerSystemResources" in location.declared_properties:
+        location.PowerSystemResources = device
+    else:
+        location.PowerSystemResource = device
 
     if ver == CGMESVersions.v2_4_15:
         pos_point = cgmes24.PositionPoint(rdfid=get_new_rdfid())
@@ -1066,13 +1071,37 @@ def create_cgmes_location(cgmes_model: CgmesCircuit,
     pos_point.sequenceNumber = 1
     pos_point.xPosition = str(longitude)
     pos_point.yPosition = str(latitude)
-    location.PositionPoint = pos_point
+    if "PositionPoints" in location.declared_properties:
+        location.PositionPoints = pos_point
+    else:
+        location.PositionPoint = pos_point
 
-    cgmes_model.cgmes_assets.CoordinateSystem_list[0].Locations.append(location)
+    if "Locations" in coordinate_system.declared_properties:
+        current_locations = coordinate_system.Locations
+        if current_locations is None:
+            coordinate_system.Locations = [location]
+        elif isinstance(current_locations, list):
+            current_locations.append(location)
+        else:
+            coordinate_system.Locations = [current_locations, location]
+    else:
+        current_location = coordinate_system.Location
+        if current_location is None:
+            coordinate_system.Location = location
+        elif isinstance(current_location, list):
+            current_location.append(location)
+        else:
+            coordinate_system.Location = [current_location, location]
     cgmes_model.add(location)
     cgmes_model.add(pos_point)
 
-    device.Location = location
+    if "Location" in device.declared_properties:
+        device.Location = location
+    else:
+        logger.add_info(msg='Skipping location back-reference for CGMES class without Location property',
+                        device=device.rdfid,
+                        device_class=device.tpe,
+                        value='Location')
 
     return location
 

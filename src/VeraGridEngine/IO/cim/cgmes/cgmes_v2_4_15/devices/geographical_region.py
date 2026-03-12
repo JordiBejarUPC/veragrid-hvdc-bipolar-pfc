@@ -14,6 +14,7 @@ class GeographicalRegion(IdentifiedObject):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='Regions', class_type='SubGeographicalRegion', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''All sub-geograhpical regions within this geographical region.''', profiles=[]),
 	)
+	__slots__ = ('Regions',)
 	def __init__(self, rdfid='', tpe='GeographicalRegion'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

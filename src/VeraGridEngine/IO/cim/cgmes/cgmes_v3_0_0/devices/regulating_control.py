@@ -26,6 +26,7 @@ Note that for instance, if the targetValue is 100 kV and the targetDeadband is 2
 		CgmesProperty(property_name='maxAllowedTargetValue', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Maximum allowed target value (RegulatingControl.targetValue).''', profiles=[]),
 		CgmesProperty(property_name='minAllowedTargetValue', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Minimum allowed target value (RegulatingControl.targetValue).''', profiles=[]),
 	)
+	__slots__ = ('RegulatingCondEq', 'mode', 'Terminal', 'discrete', 'enabled', 'targetDeadband', 'targetValue', 'targetValueUnitMultiplier', 'maxAllowedTargetValue', 'minAllowedTargetValue')
 	def __init__(self, rdfid='', tpe='RegulatingControl'):
 		PowerSystemResource.__init__(self, rdfid, tpe)
 

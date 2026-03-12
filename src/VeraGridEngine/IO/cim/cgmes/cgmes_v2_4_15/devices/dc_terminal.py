@@ -15,6 +15,7 @@ class DCTerminal(DCBaseTerminal):
     LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
         CgmesProperty(property_name='DCConductingEquipment', class_type='DCConductingEquipment', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', profiles=[]),
     )
+    __slots__ = ('DCConductingEquipment',)
     def __init__(self, rdfid='', tpe='DCTerminal'):
         DCBaseTerminal.__init__(self, rdfid, tpe)
 

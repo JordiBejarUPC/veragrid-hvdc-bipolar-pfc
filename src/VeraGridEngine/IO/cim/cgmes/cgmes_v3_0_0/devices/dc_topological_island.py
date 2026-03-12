@@ -15,6 +15,7 @@ class DCTopologicalIsland(IdentifiedObject):
     LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
         CgmesProperty(property_name='DCTopologicalNodes', class_type='DCTopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The DC topological nodes in a DC topological island.''', profiles=[]),
     )
+    __slots__ = ('DCTopologicalNodes',)
     def __init__(self, rdfid='', tpe='DCTopologicalIsland'):
         IdentifiedObject.__init__(self, rdfid, tpe)
 

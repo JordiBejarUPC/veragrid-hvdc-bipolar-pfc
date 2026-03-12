@@ -19,6 +19,7 @@ class DCConverterUnit(DCEquipmentContainer):
         CgmesProperty(property_name='operationMode', class_type=DCConverterOperatingModeKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The operating mode of an HVDC bipole (bipolar, monopolar metallic return, etc).''', profiles=[]),
         CgmesProperty(property_name='Substation', class_type='Substation', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The containing substation of the DC converter unit.''', profiles=[]),
     )
+    __slots__ = ('operationMode', 'Substation')
     def __init__(self, rdfid='', tpe='DCConverterUnit'):
         DCEquipmentContainer.__init__(self, rdfid, tpe)
 
