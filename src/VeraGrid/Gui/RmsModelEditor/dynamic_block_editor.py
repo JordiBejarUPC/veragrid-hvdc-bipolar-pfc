@@ -20,6 +20,8 @@ from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter, QIcon,
                            QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QModelIndex, QMimeData, Signal
 
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
+from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -1094,9 +1096,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.splitter.setStretchFactor(1, 10)
 
         self.var_factory = var_factory
-        self.original_block: Block = block
+        #Todo: is this correct?
+        self.original_block: Block = block # api_object.rms_model
         self.block: Block = clone_block_for_editing(block)
         self.main_block: Block = self.block
+
         self.diagram: BlockDiagram = self.block.diagram
         self.templates_list = templates_list
         self.api_object = api_object
@@ -1154,6 +1158,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.graphicsView.dropEvent = self.graphicsDropEvent
 
         self.ui.doItButton.clicked.connect(self.apply_changes)
+        self.add_connection_vars()
+        self.add_external_mapping_block()
+        self.add_api_obj_mapping()
         self.rebuild_scene_from_diagram()
 
     def build_library_tree_model(self,
@@ -1364,6 +1371,270 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.remove_block_item(item)
         else:
             pass
+
+    def add_connection_vars(self):
+        """
+
+        :return:
+        """
+        bus_con_item = None
+        tpe = BlockType.BUS_CONNECTION
+
+        if self.api_object.device_type == DeviceType.LineDevice:
+
+            # add con bus from
+            x0, y0 = 0, 0
+            name = "Conn From"
+            bus_from_con_item = BlockItem(var_factory=self.var_factory, name=name)
+
+            if self.api_object.bus_from.rms_model.empty():
+                initialize_bus_rms(self.api_object.bus_from, self.var_factory)
+
+            Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
+
+            bus_from_con_blk = Block(
+                algebraic_vars=[Vmf, Vaf],
+                out_vars=[Vmf, Vaf],
+                name=name
+            )
+
+            self.main_block.add(bus_from_con_blk)
+
+            bus_from_con_item.set_subsystem(bus_from_con_blk)
+            bus_from_con_item.build_item()
+
+            if bus_from_con_item.subsys is not None:
+                bus_from_con_item.setPos(x0, y0)
+                self.scene.addItem(bus_from_con_item)
+
+                # save nodes in diagram
+                self.diagram.add_node(
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    tpe=tpe.name,
+                    device_uid=bus_from_con_item.subsys.uid,
+                )
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vmf: Vmf})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vaf: Vaf})
+
+            # add con bus to
+            name = "Conn To"
+            x0, y0 = 0, 100
+
+            bus_to_con_item = BlockItem(var_factory=self.var_factory, name=name)
+
+            if self.api_object.bus_to.rms_model.empty():
+                initialize_bus_rms(self.api_object.bus_to, self.var_factory)
+
+            Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
+
+            bus_to_con_blk = Block(
+                algebraic_vars=[Vmt, Vat],
+                out_vars=[Vmt, Vat],
+                name=name
+            )
+
+            self.main_block.add(bus_to_con_blk)
+
+            bus_to_con_item.set_subsystem(bus_to_con_blk)
+            bus_to_con_item.build_item()
+
+            # Add to scene
+            if bus_to_con_item.subsys is not None:
+                bus_to_con_item.setPos(QPointF(x0, y0))
+                self.scene.addItem(bus_to_con_item)
+
+                # save nodes in diagram
+                self.diagram.add_node(
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    tpe=tpe.name,
+                    device_uid=bus_to_con_item.subsys.uid,
+                )
+
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vmt: Vmt})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vat: Vat})
+
+        else:
+            x0, y0 = 0, 0
+            name = "Conn Bus"
+
+            bus_con_item = BlockItem(var_factory=self.var_factory, name=name)
+            if self.api_object.bus.rms_model.empty():
+                initialize_bus_rms(self.api_object.bus, self.var_factory)
+
+            Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
+
+            bus_con_blk = Block(
+                out_vars=[Vm, Va],
+                name=name
+            )
+
+            self.main_block.add(bus_con_blk)
+
+            bus_con_item.set_subsystem(bus_con_blk)
+            bus_con_item.build_item()
+
+            if bus_con_item.subsys is not None:
+                bus_con_item.setPos(x0, y0)
+                self.scene.addItem(bus_con_item)
+
+                # save nodes in diagram
+                self.diagram.add_node(
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    tpe=tpe.name,
+                    device_uid=bus_con_item.subsys.uid,
+                )
+
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Vm: Vm})
+            self.main_block.external_mapping.update(
+                {VarPowerFlowRefferenceType.Va: Va})
+
+    def add_external_mapping_block(self):
+        """
+
+        :return:
+        """
+        bus_con_item = None
+        tpe = BlockType.EXTERNAL_MAPPING
+
+        if self.api_object.device_type == DeviceType.LineDevice:
+
+            # add mapping bus from
+            x0, y0 = 200, 200
+            name = "mapping From"
+            bus_from_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
+
+            Pf = self.var_factory.add_var('Pf_placeholder')
+            Qf = self.var_factory.add_var('Qf_placeholder')
+
+            bus_from_mapping_blk = Block(
+                in_vars=[Pf, Qf],
+                name=name
+            )
+
+            self.main_block.add(bus_from_mapping_blk)
+
+            bus_from_mapping_item.set_subsystem(bus_from_mapping_blk)
+            bus_from_mapping_item.build_item()
+
+            if bus_from_mapping_item.subsys is not None:
+                self.scene.addItem(bus_from_mapping_item)
+                bus_from_mapping_item.setPos(x0, y0)
+                # save nodes in diagram
+                self.diagram.add_node(
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    tpe=tpe.name,
+                    device_uid=bus_from_mapping_item.subsys.uid,
+                )
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pf: bus_from_mapping_blk.in_vars[0]})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qf: bus_from_mapping_blk.in_vars[1]})
+
+            # add con bus to
+            name = "mapping To"
+            x0, y0 = 0, 200
+
+            bus_to_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
+
+            bus_to_mapping_blk = Block(
+                in_vars=[
+                    self.var_factory.add_var('Pt_placeholder'),  # Pt
+                    self.var_factory.add_var('Qt_placeholder')  # Qt
+                ],
+                name=name
+            )
+            self.main_block.add(bus_to_mapping_blk)
+
+            bus_to_mapping_item.set_subsystem(bus_to_mapping_blk)
+            bus_to_mapping_item.build_item()
+
+            # Add to scene
+            bus_to_mapping_item.setPos(QPointF(x0, y0))
+            if bus_to_mapping_item.subsys is not None:
+                self.scene.addItem(bus_to_mapping_item)
+                bus_to_mapping_item.setPos(QPointF(x0, y0))
+                # save nodes in diagram
+                self.diagram.add_node(
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    tpe=tpe.name,
+                    device_uid=bus_to_mapping_item.subsys.uid,
+                )
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pt: bus_to_mapping_blk.in_vars[0]})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qt: bus_to_mapping_blk.in_vars[1]})
+
+        else:
+            x0, y0 = 0, 0
+            name = "mapping Bus"
+
+            bus_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
+            P = self.var_factory.add_var('P_placeholder')
+            Q = self.var_factory.add_var('Q_placeholder')
+
+            bus_mapping_blk = Block(
+                in_vars=[P, Q],
+                name=name
+            )
+
+            self.main_block.add(bus_mapping_blk)
+
+            bus_mapping_item.set_subsystem(bus_mapping_blk)
+            bus_mapping_item.build_item()
+
+            if bus_mapping_item.subsys is not None:
+                self.scene.addItem(bus_mapping_item)
+                bus_mapping_item.setPos(x0, y0)
+                # save nodes in diagram
+                self.diagram.add_node(
+                    name=name,
+                    x=x0,
+                    y=y0,
+                    tpe=tpe.name,
+                    device_uid=bus_mapping_item.subsys.uid,
+                )
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: bus_mapping_blk.in_vars[0]})
+            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: bus_mapping_blk.in_vars[1]})
+
+    def add_api_obj_mapping(self):
+        """
+        Adds API object mapping for the main block based on the device type.
+
+        This method checks the device type of the API object. If it matches the
+        `DeviceType.LineDevice`, it performs the following actions:
+        - Creates three new variables: g, b, and bsh using the variable factory.
+        - Assigns constant values to these variables as parameters for the main block.
+        - Maps the power flow reference type parameters to the corresponding newly
+          created variables within the main block's API object mapping.
+
+        :raises RuntimeError: Raised if required attributes or methods are missing.
+        :return: None
+        """
+        if self.api_object.device_type == DeviceType.LineDevice:
+            g = self.var_factory.add_var("g")
+            b = self.var_factory.add_var("b")
+            bsh = self.var_factory.add_var("bsh")
+
+            self.main_block.parameters[g] = self.var_factory.add_const(0.029585)
+            self.main_block.parameters[b] = self.var_factory.add_const(0.0710059)
+            self.main_block.parameters[bsh] = self.var_factory.add_const(0.03)
+
+            self.main_block.api_obj_mapping = {
+                ParamPowerFlowRefferenceType.g: g,
+                ParamPowerFlowRefferenceType.b: b,
+                ParamPowerFlowRefferenceType.bsh: bsh,
+            }
 
     def get_block_from_main_block(self, device_uid: int) -> Block | None:
         """
