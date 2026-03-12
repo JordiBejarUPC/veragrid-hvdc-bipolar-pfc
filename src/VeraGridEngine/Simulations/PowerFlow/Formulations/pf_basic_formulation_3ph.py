@@ -284,7 +284,7 @@ def compute_current_loads(bus_idx: IntVec,
     I = np.zeros(n, dtype=complex)
 
     # zero_load = nb.complex128(0.0)
-    zero_load = 0.0 + 0.0j
+    zero_load = complex(0.0, 0.0)
 
     # Un_floating = np.zeros(len(V), dtype=nb.complex128)
     Un_floating = np.zeros(len(V), dtype=complex)
@@ -332,13 +332,33 @@ def compute_current_loads(bus_idx: IntVec,
 
         if delta and ab_connected and bc_connected and ca_connected:
 
-            Iab = np.conj(Idelta[ab] / np.sqrt(3)) * np.exp(1j * voltage_angle_ab)
-            Ibc = np.conj(Idelta[bc] / np.sqrt(3)) * np.exp(1j * voltage_angle_bc)
-            Ica = np.conj(Idelta[ca] / np.sqrt(3)) * np.exp(1j * voltage_angle_ca)
+            if a2 >= 0 and b2 >= 0 and c2 >= 0:
+                Iab = np.conj(Idelta[ab] / np.sqrt(3)) * np.exp(1j * voltage_angle_ab)
+                Ibc = np.conj(Idelta[bc] / np.sqrt(3)) * np.exp(1j * voltage_angle_bc)
+                Ica = np.conj(Idelta[ca] / np.sqrt(3)) * np.exp(1j * voltage_angle_ca)
+                I[a2] = -(Iab - Ica)
+                I[b2] = -(Ibc - Iab)
+                I[c2] = -(Ica - Ibc)
 
-            I[a2] = -(Iab - Ica)
-            I[b2] = -(Ibc - Iab)
-            I[c2] = -(Ica - Ibc)
+            elif a2 < 0:
+                Ibc = np.conj(Idelta[bc] / np.sqrt(3)) * np.exp(1j * voltage_angle_bc)
+                I[b2] = -Ibc
+                I[c2] = Ibc
+
+            elif b2 < 0:
+                Ica = np.conj(Idelta[ca] / np.sqrt(3)) * np.exp(1j * voltage_angle_ca)
+                I[a2] = Ica
+                I[c2] = -Ica
+
+            elif c2 < 0:
+                Iab = np.conj(Idelta[ab] / np.sqrt(3)) * np.exp(1j * voltage_angle_ab)
+                I[a2] = -Iab
+                I[b2] = Iab
+
+            else:
+                I[a2] = zero_load
+                I[b2] = zero_load
+                I[c2] = zero_load
 
         elif delta and ab_connected:
 
@@ -524,12 +544,25 @@ def compute_power_loads(bus_idx: IntVec,
 
         if delta and ab_connected and bc_connected and ca_connected:
 
-            I[a2] -= np.conj(Sdelta[ab] / (V[a2] - V[b2]))
-            I[b2] -= np.conj(Sdelta[ab] / (V[b2] - V[a2]))
-            I[b2] -= np.conj(Sdelta[bc] / (V[b2] - V[c2]))
-            I[c2] -= np.conj(Sdelta[bc] / (V[c2] - V[b2]))
-            I[c2] -= np.conj(Sdelta[ca] / (V[c2] - V[a2]))
-            I[a2] -= np.conj(Sdelta[ca] / (V[a2] - V[c2]))
+            if a2 >= 0 and b2 >= 0 and c2 >= 0:
+                I[a2] -= np.conj(Sdelta[ab] / (V[a2] - V[b2]))
+                I[a2] -= np.conj(Sdelta[ca] / (V[a2] - V[c2]))
+                I[b2] -= np.conj(Sdelta[ab] / (V[b2] - V[a2]))
+                I[b2] -= np.conj(Sdelta[bc] / (V[b2] - V[c2]))
+                I[c2] -= np.conj(Sdelta[bc] / (V[c2] - V[b2]))
+                I[c2] -= np.conj(Sdelta[ca] / (V[c2] - V[a2]))
+
+            elif a2 < 0:
+                I[b2] -= np.conj(Sdelta[bc] / (V[b2] - V[c2]))
+                I[c2] -= np.conj(Sdelta[bc] / (V[c2] - V[b2]))
+
+            elif b2 < 0:
+                I[a2] -= np.conj(Sdelta[ca] / (V[a2] - V[c2]))
+                I[c2] -= np.conj(Sdelta[ca] / (V[c2] - V[a2]))
+
+            elif c2 < 0:
+                I[a2] -= np.conj(Sdelta[ab] / (V[a2] - V[b2]))
+                I[b2] -= np.conj(Sdelta[ab] / (V[b2] - V[a2]))
 
         elif delta and ab_connected:
 

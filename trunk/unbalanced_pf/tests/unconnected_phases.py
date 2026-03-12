@@ -33,7 +33,7 @@ load = vge.Load(P1=1.0,
                 Q2=0.5,
                 P3=1.0,
                 Q3=0.5)
-load.conn = ShuntConnectionType.FloatingStar
+load.conn = ShuntConnectionType.Delta
 grid.add_load(bus=bus_load, api_obj=load)
 
 # -----------------------------------------------------------------------------------------------------------------
