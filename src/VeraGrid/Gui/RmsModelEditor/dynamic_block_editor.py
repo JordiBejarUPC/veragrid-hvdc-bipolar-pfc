@@ -1096,8 +1096,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.splitter.setStretchFactor(1, 10)
 
         self.var_factory = var_factory
-        #Todo: is this correct?
-        self.original_block: Block = block # api_object.rms_model
+        # Todo: is this correct?
+        self.original_block: Block = block  # api_object.rms_model
         self.block: Block = clone_block_for_editing(block)
         self.main_block: Block = self.block
 
@@ -1374,7 +1374,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def add_connection_vars(self):
         """
-
+        Add a block with bus connection variables to connect the device
         :return:
         """
         bus_con_item = None
@@ -1501,7 +1501,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def add_external_mapping_block(self):
         """
-
+        Add a block with the external mapping vars needed to connect the device to the grid
         :return:
         """
         bus_con_item = None
