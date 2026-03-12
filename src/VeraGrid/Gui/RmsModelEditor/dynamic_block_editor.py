@@ -198,6 +198,16 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
     def build_library_tree_model(self,
                                block_role: int,
                                mime_type: str) -> DynamicsLibraryTreeModel:
+        """
+        Build the source tree-view model for dynamic library.
+
+        :param block_role:
+        :type block_role:
+        :param mime_type:
+        :type mime_type:
+        :return:
+        :rtype:
+        """
 
         model:DynamicsLibraryTreeModel = DynamicsLibraryTreeModel(block_role, mime_type)
         model.setHorizontalHeaderLabels(["Dynamic library"])
