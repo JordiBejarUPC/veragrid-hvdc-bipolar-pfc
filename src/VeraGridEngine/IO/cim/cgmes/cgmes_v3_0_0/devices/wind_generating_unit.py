@@ -16,6 +16,7 @@ class WindGeneratingUnit(GeneratingUnit):
 		CgmesProperty(property_name='windGenUnitType', class_type=WindGenUnitKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The kind of wind generating unit.''', profiles=[]),
 		CgmesProperty(property_name='WindPowerPlant', class_type='WindPowerPlant', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A wind power plant may have wind generating units.''', profiles=[]),
 	)
+	__slots__ = ('windGenUnitType', 'WindPowerPlant')
 	def __init__(self, rdfid='', tpe='WindGeneratingUnit'):
 		GeneratingUnit.__init__(self, rdfid, tpe)
 

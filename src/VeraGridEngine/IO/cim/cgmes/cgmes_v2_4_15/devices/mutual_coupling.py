@@ -25,6 +25,7 @@ class MutualCoupling(IdentifiedObject):
 		CgmesProperty(property_name='r0', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Resistance (real part of impedance).''', profiles=[]),
 		CgmesProperty(property_name='x0', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', profiles=[]),
 	)
+	__slots__ = ('First_Terminal', 'Second_Terminal', 'b0ch', 'distance11', 'distance12', 'distance21', 'distance22', 'g0ch', 'r0', 'x0')
 	def __init__(self, rdfid='', tpe='MutualCoupling'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

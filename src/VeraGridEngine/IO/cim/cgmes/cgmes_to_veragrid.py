@@ -1781,6 +1781,34 @@ def get_gcdev_ac_transformers(cgmes_model: CgmesCircuit,
                                  expected_value="2 or 3")
 
 
+def get_tap_step_voltage_increment(tap_changer: CGMES_ASSETS) -> float | None:
+    """
+    Read the tap step-voltage increment without mutating the imported CGMES object.
+
+    CGMES tap changer classes are inconsistent here. Some expose
+    ``stepVoltageIncrement`` directly, while phase tap changers expose
+    ``voltageStepIncrement`` instead. The previous implementation normalized this
+    by creating a synthetic ``stepVoltageIncrement`` attribute on the CGMES
+    instance. That is incompatible with slotted CGMES classes because imported
+    objects must keep a fixed attribute layout.
+
+    This helper preserves the compatibility behavior by reading the supported
+    attribute names explicitly and returning one normalized value to the caller.
+
+    :param tap_changer: Imported CGMES tap changer instance.
+    :return: Normalized step-voltage increment.
+    :rtype: float | None
+    """
+    step_voltage_increment: float | None
+
+    step_voltage_increment = getattr(tap_changer, "stepVoltageIncrement", None)
+
+    if step_voltage_increment is not None:
+        return step_voltage_increment
+    else:
+        return getattr(tap_changer, "voltageStepIncrement", None)
+
+
 def get_transformer_tap_changers(cgmes_model: CgmesCircuit,
                                  gcdev_model: MultiCircuit,
                                  bus_dict: Dict[str, gcdev.Bus],
@@ -1888,9 +1916,8 @@ def get_transformer_tap_changers(cgmes_model: CgmesCircuit,
                                    device_property="control for TapChanger",
                                    value=type(tap_changer))
 
-            # attribute handling sVI
-            if isinstance(tap_changer, cgmes_model.assets.PhaseTapChanger):
-                tap_changer.stepVoltageIncrement = tap_changer.voltageStepIncrement
+            step_voltage_increment: float | None
+            step_voltage_increment = get_tap_step_voltage_increment(tap_changer=tap_changer)
 
             if tap_changer.TransformerEnd is not None:
                 trafo_id = tap_changer.TransformerEnd.PowerTransformer.uuid
@@ -1921,7 +1948,7 @@ def get_transformer_tap_changers(cgmes_model: CgmesCircuit,
                         high=tap_changer.highStep,
                         normal=tap_changer.normalStep,
                         neutral=tap_changer.neutralStep,
-                        stepVoltageIncrement=tap_changer.stepVoltageIncrement,
+                        stepVoltageIncrement=step_voltage_increment,
                         step=int(tap_changer.step),
                         asymmetry_angle=asymmetry_angle,
                         tc_type=tc_type
@@ -1991,7 +2018,7 @@ def get_transformer_tap_changers(cgmes_model: CgmesCircuit,
                             high=tap_changer.highStep,
                             normal=tap_changer.normalStep,
                             neutral=tap_changer.neutralStep,
-                            stepVoltageIncrement=tap_changer.stepVoltageIncrement,
+                            stepVoltageIncrement=step_voltage_increment,
                             step=int(tap_changer.step),
                             # asymmetry_angle=90,
                             tc_type=tc_type
@@ -2484,7 +2511,7 @@ def get_gcdev_voltage_levels(cgmes_model: CgmesCircuit,
                 volt_lev_dict[gcdev_elm.idtag] = gcdev_elm
             else:
                 logger.add_error(msg='Base voltage not found for VoltageLevel',
-                                 device=cgmes_elm.parsed_properties.get("BaseVoltage", "not provided"),
+                                 device="provided" if cgmes_elm.has_parsed_property("BaseVoltage") else "not provided",
                                  comment="get_gcdev_voltage_levels")
         else:
             logger.add_error(msg='Base voltage not found for VoltageLevel',

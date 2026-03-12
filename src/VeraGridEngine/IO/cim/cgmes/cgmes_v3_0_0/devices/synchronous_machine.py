@@ -37,6 +37,7 @@ Used only for single fed short circuit on a generator (Section 4.3.4.2. in IEC 6
 		CgmesProperty(property_name='operatingMode', class_type=SynchronousMachineOperatingMode, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Current mode of operation.''', profiles=[]),
 		CgmesProperty(property_name='referencePriority', class_type=int, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Priority of unit for use as powerflow voltage phase angle reference bus selection. 0 = don t care (default) 1 = highest priority. 2 is less than 1 and so on.''', profiles=[]),
 	)
+	__slots__ = ('InitialReactiveCapabilityCurve', 'maxQ', 'minQ', 'qPercent', 'type', 'earthing', 'earthingStarPointR', 'earthingStarPointX', 'ikk', 'mu', 'x0', 'r0', 'x2', 'r2', 'r', 'satDirectSubtransX', 'satDirectSyncX', 'satDirectTransX', 'shortCircuitRotorType', 'voltageRegulationRange', 'operatingMode', 'referencePriority')
 	def __init__(self, rdfid='', tpe='SynchronousMachine'):
 		RotatingMachine.__init__(self, rdfid, tpe)
 

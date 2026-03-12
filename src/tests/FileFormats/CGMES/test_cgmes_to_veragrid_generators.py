@@ -13,12 +13,12 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit
 from VeraGridEngine.IO.cim.cgmes.cgmes_to_veragrid import get_gcdev_generators
 import VeraGridEngine.Devices as gcdev
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.base_voltage import BaseVoltage
-from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.equipment_container import EquipmentContainer
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.generating_unit import GeneratingUnit
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.regulating_control import RegulatingControl
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.synchronous_machine import SynchronousMachine
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.terminal import Terminal
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.topological_node import TopologicalNode
+from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.voltage_level import VoltageLevel
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.enumerations import CGMESVersions
 
@@ -58,7 +58,7 @@ def build_generator_case(p: float) -> Tuple[CgmesCircuit, Dict[str, gcdev.Bus], 
     generator.RegulatingControl = regulating_control
     generator.controlEnabled = True
 
-    generator.EquipmentContainer = EquipmentContainer("equipmentcontainer_rdfid", "VoltageLevel")
+    generator.EquipmentContainer = VoltageLevel("equipmentcontainer_rdfid", "VoltageLevel")
     generator.EquipmentContainer.BaseVoltage = BaseVoltage("container_bv_rdfid", "BaseVoltage")
     generator.EquipmentContainer.BaseVoltage.nominalVoltage = 2.0
 

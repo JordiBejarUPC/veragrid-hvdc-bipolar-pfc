@@ -20,6 +20,7 @@ class ThermalGeneratingUnit(GeneratingUnit):
 		CgmesProperty(property_name='CombinedCyclePlant', class_type='CombinedCyclePlant', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A thermal generating unit may be a member of a combined cycle plant.''', profiles=[]),
 		CgmesProperty(property_name='FossilFuels', class_type='FossilFuel', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A thermal generating unit may have one or more fossil fuels.''', profiles=[]),
 	)
+	__slots__ = ('CAESPlant', 'CogenerationPlant', 'CombinedCyclePlant', 'FossilFuels')
 	def __init__(self, rdfid='', tpe='ThermalGeneratingUnit'):
 		GeneratingUnit.__init__(self, rdfid, tpe)
 

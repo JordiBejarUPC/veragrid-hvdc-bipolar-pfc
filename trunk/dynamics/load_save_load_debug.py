@@ -219,7 +219,7 @@ def load_save_load_rms() -> None:
     blocks_grid2.children.extend(grid2_rms_lines)
 
     # compare the blocks
-    equal = compare_blocks(blocks_grid1, blocks_grid2, grid1.var_factory, grid2.var_factory, testing=True)
+    equal = compare_blocks(blocks_grid1, blocks_grid2, grid1.rms_var_factory, grid2.rms_var_factory, testing=True)
 
     if not equal:
         logger.add_error(msg="Block dictionaries differs",

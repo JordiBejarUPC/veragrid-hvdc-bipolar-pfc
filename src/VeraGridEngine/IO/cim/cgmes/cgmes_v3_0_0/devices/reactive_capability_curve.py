@@ -16,6 +16,7 @@ class ReactiveCapabilityCurve(Curve):
 		CgmesProperty(property_name='EquivalentInjection', class_type='EquivalentInjection', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The equivalent injection using this reactive capability curve.''', profiles=[]),
 		CgmesProperty(property_name='InitiallyUsedBySynchronousMachines', class_type='SynchronousMachine', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Synchronous machines using this curve as default.''', profiles=[]),
 	)
+	__slots__ = ('EquivalentInjection', 'InitiallyUsedBySynchronousMachines')
 	def __init__(self, rdfid='', tpe='ReactiveCapabilityCurve'):
 		Curve.__init__(self, rdfid, tpe)
 

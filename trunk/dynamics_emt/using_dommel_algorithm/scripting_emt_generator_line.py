@@ -57,9 +57,9 @@ bus1 = Bus(name="Bus1", Vnom=Vbase, is_slack=True)
 bus2 = Bus(name="Bus2", Vnom=Vbase)
 
 # Asignar templates simbólicos a los buses
-bus1_template = get_bus_emt_template(grid.var_factory)
+bus1_template = get_bus_emt_template(grid.rms_var_factory)
 bus1.emt_model.model = bus1_template.block
-bus2_template = get_bus_emt_template(grid.var_factory)
+bus2_template = get_bus_emt_template(grid.rms_var_factory)
 bus2.emt_model.model = bus2_template.block
 
 # --- LÍNEA DE TRANSMISIÓN ---

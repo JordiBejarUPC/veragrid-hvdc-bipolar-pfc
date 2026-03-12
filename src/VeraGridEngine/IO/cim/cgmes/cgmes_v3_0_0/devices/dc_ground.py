@@ -13,6 +13,7 @@ class DCGround(DCConductingEquipment):
 		CgmesProperty(property_name='inductance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.H, description='''Inductive part of reactance (imaginary part of impedance), at rated frequency.''', profiles=[]),
 		CgmesProperty(property_name='r', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Resistance (real part of impedance).''', profiles=[]),
 	)
+	__slots__ = ('inductance', 'r')
 	def __init__(self, rdfid='', tpe='DCGround'):
 		DCConductingEquipment.__init__(self, rdfid, tpe)
 

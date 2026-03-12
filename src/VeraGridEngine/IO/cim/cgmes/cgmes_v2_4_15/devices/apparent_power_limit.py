@@ -12,6 +12,7 @@ class ApparentPowerLimit(OperationalLimit):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='value', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VA, description='''Product of the RMS value of the voltage and the RMS value of the current.''', profiles=[]),
 	)
+	__slots__ = ('value',)
 	def __init__(self, rdfid='', tpe='ApparentPowerLimit'):
 		OperationalLimit.__init__(self, rdfid, tpe)
 

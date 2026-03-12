@@ -26,6 +26,7 @@ class ShuntCompensator(RegulatingCondEq):
 		CgmesProperty(property_name='SvShuntCompensatorSections', class_type='SvShuntCompensatorSections', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The state for the number of shunt compensator sections in service.''', profiles=[]),
 		CgmesProperty(property_name='sections', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
 	)
+	__slots__ = ('aVRDelay', 'grounded', 'maximumSections', 'nomU', 'normalSections', 'switchOnCount', 'switchOnDate', 'voltageSensitivity', 'SvShuntCompensatorSections', 'sections')
 	def __init__(self, rdfid='', tpe='ShuntCompensator'):
 		RegulatingCondEq.__init__(self, rdfid, tpe)
 

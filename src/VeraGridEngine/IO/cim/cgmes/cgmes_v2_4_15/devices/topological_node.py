@@ -30,6 +30,7 @@ class TopologicalNode(IdentifiedObject):
 		CgmesProperty(property_name='ReportingGroup', class_type='ReportingGroup', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The topological nodes that belong to the reporting group.''', profiles=[]),
 		CgmesProperty(property_name='Terminal', class_type='Terminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The topological node associated with the terminal.   This can be used as an alternative to the connectivity node path to topological node, thus making it unneccesary to model connectivity nodes in some cases.   Note that the if connectivity nodes are in the model, this association would probably not be used as an input specification.''', profiles=[]),
 	)
+	__slots__ = ('SvInjection', 'SvVoltage', 'AngleRefTopologicalIsland', 'TopologicalIsland', '_BaseVoltage', 'ConnectivityNodes', 'ConnectivityNodeContainer', 'ReportingGroup', 'Terminal')
 	def __init__(self, rdfid='', tpe='TopologicalNode'):
 		"""
 

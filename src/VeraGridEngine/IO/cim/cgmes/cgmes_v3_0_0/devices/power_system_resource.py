@@ -18,6 +18,7 @@ class PowerSystemResource(IdentifiedObject):
 		CgmesProperty(property_name='Controls', class_type='Control', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The controller outputs used to actually govern a regulating device, e.g. the magnetization of a synchronous machine or capacitor bank breaker actuator.''', profiles=[]),
 		CgmesProperty(property_name='Measurements', class_type='Measurement', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The measurements associated with this power system resource.''', profiles=[]),
 	)
+	__slots__ = ('Location', 'Controls', 'Measurements')
 	def __init__(self, rdfid='', tpe='PowerSystemResource'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

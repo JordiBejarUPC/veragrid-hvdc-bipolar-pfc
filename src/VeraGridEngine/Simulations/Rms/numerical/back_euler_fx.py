@@ -2,9 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
 import numpy as np
-import scipy.sparse as sp
 import time
 import scipy.sparse as sp
 from scipy.sparse import csc_matrix
@@ -12,7 +10,6 @@ from scipy.sparse import csc_matrix
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Utils.Sparse.csc import pack_4_by_4_scipy
 from VeraGridEngine.basic_structures import Vec, Mat
-from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 
 
 class BackEulerImplicitIntegration:
@@ -24,9 +21,25 @@ class BackEulerImplicitIntegration:
                  h: float,
                  max_iter: int):
         """
+        Initializes an object to solve a given DAE (Differential-Algebraic Equation) problem using numerical
+        methods. This constructor sets up the time grid and prepares storage for results.
 
-        :param problem:
+        :param problem: The DAE solver problem instance containing the system equations and other solver
+            configurations.
+        :type problem: RmsProblemDae
+        :param t0: The initial time of the simulation.
+        :type t0: float
+        :param t_end: The final time of the simulation.
+        :type t_end: float
+        :param h: The time step size to be used for the simulation.
+        :type h: float
+        :param max_iter: The maximum number of iterations for internal solver routines or convergence tests.
+        :type max_iter: int
         """
+
+        if not problem.is_initialized():
+            raise Exception('Problem is not initialized')
+
         self.problem = problem
         self.t0 = t0
         self.h = h
@@ -137,6 +150,9 @@ class BackEulerImplicitIntegration:
             xn = self.y[step_idx, :]
             tol = 1e-7
 
+            # Report progress
+            self.problem.report_progress2(step_idx, self.steps)
+
             while not converged and n_iter < self.max_iter_0:
                 if step_idx == 0:
                     dx = dx0.copy()
@@ -231,6 +247,9 @@ class BackEulerImplicitIntegration:
                 self.y[step_idx + 1, :] = x_new
 
                 self.t[step_idx + 1] = self.t[step_idx] + self.h
+
+                # add results to reduced results matrix
+                # self.y_red[step_idx + 1, :] = x_new[self.index_to_save] # only the indices of the variables that we want to save
 
                 dx_last = dx.copy()
                 lag_update_end = time.time()

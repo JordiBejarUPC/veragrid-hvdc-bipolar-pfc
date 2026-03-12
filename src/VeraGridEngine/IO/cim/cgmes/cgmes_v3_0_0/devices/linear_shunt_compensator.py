@@ -15,6 +15,7 @@ class LinearShuntCompensator(ShuntCompensator):
 		CgmesProperty(property_name='b0PerSection', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.S, description='''Imaginary part of admittance.''', profiles=[]),
 		CgmesProperty(property_name='g0PerSection', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.S, description='''Factor by which voltage must be multiplied to give corresponding power lost from a circuit. Real part of admittance.''', profiles=[]),
 	)
+	__slots__ = ('bPerSection', 'gPerSection', 'b0PerSection', 'g0PerSection')
 	def __init__(self, rdfid='', tpe='LinearShuntCompensator'):
 		ShuntCompensator.__init__(self, rdfid, tpe)
 
