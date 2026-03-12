@@ -902,12 +902,17 @@ def get_shunt_data(
             data.qmax[ii] = elm.Bmax
 
             data.step[ii] = elm.step
-            data.g_steps.insert(i=ii, x=elm.g_steps)
-            data.b_steps.insert(i=ii, x=elm.b_steps)
+            data.g_steps.insert(i=ii, x=np.cumsum(elm.g_steps))
+            data.b_steps.insert(i=ii, x=np.cumsum(elm.b_steps))
 
-            data.Y[ii] += elm.get_Y_at(t_idx)
             data.active[ii] = elm.get_active_at(t_idx)
             data.cost[ii] = elm.get_Cost_at(t_idx)
+
+            if elm.control_mode == ShuntControlMode.Continuous:
+                data.Y[ii] += elm.get_Y_at(t_idx)
+
+            if elm.control_mode == ShuntControlMode.Discrete:
+                data.Y[ii] += (elm.step + 1) * (0.0 + 1j * elm.b_steps[elm.step])
 
             if fill_three_phase:
                 if elm.conn == ShuntConnectionType.GroundedStar:
@@ -1040,8 +1045,8 @@ def fill_generator_parent(
     data.pmin[k] = elm.get_Pmin_at(t_idx)
 
     if elm.use_reactive_power_curve:
-        data.qmin[k] = elm.q_curve.get_qmin(data.p[i])
-        data.qmax[k] = elm.q_curve.get_qmax(data.p[i])
+        data.qmin[k] = elm.q_curve.get_qmin(data.p[k])
+        data.qmax[k] = elm.q_curve.get_qmax(data.p[k])
     else:
         data.qmin[k] = elm.get_Qmin_at(t_idx)
         data.qmax[k] = elm.get_Qmax_at(t_idx)

@@ -16,6 +16,7 @@ class FossilFuel(IdentifiedObject):
 		CgmesProperty(property_name='fossilFuelType', class_type=FuelType, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The type of fossil fuel, such as coal, oil, or gas.''', profiles=[]),
 		CgmesProperty(property_name='ThermalGeneratingUnit', class_type='ThermalGeneratingUnit', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A thermal generating unit may have one or more fossil fuels.''', profiles=[]),
 	)
+	__slots__ = ('fossilFuelType', 'ThermalGeneratingUnit')
 	def __init__(self, rdfid='', tpe='FossilFuel'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

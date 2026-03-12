@@ -16,6 +16,7 @@ class DCLine(DCEquipmentContainer):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='Region', class_type='SubGeographicalRegion', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The SubGeographicalRegion containing the DC line.''', profiles=[]),
 	)
+	__slots__ = ('Region',)
 	def __init__(self, rdfid='', tpe='DCLine'):
 		DCEquipmentContainer.__init__(self, rdfid, tpe)
 

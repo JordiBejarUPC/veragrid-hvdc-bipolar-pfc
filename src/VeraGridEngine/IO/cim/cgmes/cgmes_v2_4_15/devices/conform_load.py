@@ -15,6 +15,7 @@ class ConformLoad(EnergyConsumer):
     LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
         CgmesProperty(property_name='LoadGroup', class_type='ConformLoadGroup', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Group of this ConformLoad.''', profiles=[]),
     )
+    __slots__ = ('LoadGroup',)
     def __init__(self, rdfid='', tpe='ConformLoad'):
         EnergyConsumer.__init__(self, rdfid, tpe)
 

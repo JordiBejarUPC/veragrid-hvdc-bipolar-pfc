@@ -21,6 +21,7 @@ class ConnectivityNode(IdentifiedObject):
 		CgmesProperty(property_name='ConnectivityNodeContainer', class_type='ConnectivityNodeContainer', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Container of this connectivity node.''', profiles=[]),
 		CgmesProperty(property_name='TopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The connectivity nodes combine together to form this topological node.  May depend on the current state of switches in the network.''', profiles=[]),
 	)
+	__slots__ = ('Terminals', 'ConnectivityNodeContainer', 'TopologicalNode')
 	def __init__(self, rdfid='', tpe: str = 'ConnectivityNode') -> None:
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

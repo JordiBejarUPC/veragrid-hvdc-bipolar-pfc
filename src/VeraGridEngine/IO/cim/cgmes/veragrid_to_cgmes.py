@@ -49,6 +49,45 @@ from VeraGridEngine.enumerations import (TapChangerTypes, TapPhaseControl, TapMo
                                          ExternalGridMode, ShuntControlMode)
 
 
+def set_declared_cgmes_property(cgmes_object: CGMES_ASSETS,
+                                property_name: str,
+                                property_value: object,
+                                logger: DataLogger,
+                                context: str) -> None:
+    """
+    Assign a CGMES property only when the concrete CGMES object declares it.
+
+    The exporter historically relied on dynamic attribute creation, which hid
+    schema mismatches. With slotted CGMES classes, every property write must be
+    checked against the declared CIM schema of the concrete class.
+
+    :param cgmes_object: Target CGMES object.
+    :param property_name: CIM property name.
+    :param property_value: Value to assign.
+    :param logger: Data logger for diagnostics.
+    :param context: Export context string.
+    :return: Nothing.
+    :rtype: None
+    """
+    if property_name in cgmes_object.declared_properties:
+        try:
+            setattr(cgmes_object, property_name, property_value)
+        except AttributeError:
+            logger.add_error(msg='Declared CGMES property has no storage',
+                             device=cgmes_object.rdfid,
+                             device_class=cgmes_object.tpe,
+                             device_property=property_name,
+                             value=context,
+                             expected_value='backed CGMES property storage')
+    else:
+        logger.add_error(msg='Cannot assign undeclared CGMES property',
+                         device=cgmes_object.rdfid,
+                         device_class=cgmes_object.tpe,
+                         device_property=property_name,
+                         value=context,
+                         expected_value='declared CGMES property')
+
+
 def find_fallback_voltage_level_for_bus(cgmes_model: CgmesCircuit,
                                         bus: gcdev.Bus,
                                         logger: DataLogger) -> CGMES_ASSETS | None:
@@ -273,7 +312,6 @@ def create_cgmes_tap_changer_for_transformer_end(mc_elm: gcdev.Transformer2W | g
     tap_changer.shortName = f'_tc_{mc_elm.name}'
     tap_changer.neutralU = pte.ratedU
     tap_changer.TransformerEnd = pte
-    tap_changer.total_pos = mc_elm.tap_changer.total_positions
 
     (tap_changer.lowStep,
      tap_changer.highStep,
@@ -438,9 +476,15 @@ def get_or_create_external_network_injection(multicircuit_model: MultiCircuit,
         eni.minP = mc_elm.P
         eni.maxQ = mc_elm.Q
         eni.minQ = mc_elm.Q
-        eni.BaseVoltage = find_object_by_vnom(cgmes_model=cgmes_model,
-                                              object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
-                                              target_vnom=mc_elm.bus.Vnom)
+        set_declared_cgmes_property(
+            cgmes_object=eni,
+            property_name="BaseVoltage",
+            property_value=find_object_by_vnom(cgmes_model=cgmes_model,
+                                               object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
+                                               target_vnom=mc_elm.bus.Vnom),
+            logger=logger,
+            context="get_cgmes_external_network_injections()"
+        )
         eni.Terminals = create_cgmes_terminal(mc_elm.bus, None, eni, cgmes_model, ver, logger)
 
         if mc_elm.mode == ExternalGridMode.VD:
@@ -820,10 +864,16 @@ def get_cgmes_voltage_levels(multi_circuit_model: MultiCircuit,
             raise NotImplemented()
 
         vl.name = mc_elm.name
-        vl.BaseVoltage = find_object_by_vnom(
-            cgmes_model=cgmes_model,
-            object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
-            target_vnom=mc_elm.Vnom
+        set_declared_cgmes_property(
+            cgmes_object=vl,
+            property_name="BaseVoltage",
+            property_value=find_object_by_vnom(
+                cgmes_model=cgmes_model,
+                object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
+                target_vnom=mc_elm.Vnom
+            ),
+            logger=logger,
+            context="get_cgmes_voltage_levels()"
         )
         # vl.Bays = later
         # vl.TopologicalNode added at tn_nodes func
@@ -913,10 +963,16 @@ def get_cgmes_tp_nodes(multi_circuit_model: MultiCircuit,
                 tn.name = bus.name
                 tn.shortName = bus.name
                 tn.description = bus.code
-                tn.BaseVoltage = find_object_by_vnom(
-                    cgmes_model=cgmes_model,
-                    object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
-                    target_vnom=bus.Vnom
+                set_declared_cgmes_property(
+                    cgmes_object=tn,
+                    property_name="BaseVoltage",
+                    property_value=find_object_by_vnom(
+                        cgmes_model=cgmes_model,
+                        object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
+                        target_vnom=bus.Vnom
+                    ),
+                    logger=logger,
+                    context="get_cgmes_tp_nodes()"
                 )
 
                 container_voltage_level = None
@@ -988,7 +1044,13 @@ def get_cgmes_cn_nodes_from_tp_nodes(multi_circuit_model: MultiCircuit,
         cn.name = tn.name
         cn.shortName = tn.shortName
         cn.description = tn.description
-        cn.BaseVoltage = tn.BaseVoltage
+        set_declared_cgmes_property(
+            cgmes_object=cn,
+            property_name="BaseVoltage",
+            property_value=tn.BaseVoltage,
+            logger=logger,
+            context="get_cgmes_cn_nodes_from_tp_nodes()"
+        )
 
         tn.ConnectivityNodes = cn
         cn.TopologicalNode = tn
@@ -1073,9 +1135,15 @@ def get_cgmes_loads(multicircuit_model: MultiCircuit,
             if isinstance(vl, cgmes_model.assets.VoltageLevel):
                 load.EquipmentContainer = vl
 
-        load.BaseVoltage = find_object_by_vnom(cgmes_model=cgmes_model,
+        set_declared_cgmes_property(
+            cgmes_object=load,
+            property_name="BaseVoltage",
+            property_value=find_object_by_vnom(cgmes_model=cgmes_model,
                                                object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
-                                               target_vnom=mc_elm.bus.Vnom)
+                                               target_vnom=mc_elm.bus.Vnom),
+            logger=logger,
+            context="get_cgmes_loads()"
+        )
 
         has_zip_components: bool = (
             mc_elm.Ir != 0.0 or
@@ -1137,9 +1205,15 @@ def get_cgmes_equivalent_injections(multicircuit_model: MultiCircuit,
         ei.name = mc_elm.name
         ei.p = mc_elm.P
         ei.q = mc_elm.Q
-        ei.BaseVoltage = find_object_by_vnom(cgmes_model=cgmes_model,
-                                             object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
-                                             target_vnom=mc_elm.bus.Vnom)
+        set_declared_cgmes_property(
+            cgmes_object=ei,
+            property_name="BaseVoltage",
+            property_value=find_object_by_vnom(cgmes_model=cgmes_model,
+                                               object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
+                                               target_vnom=mc_elm.bus.Vnom),
+            logger=logger,
+            context="get_cgmes_equivalent_injections()"
+        )
 
         ei.Terminals = create_cgmes_terminal(mc_elm.bus, None, ei, cgmes_model, ver, logger)
         ei.regulationCapability = False
@@ -1178,10 +1252,16 @@ def get_cgmes_ac_line_segments(multicircuit_model: MultiCircuit,
 
         line.description = mc_elm.code
         line.name = mc_elm.name
-        line.BaseVoltage = find_object_by_vnom(
-            cgmes_model=cgmes_model,
-            object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
-            target_vnom=mc_elm.get_max_bus_nominal_voltage()
+        set_declared_cgmes_property(
+            cgmes_object=line,
+            property_name="BaseVoltage",
+            property_value=find_object_by_vnom(
+                cgmes_model=cgmes_model,
+                object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
+                target_vnom=mc_elm.get_max_bus_nominal_voltage()
+            ),
+            logger=logger,
+            context="get_cgmes_ac_line_segments()"
         )  # which Vnom we need?
 
         # Terminals
@@ -1262,9 +1342,9 @@ def get_cgmes_generators(multicircuit_model: MultiCircuit,
                 cgmes_gen.EquipmentContainer = subs
                 # link back
                 if isinstance(subs.Equipments, list):
-                    subs.Equipment.append(cgmes_gen)
+                    subs.Equipments.append(cgmes_gen)
                 else:
-                    subs.Equipment = [cgmes_gen]
+                    subs.Equipments = [cgmes_gen]
             else:
                 logger.add_error(
                     msg=f'No substation found for generator',
@@ -1378,9 +1458,15 @@ def get_cgmes_generators(multicircuit_model: MultiCircuit,
             )
             cgmes_syn.EquipmentContainer = vl
 
-        cgmes_syn.BaseVoltage = find_object_by_vnom(cgmes_model=cgmes_model,
-                                                    object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
-                                                    target_vnom=mc_elm.bus.Vnom)
+        set_declared_cgmes_property(
+            cgmes_object=cgmes_syn,
+            property_name="BaseVoltage",
+            property_value=find_object_by_vnom(cgmes_model=cgmes_model,
+                                               object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
+                                               target_vnom=mc_elm.bus.Vnom),
+            logger=logger,
+            context="get_cgmes_generators()"
+        )
         cgmes_model.add(cgmes_syn)
 
 
@@ -1446,10 +1532,16 @@ def get_cgmes_power_transformers(grid: MultiCircuit,
         pte1.name = f"Winding 1 - {mc_elm.name}"
         pte1.PowerTransformer = cm_transformer
         pte1.Terminal = cm_transformer.Terminals[0]
-        pte1.BaseVoltage = find_object_by_vnom(
-            cgmes_model=cgmes_model,
-            object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
-            target_vnom=mc_elm.bus_from.Vnom
+        set_declared_cgmes_property(
+            cgmes_object=pte1,
+            property_name="BaseVoltage",
+            property_value=find_object_by_vnom(
+                cgmes_model=cgmes_model,
+                object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
+                target_vnom=mc_elm.bus_from.Vnom
+            ),
+            logger=logger,
+            context="get_cgmes_power_transformers() winding 1"
         )
 
         # RATES
@@ -1487,10 +1579,16 @@ def get_cgmes_power_transformers(grid: MultiCircuit,
         pte2.name = f"Winding 2 - {mc_elm.name}"
         pte2.PowerTransformer = cm_transformer
         pte2.Terminal = cm_transformer.Terminals[1]
-        pte2.BaseVoltage = find_object_by_vnom(
-            cgmes_model=cgmes_model,
-            object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
-            target_vnom=mc_elm.bus_to.Vnom
+        set_declared_cgmes_property(
+            cgmes_object=pte2,
+            property_name="BaseVoltage",
+            property_value=find_object_by_vnom(
+                cgmes_model=cgmes_model,
+                object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
+                target_vnom=mc_elm.bus_to.Vnom
+            ),
+            logger=logger,
+            context="get_cgmes_power_transformers() winding 2"
         )
 
         # TODO: Shouldn't this be half?
@@ -1577,8 +1675,6 @@ def get_cgmes_power_transformers(grid: MultiCircuit,
             tap_changer.TransformerEnd = pte1
 
             # STEPs
-            tap_changer.total_pos = mc_elm.tap_changer.total_positions
-
             (tap_changer.lowStep,
              tap_changer.highStep,
              tap_changer.normalStep,
@@ -1624,7 +1720,13 @@ def get_cgmes_power_transformers(grid: MultiCircuit,
                 logger=logger
             )
             # tculControlMode not used, but has to be set to something: volt/react ..
-            tap_changer.tculControlMode = TransformerControlMode.volt
+            set_declared_cgmes_property(
+                cgmes_object=tap_changer,
+                property_name="tculControlMode",
+                property_value=TransformerControlMode.volt,
+                logger=logger,
+                context="get_cgmes_power_transformers()"
+            )
             #                   TAP Changer SSH
             tap_changer.controlEnabled = tcc_enabled
             # Specifies the regulation status of the equipment.  True is regulating, false is not regulating.
@@ -1715,10 +1817,16 @@ def get_cgmes_power_transformers(grid: MultiCircuit,
         pte1.name = mc_elm.name
         pte1.PowerTransformer = cm_transformer
         pte1.Terminal = cm_transformer.Terminals[0]
-        pte1.BaseVoltage = find_object_by_vnom(
-            cgmes_model=cgmes_model,
-            object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
-            target_vnom=mc_elm.bus1.Vnom
+        set_declared_cgmes_property(
+            cgmes_object=pte1,
+            property_name="BaseVoltage",
+            property_value=find_object_by_vnom(
+                cgmes_model=cgmes_model,
+                object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
+                target_vnom=mc_elm.bus1.Vnom
+            ),
+            logger=logger,
+            context="get_cgmes_power_transformers() 3W winding 1"
         )
         pte1.ratedU = mc_elm.V1
         pte1.ratedS = mc_elm.rate1
@@ -1747,10 +1855,16 @@ def get_cgmes_power_transformers(grid: MultiCircuit,
         pte2.name = mc_elm.name
         pte2.PowerTransformer = cm_transformer
         pte2.Terminal = cm_transformer.Terminals[1]
-        pte2.BaseVoltage = find_object_by_vnom(
-            cgmes_model=cgmes_model,
-            object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
-            target_vnom=mc_elm.bus2.Vnom
+        set_declared_cgmes_property(
+            cgmes_object=pte2,
+            property_name="BaseVoltage",
+            property_value=find_object_by_vnom(
+                cgmes_model=cgmes_model,
+                object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
+                target_vnom=mc_elm.bus2.Vnom
+            ),
+            logger=logger,
+            context="get_cgmes_power_transformers() 3W winding 2"
         )
         pte2.ratedU = mc_elm.V2
         pte2.ratedS = mc_elm.rate2
@@ -1779,10 +1893,16 @@ def get_cgmes_power_transformers(grid: MultiCircuit,
         pte3.name = mc_elm.name
         pte3.PowerTransformer = cm_transformer
         pte3.Terminal = cm_transformer.Terminals[2]
-        pte3.BaseVoltage = find_object_by_vnom(
-            cgmes_model=cgmes_model,
-            object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
-            target_vnom=mc_elm.bus3.Vnom
+        set_declared_cgmes_property(
+            cgmes_object=pte3,
+            property_name="BaseVoltage",
+            property_value=find_object_by_vnom(
+                cgmes_model=cgmes_model,
+                object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
+                target_vnom=mc_elm.bus3.Vnom
+            ),
+            logger=logger,
+            context="get_cgmes_power_transformers() 3W winding 3"
         )
         pte3.ratedU = mc_elm.V3
         pte3.ratedS = mc_elm.rate3
@@ -1982,7 +2102,13 @@ def get_cgmes_equivalent_shunts(multicircuit_model: MultiCircuit,
             object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
             target_vnom=mc_elm.bus.Vnom)
         if base_voltage is not None:
-            eq_shunt.BaseVoltage = base_voltage
+            set_declared_cgmes_property(
+                cgmes_object=eq_shunt,
+                property_name="BaseVoltage",
+                property_value=base_voltage,
+                logger=logger,
+                context="get_cgmes_equivalent_shunts()"
+            )
 
         eq_shunt.b = mc_elm.B / (mc_elm.bus.Vnom ** 2)
         eq_shunt.g = mc_elm.G / (mc_elm.bus.Vnom ** 2)
@@ -2035,10 +2161,16 @@ def get_cgmes_linear_and_non_linear_shunts(multicircuit_model: MultiCircuit,
             if isinstance(vl, cgmes_model.assets.VoltageLevel):
                 non_lin_sc.EquipmentContainer = vl
 
-        non_lin_sc.BaseVoltage = find_object_by_vnom(
-            cgmes_model=cgmes_model,
-            object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
-            target_vnom=mc_elm.bus.Vnom)
+        set_declared_cgmes_property(
+            cgmes_object=non_lin_sc,
+            property_name="BaseVoltage",
+            property_value=find_object_by_vnom(
+                cgmes_model=cgmes_model,
+                object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
+                target_vnom=mc_elm.bus.Vnom),
+            logger=logger,
+            context="get_cgmes_linear_and_non_linear_shunts()"
+        )
 
         non_lin_sc.Terminals = (
             create_cgmes_terminal(mc_bus=mc_elm.bus,
@@ -2143,9 +2275,15 @@ def get_cgmes_breakers(multicircuit_model: MultiCircuit,
 
         br.name = mc_elm.name
         br.description = mc_elm.code
-        br.BaseVoltage = find_object_by_vnom(cgmes_model=cgmes_model,
-                                             object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
-                                             target_vnom=mc_elm.get_max_bus_nominal_voltage())
+        set_declared_cgmes_property(
+            cgmes_object=br,
+            property_name="BaseVoltage",
+            property_value=find_object_by_vnom(cgmes_model=cgmes_model,
+                                               object_list=cgmes_model.cgmes_assets.BaseVoltage_list,
+                                               target_vnom=mc_elm.get_max_bus_nominal_voltage()),
+            logger=logger,
+            context="get_cgmes_breakers()"
+        )
 
         if mc_elm.get_voltage_level_from():
             vl = find_object_by_uuid(
@@ -2553,7 +2691,10 @@ def make_coordinate_system(cgmes_model: CgmesCircuit,
 
     coo_sys.name = "EPSG4326"
     coo_sys.crsUrn = "urn:ogc:def:crs:EPSG::4326"
-    coo_sys.Locations = []
+    if "Locations" in coo_sys.declared_properties:
+        coo_sys.Locations = list()
+    else:
+        coo_sys.Location = list()
 
     cgmes_model.add(coo_sys)
 

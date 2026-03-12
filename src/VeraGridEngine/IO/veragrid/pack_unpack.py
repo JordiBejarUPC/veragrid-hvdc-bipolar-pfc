@@ -420,6 +420,9 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
             if prop.has_profile():
                 data[name + '_prof'] = profile_todict(elm.get_profile_by_prop(prop=prop))
 
+        if prop.tpe == dict:
+            data[name] = obj
+
         elif prop.tpe == SubObjectType.GeneratorQCurve:
             data[name] = obj.to_list()
 
@@ -495,7 +498,7 @@ def gather_model_as_jsons(circuit: MultiCircuit) -> Dict[str, Dict[str, str]]:
 
     data: Dict[str, Union[Dict[str, str], List[Dict[str, str]]]] = dict()
 
-    block_saver = BlockSaver(circuit.var_factory)
+    block_saver = BlockSaver(circuit.rms_var_factory)
 
     # declare objects to iterate  name: [sample object, list of objects, headers]
     object_types = get_objects_dictionary()
@@ -1258,6 +1261,11 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                                               elm=elm,
                                                               property_value=val)
 
+                            elif gc_prop.tpe == dict:
+                                # set the value directly
+                                val = property_value
+                                elm.set_snapshot_value(gc_prop.name, val)
+
                             elif isinstance(gc_prop.tpe, EnumType):
 
                                 try:
@@ -1499,7 +1507,7 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
     # New way of parsing information from .model files (Json files)
     # These files are just .json stored in the model_data inside the zip file
 
-    block_parser = BlockParser(circuit.var_factory)
+    block_parser = BlockParser(circuit.rms_var_factory)
     symbolic_data = data.get('symbolic_data', None)
     if symbolic_data is not None:
         if len(symbolic_data) > 0:
@@ -1587,8 +1595,8 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
     to_delete: List[ALL_DEV_TYPES] = list()
     all_elements_dict: Dict[str, ALL_DEV_TYPES] = dict()
     for dtype in [
-        DeviceType.PMeasurementDevice,
-        DeviceType.QMeasurementDevice,
+        DeviceType.PiMeasurementDevice,
+        DeviceType.QiMeasurementDevice,
         DeviceType.PfMeasurementDevice,
         DeviceType.QfMeasurementDevice,
         DeviceType.PtMeasurementDevice,

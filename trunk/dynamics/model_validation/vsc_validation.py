@@ -59,7 +59,7 @@ grid.add_bus(bus2)
 grid.add_bus(bus_dc)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.var_factory)
+    initialize_bus_rms(bus, vf=grid.rms_var_factory)
 
 # Lines
 from VeraGridEngine.enumerations import ConverterControlType
@@ -104,14 +104,14 @@ load_dynhost = DynamicModelHost()
 gen_dynhost = DynamicModelHost()
 
 # line
-line0_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
-line1_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
-vsc_line_mdl = block_deep_copy(VSCShuntBuild(grid.var_factory).block)
+line0_mdl = block_deep_copy(get_line_rms_template(grid.rms_var_factory).block)
+line1_mdl = block_deep_copy(get_line_rms_template(grid.rms_var_factory).block)
+vsc_line_mdl = block_deep_copy(VSCShuntBuild(grid.rms_var_factory).block)
 
 # Others
 #vsc_solar_mdl = block_deep_copy(VscControlledPV().block)
-load_mdl = block_deep_copy(ZIPLoadBuild(grid.var_factory, Pl0 =-0.0999999, Ql0 =-0.00999999).block)
-genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.var_factory).block)
+load_mdl = block_deep_copy(ZIPLoadBuild(grid.rms_var_factory, Pl0 =-0.0999999, Ql0 =-0.00999999).block)
+genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.rms_var_factory).block)
 
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
 genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])

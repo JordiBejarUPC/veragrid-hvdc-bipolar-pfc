@@ -428,6 +428,7 @@ class EditableDevice(metaclass=EditableDeviceMeta):
                    definition='Object action to perform.\nOnly used for model merging.',
                    display=False),
         GCProp(key='comment', units='', tpe=str, definition='User comment'),
+        GCProp(key='property_merge_selections', units='', tpe=dict, display=False, editable=False)
     )
     CLASS_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = tuple()
     CLASS_PROPERTY_LIST: Tuple[GCProp, ...] = tuple()
@@ -527,11 +528,12 @@ class EditableDevice(metaclass=EditableDeviceMeta):
         :param property_name: Property name
         :return: True if selected for merge
         """
-        selected = self.property_merge_selections.get(property_name, None)
-        if selected is None:
-            return True
-        else:
-            return selected
+
+        # If the property is not in the dictionary of properties to merge, it should not be modified.
+        # Otherwise, check what should be the behaviour.
+
+        return self.property_merge_selections.get(property_name, False)
+
 
     def iter_properties_selected_to_merge(self):
         """

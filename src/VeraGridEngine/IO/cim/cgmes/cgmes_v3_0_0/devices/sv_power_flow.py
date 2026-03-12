@@ -19,6 +19,7 @@ class SvPowerFlow(Base):
 		CgmesProperty(property_name='q', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description='''Product of RMS value of the voltage and the RMS value of the quadrature component of the current.''', profiles=[]),
 		CgmesProperty(property_name='Terminal', class_type='Terminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The terminal associated with the power flow state variable.''', profiles=[]),
 	)
+	__slots__ = ('p', 'q', 'Terminal')
 	def __init__(self, rdfid, tpe="SvPowerFlow", resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 

@@ -25,6 +25,7 @@ class BaseVoltage(IdentifiedObject):
 		CgmesProperty(property_name='TransformerEnds', class_type='TransformerEnd', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Transformer ends at the base voltage.  This is essential for PU calculation.''', profiles=[]),
 		CgmesProperty(property_name='TopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The topological nodes at the base voltage.''', profiles=[]),
 	)
+	__slots__ = ('nominalVoltage', 'ConductingEquipment', 'VoltageLevel', 'TransformerEnds', 'TopologicalNode')
 	def __init__(self, rdfid='', tpe='BaseVoltage'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

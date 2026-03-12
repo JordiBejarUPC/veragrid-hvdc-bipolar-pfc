@@ -15,6 +15,7 @@ class EnergySchedulingType(IdentifiedObject):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='EnergySource', class_type='EnergySource', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Energy Scheduling Type of an Energy Source''', profiles=[]),
 	)
+	__slots__ = ('EnergySource',)
 	def __init__(self, rdfid='', tpe='EnergySchedulingType'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

@@ -14,6 +14,7 @@ class PhaseTapChangerNonLinear(PhaseTapChanger):
 		CgmesProperty(property_name='xMax', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', profiles=[]),
 		CgmesProperty(property_name='xMin', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', profiles=[]),
 	)
+	__slots__ = ('voltageStepIncrement', 'xMax', 'xMin')
 	def __init__(self, rdfid='', tpe='PhaseTapChangerNonLinear'):
 		PhaseTapChanger.__init__(self, rdfid, tpe)
 

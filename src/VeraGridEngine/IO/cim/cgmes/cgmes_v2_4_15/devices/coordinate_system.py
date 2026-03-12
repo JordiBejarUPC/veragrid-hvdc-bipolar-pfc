@@ -24,6 +24,7 @@ EPSG OGC, this attribute would be urn:ogc:def:uom:EPSG::4236.
 A profile should limit this code to a set of allowed URNs agreed to by all sending and receiving parties.''', profiles=[]),
 		CgmesProperty(property_name='Location', class_type='Location', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''All locations described with position points in this coordinate system.''', profiles=[]),
 	)
+	__slots__ = ('crsUrn', 'Location')
 	def __init__(self, rdfid='', tpe='CoordinateSystem'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

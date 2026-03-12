@@ -43,6 +43,7 @@ class Block:
                  in_vars: List[Var] | None = None,
                  out_vars: List[Var] | None = None,
                  event_dict: Dict[Var, Expr] | None = None,
+                 mode_dict: Dict[Var, Expr] | None = None,
                  external_mapping: Dict[VarPowerFlowRefferenceType, Var] | None = None,
                  api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] | None = None,
                  name: str = "",
@@ -108,6 +109,7 @@ class Block:
         # Dictionary of Variables and their Expressions that appear due to an event
         # this is the dictionary of "parameters" that may change and their equations
         self.event_dict: Dict[Var, Expr | Const] = dict() if event_dict is None else event_dict
+        self.mode_dict: Dict[Var, Expr | Const] = dict() if mode_dict is None else mode_dict
 
     def to_dict(self) -> dict:
         return {
@@ -151,6 +153,14 @@ class Block:
                     "value": _expr_to_dict(v),
                 }
                 for k, v in self.event_dict.items()
+            },
+
+            "mode_dict": {
+                str(k.uid): {
+                    "key": _expr_to_dict(k),
+                    "value": _expr_to_dict(v),
+                }
+                for k, v in self.mode_dict.items()
             },
 
             "parameters": {
@@ -226,6 +236,11 @@ class Block:
             for item in data["event_dict"].values()
         }
 
+        block.mode_dict = {
+            _dict_to_expr(item["key"]): _dict_to_expr(item["value"])
+            for item in data.get("mode_dict", {}).values()
+        }
+
         block.parameters = {
             _dict_to_expr(item["key"]): _dict_to_expr(item["value"])
             for item in data["parameters"].values()
@@ -286,6 +301,14 @@ class Block:
                     self.event_dict[var] = Const(new_value)
                 found += 1
 
+        for var, expr in self.mode_dict.items():
+            if var.name == var_name:
+                if isinstance(expr, Const):
+                    expr.value = new_value
+                else:
+                    self.mode_dict[var] = Const(new_value)
+                found += 1
+
         # check parameters dict
         for var, const in self.parameters.items():
             if var.name == var_name:
@@ -322,6 +345,7 @@ class Block:
                 not self.in_vars and
                 not self.out_vars and
                 not self.event_dict and
+                not self.mode_dict and
                 not self.external_mapping and
                 not self.api_obj_mapping and
                 not self.name
@@ -408,6 +432,9 @@ class Block:
             for event_param, eq in b.event_dict.items():
                 mdl_placeholder.event_dict[event_param] = eq
 
+            for mode_param, eq in b.mode_dict.items():
+                mdl_placeholder.mode_dict[mode_param] = eq
+
             for param, const in b.parameters.items():
                 mdl_placeholder.parameters[param] = const
 
@@ -416,12 +443,14 @@ class Block:
 
             for diffvar, diff_init_eq in b.diff_init_eqs.items():
                 mdl_placeholder.diff_init_eqs[diffvar] = diff_init_eq
+
         self.algebraic_vars = mdl_placeholder.algebraic_vars
         self.algebraic_eqs = mdl_placeholder.algebraic_eqs
         self.state_vars = mdl_placeholder.state_vars
         self.state_eqs = mdl_placeholder.state_eqs
         self.diff_vars = mdl_placeholder.diff_vars
         self.event_dict = mdl_placeholder.event_dict
+        self.mode_dict = mdl_placeholder.mode_dict
         self.parameters = mdl_placeholder.parameters
         self.init_eqs = mdl_placeholder.init_eqs
         self.diff_init_eqs = mdl_placeholder.diff_init_eqs
@@ -465,6 +494,7 @@ class Block:
         init_eqs_new = dict()
         diff_init_eqs_new = dict()
         event_dict_new = dict()
+        mode_dict_new = dict()
 
         for i, eq in enumerate(self.algebraic_eqs):
             new_equ = eq.subs({old: new})
@@ -501,6 +531,14 @@ class Block:
                 event_dict_new.update({var: new_expr})
 
         self.event_dict = event_dict_new
+
+        for var, expr in self.mode_dict.items():
+            new_expr = expr.subs({old: new})
+            if var is old:
+                mode_dict_new.update({new: new_expr})
+            else:
+                mode_dict_new.update({var: new_expr})
+        self.mode_dict = mode_dict_new
 
         for var_pf_ref, mdl_var in self.external_mapping.items():
             if mdl_var is old:

@@ -38,6 +38,7 @@ class SynchronousMachine(RotatingMachine):
         CgmesProperty(property_name='operatingMode', class_type=SynchronousMachineOperatingMode, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Current mode of operation.''', profiles=[]),
         CgmesProperty(property_name='referencePriority', class_type=int, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Priority of unit for use as powerflow voltage phase angle reference bus selection. 0 = don t care (default) 1 = highest priority. 2 is less than 1 and so on.''', profiles=[]),
     )
+    __slots__ = ('InitialReactiveCapabilityCurve', 'earthing', 'earthingStarPointR', 'earthingStarPointX', 'ikk', 'maxQ', 'minQ', 'mu', 'qPercent', 'r0', 'r2', 'satDirectSubtransX', 'satDirectSyncX', 'satDirectTransX', 'shortCircuitRotorType', 'type', 'voltageRegulationRange', 'r', 'x0', 'x2', 'operatingMode', 'referencePriority')
     def __init__(self, rdfid='', tpe='SynchronousMachine'):
         RotatingMachine.__init__(self, rdfid, tpe)
 

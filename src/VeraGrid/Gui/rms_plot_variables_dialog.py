@@ -3,10 +3,6 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Dict, List
-import numpy as np
-import pandas as pd
-
 
 from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
@@ -30,7 +26,7 @@ class RmsPlotDialog(QDialog):
     Special plot for dynamic variables
     """
 
-    def __init__(self, grid: MultiCircuit, results: RmsResults, parent=None):
+    def __init__(self, results: RmsResults, parent=None):
         super().__init__(parent)
 
         devices = results.devices
@@ -38,7 +34,7 @@ class RmsPlotDialog(QDialog):
         devices_options = {}
         for device in devices:
             devices_options[device.name] = [
-                var.name+device.name
+                var.name + device.name
                 for var in (
                     results.devices_vars_info[device]
                 )
@@ -154,7 +150,6 @@ class RmsPlotDialog(QDialog):
         self.list_widget.takeItem(row)
         self.plot_selected()
 
-
     def plot_selected(self):
 
         self.ax.clear()
@@ -195,6 +190,4 @@ class RmsPlotDialog(QDialog):
         canvas.draw()
 
         external_dialog.show()
-
-
 

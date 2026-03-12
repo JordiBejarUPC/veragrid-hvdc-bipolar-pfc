@@ -22,6 +22,7 @@ For CIMXML data files in RDF syntax conforming to IEC 61970-552 Edition 1, the m
 		CgmesProperty(property_name='name', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The name is any free human readable and possibly non unique text naming the object.''', profiles=[]),
 		CgmesProperty(property_name='shortName', class_type=str, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The attribute is used for an exchange of a human readable short name with length of the string 12 characters maximum.''', profiles=[]),
 	)
+	__slots__ = ('description', 'energyIdentCodeEic', 'mRID', 'name', 'shortName')
 	def __init__(self, rdfid, tpe, resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 

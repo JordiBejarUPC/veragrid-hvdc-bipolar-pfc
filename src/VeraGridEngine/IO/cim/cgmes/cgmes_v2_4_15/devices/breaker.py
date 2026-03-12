@@ -7,6 +7,7 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.protected_switch import P
 
 
 class Breaker(ProtectedSwitch):
+	__slots__ = ()
 	def __init__(self, rdfid='', tpe='Breaker'):
 		ProtectedSwitch.__init__(self, rdfid, tpe)
 

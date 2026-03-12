@@ -15,6 +15,7 @@ class RegularIntervalSchedule(BasicIntervalSchedule):
 		CgmesProperty(property_name='timeStep', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.s, description='''Time, in seconds.''', profiles=[]),
 		CgmesProperty(property_name='endTime', class_type=datetime.datetime, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The time for the last time point.''', profiles=[]),
 	)
+	__slots__ = ('timeStep', 'endTime')
 	def __init__(self, rdfid='', tpe='RegularIntervalSchedule'):
 		BasicIntervalSchedule.__init__(self, rdfid, tpe)
 

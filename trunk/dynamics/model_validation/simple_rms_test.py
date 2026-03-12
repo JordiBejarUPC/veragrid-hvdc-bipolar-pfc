@@ -90,14 +90,14 @@ def setup_rms_models_expanded(grid):
     # Step 1: Bus RMS models
     print("\n1. Setting up Bus RMS models...")
     for i, bus in enumerate(grid.buses):
-        initialize_bus_rms(bus, vf=grid.var_factory)
+        initialize_bus_rms(bus, vf=grid.rms_var_factory)
         print(f"   Bus {bus.name}: {[v.name for v in bus.rms_model.model.out_vars]}")
     
     # Step 2: Generator RMS models
     print("\n2. Setting up Generator RMS models...")
     for gen in grid.get_generators():
         host = gce.DynamicModelHost(name=f"Gen_{gen.name}")
-        template = get_genrow_rms_template(grid.var_factory, name=f"Gen_{gen.name}")
+        template = get_genrow_rms_template(grid.rms_var_factory, name=f"Gen_{gen.name}")
         genrow_mdl = template.block
         
         bus = gen.bus
@@ -122,7 +122,7 @@ def setup_rms_models_expanded(grid):
         Pl0_pu = load.P / grid.Sbase
         Ql0_pu = load.Q / grid.Sbase
         # Negative sign because load consumes power (injection is negative)
-        load_template = ZIPLoadBuild(grid.var_factory, name=f"Load_{load.name}", 
+        load_template = ZIPLoadBuild(grid.rms_var_factory, name=f"Load_{load.name}",
                                      Pl0=-Pl0_pu, Ql0=-Ql0_pu)
         load_mdl = load_template.block
         
@@ -139,7 +139,7 @@ def setup_rms_models_expanded(grid):
     print("\n4. Setting up Line RMS models...")
     for line in grid.lines:
         host = gce.DynamicModelHost(name=f"Line_{line.name}")
-        line_mdl = get_line_rms_template(grid.var_factory, name=f"Line_{line.name}").block
+        line_mdl = get_line_rms_template(grid.rms_var_factory, name=f"Line_{line.name}").block
         
         from_bus = line.bus_from
         to_bus = line.bus_to

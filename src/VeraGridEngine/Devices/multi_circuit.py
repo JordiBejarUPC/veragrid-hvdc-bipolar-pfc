@@ -2221,7 +2221,7 @@ class MultiCircuit(Assets):
                                             expected_value=v1)
 
                             elif prop.tpe == SubObjectType.DaeBlockType:
-                                if not compare_blocks(v1, v2, self.var_factory, grid2.var_factory):
+                                if not compare_blocks(v1, v2, self.rms_var_factory, grid2.rms_var_factory):
                                     logger.add_error(msg="Different snapshot values",
                                                      device_class=template_elm.device_type.value,
                                                      device_property=prop.name,
@@ -2337,6 +2337,7 @@ class MultiCircuit(Assets):
         for new_elm in self.items():  # for every device...
 
             action = ActionType.NoAction
+            changed_props = []
 
             # try to search for the counterpart in the base circuit
             elm_from_base = base_elements_dict.get(new_elm.idtag, None)
@@ -2353,6 +2354,7 @@ class MultiCircuit(Assets):
                     detailed_profile_comparison=detailed_profile_comparison,
                     nt=nt
                 )
+
             else:
                 # Same iftag, different classes, probably some consequence of CGMES
                 logger.add_info(msg="Same idtag, different types",
@@ -2363,6 +2365,9 @@ class MultiCircuit(Assets):
             if action != ActionType.NoAction:
                 new_element = new_elm.copy(forced_new_idtag=False)
                 new_element.action = action
+                for prop in changed_props:
+                    new_element.set_property_selected_to_merge(property_name=prop.name, selected=True)
+
                 dgrid.add_element(obj=new_element)
                 logger.add_info(msg="Device added in the diff circuit",
                                 device_class=new_element.device_type.value,
@@ -3233,22 +3238,29 @@ class MultiCircuit(Assets):
 
         return other
 
-    def check_rms_models(self) -> List[str]:
+    def check_rms_models(self) -> Logger:
         """
         This function checks that a device has a valid rms model
         :return:
         """
-        empty_elem:List[str] = list()
+        logger = Logger()
         for elm in self.buses:
             if elm.rms_model.model.empty():
-                empty_elem.append(elm.name)
+                logger.add_error("Missing RMS model",
+                                 device_class=elm.device_type.value,
+                                 device=elm.name)
+
         for elm in self.get_branches_iter():
             if elm.rms_model.model.empty():
-                empty_elem.append(elm.name)
+                logger.add_error("Missing RMS model",
+                                 device_class=elm.device_type.value,
+                                 device=elm.name)
         for elm in self.get_injection_devices_iter():
             if elm.rms_model.model.empty():
-                empty_elem.append(elm.name)
-        return empty_elem
+                logger.add_error("Missing RMS model",
+                                 device_class=elm.device_type.value,
+                                 device=elm.name)
+        return logger
 
 
 
