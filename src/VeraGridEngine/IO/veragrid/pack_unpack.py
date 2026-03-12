@@ -1258,6 +1258,11 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                                               elm=elm,
                                                               property_value=val)
 
+                            elif gc_prop.tpe == dict:
+                                # set the value directly
+                                val = json.loads(property_value)
+                                elm.set_snapshot_value(gc_prop.name, val)
+
                             elif isinstance(gc_prop.tpe, EnumType):
 
                                 try:
