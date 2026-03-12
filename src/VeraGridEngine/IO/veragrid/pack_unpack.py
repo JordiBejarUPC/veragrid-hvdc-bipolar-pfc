@@ -362,6 +362,7 @@ def profile_todict_str(profile: Profile) -> Dict[str, str]:
 
 def get_profile_from_dict(profile: Profile,
                           data: Dict[str, Union[str, Union[Any, Dict[str, Any]]]],
+                          gc_prop: GCProp,
                           collection: Union[None, Dict[str, Any]] = None):
     """
     Create a profile from json dict data
@@ -396,7 +397,7 @@ def get_profile_from_dict(profile: Profile,
             arr = data['dense_data']
         else:
             arr = [collection.get(i, default_value) for i in data['dense_data']]
-        profile.set(np.array(arr))
+        profile.set(np.array(arr, dtype=gc_prop.tpe))
 
     # mark as initialized
     profile.set_initialized()
@@ -1044,7 +1045,8 @@ def search_and_apply_json_profile(json_entry: Dict[str, Dict[str, Union[str, Uni
         else:
             get_profile_from_dict(profile=profile,
                                   data=json_profile,
-                                  collection=collection)
+                                  collection=collection,
+                                  gc_prop=gc_prop)
 
 
 def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
