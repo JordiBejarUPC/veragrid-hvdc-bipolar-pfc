@@ -12,6 +12,7 @@ from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import S
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import haversine_distance
 from VeraGrid.Gui.ProceduralGrid.procedural_grid_ui import Ui_Dialog
 from VeraGrid.Gui.gui_functions import get_list_model, enums_to_model
+from VeraGridEngine import MultiCircuit
 from VeraGridEngine.enumerations import ProceduralGridMethods
 from VeraGridEngine.Topology.Procedural.procedural_grid_engine import ProceduralGridComputationEngine
 #from VeraGridEngine.Devices.multi_circuit import MultiCircuit

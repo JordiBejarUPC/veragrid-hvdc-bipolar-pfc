@@ -7,6 +7,7 @@ from typing import Dict, List, TYPE_CHECKING
 
 import numpy as np
 import VeraGridEngine.Devices as dev
+from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 from VeraGridEngine import Substation
 from VeraGridEngine.Devices.types import BRANCH_TYPES
 from VeraGridEngine.enumerations import DeviceType, ProceduralGridMethods
@@ -15,6 +16,8 @@ import matplotlib.pyplot as plt
 from scipy.spatial.distance import cdist
 from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy.special import gammaincinv
+
+from trunk.dynamics.model_validation.gfl_vsc_validation import load_mdl
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -39,24 +42,30 @@ class ProceduralGridComputationEngine:
         Executes the Steiner Tree algorithm without further optimization.
         """
         print("Running Steiner Tree calculation")
-        # Add your Steiner Tree logic here
-        # 1. Fetch coordinates
-        M = len(self.candidates)
-        N = len(self.targets)
 
-        coord_M = np.array([[sg.lat, sg.lon] for sg in self.candidates])
-        coord_N = np.array([[sg.lat, sg.lon] for sg in self.targets])
-        # TODO: Get the voltages you inputed in the substations.
-        #  The idea is to get the electrical element form the graphic element and then use get_substaiton_buses()
-        # print(MultiCircuit.get_substation_buses(self.candidate_list[0].api_object))
-        Vnom_kV_M = None
-        Vnom_kV_N = None
+        # 1. Parse inputs
+        coord_M = np.array([[sg.latitude, sg.longitude] for sg in self.candidates])
+        coord_N = np.array([[sg.latitude, sg.longitude] for sg in self.targets])
 
-        load_MW_M = None
-        load_MW_N = None
+        Vnom_kV_M = []
+        for sg in self.candidates:
+            # TODO: How to obtain the Substation object from the api object?
+            bus_list = MultiCircuit.get_substation_buses(sg)
+            # TODO: Check the assumption below
+            Vnom_kV_M.append(bus_list[0])  # Assuming the first bus represents the substation voltage
+
+        Vnom_kV_N = []
+        for sg in self.targets:
+            # TODO: How to obtain the Substation object from the api object?
+            bus_list = MultiCircuit.get_substation_buses(sg)
+            # TODO: Check the assumption below
+            Vnom_kV_N.append(bus_list[0])  # Assuming the first bus represents the substation voltage
+
+        load_MW_M = None # TODO: How do we enter the generation and load capacities in the substations?
+        load_MW_N = None # TODO: How do we enter the generation and load capacities in the substations?
 
         # 2A. Run VSA: Create an initial radial topology with a Steiner tree approach
-        network = Graph(coord_M, coord_N, max_iteration=15000)
+        network = Graph(coord_M, coord_N, Vnom_kV_M, Vnom_kV_N, load_MW_M, load_MW_N, max_iteration=15000)
         raw_vector, history = network.run_vsa()
         raw_steiner_pts = network.decode_solution(raw_vector)
 
@@ -69,57 +78,20 @@ class ProceduralGridComputationEngine:
         edges = network.generate_edges(final_mst)
 
         # 2E. Assign voltages to Steiner Points
-        closest_voltage = []
-        for i in range(len(final_steiner_pts)):
-            steiner_coord = final_steiner_pts[i]
-            dists_to_M = np.linalg.norm(coord_M - steiner_coord, axis=1)
-            dists_to_N = np.linalg.norm(coord_N - steiner_coord, axis=1)
-            min_dist_M = np.min(dists_to_M)
-            min_dist_N = np.min(dists_to_N)
-            if min_dist_M < min_dist_N:
-                closest_bus_idx = np.argmin(dists_to_M)
-                closest_voltage.append(Vnom_kV_M[closest_bus_idx])
-            else:
-                closest_bus_idx = np.argmin(dists_to_N)
-                closest_voltage.append(Vnom_kV_N[closest_bus_idx])
+        closest_voltage = network.assign_voltages_to_Steiner_Points(final_steiner_pts)
 
-        node_objects = []
-        for i in range(len(coords_final_network)):
-            if 0 <= i <= M - 1:
-                tpe = 0
-                id_number = i
-                x, y = coords_final_network[i]
-                voltage = Vnom_kV_M[i]
-                load = load_MW_M[i]
+        # 2F. Create Node and Edge objects
+        node_objects = network.create_node_objects(coords_final_network, closest_voltage)
+        edge_objects = network.create_edge_objects(node_objects, edges)
 
-            elif M <= i <= M + N - 1:
-                tpe  = 1
-                id_number = i - M
-                x, y = coords_final_network[i]
-                voltage = Vnom_kV_N[i - M]
-                load = load_MW_N[i - M]
-
-            else:
-                # For now, each Steiner Point will have the voltage of the closest M or N bus
-                tpe = 2
-                id_number = i - (M + N) + 1
-                x, y = coords_final_network[i]
-                voltage = closest_voltage[i - (M + N)]
-                load = None
-
-            node_objects.append(Node(tpe, id_number, x, y, load, voltage))
-
-        edge_objects = []
-        for edge in edges:
-            edge_objects.append(Edge(node_objects[edge[0]],node_objects[edge[1]]))
-
+        # 3. Create Topology from Graph
         topology = Topology(network, node_objects, edge_objects)
 
-        # 3. Convert to VeraGrid object
+        # 4. Convert to VeraGrid object
         grid = Grid(topology)
 
-        # 4. Display in the diagram
-        # TODO: Display in the diagram
+        # 5. Display in the diagram
+        # TODO: Display in the diagram section of the GUI
 
         return None
 
@@ -135,19 +107,23 @@ class ProceduralGridComputationEngine:
 
 class Graph:
     """
-    Class to create the Graph
-    A graph is a set of nodes and edges
+    Handles the mathematical matrix operations and optimization.
     """
-    def __init__(self, m_coords, n_coords, max_iteration=1500):
-        # to do: Add all hardcoded values to constructor
-        self.m_coords = np.array(m_coords)
-        self.n_coords = np.array(n_coords)
+    def __init__(self, m_coords, n_coords, vnom_M, vnom_N, load_M, load_N, max_iteration=1500):
+        self.m_coords = m_coords
+        self.n_coords = n_coords
+        self.vnom_M = vnom_M
+        self.vnom_N = vnom_N
+        self.load_M = load_M
+        self.load_N = load_N
         self.max_iteration = max_iteration
+
         self.all_coords = np.vstack([self.m_coords, self.n_coords])
         self.total_nodes = len(self.all_coords)
         self.visited = [False] * self.total_nodes
         self.edges = []
-
+        self.m = len(self.m_coords)
+        self.n = len(self.n_coords)
         self.n_fixed = len(self.all_coords)
         self.n_steiner = self.n_fixed - 2
 
@@ -328,37 +304,80 @@ class Graph:
         plt.pause(5)
         plt.close()
 
-class Topology(Graph):
+    def assign_voltages_to_Steiner_Points(self, final_steiner_pts):
+
+        closest_voltage = []
+        for i in range(len(final_steiner_pts)):
+            steiner_coord = final_steiner_pts[i]
+            dists_to_M = np.linalg.norm(self.m_coords - steiner_coord, axis=1)
+            dists_to_N = np.linalg.norm(self.n_coords - steiner_coord, axis=1)
+            min_dist_M = np.min(dists_to_M)
+            min_dist_N = np.min(dists_to_N)
+            if min_dist_M < min_dist_N:
+                closest_bus_idx = np.argmin(dists_to_M)
+                closest_voltage.append(self.vnom_M[closest_bus_idx])
+            else:
+                closest_bus_idx = np.argmin(dists_to_N)
+                closest_voltage.append(self.vnom_N[closest_bus_idx])
+
+        return closest_voltage
+
+    def create_node_objects(self, coords_final_network, closest_voltage):
+
+        node_objects = []
+        for i, (x, y) in enumerate(coords_final_network):
+            if i < self.m:
+                tpe = 0
+                id_number = i
+                voltage = self.vnom_M[i]
+                load = self.load_M[i]
+
+            elif i < self.m + self.n:
+                tpe = 1
+                id_number = i - self.m
+                voltage = self.vnom_N[i - self.m]
+                load = self.load_N[i - self.m]
+
+            else:
+                tpe = 2
+                id_number = i - (self.m + self.n) + 1
+                voltage = closest_voltage[i - (self.m + self.n)]
+                load = None
+
+            node_objects.append(Node(tpe, id_number, x, y, load, voltage))
+
+        return node_objects
+
+    def create_edge_objects(self, node_objects, final_edges):
+
+        edge_objects = []
+        for edge in final_edges:
+            edge_objects.append(Edge(node_objects[edge[0]],node_objects[edge[1]]))
+
+        return edge_objects
+
+
+class Topology:
     """
-    Class to create the Topology
-    A Topology is a set of nodes, edges, buses and connections.
+    Represents the physical layout using domain objects.
+    Contains a Graph instance via composition.
     """
-    def __init__(self, m_coords, n_coords, max_iteration=1500, Nodes: List[Node], Edges: List[Edge]):
-        super().__init__(m_coords, n_coords, max_iteration)
-        # Additional attributes for Topology can be added here
-        self.Nodes = Nodes
-        self.Edges = Edges
+
+    def __init__(self, network_graph: Graph, nodes: List[Node], edges: List[Edge]):
+        self.network_graph = network_graph
+        self.nodes = nodes
+        self.edges = edges
 
     def generate_2D_markov(self):
 
-        for edge in self.edges:
-            bus_from = edge[0]
-            bus_to = edge[1]
-        combination, lengths, coords = generate_1D_markov(input_bus=label_bus1,
-                                                          output_bus=label_bus2,
-                                                          coord_input=coord_bus1,
-                                                          coord_output=coord_bus2,
-                                                          n_combinations=1,
-                                                          seed=26)
 
-class Grid(Topology):
+class Grid:
     """
-    Class to create the Grid
-    A grid contains the data to create a VeraGrid object modeling the grid
+    Contains the data to create a VeraGrid object modeling the grid.
+    Contains a Topology instance via composition.
     """
-
-    def __init__(self, m_coords, n_coords, max_iteration=1500):
-        super().__init__(m_coords, n_coords, max_iteration)
+    def __init__(self, topology: Topology):
+        self.topology = topology
         # Additional attributes for Grid can be added here
 
 class Node:
@@ -388,9 +407,6 @@ class Bus:
         self.y = y
         self.voltage = voltage
 
-    #def add_bus(self, candidate: CandidateDevice):
-    #    self.candidates.append(candidate)
-
 class Connection:
 
     def __init__(self, bus_from: Bus, bus_to: Bus, tpe: int, catalogue_entry: str, length: float):
@@ -400,11 +416,6 @@ class Connection:
         self.catalogue_entry = catalogue_entry
         self.length = length
 
-    #def add_connection(self, candidate: CandidateDevice):
-    #    self.candidates.append(candidate)
-
-    #def add_template(self, candidate: CandidateDevice):
-    #    self.candidates.append(candidate)
 
 if __name__ == '__main__':
 
