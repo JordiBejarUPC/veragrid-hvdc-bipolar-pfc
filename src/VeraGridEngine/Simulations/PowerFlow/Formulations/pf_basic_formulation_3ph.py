@@ -461,7 +461,7 @@ def compute_current_loads(bus_idx: IntVec,
     return I, Y_current_linear, Un_floating
 
 
-@nb.njit(cache=True)
+# @nb.njit(cache=True)
 def compute_power_loads(bus_idx: IntVec,
                         bus_lookup: IntVec,
                         V: CxVec,
@@ -480,10 +480,15 @@ def compute_power_loads(bus_idx: IntVec,
     """
     n = len(V)
     nelm = len(bus_idx)
-    I = np.zeros(n, dtype=nb.complex128)
 
-    zero_load = nb.complex128(0.0)
-    Un_floating = np.zeros(len(V), dtype=nb.complex128)
+    # I = np.zeros(n, dtype=nb.complex128)
+    I = np.zeros(n, dtype=complex)
+
+    # zero_load = nb.complex128(0.0)
+    zero_load = 0.0 + 0.0j
+
+    # Un_floating = np.zeros(len(V), dtype=nb.complex128)
+    Un_floating = np.zeros(len(V), dtype=complex)
 
     for k in range(nelm):
 
@@ -600,11 +605,39 @@ def compute_power_loads(bus_idx: IntVec,
 
         elif floating:
 
-            Ia, Ib, Ic, Un = floating_star_powers(V[a2], V[b2], V[c2],
-                                                  Sfloating[ab], Sfloating[bc], Sfloating[ca])
-            I[a2] -= Ia
-            I[b2] -= Ib
-            I[c2] -= Ic
+            if a2 >= 0 and b2 >= 0 and c2 >= 0:
+                Ia, Ib, Ic, Un = floating_star_powers(V[a2], V[b2], V[c2],
+                                                      Sfloating[ab], Sfloating[bc], Sfloating[ca])
+                I[a2] -= Ia
+                I[b2] -= Ib
+                I[c2] -= Ic
+
+            elif a2 >= 0 and b2 >= 0:
+                Ia, Ib, Ic, Un = floating_star_powers(V[a2], V[b2], zero_load,
+                                                      Sfloating[ab], Sfloating[bc], zero_load)
+                I[a2] -= Ia
+                I[b2] -= Ib
+                I[c2] -= zero_load
+
+            elif b2 >= 0 and c2 >= 0:
+                Ia, Ib, Ic, Un = floating_star_powers(zero_load, V[b2], V[c2],
+                                                      zero_load, Sfloating[bc], Sfloating[ca])
+                I[a2] -= zero_load
+                I[b2] -= Ib
+                I[c2] -= Ic
+
+            elif a2 >= 0 and c2 >= 0:
+                Ia, Ib, Ic, Un = floating_star_powers(V[a2], zero_load, V[c2],
+                                                      Sfloating[ab], zero_load, Sfloating[ca])
+                I[a2] -= Ia
+                I[b2] -= zero_load
+                I[c2] -= Ic
+
+            else:
+                I[a2] -= zero_load
+                I[b2] -= zero_load
+                I[c2] -= zero_load
+                Un = zero_load
 
             Un_floating[a2] = Un
             Un_floating[b2] = Un
@@ -613,7 +646,8 @@ def compute_power_loads(bus_idx: IntVec,
         else:
             pass
 
-    Y_power_linear = np.zeros_like(I, dtype=nb.complex128)
+    # Y_power_linear = np.zeros_like(I, dtype=nb.complex128)
+    Y_power_linear = np.zeros_like(I, dtype=complex)
     for i in range(len(V)):
         if abs(V[i]) > 1e-12:
             Y_power_linear[i] = I[i] / V[i]

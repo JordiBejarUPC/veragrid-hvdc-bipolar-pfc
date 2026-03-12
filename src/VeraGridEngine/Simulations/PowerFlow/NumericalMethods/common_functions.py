@@ -398,7 +398,7 @@ def floating_star_currents(Va, Vb, Vc, Istar_a, Istar_b, Istar_c, Vn0) -> Tuple[
     return Ia, Ib, Ic, Vn
 
 
-@nb.njit(cache=True)
+# @nb.njit(cache=True)
 def floating_star_powers(Ua,
                          Ub,
                          Uc,
@@ -418,24 +418,42 @@ def floating_star_powers(Ua,
     :param Sc: Phase C load complex power
     :return: Ia, Ib, Ic, Un
     """
+    zero_current = complex(1e-10, 1e-10)
+
     # A·x2 + B·x + c = 0
     # x = (-B +- sqrt(B2 - 4·A·C)) / 2·A
 
-    A = Sa + Sb + Sc
+    if np.abs(Sa + Sb + Sc) > np.abs(zero_current):
+        A = Sa + Sb + Sc
+    else:
+        A = zero_current
     B = -(Sa * (Ub + Uc) + Sb * (Ua + Uc) + Sc * (Ua + Ub))
     C = Sa * Ub * Uc + Sb * Ua * Uc + Sc * Ua * Ub
 
     Un_p = (-B + np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
     Un_n = (-B - np.sqrt(B ** 2 - 4 * A * C)) / (2 * A)
 
-    if abs(Un_p) < abs(Un_n):
+    if np.abs(Un_p) < np.abs(Un_n) and np.abs(Un_p) != 0.0 and np.abs(Un_p) <= 1.0:
         Un = Un_p
-    else:
+    elif np.abs(Un_n) != 0.0 and np.abs(Un_n) <= 1.0:
         Un = Un_n
+    else:
+        Un = complex(0.0, 0.0)
 
-    Ia = np.conj(Sa / (Ua - Un))
-    Ib = np.conj(Sb / (Ub - Un))
-    Ic = np.conj(Sc / (Uc - Un))
+    if np.abs(Ua) > np.abs(zero_current) and np.abs(Ua - Un) > np.abs(zero_current):
+        Ia = np.conj(Sa / (Ua - Un))
+    else:
+        Ia = zero_current
+
+    if np.abs(Ub) > np.abs(zero_current) and np.abs(Ub - Un) > np.abs(zero_current):
+        Ib = np.conj(Sb / (Ub - Un))
+    else:
+        Ib = zero_current
+
+    if np.abs(Uc) > np.abs(zero_current) and np.abs(Uc - Un) > np.abs(zero_current):
+        Ic = np.conj(Sc / (Uc - Un))
+    else:
+        Ic = zero_current
 
     return Ia, Ib, Ic, Un
 
