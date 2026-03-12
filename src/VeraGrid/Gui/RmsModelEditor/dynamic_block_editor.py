@@ -8,8 +8,7 @@ from __future__ import annotations
 import uuid
 import copy
 from enum import Enum
-from typing import List, Dict, Optional, Union, Sequence, Any
-import VeraGrid.Gui.gui_functions as gf
+from typing import List, Dict, Optional, Any
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
@@ -51,6 +50,56 @@ def _new_uid() -> int:
     :return:
     """
     return uuid.uuid4().int
+
+
+def clone_block_for_editing(block: Block) -> Block:
+    """
+    Build an isolated editable copy of a block, including its diagram.
+
+    :param block:
+    :return:
+    """
+    editable_block: Block = block.copy()
+    editable_block.diagram = block.diagram.copy()
+    return editable_block
+
+
+def copy_block_state(source_block: Block, target_block: Block) -> None:
+    """
+    Copy the complete edited block state back into the original block instance.
+
+    :param source_block:
+    :param target_block:
+    :return:
+    """
+    source_clone: Block = clone_block_for_editing(source_block)
+
+    # The original object identity must be preserved for external references in the GUI and device model.
+    target_block.name = source_clone.name
+    target_block.uid = source_clone.uid
+    target_block.vars_glob_name2uid = source_clone.vars_glob_name2uid
+    target_block.state_vars = source_clone.state_vars
+    target_block.state_eqs = source_clone.state_eqs
+    target_block.algebraic_vars = source_clone.algebraic_vars
+    target_block.algebraic_eqs = source_clone.algebraic_eqs
+    target_block.diff_vars = source_clone.diff_vars
+    target_block.reformulated_vars = source_clone.reformulated_vars
+    target_block.differential_eqs = source_clone.differential_eqs
+    target_block.init_eqs = source_clone.init_eqs
+    target_block.diff_init_eqs = source_clone.diff_init_eqs
+    target_block.children = source_clone.children
+    target_block.in_vars = source_clone.in_vars
+    target_block.out_vars = source_clone.out_vars
+    target_block.parameters = source_clone.parameters
+    target_block.alter_params = source_clone.alter_params
+    target_block.discrete_eqs = source_clone.discrete_eqs
+    target_block.external_mapping = source_clone.external_mapping
+    target_block.api_obj_mapping = source_clone.api_obj_mapping
+    target_block.init_values = source_clone.init_values
+    target_block.var_mapping = source_clone.var_mapping
+    target_block.event_dict = source_clone.event_dict
+    target_block.mode_dict = source_clone.mode_dict
+    target_block.diagram = source_clone.diagram
 
 
 class ResizeHandle(QGraphicsRectItem):
@@ -1045,14 +1094,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.splitter.setStretchFactor(1, 10)
 
         self.var_factory = var_factory
-        self.block = block
-        self.main_block: Block = block
+        self.original_block: Block = block
+        self.block: Block = clone_block_for_editing(block)
+        self.main_block: Block = self.block
         self.diagram: BlockDiagram = self.block.diagram
         self.templates_list = templates_list
         self.api_object = api_object
         self.main_editor = main_editor
         self.block_counters: Dict[BlockType, int] = dict()
         self.scene: DiagramScene = DiagramScene(self)
+        self.changes_applied: bool = False
 
         if mode == DynamicEditorMode.RMS:
             self.tree_structure = {
@@ -1101,6 +1152,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.graphicsView.dragMoveEvent = self.graphicsDragMoveEvent
         self.ui.graphicsView.dropEvent = self.graphicsDropEvent
 
+        self.ui.doItButton.clicked.connect(self.apply_changes)
         self.rebuild_scene_from_diagram()
 
     def build_library_tree_model(self,
@@ -1329,6 +1381,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return None
 
+    def apply_changes(self) -> None:
+        """
+        Commit the edited working copy back into the original block.
+
+        :return:
+        """
+        copy_block_state(source_block=self.main_block, target_block=self.original_block)
+        self.changes_applied = True
+        self.close()
+
     def rebuild_scene_from_diagram(self) -> None:
         """
         Rebuild the visible scene from the persisted block diagram.
@@ -1383,6 +1445,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 self.scene.addItem(connection)
             else:
                 pass
+
+    def closeEvent(self, event: QtGui.QCloseEvent) -> None:
+        """
+        Close the editor. Unapplied changes are discarded by design.
+
+        :param event:
+        :return:
+        """
+        event.accept()
 
     def graphicsDragEnterEvent(self, event: QDragEnterEvent) -> None:
         """
