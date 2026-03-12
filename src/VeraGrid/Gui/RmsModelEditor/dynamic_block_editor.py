@@ -136,11 +136,11 @@ class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
 
 
 class DynamicEditorMode(Enum):
-
     RMS = "rms",
     EMT = "emt",
 
-class RmsModelEditorGUI(QtWidgets.QMainWindow):
+
+class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
     RmsModelEditorGUI
     """
@@ -253,7 +253,7 @@ if __name__ == "__main__":
     vf = VarFactory()
     bl = Block()
     device = dev.Generator()
-    window = RmsModelEditorGUI(
+    window = DynamicBlockEditorGUI(
         var_factory=vf,
         block=bl,
         templates_list=[],

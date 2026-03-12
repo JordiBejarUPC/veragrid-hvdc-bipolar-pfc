@@ -29,7 +29,7 @@ from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
-from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import RmsModelEditorGUI
+from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, generate_map_diagram
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget, make_diagram_from_buses
@@ -979,7 +979,7 @@ class DataBaseTableMain(DiagramsMain):
                         # api_object = None,
                         # main_editor = False,
 
-                        self.rms_model_Editor_window = RmsModelEditorGUI(
+                        self.rms_model_Editor_window = DynamicBlockEditorGUI(
                             var_factory=self.circuit.rms_var_factory,
                             templates_list=self.circuit.rms_models,
                             templates_catalogue=self.circuit.rms_models,
