@@ -14,7 +14,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem,
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
-from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import RmsModelEditorGUI
+from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGridEngine.Devices.Branches.line import Line, SequenceLineType
 from VeraGridEngine.enumerations import DeviceType
 
@@ -238,15 +238,12 @@ class LineGraphicItem(LineGraphicTemplateItem):
                 templ_catalogue[templ.name] = templ
 
         # prompt RmsModelEditorGUI
-        rms_model_editor = RmsModelEditorGUI(
+        rms_model_editor = DynamicBlockEditorGUI(
             var_factory=self.editor.circuit.rms_var_factory,
             block=self.api_object.rms_model,
             templates_list=templ_list,
-            templates_catalogue=templ_catalogue,
-            api_object_name=self.api_object.name,
             api_object=self.api_object,
             main_editor=True,
-            parent=self.editor
         )
         rms_model_editor.show()
 
