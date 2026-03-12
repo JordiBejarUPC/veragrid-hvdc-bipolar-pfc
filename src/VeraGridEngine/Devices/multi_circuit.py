@@ -2337,6 +2337,7 @@ class MultiCircuit(Assets):
         for new_elm in self.items():  # for every device...
 
             action = ActionType.NoAction
+            changed_props = []
 
             # try to search for the counterpart in the base circuit
             elm_from_base = base_elements_dict.get(new_elm.idtag, None)
@@ -2353,6 +2354,7 @@ class MultiCircuit(Assets):
                     detailed_profile_comparison=detailed_profile_comparison,
                     nt=nt
                 )
+
             else:
                 # Same iftag, different classes, probably some consequence of CGMES
                 logger.add_info(msg="Same idtag, different types",
@@ -2363,6 +2365,9 @@ class MultiCircuit(Assets):
             if action != ActionType.NoAction:
                 new_element = new_elm.copy(forced_new_idtag=False)
                 new_element.action = action
+                for prop in changed_props:
+                    new_element.set_property_selected_to_merge(property_name=prop.name, selected=True)
+
                 dgrid.add_element(obj=new_element)
                 logger.add_info(msg="Device added in the diff circuit",
                                 device_class=new_element.device_type.value,

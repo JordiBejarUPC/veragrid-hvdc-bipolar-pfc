@@ -8,14 +8,14 @@ grid = vge.MultiCircuit()
 # -----------------------------------------------------------------------------------------------------------------
 # Buses
 # -----------------------------------------------------------------------------------------------------------------
-bus_slack = vge.Bus(name='Slack Bus', xpos=0, ypos=0)
+bus_slack = vge.Bus(name='Slack Bus ABC', xpos=0, ypos=0)
 bus_slack.is_slack = True
 grid.add_bus(obj=bus_slack)
 
-bus_middle = vge.Bus(name='Middle Bus', xpos=500, ypos=0)
+bus_middle = vge.Bus(name='Middle Bus CB', xpos=1000, ypos=0)
 grid.add_bus(obj=bus_middle)
 
-bus_load = vge.Bus(name='Load Bus', xpos=1000, ypos=0)
+bus_load = vge.Bus(name='Load Bus CB', xpos=1000, ypos=0)
 grid.add_bus(obj=bus_load)
 
 # -----------------------------------------------------------------------------------------------------------------
@@ -27,13 +27,13 @@ grid.add_generator(bus=bus_slack, api_obj=gen)
 # ----------------------------------------------------------------------------------------------------------------------
 # Load
 # ----------------------------------------------------------------------------------------------------------------------
-load = vge.Load(G1=1.0,
-                B1=-0.5,
-                G2=1.0,
-                B2=-0.5,
-                G3=1.0,
-                B3=-0.5)
-load.conn = ShuntConnectionType.FloatingStar
+load = vge.Load(P1=1.0,
+                Q1=0.5,
+                P2=1.0,
+                Q2=0.5,
+                P3=1.0,
+                Q3=0.5)
+load.conn = ShuntConnectionType.Delta
 grid.add_load(bus=bus_load, api_obj=load)
 
 # -----------------------------------------------------------------------------------------------------------------
