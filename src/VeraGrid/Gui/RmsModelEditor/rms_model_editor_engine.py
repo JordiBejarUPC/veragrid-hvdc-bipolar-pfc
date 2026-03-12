@@ -263,21 +263,20 @@ class BlockItem(QGraphicsRectItem):
         self.update_handle_position()
 
     def mouseDoubleClickEvent(self, event):
-        if self.subsys is None:
-            return
+        if self.subsys is not None:
 
-        dialog = ParameterEditorDialog(
-            var_factory=self.var_factory,
-            event_dict=self.subsys.event_dict,
-            parameters_dict=self.subsys.parameters,
-            parent=None
-        )
+            dialog = ParameterEditorDialog(
+                var_factory=self.var_factory,
+                event_dict=self.subsys.event_dict,
+                parameters_dict=self.subsys.parameters,
+                parent=None
+            )
 
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.subsys.event_dict = dialog.event_dict
-            self.subsys.parameters = dialog.parameters
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                self.subsys.event_dict = dialog.event_dict
+                self.subsys.parameters = dialog.parameters
 
-        event.accept()
+            event.accept()
 
         super().mouseDoubleClickEvent(event)
 
@@ -1065,7 +1064,7 @@ class DiagramScene(QGraphicsScene):
 
 class BaseLibraryModel(QStandardItemModel):
     """
-    Modelo base para librerías de bloques arrastrables
+
     """
 
     MIME_TYPE = "component/name"
@@ -2316,7 +2315,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         if self.ui.model_selector_comboBox.currentText() == self.templates_name:
             if self.template_editor.selected_block is not None:
                 self.template_editor.apply_template()
-                self.block.template = self.template_editor.model
+                self.block.template = self.template_editor.block
             else:
                 error_msg("Empty template :(", "Model apply")
                 return

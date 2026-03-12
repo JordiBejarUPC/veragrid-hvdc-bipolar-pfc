@@ -10,7 +10,7 @@ import copy
 from enum import Enum
 from typing import List, Dict, Optional, Union, Sequence, Any
 import VeraGrid.Gui.gui_functions as gf
-from PySide6 import QtWidgets
+from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
                                QDialog, QVBoxLayout, QDialogButtonBox, QSplitter, QLabel, QDoubleSpinBox,
@@ -50,6 +50,90 @@ from VeraGridEngine.Utils.Symbolic.symbolic import symbolic_to_string, Expr, Var
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, BlockType
 
+class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
+
+    __slots__ = ("_block_role", "_mime_type")
+
+    def __init__(self, block_role: int, mime_type: str):
+        """
+        Build the library tree model
+
+        :param block_role:
+        :param mime_type:
+        """
+        super().__init__()
+        self._block_role = block_role
+        self._mime_type = mime_type
+
+        self.setHorizontalHeaderLabels(["Models Library"])
+
+    def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
+        """
+        Get the Qt flags for an item.
+
+        :param index:
+        """
+
+        if index.isValid():
+
+            item: QtGui.QStandardItem | None = self.itemFromIndex(index)
+            if item is not None:
+                item_data: object = item.data(self._block_role)
+                if isinstance(item_data, BlockType):
+                    return (QtCore.Qt.ItemFlag.ItemIsEnabled
+                            | QtCore.Qt.ItemFlag.ItemIsSelectable
+                            | QtCore.Qt.ItemFlag.ItemIsDragEnabled)
+                else:
+                    return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
+            else:
+                return QtCore.Qt.ItemFlag.ItemIsEnabled
+
+        else:
+            return QtCore.Qt.ItemFlag.ItemIsEnabled
+
+    def mimeTypes(self) -> List[str]:
+        """
+        Get the supported mime types.
+
+        :return: Mime types exported by the model.
+        """
+        return [self._mime_type]
+
+    def supportedDragActions(self) -> QtCore.Qt.DropAction:
+        """
+        Get the supported drag actions.
+
+        :return: Copy action.
+        """
+        return QtCore.Qt.DropAction.CopyAction
+
+    def mimeData(self, indexes: List[QtCore.QModelIndex]) -> QtCore.QMimeData:
+        """
+        Build mime data from the selected variable item.
+
+        :param indexes: Selected indexes.
+        :return: Mime payload containing the dragged variable uid.
+        """
+        mime_data: QtCore.QMimeData = QtCore.QMimeData()
+
+        index: QtCore.QModelIndex
+        for index in indexes:
+            if index.isValid():
+                item: QtGui.QStandardItem | None = self.itemFromIndex(index)
+                if item is not None:
+                    item_data: object = item.data(self._block_role)
+                    if isinstance(item_data, BlockType):
+                        mime_data.setData(self._mime_type, QtCore.QByteArray(item_data.name.encode("utf-8")))
+                        return mime_data
+                    else:
+                        pass
+                else:
+                    pass
+            else:
+                pass
+
+        return mime_data
+
 
 class DynamicEditorMode(Enum):
 
@@ -66,7 +150,8 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
                  block: Block,
                  templates_list: List[RmsModelTemplate],
                  api_object: ALL_DEV_TYPES | None = None,
-                 mode: DynamicEditorMode = DynamicEditorMode.RMS):
+                 mode: DynamicEditorMode = DynamicEditorMode.RMS,
+                 main_editor=False):
         """
 
         :param block:
@@ -84,17 +169,18 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         self.block = block
         self.templates_list = templates_list
         self.api_object = api_object
+        self.main_editor = main_editor
 
         if mode == DynamicEditorMode.RMS:
             self.tree_structure = {
                 "Basic": [
                     ("Const", BlockType.CONST),
-                    ("Const", BlockType.GAIN),
-                    ("Const", BlockType.SUM),
-                    ("Const", BlockType.SUBSTR),
-                    ("Const", BlockType.PRODUCT),
-                    ("Const", BlockType.DIVIDE),
-                    ("Const", BlockType.ABS),
+                    ("Gain", BlockType.GAIN),
+                    ("Sum", BlockType.SUM),
+                    ("Substr", BlockType.SUBSTR),
+                    ("Product", BlockType.PRODUCT),
+                    ("Divide", BlockType.DIVIDE),
+                    ("Abs", BlockType.ABS),
                 ],
                 "Devices": [
                     ("Generator basic", BlockType.GENRAW),
