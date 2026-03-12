@@ -281,6 +281,8 @@ def get_pi_line_emt_template(grid: MultiCircuit,
         mapping[d_vf_keys[ph]] = d_vf_vars[k]
         mapping[d_vt_keys[ph]] = d_vt_vars[k]
 
+    templ.block.external_mapping = mapping
+
     # -----------------------------
     # init equations (ALL internal vars)
     # -----------------------------

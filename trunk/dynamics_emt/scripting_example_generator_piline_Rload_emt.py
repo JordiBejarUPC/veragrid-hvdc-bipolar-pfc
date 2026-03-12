@@ -26,8 +26,6 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOpti
 
 from VeraGridEngine.Utils.Symbolic.block import Block
 
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
-
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
@@ -121,12 +119,6 @@ for bus in grid.buses:
 # Build EMT models
 ######################################################################################################
 
-# Build dynamic_model_host
-
-line_dynhost = DynamicModelHost()
-load_dynhost = DynamicModelHost()
-gen_dynhost = DynamicModelHost()
-
 # generator
 gen_mdl = get_generator_emt_template(grid=grid, gen = gen0).block
 
@@ -161,15 +153,10 @@ big_gen1 = Block(children=[gen_mdl])
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: gen_mdl.out_vars[0]})
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: gen_mdl.out_vars[1]})
 
-# add models to dyn_host
-line_dynhost.model = line_mdl
-load_dynhost.model = load_mdl
-gen_dynhost.model = big_gen1
-
 # attach emt models to Veragrid objects
-line0.emt_model= line_dynhost
-load.emt_model= load_dynhost
-gen0.emt_model= gen_dynhost
+line0.emt_model= line_mdl
+load.emt_model= load_mdl
+gen0.emt_model= big_gen1
 
 # gce.save_file(grid=grid, filename="grid_save_event.veragrid")
 
@@ -228,7 +215,7 @@ print(res.get_branch_df())
 # ==============================================================================
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")
 # ==============================================================================
-CHOSEN_SOLVER = "COMPILED"
+CHOSEN_SOLVER = "SYMBOLIC"
 RUN_ALL_SOLVERS = False
 ENABLE_PLOTS = True
 ENABLE_NEWTON_TRACE = False
