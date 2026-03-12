@@ -2198,7 +2198,8 @@ def convert_dgs_to_controllable_shunt_from_elmshnt(elmshnt: ElmShnt,
                                                    buses: List[dev.Bus],
                                                    logger: Logger,
                                                    cubics_by_objid: Dict[str, List[StaCubic]],
-                                                   bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[
+                                                   bus_by_term_id: Dict[str, dev.Bus],
+                                                   frequency: float) -> Tuple[
     dev.Bus, dev.ControllableShunt]:
     """
     Convert stepped ElmShnt (ncapx > 1) to VeraGrid ControllableShunt.
@@ -2255,13 +2256,16 @@ def convert_dgs_to_controllable_shunt_from_elmshnt(elmshnt: ElmShnt,
         cshunt.step = int(initial_step)
 
     elif elmshnt.i_cont == 0: # Discrete
+
+        g_mw, b_mvar = _extract_shunt_gb(elmshnt=elmshnt, f=frequency, logger=logger)
+
         cshunt: dev.ControllableShunt = dev.ControllableShunt(
             name=name,
             idtag=_ref_id(elmshnt.ID),
             number_of_steps=elmshnt.ncapx,
             step=elmshnt.ncapa,
-            g_per_step=0.0,
-            b_per_step=elmshnt.qcapn,
+            g_per_step=g_mw,
+            b_per_step=b_mvar,
             active=(elmshnt.outserv == 0),
             vmax=elmshnt.usetp_mx,
             vmin=elmshnt.usetp_mn,
@@ -2863,7 +2867,8 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 buses=grid.buses,
                 logger=logger,
                 cubics_by_objid=cubics_by_objid,
-                bus_by_term_id=bus_by_term_id
+                bus_by_term_id=bus_by_term_id,
+                frequency=frequency
             )
 
             grid.add_controllable_shunt(bus=bus, api_obj=cshunt)
