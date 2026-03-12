@@ -201,6 +201,7 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         elif mode == DynamicEditorMode.EMT:
             self.tree_structure = {}
 
+        # build and add library model
         self.library_model = self.build_library_tree_model(
             block_role=self.block_role,
             mime_type=self.mime_type
