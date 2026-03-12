@@ -83,3 +83,21 @@ def test_discrete_shunt():
     power_factory = np.array([1.0, 0.96921, 0.88907])
 
     assert np.allclose(np.abs(res.voltage), power_factory, atol=1e-5)
+
+
+def test_discrete_shunt_parse_powerfactory():
+
+    grid = vge.open_file('data/grids/discrete_shunts.dgs')
+
+    grid.buses[2].is_slack = True
+    grid.add_generator(bus=grid.buses[2], api_obj=vge.Generator())
+
+    # ----------------------------------------------------------------------------------------------------------------------
+    #   Run Power Flow
+    # ----------------------------------------------------------------------------------------------------------------------
+    res = vge.power_flow(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
+                                                                 retry_with_other_methods=False))
+
+    power_factory = np.array([0.88907, 0.96921, 1.0])
+
+    assert np.allclose(np.abs(res.voltage), power_factory, atol=1e-5)
