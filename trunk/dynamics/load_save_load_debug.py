@@ -163,7 +163,7 @@ def load_save_load_rms() -> None:
     if not os.path.exists("output"):
         os.makedirs("output")
 
-    fname = '2bus_genqec_load_test.veragrid'
+    fname = '2bus_gen_load_evt.veragrid'
 
     # open the main grid
     grid1 = gce.open_file(fname)
