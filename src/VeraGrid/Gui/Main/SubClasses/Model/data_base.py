@@ -982,8 +982,7 @@ class DataBaseTableMain(DiagramsMain):
                         self.rms_model_Editor_window = DynamicBlockEditorGUI(
                             var_factory=self.circuit.rms_var_factory,
                             templates_list=self.circuit.rms_models,
-                            templates_catalogue=self.circuit.rms_models,
-                            block=elm
+                            block=elm.block
                         )
 
                         self.rms_model_Editor_window.resize(int(1.81 * 700.0), 700)

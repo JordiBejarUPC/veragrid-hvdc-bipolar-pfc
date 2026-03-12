@@ -121,11 +121,8 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
             var_factory=self.editor.circuit.rms_var_factory,
             block=self.api_object.rms_model,
             templates_list=templ_list,
-            templates_catalogue=templ_catalogue,
-            api_object_name=self.api_object.name,
             api_object=self.api_object,
             main_editor=True,
-            parent=self.editor
         )
         rms_model_editor.show()
 
