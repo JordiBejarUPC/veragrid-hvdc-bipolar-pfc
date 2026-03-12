@@ -527,7 +527,7 @@ class EditableDevice(metaclass=EditableDeviceMeta):
         :param property_name: Property name
         :return: True if selected for merge
         """
-        selected = self.property_merge_selections.get(property_name, None)
+        selected = self.property_merge_selections.get(property_name, False)
         if selected is None:
             return True
         else:
