@@ -12,6 +12,7 @@ class PhaseTapChangerAsymmetrical(PhaseTapChangerNonLinear):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='windingConnectionAngle', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.deg, description='''Measurement of angle in degrees.''', profiles=[]),
 	)
+	__slots__ = ('windingConnectionAngle',)
 	def __init__(self, rdfid='', tpe='PhaseTapChangerAsymmetrical'):
 		PhaseTapChangerNonLinear.__init__(self, rdfid, tpe)
 

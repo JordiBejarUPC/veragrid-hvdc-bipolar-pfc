@@ -35,6 +35,7 @@ class GeneratingUnit(Equipment):
 		CgmesProperty(property_name='RotatingMachine', class_type='RotatingMachine', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A synchronous machine may operate as a generator and as such becomes a member of a generating unit.''', profiles=[]),
 		CgmesProperty(property_name='normalPF', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Generating unit economic participation factor.  The sum of the participation factors across generating units does not have to sum to one.  It is used for representing distributed slack participation factor. The attribute shall be a positive value or zero.''', profiles=[]),
 	)
+	__slots__ = ('ControlAreaGeneratingUnit', 'genControlSource', 'governorSCD', 'longPF', 'maximumAllowableSpinningReserve', 'maxOperatingP', 'minOperatingP', 'nominalP', 'ratedGrossMaxP', 'ratedGrossMinP', 'ratedNetMaxP', 'shortPF', 'startupCost', 'variableCost', 'startupTime', 'totalEfficiency', 'RotatingMachine', 'normalPF')
 	def __init__(self, rdfid='', tpe='GeneratingUnit'):
 		Equipment.__init__(self, rdfid, tpe)
 

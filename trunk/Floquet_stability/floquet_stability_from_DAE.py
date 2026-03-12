@@ -37,7 +37,7 @@ grid.Sbase = Sbase #*1e6 # MVA
 
 bus1 = Bus(name="Bus1", Vnom=Vbase, is_slack= True)
 
-bus1_template = get_bus_emt_template(grid.var_factory)
+bus1_template = get_bus_emt_template(grid.rms_var_factory)
 bus1.emt_model.model = bus1_template.block
 
 gen1 = Generator(name="Gen1",freq = 50, Snom=grid.Sbase)

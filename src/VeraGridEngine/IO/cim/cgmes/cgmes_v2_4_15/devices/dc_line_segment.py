@@ -20,6 +20,7 @@ class DCLineSegment(DCConductingEquipment):
 		CgmesProperty(property_name='length', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.m, description='''Unit of length. Never negative.''', profiles=[]),
 		CgmesProperty(property_name='PerLengthParameter', class_type='PerLengthDCLineParameter', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Set of per-length parameters for this line segment.''', profiles=[]),
 	)
+	__slots__ = ('capacitance', 'inductance', 'resistance', 'length', 'PerLengthParameter')
 	def __init__(self, rdfid='', tpe='DCLineSegment'):
 		DCConductingEquipment.__init__(self, rdfid, tpe)
 

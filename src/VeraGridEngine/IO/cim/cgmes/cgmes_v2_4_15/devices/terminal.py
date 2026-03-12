@@ -35,6 +35,7 @@ If the attribute is missing three phases (ABC or ABCN) shall be assumed.''', pro
         CgmesProperty(property_name='SvPowerFlow', class_type='SvPowerFlow', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The power flow state variable associated with the terminal.''', profiles=[]),
         CgmesProperty(property_name='TopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The terminals associated with the topological node.   This can be used as an alternative to the connectivity node path to terminal, thus making it unneccesary to model connectivity nodes in some cases.   Note that if connectivity nodes are in the model, this association would probably not be used as an input specification.''', profiles=[]),
     )
+    __slots__ = ('ConverterDCSides', 'ConductingEquipment', 'ConnectivityNode', 'phases', 'HasFirstMutualCoupling', 'HasSecondMutualCoupling', 'RegulatingControl', 'TieFlow', 'TransformerEnd', 'SvPowerFlow', 'TopologicalNode')
     def __init__(self, rdfid='', tpe='Terminal'):
         ACDCTerminal.__init__(self, rdfid, tpe)
 

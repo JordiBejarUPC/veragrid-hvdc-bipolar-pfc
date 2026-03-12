@@ -13,6 +13,7 @@ class DCShunt(DCConductingEquipment):
 		CgmesProperty(property_name='capacitance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.F, description='''Capacitive part of reactance (imaginary part of impedance), at rated frequency.''', profiles=[]),
 		CgmesProperty(property_name='resistance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Resistance (real part of impedance).''', profiles=[]),
 	)
+	__slots__ = ('capacitance', 'resistance')
 	def __init__(self, rdfid='', tpe='DCShunt'):
 		DCConductingEquipment.__init__(self, rdfid, tpe)
 

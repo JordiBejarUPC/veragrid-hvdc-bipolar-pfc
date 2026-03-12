@@ -422,9 +422,24 @@ def compute_current_loads(bus_idx: IntVec,
 
             Vn_prev = (V[a2] + V[b2] + V[c2]) / 3
 
-            Ia, Ib, Ic, Un = floating_star_currents(V[a2], V[b2], V[c2],
-                                                    Ifloating[ab], Ifloating[bc], Ifloating[ca],
-                                                    Vn_prev)
+            if a2 >= 0 and b2 >= 0 and c2 >= 0:
+                Ia, Ib, Ic, Un = floating_star_currents(V[a2], V[b2], V[c2],
+                                                        Ifloating[ab], Ifloating[bc], Ifloating[ca],
+                                                        Vn_prev)
+            elif a2 >= 0 and b2 >= 0:
+                Ia, Ib, Ic, Un = floating_star_currents(V[a2], V[b2], zero_load,
+                                                        Ifloating[ab], Ifloating[bc], zero_load,
+                                                        Vn_prev)
+            elif b2 >= 0 and c2 >= 0:
+                Ia, Ib, Ic, Un = floating_star_currents(zero_load, V[b2], V[c2],
+                                                        zero_load, Ifloating[bc], Ifloating[ca],
+                                                        Vn_prev)
+            elif a2 >= 0 and c2 >= 0:
+                Ia, Ib, Ic, Un = floating_star_currents(V[a2], zero_load, V[c2],
+                                                        Ifloating[ab], zero_load, Ifloating[ca],
+                                                        Vn_prev)
+            else:
+                Ia, Ib, Ic, Un = zero_load, zero_load, zero_load, zero_load
 
             I[a2] -= Ia
             I[b2] -= Ib

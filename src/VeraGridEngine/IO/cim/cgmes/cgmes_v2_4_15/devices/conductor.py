@@ -12,6 +12,7 @@ class Conductor(ConductingEquipment):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='length', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.m, description='''Unit of length. Never negative.''', profiles=[]),
 	)
+	__slots__ = ('length',)
 	def __init__(self, rdfid='', tpe='Conductor'):
 		ConductingEquipment.__init__(self, rdfid, tpe)
 

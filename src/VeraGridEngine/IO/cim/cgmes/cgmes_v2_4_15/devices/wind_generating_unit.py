@@ -12,6 +12,7 @@ class WindGeneratingUnit(GeneratingUnit):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='windGenUnitType', class_type=WindGenUnitKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The kind of wind generating unit''', profiles=[]),
 	)
+	__slots__ = ('windGenUnitType',)
 	def __init__(self, rdfid='', tpe='WindGeneratingUnit'):
 		GeneratingUnit.__init__(self, rdfid, tpe)
 

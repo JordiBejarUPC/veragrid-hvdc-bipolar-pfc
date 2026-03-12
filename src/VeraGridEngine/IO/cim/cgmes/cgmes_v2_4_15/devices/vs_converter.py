@@ -26,6 +26,7 @@ class VsConverter(ACDCConverter):
 		CgmesProperty(property_name='targetQpcc', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description='''Product of RMS value of the voltage and the RMS value of the quadrature component of the current.''', profiles=[]),
 		CgmesProperty(property_name='targetUpcc', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[]),
 	)
+	__slots__ = ('CapabilityCurve', 'maxModulationIndex', 'maxValveCurrent', 'delta', 'uf', 'droop', 'droopCompensation', 'pPccControl', 'qPccControl', 'qShare', 'targetQpcc', 'targetUpcc')
 	def __init__(self, rdfid='', tpe='VsConverter'):
 		ACDCConverter.__init__(self, rdfid, tpe)
 

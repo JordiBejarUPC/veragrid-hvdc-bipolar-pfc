@@ -21,6 +21,7 @@ class PowerTransformer(ConductingEquipment):
 		CgmesProperty(property_name='operationalValuesConsidered', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''It is used to define if the data (other attributes related to short circuit data exchange) defines long term operational conditions or not. Used for short circuit data exchange according to IEC 60909.''', profiles=[]),
 		CgmesProperty(property_name='PowerTransformerEnd', class_type='PowerTransformerEnd', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The power transformer of this power transformer end.''', profiles=[]),
 	)
+	__slots__ = ('beforeShCircuitHighestOperatingCurrent', 'beforeShCircuitHighestOperatingVoltage', 'beforeShortCircuitAnglePf', 'highSideMinOperatingU', 'isPartOfGeneratorUnit', 'operationalValuesConsidered', 'PowerTransformerEnd')
 	def __init__(self, rdfid='', tpe='PowerTransformer'):
 		ConductingEquipment.__init__(self, rdfid, tpe)
 

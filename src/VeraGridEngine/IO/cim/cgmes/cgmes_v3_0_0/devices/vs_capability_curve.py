@@ -14,6 +14,7 @@ class VsCapabilityCurve(Curve):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='VsConverterDCSides', class_type='VsConverter', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''All converters with this capability curve.''', profiles=[]),
 	)
+	__slots__ = ('VsConverterDCSides',)
 	def __init__(self, rdfid='', tpe='VsCapabilityCurve'):
 		Curve.__init__(self, rdfid, tpe)
 

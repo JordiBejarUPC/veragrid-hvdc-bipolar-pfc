@@ -50,77 +50,108 @@ Callable[..., Any]:
         return nb.njit(fastmath=fastmath, cache=cache)(py_func)
 
 
-def _canonicalize_node(node: Expr, unique_slots: Dict[int, str], found_vars_ordered: List[Var],
-                       seen_nodes: Set[int]) -> str:
+def _canonicalize_node(
+        node: Expr,
+        runtime_uids: Set[int],
+        param_uids: Set[int],
+        runtime_slots: Dict[int, str],
+        param_slots: Dict[int, str],
+        found_runtime_vars_ordered: List[Var],
+        seen_runtime_nodes: Set[int]
+) -> str:
     """
-    Recursively canonicalizes an expression node to generate a structural signature.
-    State containers are passed explicitly to avoid forbidden nested closures.
+    Canonicalizes an expression while distinguishing runtime variables from parameters.
 
-    :param node: The symbolic expression node.
-    :type node: Expr
-    :param unique_slots: Dictionary mapping variable UIDs to canonical string slots.
-    :type unique_slots: Dict[int, str]
-    :param found_vars_ordered: List storing variables in the order they are found.
-    :type found_vars_ordered: List[Var]
-    :param seen_nodes: Set storing IDs of nodes already processed to avoid duplication.
-    :type seen_nodes: Set[int]
-    :return: The canonical string representation of the node.
-    :rtype: str
+    Runtime variables get placeholders __RVAR_k__ and are also collected in order.
+    Parameters get placeholders __PARAM_k__ but are NOT collected into template vars.
     """
+
     if isinstance(node, Var):
-        target_uid: int = node.uid
+        target_uid: int = node.uid if node.base_var is None else node.base_var.uid
 
-        if node.base_var is not None:
-            target_uid = node.base_var.uid
+        if target_uid in runtime_uids:
+            if target_uid not in runtime_slots:
+                runtime_slots[target_uid] = f"__RVAR_{len(runtime_slots)}__"
+
+            node_id: int = id(node)
+            if node_id not in seen_runtime_nodes:
+                seen_runtime_nodes.add(node_id)
+                found_runtime_vars_ordered.append(node)
+
+            return runtime_slots[target_uid]
+
+        elif target_uid in param_uids:
+            if target_uid not in param_slots:
+                param_slots[target_uid] = f"__PARAM_{len(param_slots)}__"
+
+            return param_slots[target_uid]
+
         else:
-            pass
-
-        if target_uid not in unique_slots:
-            unique_slots[target_uid] = f"__VAR_{len(unique_slots)}__"
-        else:
-            pass
-
-        node_id: int = id(node)
-        if node_id not in seen_nodes:
-            seen_nodes.add(node_id)
-            found_vars_ordered.append(node)
-        else:
-            pass
-
-        return unique_slots[target_uid]
+            raise RuntimeError(
+                f"Canonicalization found Var not classified as runtime or parameter: "
+                f"name={getattr(node, 'name', '<?>')}, target_uid={target_uid}"
+            )
 
     elif isinstance(node, Const):
         return f"{float(node.value):.6g}"
+
     elif isinstance(node, BinOp):
-        left_str: str = _canonicalize_node(node.left, unique_slots, found_vars_ordered, seen_nodes)
-        right_str: str = _canonicalize_node(node.right, unique_slots, found_vars_ordered, seen_nodes)
+        left_str: str = _canonicalize_node(
+            node.left, runtime_uids, param_uids,
+            runtime_slots, param_slots,
+            found_runtime_vars_ordered, seen_runtime_nodes
+        )
+        right_str: str = _canonicalize_node(
+            node.right, runtime_uids, param_uids,
+            runtime_slots, param_slots,
+            found_runtime_vars_ordered, seen_runtime_nodes
+        )
         return f"({left_str}{node.op}{right_str})"
+
     elif isinstance(node, UnOp):
-        op_str: str = _canonicalize_node(node.operand, unique_slots, found_vars_ordered, seen_nodes)
+        op_str: str = _canonicalize_node(
+            node.operand, runtime_uids, param_uids,
+            runtime_slots, param_slots,
+            found_runtime_vars_ordered, seen_runtime_nodes
+        )
         return f"{node.op}({op_str})"
+
     elif isinstance(node, Func):
-        arg_str: str = _canonicalize_node(node.arg, unique_slots, found_vars_ordered, seen_nodes)
+        arg_str: str = _canonicalize_node(
+            node.arg, runtime_uids, param_uids,
+            runtime_slots, param_slots,
+            found_runtime_vars_ordered, seen_runtime_nodes
+        )
         return f"{node.op}({arg_str})"
+
     else:
         return str(node)
 
 
-def canonicalize_expression(expr: Expr) -> Tuple[str, List[Var]]:
+def canonicalize_expression(
+        expr: Expr,
+        runtime_uids: Set[int],
+        param_uids: Set[int]
+) -> Tuple[str, List[Var]]:
     """
-    Generates a canonical string signature and an ordered list of variables
-    found in the expression.
-
-    :param expr: The expression to canonicalize.
-    :type expr: Expr
-    :return: A tuple containing the signature string and the list of variables.
-    :rtype: Tuple[str, List[Var]]
+    Returns a canonical structural signature and the ordered runtime variables only.
     """
-    unique_slots: Dict[int, str] = dict()
-    found_vars_ordered: List[Var] = list()
-    seen_nodes: Set[int] = set()
 
-    canonical_str: str = _canonicalize_node(expr, unique_slots, found_vars_ordered, seen_nodes)
-    return canonical_str, found_vars_ordered
+    runtime_slots: Dict[int, str] = dict()
+    param_slots: Dict[int, str] = dict()
+    found_runtime_vars_ordered: List[Var] = list()
+    seen_runtime_nodes: Set[int] = set()
+
+    canonical_str: str = _canonicalize_node(
+        node=expr,
+        runtime_uids=runtime_uids,
+        param_uids=param_uids,
+        runtime_slots=runtime_slots,
+        param_slots=param_slots,
+        found_runtime_vars_ordered=found_runtime_vars_ordered,
+        seen_runtime_nodes=seen_runtime_nodes
+    )
+    return canonical_str, found_runtime_vars_ordered
 
 
 def _compile_fused_residual(kernels_data: List[Dict[str, Any]]) -> Callable[..., Any]:
@@ -280,6 +311,21 @@ class BoundaryUpdateWrapper:
         :rtype: None
         """
         pass  # Explicit no-op for base class
+
+    def get_next_forced_event_time(self, t_prev: float, t_target: float) -> float | None:
+        """
+        Returns the next forced-alignment event time inside (t_prev, t_target].
+        Returns None if no forced event exists in that interval.
+
+        :param t_prev: Start of the current local substep.
+        :type t_prev: float
+        :param t_target: End of the current macro-step.
+        :type t_target: float
+        :return: Next forced event time or None.
+        :rtype: float | None
+        """
+        _unused: Tuple["BoundaryUpdateWrapper", float, float] = (self, t_prev, t_target)
+        return None
 
 # ==============================================================================
 # Sparse AD Jacobian
@@ -553,16 +599,14 @@ class StructuralVectorizedSolver:
 
     def auto_detect_vectorization(self, method: DynamicIntegrationMethod = None):
         """
-        Infers the algebraic structure of the DAE system (Clustering) and compiles
+        Infers the algebraic structure of the DAE system (clustering) and compiles
         the vectorized matrix kernels.
         """
         if method is None:
             method = self.method
-        else:
-            pass
 
         if self.verbose:
-            print(f"--- [AUTO-VEC] Inferring Algebraic Structure (Clustering) ---")
+            print("--- [AUTO-VEC] Inferring Algebraic Structure (Clustering) ---")
         t0 = time.time()
 
         groups: Dict[str, EquationGroup] = dict()
@@ -571,52 +615,79 @@ class StructuralVectorizedSolver:
         n_alg: int = len(self._algebraic_eqs)
         full_eq_list: List[Expr] = [Const(0.0) for _ in range(n_state + n_alg)]
 
+        # Build full residual system:
+        #   differential eqs -> d_x - f(x, y, p) = 0
+        #   algebraic eqs    -> g(x, y, p) = 0
         for i, rhs_eq in enumerate(self._state_eqs):
             sv = self._state_vars[i]
             d_term = Var(name=f"d_{sv.name}", base_var=sv)
             full_eq_list[i] = d_term - rhs_eq
+
         for j, alg_eq in enumerate(self._algebraic_eqs):
             full_eq_list[n_state + j] = alg_eq
 
+        # UIDs of runtime variables (states + algebraics + diff placeholders through base_var)
+        runtime_uids: Set[int] = set(self.uid2idx_vars.keys())
+
+        # UIDs of parameters
+        param_uids: Set[int] = set()
+        for p in self._event_parameters:
+            param_uids.add(p.uid)
+        for p in self._parameters:
+            param_uids.add(p.uid)
+
+        # -----------------------------
         # PHASE 2: CLUSTERING
+        # -----------------------------
         for i, residual_eq in enumerate(full_eq_list):
-            sig_str, all_vars_found = canonicalize_expression(residual_eq)
+            sig_str, runtime_vars = canonicalize_expression(
+                residual_eq,
+                runtime_uids=runtime_uids,
+                param_uids=param_uids
+            )
+
+            # Cluster by structural signature
             eq_hash = hashlib.md5(sig_str.encode()).hexdigest()
 
-            group: EquationGroup
             if eq_hash in groups:
                 group = groups[eq_hash]
             else:
                 group = EquationGroup()
                 groups[eq_hash] = group
 
-            if group.get_template_eq() is None:
-                group.set_template(residual_eq, all_vars_found)
-            else:
-                pass
-
-            var_indices: List[int] = list()
-            for v in all_vars_found:
-                target_uid: int = -1
-
-                match v:
-                    case Var(base_var=bv) if bv is not None:
-                        target_uid = bv.uid
-                    case Var(uid=u):
-                        target_uid = u
-                    case _:
-                        pass
-
+            var_indices: List[int] = []
+            for v in runtime_vars:
+                target_uid: int = v.uid if v.base_var is None else v.base_var.uid
                 idx: int | None = self.uid2idx_vars.get(target_uid, None)
-                if idx is not None:
-                    var_indices.append(idx)
-                else:
-                    var_indices.append(-1)
+
+                if idx is None:
+                    raise RuntimeError(
+                        f"Runtime variable missing in uid2idx_vars. "
+                        f"eq={i}, var={getattr(v, 'name', '<?>')}, target_uid={target_uid}"
+                    )
+
+                var_indices.append(idx)
+
+            if group.get_template_eq() is None:
+                group.set_template(residual_eq, runtime_vars)
+            else:
+                template_vars = group.get_template_vars()
+                if template_vars is None:
+                    raise RuntimeError(f"Internal error: template_vars is None for group {eq_hash}")
+
+                if len(var_indices) != len(template_vars):
+                    raise RuntimeError(
+                        f"Inconsistent clustered runtime var count for group {eq_hash}. "
+                        f"eq={i}, got={len(var_indices)}, expected={len(template_vars)}"
+                    )
 
             group.add_indices(var_indices, i)
 
         print(f"   [AUTO-VEC] Detected {len(groups)} patterns in {len(full_eq_list)} total equations.")
 
+        # -----------------------------
+        # PHASE 3: KERNEL COMPILATION
+        # -----------------------------
         self.vec_kernels: List[Dict[str, Any]] = list()
 
         all_params: List[Any] = list()
@@ -640,7 +711,9 @@ class StructuralVectorizedSolver:
                 'target': np.array(group_data.get_row_indices(), dtype=np.int32)
             })
 
+        # -----------------------------
         # PHASE 4: DISPATCHER SETUP
+        # -----------------------------
         self.fused_residual = _compile_fused_residual(self.vec_kernels)
 
         temp_args: List[Any] = list()
@@ -649,16 +722,17 @@ class StructuralVectorizedSolver:
 
         self.vec_flat_args = tuple(temp_args)
 
+        # -----------------------------
         # PHASE 5: JACOBIAN SETUP
+        # -----------------------------
         if method not in self.jit_jacobians_ad:
             self.jit_jacobians_ad[method] = SparseADJacobian(
                 full_eq_list, self.sorted_vars, all_params, method, verbose=self.verbose
             )
-        else:
-            pass
 
         self.vec_jacobian = self.jit_jacobians_ad[method]
         self.vectorized_ready = True
+
         print(f"   [AUTO-VEC] Setup finished in {time.time() - t0:.4f}s")
 
     def simulate(self,
@@ -723,116 +797,187 @@ class StructuralVectorizedSolver:
         ev_params = np.asarray(params0, dtype=np.float64)
 
         full_params = np.empty(len(self._event_parameters) + len(static_params), dtype=np.float64)
+
+        if len(ev_params) > 0:
+            full_params[:len(ev_params)] = self.problem.def_event_params_fn(ev_params, float(t0))
+
         full_params[len(ev_params):] = static_params
+
+        if boundary_updater is not None:
+            boundary_updater.update(float(t0), x_prev, full_params)
+
+        if len(ev_params) > 0:
+            ev_params[:] = full_params[:len(ev_params)]
 
         use_dense: bool = (self._n_vars <= dense_threshold)
 
-        if verbose: print(f"-> JIT Warmup...")
-        self.fused_residual(x_prev, full_params, x_prev, dx_prev, h, self.vec_flat_args, res_global, x_prev2)
-        _ = self.vec_jacobian(states=x_prev, params=full_params, history=x_prev, d_history=dx_prev, h=h,
-                              history2=x_prev2)
+        if verbose:
+            print("-> JIT Warmup.")
 
-        cached_lu_dense: Tuple[np.ndarray, np.ndarray] | None = None
-        cached_lu_sparse: SuperLU | None = None
+        self.fused_residual(x_prev, full_params, x_prev, dx_prev, h, self.vec_flat_args, res_global, x_prev2)
+        _ = self.vec_jacobian(
+            states=x_prev,
+            params=full_params,
+            history=x_prev,
+            d_history=dx_prev,
+            h=h,
+            history2=x_prev2
+        )
 
         t_start_loop = time.time()  # Timer local para debug
 
         if verbose: print(f"-> Starting VECTORIZED Simulation (Integration loop)...")
 
         for i in range(steps):
-            if verbose: print(f"Simulating at step {i}")
-            t_curr: float = float(t[i + 1])
+            if verbose:
+                print(f"Simulating at step {i}")
 
-            # Update params in-place
-            full_params[:len(ev_params)] = self.problem.def_event_params_fn(ev_params, float(t_curr))
+            t_step_start: float = float(t[i])
+            t_step_target: float = float(t[i + 1])
 
-            if boundary_updater is not None:
-                boundary_updater.update(t_curr, x_prev, full_params)
-            else:
-                pass
+            t_local_prev: float = t_step_start
+            is_first_local_step: bool = True
 
-            x_iter[:] = x_prev
-            last_res_norm: float = 1.0
+            while t_local_prev < (t_step_target - 1e-15):
 
-            # PREDICTOR
-            if i == 0 and method == DynamicIntegrationMethod.DaeTrapezoidal:
-                n_states = self.problem.get_states_number()
-                predictor = Predictor(n_states=n_states)
-                predictor.predict(
-                    x_iter=x_iter,
-                    x_prev=x_prev,
-                    dx_prev=dx_prev,
-                    h=self.h,
-                    pred_method=self.pred_method,
-                )
+                forced_event_time: float | None = None
+                if boundary_updater is None:
+                    pass
+                else:
+                    forced_event_time = boundary_updater.get_next_forced_event_time(
+                        t_prev=float(t_local_prev),
+                        t_target=float(t_step_target),
+                    )
 
-            for k in range(15):
-                self.fused_residual(x_iter, full_params, x_prev, dx_prev, h, self.vec_flat_args, res_global, x_prev2)
-                res_norm: float = np.max(np.abs(res_global))
+                if forced_event_time is None:
+                    t_curr = t_step_target
+                else:
+                    t_curr = min(float(forced_event_time), t_step_target)
 
-                if res_norm < 1e-6:
-                    break
+                    if t_curr <= t_local_prev + 1e-15:
+                        t_curr = t_step_target
+                    else:
+                        pass
+
+                is_aligned_substep: bool = t_curr < (t_step_target - 1e-15)
+
+                if method == DynamicIntegrationMethod.DaeBDF2 and is_aligned_substep:
+                    raise NotImplementedError(
+                        "force_step_alignment is not implemented for DaeBDF2 in StructuralVectorizedSolver."
+                    )
                 else:
                     pass
 
-                recompute: bool = (cached_lu_dense is None and cached_lu_sparse is None) or \
-                                  (k > 0 and (res_norm / (last_res_norm + 1e-16)) > 0.5)
+                h_eff: float = float(t_curr - t_local_prev)
 
-                if recompute:
-                    cached_J: csc_matrix = self.vec_jacobian(states=x_iter, params=full_params, history=x_prev, d_history=dx_prev,
-                                                 h=h, history2=x_prev2)
+                # Update params in-place for the local substep end
+                full_params[:len(ev_params)] = self.problem.def_event_params_fn(ev_params, float(t_curr))
 
-                    # --- Use cached_J explicitly (diagnostics / invariants) ---
-                    if cached_J is None:
-                        raise RuntimeError("Internal error: Jacobian is None.")
+                if boundary_updater is not None:
+                    boundary_updater.update(t_curr, x_prev, full_params)
+                else:
+                    pass
 
-                    nnz_j: int = int(cached_J.nnz)
-                    if nnz_j <= 0:
-                        raise RuntimeError("Internal error: Jacobian has zero non-zeros (nnz == 0).")
+                ev_params[:] = full_params[:len(ev_params)]
 
-                    # Optional: quick NaN/Inf guard in verbose mode (dense is expensive)
-                    if verbose and use_dense:
-                        j_dense: np.ndarray = cached_J.toarray()
-                        if not np.all(np.isfinite(j_dense)):
-                            raise RuntimeError("Jacobian contains NaN/Inf values (dense check).")
-                        cached_lu_dense = lu_factor(j_dense)
-                        cached_lu_sparse = None
+                x_iter[:] = x_prev
+                last_res_norm: float = 1.0
+
+                # IMPORTANT:
+                # LU factors must be local to each substep, because x_prev, params and h_eff may change.
+                cached_lu_dense: Tuple[np.ndarray, np.ndarray] | None = None
+                cached_lu_sparse: SuperLU | None = None
+
+                # PREDICTOR
+                if i == 0 and is_first_local_step and method == DynamicIntegrationMethod.DaeTrapezoidal:
+                    n_states = self.problem.get_states_number()
+                    predictor = Predictor(n_states=n_states)
+                    predictor.predict(
+                        x_iter=x_iter,
+                        x_prev=x_prev,
+                        dx_prev=dx_prev,
+                        h=h_eff,
+                        pred_method=self.pred_method,
+                    )
+                else:
+                    pass
+
+                for k in range(15):
+                    self.fused_residual(
+                        x_iter,
+                        full_params,
+                        x_prev,
+                        dx_prev,
+                        h_eff,
+                        self.vec_flat_args,
+                        res_global,
+                        x_prev2
+                    )
+                    res_norm: float = np.max(np.abs(res_global))
+
+                    if res_norm < 1e-6:
+                        break
                     else:
+                        pass
+
+                    recompute: bool = (cached_lu_dense is None and cached_lu_sparse is None) or \
+                                      (k > 0 and (res_norm / (last_res_norm + 1e-16)) > 0.5)
+
+                    if recompute:
+                        cached_J: csc_matrix = self.vec_jacobian(
+                            states=x_iter,
+                            params=full_params,
+                            history=x_prev,
+                            d_history=dx_prev,
+                            h=h_eff,
+                            history2=x_prev2
+                        )
+
                         if use_dense:
                             cached_lu_dense = lu_factor(cached_J.toarray())
                             cached_lu_sparse = None
                         else:
-                            cached_lu_sparse = splu(cached_J)  # cached_J already CSC
+                            cached_lu_sparse = splu(cached_J)
                             cached_lu_dense = None
+                    else:
+                        pass
 
-                delta: Vec
-                if use_dense:
-                    if cached_lu_dense is None:
-                        raise RuntimeError("Internal error: dense LU cache is None while use_dense is True.")
-                    delta = lu_solve(cached_lu_dense, -res_global)
+                    if use_dense:
+                        delta = lu_solve(cached_lu_dense, -res_global)
+                    else:
+                        delta = cached_lu_sparse.solve(-res_global)
+
+                    x_iter += delta
+                    last_res_norm = res_norm
+
+                if method == DynamicIntegrationMethod.DaeTrapezoidal:
+                    dx_prev[:self._n_state] = (
+                            (2.0 / h_eff) * (x_iter[:self._n_state] - x_prev[:self._n_state])
+                            - dx_prev[:self._n_state]
+                    )
+                elif method == DynamicIntegrationMethod.DaeBDF2:
+                    x_prev2[:] = x_prev
+                    dx_prev[:self._n_state] = (
+                                                      1.5 * x_iter[:self._n_state]
+                                                      - 2.0 * x_prev[:self._n_state]
+                                                      + 0.5 * x_prev2[:self._n_state]
+                                              ) / h_eff
                 else:
-                    if cached_lu_sparse is None:
-                        raise RuntimeError("Internal error: sparse LU cache is None while use_dense is False.")
-                    delta = cached_lu_sparse.solve(-res_global)
+                    dx_prev[:self._n_state] = (
+                                                      x_iter[:self._n_state] - x_prev[:self._n_state]
+                                              ) / h_eff
 
-                x_iter += delta
-                last_res_norm = res_norm
+                if method != DynamicIntegrationMethod.DaeBDF2:
+                    x_prev2[:] = x_prev
+                else:
+                    pass
 
-            y[i + 1] = x_iter
-            dy[i] = dx_prev
+                x_prev[:] = x_iter
+                t_local_prev = t_curr
+                is_first_local_step = False
 
-            if method == DynamicIntegrationMethod.DaeTrapezoidal:
-                dx_prev[:self._n_state] = (2.0 / h) * (x_iter[:self._n_state] - x_prev[:self._n_state]) - dx_prev[
-                    :self._n_state]
-            elif method == DynamicIntegrationMethod.DaeBDF2:
-                x_prev2[:] = x_prev
-                dx_prev[:self._n_state] = (1.5 * x_iter[:self._n_state] - 2.0 * x_prev[:self._n_state] + 0.5 * x_prev2[
-                    :self._n_state]) / h
-            else:
-                dx_prev[:self._n_state] = (x_iter[:self._n_state] - x_prev[:self._n_state]) / h
-
-            if method != DynamicIntegrationMethod.DaeBDF2: x_prev2[:] = x_prev
-            x_prev[:] = x_iter
+            y[i + 1] = x_prev
+            dy[i + 1] = dx_prev
 
         self._last_sim_loop_time = time.time() - t_start_loop
         if verbose: print(f"VECTORIZED INTEGRATION LOOP Finished: {self._last_sim_loop_time:.4f}s")

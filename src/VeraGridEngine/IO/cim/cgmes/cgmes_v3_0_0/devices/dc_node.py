@@ -20,6 +20,7 @@ class DCNode(IdentifiedObject):
 		CgmesProperty(property_name='DCEquipmentContainer', class_type='DCEquipmentContainer', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The DC container for the DC nodes.''', profiles=[]),
 		CgmesProperty(property_name='DCTopologicalNode', class_type='DCTopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The DC topological node to which this DC connectivity node is assigned.  May depend on the current state of switches in the network.''', profiles=[]),
 	)
+	__slots__ = ('DCTerminals', 'DCEquipmentContainer', 'DCTopologicalNode')
 	def __init__(self, rdfid='', tpe='DCNode'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

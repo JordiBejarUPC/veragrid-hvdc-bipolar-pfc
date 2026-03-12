@@ -21,7 +21,7 @@ from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.basic_structures import Vec
 
-# NOTE: These area here because this object loads first than the types file with the types aggregations
+# NOTE: These areas here because this object loads first than the types file with the types aggregations
 
 SE_BRANCH_TYPES = Union[
     Line,
@@ -177,7 +177,7 @@ class PiMeasurement(MeasurementTemplate):
                                      api_obj=api_obj,
                                      name=name,
                                      idtag=idtag,
-                                     device_type=DeviceType.PMeasurementDevice)
+                                     device_type=DeviceType.PiMeasurementDevice)
 
 
 class QiMeasurement(MeasurementTemplate):
@@ -205,7 +205,7 @@ class QiMeasurement(MeasurementTemplate):
                                      api_obj=api_obj,
                                      name=name,
                                      idtag=idtag,
-                                     device_type=DeviceType.QMeasurementDevice)
+                                     device_type=DeviceType.QiMeasurementDevice)
 
 
 class PgMeasurement(MeasurementTemplate):

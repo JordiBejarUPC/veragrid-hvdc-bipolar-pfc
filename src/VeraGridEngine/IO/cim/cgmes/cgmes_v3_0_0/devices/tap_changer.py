@@ -32,6 +32,7 @@ The attribute shall be equal to or greater than lowStep and equal to or less tha
 Starting step for a steady state solution. Non integer values are allowed to support continuous tap variables. The reasons for continuous value are to support study cases where no discrete tap changer has yet been designed, a solution where a narrow voltage band forces the tap step to oscillate or to accommodate for a continuous solution as input.
 The attribute shall be equal to or greater than lowStep and equal to or less than highStep.''', profiles=[]),
 	)
+	__slots__ = ('highStep', 'lowStep', 'ltcFlag', 'neutralStep', 'neutralU', 'normalStep', 'TapChangerControl', 'SvTapStep', 'controlEnabled', 'step')
 	def __init__(self, rdfid='', tpe='TapChanger'):
 		PowerSystemResource.__init__(self, rdfid, tpe)
 

@@ -21,6 +21,7 @@ class VoltageLevel(EquipmentContainer):
 		CgmesProperty(property_name='highVoltageLimit', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[]),
 		CgmesProperty(property_name='lowVoltageLimit', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[]),
 	)
+	__slots__ = ('BaseVoltage', 'Bays', 'Substation', 'highVoltageLimit', 'lowVoltageLimit')
 	def __init__(self, rdfid='', tpe='VoltageLevel'):
 		EquipmentContainer.__init__(self, rdfid, tpe)
 

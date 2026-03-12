@@ -15,6 +15,7 @@ class SvStatus(Base):
 		CgmesProperty(property_name='ConductingEquipment', class_type='ConductingEquipment', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The conducting equipment associated with the status state variable.''', profiles=[]),
 		CgmesProperty(property_name='inService', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The in service status as a result of topology processing.''', profiles=[]),
 	)
+	__slots__ = ('ConductingEquipment', 'inService')
 	def __init__(self, rdfid, tpe='SvStatus', resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 

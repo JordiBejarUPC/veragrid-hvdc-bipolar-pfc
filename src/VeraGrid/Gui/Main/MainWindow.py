@@ -19,19 +19,19 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
 from PySide6.QtWidgets import (QAbstractItemView, QApplication, QCheckBox, QComboBox,
     QDateTimeEdit, QDoubleSpinBox, QFormLayout, QFrame,
     QGridLayout, QGroupBox, QHBoxLayout, QHeaderView,
-    QLabel, QLineEdit, QListView, QMainWindow,
-    QMenu, QMenuBar, QProgressBar, QPushButton,
-    QRadioButton, QSizePolicy, QSlider, QSpacerItem,
-    QSpinBox, QSplitter, QTabWidget, QTableView,
-    QTextEdit, QToolBar, QTreeView, QVBoxLayout,
-    QWidget)
+    QLabel, QLayout, QLineEdit, QListView,
+    QMainWindow, QMenu, QMenuBar, QProgressBar,
+    QPushButton, QRadioButton, QSizePolicy, QSlider,
+    QSpacerItem, QSpinBox, QSplitter, QTabWidget,
+    QTableView, QTextEdit, QToolBar, QTreeView,
+    QVBoxLayout, QWidget)
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_mainWindow(object):
     def setupUi(self, mainWindow):
         if not mainWindow.objectName():
             mainWindow.setObjectName(u"mainWindow")
-        mainWindow.resize(1255, 772)
+        mainWindow.resize(1208, 772)
         mainWindow.setMinimumSize(QSize(1198, 742))
         mainWindow.setBaseSize(QSize(0, 0))
         font = QFont()
@@ -712,11 +712,19 @@ class Ui_mainWindow(object):
         self.progress_frame.setFrameShadow(QFrame.Shadow.Raised)
         self.gridLayout_7 = QGridLayout(self.progress_frame)
         self.gridLayout_7.setObjectName(u"gridLayout_7")
+        self.cancelButton = QPushButton(self.progress_frame)
+        self.cancelButton.setObjectName(u"cancelButton")
+        self.cancelButton.setMinimumSize(QSize(0, 24))
+        self.cancelButton.setFont(font)
+        self.cancelButton.setIcon(icon47)
+
+        self.gridLayout_7.addWidget(self.cancelButton, 6, 0, 1, 1)
+
         self.progress_label = QLabel(self.progress_frame)
         self.progress_label.setObjectName(u"progress_label")
         self.progress_label.setFont(font)
 
-        self.gridLayout_7.addWidget(self.progress_label, 2, 3, 1, 1)
+        self.gridLayout_7.addWidget(self.progress_label, 3, 3, 1, 1)
 
         self.progressBar = QProgressBar(self.progress_frame)
         self.progressBar.setObjectName(u"progressBar")
@@ -732,15 +740,7 @@ class Ui_mainWindow(object):
         self.progressBar.setValue(20)
         self.progressBar.setInvertedAppearance(False)
 
-        self.gridLayout_7.addWidget(self.progressBar, 5, 3, 1, 1)
-
-        self.cancelButton = QPushButton(self.progress_frame)
-        self.cancelButton.setObjectName(u"cancelButton")
-        self.cancelButton.setMinimumSize(QSize(0, 24))
-        self.cancelButton.setFont(font)
-        self.cancelButton.setIcon(icon47)
-
-        self.gridLayout_7.addWidget(self.cancelButton, 5, 0, 1, 1)
+        self.gridLayout_7.addWidget(self.progressBar, 6, 3, 1, 1)
 
 
         self.gridLayout_39.addWidget(self.progress_frame, 2, 0, 1, 1)
@@ -1700,28 +1700,32 @@ class Ui_mainWindow(object):
         self.frame_33.setObjectName(u"frame_33")
         self.frame_33.setFrameShape(QFrame.Shape.NoFrame)
         self.frame_33.setFrameShadow(QFrame.Shadow.Raised)
-        self.verticalLayout_28 = QVBoxLayout(self.frame_33)
-        self.verticalLayout_28.setObjectName(u"verticalLayout_28")
-        self.verticalLayout_28.setContentsMargins(0, 0, 0, 0)
+        self.verticalLayout_45 = QVBoxLayout(self.frame_33)
+        self.verticalLayout_45.setObjectName(u"verticalLayout_45")
+        self.verticalLayout_45.setContentsMargins(0, 0, 0, 0)
         self.results_splitter = QSplitter(self.frame_33)
         self.results_splitter.setObjectName(u"results_splitter")
         self.results_splitter.setOrientation(Qt.Orientation.Horizontal)
-        self.splitter = QSplitter(self.results_splitter)
-        self.splitter.setObjectName(u"splitter")
-        self.splitter.setOrientation(Qt.Orientation.Vertical)
-        self.frame_61 = QFrame(self.splitter)
+        self.tabWidget_3 = QTabWidget(self.results_splitter)
+        self.tabWidget_3.setObjectName(u"tabWidget_3")
+        self.tabWidget_3.setMinimumSize(QSize(240, 0))
+        self.tabWidget_3.setTabPosition(QTabWidget.TabPosition.South)
+        self.tabWidget_3.setDocumentMode(True)
+        self.tabWidget_3.setTabsClosable(False)
+        self.tabWidget_3.setMovable(False)
+        self.tabWidget_3.setTabBarAutoHide(True)
+        self.tab_8 = QWidget()
+        self.tab_8.setObjectName(u"tab_8")
+        self.verticalLayout_28 = QVBoxLayout(self.tab_8)
+        self.verticalLayout_28.setObjectName(u"verticalLayout_28")
+        self.verticalLayout_28.setContentsMargins(0, 0, 6, 0)
+        self.frame_61 = QFrame(self.tab_8)
         self.frame_61.setObjectName(u"frame_61")
         self.frame_61.setFrameShape(QFrame.Shape.NoFrame)
         self.frame_61.setFrameShadow(QFrame.Shadow.Raised)
         self.verticalLayout_10 = QVBoxLayout(self.frame_61)
         self.verticalLayout_10.setObjectName(u"verticalLayout_10")
         self.verticalLayout_10.setContentsMargins(-1, 6, 0, -1)
-        self.results_treeView = QTreeView(self.frame_61)
-        self.results_treeView.setObjectName(u"results_treeView")
-        self.results_treeView.setAnimated(True)
-
-        self.verticalLayout_10.addWidget(self.results_treeView)
-
         self.frame_62 = QFrame(self.frame_61)
         self.frame_62.setObjectName(u"frame_62")
         self.frame_62.setFrameShape(QFrame.Shape.NoFrame)
@@ -1757,20 +1761,28 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_10.addWidget(self.frame_62)
 
-        self.splitter.addWidget(self.frame_61)
-        self.frame_14 = QFrame(self.splitter)
+        self.results_treeView = QTreeView(self.frame_61)
+        self.results_treeView.setObjectName(u"results_treeView")
+        self.results_treeView.setAnimated(True)
+
+        self.verticalLayout_10.addWidget(self.results_treeView)
+
+
+        self.verticalLayout_28.addWidget(self.frame_61)
+
+        self.tabWidget_3.addTab(self.tab_8, icon49, "")
+        self.tab_12 = QWidget()
+        self.tab_12.setObjectName(u"tab_12")
+        self.verticalLayout_44 = QVBoxLayout(self.tab_12)
+        self.verticalLayout_44.setObjectName(u"verticalLayout_44")
+        self.verticalLayout_44.setContentsMargins(0, 0, 6, 0)
+        self.frame_14 = QFrame(self.tab_12)
         self.frame_14.setObjectName(u"frame_14")
         self.frame_14.setFrameShape(QFrame.Shape.NoFrame)
         self.frame_14.setFrameShadow(QFrame.Shadow.Raised)
         self.verticalLayout_6 = QVBoxLayout(self.frame_14)
         self.verticalLayout_6.setObjectName(u"verticalLayout_6")
         self.verticalLayout_6.setContentsMargins(-1, -1, 0, -1)
-        self.diskSessionsTreeView = QTreeView(self.frame_14)
-        self.diskSessionsTreeView.setObjectName(u"diskSessionsTreeView")
-        self.diskSessionsTreeView.setAnimated(True)
-
-        self.verticalLayout_6.addWidget(self.diskSessionsTreeView)
-
         self.frame_60 = QFrame(self.frame_14)
         self.frame_60.setObjectName(u"frame_60")
         self.frame_60.setFrameShape(QFrame.Shape.NoFrame)
@@ -1801,11 +1813,20 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_6.addWidget(self.frame_60)
 
-        self.splitter.addWidget(self.frame_14)
-        self.results_splitter.addWidget(self.splitter)
+        self.diskSessionsTreeView = QTreeView(self.frame_14)
+        self.diskSessionsTreeView.setObjectName(u"diskSessionsTreeView")
+        self.diskSessionsTreeView.setAnimated(True)
+
+        self.verticalLayout_6.addWidget(self.diskSessionsTreeView)
+
+
+        self.verticalLayout_44.addWidget(self.frame_14)
+
+        self.tabWidget_3.addTab(self.tab_12, icon36, "")
+        self.results_splitter.addWidget(self.tabWidget_3)
         self.resultsTabWidget = QTabWidget(self.results_splitter)
         self.resultsTabWidget.setObjectName(u"resultsTabWidget")
-        self.resultsTabWidget.setTabPosition(QTabWidget.TabPosition.East)
+        self.resultsTabWidget.setTabPosition(QTabWidget.TabPosition.South)
         self.resultsTabWidget.setDocumentMode(True)
         self.tab_7 = QWidget()
         self.tab_7.setObjectName(u"tab_7")
@@ -1828,15 +1849,7 @@ class Ui_mainWindow(object):
         self.frame_5.setFrameShadow(QFrame.Shadow.Raised)
         self.verticalLayout_24 = QVBoxLayout(self.frame_5)
         self.verticalLayout_24.setObjectName(u"verticalLayout_24")
-        self.verticalLayout_24.setContentsMargins(0, 0, 8, 8)
-        self.resultsTableView = QTableView(self.frame_5)
-        self.resultsTableView.setObjectName(u"resultsTableView")
-        self.resultsTableView.setAlternatingRowColors(True)
-        self.resultsTableView.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
-        self.resultsTableView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
-
-        self.verticalLayout_24.addWidget(self.resultsTableView)
-
+        self.verticalLayout_24.setContentsMargins(6, 0, 8, 8)
         self.frame_8 = QFrame(self.frame_5)
         self.frame_8.setObjectName(u"frame_8")
         self.frame_8.setFrameShape(QFrame.Shape.NoFrame)
@@ -1914,12 +1927,6 @@ class Ui_mainWindow(object):
 
         self.horizontalLayout_2.addWidget(self.saveResultsButton)
 
-        self.plot_dyn_data_pushButton = QPushButton(self.frame_8)
-        self.plot_dyn_data_pushButton.setObjectName(u"plot_dyn_data_pushButton")
-        self.plot_dyn_data_pushButton.setIcon(icon78)
-
-        self.horizontalLayout_2.addWidget(self.plot_dyn_data_pushButton)
-
         self.plot_data_pushButton = QPushButton(self.frame_8)
         self.plot_data_pushButton.setObjectName(u"plot_data_pushButton")
         self.plot_data_pushButton.setIcon(icon111)
@@ -1929,21 +1936,138 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_24.addWidget(self.frame_8)
 
+        self.resultsTableView = QTableView(self.frame_5)
+        self.resultsTableView.setObjectName(u"resultsTableView")
+        self.resultsTableView.setAlternatingRowColors(True)
+        self.resultsTableView.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.resultsTableView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectItems)
+
+        self.verticalLayout_24.addWidget(self.resultsTableView)
+
 
         self.verticalLayout_40.addWidget(self.frame_5)
 
         self.resultsTabWidget.addTab(self.tab_7, icon93, "")
+        self.tab_5 = QWidget()
+        self.tab_5.setObjectName(u"tab_5")
+        self.verticalLayout_46 = QVBoxLayout(self.tab_5)
+        self.verticalLayout_46.setObjectName(u"verticalLayout_46")
+        self.frame_3 = QFrame(self.tab_5)
+        self.frame_3.setObjectName(u"frame_3")
+        sizePolicy3 = QSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Minimum)
+        sizePolicy3.setHorizontalStretch(0)
+        sizePolicy3.setVerticalStretch(0)
+        sizePolicy3.setHeightForWidth(self.frame_3.sizePolicy().hasHeightForWidth())
+        self.frame_3.setSizePolicy(sizePolicy3)
+        self.frame_3.setMaximumSize(QSize(16777215, 16777215))
+        self.frame_3.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_3.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout_15 = QHBoxLayout(self.frame_3)
+        self.horizontalLayout_15.setObjectName(u"horizontalLayout_15")
+        self.horizontalLayout_15.setSizeConstraint(QLayout.SizeConstraint.SetDefaultConstraint)
+        self.horizontalLayout_15.setContentsMargins(6, 0, 6, 0)
+        self.eventsGroupComboBox = QComboBox(self.frame_3)
+        self.eventsGroupComboBox.setObjectName(u"eventsGroupComboBox")
+        self.eventsGroupComboBox.setMinimumSize(QSize(140, 0))
+
+        self.horizontalLayout_15.addWidget(self.eventsGroupComboBox)
+
+        self.search_dynamic_objects_lineEdit = QLineEdit(self.frame_3)
+        self.search_dynamic_objects_lineEdit.setObjectName(u"search_dynamic_objects_lineEdit")
+        self.search_dynamic_objects_lineEdit.setMaximumSize(QSize(240, 16777215))
+
+        self.horizontalLayout_15.addWidget(self.search_dynamic_objects_lineEdit)
+
+        self.search_dynamic_objects_Button = QPushButton(self.frame_3)
+        self.search_dynamic_objects_Button.setObjectName(u"search_dynamic_objects_Button")
+        self.search_dynamic_objects_Button.setIcon(icon62)
+
+        self.horizontalLayout_15.addWidget(self.search_dynamic_objects_Button)
+
+        self.horizontalSpacer_15 = QSpacerItem(248, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+
+        self.horizontalLayout_15.addItem(self.horizontalSpacer_15)
+
+        self.addDynamicPlotButton = QPushButton(self.frame_3)
+        self.addDynamicPlotButton.setObjectName(u"addDynamicPlotButton")
+        self.addDynamicPlotButton.setIcon(icon7)
+
+        self.horizontalLayout_15.addWidget(self.addDynamicPlotButton)
+
+        self.deleteDynamicPlotButton = QPushButton(self.frame_3)
+        self.deleteDynamicPlotButton.setObjectName(u"deleteDynamicPlotButton")
+        self.deleteDynamicPlotButton.setIcon(icon8)
+
+        self.horizontalLayout_15.addWidget(self.deleteDynamicPlotButton)
+
+        self.dynamicsTablePlotButton = QPushButton(self.frame_3)
+        self.dynamicsTablePlotButton.setObjectName(u"dynamicsTablePlotButton")
+        self.dynamicsTablePlotButton.setIcon(icon111)
+
+        self.horizontalLayout_15.addWidget(self.dynamicsTablePlotButton)
+
+
+        self.verticalLayout_46.addWidget(self.frame_3)
+
+        self.splitter_3 = QSplitter(self.tab_5)
+        self.splitter_3.setObjectName(u"splitter_3")
+        sizePolicy.setHeightForWidth(self.splitter_3.sizePolicy().hasHeightForWidth())
+        self.splitter_3.setSizePolicy(sizePolicy)
+        self.splitter_3.setOrientation(Qt.Orientation.Horizontal)
+        self.frame_22 = QFrame(self.splitter_3)
+        self.frame_22.setObjectName(u"frame_22")
+        self.frame_22.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_22.setFrameShadow(QFrame.Shadow.Raised)
+        self.verticalLayout_36 = QVBoxLayout(self.frame_22)
+        self.verticalLayout_36.setObjectName(u"verticalLayout_36")
+        self.verticalLayout_36.setContentsMargins(6, 0, -1, 0)
+        self.dynamicsDeviceTreeView = QTreeView(self.frame_22)
+        self.dynamicsDeviceTreeView.setObjectName(u"dynamicsDeviceTreeView")
+
+        self.verticalLayout_36.addWidget(self.dynamicsDeviceTreeView)
+
+        self.splitter_3.addWidget(self.frame_22)
+        self.splitter = QSplitter(self.splitter_3)
+        self.splitter.setObjectName(u"splitter")
+        self.splitter.setOrientation(Qt.Orientation.Horizontal)
+        self.frame_30 = QFrame(self.splitter)
+        self.frame_30.setObjectName(u"frame_30")
+        self.frame_30.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_30.setFrameShadow(QFrame.Shadow.Raised)
+        self.verticalLayout_17 = QVBoxLayout(self.frame_30)
+        self.verticalLayout_17.setObjectName(u"verticalLayout_17")
+        self.verticalLayout_17.setContentsMargins(6, 0, 6, 0)
+        self.dynamicsPlotsTreeView = QTreeView(self.frame_30)
+        self.dynamicsPlotsTreeView.setObjectName(u"dynamicsPlotsTreeView")
+
+        self.verticalLayout_17.addWidget(self.dynamicsPlotsTreeView)
+
+        self.splitter.addWidget(self.frame_30)
+        self.frame_39 = QFrame(self.splitter)
+        self.frame_39.setObjectName(u"frame_39")
+        self.frame_39.setFrameShape(QFrame.Shape.NoFrame)
+        self.frame_39.setFrameShadow(QFrame.Shadow.Raised)
+        self.verticalLayout_43 = QVBoxLayout(self.frame_39)
+        self.verticalLayout_43.setObjectName(u"verticalLayout_43")
+        self.verticalLayout_43.setContentsMargins(6, 0, 6, 0)
+        self.dynamicsTableView = QTableView(self.frame_39)
+        self.dynamicsTableView.setObjectName(u"dynamicsTableView")
+
+        self.verticalLayout_43.addWidget(self.dynamicsTableView)
+
+        self.splitter.addWidget(self.frame_39)
+        self.splitter_3.addWidget(self.splitter)
+
+        self.verticalLayout_46.addWidget(self.splitter_3)
+
+        icon126 = QIcon()
+        icon126.addFile(u":/Icons/icons/dyn_gray.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.resultsTabWidget.addTab(self.tab_5, icon126, "")
         self.tab_14 = QWidget()
         self.tab_14.setObjectName(u"tab_14")
         self.verticalLayout_41 = QVBoxLayout(self.tab_14)
         self.verticalLayout_41.setObjectName(u"verticalLayout_41")
         self.verticalLayout_41.setContentsMargins(-1, 6, -1, -1)
-        self.resultsLogsTreeView = QTreeView(self.tab_14)
-        self.resultsLogsTreeView.setObjectName(u"resultsLogsTreeView")
-        self.resultsLogsTreeView.setFrameShape(QFrame.Shape.StyledPanel)
-
-        self.verticalLayout_41.addWidget(self.resultsLogsTreeView)
-
         self.frame_56 = QFrame(self.tab_14)
         self.frame_56.setObjectName(u"frame_56")
         self.frame_56.setFrameShape(QFrame.Shape.NoFrame)
@@ -1964,6 +2088,12 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_41.addWidget(self.frame_56)
 
+        self.resultsLogsTreeView = QTreeView(self.tab_14)
+        self.resultsLogsTreeView.setObjectName(u"resultsLogsTreeView")
+        self.resultsLogsTreeView.setFrameShape(QFrame.Shape.StyledPanel)
+
+        self.verticalLayout_41.addWidget(self.resultsLogsTreeView)
+
         self.resultsTabWidget.addTab(self.tab_14, icon49, "")
         self.tab_6 = QWidget()
         self.tab_6.setObjectName(u"tab_6")
@@ -1978,7 +2108,7 @@ class Ui_mainWindow(object):
         self.resultsTabWidget.addTab(self.tab_6, icon121, "")
         self.results_splitter.addWidget(self.resultsTabWidget)
 
-        self.verticalLayout_28.addWidget(self.results_splitter)
+        self.verticalLayout_45.addWidget(self.results_splitter)
 
 
         self.verticalLayout_13.addWidget(self.frame_33)
@@ -2042,9 +2172,9 @@ class Ui_mainWindow(object):
 
         self.runSourceCodeButton = QPushButton(self.frame_55)
         self.runSourceCodeButton.setObjectName(u"runSourceCodeButton")
-        icon126 = QIcon()
-        icon126.addFile(u":/Icons/icons/next.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.runSourceCodeButton.setIcon(icon126)
+        icon127 = QIcon()
+        icon127.addFile(u":/Icons/icons/next.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.runSourceCodeButton.setIcon(icon127)
 
         self.horizontalLayout_3.addWidget(self.runSourceCodeButton)
 
@@ -2113,9 +2243,9 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_33.addWidget(self.consoleFrame)
 
-        icon127 = QIcon()
-        icon127.addFile(u":/Icons/icons/console.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
-        self.tabWidget_2.addTab(self.pythonConsoleTab, icon127, "")
+        icon128 = QIcon()
+        icon128.addFile(u":/Icons/icons/console.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget_2.addTab(self.pythonConsoleTab, icon128, "")
         self.sourceCodeTab = QWidget()
         self.sourceCodeTab.setObjectName(u"sourceCodeTab")
         self.verticalLayout_39 = QVBoxLayout(self.sourceCodeTab)
@@ -2139,7 +2269,7 @@ class Ui_mainWindow(object):
 
         self.verticalLayout_22.addWidget(self.frame_10)
 
-        self.mainTabWidget.addTab(self.main_console_tab, icon127, "")
+        self.mainTabWidget.addTab(self.main_console_tab, icon128, "")
         self.SettingsTab = QWidget()
         self.SettingsTab.setObjectName(u"SettingsTab")
         self.gridLayout_8 = QGridLayout(self.SettingsTab)
@@ -4866,7 +4996,7 @@ class Ui_mainWindow(object):
         mainWindow.setCentralWidget(self.centralwidget)
         self.menuBar = QMenuBar(mainWindow)
         self.menuBar.setObjectName(u"menuBar")
-        self.menuBar.setGeometry(QRect(0, 0, 1255, 23))
+        self.menuBar.setGeometry(QRect(0, 0, 1208, 23))
         self.menuBar.setFont(font)
         self.menuProject = QMenu(self.menuBar)
         self.menuProject.setObjectName(u"menuProject")
@@ -5074,7 +5204,8 @@ class Ui_mainWindow(object):
         self.tabWidget_6.setCurrentIndex(0)
         self.tabWidget.setCurrentIndex(0)
         self.tabWidget_5.setCurrentIndex(0)
-        self.resultsTabWidget.setCurrentIndex(2)
+        self.tabWidget_3.setCurrentIndex(0)
+        self.resultsTabWidget.setCurrentIndex(0)
         self.tabWidget_2.setCurrentIndex(0)
         self.settingsTabWidget.setCurrentIndex(0)
 
@@ -5455,11 +5586,11 @@ class Ui_mainWindow(object):
         self.actionClean_Room.setToolTip(QCoreApplication.translate("mainWindow", u"Cleam room utility to produce an machine learning statistical representation of the static time series", None))
 #endif // QT_CONFIG(tooltip)
         self.actionProcedural_grid_expansion.setText(QCoreApplication.translate("mainWindow", u"Procedural grid expansion", None))
-        self.progress_label.setText("")
 #if QT_CONFIG(tooltip)
         self.cancelButton.setToolTip(QCoreApplication.translate("mainWindow", u"Cancel process", None))
 #endif // QT_CONFIG(tooltip)
         self.cancelButton.setText("")
+        self.progress_label.setText("")
         self.diagramSearchButton.setText("")
 #if QT_CONFIG(tooltip)
         self.diagramsListView.setToolTip(QCoreApplication.translate("mainWindow", u"List of available diagrams", None))
@@ -5705,16 +5836,27 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.modelTabWidget.setTabText(self.modelTabWidget.indexOf(self.commentsTab), QCoreApplication.translate("mainWindow", u"Comments", None))
         self.mainTabWidget.setTabText(self.mainTabWidget.indexOf(self.GridTab), QCoreApplication.translate("mainWindow", u"Model", None))
+#if QT_CONFIG(tooltip)
+        self.tabWidget_3.setToolTip("")
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.tab_8.setToolTip(QCoreApplication.translate("mainWindow", u"List of current reults", None))
+#endif // QT_CONFIG(tooltip)
         self.label_16.setText(QCoreApplication.translate("mainWindow", u"Session results", None))
 #if QT_CONFIG(tooltip)
         self.deleteDriverButton.setToolTip(QCoreApplication.translate("mainWindow", u"Delete selected driver", None))
 #endif // QT_CONFIG(tooltip)
         self.deleteDriverButton.setText("")
+        self.tabWidget_3.setTabText(self.tabWidget_3.indexOf(self.tab_8), QCoreApplication.translate("mainWindow", u"Results", None))
+#if QT_CONFIG(tooltip)
+        self.tab_12.setToolTip(QCoreApplication.translate("mainWindow", u"Saved sessions on the disk file", None))
+#endif // QT_CONFIG(tooltip)
         self.label_37.setText(QCoreApplication.translate("mainWindow", u"Disk persistance", None))
 #if QT_CONFIG(tooltip)
         self.loadResultFromDiskButton.setToolTip(QCoreApplication.translate("mainWindow", u"Load result from the VeraGrid file", None))
 #endif // QT_CONFIG(tooltip)
         self.loadResultFromDiskButton.setText("")
+        self.tabWidget_3.setTabText(self.tabWidget_3.indexOf(self.tab_12), QCoreApplication.translate("mainWindow", u"Saved", None))
 #if QT_CONFIG(tooltip)
         self.search_results_lineEdit.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Subjects:</span></p><p>col, idx, val, colobj, idxobj</p><p>colobj and idxobj allow accessing the objects that may be represented at the index or the columns. With these you can access their internal properties for filtering.</p><p><span style=\" font-weight:700;\">Operators:</span></p><p>&gt;, &lt;, &gt;=, &lt;=, !=, =, like, notlike, starts, ends</p><p><span style=\" font-weight:700;\">Examples:</span></p><p><span style=\" font-style:italic;\">The columns should not be column1 or column2, the values should be &gt; 5 and the index be like ab of mn</span></p><p>-&gt; <span style=\" font-style:italic;\">col != [column1, column2] and val &gt; 5 or idx like [ab, mn]</span></p><p><br/></p><p><span style=\" font-style:italic;\">Filter the table values that are between 0.5 and 20</span></p><p>-&gt; <span style=\" font-style:italic;\">val &gt; 0.5 and val &lt; 20.0</span></p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
@@ -5761,14 +5903,36 @@ class Ui_mainWindow(object):
 #endif // QT_CONFIG(tooltip)
         self.saveResultsButton.setText("")
 #if QT_CONFIG(tooltip)
-        self.plot_dyn_data_pushButton.setToolTip(QCoreApplication.translate("mainWindow", u"Lauch the dynamic plotter window", None))
-#endif // QT_CONFIG(tooltip)
-        self.plot_dyn_data_pushButton.setText("")
-#if QT_CONFIG(tooltip)
         self.plot_data_pushButton.setToolTip(QCoreApplication.translate("mainWindow", u"Plot the data in a separated window", None))
 #endif // QT_CONFIG(tooltip)
         self.plot_data_pushButton.setText("")
         self.resultsTabWidget.setTabText(self.resultsTabWidget.indexOf(self.tab_7), QCoreApplication.translate("mainWindow", u"Tables", None))
+#if QT_CONFIG(tooltip)
+        self.eventsGroupComboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Select the events group to view", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.search_dynamic_objects_lineEdit.setToolTip(QCoreApplication.translate("mainWindow", u"Type the search term", None))
+#endif // QT_CONFIG(tooltip)
+#if QT_CONFIG(tooltip)
+        self.search_dynamic_objects_Button.setToolTip(QCoreApplication.translate("mainWindow", u"Smart search", None))
+#endif // QT_CONFIG(tooltip)
+        self.search_dynamic_objects_Button.setText("")
+#if QT_CONFIG(tooltip)
+        self.addDynamicPlotButton.setToolTip(QCoreApplication.translate("mainWindow", u"Add new plot", None))
+#endif // QT_CONFIG(tooltip)
+        self.addDynamicPlotButton.setText("")
+#if QT_CONFIG(tooltip)
+        self.deleteDynamicPlotButton.setToolTip(QCoreApplication.translate("mainWindow", u"Remove selected plot", None))
+#endif // QT_CONFIG(tooltip)
+        self.deleteDynamicPlotButton.setText("")
+#if QT_CONFIG(tooltip)
+        self.dynamicsTablePlotButton.setToolTip(QCoreApplication.translate("mainWindow", u"Display selected plot", None))
+#endif // QT_CONFIG(tooltip)
+        self.dynamicsTablePlotButton.setText("")
+#if QT_CONFIG(tooltip)
+        self.dynamicsDeviceTreeView.setToolTip(QCoreApplication.translate("mainWindow", u"Drag and drop the Var to the desired plot. Double click to plot directly.", None))
+#endif // QT_CONFIG(tooltip)
+        self.resultsTabWidget.setTabText(self.resultsTabWidget.indexOf(self.tab_5), QCoreApplication.translate("mainWindow", u"Dynamics", None))
 #if QT_CONFIG(tooltip)
         self.saveResultsLogsButton.setToolTip(QCoreApplication.translate("mainWindow", u"Save the logs to a file", None))
 #endif // QT_CONFIG(tooltip)

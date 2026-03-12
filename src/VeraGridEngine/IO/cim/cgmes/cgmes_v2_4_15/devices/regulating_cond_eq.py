@@ -15,6 +15,7 @@ class RegulatingCondEq(ConductingEquipment):
 		CgmesProperty(property_name='RegulatingControl', class_type='RegulatingControl', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The regulating control scheme in which this equipment participates.''', profiles=[]),
 		CgmesProperty(property_name='controlEnabled', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Specifies the regulation status of the equipment.  True is regulating, false is not regulating.''', profiles=[]),
 	)
+	__slots__ = ('RegulatingControl', 'controlEnabled')
 	def __init__(self, rdfid='', tpe='RegulatingCondEq'):
 		ConductingEquipment.__init__(self, rdfid, tpe)
 

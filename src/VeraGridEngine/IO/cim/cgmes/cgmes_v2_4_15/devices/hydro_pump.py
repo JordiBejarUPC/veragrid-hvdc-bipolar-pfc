@@ -16,6 +16,7 @@ class HydroPump(Equipment):
 		CgmesProperty(property_name='HydroPowerPlant', class_type='HydroPowerPlant', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The hydro pump may be a member of a pumped storage plant or a pump for distributing water.''', profiles=[]),
 		CgmesProperty(property_name='RotatingMachine', class_type='RotatingMachine', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The synchronous machine drives the turbine which moves the water from a low elevation to a higher elevation. The direction of machine rotation for pumping may or may not be the same as for generating.''', profiles=[]),
 	)
+	__slots__ = ('HydroPowerPlant', 'RotatingMachine')
 	def __init__(self, rdfid='', tpe='HydroPump'):
 		Equipment.__init__(self, rdfid, tpe)
 

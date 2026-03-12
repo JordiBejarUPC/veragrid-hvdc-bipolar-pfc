@@ -495,7 +495,7 @@ def gather_model_as_jsons(circuit: MultiCircuit) -> Dict[str, Dict[str, str]]:
 
     data: Dict[str, Union[Dict[str, str], List[Dict[str, str]]]] = dict()
 
-    block_saver = BlockSaver(circuit.var_factory)
+    block_saver = BlockSaver(circuit.rms_var_factory)
 
     # declare objects to iterate  name: [sample object, list of objects, headers]
     object_types = get_objects_dictionary()
@@ -1504,7 +1504,7 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
     # New way of parsing information from .model files (Json files)
     # These files are just .json stored in the model_data inside the zip file
 
-    block_parser = BlockParser(circuit.var_factory)
+    block_parser = BlockParser(circuit.rms_var_factory)
     symbolic_data = data.get('symbolic_data', None)
     if symbolic_data is not None:
         if len(symbolic_data) > 0:
@@ -1592,8 +1592,8 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
     to_delete: List[ALL_DEV_TYPES] = list()
     all_elements_dict: Dict[str, ALL_DEV_TYPES] = dict()
     for dtype in [
-        DeviceType.PMeasurementDevice,
-        DeviceType.QMeasurementDevice,
+        DeviceType.PiMeasurementDevice,
+        DeviceType.QiMeasurementDevice,
         DeviceType.PfMeasurementDevice,
         DeviceType.QfMeasurementDevice,
         DeviceType.PtMeasurementDevice,

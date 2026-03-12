@@ -44,7 +44,7 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_enums import (CgmesProfileType,
 from VeraGridEngine.IO.cim.cgmes.cgmes_utils import get_voltage_terminal
 from VeraGridEngine.IO.cim.cgmes.cgmes_v2_4_15.devices.full_model import FullModel
 import VeraGridEngine.Devices as gcdev
-from VeraGridEngine.enumerations import CGMESVersions
+from VeraGridEngine.enumerations import CGMESVersions, ConverterControlType
 from VeraGridEngine.data_logger import DataLogger
 
 
@@ -478,7 +478,9 @@ def create_cgmes_regulating_control(cgmes_elm,
     rc.name = f'_RC_{mc_gen.name}'
     rc.shortName = rc.name
     rc.mode = RegulatingControlModeKind.voltage
-    rc.Terminal = cgmes_elm.Terminals  # TODO get a terminal from the controlled bus !!!
+    # Export the concrete terminal object instead of the generic list/scalar
+    # field so later import has an unambiguous control attachment point.
+    rc.Terminal = cgmes_elm.Terminals
 
     rc.RegulatingCondEq = cgmes_elm
     rc.discrete = False
@@ -755,7 +757,12 @@ def create_cgmes_vsc_converter(cgmes_model: CgmesCircuit,
     if gc_vsc is not None:
         vs_converter.name = gc_vsc.name
         vs_converter.description = gc_vsc.code
-        targetUpcc = gc_vsc.Vf
+        if gc_vsc.control1 in (ConverterControlType.Vm_ac, ConverterControlType.Vm_dc):
+            targetUpcc = gc_vsc.control1_val
+        elif gc_vsc.control2 in (ConverterControlType.Vm_ac, ConverterControlType.Vm_dc):
+            targetUpcc = gc_vsc.control2_val
+        else:
+            targetUpcc = v_set
     else:
         i = len(cgmes_model.cgmes_assets.VsConverter_list)
         vs_converter.name = f'VSC_{i + 1}'
@@ -1045,8 +1052,13 @@ def create_cgmes_location(cgmes_model: CgmesCircuit,
     else:
         raise NotImplemented()
 
-    location.CoordinateSystem = cgmes_model.cgmes_assets.CoordinateSystem_list[0]
-    location.PowerSystemResource = device
+    coordinate_system = cgmes_model.cgmes_assets.CoordinateSystem_list[0]
+
+    location.CoordinateSystem = coordinate_system
+    if "PowerSystemResources" in location.declared_properties:
+        location.PowerSystemResources = device
+    else:
+        location.PowerSystemResource = device
 
     if ver == CGMESVersions.v2_4_15:
         pos_point = cgmes24.PositionPoint(rdfid=get_new_rdfid())
@@ -1059,13 +1071,37 @@ def create_cgmes_location(cgmes_model: CgmesCircuit,
     pos_point.sequenceNumber = 1
     pos_point.xPosition = str(longitude)
     pos_point.yPosition = str(latitude)
-    location.PositionPoint = pos_point
+    if "PositionPoints" in location.declared_properties:
+        location.PositionPoints = pos_point
+    else:
+        location.PositionPoint = pos_point
 
-    cgmes_model.cgmes_assets.CoordinateSystem_list[0].Locations.append(location)
+    if "Locations" in coordinate_system.declared_properties:
+        current_locations = coordinate_system.Locations
+        if current_locations is None:
+            coordinate_system.Locations = [location]
+        elif isinstance(current_locations, list):
+            current_locations.append(location)
+        else:
+            coordinate_system.Locations = [current_locations, location]
+    else:
+        current_location = coordinate_system.Location
+        if current_location is None:
+            coordinate_system.Location = location
+        elif isinstance(current_location, list):
+            current_location.append(location)
+        else:
+            coordinate_system.Location = [current_location, location]
     cgmes_model.add(location)
     cgmes_model.add(pos_point)
 
-    device.Location = location
+    if "Location" in device.declared_properties:
+        device.Location = location
+    else:
+        logger.add_info(msg='Skipping location back-reference for CGMES class without Location property',
+                        device=device.rdfid,
+                        device_class=device.tpe,
+                        value='Location')
 
     return location
 
@@ -1151,7 +1187,7 @@ def create_sv_status(cgmes_model: CgmesCircuit,
         raise NotImplemented()
 
     sv_status.inService = in_service
-    # TODO sv_status.ConductingEquipment = cgmes_conducting_equipment
+    sv_status.ConductingEquipment = cgmes_conducting_equipment
 
     cgmes_model.add(sv_status)
 
