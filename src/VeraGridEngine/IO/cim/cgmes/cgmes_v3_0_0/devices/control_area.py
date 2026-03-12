@@ -24,6 +24,7 @@ class ControlArea(PowerSystemResource):
 		CgmesProperty(property_name='netInterchange', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', profiles=[]),
 		CgmesProperty(property_name='pTolerance', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', profiles=[]),
 	)
+	__slots__ = ('type', 'TieFlow', 'ControlAreaGeneratingUnit', 'EnergyArea', 'netInterchange', 'pTolerance')
 	def __init__(self, rdfid='', tpe='ControlArea'):
 		PowerSystemResource.__init__(self, rdfid, tpe)
 

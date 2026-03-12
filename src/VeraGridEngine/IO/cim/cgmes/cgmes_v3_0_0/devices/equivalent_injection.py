@@ -30,6 +30,7 @@ class EquivalentInjection(EquivalentEquipment):
 		CgmesProperty(property_name='p', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', profiles=[]),
 		CgmesProperty(property_name='q', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description='''Product of RMS value of the voltage and the RMS value of the quadrature component of the current.''', profiles=[]),
 	)
+	__slots__ = ('maxP', 'maxQ', 'minP', 'minQ', 'regulationCapability', 'ReactiveCapabilityCurve', 'r', 'r0', 'r2', 'x', 'x0', 'x2', 'regulationStatus', 'regulationTarget', 'p', 'q')
 	def __init__(self, rdfid='', tpe='EquivalentInjection'):
 		EquivalentEquipment.__init__(self, rdfid, tpe)
 

@@ -25,6 +25,7 @@ If the attribute is missing three phases (ABC) shall be assumed.''', profiles=[]
 		CgmesProperty(property_name='unitSymbol', class_type=UnitSymbol, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The unit of measure of the measured quantity.''', profiles=[]),
 		CgmesProperty(property_name='PowerSystemResource', class_type='PowerSystemResource', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The power system resource that contains the measurement.''', profiles=[]),
 	)
+	__slots__ = ('Terminal', 'measurementType', 'phases', 'unitMultiplier', 'unitSymbol', 'PowerSystemResource')
 	def __init__(self, rdfid='', tpe='Measurement'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

@@ -19,6 +19,7 @@ class PowerSystemResource(IdentifiedObject):
         CgmesProperty(property_name='Measurements', class_type='Measurement', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The power system resource that contains the measurement.''', profiles=[]),
         CgmesProperty(property_name='Location', class_type='Location', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Location of this power system resource.''', profiles=[]),
     )
+    __slots__ = ('Controls', 'Measurements', 'Location')
     def __init__(self, rdfid='', tpe='PowerSystemResource'):
         IdentifiedObject.__init__(self, rdfid, tpe)
 

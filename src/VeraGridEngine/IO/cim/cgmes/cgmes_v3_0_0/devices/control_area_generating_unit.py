@@ -16,6 +16,7 @@ class ControlAreaGeneratingUnit(IdentifiedObject):
 		CgmesProperty(property_name='ControlArea', class_type='ControlArea', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The parent control area for the generating unit specifications.''', profiles=[]),
 		CgmesProperty(property_name='GeneratingUnit', class_type='GeneratingUnit', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The generating unit specified for this control area.  Note that a control area should include a GeneratingUnit only once.''', profiles=[]),
 	)
+	__slots__ = ('ControlArea', 'GeneratingUnit')
 	def __init__(self, rdfid='', tpe='ControlAreaGeneratingUnit'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

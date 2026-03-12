@@ -14,6 +14,7 @@ class LoadArea(EnergyArea):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='SubLoadAreas', class_type='SubLoadArea', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The SubLoadAreas in the LoadArea.''', profiles=[]),
 	)
+	__slots__ = ('SubLoadAreas',)
 	def __init__(self, rdfid='', tpe='LoadArea'):
 		EnergyArea.__init__(self, rdfid, tpe)
 

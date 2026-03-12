@@ -13,6 +13,7 @@ class EquivalentShunt(EquivalentEquipment):
 		CgmesProperty(property_name='b', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.S, description='''Imaginary part of admittance.''', profiles=[]),
 		CgmesProperty(property_name='g', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.S, description='''Factor by which voltage must be multiplied to give corresponding power lost from a circuit. Real part of admittance.''', profiles=[]),
 	)
+	__slots__ = ('b', 'g')
 	def __init__(self, rdfid='', tpe='EquivalentShunt'):
 		EquivalentEquipment.__init__(self, rdfid, tpe)
 

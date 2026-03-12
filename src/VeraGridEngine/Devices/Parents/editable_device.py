@@ -22,7 +22,7 @@ from VeraGridEngine.enumerations import (DeviceType, TimeFrame, BuildStatus, Win
                                          BranchImpedanceMode, FaultType, TapChangerTypes, ContingencyOperationTypes,
                                          WindingType, MethodShortCircuit, PhasesShortCircuit, ShuntConnectionType,
                                          BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod, OpfDispatchMode,
-                                         EmtLineTypes,SmallSignalEmtBuildTypes,EraSvdSolverType,ShuntControlMode)
+                                         EmtLineTypes,SmallSignalEmtBuildTypes, EraSvdSolverType, ShuntControlMode)
 
 # types that can be assigned to a VeraGrid property
 GCPROP_TYPES = Union[
@@ -314,7 +314,6 @@ class GCProp:
         return "prop:" + self.name
 
 
-
 def get_action_symbol(action: ActionType):
     """
 
@@ -403,6 +402,44 @@ class EditableDeviceMeta(type):
 
         return cls
 
+class PropertyChanges:
+
+
+    def __init__(self):
+        # This per-instance map stores merge toggles to avoid mutating shared schema objects.
+        self.__property_merge_selections: Dict[str, bool] = dict()
+
+    def set(self, property_name: str, selected: bool) -> None:
+        """
+        Set merge-selection state for one property in this instance.
+        :param property_name: Property name
+        :param selected: Should this property be merged
+        :return: None
+        """
+        self.__property_merge_selections[property_name] = selected
+
+    def get(self, property_name: str) -> bool:
+        """
+        Query merge-selection state for one property in this instance.
+        :param property_name: Property name
+        :return: True if selected for merge
+        """
+
+        # If the property is not in the dictionary of properties to merge, it should not be modified.
+        # Otherwise, check what should be the behaviour.
+
+        return self.__property_merge_selections.get(property_name, False)
+
+    def to_dict(self):
+        return dict(self.__property_merge_selections)
+
+    def parse(self, data: Dict[str, bool]):
+        if isinstance(data, dict):
+            self.__property_merge_selections = data
+
+    def __eq__(self, other):
+        return self.__property_merge_selections == other.__property_merge_selections
+
 
 class EditableDevice(metaclass=EditableDeviceMeta):
     """
@@ -417,7 +454,7 @@ class EditableDevice(metaclass=EditableDeviceMeta):
         'comment',
         'action',
         'selected_to_merge',
-        'property_merge_selections',
+        'diff_changes',
         '__auto_update_enabled',
     )
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -426,9 +463,10 @@ class EditableDevice(metaclass=EditableDeviceMeta):
         GCProp(key='code', units='', tpe=str, definition='Secondary ID'),
         GCProp(key='rdfid', units='', tpe=str, definition='RDF ID for further compatibility'),
         GCProp(key='action', units='', tpe=ActionType,
-                   definition='Object action to perform.\nOnly used for model merging.',
-                   display=False),
+               definition='Object action to perform.\nOnly used for model merging.',
+               display=False),
         GCProp(key='comment', units='', tpe=str, definition='User comment'),
+        GCProp(key='diff_changes', units='', tpe=SubObjectType.MergeInformation, display=False, editable=False)
     )
     CLASS_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = tuple()
     CLASS_PROPERTY_LIST: Tuple[GCProp, ...] = tuple()
@@ -470,8 +508,7 @@ class EditableDevice(metaclass=EditableDeviceMeta):
         self.action: ActionType = ActionType.NoAction
         self.selected_to_merge = True
 
-        # This per-instance map stores merge toggles to avoid mutating shared schema objects.
-        self.property_merge_selections: Dict[str, bool] = dict()
+        self.diff_changes = PropertyChanges()
 
         # some devices have an auto update of a property when another property changes
         # (i.e. Line's R, X, B when the length changes) this controls that behaviour and disables it during loading
@@ -513,26 +550,30 @@ class EditableDevice(metaclass=EditableDeviceMeta):
         self_cls: type = type(self)
         return self_cls.CLASS_PROPERTIES_WITH_PROFILE
 
-    def set_property_selected_to_merge(self, property_name: str, selected: bool) -> None:
+    def set_diff_change(self, property_name: str, selected: bool) -> None:
         """
         Set merge-selection state for one property in this instance.
         :param property_name: Property name
         :param selected: Should this property be merged
         :return: None
         """
-        self.property_merge_selections[property_name] = selected
+        self.diff_changes.set(property_name, selected)
 
-    def get_property_selected_to_merge(self, property_name: str) -> bool:
+    def get_diff_change_selected(self, property_name: str) -> bool:
         """
         Query merge-selection state for one property in this instance.
         :param property_name: Property name
         :return: True if selected for merge
         """
-        selected = self.property_merge_selections.get(property_name, None)
-        if selected is None:
-            return True
-        else:
-            return selected
+
+        return self.diff_changes.get(property_name)
+
+    def get_all_diff_changes_dict(self) -> Dict[str, bool]:
+        """
+        Get the dictionary of all diff changes
+        :return:
+        """
+        return self.diff_changes.to_dict()
 
     def iter_properties_selected_to_merge(self):
         """
@@ -540,7 +581,7 @@ class EditableDevice(metaclass=EditableDeviceMeta):
         :return: Generator[GCProp, None, None]
         """
         for prop in self.property_list:
-            if self.get_property_selected_to_merge(property_name=prop.name):
+            if self.get_diff_change_selected(property_name=prop.name):
                 yield prop
             else:
                 pass

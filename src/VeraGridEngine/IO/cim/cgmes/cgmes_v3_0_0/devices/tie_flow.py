@@ -18,6 +18,7 @@ class TieFlow(IdentifiedObject):
 		CgmesProperty(property_name='Terminal', class_type='Terminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The terminal to which this tie flow belongs.''', profiles=[]),
 		CgmesProperty(property_name='positiveFlowIn', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Specifies the sign of the tie flow associated with a control area. True if positive flow into the terminal (load convention) is also positive flow into the control area.  See the description of ControlArea for further explanation of how TieFlow.positiveFlowIn is used.''', profiles=[]),
 	)
+	__slots__ = ('ControlArea', 'Terminal', 'positiveFlowIn')
 	def __init__(self, rdfid='', tpe='TieFlow'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

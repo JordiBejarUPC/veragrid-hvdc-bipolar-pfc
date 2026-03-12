@@ -38,6 +38,7 @@ class ACDCConverter(ConductingEquipment):
 		CgmesProperty(property_name='targetPpcc', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', profiles=[]),
 		CgmesProperty(property_name='targetUdc', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[]),
 	)
+	__slots__ = ('baseS', 'idleLoss', 'maxUdc', 'minUdc', 'numberOfValves', 'ratedUdc', 'resistiveLoss', 'switchingLoss', 'valveU0', 'maxP', 'minP', 'PccTerminal', 'DCTerminals', 'idc', 'poleLossP', 'uc', 'udc', 'p', 'q', 'targetPpcc', 'targetUdc')
 	def __init__(self, rdfid='', tpe='ACDCConverter'):
 		ConductingEquipment.__init__(self, rdfid, tpe)
 

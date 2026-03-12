@@ -18,6 +18,7 @@ class SeriesCompensator(ConductingEquipment):
 		CgmesProperty(property_name='varistorRatedCurrent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.A, description='''Electrical current with sign convention: positive flow is out of the conducting equipment into the connectivity node. Can be both AC and DC.''', profiles=[]),
 		CgmesProperty(property_name='varistorVoltageThreshold', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[]),
 	)
+	__slots__ = ('r', 'r0', 'x', 'x0', 'varistorPresent', 'varistorRatedCurrent', 'varistorVoltageThreshold')
 	def __init__(self, rdfid='', tpe='SeriesCompensator'):
 		ConductingEquipment.__init__(self, rdfid, tpe)
 

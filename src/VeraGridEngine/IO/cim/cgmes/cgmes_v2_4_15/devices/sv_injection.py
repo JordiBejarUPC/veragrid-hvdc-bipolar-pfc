@@ -17,6 +17,7 @@ class SvInjection(Base):
 		CgmesProperty(property_name='qInjection', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description='''Product of RMS value of the voltage and the RMS value of the quadrature component of the current.''', profiles=[]),
 		CgmesProperty(property_name='TopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The injection flows state variables associated with the topological node.''', profiles=[]),
 	)
+	__slots__ = ('pInjection', 'qInjection', 'TopologicalNode')
 	def __init__(self, rdfid, tpe='SvInjection', resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 

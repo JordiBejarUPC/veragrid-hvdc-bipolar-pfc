@@ -20,6 +20,7 @@ class Substation(EquipmentContainer):
 		CgmesProperty(property_name='Region', class_type='SubGeographicalRegion', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The SubGeographicalRegion containing the substation.''', profiles=[]),
 		CgmesProperty(property_name='VoltageLevels', class_type='VoltageLevel', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The voltage levels within this substation.''', profiles=[]),
 	)
+	__slots__ = ('DCConverterUnit', 'Region', 'VoltageLevels')
 	def __init__(self, rdfid='', tpe='Substation'):
 		EquipmentContainer.__init__(self, rdfid, tpe)
 

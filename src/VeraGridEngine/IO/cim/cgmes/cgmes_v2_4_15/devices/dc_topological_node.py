@@ -21,6 +21,7 @@ class DCTopologicalNode(IdentifiedObject):
 		CgmesProperty(property_name='DCEquipmentContainer', class_type='DCEquipmentContainer', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', profiles=[]),
 		CgmesProperty(property_name='DCNodes', class_type='DCNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''See association end ConnectivityNode.TopologicalNode.''', profiles=[]),
 	)
+	__slots__ = ('DCTopologicalIsland', 'DCTerminals', 'DCEquipmentContainer', 'DCNodes')
 	def __init__(self, rdfid='', tpe='DCTopologicalNode'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

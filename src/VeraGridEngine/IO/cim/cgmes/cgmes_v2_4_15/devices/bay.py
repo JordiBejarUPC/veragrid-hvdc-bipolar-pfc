@@ -15,6 +15,7 @@ class Bay(EquipmentContainer):
     LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
         CgmesProperty(property_name='VoltageLevel', class_type='VoltageLevel', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The voltage level containing this bay.''', profiles=[]),
     )
+    __slots__ = ('VoltageLevel',)
     def __init__(self, rdfid='', tpe='Bay'):
         EquipmentContainer.__init__(self, rdfid, tpe)
 

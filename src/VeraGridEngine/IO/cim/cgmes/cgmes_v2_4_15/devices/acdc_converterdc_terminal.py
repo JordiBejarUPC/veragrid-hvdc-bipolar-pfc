@@ -17,6 +17,7 @@ class ACDCConverterDCTerminal(DCBaseTerminal):
         CgmesProperty(property_name='DCConductingEquipment', class_type='ACDCConverter', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''None''', profiles=[]),
         CgmesProperty(property_name='polarity', class_type=DCPolarityKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Represents the normal network polarity condition.''', profiles=[]),
     )
+    __slots__ = ('DCConductingEquipment', 'polarity')
     def __init__(self, rdfid='', tpe='ACDCConverterDCTerminal'):
         DCBaseTerminal.__init__(self, rdfid, tpe)
 

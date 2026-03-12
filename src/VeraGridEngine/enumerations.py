@@ -1231,6 +1231,7 @@ class SubObjectType(Enum):
     DaeBlockType = "DaeBlock"
     VarType = "VarType"
     ConstType = "ConstType"
+    MergeInformation = "MergeInformation"
 
     def __str__(self) -> str:
         return str(self.value)

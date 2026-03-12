@@ -13,6 +13,7 @@ class AnalogControl(Control):
 		CgmesProperty(property_name='maxValue', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Normal value range maximum for any of the Control.value. Used for scaling, e.g. in bar graphs.''', profiles=[]),
 		CgmesProperty(property_name='minValue', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Normal value range minimum for any of the Control.value. Used for scaling, e.g. in bar graphs.''', profiles=[]),
 	)
+	__slots__ = ('maxValue', 'minValue')
 	def __init__(self, rdfid='', tpe='AnalogControl'):
 		Control.__init__(self, rdfid, tpe)
 

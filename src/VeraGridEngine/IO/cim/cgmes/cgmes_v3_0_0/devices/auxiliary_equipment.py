@@ -14,6 +14,7 @@ class AuxiliaryEquipment(Equipment):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='Terminal', class_type='Terminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The Terminal at the equipment where the AuxiliaryEquipment is attached.''', profiles=[]),
 	)
+	__slots__ = ('Terminal',)
 	def __init__(self, rdfid='', tpe='AuxiliaryEquipment'):
 		Equipment.__init__(self, rdfid, tpe)
 
