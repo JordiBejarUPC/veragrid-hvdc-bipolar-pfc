@@ -12,7 +12,7 @@ from PySide6.QtGui import QPolygonF
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.generic_graphics import Polygon
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
-from VeraGrid.Gui.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
+from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import RmsModelEditorGUI
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.enumerations import DeviceType
 
