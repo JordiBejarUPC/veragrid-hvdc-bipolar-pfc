@@ -1,0 +1,665 @@
+********************************************************************************
+* Created with VeraGrid
+********************************************************************************
+
+$$General;ID(a:40);Descr(a:40);Val(a:40)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* Descr: a:40: DGS field Descr (a:40)
+* Val: a:40: DGS field Val (a:40)
+********************************************************************************
+1;Version;5.0
+
+$$ElmLne;ID(a:40);loc_name(a:40);fold_id(p);typ_id(p);dline(r);chr_name(a:20);fline(r);outserv(i);pStoch(p);for_name(a:50);GPScoords:SIZEROW(i);GPScoords:SIZECOL(i);nlnum(i);inAir(i)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* typ_id: p: DGS field typ_id (p)
+* dline: r: DGS field dline (r)
+* chr_name: a:20: DGS field chr_name (a:20)
+* fline: r: Derating factor
+* outserv: i: DGS field outserv (i)
+* pStoch: p: DGS field pStoch (p)
+* for_name: a:50: DGS field for_name (a:50)
+* GPScoords:SIZEROW: i: DGS field GPScoords:SIZEROW (i)
+* GPScoords:SIZECOL: i: DGS field GPScoords:SIZECOL (i)
+* nlnum: i: DGS field nlnum (i)
+* inAir: i: DGS field inAir (i)
+********************************************************************************
+128;1_2_1;;127;1.0;;1.0;0;;;0;0;1;0
+134;1_3_1;;133;1.0;;1.0;0;;;0;0;1;0
+140;2_4_1;;139;1.0;;1.0;0;;;0;0;1;0
+146;2_5_1;;145;1.0;;1.0;0;;;0;0;1;0
+152;2_6_1;;151;1.0;;1.0;0;;;0;0;1;0
+158;3_4_1;;157;1.0;;1.0;0;;;0;0;1;0
+164;4_6_1;;163;1.0;;1.0;0;;;0;0;1;0
+170;5_7_1;;169;1.0;;1.0;0;;;0;0;1;0
+176;6_7_1;;175;1.0;;1.0;0;;;0;0;1;0
+182;6_8_1;;181;1.0;;1.0;0;;;0;0;1;0
+188;6_28_1;;187;1.0;;1.0;0;;;0;0;1;0
+194;8_28_1;;193;1.0;;1.0;0;;;0;0;1;0
+200;10_17_1;;199;1.0;;1.0;0;;;0;0;1;0
+206;10_20_1;;205;1.0;;1.0;0;;;0;0;1;0
+212;10_21_1;;211;1.0;;1.0;0;;;0;0;1;0
+218;10_22_1;;217;1.0;;1.0;0;;;0;0;1;0
+224;12_14_1;;223;1.0;;1.0;0;;;0;0;1;0
+230;12_15_1;;229;1.0;;1.0;0;;;0;0;1;0
+236;12_16_1;;235;1.0;;1.0;0;;;0;0;1;0
+242;14_15_1;;241;1.0;;1.0;0;;;0;0;1;0
+248;15_18_1;;247;1.0;;1.0;0;;;0;0;1;0
+254;15_23_1;;253;1.0;;1.0;0;;;0;0;1;0
+260;16_17_1;;259;1.0;;1.0;0;;;0;0;1;0
+266;18_19_1;;265;1.0;;1.0;0;;;0;0;1;0
+272;19_20_1;;271;1.0;;1.0;0;;;0;0;1;0
+278;21_22_1;;277;1.0;;1.0;0;;;0;0;1;0
+284;22_24_1;;283;1.0;;1.0;0;;;0;0;1;0
+290;23_24_1;;289;1.0;;1.0;0;;;0;0;1;0
+296;24_25_1;;295;1.0;;1.0;0;;;0;0;1;0
+302;25_26_1;;301;1.0;;1.0;0;;;0;0;1;0
+308;25_27_1;;307;1.0;;1.0;0;;;0;0;1;0
+314;27_29_1;;313;1.0;;1.0;0;;;0;0;1;0
+320;27_30_1;;319;1.0;;1.0;0;;;0;0;1;0
+326;29_30_1;;325;1.0;;1.0;0;;;0;0;1;0
+
+$$ElmLod;ID(a:40);loc_name(a:40);fold_id(p);typ_id(p);chr_name(a:20);plini(r);qlini(r);scale0(r);outserv(i);for_name(a:50);mode_inp(a:3);slini(r);coslini(r);pf_recap(i);i_scale(i);classif(a:20)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* typ_id: p: DGS field typ_id (p)
+* chr_name: a:20: DGS field chr_name (a:20)
+* plini: r: DGS field plini (r)
+* qlini: r: DGS field qlini (r)
+* scale0: r: DGS field scale0 (r)
+* outserv: i: DGS field outserv (i)
+* for_name: a:50: DGS field for_name (a:50)
+* mode_inp: a:3: DGS field mode_inp (a:3)
+* slini: r: DGS field slini (r)
+* coslini: r: DGS field coslini (r)
+* pf_recap: i: DGS field pf_recap (i)
+* i_scale: i: DGS field i_scale (i)
+* classif: a:20: DGS field classif (a:20)
+********************************************************************************
+34;2_1;2;3;;21.7;12.7;1.0;0;;DEF;25.143189932862537;0.8630567584281644;0;1;
+37;3_1;2;3;;2.4;1.2;1.0;0;;DEF;2.6832815729997477;0.8944271909999159;0;1;
+40;4_1;2;3;;7.6;1.6;1.0;0;;DEF;7.766595135579039;0.978549784986749;0;1;
+43;5_1;2;3;;94.2;19.0;1.0;0;;DEF;96.09703429346818;0.980259179615524;0;1;
+46;7_1;2;3;;22.8;10.9;1.0;0;;DEF;25.27152547829276;0.9022011757693179;0;1;
+49;8_1;2;3;;30.0;30.0;1.0;0;;DEF;42.42640687119285;0.7071067811865475;0;1;
+52;10_1;2;3;;5.8;2.0;1.0;0;;DEF;6.135144660071187;0.945372981626272;0;1;
+55;12_1;2;3;;11.2;7.5;1.0;0;;DEF;13.479243302203578;0.830907176975508;0;1;
+58;14_1;2;3;;6.2;1.6;1.0;0;;DEF;6.403124237432849;0.9682773237093575;0;1;
+61;15_1;2;3;;8.2;2.5;1.0;0;;DEF;8.572630868059116;0.9565324958237141;0;1;
+64;16_1;2;3;;3.5;1.8;1.0;0;;DEF;3.9357337308308855;0.8892878023181471;0;1;
+67;17_1;2;3;;9.0;5.8;1.0;0;;DEF;10.707007051459339;0.8405710350936326;0;1;
+70;18_1;2;3;;3.2;0.9;1.0;0;;DEF;3.3241540277189325;0.962650940153899;0;1;
+73;19_1;2;3;;9.5;3.4;1.0;0;;DEF;10.090094152187085;0.941517478104089;0;1;
+76;20_1;2;3;;2.2;0.7;1.0;0;;DEF;2.3086792761230392;0.952925780013262;0;1;
+79;21_1;2;3;;17.5;11.2;1.0;0;;DEF;20.777150911518163;0.8422714006615113;0;1;
+82;23_1;2;3;;3.2;1.6;1.0;0;;DEF;3.577708763999664;0.8944271909999159;0;1;
+85;24_1;2;3;;8.7;6.7;1.0;0;;DEF;10.980892495603442;0.7922853268514675;0;1;
+88;26_1;2;3;;3.5;2.3;1.0;0;;DEF;4.188078318274385;0.8357054797012742;0;1;
+91;29_1;2;3;;2.4;0.9;1.0;0;;DEF;2.563201123595259;0.9363291775690445;0;1;
+94;30_1;2;3;;10.6;1.9;1.0;0;;DEF;10.768936809174804;0.98431258236831;0;1;
+
+$$ElmNet;ID(a:40);loc_name(a:40);fold_id(p);frnom(r);for_name(a:50);pDiagram(p)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* frnom: r: Nominal Frequency in Hz
+* for_name: a:50: DGS field for_name (a:50)
+* pDiagram: p: Diagram in IntGrfnet
+********************************************************************************
+2;Grid;;50.0;;
+
+$$ElmShnt;ID(a:40);loc_name(a:40);fold_id(p);chr_name(a:20);shtype(i);ushnm(r);qcapn(r);ncapx(i);ncapa(i);outserv(i);qrean(r);ctech(i);fres(r);greaf0(r);grea(r);iswitch(i);qtotn(r);tandc(r);usetp(r);rpara(r)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* chr_name: a:20: DGS field chr_name (a:20)
+* shtype: i: DGS field shtype (i)
+* ushnm: r: DGS field ushnm (r)
+* qcapn: r: DGS field qcapn (r)
+* ncapx: i: DGS field ncapx (i)
+* ncapa: i: DGS field ncapa (i)
+* outserv: i: DGS field outserv (i)
+* qrean: r: DGS field qrean (r)
+* ctech: i: DGS field ctech (i)
+* fres: r: DGS field fres (r)
+* greaf0: r: DGS field greaf0 (r)
+* grea: r: DGS field grea (r)
+* iswitch: i: DGS field iswitch (i)
+* qtotn: r: DGS field qtotn (r)
+* tandc: r: DGS field tandc (r)
+* usetp: r: DGS field usetp (r)
+* rpara: r: DGS field rpara (r)
+********************************************************************************
+97;10_1;;;2;33.0;19.0;1;1;0;0.0;1;50.0;0.0;0.0;0;19.0;0.0;1.0;0.0
+100;24_1;;;2;33.0;4.3;1;1;0;0.0;1;50.0;0.0;0.0;0;4.3;0.0;1.0;0.0
+
+$$ElmSym;ID(a:40);loc_name(a:40);fold_id(p);typ_id(p);ngnum(i);i_mot(i);chr_name(a:20);outserv(i);pgini(r);qgini(r);usetp(r);iv_mode(i);q_min(r);q_max(r);Pmin_uc(r);Pmax_uc(r);iqtype(i);for_name(a:50);cCategory(a);cosgini(r);pf_recap(i);av_mode(a);phtech(i);ip_ctrl(i);c_pmod(a:40)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* typ_id: p: DGS field typ_id (p)
+* ngnum: i: DGS field ngnum (i)
+* i_mot: i: DGS field i_mot (i)
+* chr_name: a:20: DGS field chr_name (a:20)
+* outserv: i: DGS field outserv (i)
+* pgini: r: DGS field pgini (r)
+* qgini: r: DGS field qgini (r)
+* usetp: r: DGS field usetp (r)
+* iv_mode: i: DGS field iv_mode (i)
+* q_min: r: DGS field q_min (r)
+* q_max: r: DGS field q_max (r)
+* Pmin_uc: r: DGS field Pmin_uc (r)
+* Pmax_uc: r: DGS field Pmax_uc (r)
+* iqtype: i: DGS field iqtype (i)
+* for_name: a:50: DGS field for_name (a:50)
+* cCategory: a: DGS field cCategory (a)
+* cosgini: r: DGS field cosgini (r)
+* pf_recap: i: DGS field pf_recap (i)
+* av_mode: a: DGS field av_mode (a)
+* phtech: i: DGS field phtech (i)
+* ip_ctrl: i: Reference machine
+* c_pmod: a:40: plant model
+********************************************************************************
+104;1_1;;103;1;0;;0;260.948;-195.71099999999996;1.06;0;0.0;0.0;-10000.0;10000.0;0;;;0.0;0;constv;0;1;
+108;2_1;;107;1;0;;0;40.0;-29.999999999999996;1.045;0;-0.4;0.5;-10000.0;10000.0;0;;;0.0;0;constv;0;0;
+112;5_1;;111;1;0;;0;0.0;-0.0;1.01;0;-0.4;0.4;-10000.0;10000.0;0;;;0.0;0;constv;0;0;
+116;8_1;;115;1;0;;0;0.0;-0.0;1.01;0;-0.1;0.4;-10000.0;10000.0;0;;;0.0;0;constv;0;0;
+120;11_1;;119;1;0;;0;0.0;-0.0;1.082;0;-0.06;0.24;-10000.0;10000.0;0;;;0.0;0;constv;0;0;
+124;13_1;;123;1;0;;0;0.0;-0.0;1.071;0;-0.06;0.24;-10000.0;10000.0;0;;;0.0;0;constv;0;0;
+
+$$ElmTerm;ID(a:40);loc_name(a:40);fold_id(p);typ_id(p);iUsage(i);uknom(r);chr_name(a:20);outserv(i);cpZone(p);phtech(i);for_name(a:50);systype(i);unknom(r);iminus(i);GPSlat(r);GPSlon(r);vtarget(r);m:u(r);m:phiu(r)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* typ_id: p: DGS field typ_id (p)
+* iUsage: i: DGS field iUsage (i)
+* uknom: r: DGS field uknom (r)
+* chr_name: a:20: DGS field chr_name (a:20)
+* outserv: i: DGS field outserv (i)
+* cpZone: p: DGS field cpZone (p)
+* phtech: i: DGS field phtech (i)
+* for_name: a:50: DGS field for_name (a:50)
+* systype: i: DGS field systype (i)
+* unknom: r: DGS field unknom (r)
+* iminus: i: DGS field iminus (i)
+* GPSlat: r: DGS field GPSlat (r)
+* GPSlon: r: DGS field GPSlon (r)
+* vtarget: r: DGS field vtarget (r)
+* m:u: r: DGS field m:u (r)
+* m:phiu: r: DGS field m:phiu (r)
+********************************************************************************
+4;Glen Lyn;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+5;Claytor;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+6;Kumis;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+7;Hancock;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+8;Fieldale;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+9;Roanoke;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+10;Blaine;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+11;Reusens;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+12;Roanoke;;;0;1.0;;0;;0;;0;0.5773502691896258;0;0.0;0.0;1.0;0.0;0.0
+13;Roanoke;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+14;Roanoke;;;0;11.0;;0;;0;;0;6.3508529610858835;0;0.0;0.0;1.0;0.0;0.0
+15;Hancock;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+16;Hancock;;;0;11.0;;0;;0;;0;6.3508529610858835;0;0.0;0.0;1.0;0.0;0.0
+17;Bus 14;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+18;Bus 15;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+19;Bus 16;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+20;Bus 17;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+21;Bus 18;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+22;Bus 19;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+23;Bus 20;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+24;Bus 21;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+25;Bus 22;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+26;Bus 23;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+27;Bus 24;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+28;Bus 25;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+29;Bus 26;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+30;Cloverdl;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+31;Cloverdl;;;0;132.0;;0;;0;;0;76.2102355330306;0;0.0;0.0;1.0;0.0;0.0
+32;Bus 29;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+33;Bus 30;;;0;33.0;;0;;0;;0;19.05255888325765;0;0.0;0.0;1.0;0.0;0.0
+
+$$ElmTr2;ID(a:40);loc_name(a:40);fold_id(p);typ_id(p);outserv(i);nntap(i);sernum(a:20);constr(i);chr_name(a:20);cgnd_h(i);cgnd_l(i);i_auto(i);ntrcn(i);ratfac(r);for_name(a:50);ntnum(i);usetp(r);usp_low(r);usp_up(r);t2ldc(i);mTaps_SIZEROW(i);mTaps_SIZECOL(i)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* typ_id: p: DGS field typ_id (p)
+* outserv: i: Out of Service
+* nntap: i: Tap Changer 1: Tap Position
+* sernum: a:20: Serial Number (a:20)
+* constr: i: Year of Construction
+* chr_name: a:20: DGS field chr_name (a:20)
+* cgnd_h: i: Internal Grounding Impedance, HV Side: Star Point:Connected:Not connected
+* cgnd_l: i: Internal Grounding Impedance, LV Side: Star Point:Connected:Not connected
+* i_auto: i: Auto Transformer
+* ntrcn: i: Controller, Tap Changer 1: Automatic Tap Changing
+* ratfac: r: Rating Factor
+* for_name: a:50: DGS field for_name (a:50)
+* ntnum: i: DGS field ntnum (i)
+* usetp: r: DGS field usetp (r)
+* usp_low: r: DGS field usp_low (r)
+* usp_up: r: DGS field usp_up (r)
+* t2ldc: i: DGS field t2ldc (i)
+* mTaps_SIZEROW: i: DGS field mTaps:SIZEROW (i)
+* mTaps_SIZECOL: i: DGS field mTaps:SIZECOL (i)
+********************************************************************************
+332;4_12_1;2;331;0;-1;;0;;0;0;0;0;1;;1;1.0;0.99;1.01;0;0;0
+338;6_9_1;2;337;0;-1;;0;;0;0;0;0;1;;1;1.0;0.99;1.01;0;0;0
+344;6_10_1;2;343;0;-1;;0;;0;0;0;0;1;;1;1.0;0.99;1.01;0;0;0
+350;28_27_1;2;349;0;-1;;0;;0;0;0;0;1;;1;1.0;0.99;1.01;0;0;0
+356;9_10_1;2;355;0;0;;0;;0;0;0;0;1;;1;1.0;0.99;1.01;0;0;0
+362;9_11_1;2;361;0;0;;0;;0;0;0;0;1;;1;1.0;0.99;1.01;0;0;0
+368;12_13_1;2;367;0;0;;0;;0;0;0;0;1;;1;1.0;0.99;1.01;0;0;0
+
+$$General;ID(a:40);Descr(a:40);Val(a:40)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* Descr: a:40: DGS field Descr (a:40)
+* Val: a:40: DGS field Val (a:40)
+********************************************************************************
+1;Version;5.0
+
+$$StaCubic;ID(a:40);loc_name(a:40);fold_id(p);chr_name(a:20);obj_bus(i);obj_id(p);for_name(a:50);it2p1(i);it2p2(i);it2p3(i)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* chr_name: a:20: DGS field chr_name (a:20)
+* obj_bus: i: DGS field obj_bus (i)
+* obj_id: p: DGS field obj_id (p)
+* for_name: a:50: DGS field for_name (a:50)
+* it2p1: i: DGS field it2p1 (i)
+* it2p2: i: DGS field it2p2 (i)
+* it2p3: i: DGS field it2p3 (i)
+********************************************************************************
+35;StaCubic_35;5;;0;34;;0;1;2
+38;StaCubic_38;6;;0;37;;0;1;2
+41;StaCubic_41;7;;0;40;;0;1;2
+44;StaCubic_44;8;;0;43;;0;1;2
+47;StaCubic_47;10;;0;46;;0;1;2
+50;StaCubic_50;11;;0;49;;0;1;2
+53;StaCubic_53;13;;0;52;;0;1;2
+56;StaCubic_56;15;;0;55;;0;1;2
+59;StaCubic_59;17;;0;58;;0;1;2
+62;StaCubic_62;18;;0;61;;0;1;2
+65;StaCubic_65;19;;0;64;;0;1;2
+68;StaCubic_68;20;;0;67;;0;1;2
+71;StaCubic_71;21;;0;70;;0;1;2
+74;StaCubic_74;22;;0;73;;0;1;2
+77;StaCubic_77;23;;0;76;;0;1;2
+80;StaCubic_80;24;;0;79;;0;1;2
+83;StaCubic_83;26;;0;82;;0;1;2
+86;StaCubic_86;27;;0;85;;0;1;2
+89;StaCubic_89;29;;0;88;;0;1;2
+92;StaCubic_92;32;;0;91;;0;1;2
+95;StaCubic_95;33;;0;94;;0;1;2
+98;StaCubic_98;13;;0;97;;0;1;2
+101;StaCubic_101;27;;0;100;;0;1;2
+105;StaCubic_105;4;;0;104;;0;1;2
+109;StaCubic_109;5;;0;108;;0;1;2
+113;StaCubic_113;8;;0;112;;0;1;2
+117;StaCubic_117;11;;0;116;;0;1;2
+121;StaCubic_121;14;;0;120;;0;1;2
+125;StaCubic_125;16;;0;124;;0;1;2
+129;StaCubic_129;4;;0;128;;0;1;2
+131;StaCubic_131;5;;1;128;;0;1;2
+135;StaCubic_135;4;;0;134;;0;1;2
+137;StaCubic_137;6;;1;134;;0;1;2
+141;StaCubic_141;5;;0;140;;0;1;2
+143;StaCubic_143;7;;1;140;;0;1;2
+147;StaCubic_147;5;;0;146;;0;1;2
+149;StaCubic_149;8;;1;146;;0;1;2
+153;StaCubic_153;5;;0;152;;0;1;2
+155;StaCubic_155;9;;1;152;;0;1;2
+159;StaCubic_159;6;;0;158;;0;1;2
+161;StaCubic_161;7;;1;158;;0;1;2
+165;StaCubic_165;7;;0;164;;0;1;2
+167;StaCubic_167;9;;1;164;;0;1;2
+171;StaCubic_171;8;;0;170;;0;1;2
+173;StaCubic_173;10;;1;170;;0;1;2
+177;StaCubic_177;9;;0;176;;0;1;2
+179;StaCubic_179;10;;1;176;;0;1;2
+183;StaCubic_183;9;;0;182;;0;1;2
+185;StaCubic_185;11;;1;182;;0;1;2
+189;StaCubic_189;9;;0;188;;0;1;2
+191;StaCubic_191;31;;1;188;;0;1;2
+195;StaCubic_195;11;;0;194;;0;1;2
+197;StaCubic_197;31;;1;194;;0;1;2
+201;StaCubic_201;13;;0;200;;0;1;2
+203;StaCubic_203;20;;1;200;;0;1;2
+207;StaCubic_207;13;;0;206;;0;1;2
+209;StaCubic_209;23;;1;206;;0;1;2
+213;StaCubic_213;13;;0;212;;0;1;2
+215;StaCubic_215;24;;1;212;;0;1;2
+219;StaCubic_219;13;;0;218;;0;1;2
+221;StaCubic_221;25;;1;218;;0;1;2
+225;StaCubic_225;15;;0;224;;0;1;2
+227;StaCubic_227;17;;1;224;;0;1;2
+231;StaCubic_231;15;;0;230;;0;1;2
+233;StaCubic_233;18;;1;230;;0;1;2
+237;StaCubic_237;15;;0;236;;0;1;2
+239;StaCubic_239;19;;1;236;;0;1;2
+243;StaCubic_243;17;;0;242;;0;1;2
+245;StaCubic_245;18;;1;242;;0;1;2
+249;StaCubic_249;18;;0;248;;0;1;2
+251;StaCubic_251;21;;1;248;;0;1;2
+255;StaCubic_255;18;;0;254;;0;1;2
+257;StaCubic_257;26;;1;254;;0;1;2
+261;StaCubic_261;19;;0;260;;0;1;2
+263;StaCubic_263;20;;1;260;;0;1;2
+267;StaCubic_267;21;;0;266;;0;1;2
+269;StaCubic_269;22;;1;266;;0;1;2
+273;StaCubic_273;22;;0;272;;0;1;2
+275;StaCubic_275;23;;1;272;;0;1;2
+279;StaCubic_279;24;;0;278;;0;1;2
+281;StaCubic_281;25;;1;278;;0;1;2
+285;StaCubic_285;25;;0;284;;0;1;2
+287;StaCubic_287;27;;1;284;;0;1;2
+291;StaCubic_291;26;;0;290;;0;1;2
+293;StaCubic_293;27;;1;290;;0;1;2
+297;StaCubic_297;27;;0;296;;0;1;2
+299;StaCubic_299;28;;1;296;;0;1;2
+303;StaCubic_303;28;;0;302;;0;1;2
+305;StaCubic_305;29;;1;302;;0;1;2
+309;StaCubic_309;28;;0;308;;0;1;2
+311;StaCubic_311;30;;1;308;;0;1;2
+315;StaCubic_315;30;;0;314;;0;1;2
+317;StaCubic_317;32;;1;314;;0;1;2
+321;StaCubic_321;30;;0;320;;0;1;2
+323;StaCubic_323;33;;1;320;;0;1;2
+327;StaCubic_327;32;;0;326;;0;1;2
+329;StaCubic_329;33;;1;326;;0;1;2
+333;StaCubic_333;7;;0;332;;0;1;2
+335;StaCubic_335;15;;1;332;;0;1;2
+339;StaCubic_339;9;;0;338;;0;1;2
+341;StaCubic_341;12;;1;338;;0;1;2
+345;StaCubic_345;9;;0;344;;0;1;2
+347;StaCubic_347;13;;1;344;;0;1;2
+351;StaCubic_351;31;;0;350;;0;1;2
+353;StaCubic_353;30;;1;350;;0;1;2
+357;StaCubic_357;12;;0;356;;0;1;2
+359;StaCubic_359;13;;1;356;;0;1;2
+363;StaCubic_363;12;;0;362;;0;1;2
+365;StaCubic_365;14;;1;362;;0;1;2
+369;StaCubic_369;15;;0;368;;0;1;2
+371;StaCubic_371;16;;1;368;;0;1;2
+
+$$StaSwitch;ID(a:40);loc_name(a:40);fold_id(p);on_off(i);typ_id(p);iUse(i);for_name(a:50);aUsage(a)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* on_off: i: DGS field on_off (i)
+* typ_id: p: DGS field typ_id (p)
+* iUse: i: DGS field iUse (i)
+* for_name: a:50: DGS field for_name (a:50)
+* aUsage: a: DGS field aUsage (a)
+********************************************************************************
+36;StaSwitch_36;35;1;;0;;cbk
+39;StaSwitch_39;38;1;;0;;cbk
+42;StaSwitch_42;41;1;;0;;cbk
+45;StaSwitch_45;44;1;;0;;cbk
+48;StaSwitch_48;47;1;;0;;cbk
+51;StaSwitch_51;50;1;;0;;cbk
+54;StaSwitch_54;53;1;;0;;cbk
+57;StaSwitch_57;56;1;;0;;cbk
+60;StaSwitch_60;59;1;;0;;cbk
+63;StaSwitch_63;62;1;;0;;cbk
+66;StaSwitch_66;65;1;;0;;cbk
+69;StaSwitch_69;68;1;;0;;cbk
+72;StaSwitch_72;71;1;;0;;cbk
+75;StaSwitch_75;74;1;;0;;cbk
+78;StaSwitch_78;77;1;;0;;cbk
+81;StaSwitch_81;80;1;;0;;cbk
+84;StaSwitch_84;83;1;;0;;cbk
+87;StaSwitch_87;86;1;;0;;cbk
+90;StaSwitch_90;89;1;;0;;cbk
+93;StaSwitch_93;92;1;;0;;cbk
+96;StaSwitch_96;95;1;;0;;cbk
+99;StaSwitch_99;98;1;;0;;cbk
+102;StaSwitch_102;101;1;;0;;cbk
+106;StaSwitch_106;105;1;;0;;cbk
+110;StaSwitch_110;109;1;;0;;cbk
+114;StaSwitch_114;113;1;;0;;cbk
+118;StaSwitch_118;117;1;;0;;cbk
+122;StaSwitch_122;121;1;;0;;cbk
+126;StaSwitch_126;125;1;;0;;cbk
+130;StaSwitch_130;129;1;;0;;cbk
+132;StaSwitch_132;131;1;;0;;cbk
+136;StaSwitch_136;135;1;;0;;cbk
+138;StaSwitch_138;137;1;;0;;cbk
+142;StaSwitch_142;141;1;;0;;cbk
+144;StaSwitch_144;143;1;;0;;cbk
+148;StaSwitch_148;147;1;;0;;cbk
+150;StaSwitch_150;149;1;;0;;cbk
+154;StaSwitch_154;153;1;;0;;cbk
+156;StaSwitch_156;155;1;;0;;cbk
+160;StaSwitch_160;159;1;;0;;cbk
+162;StaSwitch_162;161;1;;0;;cbk
+166;StaSwitch_166;165;1;;0;;cbk
+168;StaSwitch_168;167;1;;0;;cbk
+172;StaSwitch_172;171;1;;0;;cbk
+174;StaSwitch_174;173;1;;0;;cbk
+178;StaSwitch_178;177;1;;0;;cbk
+180;StaSwitch_180;179;1;;0;;cbk
+184;StaSwitch_184;183;1;;0;;cbk
+186;StaSwitch_186;185;1;;0;;cbk
+190;StaSwitch_190;189;1;;0;;cbk
+192;StaSwitch_192;191;1;;0;;cbk
+196;StaSwitch_196;195;1;;0;;cbk
+198;StaSwitch_198;197;1;;0;;cbk
+202;StaSwitch_202;201;1;;0;;cbk
+204;StaSwitch_204;203;1;;0;;cbk
+208;StaSwitch_208;207;1;;0;;cbk
+210;StaSwitch_210;209;1;;0;;cbk
+214;StaSwitch_214;213;1;;0;;cbk
+216;StaSwitch_216;215;1;;0;;cbk
+220;StaSwitch_220;219;1;;0;;cbk
+222;StaSwitch_222;221;1;;0;;cbk
+226;StaSwitch_226;225;1;;0;;cbk
+228;StaSwitch_228;227;1;;0;;cbk
+232;StaSwitch_232;231;1;;0;;cbk
+234;StaSwitch_234;233;1;;0;;cbk
+238;StaSwitch_238;237;1;;0;;cbk
+240;StaSwitch_240;239;1;;0;;cbk
+244;StaSwitch_244;243;1;;0;;cbk
+246;StaSwitch_246;245;1;;0;;cbk
+250;StaSwitch_250;249;1;;0;;cbk
+252;StaSwitch_252;251;1;;0;;cbk
+256;StaSwitch_256;255;1;;0;;cbk
+258;StaSwitch_258;257;1;;0;;cbk
+262;StaSwitch_262;261;1;;0;;cbk
+264;StaSwitch_264;263;1;;0;;cbk
+268;StaSwitch_268;267;1;;0;;cbk
+270;StaSwitch_270;269;1;;0;;cbk
+274;StaSwitch_274;273;1;;0;;cbk
+276;StaSwitch_276;275;1;;0;;cbk
+280;StaSwitch_280;279;1;;0;;cbk
+282;StaSwitch_282;281;1;;0;;cbk
+286;StaSwitch_286;285;1;;0;;cbk
+288;StaSwitch_288;287;1;;0;;cbk
+292;StaSwitch_292;291;1;;0;;cbk
+294;StaSwitch_294;293;1;;0;;cbk
+298;StaSwitch_298;297;1;;0;;cbk
+300;StaSwitch_300;299;1;;0;;cbk
+304;StaSwitch_304;303;1;;0;;cbk
+306;StaSwitch_306;305;1;;0;;cbk
+310;StaSwitch_310;309;1;;0;;cbk
+312;StaSwitch_312;311;1;;0;;cbk
+316;StaSwitch_316;315;1;;0;;cbk
+318;StaSwitch_318;317;1;;0;;cbk
+322;StaSwitch_322;321;1;;0;;cbk
+324;StaSwitch_324;323;1;;0;;cbk
+328;StaSwitch_328;327;1;;0;;cbk
+330;StaSwitch_330;329;1;;0;;cbk
+334;StaSwitch_334;333;1;;0;;cbk
+336;StaSwitch_336;335;1;;0;;cbk
+340;StaSwitch_340;339;1;;0;;cbk
+342;StaSwitch_342;341;1;;0;;cbk
+346;StaSwitch_346;345;1;;0;;cbk
+348;StaSwitch_348;347;1;;0;;cbk
+352;StaSwitch_352;351;1;;0;;cbk
+354;StaSwitch_354;353;1;;0;;cbk
+358;StaSwitch_358;357;1;;0;;cbk
+360;StaSwitch_360;359;1;;0;;cbk
+364;StaSwitch_364;363;1;;0;;cbk
+366;StaSwitch_366;365;1;;0;;cbk
+370;StaSwitch_370;369;1;;0;;cbk
+372;StaSwitch_372;371;1;;0;;cbk
+
+$$TypLne;ID(a:40);loc_name(a:40);fold_id(p);uline(r);sline(r);aohl_(a:3);rline(r);xline(r);cline(r);rline0(r);xline0(r);cline0(r);rtemp(r);Ithr(r);chr_name(a:20);nlnph(i);nneutral(i);for_name(a:50);InomAir(r);cohl_(i);tmax(r);systp(i);frnom(r);mlei(a:2);bline(r);bline0(r)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* uline: r: DGS field uline (r)
+* sline: r: DGS field sline (r)
+* aohl_: a:3: DGS field aohl_ (a:3)
+* rline: r: DGS field rline (r)
+* xline: r: DGS field xline (r)
+* cline: r: DGS field cline (r)
+* rline0: r: DGS field rline0 (r)
+* xline0: r: DGS field xline0 (r)
+* cline0: r: DGS field cline0 (r)
+* rtemp: r: DGS field rtemp (r)
+* Ithr: r: DGS field Ithr (r)
+* chr_name: a:20: DGS field chr_name (a:20)
+* nlnph: i: Phases:1:2:3
+* nneutral: i: DGS field nneutral (i)
+* for_name: a:50: DGS field for_name (a:50)
+* InomAir: r: DGS field InomAir (r)
+* cohl_: i: DGS field cohl_ (i)
+* tmax: r: DGS field tmax (r)
+* systp: i: DGS field systp (i)
+* frnom: r: DGS field frnom (r)
+* mlei: a:2: DGS field mlei (a:2)
+* bline: r: DGS field bline (r)
+* bline0: r: DGS field bline0 (r)
+********************************************************************************
+127;1_2_1_type;;132.0;1;cab;3.345408;10.0188;0.0;1.7424e-18;1.7424e-18;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;303.030303030303;5.73921028466483e-17
+133;1_3_1_type;;132.0;1;cab;7.875648;28.784448000000005;0.0;1.7424e-18;1.7424e-18;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;234.15977961432506;5.73921028466483e-17
+139;2_4_1_type;;132.0;1;cab;9.93168;30.265488;0.0;1.7424e-18;1.7424e-18;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;211.20293847566572;5.73921028466483e-17
+145;2_5_1_type;;132.0;1;cab;8.224128;34.551792000000006;0.0;1.7424e-18;1.7424e-18;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;239.89898989898987;5.73921028466483e-17
+151;2_6_1_type;;132.0;1;cab;10.123344;30.718512000000004;0.0;1.7424e-18;1.7424e-18;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;214.64646464646464;5.73921028466483e-17
+157;3_4_1_type;;132.0;1;cab;2.2999680000000002;6.603696000000001;0.0;1.7424e-18;1.7424e-18;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;48.20936639118457;5.73921028466483e-17
+163;4_6_1_type;;132.0;1;cab;2.073456;7.213536;0.0;1.7424e-18;1.7424e-18;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;51.652892561983464;5.73921028466483e-17
+169;5_7_1_type;;132.0;1;cab;8.01504;20.211840000000002;0.0;1.7424e-18;1.7424e-18;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;117.07988980716253;5.73921028466483e-17
+175;6_7_1_type;;132.0;1;cab;4.652208000000001;14.287680000000002;0.0;1.7424e-18;1.7424e-18;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;97.5665748393021;5.73921028466483e-17
+181;6_8_1_type;;132.0;1;cab;2.0908800000000003;7.318080000000001;0.0;1.7424e-18;1.7424e-18;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;51.652892561983464;5.73921028466483e-17
+187;6_28_1_type;;132.0;1;cab;2.9446559999999997;10.436976000000001;0.0;1.7424e-18;1.7424e-18;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;74.60973370064278;5.73921028466483e-17
+193;8_28_1_type;;132.0;1;cab;11.081664000000002;34.848000000000006;0.0;1.7424e-18;1.7424e-18;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;245.6382001836547;5.73921028466483e-17
+199;10_17_1_type;;33.0;1;cab;0.352836;0.9202050000000002;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+205;10_20_1_type;;33.0;1;cab;1.019304;2.27601;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+211;10_21_1_type;;33.0;1;cab;0.378972;0.815661;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+217;10_22_1_type;;33.0;1;cab;0.791703;1.632411;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+223;12_14_1_type;;33.0;1;cab;1.340559;2.786751;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+229;12_15_1_type;;33.0;1;cab;0.720918;1.420056;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+235;12_16_1_type;;33.0;1;cab;1.0291050000000002;2.163843;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+241;14_15_1_type;;33.0;1;cab;2.40669;2.174733;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+247;15_18_1_type;;33.0;1;cab;1.1684970000000001;2.379465;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+253;15_23_1_type;;33.0;1;cab;1.0890000000000002;2.19978;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+259;16_17_1_type;;33.0;1;cab;0.570636;2.094147;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+265;18_19_1_type;;33.0;1;cab;0.695871;1.4069880000000001;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+271;19_20_1_type;;33.0;1;cab;0.37026000000000003;0.7405200000000001;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+277;21_22_1_type;;33.0;1;cab;0.126324;0.257004;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+283;22_24_1_type;;33.0;1;cab;1.25235;1.94931;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+289;23_24_1_type;;33.0;1;cab;1.43748;2.9403;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+295;24_25_1_type;;33.0;1;cab;2.052765;3.584988;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+301;25_26_1_type;;33.0;1;cab;2.7704160000000004;4.1382;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+307;25_27_1_type;;33.0;1;cab;1.190277;2.272743;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+313;27_29_1_type;;33.0;1;cab;2.393622;4.522617;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+319;27_30_1_type;;33.0;1;cab;3.486978;6.563403;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+325;29_30_1_type;;33.0;1;cab;2.612511;4.936437;0.0;1.089e-19;1.089e-19;0.0;20.0;0.0;;3;0;;1;0;80.0;0;0.0;;0.0;9.182736455463727e-16
+
+$$TypLod;ID(a:40);loc_name(a:40);fold_id(p);kpu(r);kqu(r);systp(i);phtech(i);for_name(a:50);aP(r);bP(r);kpu0(r);kpu1(r);aQ(r);bQ(r);kqu0(r);kqu1(r)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* kpu: r: DGS field kpu (r)
+* kqu: r: DGS field kqu (r)
+* systp: i: DGS field systp (i)
+* phtech: i: DGS field phtech (i)
+* for_name: a:50: DGS field for_name (a:50)
+* aP: r: DGS field aP (r)
+* bP: r: DGS field bP (r)
+* kpu0: r: DGS field kpu0 (r)
+* kpu1: r: DGS field kpu1 (r)
+* aQ: r: DGS field aQ (r)
+* bQ: r: DGS field bQ (r)
+* kqu0: r: DGS field kqu0 (r)
+* kqu1: r: DGS field kqu1 (r)
+********************************************************************************
+3;Default Load Type;2;2.0;2.0;0;0;;1.0;0.0;0.0;1.0;1.0;0.0;0.0;1.0
+
+$$TypSym;ID(a:40);loc_name(a:40);fold_id(p);sgn(r);ugn(r);cosn(r);Q_min(r);Q_max(r);q_min(r);q_max(r);for_name(a:50);nphase(i)
+********************************************************************************
+* ID: a:40: DGS field ID (a:40)
+* loc_name: a:40: DGS field loc_name (a:40)
+* fold_id: p: DGS field fold_id (p)
+* sgn: r: DGS field sgn (r)
+* ugn: r: Rated voltage in kV
+* cosn: r: DGS field cosn (r)
+* Q_min: r: DGS field Q_min (r)
+* Q_max: r: DGS field Q_max (r)
+* q_min: r: DGS field q_min (r)
+* q_max: r: DGS field q_max (r)
+* for_name: a:50: DGS field for_name (a:50)
+* nphase: i: DGS field nphase (i)
+********************************************************************************
+103;1_1;;100.0;132.0;0.8;0.0;0.0;0.0;0.0;;3
+107;2_1;;100.0;132.0;0.8;0.0;0.0;0.0;0.0;;3
+111;5_1;;100.0;132.0;0.8;0.0;0.0;0.0;0.0;;3
+115;8_1;;100.0;132.0;0.8;0.0;0.0;0.0;0.0;;3
+119;11_1;;100.0;11.0;0.8;0.0;0.0;0.0;0.0;;3
+123;13_1;;100.0;11.0;0.8;0.0;0.0;0.0;0.0;;3
+
+$$TypTr2;ID(a:40);loc_name(a:40);fold_id(p);strn(r);frnom(r);utrn_h(r);utrn_l(r);uktr(r);pcutr(r);uk0tr(r);ur0tr(r);tr2cn_h(a:2);tr2cn_l(a:2);nt2ag(r);curmg(r);pfe(r);zx0hl_n(r);tap_side(i);dutap(r);phitr(r);nntap0(i);ntpmn(i);ntpmx(i);manuf(a:20);chr_name(a:20);for_name(a:50);nt2ph(i);itapch(i)
+********************************************************************************
+* ID: a:40: Unique identifier for DGS file
+* loc_name: a:40: Name
+* fold_id: p: In Folder
+* strn: r: Rated Power in MVA
+* frnom: r: Nominal Frequency in Hz
+* utrn_h: r: Rated Voltage: HV-Side in kV
+* utrn_l: r: Rated Voltage: LV-Side in kV
+* uktr: r: Positive Sequence Impedance: Short-Circuit Voltage uk in %
+* pcutr: r: Positive Sequence Impedance: Copper Losses in kW
+* uk0tr: r: Zero Sequence Impedance: Short-Circuit Voltage uk0 in %
+* ur0tr: r: Zero Sequence Impedance: SHC-Voltage (Re(uk0)) uk0r in %
+* tr2cn_h: a:2: Vector Group: HV-Side:Y :YN:Z :ZN:D
+* tr2cn_l: a:2: Vector Group: LV-Side:Y :YN:Z :ZN:D
+* nt2ag: r: Vector Group: Phase Shift in *30deg
+* curmg: r: Magnetizing Impedance: No Load Current in %
+* pfe: r: Magnetizing Impedance: No Load Losses in kW
+* zx0hl_n: r: Zero Sequence Magnetizing Impedance: Mag. Impedance/uk0
+* tap_side: i: Tap Changer 1: at Side:HV:LV
+* dutap: r: Additional Voltage per Tap in %
+* phitr: r: Phase of du in deg
+* nntap0: i: Neutral Position
+* ntpmn: i: Minimum Position
+* ntpmx: i: Maximum Position
+* manuf: a:20: Manufacturer
+* chr_name: a:20: Characteristic Name
+* for_name: a:50: DGS field for_name (a:50)
+* nt2ph: i: DGS field nt2ph (i)
+* itapch: i: DGS field itapch (i)
+********************************************************************************
+331;type from 4_12_1;;100.0;50.0;132.0;33.0;25.600000000256003;0.0;0.0;0.0;YN;D;0.0;0.0;0.0;0.0;0;6.799999999999995;0.0;0;-7;3;;;;3;1
+337;type from 6_9_1;;100.0;50.0;132.0;1.0;20.800000000207998;0.0;0.0;0.0;YN;D;0.0;0.0;0.0;0.0;0;2.200000000000002;0.0;0;-23;9;;;;3;1
+343;type from 6_10_1;;100.0;50.0;132.0;33.0;55.60000000055601;0.0;0.0;0.0;YN;D;0.0;0.0;0.0;0.0;0;3.1000000000000028;0.0;0;-16;6;;;;3;1
+349;type from 28_27_1;;100.0;50.0;132.0;33.0;39.600000000396;0.0;0.0;0.0;YN;D;0.0;0.0;0.0;0.0;0;3.200000000000003;0.0;0;-16;6;;;;3;1
+355;type from 9_10_1;;100.0;50.0;33.0;1.0;11.00000000011;0.0;0.0;0.0;YN;D;0.0;0.0;0.0;0.0;0;19.999999999999996;0.0;0;-3;1;;;;3;1
+361;type from 9_11_1;;100.0;50.0;11.0;1.0;20.800000000207998;0.0;0.0;0.0;YN;D;0.0;0.0;0.0;0.0;0;19.999999999999996;0.0;0;-3;1;;;;3;1
+367;type from 12_13_1;;100.0;50.0;33.0;11.0;14.00000000014;0.0;0.0;0.0;YN;D;0.0;0.0;0.0;0.0;0;19.999999999999996;0.0;0;-3;1;;;;3;1
+
