@@ -163,6 +163,12 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
         self.ui = Ui_BlockEditorWindow()
         self.ui.setupUi(self)
 
+        self.block_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 300
+        self.mime_type: str = "application/x-veragrid-dynamics-block"
+
+
+
+
         self.setWindowTitle("Dynamic Model Editor")
 
         self.var_factory = var_factory
@@ -194,6 +200,16 @@ class RmsModelEditorGUI(QtWidgets.QMainWindow):
             }
         elif mode == DynamicEditorMode.EMT:
             self.tree_structure = {}
+
+        self.library_model = self.build_library_tree_model(
+            block_role=self.block_role,
+            mime_type=self.mime_type
+        )
+
+        self.ui.libraryTreeView.setModel(self.library_model)
+        self.ui.libraryTreeView.expandAll()
+        self.ui.libraryTreeView.setDragEnabled(True)
+        self.ui.libraryTreeView.setHeaderHidden(False)
 
     def build_library_tree_model(self,
                                block_role: int,
