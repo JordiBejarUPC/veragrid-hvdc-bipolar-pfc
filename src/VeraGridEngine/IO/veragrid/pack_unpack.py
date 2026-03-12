@@ -1193,12 +1193,19 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
 
                                 elif gc_prop.tpe == SubObjectType.DaeBlockType:
 
-                                    # set the value of the property
+                                    # handle the ModelHost
+                                    if isinstance(property_value, dict):
 
-                                    # blk = block_parser.block_dict.get(property_value, None)
-                                    # elm.set_snapshot_value(gc_prop.name, blk)
-                                    # TODO: review this
-                                    pass
+                                        key = property_value.get("model", None)
+                                        if key is None:
+                                            logger.add_error("Could not locate model", value=property_value)
+                                        else:
+                                            blk = block_parser.block_dict.get(key, None)
+                                            elm.set_snapshot_value(gc_prop.name, blk)
+                                    else:
+                                        blk = block_parser.block_dict.get(property_value, None)
+                                        elm.set_snapshot_value(gc_prop.name, blk)
+
 
                                 elif gc_prop.tpe == SubObjectType.VarType:
 

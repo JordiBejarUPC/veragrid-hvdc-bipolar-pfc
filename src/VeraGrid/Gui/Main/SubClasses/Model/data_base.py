@@ -983,7 +983,7 @@ class DataBaseTableMain(DiagramsMain):
                             var_factory=self.circuit.rms_var_factory,
                             templates_list=self.circuit.rms_models,
                             templates_catalogue=self.circuit.rms_models,
-                            api_object_model_host=elm
+                            block=elm
                         )
 
                         self.rms_model_Editor_window.resize(int(1.81 * 700.0), 700)
