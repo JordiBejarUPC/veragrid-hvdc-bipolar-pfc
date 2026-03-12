@@ -1094,8 +1094,8 @@ class DeviceType(Enum):
     GovernorDevice = "Governor"
     StabilizerDevice = "Stabilizer"
 
-    PMeasurementDevice = 'Pi Measurement'
-    QMeasurementDevice = 'Qi Measurement'
+    PiMeasurementDevice = 'Pi Measurement'
+    QiMeasurementDevice = 'Qi Measurement'
     PgMeasurementDevice = 'Pg Measurement'
     QgMeasurementDevice = 'Qg Measurement'
     PfMeasurementDevice = 'Pf Measurement'
@@ -1177,6 +1177,9 @@ class DeviceType(Enum):
     RmsModelTemplateDevice = "RMS template"
     RmsEventDevice = "Rms Event"
     RmsEventsGroupDevice = "Rms Events Group"
+
+    EmtEventDevice = "Emt Event"
+    EmtEventsGroupDevice = "Emt Events Group"
 
     VarFactory = "Var Factory"
 
@@ -1970,19 +1973,20 @@ class ResultTypes(Enum):
     RmsSimulationReport = 'Rms time series report'
     RmsPlotResults = 'Rms plot results'
 
-    # RmsGeneratorResults = 'Rms Generator results'
-    # RmsLineResults = 'Rms Line results'
-    # RmsLoadResults = 'Rms load results'
-    #
-    #
-    # RmsGeneratorOmegaResults = 'Rms Genqec omega results'
-    # RmsGeneratorDeltaResults = 'Rms Genqec delta results'
-    #
-    # RmsLoadPResults = 'Rms Load P results'
-    # RmsLoadQResults = 'Rms Load Q results'
-    #
-    # RmsLinePResults = 'Rms Simple Line P results'
-    # RmsLineQResults = 'Rms Simple Line Q results'
+    # when categorizing results
+    RmsGeneratorResults = 'Rms Generator results'
+    RmsLineResults = 'Rms Line results'
+    RmsLoadResults = 'Rms load results'
+
+
+    RmsGeneratorOmegaResults = 'Rms Genqec omega results'
+    RmsGeneratorDeltaResults = 'Rms Genqec delta results'
+
+    RmsLoadPResults = 'Rms Load P results'
+    RmsLoadQResults = 'Rms Load Q results'
+
+    RmsLinePResults = 'Rms Simple Line P results'
+    RmsLineQResults = 'Rms Simple Line Q results'
 
     # Small Signal Stability
     ParticipationFactors = "Participation Factors"
@@ -2495,6 +2499,7 @@ class EmtSolverTypes(Enum):
     Symbolic = "symbolic"  # Symbolic differentiation (SD)
     Automatic = "automatic"  # Sparse forward-mode AD + graph coloring
     StructuralAD = "structuralAD"  # Sparse structural automatic differentiation
+    StructuralCompiled = "structuralCompiled"  # Eager structural kernels + reusable buffers
 
     def __str__(self) -> str:
         return str(self.value)
@@ -2660,6 +2665,26 @@ class VarPowerFlowRefferenceType(Enum):
     Qf = "Qf"  # Branch reactive power from in p.u.
     Pt = "Pt"  # Branch active power to in p.u.
     Qt = "Qt"  # Branch reactive power to in p.u.
+
+    # HVDC
+    Pf_hvdc = "Pf_hvdc"
+    Pt_hvdc = "Pt_hvdc"
+
+    # VSC
+    Pfp_vsc = "Pfp_vsc"
+    Pfn_vsc = "Pfn_vsc"
+    St_vsc = "St_vsc"
+    If_vsc = "If_vsc"
+    It_vsc = "It_vsc"
+
+    # Phasor current references for RMS formulation
+    Ir = "Ir"  # Real part of bus injection current
+    Ii = "Ii"  # Imaginary part of bus injection current
+    Irf = "Irf"  # Real current at branch from end
+    Iif = "Iif"  # Imaginary current at branch from end
+    Irt = "Irt"  # Real current at branch to end
+    Iit = "Iit"  # Imaginary current at branch to end
+    
     Vdc = "Vdc"  # Bus voltage for DC voltage in p.u.
     Idc = "Idc"  # Bus current for DC Bus in p.u.
 
@@ -2756,6 +2781,10 @@ class ParamPowerFlowRefferenceType(Enum):
     bsh = "bsh"  # Branch shunt susceptance in per unit
     Pl0 = "Pl0"  # Load active power
     Ql0 = "Ql0"  # Load reactive power
+    
+    # Phasor current parameters for current balance formulation
+    Ir0 = "Ir0"  # Load real current injection
+    Ii0 = "Ii0"  # Load imaginary current injection
 
     # 3phase load power
     Pl0_A = "Pl0_A"  # Load active power phase A

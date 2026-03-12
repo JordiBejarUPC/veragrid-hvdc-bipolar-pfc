@@ -44,7 +44,7 @@ from VeraGrid.Gui.Main.SubClasses.Model.compiled_arrays import CompiledArraysMai
 from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow, ListSelectWindow
 from VeraGrid.Gui.Diagrams.MapWidget.Tiles.TileProviders.cartodb import CartoDbTiles
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
-from VeraGrid.Gui.rms_events_editor_dialog import RmsEventDialogue
+from VeraGrid.Gui.rms_events_editor_dialog import RmsEventDialogue, RmsEventsGroupsDialog
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue, InputSearchDialogue,
                                             InputNumberDialogue, LogsDialogue, ShortCircuitSelector)
@@ -2741,33 +2741,45 @@ class DiagramsMain(CompiledArraysMain):
 
             if len(target_devices) == 1:
 
-                group_name = "Rms Event " + str(len(self.circuit.get_rms_events_groups_names()))
                 target_device = target_devices[0]
                 # launch rms event editor dialogue
 
-                target_device_name = target_device.type_name + ": " + target_device.name
-                device_params = [var for var in
-                                 target_device.rms_model.model.event_dict.keys()]  # list of device parameters
-                device_params_str = [var.name for var in device_params]  # list of device parameters
-                rms_events_dialog = RmsEventDialogue(parameters_list=device_params_str,
-                                                     target_device_name=target_device_name)
+                events_groups = self.circuit.rms_events_groups
+                if len(events_groups) == 0:
 
-                if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-                    # create a new events group
-                    group = dev.RmsEventsGroup(idtag=None,
-                                               name='Rms Events Group 1')
-                    self.circuit.add_rms_events_group(group)
+                    QtWidgets.QMessageBox.information(
+                        self,
+                        "No RMS Events Group",
+                        "No Rms Events Group found, please create one before adding an event."
+                    )
 
-                    events_data = rms_events_dialog.get_data()  # data for all the events affecting a device, it is structured in lists of floats for time and value info, and lists of parameters for parameter info
-                    events_list = []
-                    for i, event in enumerate(events_data["parameters"]):
-                        events_list.append(dev.RmsEvent(target_device, device_params[
-                            device_params_str.index(events_data["parameters"][i])],
-                                                        float(events_data["target_times"][i]),
-                                                        float(events_data["values"][i]), group=group))
+                    dialog = RmsEventsGroupsDialog(self)
+                    if dialog.exec():
+                        name = dialog.get_name()
+                        # build group
+                        if name:
+                            self.circuit.add_rms_events_group(dev.RmsEventsGroup(idtag=None,
+                                                   name=name))
 
-                    for event in events_list:
-                        self.circuit.add_rms_event(event)
+
+                else:
+                    rms_events_dialog = RmsEventDialogue(circuit=self.circuit,
+                                                         parameters_list=[var for var in target_device.rms_model.model.event_dict.keys()],
+                                                         target_device_name=target_device.type_name + ": " + target_device.name)
+
+                    if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+
+                        events_data = rms_events_dialog.get_data()
+                        events_list = []
+                        for i, event in enumerate(events_data["parameters"]):
+                            events_list.append(dev.RmsEvent(device=target_device,
+                                                            parameter=events_data["parameters"][i],
+                                                            time=float(events_data["target_times"][i]),
+                                                            value=float(events_data["values"][i]),
+                                                            group=events_data["groups"][i]))
+
+                        for event in events_list:
+                            self.circuit.add_rms_event(event)
 
             else:
                 raise ValueError(f"Select one and only one device to add event to")

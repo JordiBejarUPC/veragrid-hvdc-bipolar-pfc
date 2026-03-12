@@ -16,6 +16,7 @@ class SubLoadArea(EnergyArea):
 		CgmesProperty(property_name='LoadArea', class_type='LoadArea', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The LoadArea where the SubLoadArea belongs.''', profiles=[]),
 		CgmesProperty(property_name='LoadGroups', class_type='LoadGroup', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The Loadgroups in the SubLoadArea.''', profiles=[]),
 	)
+	__slots__ = ('LoadArea', 'LoadGroups')
 	def __init__(self, rdfid='', tpe='SubLoadArea'):
 		EnergyArea.__init__(self, rdfid, tpe)
 

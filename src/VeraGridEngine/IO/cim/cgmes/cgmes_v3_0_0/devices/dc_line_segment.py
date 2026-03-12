@@ -15,6 +15,7 @@ class DCLineSegment(DCConductingEquipment):
 		CgmesProperty(property_name='resistance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Resistance (real part of impedance).''', profiles=[]),
 		CgmesProperty(property_name='length', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.m, description='''Unit of length. It shall be a positive value or zero.''', profiles=[]),
 	)
+	__slots__ = ('capacitance', 'inductance', 'resistance', 'length')
 	def __init__(self, rdfid='', tpe='DCLineSegment'):
 		DCConductingEquipment.__init__(self, rdfid, tpe)
 

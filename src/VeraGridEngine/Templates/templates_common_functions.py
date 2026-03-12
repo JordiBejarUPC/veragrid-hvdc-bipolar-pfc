@@ -22,6 +22,7 @@ def tf_to_block(var_factory: VarFactory,
                 den: List[Var | float],
                 x: Var | Expr,
                 y: Var = None,
+                create_state: bool = False,
                 name: Optional[str] = '') -> Tuple[Block, Var]:
     """
     "transform definition" to block
@@ -39,6 +40,7 @@ def tf_to_block(var_factory: VarFactory,
     aux_eqs: List[Expr] = list()
     aux_vars: List[Expr] = list()
     init_eqs = dict()
+    x_save = x  # Initialize x_save to avoid unbound variable error
     # check if is an expression
     if not isinstance(x, Var):
         u = var_factory.add_var('u_' + name)
@@ -49,14 +51,25 @@ def tf_to_block(var_factory: VarFactory,
 
     diff_vars_x = [x]
     diff_vars_y = [y]
-    diff_vars = []
+    diff_vars = list()
+    state_eqs = list()
+    state_vars = list()
+    init_eqs = dict()
     base_var = x
     for i in range(1, len(num)):
-        if base_var.diff_var is None:
-            new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + x.name, base_var=base_var)
-            diff_vars.append(new_diff)
-        diff_vars_x.append(base_var.diff_var)
-        base_var = base_var.diff_var
+        if i == 1 and create_state:
+            x_new = var_factory.add_var(f"x_{i}_" + x.name)
+            state_vars.append(x_new)
+            state_eqs.append(x_save)  # x is already a Var
+            diff_vars_x.append(x_new)
+            base_var = x_new
+            init_eqs[x_new] = Const(0.0)
+        else:
+            if base_var.diff_var is None:
+                new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + x.name, base_var=base_var)
+                diff_vars.append(new_diff)
+            diff_vars_x.append(base_var.diff_var)
+            base_var = base_var.diff_var
     base_var = y
     for i in range(1, len(den)):
         if base_var.diff_var is None:
@@ -72,10 +85,12 @@ def tf_to_block(var_factory: VarFactory,
     block = Block()
     block.algebraic_vars = [y] + aux_vars
     block.algebraic_eqs = [lhs - rhs] + aux_eqs
-    block.diff_vars = diff_vars
-    block.in_vars = [x]  # Input is x
-    block.out_vars = [y]  # Output is y
-    block.init_eqs = init_eqs
+    block.state_eqs     = state_eqs
+    block.state_vars    = state_vars
+    block.diff_vars     = diff_vars
+    block.in_vars       = [x]  # Input is x
+    block.out_vars      = [y]  # Output is y
+    block.init_eqs      = init_eqs
     return block, y
 
 
@@ -85,6 +100,7 @@ def tf_to_diffblock_with_output(
         den: List[Var | float],
         x: Var | Expr,
         y: Var = None,
+        create_state: bool = False,
         name: Optional[str] = ''):
     """
     num: list of numerator coefficients [b0, b1, ..., bm]
@@ -102,23 +118,41 @@ def tf_to_diffblock_with_output(
 
     aux_eqs: List[Var | Expr] = []
     aux_vars: List[Var | Expr] = []
+    x_save = None  # Initialize x_save to avoid unbound variable error
     # check if is an expression
     if not isinstance(x, Var):
         u = var_factory.add_var('u_' + name)
         aux_eqs.append((u - x).simplify())
         aux_vars.append(u)
+        x_save = x
         x = u
 
     diff_vars_x = [x]
     diff_vars_y = [y]
-    diff_vars = []
+    diff_vars = list()
+    state_eqs = list()
+    state_vars = list()
+    init_eqs = dict()
     base_var = x
     for i in range(1, len(num)):
-        if base_var.diff_var is None:
-            new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + x.name, base_var=base_var)
-            diff_vars.append(new_diff)
-        diff_vars_x.append(base_var.diff_var)
-        base_var = base_var.diff_var
+        if i == 1 and create_state:
+            x_new = var_factory.add_var(f"x_{i}_" + x.name)
+            state_vars.append(x_new)
+            # x_save only exists if x was an expression (not a Var)
+            if 'x_save' in locals():
+                state_eqs.append(x_save)
+            else:
+                state_eqs.append(x)  # x is already a Var
+            diff_vars_x.append(x_new)
+            base_var = x_new
+            init_eqs[x_new] = Const(0.0)
+
+        else:
+            if base_var.diff_var is None:
+                new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + x.name, base_var=base_var)
+                diff_vars.append(new_diff)
+            diff_vars_x.append(base_var.diff_var)
+            base_var = base_var.diff_var
     base_var = y
     for i in range(1, len(den)):
         if base_var.diff_var is None:
@@ -132,9 +166,12 @@ def tf_to_diffblock_with_output(
     lhs: Vec = np.array(diff_vars_y) @ np.array(den)
 
     block = Block()
+    block.state_eqs = state_eqs
+    block.state_vars = state_vars
     block.algebraic_vars = [y] + aux_vars
     block.algebraic_eqs = [lhs - rhs] + aux_eqs
     block.diff_vars = diff_vars
+    block.init_eqs = init_eqs
 
     return block, y, x
 
@@ -179,8 +216,8 @@ def tf_to_block_with_states(
     x_states.extend([var_factory.add_var(f"x{i}") for i in range(1, len(num))])  # x1,...,xm
 
     # Differential equations (canonical form)
-    diff_eqs = []
-    diff_vars = []
+    diff_eqs = list()
+    diff_vars = list()
     for i in range(len(y_states) - 1):
         if y_states[i].diff_var is None:
             dy = var_factory.add_diff_var(f"d_{y_states[i].name}", base_var=y_states[i])
@@ -227,8 +264,8 @@ def tf_to_block2(
     if num[-1] == 0 or den[-1] == 0:
         raise ValueError("Leading coefficient of cannot be zero.")
 
-    aux_eqs: List[Expr] = []
-    aux_vars: List[Var] = []
+    aux_eqs: List[Expr] = list()
+    aux_vars: List[Var] = list()
     # check if xis a expression
     if not isinstance(x, Var):
         u = var_factory.add_var('u')
@@ -245,8 +282,8 @@ def tf_to_block2(
     x_states.extend([var_factory.add_var(f"x{i}") for i in range(1, order + 1)])  # x1,...,xn
 
     # Differential equations (canonical form)
-    state_eqs = []
-    state_vars = []
+    state_eqs = list()
+    state_vars = list()
     for i in range(1, order):
         state_eqs.append(x_states[i])
         state_vars.append(x_states[i + 1])
@@ -273,6 +310,69 @@ def tf_to_block2(
     )
     return block, y_states[0]
 
+def to_implicit(block: Block, vfactory: VarFactory) -> Block:
+    """
+    Convert a block with explicit state equations to implicit form.
+    This is done by introducing new algebraic variables for the derivatives and adding equations to relate them.
+    Instead of reusing diff_var objects (which are DiffVar type), we create new algebraic variables
+    and use connect() to substitute them properly.
+    """
+    for diff_var in block.diff_vars:
+        base_var = diff_var.base_var
+        # Create a NEW algebraic variable to represent the derivative
+        new_alg_var = vfactory.add_var(f"dt_{base_var.name}")
+
+        # Base Var was not a state
+        if base_var in block.algebraic_vars:
+            # Move base_var to state
+            block.state_vars.append(base_var)
+            block.algebraic_vars.remove(base_var)
+            
+            # Add new_alg_var as algebraic (represents derivative)
+            block.algebraic_vars.append(new_alg_var)
+            
+            # State equation placeholder - we need to maintain 1-to-1 correspondence
+            # The actual constraint is: base_var's derivative = new_alg_var
+            # In the DAE formulation, this is implicit through the algebraic equations
+            # For now, use a placeholder that will be handled by the solver
+            block.state_eqs.append(Const(0.0))
+
+        # Remove base_var from algebraic_vars (it's now a state)
+        elif base_var in block.state_vars:
+            state_idx = block.state_vars.index(base_var)
+            old_state_eq = block.state_eqs[state_idx]
+            
+            # Replace state equation with algebraic constraint on the derivative
+            # The old state equation dx/dt = f(x,y) becomes: 0 = dt_x - f(x,y)
+            block.algebraic_vars.append(new_alg_var)
+            block.algebraic_eqs.append(new_alg_var - old_state_eq)
+            
+            # IMPORTANT: We still need a state equation for base_var!
+            # In semi-explicit DAE form, state equations are dx/dt = f(x,y)
+            # Since dx/dt is now new_alg_var (algebraic), we need:
+            # base_var = integral(new_alg_var) which is implicit
+            # Use a placeholder to maintain the correspondence
+            block.state_eqs[state_idx] = Const(0.0)
+
+        else:
+            raise ValueError(f"Case not supported")
+
+
+
+        # Use connect to substitute diff_var with new_alg_var in all equations
+        block.connect([diff_var], [new_alg_var])
+
+        # Set initialization for the new algebraic variable
+        block.init_eqs[new_alg_var] = Const(0.0)
+
+    # Clear diff_vars since we've converted them all
+    block.diff_vars = list()
+
+    # Recursively process children
+    for b in block.children:
+        b = to_implicit(b, vfactory)
+
+    return block
 
 def tf_to_diffblock_with_antiwindup(
         var_factory: VarFactory,
@@ -650,6 +750,58 @@ def connect_line_rms_to(mdl1: Block, mdl2: Block):
         mdl2.connect([inpt], [outp])
 
 
+def connect_line_phasor_rms_from(mdl1: Block, mdl2: Block):
+    """
+    Connect phasor RMS models for the 'from' end of a line.
+    Connects Vr, Vi from bus to line inputs.
+    """
+    # connect Vr
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref == VarPowerFlowRefferenceType.Vr and inpt.ref == VarPowerFlowRefferenceType.Vrf
+    ]
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
+
+    # connect Vi
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref == VarPowerFlowRefferenceType.Vi and inpt.ref == VarPowerFlowRefferenceType.Vif
+    ]
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
+
+
+def connect_line_phasor_rms_to(mdl1: Block, mdl2: Block):
+    """
+    Connect phasor RMS models for the 'to' end of a line.
+    Connects Vr, Vi from bus to line inputs.
+    """
+    # connect Vr
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref == VarPowerFlowRefferenceType.Vr and inpt.ref == VarPowerFlowRefferenceType.Vrt
+    ]
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
+
+    # connect Vi
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref == VarPowerFlowRefferenceType.Vi and inpt.ref == VarPowerFlowRefferenceType.Vit
+    ]
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
+
+
 def connect_rms_models(mdl1: Block, mdl2: Block):
     """
     This function substitutes input variables for output variables to connect two rms models
@@ -684,7 +836,7 @@ def connect_rms_models(mdl1: Block, mdl2: Block):
     print("")
 
 
-def set_rms_model(device: Any, model:Block):
+def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
     """
     Set the RMS model
     :return:
@@ -693,13 +845,26 @@ def set_rms_model(device: Any, model:Block):
     # connect bus variables
 
     if device.device_type in [DeviceType.BranchDevice, DeviceType.LineDevice, DeviceType.Transformer2WDevice, DeviceType.Transformer3WDevice]:
-        if not device.bus_from.rms_model.model.empty():
-            connect_line_rms_from(device.bus_from.rms_model.model, model)
+        # Check if using phasor or polar coordinates by looking at bus model outputs
+        bus_model = device.bus_from.rms_model.model
+        if not bus_model.empty():
+            # Check if bus has Vr/Vi (phasor) or Vm/Va (polar) outputs
+            has_phasor = any(v.ref == VarPowerFlowRefferenceType.Vr for v in bus_model.out_vars)
+            if has_phasor:
+                connect_line_phasor_rms_from(device.bus_from.rms_model.model, model)
+            else:
+                connect_line_rms_from(device.bus_from.rms_model.model, model)
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus_from.name} RMS model")
 
-        if not device.bus_to.rms_model.model.empty():
-            connect_line_rms_to(device.bus_to.rms_model.model, model)
+        bus_model = device.bus_to.rms_model.model
+        if not bus_model.empty():
+            # Check if bus has Vr/Vi (phasor) or Vm/Va (polar) outputs
+            has_phasor = any(v.ref == VarPowerFlowRefferenceType.Vr for v in bus_model.out_vars)
+            if has_phasor:
+                connect_line_phasor_rms_to(device.bus_to.rms_model.model, model)
+            else:
+                connect_line_rms_to(device.bus_to.rms_model.model, model)
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus_to.name} RMS model")
 
@@ -710,4 +875,12 @@ def set_rms_model(device: Any, model:Block):
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus.name} RMS model")
 
+    # fill var factoru dict[Dev, List[Var]] with model variables
+    model.unify_blocks()
+    for vr in model.algebraic_vars:
+        var_factory.register_var(device, vr)
+    for vr in model.state_vars:
+        var_factory.register_var(device, vr)
+
+    # set the model to the device
     device.rms_model.model = model

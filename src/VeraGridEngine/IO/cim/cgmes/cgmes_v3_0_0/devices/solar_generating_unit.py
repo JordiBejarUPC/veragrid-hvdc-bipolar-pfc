@@ -14,6 +14,7 @@ class SolarGeneratingUnit(GeneratingUnit):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='SolarPowerPlant', class_type='SolarPowerPlant', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A solar power plant may have solar generating units.''', profiles=[]),
 	)
+	__slots__ = ('SolarPowerPlant',)
 	def __init__(self, rdfid='', tpe='SolarGeneratingUnit'):
 		GeneratingUnit.__init__(self, rdfid, tpe)
 

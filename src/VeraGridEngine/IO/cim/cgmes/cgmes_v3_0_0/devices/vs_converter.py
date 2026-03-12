@@ -29,6 +29,7 @@ class VsConverter(ACDCConverter):
 		CgmesProperty(property_name='targetPhasePcc', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.deg, description='''Measurement of angle in degrees.''', profiles=[]),
 		CgmesProperty(property_name='targetPWMfactor', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Magnitude of pulse-modulation factor. The attribute shall be a positive value.''', profiles=[]),
 	)
+	__slots__ = ('CapabilityCurve', 'maxModulationIndex', 'delta', 'uv', 'droop', 'droopCompensation', 'pPccControl', 'qPccControl', 'qShare', 'targetQpcc', 'targetUpcc', 'targetPowerFactorPcc', 'targetPhasePcc', 'targetPWMfactor')
 	def __init__(self, rdfid='', tpe='VsConverter'):
 		ACDCConverter.__init__(self, rdfid, tpe)
 

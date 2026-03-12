@@ -37,6 +37,7 @@ The sum of qConstantImpedance, qConstantCurrent and qConstantPower shall equal 1
 		CgmesProperty(property_name='qFrequencyExponent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
 		CgmesProperty(property_name='qVoltageExponent', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
 	)
+	__slots__ = ('EnergyConsumer', 'exponentModel', 'pConstantCurrent', 'pConstantImpedance', 'pConstantPower', 'pFrequencyExponent', 'pVoltageExponent', 'qConstantCurrent', 'qConstantImpedance', 'qConstantPower', 'qFrequencyExponent', 'qVoltageExponent')
 	def __init__(self, rdfid='', tpe='LoadResponseCharacteristic'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

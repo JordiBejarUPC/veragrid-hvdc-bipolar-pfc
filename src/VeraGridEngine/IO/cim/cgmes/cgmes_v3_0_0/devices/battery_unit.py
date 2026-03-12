@@ -14,6 +14,7 @@ class BatteryUnit(PowerElectronicsUnit):
 		CgmesProperty(property_name='batteryState', class_type=BatteryStateKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The current state of the battery (charging, full, etc.).''', profiles=[]),
 		CgmesProperty(property_name='storedE', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.Wh, description='''Real electrical energy.''', profiles=[]),
 	)
+	__slots__ = ('ratedE', 'batteryState', 'storedE')
 	def __init__(self, rdfid='', tpe='BatteryUnit'):
 		PowerElectronicsUnit.__init__(self, rdfid, tpe)
 

@@ -14,6 +14,7 @@ class Line(EquipmentContainer):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='Region', class_type='SubGeographicalRegion', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The sub-geographical region of the line.''', profiles=[]),
 	)
+	__slots__ = ('Region',)
 	def __init__(self, rdfid='', tpe='Line'):
 		EquipmentContainer.__init__(self, rdfid, tpe)
 

@@ -21,6 +21,7 @@ class AsynchronousMachine(RotatingMachine):
 		CgmesProperty(property_name='rxLockedRotorRatio', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
 		CgmesProperty(property_name='asynchronousMachineType', class_type=AsynchronousMachineKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Indicates the type of Asynchronous Machine (motor or generator).''', profiles=[]),
 	)
+	__slots__ = ('converterFedDrive', 'efficiency', 'iaIrRatio', 'nominalFrequency', 'nominalSpeed', 'polePairNumber', 'ratedMechanicalPower', 'reversible', 'rxLockedRotorRatio', 'asynchronousMachineType')
 	def __init__(self, rdfid='', tpe='AsynchronousMachine'):
 		RotatingMachine.__init__(self, rdfid, tpe)
 

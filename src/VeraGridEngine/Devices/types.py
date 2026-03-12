@@ -113,7 +113,22 @@ ALL_DEV_TYPES = Union[
     Owner,
     UndergroundLineType,
     SequenceLineType,
-    RmsModelTemplate
+    RmsModelTemplate,
+    RmsEvent,
+    RmsEventsGroup,
+    ShortCircuitEvent,
+    IfMeasurement,
+    ItMeasurement,
+    QfMeasurement,
+    PfMeasurement,
+    QtMeasurement,
+    PtMeasurement,
+    QiMeasurement,
+    PiMeasurement,
+    VmMeasurement,
+    VaMeasurement,
+    PgMeasurement,
+    QgMeasurement,
 ]
 
 CONNECTION_TYPE = Union[Bus, None]

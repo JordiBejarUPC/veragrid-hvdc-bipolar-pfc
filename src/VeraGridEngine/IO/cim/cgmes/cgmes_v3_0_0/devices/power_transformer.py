@@ -22,6 +22,7 @@ class PowerTransformer(ConductingEquipment):
 		CgmesProperty(property_name='isPartOfGeneratorUnit', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Indicates whether the machine is part of a power station unit. Used for short circuit data exchange according to IEC 60909.  It has an impact on how the correction factors are calculated for transformers, since the transformer is not necessarily part of a synchronous machine and generating unit. It is not always possible to derive this information from the model. This is why the attribute is necessary.''', profiles=[]),
 		CgmesProperty(property_name='operationalValuesConsidered', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''It is used to define if the data (other attributes related to short circuit data exchange) defines long term operational conditions or not. Used for short circuit data exchange according to IEC 60909.''', profiles=[]),
 	)
+	__slots__ = ('PowerTransformerEnd', 'beforeShCircuitHighestOperatingCurrent', 'beforeShCircuitHighestOperatingVoltage', 'beforeShortCircuitAnglePf', 'highSideMinOperatingU', 'isPartOfGeneratorUnit', 'operationalValuesConsidered')
 	def __init__(self, rdfid='', tpe='PowerTransformer'):
 		ConductingEquipment.__init__(self, rdfid, tpe)
 

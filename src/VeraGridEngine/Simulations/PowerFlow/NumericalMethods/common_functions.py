@@ -248,6 +248,7 @@ def floating_star_currents(Va, Vb, Vc, Istar_a, Istar_b, Istar_c, Vn0) -> Tuple[
                 just the center of the phase voltages (Va,Vb,Vc) at the first iteration
     :return: Ia, Ib, Ic, Vn
     """
+    zero_voltage = 1e-5
     # unknown: Vn (complex). Start from last-iter Vn0 or center of Va,Vb,Vc
     Vn = Vn0
 
@@ -258,35 +259,134 @@ def floating_star_currents(Va, Vb, Vc, Istar_a, Istar_b, Istar_c, Vn0) -> Tuple[
             return nb.complex128(0.0)  # Changed from complex64 to complex128
         return np.conj(Istar) * (U / Umag)
 
-    for _ in range(10):  # few Newton steps are usually enough
+    for _ in range(20):  # few Newton steps are usually enough
+
+        if abs(Va) > zero_voltage and abs(Vb) > zero_voltage and abs(Vc) > zero_voltage:
+
+            Ua, Ub, Uc = Va - Vn, Vb - Vn, Vc - Vn
+
+            Ia = Iphase(Ua, Istar_a)
+            Ib = Iphase(Ub, Istar_b)
+            Ic = Iphase(Uc, Istar_c)
+            F = Ia + Ib + Ic  # complex residual
+            if abs(F) < 1e-9:
+                break
+
+            # Jacobian dF/dVn (complex), derived from d/dVn [U/|U|] = -(1/|U|)(I - U U*/|U|^2)
+            # A simple, very stable approximation is to use a secant-like step:
+            eps = 1e-6
+            dV = eps * (1.0 + 1.0j)
+            Uad, Ubd, Ucd = Va - (Vn + dV), Vb - (Vn + dV), Vc - (Vn + dV)
+            Iad = Iphase(Uad, Istar_a)
+            Ibd = Iphase(Ubd, Istar_b)
+            Icd = Iphase(Ucd, Istar_c)
+            Fd = Iad + Ibd + Icd
+            Jsec = (Fd - F) / dV if dV != 0 else 1.0
+            if Jsec == 0:
+                break
+            # damped update
+            Vn = Vn - 0.7 * F / Jsec
+
+        elif abs(Va) > zero_voltage and abs(Vb) > zero_voltage:
+
+            Ua, Ub = Va - Vn, Vb - Vn
+
+            Ia = Iphase(Ua, Istar_a)
+            Ib = Iphase(Ub, Istar_b)
+            F = Ia + Ib  # complex residual
+            if abs(F) < 1e-9:
+                break
+
+            # Jacobian dF/dVn (complex), derived from d/dVn [U/|U|] = -(1/|U|)(I - U U*/|U|^2)
+            # A simple, very stable approximation is to use a secant-like step:
+            eps = 1e-6
+            dV = eps * (1.0 + 1.0j)
+            Uad, Ubd = Va - (Vn + dV), Vb - (Vn + dV)
+            Iad = Iphase(Uad, Istar_a)
+            Ibd = Iphase(Ubd, Istar_b)
+            Fd = Iad + Ibd
+            Jsec = (Fd - F) / dV if dV != 0 else 1.0
+            if Jsec == 0:
+                break
+            # damped update
+            Vn = Vn - 0.7 * F / Jsec
+
+        elif abs(Vb) > zero_voltage and abs(Vc) > zero_voltage:
+
+            Ub, Uc = Vb - Vn, Vc - Vn
+
+            Ib = Iphase(Ub, Istar_b)
+            Ic = Iphase(Uc, Istar_c)
+            F = Ib + Ic  # complex residual
+            if abs(F) < 1e-9:
+                break
+
+            # Jacobian dF/dVn (complex), derived from d/dVn [U/|U|] = -(1/|U|)(I - U U*/|U|^2)
+            # A simple, very stable approximation is to use a secant-like step:
+            eps = 1e-6
+            dV = eps * (1.0 + 1.0j)
+            Ubd, Ucd = Vb - (Vn + dV), Vc - (Vn + dV)
+            Ibd = Iphase(Ubd, Istar_b)
+            Icd = Iphase(Ucd, Istar_c)
+            Fd = Ibd + Icd
+            Jsec = (Fd - F) / dV if dV != 0 else 1.0
+            if Jsec == 0:
+                break
+            # damped update
+            Vn = Vn - 0.7 * F / Jsec
+
+        elif abs(Vc) > zero_voltage and abs(Va) > zero_voltage:
+
+            Ua, Uc = Va - Vn, Vc - Vn
+
+            Ia = Iphase(Ua, Istar_a)
+            Ic = Iphase(Uc, Istar_c)
+            F = Ia + Ic  # complex residual
+            if abs(F) < 1e-9:
+                break
+
+            # Jacobian dF/dVn (complex), derived from d/dVn [U/|U|] = -(1/|U|)(I - U U*/|U|^2)
+            # A simple, very stable approximation is to use a secant-like step:
+            eps = 1e-6
+            dV = eps * (1.0 + 1.0j)
+            Uad, Ucd = Va - (Vn + dV), Vc - (Vn + dV)
+            Iad = Iphase(Uad, Istar_a)
+            Icd = Iphase(Ucd, Istar_c)
+            Fd = Iad + Icd
+            Jsec = (Fd - F) / dV if dV != 0 else 1.0
+            if Jsec == 0:
+                break
+            # damped update
+            Vn = Vn - 0.7 * F / Jsec
+
+        else:
+            return zero_voltage, zero_voltage, zero_voltage, zero_voltage
+
+    # final phase currents to inject (load consumes → subtract at phases)
+    if abs(Va) > zero_voltage and abs(Vb) > zero_voltage and abs(Vc) > zero_voltage:
         Ua, Ub, Uc = Va - Vn, Vb - Vn, Vc - Vn
         Ia = Iphase(Ua, Istar_a)
         Ib = Iphase(Ub, Istar_b)
         Ic = Iphase(Uc, Istar_c)
-        F = Ia + Ib + Ic  # complex residual
-        if abs(F) < 1e-9:
-            break
-
-        # Jacobian dF/dVn (complex), derived from d/dVn [U/|U|] = -(1/|U|)(I - U U*/|U|^2)
-        # A simple, very stable approximation is to use a secant-like step:
-        eps = 1e-6
-        dV = eps * (1.0 + 1.0j)
-        Uad, Ubd, Ucd = Va - (Vn + dV), Vb - (Vn + dV), Vc - (Vn + dV)
-        Iad = Iphase(Uad, Istar_a)
-        Ibd = Iphase(Ubd, Istar_b)
-        Icd = Iphase(Ucd, Istar_c)
-        Fd = Iad + Ibd + Icd
-        Jsec = (Fd - F) / dV if dV != 0 else 1.0
-        if Jsec == 0:
-            break
-        # damped update
-        Vn = Vn - 0.7 * F / Jsec
-
-    # final phase currents to inject (load consumes → subtract at phases)
-    Ua, Ub, Uc = Va - Vn, Vb - Vn, Vc - Vn
-    Ia = Iphase(Ua, Istar_a)
-    Ib = Iphase(Ub, Istar_b)
-    Ic = Iphase(Uc, Istar_c)
+    elif abs(Va) > zero_voltage and abs(Vb) > zero_voltage:
+        Ua, Ub = Va - Vn, Vb - Vn
+        Ia = Iphase(Ua, Istar_a)
+        Ib = Iphase(Ub, Istar_b)
+        Ic = complex(0.0, 0.0)
+    elif abs(Vb) > zero_voltage and abs(Vc) > zero_voltage:
+        Ub, Uc = Vb - Vn, Vc - Vn
+        Ia = complex(0.0, 0.0)
+        Ib = Iphase(Ub, Istar_b)
+        Ic = Iphase(Uc, Istar_c)
+    elif abs(Va) > zero_voltage and abs(Vc) > zero_voltage:
+        Ua, Uc = Va - Vn, Vc - Vn
+        Ia = Iphase(Ua, Istar_a)
+        Ib = complex(0.0, 0.0)
+        Ic = Iphase(Uc, Istar_c)
+    else:
+        Ia = complex(0.0, 0.0)
+        Ib = complex(0.0, 0.0)
+        Ic = complex(0.0, 0.0)
 
     return Ia, Ib, Ic, Vn
 

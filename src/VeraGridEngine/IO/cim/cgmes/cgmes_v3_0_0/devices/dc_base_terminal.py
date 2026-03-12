@@ -18,6 +18,7 @@ class DCBaseTerminal(ACDCTerminal):
 		CgmesProperty(property_name='DCNode', class_type='DCNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The DC connectivity node to which this DC base terminal connects with zero impedance.''', profiles=[]),
 		CgmesProperty(property_name='DCTopologicalNode', class_type='DCTopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''See association end Terminal.TopologicalNode.''', profiles=[]),
 	)
+	__slots__ = ('DCNode', 'DCTopologicalNode')
 	def __init__(self, rdfid='', tpe='DCBaseTerminal'):
 		ACDCTerminal.__init__(self, rdfid, tpe)
 

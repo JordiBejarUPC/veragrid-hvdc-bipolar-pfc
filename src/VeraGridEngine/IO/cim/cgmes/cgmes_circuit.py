@@ -24,6 +24,39 @@ class ReferenceIndex:
         self.ambiguous: Set[str] = set()
 
 
+class CgmesClassLinkingMeta:
+    """
+    Precomputed property-linking metadata for one CGMES class.
+
+    The CGMES schema is stable for a given concrete class, while incoming XML
+    values are not. This metadata therefore classifies properties only from the
+    declared schema and never from observed file values.
+    """
+
+    __slots__ = (
+        "scalar_property_types",
+        "enum_property_types",
+        "reference_property_names",
+        "mandatory_property_names",
+        "out_of_standard_property_names",
+        "inverse_attribute_by_property",
+    )
+
+    def __init__(self) -> None:
+        """
+        Build an empty linking metadata container.
+
+        :return: Nothing.
+        :rtype: None
+        """
+        self.scalar_property_types: Dict[str, type] = dict()
+        self.enum_property_types: Dict[str, object] = dict()
+        self.reference_property_names: Set[str] = set()
+        self.mandatory_property_names: Set[str] = set()
+        self.out_of_standard_property_names: Set[str] = set()
+        self.inverse_attribute_by_property: Dict[str, str] = dict()
+
+
 class ReferenceResolutionContext:
     """
     Cache-aware reference resolver context for one linking pass.
@@ -120,6 +153,69 @@ def find_attribute(obj: CGMES_ASSETS,
     :return:
     """
     return association_inverse_dict.get((obj.tpe, property_name))
+
+
+def build_class_linking_meta(obj: CGMES_ASSETS,
+                             association_inverse_dict: Dict[Tuple[str, str], str]) -> CgmesClassLinkingMeta:
+    """
+    Build schema-driven linking metadata for one concrete CGMES class.
+
+    :param obj: Example object of the concrete CGMES class.
+    :param association_inverse_dict: Inverse-association map.
+    :return: Precomputed linking metadata.
+    :rtype: CgmesClassLinkingMeta
+    """
+    meta: CgmesClassLinkingMeta = CgmesClassLinkingMeta()
+    property_name: str
+    cim_prop: CgmesProperty
+    class_type: object
+    inverse_attribute: Union[str, None]
+
+    for property_name, cim_prop in obj.declared_properties.items():
+        class_type = cim_prop.class_type
+
+        if cim_prop.mandatory:
+            meta.mandatory_property_names.add(property_name)
+
+        if cim_prop.out_of_the_standard:
+            meta.out_of_standard_property_names.add(property_name)
+
+        inverse_attribute = association_inverse_dict.get((obj.tpe, property_name), None)
+        if inverse_attribute is not None:
+            meta.inverse_attribute_by_property[property_name] = inverse_attribute
+
+        if class_type in [str, float, int, bool]:
+            meta.scalar_property_types[property_name] = class_type
+        elif isinstance(class_type, Enum) or isinstance(class_type, EnumMeta):
+            meta.enum_property_types[property_name] = class_type
+        else:
+            meta.reference_property_names.add(property_name)
+
+    return meta
+
+
+def build_linking_meta_by_class(elements_by_type: Dict[str, List[CGMES_ASSETS]],
+                                association_inverse_dict: Dict[Tuple[str, str], str]) -> Dict[str, CgmesClassLinkingMeta]:
+    """
+    Build precomputed linking metadata for all loaded CGMES classes.
+
+    :param elements_by_type: Objects grouped by CGMES class name.
+    :param association_inverse_dict: Inverse-association map.
+    :return: Metadata by class name.
+    :rtype: Dict[str, CgmesClassLinkingMeta]
+    """
+    linking_meta_by_class: Dict[str, CgmesClassLinkingMeta] = dict()
+    class_name: str
+    elements: List[CGMES_ASSETS]
+
+    for class_name, elements in elements_by_type.items():
+        if len(elements) > 0:
+            linking_meta_by_class[class_name] = build_class_linking_meta(
+                obj=elements[0],
+                association_inverse_dict=association_inverse_dict
+            )
+
+    return linking_meta_by_class
 
 
 def normalize_reference_token(value: str) -> str:
@@ -352,48 +448,55 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
         all_objects_dict_boundary=all_objects_dict_boundary,
         recovery_mode=recovery_mode
     )
+    linking_meta_by_class: Dict[str, CgmesClassLinkingMeta]
+    linking_meta_by_class = build_linking_meta_by_class(
+        elements_by_type=elements_by_type,
+        association_inverse_dict=association_inverse_dict
+    )
 
     # Resolve only properties that were actually present in the XML.
     # Missing mandatory properties are reported explicitly in a second pass.
     for class_name, elements in elements_by_type.items():
+        class_meta: Union[CgmesClassLinkingMeta, None]
+        class_meta = linking_meta_by_class.get(class_name, None)
+
         for element in elements:  # for every element of the type
-            element_dict = element.__dict__
             if mark_used:
                 element.used = True
 
-            parsed_property_names = set(element.parsed_properties.keys())
+            parsed_property_names = element.parsed_properties
 
             for property_name in parsed_property_names:
-                cim_prop = element.declared_properties.get(property_name, None)
-                if cim_prop is None:
+                if class_meta is None:
                     continue
 
-                use_direct_storage = property_name in element_dict
+                # ``parsed_properties`` keeps the raw XML keys, including keys
+                # that were rejected earlier because the concrete CGMES class
+                # does not declare them. With slotted classes we must never try
+                # to read storage for those rejected keys.
+                if property_name not in element.declared_properties:
+                    continue
 
                 # try to get the property value, else, fill with None
                 # at this point val is always the string that came in the XML
-                if use_direct_storage:
-                    value = element_dict.get(property_name, None)
-                else:
-                    value = getattr(element, property_name)
+                value = element.get_declared_property_value(prop_name=property_name)
                 if value is not None and isinstance(value, CGMES_ASSETS):
                     continue
 
                 if value is not None:  # if the value is something...
 
-                    if cim_prop.class_type in [str, float, int, bool]:
+                    scalar_type: Union[type, None]
+                    scalar_type = class_meta.scalar_property_types.get(property_name, None)
+
+                    if scalar_type is not None:
                         # set the referenced object in the property
                         try:
                             if isinstance(value, list):
-                                if use_direct_storage:
-                                    element_dict[property_name] = value
-                                else:
-                                    setattr(element, property_name, value)
+                                element.set_declared_property_value(prop_name=property_name,
+                                                                    prop_value=value)
                             else:
-                                if use_direct_storage:
-                                    element_dict[property_name] = cim_prop.class_type(value)
-                                else:
-                                    setattr(element, property_name, cim_prop.class_type(value))
+                                element.set_declared_property_value(prop_name=property_name,
+                                                                    prop_value=scalar_type(value))
 
                         except ValueError:
                             logger.add_error(msg='Value error',
@@ -401,37 +504,35 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                              device_class=class_name,
                                              device_property=property_name,
                                              value=value,
-                                             expected_value=str(cim_prop.class_type))
+                                             expected_value=str(scalar_type))
 
-                    elif isinstance(cim_prop.class_type, Enum) or isinstance(cim_prop.class_type, EnumMeta):
+                    elif property_name in class_meta.enum_property_types:
+                        enum_type: object
+                        enum_type = class_meta.enum_property_types[property_name]
 
                         if isinstance(value, str):
                             chunks = value.split('.')
                             value2 = chunks[-1]
                             try:
-                                enum_val = cim_prop.class_type(value2)
-                                if use_direct_storage:
-                                    element_dict[property_name] = enum_val
-                                else:
-                                    setattr(element, property_name, enum_val)
+                                enum_val = enum_type(value2)
+                                element.set_declared_property_value(prop_name=property_name,
+                                                                    prop_value=enum_val)
 
-                            except TypeError as e:
+                            except TypeError:
                                 logger.add_error(msg='Could not convert Enum',
                                                  device=element.rdfid,
                                                  device_class=class_name,
                                                  device_property=property_name,
                                                  value=value2 + " (value)",
-                                                 expected_value=str(cim_prop.class_type))
+                                                 expected_value=str(enum_type))
 
-                    else:
+                    elif property_name in class_meta.reference_property_names:
                         # search for the reference, if not found -> return None
                         if not isinstance(value, list):
                             if not isinstance(value, str):
                                 element.missing_references[property_name] = value
-                                if use_direct_storage:
-                                    element_dict[property_name] = None
-                                else:
-                                    setattr(element, property_name, None)
+                                element.set_declared_property_value(prop_name=property_name,
+                                                                    prop_value=None)
                                 logger.add_error(msg='Invalid reference token type',
                                                  device=element.rdfid,
                                                  device_class=class_name,
@@ -456,14 +557,10 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                     referenced_object.used = True
 
                                 # set the referenced object in the property
-                                if use_direct_storage:
-                                    element_dict[property_name] = referenced_object
-                                else:
-                                    setattr(element, property_name, referenced_object)
+                                element.set_declared_property_value(prop_name=property_name,
+                                                                    prop_value=referenced_object)
                                 # register the inverse reference
-                                ref_attribute = find_attribute(obj=element,
-                                                               property_name=property_name,
-                                                               association_inverse_dict=association_inverse_dict)
+                                ref_attribute = class_meta.inverse_attribute_by_property.get(property_name, None)
                                 if ref_attribute is not None:
                                     referenced_object.add_reference(element, ref_attribute, logger=logger)
 
@@ -473,10 +570,8 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                 element.missing_references[property_name] = value
 
                                 # set the referencing property to None:
-                                if use_direct_storage:
-                                    element_dict[property_name] = None
-                                else:
-                                    setattr(element, property_name, None)
+                                element.set_declared_property_value(prop_name=property_name,
+                                                                    prop_value=None)
 
                                 if hasattr(element, 'rdfid'):
                                     logger.add_error(msg='Reference not found',
@@ -531,9 +626,7 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                     # set the referenced object in the property
                                     referenced_object_list.add(referenced_object)
                                     # register the inverse reference
-                                    ref_attribute = find_attribute(obj=element,
-                                                                   property_name=property_name,
-                                                                   association_inverse_dict=association_inverse_dict)
+                                    ref_attribute = class_meta.inverse_attribute_by_property.get(property_name, None)
                                     if ref_attribute is not None:
                                         referenced_object.add_reference(element, ref_attribute, logger=logger)
 
@@ -543,10 +636,8 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                     element.missing_references[property_name] = v
 
                                     # set the referencing property to None:
-                                    if use_direct_storage:
-                                        element_dict[property_name] = None
-                                    else:
-                                        setattr(element, property_name, None)
+                                    element.set_declared_property_value(prop_name=property_name,
+                                                                        prop_value=None)
 
                                     if hasattr(element, 'rdfid'):
                                         logger.add_error(msg='Reference not found',
@@ -569,17 +660,13 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                                          value='Not found',
                                                          expected_value=v)
                             if len(referenced_object_list) > 1:
-                                if use_direct_storage:
-                                    element_dict[property_name] = list(referenced_object_list)
-                                else:
-                                    setattr(element, property_name, list(referenced_object_list))
+                                element.set_declared_property_value(prop_name=property_name,
+                                                                    prop_value=list(referenced_object_list))
                             elif len(referenced_object_list) == 1:
-                                if use_direct_storage:
-                                    element_dict[property_name] = list(referenced_object_list)[0]
-                                else:
-                                    setattr(element, property_name, list(referenced_object_list)[0])
+                                element.set_declared_property_value(prop_name=property_name,
+                                                                    prop_value=list(referenced_object_list)[0])
 
-                    if cim_prop.out_of_the_standard:
+                    if property_name in class_meta.out_of_standard_property_names:
                         logger.add_warning(msg='Property supported but out of the standard',
                                            device=element.rdfid,
                                            device_class=class_name,
@@ -587,14 +674,15 @@ def find_references(elements_by_type: Dict[str, List[CGMES_ASSETS]],
                                            value=value,
                                            expected_value="")
 
-            for property_name, cim_prop in element.declared_properties.items():
-                if cim_prop.mandatory and property_name not in parsed_property_names:
-                    logger.add_error(msg='Required property not provided',
-                                     device=element.rdfid,
-                                     device_class=class_name,
-                                     device_property=property_name,
-                                     value='not provided',
-                                     expected_value=property_name)
+            if class_meta is not None:
+                for property_name in class_meta.mandatory_property_names:
+                    if property_name not in parsed_property_names:
+                        logger.add_error(msg='Required property not provided',
+                                         device=element.rdfid,
+                                         device_class=class_name,
+                                         device_property=property_name,
+                                         value='not provided',
+                                         expected_value=property_name)
 
     # modify the elements_by_type here adding the elements from the boundary set
     # all_elements_dict was modified in the previous loop
@@ -638,34 +726,20 @@ def convert_data_to_objects(data: Dict[str, Dict[str, Dict[str, str]]],
                 logger.add_error("Data is garbage",
                                  value=objects_dict)
             else:
-                objects_list = list()
-                for rdfid, object_data in objects_dict.items():
+                object_template = class_dict.get(class_name, None)
 
-                    object_template = class_dict.get(class_name, None)
-
-                    if object_template is not None:
-
-                        parsed_object = object_template(rdfid=rdfid, tpe=class_name)
-
-                        if all_objects_dict_boundary is None:
-                            parsed_object.boundary_set = True
-
-                        parsed_object.parse_dict(data=object_data, logger=logger)
-
-                        found = all_objects_dict.get(parsed_object.rdfid, None)
-
-                        if found is None:
-                            all_objects_dict[parsed_object.rdfid] = parsed_object
-                        else:
-                            if "Sv" not in class_name:
-                                logger.add_error("Duplicated RDFID", device=class_name, value=parsed_object.rdfid)
-
-                        objects_list.append(parsed_object)
-
-                    else:
-                        logger.add_error("Class not recognized", device_class=class_name)
-
-                elements_by_type[class_name] = objects_list
+                if object_template is not None:
+                    objects_list: List[CGMES_ASSETS] = convert_class_data_to_objects(
+                        class_name=class_name,
+                        objects_dict=objects_dict,
+                        object_template=object_template,
+                        all_objects_dict=all_objects_dict,
+                        all_objects_dict_boundary=all_objects_dict_boundary,
+                        logger=logger
+                    )
+                    elements_by_type[class_name] = objects_list
+                else:
+                    logger.add_error("Class not recognized", device_class=class_name)
 
         # replace references by actual objects
         find_references(elements_by_type=elements_by_type,
@@ -675,6 +749,46 @@ def convert_data_to_objects(data: Dict[str, Dict[str, Dict[str, str]]],
                         logger=logger,
                         mark_used=True,
                         recovery_mode=cgmes_recovery_mode)
+
+
+def convert_class_data_to_objects(class_name: str,
+                                  objects_dict: Dict[str, Dict[str, str]],
+                                  object_template: Callable[..., CGMES_ASSETS],
+                                  all_objects_dict: Dict[str, CGMES_ASSETS],
+                                  all_objects_dict_boundary: Union[Dict[str, CGMES_ASSETS], None],
+                                  logger: DataLogger) -> List[CGMES_ASSETS]:
+    """
+    Convert one CGMES class dictionary into instantiated CGMES objects.
+
+    :param class_name: CGMES class name
+    :param objects_dict: Object data keyed by RDFID
+    :param object_template: Concrete CGMES class constructor
+    :param all_objects_dict: Dictionary containing all instantiated objects
+    :param all_objects_dict_boundary: Boundary dictionary or None for boundary conversion
+    :param logger: DataLogger
+    :return: Instantiated objects for the class
+    """
+    objects_list: List[CGMES_ASSETS] = list()
+    is_boundary_conversion: bool = all_objects_dict_boundary is None
+
+    for rdfid, object_data in objects_dict.items():
+        parsed_object: CGMES_ASSETS = object_template(rdfid=rdfid, tpe=class_name)
+
+        if is_boundary_conversion:
+            parsed_object.boundary_set = True
+
+        parsed_object.parse_dict(data=object_data, logger=logger)
+
+        found: Union[CGMES_ASSETS, None] = all_objects_dict.get(parsed_object.rdfid, None)
+        if found is None:
+            all_objects_dict[parsed_object.rdfid] = parsed_object
+        else:
+            if "Sv" not in class_name:
+                logger.add_error("Duplicated RDFID", device=class_name, value=parsed_object.rdfid)
+
+        objects_list.append(parsed_object)
+
+    return objects_list
 
 
 def is_valid_cgmes(cgmes_version) -> bool:

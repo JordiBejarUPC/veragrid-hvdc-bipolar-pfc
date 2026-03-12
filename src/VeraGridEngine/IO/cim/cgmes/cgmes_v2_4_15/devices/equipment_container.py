@@ -14,6 +14,7 @@ class EquipmentContainer(ConnectivityNodeContainer):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='Equipments', class_type='Equipment', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Contained equipment.''', profiles=[]),
 	)
+	__slots__ = ('Equipments',)
 	def __init__(self, rdfid='', tpe='EquipmentContainer'):
 		ConnectivityNodeContainer.__init__(self, rdfid, tpe)
 

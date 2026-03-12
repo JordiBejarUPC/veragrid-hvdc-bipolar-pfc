@@ -9,7 +9,7 @@ import numpy as np
 import VeraGridEngine.IO.cim.cgmes.cgmes_enums as cgmes_enums
 from VeraGridEngine import ShuntControlMode
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import CGMESVersions, CgmesTopologyMode, ConverterControlType
+from VeraGridEngine.enumerations import CGMESVersions, CgmesTopologyMode, ConverterControlType, ExternalGridMode
 import VeraGridEngine.Devices as gcdev
 import VeraGridEngine.IO.cim.cgmes.cgmes_assets.cgmes_2_4_15_assets as cgmes24
 import VeraGridEngine.IO.cim.cgmes.cgmes_assets.cgmes_3_0_0_assets as cgmes30
@@ -1286,9 +1286,13 @@ def get_gcdev_external_grids(cgmes_model: CgmesCircuit,
     TopologicalNode_tpe = cgmes_model.cgmes_assets.class_dict.get("TopologicalNode")
     DCTopologicalNode_tpe = cgmes_model.cgmes_assets.class_dict.get("DCTopologicalNode")
 
-    # convert loads
-    for device_list in [cgmes_model.cgmes_assets.EquivalentInjection_list]:
-        # TODO ExternalNetworkInjection
+    # Import both equivalent and explicit external-network boundary devices.
+    external_device_lists = [cgmes_model.cgmes_assets.EquivalentInjection_list]
+    external_network_injection_list = getattr(cgmes_model.cgmes_assets, "ExternalNetworkInjection_list", None)
+    if external_network_injection_list is not None:
+        external_device_lists.append(external_network_injection_list)
+
+    for device_list in external_device_lists:
         for cgmes_elm in device_list:
             calc_nodes = find_associated_buses(cgmes_elm=cgmes_elm,
                                                device_to_terminal_dict=device_to_terminal_dict,
@@ -1301,12 +1305,30 @@ def get_gcdev_external_grids(cgmes_model: CgmesCircuit,
             if len(calc_nodes) == 1:
                 calc_node = calc_nodes[0]
 
-                # TODO define ExternalGrid.mode
+                mode = ExternalGridMode.PQ
+                vm = 1.0
+
+                if hasattr(cgmes_elm, "regulationCapability") and getattr(cgmes_elm, "regulationCapability", False):
+                    mode = ExternalGridMode.VD
+                    regulation_target = getattr(cgmes_elm, "regulationTarget", None)
+                    if regulation_target is not None and calc_node.Vnom > 0.0:
+                        vm = float(regulation_target) / float(calc_node.Vnom)
+                elif getattr(cgmes_elm, "controlEnabled", False):
+                    mode = ExternalGridMode.VD
+                    regulating_control = getattr(cgmes_elm, "RegulatingControl", None)
+                    if regulating_control is not None:
+                        target_value = getattr(regulating_control, "targetValue", None)
+                        if target_value is not None and calc_node.Vnom > 0.0:
+                            vm = float(target_value) / float(calc_node.Vnom)
+                elif getattr(cgmes_elm, "referencePriority", 0) == 1:
+                    mode = ExternalGridMode.VD
+
                 gcdev_elm = gcdev.ExternalGrid(idtag=cgmes_elm.uuid,
                                                code=cgmes_elm.description,
                                                name=cgmes_elm.name,
                                                active=True,
-                                               # mode=enum.PQ/PV/VD
+                                               mode=mode,
+                                               Vm=vm,
                                                P=cgmes_elm.p,
                                                Q=cgmes_elm.q)
 
@@ -1759,6 +1781,34 @@ def get_gcdev_ac_transformers(cgmes_model: CgmesCircuit,
                                  expected_value="2 or 3")
 
 
+def get_tap_step_voltage_increment(tap_changer: CGMES_ASSETS) -> float | None:
+    """
+    Read the tap step-voltage increment without mutating the imported CGMES object.
+
+    CGMES tap changer classes are inconsistent here. Some expose
+    ``stepVoltageIncrement`` directly, while phase tap changers expose
+    ``voltageStepIncrement`` instead. The previous implementation normalized this
+    by creating a synthetic ``stepVoltageIncrement`` attribute on the CGMES
+    instance. That is incompatible with slotted CGMES classes because imported
+    objects must keep a fixed attribute layout.
+
+    This helper preserves the compatibility behavior by reading the supported
+    attribute names explicitly and returning one normalized value to the caller.
+
+    :param tap_changer: Imported CGMES tap changer instance.
+    :return: Normalized step-voltage increment.
+    :rtype: float | None
+    """
+    step_voltage_increment: float | None
+
+    step_voltage_increment = getattr(tap_changer, "stepVoltageIncrement", None)
+
+    if step_voltage_increment is not None:
+        return step_voltage_increment
+    else:
+        return getattr(tap_changer, "voltageStepIncrement", None)
+
+
 def get_transformer_tap_changers(cgmes_model: CgmesCircuit,
                                  gcdev_model: MultiCircuit,
                                  bus_dict: Dict[str, gcdev.Bus],
@@ -1866,9 +1916,8 @@ def get_transformer_tap_changers(cgmes_model: CgmesCircuit,
                                    device_property="control for TapChanger",
                                    value=type(tap_changer))
 
-            # attribute handling sVI
-            if isinstance(tap_changer, cgmes_model.assets.PhaseTapChanger):
-                tap_changer.stepVoltageIncrement = tap_changer.voltageStepIncrement
+            step_voltage_increment: float | None
+            step_voltage_increment = get_tap_step_voltage_increment(tap_changer=tap_changer)
 
             if tap_changer.TransformerEnd is not None:
                 trafo_id = tap_changer.TransformerEnd.PowerTransformer.uuid
@@ -1899,7 +1948,7 @@ def get_transformer_tap_changers(cgmes_model: CgmesCircuit,
                         high=tap_changer.highStep,
                         normal=tap_changer.normalStep,
                         neutral=tap_changer.neutralStep,
-                        stepVoltageIncrement=tap_changer.stepVoltageIncrement,
+                        stepVoltageIncrement=step_voltage_increment,
                         step=int(tap_changer.step),
                         asymmetry_angle=asymmetry_angle,
                         tc_type=tc_type
@@ -1969,7 +2018,7 @@ def get_transformer_tap_changers(cgmes_model: CgmesCircuit,
                             high=tap_changer.highStep,
                             normal=tap_changer.normalStep,
                             neutral=tap_changer.neutralStep,
-                            stepVoltageIncrement=tap_changer.stepVoltageIncrement,
+                            stepVoltageIncrement=step_voltage_increment,
                             step=int(tap_changer.step),
                             # asymmetry_angle=90,
                             tc_type=tc_type
@@ -2462,7 +2511,7 @@ def get_gcdev_voltage_levels(cgmes_model: CgmesCircuit,
                 volt_lev_dict[gcdev_elm.idtag] = gcdev_elm
             else:
                 logger.add_error(msg='Base voltage not found for VoltageLevel',
-                                 device=cgmes_elm.parsed_properties.get("BaseVoltage", "not provided"),
+                                 device="provided" if cgmes_elm.has_parsed_property("BaseVoltage") else "not provided",
                                  comment="get_gcdev_voltage_levels")
         else:
             logger.add_error(msg='Base voltage not found for VoltageLevel',

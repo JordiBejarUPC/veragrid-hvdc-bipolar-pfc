@@ -16,6 +16,7 @@ class DCConductingEquipment(Equipment):
 		CgmesProperty(property_name='ratedUdc', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[]),
 		CgmesProperty(property_name='DCTerminals', class_type='DCTerminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A DC conducting equipment has DC terminals.''', profiles=[]),
 	)
+	__slots__ = ('ratedUdc', 'DCTerminals')
 	def __init__(self, rdfid='', tpe='DCConductingEquipment'):
 		Equipment.__init__(self, rdfid, tpe)
 

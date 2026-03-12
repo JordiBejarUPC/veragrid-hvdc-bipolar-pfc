@@ -7,5 +7,6 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_v3_0_0.devices.identified_object import I
 
 
 class ModellingAuthority(IdentifiedObject):
+    __slots__ = ()
     def __init__(self, rdfid: str = '', tpe: str = 'ModellingAuthority'):
         IdentifiedObject.__init__(self, rdfid=rdfid, tpe=tpe)

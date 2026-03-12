@@ -14,6 +14,7 @@ class TapChangerControl(RegulatingControl):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='TapChanger', class_type='TapChanger', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The regulating control scheme in which this tap changer participates.''', profiles=[]),
 	)
+	__slots__ = ('TapChanger',)
 	def __init__(self, rdfid='', tpe='TapChangerControl'):
 		RegulatingControl.__init__(self, rdfid, tpe)
 
