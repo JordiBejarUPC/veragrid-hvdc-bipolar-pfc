@@ -84,7 +84,7 @@ class TapChanger:
         self._k_im_array = np.ones(self._total_positions)  # impedance correction positions (imag)
         self.recalc()
 
-    def copy(self) -> TapChanger:
+    def copy(self) -> "TapChanger":
 
         elm = TapChanger(
             total_positions=self._total_positions,

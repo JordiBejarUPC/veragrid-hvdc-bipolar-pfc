@@ -150,6 +150,52 @@ class ResizeHandle(QGraphicsRectItem):
         else:
             return super().itemChange(change, value)
 
+class GenericBlockDialog(QDialog):
+    """
+    Dialog to edit the created generic block
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Configure Generic Block")
+
+        layout = QFormLayout(self)
+
+        # --- New: name field ---
+        self.name_edit = QLineEdit()
+        layout.addRow("Block name:", self.name_edit)
+
+        # --- Existing fields ---
+        self.state_inputs_spin = QSpinBox()
+        self.state_inputs_spin.setMinimum(0)
+        layout.addRow("Number of state inputs:", self.state_inputs_spin)
+
+        self.state_outputs_edit = QLineEdit()
+        layout.addRow("State outputs (comma separated):", self.state_outputs_edit)
+
+        self.algeb_inputs_spin = QSpinBox()
+        self.algeb_inputs_spin.setMinimum(0)
+        layout.addRow("Number of algebraic inputs:", self.algeb_inputs_spin)
+
+        self.algeb_outputs_edit = QLineEdit()
+        layout.addRow("Algebraic outputs (comma separated):", self.algeb_outputs_edit)
+
+        # --- Buttons ---
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addRow(buttons)
+
+    def get_values(self):
+        """Return all dialog values."""
+        name = self.name_edit.text().strip()
+        state_ins = self.state_inputs_spin.value()
+        state_outs = [s.strip() for s in self.state_outputs_edit.text().split(",") if s.strip()]
+        algeb_ins = self.algeb_inputs_spin.value()
+        algeb_outs = [s.strip() for s in self.algeb_outputs_edit.text().split(",") if s.strip()]
+        return name, state_ins, state_outs, algeb_ins, algeb_outs
+
+
 
 class PortItem(QGraphicsEllipseItem):
     """
@@ -433,6 +479,150 @@ class ParameterEditorDialog(QDialog):
                 pass
         else:
             pass
+
+# class GenericBlockItem(QGraphicsRectItem):
+#     """
+#            Class to represent generic block to construct devices in the editor
+#            :param name:
+#            """
+#
+#     def __init__(self,
+#                  var_factory: VarFactory,
+#                  block_sys: Block,
+#                  api_object_name,
+#                  api_object,
+#                  ):
+#         """
+#
+#         :param var_factory:
+#         :param block_sys:
+#         :param api_object_name:
+#         :param api_object:
+#         :param templates_list:
+#         :param templates_catalogue:
+#         """
+#         super().__init__(0, 0, 100, 60)
+#
+#         # ------------------------
+#         # API
+#         # ------------------------
+#         self.var_factory = var_factory
+#         self.block = block_sys
+#         self.resize_handle: ResizeHandle | None = None
+#         self.resizing_from_handle = False
+#         self.api_object_name = api_object_name
+#
+#
+#         self.api_object = api_object
+#         self.name_item = QGraphicsTextItem(self.block.name, self)
+#         self.inputs: List[PortItem] = list()
+#         self.outputs: List[PortItem] = list()
+#         self.editor_window = DynamicBLockEditorGUI(
+#             var_factory=self.var_factory,
+#             block=self.block,
+#             templates_list=self.templates_list,
+#             templates_catalogue=self.templates_catalogue,
+#             api_object_name=self.api_object_name,
+#             api_object=self.api_object
+#         )
+#
+#         self.setBrush(QBrush(QColor("#C0C0C0")))
+#         self.setFlags(
+#             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
+#             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+#             QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
+#         )
+#         self.setAcceptHoverEvents(True)
+#         self.name_item.setPos(10, 5)
+#
+#         n_inputs = len(self.block.in_vars)
+#         n_outputs = len(self.block.out_vars)
+#
+#         self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
+#         self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+#
+#         # --- assign tooltips to portItems with the assigned variable name ---
+#         for i, port in enumerate(self.inputs):
+#             var_name = self.block.in_vars[i].name
+#             port.setToolTip(f"Input {i}: {var_name}")
+#
+#         for i, port in enumerate(self.outputs):
+#             var_name = self.block.out_vars[i].name
+#             port.setToolTip(f"Output {i}: {var_name}")
+#
+#         self.resize_handle = ResizeHandle(self)
+#
+#         super().setRect(0, 0, 100, 60)
+#         self.update_ports()
+#         self.update_handle_position()
+#
+#     @property
+#     def subsys(self):
+#         return self.block
+#
+#     def mouseDoubleClickEvent(self, event):
+#         """
+#         opens the editor
+#         Parameters
+#         ----------
+#         event :
+#
+#         Returns
+#         -------
+#
+#         """
+#         self.editor_window.show()
+#
+#     def resize_block(self, width, height):
+#         # Update geometry safely
+#         self.prepareGeometryChange()
+#         QGraphicsRectItem.setRect(self, 0, 0, width, height)
+#         self.update_ports()
+#         self.update_handle_position()
+#
+#     def update_handle_position(self):
+#         rect = self.rect()
+#         self.resizing_from_handle = False
+#         self.resize_handle.setPos(rect.width(), rect.height())
+#         self.resizing_from_handle = True
+#
+#     def _set_rect_internal(self, w, h):
+#         QGraphicsRectItem.setRect(self, 0, 0, w, h)
+#         self.update_ports()
+#         self.update_handle_position()
+#
+#     def set_rectangle(self, x, y, w, h):
+#         if not getattr(self, '_suppress_resize', False):
+#             self._set_rect_internal(w, h)
+#
+#     def update_ports(self):
+#         for i, port in enumerate(self.inputs):
+#             spacing = self.rect().height() / (len(self.inputs) + 1)
+#             port.setPos(0, spacing * (i + 1))
+#         for i, port in enumerate(self.outputs):
+#             spacing = self.rect().height() / (len(self.outputs) + 1)
+#             port.setPos(self.rect().width(), spacing * (i + 1))
+#         self.update_handle_position()
+#         # Also update connections
+#         for port in self.inputs + self.outputs:
+#             if port.connections:
+#                 for conn in port.connections:
+#                     conn.update_path()
+#
+#     def hoverEnterEvent(self, event):
+#         QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
+#
+#     def hoverLeaveEvent(self, event):
+#         QApplication.restoreOverrideCursor()
+#
+#     def itemChange(self, change, value):
+#         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+#             for port in self.inputs + self.outputs:
+#                 if port.connections:
+#                     for conn in port.connections:
+#                         conn.update_path()
+#         return super().itemChange(change, value)
+#
 
 
 class BlockItem(QGraphicsRectItem):
@@ -1779,7 +1969,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         #
         #         model = create_generic_block(self.var_factory, state_ins, state_outs, algeb_ins, algeb_outs)
         #         self.main_block.add(model)
-        #         item = ModelHostItem(
+        #         item = GenericBlockItem(
         #             var_factory=self.var_factory,
         #             block_sys=model,
         #             api_object=self.api_object
@@ -1801,7 +1991,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         #             algeb_outs=algeb_outs,
         #             subdiagram=model.diagram
         #         )
-        #
+
 
         if block_type is not None:
             block_item = self.create_block_item(
