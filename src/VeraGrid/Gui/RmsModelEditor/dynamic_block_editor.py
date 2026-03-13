@@ -1424,7 +1424,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 mode=self.mode
             )
 
-            item.setPos(QtCore.QPointF(x_pos, y_pos()))
+            item.setPos(QtCore.QPointF(x_pos, y_pos))
             self.scene.addItem(item)
             # save nodes in diagram
             self.diagram.add_node(
