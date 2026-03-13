@@ -122,7 +122,6 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
         rms_model_editor = DynamicBlockEditorGUI(
             var_factory=self.editor.circuit.rms_var_factory,
             block=self.api_object.rms_model,
-            templates_list=templ_list,
             api_object=self.api_object,
             main_editor=True,
         )

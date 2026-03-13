@@ -480,149 +480,148 @@ class ParameterEditorDialog(QDialog):
         else:
             pass
 
-# class GenericBlockItem(QGraphicsRectItem):
-#     """
-#            Class to represent generic block to construct devices in the editor
-#            :param name:
-#            """
-#
-#     def __init__(self,
-#                  var_factory: VarFactory,
-#                  block_sys: Block,
-#                  api_object_name,
-#                  api_object,
-#                  ):
-#         """
-#
-#         :param var_factory:
-#         :param block_sys:
-#         :param api_object_name:
-#         :param api_object:
-#         :param templates_list:
-#         :param templates_catalogue:
-#         """
-#         super().__init__(0, 0, 100, 60)
-#
-#         # ------------------------
-#         # API
-#         # ------------------------
-#         self.var_factory = var_factory
-#         self.block = block_sys
-#         self.resize_handle: ResizeHandle | None = None
-#         self.resizing_from_handle = False
-#         self.api_object_name = api_object_name
-#
-#
-#         self.api_object = api_object
-#         self.name_item = QGraphicsTextItem(self.block.name, self)
-#         self.inputs: List[PortItem] = list()
-#         self.outputs: List[PortItem] = list()
-#         self.editor_window = DynamicBLockEditorGUI(
-#             var_factory=self.var_factory,
-#             block=self.block,
-#             templates_list=self.templates_list,
-#             templates_catalogue=self.templates_catalogue,
-#             api_object_name=self.api_object_name,
-#             api_object=self.api_object
-#         )
-#
-#         self.setBrush(QBrush(QColor("#C0C0C0")))
-#         self.setFlags(
-#             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
-#             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
-#             QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
-#         )
-#         self.setAcceptHoverEvents(True)
-#         self.name_item.setPos(10, 5)
-#
-#         n_inputs = len(self.block.in_vars)
-#         n_outputs = len(self.block.out_vars)
-#
-#         self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
-#         self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
-#
-#         # --- assign tooltips to portItems with the assigned variable name ---
-#         for i, port in enumerate(self.inputs):
-#             var_name = self.block.in_vars[i].name
-#             port.setToolTip(f"Input {i}: {var_name}")
-#
-#         for i, port in enumerate(self.outputs):
-#             var_name = self.block.out_vars[i].name
-#             port.setToolTip(f"Output {i}: {var_name}")
-#
-#         self.resize_handle = ResizeHandle(self)
-#
-#         super().setRect(0, 0, 100, 60)
-#         self.update_ports()
-#         self.update_handle_position()
-#
-#     @property
-#     def subsys(self):
-#         return self.block
-#
-#     def mouseDoubleClickEvent(self, event):
-#         """
-#         opens the editor
-#         Parameters
-#         ----------
-#         event :
-#
-#         Returns
-#         -------
-#
-#         """
-#         self.editor_window.show()
-#
-#     def resize_block(self, width, height):
-#         # Update geometry safely
-#         self.prepareGeometryChange()
-#         QGraphicsRectItem.setRect(self, 0, 0, width, height)
-#         self.update_ports()
-#         self.update_handle_position()
-#
-#     def update_handle_position(self):
-#         rect = self.rect()
-#         self.resizing_from_handle = False
-#         self.resize_handle.setPos(rect.width(), rect.height())
-#         self.resizing_from_handle = True
-#
-#     def _set_rect_internal(self, w, h):
-#         QGraphicsRectItem.setRect(self, 0, 0, w, h)
-#         self.update_ports()
-#         self.update_handle_position()
-#
-#     def set_rectangle(self, x, y, w, h):
-#         if not getattr(self, '_suppress_resize', False):
-#             self._set_rect_internal(w, h)
-#
-#     def update_ports(self):
-#         for i, port in enumerate(self.inputs):
-#             spacing = self.rect().height() / (len(self.inputs) + 1)
-#             port.setPos(0, spacing * (i + 1))
-#         for i, port in enumerate(self.outputs):
-#             spacing = self.rect().height() / (len(self.outputs) + 1)
-#             port.setPos(self.rect().width(), spacing * (i + 1))
-#         self.update_handle_position()
-#         # Also update connections
-#         for port in self.inputs + self.outputs:
-#             if port.connections:
-#                 for conn in port.connections:
-#                     conn.update_path()
-#
-#     def hoverEnterEvent(self, event):
-#         QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
-#
-#     def hoverLeaveEvent(self, event):
-#         QApplication.restoreOverrideCursor()
-#
-#     def itemChange(self, change, value):
-#         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
-#             for port in self.inputs + self.outputs:
-#                 if port.connections:
-#                     for conn in port.connections:
-#                         conn.update_path()
-#         return super().itemChange(change, value)
-#
+class GenericBlockItem(QGraphicsRectItem):
+    """
+           Class to represent generic block to construct devices in the editor
+           :param name:
+           """
+
+    def __init__(self,
+                 var_factory: VarFactory,
+                 block: Block,
+                 api_object,
+                 mode: DynamicEditorMode
+                 ):
+        """
+
+        :param var_factory:
+        :param block_sys:
+        :param api_object_name:
+        :param api_object:
+        :param templates_list:
+        :param templates_catalogue:
+        """
+        super().__init__(0, 0, 100, 60)
+
+        # ------------------------
+        # API
+        # ------------------------
+        self.var_factory = var_factory
+        self.block = block
+        self.mode = mode
+        self.api_object = api_object
+
+        self.resize_handle: ResizeHandle | None = None
+        self.resizing_from_handle = False
+
+        self.name_item = QGraphicsTextItem(self.block.name, self)
+        self.inputs: List[PortItem] = list()
+        self.outputs: List[PortItem] = list()
+
+        self.editor_window = DynamicBlockEditorGUI(
+            var_factory=self.var_factory,
+            block=self.block,
+            api_object=self.api_object,
+            mode = self.mode
+        )
+
+        self.setBrush(QBrush(QColor("#C0C0C0")))
+        self.setFlags(
+            QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
+            QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
+            QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
+        )
+        self.setAcceptHoverEvents(True)
+        self.name_item.setPos(10, 5)
+
+        n_inputs = len(self.block.in_vars)
+        n_outputs = len(self.block.out_vars)
+
+        self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
+        self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+
+        # --- assign tooltips to portItems with the assigned variable name ---
+        for i, port in enumerate(self.inputs):
+            var_name = self.block.in_vars[i].name
+            port.setToolTip(f"Input {i}: {var_name}")
+
+        for i, port in enumerate(self.outputs):
+            var_name = self.block.out_vars[i].name
+            port.setToolTip(f"Output {i}: {var_name}")
+
+        self.resize_handle = ResizeHandle(self)
+
+        super().setRect(0, 0, 100, 60)
+        self.update_ports()
+        self.update_handle_position()
+
+    @property
+    def subsys(self):
+        return self.block
+
+    def mouseDoubleClickEvent(self, event):
+        """
+        opens the editor
+        Parameters
+        ----------
+        event :
+
+        Returns
+        -------
+
+        """
+        self.editor_window.show()
+
+    def resize_block(self, width, height):
+        # Update geometry safely
+        self.prepareGeometryChange()
+        QGraphicsRectItem.setRect(self, 0, 0, width, height)
+        self.update_ports()
+        self.update_handle_position()
+
+    def update_handle_position(self):
+        rect = self.rect()
+        self.resizing_from_handle = False
+        self.resize_handle.setPos(rect.width(), rect.height())
+        self.resizing_from_handle = True
+
+    def _set_rect_internal(self, w, h):
+        QGraphicsRectItem.setRect(self, 0, 0, w, h)
+        self.update_ports()
+        self.update_handle_position()
+
+    def set_rectangle(self, x, y, w, h):
+        if not getattr(self, '_suppress_resize', False):
+            self._set_rect_internal(w, h)
+
+    def update_ports(self):
+        for i, port in enumerate(self.inputs):
+            spacing = self.rect().height() / (len(self.inputs) + 1)
+            port.setPos(0, spacing * (i + 1))
+        for i, port in enumerate(self.outputs):
+            spacing = self.rect().height() / (len(self.outputs) + 1)
+            port.setPos(self.rect().width(), spacing * (i + 1))
+        self.update_handle_position()
+        # Also update connections
+        for port in self.inputs + self.outputs:
+            if port.connections:
+                for conn in port.connections:
+                    conn.update_path()
+
+    def hoverEnterEvent(self, event):
+        QApplication.setOverrideCursor(Qt.CursorShape.OpenHandCursor)
+
+    def hoverLeaveEvent(self, event):
+        QApplication.restoreOverrideCursor()
+
+    def itemChange(self, change, value):
+        if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
+            for port in self.inputs + self.outputs:
+                if port.connections:
+                    for conn in port.connections:
+                        conn.update_path()
+        return super().itemChange(change, value)
+
 
 
 class BlockItem(QGraphicsRectItem):
@@ -1262,14 +1261,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     def __init__(self,
                  var_factory: VarFactory,
                  block: Block,
-                 templates_list: List[RmsModelTemplate],
                  api_object: ALL_DEV_TYPES | None = None,
                  mode: DynamicEditorMode = DynamicEditorMode.RMS,
                  main_editor=False):
         """
 
         :param block:
-        :param templates_list:
         :param api_object:
         """
         super().__init__()
@@ -1292,8 +1289,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.main_block: Block = self.block
 
         self.diagram: BlockDiagram = self.block.diagram
-        self.templates_list = templates_list
         self.api_object = api_object
+        self.mode = mode
         self.main_editor = main_editor
         self.block_counters: Dict[BlockType, int] = dict()
         self.scene: DiagramScene = DiagramScene(self)
@@ -1318,6 +1315,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     ("Exciter", BlockType.EXCITER),
                     ("Line", BlockType.LINE),
                     ("Load", BlockType.LOAD),
+                    ("Generic", BlockType.GENERIC),
                 ]
             }
         elif mode == DynamicEditorMode.EMT:
@@ -1408,6 +1406,39 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return None
         else:
             return None
+
+    def create_generic_block_item(self, block_type: BlockType, x_pos, y_pos) -> BlockItem:
+
+        dialog = GenericBlockDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            name, state_ins, state_outs, algeb_ins, algeb_outs = dialog.get_values()
+
+            # model_host: DynamicModelHost = DynamicModelHost()
+
+            model = create_generic_block(self.var_factory, state_ins, state_outs, algeb_ins, algeb_outs)
+            self.main_block.add(model)
+            item = GenericBlockItem(
+                var_factory=self.var_factory,
+                block=model,
+                api_object=self.api_object,
+                mode=self.mode
+            )
+
+            item.setPos(QtCore.QPointF(x_pos, y_pos()))
+            self.scene.addItem(item)
+            # save nodes in diagram
+            self.diagram.add_node(
+                name=name,
+                x=x_pos,
+                y=y_pos,
+                device_uid=model.uid,
+                tpe=block_type.name,
+                state_ins=state_ins,
+                state_outs=state_outs,
+                algeb_ins=algeb_ins,
+                algeb_outs=algeb_outs,
+                subdiagram=model.diagram
+            )
 
     def create_block_item(self, block_type: BlockType, x_pos: float, y_pos: float) -> BlockItem | None:
         """
@@ -1860,34 +1891,59 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return:
         """
-        uid_to_blockitem: Dict[int, BlockItem] = dict()
+        uid_to_blockitem: Dict[int, BlockItem | GenericBlockItem] = dict()
         uid: int
         node: Any
         con: Any
 
         self.scene.clear()
 
+        # Recreate nodes
         for uid, node in self.diagram.node_data.items():
             block_type: BlockType = BlockType[node.tpe]
             block_model: Block | None = self.get_block_from_main_block(node.device_uid)
 
             if block_model is not None:
-                block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=node.name)
-                block_item.set_subsystem(block_model)
-                block_item.build_item()
-                self.scene.addItem(block_item)
-                block_item.setPos(QPointF(node.x, node.y))
 
-                brush: QBrush = block_item.brush()
-                brush.setColor(QColor(node.color))
-                block_item.setBrush(brush)
-                uid_to_blockitem[uid] = block_item
+                if block_type == BlockType.GENERIC:
 
-                current_count: int = self.block_counters.get(block_type, 0) + 1
-                self.block_counters[block_type] = current_count
-            else:
-                pass
+                    # block = Block()
+                    # find corresponding block
+                    # for model in self.main_block.get_all_blocks():
+                    #     if model.uid == node.device_uid:
+                    #         block = model
 
+                    generic_item = GenericBlockItem(
+                        var_factory=self.var_factory,
+                        block=block_model,
+                        api_object=self.api_object,
+                        mode=self.mode
+                    )
+                    self.scene.addItem(generic_item)
+                    generic_item.setPos(QPointF(node.x, node.y))
+                    brush = generic_item.brush()
+                    brush.setColor(QColor(node.color))
+                    generic_item.setBrush(brush)
+
+                    uid_to_blockitem[uid] = generic_item
+
+
+                else:
+                    block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=node.name)
+                    block_item.set_subsystem(block_model)
+                    block_item.build_item()
+                    self.scene.addItem(block_item)
+                    block_item.setPos(QPointF(node.x, node.y))
+
+                    brush: QBrush = block_item.brush()
+                    brush.setColor(QColor(node.color))
+                    block_item.setBrush(brush)
+                    uid_to_blockitem[uid] = block_item
+
+                    current_count: int = self.block_counters.get(block_type, 0) + 1
+                    self.block_counters[block_type] = current_count
+
+        # Recreate connections
         for uid, con in self.diagram.con_data.items():
             src_item: BlockItem | None = uid_to_blockitem.get(con.from_uid, None)
             dst_item: BlockItem | None = uid_to_blockitem.get(con.to_uid, None)
@@ -1960,45 +2016,24 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
         block_item: BlockItem | None
 
-        # if block_type == BlockType.GENERIC:
-        #     dialog = GenericBlockDialog(self)
-        #     if dialog.exec() == QDialog.DialogCode.Accepted:
-        #         name, state_ins, state_outs, algeb_ins, algeb_outs = dialog.get_values()
-        #
-        #         # model_host: DynamicModelHost = DynamicModelHost()
-        #
-        #         model = create_generic_block(self.var_factory, state_ins, state_outs, algeb_ins, algeb_outs)
-        #         self.main_block.add(model)
-        #         item = GenericBlockItem(
-        #             var_factory=self.var_factory,
-        #             block_sys=model,
-        #             api_object=self.api_object
-        #         )
-        #
-        #         item.setPos(QPointF(x0, y0))
-        #         self.scene.addItem(item)
-        #         # save nodes in diagram
-        #         self.diagram.add_node(
-        #             name=name,
-        #             x=scene_position.x(),
-        #             y=scene_position.y(),
-        #             device_uid=model.uid,
-        #             api_object_name=self.api_object_name,
-        #             tpe=tpe.name,
-        #             state_ins=state_ins,
-        #             state_outs=state_outs,
-        #             algeb_ins=algeb_ins,
-        #             algeb_outs=algeb_outs,
-        #             subdiagram=model.diagram
-        #         )
-
-
         if block_type is not None:
-            block_item = self.create_block_item(
-                block_type=block_type,
-                x_pos=scene_position.x(),
-                y_pos=scene_position.y()
-            )
+
+            block_item = None
+
+            if block_type == BlockType.GENERIC:
+
+                block_item = self.create_generic_block_item(
+                    block_type=block_type,
+                    x_pos=scene_position.x(),
+                    y_pos=scene_position.y()
+                )
+
+            else:
+                block_item = self.create_block_item(
+                    block_type=block_type,
+                    x_pos=scene_position.x(),
+                    y_pos=scene_position.y()
+                )
 
             if block_item is not None:
                 event.acceptProposedAction()
@@ -2020,7 +2055,6 @@ if __name__ == "__main__":
     window = DynamicBlockEditorGUI(
         var_factory=vf,
         block=bl,
-        templates_list=[],
         api_object=device,
     )
     window.show()
