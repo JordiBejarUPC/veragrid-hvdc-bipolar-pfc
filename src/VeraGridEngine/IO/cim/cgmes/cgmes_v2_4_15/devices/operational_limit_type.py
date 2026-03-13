@@ -18,6 +18,7 @@ class OperationalLimitType(IdentifiedObject):
 		CgmesProperty(property_name='limitType', class_type=LimitTypeKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Types of limits defined in the ENTSO-E Operational Handbook Policy 3.''', profiles=[]),
 		CgmesProperty(property_name='direction', class_type=OperationalLimitDirectionKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The direction of the limit.''', profiles=[]),
 	)
+	__slots__ = ('OperationalLimit', 'acceptableDuration', 'limitType', 'direction')
 	def __init__(self, rdfid='', tpe='OperationalLimitType'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

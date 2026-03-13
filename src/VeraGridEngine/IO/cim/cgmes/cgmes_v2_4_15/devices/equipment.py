@@ -17,6 +17,7 @@ class Equipment(PowerSystemResource):
 		CgmesProperty(property_name='EquipmentContainer', class_type='EquipmentContainer', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Container of this equipment.''', profiles=[]),
 		CgmesProperty(property_name='OperationalLimitSet', class_type='OperationalLimitSet', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The operational limit sets associated with this equipment.''', profiles=[]),
 	)
+	__slots__ = ('aggregate', 'EquipmentContainer', 'OperationalLimitSet')
 	def __init__(self, rdfid='', tpe='Equipment'):
 		PowerSystemResource.__init__(self, rdfid, tpe)
 

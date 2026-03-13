@@ -20,7 +20,6 @@ def _new_uid() -> int:
     return uuid.uuid4().int
 
 
-
 class Block:
     """
     Class representing a Block
@@ -95,9 +94,9 @@ class Block:
 
         self.alter_params: List[Var] = list() if alter_params is None else alter_params
         self.discrete_eqs: Dict[Var, Expr] = dict() if discrete_eqs is None else discrete_eqs
-        self.external_mapping: Dict[VarPowerFlowRefferenceType, Var|None] = (dict()
-                                                                        if external_mapping is None
-                                                                        else external_mapping)
+        self.external_mapping: Dict[VarPowerFlowRefferenceType, Var | None] = (dict()
+                                                                               if external_mapping is None
+                                                                               else external_mapping)
 
         self.api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] = (dict()
                                                                          if api_obj_mapping is None
@@ -134,11 +133,14 @@ class Block:
         else:
             raise ValueError(f"Cannot set diagram with {val}")
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
+        """
+        Get dictionary representation of this block
+        :return: Dictionary
+        """
         return {
             "name": self.name,
             "uid": self.uid,
-
 
             "state_vars": [_expr_to_dict(v) for v in self.state_vars],
             "algebraic_vars": [_expr_to_dict(v) for v in self.algebraic_vars],
@@ -148,14 +150,12 @@ class Block:
             "in_vars": [_expr_to_dict(v) for v in self.in_vars],
             "out_vars": [_expr_to_dict(v) for v in self.out_vars],
 
-
             "state_eqs": [_expr_to_dict(e) for e in self.state_eqs],
             "algebraic_eqs": [_expr_to_dict(e) for e in self.algebraic_eqs],
             "differential_eqs": [_expr_to_dict(e) for e in self.differential_eqs],
 
-
             "init_eqs": {
-                str(k.uid): {
+                k.uid: {
                     "key": _expr_to_dict(k),
                     "value": _expr_to_dict(v),
                 }
@@ -163,7 +163,7 @@ class Block:
             },
 
             "diff_init_eqs": {
-                str(k.uid): {
+                k.uid: {
                     "key": _expr_to_dict(k),
                     "value": _expr_to_dict(v),
                 }
@@ -171,7 +171,7 @@ class Block:
             },
 
             "event_dict": {
-                str(k.uid): {
+                k.uid: {
                     "key": _expr_to_dict(k),
                     "value": _expr_to_dict(v),
                 }
@@ -179,7 +179,7 @@ class Block:
             },
 
             "mode_dict": {
-                str(k.uid): {
+                k.uid: {
                     "key": _expr_to_dict(k),
                     "value": _expr_to_dict(v),
                 }
@@ -187,7 +187,7 @@ class Block:
             },
 
             "parameters": {
-                str(k.uid): {
+                k.uid: {
                     "key": _expr_to_dict(k),
                     "value": _expr_to_dict(v),
                 }
@@ -195,13 +195,12 @@ class Block:
             },
 
             "init_values": {
-                str(k.uid): {
+                k.uid: {
                     "key": _expr_to_dict(k),
                     "value": _expr_to_dict(v),
                 }
                 for k, v in self.init_values.items()
             },
-
 
             "external_mapping": {
                 k: _expr_to_dict(v)
@@ -209,87 +208,87 @@ class Block:
             },
 
             "api_obj_mapping": {
-                k: _expr_to_dict(v)
+                k.value: _expr_to_dict(v)
                 for k, v in self.api_obj_mapping.items()
             },
 
+            "discrete_eqs": {
+                k.uid: {
+                    "key": _expr_to_dict(k),
+                    "value": _expr_to_dict(v),
+                }
+                for k, v in self.discrete_eqs.items()
+            },
 
-            "children": [child.to_dict() for child in self.children]
+            "children": [child.to_dict() for child in self.children],
+
+            "diagram": self.diagram.to_dict(),
         }
 
     @staticmethod
-    def parse(data: dict) -> "Block":
-
+    def parse(data: Dict[str, Any]) -> "Block":
+        """
+        Parse the dictionary representation of a block
+        :param data:
+        :return:
+        """
         block = Block(
+            state_vars=[_dict_to_expr(data=v) for v in data["state_vars"]],
+            state_eqs=[_dict_to_expr(data=e) for e in data["state_eqs"]],
+            algebraic_vars=[_dict_to_expr(data=v) for v in data["algebraic_vars"]],
+            algebraic_eqs=[_dict_to_expr(data=e) for e in data["algebraic_eqs"]],
+            diff_vars=[_dict_to_expr(data=v) for v in data["diff_vars"]],
+            reformulated_vars=[_dict_to_expr(data=v) for v in data["reformulated_vars"]],
+            differential_eqs=[_dict_to_expr(data=e) for e in data["differential_eqs"]],
+            parameters={
+                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
+                for item in data["parameters"].values()
+            },
+            alter_params=None,
+            init_values={
+                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
+                for item in data["init_values"].values()
+            },
+            init_eqs={
+                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
+                for item in data["init_eqs"].values()
+            },
+            diff_init_eqs={
+                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
+                for item in data["diff_init_eqs"].values()
+            },
+            discrete_eqs={
+                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
+                for item in data.get("discrete_eqs", {}).values()
+            },
+            children=[
+                Block.parse(child_data)
+                for child_data in data["children"]
+            ],
+            in_vars=[_dict_to_expr(data=v) for v in data["in_vars"]],
+            out_vars=[_dict_to_expr(data=v) for v in data["out_vars"]],
+            event_dict={
+                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
+                for item in data["event_dict"].values()
+            },
+            mode_dict={
+                _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
+                for item in data.get("mode_dict", {}).values()
+            },
+            external_mapping={
+                VarPowerFlowRefferenceType(k): _dict_to_expr(v)
+                for k, v in data["external_mapping"].items()
+            },
+            api_obj_mapping={
+                ParamPowerFlowRefferenceType(k): _dict_to_expr(v)
+                for k, v in data["api_obj_mapping"].items()
+            },
             name=data["name"],
             uid=data["uid"]
         )
 
-
-        block.state_vars = [_dict_to_expr(v) for v in data["state_vars"]]
-        block.algebraic_vars = [_dict_to_expr(v) for v in data["algebraic_vars"]]
-        block.diff_vars = [_dict_to_expr(v) for v in data["diff_vars"]]
-        block.reformulated_vars = [
-            _dict_to_expr(v) for v in data["reformulated_vars"]
-        ]
-
-        block.in_vars = [_dict_to_expr(v) for v in data["in_vars"]]
-        block.out_vars = [_dict_to_expr(v) for v in data["out_vars"]]
-
-
-        block.state_eqs = [_dict_to_expr(e) for e in data["state_eqs"]]
-        block.algebraic_eqs = [_dict_to_expr(e) for e in data["algebraic_eqs"]]
-        block.differential_eqs = [
-            _dict_to_expr(e) for e in data["differential_eqs"]
-        ]
-
-
-        block.init_eqs = {
-            _dict_to_expr(item["key"]): _dict_to_expr(item["value"])
-            for item in data["init_eqs"].values()
-        }
-
-        block.diff_init_eqs = {
-            _dict_to_expr(item["key"]): _dict_to_expr(item["value"])
-            for item in data["diff_init_eqs"].values()
-        }
-
-        block.event_dict = {
-            _dict_to_expr(item["key"]): _dict_to_expr(item["value"])
-            for item in data["event_dict"].values()
-        }
-
-        block.mode_dict = {
-            _dict_to_expr(item["key"]): _dict_to_expr(item["value"])
-            for item in data.get("mode_dict", {}).values()
-        }
-
-        block.parameters = {
-            _dict_to_expr(item["key"]): _dict_to_expr(item["value"])
-            for item in data["parameters"].values()
-        }
-
-        block.init_values = {
-            _dict_to_expr(item["key"]): _dict_to_expr(item["value"])
-            for item in data["init_values"].values()
-        }
-
-
-        block.external_mapping = {
-            k: _dict_to_expr(v)
-            for k, v in data["external_mapping"].items()
-        }
-
-        block.api_obj_mapping = {
-            k: _dict_to_expr(v)
-            for k, v in data["api_obj_mapping"].items()
-        }
-
-
-        block.children = [
-            Block.parse(child_data)
-            for child_data in data["children"]
-        ]
+        # Fill the diagram
+        block.diagram.parse(data.get("diagram", {}))
 
         return block
 
@@ -298,13 +297,25 @@ class Block:
         Deep copy preserving UIDs.
         Completely structural clone using to_dict + parse.
         """
-        return Block.parse(self.to_dict())
+        d = self.to_dict()
+        return Block.parse(d)
 
-    def compare(self, block2: Block):
+    def __deepcopy__(self, memo: Dict) -> "Block":
+        return self.copy()
+
+    def compare(self, block2: Block) -> bool:
+        """
+        Compare two blocks.
+        :param block2:
+        :return:
+        """
         dict1 = self.to_dict()
         dict2 = block2.to_dict()
         return dict1 == dict2
 
+    def __eq__(self, other: Block) -> bool:
+        x = self.compare(other)
+        return x
 
     def set_parameter_in_model(self, var_name: str, new_value: float):
         """
@@ -342,8 +353,9 @@ class Block:
                 found += 1
         if found == 0:
             raise ValueError(f"Parameter {var_name} not found in model")
-        elif found >1:
-            raise ValueError(f"Could not set value because several parameters with name {var_name} where found in the model")
+        elif found > 1:
+            raise ValueError(
+                f"Could not set value because several parameters with name {var_name} where found in the model")
 
     def check_empty(self) -> bool:
         """
@@ -507,7 +519,7 @@ class Block:
             variables.extend(blk.diff_vars)
         return variables
 
-    def  update_equations(self, old, new):
+    def update_equations(self, old, new):
         """
         this function changes the variable old for the variable new in a block
         :param old:
@@ -583,8 +595,6 @@ class Block:
         Function to connect two blocks by variables sharing
         """
 
-
-
         for var_to_subs, incoming_var in zip(vars_to_subs, incoming_vars):
             self.update_model(var_to_subs, incoming_var)
 
@@ -601,12 +611,3 @@ def find_name_in_block(name: str, block: Block) -> Var | None:
             return result
 
     return None
-
-
-
-
-
-
-
-
-

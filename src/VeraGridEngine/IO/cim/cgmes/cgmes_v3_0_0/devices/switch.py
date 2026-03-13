@@ -26,6 +26,7 @@ class Switch(ConductingEquipment):
 	<li>locked=false and Switch.open=false. The resulting state is closed.</li>
 </ul>''', profiles=[]),
 	)
+	__slots__ = ('normalOpen', 'ratedCurrent', 'retained', 'SvSwitch', 'open', 'locked')
 	def __init__(self, rdfid='', tpe='Switch'):
 		ConductingEquipment.__init__(self, rdfid, tpe)
 

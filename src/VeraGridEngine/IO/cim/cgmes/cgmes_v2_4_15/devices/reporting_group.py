@@ -16,6 +16,7 @@ class ReportingGroup(IdentifiedObject):
 		CgmesProperty(property_name='BusNameMarker', class_type='BusNameMarker', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The reporting group to which this bus name marker belongs.''', profiles=[]),
 		CgmesProperty(property_name='TopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The reporting group to which the topological node belongs.''', profiles=[]),
 	)
+	__slots__ = ('BusNameMarker', 'TopologicalNode')
 	def __init__(self, rdfid='', tpe='ReportingGroup'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

@@ -19,6 +19,7 @@ class OperationalLimitType(IdentifiedObject):
 		CgmesProperty(property_name='isInfiniteDuration', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Defines if the operational limit type has infinite duration. If true, the limit has infinite duration. If false, the limit has definite duration which is defined by the attribute acceptableDuration.''', profiles=[]),
 		CgmesProperty(property_name='kind', class_type=LimitKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Types of limits defined in the ENTSO-E Operational Handbook Policy 3.''', profiles=[]),
 	)
+	__slots__ = ('OperationalLimit', 'acceptableDuration', 'direction', 'isInfiniteDuration', 'kind')
 	def __init__(self, rdfid='', tpe='OperationalLimitType'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

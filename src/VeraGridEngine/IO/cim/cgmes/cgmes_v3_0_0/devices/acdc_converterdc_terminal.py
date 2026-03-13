@@ -18,6 +18,7 @@ class ACDCConverterDCTerminal(DCBaseTerminal):
 - For a monopole with two converter terminals use DCPolarityKind �positive� and �negative�.
 - For a bi-pole or symmetric monopole with three converter terminals use DCPolarityKind �positive�, �middle� and �negative�.''', profiles=[]),
 	)
+	__slots__ = ('DCConductingEquipment', 'polarity')
 	def __init__(self, rdfid='', tpe='ACDCConverterDCTerminal'):
 		DCBaseTerminal.__init__(self, rdfid, tpe)
 

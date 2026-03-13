@@ -425,6 +425,9 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
             if prop.has_profile():
                 data[name + '_prof'] = profile_todict(elm.get_profile_by_prop(prop=prop))
 
+        elif prop.tpe == SubObjectType.MergeInformation:
+            data[name] = obj.to_dict()
+
         elif prop.tpe == SubObjectType.GeneratorQCurve:
             data[name] = obj.to_list()
 
@@ -1225,6 +1228,10 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                         logger=logger,
                                         elm_name=elm.name
                                     )
+
+                                elif gc_prop.tpe == SubObjectType.MergeInformation:
+                                    # set the value directly
+                                    elm.diff_changes.parse(property_value)
 
                                 else:
                                     raise Exception(f"SubObjectType {gc_prop.tpe} not implemented")

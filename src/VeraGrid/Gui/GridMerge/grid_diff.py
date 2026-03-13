@@ -145,7 +145,8 @@ class GridDiffDialogue(QtWidgets.QDialog):
         all_no_action = populate_tree(tree_widget=self.ui.treeWidget,
                                       base=self._new_grid,
                                       diff=self._diff,
-                                      all_elms_base_dict=self.all_elms_base_dict)
+                                      all_elms_base_dict=self.all_elms_base_dict,
+                                      diff_creation=True)
 
     def save_diff(self):
         """

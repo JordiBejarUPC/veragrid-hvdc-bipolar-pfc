@@ -11,12 +11,9 @@ import scipy.sparse as sp
 import math
 import concurrent.futures
 
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr,                                                    heaviside_num, expression2numba,
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, heaviside_num, expression2numba,
                                                     get_expression_vars)
 from VeraGridEngine.basic_structures import Vec, IntVec
-
-
-
 
 
 def compile_jac_block(block_id,
@@ -110,7 +107,7 @@ class SymbolicJacobian:
                         sparsity_pattern : tuple(np.ndarray, np.ndarray)
                             Row/col indices of structurally non‑zero entries.
                 """
-        
+
         h = Var('h')
         alias_names_dict[h.uid] = 'h'
         compiler_names_dict[h.uid] = 'h'
@@ -406,6 +403,7 @@ class SymbolicDerivative:
             self.func(x, xn, dx, h, self.data)
         return self.data
 
+
 class SymbolicParamsVectorInit:
     """
     SymbolicFunction
@@ -474,4 +472,3 @@ class SymbolicParamsVectorInit:
         if self.func is not None:
             self.func(variables, event_params, glob_time, self.data)
         return self.data
-

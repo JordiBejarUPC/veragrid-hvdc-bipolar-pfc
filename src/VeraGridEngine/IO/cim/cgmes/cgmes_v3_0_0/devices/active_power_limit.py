@@ -13,6 +13,7 @@ class ActivePowerLimit(OperationalLimit):
 		CgmesProperty(property_name='normalValue', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', profiles=[]),
 		CgmesProperty(property_name='value', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', profiles=[]),
 	)
+	__slots__ = ('normalValue', 'value')
 	def __init__(self, rdfid='', tpe='ActivePowerLimit'):
 		OperationalLimit.__init__(self, rdfid, tpe)
 

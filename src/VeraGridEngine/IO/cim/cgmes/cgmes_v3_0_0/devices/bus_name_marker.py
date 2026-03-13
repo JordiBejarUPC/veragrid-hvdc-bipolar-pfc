@@ -20,6 +20,7 @@ class BusNameMarker(IdentifiedObject):
         CgmesProperty(property_name='priority', class_type=int, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Priority of bus name marker for use as topology bus name.  Use 0 for do not care.  Use 1 for highest priority.  Use 2 as priority is less than 1 and so on.''', profiles=[]),
         CgmesProperty(property_name='ReportingGroup', class_type='ReportingGroup', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The reporting group to which this bus name marker belongs.''', profiles=[]),
     )
+    __slots__ = ('Terminal', 'priority', 'ReportingGroup')
     def __init__(self, rdfid='', tpe='BusNameMarker'):
         IdentifiedObject.__init__(self, rdfid, tpe)
 

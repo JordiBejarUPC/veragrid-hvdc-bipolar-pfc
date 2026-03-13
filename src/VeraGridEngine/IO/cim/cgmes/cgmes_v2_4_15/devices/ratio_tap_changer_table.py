@@ -18,6 +18,7 @@ class RatioTapChangerTable(IdentifiedObject):
         CgmesProperty(property_name='RatioTapChanger', class_type='RatioTapChanger', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The tap ratio table for this ratio  tap changer.''', profiles=[]),
         CgmesProperty(property_name='RatioTapChangerTablePoint', class_type='RatioTapChangerTablePoint', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Table of this point.''', profiles=[]),
     )
+    __slots__ = ('RatioTapChanger', 'RatioTapChangerTablePoint')
     def __init__(self, rdfid='', tpe='RatioTapChangerTable'):
         IdentifiedObject.__init__(self, rdfid, tpe)
 

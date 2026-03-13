@@ -16,6 +16,7 @@ class PhaseTapChanger(TapChanger):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='TransformerEnd', class_type='TransformerEnd', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Phase tap changer associated with this transformer end.''', profiles=[]),
 	)
+	__slots__ = ('TransformerEnd',)
 	def __init__(self, rdfid='', tpe='PhaseTapChanger'):
 		TapChanger.__init__(self, rdfid, tpe)
 

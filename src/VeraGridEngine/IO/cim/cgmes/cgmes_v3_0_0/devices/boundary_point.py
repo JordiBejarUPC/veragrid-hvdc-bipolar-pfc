@@ -30,6 +30,7 @@ The ISO code is a two-character country code as defined by ISO 3166 (http://www.
 		CgmesProperty(property_name='isExcludedFromAreaInterchange', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''If true, this boundary point is on the interconnection that is excluded from control area interchange calculation and consequently has no related tie flows. Otherwise, the interconnection is included in control area interchange and a TieFlow is required at all sides of the boundary point (default).''', profiles=[]),
 		CgmesProperty(property_name='ConnectivityNode', class_type='ConnectivityNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The connectivity node that is designated as a boundary point.''', profiles=[]),
 	)
+	__slots__ = ('fromEndIsoCode', 'fromEndName', 'fromEndNameTso', 'toEndIsoCode', 'toEndName', 'toEndNameTso', 'isDirectCurrent', 'isExcludedFromAreaInterchange', 'ConnectivityNode')
 	def __init__(self, rdfid='', tpe='BoundaryPoint'):
 		PowerSystemResource.__init__(self, rdfid, tpe)
 

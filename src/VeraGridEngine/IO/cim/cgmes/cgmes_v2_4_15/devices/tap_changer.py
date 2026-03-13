@@ -28,6 +28,7 @@ The attribute shall be equal or greater than lowStep and equal or less than high
 		CgmesProperty(property_name='controlEnabled', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Specifies the regulation status of the equipment.  True is regulating, false is not regulating.''', profiles=[]),
 		CgmesProperty(property_name='step', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
 	)
+	__slots__ = ('highStep', 'lowStep', 'ltcFlag', 'neutralStep', 'neutralU', 'normalStep', 'TapChangerControl', 'SvTapStep', 'controlEnabled', 'step')
 	def __init__(self, rdfid='', tpe='TapChanger'):
 		PowerSystemResource.__init__(self, rdfid, tpe)
 

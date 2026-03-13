@@ -26,6 +26,7 @@ class MutualCoupling(IdentifiedObject):
 		CgmesProperty(property_name='Second_Terminal', class_type='Terminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The starting terminal for the calculation of distances along the second branch of the mutual coupling.''', profiles=[]),
 		CgmesProperty(property_name='First_Terminal', class_type='Terminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The starting terminal for the calculation of distances along the first branch of the mutual coupling.  Normally MutualCoupling would only be used for terminals of AC line segments.  The first and second terminals of a mutual coupling should point to different AC line segments.''', profiles=[]),
 	)
+	__slots__ = ('b0ch', 'distance11', 'distance12', 'distance21', 'distance22', 'g0ch', 'r0', 'x0', 'Second_Terminal', 'First_Terminal')
 	def __init__(self, rdfid='', tpe='MutualCoupling'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

@@ -23,6 +23,7 @@ The attribute is not used for EquivalentBranch, EquivalentShunt and EquivalentIn
         CgmesProperty(property_name='OperationalLimitSet', class_type='OperationalLimitSet', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The operational limit sets associated with this equipment.''', profiles=[]),
         CgmesProperty(property_name='inService', class_type=bool, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Specifies the availability of the equipment. True means the equipment is available for topology processing, which determines if the equipment is energized or not. False means that the equipment is treated by network applications as if it is not in the model.''', profiles=[]),
     )
+    __slots__ = ('aggregate', 'normallyInService', 'EquipmentContainer', 'OperationalLimitSet', 'inService')
     def __init__(self, rdfid='', tpe='Equipment'):
         PowerSystemResource.__init__(self, rdfid, tpe)
 

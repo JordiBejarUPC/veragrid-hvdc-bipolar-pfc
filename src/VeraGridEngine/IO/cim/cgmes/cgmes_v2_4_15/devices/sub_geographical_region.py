@@ -21,6 +21,7 @@ class SubGeographicalRegion(IdentifiedObject):
         CgmesProperty(property_name='Lines', class_type='Line', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The lines within the sub-geographical region.''', profiles=[]),
         CgmesProperty(property_name='Substations', class_type='Substation', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The substations in this sub-geographical region.''', profiles=[]),
     )
+    __slots__ = ('DCLines', 'Region', 'Lines', 'Substations')
     def __init__(self, rdfid='', tpe='SubGeographicalRegion'):
         IdentifiedObject.__init__(self, rdfid, tpe)
 
