@@ -1,7 +1,6 @@
 # --- AUTO-GENERATED EMT TEMPLATE FROM DGS ---
 # Source: C:\Users\andre\Documents\DGS_test_type_models.dgs
 
-import numpy as np
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
@@ -1154,16 +1153,16 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
     d_w1_s_x = vf.add_diff_var('d_w1/s__x_' + name, base_var=w1_s_x)
 
     # --- Block Assembly ---
-    v_1_2H_s_KD = Block(
+    v_1_2H_s_KD_0 = Block(
         state_eqs=[
-            (((((-KD_1) / 2.0) / v_1_2H_s_KD_H_1) * Df_1) + (((1.0 / 2.0) / v_1_2H_s_KD_H_1) * DP_1)),
+            (((((-KD_1) / sym.Const(2.0)) / v_1_2H_s_KD_H_1) * Df_1) + (((sym.Const(1.0) / sym.Const(2.0)) / v_1_2H_s_KD_H_1) * DP_1)),
         ],
         state_vars=[v_1_2H_s_KD_xp],
         algebraic_eqs=[
-            (w1 - ((2.0 * 3.141592653589793) * v_1_2H_s_KD_f1_1)),
-            (KS - (1.0 / v_1_2H_s_KD_Xv_1)),
-            (wn - sym.sqrt((((w1_1 * KS_1) / 2.0) / v_1_2H_s_KD_H_1))),
-            (KD - ((((2.0 * v_1_2H_s_KD_zeta_1) * wn_1) * 2.0) * v_1_2H_s_KD_H_1)),
+            (w1 - ((sym.Const(2.0) * sym.Const(3.141592653589793)) * v_1_2H_s_KD_f1_1)),
+            (KS - (sym.Const(1.0) / v_1_2H_s_KD_Xv_1)),
+            (wn - sym.sqrt((((w1_1 * KS_1) / sym.Const(2.0)) / v_1_2H_s_KD_H_1))),
+            (KD - ((((sym.Const(2.0) * v_1_2H_s_KD_zeta_1) * wn_1) * sym.Const(2.0)) * v_1_2H_s_KD_H_1)),
             (Df - v_1_2H_s_KD_xp_1),
             (v_1_2H_s_KD_inc_xp - Df_1),
         ],
@@ -1172,56 +1171,65 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         out_vars=[Df],
         name='1/(2H s + KD)'
     )
-    v_1_2H_s_KD.diff_vars = [d_1_2H_s_KD_xp]
-    v_1_2H_s_KD.event_dict = {
+    v_1_2H_s_KD_0.diff_vars = [d_1_2H_s_KD_xp]
+    v_1_2H_s_KD_0.event_dict = {
         v_1_2H_s_KD_H: vf.add_const(None, name='H'),
         v_1_2H_s_KD_zeta: vf.add_const(None, name='zeta'),
         v_1_2H_s_KD_f1: vf.add_const(None, name='f1'),
         v_1_2H_s_KD_Xv: vf.add_const(None, name='Xv'),
     }
 
-    v_1_2Hs = Block(
+    v_1_2Hs_1 = Block(
         state_eqs=[
-            ((1.0 / (2.0 * v_1_2Hs_H_1)) * DP_full_1),
+            ((sym.Const(1.0) / (sym.Const(2.0) * v_1_2Hs_H_1)) * DP_1),
         ],
         state_vars=[v_1_2Hs_xw],
         algebraic_eqs=[
             (Dw - v_1_2Hs_xw_1),
         ],
         algebraic_vars=[Dw],
-        in_vars=[DP_full],
+        in_vars=[DP],
         out_vars=[Dw],
         name='1/2Hs'
     )
-    v_1_2Hs.diff_vars = [d_1_2Hs_xw]
-    v_1_2Hs.event_dict = {
+    v_1_2Hs_1.diff_vars = [d_1_2Hs_xw]
+    v_1_2Hs_1.event_dict = {
         v_1_2Hs_H: vf.add_const(None, name='H'),
     }
 
-    v_1_2Hs = Block(
+    v_1_2Hs_2 = Block(
         state_eqs=[
-            ((1.0 / (2.0 * v_1_2Hs_H_3)) * DP_1),
+            ((sym.Const(1.0) / (sym.Const(2.0) * v_1_2Hs_H_3)) * DP_full_1),
         ],
         state_vars=[v_1_2Hs_xw_2],
         algebraic_eqs=[
             (Dw - v_1_2Hs_xw_3),
         ],
         algebraic_vars=[Dw],
-        in_vars=[DP],
+        in_vars=[DP_full],
         out_vars=[Dw],
         name='1/2Hs'
     )
-    v_1_2Hs.diff_vars = [d_1_2Hs_xw_1]
-    v_1_2Hs.event_dict = {
+    v_1_2Hs_2.diff_vars = [d_1_2Hs_xw_1]
+    v_1_2Hs_2.event_dict = {
         v_1_2Hs_H_2: vf.add_const(None, name='H'),
     }
 
-    Capability_and_limitation = Block(
+    Capability_and_limitation_3 = Block(
+        algebraic_eqs=[
+            (Capability_and_limitation_inc_Idneg_cap_max - sym.Const(0.0)),
+            (Capability_and_limitation_inc_Idneg_cap_min - sym.Const(0.0)),
+            (Capability_and_limitation_inc_Iqneg_cap_max - sym.Const(0.0)),
+            (Capability_and_limitation_inc_Iqneg_cap_min - sym.Const(0.0)),
+            (Capability_and_limitation_inc_flag_crit_cond_high - sym.Const(0.0)),
+            (Capability_and_limitation_inc_flag_crit_cond_low - sym.Const(0.0)),
+        ],
+        algebraic_vars=[Capability_and_limitation_inc_Idneg_cap_max, Capability_and_limitation_inc_Idneg_cap_min, Capability_and_limitation_inc_Iqneg_cap_max, Capability_and_limitation_inc_Iqneg_cap_min, Capability_and_limitation_inc_flag_crit_cond_high, Capability_and_limitation_inc_flag_crit_cond_low],
         in_vars=[Vpcc, VdcRef, vMV_pos_mode1, Qlim_cap, Qlim_ind, Imax, idpos, iqpos, idneg, iqneg, idpos_sat, iqpos_sat, FRT_neg_flag, FRT_pos_flag, Qref1],
         out_vars=[idMVhigh, PMVhigh, idMVlow, PMVlow, iqMVlow, iqMVhigh, VMVhigh, VMVlow, QMVhigh, QMVlow, Idneg_cap_max, Iqneg_cap_max, Idneg_cap_min, Iqneg_cap_min, flag_crit_cond_high, flag_crit_cond_low],
         name='Capability_and_limitation'
     )
-    Capability_and_limitation.event_dict = {
+    Capability_and_limitation_3.event_dict = {
         Capability_and_limitation_inv_Xtrafo_Lout_pu: vf.add_const(None, name='inv_Xtrafo_Lout_pu'),
         Capability_and_limitation_MaxAuxiliaryVoltage: vf.add_const(None, name='MaxAuxiliaryVoltage'),
         Capability_and_limitation_MaxTransfoFluxVoltage: vf.add_const(None, name='MaxTransfoFluxVoltage'),
@@ -1238,21 +1246,12 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         Capability_and_limitation_Xtrafo_pu: vf.add_const(None, name='Xtrafo_pu'),
     }
 
-    Capability_and_limitation = Block(
-        algebraic_eqs=[
-            (Capability_and_limitation_inc_Idneg_cap_max - 0.0),
-            (Capability_and_limitation_inc_Idneg_cap_min - 0.0),
-            (Capability_and_limitation_inc_Iqneg_cap_max - 0.0),
-            (Capability_and_limitation_inc_Iqneg_cap_min - 0.0),
-            (Capability_and_limitation_inc_flag_crit_cond_high - 0.0),
-            (Capability_and_limitation_inc_flag_crit_cond_low - 0.0),
-        ],
-        algebraic_vars=[Capability_and_limitation_inc_Idneg_cap_max, Capability_and_limitation_inc_Idneg_cap_min, Capability_and_limitation_inc_Iqneg_cap_max, Capability_and_limitation_inc_Iqneg_cap_min, Capability_and_limitation_inc_flag_crit_cond_high, Capability_and_limitation_inc_flag_crit_cond_low],
+    Capability_and_limitation_4 = Block(
         in_vars=[Vpcc, VdcRef, vMV_pos_mode1, Qlim_cap, Qlim_ind, Imax, idpos, iqpos, idneg, iqneg, idpos_sat, iqpos_sat, FRT_neg_flag, FRT_pos_flag, Qref1],
         out_vars=[idMVhigh, PMVhigh, idMVlow, PMVlow, iqMVlow, iqMVhigh, VMVhigh, VMVlow, QMVhigh, QMVlow, Idneg_cap_max, Iqneg_cap_max, Idneg_cap_min, Iqneg_cap_min, flag_crit_cond_high, flag_crit_cond_low],
         name='Capability_and_limitation'
     )
-    Capability_and_limitation.event_dict = {
+    Capability_and_limitation_4.event_dict = {
         Capability_and_limitation_inv_Xtrafo_Lout_pu_1: vf.add_const(None, name='inv_Xtrafo_Lout_pu'),
         Capability_and_limitation_MaxAuxiliaryVoltage_1: vf.add_const(None, name='MaxAuxiliaryVoltage'),
         Capability_and_limitation_MaxTransfoFluxVoltage_1: vf.add_const(None, name='MaxTransfoFluxVoltage'),
@@ -1269,20 +1268,20 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         Capability_and_limitation_Xtrafo_pu_1: vf.add_const(None, name='Xtrafo_pu'),
     }
 
-    Capability_block = Block(
+    Capability_block_5 = Block(
         algebraic_eqs=[
             (Capability_block_inc_idpos - iactpos_sat),
             (Capability_block_inc_iqpos - ireactpos_sat),
-            (Capability_block_inc_idneg - 0.0),
-            (Capability_block_inc_iqneg - 0.0),
-            (Capability_block_inc_Qref_in - 0.0),
+            (Capability_block_inc_idneg - sym.Const(0.0)),
+            (Capability_block_inc_iqneg - sym.Const(0.0)),
+            (Capability_block_inc_Qref_in - sym.Const(0.0)),
         ],
         algebraic_vars=[Capability_block_inc_idpos, Capability_block_inc_iqpos, Capability_block_inc_idneg, Capability_block_inc_iqneg, Capability_block_inc_Qref_in],
         in_vars=[idpos, iqpos, vdpos, vqpos, idneg, iqneg, vdneg, vqneg, vPCC_pos_mag, FRT_pos_flag, FRT_neg_flag, Qlim_cap, Qlim_ind, Qref_in],
         out_vars=[QMV_capab_high, QMV_capab_low, PMV_capab_high, PMV_capab_low, id_pos_sat, iq_pos_sat, id_neg_sat, iq_neg_sat],
         name='Capability_block'
     )
-    Capability_block.event_dict = {
+    Capability_block_5.event_dict = {
         Capability_block_inv_Xtrafo_Lout_pu: vf.add_const(None, name='inv_Xtrafo_Lout_pu'),
         Capability_block_MaxAuxiliaryVoltage: vf.add_const(None, name='MaxAuxiliaryVoltage'),
         Capability_block_MaxTransfoFluxVoltage: vf.add_const(None, name='MaxTransfoFluxVoltage'),
@@ -1301,25 +1300,25 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         Capability_block_VdcRef: vf.add_const(None, name='VdcRef'),
     }
 
-    Capability_block = Block(
+    Capability_block_6 = Block(
         algebraic_eqs=[
-            (Capability_block_inc_idMVhigh - 0.0),
-            (Capability_block_inc_PMVhigh - 0.0),
-            (Capability_block_inc_idMVlow - 0.0),
-            (Capability_block_inc_PMVlow - 0.0),
-            (Capability_block_inc_iqMVhigh - 0.0),
-            (Capability_block_inc_iqMVlow - 0.0),
-            (Capability_block_inc_VMVhigh - 0.0),
-            (Capability_block_inc_VMVlow - 0.0),
-            (Capability_block_inc_QMVhigh - 0.0),
-            (Capability_block_inc_QMVlow - 0.0),
+            (Capability_block_inc_idMVhigh - sym.Const(0.0)),
+            (Capability_block_inc_PMVhigh - sym.Const(0.0)),
+            (Capability_block_inc_idMVlow - sym.Const(0.0)),
+            (Capability_block_inc_PMVlow - sym.Const(0.0)),
+            (Capability_block_inc_iqMVhigh - sym.Const(0.0)),
+            (Capability_block_inc_iqMVlow - sym.Const(0.0)),
+            (Capability_block_inc_VMVhigh - sym.Const(0.0)),
+            (Capability_block_inc_VMVlow - sym.Const(0.0)),
+            (Capability_block_inc_QMVhigh - sym.Const(0.0)),
+            (Capability_block_inc_QMVlow - sym.Const(0.0)),
         ],
         algebraic_vars=[Capability_block_inc_idMVhigh, Capability_block_inc_PMVhigh, Capability_block_inc_idMVlow, Capability_block_inc_PMVlow, Capability_block_inc_iqMVhigh, Capability_block_inc_iqMVlow, Capability_block_inc_VMVhigh, Capability_block_inc_VMVlow, Capability_block_inc_QMVhigh, Capability_block_inc_QMVlow],
         in_vars=[idpos, iqpos, vdpos, vqpos, idneg, iqneg, vdneg, vqneg, vPCC_pos_mag, FRT_pos_flag, FRT_neg_flag, Qlim_cap, Qlim_ind, Qref_in],
         out_vars=[QMV_capab_high, QMV_capab_low, PMV_capab_high, PMV_capab_low, id_pos_sat, iq_pos_sat, id_neg_sat, iq_neg_sat],
         name='Capability_block'
     )
-    Capability_block.event_dict = {
+    Capability_block_6.event_dict = {
         Capability_block_inv_Xtrafo_Lout_pu_1: vf.add_const(None, name='inv_Xtrafo_Lout_pu'),
         Capability_block_MaxAuxiliaryVoltage_1: vf.add_const(None, name='MaxAuxiliaryVoltage'),
         Capability_block_MaxTransfoFluxVoltage_1: vf.add_const(None, name='MaxTransfoFluxVoltage'),
@@ -1338,14 +1337,14 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         Capability_block_VdcRef_1: vf.add_const(None, name='VdcRef'),
     }
 
-    Current_controller = Block(
+    Current_controller_7 = Block(
         state_eqs=[
             err1d_1,
             err1q_1,
             err2d_1,
             err2q_1,
-            ((1.0 / 0.025) * (u1d_1 - Current_controller_xu1d_1)),
-            ((1.0 / 0.025) * (u1q_1 - Current_controller_xu1q_1)),
+            ((sym.Const(1.0) / sym.Const(0.025)) * (u1d_1 - Current_controller_xu1d_1)),
+            ((sym.Const(1.0) / sym.Const(0.025)) * (u1q_1 - Current_controller_xu1q_1)),
         ],
         state_vars=[Current_controller_x1d_cc, Current_controller_x1q_cc, Current_controller_x2d_cc, Current_controller_x2q_cc, Current_controller_xu1d, Current_controller_xu1q],
         algebraic_eqs=[
@@ -1373,18 +1372,18 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         out_vars=[u1d_ref, u1q_ref, u2d_ref, u2q_ref],
         name='Current controller'
     )
-    Current_controller.diff_vars = [d_Current_controller_x1d_cc, d_Current_controller_x1q_cc, d_Current_controller_x2d_cc, d_Current_controller_x2q_cc, d_Current_controller_xu1d, d_Current_controller_xu1q]
-    Current_controller.event_dict = {
+    Current_controller_7.diff_vars = [d_Current_controller_x1d_cc, d_Current_controller_x1q_cc, d_Current_controller_x2d_cc, d_Current_controller_x2q_cc, d_Current_controller_xu1d, d_Current_controller_xu1q]
+    Current_controller_7.event_dict = {
         Current_controller_l: vf.add_const(None, name='l'),
         Current_controller_kp_cc: vf.add_const(None, name='kp_cc'),
         Current_controller_ki_cc: vf.add_const(None, name='ki_cc'),
     }
 
-    Events = Block(
+    Events_8 = Block(
         algebraic_eqs=[
-            (Events_inc_voltage_jump - 1.0),
-            (Events_inc_ROCOF - 0.0),
-            (Events_inc_phase_jump - 0.0),
+            (Events_inc_voltage_jump - sym.Const(1.0)),
+            (Events_inc_ROCOF - sym.Const(0.0)),
+            (Events_inc_phase_jump - sym.Const(0.0)),
             (phase_jump - Events_param_phase_jump_1),
             (voltage_jump - Events_param_voltage_jump_1),
             (ROCOF - Events_param_ROCOF_1),
@@ -1393,17 +1392,17 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         out_vars=[voltage_jump, ROCOF, phase_jump],
         name='Events'
     )
-    Events.event_dict = {
+    Events_8.event_dict = {
         Events_param_phase_jump: vf.add_const(None, name='param_phase_jump'),
         Events_param_ROCOF: vf.add_const(None, name='param_ROCOF'),
         Events_param_voltage_jump: vf.add_const(None, name='param_voltage_jump'),
     }
 
-    Events = Block(
+    Events_9 = Block(
         algebraic_eqs=[
-            (Events_inc_voltage_jump_1 - 1.0),
-            (Events_inc_ROCOF_1 - 0.0),
-            (Events_inc_phase_jump_1 - 0.0),
+            (Events_inc_voltage_jump_1 - sym.Const(1.0)),
+            (Events_inc_ROCOF_1 - sym.Const(0.0)),
+            (Events_inc_phase_jump_1 - sym.Const(0.0)),
             (phase_jump - Events_param_phase_jump_3),
             (voltage_jump - Events_param_voltage_jump_3),
             (ROCOF - Events_param_ROCOF_3),
@@ -1412,47 +1411,47 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         out_vars=[voltage_jump, ROCOF, phase_jump],
         name='Events'
     )
-    Events.event_dict = {
+    Events_9.event_dict = {
         Events_param_phase_jump_2: vf.add_const(None, name='param_phase_jump'),
         Events_param_ROCOF_2: vf.add_const(None, name='param_ROCOF'),
         Events_param_voltage_jump_2: vf.add_const(None, name='param_voltage_jump'),
     }
 
-    Fault_Detection = Block(
+    Fault_Detection_10 = Block(
         algebraic_eqs=[
-            (Fault_Detection_inc_FRT1_flag - 0.0),
-            (Fault_Detection_inc_FRT2_flag - 0.0),
+            (Fault_Detection_inc_FRT1_flag - sym.Const(0.0)),
+            (Fault_Detection_inc_FRT2_flag - sym.Const(0.0)),
         ],
         algebraic_vars=[Fault_Detection_inc_FRT1_flag, Fault_Detection_inc_FRT2_flag],
-        in_vars=[V1vsc, V2vsc],
+        in_vars=[V1pcc, V2pcc],
         out_vars=[FRT1_flag, FRT2_flag],
         name='Fault Detection'
     )
-    Fault_Detection.event_dict = {
+    Fault_Detection_10.event_dict = {
         Fault_Detection_V1min: vf.add_const(None, name='V1min'),
         Fault_Detection_V1max: vf.add_const(None, name='V1max'),
         Fault_Detection_V2min: vf.add_const(None, name='V2min'),
         Fault_Detection_V2max: vf.add_const(None, name='V2max'),
     }
 
-    Fault_Detection = Block(
+    Fault_Detection_11 = Block(
         algebraic_eqs=[
-            (Fault_Detection_inc_FRT1_flag_1 - 0.0),
-            (Fault_Detection_inc_FRT2_flag_1 - 0.0),
+            (Fault_Detection_inc_FRT1_flag_1 - sym.Const(0.0)),
+            (Fault_Detection_inc_FRT2_flag_1 - sym.Const(0.0)),
         ],
         algebraic_vars=[Fault_Detection_inc_FRT1_flag_1, Fault_Detection_inc_FRT2_flag_1],
-        in_vars=[V1pcc, V2pcc],
+        in_vars=[V1vsc, V2vsc],
         out_vars=[FRT1_flag, FRT2_flag],
         name='Fault Detection'
     )
-    Fault_Detection.event_dict = {
+    Fault_Detection_11.event_dict = {
         Fault_Detection_V1min_1: vf.add_const(None, name='V1min'),
         Fault_Detection_V1max_1: vf.add_const(None, name='V1max'),
         Fault_Detection_V2min_1: vf.add_const(None, name='V2min'),
         Fault_Detection_V2max_1: vf.add_const(None, name='V2max'),
     }
 
-    Grid_electrical_interface = Block(
+    Grid_electrical_interface_12 = Block(
         algebraic_eqs=[
             (ed - u1d_1),
             (eq - u1q_1),
@@ -1462,32 +1461,35 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
             (iq_eff - i1q_hat_1),
             (P_int - ((ed_1 * id_eff_1) + (eq_1 * iq_eff_1))),
             (Q_int - ((eq_1 * id_eff_1) - (ed_1 * iq_eff_1))),
-            (P_elec - ((Grid_electrical_interface_p_mode_1 * P_int_1) + ((1.0 - Grid_electrical_interface_p_mode_1) * Ppcc_1))),
-            (Q_elec - ((Grid_electrical_interface_p_mode_1 * Q_int_1) + ((1.0 - Grid_electrical_interface_p_mode_1) * Qpcc_1))),
+            (P_elec - ((Grid_electrical_interface_p_mode_1 * P_int_1) + ((sym.Const(1.0) - Grid_electrical_interface_p_mode_1) * Ppcc_1))),
+            (Q_elec - ((Grid_electrical_interface_p_mode_1 * Q_int_1) + ((sym.Const(1.0) - Grid_electrical_interface_p_mode_1) * Qpcc_1))),
         ],
         algebraic_vars=[ed, eq, Vpos, Vneg, id_eff, iq_eff, P_int, Q_int, P_elec, Q_elec],
         in_vars=[u1d, u1q, u2d, u2q, i1d, i1q, i2d, i2q, i1d_hat, i1q_hat, i2d_hat, i2q_hat, Ppcc, Qpcc, V1pcc, V2pcc, w, cosdelta, sindelta, imag_inst],
         out_vars=[ed, eq, Vpos, Vneg, id_eff, iq_eff, P_elec, Q_elec],
         name='Grid electrical interface'
     )
-    Grid_electrical_interface.event_dict = {
+    Grid_electrical_interface_12.event_dict = {
         Grid_electrical_interface_p_mode: vf.add_const(None, name='p_mode'),
     }
 
-    MV_voltage_limit = Block(
+    MV_voltage_limit_13 = Block(
         algebraic_eqs=[
+            (MV_voltage_limit_inc_ImaxCapacitive - sym.Const(0.0)),
+            (MV_voltage_limit_inc_ImaxInductive - sym.Const(0.0)),
+            (MV_voltage_limit_inc_reactive_reserve - sym.Const(0.0)),
             (MV_voltage_limit_lim1 - ((Vpcc_1 - VdcRef_1) * MV_voltage_limit_inv_Xtrafo_Lout_pu_1)),
-            (MV_voltage_limit_lim2 - ((Vpcc_1 - ((MV_voltage_limit_MaxAuxiliaryVoltage_1 * sym.heaviside((MV_voltage_limit_MaxTransfoFluxVoltage_1 - MV_voltage_limit_MaxAuxiliaryVoltage_1))) + (MV_voltage_limit_MaxTransfoFluxVoltage_1 * (1 - sym.heaviside((MV_voltage_limit_MaxTransfoFluxVoltage_1 - MV_voltage_limit_MaxAuxiliaryVoltage_1)))))) * MV_voltage_limit_inv_Xtrafo_pu_1)),
+            (MV_voltage_limit_lim2 - ((Vpcc_1 - ((MV_voltage_limit_MaxAuxiliaryVoltage_1 * sym.heaviside((MV_voltage_limit_MaxTransfoFluxVoltage_1 - MV_voltage_limit_MaxAuxiliaryVoltage_1))) + (MV_voltage_limit_MaxTransfoFluxVoltage_1 * (sym.Const(1) - sym.heaviside((MV_voltage_limit_MaxTransfoFluxVoltage_1 - MV_voltage_limit_MaxAuxiliaryVoltage_1)))))) * MV_voltage_limit_inv_Xtrafo_pu_1)),
             (MV_voltage_limit_i_ind - ((Vpcc_1 - MV_voltage_limit_MinAuxiliaryVoltage_1) * MV_voltage_limit_inv_Xtrafo_pu_1)),
-            (MV_voltage_limit_cap_reserve - sym.abs(((0.0 * sym.heaviside((0.0 - ImaxCapacitive_1))) + (ImaxCapacitive_1 * (1 - sym.heaviside((0.0 - ImaxCapacitive_1))))))),
-            (MV_voltage_limit_ind_reserve - sym.abs(((0.0 * sym.heaviside((ImaxInductive_1 - 0.0))) + (ImaxInductive_1 * (1 - sym.heaviside((ImaxInductive_1 - 0.0))))))),
+            (MV_voltage_limit_cap_reserve - sym.abs(((sym.Const(0.0) * sym.heaviside((sym.Const(0.0) - ImaxCapacitive_1))) + (ImaxCapacitive_1 * (sym.Const(1) - sym.heaviside((sym.Const(0.0) - ImaxCapacitive_1))))))),
+            (MV_voltage_limit_ind_reserve - sym.abs(((sym.Const(0.0) * sym.heaviside((ImaxInductive_1 - sym.Const(0.0)))) + (ImaxInductive_1 * (sym.Const(1) - sym.heaviside((ImaxInductive_1 - sym.Const(0.0)))))))),
         ],
-        algebraic_vars=[MV_voltage_limit_lim1, MV_voltage_limit_lim2, MV_voltage_limit_i_ind, MV_voltage_limit_cap_reserve, MV_voltage_limit_ind_reserve],
+        algebraic_vars=[MV_voltage_limit_inc_ImaxCapacitive, MV_voltage_limit_inc_ImaxInductive, MV_voltage_limit_inc_reactive_reserve, MV_voltage_limit_lim1, MV_voltage_limit_lim2, MV_voltage_limit_i_ind, MV_voltage_limit_cap_reserve, MV_voltage_limit_ind_reserve],
         in_vars=[Vpcc, VdcRef, Imax],
         out_vars=[ImaxCapacitive, ImaxInductive, reactive_reserve],
         name='MV_voltage_limit'
     )
-    MV_voltage_limit.event_dict = {
+    MV_voltage_limit_13.event_dict = {
         MV_voltage_limit_inv_Xtrafo_Lout_pu: vf.add_const(None, name='inv_Xtrafo_Lout_pu'),
         MV_voltage_limit_MaxAuxiliaryVoltage: vf.add_const(None, name='MaxAuxiliaryVoltage'),
         MV_voltage_limit_MaxTransfoFluxVoltage: vf.add_const(None, name='MaxTransfoFluxVoltage'),
@@ -1495,23 +1497,20 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         MV_voltage_limit_MinAuxiliaryVoltage: vf.add_const(None, name='MinAuxiliaryVoltage'),
     }
 
-    MV_voltage_limit = Block(
+    MV_voltage_limit_14 = Block(
         algebraic_eqs=[
-            (MV_voltage_limit_inc_ImaxCapacitive - 0.0),
-            (MV_voltage_limit_inc_ImaxInductive - 0.0),
-            (MV_voltage_limit_inc_reactive_reserve - 0.0),
             (MV_voltage_limit_lim1_1 - ((Vpcc_1 - VdcRef_1) * MV_voltage_limit_inv_Xtrafo_Lout_pu_3)),
-            (MV_voltage_limit_lim2_1 - ((Vpcc_1 - ((MV_voltage_limit_MaxAuxiliaryVoltage_3 * sym.heaviside((MV_voltage_limit_MaxTransfoFluxVoltage_3 - MV_voltage_limit_MaxAuxiliaryVoltage_3))) + (MV_voltage_limit_MaxTransfoFluxVoltage_3 * (1 - sym.heaviside((MV_voltage_limit_MaxTransfoFluxVoltage_3 - MV_voltage_limit_MaxAuxiliaryVoltage_3)))))) * MV_voltage_limit_inv_Xtrafo_pu_3)),
+            (MV_voltage_limit_lim2_1 - ((Vpcc_1 - ((MV_voltage_limit_MaxAuxiliaryVoltage_3 * sym.heaviside((MV_voltage_limit_MaxTransfoFluxVoltage_3 - MV_voltage_limit_MaxAuxiliaryVoltage_3))) + (MV_voltage_limit_MaxTransfoFluxVoltage_3 * (sym.Const(1) - sym.heaviside((MV_voltage_limit_MaxTransfoFluxVoltage_3 - MV_voltage_limit_MaxAuxiliaryVoltage_3)))))) * MV_voltage_limit_inv_Xtrafo_pu_3)),
             (MV_voltage_limit_i_ind_1 - ((Vpcc_1 - MV_voltage_limit_MinAuxiliaryVoltage_3) * MV_voltage_limit_inv_Xtrafo_pu_3)),
-            (MV_voltage_limit_cap_reserve_1 - sym.abs(((0.0 * sym.heaviside((0.0 - ImaxCapacitive_1))) + (ImaxCapacitive_1 * (1 - sym.heaviside((0.0 - ImaxCapacitive_1))))))),
-            (MV_voltage_limit_ind_reserve_1 - sym.abs(((0.0 * sym.heaviside((ImaxInductive_1 - 0.0))) + (ImaxInductive_1 * (1 - sym.heaviside((ImaxInductive_1 - 0.0))))))),
+            (MV_voltage_limit_cap_reserve_1 - sym.abs(((sym.Const(0.0) * sym.heaviside((sym.Const(0.0) - ImaxCapacitive_1))) + (ImaxCapacitive_1 * (sym.Const(1) - sym.heaviside((sym.Const(0.0) - ImaxCapacitive_1))))))),
+            (MV_voltage_limit_ind_reserve_1 - sym.abs(((sym.Const(0.0) * sym.heaviside((ImaxInductive_1 - sym.Const(0.0)))) + (ImaxInductive_1 * (sym.Const(1) - sym.heaviside((ImaxInductive_1 - sym.Const(0.0)))))))),
         ],
-        algebraic_vars=[MV_voltage_limit_inc_ImaxCapacitive, MV_voltage_limit_inc_ImaxInductive, MV_voltage_limit_inc_reactive_reserve, MV_voltage_limit_lim1_1, MV_voltage_limit_lim2_1, MV_voltage_limit_i_ind_1, MV_voltage_limit_cap_reserve_1, MV_voltage_limit_ind_reserve_1],
+        algebraic_vars=[MV_voltage_limit_lim1_1, MV_voltage_limit_lim2_1, MV_voltage_limit_i_ind_1, MV_voltage_limit_cap_reserve_1, MV_voltage_limit_ind_reserve_1],
         in_vars=[Vpcc, VdcRef, Imax],
         out_vars=[ImaxCapacitive, ImaxInductive, reactive_reserve],
         name='MV_voltage_limit'
     )
-    MV_voltage_limit.event_dict = {
+    MV_voltage_limit_14.event_dict = {
         MV_voltage_limit_inv_Xtrafo_Lout_pu_2: vf.add_const(None, name='inv_Xtrafo_Lout_pu'),
         MV_voltage_limit_MaxAuxiliaryVoltage_2: vf.add_const(None, name='MaxAuxiliaryVoltage'),
         MV_voltage_limit_MaxTransfoFluxVoltage_2: vf.add_const(None, name='MaxTransfoFluxVoltage'),
@@ -1519,41 +1518,41 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         MV_voltage_limit_MinAuxiliaryVoltage_2: vf.add_const(None, name='MinAuxiliaryVoltage'),
     }
 
-    PCC_Measurements = Block(
+    PCC_Measurements_15 = Block(
         state_eqs=[
             u1q_1,
             (w1_1 * Dw_1),
         ],
         state_vars=[PCC_Measurements_xw, PCC_Measurements_xt],
         algebraic_eqs=[
-            (PCC_Measurements_Ppcc_tot - ((1.0 / 3.0) * ((((((uar_1 * iar_1) + (uai_1 * iai_1)) + (ubr_1 * ibr_1)) + (ubi_1 * ibi_1)) + (ucr_1 * icr_1)) + (uci_1 * ici_1)))),
-            (PCC_Measurements_Qpcc_tot - ((1.0 / 3.0) * ((((((uai_1 * iar_1) - (uar_1 * iai_1)) + (ubi_1 * ibr_1)) - (ubr_1 * ibi_1)) + (uci_1 * icr_1)) - (ucr_1 * ici_1)))),
-            (u1r - ((1.0 / 3.0) * ((((uar_1 - ((1.0 / 2.0) * ubr_1)) - ((1.0 / 2.0) * ucr_1)) - ((sym.sqrt(3.0) / 2.0) * ubi_1)) + ((sym.sqrt(3.0) / 2.0) * uci_1)))),
-            (u1i - ((1.0 / 3.0) * ((((uai_1 - ((1.0 / 2.0) * ubi_1)) - ((1.0 / 2.0) * uci_1)) + ((sym.sqrt(3.0) / 2.0) * ubr_1)) - ((sym.sqrt(3.0) / 2.0) * ucr_1)))),
-            (PCC_Measurements_i1r - ((1.0 / 3.0) * ((((iar_1 - ((1.0 / 2.0) * ibr_1)) - ((1.0 / 2.0) * icr_1)) - ((sym.sqrt(3.0) / 2.0) * ibi_1)) + ((sym.sqrt(3.0) / 2.0) * ici_1)))),
-            (PCC_Measurements_i1i - ((1.0 / 3.0) * ((((iai_1 - ((1.0 / 2.0) * ibi_1)) - ((1.0 / 2.0) * ici_1)) + ((sym.sqrt(3.0) / 2.0) * ibr_1)) - ((sym.sqrt(3.0) / 2.0) * icr_1)))),
-            (u2r - ((1.0 / 3.0) * ((((uar_1 - ((1.0 / 2.0) * ubr_1)) - ((1.0 / 2.0) * ucr_1)) + ((sym.sqrt(3.0) / 2.0) * ubi_1)) - ((sym.sqrt(3.0) / 2.0) * uci_1)))),
-            (u2i - ((1.0 / 3.0) * ((((uai_1 - ((1.0 / 2.0) * ubi_1)) - ((1.0 / 2.0) * uci_1)) - ((sym.sqrt(3.0) / 2.0) * ubr_1)) + ((sym.sqrt(3.0) / 2.0) * ucr_1)))),
-            (PCC_Measurements_i2r - ((1.0 / 3.0) * ((((iar_1 - ((1.0 / 2.0) * ibr_1)) - ((1.0 / 2.0) * icr_1)) + ((sym.sqrt(3.0) / 2.0) * ibi_1)) - ((sym.sqrt(3.0) / 2.0) * ici_1)))),
-            (PCC_Measurements_i2i - ((1.0 / 3.0) * ((((iai_1 - ((1.0 / 2.0) * ibi_1)) - ((1.0 / 2.0) * ici_1)) - ((sym.sqrt(3.0) / 2.0) * ibr_1)) + ((sym.sqrt(3.0) / 2.0) * icr_1)))),
+            (PCC_Measurements_Ppcc_tot - ((sym.Const(1.0) / sym.Const(3.0)) * ((((((uar_1 * iar_1) + (uai_1 * iai_1)) + (ubr_1 * ibr_1)) + (ubi_1 * ibi_1)) + (ucr_1 * icr_1)) + (uci_1 * ici_1)))),
+            (PCC_Measurements_Qpcc_tot - ((sym.Const(1.0) / sym.Const(3.0)) * ((((((uai_1 * iar_1) - (uar_1 * iai_1)) + (ubi_1 * ibr_1)) - (ubr_1 * ibi_1)) + (uci_1 * icr_1)) - (ucr_1 * ici_1)))),
+            (u1r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uar_1 - ((sym.Const(1.0) / sym.Const(2.0)) * ubr_1)) - ((sym.Const(1.0) / sym.Const(2.0)) * ucr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubi_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * uci_1)))),
+            (u1i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uai_1 - ((sym.Const(1.0) / sym.Const(2.0)) * ubi_1)) - ((sym.Const(1.0) / sym.Const(2.0)) * uci_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ucr_1)))),
+            (PCC_Measurements_i1r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((iar_1 - ((sym.Const(1.0) / sym.Const(2.0)) * ibr_1)) - ((sym.Const(1.0) / sym.Const(2.0)) * icr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ibi_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ici_1)))),
+            (PCC_Measurements_i1i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((iai_1 - ((sym.Const(1.0) / sym.Const(2.0)) * ibi_1)) - ((sym.Const(1.0) / sym.Const(2.0)) * ici_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ibr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * icr_1)))),
+            (u2r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uar_1 - ((sym.Const(1.0) / sym.Const(2.0)) * ubr_1)) - ((sym.Const(1.0) / sym.Const(2.0)) * ucr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubi_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * uci_1)))),
+            (u2i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uai_1 - ((sym.Const(1.0) / sym.Const(2.0)) * ubi_1)) - ((sym.Const(1.0) / sym.Const(2.0)) * uci_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ucr_1)))),
+            (PCC_Measurements_i2r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((iar_1 - ((sym.Const(1.0) / sym.Const(2.0)) * ibr_1)) - ((sym.Const(1.0) / sym.Const(2.0)) * icr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ibi_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ici_1)))),
+            (PCC_Measurements_i2i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((iai_1 - ((sym.Const(1.0) / sym.Const(2.0)) * ibi_1)) - ((sym.Const(1.0) / sym.Const(2.0)) * ici_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ibr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * icr_1)))),
             (u1d - ((u1r_1 * costheta_1) + (u1i_1 * sintheta_1))),
             (u1q - (((-u1r_1) * sintheta_1) + (u1i_1 * costheta_1))),
             (u2d - ((u2r_1 * costheta_1) - (u2i_1 * sintheta_1))),
             (u2q - ((u2r_1 * sintheta_1) + (u2i_1 * costheta_1))),
             (V1pcc - sym.sqrt(((u1d_1 * u1d_1) + (u1q_1 * u1q_1)))),
             (V2pcc - sym.sqrt(((u2d_1 * u2d_1) + (u2q_1 * u2q_1)))),
-            (w1 - ((2.0 * 3.141592653589793) * PCC_Measurements_f1_1)),
+            (w1 - ((sym.Const(2.0) * sym.Const(3.141592653589793)) * PCC_Measurements_f1_1)),
             (Dw - ((PCC_Measurements_ki_pll_1 * PCC_Measurements_xw_1) + (PCC_Measurements_kp_pll_1 * u1q_1))),
-            (wpcc - (1.0 + Dw_1)),
+            (wpcc - (sym.Const(1.0) + Dw_1)),
             (theta - PCC_Measurements_xt_1),
             (costheta - sym.cos(theta_1)),
             (sintheta - sym.sin(theta_1)),
-            (PCC_Measurements_inc_Ppcc - ((1.0 / 3.0) * ((((((uar_1 * iar_1) + (uai_1 * iai_1)) + (ubr_1 * ibr_1)) + (ubi_1 * ibi_1)) + (ucr_1 * icr_1)) + (uci_1 * ici_1)))),
-            (PCC_Measurements_inc_Qpcc - ((1.0 / 3.0) * ((((((uai_1 * iar_1) - (uar_1 * iai_1)) + (ubi_1 * ibr_1)) - (ubr_1 * ibi_1)) + (uci_1 * icr_1)) - (ucr_1 * ici_1)))),
+            (PCC_Measurements_inc_Ppcc - ((sym.Const(1.0) / sym.Const(3.0)) * ((((((uar_1 * iar_1) + (uai_1 * iai_1)) + (ubr_1 * ibr_1)) + (ubi_1 * ibi_1)) + (ucr_1 * icr_1)) + (uci_1 * ici_1)))),
+            (PCC_Measurements_inc_Qpcc - ((sym.Const(1.0) / sym.Const(3.0)) * ((((((uai_1 * iar_1) - (uar_1 * iai_1)) + (ubi_1 * ibr_1)) - (ubr_1 * ibi_1)) + (uci_1 * icr_1)) - (ucr_1 * ici_1)))),
             (PCC_Measurements_inc_V1pcc - sym.sqrt(((u1d_1 * u1d_1) + (u1q_1 * u1q_1)))),
             (PCC_Measurements_inc_V2pcc - sym.sqrt(((u2d_1 * u2d_1) + (u2q_1 * u2q_1)))),
-            (PCC_Measurements_inc_wpcc - 1.0),
-            (PCC_Measurements_inc_xw - 0.0),
+            (PCC_Measurements_inc_wpcc - sym.Const(1.0)),
+            (PCC_Measurements_inc_xw - sym.Const(0.0)),
             (PCC_Measurements_inc_xt - sym.atan2(u1i_1, u1r_1)),
         ],
         algebraic_vars=[PCC_Measurements_Ppcc_tot, PCC_Measurements_Qpcc_tot, u1r, u1i, PCC_Measurements_i1r, PCC_Measurements_i1i, u2r, u2i, PCC_Measurements_i2r, PCC_Measurements_i2i, u1d, u1q, u2d, u2q, V1pcc, V2pcc, w1, Dw, wpcc, theta, costheta, sintheta, PCC_Measurements_inc_Ppcc, PCC_Measurements_inc_Qpcc, PCC_Measurements_inc_V1pcc, PCC_Measurements_inc_V2pcc, PCC_Measurements_inc_wpcc, PCC_Measurements_inc_xw, PCC_Measurements_inc_xt],
@@ -1561,14 +1560,14 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         out_vars=[Ppcc, Qpcc, V1pcc, V2pcc, wpcc],
         name='PCC Measurements'
     )
-    PCC_Measurements.diff_vars = [d_PCC_Measurements_xw, d_PCC_Measurements_xt]
-    PCC_Measurements.event_dict = {
+    PCC_Measurements_15.diff_vars = [d_PCC_Measurements_xw, d_PCC_Measurements_xt]
+    PCC_Measurements_15.event_dict = {
         PCC_Measurements_kp_pll: vf.add_const(None, name='kp_pll'),
         PCC_Measurements_ki_pll: vf.add_const(None, name='ki_pll'),
         PCC_Measurements_f1: vf.add_const(None, name='f1'),
     }
 
-    PCC_Measurements = Block(
+    PCC_Measurements_16 = Block(
         state_eqs=[
             ((alpha_plot * (Ppcc_raw_1 - PCC_Measurements_xPpcc_1)) / tau_plot_eff_1),
             ((alpha_plot * (Qpcc_raw_1 - PCC_Measurements_xQpcc_1)) / tau_plot_eff_1),
@@ -1577,13 +1576,13 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         algebraic_eqs=[
             (Ppcc_raw - ((((((uar_1 * iar_1) + (uai_1 * iai_1)) + (ubr_1 * ibr_1)) + (ubi_1 * ibi_1)) + (ucr_1 * icr_1)) + (uci_1 * ici_1))),
             (Qpcc_raw - ((((((uai_1 * iar_1) - (uar_1 * iai_1)) + (ubi_1 * ibr_1)) - (ubr_1 * ibi_1)) + (uci_1 * icr_1)) - (ucr_1 * ici_1))),
-            (tau_plot_eff - ((PCC_Measurements_tau_plot_1 * sym.heaviside((PCC_Measurements_tau_plot_1 - 1e-06))) + (1e-06 * (1 - sym.heaviside((PCC_Measurements_tau_plot_1 - 1e-06)))))),
+            (tau_plot_eff - ((PCC_Measurements_tau_plot_1 * sym.heaviside((PCC_Measurements_tau_plot_1 - sym.Const(1e-06)))) + (sym.Const(1e-06) * (sym.Const(1) - sym.heaviside((PCC_Measurements_tau_plot_1 - sym.Const(1e-06))))))),
             (Ppcc - PCC_Measurements_xPpcc_1),
             (Qpcc - PCC_Measurements_xQpcc_1),
-            (u1r - ((1.0 / 3.0) * ((((uar_1 - (0.5 * ubr_1)) - (0.5 * ucr_1)) - ((sym.sqrt(3.0) / 2.0) * ubi_1)) + ((sym.sqrt(3.0) / 2.0) * uci_1)))),
-            (u1i - ((1.0 / 3.0) * ((((uai_1 - (0.5 * ubi_1)) - (0.5 * uci_1)) + ((sym.sqrt(3.0) / 2.0) * ubr_1)) - ((sym.sqrt(3.0) / 2.0) * ucr_1)))),
-            (u2r - ((1.0 / 3.0) * ((((uar_1 - (0.5 * ubr_1)) - (0.5 * ucr_1)) + ((sym.sqrt(3.0) / 2.0) * ubi_1)) - ((sym.sqrt(3.0) / 2.0) * uci_1)))),
-            (u2i - ((1.0 / 3.0) * ((((uai_1 - (0.5 * ubi_1)) - (0.5 * uci_1)) - ((sym.sqrt(3.0) / 2.0) * ubr_1)) + ((sym.sqrt(3.0) / 2.0) * ucr_1)))),
+            (u1r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uar_1 - (sym.Const(0.5) * ubr_1)) - (sym.Const(0.5) * ucr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubi_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * uci_1)))),
+            (u1i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uai_1 - (sym.Const(0.5) * ubi_1)) - (sym.Const(0.5) * uci_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ucr_1)))),
+            (u2r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uar_1 - (sym.Const(0.5) * ubr_1)) - (sym.Const(0.5) * ucr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubi_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * uci_1)))),
+            (u2i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uai_1 - (sym.Const(0.5) * ubi_1)) - (sym.Const(0.5) * uci_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ucr_1)))),
             (V1pcc - sym.sqrt(((u1r_1 * u1r_1) + (u1i_1 * u1i_1)))),
             (V2pcc - sym.sqrt(((u2r_1 * u2r_1) + (u2i_1 * u2i_1)))),
             (PCC_Measurements_inc_xPpcc - Ppcc_raw_1),
@@ -1598,18 +1597,18 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         out_vars=[Ppcc, Qpcc, V1pcc, V2pcc],
         name='PCC Measurements'
     )
-    PCC_Measurements.diff_vars = [d_PCC_Measurements_xPpcc, d_PCC_Measurements_xQpcc]
-    PCC_Measurements.event_dict = {
+    PCC_Measurements_16.diff_vars = [d_PCC_Measurements_xPpcc, d_PCC_Measurements_xQpcc]
+    PCC_Measurements_16.event_dict = {
         PCC_Measurements_tau_plot: vf.add_const(None, name='tau_plot'),
         PCC_Measurements_T_plot_ramp: vf.add_const(None, name='T_plot_ramp'),
     }
 
-    Pos_Seq_Current_Limiter = Block(
+    Pos_Seq_Current_Limiter_17 = Block(
         algebraic_eqs=[
             (Pos_Seq_Current_Limiter_inc_i1d_hat - i1d_ref_1),
             (Pos_Seq_Current_Limiter_inc_i1q_hat - i1q_ref_1),
             (Pos_Seq_Current_Limiter_inc_Qref - Qpcc_1),
-            (Pos_Seq_Current_Limiter_inc_FRT2_flag - 0.0),
+            (Pos_Seq_Current_Limiter_inc_FRT2_flag - sym.Const(0.0)),
         ],
         algebraic_vars=[Pos_Seq_Current_Limiter_inc_i1d_hat, Pos_Seq_Current_Limiter_inc_i1q_hat, Pos_Seq_Current_Limiter_inc_Qref, Pos_Seq_Current_Limiter_inc_FRT2_flag],
         in_vars=[i1d_hat, i1q_hat, Qref, FRT2_flag, Qpcc, imag_inst],
@@ -1617,25 +1616,35 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         name='Pos. Seq. Current Limiter'
     )
 
-    Power_VI_limit = Block(
+    Power_VI_limit_18 = Block(
         algebraic_eqs=[
-            (Power_VI_limit_PPCChigh - (Power_VI_limit_PlantEff_1 * ((FRT_pos_flag_1 * Power_VI_limit_PmvLim_crit_1) + ((1.0 - FRT_pos_flag_1) * ((Power_VI_limit_PmvLim_discharge_1 * sym.heaviside((Power_VI_limit_Pmax_dyn_1 - Power_VI_limit_PmvLim_discharge_1))) + (Power_VI_limit_Pmax_dyn_1 * (1 - sym.heaviside((Power_VI_limit_Pmax_dyn_1 - Power_VI_limit_PmvLim_discharge_1))))))))),
-            (Power_VI_limit_PPCClow - (Power_VI_limit_inv_PlantEff_1 * ((FRT_pos_flag_1 * (-Power_VI_limit_PmvLim_crit_1)) + ((1.0 - FRT_pos_flag_1) * ((Power_VI_limit_PmvLim_charge_1 * sym.heaviside(((-Power_VI_limit_Pmax_dyn_1) - Power_VI_limit_PmvLim_charge_1))) + ((-Power_VI_limit_Pmax_dyn_1) * (1 - sym.heaviside(((-Power_VI_limit_Pmax_dyn_1) - Power_VI_limit_PmvLim_charge_1))))))))),
+            (Power_VI_limit_inc_idMVhigh - sym.Const(0.0)),
+            (Power_VI_limit_inc_PMVhigh - sym.Const(0.0)),
+            (Power_VI_limit_inc_idMVlow - sym.Const(0.0)),
+            (Power_VI_limit_inc_PMVlow - sym.Const(0.0)),
+            (Power_VI_limit_inc_iqMVlow - sym.Const(0.0)),
+            (Power_VI_limit_inc_iqMVhigh - sym.Const(0.0)),
+            (Power_VI_limit_inc_VMVhigh - sym.Const(0.0)),
+            (Power_VI_limit_inc_VMVlow - sym.Const(0.0)),
+            (Power_VI_limit_inc_QMVhigh - sym.Const(0.0)),
+            (Power_VI_limit_inc_QMVlow - sym.Const(0.0)),
+            (Power_VI_limit_PPCChigh - (Power_VI_limit_PlantEff_1 * ((FRT_pos_flag_1 * Power_VI_limit_PmvLim_crit_1) + ((sym.Const(1.0) - FRT_pos_flag_1) * ((Power_VI_limit_PmvLim_discharge_1 * sym.heaviside((Power_VI_limit_Pmax_dyn_1 - Power_VI_limit_PmvLim_discharge_1))) + (Power_VI_limit_Pmax_dyn_1 * (sym.Const(1) - sym.heaviside((Power_VI_limit_Pmax_dyn_1 - Power_VI_limit_PmvLim_discharge_1))))))))),
+            (Power_VI_limit_PPCClow - (Power_VI_limit_inv_PlantEff_1 * ((FRT_pos_flag_1 * (-Power_VI_limit_PmvLim_crit_1)) + ((sym.Const(1.0) - FRT_pos_flag_1) * ((Power_VI_limit_PmvLim_charge_1 * sym.heaviside(((-Power_VI_limit_Pmax_dyn_1) - Power_VI_limit_PmvLim_charge_1))) + ((-Power_VI_limit_Pmax_dyn_1) * (sym.Const(1) - sym.heaviside(((-Power_VI_limit_Pmax_dyn_1) - Power_VI_limit_PmvLim_charge_1))))))))),
             (PMVhigh - (idMVhigh_1 * vMV_pos_mode_1)),
             (PMVlow - (idMVlow_1 * vMV_pos_mode_1)),
-            (iqMVlow - (((((-1.0) * inv_Vpcc_1) * QPCChigh_1) * sym.heaviside(((((-1.0) * inv_Vpcc_1) * QPCChigh_1) - Iq_min_1))) + (Iq_min_1 * (1 - sym.heaviside(((((-1.0) * inv_Vpcc_1) * QPCChigh_1) - Iq_min_1)))))),
-            (iqMVhigh - (((((-1.0) * inv_Vpcc_1) * QPCClow_1) * sym.heaviside((Iq_max_1 - (((-1.0) * inv_Vpcc_1) * QPCClow_1)))) + (Iq_max_1 * (1 - sym.heaviside((Iq_max_1 - (((-1.0) * inv_Vpcc_1) * QPCClow_1))))))),
-            (VMVhigh - (((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_1 * iqMVlow_1)) * sym.heaviside(((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_1 * iqMVlow_1)) - 0.0))) + (0.0 * (1 - sym.heaviside(((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_1 * iqMVlow_1)) - 0.0)))))),
-            (VMVlow - (((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_1 * iqMVhigh_1)) * sym.heaviside(((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_1 * iqMVhigh_1)) - 0.0))) + (0.0 * (1 - sym.heaviside(((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_1 * iqMVhigh_1)) - 0.0)))))),
-            (QMVhigh - (((-1.0) * iqMVhigh_1) * VMVlow_1)),
-            (QMVlow - (((-1.0) * iqMVlow_1) * VMVhigh_1)),
+            (iqMVlow - (((((-sym.Const(1.0)) * inv_Vpcc_1) * QPCChigh_1) * sym.heaviside(((((-sym.Const(1.0)) * inv_Vpcc_1) * QPCChigh_1) - Iq_min_1))) + (Iq_min_1 * (sym.Const(1) - sym.heaviside(((((-sym.Const(1.0)) * inv_Vpcc_1) * QPCChigh_1) - Iq_min_1)))))),
+            (iqMVhigh - (((((-sym.Const(1.0)) * inv_Vpcc_1) * QPCClow_1) * sym.heaviside((Iq_max_1 - (((-sym.Const(1.0)) * inv_Vpcc_1) * QPCClow_1)))) + (Iq_max_1 * (sym.Const(1) - sym.heaviside((Iq_max_1 - (((-sym.Const(1.0)) * inv_Vpcc_1) * QPCClow_1))))))),
+            (VMVhigh - (((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_1 * iqMVlow_1)) * sym.heaviside(((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_1 * iqMVlow_1)) - sym.Const(0.0)))) + (sym.Const(0.0) * (sym.Const(1) - sym.heaviside(((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_1 * iqMVlow_1)) - sym.Const(0.0))))))),
+            (VMVlow - (((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_1 * iqMVhigh_1)) * sym.heaviside(((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_1 * iqMVhigh_1)) - sym.Const(0.0)))) + (sym.Const(0.0) * (sym.Const(1) - sym.heaviside(((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_1 * iqMVhigh_1)) - sym.Const(0.0))))))),
+            (QMVhigh - (((-sym.Const(1.0)) * iqMVhigh_1) * VMVlow_1)),
+            (QMVlow - (((-sym.Const(1.0)) * iqMVlow_1) * VMVhigh_1)),
         ],
-        algebraic_vars=[Power_VI_limit_PPCChigh, Power_VI_limit_PPCClow, PMVhigh, PMVlow, iqMVlow, iqMVhigh, VMVhigh, VMVlow, QMVhigh, QMVlow],
+        algebraic_vars=[Power_VI_limit_inc_idMVhigh, Power_VI_limit_inc_PMVhigh, Power_VI_limit_inc_idMVlow, Power_VI_limit_inc_PMVlow, Power_VI_limit_inc_iqMVlow, Power_VI_limit_inc_iqMVhigh, Power_VI_limit_inc_VMVhigh, Power_VI_limit_inc_VMVlow, Power_VI_limit_inc_QMVhigh, Power_VI_limit_inc_QMVlow, Power_VI_limit_PPCChigh, Power_VI_limit_PPCClow, PMVhigh, PMVlow, iqMVlow, iqMVhigh, VMVhigh, VMVlow, QMVhigh, QMVlow],
         in_vars=[FRT_pos_flag, inv_Vpcc, Id_max, Id_min, Iq_max, Iq_min, vMV_pos_mode, QPCChigh, QPCClow, Vpcc],
         out_vars=[idMVhigh, PMVhigh, idMVlow, PMVlow, iqMVlow, iqMVhigh, VMVhigh, VMVlow, QMVhigh, QMVlow],
         name='Power_VI_limit'
     )
-    Power_VI_limit.event_dict = {
+    Power_VI_limit_18.event_dict = {
         Power_VI_limit_PmvLim_crit: vf.add_const(None, name='PmvLim_crit'),
         Power_VI_limit_PmvLim_discharge: vf.add_const(None, name='PmvLim_discharge'),
         Power_VI_limit_Pmax_dyn: vf.add_const(None, name='Pmax_dyn'),
@@ -1647,35 +1656,25 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         Power_VI_limit_Xtrafo_pu: vf.add_const(None, name='Xtrafo_pu'),
     }
 
-    Power_VI_limit = Block(
+    Power_VI_limit_19 = Block(
         algebraic_eqs=[
-            (Power_VI_limit_inc_idMVhigh - 0.0),
-            (Power_VI_limit_inc_PMVhigh - 0.0),
-            (Power_VI_limit_inc_idMVlow - 0.0),
-            (Power_VI_limit_inc_PMVlow - 0.0),
-            (Power_VI_limit_inc_iqMVlow - 0.0),
-            (Power_VI_limit_inc_iqMVhigh - 0.0),
-            (Power_VI_limit_inc_VMVhigh - 0.0),
-            (Power_VI_limit_inc_VMVlow - 0.0),
-            (Power_VI_limit_inc_QMVhigh - 0.0),
-            (Power_VI_limit_inc_QMVlow - 0.0),
-            (Power_VI_limit_PPCChigh_1 - (Power_VI_limit_PlantEff_3 * ((FRT_pos_flag_1 * Power_VI_limit_PmvLim_crit_3) + ((1.0 - FRT_pos_flag_1) * ((Power_VI_limit_PmvLim_discharge_3 * sym.heaviside((Power_VI_limit_Pmax_dyn_3 - Power_VI_limit_PmvLim_discharge_3))) + (Power_VI_limit_Pmax_dyn_3 * (1 - sym.heaviside((Power_VI_limit_Pmax_dyn_3 - Power_VI_limit_PmvLim_discharge_3))))))))),
-            (Power_VI_limit_PPCClow_1 - (Power_VI_limit_inv_PlantEff_3 * ((FRT_pos_flag_1 * (-Power_VI_limit_PmvLim_crit_3)) + ((1.0 - FRT_pos_flag_1) * ((Power_VI_limit_PmvLim_charge_3 * sym.heaviside(((-Power_VI_limit_Pmax_dyn_3) - Power_VI_limit_PmvLim_charge_3))) + ((-Power_VI_limit_Pmax_dyn_3) * (1 - sym.heaviside(((-Power_VI_limit_Pmax_dyn_3) - Power_VI_limit_PmvLim_charge_3))))))))),
+            (Power_VI_limit_PPCChigh_1 - (Power_VI_limit_PlantEff_3 * ((FRT_pos_flag_1 * Power_VI_limit_PmvLim_crit_3) + ((sym.Const(1.0) - FRT_pos_flag_1) * ((Power_VI_limit_PmvLim_discharge_3 * sym.heaviside((Power_VI_limit_Pmax_dyn_3 - Power_VI_limit_PmvLim_discharge_3))) + (Power_VI_limit_Pmax_dyn_3 * (sym.Const(1) - sym.heaviside((Power_VI_limit_Pmax_dyn_3 - Power_VI_limit_PmvLim_discharge_3))))))))),
+            (Power_VI_limit_PPCClow_1 - (Power_VI_limit_inv_PlantEff_3 * ((FRT_pos_flag_1 * (-Power_VI_limit_PmvLim_crit_3)) + ((sym.Const(1.0) - FRT_pos_flag_1) * ((Power_VI_limit_PmvLim_charge_3 * sym.heaviside(((-Power_VI_limit_Pmax_dyn_3) - Power_VI_limit_PmvLim_charge_3))) + ((-Power_VI_limit_Pmax_dyn_3) * (sym.Const(1) - sym.heaviside(((-Power_VI_limit_Pmax_dyn_3) - Power_VI_limit_PmvLim_charge_3))))))))),
             (PMVhigh - (idMVhigh_1 * vMV_pos_mode_1)),
             (PMVlow - (idMVlow_1 * vMV_pos_mode_1)),
-            (iqMVlow - (((((-1.0) * inv_Vpcc_1) * QPCChigh_1) * sym.heaviside(((((-1.0) * inv_Vpcc_1) * QPCChigh_1) - Iq_min_1))) + (Iq_min_1 * (1 - sym.heaviside(((((-1.0) * inv_Vpcc_1) * QPCChigh_1) - Iq_min_1)))))),
-            (iqMVhigh - (((((-1.0) * inv_Vpcc_1) * QPCClow_1) * sym.heaviside((Iq_max_1 - (((-1.0) * inv_Vpcc_1) * QPCClow_1)))) + (Iq_max_1 * (1 - sym.heaviside((Iq_max_1 - (((-1.0) * inv_Vpcc_1) * QPCClow_1))))))),
-            (VMVhigh - (((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_3 * iqMVlow_1)) * sym.heaviside(((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_3 * iqMVlow_1)) - 0.0))) + (0.0 * (1 - sym.heaviside(((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_3 * iqMVlow_1)) - 0.0)))))),
-            (VMVlow - (((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_3 * iqMVhigh_1)) * sym.heaviside(((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_3 * iqMVhigh_1)) - 0.0))) + (0.0 * (1 - sym.heaviside(((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_3 * iqMVhigh_1)) - 0.0)))))),
-            (QMVhigh - (((-1.0) * iqMVhigh_1) * VMVlow_1)),
-            (QMVlow - (((-1.0) * iqMVlow_1) * VMVhigh_1)),
+            (iqMVlow - (((((-sym.Const(1.0)) * inv_Vpcc_1) * QPCChigh_1) * sym.heaviside(((((-sym.Const(1.0)) * inv_Vpcc_1) * QPCChigh_1) - Iq_min_1))) + (Iq_min_1 * (sym.Const(1) - sym.heaviside(((((-sym.Const(1.0)) * inv_Vpcc_1) * QPCChigh_1) - Iq_min_1)))))),
+            (iqMVhigh - (((((-sym.Const(1.0)) * inv_Vpcc_1) * QPCClow_1) * sym.heaviside((Iq_max_1 - (((-sym.Const(1.0)) * inv_Vpcc_1) * QPCClow_1)))) + (Iq_max_1 * (sym.Const(1) - sym.heaviside((Iq_max_1 - (((-sym.Const(1.0)) * inv_Vpcc_1) * QPCClow_1))))))),
+            (VMVhigh - (((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_3 * iqMVlow_1)) * sym.heaviside(((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_3 * iqMVlow_1)) - sym.Const(0.0)))) + (sym.Const(0.0) * (sym.Const(1) - sym.heaviside(((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_3 * iqMVlow_1)) - sym.Const(0.0))))))),
+            (VMVlow - (((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_3 * iqMVhigh_1)) * sym.heaviside(((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_3 * iqMVhigh_1)) - sym.Const(0.0)))) + (sym.Const(0.0) * (sym.Const(1) - sym.heaviside(((Vpcc_1 - (Power_VI_limit_Xtrafo_pu_3 * iqMVhigh_1)) - sym.Const(0.0))))))),
+            (QMVhigh - (((-sym.Const(1.0)) * iqMVhigh_1) * VMVlow_1)),
+            (QMVlow - (((-sym.Const(1.0)) * iqMVlow_1) * VMVhigh_1)),
         ],
-        algebraic_vars=[Power_VI_limit_inc_idMVhigh, Power_VI_limit_inc_PMVhigh, Power_VI_limit_inc_idMVlow, Power_VI_limit_inc_PMVlow, Power_VI_limit_inc_iqMVlow, Power_VI_limit_inc_iqMVhigh, Power_VI_limit_inc_VMVhigh, Power_VI_limit_inc_VMVlow, Power_VI_limit_inc_QMVhigh, Power_VI_limit_inc_QMVlow, Power_VI_limit_PPCChigh_1, Power_VI_limit_PPCClow_1, PMVhigh, PMVlow, iqMVlow, iqMVhigh, VMVhigh, VMVlow, QMVhigh, QMVlow],
+        algebraic_vars=[Power_VI_limit_PPCChigh_1, Power_VI_limit_PPCClow_1, PMVhigh, PMVlow, iqMVlow, iqMVhigh, VMVhigh, VMVlow, QMVhigh, QMVlow],
         in_vars=[FRT_pos_flag, inv_Vpcc, Id_max, Id_min, Iq_max, Iq_min, vMV_pos_mode, QPCChigh, QPCClow, Vpcc],
         out_vars=[idMVhigh, PMVhigh, idMVlow, PMVlow, iqMVlow, iqMVhigh, VMVhigh, VMVlow, QMVhigh, QMVlow],
         name='Power_VI_limit'
     )
-    Power_VI_limit.event_dict = {
+    Power_VI_limit_19.event_dict = {
         Power_VI_limit_PmvLim_crit_2: vf.add_const(None, name='PmvLim_crit'),
         Power_VI_limit_PmvLim_discharge_2: vf.add_const(None, name='PmvLim_discharge'),
         Power_VI_limit_Pmax_dyn_2: vf.add_const(None, name='Pmax_dyn'),
@@ -1687,43 +1686,43 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         Power_VI_limit_Xtrafo_pu_2: vf.add_const(None, name='Xtrafo_pu'),
     }
 
-    Protection = Block(
+    Protection_20 = Block(
         algebraic_eqs=[
-            (u_eval - ((sym.heaviside((Protection_LineMonitorType_1 - 0.5)) * u_MaxVLL_1) + ((1.0 - sym.heaviside((Protection_LineMonitorType_1 - 0.5))) * u_3Ph_1))),
-            (LvrtOn - ((sym.heaviside((Protection_LVRT_activation_thr_1 - u_eval_1)) * 1.0) + ((1.0 - sym.heaviside((Protection_LVRT_activation_thr_1 - u_eval_1))) * 0.0))),
+            (u_eval - ((sym.heaviside((Protection_LineMonitorType_1 - sym.Const(0.5))) * u_MaxVLL_1) + ((sym.Const(1.0) - sym.heaviside((Protection_LineMonitorType_1 - sym.Const(0.5)))) * u_3Ph_1))),
+            (LvrtOn - ((sym.heaviside((Protection_LVRT_activation_thr_1 - u_eval_1)) * sym.Const(1.0)) + ((sym.Const(1.0) - sym.heaviside((Protection_LVRT_activation_thr_1 - u_eval_1))) * sym.Const(0.0)))),
             (t_elapsed_LV - (t - t_LV)),
-            (vLVRT_trip_lim - ((sym.heaviside((Protection_DtLVRT_1_1 - t_elapsed_LV_1)) * Protection_vLV_1_1) + ((1.0 - sym.heaviside((Protection_DtLVRT_1_1 - t_elapsed_LV_1))) * ((sym.heaviside((Protection_DtLVRT_2_1 - t_elapsed_LV_1)) * Protection_vLV_2_1) + ((1.0 - sym.heaviside((Protection_DtLVRT_2_1 - t_elapsed_LV_1))) * ((sym.heaviside((Protection_DtLVRT_3_1 - t_elapsed_LV_1)) * Protection_vLV_3_1) + ((1.0 - sym.heaviside((Protection_DtLVRT_3_1 - t_elapsed_LV_1))) * ((sym.heaviside((Protection_DtLVRT_4_1 - t_elapsed_LV_1)) * Protection_vLV_4_1) + ((1.0 - sym.heaviside((Protection_DtLVRT_4_1 - t_elapsed_LV_1))) * Protection_vLV_5_1))))))))),
-            (LVRT_Alarm - ((((sym.heaviside((enable_1 - 0.5)) * sym.heaviside((LvrtOn_1 - 0.5))) * sym.heaviside((vLVRT_trip_lim_1 - u_eval_1))) * 1.0) + ((1.0 - ((sym.heaviside((enable_1 - 0.5)) * sym.heaviside((LvrtOn_1 - 0.5))) * sym.heaviside((vLVRT_trip_lim_1 - u_eval_1)))) * 0.0))),
-            (OvrtOn - ((sym.heaviside((u_eval_1 - Protection_OVRT_activation_thr_1)) * 1.0) + ((1.0 - sym.heaviside((u_eval_1 - Protection_OVRT_activation_thr_1))) * 0.0))),
+            (vLVRT_trip_lim - ((sym.heaviside((Protection_DtLVRT_1_1 - t_elapsed_LV_1)) * Protection_vLV_1_1) + ((sym.Const(1.0) - sym.heaviside((Protection_DtLVRT_1_1 - t_elapsed_LV_1))) * ((sym.heaviside((Protection_DtLVRT_2_1 - t_elapsed_LV_1)) * Protection_vLV_2_1) + ((sym.Const(1.0) - sym.heaviside((Protection_DtLVRT_2_1 - t_elapsed_LV_1))) * ((sym.heaviside((Protection_DtLVRT_3_1 - t_elapsed_LV_1)) * Protection_vLV_3_1) + ((sym.Const(1.0) - sym.heaviside((Protection_DtLVRT_3_1 - t_elapsed_LV_1))) * ((sym.heaviside((Protection_DtLVRT_4_1 - t_elapsed_LV_1)) * Protection_vLV_4_1) + ((sym.Const(1.0) - sym.heaviside((Protection_DtLVRT_4_1 - t_elapsed_LV_1))) * Protection_vLV_5_1))))))))),
+            (LVRT_Alarm - ((((sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((LvrtOn_1 - sym.Const(0.5)))) * sym.heaviside((vLVRT_trip_lim_1 - u_eval_1))) * sym.Const(1.0)) + ((sym.Const(1.0) - ((sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((LvrtOn_1 - sym.Const(0.5)))) * sym.heaviside((vLVRT_trip_lim_1 - u_eval_1)))) * sym.Const(0.0)))),
+            (OvrtOn - ((sym.heaviside((u_eval_1 - Protection_OVRT_activation_thr_1)) * sym.Const(1.0)) + ((sym.Const(1.0) - sym.heaviside((u_eval_1 - Protection_OVRT_activation_thr_1))) * sym.Const(0.0)))),
             (t_elapsed_OV - (t - t_OV)),
-            (vOVRT_trip_lim - ((sym.heaviside((Protection_DtOVRT_1_1 - t_elapsed_OV_1)) * Protection_vOV_1_1) + ((1.0 - sym.heaviside((Protection_DtOVRT_1_1 - t_elapsed_OV_1))) * ((sym.heaviside((Protection_DtOVRT_2_1 - t_elapsed_OV_1)) * Protection_vOV_2_1) + ((1.0 - sym.heaviside((Protection_DtOVRT_2_1 - t_elapsed_OV_1))) * ((sym.heaviside((Protection_DtOVRT_3_1 - t_elapsed_OV_1)) * Protection_vOV_3_1) + ((1.0 - sym.heaviside((Protection_DtOVRT_3_1 - t_elapsed_OV_1))) * ((sym.heaviside((Protection_DtOVRT_4_1 - t_elapsed_OV_1)) * Protection_vOV_4_1) + ((1.0 - sym.heaviside((Protection_DtOVRT_4_1 - t_elapsed_OV_1))) * Protection_vOV_5_1))))))))),
-            (OVRT_Alarm - ((((sym.heaviside((enable_1 - 0.5)) * sym.heaviside((OvrtOn_1 - 0.5))) * sym.heaviside((u_eval_1 - vOVRT_trip_lim_1))) * 1.0) + ((1.0 - ((sym.heaviside((enable_1 - 0.5)) * sym.heaviside((OvrtOn_1 - 0.5))) * sym.heaviside((u_eval_1 - vOVRT_trip_lim_1)))) * 0.0))),
-            (en_OF1 - (((sym.heaviside((enable_1 - 0.5)) * sym.heaviside((f_1 - Protection_HighThr_Freq1_1))) * 1.0) + ((1.0 - (sym.heaviside((enable_1 - 0.5)) * sym.heaviside((f_1 - Protection_HighThr_Freq1_1)))) * 0.0))),
-            (en_OF2 - (((sym.heaviside((enable_1 - 0.5)) * sym.heaviside((f_1 - Protection_HighThr_Freq2_1))) * 1.0) + ((1.0 - (sym.heaviside((enable_1 - 0.5)) * sym.heaviside((f_1 - Protection_HighThr_Freq2_1)))) * 0.0))),
-            (en_OFFast - (((sym.heaviside((enable_1 - 0.5)) * sym.heaviside((f_1 - Protection_HighThr_FreqFast_1))) * 1.0) + ((1.0 - (sym.heaviside((enable_1 - 0.5)) * sym.heaviside((f_1 - Protection_HighThr_FreqFast_1)))) * 0.0))),
-            (en_UF1 - (((sym.heaviside((enable_1 - 0.5)) * sym.heaviside((Protection_LowThr_Freq1_1 - f_1))) * 1.0) + ((1.0 - (sym.heaviside((enable_1 - 0.5)) * sym.heaviside((Protection_LowThr_Freq1_1 - f_1)))) * 0.0))),
-            (en_UF2 - (((sym.heaviside((enable_1 - 0.5)) * sym.heaviside((Protection_LowThr_Freq2_1 - f_1))) * 1.0) + ((1.0 - (sym.heaviside((enable_1 - 0.5)) * sym.heaviside((Protection_LowThr_Freq2_1 - f_1)))) * 0.0))),
-            (en_UFFast - (((sym.heaviside((enable_1 - 0.5)) * sym.heaviside((Protection_LowThr_FreqFast_1 - f_1))) * 1.0) + ((1.0 - (sym.heaviside((enable_1 - 0.5)) * sym.heaviside((Protection_LowThr_FreqFast_1 - f_1)))) * 0.0))),
-            (Freq_Alarm - (((1.0 - ((1.0 - (1.0 - ((1.0 - (1.0 - ((1.0 - (1.0 - ((1.0 - (1.0 - ((1.0 - sym.heaviside((Trip_OF_1 - 0.5))) * (1.0 - sym.heaviside((Trip_OF_2 - 0.5)))))) * (1.0 - sym.heaviside((Trip_OF_Fast - 0.5)))))) * (1.0 - sym.heaviside((Trip_UF_1 - 0.5)))))) * (1.0 - sym.heaviside((Trip_UF_2 - 0.5)))))) * (1.0 - sym.heaviside((Trip_UF_Fast - 0.5))))) * 1.0) + ((1.0 - (1.0 - ((1.0 - (1.0 - ((1.0 - (1.0 - ((1.0 - (1.0 - ((1.0 - (1.0 - ((1.0 - sym.heaviside((Trip_OF_1 - 0.5))) * (1.0 - sym.heaviside((Trip_OF_2 - 0.5)))))) * (1.0 - sym.heaviside((Trip_OF_Fast - 0.5)))))) * (1.0 - sym.heaviside((Trip_UF_1 - 0.5)))))) * (1.0 - sym.heaviside((Trip_UF_2 - 0.5)))))) * (1.0 - sym.heaviside((Trip_UF_Fast - 0.5)))))) * 0.0))),
-            (en_RoCoF - (((sym.heaviside((enable_1 - 0.5)) * sym.heaviside((sym.abs(RoCoF_measured_1) - Protection_Limit_RoCoF_1))) * 1.0) + ((1.0 - (sym.heaviside((enable_1 - 0.5)) * sym.heaviside((sym.abs(RoCoF_measured_1) - Protection_Limit_RoCoF_1)))) * 0.0))),
-            (en_OV - (((sym.heaviside((enable_1 - 0.5)) * sym.heaviside((u_eval_1 - Protection_HighThr_Voltage_1))) * 1.0) + ((1.0 - (sym.heaviside((enable_1 - 0.5)) * sym.heaviside((u_eval_1 - Protection_HighThr_Voltage_1)))) * 0.0))),
-            (en_OVFast - (((sym.heaviside((enable_1 - 0.5)) * sym.heaviside((u_eval_1 - Protection_HighThr_VoltageFast_1))) * 1.0) + ((1.0 - (sym.heaviside((enable_1 - 0.5)) * sym.heaviside((u_eval_1 - Protection_HighThr_VoltageFast_1)))) * 0.0))),
-            (en_UV - (((sym.heaviside((enable_1 - 0.5)) * sym.heaviside((Protection_LowThr_Voltage_1 - u_eval_1))) * 1.0) + ((1.0 - (sym.heaviside((enable_1 - 0.5)) * sym.heaviside((Protection_LowThr_Voltage_1 - u_eval_1)))) * 0.0))),
-            (en_UVFast - (((sym.heaviside((enable_1 - 0.5)) * sym.heaviside((Protection_LowThr_VoltageFast_1 - u_eval_1))) * 1.0) + ((1.0 - (sym.heaviside((enable_1 - 0.5)) * sym.heaviside((Protection_LowThr_VoltageFast_1 - u_eval_1)))) * 0.0))),
-            (Volt_Alarm - (((1.0 - ((1.0 - (1.0 - ((1.0 - (1.0 - ((1.0 - sym.heaviside((Trip_OV - 0.5))) * (1.0 - sym.heaviside((Trip_OV_Fast - 0.5)))))) * (1.0 - sym.heaviside((Trip_UV - 0.5)))))) * (1.0 - sym.heaviside((Trip_UV_Fast - 0.5))))) * 1.0) + ((1.0 - (1.0 - ((1.0 - (1.0 - ((1.0 - (1.0 - ((1.0 - sym.heaviside((Trip_OV - 0.5))) * (1.0 - sym.heaviside((Trip_OV_Fast - 0.5)))))) * (1.0 - sym.heaviside((Trip_UV - 0.5)))))) * (1.0 - sym.heaviside((Trip_UV_Fast - 0.5)))))) * 0.0))),
-            (OR_General - (((1.0 - ((1.0 - (1.0 - ((1.0 - (1.0 - ((1.0 - (1.0 - ((1.0 - sym.heaviside((LVRT_Alarm_1 - 0.5))) * (1.0 - sym.heaviside((OVRT_Alarm_1 - 0.5)))))) * (1.0 - sym.heaviside((Freq_Alarm_1 - 0.5)))))) * (1.0 - sym.heaviside((RoCoF_Alarm_1 - 0.5)))))) * (1.0 - sym.heaviside((Volt_Alarm_1 - 0.5))))) * 1.0) + ((1.0 - (1.0 - ((1.0 - (1.0 - ((1.0 - (1.0 - ((1.0 - (1.0 - ((1.0 - sym.heaviside((LVRT_Alarm_1 - 0.5))) * (1.0 - sym.heaviside((OVRT_Alarm_1 - 0.5)))))) * (1.0 - sym.heaviside((Freq_Alarm_1 - 0.5)))))) * (1.0 - sym.heaviside((RoCoF_Alarm_1 - 0.5)))))) * (1.0 - sym.heaviside((Volt_Alarm_1 - 0.5)))))) * 0.0))),
-            (Protection_inc_LVRT_Alarm - 0.0),
-            (Protection_inc_OVRT_Alarm - 0.0),
-            (Protection_inc_Freq_Alarm - 0.0),
-            (Protection_inc_RoCoF_Alarm - 0.0),
-            (Protection_inc_Master_Trip - 0.0),
+            (vOVRT_trip_lim - ((sym.heaviside((Protection_DtOVRT_1_1 - t_elapsed_OV_1)) * Protection_vOV_1_1) + ((sym.Const(1.0) - sym.heaviside((Protection_DtOVRT_1_1 - t_elapsed_OV_1))) * ((sym.heaviside((Protection_DtOVRT_2_1 - t_elapsed_OV_1)) * Protection_vOV_2_1) + ((sym.Const(1.0) - sym.heaviside((Protection_DtOVRT_2_1 - t_elapsed_OV_1))) * ((sym.heaviside((Protection_DtOVRT_3_1 - t_elapsed_OV_1)) * Protection_vOV_3_1) + ((sym.Const(1.0) - sym.heaviside((Protection_DtOVRT_3_1 - t_elapsed_OV_1))) * ((sym.heaviside((Protection_DtOVRT_4_1 - t_elapsed_OV_1)) * Protection_vOV_4_1) + ((sym.Const(1.0) - sym.heaviside((Protection_DtOVRT_4_1 - t_elapsed_OV_1))) * Protection_vOV_5_1))))))))),
+            (OVRT_Alarm - ((((sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((OvrtOn_1 - sym.Const(0.5)))) * sym.heaviside((u_eval_1 - vOVRT_trip_lim_1))) * sym.Const(1.0)) + ((sym.Const(1.0) - ((sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((OvrtOn_1 - sym.Const(0.5)))) * sym.heaviside((u_eval_1 - vOVRT_trip_lim_1)))) * sym.Const(0.0)))),
+            (en_OF1 - (((sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((f_1 - Protection_HighThr_Freq1_1))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((f_1 - Protection_HighThr_Freq1_1)))) * sym.Const(0.0)))),
+            (en_OF2 - (((sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((f_1 - Protection_HighThr_Freq2_1))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((f_1 - Protection_HighThr_Freq2_1)))) * sym.Const(0.0)))),
+            (en_OFFast - (((sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((f_1 - Protection_HighThr_FreqFast_1))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((f_1 - Protection_HighThr_FreqFast_1)))) * sym.Const(0.0)))),
+            (en_UF1 - (((sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((Protection_LowThr_Freq1_1 - f_1))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((Protection_LowThr_Freq1_1 - f_1)))) * sym.Const(0.0)))),
+            (en_UF2 - (((sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((Protection_LowThr_Freq2_1 - f_1))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((Protection_LowThr_Freq2_1 - f_1)))) * sym.Const(0.0)))),
+            (en_UFFast - (((sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((Protection_LowThr_FreqFast_1 - f_1))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((Protection_LowThr_FreqFast_1 - f_1)))) * sym.Const(0.0)))),
+            (Freq_Alarm - (((sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((Trip_OF_1 - sym.Const(0.5)))) * (sym.Const(1.0) - sym.heaviside((Trip_OF_2 - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((Trip_OF_Fast - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((Trip_UF_1 - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((Trip_UF_2 - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((Trip_UF_Fast - sym.Const(0.5)))))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((Trip_OF_1 - sym.Const(0.5)))) * (sym.Const(1.0) - sym.heaviside((Trip_OF_2 - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((Trip_OF_Fast - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((Trip_UF_1 - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((Trip_UF_2 - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((Trip_UF_Fast - sym.Const(0.5))))))) * sym.Const(0.0)))),
+            (en_RoCoF - (((sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((sym.abs(RoCoF_measured_1) - Protection_Limit_RoCoF_1))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((sym.abs(RoCoF_measured_1) - Protection_Limit_RoCoF_1)))) * sym.Const(0.0)))),
+            (en_OV - (((sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((u_eval_1 - Protection_HighThr_Voltage_1))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((u_eval_1 - Protection_HighThr_Voltage_1)))) * sym.Const(0.0)))),
+            (en_OVFast - (((sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((u_eval_1 - Protection_HighThr_VoltageFast_1))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((u_eval_1 - Protection_HighThr_VoltageFast_1)))) * sym.Const(0.0)))),
+            (en_UV - (((sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((Protection_LowThr_Voltage_1 - u_eval_1))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((Protection_LowThr_Voltage_1 - u_eval_1)))) * sym.Const(0.0)))),
+            (en_UVFast - (((sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((Protection_LowThr_VoltageFast_1 - u_eval_1))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.heaviside((enable_1 - sym.Const(0.5))) * sym.heaviside((Protection_LowThr_VoltageFast_1 - u_eval_1)))) * sym.Const(0.0)))),
+            (Volt_Alarm - (((sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((Trip_OV - sym.Const(0.5)))) * (sym.Const(1.0) - sym.heaviside((Trip_OV_Fast - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((Trip_UV - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((Trip_UV_Fast - sym.Const(0.5)))))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((Trip_OV - sym.Const(0.5)))) * (sym.Const(1.0) - sym.heaviside((Trip_OV_Fast - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((Trip_UV - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((Trip_UV_Fast - sym.Const(0.5))))))) * sym.Const(0.0)))),
+            (OR_General - (((sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((LVRT_Alarm_1 - sym.Const(0.5)))) * (sym.Const(1.0) - sym.heaviside((OVRT_Alarm_1 - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((Freq_Alarm_1 - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((RoCoF_Alarm_1 - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((Volt_Alarm_1 - sym.Const(0.5)))))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((LVRT_Alarm_1 - sym.Const(0.5)))) * (sym.Const(1.0) - sym.heaviside((OVRT_Alarm_1 - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((Freq_Alarm_1 - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((RoCoF_Alarm_1 - sym.Const(0.5))))))) * (sym.Const(1.0) - sym.heaviside((Volt_Alarm_1 - sym.Const(0.5))))))) * sym.Const(0.0)))),
+            (Protection_inc_LVRT_Alarm - sym.Const(0.0)),
+            (Protection_inc_OVRT_Alarm - sym.Const(0.0)),
+            (Protection_inc_Freq_Alarm - sym.Const(0.0)),
+            (Protection_inc_RoCoF_Alarm - sym.Const(0.0)),
+            (Protection_inc_Master_Trip - sym.Const(0.0)),
         ],
         algebraic_vars=[u_eval, LvrtOn, t_elapsed_LV, vLVRT_trip_lim, LVRT_Alarm, OvrtOn, t_elapsed_OV, vOVRT_trip_lim, OVRT_Alarm, en_OF1, en_OF2, en_OFFast, en_UF1, en_UF2, en_UFFast, Freq_Alarm, en_RoCoF, en_OV, en_OVFast, en_UV, en_UVFast, Volt_Alarm, OR_General, Protection_inc_LVRT_Alarm, Protection_inc_OVRT_Alarm, Protection_inc_Freq_Alarm, Protection_inc_RoCoF_Alarm, Protection_inc_Master_Trip],
         in_vars=[u_3Ph, u_MaxVLL, f, enable, RoCoF_measured],
         out_vars=[Master_Trip, LVRT_Alarm, OVRT_Alarm, Freq_Alarm, RoCoF_Alarm],
         name='Protection'
     )
-    Protection.event_dict = {
+    Protection_20.event_dict = {
         Protection_LVRT_activation_thr: vf.add_const(None, name='LVRT_activation_thr'),
         Protection_vLV_1: vf.add_const(None, name='vLV_1'),
         Protection_vLV_2: vf.add_const(None, name='vLV_2'),
@@ -1769,56 +1768,56 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         Protection_LineMonitorType: vf.add_const(None, name='LineMonitorType'),
     }
 
-    Q_Vac_droop = Block(
+    Q_Vac_droop_21 = Block(
         algebraic_eqs=[
-            (Q_Vac_droop_inc_rv - rv_init_1),
-            (Q_Vac_droop_inc_xv - xv_init_1),
-            (Q_Vac_droop_inc_Vref - V1vsc_1),
-            (Q_Vac_droop_inc_xV - V1vsc_1),
-            (Q_Vac_droop_inc_Vf - V1vsc_1),
-            (Q_Vac_droop_inc_xQ_meas_f - Qvsc_1),
-            (Q_Vac_droop_inc_Qref_out - Qvsc_1),
-            (Q_Vac_droop_inc_Qref - Qvsc_1),
-            (Q_Vac_droop_val_cos - sym.cos(val_angle_E_1)),
-            (Q_Vac_droop_val_sin - sym.sin(val_angle_E_1)),
-            (Q_Vac_droop_denom_v - ((sym.heaviside((0.001 - V1vsc_1)) * 1.0) + ((1.0 - sym.heaviside((0.001 - V1vsc_1))) * (V1vsc_1 * V1vsc_1)))),
-            (Q_Vac_droop_inc_eq - 0.0),
+            (Q_Vac_droop_inc_Vref - V1pcc_1),
+            (Q_Vac_droop_inc_xV - V1pcc_1),
+            (Q_Vac_droop_inc_Vf - V1pcc_1),
+            (Q_Vac_droop_inc_Qref - sym.Const(0.0)),
+            (Q_Vac_droop_inc_Qref_out - Qref_1),
+            (Q_Vac_droop_inc_i1q_ref - i1q_hat_1),
+            (Q_Vac_droop_inc_NoMoreNoLess - sym.Const(1.0)),
+            (Q_Vac_droop_inc_e_pre - ed_1),
         ],
-        algebraic_vars=[Q_Vac_droop_inc_rv, Q_Vac_droop_inc_xv, Q_Vac_droop_inc_Vref, Q_Vac_droop_inc_xV, Q_Vac_droop_inc_Vf, Q_Vac_droop_inc_xQ_meas_f, Q_Vac_droop_inc_Qref_out, Q_Vac_droop_inc_Qref, Q_Vac_droop_val_cos, Q_Vac_droop_val_sin, Q_Vac_droop_denom_v, Q_Vac_droop_inc_eq],
-        in_vars=[Q_capab_high, Vref, V1vsc, Qref, Qvsc, Q_capab_low, FRT1_flag, Pvsc, val_angle_E, flag_overload, xv_init, rv_init],
+        algebraic_vars=[Q_Vac_droop_inc_Vref, Q_Vac_droop_inc_xV, Q_Vac_droop_inc_Vf, Q_Vac_droop_inc_Qref, Q_Vac_droop_inc_Qref_out, Q_Vac_droop_inc_i1q_ref, Q_Vac_droop_inc_NoMoreNoLess, Q_Vac_droop_inc_e_pre],
+        in_vars=[Q_capab_high, Vref, V1pcc, Qref, Qpcc, Q_capab_low, i1q_hat, i1q_ref, FRT1_flag],
         out_vars=[Qref_out, ed, eq],
         name='Q/Vac droop'
     )
-    Q_Vac_droop.event_dict = {
-        Q_Vac_droop_tau_Q_meas: vf.add_const(None, name='tau_Q_meas'),
+    Q_Vac_droop_21.event_dict = {
         Q_Vac_droop_ki_Q: vf.add_const(None, name='ki_Q'),
         Q_Vac_droop_tau_V: vf.add_const(None, name='tau_V'),
         Q_Vac_droop_kd_V: vf.add_const(None, name='kd_V'),
     }
 
-    Q_Vac_droop = Block(
+    Q_Vac_droop_22 = Block(
         algebraic_eqs=[
-            (Q_Vac_droop_inc_Vref_1 - V1pcc_1),
-            (Q_Vac_droop_inc_xV_1 - V1pcc_1),
-            (Q_Vac_droop_inc_Vf_1 - V1pcc_1),
-            (Q_Vac_droop_inc_Qref_1 - 0.0),
-            (Q_Vac_droop_inc_Qref_out_1 - Qref_1),
-            (Q_Vac_droop_inc_i1q_ref - i1q_hat_1),
-            (Q_Vac_droop_inc_NoMoreNoLess - 1.0),
-            (Q_Vac_droop_inc_e_pre - ed_1),
+            (Q_Vac_droop_inc_rv - rv_init_1),
+            (Q_Vac_droop_inc_xv - xv_init_1),
+            (Q_Vac_droop_inc_Vref_1 - V1vsc_1),
+            (Q_Vac_droop_inc_xV_1 - V1vsc_1),
+            (Q_Vac_droop_inc_Vf_1 - V1vsc_1),
+            (Q_Vac_droop_inc_xQ_meas_f - Qvsc_1),
+            (Q_Vac_droop_inc_Qref_out_1 - Qvsc_1),
+            (Q_Vac_droop_inc_Qref_1 - Qvsc_1),
+            (Q_Vac_droop_val_cos - sym.cos(val_angle_E_1)),
+            (Q_Vac_droop_val_sin - sym.sin(val_angle_E_1)),
+            (Q_Vac_droop_denom_v - ((sym.heaviside((sym.Const(0.001) - V1vsc_1)) * sym.Const(1.0)) + ((sym.Const(1.0) - sym.heaviside((sym.Const(0.001) - V1vsc_1))) * (V1vsc_1 * V1vsc_1)))),
+            (Q_Vac_droop_inc_eq - sym.Const(0.0)),
         ],
-        algebraic_vars=[Q_Vac_droop_inc_Vref_1, Q_Vac_droop_inc_xV_1, Q_Vac_droop_inc_Vf_1, Q_Vac_droop_inc_Qref_1, Q_Vac_droop_inc_Qref_out_1, Q_Vac_droop_inc_i1q_ref, Q_Vac_droop_inc_NoMoreNoLess, Q_Vac_droop_inc_e_pre],
-        in_vars=[Q_capab_high, Vref, V1pcc, Qref, Qpcc, Q_capab_low, i1q_hat, i1q_ref, FRT1_flag],
+        algebraic_vars=[Q_Vac_droop_inc_rv, Q_Vac_droop_inc_xv, Q_Vac_droop_inc_Vref_1, Q_Vac_droop_inc_xV_1, Q_Vac_droop_inc_Vf_1, Q_Vac_droop_inc_xQ_meas_f, Q_Vac_droop_inc_Qref_out_1, Q_Vac_droop_inc_Qref_1, Q_Vac_droop_val_cos, Q_Vac_droop_val_sin, Q_Vac_droop_denom_v, Q_Vac_droop_inc_eq],
+        in_vars=[Q_capab_high, Vref, V1vsc, Qref, Qvsc, Q_capab_low, FRT1_flag, Pvsc, val_angle_E, flag_overload, xv_init, rv_init],
         out_vars=[Qref_out, ed, eq],
         name='Q/Vac droop'
     )
-    Q_Vac_droop.event_dict = {
+    Q_Vac_droop_22.event_dict = {
+        Q_Vac_droop_tau_Q_meas: vf.add_const(None, name='tau_Q_meas'),
         Q_Vac_droop_ki_Q_1: vf.add_const(None, name='ki_Q'),
         Q_Vac_droop_tau_V_1: vf.add_const(None, name='tau_V'),
         Q_Vac_droop_kd_V_1: vf.add_const(None, name='kd_V'),
     }
 
-    Sat_Lim_Neg = Block(
+    Sat_Lim_Neg_23 = Block(
         algebraic_eqs=[
             (theta - sym.atan2(iq_hat_1, id_hat_1)),
             (costheta - sym.abs(sym.cos(theta_1))),
@@ -1839,7 +1838,7 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         name='Sat. Lim. Neg.'
     )
 
-    Sat_Lim_Neg = Block(
+    Sat_Lim_Neg_24 = Block(
         algebraic_eqs=[
             (theta - sym.atan2(iq_hat_1, id_hat_1)),
             (costheta - sym.abs(sym.cos(theta_1))),
@@ -1860,7 +1859,7 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         name='Sat. Lim. Neg.'
     )
 
-    Sat_Lim_Pos = Block(
+    Sat_Lim_Pos_25 = Block(
         algebraic_eqs=[
             (theta - sym.atan2(iq_hat_1, id_hat_1)),
             (costheta - sym.abs(sym.cos(theta_1))),
@@ -1880,7 +1879,7 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         name='Sat. Lim. Pos.'
     )
 
-    Sat_Lim_Pos = Block(
+    Sat_Lim_Pos_26 = Block(
         algebraic_eqs=[
             (theta - sym.atan2(iq_hat_1, id_hat_1)),
             (costheta - sym.abs(sym.cos(theta_1))),
@@ -1900,7 +1899,7 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         name='Sat. Lim. Pos.'
     )
 
-    Saturation_Amplitude = Block(
+    Saturation_Amplitude_27 = Block(
         algebraic_eqs=[
             (id - (id_sat_up_1 - sym.abs(id_ref_1))),
             (iq - (iq_sat_up_1 - sym.abs(iq_ref_1))),
@@ -1914,7 +1913,7 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         name='Saturation Amplitude'
     )
 
-    Saturation_Amplitude = Block(
+    Saturation_Amplitude_28 = Block(
         algebraic_eqs=[
             (id - (id_sat_up_1 - sym.abs(id_ref_1))),
             (iq - (iq_sat_up_1 - sym.abs(iq_ref_1))),
@@ -1928,7 +1927,7 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         name='Saturation Amplitude'
     )
 
-    Smart_Admittance = Block(
+    Smart_Admittance_29 = Block(
         state_eqs=[
             (((((e1d_1 - u1d_1) - (Smart_Admittance_rv_1 * Smart_Admittance_x1d_va_1)) + (Smart_Admittance_xv_1 * Smart_Admittance_x1q_va_1)) * w1_1) / Smart_Admittance_xv_1),
             (((((e1q_1 - u1q_1) - (Smart_Admittance_xv_1 * Smart_Admittance_x1d_va_1)) - (Smart_Admittance_rv_1 * Smart_Admittance_x1q_va_1)) * w1_1) / Smart_Admittance_xv_1),
@@ -1937,7 +1936,7 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         ],
         state_vars=[Smart_Admittance_x1d_va, Smart_Admittance_x1q_va, Smart_Admittance_x2d_va, Smart_Admittance_x2q_va],
         algebraic_eqs=[
-            (w1 - ((2.0 * 3.141592653589793) * Smart_Admittance_f1_1)),
+            (w1 - ((sym.Const(2.0) * sym.Const(3.141592653589793)) * Smart_Admittance_f1_1)),
             (Smart_Admittance_inc_rv_init - Smart_Admittance_rv_1),
             (Smart_Admittance_inc_xv_init - Smart_Admittance_xv_1),
             (rv_init - Smart_Admittance_rv_1),
@@ -1949,7 +1948,7 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
             (denom - ((Smart_Admittance_rv_1 * Smart_Admittance_rv_1) + (Smart_Admittance_xv_1 * Smart_Admittance_xv_1))),
             (i1d_hat_nodyn - (((Smart_Admittance_rv_1 * ud_dif_1) + (uq_dif_1 * Smart_Admittance_xv_1)) / denom_1)),
             (i1q_hat_nodyn - (((Smart_Admittance_rv_1 * uq_dif_1) - (ud_dif_1 * Smart_Admittance_xv_1)) / denom_1)),
-            (Smart_Admittance_T_va_ramp - 0.3),
+            (Smart_Admittance_T_va_ramp - sym.Const(0.3)),
             (i2d_hat_dyn - Smart_Admittance_x2d_va_1),
             (i2q_hat_dyn - Smart_Admittance_x2q_va_1),
             (u2d_dif - (e2d_1 - u2d_1)),
@@ -1957,43 +1956,43 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
             (i2d_hat_nodyn - (((Smart_Admittance_rv_1 * u2d_dif_1) + (u2q_dif_1 * Smart_Admittance_xv_1)) / denom_1)),
             (i2q_hat_nodyn - (((Smart_Admittance_rv_1 * u2q_dif_1) - (u2d_dif_1 * Smart_Admittance_xv_1)) / denom_1)),
             (e_int_d - e1d_1),
-            (safe_V1vsc - ((0.01 * sym.heaviside((0.01 - V1vsc_1))) + (V1vsc_1 * (1 - sym.heaviside((0.01 - V1vsc_1)))))),
-            (inv_V1vsc - (1.0 / safe_V1vsc_1)),
-            (P_dis_normal - ((Smart_Admittance_PmvLim_discharge_1 * sym.heaviside((Smart_Admittance_Pmax_dyn_1 - Smart_Admittance_PmvLim_discharge_1))) + (Smart_Admittance_Pmax_dyn_1 * (1 - sym.heaviside((Smart_Admittance_Pmax_dyn_1 - Smart_Admittance_PmvLim_discharge_1)))))),
-            (P_chg_normal - ((Smart_Admittance_PmvLim_charge_1 * sym.heaviside((Smart_Admittance_PmvLim_charge_1 - (-Smart_Admittance_Pmax_dyn_1)))) + ((-Smart_Admittance_Pmax_dyn_1) * (1 - sym.heaviside((Smart_Admittance_PmvLim_charge_1 - (-Smart_Admittance_Pmax_dyn_1))))))),
-            (PPCChigh - (Smart_Admittance_PlantEff_1 * ((sym.heaviside((FRT1_flag_1 - 0.5)) * Smart_Admittance_PmvLim_crit_1) + ((1.0 - sym.heaviside((FRT1_flag_1 - 0.5))) * P_dis_normal_1)))),
-            (PPCClow - (Smart_Admittance_inv_PlantEff_1 * ((sym.heaviside((FRT1_flag_1 - 0.5)) * (-Smart_Admittance_PmvLim_crit_1)) + ((1.0 - sym.heaviside((FRT1_flag_1 - 0.5))) * P_chg_normal_1)))),
-            (idMVhigh - ((((PPCChigh_1 * inv_V1vsc_1) * Smart_Admittance_inv_k_eff_trafo_1) * sym.heaviside((Smart_Admittance_Imax_pu_1 - ((PPCChigh_1 * inv_V1vsc_1) * Smart_Admittance_inv_k_eff_trafo_1)))) + (Smart_Admittance_Imax_pu_1 * (1 - sym.heaviside((Smart_Admittance_Imax_pu_1 - ((PPCChigh_1 * inv_V1vsc_1) * Smart_Admittance_inv_k_eff_trafo_1))))))),
-            (idMVlow - ((((PPCClow_1 * inv_V1vsc_1) * Smart_Admittance_k_eff_trafo_1) * sym.heaviside((((PPCClow_1 * inv_V1vsc_1) * Smart_Admittance_k_eff_trafo_1) - (-Smart_Admittance_Imax_pu_1)))) + ((-Smart_Admittance_Imax_pu_1) * (1 - sym.heaviside((((PPCClow_1 * inv_V1vsc_1) * Smart_Admittance_k_eff_trafo_1) - (-Smart_Admittance_Imax_pu_1))))))),
+            (safe_V1vsc - ((sym.Const(0.01) * sym.heaviside((sym.Const(0.01) - V1vsc_1))) + (V1vsc_1 * (sym.Const(1) - sym.heaviside((sym.Const(0.01) - V1vsc_1)))))),
+            (inv_V1vsc - (sym.Const(1.0) / safe_V1vsc_1)),
+            (P_dis_normal - ((Smart_Admittance_PmvLim_discharge_1 * sym.heaviside((Smart_Admittance_Pmax_dyn_1 - Smart_Admittance_PmvLim_discharge_1))) + (Smart_Admittance_Pmax_dyn_1 * (sym.Const(1) - sym.heaviside((Smart_Admittance_Pmax_dyn_1 - Smart_Admittance_PmvLim_discharge_1)))))),
+            (P_chg_normal - ((Smart_Admittance_PmvLim_charge_1 * sym.heaviside((Smart_Admittance_PmvLim_charge_1 - (-Smart_Admittance_Pmax_dyn_1)))) + ((-Smart_Admittance_Pmax_dyn_1) * (sym.Const(1) - sym.heaviside((Smart_Admittance_PmvLim_charge_1 - (-Smart_Admittance_Pmax_dyn_1))))))),
+            (PPCChigh - (Smart_Admittance_PlantEff_1 * ((sym.heaviside((FRT1_flag_1 - sym.Const(0.5))) * Smart_Admittance_PmvLim_crit_1) + ((sym.Const(1.0) - sym.heaviside((FRT1_flag_1 - sym.Const(0.5)))) * P_dis_normal_1)))),
+            (PPCClow - (Smart_Admittance_inv_PlantEff_1 * ((sym.heaviside((FRT1_flag_1 - sym.Const(0.5))) * (-Smart_Admittance_PmvLim_crit_1)) + ((sym.Const(1.0) - sym.heaviside((FRT1_flag_1 - sym.Const(0.5)))) * P_chg_normal_1)))),
+            (idMVhigh - ((((PPCChigh_1 * inv_V1vsc_1) * Smart_Admittance_inv_k_eff_trafo_1) * sym.heaviside((Smart_Admittance_Imax_pu_1 - ((PPCChigh_1 * inv_V1vsc_1) * Smart_Admittance_inv_k_eff_trafo_1)))) + (Smart_Admittance_Imax_pu_1 * (sym.Const(1) - sym.heaviside((Smart_Admittance_Imax_pu_1 - ((PPCChigh_1 * inv_V1vsc_1) * Smart_Admittance_inv_k_eff_trafo_1))))))),
+            (idMVlow - ((((PPCClow_1 * inv_V1vsc_1) * Smart_Admittance_k_eff_trafo_1) * sym.heaviside((((PPCClow_1 * inv_V1vsc_1) * Smart_Admittance_k_eff_trafo_1) - (-Smart_Admittance_Imax_pu_1)))) + ((-Smart_Admittance_Imax_pu_1) * (sym.Const(1) - sym.heaviside((((PPCClow_1 * inv_V1vsc_1) * Smart_Admittance_k_eff_trafo_1) - (-Smart_Admittance_Imax_pu_1))))))),
             (lim1 - ((safe_V1vsc_1 - Smart_Admittance_VdcRef_1) * Smart_Admittance_inv_Xtrafo_Lout_pu_1)),
-            (V_max_safe - ((Smart_Admittance_MaxAuxiliaryVoltage_1 * sym.heaviside((Smart_Admittance_MaxTransfoFluxVoltage_1 - Smart_Admittance_MaxAuxiliaryVoltage_1))) + (Smart_Admittance_MaxTransfoFluxVoltage_1 * (1 - sym.heaviside((Smart_Admittance_MaxTransfoFluxVoltage_1 - Smart_Admittance_MaxAuxiliaryVoltage_1)))))),
+            (V_max_safe - ((Smart_Admittance_MaxAuxiliaryVoltage_1 * sym.heaviside((Smart_Admittance_MaxTransfoFluxVoltage_1 - Smart_Admittance_MaxAuxiliaryVoltage_1))) + (Smart_Admittance_MaxTransfoFluxVoltage_1 * (sym.Const(1) - sym.heaviside((Smart_Admittance_MaxTransfoFluxVoltage_1 - Smart_Admittance_MaxAuxiliaryVoltage_1)))))),
             (lim2 - ((safe_V1vsc_1 - V_max_safe_1) * Smart_Admittance_inv_Xtrafo_pu_1)),
-            (i_cap_raw - ((lim1_1 * sym.heaviside((lim2_1 - lim1_1))) + (lim2_1 * (1 - sym.heaviside((lim2_1 - lim1_1)))))),
-            (ImaxCapacitive - (((-Smart_Admittance_Imax_pu_1) * sym.heaviside(((-Smart_Admittance_Imax_pu_1) - i_cap_raw_1))) + (i_cap_raw_1 * (1 - sym.heaviside(((-Smart_Admittance_Imax_pu_1) - i_cap_raw_1)))))),
+            (i_cap_raw - ((lim1_1 * sym.heaviside((lim2_1 - lim1_1))) + (lim2_1 * (sym.Const(1) - sym.heaviside((lim2_1 - lim1_1)))))),
+            (ImaxCapacitive - (((-Smart_Admittance_Imax_pu_1) * sym.heaviside(((-Smart_Admittance_Imax_pu_1) - i_cap_raw_1))) + (i_cap_raw_1 * (sym.Const(1) - sym.heaviside(((-Smart_Admittance_Imax_pu_1) - i_cap_raw_1)))))),
             (i_ind_raw - ((safe_V1vsc_1 - Smart_Admittance_MinAuxiliaryVoltage_1) * Smart_Admittance_inv_Xtrafo_pu_1)),
-            (ImaxInductive - ((Smart_Admittance_Imax_pu_1 * sym.heaviside((i_ind_raw_1 - Smart_Admittance_Imax_pu_1))) + (i_ind_raw_1 * (1 - sym.heaviside((i_ind_raw_1 - Smart_Admittance_Imax_pu_1)))))),
-            (id_lim_rect - ((idMVlow_1 * sym.heaviside((idMVlow_1 - ((idMVhigh_1 * sym.heaviside((id_raw - idMVhigh_1))) + (id_raw * (1 - sym.heaviside((id_raw - idMVhigh_1)))))))) + (((idMVhigh_1 * sym.heaviside((id_raw - idMVhigh_1))) + (id_raw * (1 - sym.heaviside((id_raw - idMVhigh_1))))) * (1 - sym.heaviside((idMVlow_1 - ((idMVhigh_1 * sym.heaviside((id_raw - idMVhigh_1))) + (id_raw * (1 - sym.heaviside((id_raw - idMVhigh_1))))))))))),
-            (iq_lim_rect - ((ImaxCapacitive_1 * sym.heaviside((ImaxCapacitive_1 - ((ImaxInductive_1 * sym.heaviside((iq_raw - ImaxInductive_1))) + (iq_raw * (1 - sym.heaviside((iq_raw - ImaxInductive_1)))))))) + (((ImaxInductive_1 * sym.heaviside((iq_raw - ImaxInductive_1))) + (iq_raw * (1 - sym.heaviside((iq_raw - ImaxInductive_1))))) * (1 - sym.heaviside((ImaxCapacitive_1 - ((ImaxInductive_1 * sym.heaviside((iq_raw - ImaxInductive_1))) + (iq_raw * (1 - sym.heaviside((iq_raw - ImaxInductive_1))))))))))),
+            (ImaxInductive - ((Smart_Admittance_Imax_pu_1 * sym.heaviside((i_ind_raw_1 - Smart_Admittance_Imax_pu_1))) + (i_ind_raw_1 * (sym.Const(1) - sym.heaviside((i_ind_raw_1 - Smart_Admittance_Imax_pu_1)))))),
+            (id_lim_rect - ((idMVlow_1 * sym.heaviside((idMVlow_1 - ((idMVhigh_1 * sym.heaviside((id_raw - idMVhigh_1))) + (id_raw * (sym.Const(1) - sym.heaviside((id_raw - idMVhigh_1)))))))) + (((idMVhigh_1 * sym.heaviside((id_raw - idMVhigh_1))) + (id_raw * (sym.Const(1) - sym.heaviside((id_raw - idMVhigh_1))))) * (sym.Const(1) - sym.heaviside((idMVlow_1 - ((idMVhigh_1 * sym.heaviside((id_raw - idMVhigh_1))) + (id_raw * (sym.Const(1) - sym.heaviside((id_raw - idMVhigh_1))))))))))),
+            (iq_lim_rect - ((ImaxCapacitive_1 * sym.heaviside((ImaxCapacitive_1 - ((ImaxInductive_1 * sym.heaviside((iq_raw - ImaxInductive_1))) + (iq_raw * (sym.Const(1) - sym.heaviside((iq_raw - ImaxInductive_1)))))))) + (((ImaxInductive_1 * sym.heaviside((iq_raw - ImaxInductive_1))) + (iq_raw * (sym.Const(1) - sym.heaviside((iq_raw - ImaxInductive_1))))) * (sym.Const(1) - sym.heaviside((ImaxCapacitive_1 - ((ImaxInductive_1 * sym.heaviside((iq_raw - ImaxInductive_1))) + (iq_raw * (sym.Const(1) - sym.heaviside((iq_raw - ImaxInductive_1))))))))))),
             (I_mag_sq - ((id_lim_rect_1 * id_lim_rect_1) + (iq_lim_rect_1 * iq_lim_rect_1))),
             (I_mag - sym.sqrt(I_mag_sq_1)),
-            (iq_prio - (((-Smart_Admittance_Imax_pu_1) * sym.heaviside(((-Smart_Admittance_Imax_pu_1) - ((Smart_Admittance_Imax_pu_1 * sym.heaviside((iq_lim_rect_1 - Smart_Admittance_Imax_pu_1))) + (iq_lim_rect_1 * (1 - sym.heaviside((iq_lim_rect_1 - Smart_Admittance_Imax_pu_1)))))))) + (((Smart_Admittance_Imax_pu_1 * sym.heaviside((iq_lim_rect_1 - Smart_Admittance_Imax_pu_1))) + (iq_lim_rect_1 * (1 - sym.heaviside((iq_lim_rect_1 - Smart_Admittance_Imax_pu_1))))) * (1 - sym.heaviside(((-Smart_Admittance_Imax_pu_1) - ((Smart_Admittance_Imax_pu_1 * sym.heaviside((iq_lim_rect_1 - Smart_Admittance_Imax_pu_1))) + (iq_lim_rect_1 * (1 - sym.heaviside((iq_lim_rect_1 - Smart_Admittance_Imax_pu_1))))))))))),
-            (id_avail - sym.sqrt(((0.0 * sym.heaviside((0.0 - ((Smart_Admittance_Imax_pu_1 * Smart_Admittance_Imax_pu_1) - (iq_prio_1 * iq_prio_1))))) + (((Smart_Admittance_Imax_pu_1 * Smart_Admittance_Imax_pu_1) - (iq_prio_1 * iq_prio_1)) * (1 - sym.heaviside((0.0 - ((Smart_Admittance_Imax_pu_1 * Smart_Admittance_Imax_pu_1) - (iq_prio_1 * iq_prio_1))))))))),
-            (id_prio - ((sym.heaviside((id_lim_rect_1 - 0.0)) * ((id_lim_rect_1 * sym.heaviside((id_avail_1 - id_lim_rect_1))) + (id_avail_1 * (1 - sym.heaviside((id_avail_1 - id_lim_rect_1)))))) + ((1.0 - sym.heaviside((id_lim_rect_1 - 0.0))) * ((id_lim_rect_1 * sym.heaviside((id_lim_rect_1 - (-id_avail_1)))) + ((-id_avail_1) * (1 - sym.heaviside((id_lim_rect_1 - (-id_avail_1))))))))),
-            (scale_bal - ((sym.heaviside((I_mag_1 - Smart_Admittance_Imax_pu_1)) * (Smart_Admittance_Imax_pu_1 / ((1e-06 * sym.heaviside((1e-06 - I_mag_1))) + (I_mag_1 * (1 - sym.heaviside((1e-06 - I_mag_1))))))) + ((1.0 - sym.heaviside((I_mag_1 - Smart_Admittance_Imax_pu_1))) * 1.0))),
+            (iq_prio - (((-Smart_Admittance_Imax_pu_1) * sym.heaviside(((-Smart_Admittance_Imax_pu_1) - ((Smart_Admittance_Imax_pu_1 * sym.heaviside((iq_lim_rect_1 - Smart_Admittance_Imax_pu_1))) + (iq_lim_rect_1 * (sym.Const(1) - sym.heaviside((iq_lim_rect_1 - Smart_Admittance_Imax_pu_1)))))))) + (((Smart_Admittance_Imax_pu_1 * sym.heaviside((iq_lim_rect_1 - Smart_Admittance_Imax_pu_1))) + (iq_lim_rect_1 * (sym.Const(1) - sym.heaviside((iq_lim_rect_1 - Smart_Admittance_Imax_pu_1))))) * (sym.Const(1) - sym.heaviside(((-Smart_Admittance_Imax_pu_1) - ((Smart_Admittance_Imax_pu_1 * sym.heaviside((iq_lim_rect_1 - Smart_Admittance_Imax_pu_1))) + (iq_lim_rect_1 * (sym.Const(1) - sym.heaviside((iq_lim_rect_1 - Smart_Admittance_Imax_pu_1))))))))))),
+            (id_avail - sym.sqrt(((sym.Const(0.0) * sym.heaviside((sym.Const(0.0) - ((Smart_Admittance_Imax_pu_1 * Smart_Admittance_Imax_pu_1) - (iq_prio_1 * iq_prio_1))))) + (((Smart_Admittance_Imax_pu_1 * Smart_Admittance_Imax_pu_1) - (iq_prio_1 * iq_prio_1)) * (sym.Const(1) - sym.heaviside((sym.Const(0.0) - ((Smart_Admittance_Imax_pu_1 * Smart_Admittance_Imax_pu_1) - (iq_prio_1 * iq_prio_1))))))))),
+            (id_prio - ((sym.heaviside((id_lim_rect_1 - sym.Const(0.0))) * ((id_lim_rect_1 * sym.heaviside((id_avail_1 - id_lim_rect_1))) + (id_avail_1 * (sym.Const(1) - sym.heaviside((id_avail_1 - id_lim_rect_1)))))) + ((sym.Const(1.0) - sym.heaviside((id_lim_rect_1 - sym.Const(0.0)))) * ((id_lim_rect_1 * sym.heaviside((id_lim_rect_1 - (-id_avail_1)))) + ((-id_avail_1) * (sym.Const(1) - sym.heaviside((id_lim_rect_1 - (-id_avail_1))))))))),
+            (scale_bal - ((sym.heaviside((I_mag_1 - Smart_Admittance_Imax_pu_1)) * (Smart_Admittance_Imax_pu_1 / ((sym.Const(1e-06) * sym.heaviside((sym.Const(1e-06) - I_mag_1))) + (I_mag_1 * (sym.Const(1) - sym.heaviside((sym.Const(1e-06) - I_mag_1))))))) + ((sym.Const(1.0) - sym.heaviside((I_mag_1 - Smart_Admittance_Imax_pu_1))) * sym.Const(1.0)))),
             (id_bal - (id_lim_rect_1 * scale_bal_1)),
             (iq_bal - (iq_lim_rect_1 * scale_bal_1)),
-            (use_prio_Q - (((1.0 - ((1.0 - sym.heaviside((FRT1_flag_1 - 0.5))) * (1.0 - sym.heaviside((Smart_Admittance_Q_priority_flag_1 - 0.5))))) * 1.0) + ((1.0 - (1.0 - ((1.0 - sym.heaviside((FRT1_flag_1 - 0.5))) * (1.0 - sym.heaviside((Smart_Admittance_Q_priority_flag_1 - 0.5)))))) * 0.0))),
-            (id_pos_sat - ((sym.heaviside((use_prio_Q_1 - 0.5)) * id_prio_1) + ((1.0 - sym.heaviside((use_prio_Q_1 - 0.5))) * id_bal_1))),
-            (iq_pos_sat - ((sym.heaviside((use_prio_Q_1 - 0.5)) * iq_prio_1) + ((1.0 - sym.heaviside((use_prio_Q_1 - 0.5))) * iq_bal_1))),
-            (scale_final - ((sym.heaviside((I_mag_1 - 1e-06)) * (sym.sqrt(((id_pos_sat_1 * id_pos_sat_1) + (iq_pos_sat_1 * iq_pos_sat_1))) / I_mag_1)) + ((1.0 - sym.heaviside((I_mag_1 - 1e-06))) * 1.0))),
+            (use_prio_Q - (((sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((FRT1_flag_1 - sym.Const(0.5)))) * (sym.Const(1.0) - sym.heaviside((Smart_Admittance_Q_priority_flag_1 - sym.Const(0.5)))))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((FRT1_flag_1 - sym.Const(0.5)))) * (sym.Const(1.0) - sym.heaviside((Smart_Admittance_Q_priority_flag_1 - sym.Const(0.5))))))) * sym.Const(0.0)))),
+            (id_pos_sat - ((sym.heaviside((use_prio_Q_1 - sym.Const(0.5))) * id_prio_1) + ((sym.Const(1.0) - sym.heaviside((use_prio_Q_1 - sym.Const(0.5)))) * id_bal_1))),
+            (iq_pos_sat - ((sym.heaviside((use_prio_Q_1 - sym.Const(0.5))) * iq_prio_1) + ((sym.Const(1.0) - sym.heaviside((use_prio_Q_1 - sym.Const(0.5)))) * iq_bal_1))),
+            (scale_final - ((sym.heaviside((I_mag_1 - sym.Const(1e-06))) * (sym.sqrt(((id_pos_sat_1 * id_pos_sat_1) + (iq_pos_sat_1 * iq_pos_sat_1))) / I_mag_1)) + ((sym.Const(1.0) - sym.heaviside((I_mag_1 - sym.Const(1e-06)))) * sym.Const(1.0)))),
             (I_pos_used - (I_mag_1 * scale_final_1)),
-            (I_neg_avail - ((0.0 * sym.heaviside((0.0 - (Smart_Admittance_Imax_pu_1 - I_pos_used_1)))) + ((Smart_Admittance_Imax_pu_1 - I_pos_used_1) * (1 - sym.heaviside((0.0 - (Smart_Admittance_Imax_pu_1 - I_pos_used_1))))))),
+            (I_neg_avail - ((sym.Const(0.0) * sym.heaviside((sym.Const(0.0) - (Smart_Admittance_Imax_pu_1 - I_pos_used_1)))) + ((Smart_Admittance_Imax_pu_1 - I_pos_used_1) * (sym.Const(1) - sym.heaviside((sym.Const(0.0) - (Smart_Admittance_Imax_pu_1 - I_pos_used_1))))))),
             (i2_mag - sym.sqrt(((id2_raw * id2_raw) + (iq2_raw * iq2_raw)))),
-            (scale_neg - ((sym.heaviside((i2_mag_1 - I_neg_avail_1)) * (I_neg_avail_1 / ((1e-06 * sym.heaviside((1e-06 - i2_mag_1))) + (i2_mag_1 * (1 - sym.heaviside((1e-06 - i2_mag_1))))))) + ((1.0 - sym.heaviside((i2_mag_1 - I_neg_avail_1))) * 1.0))),
+            (scale_neg - ((sym.heaviside((i2_mag_1 - I_neg_avail_1)) * (I_neg_avail_1 / ((sym.Const(1e-06) * sym.heaviside((sym.Const(1e-06) - i2_mag_1))) + (i2_mag_1 * (sym.Const(1) - sym.heaviside((sym.Const(1e-06) - i2_mag_1))))))) + ((sym.Const(1.0) - sym.heaviside((i2_mag_1 - I_neg_avail_1))) * sym.Const(1.0)))),
             (id_neg_sat - (id2_raw * scale_neg_1)),
             (iq_neg_sat - (iq2_raw * scale_neg_1)),
-            (viol_P - (((1.0 - ((1.0 - sym.heaviside((id_raw - idMVhigh_1))) * (1.0 - sym.heaviside((idMVlow_1 - id_raw))))) * 1.0) + ((1.0 - (1.0 - ((1.0 - sym.heaviside((id_raw - idMVhigh_1))) * (1.0 - sym.heaviside((idMVlow_1 - id_raw)))))) * 0.0))),
-            (viol_Q - (((1.0 - ((1.0 - sym.heaviside((iq_raw - ImaxInductive_1))) * (1.0 - sym.heaviside((ImaxCapacitive_1 - iq_raw))))) * 1.0) + ((1.0 - (1.0 - ((1.0 - sym.heaviside((iq_raw - ImaxInductive_1))) * (1.0 - sym.heaviside((ImaxCapacitive_1 - iq_raw)))))) * 0.0))),
+            (viol_P - (((sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((id_raw - idMVhigh_1))) * (sym.Const(1.0) - sym.heaviside((idMVlow_1 - id_raw))))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((id_raw - idMVhigh_1))) * (sym.Const(1.0) - sym.heaviside((idMVlow_1 - id_raw)))))) * sym.Const(0.0)))),
+            (viol_Q - (((sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((iq_raw - ImaxInductive_1))) * (sym.Const(1.0) - sym.heaviside((ImaxCapacitive_1 - iq_raw))))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((iq_raw - ImaxInductive_1))) * (sym.Const(1.0) - sym.heaviside((ImaxCapacitive_1 - iq_raw)))))) * sym.Const(0.0)))),
             (P_capab_high - PPCChigh_1),
             (P_capab_low - PPCClow_1),
             (Q_capab_high - (safe_V1vsc_1 * sym.abs(ImaxInductive_1))),
@@ -2002,37 +2001,37 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
             (i1q_hat - iq_pos_sat_1),
             (i2d_hat - id_neg_sat_1),
             (i2q_hat - iq_neg_sat_1),
-            (Smart_Admittance_val_V_safe - ((sym.heaviside((0.01 - V1vsc_1)) * 1.0) + ((1.0 - sym.heaviside((0.01 - V1vsc_1))) * V1vsc_1))),
-            (Smart_Admittance_inc_x2d_va - 0.0),
-            (Smart_Admittance_inc_x2q_va - 0.0),
-            (Smart_Admittance_inc_i2d_hat - 0.0),
-            (Smart_Admittance_inc_i2q_hat - 0.0),
-            (Smart_Admittance_inc_id2_raw - 0.0),
-            (Smart_Admittance_inc_iq2_raw - 0.0),
+            (Smart_Admittance_val_V_safe - ((sym.heaviside((sym.Const(0.01) - V1vsc_1)) * sym.Const(1.0)) + ((sym.Const(1.0) - sym.heaviside((sym.Const(0.01) - V1vsc_1))) * V1vsc_1))),
+            (Smart_Admittance_inc_x2d_va - sym.Const(0.0)),
+            (Smart_Admittance_inc_x2q_va - sym.Const(0.0)),
+            (Smart_Admittance_inc_i2d_hat - sym.Const(0.0)),
+            (Smart_Admittance_inc_i2q_hat - sym.Const(0.0)),
+            (Smart_Admittance_inc_id2_raw - sym.Const(0.0)),
+            (Smart_Admittance_inc_iq2_raw - sym.Const(0.0)),
             (Smart_Admittance_inc_e2d - u2d_1),
             (Smart_Admittance_inc_e2q - u2q_1),
-            (Smart_Admittance_inc_Overload_Flag - 0.0),
-            (Smart_Admittance_inc_FlagLimit - 0.0),
+            (Smart_Admittance_inc_Overload_Flag - sym.Const(0.0)),
+            (Smart_Admittance_inc_FlagLimit - sym.Const(0.0)),
             (Smart_Admittance_inc_PPCChigh - (Smart_Admittance_PlantEff_1 * Smart_Admittance_PmvLim_discharge_1)),
             (Smart_Admittance_inc_PPCClow - (Smart_Admittance_inv_PlantEff_1 * Smart_Admittance_PmvLim_charge_1)),
             (Smart_Admittance_inc_P_capab_high - PPCChigh_1),
             (Smart_Admittance_inc_P_capab_low - PPCClow_1),
             (Smart_Admittance_inc_idMVhigh - Smart_Admittance_Imax_pu_1),
-            (Smart_Admittance_inc_idMVlow - ((-1.0) * Smart_Admittance_Imax_pu_1)),
-            (Smart_Admittance_inc_ImaxCapacitive - ((-1.0) * Smart_Admittance_Imax_pu_1)),
+            (Smart_Admittance_inc_idMVlow - ((-sym.Const(1.0)) * Smart_Admittance_Imax_pu_1)),
+            (Smart_Admittance_inc_ImaxCapacitive - ((-sym.Const(1.0)) * Smart_Admittance_Imax_pu_1)),
             (Smart_Admittance_inc_ImaxInductive - Smart_Admittance_Imax_pu_1),
             (Smart_Admittance_inc_Q_capab_high - (V1vsc_1 * Smart_Admittance_Imax_pu_1)),
             (Smart_Admittance_inc_Q_capab_low - ((-V1vsc_1) * Smart_Admittance_Imax_pu_1)),
-            (Smart_Admittance_inc_id_neg_sat - 0.0),
-            (Smart_Admittance_inc_iq_neg_sat - 0.0),
+            (Smart_Admittance_inc_id_neg_sat - sym.Const(0.0)),
+            (Smart_Admittance_inc_iq_neg_sat - sym.Const(0.0)),
         ],
         algebraic_vars=[w1, Smart_Admittance_inc_rv_init, Smart_Admittance_inc_xv_init, rv_init, xv_init, i1d_hat_dyn, i1q_hat_dyn, ud_dif, uq_dif, denom, i1d_hat_nodyn, i1q_hat_nodyn, Smart_Admittance_T_va_ramp, i2d_hat_dyn, i2q_hat_dyn, u2d_dif, u2q_dif, i2d_hat_nodyn, i2q_hat_nodyn, e_int_d, safe_V1vsc, inv_V1vsc, P_dis_normal, P_chg_normal, PPCChigh, PPCClow, idMVhigh, idMVlow, lim1, V_max_safe, lim2, i_cap_raw, ImaxCapacitive, i_ind_raw, ImaxInductive, id_lim_rect, iq_lim_rect, I_mag_sq, I_mag, iq_prio, id_avail, id_prio, scale_bal, id_bal, iq_bal, use_prio_Q, id_pos_sat, iq_pos_sat, scale_final, I_pos_used, I_neg_avail, i2_mag, scale_neg, id_neg_sat, iq_neg_sat, viol_P, viol_Q, P_capab_high, P_capab_low, Q_capab_high, Q_capab_low, i1d_hat, i1q_hat, i2d_hat, i2q_hat, Smart_Admittance_val_V_safe, Smart_Admittance_inc_x2d_va, Smart_Admittance_inc_x2q_va, Smart_Admittance_inc_i2d_hat, Smart_Admittance_inc_i2q_hat, Smart_Admittance_inc_id2_raw, Smart_Admittance_inc_iq2_raw, Smart_Admittance_inc_e2d, Smart_Admittance_inc_e2q, Smart_Admittance_inc_Overload_Flag, Smart_Admittance_inc_FlagLimit, Smart_Admittance_inc_PPCChigh, Smart_Admittance_inc_PPCClow, Smart_Admittance_inc_P_capab_high, Smart_Admittance_inc_P_capab_low, Smart_Admittance_inc_idMVhigh, Smart_Admittance_inc_idMVlow, Smart_Admittance_inc_ImaxCapacitive, Smart_Admittance_inc_ImaxInductive, Smart_Admittance_inc_Q_capab_high, Smart_Admittance_inc_Q_capab_low, Smart_Admittance_inc_id_neg_sat, Smart_Admittance_inc_iq_neg_sat],
         in_vars=[e1d, e1q, e2d, e2q, u1d, u1q, u2d, u2q, V1vsc, FRT1_flag, Pvsc, Qvsc],
         out_vars=[i1d_hat, i1q_hat, i2d_hat, i2q_hat, e_int_d, Overload_Flag, Q_capab_high, Q_capab_low, P_capab_high, P_capab_low, xv_init, rv_init],
         name='Smart_Admittance'
     )
-    Smart_Admittance.diff_vars = [d_Smart_Admittance_x1d_va, d_Smart_Admittance_x1q_va, d_Smart_Admittance_x2d_va, d_Smart_Admittance_x2q_va]
-    Smart_Admittance.event_dict = {
+    Smart_Admittance_29.diff_vars = [d_Smart_Admittance_x1d_va, d_Smart_Admittance_x1q_va, d_Smart_Admittance_x2d_va, d_Smart_Admittance_x2q_va]
+    Smart_Admittance_29.event_dict = {
         Smart_Admittance_xv: vf.add_const(None, name='xv'),
         Smart_Admittance_rv: vf.add_const(None, name='rv'),
         Smart_Admittance_f1: vf.add_const(None, name='f1'),
@@ -2055,14 +2054,14 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         Smart_Admittance_MaxAuxiliaryVoltage: vf.add_const(None, name='MaxAuxiliaryVoltage'),
     }
 
-    Synchronization_Loop = Block(
+    Synchronization_Loop_30 = Block(
         algebraic_eqs=[
             (Synchronization_Loop_inc_Pref - Ppcc_1),
             (Synchronization_Loop_inc_xP - Ppcc_1),
             (Synchronization_Loop_inc_Pf - Ppcc_1),
-            (Synchronization_Loop_inc_wref - 1.0),
-            (Synchronization_Loop_inc_xw_1 - 1.0),
-            (Synchronization_Loop_inc_w_1 - 1.0),
+            (Synchronization_Loop_inc_wref - sym.Const(1.0)),
+            (Synchronization_Loop_inc_xw_1 - sym.Const(1.0)),
+            (Synchronization_Loop_inc_w_1 - sym.Const(1.0)),
             (Synchronization_Loop_inc_delta_1 - sym.atan2(sindelta_1, cosdelta_1)),
         ],
         algebraic_vars=[Synchronization_Loop_inc_Pref, Synchronization_Loop_inc_xP, Synchronization_Loop_inc_Pf, Synchronization_Loop_inc_wref, Synchronization_Loop_inc_xw_1, Synchronization_Loop_inc_w_1, Synchronization_Loop_inc_delta_1],
@@ -2070,22 +2069,22 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         out_vars=[w, cosdelta, sindelta],
         name='Synchronization Loop'
     )
-    Synchronization_Loop.event_dict = {
+    Synchronization_Loop_30.event_dict = {
         Synchronization_Loop_H: vf.add_const(None, name='H'),
         Synchronization_Loop_KD: vf.add_const(None, name='KD'),
         Synchronization_Loop_tau_P: vf.add_const(None, name='tau_P'),
         Synchronization_Loop_f1: vf.add_const(None, name='f1'),
     }
 
-    Synchronization_Loop = Block(
+    Synchronization_Loop_31 = Block(
         algebraic_eqs=[
-            (Synchronization_Loop_inc_xw_2 - 0.0),
+            (Synchronization_Loop_inc_xw_2 - sym.Const(0.0)),
             (Synchronization_Loop_inc_xt_1 - delta),
             (Synchronization_Loop_inc_xp_lim_1 - Pmeas_1),
             (Synchronization_Loop_inc_xP_fil_1 - Pmeas_1),
             (Synchronization_Loop_inc_delta_2 - sym.atan2(sindelta_1, cosdelta_1)),
             (Synchronization_Loop_inc_w_2 - wset_1),
-            (Synchronization_Loop_inc_wset_1 - 1.0),
+            (Synchronization_Loop_inc_wset_1 - sym.Const(1.0)),
             (Synchronization_Loop_inc_Pset_1 - Pmeas_1),
         ],
         algebraic_vars=[Synchronization_Loop_inc_xw_2, Synchronization_Loop_inc_xt_1, Synchronization_Loop_inc_xp_lim_1, Synchronization_Loop_inc_xP_fil_1, Synchronization_Loop_inc_delta_2, Synchronization_Loop_inc_w_2, Synchronization_Loop_inc_wset_1, Synchronization_Loop_inc_Pset_1],
@@ -2093,7 +2092,7 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         out_vars=[w, cosdelta, sindelta],
         name='Synchronization Loop'
     )
-    Synchronization_Loop.event_dict = {
+    Synchronization_Loop_31.event_dict = {
         Synchronization_Loop_H_1: vf.add_const(None, name='H'),
         Synchronization_Loop_Kdroop_f: vf.add_const(None, name='Kdroop_f'),
         Synchronization_Loop_K_fil_meas: vf.add_const(None, name='K_fil_meas'),
@@ -2102,7 +2101,7 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         Synchronization_Loop_f1_1: vf.add_const(None, name='f1'),
     }
 
-    V_f_control_signals_md = Block(
+    V_f_control_signals_md_32 = Block(
         state_eqs=[
             V_f_control_signals_md_mV_1,
             V_f_control_signals_md_mf_1,
@@ -2110,34 +2109,59 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         state_vars=[V_f_control_signals_md_RV, V_f_control_signals_md_Rf],
         algebraic_eqs=[
             (f - ((f0 + V_f_control_signals_md_Df_1) + V_f_control_signals_md_Rf_1)),
-            (V_f_control_signals_md_inc_Rf - 0.0),
+            (V_f_control_signals_md_inc_Rf - sym.Const(0.0)),
             (V_f_control_signals_md_inc_f0 - (f_1 - V_f_control_signals_md_Df_1)),
             (V - ((V0 + V_f_control_signals_md_DV_1) + V_f_control_signals_md_RV_1)),
-            (V_f_control_signals_md_inc_RV - 0.0),
+            (V_f_control_signals_md_inc_RV - sym.Const(0.0)),
             (V_f_control_signals_md_inc_V0 - (V_1 - V_f_control_signals_md_DV_1)),
         ],
         algebraic_vars=[f, V_f_control_signals_md_inc_Rf, V_f_control_signals_md_inc_f0, V, V_f_control_signals_md_inc_RV, V_f_control_signals_md_inc_V0],
         out_vars=[V, f],
         name='V&f control signals md'
     )
-    V_f_control_signals_md.diff_vars = [d_V_f_control_signals_md_RV, d_V_f_control_signals_md_Rf]
-    V_f_control_signals_md.event_dict = {
+    V_f_control_signals_md_32.diff_vars = [d_V_f_control_signals_md_RV, d_V_f_control_signals_md_Rf]
+    V_f_control_signals_md_32.event_dict = {
         V_f_control_signals_md_DV: vf.add_const(None, name='DV'),
         V_f_control_signals_md_Df: vf.add_const(None, name='Df'),
         V_f_control_signals_md_mV: vf.add_const(None, name='mV'),
         V_f_control_signals_md_mf: vf.add_const(None, name='mf'),
     }
 
-    VSC_Measurements = Block(
+    VSC_Measurements_33 = Block(
         algebraic_eqs=[
-            (u1r - ((1.0 / 3.0) * ((((uar_1 - ((1.0 / 2.0) * ubr_1)) - ((1.0 / 2.0) * ucr_1)) - ((sym.sqrt(3.0) / 2.0) * ubi_1)) + ((sym.sqrt(3.0) / 2.0) * uci_1)))),
-            (u1i - ((1.0 / 3.0) * ((((uai_1 - ((1.0 / 2.0) * ubi_1)) - ((1.0 / 2.0) * uci_1)) + ((sym.sqrt(3.0) / 2.0) * ubr_1)) - ((sym.sqrt(3.0) / 2.0) * ucr_1)))),
-            (u2r - ((1.0 / 3.0) * ((((uar_1 - ((1.0 / 2.0) * ubr_1)) - ((1.0 / 2.0) * ucr_1)) + ((sym.sqrt(3.0) / 2.0) * ubi_1)) - ((sym.sqrt(3.0) / 2.0) * uci_1)))),
-            (u2i - ((1.0 / 3.0) * ((((uai_1 - ((1.0 / 2.0) * ubi_1)) - ((1.0 / 2.0) * uci_1)) - ((sym.sqrt(3.0) / 2.0) * ubr_1)) + ((sym.sqrt(3.0) / 2.0) * ucr_1)))),
-            (i1r - ((1.0 / 3.0) * ((((iar_1 - ((1.0 / 2.0) * ibr_1)) - ((1.0 / 2.0) * icr_1)) - ((sym.sqrt(3.0) / 2.0) * ibi_1)) + ((sym.sqrt(3.0) / 2.0) * ici_1)))),
-            (i1i - ((1.0 / 3.0) * ((((iai_1 - ((1.0 / 2.0) * ibi_1)) - ((1.0 / 2.0) * ici_1)) + ((sym.sqrt(3.0) / 2.0) * ibr_1)) - ((sym.sqrt(3.0) / 2.0) * icr_1)))),
-            (i2r - ((1.0 / 3.0) * ((((iar_1 - ((1.0 / 2.0) * ibr_1)) - ((1.0 / 2.0) * icr_1)) + ((sym.sqrt(3.0) / 2.0) * ibi_1)) - ((sym.sqrt(3.0) / 2.0) * ici_1)))),
-            (i2i - ((1.0 / 3.0) * ((((iai_1 - ((1.0 / 2.0) * ibi_1)) - ((1.0 / 2.0) * ici_1)) - ((sym.sqrt(3.0) / 2.0) * ibr_1)) + ((sym.sqrt(3.0) / 2.0) * icr_1)))),
+            (Pvsc - ((((((uar_1 * iar_1) + (uai_1 * iai_1)) + (ubr_1 * ibr_1)) + (ubi_1 * ibi_1)) + (ucr_1 * icr_1)) + (uci_1 * ici_1))),
+            (Qvsc - ((((((uai_1 * iar_1) - (uar_1 * iai_1)) + (ubi_1 * ibr_1)) - (ubr_1 * ibi_1)) + (uci_1 * icr_1)) - (ucr_1 * ici_1))),
+            (u1r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uar_1 - (sym.Const(0.5) * ubr_1)) - (sym.Const(0.5) * ucr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubi_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * uci_1)))),
+            (u1i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uai_1 - (sym.Const(0.5) * ubi_1)) - (sym.Const(0.5) * uci_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ucr_1)))),
+            (u2r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uar_1 - (sym.Const(0.5) * ubr_1)) - (sym.Const(0.5) * ucr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubi_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * uci_1)))),
+            (u2i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uai_1 - (sym.Const(0.5) * ubi_1)) - (sym.Const(0.5) * uci_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ucr_1)))),
+            (VSC_Measurements_i1r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((iar_1 - (sym.Const(0.5) * ibr_1)) - (sym.Const(0.5) * icr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ibi_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ici_1)))),
+            (VSC_Measurements_i1i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((iai_1 - (sym.Const(0.5) * ibi_1)) - (sym.Const(0.5) * ici_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ibr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * icr_1)))),
+            (VSC_Measurements_i2r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((iar_1 - (sym.Const(0.5) * ibr_1)) - (sym.Const(0.5) * icr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ibi_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ici_1)))),
+            (VSC_Measurements_i2i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((iai_1 - (sym.Const(0.5) * ibi_1)) - (sym.Const(0.5) * ici_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ibr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * icr_1)))),
+            (V1vsc - sym.sqrt(((u1r_1 * u1r_1) + (u1i_1 * u1i_1)))),
+            (V2vsc - sym.sqrt(((u2r_1 * u2r_1) + (u2i_1 * u2i_1)))),
+            (VSC_Measurements_inc_Pvsc - ((((((uar_1 * iar_1) + (uai_1 * iai_1)) + (ubr_1 * ibr_1)) + (ubi_1 * ibi_1)) + (ucr_1 * icr_1)) + (uci_1 * ici_1))),
+            (VSC_Measurements_inc_Qvsc - ((((((uai_1 * iar_1) - (uar_1 * iai_1)) + (ubi_1 * ibr_1)) - (ubr_1 * ibi_1)) + (uci_1 * icr_1)) - (ucr_1 * ici_1))),
+            (VSC_Measurements_inc_V1vsc - sym.sqrt(((u1r_1 * u1r_1) + (u1i_1 * u1i_1)))),
+            (VSC_Measurements_inc_V2vsc - sym.sqrt(((u2r_1 * u2r_1) + (u2i_1 * u2i_1)))),
+        ],
+        algebraic_vars=[Pvsc, Qvsc, u1r, u1i, u2r, u2i, VSC_Measurements_i1r, VSC_Measurements_i1i, VSC_Measurements_i2r, VSC_Measurements_i2i, V1vsc, V2vsc, VSC_Measurements_inc_Pvsc, VSC_Measurements_inc_Qvsc, VSC_Measurements_inc_V1vsc, VSC_Measurements_inc_V2vsc],
+        in_vars=[uar, uai, ubr, ubi, ucr, uci, iar, iai, ibr, ibi, icr, ici],
+        out_vars=[Pvsc, Qvsc, V1vsc, V2vsc],
+        name='VSC Measurements'
+    )
+
+    VSC_Measurements_34 = Block(
+        algebraic_eqs=[
+            (u1r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uar_1 - ((sym.Const(1.0) / sym.Const(2.0)) * ubr_1)) - ((sym.Const(1.0) / sym.Const(2.0)) * ucr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubi_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * uci_1)))),
+            (u1i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uai_1 - ((sym.Const(1.0) / sym.Const(2.0)) * ubi_1)) - ((sym.Const(1.0) / sym.Const(2.0)) * uci_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ucr_1)))),
+            (u2r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uar_1 - ((sym.Const(1.0) / sym.Const(2.0)) * ubr_1)) - ((sym.Const(1.0) / sym.Const(2.0)) * ucr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubi_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * uci_1)))),
+            (u2i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uai_1 - ((sym.Const(1.0) / sym.Const(2.0)) * ubi_1)) - ((sym.Const(1.0) / sym.Const(2.0)) * uci_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ucr_1)))),
+            (i1r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((iar_1 - ((sym.Const(1.0) / sym.Const(2.0)) * ibr_1)) - ((sym.Const(1.0) / sym.Const(2.0)) * icr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ibi_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ici_1)))),
+            (i1i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((iai_1 - ((sym.Const(1.0) / sym.Const(2.0)) * ibi_1)) - ((sym.Const(1.0) / sym.Const(2.0)) * ici_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ibr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * icr_1)))),
+            (i2r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((iar_1 - ((sym.Const(1.0) / sym.Const(2.0)) * ibr_1)) - ((sym.Const(1.0) / sym.Const(2.0)) * icr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ibi_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ici_1)))),
+            (i2i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((iai_1 - ((sym.Const(1.0) / sym.Const(2.0)) * ibi_1)) - ((sym.Const(1.0) / sym.Const(2.0)) * ici_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ibr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * icr_1)))),
             (u1d - ((u1r_1 * cosdelta_1) + (u1i_1 * sindelta_1))),
             (u1q - (((-u1r_1) * sindelta_1) + (u1i_1 * cosdelta_1))),
             (u2d - ((u2r_1 * cosdelta_1) - (u2i_1 * sindelta_1))),
@@ -2173,54 +2197,29 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         out_vars=[u1d, u1q, u2d, u2q, i1d, i1q, i2d, i2q, imag_inst],
         name='VSC Measurements'
     )
-    VSC_Measurements.event_dict = {
+    VSC_Measurements_34.event_dict = {
         VSC_Measurements_lv: vf.add_const(None, name='lv'),
         VSC_Measurements_rv: vf.add_const(None, name='rv'),
     }
 
-    VSC_Measurements = Block(
+    VSC_abc_to_dq_35 = Block(
         algebraic_eqs=[
-            (Pvsc - ((((((uar_1 * iar_1) + (uai_1 * iai_1)) + (ubr_1 * ibr_1)) + (ubi_1 * ibi_1)) + (ucr_1 * icr_1)) + (uci_1 * ici_1))),
-            (Qvsc - ((((((uai_1 * iar_1) - (uar_1 * iai_1)) + (ubi_1 * ibr_1)) - (ubr_1 * ibi_1)) + (uci_1 * icr_1)) - (ucr_1 * ici_1))),
-            (u1r - ((1.0 / 3.0) * ((((uar_1 - (0.5 * ubr_1)) - (0.5 * ucr_1)) - ((sym.sqrt(3.0) / 2.0) * ubi_1)) + ((sym.sqrt(3.0) / 2.0) * uci_1)))),
-            (u1i - ((1.0 / 3.0) * ((((uai_1 - (0.5 * ubi_1)) - (0.5 * uci_1)) + ((sym.sqrt(3.0) / 2.0) * ubr_1)) - ((sym.sqrt(3.0) / 2.0) * ucr_1)))),
-            (u2r - ((1.0 / 3.0) * ((((uar_1 - (0.5 * ubr_1)) - (0.5 * ucr_1)) + ((sym.sqrt(3.0) / 2.0) * ubi_1)) - ((sym.sqrt(3.0) / 2.0) * uci_1)))),
-            (u2i - ((1.0 / 3.0) * ((((uai_1 - (0.5 * ubi_1)) - (0.5 * uci_1)) - ((sym.sqrt(3.0) / 2.0) * ubr_1)) + ((sym.sqrt(3.0) / 2.0) * ucr_1)))),
-            (VSC_Measurements_i1r - ((1.0 / 3.0) * ((((iar_1 - (0.5 * ibr_1)) - (0.5 * icr_1)) - ((sym.sqrt(3.0) / 2.0) * ibi_1)) + ((sym.sqrt(3.0) / 2.0) * ici_1)))),
-            (VSC_Measurements_i1i - ((1.0 / 3.0) * ((((iai_1 - (0.5 * ibi_1)) - (0.5 * ici_1)) + ((sym.sqrt(3.0) / 2.0) * ibr_1)) - ((sym.sqrt(3.0) / 2.0) * icr_1)))),
-            (VSC_Measurements_i2r - ((1.0 / 3.0) * ((((iar_1 - (0.5 * ibr_1)) - (0.5 * icr_1)) + ((sym.sqrt(3.0) / 2.0) * ibi_1)) - ((sym.sqrt(3.0) / 2.0) * ici_1)))),
-            (VSC_Measurements_i2i - ((1.0 / 3.0) * ((((iai_1 - (0.5 * ibi_1)) - (0.5 * ici_1)) - ((sym.sqrt(3.0) / 2.0) * ibr_1)) + ((sym.sqrt(3.0) / 2.0) * icr_1)))),
-            (V1vsc - sym.sqrt(((u1r_1 * u1r_1) + (u1i_1 * u1i_1)))),
-            (V2vsc - sym.sqrt(((u2r_1 * u2r_1) + (u2i_1 * u2i_1)))),
-            (VSC_Measurements_inc_Pvsc - ((((((uar_1 * iar_1) + (uai_1 * iai_1)) + (ubr_1 * ibr_1)) + (ubi_1 * ibi_1)) + (ucr_1 * icr_1)) + (uci_1 * ici_1))),
-            (VSC_Measurements_inc_Qvsc - ((((((uai_1 * iar_1) - (uar_1 * iai_1)) + (ubi_1 * ibr_1)) - (ubr_1 * ibi_1)) + (uci_1 * icr_1)) - (ucr_1 * ici_1))),
-            (VSC_Measurements_inc_V1vsc - sym.sqrt(((u1r_1 * u1r_1) + (u1i_1 * u1i_1)))),
-            (VSC_Measurements_inc_V2vsc - sym.sqrt(((u2r_1 * u2r_1) + (u2i_1 * u2i_1)))),
-        ],
-        algebraic_vars=[Pvsc, Qvsc, u1r, u1i, u2r, u2i, VSC_Measurements_i1r, VSC_Measurements_i1i, VSC_Measurements_i2r, VSC_Measurements_i2i, V1vsc, V2vsc, VSC_Measurements_inc_Pvsc, VSC_Measurements_inc_Qvsc, VSC_Measurements_inc_V1vsc, VSC_Measurements_inc_V2vsc],
-        in_vars=[uar, uai, ubr, ubi, ucr, uci, iar, iai, ibr, ibi, icr, ici],
-        out_vars=[Pvsc, Qvsc, V1vsc, V2vsc],
-        name='VSC Measurements'
-    )
-
-    VSC_abc_to_dq = Block(
-        algebraic_eqs=[
-            (u1r - ((1.0 / 3.0) * ((((uar_1 - (0.5 * ubr_1)) - (0.5 * ucr_1)) - ((sym.sqrt(3.0) / 2.0) * ubi_1)) + ((sym.sqrt(3.0) / 2.0) * uci_1)))),
-            (u1i - ((1.0 / 3.0) * ((((uai_1 - (0.5 * ubi_1)) - (0.5 * uci_1)) + ((sym.sqrt(3.0) / 2.0) * ubr_1)) - ((sym.sqrt(3.0) / 2.0) * ucr_1)))),
-            (u2r - ((1.0 / 3.0) * ((((uar_1 - (0.5 * ubr_1)) - (0.5 * ucr_1)) + ((sym.sqrt(3.0) / 2.0) * ubi_1)) - ((sym.sqrt(3.0) / 2.0) * uci_1)))),
-            (u2i - ((1.0 / 3.0) * ((((uai_1 - (0.5 * ubi_1)) - (0.5 * uci_1)) - ((sym.sqrt(3.0) / 2.0) * ubr_1)) + ((sym.sqrt(3.0) / 2.0) * ucr_1)))),
+            (u1r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uar_1 - (sym.Const(0.5) * ubr_1)) - (sym.Const(0.5) * ucr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubi_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * uci_1)))),
+            (u1i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uai_1 - (sym.Const(0.5) * ubi_1)) - (sym.Const(0.5) * uci_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ucr_1)))),
+            (u2r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uar_1 - (sym.Const(0.5) * ubr_1)) - (sym.Const(0.5) * ucr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubi_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * uci_1)))),
+            (u2i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uai_1 - (sym.Const(0.5) * ubi_1)) - (sym.Const(0.5) * uci_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ucr_1)))),
             (u1d - ((u1r_1 * cosdelta_1) + (u1i_1 * sindelta_1))),
             (u1q - (((-u1r_1) * sindelta_1) + (u1i_1 * cosdelta_1))),
             (u2d - ((u2r_1 * cosdelta_1) - (u2i_1 * sindelta_1))),
             (u2q - ((u2r_1 * sindelta_1) + (u2i_1 * cosdelta_1))),
-            (VSC_abc_to_dq_val_u1r - ((1.0 / 3.0) * ((((uar_1 - (0.5 * ubr_1)) - (0.5 * ucr_1)) - ((sym.sqrt(3.0) / 2.0) * ubi_1)) + ((sym.sqrt(3.0) / 2.0) * uci_1)))),
-            (VSC_abc_to_dq_val_u1i - ((1.0 / 3.0) * ((((uai_1 - (0.5 * ubi_1)) - (0.5 * uci_1)) + ((sym.sqrt(3.0) / 2.0) * ubr_1)) - ((sym.sqrt(3.0) / 2.0) * ucr_1)))),
+            (VSC_abc_to_dq_val_u1r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uar_1 - (sym.Const(0.5) * ubr_1)) - (sym.Const(0.5) * ucr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubi_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * uci_1)))),
+            (VSC_abc_to_dq_val_u1i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uai_1 - (sym.Const(0.5) * ubi_1)) - (sym.Const(0.5) * uci_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubr_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ucr_1)))),
             (val_angle_E - sym.atan2(u1i_1, u1r_1)),
             (VSC_abc_to_dq_val_cos - sym.cos(val_angle_E_1)),
             (VSC_abc_to_dq_val_sin - sym.sin(val_angle_E_1)),
             (VSC_abc_to_dq_inc_val_angle_E - sym.atan2(u1i_1, u1r_1)),
-            (VSC_abc_to_dq_val_u2r - ((1.0 / 3.0) * ((((uar_1 - (0.5 * ubr_1)) - (0.5 * ucr_1)) + ((sym.sqrt(3.0) / 2.0) * ubi_1)) - ((sym.sqrt(3.0) / 2.0) * uci_1)))),
-            (VSC_abc_to_dq_val_u2i - ((1.0 / 3.0) * ((((uai_1 - (0.5 * ubi_1)) - (0.5 * uci_1)) - ((sym.sqrt(3.0) / 2.0) * ubr_1)) + ((sym.sqrt(3.0) / 2.0) * ucr_1)))),
+            (VSC_abc_to_dq_val_u2r - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uar_1 - (sym.Const(0.5) * ubr_1)) - (sym.Const(0.5) * ucr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubi_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * uci_1)))),
+            (VSC_abc_to_dq_val_u2i - ((sym.Const(1.0) / sym.Const(3.0)) * ((((uai_1 - (sym.Const(0.5) * ubi_1)) - (sym.Const(0.5) * uci_1)) - ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ubr_1)) + ((sym.sqrt(sym.Const(3.0)) / sym.Const(2.0)) * ucr_1)))),
         ],
         algebraic_vars=[u1r, u1i, u2r, u2i, u1d, u1q, u2d, u2q, VSC_abc_to_dq_val_u1r, VSC_abc_to_dq_val_u1i, val_angle_E, VSC_abc_to_dq_val_cos, VSC_abc_to_dq_val_sin, VSC_abc_to_dq_inc_val_angle_E, VSC_abc_to_dq_val_u2r, VSC_abc_to_dq_val_u2i],
         in_vars=[uar, uai, ubr, ubi, ucr, uci, iar, iai, ibr, ibi, icr, ici, cosdelta, sindelta],
@@ -2228,37 +2227,37 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         name='VSC abc_to_dq'
     )
 
-    Vac_Events = Block(
+    Vac_Events_36 = Block(
         state_eqs=[
             Vac_Events_ROCOF_1,
-            ((Vac_Events_f_1 * 2.0) * 3.141592653589793),
+            ((Vac_Events_f_1 * sym.Const(2.0)) * sym.Const(3.141592653589793)),
         ],
         state_vars=[Vac_Events_f, Vac_Events_d_f],
         algebraic_eqs=[
             (u0 - voltage_jump_1),
-            (Vac_Events_f0 - (Vac_Events_f_1 / 50.0)),
+            (Vac_Events_f0 - (Vac_Events_f_1 / sym.Const(50.0))),
             (dphiu - (phase_jump_1 + Vac_Events_d_f_1)),
-            (fref - 1.0),
-            (Vac_Events_inc_d_f - 0.0),
-            (Vac_Events_inc_f - 0.0),
-            (Vac_Events_inc_f0 - 1.0),
-            (Vac_Events_inc_u0 - 1.0),
-            (Vac_Events_inc_fref - 1.0),
-            (Vac_Events_inc_dphiu - 0.0),
+            (fref - sym.Const(1.0)),
+            (Vac_Events_inc_d_f - sym.Const(0.0)),
+            (Vac_Events_inc_f - sym.Const(0.0)),
+            (Vac_Events_inc_f0 - sym.Const(1.0)),
+            (Vac_Events_inc_u0 - sym.Const(1.0)),
+            (Vac_Events_inc_fref - sym.Const(1.0)),
+            (Vac_Events_inc_dphiu - sym.Const(0.0)),
         ],
         algebraic_vars=[u0, Vac_Events_f0, dphiu, fref, Vac_Events_inc_d_f, Vac_Events_inc_f, Vac_Events_inc_f0, Vac_Events_inc_u0, Vac_Events_inc_fref, Vac_Events_inc_dphiu],
         in_vars=[phase_jump, voltage_jump],
         out_vars=[u0, dphiu, f0_1, fref],
         name='Vac_Events'
     )
-    Vac_Events.diff_vars = [d_Vac_Events_f, d_Vac_Events_d_f]
-    Vac_Events.event_dict = {
+    Vac_Events_36.diff_vars = [d_Vac_Events_f, d_Vac_Events_d_f]
+    Vac_Events_36.event_dict = {
         Vac_Events_t_ROCOF: vf.add_const(None, name='t_ROCOF'),
         Vac_Events_ROCOF: vf.add_const(None, name='ROCOF'),
         Vac_Events_param_f_ref: vf.add_const(None, name='param_f_ref'),
     }
 
-    Virtual_Admittance = Block(
+    Virtual_Admittance_37 = Block(
         state_eqs=[
             (((((e1d_1 - u1d_1) - (Virtual_Admittance_rv_1 * Virtual_Admittance_x1d_va_1)) + (Virtual_Admittance_xv_1 * Virtual_Admittance_x1q_va_1)) * w1_1) / Virtual_Admittance_xv_1),
             (((((e1q_1 - u1q_1) - (Virtual_Admittance_xv_1 * Virtual_Admittance_x1d_va_1)) - (Virtual_Admittance_rv_1 * Virtual_Admittance_x1q_va_1)) * w1_1) / Virtual_Admittance_xv_1),
@@ -2267,7 +2266,7 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         ],
         state_vars=[Virtual_Admittance_x1d_va, Virtual_Admittance_x1q_va, Virtual_Admittance_x2d_va, Virtual_Admittance_x2q_va],
         algebraic_eqs=[
-            (w1 - ((2.0 * 3.141592653589793) * Virtual_Admittance_f1_1)),
+            (w1 - ((sym.Const(2.0) * sym.Const(3.141592653589793)) * Virtual_Admittance_f1_1)),
             (i1d_hat - Virtual_Admittance_x1d_va_1),
             (i1q_hat - Virtual_Admittance_x1q_va_1),
             (i2d_hat - Virtual_Admittance_x2d_va_1),
@@ -2286,20 +2285,20 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         out_vars=[i1d_hat, i1q_hat, i2d_hat, i2q_hat],
         name='Virtual Admittance'
     )
-    Virtual_Admittance.diff_vars = [d_Virtual_Admittance_x1d_va, d_Virtual_Admittance_x1q_va, d_Virtual_Admittance_x2d_va, d_Virtual_Admittance_x2q_va]
-    Virtual_Admittance.event_dict = {
+    Virtual_Admittance_37.diff_vars = [d_Virtual_Admittance_x1d_va, d_Virtual_Admittance_x1q_va, d_Virtual_Admittance_x2d_va, d_Virtual_Admittance_x2q_va]
+    Virtual_Admittance_37.event_dict = {
         Virtual_Admittance_xv: vf.add_const(None, name='xv'),
         Virtual_Admittance_rv: vf.add_const(None, name='rv'),
         Virtual_Admittance_f1: vf.add_const(None, name='f1'),
     }
 
-    angle_integrator = Block(
+    angle_integrator_38 = Block(
         state_eqs=[
             (Dw_1 * w_r_1),
         ],
         state_vars=[angle_integrator_x],
         algebraic_eqs=[
-            (w_r - (6.283185307179586 * angle_integrator_f1_1)),
+            (w_r - (sym.Const(6.283185307179586) * angle_integrator_f1_1)),
             (delta_1 - angle_integrator_x_1),
         ],
         algebraic_vars=[w_r, delta_1],
@@ -2307,12 +2306,12 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         out_vars=[delta_1],
         name='angle integrator'
     )
-    angle_integrator.diff_vars = [d_angle_integrator_x]
-    angle_integrator.event_dict = {
+    angle_integrator_38.diff_vars = [d_angle_integrator_x]
+    angle_integrator_38.event_dict = {
         angle_integrator_f1: vf.add_const(None, name='f1'),
     }
 
-    dq2ab = Block(
+    dq2ab_39 = Block(
         algebraic_eqs=[
             (u1r_ref - ((u1d_ref_1 * cosdelta_1) - (u1q_ref_1 * sindelta_1))),
             (u1i_ref - ((u1d_ref_1 * sindelta_1) + (u1q_ref_1 * cosdelta_1))),
@@ -2329,77 +2328,77 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         name='dq2ab'
     )
 
-    iq_ref = Block(
+    iq_ref_40 = Block(
         in_vars=[iq_ref_in],
         out_vars=[iq_ref],
         name='iq_ref'
     )
 
-    limit_Ipos = Block(
+    limit_Ipos_41 = Block(
         algebraic_eqs=[
-            (limit_Ipos_Ires - 0.1),
-            (limit_Ipos_mode - ((sym.heaviside((FRT_pos_flag_1 - 0.5)) * 1.0) + ((1.0 - sym.heaviside((FRT_pos_flag_1 - 0.5))) * 0.0))),
-            (limit_Ipos_Id_max_0 - ((sym.heaviside((reactive_reserve_1 - 0.0)) * sym.sqrt(((0.0 * sym.heaviside((0.0 - ((Imax_1 * Imax_1) - (reactive_reserve_1 * reactive_reserve_1))))) + (((Imax_1 * Imax_1) - (reactive_reserve_1 * reactive_reserve_1)) * (1 - sym.heaviside((0.0 - ((Imax_1 * Imax_1) - (reactive_reserve_1 * reactive_reserve_1))))))))) + ((1.0 - sym.heaviside((reactive_reserve_1 - 0.0))) * Imax_1))),
+            (limit_Ipos_inc_Id_max - sym.Const(0.0)),
+            (limit_Ipos_inc_Iq_max - sym.Const(0.0)),
+            (limit_Ipos_inc_Iq_min - sym.Const(0.0)),
+            (limit_Ipos_inc_Id_min - sym.Const(0.0)),
+            (limit_Ipos_Ires - sym.Const(0.1)),
+            (limit_Ipos_Id_max_0 - ((sym.heaviside((reactive_reserve_1 - sym.Const(0.0))) * sym.sqrt(((sym.abs(Imax_1) ** sym.Const(2.0)) - (sym.abs(reactive_reserve_1) ** sym.Const(2.0))))) + ((sym.Const(1.0) - sym.heaviside((reactive_reserve_1 - sym.Const(0.0)))) * Imax_1))),
             (limit_Ipos_Iq_max_1 - Imax_1),
             (limit_Ipos_Iq_min_1 - (-Imax_1)),
-            (Id_min - ((-1.0) * Id_max_1)),
+            (limit_Ipos_theta0 - sym.atan2(iq_unsat_1, id_unsat_1)),
+            (Id_min - ((-sym.Const(1.0)) * Id_max_1)),
         ],
-        algebraic_vars=[limit_Ipos_Ires, limit_Ipos_mode, limit_Ipos_Id_max_0, limit_Ipos_Iq_max_1, limit_Ipos_Iq_min_1, Id_min],
+        algebraic_vars=[limit_Ipos_inc_Id_max, limit_Ipos_inc_Iq_max, limit_Ipos_inc_Iq_min, limit_Ipos_inc_Id_min, limit_Ipos_Ires, limit_Ipos_Id_max_0, limit_Ipos_Iq_max_1, limit_Ipos_Iq_min_1, limit_Ipos_theta0, Id_min],
         in_vars=[id_unsat, iq_unsat, Imax, FRT_pos_flag, ImaxCapacitive, ImaxInductive, reactive_reserve],
         out_vars=[Id_max, Iq_max, Iq_min, Id_min],
         name='limit_Ipos'
     )
 
-    limit_Ipos = Block(
+    limit_Ipos_42 = Block(
         algebraic_eqs=[
-            (limit_Ipos_inc_Id_max - 0.0),
-            (limit_Ipos_inc_Iq_max - 0.0),
-            (limit_Ipos_inc_Iq_min - 0.0),
-            (limit_Ipos_inc_Id_min - 0.0),
-            (limit_Ipos_Ires_1 - 0.1),
-            (limit_Ipos_Id_max_0_1 - ((sym.heaviside((reactive_reserve_1 - 0.0)) * sym.sqrt(((sym.abs(Imax_1) ** 2.0) - (sym.abs(reactive_reserve_1) ** 2.0)))) + ((1.0 - sym.heaviside((reactive_reserve_1 - 0.0))) * Imax_1))),
+            (limit_Ipos_Ires_1 - sym.Const(0.1)),
+            (limit_Ipos_mode - ((sym.heaviside((FRT_pos_flag_1 - sym.Const(0.5))) * sym.Const(1.0)) + ((sym.Const(1.0) - sym.heaviside((FRT_pos_flag_1 - sym.Const(0.5)))) * sym.Const(0.0)))),
+            (limit_Ipos_Id_max_0_1 - ((sym.heaviside((reactive_reserve_1 - sym.Const(0.0))) * sym.sqrt(((sym.Const(0.0) * sym.heaviside((sym.Const(0.0) - ((Imax_1 * Imax_1) - (reactive_reserve_1 * reactive_reserve_1))))) + (((Imax_1 * Imax_1) - (reactive_reserve_1 * reactive_reserve_1)) * (sym.Const(1) - sym.heaviside((sym.Const(0.0) - ((Imax_1 * Imax_1) - (reactive_reserve_1 * reactive_reserve_1))))))))) + ((sym.Const(1.0) - sym.heaviside((reactive_reserve_1 - sym.Const(0.0)))) * Imax_1))),
             (limit_Ipos_Iq_max_1_1 - Imax_1),
             (limit_Ipos_Iq_min_1_1 - (-Imax_1)),
-            (limit_Ipos_theta0 - sym.atan2(iq_unsat_1, id_unsat_1)),
-            (Id_min - ((-1.0) * Id_max_1)),
+            (Id_min - ((-sym.Const(1.0)) * Id_max_1)),
         ],
-        algebraic_vars=[limit_Ipos_inc_Id_max, limit_Ipos_inc_Iq_max, limit_Ipos_inc_Iq_min, limit_Ipos_inc_Id_min, limit_Ipos_Ires_1, limit_Ipos_Id_max_0_1, limit_Ipos_Iq_max_1_1, limit_Ipos_Iq_min_1_1, limit_Ipos_theta0, Id_min],
+        algebraic_vars=[limit_Ipos_Ires_1, limit_Ipos_mode, limit_Ipos_Id_max_0_1, limit_Ipos_Iq_max_1_1, limit_Ipos_Iq_min_1_1, Id_min],
         in_vars=[id_unsat, iq_unsat, Imax, FRT_pos_flag, ImaxCapacitive, ImaxInductive, reactive_reserve],
         out_vars=[Id_max, Iq_max, Iq_min, Id_min],
         name='limit_Ipos'
     )
 
-    simulateCapBlock = Block(
+    simulateCapBlock_43 = Block(
         algebraic_eqs=[
-            (simulateCapBlock_inc_QMV_capab_high - (-1.0)),
-            (simulateCapBlock_inc_QMV_capab_low - 1.0),
-            (simulateCapBlock_inc_PMV_capab_high - 1.0),
-            (simulateCapBlock_inc_PMV_capab_low - (-1.0)),
-            (simulateCapBlock_inc_id_pos_sat - 0.0),
-            (simulateCapBlock_inc_iq_pos_sat - (-0.5)),
-            (simulateCapBlock_inc_id_neg_sat - 0.0),
-            (simulateCapBlock_inc_iq_neg_sat - 0.0),
-            (QMV_capab_high - (-1.0)),
-            (QMV_capab_low - 1.0),
-            (PMV_capab_high - 1.0),
-            (PMV_capab_low - (-1.0)),
-            (id_pos_sat - 0.0),
-            (iq_pos_sat - (-0.5)),
-            (id_neg_sat - 0.0),
-            (iq_neg_sat - 0.0),
+            (simulateCapBlock_inc_QMV_capab_high - (-sym.Const(1.0))),
+            (simulateCapBlock_inc_QMV_capab_low - sym.Const(1.0)),
+            (simulateCapBlock_inc_PMV_capab_high - sym.Const(1.0)),
+            (simulateCapBlock_inc_PMV_capab_low - (-sym.Const(1.0))),
+            (simulateCapBlock_inc_id_pos_sat - sym.Const(0.0)),
+            (simulateCapBlock_inc_iq_pos_sat - (-sym.Const(0.5))),
+            (simulateCapBlock_inc_id_neg_sat - sym.Const(0.0)),
+            (simulateCapBlock_inc_iq_neg_sat - sym.Const(0.0)),
+            (QMV_capab_high - (-sym.Const(1.0))),
+            (QMV_capab_low - sym.Const(1.0)),
+            (PMV_capab_high - sym.Const(1.0)),
+            (PMV_capab_low - (-sym.Const(1.0))),
+            (id_pos_sat - sym.Const(0.0)),
+            (iq_pos_sat - (-sym.Const(0.5))),
+            (id_neg_sat - sym.Const(0.0)),
+            (iq_neg_sat - sym.Const(0.0)),
         ],
         algebraic_vars=[simulateCapBlock_inc_QMV_capab_high, simulateCapBlock_inc_QMV_capab_low, simulateCapBlock_inc_PMV_capab_high, simulateCapBlock_inc_PMV_capab_low, simulateCapBlock_inc_id_pos_sat, simulateCapBlock_inc_iq_pos_sat, simulateCapBlock_inc_id_neg_sat, simulateCapBlock_inc_iq_neg_sat, QMV_capab_high, QMV_capab_low, PMV_capab_high, PMV_capab_low, id_pos_sat, iq_pos_sat, id_neg_sat, iq_neg_sat],
         out_vars=[QMV_capab_high, QMV_capab_low, PMV_capab_high, PMV_capab_low, id_pos_sat, iq_pos_sat, id_neg_sat, iq_neg_sat],
         name='simulateCapBlock'
     )
 
-    w1_s = Block(
+    w1_s_44 = Block(
         state_eqs=[
             (w1_1 * Dw_1),
         ],
         state_vars=[w1_s_x],
         algebraic_eqs=[
-            (w1 - ((2.0 * 3.141592653589793) * w1_s_f1_1)),
+            (w1 - ((sym.Const(2.0) * sym.Const(3.141592653589793)) * w1_s_f1_1)),
             (delta_1 - w1_s_x_1),
             (w1_s_inc_x - delta),
         ],
@@ -2408,13 +2407,13 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         out_vars=[delta_1],
         name='w1/s'
     )
-    w1_s.diff_vars = [d_w1_s_x]
-    w1_s.event_dict = {
+    w1_s_44.diff_vars = [d_w1_s_x]
+    w1_s_44.event_dict = {
         w1_s_f1: vf.add_const(None, name='f1'),
     }
 
     templ.block = Block(
-        children=[v_1_2H_s_KD, v_1_2Hs, v_1_2Hs, Capability_and_limitation, Capability_and_limitation, Capability_block, Capability_block, Current_controller, Events, Events, Fault_Detection, Fault_Detection, Grid_electrical_interface, MV_voltage_limit, MV_voltage_limit, PCC_Measurements, PCC_Measurements, Pos_Seq_Current_Limiter, Power_VI_limit, Power_VI_limit, Protection, Q_Vac_droop, Q_Vac_droop, Sat_Lim_Neg, Sat_Lim_Neg, Sat_Lim_Pos, Sat_Lim_Pos, Saturation_Amplitude, Saturation_Amplitude, Smart_Admittance, Synchronization_Loop, Synchronization_Loop, V_f_control_signals_md, VSC_Measurements, VSC_Measurements, VSC_abc_to_dq, Vac_Events, Virtual_Admittance, angle_integrator, dq2ab, iq_ref, limit_Ipos, limit_Ipos, simulateCapBlock, w1_s],
+        children=[v_1_2H_s_KD_0, v_1_2Hs_1, v_1_2Hs_2, Capability_and_limitation_3, Capability_and_limitation_4, Capability_block_5, Capability_block_6, Current_controller_7, Events_8, Events_9, Fault_Detection_10, Fault_Detection_11, Grid_electrical_interface_12, MV_voltage_limit_13, MV_voltage_limit_14, PCC_Measurements_15, PCC_Measurements_16, Pos_Seq_Current_Limiter_17, Power_VI_limit_18, Power_VI_limit_19, Protection_20, Q_Vac_droop_21, Q_Vac_droop_22, Sat_Lim_Neg_23, Sat_Lim_Neg_24, Sat_Lim_Pos_25, Sat_Lim_Pos_26, Saturation_Amplitude_27, Saturation_Amplitude_28, Smart_Admittance_29, Synchronization_Loop_30, Synchronization_Loop_31, V_f_control_signals_md_32, VSC_Measurements_33, VSC_Measurements_34, VSC_abc_to_dq_35, Vac_Events_36, Virtual_Admittance_37, angle_integrator_38, dq2ab_39, iq_ref_40, limit_Ipos_41, limit_Ipos_42, simulateCapBlock_43, w1_s_44],
         in_vars=[wset, wref, P_capab_high, P_capab_low, Pset, Pmeas, flag_overload],
         out_vars=[w, cosdelta, sindelta],
         name='Synchronization Loop_subgraph'

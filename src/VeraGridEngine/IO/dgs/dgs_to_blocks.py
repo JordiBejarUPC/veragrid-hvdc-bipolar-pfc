@@ -270,7 +270,7 @@ def _expr_to_python(expr: Expr, identifier_map: Dict[int, str]) -> str:
     if isinstance(expr, Var):
         return identifier_map[expr.uid]
     if isinstance(expr, Const):
-        return repr(expr.value)
+        return f"sym.Const({repr(expr.value)})"
     if isinstance(expr, Func2):
         return f"sym.{expr.name}({_expr_to_python(expr.arg1, identifier_map)}, {_expr_to_python(expr.arg2, identifier_map)})"
     from VeraGridEngine.Utils.Symbolic.symbolic import BinOp, UnOp, Func
@@ -289,7 +289,13 @@ def _const_or_expr_to_python(value: Expr | Const, identifier_map: Dict[int, str]
     return _expr_to_python(value, identifier_map)
 
 
-def _emit_block_code(block: Block, identifier_map: Dict[int, str], block_var_name: str, lines: List[str]) -> None:
+def _emit_block_code(
+    block: Block,
+    identifier_map: Dict[int, str],
+    block_var_name: str,
+    lines: List[str],
+    child_ref_names: Dict[int, str],
+) -> None:
     lines.append(f"    {block_var_name} = Block(")
     if block.state_eqs:
         lines.append("        state_eqs=[")
@@ -304,7 +310,7 @@ def _emit_block_code(block: Block, identifier_map: Dict[int, str], block_var_nam
         lines.append("        ],")
         lines.append("        algebraic_vars=[" + ", ".join(identifier_map[v.uid] for v in block.algebraic_vars) + "],")
     if block.children:
-        lines.append("        children=[" + ", ".join(_safe_name(child.name) for child in block.children) + "],")
+        lines.append("        children=[" + ", ".join(child_ref_names[id(child)] for child in block.children) + "],")
     if block.in_vars:
         lines.append("        in_vars=[" + ", ".join(identifier_map[v.uid] for v in block.in_vars) + "],")
     if block.out_vars:
@@ -364,7 +370,6 @@ def _emit_template_style_module(
     lines.append("# --- AUTO-GENERATED EMT TEMPLATE FROM DGS ---")
     lines.append(f"# Source: {dgs_path}")
     lines.append("")
-    lines.append("import numpy as np")
     lines.append("from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory")
     lines.append("from VeraGridEngine.Utils.Symbolic import symbolic as sym")
     lines.append("from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate")
@@ -394,10 +399,14 @@ def _emit_template_style_module(
         lines.append(f"    {identifier_map[var.uid]} = vf.add_diff_var({repr(var.name + '_')} + name, base_var={base_name})")
     lines.append("")
     lines.append("    # --- Block Assembly ---")
+    child_ref_names: Dict[int, str] = {
+        id(child): f"{_safe_name(child.name)}_{idx}"
+        for idx, child in enumerate(block.children)
+    }
     for child in block.children:
-        _emit_block_code(child, identifier_map, _safe_name(child.name), lines)
+        _emit_block_code(child, identifier_map, child_ref_names[id(child)], lines, child_ref_names)
         lines.append("")
-    _emit_block_code(block, identifier_map, "templ.block", lines)
+    _emit_block_code(block, identifier_map, "templ.block", lines, child_ref_names)
     lines.append("    templ.block.name = name")
     lines.append("")
     lines.append("    return templ")
