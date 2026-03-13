@@ -583,6 +583,71 @@ def _copy_negated_vector(values: Float64Vector, out: Float64Vector) -> None:
         index += 1
 
 
+@nb.njit(cache=True, fastmath=True)
+def _permute_csc_data_by_columns(
+        source_data: Float64Vector,
+        source_indptr: Int32Vector,
+        column_perm: Int32Vector,
+        target_indptr: Int32Vector,
+        target_data: Float64Vector,
+) -> None:
+    """
+    Reorder CSC numeric values according to a persistent column permutation.
+
+    :param source_data: Numeric values in the original column order.
+    :type source_data: Float64Vector
+    :param source_indptr: Original CSC column pointer.
+    :type source_indptr: Int32Vector
+    :param column_perm: Persistent destination-to-source column permutation.
+    :type column_perm: Int32Vector
+    :param target_indptr: Target CSC column pointer.
+    :type target_indptr: Int32Vector
+    :param target_data: Destination numeric buffer.
+    :type target_data: Float64Vector
+    :return: None
+    :rtype: None
+    """
+    dst_col: int = 0
+
+    while dst_col < column_perm.shape[0]:
+        src_col: int = int(column_perm[dst_col])
+        src_ptr_0: int = int(source_indptr[src_col])
+        src_ptr_1: int = int(source_indptr[src_col + 1])
+        dst_ptr_0: int = int(target_indptr[dst_col])
+        local_index: int = 0
+
+        while src_ptr_0 + local_index < src_ptr_1:
+            target_data[dst_ptr_0 + local_index] = source_data[src_ptr_0 + local_index]
+            local_index += 1
+
+        dst_col += 1
+
+
+@nb.njit(cache=True, fastmath=True)
+def _scatter_permuted_solution_to_original_order(
+        permuted_solution: Float64Vector,
+        inverse_column_perm: Int32Vector,
+        out_solution: Float64Vector,
+) -> None:
+    """
+    Scatter a solution computed on a column-permuted system back to original order.
+
+    :param permuted_solution: Solution in the permuted variable order.
+    :type permuted_solution: Float64Vector
+    :param inverse_column_perm: Mapping from original index to permuted index.
+    :type inverse_column_perm: Int32Vector
+    :param out_solution: Destination vector in original solver order.
+    :type out_solution: Float64Vector
+    :return: None
+    :rtype: None
+    """
+    var_index: int = 0
+
+    while var_index < out_solution.shape[0]:
+        out_solution[var_index] = permuted_solution[int(inverse_column_perm[var_index])]
+        var_index += 1
+
+
 class StructuralCompiledBoundaryUpdateWrapper:
     """
     Boundary update interface for the structural compiled solver.
@@ -1413,6 +1478,237 @@ class StructuralCompiledSparseADJacobian:
         return dict(self._build_stats)
 
 
+class StructuralCompiledSparseFactorizationManager:
+    """
+    Sparse linear-solve manager for ``StructuralCompiledSolver``.
+
+    The manager keeps the current numeric factorization alive across time steps,
+    caches one column ordering once it has been discovered, and reuses
+    persistent numeric buffers so the solver hot loop does not rebuild sparse
+    matrix shells.
+    """
+
+    __slots__ = [
+        "_base_matrix",
+        "_base_data",
+        "_base_indptr_i32",
+        "_ordered_matrix",
+        "_ordered_data",
+        "_ordered_indptr_i32",
+        "_column_perm",
+        "_inverse_column_perm",
+        "_has_persistent_ordering",
+        "_cached_bundle",
+        "_ordered_bundle_active",
+        "_solution_buffer",
+        "_stats",
+    ]
+
+    def __init__(self, base_matrix: csc_matrix, base_data: Vec) -> None:
+        """
+        Create the sparse factorization manager.
+
+        :param base_matrix: Reusable Jacobian CSC shell in original variable order.
+        :type base_matrix: csc_matrix
+        :param base_data: Reusable CSC numeric buffer of ``base_matrix``.
+        :type base_data: Vec
+        :return: None
+        :rtype: None
+        """
+        n_cols: int = int(base_matrix.shape[1])
+        identity_perm: Int32Vector = np.arange(n_cols, dtype=np.int32)
+
+        self._base_matrix: csc_matrix = base_matrix
+        self._base_data: Vec = base_data
+        self._base_indptr_i32: Int32Vector = np.asarray(base_matrix.indptr, dtype=np.int32)
+        self._ordered_matrix: csc_matrix | None = None
+        self._ordered_data: Vec | None = None
+        self._ordered_indptr_i32: Int32Vector | None = None
+        self._column_perm: Int32Vector = identity_perm.copy()
+        self._inverse_column_perm: Int32Vector = identity_perm.copy()
+        self._has_persistent_ordering: bool = False
+        self._cached_bundle: SparseSolveBundle | None = None
+        self._ordered_bundle_active: bool = False
+        self._solution_buffer: Vec = np.zeros(n_cols, dtype=np.float64)
+        self._stats: Dict[str, float] = {
+            "numeric_factorizations": 0.0,
+            "ordering_builds": 0.0,
+            "ordering_reuses": 0.0,
+            "invalidations": 0.0,
+            "solve_calls": 0.0,
+            "fallback_solves": 0.0,
+        }
+
+    def _try_build_persistent_ordering(self, lu_obj: SuperLU) -> None:
+        """
+        Store one persistent column ordering discovered by SuperLU.
+
+        :param lu_obj: SuperLU factorization object.
+        :type lu_obj: SuperLU
+        :return: None
+        :rtype: None
+        """
+        if self._has_persistent_ordering:
+            return
+        else:
+            pass
+
+        raw_perm: Int32Vector = np.asarray(lu_obj.perm_c, dtype=np.int32)
+        n_cols: int = int(self._base_matrix.shape[1])
+
+        if raw_perm.shape[0] != n_cols:
+            return
+        else:
+            pass
+
+        sorted_perm: Int32Vector = np.sort(raw_perm)
+
+        if np.array_equal(sorted_perm, np.arange(n_cols, dtype=np.int32)):
+            if np.array_equal(raw_perm, np.arange(n_cols, dtype=np.int32)):
+                return
+            else:
+                self._column_perm = raw_perm.copy()
+                inverse_perm: Int32Vector = np.zeros(n_cols, dtype=np.int32)
+                perm_index: int = 0
+
+                while perm_index < n_cols:
+                    inverse_perm[int(self._column_perm[perm_index])] = perm_index
+                    perm_index += 1
+
+                ordered_matrix: csc_matrix = self._base_matrix[:, self._column_perm].copy()
+                self._ordered_matrix = ordered_matrix
+                self._ordered_data = ordered_matrix.data
+                self._ordered_indptr_i32 = np.asarray(ordered_matrix.indptr, dtype=np.int32)
+                self._inverse_column_perm = inverse_perm
+                self._has_persistent_ordering = True
+                self._stats["ordering_builds"] += 1.0
+        else:
+            return
+
+    def invalidate(self) -> None:
+        """
+        Drop the current numeric factorization while keeping all persistent shells.
+
+        :return: None
+        :rtype: None
+        """
+        self._cached_bundle = None
+        self._ordered_bundle_active = False
+        self._stats["invalidations"] += 1.0
+
+    def has_factorization(self) -> bool:
+        """
+        Return whether one numeric factorization is currently cached.
+
+        :return: ``True`` when a factorization is available.
+        :rtype: bool
+        """
+        return self._cached_bundle is not None
+
+    def factorize(self) -> SparseSolveBundle:
+        """
+        Factorize the current Jacobian numeric values.
+
+        :return: Active sparse solve bundle.
+        :rtype: SparseSolveBundle
+        """
+        lu_obj: SuperLU
+
+        if self._has_persistent_ordering and self._ordered_matrix is not None and self._ordered_data is not None and self._ordered_indptr_i32 is not None:
+            _permute_csc_data_by_columns(
+                self._base_data,
+                self._base_indptr_i32,
+                self._column_perm,
+                self._ordered_indptr_i32,
+                self._ordered_data,
+            )
+            lu_obj = splu(self._ordered_matrix, permc_spec="NATURAL")
+            self._cached_bundle = (lu_obj, self._ordered_matrix)
+            self._ordered_bundle_active = True
+            self._stats["ordering_reuses"] += 1.0
+        else:
+            lu_obj = splu(self._base_matrix, permc_spec="COLAMD")
+            self._cached_bundle = (lu_obj, self._base_matrix)
+            self._ordered_bundle_active = False
+            self._try_build_persistent_ordering(lu_obj)
+
+        self._stats["numeric_factorizations"] += 1.0
+        return self._cached_bundle
+
+    def solve(self, rhs: Vec) -> Vec:
+        """
+        Solve the linear system using the current numeric factorization.
+
+        :param rhs: Right-hand side vector.
+        :type rhs: Vec
+        :return: Solution buffer in original solver order.
+        :rtype: Vec
+        """
+        raw_solution: Vec
+        self._stats["solve_calls"] += 1.0
+
+        if self._cached_bundle is None:
+            self._solution_buffer[:] = 0.0
+        else:
+            raw_solution = np.asarray(self._cached_bundle[0].solve(rhs), dtype=np.float64)
+
+            if self._ordered_bundle_active and self._has_persistent_ordering:
+                _scatter_permuted_solution_to_original_order(
+                    raw_solution,
+                    self._inverse_column_perm,
+                    self._solution_buffer,
+                )
+            else:
+                self._solution_buffer[:] = raw_solution
+
+        return self._solution_buffer
+
+    def solve_fallback(self, rhs: Vec) -> Vec:
+        """
+        Solve the linear system with an iterative sparse fallback.
+
+        :param rhs: Right-hand side vector.
+        :type rhs: Vec
+        :return: Solution buffer in original solver order.
+        :rtype: Vec
+        """
+        active_matrix: csc_matrix = self.get_active_matrix()
+        raw_solution: Vec = np.asarray(sparse_lsqr_fallback(active_matrix, rhs), dtype=np.float64)
+        self._stats["fallback_solves"] += 1.0
+
+        if self._ordered_bundle_active and self._has_persistent_ordering:
+            _scatter_permuted_solution_to_original_order(
+                raw_solution,
+                self._inverse_column_perm,
+                self._solution_buffer,
+            )
+        else:
+            self._solution_buffer[:] = raw_solution
+
+        return self._solution_buffer
+
+    def get_active_matrix(self) -> csc_matrix:
+        """
+        Return the matrix used by the active numeric factorization path.
+
+        :return: Active sparse matrix.
+        :rtype: csc_matrix
+        """
+        if self._ordered_bundle_active and self._ordered_matrix is not None:
+            return self._ordered_matrix
+        else:
+            return self._base_matrix
+
+    def get_stats(self) -> Dict[str, float]:
+        """
+        Return cumulative factorization-manager statistics.
+
+        :return: Cumulative statistics dictionary.
+        :rtype: Dict[str, float]
+        """
+        return dict(self._stats)
+
+
 class StructuralCompiledSolver:
     """
     Standalone structural EMT solver with eager kernels and reusable buffers.
@@ -1452,11 +1748,14 @@ class StructuralCompiledSolver:
         "_jacobian_data_buffer",
         "_static_parameter_buffer",
         "_full_parameter_buffer",
+        "_delta_buffer",
         "_vectorized_ready",
         "_last_sim_loop_time",
+        "_last_runtime_stats",
         "_predictor",
         "_backend_build_stats",
         "_newton_diag_config",
+        "_sparse_factorization_manager",
     ]
 
     def __init__(
@@ -1555,11 +1854,14 @@ class StructuralCompiledSolver:
             self._n_event_parameters + self._n_constant_parameters,
             dtype=np.float64,
         )
+        self._delta_buffer = np.zeros(self._n_vars, dtype=np.float64)
 
         self._residual_assembler: StructuralCompiledResidualAssembler | None = None
         self._jacobian_evaluator: StructuralCompiledSparseADJacobian | None = None
+        self._sparse_factorization_manager: StructuralCompiledSparseFactorizationManager | None = None
         self._vectorized_ready = False
         self._last_sim_loop_time = 0.0
+        self._last_runtime_stats: Dict[str, float] = dict()
         self._predictor = StructuralCompiledPredictor(self._n_state)
         self._backend_build_stats: Dict[str, float] = dict()
 
@@ -1722,6 +2024,10 @@ class StructuralCompiledSolver:
         )
         jacobian_evaluator_s: float = time.perf_counter() - t_jacobian_evaluator_start
         self._jacobian_data_buffer = self._jacobian_evaluator.get_data_buffer()
+        self._sparse_factorization_manager = StructuralCompiledSparseFactorizationManager(
+            self._jacobian_evaluator.get_matrix(),
+            self._jacobian_data_buffer,
+        )
         self._vectorized_ready = True
 
         residual_stats: Dict[str, float] = self._residual_assembler.get_build_stats()
@@ -1792,6 +2098,15 @@ class StructuralCompiledSolver:
         :rtype: Dict[str, float]
         """
         return dict(self._backend_build_stats)
+
+    def get_last_runtime_stats(self) -> Dict[str, float]:
+        """
+        Return runtime statistics collected during the latest simulation.
+
+        :return: Latest runtime statistics.
+        :rtype: Dict[str, float]
+        """
+        return dict(self._last_runtime_stats)
 
     def simulate(
             self,
@@ -1876,6 +2191,13 @@ class StructuralCompiledSolver:
             pass
 
         use_dense_solver: bool = self._n_vars <= self._dense_threshold
+        sparse_factor_manager: StructuralCompiledSparseFactorizationManager | None
+
+        if use_dense_solver:
+            sparse_factor_manager = None
+        else:
+            sparse_factor_manager = self._sparse_factorization_manager
+
         trace_collector = self._problem.get_newton_trace_collector()
         diag_cfg = self._newton_diag_config
         diagnostics_enabled: bool = (
@@ -1889,6 +2211,16 @@ class StructuralCompiledSolver:
         dense_solve: Callable[..., Vec] | None = None
         sparse_solve: Callable[..., Vec] | None = None
 
+        if sparse_factor_manager is None:
+            sparse_stats_start: Dict[str, float] = dict()
+        else:
+            sparse_stats_start = sparse_factor_manager.get_stats()
+
+        jacobian_eval_count: int = 0
+        dense_factorization_count: int = 0
+        factorization_reuse_hits: int = 0
+        forced_factorization_invalidations: int = 0
+
         if diagnostics_enabled:
             dense_solve = with_newton_diagnostics(
                 lambda bundle, rhs: lu_solve(bundle[0], rhs),
@@ -1899,12 +2231,12 @@ class StructuralCompiledSolver:
                 matrix_getter=lambda bundle: bundle[1],
             )
             sparse_solve = with_newton_diagnostics(
-                lambda bundle, rhs: bundle[0].solve(rhs),
-                fallback_solve=lambda bundle, rhs: sparse_lsqr_fallback(bundle[1], rhs),
+                lambda factor_manager, rhs: factor_manager.solve(rhs),
+                fallback_solve=lambda factor_manager, rhs: factor_manager.solve_fallback(rhs),
                 collector=trace_collector,
                 config=diag_cfg,
                 solver_name="superlu",
-                matrix_getter=lambda bundle: bundle[1],
+                matrix_getter=lambda factor_manager: factor_manager.get_active_matrix(),
             )
         else:
             pass
@@ -1978,7 +2310,15 @@ class StructuralCompiledSolver:
                 x_iter[:] = x_prev
                 last_res_norm: float = 1.0
                 cached_lu_dense: DenseSolveBundle | None = None
-                cached_lu_sparse: SparseSolveBundle | None = None
+
+                if sparse_factor_manager is None:
+                    pass
+                else:
+                    if is_aligned_substep:
+                        sparse_factor_manager.invalidate()
+                        forced_factorization_invalidations += 1
+                    else:
+                        pass
 
                 # The first trapezoidal step benefits from a cheap explicit predictor.
                 if step_index == 0 and is_first_local_step and self._method == DynamicIntegrationMethod.DaeTrapezoidal:
@@ -2019,7 +2359,7 @@ class StructuralCompiledSolver:
                         pass
 
                     recompute_factorization: bool = (
-                        (cached_lu_dense is None and cached_lu_sparse is None)
+                        (cached_lu_dense is None and (sparse_factor_manager is None or not sparse_factor_manager.has_factorization()))
                         or (newton_index > 0 and (res_norm / (last_res_norm + 1e-16)) > 0.5)
                     )
 
@@ -2033,6 +2373,7 @@ class StructuralCompiledSolver:
                             h_eff,
                             x_prev2,
                         )
+                        jacobian_eval_count += 1
 
                         if use_dense_solver:
                             dense_jacobian = cached_jacobian.toarray()
@@ -2043,39 +2384,47 @@ class StructuralCompiledSolver:
                                 pass
 
                             cached_lu_dense = (lu_factor(dense_jacobian), dense_jacobian)
-                            cached_lu_sparse = None
+                            dense_factorization_count += 1
                         else:
                             if diagnostics_enabled and ctx is not None:
                                 maybe_check_index1(cached_jacobian, self._n_state, ctx=ctx, config=diag_cfg)
                             else:
                                 pass
 
-                            cached_lu_sparse = (splu(cached_jacobian), cached_jacobian)
+                            if sparse_factor_manager is None:
+                                raise RuntimeError("Missing sparse factorization manager in sparse StructuralCompiled path")
+                            else:
+                                sparse_factor_manager.factorize()
+
                             cached_lu_dense = None
                     else:
-                        pass
+                        factorization_reuse_hits += 1
 
                     # The right-hand side is also written in place to avoid creating -res arrays.
                     _copy_negated_vector(self._residual_buffer, self._linear_rhs_buffer)
 
                     if use_dense_solver:
                         if cached_lu_dense is None:
-                            delta: Vec = np.zeros(self._n_vars, dtype=np.float64)
+                            self._delta_buffer[:] = 0.0
+                            delta: Vec = self._delta_buffer
                         else:
                             if diagnostics_enabled and ctx is not None:
                                 assert dense_solve is not None
-                                delta = dense_solve(cached_lu_dense, self._linear_rhs_buffer, ctx)
+                                self._delta_buffer[:] = dense_solve(cached_lu_dense, self._linear_rhs_buffer, ctx)
+                                delta = self._delta_buffer
                             else:
-                                delta = lu_solve(cached_lu_dense[0], self._linear_rhs_buffer)
+                                self._delta_buffer[:] = lu_solve(cached_lu_dense[0], self._linear_rhs_buffer)
+                                delta = self._delta_buffer
                     else:
-                        if cached_lu_sparse is None:
-                            delta = np.zeros(self._n_vars, dtype=np.float64)
+                        if sparse_factor_manager is None or not sparse_factor_manager.has_factorization():
+                            self._delta_buffer[:] = 0.0
+                            delta = self._delta_buffer
                         else:
                             if diagnostics_enabled and ctx is not None:
                                 assert sparse_solve is not None
-                                delta = sparse_solve(cached_lu_sparse, self._linear_rhs_buffer, ctx)
+                                delta = sparse_solve(sparse_factor_manager, self._linear_rhs_buffer, ctx)
                             else:
-                                delta = cached_lu_sparse[0].solve(self._linear_rhs_buffer)
+                                delta = sparse_factor_manager.solve(self._linear_rhs_buffer)
 
                     if diag_cfg.enable_backtracking:
                         def _evaluate_trial_residual(trial_x: Vec, out_res: Vec) -> float:
@@ -2142,5 +2491,35 @@ class StructuralCompiledSolver:
             print(f"-> StructuralCompiled simulation finished in {self._last_sim_loop_time:.4f}s")
         else:
             pass
+
+        if sparse_factor_manager is None:
+            sparse_stats_end: Dict[str, float] = dict()
+        else:
+            sparse_stats_end = sparse_factor_manager.get_stats()
+
+        self._last_runtime_stats = {
+            "jacobian_evaluations": float(jacobian_eval_count),
+            "dense_factorizations": float(dense_factorization_count),
+            "factorization_reuse_hits": float(factorization_reuse_hits),
+            "forced_factorization_invalidations": float(forced_factorization_invalidations),
+            "sparse_numeric_factorizations": float(
+                sparse_stats_end.get("numeric_factorizations", 0.0) - sparse_stats_start.get("numeric_factorizations", 0.0)
+            ),
+            "sparse_ordering_builds": float(
+                sparse_stats_end.get("ordering_builds", 0.0) - sparse_stats_start.get("ordering_builds", 0.0)
+            ),
+            "sparse_ordering_reuses": float(
+                sparse_stats_end.get("ordering_reuses", 0.0) - sparse_stats_start.get("ordering_reuses", 0.0)
+            ),
+            "sparse_invalidations": float(
+                sparse_stats_end.get("invalidations", 0.0) - sparse_stats_start.get("invalidations", 0.0)
+            ),
+            "sparse_solve_calls": float(
+                sparse_stats_end.get("solve_calls", 0.0) - sparse_stats_start.get("solve_calls", 0.0)
+            ),
+            "sparse_fallback_solves": float(
+                sparse_stats_end.get("fallback_solves", 0.0) - sparse_stats_start.get("fallback_solves", 0.0)
+            ),
+        }
 
         return t, y, dy

@@ -10,16 +10,6 @@ from typing import Any, cast, Dict, List, Optional
 
 import sys
 import os
-
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-SRC_ROOT = os.path.join(REPO_ROOT, 'src')
-
-if SRC_ROOT not in sys.path:
-    sys.path.insert(0, SRC_ROOT)
-
-if REPO_ROOT not in sys.path:
-    sys.path.insert(0, REPO_ROOT)
-
 import matplotlib.pyplot as plt
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
@@ -241,6 +231,7 @@ RUN_ALL_SOLVERS = read_env_flag("VERAGRID_EMT_RUN_ALL_SOLVERS", False)
 ENABLE_PLOTS = read_env_flag("VERAGRID_EMT_ENABLE_PLOTS", True)
 ENABLE_NEWTON_TRACE = read_env_flag("VERAGRID_EMT_ENABLE_NEWTON_TRACE", False)
 SHOW_INIT_GUESS_TABLE = read_env_flag("VERAGRID_EMT_SHOW_INIT_GUESS_TABLE", False)
+BENCHMARK_COMPILED_COLD_WARM = read_env_flag("VERAGRID_EMT_BENCHMARK_COMPILED_COLD_WARM", False)
 DENSE_THRESHOLD = 0
 SOLVER_VERBOSE = read_env_flag("VERAGRID_EMT_SOLVER_VERBOSE", False)
 
@@ -667,6 +658,49 @@ def get_solver_build_stats(solver: Any) -> Dict[str, float]:
         return dict()
 
 
+def get_solver_runtime_stats(solver: Any) -> Dict[str, float]:
+    """
+    Return runtime statistics when the solver exposes them.
+
+    :param solver: Solver instance.
+    :return: Runtime statistics dictionary.
+    """
+    runtime_stats_fn = getattr(solver, "get_last_runtime_stats", None)
+
+    if callable(runtime_stats_fn):
+        raw_stats_any: Any = runtime_stats_fn()
+        out_stats: Dict[str, float] = dict()
+
+        if isinstance(raw_stats_any, dict):
+            for key, value in raw_stats_any.items():
+                out_stats[str(key)] = float(value)
+        else:
+            pass
+
+        return out_stats
+    else:
+        return dict()
+
+
+def print_solver_runtime_stats(solver: Any, label: str) -> None:
+    """
+    Print runtime statistics when available.
+
+    :param solver: Solver instance.
+    :param label: Text label for the printed block.
+    :return: None.
+    """
+    runtime_stats: Dict[str, float] = get_solver_runtime_stats(solver)
+
+    if len(runtime_stats) > 0:
+        print(label)
+
+        for key, value in runtime_stats.items():
+            print(f"  {key}: {value:.0f}" if abs(value - round(value)) < 1e-12 else f"  {key}: {value:.6f}")
+    else:
+        pass
+
+
 def build_full_parameter_vector(problem: EmtProblemDae,
                                 current_time: float,
                                 previous_state: np.ndarray) -> np.ndarray:
@@ -1007,8 +1041,78 @@ def benchmark_all_solvers() -> None:
     raise SystemExit(0)
 
 
+def benchmark_structural_compiled_cold_and_warm() -> None:
+    """
+    Benchmark ``StructuralCompiled`` in cold-build and warm-reuse modes.
+
+    :return: None.
+    """
+    print("\n" + "=" * 110)
+    print("STRUCTURAL COMPILED COLD/WARM BENCHMARK")
+    print("=" * 110)
+
+    local_problem: EmtProblemDae = create_problem(enable_trace=False)
+
+    solver_init_t0: float = perf_counter()
+    solver = create_solver("COMPILED", local_problem)
+    solver_init_s: float = perf_counter() - solver_init_t0
+
+    build_t0: float = perf_counter()
+    build_solver_backend("COMPILED", solver, local_problem)
+    cold_build_s: float = perf_counter() - build_t0
+
+    boundary_updater = cast(Any, local_problem)
+
+    cold_sim_t0: float = perf_counter()
+    cold_t: np.ndarray
+    cold_y: np.ndarray
+    cold_dy: np.ndarray
+    cold_t, cold_y, cold_dy = solver.simulate(boundary_updater=boundary_updater)
+    cold_sim_s: float = perf_counter() - cold_sim_t0
+    cold_residual_inf: float = evaluate_final_residual_inf("COMPILED", solver, local_problem, cold_t, cold_y, cold_dy)
+    cold_runtime_stats: Dict[str, float] = get_solver_runtime_stats(solver)
+
+    warm_sim_t0: float = perf_counter()
+    warm_t: np.ndarray
+    warm_y: np.ndarray
+    warm_dy: np.ndarray
+    warm_t, warm_y, warm_dy = solver.simulate(boundary_updater=boundary_updater)
+    warm_sim_s: float = perf_counter() - warm_sim_t0
+    warm_residual_inf: float = evaluate_final_residual_inf("COMPILED", solver, local_problem, warm_t, warm_y, warm_dy)
+    warm_runtime_stats: Dict[str, float] = get_solver_runtime_stats(solver)
+
+    print(f"solver_init_s = {solver_init_s:.6f}s")
+    print(f"cold_build_s  = {cold_build_s:.6f}s")
+    print(f"cold_sim_s    = {cold_sim_s:.6f}s")
+    print(f"warm_sim_s    = {warm_sim_s:.6f}s")
+    print(f"speedup       = {cold_sim_s / warm_sim_s:.3f}x" if warm_sim_s > 0.0 else "speedup       = inf")
+    print(f"y_max_abs_diff  = {compute_max_abs_diff(cold_y, warm_y):.3e}")
+    print(f"dy_max_abs_diff = {compute_max_abs_diff(cold_dy, warm_dy):.3e}")
+    print(f"cold_final_res  = {cold_residual_inf:.3e}")
+    print(f"warm_final_res  = {warm_residual_inf:.3e}")
+
+    if len(cold_runtime_stats) > 0:
+        print("Cold runtime stats")
+        for key, value in cold_runtime_stats.items():
+            print(f"  {key}: {value:.0f}" if abs(value - round(value)) < 1e-12 else f"  {key}: {value:.6f}")
+    else:
+        pass
+
+    if len(warm_runtime_stats) > 0:
+        print("Warm runtime stats")
+        for key, value in warm_runtime_stats.items():
+            print(f"  {key}: {value:.0f}" if abs(value - round(value)) < 1e-12 else f"  {key}: {value:.6f}")
+    else:
+        pass
+
+    raise SystemExit(0)
+
+
 if RUN_ALL_SOLVERS:
     benchmark_all_solvers()
+
+if BENCHMARK_COMPILED_COLD_WARM:
+    benchmark_structural_compiled_cold_and_warm()
 
 problem = create_problem()
 
@@ -1047,6 +1151,8 @@ if hasattr(solver, "get_backend_build_stats"):
     print("StructuralCompiled backend build stats")
     for key, value in solver.get_backend_build_stats().items():
         print(f"  {key}: {value:.6f}s")
+
+print_solver_runtime_stats(solver, "StructuralCompiled runtime stats")
 
 
 collector = problem.get_newton_trace_collector()
