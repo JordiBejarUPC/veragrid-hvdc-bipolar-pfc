@@ -26,6 +26,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
+from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 
 
 def _tic():
@@ -188,6 +189,10 @@ class RmsProblemDae(RmsProblemTemplate):
             bus_dict[elm] = bus_num
 
             # flatten model
+            if elm.rms_model.empty():
+                initialize_bus_rms(elm, self.grid.rms_var_factory)
+                # initialize_bus_rms, get_bus_rms_algebraic_vars
+
             elm.rms_model.unify_blocks()
 
             self.add_variables_to_compilation_dicts(elm, elm.rms_model)
@@ -218,7 +223,7 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
                 elm.rms_model.unify_blocks()
 
-                # if not isinstance(elm, Transformer2W):
+                # get parameters from api object
                 elm.rms_model.parameters[
                     elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
                     float(elm.R / (elm.R ** 2 + elm.X ** 2)))
@@ -227,6 +232,25 @@ class RmsProblemDae(RmsProblemTemplate):
                     float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
                 elm.rms_model.parameters[
                     elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
+
+                # get variables from bus
+                if elm.bus_from.rms_model.empty():
+                    initialize_bus_rms(elm.bus_from, self.grid.rms_var_factory)
+                if elm.bus_to.rms_model.empty():
+                    initialize_bus_rms(elm.bus_to, self.grid.rms_var_factory)
+
+                Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
+                Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
+
+                elm.rms_model.update_model(
+                    elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
+                elm.rms_model.update_model(
+                    elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vaf], Vaf)
+                elm.rms_model.update_model(
+                    elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt], Vmt)
+                elm.rms_model.update_model(
+                    elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
+
 
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
 
@@ -282,6 +306,8 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 # flatten model to collect all variables including those from child blocks
                 mdl.unify_blocks()
+
+
 
                 St_vsc = self.power_flow_results.St_vsc / self.grid.Sbase
                 Sf_vsc = (self.power_flow_results.Pfn_vsc[i] + self.power_flow_results.Pfp_vsc[i]) / self.grid.Sbase
@@ -371,6 +397,18 @@ class RmsProblemDae(RmsProblemTemplate):
                 bus_index = bus_dict[elm.bus]
 
                 elm.rms_model.unify_blocks()
+
+                # get variables from bus
+                if elm.bus.rms_model.empty():
+                    initialize_bus_rms(elm.bus, self.grid.rms_var_factory)
+
+                Vm, Va = get_bus_rms_algebraic_vars(elm.bus.rms_model)
+
+                elm.rms_model.update_model(
+                    elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
+                elm.rms_model.update_model(
+                    elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Va], Va)
+
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
 
                 if elm.bus.is_dc:
