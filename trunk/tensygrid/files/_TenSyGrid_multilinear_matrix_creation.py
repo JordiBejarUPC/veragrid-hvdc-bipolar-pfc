@@ -2,197 +2,248 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import math
-import cProfile as profile
+
+"""
+Small Signal Analysis for Phasor-based RMS Grid.
+
+This script creates the phasor problem manually and injects it into the SmallSignalStabilityRmsDriver.
+"""
+
 import numpy as np
+import sys, os
+
+from trunk.tensygrid.files._PolynomialMatrixBuilder_class import PolynomialMatrixBuilder
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
+
 from matplotlib import pyplot as plt
 
-import sys
-import os
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
-from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
-import VeraGridEngine.Utils.Symbolic.symbolic_ml as sym_ml
-from VeraGridEngine.Templates.Rms.generation_tensygrid_ml import GenqecBuild, GovernorBuild, ExciterBuild, \
-    StabilizerBuild, get_complete_generator_template
-from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
-from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
-from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
-from VeraGridEngine.Simulations.Rms.problems.rms_problem_tensygrid import RmsProblemTensygrid
-from VeraGridEngine.Simulations.Rms.numerical.back_euler_ts import BackEulerImplicitTensygrid
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
-from VeraGridEngine.Devices.Aggregation import RmsEvent
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 import VeraGridEngine.api as gce
-from trunk.tensygrid.files._PolynomialMatrixBuilder_class import PolynomialMatrixBuilder
-from typing import List, Dict, Any, Optional, Tuple, Final
-###########################################################################################################################
-# Build VeraGrid object
-###########################################################################################################################
-
-pr = profile.Profile()
-pr.disable()
-
-
-def find_name_in_block(name: str, block: Block):
-    for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
-        if name == var.name:
-            return var
-
-    for mdl in block.children:
-        res = find_name_in_block(name, mdl)
-        if res is not None:
-            return res
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import SmallSignalStabilityRmsDriver
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityRmsOptions
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor import RmsProblemPhasor
+from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
+from VeraGridEngine.Templates.Rms.bus_phasor_rms_template import initialize_bus_phasor_rms
+from VeraGridEngine.Templates.Rms.line_phasor_rms_template import get_line_phasor_rms_template
+from VeraGridEngine.Templates.Rms.load_phasor_current_rms_template import get_load_phasor_current_rms_template
+from VeraGridEngine.Templates.Rms.genqec_phasor_rms_template import get_complete_generator_template_phasor
+from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 
 
-grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
+def small_signal_analysis(comparar):
+    """Perform small signal analysis on the phasor grid."""
+    print("=" * 60)
+    print("SMALL SIGNAL ANALYSIS - PHASOR RMS")
+    print("=" * 60)
 
-# Buses
-bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
-bus1 = gce.Bus(name="Bus1", Vnom=10)
+    # ===================================================================
+    # CREATE GRID (Same as phasor validation)
+    # ===================================================================
+    print("\n[1] Creating phasor grid...")
 
-grid.add_bus(bus0)
-grid.add_bus(bus1)
+    Sbase = 100.0
+    grid = gce.MultiCircuit(Sbase=Sbase, fbase=50.0)
 
-for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.rms_var_factory)
+    bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
+    bus1 = gce.Bus(name="Bus1", Vnom=10)
+    grid.add_bus(bus0)
+    grid.add_bus(bus1)
 
-# Lines
-line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
-                 rate=900.0)
+    for bus in grid.buses:
+        initialize_bus_phasor_rms(bus, vf=grid.rms_var_factory)
 
-grid.add_line(line0)
+    line = gce.Line(name="Line", bus_from=bus0, bus_to=bus1,
+                    r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=900.0)
+    grid.add_line(line)
 
-# load
-load = gce.Load(P=9.999999, Q=0.999999)
+    load = gce.Load(P=9.999999, Q=0.999999)
+    grid.add_load(bus=bus1, api_obj=load)
 
-grid.add_load(bus=bus1, api_obj=load)
+    gen = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900)
+    grid.add_generator(bus=bus0, api_obj=gen)
 
-# Generators
-gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
-                     x1=0.86138701, r1=0.3, freq=50.0,
-                     M=10.0,
-                     D=1.0,
-                     omega_ref=1.0,
-                     Kp=1.0,
-                     Ki=10.0,
-                     )
+    # Build RMS models
+    genqec = get_complete_generator_template_phasor(grid.rms_var_factory, name="Gen0").block
 
-grid.add_generator(bus=bus0, api_obj=gen0)
+    line_mdl = get_line_phasor_rms_template(grid.rms_var_factory).block
+    line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+    line_mdl.connect([line_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
+    line_mdl.connect([line_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
+    line_mdl.connect([line_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
 
-######################################################################################################
-# Build Rms models
-######################################################################################################
+    # Attach line model to the line device
+    set_rms_model(device=line, model=line_mdl, var_factory=grid.rms_var_factory)
 
-# Build dynamic_model_host
-line_dynhost = DynamicModelHost()
-load_dynhost = DynamicModelHost()
-gen_dynhost = DynamicModelHost()
+    genqec.connect([genqec.in_vars[0]], [bus0.rms_model.out_vars[0]])
+    genqec.connect([genqec.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-# line
-line0_mdl = get_line_rms_template(grid.rms_var_factory).block
+    set_rms_model(device=gen, model=genqec, var_factory=grid.rms_var_factory)
 
-# load
-load_mdl = get_load_rms_template(grid.rms_var_factory).block
+    load_mdl = get_load_phasor_current_rms_template(grid.rms_var_factory).block
+    load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+    load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
+    # Current values will be set after power flow
+    set_rms_model(device=load, model=load_mdl, var_factory=grid.rms_var_factory)
 
-# generator
-genqec1_mdl = get_complete_generator_template(grid.rms_var_factory).block
+    print("  ✓ Grid created with multilinear generator")
 
-# connection with buses
+    # ===================================================================
+    # POWER FLOW
+    # ===================================================================
+    print("\n[2] Running power flow...")
+    pf_options = gce.PowerFlowOptions()
+    pf_results = gce.power_flow(grid, pf_options)
 
-genqec1_mdl.connect([genqec1_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
-genqec1_mdl.connect([genqec1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
+    if pf_results.converged:
+        print(f"  ✓ Power flow converged")
+        for i, bus in enumerate(grid.buses):
+            v = pf_results.voltage[i]
+            print(f"    {bus.name}: Vm={abs(v):.4f} pu")
+    else:
+        print("  ✗ Power flow failed")
+        return False
 
-line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
+    # ===================================================================
+    # CREATE PHASOR PROBLEM
+    # ===================================================================
+    print("\n[3] Creating phasor problem...")
 
-line0_mdl.connect([line0_mdl.in_vars[2]], [bus1.rms_model.model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[3]], [bus1.rms_model.model.out_vars[1]])
+    rms_options = RmsOptions(
+        time_step=0.01,
+        simulation_time=1.0,
+        tolerance=1e-6,
+        max_iter=20
+    )
 
-u_gov = find_name_in_block("u_gov1", genqec1_mdl)
+    phasor_problem = RmsProblemPhasor(grid=grid, options=rms_options, pf_results=pf_results)
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+    if comparar:
+        print(f"  ✓ Phasor problem created with {phasor_problem.get_states_number()} states")
 
-# external mapping
-big_gen1 = Block(children=[genqec1_mdl])
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec1_mdl.out_vars[0]})
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec1_mdl.out_vars[1]})
+        # ===================================================================
+        # CREATE DRIVER AND SWAP PROBLEM
+        # ===================================================================
+        print("\n[4] Setting up small signal driver...")
 
-# add models to dyn_host
-line_dynhost.model = line0_mdl
-load_dynhost.model = load_mdl
-gen_dynhost.model = big_gen1
+        ss_options = SmallSignalStabilityRmsOptions(ss_assessment_time=0)
 
-# attach rms models to Veragrid objects
-line0.rms_model = line_dynhost
-load.rms_model = load_dynhost
-gen0.rms_model = gen_dynhost
+        # Create driver with dummy grid (it will create RmsProblemDae internally)
+        dummy_grid = gce.MultiCircuit(Sbase=Sbase)
+        driver = SmallSignalStabilityRmsDriver(
+            grid=dummy_grid,
+            rms_options=rms_options,
+            sss_options=ss_options,
+            pf_results=pf_results
+        )
 
-Pl0 = find_name_in_block('Pl0', load_mdl)
-event = RmsEvent(device=load, parameter=Pl0, time=.01, value=-0.9)
-grid.add_rms_event(event)
+        # Swap in the actual phasor problem
+        driver.problem = phasor_problem
+        driver.k = phasor_problem.get_states_number()  # Update state count
 
-options = gce.PowerFlowOptions(
-    solver_type=gce.SolverType.NR,
-    retry_with_other_methods=False,
-    verbose=0,
-    initialize_with_existing_solution=True,
-    tolerance=1e-6,
-    max_iter=25,
-    control_q=False,
-    control_taps_modules=True,
-    control_taps_phase=True,
-    control_remote_voltage=True,
-    orthogonalize_controls=True,
-    apply_temperature_correction=True,
-    branch_impedance_tolerance_mode=gce.BranchImpedanceMode.Specified,
-    distributed_slack=False,
-    ignore_single_node_islands=False,
-    trust_radius=1.0,
-    backtracking_parameter=0.05,
-    use_stored_guess=False,
-    initialize_angles=False,
-    generate_report=False,
-)
-res = gce.power_flow(grid, options=options)
+        print("  ✓ Driver configured with phasor problem")
 
-params_mapping = dict()
+        # ===================================================================
+        # RUN ANALYSIS
+        # ===================================================================
+        print("\n[5] Running small signal analysis...")
+        driver.run()
 
-pr.enable()
+        # ===================================================================
+        # DISPLAY RESULTS
+        # ===================================================================
+        print("\n[6] Analysis complete!")
 
-options = RmsOptions(time_step=0.001,
-                     simulation_time=0.1,
-                     tolerance=1e-6,
-                     integration_method=DynamicIntegrationMethod.DaeBackEuler,
-                     initialization_method=RmsInitializationMethod.Explicit,
-                     use_init_values=False,
-                     max_iter=1000,
-                     verbose=0)
+        eigenvalues = driver.results.eigenvalues
+        participation_factors = driver.results.participation_factors
+        damping_ratios = driver.results.damping_ratios
+        frequencies = driver.results.conjugate_frequencies
 
-problem = RmsProblemTensygrid(grid=grid,
-                        options=options,
-                        pf_results=res)
+        print(f"  Found {len(eigenvalues)} eigenvalues")
+
+        # Display dominant modes
+        print(f"\n  Dominant eigenvalues (top 10):")
+        print(f"  {'Mode':<6} {'Real':<15} {'Imag':<15} {'Freq (Hz)':<12} {'Damping':<12} {'Status'}")
+        print(f"  {'-' * 80}")
+
+        for i in range(min(10, len(eigenvalues))):
+            lam = eigenvalues[i]
+            real_part = np.real(lam)
+            imag_part = np.imag(lam)
+            freq = frequencies[i] if i < len(frequencies) else abs(imag_part) / (2 * np.pi)
+            damping = damping_ratios[i] if i < len(damping_ratios) else 0.0
+
+            status = "Stable" if real_part < -1e-6 else "UNSTABLE" if real_part > 1e-6 else "Marginal"
+            print(f"  {i + 1:<6} {real_part:<15.6f} {imag_part:<15.6f} {freq:<12.4f} {damping:<12.4f} {status}")
+
+        # Stability
+        max_real = np.max(np.real(eigenvalues))
+        print(f"\n  Stability: {'STABLE' if max_real < -1e-6 else 'UNSTABLE' if max_real > 1e-6 else 'MARGINAL'}")
+
+        # ===================================================================
+        # PLOT
+        # ===================================================================
+        print("\n[7] Generating plots...")
+
+        fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+        # Eigenvalue map
+        ax1 = axes[0]
+        real_parts = np.real(eigenvalues)
+        imag_parts = np.imag(eigenvalues)
+        colors = ['red' if r > 0 else 'blue' for r in real_parts]
+        ax1.scatter(real_parts, imag_parts, c=colors, alpha=0.6, s=50)
+        ax1.axvline(x=0, color='k', linestyle='--', linewidth=1)
+        ax1.set_xlabel('Real Part')
+        ax1.set_ylabel('Imaginary Part')
+        ax1.set_title('Eigenvalue Map (Phasor RMS with Multilinear Generator)')
+        ax1.grid(True, alpha=0.3)
+
+        # Participation factors
+        ax2 = axes[1]
+        if participation_factors is not None and len(participation_factors) > 0:
+            n_modes = min(3, participation_factors.shape[1])
+            n_states = min(10, participation_factors.shape[0])
+            x = np.arange(n_states)
+            width = 0.25
+
+            for mode_idx in range(n_modes):
+                pf = participation_factors[:n_states, mode_idx]
+                pf = pf / np.sum(pf) if np.sum(pf) > 0 else pf
+                ax2.bar(x + mode_idx * width, pf, width,
+                        label=f'Mode {mode_idx + 1} ({np.real(eigenvalues[mode_idx]):.3f})')
+
+            ax2.set_xlabel('State Variable')
+            ax2.set_ylabel('Participation Factor')
+            ax2.set_title('Participation Factors (Dominant Modes)')
+            ax2.set_xticks(x + width)
+            ax2.set_xticklabels([f'State {i}' for i in range(n_states)])
+            ax2.legend()
+            ax2.grid(True, alpha=0.3, axis='y')
+
+        plt.tight_layout()
+        plt.show()
+
+    return True, phasor_problem
 
 
-algebraic_eqs: List[str] = list([str(expression) for expression in problem._algebraic_eqs])
-state_eqs: List[str] = list([str(expression) for expression in problem._state_eqs])
-algebraic_vars: List[str] = list([str(expression) for expression in problem._algebraic_vars])
-state_vars: List[str] = list([str(expression) for expression in problem._state_vars])
-print(f"\nState variables ({len(state_vars)}): {state_vars}")
-print(f"\nAlgebraic variables ({len(algebraic_vars)}): {algebraic_vars}")
+if __name__ == "__main__":
+    success, phasor_problem = small_signal_analysis(comparar = False)
+    # sys.exit(0 if success else 1)
 
-eqs: List[str] = algebraic_eqs + state_eqs
-print(f"\nNumber of equations: {len(eqs)}")
-print(f"\nEquation 1: {eqs[0]}")
-builder = PolynomialMatrixBuilder(
-    eqs=eqs,
-    ineqs=[],
-    state_vars=state_vars,
-    algebraic_vars=algebraic_vars,
-    verbose=True
-)
+    algebraic_eqs: list[str] = list([str(expression) for expression in phasor_problem._algebraic_eqs])
+    state_eqs: list[str] = list([str(expression) for expression in phasor_problem._state_eqs])
+    algebraic_vars: list[str] = list([str(expression) for expression in phasor_problem._algebraic_vars])
+    state_vars: list[str] = list([str(expression) for expression in phasor_problem._state_vars])
+    print(f"\nState variables ({len(state_vars)}): {state_vars}")
+    print(f"\nAlgebraic variables ({len(algebraic_vars)}): {algebraic_vars}")
+
+    eqs: list[str] = algebraic_eqs + state_eqs
+    print(f"\nNumber of equations: {len(eqs)}")
+    print(f"\nEquation 1: {eqs[0]}")
+    builder = PolynomialMatrixBuilder(
+        eqs=eqs,
+        ineqs=[],
+        state_vars=state_vars,
+        algebraic_vars=algebraic_vars,
+        verbose=True
+    )

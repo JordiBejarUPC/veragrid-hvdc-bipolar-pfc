@@ -196,10 +196,10 @@ def test_load_save_load_rms() -> None:
     grid2_rms_lines = list()
 
     for elm in grid1.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-        grid1_rms_lines.append(elm.rms_model.model)
+        grid1_rms_lines.append(elm.rms_model)
 
     for elm in grid2.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-        grid2_rms_lines.append(elm.rms_model.model)
+        grid2_rms_lines.append(elm.rms_model)
 
     # create the blocks that will be compared
     blocks_grid1: Block = Block()
@@ -209,11 +209,11 @@ def test_load_save_load_rms() -> None:
     # add injections and bus models
     for bus, block in grid1_rms_system_dict.items():
         blocks_grid1.children.extend(block.children)
-        blocks_grid1.children.append(bus.rms_model.model)
+        blocks_grid1.children.append(bus.rms_model)
 
     for bus, block in grid2_rms_system_dict.items():
         blocks_grid2.children.extend(block.children)
-        blocks_grid2.children.append(bus.rms_model.model)
+        blocks_grid2.children.append(bus.rms_model)
 
     # add line models
     blocks_grid1.children.extend(grid1_rms_lines)
@@ -233,3 +233,92 @@ def test_load_save_load_rms() -> None:
 
     # if all ok, we can delete the test file
     os.remove(fname2)
+
+# def test_load_save_load_evt_rms() -> None:
+#     """
+#         This test checks if the saving and load process is correct when the grid contains rms models
+#
+#         The test consists in:
+#         - loading grids in different veragrid variations (grid1)
+#         - saving the grid with a different name
+#         - loading the saved grid (grid2)
+#         - comparing that grid1 == grid2
+#
+#         """
+#
+#     logger = Logger()
+#
+#     folder = os.path.join('data', 'grids')
+#     if not os.path.exists("output"):
+#         os.makedirs("output")
+#
+#     name = '2bus_gen_load_evt_test.veragrid'
+#     fname = os.path.join(folder, name)
+#
+#     # open the main grid
+#     grid1 = gce.open_file(fname)
+#
+#     name, ext = os.path.splitext(os.path.basename(fname))
+#
+#     fname2 = os.path.join("output", name + '_to_save.veragrid')
+#
+#     gce.save_file(grid=grid1, filename=fname2)
+#
+#     # open the main grid again
+#     grid2 = gce.open_file(fname2)
+#
+#     # compare the original grid with the saved one to check that they are equal
+#     equal, logger = grid1.compare_circuits(grid2, detailed_profile_comparison=True)
+#     if not equal:
+#         logger.print()
+#     # asset for failing
+#     assert equal
+#
+#     # compare the rms models inside the elements of the grid
+#
+#     # get injection models
+#     grid1_rms_system_dict = grid1.compose_bus_blocks()
+#     grid2_rms_system_dict = grid2.compose_bus_blocks()
+#
+#     # get branch models
+#     grid1_rms_lines = list()
+#     grid2_rms_lines = list()
+#
+#     for elm in grid1.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+#         grid1_rms_lines.append(elm.rms_model.model)
+#
+#     for elm in grid2.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+#         grid2_rms_lines.append(elm.rms_model.model)
+#
+#     # create the blocks that will be compared
+#     blocks_grid1: Block = Block()
+#     blocks_grid2: Block = Block()
+#     blocks_grid2.uid = blocks_grid1.uid
+#
+#     # add injections and bus models
+#     for bus, block in grid1_rms_system_dict.items():
+#         blocks_grid1.children.extend(block.children)
+#         blocks_grid1.children.append(bus.rms_model.model)
+#
+#     for bus, block in grid2_rms_system_dict.items():
+#         blocks_grid2.children.extend(block.children)
+#         blocks_grid2.children.append(bus.rms_model.model)
+#
+#     # add line models
+#     blocks_grid1.children.extend(grid1_rms_lines)
+#     blocks_grid2.children.extend(grid2_rms_lines)
+#
+#     # compare the blocks
+#     equal = compare_blocks(blocks_grid1, blocks_grid2, grid1.rms_var_factory, grid2.rms_var_factory, testing=True)
+#
+#     if not equal:
+#         logger.add_error(msg="BLock dictionaries differs",
+#                          value=blocks_grid2,
+#                          expected_value=blocks_grid1)
+#         logger.print()
+#
+#     # asset for failing
+#     assert equal
+#
+#     # if all ok, we can delete the test file
+#     os.remove(fname2)

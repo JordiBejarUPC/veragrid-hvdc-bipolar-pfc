@@ -270,7 +270,7 @@ def init_explicit(bus, region: Block, sys_block, init_guess, seen_vars, sys_vars
     sys_block_region = Block()
     for mdl in region.children:
         mdl.unify_blocks()
-        bus_rms_mdl = bus.rms_model.model
+        bus_rms_mdl = bus.rms_model
 
         # fill general init guess
         
@@ -457,7 +457,7 @@ def init_pseudo_transient(bus, region:Block, grid, sys_block, res, init_guess, t
     uid2idx_region_vars: Dict[int, int] = dict()
     init_guess_region: Dict[Var, float] = dict()
     bus_index = grid.buses.index(bus)
-    bus_block = bus.rms_model.model
+    bus_block = bus.rms_model
     region.unify_blocks()
     # add bus variables to init_guess_region
 
@@ -609,7 +609,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
     for i, elm in enumerate(grid.buses):
 
         # get model and model vars
-        mdl = elm.rms_model.model
+        mdl = elm.rms_model
         mdl_vars = mdl.state_vars + mdl.algebraic_vars
 
         # fill system variables list
@@ -648,7 +648,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
 
     # branches
     for i, elm in enumerate(grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):
-        mdl = elm.rms_model.model
+        mdl = elm.rms_model
         mdl_vars = mdl.state_vars + mdl.algebraic_vars
 
         # fill system variables list
@@ -680,8 +680,8 @@ def compose_system_block(time: Var, grid: MultiCircuit,
 
     # Process init_eqs for branches with controls (transformers, etc.)
     for i, elm in enumerate(grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):
-        if elm.rms_model.model.init_eqs:
-            mdl = elm.rms_model.model
+        if elm.rms_model.init_eqs:
+            mdl = elm.rms_model
             
             # Build variable mappings for this branch
             mdl_vars = mdl.algebraic_vars + mdl.state_vars + mdl.diff_vars
@@ -706,7 +706,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
 
     # Populating VSCs init guess
     for i, elm in enumerate(grid.get_vsc()):
-        mdl = elm.rms_model.model
+        mdl = elm.rms_model
         mdl_vars = mdl.state_vars + mdl.algebraic_vars
         St_vsc = res.St_vsc / grid.Sbase
         Sf_vsc = (res.Pfn_vsc[i] + res.Pfp_vsc[i])/grid.Sbase
@@ -719,7 +719,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
                     mdl.external_mapping[VarPowerFlowRefferenceType.Qt].name)] = St_vsc[i].imag
         
         # Initialize Vdc from the DC bus (bus_from)
-        dc_bus_model = elm.bus_from.rms_model.model
+        dc_bus_model = elm.bus_from.rms_model
         init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.Vdc].uid,
                     mdl.external_mapping[VarPowerFlowRefferenceType.Vdc].name)] = init_guess[
             (dc_bus_model.external_mapping[VarPowerFlowRefferenceType.Vdc].uid,
@@ -746,7 +746,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
 
     for vsc in grid.get_vsc():
         bus = vsc.bus_to
-        vsc = vsc.rms_model.model
+        vsc = vsc.rms_model
         if method == RmsInitializationMethod.Explicit:
             init_guess_region, sys_block_region = init_explicit(bus, vsc, sys_block, init_guess, seen_vars, sys_vars, uid2sym_vars, uid2idx_vars, uid2sym_t,
                              vars_array_index, use_init_values)
@@ -757,7 +757,7 @@ def compose_system_block(time: Var, grid: MultiCircuit,
 
     # del buses P, Q
     for i, elm in enumerate(grid.buses):
-        mdl = elm.rms_model.model
+        mdl = elm.rms_model
         del init_guess[(mdl.external_mapping[VarPowerFlowRefferenceType.P].uid,
                         mdl.external_mapping[VarPowerFlowRefferenceType.P].name)]
         if not elm.is_dc:
@@ -839,14 +839,14 @@ def initialize_rms(grid: MultiCircuit,
     for i, elm in enumerate(grid.buses):
         elm.initialize_rms()
         bus_dict[elm] = i
-        for var in elm.rms_model.model.get_all_vars():
+        for var in elm.rms_model.get_all_vars():
             vars2device[var.uid] = elm
             vars_glob_name2uid[var.name + elm.name] = var.uid
 
     # initialize branches
     for elm in grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
         elm.initialize_rms()
-        mdl = elm.rms_model.model
+        mdl = elm.rms_model
         f = bus_dict[elm.bus_from]
         t = bus_dict[elm.bus_to]
         # add variable to conservation equations of the bus to which the element is connected
@@ -857,7 +857,7 @@ def initialize_rms(grid: MultiCircuit,
         if not elm.bus_to.is_dc:
             setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
 
-        for var in elm.rms_model.model.get_all_vars():
+        for var in elm.rms_model.get_all_vars():
             vars2device[var.uid] = elm
             vars_glob_name2uid[var.name + elm.name] = var.uid
 
@@ -866,10 +866,10 @@ def initialize_rms(grid: MultiCircuit,
         elm.initialize_rms()
         # create dictionary for collecting events of the same parameter
 
-        if elm.rms_model.model.event_dict is not None:
+        if elm.rms_model.event_dict is not None:
             collect_events = {
                 key: {"times": [], "values": []}
-                for key in elm.rms_model.model.event_dict.keys()
+                for key in elm.rms_model.event_dict.keys()
             }
             # find out if there are events affecting the device parameters
             rms_evts = [rms_evt for rms_evt in rms_events if rms_evt.device_idtag == elm.idtag]
@@ -879,25 +879,25 @@ def initialize_rms(grid: MultiCircuit,
                     collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
                     # TODO: implement the function in block: apply_event
                 for param, events_info in collect_events.items():
-                    default_value = elm.rms_model.model.event_dict[param]
-                    elm.rms_model.model.event_dict[param] = piecewise(time, np.array(events_info["times"]),
+                    default_value = elm.rms_model.event_dict[param]
+                    elm.rms_model.event_dict[param] = piecewise(time, np.array(events_info["times"]),
                                                                       np.array(events_info["values"]), default_value)
 
         # after applying the events the model has to be "build"
-        mdl = elm.rms_model.model
+        mdl = elm.rms_model
         # add variable to conservation equations of the bus to which the element is connected
         k = bus_dict[elm.bus]
         setP(P, P_used, k, mdl.E(VarPowerFlowRefferenceType.P))
         if not elm.bus.is_dc:
             setQ(Q, Q_used, k, mdl.E(VarPowerFlowRefferenceType.Q))
 
-        for var in elm.rms_model.model.get_all_vars():
+        for var in elm.rms_model.get_all_vars():
             vars2device[var.uid] = elm
             vars_glob_name2uid[var.name + elm.name] = var.uid
 
     # add the nodal balance equations
     for i, bus in enumerate(grid.buses):
-        mdl = bus.rms_model.model
+        mdl = bus.rms_model
         if len(mdl.algebraic_eqs) == 0:
             if P_used[i] == 0 and Q_used[i] == 0:
                 logger.add_error("Isolated bus", value=i)

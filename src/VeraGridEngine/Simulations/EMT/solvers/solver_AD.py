@@ -14,8 +14,9 @@ from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
 from VeraGridEngine.Utils.Symbolic.diagnostic import (with_newton_diagnostics, NewtonDiagnosticsConfig,
-                                                      NewtonSolveContext, dense_lstsq_fallback,
-                                                      sparse_lsqr_fallback)
+                                                       NewtonSolveContext, dense_lstsq_fallback,
+                                                       sparse_lsqr_fallback, maybe_check_index1,
+                                                       maybe_apply_backtracking)
 from VeraGridEngine.basic_structures import Vec, Mat
 from typing import Tuple, Callable, List, Any, Dict, Set, Union
 import uuid
@@ -205,7 +206,7 @@ class SparseADJacobian:
                  dtype: Any=np.float64)-> None:
 
         t_start = time.perf_counter()
-        print(f"   [AD-Debug] Init started for {len(equations)} eqs...")
+        print_enabled: bool = False
 
         self.equations = equations
         self.variables = variables
@@ -226,7 +227,8 @@ class SparseADJacobian:
             self.param_map[p.uid] = i
 
         t_maps: float = time.perf_counter()
-        print(f"   [AD-Debug] Maps built in {t_maps - t_start:.4f}s")
+        if print_enabled:
+            print(f"   [AD-Debug] Maps built in {t_maps - t_start:.4f}s")
 
         # 1) Sparsity Detection
         col_rows: List[List[int]] = [list() for _ in range(self.n_cols)]
@@ -273,7 +275,8 @@ class SparseADJacobian:
         self.col_rows = [sorted(set(rows)) for rows in col_rows]
 
         t_sparsity = time.perf_counter()
-        print(f"   [AD-Debug] Sparsity Analysis done in {t_sparsity - t_maps:.4f}s. Edges found: {count_edges}")
+        if print_enabled:
+            print(f"   [AD-Debug] Sparsity Analysis done in {t_sparsity - t_maps:.4f}s. Edges found: {count_edges}")
 
         # 2) CSC Structure
         indptr = np.zeros(self.n_cols + 1, dtype=np.int32)
@@ -293,7 +296,8 @@ class SparseADJacobian:
         self.J = csc_matrix((data, indices, indptr), shape=(self.n_rows, self.n_cols))
 
         t_csc = time.perf_counter()
-        print(f"   [AD-Debug] CSC Matrix built in {t_csc - t_sparsity:.4f}s")
+        if print_enabled:
+            print(f"   [AD-Debug] CSC Matrix built in {t_csc - t_sparsity:.4f}s")
 
         # 3) Coloring
         self.colors, self.n_colors = greedy_color_columns(self.col_rows, self.n_rows)
@@ -303,7 +307,8 @@ class SparseADJacobian:
         self.color_groups = groups
 
         t_color = time.perf_counter()
-        print(f"   [AD-Debug] Graph Coloring done in {t_color - t_csc:.4f}s. Colors: {self.n_colors}")
+        if print_enabled:
+            print(f"   [AD-Debug] Graph Coloring done in {t_color - t_csc:.4f}s. Colors: {self.n_colors}")
 
         # 4) Precompute scatter map
         color_cols: List[int] = list()
@@ -338,13 +343,15 @@ class SparseADJacobian:
         self.data_idx = data_idx
 
         t_scatter = time.perf_counter()
-        print(f"   [AD-Debug] Scatter Map built in {t_scatter - t_color:.4f}s")
+        if print_enabled:
+            print(f"   [AD-Debug] Scatter Map built in {t_scatter - t_color:.4f}s")
 
         # 5) Compile Optimization: Colored Kernels
         self._compiler = EquationCompiler(variables=variables, parameters=parameters, method=method)
         self.ad_kernels: List[Callable] = list()
 
-        print(f"   [AD-Opt] Compiling {self.n_colors} specialized color kernels...")
+        if print_enabled:
+            print(f"   [AD-Opt] Compiling {self.n_colors} specialized color kernels...")
         t_comp_start = time.perf_counter()
 
         for c in range(self.n_colors):
@@ -362,8 +369,9 @@ class SparseADJacobian:
             self.ad_kernels.append(kernel)
 
         t_comp_end = time.perf_counter()
-        print(f"   [AD-Opt] Kernels compiled in {t_comp_end - t_comp_start:.4f}s")
-        print(f"   [AD-Debug] Total Init Time: {t_comp_end - t_start:.4f}s")
+        if print_enabled:
+            print(f"   [AD-Opt] Kernels compiled in {t_comp_end - t_comp_start:.4f}s")
+            print(f"   [AD-Debug] Total Init Time: {t_comp_end - t_start:.4f}s")
 
         self._seeds = np.zeros(self.n_cols, dtype=self.dtype)
 
@@ -410,7 +418,7 @@ class JitAdSolver:
     __slots__ = [
         'problem', 't0', 't_end', 'h', 'method', 'pred_method', 'dense_threshold', 'verbose',
         'steps', 't', 'y', 'dy',  'jit_kernels_ad', 'jit_jacobian_ad',
-        'state_vars', 'algebraic_vars', 'state_eqs', 'algebraic_eqs'
+        'state_vars', 'algebraic_vars', 'state_eqs', 'algebraic_eqs', '_newton_diag_config'
     ]
     def __init__(self,
                  problem: EmtProblemTemplate,
@@ -420,7 +428,8 @@ class JitAdSolver:
                  method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
                  pred_method: DynamicIntegrationMethod = None,
                  dense_threshold: int = 100,
-                 verbose: bool = False)-> None:
+                 verbose: bool = False,
+                 newton_diag_config: NewtonDiagnosticsConfig | None = None)-> None:
         """
         Initializes the JIT AD Solver.
 
@@ -449,6 +458,12 @@ class JitAdSolver:
         self.dense_threshold = dense_threshold
         self.verbose = verbose
         self.t_end = t_end
+        self._newton_diag_config = newton_diag_config or NewtonDiagnosticsConfig(
+            compute_dense_cond=False,
+            enable_fallback=False,
+            enable_index1_check=False,
+            enable_backtracking=False,
+        )
 
         self.steps = int(np.ceil((t_end - t0) / h))
         self.t: Vec = np.empty(self.steps + 1)
@@ -478,8 +493,9 @@ class JitAdSolver:
         else:
             pass
 
-        print(
-            f"--- [JIT-AD] Compiling {'Jacobian ONLY' if only_jacobian else 'Implicit Kernel + AD Jacobian'} ({self.method}) ---")
+        if self.verbose:
+            print(
+                f"--- [JIT-AD] Compiling {'Jacobian ONLY' if only_jacobian else 'Implicit Kernel + AD Jacobian'} ({self.method}) ---")
 
         sorted_vars: List[Any] = list()
         sorted_vars.extend(self.state_vars)
@@ -503,7 +519,8 @@ class JitAdSolver:
             n_eqs = len(equations)
             batched_kernels: List[Callable] = list()
 
-            print(f"   [JIT-AD] Splitting {n_eqs} residual eqs into {int(np.ceil(n_eqs / BATCH_SIZE))} batches...")
+            if self.verbose:
+                print(f"   [JIT-AD] Splitting {n_eqs} residual eqs into {int(np.ceil(n_eqs / BATCH_SIZE))} batches...")
             t0 = time.time()
 
             for i in range(0, n_eqs, BATCH_SIZE):
@@ -513,7 +530,8 @@ class JitAdSolver:
                 jit_func = _safe_njit(py_func, cache=True, fastmath=True)
                 batched_kernels.append(jit_func)
 
-            print(f"   [JIT-AD] Residual Batches compiled in {time.time() - t0:.4f}s")
+            if self.verbose:
+                print(f"   [JIT-AD] Residual Batches compiled in {time.time() - t0:.4f}s")
             self.jit_kernels_ad[self.method] = batched_kernels
         else:
             pass
@@ -575,6 +593,8 @@ class JitAdSolver:
         dx_prev = dx0.copy()
         x_prev2 = x0.copy()
         x_iter = x0.copy()
+        trial_x = np.zeros_like(x_iter)
+        trial_res = np.zeros(n_eqs, dtype=np.float64)
 
         static_vals = np.array([c.value for c in self.problem.get_parameters_values()], dtype=np.float64)
         n_event_params = self.problem.get_variable_parameter_number()
@@ -585,13 +605,33 @@ class JitAdSolver:
             ev_params = np.zeros(n_event_params, dtype=np.float64)
 
         trace_collector = self.problem.get_newton_trace_collector()
+        diag_cfg = self._newton_diag_config
+        diagnostics_enabled: bool = (
+            trace_collector is not None
+            or diag_cfg.compute_dense_cond
+            or diag_cfg.enable_fallback
+            or diag_cfg.enable_index1_check
+            or diag_cfg.enable_backtracking
+        )
 
-        diag_cfg = NewtonDiagnosticsConfig(step_norm_explode=1e6, dense_cond_warn=1e12, compute_dense_cond=True,
-                                           enable_fallback=True)
-        dense_solve = with_newton_diagnostics(np.linalg.solve, fallback_solve=dense_lstsq_fallback,
-                                              collector=trace_collector, config=diag_cfg, solver_name="dense")
-        sparse_solve = with_newton_diagnostics(sp.linalg.spsolve, fallback_solve=sparse_lsqr_fallback,
-                                               collector=trace_collector, config=diag_cfg, solver_name="sparse")
+        dense_solve = None
+        sparse_solve = None
+
+        if diagnostics_enabled:
+            dense_solve = with_newton_diagnostics(
+                np.linalg.solve,
+                fallback_solve=dense_lstsq_fallback,
+                collector=trace_collector,
+                config=diag_cfg,
+                solver_name="dense",
+            )
+            sparse_solve = with_newton_diagnostics(
+                sp.linalg.spsolve,
+                fallback_solve=sparse_lsqr_fallback,
+                collector=trace_collector,
+                config=diag_cfg,
+                solver_name="sparse",
+            )
 
         if self.verbose:
             print(f"-> Starting JIT (AD) Simulation ({method}, {self.steps} steps)...")
@@ -693,12 +733,39 @@ class JitAdSolver:
                         history2=x_prev2,
                     )
 
-                    if use_dense_solver:
-                        delta = dense_solve(J.toarray(), -res, ctx)
-                    else:
-                        delta = sparse_solve(J, -res, ctx)
+                    if diagnostics_enabled:
+                        maybe_check_index1(J, n_states, ctx=ctx, config=diag_cfg)
 
-                    x_iter += delta
+                    if use_dense_solver:
+                        dense_J = J.toarray()
+                        if diagnostics_enabled:
+                            delta = dense_solve(dense_J, -res, ctx)
+                        else:
+                            delta = np.linalg.solve(dense_J, -res)
+                    else:
+                        if diagnostics_enabled:
+                            delta = sparse_solve(J, -res, ctx)
+                        else:
+                            delta = sp.linalg.spsolve(J, -res)
+
+                    if diag_cfg.enable_backtracking:
+                        def _evaluate_trial_residual(candidate_x: Vec, out_res: Vec) -> float:
+                            out_res[:] = 0.0
+                            for candidate_kernel in kernel_list:
+                                candidate_kernel(candidate_x, full_params, x_prev, dx_prev, h_eff, out_res, x_prev2)
+                            return float(np.linalg.norm(out_res, np.inf))
+
+                        maybe_apply_backtracking(
+                            x_iter,
+                            delta,
+                            float(np.linalg.norm(res, np.inf)),
+                            trial_x,
+                            trial_res,
+                            evaluate_residual=_evaluate_trial_residual,
+                            config=diag_cfg,
+                        )
+                    else:
+                        x_iter += delta
 
                 if method == DynamicIntegrationMethod.DaeTrapezoidal:
                     dx_prev[:n_states] = (

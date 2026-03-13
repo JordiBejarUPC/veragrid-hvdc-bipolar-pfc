@@ -84,6 +84,18 @@ class TapChanger:
         self._k_im_array = np.ones(self._total_positions)  # impedance correction positions (imag)
         self.recalc()
 
+    def copy(self) -> TapChanger:
+
+        elm = TapChanger(
+            total_positions=self._total_positions,
+            neutral_position=self._neutral_position,
+            normal_position=self._normal_position,
+            dV=self._dV,
+            asymmetry_angle=self._asymmetry_angle,
+            tc_type=self._tc_type
+        )
+        return elm
+
     @property
     def asymmetry_angle(self) -> float:
         return self._asymmetry_angle

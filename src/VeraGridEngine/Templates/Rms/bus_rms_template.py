@@ -66,7 +66,7 @@ def initialize_bus_rms(bus: Bus, vf: VarFactory):
     :param vf:
     :return:
     """
-    bus.rms_model.model = BusRmsTemplate(vf=vf, is_dc=bus.is_dc).block
+    bus.rms_model = BusRmsTemplate(vf=vf, is_dc=bus.is_dc).block
 
 def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Var]:
     """

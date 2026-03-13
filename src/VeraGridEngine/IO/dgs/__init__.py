@@ -3,4 +3,10 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
 from VeraGridEngine.IO.dgs.dgs_parser import dgs_to_circuit
+from VeraGridEngine.IO.dgs.dgs_to_blocks import (
+    dgs_to_root_block,
+    extract_named_block_subgraph,
+    export_named_block_subgraph_to_python,
+    export_named_block_subgraph_tree_to_python,
+)
 

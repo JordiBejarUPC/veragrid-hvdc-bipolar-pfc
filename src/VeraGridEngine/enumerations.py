@@ -1178,8 +1178,12 @@ class DeviceType(Enum):
     RmsEventDevice = "Rms Event"
     RmsEventsGroupDevice = "Rms Events Group"
 
+    EmtModelTemplateDevice = "EMT template"
     EmtEventDevice = "Emt Event"
     EmtEventsGroupDevice = "Emt Events Group"
+
+    DynamicPlotEntry = "Plot Event"
+    DynamicPlotGroupDevice = "Plot Group"
 
     VarFactory = "Var Factory"
 
@@ -1223,10 +1227,10 @@ class SubObjectType(Enum):
     Associations = "AssociationsList"
     ListOfWires = 'ListOfWires'
     AdmittanceMatrix = "Admittance Matrix"
-    DynamicModelHostType = "DynamicModuleHost"
     DaeBlockType = "DaeBlock"
     VarType = "VarType"
     ConstType = "ConstType"
+    MergeInformation = "MergeInformation"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -2562,6 +2566,41 @@ class SmallSignalEmtBuildTypes(Enum):
         return list(map(lambda c: c.value, cls))
 
 
+class EraSvdSolverType(Enum):
+    """
+    Enumeration for the SVD solver backend.
+    """
+    FullSvd = 0
+    TruncatedRandomized = 1
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return EraSvdSolverType[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
+
+
+
 class RmsInitializationMethod(Enum):
     Explicit = "Explicit"
     PseudoTransient = "PseudoTransient"
@@ -2698,11 +2737,24 @@ class VarPowerFlowRefferenceType(Enum):
     d_v_B = "d_v_B"  # Bus voltage derivative at phase B.
     d_v_C = "d_v_C"  # Bus voltage derivative at phase C.
 
+    d_v_N_f = "d_v_N_f"  # From bus voltage derivative at phase N.
+    d_v_A_f = "d_v_A_f"  # From bBus voltage derivative at phase A.
+    d_v_B_f = "d_v_B_f"  # From bus voltage derivative at phase B.
+    d_v_C_f = "d_v_C_f"  # From bus voltage derivative at phase C.
+
+    d_v_N_t = "d_v_N_t"  # To bus voltage derivative at phase N.
+    d_v_A_t = "d_v_A_t"  # To bBus voltage derivative at phase A.
+    d_v_B_t = "d_v_B_t"  # To bus voltage derivative at phase B.
+    d_v_C_t = "d_v_C_t"  # To bus voltage derivative at phase C.
+
     i_N = "i_N"  # Injection current at phase N in p.u.
     i_A = "i_A"  # Injection current at phase A in p.u.
     i_B = "i_B"  # Injection current at phase B in p.u.
     i_C = "i_C"  # Injection current at phase C in p.u.
-    theta = "theta"  # Rotor angle in a synchronous generator in rad
+    phi_v = "phi_v"  # voltage angle in the network
+    phi = "phi" # network angle
+    Vpk = "Vpk" # rms peak value of voltage
+    Ipk = "Ipk"  # rms peak value of current
 
     P_N = "P_N"  # Bus active power in phase N in p.u.
     P_A = "P_A"  # Bus active power in phase A in p.u.

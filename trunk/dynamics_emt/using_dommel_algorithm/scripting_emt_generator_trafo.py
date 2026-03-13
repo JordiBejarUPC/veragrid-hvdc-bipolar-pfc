@@ -52,9 +52,9 @@ bus2 = Bus(name="Bus2", Vnom=V2)
 bus2.ph_n = False; bus2.ph_a = True; bus2.ph_b = True; bus2.ph_c = True
 
 bus1_template = get_bus_emt_template(grid.rms_var_factory)
-bus1.emt_model.model = bus1_template.block
+bus1.emt_model = bus1_template.block
 bus2_template = get_bus_emt_template(grid.rms_var_factory)
-bus2.emt_model.model = bus2_template.block
+bus2.emt_model = bus2_template.block
 
 # trafo0 = Transformer2W(name="trafo 1-2", bus_from=bus1, bus_to=bus2, X_leack= 0.1, X_magn=100, R_leack= 0.01, R_magn=100, rate = 300)
 # trafo0 = Transformer2W(name="trafo 1-2",
@@ -84,10 +84,10 @@ trafo0.conn_t = WindingType.GroundedStar
 
 gen1 = Generator(name="Gen1",freq = 50, Snom=grid.Sbase, vset=1.0 )
 gen1_template = get_generator_emt_template()
-gen1.emt_model.model = gen1_template.block
+gen1.emt_model = gen1_template.block
 
-gen1_mdl = gen1.emt_model.model
-bus1_mdl = bus1.emt_model.model
+gen1_mdl = gen1.emt_model
+bus1_mdl = bus1.emt_model
 gen1_mdl.connect(gen1_mdl.in_vars, bus1_mdl.out_vars)
 
 # load
@@ -248,7 +248,7 @@ offset = 0
 
 for gen_idx, gen in enumerate(grid.get_generators(), start=1):
 
-    model = gen.emt_model.model
+    model = gen.emt_model
     state_vars     = model.state_vars        # list of names
     algebraic_vars = model.algebraic_vars    # list of names
 
@@ -270,7 +270,7 @@ dx_cols = []
 offset = 0
 for gen_idx, gen in enumerate(grid.get_generators(), start=1):
 
-    model = gen.emt_model.model
+    model = gen.emt_model
     state_vars = model.state_vars  # only variables with derivative
 
     for name in state_vars:

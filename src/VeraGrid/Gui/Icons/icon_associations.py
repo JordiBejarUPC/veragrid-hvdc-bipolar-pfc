@@ -67,6 +67,8 @@ device_type_icons = {
     "Dynamic": ":/Icons/icons/dyn_gray.png",
     DeviceType.RmsEventsGroupDevice.value: ":/Icons/icons/dyn_gray.png",
     DeviceType.RmsEventDevice.value: ":/Icons/icons/dyn_gray.png",
+    DeviceType.EmtEventsGroupDevice.value: ":/Icons/icons/dyn_gray.png",
+    DeviceType.EmtEventDevice.value: ":/Icons/icons/dyn_gray.png",
 
     "Associations": ":/Icons/icons/associations.png",
     DeviceType.Technology.value: ":/Icons/icons/technology.png",
@@ -95,5 +97,6 @@ device_type_icons = {
     DeviceType.SequenceLineDevice.value: ":/Icons/icons/ac_line.png",
     DeviceType.TransformerTypeDevice.value: ":/Icons/icons/to_transformer.png",
     DeviceType.RmsModelTemplateDevice.value: ":/Icons/icons/dyn_gray.png",
+    DeviceType.EmtModelTemplateDevice.value: ":/Icons/icons/dyn_gray.png",
     DeviceType.DynamicModelHostDevice.value: ":/Icons/icons/dyn_gray.png",
 }

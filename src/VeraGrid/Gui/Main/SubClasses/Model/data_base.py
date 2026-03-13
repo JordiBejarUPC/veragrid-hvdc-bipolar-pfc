@@ -29,7 +29,7 @@ from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
-from VeraGrid.Gui.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
+from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, generate_map_diagram
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget, make_diagram_from_buses
@@ -858,11 +858,25 @@ class DataBaseTableMain(DiagramsMain):
                 obj = dev.Facility(name=name)
                 self.circuit.add_facility(obj)
 
-            elif elm_type == DeviceType.DynamicModelHostDevice.value:
+            # elif elm_type == DeviceType.DynamicModelHostDevice.value:
+            #
+            #     name = f'RMS model {self.circuit.get_rms_models_number()}'
+            #     obj = dev.DynamicModelHost(name=name)
+            #     self.circuit.add_rms_model(obj)
 
-                name = f'RMS model {self.circuit.get_rms_models_number()}'
-                obj = dev.DynamicModelHost(name=name)
+            elif elm_type == DeviceType.EmtModelTemplateDevice.value:
+
+                name = f'EMT template {len(self.circuit.rms_events)}'
+                obj = dev.EmtModelTemplate(name=name)
+                self.circuit.add_emt_model(obj)
+
+
+            elif elm_type == DeviceType.RmsModelTemplateDevice.value:
+
+                name = f'RMS event {len(self.circuit.rms_events)}'
+                obj = dev.RmsModelTemplate(name=name)
                 self.circuit.add_rms_model(obj)
+
 
             elif elm_type == DeviceType.RmsEventDevice.value:
 
@@ -875,6 +889,18 @@ class DataBaseTableMain(DiagramsMain):
                 name = f'RMS event group {len(self.circuit.rms_events_groups)}'
                 obj = dev.RmsEventsGroup(name=name)
                 self.circuit.add_rms_events_group(obj)
+
+            elif elm_type == DeviceType.EmtEventDevice.value:
+
+                name = f'EMT event {len(self.circuit.rms_events)}'
+                obj = dev.EmtEvent(name=name)
+                self.circuit.add_emt_event(obj)
+
+            elif elm_type == DeviceType.EmtEventsGroupDevice.value:
+
+                name = f'EMT event group {len(self.circuit.rms_events_groups)}'
+                obj = dev.EmtEventsGroup(name=name)
+                self.circuit.add_emt_events_group(obj)
 
             else:
                 info_msg("This object does not support table-like addition.\nUse the schematic instead.")
@@ -945,10 +971,18 @@ class DataBaseTableMain(DiagramsMain):
 
                     elif elm_type == DeviceType.DynamicModelHostDevice.value:
 
-                        self.rms_model_Editor_window = RmsModelEditorGUI(
+                        # var_factory: VarFactory,
+                        # api_object_model_host,
+                        # templates_list,
+                        # templates_catalogue,
+                        # api_object_name,
+                        # api_object = None,
+                        # main_editor = False,
+
+                        self.rms_model_Editor_window = DynamicBlockEditorGUI(
                             var_factory=self.circuit.rms_var_factory,
                             templates_list=self.circuit.rms_models,
-                            model_host=elm
+                            block=elm.block
                         )
 
                         self.rms_model_Editor_window.resize(int(1.81 * 700.0), 700)

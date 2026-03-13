@@ -12,7 +12,7 @@ from PySide6.QtGui import QPolygonF
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.generic_graphics import Polygon
 from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics import MapInjectionTemplateGraphicItem
-from VeraGrid.Gui.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
+from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.enumerations import DeviceType
 
@@ -81,14 +81,11 @@ class MapLoadGraphicItem(MapInjectionTemplateGraphicItem):
                 templ_catalogue[templ.name] = templ
 
         # prompt RmsModelEditorGUI
-        rms_model_editor = RmsModelEditorGUI(
+        rms_model_editor = DynamicBlockEditorGUI(
             var_factory=self.editor.circuit.rms_var_factory,
-            api_object_model_host=self.api_object.rms_model,
+            block=self.api_object.rms_model,
             templates_list=templ_list,
-            templates_catalogue=templ_catalogue,
-            api_object_name=self.api_object.name,
             api_object=self.api_object,
             main_editor=True,
-            parent=self.editor
         )
         rms_model_editor.show()
