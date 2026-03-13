@@ -480,6 +480,101 @@ class ParameterEditorDialog(QDialog):
         else:
             pass
 
+class InspectModel(QWidget):
+    """
+    InspectModel
+    """
+
+    def __init__(self, block: Block, parent=None):
+        super().__init__(parent)
+
+        self.block = block  # DynamicModelHost
+
+        main_layout = QHBoxLayout(self)
+        self.setLayout(main_layout)
+
+        # ----------------- LEFT PANEL -----------------
+        left_panel = QVBoxLayout()
+        main_layout.addLayout(left_panel)
+
+        # Variables
+        var_header_layout = QHBoxLayout()
+        var_label = QLabel("Variables")
+        var_header_layout.addWidget(var_label)
+        left_panel.addLayout(var_header_layout)
+
+        self.list_vars = QListWidget()
+        left_panel.addWidget(self.list_vars)
+
+        # Parameters (table)
+        param_header_layout = QHBoxLayout()
+        param_label = QLabel("Parameters")
+        param_header_layout.addWidget(param_label)
+        left_panel.addLayout(param_header_layout)
+
+        self.table_params = QTableWidget()
+        self.table_params.setColumnCount(2)
+        self.table_params.setHorizontalHeaderLabels(["Name", "Value"])
+        self.table_params.horizontalHeader().setStretchLastSection(True)
+        self.table_params.verticalHeader().setVisible(False)
+        self.table_params.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)  # make read-only for now
+        left_panel.addWidget(self.table_params)
+
+        # ----------------- RIGHT PANEL -----------------
+        right_panel = QVBoxLayout()
+        main_layout.addLayout(right_panel)
+
+        eqn_header_layout = QHBoxLayout()
+        eqn_label = QLabel("Equations")
+        eqn_header_layout.addWidget(eqn_label)
+        right_panel.addLayout(eqn_header_layout)
+
+        self.list_eqns = QListWidget()
+        right_panel.addWidget(self.list_eqns)
+
+        # Initial population
+        self.refresh_lists(self.block)
+
+    def refresh_lists(self, model=None, clear=True):
+        """Load current model variables, parameters, equations into lists."""
+        if model is None:
+            model = self.block
+
+        if clear:
+            self.list_vars.clear()
+            self.table_params.setRowCount(0)
+            self.list_eqns.clear()
+
+        # --- Variables ---
+        for var in model.state_vars + model.algebraic_vars:
+            item = QListWidgetItem(f"{var.name} ")
+            # ({'state' if var in model.state_vars else 'algebraic'})
+            self.list_vars.addItem(item)
+
+        # --- Parameters ---
+        for param, value in model.parameters.items():
+            row = self.table_params.rowCount()
+            self.table_params.insertRow(row)
+            self.table_params.setItem(row, 0, QTableWidgetItem(str(param)))
+            self.table_params.setItem(row, 1, QTableWidgetItem(str(model.parameters[param])))
+
+        for param, value in model.event_dict.items():
+            row = self.table_params.rowCount()
+            self.table_params.insertRow(row)
+            self.table_params.setItem(row, 0, QTableWidgetItem(param.name))
+            self.table_params.setItem(row, 1, QTableWidgetItem(str(model.event_dict[param])))
+
+        # --- Equations ---
+        for eq in model.state_eqs + model.algebraic_eqs:
+            eq_type = "state" if eq in model.state_eqs else "algebraic"
+            item = QListWidgetItem(f"{symbolic_to_string(eq)} ({eq_type})")
+            self.list_eqns.addItem(item)
+
+        # Recurse into submodels
+        for submodel in getattr(model, "children", []):
+            self.refresh_lists(submodel, clear=False)
+
+
 class GenericBlockItem(QGraphicsRectItem):
     """
            Class to represent generic block to construct devices in the editor
@@ -1281,6 +1376,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.ui.splitter.setStretchFactor(0, 1)
         self.ui.splitter.setStretchFactor(1, 10)
+        self.ui.block_editor_actionCheckModel.triggered.connect(self.open_inspect_dialog)
 
         self.var_factory = var_factory
         # Todo: is this correct?
@@ -1885,6 +1981,35 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.changes_applied = True
         self.close()
 
+    def open_inspect_dialog(self):
+        """
+        creates and opens the dialog containing the model info (read only)
+        :return:
+        """
+        # Create dialog
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Inspect Model")
+        dialog.resize(600, 400)
+
+        # create layout
+        layout = QVBoxLayout(dialog)
+
+        # Instantiate inspector class
+        inspect_widget = InspectModel(block=self.main_block, parent=dialog)
+
+        # Add inspector to layout
+        layout.addWidget(inspect_widget)
+
+        # Add (OK / Cancel)
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok |
+                                      QDialogButtonBox.StandardButton.Cancel)
+        layout.addWidget(button_box)
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
+
+        # Show dialog
+        dialog.exec()
+
     def rebuild_scene_from_diagram(self) -> None:
         """
         Rebuild the visible scene from the persisted block diagram.
@@ -1906,12 +2031,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if block_model is not None:
 
                 if block_type == BlockType.GENERIC:
-
-                    # block = Block()
-                    # find corresponding block
-                    # for model in self.main_block.get_all_blocks():
-                    #     if model.uid == node.device_uid:
-                    #         block = model
 
                     generic_item = GenericBlockItem(
                         var_factory=self.var_factory,
