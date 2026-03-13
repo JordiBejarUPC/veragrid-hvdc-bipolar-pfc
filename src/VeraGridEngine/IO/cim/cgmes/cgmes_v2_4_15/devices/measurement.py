@@ -22,6 +22,7 @@ If the attribute is missing three phases (ABC) shall be assumed.''', profiles=[]
 		CgmesProperty(property_name='Terminal', class_type='ACDCTerminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''One or more measurements may be associated with a terminal in the network.''', profiles=[]),
 		CgmesProperty(property_name='PowerSystemResource', class_type='PowerSystemResource', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The measurements associated with this power system resource.''', profiles=[]),
 	)
+	__slots__ = ('measurementType', 'phases', 'unitSymbol', 'unitMultiplier', 'Terminal', 'PowerSystemResource')
 	def __init__(self, rdfid='', tpe='Measurement'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

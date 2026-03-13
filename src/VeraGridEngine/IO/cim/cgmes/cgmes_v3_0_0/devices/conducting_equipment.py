@@ -18,6 +18,7 @@ class ConductingEquipment(Equipment):
 		CgmesProperty(property_name='Terminals', class_type='Terminal', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Conducting equipment have terminals that may be connected to other conducting equipment terminals via connectivity nodes or topological nodes.''', profiles=[]),
 		CgmesProperty(property_name='SvStatus', class_type='SvStatus', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The status state variable associated with this conducting equipment.''', profiles=[]),
 	)
+	__slots__ = ('BaseVoltage', 'Terminals', 'SvStatus')
 	def __init__(self, rdfid='', tpe='ConductingEquipment'):
 		Equipment.__init__(self, rdfid, tpe)
 

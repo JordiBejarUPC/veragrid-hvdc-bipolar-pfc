@@ -28,6 +28,7 @@ class ACLineSegment(Conductor):
 		CgmesProperty(property_name='shortCircuitEndTemperature', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.degC, description='''Value of temperature in degrees Celsius.''', profiles=[]),
 		CgmesProperty(property_name='x0', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Reactance (imaginary part of impedance), at rated frequency.''', profiles=[]),
 	)
+	__slots__ = ('bch', 'gch', 'r', 'x', 'Clamp', 'Cut', 'b0ch', 'g0ch', 'r0', 'shortCircuitEndTemperature', 'x0')
 	def __init__(self, rdfid='', tpe='ACLineSegment'):
 		Conductor.__init__(self, rdfid, tpe)
 

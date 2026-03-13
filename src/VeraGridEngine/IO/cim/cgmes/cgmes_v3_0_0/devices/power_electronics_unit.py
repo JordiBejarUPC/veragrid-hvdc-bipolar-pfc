@@ -17,6 +17,7 @@ class PowerElectronicsUnit(Equipment):
 		CgmesProperty(property_name='maxP', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', profiles=[]),
 		CgmesProperty(property_name='minP', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', profiles=[]),
 	)
+	__slots__ = ('PowerElectronicsConnection', 'maxP', 'minP')
 	def __init__(self, rdfid='', tpe='PowerElectronicsUnit'):
 		Equipment.__init__(self, rdfid, tpe)
 

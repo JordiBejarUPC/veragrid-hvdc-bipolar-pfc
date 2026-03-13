@@ -14,6 +14,7 @@ class EnergyArea(IdentifiedObject):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='ControlArea', class_type='ControlArea', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The control area specification that is used for the load forecast.''', profiles=[]),
 	)
+	__slots__ = ('ControlArea',)
 	def __init__(self, rdfid='', tpe='EnergyArea'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

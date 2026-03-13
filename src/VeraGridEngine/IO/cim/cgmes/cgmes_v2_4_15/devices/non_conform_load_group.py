@@ -14,6 +14,7 @@ class NonConformLoadGroup(LoadGroup):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='EnergyConsumers', class_type='NonConformLoad', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Group of this ConformLoad.''', profiles=[]),
 	)
+	__slots__ = ('EnergyConsumers',)
 	def __init__(self, rdfid='', tpe='NonConformLoadGroup'):
 		LoadGroup.__init__(self, rdfid, tpe)
 

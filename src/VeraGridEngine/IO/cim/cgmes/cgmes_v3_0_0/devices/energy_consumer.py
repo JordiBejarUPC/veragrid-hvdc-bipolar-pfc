@@ -24,6 +24,7 @@ class EnergyConsumer(EnergyConnection):
         CgmesProperty(property_name='p', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', profiles=[]),
         CgmesProperty(property_name='q', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description='''Product of RMS value of the voltage and the RMS value of the quadrature component of the current.''', profiles=[]),
     )
+    __slots__ = ('pfixed', 'pfixedPct', 'qfixed', 'qfixedPct', 'LoadResponse', 'p', 'q')
     def __init__(self, rdfid='', tpe='EnergyConsumer'):
         EnergyConnection.__init__(self, rdfid, tpe)
 

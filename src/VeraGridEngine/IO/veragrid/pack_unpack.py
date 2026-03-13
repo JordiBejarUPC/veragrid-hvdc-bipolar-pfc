@@ -425,6 +425,9 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
             if prop.has_profile():
                 data[name + '_prof'] = profile_todict(elm.get_profile_by_prop(prop=prop))
 
+        elif prop.tpe == SubObjectType.MergeInformation:
+            data[name] = obj.to_dict()
+
         elif prop.tpe == SubObjectType.GeneratorQCurve:
             data[name] = obj.to_list()
 
@@ -526,10 +529,6 @@ def gather_model_as_jsons(circuit: MultiCircuit) -> Dict[str, Dict[str, str | fl
     # gather the circuit
     circuit.model_version += 1
     data['circuit'] = circuit.to_dict()
-    # blocks = block_saver.get_blocks()
-    # vars = block_saver.get_vars_to_save()
-    # consts = block_saver.get_const_to_save()
-    # diff_vars = block_saver.get_diff_vars_to_save()
 
     # At this point I already have the symbolic data stored in block_saver
 
@@ -1181,16 +1180,6 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                     adm_mat: SubObjectType.AdmittanceMatrix = elm.get_snapshot_value(prop=gc_prop)
                                     adm_mat.parse(property_value)
 
-                                elif gc_prop.tpe == SubObjectType.DynamicModelHostType:
-                                    pass
-                                #
-                                #     # get the line locations object and fill it with the json data
-                                #     dyn_module: DynamicModelHost = elm.get_snapshot_value(prop=gc_prop)
-                                #     dyn_module.parse(
-                                #         data=property_value,
-                                #         blocks_dict=block_parser.block_dict
-                                #     )
-
                                 elif gc_prop.tpe == SubObjectType.DaeBlockType:
 
                                     # handle the ModelHost
@@ -1204,7 +1193,15 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                             elm.set_snapshot_value(gc_prop.name, blk)
                                     else:
                                         blk = block_parser.block_dict.get(property_value, None)
-                                        elm.set_snapshot_value(gc_prop.name, blk)
+                                        if blk is None:
+                                            logger.add_error("Block not found",
+                                                             device=elm.name,
+                                                             value=property_value,
+                                                             device_class=elm.device_type.value,
+                                                             device_property=gc_prop.name
+                                                             )
+                                        else:
+                                            elm.set_snapshot_value(gc_prop.name, blk)
 
 
                                 elif gc_prop.tpe == SubObjectType.VarType:
@@ -1229,6 +1226,10 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                         logger=logger,
                                         elm_name=elm.name
                                     )
+
+                                elif gc_prop.tpe == SubObjectType.MergeInformation:
+                                    # set the value directly
+                                    elm.diff_changes.parse(property_value)
 
                                 else:
                                     raise Exception(f"SubObjectType {gc_prop.tpe} not implemented")

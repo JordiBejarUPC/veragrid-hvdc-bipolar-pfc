@@ -20,6 +20,7 @@ class Curve(IdentifiedObject):
 		CgmesProperty(property_name='y2Unit', class_type=UnitSymbol, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The Y2-axis units of measure.''', profiles=[]),
 		CgmesProperty(property_name='CurveDatas', class_type='CurveData', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The point data values that define this curve.''', profiles=[]),
 	)
+	__slots__ = ('curveStyle', 'xUnit', 'y1Unit', 'y2Unit', 'CurveDatas')
 	def __init__(self, rdfid='', tpe='Curve'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

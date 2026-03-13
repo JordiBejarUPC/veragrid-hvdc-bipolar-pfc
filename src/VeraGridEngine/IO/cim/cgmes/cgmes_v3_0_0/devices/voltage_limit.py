@@ -13,6 +13,7 @@ class VoltageLimit(OperationalLimit):
 		CgmesProperty(property_name='normalValue', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[]),
 		CgmesProperty(property_name='value', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[]),
 	)
+	__slots__ = ('normalValue', 'value')
 	def __init__(self, rdfid='', tpe='VoltageLimit'):
 		OperationalLimit.__init__(self, rdfid, tpe)
 

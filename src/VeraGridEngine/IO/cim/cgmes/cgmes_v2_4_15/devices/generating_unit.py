@@ -33,6 +33,7 @@ class GeneratingUnit(Equipment):
 		CgmesProperty(property_name='RotatingMachine', class_type='RotatingMachine', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A synchronous machine may operate as a generator and as such becomes a member of a generating unit.''', profiles=[]),
 		CgmesProperty(property_name='normalPF', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
 	)
+	__slots__ = ('genControlSource', 'governorSCD', 'initialP', 'longPF', 'maximumAllowableSpinningReserve', 'maxOperatingP', 'minOperatingP', 'nominalP', 'ratedGrossMaxP', 'ratedGrossMinP', 'ratedNetMaxP', 'shortPF', 'startupCost', 'variableCost', 'totalEfficiency', 'ControlAreaGeneratingUnit', 'RotatingMachine', 'normalPF')
 	def __init__(self, rdfid='', tpe='GeneratingUnit'):
 		Equipment.__init__(self, rdfid, tpe)
 

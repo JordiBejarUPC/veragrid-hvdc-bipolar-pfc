@@ -81,7 +81,7 @@ class InjectionParent(PhysicalDevice):
         GCProp(key='use_kw', units='', tpe=bool, definition='Consider the injections in kW and kVAr?'),
         GCProp(key='conn', units='', tpe=ShuntConnectionType,
                definition='Connection type for 3-phase studies'),
-        GCProp(key='rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
+        GCProp(key='rms_model', units='', tpe=SubObjectType.DaeBlockType,
                definition='RMS dynamic model', display=False),
         GCProp(key='emt_model', units='', tpe=SubObjectType.DaeBlockType,
                definition='EMT dynamic model', display=False),

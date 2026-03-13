@@ -15,6 +15,7 @@ class EquivalentEquipment(ConductingEquipment):
     LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
         CgmesProperty(property_name='EquivalentNetwork', class_type='EquivalentNetwork', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The equivalent where the reduced model belongs.''', profiles=[]),
     )
+    __slots__ = ('EquivalentNetwork',)
     def __init__(self, rdfid='', tpe='EquivalentEquipment'):
         ConductingEquipment.__init__(self, rdfid, tpe)
 

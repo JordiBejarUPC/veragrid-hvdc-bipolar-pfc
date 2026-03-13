@@ -51,7 +51,7 @@ from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.SyncDialogue.sync_dialogue import SyncDialogueWindow
 from VeraGrid.Gui.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
 from VeraGrid.Gui.GridReduce.grid_reduce import GridReduceDialogue
-from VeraGrid.Gui.RmsModelEditor.rms_model_editor_engine import RmsModelEditorGUI
+from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.Diagrams.SchematicWidget.diagram_bus_selection_dialogue import DiagramBusSelectorDialogue
 from VeraGrid.Gui.Diagrams.generic_graphics import IS_DARK
 from VeraGrid.Gui.python_console import PythonConsole
@@ -194,7 +194,7 @@ class BaseMainGui(QMainWindow):
         self.coordinates_window: Union[CoordinatesInputGUI, None] = None
         self.about_msg_window: Union[AboutDialogueGuiGUI, None] = None
         self.tower_builder_window: Union[TowerBuilderGUI, None] = None
-        self.rms_model_Editor_window: Union[RmsModelEditorGUI, None] = None
+        self.rms_model_Editor_window: Union[DynamicBlockEditorGUI, None] = None
         self.investment_checks_diag: Union[CheckListDialogue, None] = None
         self.new_se_dlg: Union[CheckListDialogue, None] = None
         self.contingency_checks_diag: Union[CheckListDialogue, None] = None

@@ -40,6 +40,7 @@ from enum import Enum
 from numba import types
 from typing import Dict, List, Callable, Tuple, Set, Any
 import os
+from pathlib import Path
 import importlib.util
 import hashlib
 import scipy.sparse as sp
@@ -68,8 +69,8 @@ def _compile_to_file(full_source: str, func_name: str) -> Callable:
     header = "import numpy as np\nimport math\nfrom VeraGridEngine.Utils.Symbolic.symbolic import heaviside_num as _heaviside\n\n"
     full_content = header + full_source
 
-    root_dir = os.getcwd()
-    cache_dir = os.path.join(root_dir, "__pycache_jit__")
+    repo_root = Path(__file__).resolve().parents[4]
+    cache_dir = str(repo_root / "__pycache_jit__")
     os.makedirs(cache_dir, exist_ok=True)
 
     if cache_dir not in sys.path:

@@ -26,6 +26,7 @@ class CsConverter(ACDCConverter):
 		CgmesProperty(property_name='targetGamma', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.deg, description='''Measurement of angle in degrees.''', profiles=[]),
 		CgmesProperty(property_name='targetIdc', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.A, description='''Electrical current with sign convention: positive flow is out of the conducting equipment into the connectivity node. Can be both AC and DC.''', profiles=[]),
 	)
+	__slots__ = ('maxAlpha', 'maxGamma', 'maxIdc', 'minAlpha', 'minGamma', 'minIdc', 'ratedIdc', 'alpha', 'gamma', 'operatingMode', 'pPccControl', 'targetAlpha', 'targetGamma', 'targetIdc')
 	def __init__(self, rdfid='', tpe='CsConverter'):
 		ACDCConverter.__init__(self, rdfid, tpe)
 

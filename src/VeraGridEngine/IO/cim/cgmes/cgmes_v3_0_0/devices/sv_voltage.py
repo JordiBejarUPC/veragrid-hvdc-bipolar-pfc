@@ -18,6 +18,7 @@ class SvVoltage(Base):
 		CgmesProperty(property_name='v', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[]),
 		CgmesProperty(property_name='TopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The topological node associated with the voltage state.''', profiles=[]),
 	)
+	__slots__ = ('angle', 'v', 'TopologicalNode')
 	def __init__(self, rdfid, tpe, resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 

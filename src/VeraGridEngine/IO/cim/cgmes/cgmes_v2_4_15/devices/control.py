@@ -24,6 +24,7 @@ class Control(IdentifiedObject):
 		CgmesProperty(property_name='unitSymbol', class_type=UnitSymbol, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The unit of measure of the controlled quantity.''', profiles=[]),
 		CgmesProperty(property_name='PowerSystemResource', class_type='PowerSystemResource', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The controller outputs used to actually govern a regulating device, e.g. the magnetization of a synchronous machine or capacitor bank breaker actuator.''', profiles=[]),
 	)
+	__slots__ = ('controlType', 'operationInProgress', 'timeStamp', 'unitMultiplier', 'unitSymbol', 'PowerSystemResource')
 	def __init__(self, rdfid='', tpe='Control'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

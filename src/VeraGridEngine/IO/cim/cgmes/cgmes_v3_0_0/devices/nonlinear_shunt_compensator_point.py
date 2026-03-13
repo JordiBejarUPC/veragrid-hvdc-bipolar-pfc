@@ -20,6 +20,7 @@ class NonlinearShuntCompensatorPoint(Base):
 		CgmesProperty(property_name='b0', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.S, description='''Imaginary part of admittance.''', profiles=[]),
 		CgmesProperty(property_name='g0', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.S, description='''Factor by which voltage must be multiplied to give corresponding power lost from a circuit. Real part of admittance.''', profiles=[]),
 	)
+	__slots__ = ('NonlinearShuntCompensator', 'b', 'g', 'sectionNumber', 'b0', 'g0')
 	def __init__(self, rdfid, tpe='NonlinearShuntCompensatorPoint', resources=list(), class_replacements=dict()):
 		Base.__init__(self, rdfid=rdfid, tpe=tpe, resources=resources, class_replacements=class_replacements)
 

@@ -17,6 +17,7 @@ class PhaseTapChangerTable(IdentifiedObject):
         CgmesProperty(property_name='PhaseTapChangerTablePoint', class_type='PhaseTapChangerTablePoint', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The points of this table.''', profiles=[]),
         CgmesProperty(property_name='PhaseTapChangerTabular', class_type='PhaseTapChangerTabular', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The phase tap changers to which this phase tap table applies.''', profiles=[]),
     )
+    __slots__ = ('PhaseTapChangerTablePoint', 'PhaseTapChangerTabular')
     def __init__(self, rdfid='', tpe='PhaseTapChangerTable'):
         IdentifiedObject.__init__(self, rdfid, tpe)
 

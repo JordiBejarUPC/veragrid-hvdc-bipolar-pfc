@@ -13,6 +13,7 @@ class CurrentLimit(OperationalLimit):
 		CgmesProperty(property_name='value', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.A, description='''Electrical current with sign convention: positive flow is out of the 
 			conducting equipment into the connectivity node. Can be both AC and DC.''', profiles=[]),
 	)
+	__slots__ = ('value',)
 	def __init__(self, rdfid='', tpe='CurrentLimit'):
 		OperationalLimit.__init__(self, rdfid, tpe)
 

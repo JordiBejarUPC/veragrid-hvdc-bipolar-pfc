@@ -29,6 +29,7 @@ class ExternalNetworkInjection(RegulatingCondEq):
 		CgmesProperty(property_name='p', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.W, description='''Product of RMS value of the voltage and the RMS value of the in-phase component of the current.''', profiles=[]),
 		CgmesProperty(property_name='q', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description='''Product of RMS value of the voltage and the RMS value of the quadrature component of the current.''', profiles=[]),
 	)
+	__slots__ = ('governorSCD', 'ikSecond', 'maxInitialSymShCCurrent', 'maxP', 'maxQ', 'maxR0ToX0Ratio', 'maxR1ToX1Ratio', 'maxZ0ToZ1Ratio', 'minInitialSymShCCurrent', 'minP', 'minQ', 'minR0ToX0Ratio', 'minR1ToX1Ratio', 'minZ0ToZ1Ratio', 'voltageFactor', 'referencePriority', 'p', 'q')
 	def __init__(self, rdfid='', tpe='ExternalNetworkInjection'):
 		RegulatingCondEq.__init__(self, rdfid, tpe)
 

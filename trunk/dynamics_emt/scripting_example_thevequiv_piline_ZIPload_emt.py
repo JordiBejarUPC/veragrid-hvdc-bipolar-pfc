@@ -6,20 +6,10 @@ import cProfile
 import pstats
 import numpy as np
 from time import perf_counter
-from typing import Any, cast
+from typing import Any, cast, Dict, List, Optional
 
 import sys
 import os
-
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-SRC_ROOT = os.path.join(REPO_ROOT, 'src')
-
-if SRC_ROOT not in sys.path:
-    sys.path.insert(0, SRC_ROOT)
-
-if REPO_ROOT not in sys.path:
-    sys.path.insert(0, REPO_ROOT)
-
 import matplotlib.pyplot as plt
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
@@ -211,15 +201,39 @@ print(f"Converged: {res.converged}")
 print(res.get_bus_df())
 print(res.get_branch_df())
 
+
+def read_env_flag(env_name: str, default_value: bool) -> bool:
+    """
+    Read one boolean flag from the environment.
+
+    :param env_name: Environment variable name.
+    :param default_value: Default boolean value.
+    :return: Parsed boolean flag.
+    """
+    raw_value: Optional[str] = os.environ.get(env_name, None)
+
+    if raw_value is None:
+        return default_value
+    else:
+        normalized_value: str = raw_value.strip().lower()
+
+        if normalized_value in ("1", "true", "yes", "on"):
+            return True
+        else:
+            return False
+
 # ==============================================================================
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")
 # ==============================================================================
-CHOSEN_SOLVER = "SYMBOLIC"
-RUN_ALL_SOLVERS = False
-ENABLE_PLOTS = True
-ENABLE_NEWTON_TRACE = False
+CHOSEN_SOLVER = os.environ.get("VERAGRID_EMT_SOLVER", "COMPILED").strip().upper()
+REFERENCE_SOLVER = os.environ.get("VERAGRID_EMT_REFERENCE_SOLVER", "SYMBOLIC").strip().upper()
+RUN_ALL_SOLVERS = read_env_flag("VERAGRID_EMT_RUN_ALL_SOLVERS", False)
+ENABLE_PLOTS = read_env_flag("VERAGRID_EMT_ENABLE_PLOTS", True)
+ENABLE_NEWTON_TRACE = read_env_flag("VERAGRID_EMT_ENABLE_NEWTON_TRACE", False)
+SHOW_INIT_GUESS_TABLE = read_env_flag("VERAGRID_EMT_SHOW_INIT_GUESS_TABLE", False)
+BENCHMARK_COMPILED_COLD_WARM = read_env_flag("VERAGRID_EMT_BENCHMARK_COMPILED_COLD_WARM", False)
 DENSE_THRESHOLD = 0
-SOLVER_VERBOSE = True
+SOLVER_VERBOSE = read_env_flag("VERAGRID_EMT_SOLVER_VERBOSE", False)
 
 SOLVER_TYPE_MAP = {
     "SYMBOLIC": EmtSolverTypes.Symbolic,
@@ -230,6 +244,11 @@ SOLVER_TYPE_MAP = {
 
 ALL_SOLVER_KEYS = ["SYMBOLIC", "AD", "VECTORIZED", "COMPILED"]
 
+if REFERENCE_SOLVER in ALL_SOLVER_KEYS:
+    BENCHMARK_SOLVER_KEYS = [REFERENCE_SOLVER] + [key for key in ALL_SOLVER_KEYS if key != REFERENCE_SOLVER]
+else:
+    BENCHMARK_SOLVER_KEYS = list(ALL_SOLVER_KEYS)
+
 if CHOSEN_SOLVER not in SOLVER_TYPE_MAP:
     raise ValueError(f"Solver '{CHOSEN_SOLVER}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
 
@@ -238,18 +257,320 @@ options = EmtOptions(time_step = 5e-6,
                      tolerance = 1e-6,
                      solver = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
-                     verbose = 1)
+                     verbose = 0)
 
 
-def create_problem() -> EmtProblemDae:
+class SolverTraceSummary:
+    """
+    Compact summary of Newton diagnostics for one solver run.
+    """
+
+    __slots__ = (
+        '_final_residual_inf',
+        '_maximum_residual_inf',
+        '_total_newton_iterations',
+        '_last_step_newton_iterations',
+    )
+
+    def __init__(self,
+                 final_residual_inf: float,
+                 maximum_residual_inf: float,
+                 total_newton_iterations: int,
+                 last_step_newton_iterations: int) -> None:
+        """
+        Build one Newton summary.
+
+        :param final_residual_inf: Final infinity norm of the residual.
+        :param maximum_residual_inf: Maximum residual seen during the run.
+        :param total_newton_iterations: Total Newton iterations in the run.
+        :param last_step_newton_iterations: Newton iterations used by the last time step.
+        :return: None.
+        """
+        self._final_residual_inf: float = float(final_residual_inf)
+        self._maximum_residual_inf: float = float(maximum_residual_inf)
+        self._total_newton_iterations: int = int(total_newton_iterations)
+        self._last_step_newton_iterations: int = int(last_step_newton_iterations)
+
+    def get_final_residual_inf(self) -> float:
+        """
+        Return the final residual infinity norm.
+
+        :return: Final residual infinity norm.
+        """
+        return self._final_residual_inf
+
+    def get_maximum_residual_inf(self) -> float:
+        """
+        Return the maximum residual infinity norm seen during the run.
+
+        :return: Maximum residual infinity norm.
+        """
+        return self._maximum_residual_inf
+
+    def get_total_newton_iterations(self) -> int:
+        """
+        Return the total number of Newton iterations.
+
+        :return: Total Newton iterations.
+        """
+        return self._total_newton_iterations
+
+    def get_last_step_newton_iterations(self) -> int:
+        """
+        Return the Newton iterations used by the last time step.
+
+        :return: Last-step Newton iterations.
+        """
+        return self._last_step_newton_iterations
+
+
+class SolverBenchmarkResult:
+    """
+    Validation and timing summary for one EMT backend.
+    """
+
+    __slots__ = (
+        '_solver_key',
+        '_problem_build_s',
+        '_solver_init_s',
+        '_solver_build_s',
+        '_simulate_s',
+        '_solver_total_s',
+        '_loop_s',
+        '_y_max_abs_diff',
+        '_dy_max_abs_diff',
+        '_trace_summary',
+        '_build_stats',
+        '_steps',
+        '_y_shape',
+        '_dy_shape',
+    )
+
+    def __init__(self,
+                 solver_key: str,
+                 problem_build_s: float,
+                 solver_init_s: float,
+                 solver_build_s: float,
+                 simulate_s: float,
+                 solver_total_s: float,
+                 loop_s: float,
+                 y_max_abs_diff: float,
+                 dy_max_abs_diff: float,
+                 trace_summary: SolverTraceSummary,
+                 build_stats: Dict[str, float],
+                 steps: int,
+                 y_shape: tuple[int, ...],
+                 dy_shape: tuple[int, ...]) -> None:
+        """
+        Build one benchmark result.
+
+        :param solver_key: Solver identifier.
+        :param problem_build_s: Problem build time in seconds.
+        :param solver_init_s: Solver initialization time in seconds.
+        :param solver_build_s: Backend build time in seconds.
+        :param simulate_s: Simulation time in seconds.
+        :param solver_total_s: Total solver time in seconds.
+        :param loop_s: Integration-loop time in seconds.
+        :param y_max_abs_diff: Maximum absolute difference against the reference y.
+        :param dy_max_abs_diff: Maximum absolute difference against the reference dy.
+        :param trace_summary: Newton diagnostics summary.
+        :param build_stats: Backend build statistics.
+        :param steps: Number of time steps.
+        :param y_shape: Shape of the state trajectory matrix.
+        :param dy_shape: Shape of the differential trajectory matrix.
+        :return: None.
+        """
+        self._solver_key: str = solver_key
+        self._problem_build_s: float = float(problem_build_s)
+        self._solver_init_s: float = float(solver_init_s)
+        self._solver_build_s: float = float(solver_build_s)
+        self._simulate_s: float = float(simulate_s)
+        self._solver_total_s: float = float(solver_total_s)
+        self._loop_s: float = float(loop_s)
+        self._y_max_abs_diff: float = float(y_max_abs_diff)
+        self._dy_max_abs_diff: float = float(dy_max_abs_diff)
+        self._trace_summary: SolverTraceSummary = trace_summary
+        self._build_stats: Dict[str, float] = dict(build_stats)
+        self._steps: int = int(steps)
+        self._y_shape: tuple[int, ...] = tuple(y_shape)
+        self._dy_shape: tuple[int, ...] = tuple(dy_shape)
+
+    def get_solver_key(self) -> str:
+        """
+        Return the solver identifier.
+
+        :return: Solver identifier.
+        """
+        return self._solver_key
+
+    def get_problem_build_s(self) -> float:
+        """
+        Return the problem-build time.
+
+        :return: Problem-build time in seconds.
+        """
+        return self._problem_build_s
+
+    def get_solver_init_s(self) -> float:
+        """
+        Return the solver initialization time.
+
+        :return: Solver initialization time in seconds.
+        """
+        return self._solver_init_s
+
+    def get_solver_build_s(self) -> float:
+        """
+        Return the backend build time.
+
+        :return: Backend build time in seconds.
+        """
+        return self._solver_build_s
+
+    def get_simulate_s(self) -> float:
+        """
+        Return the simulation time.
+
+        :return: Simulation time in seconds.
+        """
+        return self._simulate_s
+
+    def get_solver_total_s(self) -> float:
+        """
+        Return the total solver time.
+
+        :return: Total solver time in seconds.
+        """
+        return self._solver_total_s
+
+    def get_loop_s(self) -> float:
+        """
+        Return the integration-loop time.
+
+        :return: Loop time in seconds.
+        """
+        return self._loop_s
+
+    def get_y_max_abs_diff(self) -> float:
+        """
+        Return the maximum y difference against the reference.
+
+        :return: Maximum absolute difference.
+        """
+        return self._y_max_abs_diff
+
+    def get_dy_max_abs_diff(self) -> float:
+        """
+        Return the maximum dy difference against the reference.
+
+        :return: Maximum absolute difference.
+        """
+        return self._dy_max_abs_diff
+
+    def get_trace_summary(self) -> SolverTraceSummary:
+        """
+        Return the Newton diagnostics summary.
+
+        :return: Newton diagnostics summary.
+        """
+        return self._trace_summary
+
+    def get_build_stats(self) -> Dict[str, float]:
+        """
+        Return the backend build statistics.
+
+        :return: Backend build statistics.
+        """
+        return dict(self._build_stats)
+
+
+def create_problem(enable_trace: bool = False) -> EmtProblemDae:
+    """
+    Build the real EMT problem used by the backend benchmark.
+
+    :param enable_trace: Whether to attach a Newton diagnostics collector.
+    :return: Configured EMT problem.
+    """
     local_problem = EmtProblemDae(grid=grid,
                                   options=options,
                                   pf_results=res)
 
-    if ENABLE_NEWTON_TRACE:
+    if enable_trace:
         local_problem.set_newton_trace_collector(NewtonTraceCollector())
+    else:
+        pass
 
     return local_problem
+
+
+def compute_max_abs_diff(reference_array: Optional[np.ndarray],
+                         candidate_array: np.ndarray) -> float:
+    """
+    Compute the maximum absolute difference against a reference array.
+
+    :param reference_array: Reference array or ``None`` for the first backend.
+    :param candidate_array: Candidate array.
+    :return: Maximum absolute difference.
+    """
+    if reference_array is None:
+        return 0.0
+    else:
+        return float(np.max(np.abs(candidate_array - reference_array)))
+
+
+def summarize_newton_trace(problem: EmtProblemDae) -> SolverTraceSummary:
+    """
+    Summarize the Newton diagnostics collected during the solver run.
+
+    :param problem: EMT problem holding the optional trace collector.
+    :return: Newton diagnostics summary.
+    """
+    collector = problem.get_newton_trace_collector()
+
+    if collector is not None and len(collector.records) > 0:
+        records: List[Dict[str, Any]] = list(collector.records)
+        total_newton_iterations: int = len(records)
+        last_record: Dict[str, Any] = records[-1]
+        final_step_index: int = int(last_record.get('step', -1))
+        last_step_newton_iterations: int = 0
+        record_index: int = 0
+        maximum_residual_inf: float = 0.0
+
+        while record_index < total_newton_iterations:
+            current_record: Dict[str, Any] = records[record_index]
+            residual_value_any: Any = current_record.get('res_norm_inf', None)
+
+            if residual_value_any is not None:
+                residual_value: float = float(residual_value_any)
+                maximum_residual_inf = max(maximum_residual_inf, residual_value)
+            else:
+                pass
+
+            if int(current_record.get('step', -2)) == final_step_index:
+                last_step_newton_iterations += 1
+            else:
+                pass
+
+            record_index += 1
+
+        final_residual_any: Any = last_record.get('res_norm_inf', None)
+
+        if final_residual_any is not None:
+            final_residual_inf: float = float(final_residual_any)
+        else:
+            final_residual_inf = np.nan
+    else:
+        final_residual_inf = np.nan
+        maximum_residual_inf = np.nan
+        total_newton_iterations = 0
+        last_step_newton_iterations = 0
+
+    return SolverTraceSummary(
+        final_residual_inf=final_residual_inf,
+        maximum_residual_inf=maximum_residual_inf,
+        total_newton_iterations=total_newton_iterations,
+        last_step_newton_iterations=last_step_newton_iterations,
+    )
 
 
 def create_solver(solver_key: str, local_problem: EmtProblemDae):
@@ -298,6 +619,355 @@ def create_solver(solver_key: str, local_problem: EmtProblemDae):
     raise ValueError(f"Solver '{solver_key}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
 
 
+def get_solver_loop_time(solver: Any) -> float:
+    """
+    Return the integration-loop time when the solver exposes it.
+
+    :param solver: Solver instance.
+    :return: Loop time in seconds or NaN.
+    """
+    loop_time_any: Any = getattr(solver, "_last_sim_loop_time", np.nan)
+
+    if loop_time_any == loop_time_any:
+        return float(loop_time_any)
+    else:
+        return np.nan
+
+
+def get_solver_build_stats(solver: Any) -> Dict[str, float]:
+    """
+    Return backend build statistics when available.
+
+    :param solver: Solver instance.
+    :return: Build statistics dictionary.
+    """
+    build_stats_fn = getattr(solver, "get_backend_build_stats", None)
+
+    if callable(build_stats_fn):
+        raw_stats_any: Any = build_stats_fn()
+        out_stats: Dict[str, float] = dict()
+
+        if isinstance(raw_stats_any, dict):
+            for key, value in raw_stats_any.items():
+                out_stats[str(key)] = float(value)
+        else:
+            pass
+
+        return out_stats
+    else:
+        return dict()
+
+
+def get_solver_runtime_stats(solver: Any) -> Dict[str, float]:
+    """
+    Return runtime statistics when the solver exposes them.
+
+    :param solver: Solver instance.
+    :return: Runtime statistics dictionary.
+    """
+    runtime_stats_fn = getattr(solver, "get_last_runtime_stats", None)
+
+    if callable(runtime_stats_fn):
+        raw_stats_any: Any = runtime_stats_fn()
+        out_stats: Dict[str, float] = dict()
+
+        if isinstance(raw_stats_any, dict):
+            for key, value in raw_stats_any.items():
+                out_stats[str(key)] = float(value)
+        else:
+            pass
+
+        return out_stats
+    else:
+        return dict()
+
+
+def print_solver_runtime_stats(solver: Any, label: str) -> None:
+    """
+    Print runtime statistics when available.
+
+    :param solver: Solver instance.
+    :param label: Text label for the printed block.
+    :return: None.
+    """
+    runtime_stats: Dict[str, float] = get_solver_runtime_stats(solver)
+
+    if len(runtime_stats) > 0:
+        print(label)
+
+        for key, value in runtime_stats.items():
+            print(f"  {key}: {value:.0f}" if abs(value - round(value)) < 1e-12 else f"  {key}: {value:.6f}")
+    else:
+        pass
+
+
+def build_full_parameter_vector(problem: EmtProblemDae,
+                                current_time: float,
+                                previous_state: np.ndarray) -> np.ndarray:
+    """
+    Build the full runtime-plus-static parameter vector at one time instant.
+
+    :param problem: EMT problem.
+    :param current_time: Current time instant.
+    :param previous_state: Previously accepted state vector.
+    :return: Full parameter vector.
+    """
+    runtime_params: np.ndarray = np.asarray(problem.event_params_values.copy(), dtype=np.float64)
+    runtime_params = np.asarray(problem.def_event_params_fn(runtime_params, current_time), dtype=np.float64)
+    static_values: np.ndarray = np.array([parameter.value for parameter in problem.get_parameters_values()], dtype=np.float64)
+    full_params: np.ndarray = np.concatenate((runtime_params, static_values))
+    problem.update(current_time, previous_state, full_params)
+
+    if runtime_params.shape[0] > 0:
+        runtime_params[:] = full_params[:runtime_params.shape[0]]
+    else:
+        pass
+
+    return np.asarray(full_params, dtype=np.float64)
+
+
+def build_final_residual_context(t_arr: np.ndarray,
+                                 y_arr: np.ndarray,
+                                 dy_arr: np.ndarray) -> tuple[float, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Build the final-step residual context from the stored trajectories.
+
+    :param t_arr: Time vector.
+    :param y_arr: State trajectory.
+    :param dy_arr: Differential trajectory.
+    :return: Tuple ``(h_eff, x_curr, x_prev, dx_prev, x_prev2)``.
+    """
+    h_eff: float = float(t_arr[-1] - t_arr[-2])
+    x_curr: np.ndarray = np.asarray(y_arr[-1, :], dtype=np.float64)
+    x_prev: np.ndarray = np.asarray(y_arr[-2, :], dtype=np.float64)
+    dx_prev: np.ndarray = np.asarray(dy_arr[-2, :], dtype=np.float64)
+
+    if y_arr.shape[0] >= 3:
+        x_prev2: np.ndarray = np.asarray(y_arr[-3, :], dtype=np.float64)
+    else:
+        x_prev2 = np.asarray(y_arr[-2, :], dtype=np.float64)
+
+    return h_eff, x_curr, x_prev, dx_prev, x_prev2
+
+
+def evaluate_final_residual_inf(solver_key: str,
+                                solver: Any,
+                                problem: EmtProblemDae,
+                                t_arr: np.ndarray,
+                                y_arr: np.ndarray,
+                                dy_arr: np.ndarray) -> float:
+    """
+    Evaluate the final implicit residual norm for one backend.
+
+    :param solver_key: Solver identifier.
+    :param solver: Solver instance.
+    :param problem: EMT problem.
+    :param t_arr: Time vector.
+    :param y_arr: State trajectory.
+    :param dy_arr: Differential trajectory.
+    :return: Final residual infinity norm.
+    """
+    if t_arr.shape[0] >= 2:
+        h_eff: float
+        x_curr: np.ndarray
+        x_prev: np.ndarray
+        dx_prev: np.ndarray
+        x_prev2: np.ndarray
+        h_eff, x_curr, x_prev, dx_prev, x_prev2 = build_final_residual_context(t_arr, y_arr, dy_arr)
+        full_params: np.ndarray = build_full_parameter_vector(problem, float(t_arr[-1]), x_prev)
+        residual_vector: np.ndarray = np.zeros(problem.get_all_vars_number(), dtype=np.float64)
+
+        # The harness evaluates the same implicit residual relation used by each
+        # backend on the final accepted state, so backend mismatches become explicit.
+        if solver_key == "SYMBOLIC":
+            kernel_list: List[Any] = solver.jit_kernels[options.integration_method]
+
+            for kernel in kernel_list:
+                kernel(x_curr, full_params, x_prev, dx_prev, h_eff, residual_vector, x_prev2)
+        elif solver_key == "AD":
+            kernel_list = solver.jit_kernels_ad[options.integration_method]
+
+            for kernel in kernel_list:
+                kernel(x_curr, full_params, x_prev, dx_prev, h_eff, residual_vector, x_prev2)
+        elif solver_key == "VECTORIZED":
+            solver.fused_residual(x_curr, full_params, x_prev, dx_prev, h_eff, solver.vec_flat_args, residual_vector, x_prev2)
+        elif solver_key == "COMPILED":
+            solver._residual_assembler.evaluate(x_curr, full_params, x_prev, dx_prev, h_eff, x_prev2, residual_vector)
+        else:
+            raise ValueError(f"Solver '{solver_key}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
+
+        return float(np.max(np.abs(residual_vector)))
+    else:
+        return np.nan
+
+
+def run_single_solver_benchmark(solver_key: str,
+                                reference_y: Optional[np.ndarray],
+                                reference_dy: Optional[np.ndarray]) -> tuple[SolverBenchmarkResult, np.ndarray, np.ndarray]:
+    """
+    Run one backend and compare it against the current reference arrays.
+
+    :param solver_key: Solver identifier.
+    :param reference_y: Optional reference state trajectory.
+    :param reference_dy: Optional reference differential trajectory.
+    :return: Tuple ``(result, y_arr, dy_arr)``.
+    """
+    t_problem_0: float = perf_counter()
+    local_problem: EmtProblemDae = create_problem(enable_trace=True)
+    problem_build_s: float = perf_counter() - t_problem_0
+
+    t_solver_0: float = perf_counter()
+    solver = create_solver(solver_key, local_problem)
+    solver_init_s: float = perf_counter() - t_solver_0
+
+    t_build_0: float = perf_counter()
+    build_solver_backend(solver_key, solver, local_problem)
+    solver_build_s: float = perf_counter() - t_build_0
+
+    boundary_updater = cast(Any, local_problem)
+    t_sim_0: float = perf_counter()
+    t_arr: np.ndarray
+    y_arr: np.ndarray
+    dy_arr: np.ndarray
+    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=boundary_updater)
+    simulate_s: float = perf_counter() - t_sim_0
+    final_residual_inf: float = evaluate_final_residual_inf(solver_key, solver, local_problem, t_arr, y_arr, dy_arr)
+    solver_total_s: float = solver_init_s + solver_build_s + simulate_s
+    y_max_abs_diff: float = compute_max_abs_diff(reference_y, y_arr)
+    dy_max_abs_diff: float = compute_max_abs_diff(reference_dy, dy_arr)
+    trace_summary: SolverTraceSummary = summarize_newton_trace(local_problem)
+    trace_summary = SolverTraceSummary(
+        final_residual_inf=final_residual_inf,
+        maximum_residual_inf=trace_summary.get_maximum_residual_inf(),
+        total_newton_iterations=trace_summary.get_total_newton_iterations(),
+        last_step_newton_iterations=trace_summary.get_last_step_newton_iterations(),
+    )
+    build_stats: Dict[str, float] = get_solver_build_stats(solver)
+    result: SolverBenchmarkResult = SolverBenchmarkResult(
+        solver_key=solver_key,
+        problem_build_s=problem_build_s,
+        solver_init_s=solver_init_s,
+        solver_build_s=solver_build_s,
+        simulate_s=simulate_s,
+        solver_total_s=solver_total_s,
+        loop_s=get_solver_loop_time(solver),
+        y_max_abs_diff=y_max_abs_diff,
+        dy_max_abs_diff=dy_max_abs_diff,
+        trace_summary=trace_summary,
+        build_stats=build_stats,
+        steps=len(t_arr) - 1,
+        y_shape=y_arr.shape,
+        dy_shape=dy_arr.shape,
+    )
+
+    return result, y_arr, dy_arr
+
+
+def get_fastest_total_result(results: List[SolverBenchmarkResult]) -> SolverBenchmarkResult:
+    """
+    Return the result with the shortest total time.
+
+    :param results: Benchmark results.
+    :return: Fastest total-time result.
+    """
+    best_result: SolverBenchmarkResult = results[0]
+    result_index: int = 1
+
+    while result_index < len(results):
+        candidate_result: SolverBenchmarkResult = results[result_index]
+
+        if candidate_result.get_solver_total_s() < best_result.get_solver_total_s():
+            best_result = candidate_result
+        else:
+            pass
+
+        result_index += 1
+
+    return best_result
+
+
+def get_fastest_sim_result(results: List[SolverBenchmarkResult]) -> SolverBenchmarkResult:
+    """
+    Return the result with the shortest simulation time.
+
+    :param results: Benchmark results.
+    :return: Fastest simulation-time result.
+    """
+    best_result: SolverBenchmarkResult = results[0]
+    result_index: int = 1
+
+    while result_index < len(results):
+        candidate_result: SolverBenchmarkResult = results[result_index]
+
+        if candidate_result.get_simulate_s() < best_result.get_simulate_s():
+            best_result = candidate_result
+        else:
+            pass
+
+        result_index += 1
+
+    return best_result
+
+
+def print_benchmark_table(results: List[SolverBenchmarkResult]) -> None:
+    """
+    Print the clean backend validation table.
+
+    :param results: Benchmark results.
+    :return: None.
+    """
+    print("\n" + "-" * 200)
+    print(
+        f"{'Solver':<12}{'Problem[s]':>12}{'Init[s]':>12}{'Build[s]':>12}{'Sim[s]':>12}{'Total[s]':>12}"
+        f"{'Loop[s]':>12}{'y MaxDiff':>16}{'dy MaxDiff':>16}{'FinalRes':>14}{'MaxRes':>14}{'Newtons':>12}{'LastStep':>12}"
+    )
+    print("-" * 200)
+
+    result_index: int = 0
+
+    while result_index < len(results):
+        item: SolverBenchmarkResult = results[result_index]
+        trace_summary: SolverTraceSummary = item.get_trace_summary()
+        print(
+            f"{item.get_solver_key():<12}{item.get_problem_build_s():>12.6f}{item.get_solver_init_s():>12.6f}"
+            f"{item.get_solver_build_s():>12.6f}{item.get_simulate_s():>12.6f}{item.get_solver_total_s():>12.6f}"
+            f"{item.get_loop_s():>12.6f}{item.get_y_max_abs_diff():>16.3e}{item.get_dy_max_abs_diff():>16.3e}"
+            f"{trace_summary.get_final_residual_inf():>14.3e}{trace_summary.get_maximum_residual_inf():>14.3e}"
+            f"{trace_summary.get_total_newton_iterations():>12d}{trace_summary.get_last_step_newton_iterations():>12d}"
+        )
+        result_index += 1
+
+
+def print_compiled_backend_build_stats(results: List[SolverBenchmarkResult]) -> None:
+    """
+    Print the structural compiled backend statistics when present.
+
+    :param results: Benchmark results.
+    :return: None.
+    """
+    result_index: int = 0
+
+    while result_index < len(results):
+        item: SolverBenchmarkResult = results[result_index]
+
+        if item.get_solver_key() == "COMPILED":
+            build_stats: Dict[str, float] = item.get_build_stats()
+
+            if len(build_stats) > 0:
+                print("\nStructuralCompiled backend build stats")
+
+                for key, value in build_stats.items():
+                    print(f"  {key}: {value:.6f}s")
+            else:
+                pass
+
+            return
+        else:
+            pass
+
+        result_index += 1
+
+
 def build_solver_backend(solver_key: str, solver, local_problem: EmtProblemDae) -> None:
     use_dense_solver = local_problem.get_all_vars_number() <= DENSE_THRESHOLD
     use_sparse = not use_dense_solver
@@ -331,74 +1001,109 @@ def benchmark_all_solvers() -> None:
     print("EMT SOLVER BENCHMARK (REAL DEMO)")
     print("=" * 110)
     print(f"time_step={options.time_step}, simulation_time={options.simulation_time}, dense_threshold={DENSE_THRESHOLD}")
-    print(f"newton_trace={ENABLE_NEWTON_TRACE}, solver_verbose={SOLVER_VERBOSE}")
+    print(f"newton_trace={True}, solver_verbose={SOLVER_VERBOSE}")
 
-    results = list()
-    reference_y = None
+    results: List[SolverBenchmarkResult] = list()
+    reference_y: Optional[np.ndarray] = None
+    reference_dy: Optional[np.ndarray] = None
 
-    for solver_key in ALL_SOLVER_KEYS:
+    print(f"reference_solver={BENCHMARK_SOLVER_KEYS[0]}")
+
+    for solver_key in BENCHMARK_SOLVER_KEYS:
         print(f"\n--- Running {solver_key} ---")
 
-        t_problem_0 = perf_counter()
-        local_problem = create_problem()
-        problem_build_s = perf_counter() - t_problem_0
-
-        t_solver_0 = perf_counter()
-        solver = create_solver(solver_key, local_problem)
-        solver_init_s = perf_counter() - t_solver_0
-
-        t_build_0 = perf_counter()
-        build_solver_backend(solver_key, solver, local_problem)
-        solver_build_s = perf_counter() - t_build_0
-
-        boundary_updater = cast(Any, local_problem)
-        t_sim_0 = perf_counter()
-        t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=boundary_updater)
-        simulate_s = perf_counter() - t_sim_0
+        result: SolverBenchmarkResult
+        y_arr: np.ndarray
+        dy_arr: np.ndarray
+        result, y_arr, dy_arr = run_single_solver_benchmark(
+            solver_key=solver_key,
+            reference_y=reference_y,
+            reference_dy=reference_dy,
+        )
 
         if reference_y is None:
-            max_abs_diff = 0.0
             reference_y = y_arr.copy()
+            reference_dy = dy_arr.copy()
         else:
-            max_abs_diff = float(np.max(np.abs(y_arr - reference_y)))
+            pass
 
-        loop_time = getattr(solver, "_last_sim_loop_time", np.nan)
-        build_stats_fn = getattr(solver, "get_backend_build_stats", None)
+        results.append(result)
 
-        results.append({
-            "solver": solver_key,
-            "problem_build_s": problem_build_s,
-            "solver_init_s": solver_init_s,
-            "solver_build_s": solver_build_s,
-            "simulate_s": simulate_s,
-            "solver_total_s": solver_init_s + solver_build_s + simulate_s,
-            "loop_s": float(loop_time) if loop_time == loop_time else np.nan,
-            "max_abs_diff": max_abs_diff,
-            "build_stats": build_stats_fn() if callable(build_stats_fn) else dict(),
-            "steps": len(t_arr) - 1,
-            "shape": y_arr.shape,
-            "dy_shape": dy_arr.shape,
-        })
+    print_benchmark_table(results)
 
-    print("\n" + "-" * 140)
-    print(f"{'Solver':<12}{'Problem[s]':>12}{'Init[s]':>12}{'Build[s]':>12}{'Sim[s]':>12}{'Total[s]':>12}{'Loop[s]':>12}{'MaxDiff':>18}")
-    print("-" * 140)
+    fastest_total: SolverBenchmarkResult = get_fastest_total_result(results)
+    fastest_sim: SolverBenchmarkResult = get_fastest_sim_result(results)
 
-    for item in results:
-        print(f"{item['solver']:<12}{item['problem_build_s']:>12.6f}{item['solver_init_s']:>12.6f}{item['solver_build_s']:>12.6f}{item['simulate_s']:>12.6f}{item['solver_total_s']:>12.6f}{item['loop_s']:>12.6f}{item['max_abs_diff']:>18.3e}")
+    print("\nFastest by solver total:", fastest_total.get_solver_key(), f"({fastest_total.get_solver_total_s():.6f}s)")
+    print("Fastest by simulate only:", fastest_sim.get_solver_key(), f"({fastest_sim.get_simulate_s():.6f}s)")
+    print_compiled_backend_build_stats(results)
 
-    fastest_total = min(results, key=lambda x: x["solver_total_s"])
-    fastest_sim = min(results, key=lambda x: x["simulate_s"])
+    raise SystemExit(0)
 
-    print("\nFastest by solver total:", fastest_total["solver"], f"({fastest_total['solver_total_s']:.6f}s)")
-    print("Fastest by simulate only:", fastest_sim["solver"], f"({fastest_sim['simulate_s']:.6f}s)")
 
-    for item in results:
-        if item["solver"] == "COMPILED" and item["build_stats"]:
-            print("\nStructuralCompiled backend build stats")
-            for key, value in item["build_stats"].items():
-                print(f"  {key}: {value:.6f}s")
-            break
+def benchmark_structural_compiled_cold_and_warm() -> None:
+    """
+    Benchmark ``StructuralCompiled`` in cold-build and warm-reuse modes.
+
+    :return: None.
+    """
+    print("\n" + "=" * 110)
+    print("STRUCTURAL COMPILED COLD/WARM BENCHMARK")
+    print("=" * 110)
+
+    local_problem: EmtProblemDae = create_problem(enable_trace=False)
+
+    solver_init_t0: float = perf_counter()
+    solver = create_solver("COMPILED", local_problem)
+    solver_init_s: float = perf_counter() - solver_init_t0
+
+    build_t0: float = perf_counter()
+    build_solver_backend("COMPILED", solver, local_problem)
+    cold_build_s: float = perf_counter() - build_t0
+
+    boundary_updater = cast(Any, local_problem)
+
+    cold_sim_t0: float = perf_counter()
+    cold_t: np.ndarray
+    cold_y: np.ndarray
+    cold_dy: np.ndarray
+    cold_t, cold_y, cold_dy = solver.simulate(boundary_updater=boundary_updater)
+    cold_sim_s: float = perf_counter() - cold_sim_t0
+    cold_residual_inf: float = evaluate_final_residual_inf("COMPILED", solver, local_problem, cold_t, cold_y, cold_dy)
+    cold_runtime_stats: Dict[str, float] = get_solver_runtime_stats(solver)
+
+    warm_sim_t0: float = perf_counter()
+    warm_t: np.ndarray
+    warm_y: np.ndarray
+    warm_dy: np.ndarray
+    warm_t, warm_y, warm_dy = solver.simulate(boundary_updater=boundary_updater)
+    warm_sim_s: float = perf_counter() - warm_sim_t0
+    warm_residual_inf: float = evaluate_final_residual_inf("COMPILED", solver, local_problem, warm_t, warm_y, warm_dy)
+    warm_runtime_stats: Dict[str, float] = get_solver_runtime_stats(solver)
+
+    print(f"solver_init_s = {solver_init_s:.6f}s")
+    print(f"cold_build_s  = {cold_build_s:.6f}s")
+    print(f"cold_sim_s    = {cold_sim_s:.6f}s")
+    print(f"warm_sim_s    = {warm_sim_s:.6f}s")
+    print(f"speedup       = {cold_sim_s / warm_sim_s:.3f}x" if warm_sim_s > 0.0 else "speedup       = inf")
+    print(f"y_max_abs_diff  = {compute_max_abs_diff(cold_y, warm_y):.3e}")
+    print(f"dy_max_abs_diff = {compute_max_abs_diff(cold_dy, warm_dy):.3e}")
+    print(f"cold_final_res  = {cold_residual_inf:.3e}")
+    print(f"warm_final_res  = {warm_residual_inf:.3e}")
+
+    if len(cold_runtime_stats) > 0:
+        print("Cold runtime stats")
+        for key, value in cold_runtime_stats.items():
+            print(f"  {key}: {value:.0f}" if abs(value - round(value)) < 1e-12 else f"  {key}: {value:.6f}")
+    else:
+        pass
+
+    if len(warm_runtime_stats) > 0:
+        print("Warm runtime stats")
+        for key, value in warm_runtime_stats.items():
+            print(f"  {key}: {value:.0f}" if abs(value - round(value)) < 1e-12 else f"  {key}: {value:.6f}")
+    else:
+        pass
 
     raise SystemExit(0)
 
@@ -406,29 +1111,48 @@ def benchmark_all_solvers() -> None:
 if RUN_ALL_SOLVERS:
     benchmark_all_solvers()
 
+if BENCHMARK_COMPILED_COLD_WARM:
+    benchmark_structural_compiled_cold_and_warm()
+
 problem = create_problem()
 
 
-df = problem.get_init_guess_table()
-print(f"init_guess_table\n{df}")
+if SHOW_INIT_GUESS_TABLE:
+    df = problem.get_init_guess_table()
+    print(f"init_guess_table\n{df}")
 
 print(f"\n======================================")
 print(f"Initializing Solver: {CHOSEN_SOLVER}")
 print(f"======================================\n")
 
+solver_init_t0 = perf_counter()
 solver = create_solver(CHOSEN_SOLVER, problem)
+solver_init_s = perf_counter() - solver_init_t0
+
+build_t0 = perf_counter()
 build_solver_backend(CHOSEN_SOLVER, solver, problem)
+solver_build_s = perf_counter() - build_t0
 
 # ==============================================================================
 # RUN SIMULATION
 # ==============================================================================
 boundary_updater = cast(Any, problem)
+sim_t0 = perf_counter()
 t, y, dy = solver.simulate(boundary_updater=boundary_updater)
+solver_sim_s = perf_counter() - sim_t0
+
+print("Single-solver benchmark")
+print(f"  init  = {solver_init_s:.6f}s")
+print(f"  build = {solver_build_s:.6f}s")
+print(f"  sim   = {solver_sim_s:.6f}s")
+print(f"  total = {solver_init_s + solver_build_s + solver_sim_s:.6f}s")
 
 if hasattr(solver, "get_backend_build_stats"):
     print("StructuralCompiled backend build stats")
     for key, value in solver.get_backend_build_stats().items():
         print(f"  {key}: {value:.6f}s")
+
+print_solver_runtime_stats(solver, "StructuralCompiled runtime stats")
 
 
 collector = problem.get_newton_trace_collector()

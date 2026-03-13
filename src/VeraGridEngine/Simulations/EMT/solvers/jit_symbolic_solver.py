@@ -328,6 +328,7 @@ class JitSymbolicSolver:
 
         equations: List[Expr] = list()
         residual_debug_info: List[dict] = list()
+        synthetic_diff_terms: List[Var] = [Var(name=f"d_{sv.name}", base_var=sv) for sv in self.state_vars]
 
         # for i, rhs in enumerate(self.state_eqs):
         #     # sv = self.state_vars[i]
@@ -336,11 +337,11 @@ class JitSymbolicSolver:
         #     equations.append(d_term - rhs)
 
         for i, rhs in enumerate(self.state_eqs):
-            d_term = self.diff_vars[i]  # real associated diff_var
+            sv = self.state_vars[i]
+            d_term = synthetic_diff_terms[i]
 
             equations.append(d_term - rhs)
 
-            sv = self.state_vars[i]
             residual_debug_info.append({
                 "kind": "STATE",
                 "label": f"d_{sv.name} - rhs_{sv.name}",
@@ -429,11 +430,12 @@ class JitSymbolicSolver:
             var_uid_to_idx[v.uid] = i
 
         equations: List[Expr] = list()
+        synthetic_diff_terms: List[Var] = [Var(name=f"d_{sv.name}", base_var=sv) for sv in self.state_vars]
 
         for i, rhs in enumerate(self.state_eqs):
-            d_term = self.diff_vars[i]
+            d_term = synthetic_diff_terms[i]
             equations.append(d_term - rhs)
-        base_var_uid_to_diff_var: dict = {dv.base_var.uid: dv for dv in self.diff_vars}
+        base_var_uid_to_diff_var: dict = {sv.uid: synthetic_diff_terms[i] for i, sv in enumerate(self.state_vars)}
         equations.extend(self.algebraic_eqs)
 
         N = len(sorted_vars)
@@ -712,15 +714,15 @@ class JitSymbolicSolver:
                 x_iter[:] = x_prev
                 x_iter[:n_states] = x_prev[:n_states] + h_eff * dx_prev[:n_states]
 
-                # if i == 0 and method == DynamicIntegrationMethod.DaeTrapezoidal:
-                #     predictor = Predictor(n_states=n_states)
-                #     predictor.predict(
-                #         x_iter=x_iter,
-                #         x_prev=x_prev,
-                #         dx_prev=dx_prev,
-                #         h=self.h,
-                #         pred_method=self.pred_method,
-                #     )
+                if i == 0 and is_first_local_step and method == DynamicIntegrationMethod.DaeTrapezoidal:
+                    predictor = Predictor(n_states=n_states)
+                    predictor.predict(
+                        x_iter=x_iter,
+                        x_prev=x_prev,
+                        dx_prev=dx_prev,
+                        h=h_eff,
+                        pred_method=self.pred_method,
+                    )
 
                 for k in range(15):
                     ctx = NewtonSolveContext(

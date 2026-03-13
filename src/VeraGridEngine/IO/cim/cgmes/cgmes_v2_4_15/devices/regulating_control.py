@@ -23,6 +23,7 @@ class RegulatingControl(PowerSystemResource):
 		CgmesProperty(property_name='targetValue', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A floating point number. The range is unspecified and not limited.''', profiles=[]),
 		CgmesProperty(property_name='targetValueUnitMultiplier', class_type=UnitMultiplier, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Specify the multiplier for used for the targetValue.''', profiles=[]),
 	)
+	__slots__ = ('Terminal', 'RegulatingCondEq', 'mode', 'discrete', 'enabled', 'targetDeadband', 'targetValue', 'targetValueUnitMultiplier')
 	def __init__(self, rdfid='', tpe='RegulatingControl'):
 		PowerSystemResource.__init__(self, rdfid, tpe)
 
