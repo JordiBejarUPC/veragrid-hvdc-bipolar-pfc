@@ -1180,16 +1180,6 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                     adm_mat: SubObjectType.AdmittanceMatrix = elm.get_snapshot_value(prop=gc_prop)
                                     adm_mat.parse(property_value)
 
-                                elif gc_prop.tpe == SubObjectType.DynamicModelHostType:
-                                    pass
-                                #
-                                #     # get the line locations object and fill it with the json data
-                                #     dyn_module: DynamicModelHost = elm.get_snapshot_value(prop=gc_prop)
-                                #     dyn_module.parse(
-                                #         data=property_value,
-                                #         blocks_dict=block_parser.block_dict
-                                #     )
-
                                 elif gc_prop.tpe == SubObjectType.DaeBlockType:
 
                                     # handle the ModelHost
@@ -1203,7 +1193,15 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                                             elm.set_snapshot_value(gc_prop.name, blk)
                                     else:
                                         blk = block_parser.block_dict.get(property_value, None)
-                                        elm.set_snapshot_value(gc_prop.name, blk)
+                                        if blk is None:
+                                            logger.add_error("Block not found",
+                                                             device=elm.name,
+                                                             value=property_value,
+                                                             device_class=elm.device_type.value,
+                                                             device_property=gc_prop.name
+                                                             )
+                                        else:
+                                            elm.set_snapshot_value(gc_prop.name, blk)
 
 
                                 elif gc_prop.tpe == SubObjectType.VarType:

@@ -25,6 +25,7 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
+from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 
 
 def _tic():

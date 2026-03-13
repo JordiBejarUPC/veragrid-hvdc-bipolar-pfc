@@ -30,7 +30,7 @@ from VeraGrid.Gui.RmsModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGridEngine.Utils.Symbolic.symbolic import symbolic_to_string, Expr, Var, Const
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import BlockType
-from VeraGridEngine.Templates.Rms.common import create_block_of_type
+from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block
 
 BLOCK_BORDER: QColor = QColor("#36536b")
 BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
@@ -1158,9 +1158,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.graphicsView.dropEvent = self.graphicsDropEvent
 
         self.ui.doItButton.clicked.connect(self.apply_changes)
-        self.add_connection_vars()
-        self.add_external_mapping_block()
-        self.add_api_obj_mapping()
+        if not self.block.diagram.node_data and self.main_editor:
+            self.add_connection_vars()
+            self.add_external_mapping_block()
+            self.add_api_obj_mapping()
         self.rebuild_scene_from_diagram()
 
     def build_library_tree_model(self,
@@ -1768,6 +1769,39 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             int(event.position().y())
         )
         block_item: BlockItem | None
+
+        # if block_type == BlockType.GENERIC:
+        #     dialog = GenericBlockDialog(self)
+        #     if dialog.exec() == QDialog.DialogCode.Accepted:
+        #         name, state_ins, state_outs, algeb_ins, algeb_outs = dialog.get_values()
+        #
+        #         # model_host: DynamicModelHost = DynamicModelHost()
+        #
+        #         model = create_generic_block(self.var_factory, state_ins, state_outs, algeb_ins, algeb_outs)
+        #         self.main_block.add(model)
+        #         item = ModelHostItem(
+        #             var_factory=self.var_factory,
+        #             block_sys=model,
+        #             api_object=self.api_object
+        #         )
+        #
+        #         item.setPos(QPointF(x0, y0))
+        #         self.scene.addItem(item)
+        #         # save nodes in diagram
+        #         self.diagram.add_node(
+        #             name=name,
+        #             x=scene_position.x(),
+        #             y=scene_position.y(),
+        #             device_uid=model.uid,
+        #             api_object_name=self.api_object_name,
+        #             tpe=tpe.name,
+        #             state_ins=state_ins,
+        #             state_outs=state_outs,
+        #             algeb_ins=algeb_ins,
+        #             algeb_outs=algeb_outs,
+        #             subdiagram=model.diagram
+        #         )
+        #
 
         if block_type is not None:
             block_item = self.create_block_item(

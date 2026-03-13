@@ -407,6 +407,9 @@ class BlockSaver:
             if var.uid not in self.var_factory.get_vars_dict():
                 raise ValueError(f"variable {var.name} not added to vars factory")
 
+        # save diagram
+        diagram = blk.diagram.to_dict()
+
         # save children
         for child in blk.children:
             self.save_block(child)
@@ -446,7 +449,9 @@ class BlockSaver:
             "name": blk.name,
             "children": [child.uid for child in blk.children],
             "in_vars": in_vars,
-            "out_vars": out_vars
+            "out_vars": out_vars,
+
+            "diagram": diagram
         }
 
         self.blocks[blk.uid] = d
@@ -588,7 +593,9 @@ class BlockParser:
             name=data["name"],
             uid=data["uid"]
         )
-
+        diagram_data = data.get("diagram", None)
+        if diagram_data is not None:
+            block.diagram.parse(diagram_data)
 
         self.block_dict[block.uid] = block
 

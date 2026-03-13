@@ -240,6 +240,7 @@ class BlockDiagram:
         :param data:
         :return:
         """
+
         self.parse_nodes(data["nodes_data"])
         self.parse_branches(data["cons_data"])
         self.status = data["status"]
