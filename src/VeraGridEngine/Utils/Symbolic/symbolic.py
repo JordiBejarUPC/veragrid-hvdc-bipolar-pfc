@@ -1112,6 +1112,10 @@ def min(x: Expr, y: Expr) -> Expr:
     return x * heaviside(y - x) + y * (Const(1) - heaviside(y - x))
 
 
+def atan2(x: Expr, y: Expr) -> Expr:
+    return Func2("atan2", _to_expr(x), _to_expr(y))
+
+
 def hard_sat(x: Expr, x_min: Expr | float, x_max: Expr | float) -> Expr:
     return x_min + (x - x_min) * heaviside(x - x_min) - (x - x_max) * heaviside(x - x_max)
 
@@ -1350,6 +1354,15 @@ def _expr_to_dict(expr: Expr) -> Dict[str, Any]:
             "uid": expr.uid,
         }
 
+    if isinstance(expr, Func2):
+        return {
+            "type": "Func2",
+            "name": expr.name,
+            "arg1": _expr_to_dict(expr.arg1),
+            "arg2": _expr_to_dict(expr.arg2),
+            "uid": expr.uid,
+        }
+
     # ------------------------------------------------------------------
     # Anything else is an API bug
     # ------------------------------------------------------------------
@@ -1395,6 +1408,9 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr | Var | Const:
         if op is None:
             op = data["name"]
         obj = Func(_dict_to_expr(data["arg"]), op)
+
+    elif t == "Func2":
+        obj = Func2(data["name"], _dict_to_expr(data["arg1"]), _dict_to_expr(data["arg2"]))
 
     else:
         raise ValueError(f"Unknown type '{t}' in deserialisation")
@@ -1446,6 +1462,9 @@ def _collect_vars(expr: Expr, out: Set[Var]) -> None:
         _collect_vars(expr.operand, out)
     elif isinstance(expr, Func):
         _collect_vars(expr.arg, out)
+    elif isinstance(expr, Func2):
+        _collect_vars(expr.arg1, out)
+        _collect_vars(expr.arg2, out)
 
 
 def _all_vars(expressions: Sequence[Expr]) -> List[Var]:
