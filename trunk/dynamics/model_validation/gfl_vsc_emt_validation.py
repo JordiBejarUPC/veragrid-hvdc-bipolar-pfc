@@ -13,7 +13,7 @@ from VeraGridEngine.Templates.Emt.vsc_gfl_emt import VscGflEmtBuild
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Rms.vsc_template import PVCellBuild
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource
-from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_generator_emt_template
+from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
@@ -137,7 +137,7 @@ if load_type == 'zip':
 else:
     raise ValueError(f"Unknown load type: {load_type}")
     
-genrow_mdl1 = get_generator_emt_template(grid.rms_var_factory).block
+genrow_mdl1 = get_simple_generator_emt_template(grid.rms_var_factory).block
 
 # Build VSC EMT model with the same control modes used in the VSC device
 vsc_mdl = VscGflEmtBuild(grid.rms_var_factory, control1=CONTROL1_MODE, control2=CONTROL2_MODE).block
