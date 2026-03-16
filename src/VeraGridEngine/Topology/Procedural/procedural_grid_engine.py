@@ -8,6 +8,7 @@ from typing import Dict, List, TYPE_CHECKING
 import numpy as np
 import VeraGridEngine.Devices as dev
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
+import VeraGridEngine as gce
 from VeraGridEngine import Substation
 from VeraGridEngine.Devices.types import BRANCH_TYPES
 from VeraGridEngine.enumerations import DeviceType, ProceduralGridMethods
@@ -16,6 +17,7 @@ import matplotlib.pyplot as plt
 from scipy.spatial.distance import cdist
 from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy.special import gammaincinv
+import random
 
 from trunk.dynamics.model_validation.gfl_vsc_validation import load_mdl
 
@@ -85,7 +87,15 @@ class ProceduralGridComputationEngine:
         edge_objects = network.create_edge_objects(node_objects, edges)
 
         # 3. Create Topology from Graph
-        topology = Topology(network, node_objects, edge_objects)
+
+        TRANSITION_MATRIX = {
+        132: {132: 0.7,  220: 0.15, 380: 0.15, 500: 0},
+        220: {132: 0.15, 220: 0.7,  380: 0.1,  500: 0.05},
+        380: {132: 0.15, 220: 0.1,  380: 0.7,  500: 0.05},
+        500: {132: 0,  220: 0.15, 380: 0.15, 500: 0.7}
+        }
+
+        topology = Topology(network, node_objects, edge_objects, discretization=25.0, transition_matrix=TRANSITION_MATRIX)
 
         # 4. Convert to VeraGrid object
         grid = Grid(topology)
@@ -363,13 +373,179 @@ class Topology:
     Contains a Graph instance via composition.
     """
 
-    def __init__(self, network_graph: Graph, nodes: List[Node], edges: List[Edge]):
+    def __init__(self, network_graph: Graph, nodes: List[Node], edges: List[Edge], discretization: float = 25.0, transition_matrix: Dict[int, Dict[int, float]] = None):
         self.network_graph = network_graph
-        self.nodes = nodes
+        self.nodes = nodes #creo que no hace falta importar esto ya que edges incluye la misma info
         self.edges = edges
+        self.discretization = discretization  # km between buses
+        self.transition_matrix = transition_matrix
 
-    def generate_2D_markov(self):
+    def generate_markov(self):
+        """
+        Generates combinations that are valid by construction.
+        """
+        grid = gce.MultiCircuit()
 
+        for edge in self.edges:
+
+            lengths = []
+
+            input_node = edge.start_node
+            output_node = edge.end_node
+
+            coord_input = np.array([input_node.x, input_node.y])
+            coord_output = np.array([output_node.x, output_node.y])
+            distance = np.linalg.norm(coord_input - coord_output)
+
+            if distance % self.discretization == 0:
+                n_buses = int(distance // self.discretization + 1)
+                n_slots = int(n_buses - 1)
+                for i in range(n_slots):
+                    lengths.append(self.discretization)
+            else:
+                n_buses = int(distance // self.discretization + 2)
+                n_slots = int(n_buses - 1)
+                for i in range(n_slots):
+                    if i == n_slots - 1:
+                        lengths.append(distance % self.discretization)
+                    else:
+                        lengths.append(self.discretization)
+
+            accumulated_length = 0.0
+            conn_counter = 0
+
+            # Add the first bus to the Multicircuit
+            next_bus = input_node.voltage
+            next_bus_lat = input_node.x
+            next_bus_lon = input_node.y
+            next_bus_tpe = input_node.tpe
+            next_bus_id_number = input_node.id_number
+            bus = gce.Bus(
+                name=f"{next_bus_tpe}_{next_bus_id_number}",
+                Vnom=next_bus,
+                is_dc=False,
+                vmin=0.9, vmax=1.1,
+                angle_min=-6.28, angle_max=6.28,
+                latitude=next_bus_lat, longitude=next_bus_lon,
+            )
+            bus.Vm_cost = next_bus * 1000
+
+            grid.add_bus(obj=bus)
+
+            voltage_options = sorted(self.transition_matrix.get(input_node.voltage, {}).keys())
+
+            while accumulated_length < distance:
+
+                # Update next bus to current bus
+                current_bus = next_bus
+                current_bus_lat = next_bus_lat
+                current_bus_lon = next_bus_lon
+                current_bus_tpe = next_bus_tpe
+                current_bus_id_number = next_bus_id_number
+
+                # Check if we are at the last connection
+                is_last_conn = (conn_counter == n_slots - 1)
+
+                # Add next bus to Multicircuit
+                if is_last_conn:
+                    next_bus = output_node.voltage
+
+                    # If statement to discard transitions that are not allowed by the transition matrix
+                    if self.transition_matrix[current_bus].get(next_bus) == 0:
+                        print(f"Added an intermediate bus to allow transition from {current_bus}kV to {next_bus}kV.")
+                        # TODO: Find out a way to solve this case
+                    else:
+                        bus = gce.Bus(
+                            name=f"{output_node.tpe}_{output_node.id_number}_{i}",
+                            Vnom=next_bus,
+                            is_dc=False,
+                            vmin=0.9, vmax=1.1,
+                            angle_min=-6.28, angle_max=6.28,
+                            latitude=output_node.x, longitude=output_node.y,
+                        )
+                        bus.Vm_cost = next_bus * 1000
+
+                        grid.add_bus(obj=bus)
+                else:
+                    next_bus_options = sorted([b for b in voltage_options])
+                    current_transitions =  self.transition_matrix[current_bus]
+                    weights = []
+                    for bus in next_bus_options:
+                        # Default to 0 probability if a voltage is not in the matrix
+                        weight = current_transitions.get(bus,0.0)
+                        weights.append(weight)
+
+                    # random.choices returns a list, so get the first element [0]
+                    next_bus = random.choices(next_bus_options, weights=weights, k=1)[0]
+                    bus = gce.Bus(
+                        name=f"{input_node.tpe}_{bus.id_number}_{i}",
+                        Vnom=next_bus,
+                        is_dc=False,
+                        vmin=0.9, vmax=1.1,
+                        angle_min=-6.28, angle_max=6.28,
+                        latitude=coord_calc(current_bus_lat,current_bus_lon,lengths[conn_counter])[0],
+                        longitude=coord_calc(current_bus_lat,current_bus_lon,lengths[conn_counter])[1]
+                    )
+                    bus.Vm_cost = next_bus * 1000
+
+                    grid.add_bus(obj=bus)
+
+                # Add connection between current bus and next bus to Multicircuit
+                conn_options = sorted(get_possible_connections(current_bus, next_bus))
+                if not conn_options:
+                    valid_combo = False
+                    print(f"Combo failed due to lack of next connection options.")
+                    break
+
+                connection = random.choice(conn_options)
+
+                if connection.conn_type == "underground cable":
+                    r = catalogue_data_fetcher(connection.identifier, 'R [Ohm/km AC@20°C]', file_name=catalogue_path)
+                    x = catalogue_data_fetcher(connection.identifier, 'X [Ohm/km]', file_name=catalogue_path)
+                    b = catalogue_data_fetcher(connection.identifier, 'B [uS/km]', file_name=catalogue_path)
+                    p_rated = catalogue_data_fetcher(connection.identifier, 'Rated Power [MW]', file_name=catalogue_path)
+                    capex = catalogue_data_fetcher(connection.identifier, 'Dummy Cost [EUR/km]', file_name=catalogue_path)
+
+                    line = gce.Line(
+                        name=f"Line_{bus_f.name}_{bus_t.name}_{idx_1D}",  # Added idx_1D to ensure uniqueness
+                        bus_from=bus_f, bus_to=bus_t,
+                        length=lengths[conn_counter], r=r, x=x, b=b, rate=p_rated,
+                        capex=capex, opex=0, cost=100
+                    )
+                    grid.add_line(obj=line)
+
+                    accumulated_length += lengths[conn_counter]
+                    conn_counter += 1
+
+                elif connection.conn_type == "transformer":
+                    hv_val = catalogue_data_fetcher(conn_catalogue, 'HV (kV)', file_name=catalogue_path)
+                    lv_val = catalogue_data_fetcher(conn_catalogue, 'LV (kV)', file_name=catalogue_path)
+                    pcu = catalogue_data_fetcher(conn_catalogue, 'Copper losses (kW)', file_name=catalogue_path)
+                    pfe = catalogue_data_fetcher(conn_catalogue, 'No load losses (kW)', file_name=catalogue_path)
+                    i0 = catalogue_data_fetcher(conn_catalogue, 'No load current (%)', file_name=catalogue_path)
+                    vsc = catalogue_data_fetcher(conn_catalogue, 'V short circuit (%)', file_name=catalogue_path)
+                    rate = catalogue_data_fetcher(conn_catalogue, 'Rate (MVA)', file_name=catalogue_path)
+                    capex = catalogue_data_fetcher(conn_catalogue, 'Dummy Cost [EUR]', file_name=catalogue_path)
+
+                    z_complex = gce.Devices.Branches.transformer_type.get_impedances(
+                        VH_bus=max(hv_val, lv_val), VL_bus=min(hv_val, lv_val),
+                        Sn=rate, HV=hv_val, LV=lv_val, Pcu=pcu, Pfe=pfe, I0=i0, Vsc=vsc,
+                        Sbase=100, GR_hv1=0.5
+                    )[0]
+
+                    trafo = gce.Transformer2W(
+                        name=f"TR_{bus_f.name}_{bus_t.name}_{idx_1D}",  # Added idx_1D to ensure uniqueness
+                        bus_from=bus_f, bus_to=bus_t,
+                        HV=max(hv_val, lv_val), LV=min(hv_val, lv_val),
+                        r=np.real(z_complex), x=np.imag(z_complex),
+                        rate=rate, capex=capex, opex=0, cost=5000
+                    )
+                    trafo.Pcu = pcu
+                    trafo.Pfe = pfe
+                    grid.add_transformer2w(obj=trafo)
+
+            # TODO: Add the merge_lines function outside generate_markov and inside Topology
+            # combination, length_elements_ = merge_lines(combination, length_elements_)
 
 class Grid:
     """
