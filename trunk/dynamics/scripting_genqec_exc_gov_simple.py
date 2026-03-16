@@ -121,7 +121,8 @@ set_rms_model(device=load, model=load_mdl, var_factory= grid.rms_var_factory)
 ######################################################################################################
 
 Pl0 = find_name_in_block('Pl0', load_mdl)
-events_group = RmsEventsGroup("simulation1")
+events_group = RmsEventsGroup(name="simulation1")
+grid.add_rms_events_group(events_group)
 event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group)
 grid.add_rms_event(event)
 
@@ -137,8 +138,10 @@ rms_events_group_names = np.array(0)
 
 
 
-
-
+load_mdl_uid = grid.loads[0].rms_model.uid
+gce.save_file(grid=grid, filename="2bus_gen_load_evt.veragrid")
+grid2 = gce.open_file(filename="2bus_gen_load_evt.veragrid")
+load_mdl_uid2 = grid2.loads[0].rms_model.uid
 
 ######################################################################################################
 # Power flow
@@ -175,7 +178,7 @@ print(res.get_branch_df())
 params_mapping = dict()
 
 options = RmsOptions(time_step=0.001,
-                     simulation_time=20,
+                     simulation_time=5,
                      tolerance=1e-6,
                      integration_method=DynamicIntegrationMethod.DaeBackEuler,
                      initialization_method=RmsInitializationMethod.Explicit,

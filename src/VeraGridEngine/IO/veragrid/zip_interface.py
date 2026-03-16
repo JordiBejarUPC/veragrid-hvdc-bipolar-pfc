@@ -3,6 +3,11 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import json
+try:
+    import orjson
+    _HAS_ORJSON = True
+except ImportError:
+    _HAS_ORJSON = False
 from io import StringIO, TextIOWrapper, BytesIO, BufferedReader
 import os
 import numpy as np
@@ -16,6 +21,18 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.veragrid.generic_io_functions import parse_config_df, CustomJSONizer
 from VeraGridEngine.Simulations.driver_template import DriverToSave
 import VeraGridEngine.Devices as dev
+
+
+def load_json_from_file_pointer(file_pointer) -> dict:
+    """
+    Load JSON from a file pointer using orjson if available, falling back to json.
+    :param file_pointer: File pointer (from zip file or regular file)
+    :return: Parsed JSON as dict
+    """
+    content = file_pointer.read()
+    if _HAS_ORJSON:
+        return orjson.loads(content)
+    return json.loads(content)
 
 
 def save_results_in_zip(f_zip_ptr: zipfile.ZipFile,
@@ -324,18 +341,18 @@ def get_frames_from_zip(file_name_zip: str,
                 data = parse_config_df(df, data)
 
             elif extension == '.json':
-                json_files[name] = json.load(file_pointer)
+                json_files[name] = load_json_from_file_pointer(file_pointer)
 
             elif extension == '.diagram':
-                data['diagrams'].append(json.load(file_pointer))
+                data['diagrams'].append(load_json_from_file_pointer(file_pointer))
 
             elif extension == '.model':
                 folder, object_name = name.split("/")
-                data['model_data'][object_name] = json.load(file_pointer)
+                data['model_data'][object_name] = load_json_from_file_pointer(file_pointer)
 
             elif extension == '.symbolic':
                 folder, object_name = name.split("/")
-                data['symbolic_data'][object_name] = json.load(file_pointer)
+                data['symbolic_data'][object_name] = load_json_from_file_pointer(file_pointer)
 
             elif extension == '.csv':
                 df = pd.read_csv(file_pointer, index_col=None)

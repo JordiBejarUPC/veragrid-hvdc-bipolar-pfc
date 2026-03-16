@@ -750,8 +750,8 @@ class Load(LoadParent):
             raise Exception(str(type(val)) + 'not supported to be set into n_customers_prof')
 
     def assign_input_vars_and_params(self):
-        self.Vm = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Vm)
-        self.Va = self.bus.rms_model.model.E(VarPowerFlowRefferenceType.Va)
+        self.Vm = self.bus.rms_model.E(VarPowerFlowRefferenceType.Vm)
+        self.Va = self.bus.rms_model.E(VarPowerFlowRefferenceType.Va)
 
     def plot_profiles(self, time=None, show_fig=True):
         """
@@ -794,7 +794,7 @@ class Load(LoadParent):
         """
         if self._rms_model.empty():
             load_template = get_load_rms_template()
-            self.rms_model.model = load_template.block
+            self.rms_model = load_template.block
 
 
 

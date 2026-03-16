@@ -197,47 +197,47 @@ class RmsProblemPhasor(RmsProblemTemplate):
             bus_dict[elm] = bus_num
 
             # flatten model
-            elm.rms_model.model.unify_blocks()
+            elm.rms_model.unify_blocks()
 
-            self.add_variables_to_compilation_dicts(elm, elm.rms_model.model)
+            self.add_variables_to_compilation_dicts(elm, elm.rms_model)
 
             # add init values from powerflow to initial guess
             if elm.is_dc:
                 # DC bus: use Vdc (magnitude) - angle is not applicable for DC
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Vdc,
+                self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Vdc,
                                     np.abs(self.power_flow_results.voltage[bus_num]))
             else:
                 # AC bus: use Vm and Va
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Vi,
+                self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Vi,
                                     np.imag(self.power_flow_results.voltage[bus_num]))
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Vr,
+                self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Vr,
                                     np.real(self.power_flow_results.voltage[bus_num]))
 
             # add model to system block
-            self.sys_block.add(elm.rms_model.model)
+            self.sys_block.add(elm.rms_model)
 
         # initialize branches
         for branch_num, elm in enumerate(self.grid.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True)):
             # Todo: missing default initialization for the model
             # flatten model
-            if elm.rms_model.model.empty():
+            if elm.rms_model.empty():
                 self.logger.add_error("No RMS model",
                                       device_class=elm.device_type.value,
                                       device=elm.name)
             else:
-                elm.rms_model.model.unify_blocks()
+                elm.rms_model.unify_blocks()
 
                 # if not isinstance(elm, Transformer2W):
-                elm.rms_model.model.parameters[
-                elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
+                elm.rms_model.parameters[
+                elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
                 float(elm.R / (elm.R ** 2 + elm.X ** 2)))
-                elm.rms_model.model.parameters[
-                elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
+                elm.rms_model.parameters[
+                elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
                 float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
-                elm.rms_model.model.parameters[
-                elm.rms_model.model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
+                elm.rms_model.parameters[
+                elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
 
-                self.add_variables_to_compilation_dicts(elm, elm.rms_model.model)
+                self.add_variables_to_compilation_dicts(elm, elm.rms_model)
 
                 # Convert power flow results (S = P + jQ) to currents (I = S* / V*)
                 # I = (P - jQ) / (Vr - jVi) = (P*Vr + Q*Vi) / |V|^2 + j*(P*Vi - Q*Vr) / |V|^2
@@ -261,16 +261,16 @@ class RmsProblemPhasor(RmsProblemTemplate):
                 Iit = (St.real * Vt.imag - St.imag * Vt.real) / Vt_mag_sq
                 
                 # add init values from powerflow to initial guess
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Irf, Irf)
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Iif, Iif)
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Irt, Irt)
-                self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Iit, Iit)
+                self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Irf, Irf)
+                self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Iif, Iif)
+                self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Irt, Irt)
+                self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Iit, Iit)
 
                 # Run explicit initialization for branches to solve algebraic equations
                 if isinstance(elm, Transformer2W):
 
                     if self.options.initialization_method == RmsInitializationMethod.Explicit:
-                        init_explicit(mdl=elm.rms_model.model,
+                        init_explicit(mdl=elm.rms_model,
                                       sys_vars=self.sys_vars,
                                       variable_parameters=self._variable_parameters,
                                       event_parameters_eqs=self._event_parameters_eqs,
@@ -289,26 +289,26 @@ class RmsProblemPhasor(RmsProblemTemplate):
                                       )
 
                 # add model to system block
-                self.sys_block.add(elm.rms_model.model)
+                self.sys_block.add(elm.rms_model)
 
                 # add variable to conservation equations of the bus to which the element is connected
                 f = bus_dict[elm.bus_from]
                 t = bus_dict[elm.bus_to]
 
                 # Phasor formulation: use current balance instead of power balance
-                setIr(Ir, Ir_used, f, -elm.rms_model.model.E(VarPowerFlowRefferenceType.Irf))
-                setIr(Ir, Ir_used, t, -elm.rms_model.model.E(VarPowerFlowRefferenceType.Irt))
-                setIi(Ii, Ii_used, f, -elm.rms_model.model.E(VarPowerFlowRefferenceType.Iif))
-                setIi(Ii, Ii_used, t, -elm.rms_model.model.E(VarPowerFlowRefferenceType.Iit))
+                setIr(Ir, Ir_used, f, -elm.rms_model.E(VarPowerFlowRefferenceType.Irf))
+                setIr(Ir, Ir_used, t, -elm.rms_model.E(VarPowerFlowRefferenceType.Irt))
+                setIi(Ii, Ii_used, f, -elm.rms_model.E(VarPowerFlowRefferenceType.Iif))
+                setIi(Ii, Ii_used, t, -elm.rms_model.E(VarPowerFlowRefferenceType.Iit))
 
         # Populating VSCs init guess
         for i, elm in enumerate(self.grid.get_vsc()):
-            if elm.rms_model.model.empty():
+            if elm.rms_model.empty():
                 self.logger.add_error("No RMS model",
                                       device_class=elm.device_type.value,
                                       device=elm.name)
             else:
-                mdl = elm.rms_model.model
+                mdl = elm.rms_model
 
                 # flatten model to collect all variables including those from child blocks
                 mdl.unify_blocks()
@@ -331,12 +331,12 @@ class RmsProblemPhasor(RmsProblemTemplate):
 
         # Populating HVDC init guess (similar to VSCs)
         for i, elm in enumerate(self.grid.get_hvdc()):
-            if elm.rms_model.model.empty():
+            if elm.rms_model.empty():
                 self.logger.add_error("No RMS model",
                                       device_class=elm.device_type.value,
                                       device=elm.name)
             else:
-                mdl = elm.rms_model.model
+                mdl = elm.rms_model
 
                 # Get HVDC power flow results from generalized formulation
                 if hasattr(self.power_flow_results, 'Sf_hvdc') and self.power_flow_results.Sf_hvdc is not None:
@@ -378,18 +378,18 @@ class RmsProblemPhasor(RmsProblemTemplate):
 
         for elm in grid.get_vsc():
 
-            if elm.rms_model.model.empty():
+            if elm.rms_model.empty():
                 self.logger.add_error("No RMS model",
                                       device_class=elm.device_type.value,
                                       device=elm.name)
             else:
 
                 # flatten model - variables already registered in first VSC loop above
-                elm.rms_model.model.unify_blocks()
+                elm.rms_model.unify_blocks()
 
                 # find init values for the variables of this model
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
-                    init_explicit(mdl=elm.rms_model.model,
+                    init_explicit(mdl=elm.rms_model,
                                   sys_vars=self.sys_vars,
                                   variable_parameters=self._variable_parameters,
                                   event_parameters_eqs=self._event_parameters_eqs,
@@ -409,28 +409,28 @@ class RmsProblemPhasor(RmsProblemTemplate):
                 else:
                     raise ValueError("Not implemented initialization method")
                 # add model to system block
-                self.sys_block.add(elm.rms_model.model)
+                self.sys_block.add(elm.rms_model)
 
         for elm in grid.get_injection_devices_iter():
 
-            if elm.rms_model.model.empty():
+            if elm.rms_model.empty():
                 self.logger.add_error("No RMS model",
                                       device_class=elm.device_type.value,
                                       device=elm.name)
             else:
                 bus_index = bus_dict[elm.bus]
 
-                elm.rms_model.model.unify_blocks()
-                self.add_variables_to_compilation_dicts(elm, elm.rms_model.model)
+                elm.rms_model.unify_blocks()
+                self.add_variables_to_compilation_dicts(elm, elm.rms_model)
 
                 if elm.bus.is_dc:
                     # DC buses: use power directly if supported, otherwise skip
                     Sbus_dc = self.power_flow_results.Sbus[bus_index]
-                    if VarPowerFlowRefferenceType.P in elm.rms_model.model.external_mapping:
-                        self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.P, np.real(Sbus_dc))
-                    if VarPowerFlowRefferenceType.Ir in elm.rms_model.model.external_mapping:
+                    if VarPowerFlowRefferenceType.P in elm.rms_model.external_mapping:
+                        self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.P, np.real(Sbus_dc))
+                    if VarPowerFlowRefferenceType.Ir in elm.rms_model.external_mapping:
                         # Approximate: I = P/V (assuming V ≈ 1)
-                        self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Ir, np.real(Sbus_dc))
+                        self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Ir, np.real(Sbus_dc))
                 else:
                     # Phasor formulation: convert power injection to current
                     # I = S* / V* where S is the injection power
@@ -446,28 +446,28 @@ class RmsProblemPhasor(RmsProblemTemplate):
                         Ii_val = 0.0
                     
                     # Only set current init guess if the model expects it
-                    if VarPowerFlowRefferenceType.Ir in elm.rms_model.model.external_mapping:
-                        self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Ir, Ir_val)
-                    if VarPowerFlowRefferenceType.Ii in elm.rms_model.model.external_mapping:
-                        self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Ii, Ii_val)
+                    if VarPowerFlowRefferenceType.Ir in elm.rms_model.external_mapping:
+                        self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Ir, Ir_val)
+                    if VarPowerFlowRefferenceType.Ii in elm.rms_model.external_mapping:
+                        self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Ii, Ii_val)
                     
                     # Also set P/Q init guess for backward compatibility
-                    if VarPowerFlowRefferenceType.P in elm.rms_model.model.external_mapping:
-                        self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.P, Sbus.real)
-                    if VarPowerFlowRefferenceType.Q in elm.rms_model.model.external_mapping:
-                        self.set_init_guess(elm.rms_model.model, VarPowerFlowRefferenceType.Q, Sbus.imag)
+                    if VarPowerFlowRefferenceType.P in elm.rms_model.external_mapping:
+                        self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.P, Sbus.real)
+                    if VarPowerFlowRefferenceType.Q in elm.rms_model.external_mapping:
+                        self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Q, Sbus.imag)
 
                 k = bus_dict[elm.bus]
                 # Phasor formulation: use current balance
-                if VarPowerFlowRefferenceType.Ir in elm.rms_model.model.external_mapping:
-                    setIr(Ir, Ir_used, k, elm.rms_model.model.E(VarPowerFlowRefferenceType.Ir))
-                if VarPowerFlowRefferenceType.Ii in elm.rms_model.model.external_mapping:
-                    setIi(Ii, Ii_used, k, elm.rms_model.model.E(VarPowerFlowRefferenceType.Ii))
+                if VarPowerFlowRefferenceType.Ir in elm.rms_model.external_mapping:
+                    setIr(Ir, Ir_used, k, elm.rms_model.E(VarPowerFlowRefferenceType.Ir))
+                if VarPowerFlowRefferenceType.Ii in elm.rms_model.external_mapping:
+                    setIi(Ii, Ii_used, k, elm.rms_model.E(VarPowerFlowRefferenceType.Ii))
 
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
 
                     init_explicit(
-                        mdl=elm.rms_model.model,
+                        mdl=elm.rms_model,
                         sys_vars=self.sys_vars,
                         variable_parameters=self._variable_parameters,
                         event_parameters_eqs=self._event_parameters_eqs,
@@ -487,7 +487,7 @@ class RmsProblemPhasor(RmsProblemTemplate):
 
                 elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
                     init_pseudo_transient(
-                        mdl=elm.rms_model.model,
+                        mdl=elm.rms_model,
                         sys_vars=self.sys_vars,
                         variable_parameters=self._variable_parameters,
                         event_parameters_eqs=self._event_parameters_eqs,
@@ -510,7 +510,7 @@ class RmsProblemPhasor(RmsProblemTemplate):
                 else:
                     raise ValueError("Not implemented initialization method")
 
-                self.sys_block.add(elm.rms_model.model)
+                self.sys_block.add(elm.rms_model)
 
         total_init_explicit_time += time.perf_counter() - t0
         print(f"\nTotal time explicit initialization: {total_init_explicit_time:.6f} seconds")
@@ -519,7 +519,7 @@ class RmsProblemPhasor(RmsProblemTemplate):
 
         # add the nodal balance equations (current balance for phasor formulation)
         for i, elm in enumerate(self.grid.buses):
-            mdl = block_deep_copy(elm.rms_model.model, grid.rms_var_factory)
+            mdl = block_deep_copy(elm.rms_model, grid.rms_var_factory)
             if len(mdl.algebraic_eqs) == 0:
                 if not Ir_used[i] and not Ii_used[i]:
                     self.logger.add_error("Isolated bus", value=i)

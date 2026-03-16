@@ -113,31 +113,31 @@ motor_mdl = block_deep_copy(MotorLoadBuild(grid.rms_var_factory).block)
 
 genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.rms_var_factory).block)
 
-genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
+line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-line0_mdl.connect([line0_mdl.in_vars[2]], [bus1.rms_model.model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[3]], [bus1.rms_model.model.out_vars[1]])
+line0_mdl.connect([line0_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
+line0_mdl.connect([line0_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
 
-line1_mdl.connect([line1_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-line1_mdl.connect([line1_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+line1_mdl.connect([line1_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+line1_mdl.connect([line1_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-line1_mdl.connect([line1_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
-line1_mdl.connect([line1_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]])
+line1_mdl.connect([line1_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
+line1_mdl.connect([line1_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]])
 
 if load_type != 'motor':
-    load_mdl.connect([load_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
+    load_mdl.connect([load_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
 else:
-    motor_mdl.connect([motor_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
-    motor_mdl.connect([motor_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
+    motor_mdl.connect([motor_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
+    motor_mdl.connect([motor_mdl.in_vars[1]], [bus2.rms_model.out_vars[1]])
 
-motor_mdl.connect([motor_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
-motor_mdl.connect([motor_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
-#load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-#load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+motor_mdl.connect([motor_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
+motor_mdl.connect([motor_mdl.in_vars[1]], [bus2.rms_model.out_vars[1]])
+#load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+#load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
 # external mapping
 big_gen1 = Block(children=[genrow_mdl1])
@@ -239,8 +239,8 @@ plt.tight_layout()
 plt.show()
 
 omega = find_name_in_block('omega', motor_mdl)
-Vm = bus2.rms_model.model.out_vars[0]
-Va = bus2.rms_model.model.out_vars[1]
+Vm = bus2.rms_model.out_vars[0]
+Va = bus2.rms_model.out_vars[1]
 P = find_name_in_block('Pl', motor_mdl)
 
 plt.plot(t, y[:, problem.get_var_idx(omega)], label="omega (pu)")

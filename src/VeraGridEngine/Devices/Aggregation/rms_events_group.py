@@ -3,26 +3,25 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Union
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType
+from typing import Union, Tuple
+from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
 
 
 class RmsEventsGroup(EditableDevice):
     """
     Rms Events Group (Used for both RMS and EMT dynamic events)
     """
-    __slots__ = (
+    __slots__ = ()
 
-    )
 
     def __init__(self,
                  idtag: Union[str, None] = None,
                  name: str = "RmsEventsGroup",
                  comment: str = ""):
         """
-        Contingency group
+        Rms events group
         :param idtag: Unique identifier
-        :param name: contingency group name
+        :param name: group name
         :param comment: comment
         """
 
@@ -32,3 +31,5 @@ class RmsEventsGroup(EditableDevice):
                                 code='',
                                 device_type=DeviceType.RmsEventsGroupDevice,
                                 comment=comment)
+
+

@@ -71,7 +71,7 @@ class WireInTower:
         :param ypos: y position in m
         :param phase: 0->Neutral, 1->A, 2->B, 3->C
         """
-        self.wire: Wire = wire
+        self.wire: Wire | None = wire
 
         self.name: str = wire.name
 
@@ -245,6 +245,12 @@ class ListOfWires:
                 return False
 
         return True
+
+    def copy(self):
+        new_list = ListOfWires()
+        for elm in self.data:
+            new_list.append(elm)
+        return new_list
 
 
 class OverheadLineType(EditableDevice):

@@ -98,22 +98,22 @@ line12_mdl = block_deep_copy(get_line_rms_template(grid.rms_var_factory).block)
 load_mdl = block_deep_copy(ZIPLoadBuild(grid.rms_var_factory, Pl0 =-0.005, Ql0 =-0.001).block)
 genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.rms_var_factory).block)
 vsc_mdl = block_deep_copy(VscGfmBuild(grid.rms_var_factory).block)
-dc_source = block_deep_copy(DCVoltageSource(grid.rms_var_factory, bus3.rms_model.model.out_vars[0]).block)
+dc_source = block_deep_copy(DCVoltageSource(grid.rms_var_factory, bus3.rms_model.out_vars[0]).block)
 
 # Connections
-genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
+load_mdl.connect([load_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
 
-line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
-line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]]) 
+line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
+line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]]) 
 
-vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
-vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
-vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.model.out_vars[0]])
+vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
+vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.out_vars[1]])
+vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.out_vars[0]])
 
 # external mapping
 big_gen1 = Block(children=[genrow_mdl1])
@@ -164,7 +164,7 @@ solver = BackEulerImplicitIntegration(
 t, y, well_initialized, converged = solver.simulate()
 
 # Variables to follow
-Vm2 = find_name_in_block("Vm_", bus2.rms_model.model)
+Vm2 = find_name_in_block("Vm_", bus2.rms_model)
 omega = find_name_in_block("omega", vsc_mdl)
 P_vsc = find_name_in_block("P", vsc_mdl)
 Q_vsc = find_name_in_block("Q", vsc_mdl)

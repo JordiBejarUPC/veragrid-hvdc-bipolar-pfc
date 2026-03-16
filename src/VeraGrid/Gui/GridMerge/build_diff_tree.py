@@ -93,14 +93,15 @@ def populate_tree(tree_widget, base: MultiCircuit, diff: MultiCircuit,
                     )
 
                 else:
-                    action, changed_props_keys = (ActionType.Modify, elm.property_merge_selections)
+                    action = ActionType.Modify
+                    changed_props_keys = elm.get_all_diff_changes_dict()
                     changed_props = [elm.registered_properties[prop] for prop in changed_props_keys]
 
                 for prop in changed_props:
                     base_val = elm_from_base.get_property_value(prop=prop, t_idx=None)
                     new_val = elm.get_property_value(prop=prop, t_idx=None)
 
-                    elm.set_property_selected_to_merge(property_name=prop.name, selected=True)
+                    elm.set_diff_change(property_name=prop.name, selected=True)
 
                     child_item = QtWidgets.QTreeWidgetItem(
                         parent_item,

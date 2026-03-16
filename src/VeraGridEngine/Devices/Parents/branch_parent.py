@@ -15,8 +15,10 @@ from VeraGridEngine.enumerations import BuildStatus, DeviceType
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Devices.Aggregation.branch_group import BranchGroup
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
+from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
+from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Utils.Symbolic.block import Block
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.types import CONNECTION_TYPE
@@ -59,48 +61,56 @@ class BranchParent(PhysicalDevice):
         'group',
         '_rms_model',
         '_emt_model',
+        '_rms_template',
+        '_emt_template',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp('bus_from', units="", tpe=DeviceType.BusDevice,
-                      definition='Name of the bus at the "from" side', editable=False),
+               definition='Name of the bus at the "from" side', editable=False),
         GCProp('bus_to', units="", tpe=DeviceType.BusDevice,
-                      definition='Name of the bus at the "to" side', editable=False),
+               definition='Name of the bus at the "to" side', editable=False),
         GCProp('active', units="", tpe=bool, definition='Is active?', profile_name="active_prof"),
         GCProp('reducible', units="", tpe=bool,
-                      definition='Is the branch to be reduced by the topology preprocessor?'),
+               definition='Is the branch to be reduced by the topology preprocessor?'),
         GCProp('rate', units="MVA", tpe=float, definition='Thermal rating power', profile_name="rate_prof"),
         GCProp('contingency_factor', units="p.u.", tpe=float,
-                      definition='Rating multiplier for contingencies', profile_name="contingency_factor_prof"),
+               definition='Rating multiplier for contingencies', profile_name="contingency_factor_prof"),
         GCProp('protection_rating_factor', units="p.u.", tpe=float,
-                      definition='Rating multiplier that indicates the maximum flow before the protections tripping',
-                      profile_name="protection_rating_factor_prof"),
+               definition='Rating multiplier that indicates the maximum flow before the protections tripping',
+               profile_name="protection_rating_factor_prof"),
         GCProp('monitor_loading', units="", tpe=bool,
-                      definition="Monitor this device loading for OPF, NTC or contingency studies."),
+               definition="Monitor this device loading for OPF, NTC or contingency studies."),
         GCProp('mttf', units="h", tpe=float, definition="Mean time to failure"),
         GCProp('mttr', units="h", tpe=float, definition="Mean time to repair"),
         GCProp('Cost', units="e/MWh", tpe=float,
-                      definition="Cost of overloads. Used in OPF", profile_name="Cost_prof",
-                      old_names=("overload_cost",)),
+               definition="Cost of overloads. Used in OPF", profile_name="Cost_prof",
+               old_names=("overload_cost",)),
         GCProp('capex', units="e/MW", tpe=float, definition="Cost of investment. Used in expansion planning."),
         GCProp('opex', units="e/MWh", tpe=float, definition="Cost of operation. Used in expansion planning."),
         GCProp('group', units="", tpe=DeviceType.BranchGroupDevice,
-                      definition="Group where this branch belongs"),
+               definition="Group where this branch belongs"),
         GCProp(key='color', units='', tpe=str, definition='Color to paint the element in the map diagram',
-                      is_color=True),
-        GCProp(key='rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
-                      definition='RMS dynamic model', display=False),
+               is_color=True),
+        GCProp(key='rms_model', units='', tpe=SubObjectType.DaeBlockType,
+               definition='RMS dynamic model', display=False),
+        GCProp(key='emt_model', units='', tpe=SubObjectType.DaeBlockType,
+               definition='EMT dynamic model', display=False),
+        GCProp(key='rms_template', units='', tpe=DeviceType.RmsModelTemplateDevice,
+               definition='RMS template used', display=True),
+        GCProp(key='emt_template', units='', tpe=DeviceType.EmtModelTemplateDevice,
+               definition='Emt template used', display=True),
         GCProp(key='bus_from_pos', units='', tpe=int, definition='Aid to locate devices on a busbar',
-                      display=False),
+               display=False),
         GCProp(key='bus_to_pos', units='', tpe=int, definition='Aid to locate devices on a busbar',
-                      display=False),
+               display=False),
         GCProp(key='temp_base', units='ºC', tpe=float, definition='Base temperature at which R was measured.'),
         GCProp(key='temp_oper', units='ºC', tpe=float, definition='Operation temperature to modify R.',
-                      profile_name='temp_oper_prof'),
+               profile_name='temp_oper_prof'),
         GCProp(key='alpha', units='1/ºC', tpe=float,
-                      definition='Thermal coefficient to modify R,around a reference temperature using a linear '
-                                 'approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,'
-                                 'Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330'),
+               definition='Thermal coefficient to modify R,around a reference temperature using a linear '
+                          'approximation.For example:Copper @ 20ºC: 0.004041,Copper @ 75ºC: 0.00323,'
+                          'Annealed copper @ 20ºC: 0.00393,Aluminum @ 20ºC: 0.004308,Aluminum @ 75ºC: 0.00330'),
     )
 
     def __init__(self,
@@ -224,49 +234,78 @@ class BranchParent(PhysicalDevice):
         # group of this branch
         self.group: Union[BranchGroup, None] = None
 
-        self._rms_model: DynamicModelHost = DynamicModelHost()
-        self._emt_model: DynamicModelHost = DynamicModelHost()
+        self._rms_model: Block = Block()
+        self._rms_template: RmsModelTemplate | None = None
 
-
-
-
-
-
-
-
-
-
-
-
-
+        self._emt_model: Block = Block()
+        self._emt_template: EmtModelTemplate | None = None
 
     @property
-    def rms_model(self) -> DynamicModelHost:
+    def rms_model(self) -> Block:
         """
         Get the RMS model
         """
         return self._rms_model
 
     @rms_model.setter
-    def rms_model(self, val: DynamicModelHost):
-        if isinstance(val, DynamicModelHost):
+    def rms_model(self, val: Block):
+        if isinstance(val, Block):
             self._rms_model = val
         else:
             raise ValueError(f"RMS model cannot accept {val}")
 
     @property
-    def emt_model(self) -> DynamicModelHost:
+    def emt_model(self) -> Block:
         """
         Get the EMT model
         """
         return self._emt_model
 
     @emt_model.setter
-    def emt_model(self, val: DynamicModelHost):
-        if isinstance(val, DynamicModelHost):
+    def emt_model(self, val: Block):
+        if isinstance(val, Block):
             self._emt_model = val
         else:
-            raise ValueError(f"RMS model cannot accept {val}")
+            raise ValueError(f"EMT model cannot accept {val}")
+
+    @property
+    def rms_template(self) -> RmsModelTemplate | None:
+        """
+        Get the RMS model
+        """
+        return self._rms_template
+
+    @rms_template.setter
+    def rms_template(self, val: RmsModelTemplate):
+        if isinstance(val, RmsModelTemplate):
+            self._rms_template = val
+
+            if self.auto_update_enabled:
+                self.rms_model = val.block.copy()
+        elif val is None:
+            self._rms_template = None
+        else:
+            raise ValueError(f"RMS template cannot accept {val}")
+
+    @property
+    def emt_template(self) -> EmtModelTemplate | None:
+        """
+        Get the EMT template
+        """
+        return self._emt_template
+
+    @emt_template.setter
+    def emt_template(self, val: EmtModelTemplate):
+        if isinstance(val, EmtModelTemplate):
+            self._emt_template = val
+
+            if self.auto_update_enabled:
+                self.emt_model = val.block.copy()
+        elif val is None:
+            self._emt_template = None
+        else:
+            raise ValueError(f"EMT template cannot accept {val}")
+
 
     @property
     def bus_from(self) -> Bus:

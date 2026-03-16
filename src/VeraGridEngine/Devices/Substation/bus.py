@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Tuple, Union, TYPE_CHECKING
+from typing import Tuple, Union
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -15,11 +15,10 @@ from VeraGridEngine.Devices.Substation.substation import Substation
 from VeraGridEngine.Devices.Substation.busbar import BusBar
 from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
+from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
+from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
-
-if TYPE_CHECKING:
-    from VeraGridEngine.Utils.Symbolic.block import Var
 
 
 class Bus(PhysicalDevice):
@@ -61,6 +60,8 @@ class Bus(PhysicalDevice):
         '_bus_bar',
         '_rms_model',
         '_emt_model',
+        '_rms_template',
+        '_emt_template',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -110,10 +111,14 @@ class Bus(PhysicalDevice):
         GCProp(key='longitude', units='deg', tpe=float, definition='longitude of the bus.', profile_name=''),
         GCProp(key='latitude', units='deg', tpe=float, definition='latitude of the bus.', profile_name=''),
         GCProp(key='is_grounded', units='', tpe=bool, definition='Is this bus neutral grounded?.'),
-        GCProp(key='rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
+        GCProp(key='rms_model', units='', tpe=SubObjectType.DaeBlockType,
                       definition='RMS dynamic model', display=False),
-        GCProp(key='emt_model', units='', tpe=SubObjectType.DynamicModelHostType,
+        GCProp(key='emt_model', units='', tpe=SubObjectType.DaeBlockType,
                       definition='EMT dynamic model', display=False),
+        GCProp(key='rms_template', units='', tpe=DeviceType.RmsModelTemplateDevice,
+               definition='RMS template used', display=True),
+        GCProp(key='emt_template', units='', tpe=DeviceType.EmtModelTemplateDevice,
+               definition='Emt template used', display=True),
         GCProp(key='color', units='', tpe=str, definition='Color to paint the element in the diagram',
                       is_color=True),
     )
@@ -286,33 +291,77 @@ class Bus(PhysicalDevice):
         self.color = color if color is not None else "#000000"
 
         # The model of the bus is fixed, then it can already be defined here
-        self._rms_model: DynamicModelHost = DynamicModelHost()
+        self._rms_model: Block = Block()
+        self._rms_template: RmsModelTemplate | None = None
 
-        self._emt_model: DynamicModelHost = DynamicModelHost()
-
-
+        self._emt_model: Block = Block()
+        self._emt_template: EmtModelTemplate | None = None
 
     @property
-    def rms_model(self) -> DynamicModelHost:
+    def rms_model(self) -> Block:
         """
-        RMS model
-        :return: DynamicModelHost
+        Get the RMS model
         """
         return self._rms_model
 
     @rms_model.setter
-    def rms_model(self, value: DynamicModelHost):
-        if isinstance(value, DynamicModelHost):
-            self._rms_model = value
+    def rms_model(self, val: Block):
+        if isinstance(val, Block):
+            self._rms_model = val
+        else:
+            raise ValueError(f"RMS model cannot accept {val}")
 
     @property
-    def emt_model(self) -> DynamicModelHost:
+    def emt_model(self) -> Block:
+        """
+        Get the EMT model
+        """
         return self._emt_model
 
     @emt_model.setter
-    def emt_model(self, value: DynamicModelHost):
-        if isinstance(value, DynamicModelHost):
-            self._emt_model = value
+    def emt_model(self, val: Block):
+        if isinstance(val, Block):
+            self._emt_model = val
+        else:
+            raise ValueError(f"EMT model cannot accept {val}")
+
+    @property
+    def rms_template(self) -> RmsModelTemplate | None:
+        """
+        Get the RMS model
+        """
+        return self._rms_template
+
+    @rms_template.setter
+    def rms_template(self, val: RmsModelTemplate):
+        if isinstance(val, RmsModelTemplate):
+            self._rms_template = val
+
+            if self.auto_update_enabled:
+                self.rms_model = val.block.copy()
+        elif val is None:
+            self._rms_template = None
+        else:
+            raise ValueError(f"RMS template cannot accept {val}")
+
+    @property
+    def emt_template(self) -> EmtModelTemplate | None:
+        """
+        Get the EMT template
+        """
+        return self._emt_template
+
+    @emt_template.setter
+    def emt_template(self, val: EmtModelTemplate):
+        if isinstance(val, EmtModelTemplate):
+            self._emt_template = val
+
+            if self.auto_update_enabled:
+                self.emt_model = val.block.copy()
+        elif val is None:
+            self._emt_template = None
+        else:
+            raise ValueError(f"EMT template cannot accept {val}")
 
     @property
     def active_prof(self) -> Profile:

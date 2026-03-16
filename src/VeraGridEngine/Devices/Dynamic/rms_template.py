@@ -22,8 +22,10 @@ class RmsModelTemplate(PointerDeviceParent):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp('block', units="p.u.", tpe=SubObjectType.DaeBlockType,
+        GCProp('block', units="", tpe=SubObjectType.DaeBlockType,
                       definition='DAE block', editable=False, display=False),
+        GCProp('tpe', units="", tpe=DeviceType,
+               definition='Device type', editable=True, display=True),
     )
 
     def __init__(self, idtag="", name: str = ""):
@@ -47,7 +49,7 @@ class RmsModelTemplate(PointerDeviceParent):
         result._tpe = self._tpe
 
         # deepcopy block safely
-        result._block = self._block.deep_copy()
+        result._block = self._block.copy()
 
         return result
 

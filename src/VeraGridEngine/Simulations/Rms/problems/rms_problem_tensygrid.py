@@ -174,8 +174,8 @@ class RmsProblemTensygrid(RmsProblemTemplate):
             bus_dict[elm] = bus_num
 
             # flatten model
-            elm.rms_model.model.unify_blocks()
-            mdl = (elm.rms_model.model)
+            elm.rms_model.unify_blocks()
+            mdl = (elm.rms_model)
 
             self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -190,8 +190,8 @@ class RmsProblemTensygrid(RmsProblemTemplate):
         for branch_num, elm in enumerate(self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):
             # Todo: missing default initialization for the model
             # flatten model
-            elm.rms_model.model.unify_blocks()
-            mdl = (elm.rms_model.model)
+            elm.rms_model.unify_blocks()
+            mdl = (elm.rms_model)
 
             self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -222,8 +222,8 @@ class RmsProblemTensygrid(RmsProblemTemplate):
             for dev_type, dev_list in region.items():
                 for elm in dev_list:
                     # flatten model
-                    elm.rms_model.model.unify_blocks()
-                    mdl = (elm.rms_model.model)
+                    elm.rms_model.unify_blocks()
+                    mdl = (elm.rms_model)
 
                     self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -271,7 +271,7 @@ class RmsProblemTensygrid(RmsProblemTemplate):
 
         # add the nodal balance equations
         for i, elm in enumerate(self.grid.buses):
-            mdl = (elm.rms_model.model)
+            mdl = (elm.rms_model)
             if len(mdl.algebraic_eqs) == 0:
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)

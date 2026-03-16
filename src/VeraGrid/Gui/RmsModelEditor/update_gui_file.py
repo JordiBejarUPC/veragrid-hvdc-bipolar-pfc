@@ -9,5 +9,5 @@ from VeraGrid.Gui.update_gui_common import convert_resource_file, convert_ui_fil
 
 if __name__ == '__main__':
 
-    for f in ['rms_model_editor.ui', 'block_data_dialogue.ui']:
+    for f in ['block_editor.ui']:
         convert_ui_file(source=f)
