@@ -40,7 +40,13 @@ def get_simple_generator_emt_template(grid: MultiCircuit, gen: Generator, name: 
     v_C = vf.add_var("v_C_" + name)
     Tm = vf.add_var("Tm_" + name)
     v_f = vf.add_var("v_f_" + name)
-    inputs = [v_A, v_B, v_C, Tm, v_f]
+
+    # to connect complete block with gen block
+    Ipk = vf.add_var("Ipk")
+    Vpk = vf.add_var("Vpk")
+    phi = vf.add_var("phi")
+    phi_v = vf.add_var("phi_v")
+    inputs = [v_A, v_B, v_C, Tm, v_f, phi_v, phi, Vpk, Ipk]
     # --------------------------------------------------------------------------------------
     # States (pu, except theta [rad])
     # --------------------------------------------------------------------------------------
@@ -108,10 +114,7 @@ def get_simple_generator_emt_template(grid: MultiCircuit, gen: Generator, name: 
     Ki = vf.add_var("Ki")
 
     delta = vf.add_var("delta_" + name)  # difference between rotor angle and grid angle
-    Ipk = vf.add_var("Ipk")
-    Vpk = vf.add_var("Vpk")
-    phi = vf.add_var("phi")
-    phi_v = vf.add_var("phi_v")
+
 
     templ.block = Block(
         # --------------------------------------------------------------------------------------
@@ -1245,7 +1248,7 @@ def get_governor(vfactory: VarFactory, name: str = "Governor") -> EmtModelTempla
     # ______________________________________________________________________________________
 
     Tm = vfactory.add_var("Tm")  # Mechanical power input (pu
-    et = vfactory.add_var("et")
+    # et = vfactory.add_var("et")
 
     # reference
     Pm_ref = vfactory.add_var('Pm_ref')
@@ -1288,16 +1291,16 @@ def get_governor(vfactory: VarFactory, name: str = "Governor") -> EmtModelTempla
         T_aux: vfactory.add_const(0.0),
 
     }
-    controller_block = Block(
-        state_eqs=[
-            P0 * (inputs[0] - omega_ref)
-        ],
-        state_vars=[et],
-        algebraic_eqs=[
-            T_aux - (Kp * (inputs[0] - omega_ref) + Ki * et),
-        ],
-        algebraic_vars=[T_aux],
-    )
+    # controller_block = Block(
+    #     state_eqs=[
+    #         P0 * (inputs[0] - omega_ref)
+    #     ],
+    #     state_vars=[et],
+    #     algebraic_eqs=[
+    #         T_aux - (Kp * (inputs[0] - omega_ref) + Ki * et),
+    #     ],
+    #     algebraic_vars=[T_aux],
+    # )
     controller_block = Block()
 
     u1 = inputs[0] - omega_ref
@@ -1792,11 +1795,6 @@ def get_complete_generator_template(grid: MultiCircuit, gen: Generator, name="co
 
     governor_mdl.connect([governor_mdl.in_vars[1]], [gen_mdl.out_vars[5]]) # Te
 
-    Ipk = vfactory.add_var("Ipk_" + name)
-    Vpk = vfactory.add_var("Vpk_" + name)
-    phi = vfactory.add_var("phi_" + name)
-    phi_v = vfactory.add_var("phi_v_" + name)
-
     templ.block.children.append(gen_mdl)
     templ.block.children.append(governor_mdl)
     templ.block.children.append(stabilizer_mdl)
@@ -1815,10 +1813,10 @@ def get_complete_generator_template(grid: MultiCircuit, gen: Generator, name="co
         VarPowerFlowRefferenceType.i_A: gen_mdl.out_vars[0],
         VarPowerFlowRefferenceType.i_B: gen_mdl.out_vars[1],
         VarPowerFlowRefferenceType.i_C: gen_mdl.out_vars[2],
-        VarPowerFlowRefferenceType.phi_v: phi_v,
-        VarPowerFlowRefferenceType.phi: phi,
-        VarPowerFlowRefferenceType.Vpk: Vpk,
-        VarPowerFlowRefferenceType.Ipk: Ipk,
+        VarPowerFlowRefferenceType.phi_v: gen_mdl.in_vars[5],
+        VarPowerFlowRefferenceType.phi: gen_mdl.in_vars[6],
+        VarPowerFlowRefferenceType.Vpk: gen_mdl.in_vars[7],
+        VarPowerFlowRefferenceType.Ipk: gen_mdl.in_vars[8],
         VarPowerFlowRefferenceType.d_v_N: None,
         VarPowerFlowRefferenceType.d_v_A: None,
         VarPowerFlowRefferenceType.d_v_B: None,

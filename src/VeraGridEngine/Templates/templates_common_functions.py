@@ -17,6 +17,82 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType
 
 
+# def tf_to_block(var_factory: VarFactory,
+#                 num: List[Var | float],
+#                 den: List[Var | float],
+#                 x: Var | Expr,
+#                 y: Var = None,
+#                 create_state: bool = False,
+#                 name: Optional[str] = '') -> Tuple[Block, Var]:
+#     """
+#     "transform definition" to block
+#     num: list of numerator coefficients [b0, b1, ..., bm]
+#     den: list of denominator coefficients [a0, a1, ..., an]
+#     x:   sympy symbol for input
+#     y:   sympy function of t for output
+#     """
+#     if len(num) > len(den):
+#         raise ValueError("Transfer function is improper: numerator degree > denominator degree.")
+#
+#     if y is None:
+#         y = var_factory.add_var('y_' + name)
+#
+#     aux_eqs: List[Expr] = list()
+#     aux_vars: List[Expr] = list()
+#     init_eqs = dict()
+#     x_save = x  # Initialize x_save to avoid unbound variable error
+#     # check if is an expression
+#     if not isinstance(x, Var):
+#         u = var_factory.add_var('u_' + name)
+#         aux_eqs.append((u - x).simplify())
+#         aux_vars.append(u)
+#         init_eqs[u] = x
+#         x = u
+#
+#     diff_vars_x = [x]
+#     diff_vars_y = [y]
+#     diff_vars = list()
+#     state_eqs = list()
+#     state_vars = list()
+#     init_eqs = dict()
+#     base_var = x
+#     for i in range(1, len(num)):
+#         if i == 1 and create_state:
+#             x_new = var_factory.add_var(f"x_{i}_" + x.name)
+#             state_vars.append(x_new)
+#             state_eqs.append(x_save)  # x is already a Var
+#             diff_vars_x.append(x_new)
+#             base_var = x_new
+#             init_eqs[x_new] = Const(0.0)
+#         else:
+#             if base_var.diff_var is None:
+#                 new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + x.name, base_var=base_var)
+#                 diff_vars.append(new_diff)
+#             diff_vars_x.append(base_var.diff_var)
+#             base_var = base_var.diff_var
+#     base_var = y
+#     for i in range(1, len(den)):
+#         if base_var.diff_var is None:
+#             new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + y.name, base_var=base_var)
+#             diff_vars.append(new_diff)
+#         diff_vars_y.append(base_var.diff_var)
+#         base_var = base_var.diff_var
+#
+#     # Create the diff equation
+#     rhs = np.array(diff_vars_x) @ np.array(num)
+#     lhs = np.array(diff_vars_y) @ np.array(den)
+#
+#     block = Block()
+#     block.algebraic_vars = [y] + aux_vars
+#     block.algebraic_eqs = [lhs - rhs] + aux_eqs
+#     block.state_eqs     = state_eqs
+#     block.state_vars    = state_vars
+#     block.diff_vars     = diff_vars
+#     block.in_vars       = [x]  # Input is x
+#     block.out_vars      = [y]  # Output is y
+#     block.init_eqs      = init_eqs
+#     return block, y
+
 def tf_to_block(var_factory: VarFactory,
                 num: List[Var | float],
                 den: List[Var | float],
@@ -40,6 +116,7 @@ def tf_to_block(var_factory: VarFactory,
     aux_eqs: List[Expr] = list()
     aux_vars: List[Expr] = list()
     init_eqs = dict()
+    diff_init_eqs = dict()  # ADDED
     x_save = x  # Initialize x_save to avoid unbound variable error
     # check if is an expression
     if not isinstance(x, Var):
@@ -68,6 +145,7 @@ def tf_to_block(var_factory: VarFactory,
             if base_var.diff_var is None:
                 new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + x.name, base_var=base_var)
                 diff_vars.append(new_diff)
+                diff_init_eqs[new_diff] = Const(0.0)  # ADDED
             diff_vars_x.append(base_var.diff_var)
             base_var = base_var.diff_var
     base_var = y
@@ -75,6 +153,7 @@ def tf_to_block(var_factory: VarFactory,
         if base_var.diff_var is None:
             new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + y.name, base_var=base_var)
             diff_vars.append(new_diff)
+            diff_init_eqs[new_diff] = Const(0.0)  # ADDED
         diff_vars_y.append(base_var.diff_var)
         base_var = base_var.diff_var
 
@@ -91,8 +170,90 @@ def tf_to_block(var_factory: VarFactory,
     block.in_vars       = [x]  # Input is x
     block.out_vars      = [y]  # Output is y
     block.init_eqs      = init_eqs
+    block.diff_init_eqs = diff_init_eqs  # ADDED
     return block, y
 
+
+# def tf_to_diffblock_with_output(
+#         var_factory: VarFactory,
+#         num: List[Var | float],
+#         den: List[Var | float],
+#         x: Var | Expr,
+#         y: Var = None,
+#         create_state: bool = False,
+#         name: Optional[str] = ''):
+#     """
+#     num: list of numerator coefficients [b0, b1, ..., bm]
+#     den: list of denominator coefficients [a0, a1, ..., an]
+#     x:   sympy symbol for input
+#     y:   sympy function of t for output
+#     """
+#     if len(num) > len(den):
+#         raise ValueError("Transfer function is improper: numerator degree > denominator degree.")
+#     if (isinstance(num[-1], float) and num[-1] == 0) or (isinstance(den[-1], float) and den[-1] == 0):
+#         raise ValueError("Leading coefficient of numerator or denominator cannot be zero.")
+#
+#     if y is None:
+#         y = var_factory.add_var('y_' + name)
+#
+#     aux_eqs: List[Var | Expr] = []
+#     aux_vars: List[Var | Expr] = []
+#     x_save = None  # Initialize x_save to avoid unbound variable error
+#     # check if is an expression
+#     if not isinstance(x, Var):
+#         u = var_factory.add_var('u_' + name)
+#         aux_eqs.append((u - x).simplify())
+#         aux_vars.append(u)
+#         x_save = x
+#         x = u
+#
+#     diff_vars_x = [x]
+#     diff_vars_y = [y]
+#     diff_vars = list()
+#     state_eqs = list()
+#     state_vars = list()
+#     init_eqs = dict()
+#     base_var = x
+#     for i in range(1, len(num)):
+#         if i == 1 and create_state:
+#             x_new = var_factory.add_var(f"x_{i}_" + x.name)
+#             state_vars.append(x_new)
+#             # x_save only exists if x was an expression (not a Var)
+#             if 'x_save' in locals():
+#                 state_eqs.append(x_save)
+#             else:
+#                 state_eqs.append(x)  # x is already a Var
+#             diff_vars_x.append(x_new)
+#             base_var = x_new
+#             init_eqs[x_new] = Const(0.0)
+#
+#         else:
+#             if base_var.diff_var is None:
+#                 new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + x.name, base_var=base_var)
+#                 diff_vars.append(new_diff)
+#             diff_vars_x.append(base_var.diff_var)
+#             base_var = base_var.diff_var
+#     base_var = y
+#     for i in range(1, len(den)):
+#         if base_var.diff_var is None:
+#             new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + y.name, base_var=base_var)
+#             diff_vars.append(new_diff)
+#         diff_vars_y.append(base_var.diff_var)
+#         base_var = base_var.diff_var
+#
+#     # Create the diff equation
+#     rhs: Vec = np.array(diff_vars_x) @ np.array(num)
+#     lhs: Vec = np.array(diff_vars_y) @ np.array(den)
+#
+#     block = Block()
+#     block.state_eqs = state_eqs
+#     block.state_vars = state_vars
+#     block.algebraic_vars = [y] + aux_vars
+#     block.algebraic_eqs = [lhs - rhs] + aux_eqs
+#     block.diff_vars = diff_vars
+#     block.init_eqs = init_eqs
+#
+#     return block, y, x
 
 def tf_to_diffblock_with_output(
         var_factory: VarFactory,
@@ -133,6 +294,7 @@ def tf_to_diffblock_with_output(
     state_eqs = list()
     state_vars = list()
     init_eqs = dict()
+    diff_init_eqs = dict()   # ADDED
     base_var = x
     for i in range(1, len(num)):
         if i == 1 and create_state:
@@ -151,6 +313,7 @@ def tf_to_diffblock_with_output(
             if base_var.diff_var is None:
                 new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + x.name, base_var=base_var)
                 diff_vars.append(new_diff)
+                diff_init_eqs[new_diff] = Const(0.0)   # ADDED
             diff_vars_x.append(base_var.diff_var)
             base_var = base_var.diff_var
     base_var = y
@@ -158,6 +321,7 @@ def tf_to_diffblock_with_output(
         if base_var.diff_var is None:
             new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + y.name, base_var=base_var)
             diff_vars.append(new_diff)
+            diff_init_eqs[new_diff] = Const(0.0)   # ADDED
         diff_vars_y.append(base_var.diff_var)
         base_var = base_var.diff_var
 
@@ -172,9 +336,79 @@ def tf_to_diffblock_with_output(
     block.algebraic_eqs = [lhs - rhs] + aux_eqs
     block.diff_vars = diff_vars
     block.init_eqs = init_eqs
+    block.diff_init_eqs = diff_init_eqs   # ADDED
 
     return block, y, x
 
+
+# def tf_to_block_with_states(
+#         var_factory: VarFactory,
+#         num: List[Var | float],
+#         den: List[Var | float],
+#         x: Var | Expr,
+#         y: Var = None, name: Optional[str] = ''):
+#     """
+#     num: numerator coefficients [b0,...,bm]
+#     den: denominator coefficients [a0,...,an], with an != 0
+#     u:   input Var
+#     y:   output Var
+#     """
+#     if len(num) > len(den):
+#         raise ValueError("Transfer function is improper: numerator degree > denominator degree.")
+#     if num[-1] == 0 or den[-1] == 0:
+#         raise ValueError("Leading coefficient of cannot be zero.")
+#
+#     if y is None:
+#         y = var_factory.add_var('y_' + name)
+#
+#     aux_eqs = []
+#     aux_vars = []
+#     # check if x is a expression
+#     if not isinstance(x, Var):
+#         u = var_factory.add_var('u_' + name)
+#         aux_eqs.append(u - x)
+#         aux_vars.append(u)
+#         x = u
+#
+#     # Normalize
+#     den = [c / den[-1] for c in den]
+#     num = [c / den[-1] for c in num]
+#
+#     # States
+#     x_states = [x]
+#     y_states = [y]
+#     y_states.extend([var_factory.add_var(f"y{i}") for i in range(1, len(den))])  # y1,...,yn
+#     x_states.extend([var_factory.add_var(f"x{i}") for i in range(1, len(num))])  # x1,...,xm
+#
+#     # Differential equations (canonical form)
+#     diff_eqs = list()
+#     diff_vars = list()
+#     for i in range(len(y_states) - 1):
+#         if y_states[i].diff_var is None:
+#             dy = var_factory.add_diff_var(f"d_{y_states[i].name}", base_var=y_states[i])
+#             diff_vars.append(dy)
+#         diff_eqs.append(y_states[i + 1] - y_states[i].diff_var)
+#
+#     for i in range(len(num) - 1):
+#         if x_states[i].diff_var is None:
+#             dx = var_factory.add_diff_var(f"d^{i}_{x_states[i].name}", base_var=x_states[i])
+#             diff_vars.append(dx)
+#         diff_eqs.append(x_states[i + 1] - x_states[i].diff_var)
+#
+#         # Last equation: linear combination
+#     last_eq = (
+#             sum(den[i] * y_states[i] for i in range(len(y_states)))
+#             - sum(num[i] * x_states[i] for i in range(len(x_states)))
+#     )
+#     diff_eqs.append(last_eq)
+#
+#     block = Block(
+#         algebraic_vars=y_states + x_states[1:] + aux_vars,
+#         algebraic_eqs=diff_eqs + aux_eqs,
+#     )
+#     block.diff_vars = diff_vars
+#     block.name = 'TF'
+#     return block, y_states[0]
 
 def tf_to_block_with_states(
         var_factory: VarFactory,
@@ -198,6 +432,7 @@ def tf_to_block_with_states(
 
     aux_eqs = []
     aux_vars = []
+    diff_init_eqs = dict()  # ADDED
     # check if x is a expression
     if not isinstance(x, Var):
         u = var_factory.add_var('u_' + name)
@@ -222,12 +457,14 @@ def tf_to_block_with_states(
         if y_states[i].diff_var is None:
             dy = var_factory.add_diff_var(f"d_{y_states[i].name}", base_var=y_states[i])
             diff_vars.append(dy)
+            diff_init_eqs[dy] = Const(0.0)  # ADDED
         diff_eqs.append(y_states[i + 1] - y_states[i].diff_var)
 
     for i in range(len(num) - 1):
         if x_states[i].diff_var is None:
             dx = var_factory.add_diff_var(f"d^{i}_{x_states[i].name}", base_var=x_states[i])
             diff_vars.append(dx)
+            diff_init_eqs[dx] = Const(0.0)  # ADDED
         diff_eqs.append(x_states[i + 1] - x_states[i].diff_var)
 
         # Last equation: linear combination
@@ -242,8 +479,10 @@ def tf_to_block_with_states(
         algebraic_eqs=diff_eqs + aux_eqs,
     )
     block.diff_vars = diff_vars
+    block.diff_init_eqs = diff_init_eqs  # ADDED
     block.name = 'TF'
     return block, y_states[0]
+
 
 
 def tf_to_block2(
@@ -374,6 +613,118 @@ def to_implicit(block: Block, vfactory: VarFactory) -> Block:
 
     return block
 
+# def tf_to_diffblock_with_antiwindup(
+#         var_factory: VarFactory,
+#         num: List[Var | float],
+#         den: List[Var | float],
+#         x: Var,
+#         y: Var = None,
+#         name: Optional[str] = '',
+#         sat_min: Expr = Const(float(-1e6)),
+#         sat_max: Expr = Const(float(1e6)),
+#         multilinear=False,
+#         PI: bool = False):
+#     """
+#     num: numerator coefficients [b0, ..., bm]
+#     den: denominator coefficients [a0, ..., an]
+#     x:   input (Var or Expr)
+#     y:   output Var
+#     sat_min, sat_max: saturation limits for anti-windup
+#     """
+#
+#     if len(num) > len(den):
+#         raise ValueError("Transfer function is improper: numerator degree > denominator degree.")
+#     if num[-1] == 0 or den[-1] == 0:
+#         raise ValueError("Leading coefficient cannot be zero.")
+#
+#     if y is None:
+#         y = var_factory.add_var('y_' + name)
+#
+#     aux_eqs = []
+#     aux_vars = []
+#
+#     # If x is an expression, wrap it in a Var
+#     if not isinstance(x, Var):
+#         u = var_factory.add_var('u_' + name)
+#         aux_eqs.append((u - x).simplify())
+#         aux_vars.append(u)
+#         x = u
+#
+#     diff_vars_x = [x]
+#     diff_vars_y = [y]
+#     diff_vars = []
+#
+#     # Derivative chain for x
+#     base_var = x
+#     for i in range(1, len(num)):
+#         if base_var.diff_var is None:
+#             new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + x.name, base_var=base_var)
+#             diff_vars.append(new_diff)
+#         diff_vars_x.append(x.diff_var)
+#         base_var = x.diff_var
+#
+#     # Derivative chain for y
+#     base_var = y
+#     for i in range(1, len(den)):
+#         if base_var.diff_var is None:
+#             new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + y.name, base_var=base_var)
+#             diff_vars.append(new_diff)
+#         diff_vars_y.append(y.diff_var)
+#         base_var = y.diff_var
+#
+#     # Base equations
+#     rhs = np.array(diff_vars_x) @ np.array(num)
+#     lhs = np.array(diff_vars_y) @ np.array(den)
+#
+#     # -----------------------------------------------------------
+#     # ANTI-WINDUP BY MULTIPLYING ALL COEFFICIENTS BY h
+#     # -----------------------------------------------------------
+#
+#     # TODO: review multilinear implementation
+#     # if not multilinear:
+#     h1 = heaviside(y - sat_min)
+#     h2 = heaviside(sat_max - y)
+#
+#     # TODO: review multilinear implementation
+#     # else:
+#     #     h1, ml_block1 = heaviside(y - sat_min, name=f'h1_{name}')
+#     #     h2, ml_block2 = heaviside(sat_max - y, name=f'h2_{name}')
+#
+#     # Build LHS term-by-term, skipping multiplication on dy
+#     rhs = Const(0.0)
+#     lhs = Const(0.0)
+#     if not PI:
+#         for i, term in enumerate(np.array(den) * np.array(diff_vars_y)):
+#             if i != 1:
+#                 lhs += term
+#         for i, term in enumerate(np.array(num) * np.array(diff_vars_x)):
+#             rhs += term
+#     else:
+#         for i, term in enumerate(np.array(num) * np.array(diff_vars_x)):
+#             rhs += term
+#
+#     f = (rhs - lhs) / Const(den[1])
+#     hf = heaviside(rhs - lhs)
+#     ha = h1 * h2
+#     hb = (1 - h1) * hf
+#     hc = (1 - h2) * (1 - hf)
+#     h = heaviside(ha + hb + hc)
+#     # Differential equation (single equation)
+#     eq_main = (diff_vars_y[1] - h * f).simplify()
+#
+#     block = Block(
+#         name=name,
+#         algebraic_vars=[y] + aux_vars,
+#         algebraic_eqs=[eq_main] + aux_eqs,
+#         diff_vars=diff_vars,
+#     )
+#
+#     # TODO: review multilinear implementation
+#     # if multilinear:
+#     #     block.add(ml_block1)
+#     #     block.add(ml_block2)
+#     return block, y
+
 def tf_to_diffblock_with_antiwindup(
         var_factory: VarFactory,
         num: List[Var | float],
@@ -403,6 +754,7 @@ def tf_to_diffblock_with_antiwindup(
 
     aux_eqs = []
     aux_vars = []
+    diff_init_eqs = dict()  # ADDED
 
     # If x is an expression, wrap it in a Var
     if not isinstance(x, Var):
@@ -421,6 +773,7 @@ def tf_to_diffblock_with_antiwindup(
         if base_var.diff_var is None:
             new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + x.name, base_var=base_var)
             diff_vars.append(new_diff)
+            diff_init_eqs[new_diff] = Const(0.0)  # ADDED
         diff_vars_x.append(x.diff_var)
         base_var = x.diff_var
 
@@ -430,6 +783,7 @@ def tf_to_diffblock_with_antiwindup(
         if base_var.diff_var is None:
             new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + y.name, base_var=base_var)
             diff_vars.append(new_diff)
+            diff_init_eqs[new_diff] = Const(0.0)  # ADDED
         diff_vars_y.append(y.diff_var)
         base_var = y.diff_var
 
@@ -479,6 +833,7 @@ def tf_to_diffblock_with_antiwindup(
         algebraic_eqs=[eq_main] + aux_eqs,
         diff_vars=diff_vars,
     )
+    block.diff_init_eqs = diff_init_eqs  # ADDED
 
     # TODO: review multilinear implementation
     # if multilinear:
