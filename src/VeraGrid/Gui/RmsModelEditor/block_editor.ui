@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1007</width>
-    <height>510</height>
+    <width>1118</width>
+    <height>610</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -249,7 +249,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1007</width>
+     <width>1118</width>
      <height>23</height>
     </rect>
    </property>
@@ -271,6 +271,10 @@
     <bool>false</bool>
    </attribute>
    <addaction name="block_editor_actionCheckModel"/>
+   <addaction name="separator"/>
+   <addaction name="actionCenter"/>
+   <addaction name="actionZoom_out"/>
+   <addaction name="actionZoom_in"/>
   </widget>
   <action name="block_editor_actionCheckModel">
    <property name="icon">
@@ -279,6 +283,42 @@
    </property>
    <property name="text">
     <string>CheckModel</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionCenter">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/resize.png</normaloff>:/Icons/icons/resize.png</iconset>
+   </property>
+   <property name="text">
+    <string>Center</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionZoom_in">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/zoom_in.png</normaloff>:/Icons/icons/zoom_in.png</iconset>
+   </property>
+   <property name="text">
+    <string>Zoom in</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionZoom_out">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/zoom_out.png</normaloff>:/Icons/icons/zoom_out.png</iconset>
+   </property>
+   <property name="text">
+    <string>Zoom out</string>
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::NoRole</enum>

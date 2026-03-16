@@ -7,14 +7,15 @@ from __future__ import annotations
 
 import uuid
 import copy
+import re
 from enum import Enum
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Set
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
                                QDialog, QVBoxLayout, QDialogButtonBox, QLabel, QListWidget, QWidget,
                                QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QDoubleSpinBox, QTableWidget, QTableWidgetItem,
-                               QColorDialog)
+                               QColorDialog, QPlainTextEdit)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter, QIcon, QStandardItemModel, QStandardItem,
                            QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import Qt, QPointF, Signal
@@ -30,7 +31,9 @@ from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.RmsModelEditor.block_editor import Ui_BlockEditorWindow
-from VeraGridEngine.Utils.Symbolic.symbolic import symbolic_to_string, Expr, Var, Const
+from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
+                                                    get_symbolic_parser_function_names,
+                                                    Expr, Var, Const, Comparison)
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block
@@ -243,6 +246,48 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     target_block.event_dict = source_clone.event_dict
     target_block.mode_dict = source_clone.mode_dict
     target_block.diagram = source_clone.diagram
+
+
+def build_block_symbol_namespace(block: Block) -> Dict[str, Expr]:
+    """
+    Build the symbol namespace used to parse textual expressions for a block.
+
+    :param block:
+    :return:
+    """
+    namespace: Dict[str, Expr] = dict()
+    block_item: Block
+    var: Var
+
+    for block_item in block.get_all_blocks():
+        for var in block_item.algebraic_vars:
+            namespace[var.name] = var
+
+        for var in block_item.state_vars:
+            namespace[var.name] = var
+
+        for var in block_item.diff_vars:
+            namespace[var.name] = var
+
+        for var in block_item.in_vars:
+            namespace[var.name] = var
+
+        for var in block_item.out_vars:
+            namespace[var.name] = var
+
+        for var in block_item.parameters.keys():
+            namespace[var.name] = var
+
+        for var in block_item.event_dict.keys():
+            namespace[var.name] = var
+
+        for var in block_item.mode_dict.keys():
+            namespace[var.name] = var
+
+        for var in block_item.init_values.keys():
+            namespace[var.name] = var
+
+    return namespace
 
 
 class ResizeHandle(QGraphicsRectItem):
@@ -624,6 +669,217 @@ class ParameterEditorDialog(QDialog):
             pass
 
 
+class ExpressionTextEditorDialog(QDialog):
+    """
+    Dialog used to inspect or edit a symbolic expression as text.
+    """
+
+    def __init__(self,
+                 expression_text: str,
+                 symbol_namespace: Dict[str, Expr],
+                 parent: Optional[QtWidgets.QWidget] = None):
+        """
+        Build the expression text editor dialog.
+
+        :param expression_text:
+        :param symbol_namespace:
+        :param parent:
+        """
+        super().__init__(parent)
+        self.setWindowTitle("Edit Expression")
+        self.resize(520, 260)
+        self.symbol_namespace: Dict[str, Expr] = symbol_namespace
+        self.validation_label: QLabel
+        self.button_box: QDialogButtonBox
+        self.ok_button: QtWidgets.QPushButton
+        self.highlighter: ExpressionValidationHighlighter
+
+        layout: QVBoxLayout = QVBoxLayout(self)
+        info_label: QLabel = QLabel("Edit the symbolic expression text:")
+        layout.addWidget(info_label)
+
+        self.text_editor: QPlainTextEdit = QPlainTextEdit(self)
+        editor_font: QtGui.QFont = QtGui.QFont("DejaVu Sans Mono", 10)
+        self.text_editor.setFont(editor_font)
+        self.text_editor.setPlainText(expression_text)
+        self.text_editor.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+        layout.addWidget(self.text_editor)
+
+        self.validation_label = QLabel("")
+        layout.addWidget(self.validation_label)
+
+        self.button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+        layout.addWidget(self.button_box)
+
+        self.ok_button = self.button_box.button(QDialogButtonBox.StandardButton.Ok)
+        self.highlighter = ExpressionValidationHighlighter(
+            document=self.text_editor.document(),
+            symbol_names=set(self.symbol_namespace.keys()),
+            function_names=set(get_symbolic_parser_function_names())
+        )
+        self.text_editor.textChanged.connect(self.update_validation_state)
+        self.update_validation_state()
+
+    def get_expression_text(self) -> str:
+        """
+        Return the edited expression text.
+
+        :return:
+        """
+        return self.text_editor.toPlainText().strip()
+
+    def update_validation_state(self) -> None:
+        """
+        Validate the current expression text and update the dialog status widgets.
+
+        :return:
+        """
+        expression_text: str = self.get_expression_text()
+        unknown_identifiers: List[str] = self.highlighter.get_unknown_identifiers(expression_text)
+
+        if len(unknown_identifiers) > 0:
+            self.validation_label.setText(
+                "Unknown symbols: " + ", ".join(sorted(set(unknown_identifiers)))
+            )
+            self.validation_label.setStyleSheet("color: #b42318;")
+            self.ok_button.setEnabled(False)
+        else:
+            try:
+                string_to_symbolic(expression_text, self.symbol_namespace)
+                self.validation_label.setText("Expression is valid.")
+                self.validation_label.setStyleSheet("color: #027a48;")
+                self.ok_button.setEnabled(True)
+            except Exception as exc:
+                self.validation_label.setText(str(exc))
+                self.validation_label.setStyleSheet("color: #b42318;")
+                self.ok_button.setEnabled(False)
+
+
+class ExpressionValidationHighlighter(QtGui.QSyntaxHighlighter):
+    """
+    Syntax highlighter that validates symbolic identifiers against the selected block namespace.
+    """
+
+    IDENTIFIER_PATTERN = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
+
+    def __init__(self,
+                 document: QtGui.QTextDocument,
+                 symbol_names: Set[str],
+                 function_names: Set[str]):
+        """
+        Build the expression validation highlighter.
+
+        :param document:
+        :param symbol_names:
+        :param function_names:
+        """
+        super().__init__(document)
+        self.symbol_names: Set[str] = symbol_names
+        self.function_names: Set[str] = function_names
+        self.ignored_tokens: Set[str] = {"True", "False", "None"}
+        self.valid_symbol_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
+        self.function_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
+        self.invalid_format: QtGui.QTextCharFormat = QtGui.QTextCharFormat()
+
+        self.valid_symbol_format.setFontWeight(QtGui.QFont.Weight.Bold)
+        self.function_format.setForeground(QColor("#0b5394"))
+        self.invalid_format.setForeground(QColor("#b42318"))
+
+    def highlightBlock(self, text: str) -> None:
+        """
+        Highlight one text block according to identifier validity.
+
+        :param text:
+        :return:
+        """
+        match: re.Match[str]
+        token: str
+        start_pos: int
+        token_length: int
+        classification: str
+
+        for match in self.IDENTIFIER_PATTERN.finditer(text):
+            token = match.group(0)
+            start_pos = match.start()
+            token_length = match.end() - match.start()
+            classification = self.classify_identifier(text, token, match.end())
+
+            if classification == "valid_symbol":
+                self.setFormat(start_pos, token_length, self.valid_symbol_format)
+            elif classification == "valid_function":
+                self.setFormat(start_pos, token_length, self.function_format)
+            elif classification == "invalid":
+                self.setFormat(start_pos, token_length, self.invalid_format)
+            else:
+                pass
+
+    def classify_identifier(self, text: str, token: str, token_end: int) -> str:
+        """
+        Classify an identifier as a valid symbol, a valid function, or invalid.
+
+        :param text:
+        :param token:
+        :param token_end:
+        :return:
+        """
+        if self.is_function_call(text, token_end):
+            if token in self.function_names:
+                return "valid_function"
+            else:
+                return "invalid"
+        elif token in self.symbol_names:
+            return "valid_symbol"
+        elif token in self.ignored_tokens:
+            return "ignored"
+        else:
+            return "invalid"
+
+    def is_function_call(self, text: str, token_end: int) -> bool:
+        """
+        Check whether an identifier is followed by a function-call parenthesis.
+
+        :param text:
+        :param token_end:
+        :return:
+        """
+        current_index: int = token_end
+
+        while current_index < len(text) and text[current_index].isspace():
+            current_index += 1
+
+        if current_index < len(text):
+            return text[current_index] == "("
+        else:
+            return False
+
+    def get_unknown_identifiers(self, text: str) -> List[str]:
+        """
+        Return the list of currently unknown identifiers in the editor text.
+
+        :param text:
+        :return:
+        """
+        unknown_identifiers: List[str] = list()
+        line_text: str
+        match: re.Match[str]
+        token: str
+
+        for line_text in text.splitlines():
+            for match in self.IDENTIFIER_PATTERN.finditer(line_text):
+                token = match.group(0)
+
+                if self.classify_identifier(line_text, token, match.end()) == "invalid":
+                    unknown_identifiers.append(token)
+                else:
+                    pass
+
+        return unknown_identifiers
+
+
 class BlockParameterKind(Enum):
     """
     Parameter row kinds shown in the side table.
@@ -802,7 +1058,7 @@ class BlockParametersTableModel(QtCore.QAbstractTableModel):
                         name=var.name,
                         kind=BlockParameterKind.EXPRESSION,
                         key_var=var,
-                        value=str(expr),
+                        value=expr,
                         editable=False,
                         value_type=str
                     ))
@@ -820,6 +1076,39 @@ class BlockParametersTableModel(QtCore.QAbstractTableModel):
             pass
 
         return rows
+
+    def get_row(self, row_index: int) -> BlockParameterRow | None:
+        """
+        Return the row descriptor for a given table row.
+
+        :param row_index:
+        :return:
+        """
+        if 0 <= row_index < len(self.rows):
+            return self.rows[row_index]
+        else:
+            return None
+
+    def update_expression_row(self, row_index: int, expression: Expr) -> None:
+        """
+        Replace an expression row value and propagate it into the selected block.
+
+        :param row_index:
+        :param expression:
+        :return:
+        """
+        row_data: BlockParameterRow | None = self.get_row(row_index)
+        top_left: QtCore.QModelIndex
+        bottom_right: QtCore.QModelIndex
+
+        if row_data is not None and self.block is not None:
+            self.block.event_dict[row_data.key_var] = expression
+            row_data.value = expression
+            top_left = self.index(row_index, 1)
+            bottom_right = self.index(row_index, 1)
+            self.dataChanged.emit(top_left, bottom_right, [QtCore.Qt.ItemDataRole.DisplayRole, QtCore.Qt.ItemDataRole.EditRole])
+        else:
+            pass
 
     def get_python_value_type(self, value: Any) -> type:
         """
@@ -880,7 +1169,12 @@ class BlockParametersTableModel(QtCore.QAbstractTableModel):
                 if index.column() == 0:
                     return row_data.name
                 elif index.column() == 1:
-                    return "" if row_data.value is None else row_data.value
+                    if row_data.value is None:
+                        return ""
+                    elif row_data.kind == BlockParameterKind.EXPRESSION and isinstance(row_data.value, Expr):
+                        return symbolic_to_string(row_data.value)
+                    else:
+                        return row_data.value
                 elif index.column() == 2:
                     return row_data.kind.value
                 else:
@@ -975,6 +1269,8 @@ class BlockParametersTableModel(QtCore.QAbstractTableModel):
                 return False
         else:
             return False
+
+
 class InspectModel(QWidget):
     """
     InspectModel
@@ -1413,35 +1709,11 @@ class BlockItem(QGraphicsRectItem):
 
     def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
         """
-        Open the parameter editor for the current block.
+        Keep double click on a regular block as a passive scene interaction.
 
         :param event:
         :return:
         """
-        if self.subsys is not None:
-            current_scene: QGraphicsScene | None = self.scene()
-            dialog: ParameterEditorDialog = ParameterEditorDialog(
-                var_factory=self.var_factory,
-                event_dict=self.subsys.event_dict,
-                parameters_dict=self.subsys.parameters,
-                parent=None
-            )
-
-            if dialog.exec() == QDialog.DialogCode.Accepted:
-                self.subsys.event_dict = dialog.event_dict
-                self.subsys.parameters = dialog.parameters
-
-                if isinstance(current_scene, DiagramScene):
-                    current_scene.editor.on_scene_selection_changed()
-                else:
-                    pass
-            else:
-                pass
-
-            event.accept()
-        else:
-            pass
-
         super().mouseDoubleClickEvent(event)
 
     def resize_block(self, width: float, height: float) -> None:
@@ -1562,6 +1834,8 @@ class GraphicsView(QGraphicsView):
     Graphics view with zoom and middle-button pan.
     """
 
+    ZOOM_FACTOR: float = 1.15
+
     def __init__(self, scene: QGraphicsScene):
         """
         Build the graphics view.
@@ -1584,8 +1858,7 @@ class GraphicsView(QGraphicsView):
         :return:
         """
         zoom_in: bool = event.angleDelta().y() > 0
-        zoom_factor: float = 1.15 if zoom_in else 1 / 1.15
-        self.scale(zoom_factor, zoom_factor)
+        self.apply_zoom(zoom_in)
 
     def mousePressEvent(self, event: QtGui.QMouseEvent) -> None:
         """
@@ -1634,6 +1907,80 @@ class GraphicsView(QGraphicsView):
         else:
             super().mouseReleaseEvent(event)
             self.setDragMode(QGraphicsView.DragMode.NoDrag)
+
+    def apply_zoom(self, zoom_in: bool) -> None:
+        """
+        Apply a zoom step to the view.
+
+        :param zoom_in:
+        :return:
+        """
+        zoom_factor: float
+
+        if zoom_in:
+            zoom_factor = self.ZOOM_FACTOR
+        else:
+            zoom_factor = 1.0 / self.ZOOM_FACTOR
+
+        self.scale(zoom_factor, zoom_factor)
+
+    def zoom_in(self) -> None:
+        """
+        Zoom into the current view.
+
+        :return:
+        """
+        self.apply_zoom(True)
+
+    def zoom_out(self) -> None:
+        """
+        Zoom out from the current view.
+
+        :return:
+        """
+        self.apply_zoom(False)
+
+    def center_items(self) -> None:
+        """
+        Fit the view to the selected block items or, if none are selected, to all block items.
+
+        :return:
+        """
+        target_items: List[QGraphicsItem]
+        target_rect: QtCore.QRectF
+        item: QGraphicsItem
+        block_items: List[QGraphicsItem] = list()
+        margin_x: float
+        margin_y: float
+
+        target_items = self.scene().selectedItems()
+
+        if len(target_items) == 0:
+            for item in self.scene().items():
+                if isinstance(item, (BlockItem, GenericBlockItem)):
+                    block_items.append(item)
+                else:
+                    pass
+
+            target_items = block_items
+        else:
+            target_items = [item for item in target_items if isinstance(item, (BlockItem, GenericBlockItem))]
+
+        if len(target_items) > 0:
+            target_rect = QtCore.QRectF()
+
+            for item in target_items:
+                if target_rect.isNull():
+                    target_rect = item.sceneBoundingRect()
+                else:
+                    target_rect = target_rect.united(item.sceneBoundingRect())
+
+            margin_x = max(target_rect.width() * 0.08, 30.0)
+            margin_y = max(target_rect.height() * 0.08, 30.0)
+            target_rect = target_rect.adjusted(-margin_x, -margin_y, margin_x, margin_y)
+            self.fitInView(target_rect, Qt.AspectRatioMode.KeepAspectRatio)
+        else:
+            pass
 
 
 class DiagramScene(QGraphicsScene):
@@ -2030,6 +2377,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.splitter.setStretchFactor(0, 1)
         self.ui.splitter.setStretchFactor(1, 10)
         self.ui.block_editor_actionCheckModel.triggered.connect(self.open_inspect_dialog)
+        self.ui.actionCenter.triggered.connect(self.center_view_on_items)
+        self.ui.actionZoom_in.triggered.connect(self.zoom_in_view)
+        self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
 
         self.var_factory = var_factory
         # Todo: is this correct?
@@ -2102,6 +2452,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.parametersTableView.verticalHeader().setVisible(False)
         self.ui.parametersTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.ui.parametersTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        self.ui.parametersTableView.doubleClicked.connect(self.on_parameters_table_double_clicked)
 
         self.view: GraphicsView = GraphicsView(self.scene)
         self.ui.verticalLayout_3.removeWidget(self.ui.graphicsView)
@@ -2726,6 +3077,94 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 return None
         else:
             return None
+
+    def on_parameters_table_double_clicked(self, index: QtCore.QModelIndex) -> None:
+        """
+        Open the expression text editor when the user double-clicks an expression row.
+
+        :param index:
+        :return:
+        """
+        row_data: BlockParameterRow | None = self.parameters_table_model.get_row(index.row())
+
+        if row_data is not None:
+            if row_data.kind == BlockParameterKind.EXPRESSION and index.column() == 1:
+                self.open_expression_row_editor(index.row())
+            else:
+                pass
+        else:
+            pass
+
+    def open_expression_row_editor(self, row_index: int) -> None:
+        """
+        Open the expression text editor for a parameter-table row.
+
+        :param row_index:
+        :return:
+        """
+        row_data: BlockParameterRow | None = self.parameters_table_model.get_row(row_index)
+        expression_text: str
+        dialog: ExpressionTextEditorDialog
+        symbol_namespace: Dict[str, Expr]
+        parsed_expression: Expr | Comparison
+        expression_value: Expr
+
+        if row_data is not None and self.parameters_table_model.block is not None:
+            if isinstance(row_data.value, Expr):
+                expression_text = symbolic_to_string(row_data.value)
+                symbol_namespace = build_block_symbol_namespace(self.parameters_table_model.block)
+                dialog = ExpressionTextEditorDialog(
+                    expression_text=expression_text,
+                    symbol_namespace=symbol_namespace,
+                    parent=self
+                )
+
+                if dialog.exec() == QDialog.DialogCode.Accepted:
+                    try:
+                        parsed_expression = string_to_symbolic(dialog.get_expression_text(), symbol_namespace)
+
+                        if isinstance(parsed_expression, Comparison):
+                            expression_value = parsed_expression.to_expression()
+                        else:
+                            expression_value = parsed_expression
+
+                        self.parameters_table_model.update_expression_row(row_index, expression_value)
+                    except Exception as exc:
+                        QtWidgets.QMessageBox.warning(
+                            self,
+                            "Expression Error",
+                            str(exc)
+                        )
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
+
+    def center_view_on_items(self) -> None:
+        """
+        Center the graphics view on the current selection or, if none exists, on all items.
+
+        :return:
+        """
+        self.view.center_items()
+
+    def zoom_in_view(self) -> None:
+        """
+        Zoom the graphics view in.
+
+        :return:
+        """
+        self.view.zoom_in()
+
+    def zoom_out_view(self) -> None:
+        """
+        Zoom the graphics view out.
+
+        :return:
+        """
+        self.view.zoom_out()
 
     def on_scene_selection_changed(self) -> None:
         """
