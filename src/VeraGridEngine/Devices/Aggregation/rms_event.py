@@ -4,14 +4,8 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from typing import Union, Any, Tuple
-import numpy as np
-
 from VeraGridEngine import SubObjectType
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCProp
-#
-# from VeraGridEngine.Devices.Branches import *
-# from VeraGridEngine.Devices.Injections import *
-
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
@@ -95,16 +89,3 @@ class RmsEvent(PointerDeviceParent):
     @group.setter
     def group(self, val: RmsEventsGroup):
         self._group = val
-
-    @property
-    def category(self):
-        """
-        Display the group category
-        :return:
-        """
-        return self.group.category
-
-    @category.setter
-    def category(self, val):
-        # The category is set through the group, so no implementation here
-        pass

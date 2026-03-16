@@ -40,6 +40,7 @@ class FullModel(IdentifiedObject):
                       CgmesProfileType.SV]),
     )
 
+    __slots__ = ('scenarioTime', 'created', 'version', 'profile', 'modelingAuthoritySet', 'DependentOn', 'longDependentOnPF', 'Supersedes')
     def __init__(self, rdfid, tpe):
         IdentifiedObject.__init__(self, rdfid, tpe)
 

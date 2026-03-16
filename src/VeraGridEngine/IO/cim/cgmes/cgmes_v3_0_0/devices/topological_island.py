@@ -16,6 +16,7 @@ class TopologicalIsland(IdentifiedObject):
         CgmesProperty(property_name='AngleRefTopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The angle reference for the island.   Normally there is one TopologicalNode that is selected as the angle reference for each island.   Other reference schemes exist, so the association is typically optional.''', profiles=[]),
         CgmesProperty(property_name='TopologicalNodes', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''A topological node belongs to a topological island.''', profiles=[]),
     )
+    __slots__ = ('AngleRefTopologicalNode', 'TopologicalNodes')
     def __init__(self, rdfid='', tpe='TopologicalIsland'):
         IdentifiedObject.__init__(self, rdfid, tpe)
 

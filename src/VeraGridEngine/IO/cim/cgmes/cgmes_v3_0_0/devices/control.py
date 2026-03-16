@@ -23,6 +23,7 @@ class Control(IOPoint):
         CgmesProperty(property_name='unitSymbol', class_type=UnitSymbol, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The unit of measure of the controlled quantity.''', profiles=[]),
         CgmesProperty(property_name='PowerSystemResource', class_type='PowerSystemResource', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Regulating device governed by this control output.''', profiles=[]),
     )
+    __slots__ = ('controlType', 'operationInProgress', 'timeStamp', 'unitMultiplier', 'unitSymbol', 'PowerSystemResource')
     def __init__(self, rdfid='', tpe='Control'):
         IOPoint.__init__(self, rdfid, tpe)
 

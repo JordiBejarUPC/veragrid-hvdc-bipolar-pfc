@@ -15,7 +15,7 @@ from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Branches.line import Line
 from plot_emt_results import plot_ilines, plot_generators, plot_isource, plot_voltages, plot_v_i
-from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_generator_emt_template
+from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
@@ -58,9 +58,9 @@ bus2 = Bus(name="Bus2", Vnom=Vbase)
 
 # Asignar templates simbólicos a los buses
 bus1_template = get_bus_emt_template(grid.rms_var_factory)
-bus1.emt_model.model = bus1_template.block
+bus1.emt_model = bus1_template.block
 bus2_template = get_bus_emt_template(grid.rms_var_factory)
-bus2.emt_model.model = bus2_template.block
+bus2.emt_model = bus2_template.block
 
 # --- LÍNEA DE TRANSMISIÓN ---
 line0 = Line(name="line 1-2", bus_from=bus1, bus_to=bus2, rate=300, length=l1)
@@ -87,11 +87,11 @@ line0.apply_template(tower, grid.Sbase, grid.fBase)
 
 # --- Generador ---
 gen1 = Generator(name="Gen1", freq=50, Snom=grid.Sbase)
-gen1_template = get_generator_emt_template()
-gen1.emt_model.model = gen1_template.block
+gen1_template = get_simple_generator_emt_template()
+gen1.emt_model = gen1_template.block
 
-gen1_mdl = gen1.emt_model.model
-bus1_mdl = bus1.emt_model.model
+gen1_mdl = gen1.emt_model
+bus1_mdl = bus1.emt_model
 # Conectar puertos
 gen1_mdl.connect(gen1_mdl.in_vars, bus1_mdl.out_vars)
 
@@ -250,7 +250,7 @@ df_hist.to_csv("hist_lines_results.csv", index=False)
 # 5) Variables de Estado (x)
 x_cols = []
 for gen_idx, gen in enumerate(grid.get_generators(), start=1):
-    model = gen.emt_model.model
+    model = gen.emt_model
     var_names = model.state_vars + model.algebraic_vars
     for name in var_names:
         x_cols.append(f"{name}_Gen{gen_idx}")
@@ -260,7 +260,7 @@ df_x.to_csv("x_gen_results.csv", index=False)
 # 6) Derivadas (dx)
 dx_cols = []
 for gen_idx, gen in enumerate(grid.get_generators(), start=1):
-    model = gen.emt_model.model
+    model = gen.emt_model
     for name in model.state_vars:
         dx_cols.append(f"d{name}_Gen{gen_idx}")
 df_dx = pd.concat([time_df, pd.DataFrame(dx, columns=dx_cols)], axis=1)

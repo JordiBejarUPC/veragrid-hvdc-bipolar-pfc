@@ -14,6 +14,7 @@ class DCShunt(DCConductingEquipment):
 		CgmesProperty(property_name='resistance', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Resistance (real part of impedance).''', profiles=[]),
 		CgmesProperty(property_name='ratedUdc', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[]),
 	)
+	__slots__ = ('capacitance', 'resistance', 'ratedUdc')
 	def __init__(self, rdfid='', tpe='DCShunt'):
 		DCConductingEquipment.__init__(self, rdfid, tpe)
 

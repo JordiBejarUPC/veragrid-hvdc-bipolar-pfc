@@ -106,19 +106,19 @@ genqec1_mdl = get_complete_generator_template(grid.rms_var_factory).block
 
 # connection with buses
 
-genqec1_mdl.connect([genqec1_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
-genqec1_mdl.connect([genqec1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
+genqec1_mdl.connect([genqec1_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+genqec1_mdl.connect([genqec1_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
+line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-line0_mdl.connect([line0_mdl.in_vars[2]], [bus1.rms_model.model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[3]], [bus1.rms_model.model.out_vars[1]])
+line0_mdl.connect([line0_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
+line0_mdl.connect([line0_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
 
 u_gov = find_name_in_block("u_gov1", genqec1_mdl)
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
 # external mapping
 big_gen1 = Block(children=[genqec1_mdl])
@@ -247,7 +247,7 @@ Tm = genqec1_mdl.out_vars[0]
 u_cos = find_name_in_block("u_cos", genqec1_mdl)
 u_sin = find_name_in_block("u_sin", genqec1_mdl)
 delta_idx = problem.get_var_idx(find_name_in_block("delta", genqec1_mdl))
-vm_idx =  problem.get_var_idx(bus0.rms_model.model.out_vars[1])
+vm_idx =  problem.get_var_idx(bus0.rms_model.out_vars[1])
 delta_values = y[:, delta_idx]
 vm_values = y[:, vm_idx]
 cos_x = np.cos(vm_values - delta_values)

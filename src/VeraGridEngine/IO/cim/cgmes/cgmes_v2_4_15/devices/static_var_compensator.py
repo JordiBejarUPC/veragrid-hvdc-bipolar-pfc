@@ -17,6 +17,7 @@ class StaticVarCompensator(RegulatingCondEq):
 		CgmesProperty(property_name='voltageSetPoint', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[]),
 		CgmesProperty(property_name='q', class_type=float, multiplier=UnitMultiplier.M, unit=UnitSymbol.VAr, description='''Product of RMS value of the voltage and the RMS value of the quadrature component of the current.''', profiles=[]),
 	)
+	__slots__ = ('capacitiveRating', 'inductiveRating', 'slope', 'sVCControlMode', 'voltageSetPoint', 'q')
 	def __init__(self, rdfid='', tpe='StaticVarCompensator'):
 		RegulatingCondEq.__init__(self, rdfid, tpe)
 

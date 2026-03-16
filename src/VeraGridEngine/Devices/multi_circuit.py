@@ -1635,7 +1635,7 @@ class MultiCircuit(Assets):
             bus_block = Block(children=[], in_vars=[])
             for dev_type, dev_list in region.items():
                 for elm in dev_list:
-                    elm_mdl = elm.rms_model.model
+                    elm_mdl = elm.rms_model
                     bus_block.add(elm_mdl)
             syst_blocks[bus] = bus_block
 
@@ -2343,7 +2343,12 @@ class MultiCircuit(Assets):
 
             if elm_from_base is None:
                 # not found in the base, add it
-                action = ActionType.Add
+                new_element = new_elm.copy(forced_new_idtag=False)
+                new_element.action = ActionType.Add
+                dgrid.add_element(obj=new_element)
+                logger.add_info(msg="Device added in the diff circuit",
+                                device_class=new_element.device_type.value,
+                                device_property=new_element.name, )
 
             elif type(new_elm) == type(elm_from_base):
                 # check differences
@@ -2353,20 +2358,23 @@ class MultiCircuit(Assets):
                     detailed_profile_comparison=detailed_profile_comparison,
                     nt=nt
                 )
+
+                if action != ActionType.NoAction:
+                    new_element = new_elm.copy(forced_new_idtag=False)
+                    new_element.action = action
+                    dgrid.add_element(obj=new_element)
+                    for prop in changed_props:
+                        new_element.set_diff_change(property_name=prop.name, selected=True)
+                    logger.add_info(msg="Device added in the diff circuit",
+                                    device_class=new_element.device_type.value,
+                                    device_property=new_element.name, )
+
             else:
                 # Same iftag, different classes, probably some consequence of CGMES
                 logger.add_info(msg="Same idtag, different types",
                                 device_class=new_elm.device_type.value,
                                 device_property=new_elm.name,
                                 expected_value=elm_from_base.device_type.value)
-
-            if action != ActionType.NoAction:
-                new_element = new_elm.copy(forced_new_idtag=False)
-                new_element.action = action
-                dgrid.add_element(obj=new_element)
-                logger.add_info(msg="Device added in the diff circuit",
-                                device_class=new_element.device_type.value,
-                                device_property=new_element.name, )
 
         # --------------------------------------------------------------------------------------------------------------
         # Pass 2: compare base with this grid to discover deleted elements
@@ -3239,19 +3247,14 @@ class MultiCircuit(Assets):
         :return:
         """
         logger = Logger()
-        for elm in self.buses:
-            if elm.rms_model.model.empty():
-                logger.add_error("Missing RMS model",
-                                 device_class=elm.device_type.value,
-                                 device=elm.name)
 
         for elm in self.get_branches_iter():
-            if elm.rms_model.model.empty():
+            if elm.rms_model.empty():
                 logger.add_error("Missing RMS model",
                                  device_class=elm.device_type.value,
                                  device=elm.name)
         for elm in self.get_injection_devices_iter():
-            if elm.rms_model.model.empty():
+            if elm.rms_model.empty():
                 logger.add_error("Missing RMS model",
                                  device_class=elm.device_type.value,
                                  device=elm.name)

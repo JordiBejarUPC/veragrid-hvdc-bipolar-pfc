@@ -1045,8 +1045,8 @@ def fill_generator_parent(
     data.pmin[k] = elm.get_Pmin_at(t_idx)
 
     if elm.use_reactive_power_curve:
-        data.qmin[k] = elm.q_curve.get_qmin(data.p[i])
-        data.qmax[k] = elm.q_curve.get_qmax(data.p[i])
+        data.qmin[k] = elm.q_curve.get_qmin(data.p[k])
+        data.qmax[k] = elm.q_curve.get_qmax(data.p[k])
     else:
         data.qmin[k] = elm.get_Qmin_at(t_idx)
         data.qmax[k] = elm.get_Qmax_at(t_idx)

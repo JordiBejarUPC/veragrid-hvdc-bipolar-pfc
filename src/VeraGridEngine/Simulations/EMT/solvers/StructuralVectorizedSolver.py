@@ -6,7 +6,6 @@
 from __future__ import annotations
 
 from typing import Tuple, Callable, List, Any, Dict, Union, Set
-import uuid
 import time
 import hashlib
 
@@ -17,10 +16,24 @@ from scipy.linalg import lu_factor, lu_solve
 from scipy.sparse.linalg import splu, SuperLU
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, Const, BinOp, UnOp, Func
+from VeraGridEngine.Utils.Symbolic.diagnostic import (
+    NewtonDiagnosticsConfig,
+    NewtonSolveContext,
+    dense_lstsq_fallback,
+    maybe_apply_backtracking,
+    maybe_check_index1,
+    sparse_lsqr_fallback,
+    with_newton_diagnostics,
+)
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
-from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler, MatrixVectorizedCompiler
+from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler, MatrixVectorizedCompiler, _compile_to_file
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.basic_structures import Vec, Mat
+
+
+DenseFactorization = Tuple[Any, Any]
+DenseSolveBundle = Tuple[DenseFactorization, np.ndarray]
+SparseSolveBundle = Tuple[SuperLU, csc_matrix]
 
 
 # ==============================================================================
@@ -57,7 +70,7 @@ def _canonicalize_node(
         runtime_slots: Dict[int, str],
         param_slots: Dict[int, str],
         found_runtime_vars_ordered: List[Var],
-        seen_runtime_nodes: Set[int]
+        seen_runtime_uids: Set[int]
 ) -> str:
     """
     Canonicalizes an expression while distinguishing runtime variables from parameters.
@@ -73,16 +86,16 @@ def _canonicalize_node(
             if target_uid not in runtime_slots:
                 runtime_slots[target_uid] = f"__RVAR_{len(runtime_slots)}__"
 
-            node_id: int = id(node)
-            if node_id not in seen_runtime_nodes:
-                seen_runtime_nodes.add(node_id)
+            if target_uid not in seen_runtime_uids:
+                seen_runtime_uids.add(target_uid)
                 found_runtime_vars_ordered.append(node)
 
             return runtime_slots[target_uid]
 
         elif target_uid in param_uids:
             if target_uid not in param_slots:
-                param_slots[target_uid] = f"__PARAM_{len(param_slots)}__"
+                param_name: str = getattr(node, 'name', f'uid_{target_uid}')
+                param_slots[target_uid] = f"__PARAM_{param_name}_{target_uid}__"
 
             return param_slots[target_uid]
 
@@ -99,20 +112,24 @@ def _canonicalize_node(
         left_str: str = _canonicalize_node(
             node.left, runtime_uids, param_uids,
             runtime_slots, param_slots,
-            found_runtime_vars_ordered, seen_runtime_nodes
+            found_runtime_vars_ordered, seen_runtime_uids
         )
         right_str: str = _canonicalize_node(
             node.right, runtime_uids, param_uids,
             runtime_slots, param_slots,
-            found_runtime_vars_ordered, seen_runtime_nodes
+            found_runtime_vars_ordered, seen_runtime_uids
         )
+
+        if node.op in ['+', '*'] and left_str > right_str:
+            left_str, right_str = right_str, left_str
+
         return f"({left_str}{node.op}{right_str})"
 
     elif isinstance(node, UnOp):
         op_str: str = _canonicalize_node(
             node.operand, runtime_uids, param_uids,
             runtime_slots, param_slots,
-            found_runtime_vars_ordered, seen_runtime_nodes
+            found_runtime_vars_ordered, seen_runtime_uids
         )
         return f"{node.op}({op_str})"
 
@@ -120,7 +137,7 @@ def _canonicalize_node(
         arg_str: str = _canonicalize_node(
             node.arg, runtime_uids, param_uids,
             runtime_slots, param_slots,
-            found_runtime_vars_ordered, seen_runtime_nodes
+            found_runtime_vars_ordered, seen_runtime_uids
         )
         return f"{node.op}({arg_str})"
 
@@ -140,7 +157,7 @@ def canonicalize_expression(
     runtime_slots: Dict[int, str] = dict()
     param_slots: Dict[int, str] = dict()
     found_runtime_vars_ordered: List[Var] = list()
-    seen_runtime_nodes: Set[int] = set()
+    seen_runtime_uids: Set[int] = set()
 
     canonical_str: str = _canonicalize_node(
         node=expr,
@@ -149,7 +166,7 @@ def canonicalize_expression(
         runtime_slots=runtime_slots,
         param_slots=param_slots,
         found_runtime_vars_ordered=found_runtime_vars_ordered,
-        seen_runtime_nodes=seen_runtime_nodes
+        seen_runtime_uids=seen_runtime_uids
     )
     return canonical_str, found_runtime_vars_ordered
 
@@ -163,25 +180,27 @@ def _compile_fused_residual(kernels_data: List[Dict[str, Any]]) -> Callable[...,
     :return: A Numba JIT compiled fused function.
     :rtype: Callable[..., Any]
     """
-    namespace: Dict[str, Any] = dict()
-    namespace['np'] = np
-    namespace['nb'] = nb
-
     lines: List[str] = list()
-    lines.append("def fused_residual_kernel(states, params, history, d_history, h, args, out, history2=None):")
+    signature_payload = "|".join(
+        f"{i}:{list(k_data['target'])}:{tuple(k_data['indices'].shape)}"
+        for i, k_data in enumerate(kernels_data)
+    )
+    func_name = f"fused_residual_kernel_{hashlib.md5(signature_payload.encode()).hexdigest()[:12]}"
+
+    lines.append(f"def {func_name}(states, params, history, d_history, h, args, out, history2=None):")
     lines.append("    out[:] = 0.0")
 
     for i, k_data in enumerate(kernels_data):
-        func_key: str = f"func_{i}"
-        namespace[func_key] = k_data['func']
-
         lines.append(f"    target_{i} = args[{2 * i}]")
         lines.append(f"    indices_{i} = args[{2 * i + 1}]")
-        lines.append(f"    r_part_{i} = {func_key}(states, params, history, d_history, h, indices_{i}, history2)")
+        lines.append(f"    r_part_{i} = func_{i}(states, params, history, d_history, h, indices_{i}, history2)")
         lines.append(f"    out[target_{i}] = r_part_{i}")
 
-    exec("\n".join(lines), namespace)
-    return nb.njit(fastmath=True, cache=False)(namespace['fused_residual_kernel'])
+    py_func = _compile_to_file("\n".join(lines), func_name)
+    for i, k_data in enumerate(kernels_data):
+        py_func.__globals__[f"func_{i}"] = k_data['func']
+
+    return nb.njit(fastmath=True, cache=True)(py_func)
 
 @nb.njit(cache=True, fastmath=True)
 def _scatter_color_jvp_to_csc_data(
@@ -336,7 +355,7 @@ class SparseADJacobian:
         'verbose', 'equations', 'variables', 'parameters', 'method', 'dtype',
         'n_rows', 'n_cols', 'var_map', 'col_rows', 'J', 'colors', 'n_colors',
         'color_groups', 'color_ptr', 'color_cols', 'col_ptr', 'row_idx', 'data_idx',
-        '_compiler', 'ad_kernels', 'master_jac', '_seeds'
+        '_compiler', 'ad_kernel', 'master_jac', '_seed_matrix'
     ]
     def __init__(
             self, equations: List[Any], variables: List[Any], parameters: List[Any],
@@ -454,28 +473,31 @@ class SparseADJacobian:
 
         # Compile kernels
         self._compiler = EquationCompiler(variables=variables, parameters=parameters, method=method)
-        self.ad_kernels = list()
+        k_name = f"advec_step_generic_{method}_{self.n_rows}_{self.n_cols}"
+        py_ad = self._compiler.compile_ad_kernel(
+            equations,
+            func_name=k_name,
+            use_cse=use_cse,
+            active_indices=None,
+        )
+        self.ad_kernel = _safe_njit(py_ad, cache=True, fastmath=True)
 
+        self._seed_matrix = np.zeros((self.n_colors, self.n_cols), dtype=self.dtype)
         for c in range(self.n_colors):
-            k_name = f"advec_step_color_{c}_{uuid.uuid4().hex[:4]}"
-            py_ad = self._compiler.compile_ad_kernel(equations, func_name=k_name, use_cse=use_cse,
-                                                     active_indices=set(self.color_groups[c]))
-            self.ad_kernels.append(_safe_njit(py_ad, cache=False, fastmath=True))
+            self._seed_matrix[c, self.color_groups[c]] = 1.0
 
-        global_env: Dict[str, Any] = dict({"_scatter": _scatter_color_jvp_to_csc_data})
-        for c in range(self.n_colors):
-            global_env[f"kernel_{c}"] = self.ad_kernels[c]
-
+        func_name = f"master_jac_{method}_{self.n_rows}_{self.n_cols}_{self.n_colors}"
         src: List[str] = list([
-            "def master_jac(states, seeds, params, history, d_history, h, history2, data, color_ptr, col_ptr, row_idx, data_idx):"
+            f"def {func_name}(states, seed_matrix, params, history, d_history, h, history2, data, color_ptr, col_ptr, row_idx, data_idx):"
         ])
         for c in range(self.n_colors):
-            src.append(f"    jvp_{c} = kernel_{c}(states, seeds, params, history, d_history, h, history2)")
+            src.append(f"    jvp_{c} = kernel(states, seed_matrix[{c}], params, history, d_history, h, history2)")
             src.append(f"    _scatter(jvp_{c}, data, color_ptr, col_ptr, row_idx, data_idx, {c})")
 
-        exec("\n".join(src), global_env)
-        self.master_jac = _safe_njit(global_env["master_jac"], fastmath=True, cache=False)
-        self._seeds = np.zeros(self.n_cols, dtype=self.dtype)
+        py_func = _compile_to_file("\n".join(src), func_name)
+        py_func.__globals__["_scatter"] = _scatter_color_jvp_to_csc_data
+        py_func.__globals__["kernel"] = self.ad_kernel
+        self.master_jac = _safe_njit(py_func, fastmath=True, cache=True)
 
     @staticmethod
     def _greedy_color_columns(col_rows: List[List[int]], n_rows: int) -> Tuple[np.ndarray, int]:
@@ -520,7 +542,7 @@ class SparseADJacobian:
         return colors, int(max_color + 1)
 
     def __call__(self, states, params, history, d_history, h, history2=None) -> csc_matrix:
-        self.master_jac(states, self._seeds, params, history, d_history, h, history2, self.J.data, self.color_ptr,
+        self.master_jac(states, self._seed_matrix, params, history, d_history, h, history2, self.J.data, self.color_ptr,
                         self.col_ptr, self.row_idx, self.data_idx)
         return self.J
 
@@ -534,7 +556,7 @@ class StructuralVectorizedSolver:
         '_state_vars', '_algebraic_vars', '_diff_vars', '_state_eqs', '_algebraic_eqs',
         'sorted_vars', '_n_state', '_n_vars', '_n_diff', 'uid2idx_vars',
         '_event_parameters', '_parameters', '_parameters_values', '_event_params_fn',
-        'jit_jacobians_ad', 'vectorized_ready', '_last_sim_loop_time'
+        'jit_jacobians_ad', 'vectorized_ready', '_last_sim_loop_time', '_newton_diag_config', '_vectorized_warmup_done'
     ]
 
     def __init__(self,
@@ -546,7 +568,8 @@ class StructuralVectorizedSolver:
                  pred_method:DynamicIntegrationMethod = None,
                  dense_threshold: int = 100,
                  verbose: bool = False,
-                 auto_vectorization: bool = True)-> None:
+                 auto_vectorization: bool = True,
+                 newton_diag_config: NewtonDiagnosticsConfig | None = None)-> None:
         """
         :param problem: The DAE problem definition.
         :param t0: Initial time.
@@ -565,6 +588,12 @@ class StructuralVectorizedSolver:
         self.pred_method = pred_method
         self.dense_threshold = dense_threshold
         self.verbose = verbose
+        self._newton_diag_config = newton_diag_config or NewtonDiagnosticsConfig(
+            compute_dense_cond=False,
+            enable_fallback=False,
+            enable_index1_check=False,
+            enable_backtracking=False,
+        )
 
         self.vec_jacobian = None
         self.vec_flat_args = None
@@ -593,6 +622,7 @@ class StructuralVectorizedSolver:
 
         self.jit_jacobians_ad: Dict[DynamicIntegrationMethod, SparseADJacobian] = dict()
         self.vectorized_ready = False
+        self._vectorized_warmup_done = False
 
         if auto_vectorization:
             self.auto_detect_vectorization(method)
@@ -683,7 +713,8 @@ class StructuralVectorizedSolver:
 
             group.add_indices(var_indices, i)
 
-        print(f"   [AUTO-VEC] Detected {len(groups)} patterns in {len(full_eq_list)} total equations.")
+        if self.verbose:
+            print(f"   [AUTO-VEC] Detected {len(groups)} patterns in {len(full_eq_list)} total equations.")
 
         # -----------------------------
         # PHASE 3: KERNEL COMPILATION
@@ -696,8 +727,9 @@ class StructuralVectorizedSolver:
 
         vec_compiler = MatrixVectorizedCompiler(self.sorted_vars, all_params, method=method)
 
-        for signature, group_data in groups.items():
-            k_name = f"vec_kernel_{signature[:8]}"
+        for group_key_index, signature in enumerate(sorted(groups.keys())):
+            group_data = groups[signature]
+            k_name = f"vec_kernel_{method.name}_{group_key_index}"
 
             py_func = vec_compiler.compile_matrix_kernel(
                 group_data.get_template_eq(),
@@ -733,7 +765,9 @@ class StructuralVectorizedSolver:
         self.vec_jacobian = self.jit_jacobians_ad[method]
         self.vectorized_ready = True
 
-        print(f"   [AUTO-VEC] Setup finished in {time.time() - t0:.4f}s")
+        if self.verbose:
+            print(f"   [AUTO-VEC] Setup finished in {time.time() - t0:.4f}s")
+
 
     def simulate(self,
                  x0: Union[Vec| None] = None,
@@ -792,6 +826,8 @@ class StructuralVectorizedSolver:
         x_prev2: Vec = x0.copy()
         x_iter: Vec = x0.copy()
         res_global: Vec = np.zeros(self._n_vars, dtype=np.float64)
+        trial_state: Vec = np.zeros(self._n_vars, dtype=np.float64)
+        trial_residual: Vec = np.zeros(self._n_vars, dtype=np.float64)
 
         static_params = np.array([c.value for c in self._parameters_values], dtype=np.float64)
         ev_params = np.asarray(params0, dtype=np.float64)
@@ -810,6 +846,38 @@ class StructuralVectorizedSolver:
             ev_params[:] = full_params[:len(ev_params)]
 
         use_dense: bool = (self._n_vars <= dense_threshold)
+        trace_collector = self.problem.get_newton_trace_collector()
+        diag_cfg = self._newton_diag_config
+        diagnostics_enabled: bool = (
+            trace_collector is not None
+            or diag_cfg.compute_dense_cond
+            or diag_cfg.enable_fallback
+            or diag_cfg.enable_index1_check
+            or diag_cfg.enable_backtracking
+        )
+
+        dense_solve: Callable[..., Vec] | None = None
+        sparse_solve: Callable[..., Vec] | None = None
+
+        if diagnostics_enabled:
+            dense_solve = with_newton_diagnostics(
+                lambda bundle, rhs: lu_solve(bundle[0], rhs),
+                fallback_solve=lambda bundle, rhs: dense_lstsq_fallback(bundle[1], rhs),
+                collector=trace_collector,
+                config=diag_cfg,
+                solver_name="dense_lu",
+                matrix_getter=lambda bundle: bundle[1],
+            )
+            sparse_solve = with_newton_diagnostics(
+                lambda bundle, rhs: bundle[0].solve(rhs),
+                fallback_solve=lambda bundle, rhs: sparse_lsqr_fallback(bundle[1], rhs),
+                collector=trace_collector,
+                config=diag_cfg,
+                solver_name="superlu",
+                matrix_getter=lambda bundle: bundle[1],
+            )
+        else:
+            pass
 
         if verbose:
             print("-> JIT Warmup.")
@@ -885,8 +953,8 @@ class StructuralVectorizedSolver:
 
                 # IMPORTANT:
                 # LU factors must be local to each substep, because x_prev, params and h_eff may change.
-                cached_lu_dense: Tuple[np.ndarray, np.ndarray] | None = None
-                cached_lu_sparse: SuperLU | None = None
+                cached_lu_dense: DenseSolveBundle | None = None
+                cached_lu_sparse: SparseSolveBundle | None = None
 
                 # PREDICTOR
                 if i == 0 and is_first_local_step and method == DynamicIntegrationMethod.DaeTrapezoidal:
@@ -903,6 +971,7 @@ class StructuralVectorizedSolver:
                     pass
 
                 for k in range(15):
+                    ctx: NewtonSolveContext | None = None
                     self.fused_residual(
                         x_iter,
                         full_params,
@@ -920,6 +989,18 @@ class StructuralVectorizedSolver:
                     else:
                         pass
 
+                    if diagnostics_enabled:
+                        ctx = NewtonSolveContext(
+                            t=float(t_curr),
+                            step_idx=int(i),
+                            newton_iter=int(k),
+                            phase="jit_vec",
+                            method=str(method),
+                        )
+                        ctx.res_norm_inf = res_norm
+                    else:
+                        pass
+
                     recompute: bool = (cached_lu_dense is None and cached_lu_sparse is None) or \
                                       (k > 0 and (res_norm / (last_res_norm + 1e-16)) > 0.5)
 
@@ -934,20 +1015,69 @@ class StructuralVectorizedSolver:
                         )
 
                         if use_dense:
-                            cached_lu_dense = lu_factor(cached_J.toarray())
+                            dense_jacobian = cached_J.toarray()
+
+                            if diagnostics_enabled and ctx is not None:
+                                maybe_check_index1(dense_jacobian, self._n_state, ctx=ctx, config=diag_cfg)
+                            else:
+                                pass
+
+                            cached_lu_dense = (lu_factor(dense_jacobian), dense_jacobian)
                             cached_lu_sparse = None
                         else:
-                            cached_lu_sparse = splu(cached_J)
+                            if diagnostics_enabled and ctx is not None:
+                                maybe_check_index1(cached_J, self._n_state, ctx=ctx, config=diag_cfg)
+                            else:
+                                pass
+
+                            cached_lu_sparse = (splu(cached_J), cached_J)
                             cached_lu_dense = None
                     else:
                         pass
 
                     if use_dense:
-                        delta = lu_solve(cached_lu_dense, -res_global)
+                        if diagnostics_enabled and ctx is not None:
+                            assert dense_solve is not None
+                            assert cached_lu_dense is not None
+                            delta = dense_solve(cached_lu_dense, -res_global, ctx)
+                        else:
+                            assert cached_lu_dense is not None
+                            delta = lu_solve(cached_lu_dense[0], -res_global)
                     else:
-                        delta = cached_lu_sparse.solve(-res_global)
+                        if diagnostics_enabled and ctx is not None:
+                            assert sparse_solve is not None
+                            assert cached_lu_sparse is not None
+                            delta = sparse_solve(cached_lu_sparse, -res_global, ctx)
+                        else:
+                            assert cached_lu_sparse is not None
+                            delta = cached_lu_sparse[0].solve(-res_global)
 
-                    x_iter += delta
+                    if diag_cfg.enable_backtracking:
+                        def _evaluate_trial_residual(trial_x: Vec, out_res: Vec) -> float:
+                            self.fused_residual(
+                                trial_x,
+                                full_params,
+                                x_prev,
+                                dx_prev,
+                                h_eff,
+                                self.vec_flat_args,
+                                out_res,
+                                x_prev2,
+                            )
+                            return float(np.max(np.abs(out_res)))
+
+                        maybe_apply_backtracking(
+                            x_iter,
+                            delta,
+                            res_norm,
+                            trial_state,
+                            trial_residual,
+                            evaluate_residual=_evaluate_trial_residual,
+                            config=diag_cfg,
+                        )
+                    else:
+                        x_iter += delta
+
                     last_res_norm = res_norm
 
                 if method == DynamicIntegrationMethod.DaeTrapezoidal:

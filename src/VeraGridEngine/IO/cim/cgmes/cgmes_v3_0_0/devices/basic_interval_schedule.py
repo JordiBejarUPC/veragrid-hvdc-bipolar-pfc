@@ -16,6 +16,7 @@ class BasicIntervalSchedule(IdentifiedObject):
 		CgmesProperty(property_name='value1Unit', class_type=UnitSymbol, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Value1 units of measure.''', profiles=[]),
 		CgmesProperty(property_name='value2Unit', class_type=UnitSymbol, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Value2 units of measure.''', profiles=[]),
 	)
+	__slots__ = ('startTime', 'value1Unit', 'value2Unit')
 	def __init__(self, rdfid='', tpe='BasicIntervalSchedule'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

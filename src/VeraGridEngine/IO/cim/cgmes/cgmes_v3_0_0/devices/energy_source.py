@@ -30,6 +30,7 @@ class EnergySource(EnergyConnection):
 		CgmesProperty(property_name='voltageAngle', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.rad, description='''Phase angle in radians.''', profiles=[]),
 		CgmesProperty(property_name='voltageMagnitude', class_type=float, multiplier=UnitMultiplier.k, unit=UnitSymbol.V, description='''Electrical voltage, can be both AC and DC.''', profiles=[]),
 	)
+	__slots__ = ('EnergySchedulingType', 'nominalVoltage', 'pMin', 'pMax', 'r', 'r0', 'rn', 'x', 'x0', 'xn', 'activePower', 'reactivePower', 'voltageAngle', 'voltageMagnitude')
 	def __init__(self, rdfid='', tpe='EnergySource'):
 		EnergyConnection.__init__(self, rdfid, tpe)
 

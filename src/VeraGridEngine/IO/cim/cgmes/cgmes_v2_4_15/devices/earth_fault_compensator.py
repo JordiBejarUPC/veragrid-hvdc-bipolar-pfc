@@ -12,6 +12,7 @@ class EarthFaultCompensator(ConductingEquipment):
 	LOCAL_CGMES_PROPERTIES: tuple[CgmesProperty, ...] = (
 		CgmesProperty(property_name='r', class_type=float, multiplier=UnitMultiplier.none, unit=UnitSymbol.ohm, description='''Resistance (real part of impedance).''', profiles=[]),
 	)
+	__slots__ = ('r',)
 	def __init__(self, rdfid='', tpe='EarthFaultCompensator'):
 		ConductingEquipment.__init__(self, rdfid, tpe)
 

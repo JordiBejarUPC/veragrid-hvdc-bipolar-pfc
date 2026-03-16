@@ -846,31 +846,31 @@ def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
 
     if device.device_type in [DeviceType.BranchDevice, DeviceType.LineDevice, DeviceType.Transformer2WDevice, DeviceType.Transformer3WDevice]:
         # Check if using phasor or polar coordinates by looking at bus model outputs
-        bus_model = device.bus_from.rms_model.model
+        bus_model = device.bus_from.rms_model
         if not bus_model.empty():
             # Check if bus has Vr/Vi (phasor) or Vm/Va (polar) outputs
             has_phasor = any(v.ref == VarPowerFlowRefferenceType.Vr for v in bus_model.out_vars)
             if has_phasor:
-                connect_line_phasor_rms_from(device.bus_from.rms_model.model, model)
+                connect_line_phasor_rms_from(device.bus_from.rms_model, model)
             else:
-                connect_line_rms_from(device.bus_from.rms_model.model, model)
+                connect_line_rms_from(device.bus_from.rms_model, model)
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus_from.name} RMS model")
 
-        bus_model = device.bus_to.rms_model.model
+        bus_model = device.bus_to.rms_model
         if not bus_model.empty():
             # Check if bus has Vr/Vi (phasor) or Vm/Va (polar) outputs
             has_phasor = any(v.ref == VarPowerFlowRefferenceType.Vr for v in bus_model.out_vars)
             if has_phasor:
-                connect_line_phasor_rms_to(device.bus_to.rms_model.model, model)
+                connect_line_phasor_rms_to(device.bus_to.rms_model, model)
             else:
-                connect_line_rms_to(device.bus_to.rms_model.model, model)
+                connect_line_rms_to(device.bus_to.rms_model, model)
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus_to.name} RMS model")
 
     else:
-        if not device.bus.rms_model.model.empty():
-            connect_rms_models(device.bus.rms_model.model, model)
+        if not device.bus.rms_model.empty():
+            connect_rms_models(device.bus.rms_model, model)
 
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus.name} RMS model")
@@ -883,4 +883,4 @@ def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
         var_factory.register_var(device, vr)
 
     # set the model to the device
-    device.rms_model.model = model
+    device.rms_model = model

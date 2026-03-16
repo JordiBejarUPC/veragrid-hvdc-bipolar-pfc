@@ -19,6 +19,7 @@ class RatioTapChanger(TapChanger):
 		CgmesProperty(property_name='RatioTapChangerTable', class_type='RatioTapChangerTable', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The ratio tap changer of this tap ratio table.''', profiles=[]),
 		CgmesProperty(property_name='TransformerEnd', class_type='TransformerEnd', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Ratio tap changer associated with this transformer end.''', profiles=[]),
 	)
+	__slots__ = ('tculControlMode', 'stepVoltageIncrement', 'RatioTapChangerTable', 'TransformerEnd')
 	def __init__(self, rdfid='', tpe='RatioTapChanger'):
 		TapChanger.__init__(self, rdfid, tpe)
 

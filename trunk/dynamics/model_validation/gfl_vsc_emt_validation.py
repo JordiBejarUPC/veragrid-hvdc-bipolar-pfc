@@ -13,7 +13,7 @@ from VeraGridEngine.Templates.Emt.vsc_gfl_emt import VscGflEmtBuild
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Rms.vsc_template import PVCellBuild
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource
-from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_generator_emt_template
+from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
@@ -137,38 +137,38 @@ if load_type == 'zip':
 else:
     raise ValueError(f"Unknown load type: {load_type}")
     
-genrow_mdl1 = get_generator_emt_template(grid.rms_var_factory).block
+genrow_mdl1 = get_simple_generator_emt_template(grid.rms_var_factory).block
 
 # Build VSC EMT model with the same control modes used in the VSC device
 vsc_mdl = VscGflEmtBuild(grid.rms_var_factory, control1=CONTROL1_MODE, control2=CONTROL2_MODE).block
 
 pv_cell_block = PVCellBuild(grid.rms_var_factory).block
-dc_source = DCVoltageSource(grid.rms_var_factory, bus3.emt_model.model.out_vars[0]).block
+dc_source = DCVoltageSource(grid.rms_var_factory, bus3.emt_model.out_vars[0]).block
 
 # Connect generator to bus1 (three-phase voltages)
-genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.emt_model.model.out_vars[0]])  # v_A
-genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.emt_model.model.out_vars[1]])  # v_B
-genrow_mdl1.connect([genrow_mdl1.in_vars[2]], [bus1.emt_model.model.out_vars[2]])  # v_C
+genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.emt_model.out_vars[0]])  # v_A
+genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.emt_model.out_vars[1]])  # v_B
+genrow_mdl1.connect([genrow_mdl1.in_vars[2]], [bus1.emt_model.out_vars[2]])  # v_C
 
 # Connect load to bus2 (three-phase voltages)
-load_mdl.connect([load_mdl.in_vars[0]], [bus2.emt_model.model.out_vars[0]])  # v_A
-load_mdl.connect([load_mdl.in_vars[1]], [bus2.emt_model.model.out_vars[1]])  # v_B
-load_mdl.connect([load_mdl.in_vars[2]], [bus2.emt_model.model.out_vars[2]])  # v_C
+load_mdl.connect([load_mdl.in_vars[0]], [bus2.emt_model.out_vars[0]])  # v_A
+load_mdl.connect([load_mdl.in_vars[1]], [bus2.emt_model.out_vars[1]])  # v_B
+load_mdl.connect([load_mdl.in_vars[2]], [bus2.emt_model.out_vars[2]])  # v_C
 
 # Connect line12 between bus1 and bus2 (three-phase voltages)
-line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.emt_model.model.out_vars[0]])  # v_A from
-line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.emt_model.model.out_vars[1]])  # v_B from
-line12_mdl.connect([line12_mdl.in_vars[2]], [bus1.emt_model.model.out_vars[2]])  # v_C from
+line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]])  # v_A from
+line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]])  # v_B from
+line12_mdl.connect([line12_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]])  # v_C from
 
-line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.emt_model.model.out_vars[0]])  # v_A to
-line12_mdl.connect([line12_mdl.in_vars[4]], [bus2.emt_model.model.out_vars[1]])  # v_B to
-line12_mdl.connect([line12_mdl.in_vars[5]], [bus2.emt_model.model.out_vars[2]])  # v_C to
+line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.emt_model.out_vars[0]])  # v_A to
+line12_mdl.connect([line12_mdl.in_vars[4]], [bus2.emt_model.out_vars[1]])  # v_B to
+line12_mdl.connect([line12_mdl.in_vars[5]], [bus2.emt_model.out_vars[2]])  # v_C to
 
 # Updated connections for new VSC EMT model with 4 inputs: [Va, Vb, Vc, Vdc]
-vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.emt_model.model.out_vars[0]])  # Va
-vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.emt_model.model.out_vars[1]])  # Vb
-vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus2.emt_model.model.out_vars[2]])  # Vc
-vsc_mdl.connect([vsc_mdl.in_vars[3]], [bus3.emt_model.model.out_vars[0]])  # Vdc
+vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.emt_model.out_vars[0]])  # Va
+vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.emt_model.out_vars[1]])  # Vb
+vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus2.emt_model.out_vars[2]])  # Vc
+vsc_mdl.connect([vsc_mdl.in_vars[3]], [bus3.emt_model.out_vars[0]])  # Vdc
 
 # external mapping
 big_gen1 = Block(children=[genrow_mdl1])
@@ -186,9 +186,9 @@ line12.emt_model = line12_dynhost
 load1.emt_model = load_dynhost
 gen1.emt_model = gen_dynhost
 gen3.emt_model = gen3_dynhost
-gen3.emt_model.model.unify_blocks()
+gen3.emt_model.unify_blocks()
 
-Vpv0 = find_name_in_block('Vpv0', gen3.emt_model.model)
+Vpv0 = find_name_in_block('Vpv0', gen3.emt_model)
 
 # Find appropriate reference variable based on control mode
 if CONTROL1_MODE == ConverterControlType.Vm_dc:
@@ -235,13 +235,13 @@ profiler.dump_stats("profiling_stats_emt.prof")
 xlim = options.simulation_time
 
 # Find variables for plotting
-v_A_bus1 = find_name_in_block("v_A", bus1.emt_model.model)
-v_B_bus1 = find_name_in_block("v_B", bus1.emt_model.model)
-v_C_bus1 = find_name_in_block("v_C", bus1.emt_model.model)
+v_A_bus1 = find_name_in_block("v_A", bus1.emt_model)
+v_B_bus1 = find_name_in_block("v_B", bus1.emt_model)
+v_C_bus1 = find_name_in_block("v_C", bus1.emt_model)
 
-v_A_bus2 = find_name_in_block("v_A", bus2.emt_model.model)
-v_B_bus2 = find_name_in_block("v_B", bus2.emt_model.model)
-v_C_bus2 = find_name_in_block("v_C", bus2.emt_model.model)
+v_A_bus2 = find_name_in_block("v_A", bus2.emt_model)
+v_B_bus2 = find_name_in_block("v_B", bus2.emt_model)
+v_C_bus2 = find_name_in_block("v_C", bus2.emt_model)
 
 i_A_vsc = find_name_in_block("i_a", vsc_mdl)
 i_B_vsc = find_name_in_block("i_b", vsc_mdl)
@@ -249,7 +249,7 @@ i_C_vsc = find_name_in_block("i_c", vsc_mdl)
 
 P = find_name_in_block('P', vsc_mdl)
 Q = find_name_in_block('Q', vsc_mdl)
-Vdc = find_name_in_block('Vdc', bus3.emt_model.model)
+Vdc = find_name_in_block('Vdc', bus3.emt_model)
 
 # Plot 1: Bus 1 Three-phase voltages
 plt.figure(figsize=(10, 6))

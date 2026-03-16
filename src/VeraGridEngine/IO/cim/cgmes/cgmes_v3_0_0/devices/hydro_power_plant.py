@@ -20,6 +20,7 @@ class HydroPowerPlant(PowerSystemResource):
 		CgmesProperty(property_name='hydroPlantStorageType', class_type=HydroPlantStorageKind, multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The type of hydro power plant water storage.''', profiles=[]),
 		CgmesProperty(property_name='HydroPumps', class_type='HydroPump', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The hydro pump may be a member of a pumped storage plant or a pump for distributing water.''', profiles=[]),
 	)
+	__slots__ = ('HydroGeneratingUnits', 'hydroPlantStorageType', 'HydroPumps')
 	def __init__(self, rdfid='', tpe='HydroPowerPlant'):
 		PowerSystemResource.__init__(self, rdfid, tpe)
 

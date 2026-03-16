@@ -18,6 +18,7 @@ class ConnectivityNodeContainer(PowerSystemResource):
 		CgmesProperty(property_name='ConnectivityNodes', class_type='ConnectivityNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''Connectivity nodes which belong to this connectivity node container.''', profiles=[]),
 		CgmesProperty(property_name='TopologicalNode', class_type='TopologicalNode', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''The topological nodes which belong to this connectivity node container.''', profiles=[]),
 	)
+	__slots__ = ('ConnectivityNodes', 'TopologicalNode')
 	def __init__(self, rdfid='', tpe='ConnectivityNodeContainer'):
 		PowerSystemResource.__init__(self, rdfid, tpe)
 

@@ -19,6 +19,7 @@ An example would be the European Petroleum Survey Group (EPSG) code for a coordi
 A profile should limit this code to a set of allowed URNs agreed to by all sending and receiving parties.''', profiles=[]),
 		CgmesProperty(property_name='Locations', class_type='Location', multiplier=UnitMultiplier.none, unit=UnitSymbol.none, description='''All locations described with position points in this coordinate system.''', profiles=[]),
 	)
+	__slots__ = ('crsUrn', 'Locations')
 	def __init__(self, rdfid='', tpe='CoordinateSystem'):
 		IdentifiedObject.__init__(self, rdfid, tpe)
 

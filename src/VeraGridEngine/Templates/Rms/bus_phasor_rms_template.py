@@ -76,7 +76,7 @@ def initialize_bus_phasor_rms(bus: Bus, vf: VarFactory):
     :param vf: VarFactory for creating variables
     :return: None
     """
-    bus.rms_model.model = BusPhasorRmsTemplate(vf=vf, is_dc=bus.is_dc).block
+    bus.rms_model = BusPhasorRmsTemplate(vf=vf, is_dc=bus.is_dc).block
 
 def get_bus_phasor_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Var]:
     """
