@@ -35,6 +35,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         self.ui = Ui_Dialog()
         self.ui.setupUi(self)
         self.setWindowTitle('Procedural grid expansion')
+        self.app = app
 
         # Setup combobox
         self.methods_dict, methods_mdl = enums_to_model(
@@ -114,6 +115,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
 
         # 3. Instantiate your engine with the required inputs
         engine = ProceduralGridComputationEngine(
+            grid= self.app.circuit,
             method=method,
             targets=target_objects,
             candidates=candidate_objects

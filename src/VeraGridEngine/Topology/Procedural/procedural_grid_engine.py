@@ -31,10 +31,12 @@ class ProceduralGridComputationEngine:
 
     def __init__(
         self,
+        grid: MultiCircuit,
         method: ProceduralGridMethods,
         targets: List[Substation],
         candidates: List[Substation]
     ):
+        self.grid = grid
         self.method = method
         self.targets = targets
         self.candidates = candidates
@@ -51,15 +53,15 @@ class ProceduralGridComputationEngine:
 
         Vnom_kV_M = []
         for sg in self.candidates:
-            # TODO: How to obtain the Substation object from the api object?
-            bus_list = MultiCircuit.get_substation_buses(sg)
+            # TODO: Extract the voltage from each bus
+            bus_list = self.grid.get_substation_buses(sg) # bus_list = self.grid.get_voltage_levels()
             # TODO: Check the assumption below
             Vnom_kV_M.append(bus_list[0])  # Assuming the first bus represents the substation voltage
 
         Vnom_kV_N = []
         for sg in self.targets:
-            # TODO: How to obtain the Substation object from the api object?
-            bus_list = MultiCircuit.get_substation_buses(sg)
+            # TODO: Extract the voltage from each bus
+            bus_list = self.grid.get_substation_buses(sg)
             # TODO: Check the assumption below
             Vnom_kV_N.append(bus_list[0])  # Assuming the first bus represents the substation voltage
 
@@ -98,7 +100,7 @@ class ProceduralGridComputationEngine:
         topology = Topology(network, node_objects, edge_objects, discretization=25.0, transition_matrix=TRANSITION_MATRIX)
 
         # 4. Convert to VeraGrid object
-        grid = Grid(topology)
+        expansion_grid = Grid(topology)
 
         # 5. Display in the diagram
         # TODO: Display in the diagram section of the GUI
@@ -384,7 +386,7 @@ class Topology:
         """
         Generates combinations that are valid by construction.
         """
-        grid = gce.MultiCircuit()
+        expansion_grid = gce.MultiCircuit()
 
         for edge in self.edges:
 
@@ -431,7 +433,7 @@ class Topology:
             )
             next_bus.Vm_cost = next_bus_volt * 1000
 
-            grid.add_bus(obj=next_bus)
+            expansion_grid.add_bus(obj=next_bus)
 
             voltage_options = sorted(self.transition_matrix.get(input_node.voltage, {}).keys())
 
@@ -468,7 +470,7 @@ class Topology:
                         )
                         next_bus.Vm_cost = next_bus_volt * 1000
 
-                        grid.add_bus(obj=next_bus)
+                        expansion_grid.add_bus(obj=next_bus)
                 else:
                     next_bus_options = sorted([b for b in voltage_options])
                     current_transitions =  self.transition_matrix[current_bus_volt]
@@ -491,7 +493,7 @@ class Topology:
                     )
                     next_bus.Vm_cost = next_bus_volt * 1000
 
-                    grid.add_bus(obj=next_bus)
+                    expansion_grid.add_bus(obj=next_bus)
 
                 # Add connection between current bus and next bus to Multicircuit
                 conn_options = sorted(self.get_possible_connections(current_bus_volt, next_bus_volt, current_bus_is_DC, current_bus_is_DC))
@@ -515,7 +517,7 @@ class Topology:
                         length=lengths[conn_counter], r=r, x=x, b=b, rate=p_rated,
                         capex=capex, opex=0, cost=100
                     )
-                    grid.add_line(obj=line)
+                    expansion_grid.add_line(obj=line)
 
                     accumulated_length += lengths[conn_counter]
                     conn_counter += 1
@@ -545,7 +547,7 @@ class Topology:
                     )
                     trafo.Pcu = pcu
                     trafo.Pfe = pfe
-                    grid.add_transformer2w(obj=trafo)
+                    expansion_grid.add_transformer2w(obj=trafo)
 
             # TODO: Add the merge_lines function outside generate_markov and inside Topology
             # combination, length_elements_ = merge_lines(combination, length_elements_)
