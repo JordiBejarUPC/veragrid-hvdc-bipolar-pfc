@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'block_editor.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.10.2
+## Created by: Qt User Interface Compiler version 6.7.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -17,9 +17,10 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
 from PySide6.QtWidgets import (QApplication, QFrame, QGraphicsView, QHBoxLayout,
-    QHeaderView, QLabel, QMainWindow, QPushButton,
-    QSizePolicy, QSpacerItem, QSplitter, QTabWidget,
-    QTableView, QTreeView, QVBoxLayout, QWidget)
+    QHeaderView, QLabel, QMainWindow, QMenuBar,
+    QPushButton, QSizePolicy, QSpacerItem, QSplitter,
+    QTabWidget, QTableView, QToolBar, QTreeView,
+    QVBoxLayout, QWidget)
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_BlockEditorWindow(object):
@@ -27,9 +28,12 @@ class Ui_BlockEditorWindow(object):
         if not BlockEditorWindow.objectName():
             BlockEditorWindow.setObjectName(u"BlockEditorWindow")
         BlockEditorWindow.resize(1007, 510)
-        self.actionCheckModel = QAction(BlockEditorWindow)
-        self.actionCheckModel.setObjectName(u"actionCheckModel")
-        self.actionCheckModel.setMenuRole(QAction.MenuRole.NoRole)
+        self.block_editor_actionCheckModel = QAction(BlockEditorWindow)
+        self.block_editor_actionCheckModel.setObjectName(u"block_editor_actionCheckModel")
+        icon = QIcon()
+        icon.addFile(u":/Icons/icons/calculator.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.block_editor_actionCheckModel.setIcon(icon)
+        self.block_editor_actionCheckModel.setMenuRole(QAction.MenuRole.NoRole)
         self.centralwidget = QWidget(BlockEditorWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.verticalLayout = QVBoxLayout(self.centralwidget)
@@ -129,6 +133,17 @@ class Ui_BlockEditorWindow(object):
         self.verticalLayout.addWidget(self.frame_2)
 
         BlockEditorWindow.setCentralWidget(self.centralwidget)
+        self.menuBar = QMenuBar(BlockEditorWindow)
+        self.menuBar.setObjectName(u"menuBar")
+        self.menuBar.setGeometry(QRect(0, 0, 1007, 23))
+        BlockEditorWindow.setMenuBar(self.menuBar)
+        self.toolBar = QToolBar(BlockEditorWindow)
+        self.toolBar.setObjectName(u"toolBar")
+        self.toolBar.setMovable(False)
+        self.toolBar.setFloatable(False)
+        BlockEditorWindow.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
+
+        self.toolBar.addAction(self.block_editor_actionCheckModel)
 
         self.retranslateUi(BlockEditorWindow)
 
@@ -140,10 +155,11 @@ class Ui_BlockEditorWindow(object):
 
     def retranslateUi(self, BlockEditorWindow):
         BlockEditorWindow.setWindowTitle(QCoreApplication.translate("BlockEditorWindow", u"BlockEditorWindow", None))
-        self.actionCheckModel.setText(QCoreApplication.translate("BlockEditorWindow", u"CheckModel", None))
+        self.block_editor_actionCheckModel.setText(QCoreApplication.translate("BlockEditorWindow", u"CheckModel", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("BlockEditorWindow", u"Library", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("BlockEditorWindow", u"Parameters", None))
         self.currently_editing_object_label.setText(QCoreApplication.translate("BlockEditorWindow", u"Device:", None))
         self.doItButton.setText(QCoreApplication.translate("BlockEditorWindow", u"Do it!", None))
+        self.toolBar.setWindowTitle(QCoreApplication.translate("BlockEditorWindow", u"toolBar", None))
     # retranslateUi
 

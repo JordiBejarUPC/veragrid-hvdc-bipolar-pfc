@@ -138,8 +138,10 @@ rms_events_group_names = np.array(0)
 
 
 
-
+load_mdl_uid = grid.loads[0].rms_model.uid
 gce.save_file(grid=grid, filename="2bus_gen_load_evt.veragrid")
+grid2 = gce.open_file(filename="2bus_gen_load_evt.veragrid")
+load_mdl_uid2 = grid2.loads[0].rms_model.uid
 
 ######################################################################################################
 # Power flow

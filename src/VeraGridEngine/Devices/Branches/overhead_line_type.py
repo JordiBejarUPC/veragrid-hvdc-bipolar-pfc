@@ -246,6 +246,12 @@ class ListOfWires:
 
         return True
 
+    def copy(self):
+        new_list = ListOfWires()
+        for elm in self.data:
+            new_list.append(elm)
+        return new_list
+
 
 class OverheadLineType(EditableDevice):
     __slots__ = (

@@ -3247,11 +3247,6 @@ class MultiCircuit(Assets):
         :return:
         """
         logger = Logger()
-        for elm in self.buses:
-            if elm.rms_model.empty():
-                logger.add_error("Missing RMS model",
-                                 device_class=elm.device_type.value,
-                                 device=elm.name)
 
         for elm in self.get_branches_iter():
             if elm.rms_model.empty():

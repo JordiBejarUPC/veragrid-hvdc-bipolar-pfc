@@ -31,6 +31,7 @@ from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complet
 from VeraGridEngine.Templates.Rms.genqec_phasor_rms_template import get_genqec_phasor, get_complete_generator_template_phasor
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.block import Block
 
@@ -193,14 +194,18 @@ def test_phasor_validation():
     # ===================================================================
     print("\n[4] Adding load step event...")
     
+    # Create events groups
+    events_group_polar = RmsEventsGroup("polar_simulation")
+    events_group_phasor = RmsEventsGroup("phasor_simulation")
+    
     # Add event to polar grid
     Pl0_polar = find_name_in_block('Pl0', load_mdl_polar)
-    event_polar = RmsEvent(device=load_polar, parameter=Pl0_polar, time=0.05, value=-0.098)
+    event_polar = RmsEvent(device=load_polar, parameter=Pl0_polar, time=0.05, value=-0.098, group=events_group_polar)
     grid_polar.add_rms_event(event_polar)
     
     # Add event to phasor grid (current-based load) - step Ir
     Ir0_phasor = find_name_in_block('Ir0', load_mdl_phasor)
-    event_phasor = RmsEvent(device=load_phasor, parameter=Ir0_phasor, time=0.05, value=Ir_init * 0.98)
+    event_phasor = RmsEvent(device=load_phasor, parameter=Ir0_phasor, time=0.05, value=Ir_init * 0.98, group=events_group_phasor)
     grid_phasor.add_rms_event(event_phasor)
     
     print("  Events added to both grids")
@@ -225,6 +230,9 @@ def test_phasor_validation():
     print("\n[7] Running phasor simulation...")
     
     problem_phasor = RmsProblemPhasor(grid=grid_phasor, options=options, pf_results=res_phasor)
+    problem_phasor.set_events_group(events_group_phasor)
+    problem_phasor.set_initialize_flag()
+
     solver_phasor = BackEulerImplicitIntegration(
         problem=problem_phasor,
         t0=0,
