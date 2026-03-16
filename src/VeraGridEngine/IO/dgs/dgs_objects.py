@@ -284,6 +284,204 @@ class ElmDsl(DGSElement):
         self.fold_id: str = ""
         self.typ_id: str = ""
         self.outserv: int = 0
+        self.pelm: List[str | None] = list()
+        self.signal: List[str] = list()
+        self.parameter_names: List[str] = list()
+
+    @classmethod
+    def parse_line(cls, line: str, header_map: dict[str, int]):
+        parts = _split_dgs_line(line)
+        obj = super().parse_line(";".join(parts), header_map)
+
+        raw_pelm = _dgs_get(parts, header_map, 'pelm:SIZEROW')
+        n_pelm = int(float(raw_pelm.replace(',', '.'))) if raw_pelm is not None and raw_pelm.strip() != '' else 0
+        for i in range(n_pelm):
+            raw_ptr = _dgs_get(parts, header_map, f'pelm:{i}')
+            raw_ptr = raw_ptr.strip() if raw_ptr is not None else ''
+            obj.pelm.append(raw_ptr if raw_ptr != '' and raw_ptr != '*' else None)
+
+        raw_signal = _dgs_get(parts, header_map, 'signal:SIZEROW')
+        n_signal = int(float(raw_signal.replace(',', '.'))) if raw_signal is not None and raw_signal.strip() != '' else 0
+        for i in range(n_signal):
+            raw_sig = _dgs_get(parts, header_map, f'signal:{i}')
+            raw_sig = raw_sig.strip() if raw_sig is not None else ''
+            if raw_sig != '' and raw_sig != '*':
+                obj.signal.append(raw_sig)
+
+        raw_params = _dgs_get(parts, header_map, 'parameterNames')
+        if raw_params is not None and raw_params.strip() not in {'', '*'}:
+            obj.parameter_names = [item.strip() for item in raw_params.split(',') if item.strip()]
+
+        return obj
+
+
+class BlkFrom(DGSElement):
+    element_type = 'BlkFrom'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
+        DgsProperty('sSig:SIZEROW', 'i', 'DGS field sSig:SIZEROW (i)', py_name='sSig_SIZEROW'),
+        DgsProperty('sSig:0', 'a', 'DGS field sSig:0 (a)', py_name='sSig_0'),
+        DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a:80)', py_name='loc_name'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ''
+        self.OP: str = ''
+        self.sSig_SIZEROW: int = 0
+        self.sSig_0: str = ''
+        self.loc_name: str = ''
+        self.signals: List[str] = list()
+
+    @classmethod
+    def parse_line(cls, line: str, header_map: dict[str, int]):
+        parts = _split_dgs_line(line)
+        obj = super().parse_line(";".join(parts), header_map)
+        if obj.sSig_0.strip() not in {'', '*'}:
+            obj.signals = [item.strip() for item in obj.sSig_0.split(',') if item.strip()]
+        return obj
+
+
+class BlkGoto(DGSElement):
+    element_type = 'BlkGoto'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a:80)', py_name='loc_name'),
+        DgsProperty('sSig:SIZEROW', 'i', 'DGS field sSig:SIZEROW (i)', py_name='sSig_SIZEROW'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ''
+        self.OP: str = ''
+        self.loc_name: str = ''
+        self.sSig_SIZEROW: int = 0
+
+
+class BlkRef(DGSElement):
+    element_type = 'BlkRef'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
+        DgsProperty('typ_id', 'p', 'DGS field typ_id (p)', py_name='typ_id'),
+        DgsProperty('cdisName', 'a', 'DGS field cdisName (a)', py_name='cdisName'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ''
+        self.OP: str = ''
+        self.typ_id: str = ''
+        self.cdisName: str = ''
+        self.params: List[str] = list()
+        self.states: List[str] = list()
+        self.internals: List[str] = list()
+
+    @classmethod
+    def parse_line(cls, line: str, header_map: dict[str, int]):
+        parts = _split_dgs_line(line)
+        obj = super().parse_line(";".join(parts), header_map)
+
+        raw_params = _dgs_get(parts, header_map, 'sParams:0')
+        if raw_params is not None and raw_params.strip() not in {'', '*'}:
+            obj.params = [item.strip() for item in raw_params.split(',') if item.strip()]
+
+        raw_states = _dgs_get(parts, header_map, 'sStates:0')
+        if raw_states is not None and raw_states.strip() not in {'', '*'}:
+            obj.states = [item.strip() for item in raw_states.split(',') if item.strip()]
+
+        raw_internals = _dgs_get(parts, header_map, 'sIntern:0')
+        if raw_internals is not None and raw_internals.strip() not in {'', '*'}:
+            obj.internals = [item.strip() for item in raw_internals.split(',') if item.strip()]
+
+        return obj
+
+
+class BlkSig(DGSElement):
+    element_type = 'BlkSig'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
+        DgsProperty('inodfrom', 'i', 'DGS field inodfrom (i)', py_name='inodfrom'),
+        DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a:80)', py_name='loc_name'),
+        DgsProperty('iconfrom', 'i', 'DGS field iconfrom (i)', py_name='iconfrom'),
+        DgsProperty('inodto', 'i', 'DGS field inodto (i)', py_name='inodto'),
+        DgsProperty('iconto', 'i', 'DGS field iconto (i)', py_name='iconto'),
+        DgsProperty('pnodfrom', 'p', 'DGS field pnodfrom (p)', py_name='pnodfrom'),
+        DgsProperty('pnodto', 'p', 'DGS field pnodto (p)', py_name='pnodto'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ''
+        self.OP: str = ''
+        self.inodfrom: int = 0
+        self.loc_name: str = ''
+        self.iconfrom: int = 0
+        self.inodto: int = 0
+        self.iconto: int = 0
+        self.pnodfrom: str = ''
+        self.pnodto: str = ''
+
+
+class BlkSlot(DGSElement):
+    element_type = 'BlkSlot'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a:80)', py_name='loc_name'),
+        DgsProperty('element', 'p', 'DGS field element (p)', py_name='element'),
+        DgsProperty('filtmod', 'a:80', 'DGS field filtmod (a:80)', py_name='filtmod'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ''
+        self.OP: str = ''
+        self.loc_name: str = ''
+        self.element: str = ''
+        self.filtmod: str = ''
+        self.outputs: List[str] = list()
+        self.inputs: List[str] = list()
+
+    @classmethod
+    def parse_line(cls, line: str, header_map: dict[str, int]):
+        parts = _split_dgs_line(line)
+        obj = super().parse_line(";".join(parts), header_map)
+        raw_outputs = _dgs_get(parts, header_map, 'sOutput:0')
+        if raw_outputs is not None and raw_outputs.strip() not in {'', '*'}:
+            obj.outputs = [item.strip() for item in raw_outputs.split(',') if item.strip()]
+        raw_inputs = _dgs_get(parts, header_map, 'sInput:0')
+        if raw_inputs is not None and raw_inputs.strip() not in {'', '*'}:
+            obj.inputs = [item.strip() for item in raw_inputs.split(',') if item.strip()]
+        return obj
+
+
+class BlkSum(DGSElement):
+    element_type = 'BlkSum'
+    properties_list = [
+        DgsProperty('ID', 'a:40', 'DGS field ID (a:40)', py_name='ID'),
+        DgsProperty('OP', 'a:1', 'DGS field OP (a:1)', py_name='OP'),
+        DgsProperty('loc_name', 'a:80', 'DGS field loc_name (a:80)', py_name='loc_name'),
+        DgsProperty('iInput0', 'i', 'DGS field iInput0 (i)', py_name='iInput0'),
+        DgsProperty('iInput0:act', 'i', 'DGS field iInput0:act (i)', py_name='iInput0_act'),
+        DgsProperty('iInput1', 'i', 'DGS field iInput1 (i)', py_name='iInput1'),
+        DgsProperty('iInput1:act', 'i', 'DGS field iInput1:act (i)', py_name='iInput1_act'),
+        DgsProperty('iInput3', 'i', 'DGS field iInput3 (i)', py_name='iInput3'),
+        DgsProperty('iInput3:act', 'i', 'DGS field iInput3:act (i)', py_name='iInput3_act'),
+        DgsProperty('iInput2', 'i', 'DGS field iInput2 (i)', py_name='iInput2'),
+        DgsProperty('iInput2:act', 'i', 'DGS field iInput2:act (i)', py_name='iInput2_act'),
+    ]
+
+    def __init__(self) -> None:
+        self.ID: str = ''
+        self.OP: str = ''
+        self.loc_name: str = ''
+        self.iInput0: int = 0
+        self.iInput0_act: int = 0
+        self.iInput1: int = 0
+        self.iInput1_act: int = 0
+        self.iInput3: int = 0
+        self.iInput3_act: int = 0
+        self.iInput2: int = 0
+        self.iInput2_act: int = 0
 
 
 class ElmAsm(DGSElement):
