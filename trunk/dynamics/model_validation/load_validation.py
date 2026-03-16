@@ -24,9 +24,10 @@ from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
+
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 import VeraGridEngine.api as gce
 
 def find_name_in_block(name: str, block: Block):
@@ -87,12 +88,7 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 # Build Rms models
 ######################################################################################################
 
-# Build dynamic_model_host
-line0_dynhost = DynamicModelHost()
-line1_dynhost = DynamicModelHost()
-load1_dynhost = DynamicModelHost()
-load2_dynhost = DynamicModelHost()
-gen_dynhost = DynamicModelHost()
+
 
 # line
 line0_mdl = block_deep_copy(get_line_rms_template(grid.rms_var_factory).block)
@@ -144,26 +140,21 @@ big_gen1 = Block(children=[genrow_mdl1])
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl1.out_vars[0]})
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl1.out_vars[1]})
 
-# add models to dyn_host
-line0_dynhost.model = line0_mdl
-line1_dynhost.model = line1_mdl
-load1_dynhost.model = load_mdl
-load2_dynhost.model = motor_mdl
-gen_dynhost.model = big_gen1
-
 # attach rms models to Veragrid objects
-line0.rms_model = line0_dynhost
-line1.rms_model = line1_dynhost
-load1.rms_model = load1_dynhost
-load2.rms_model = load2_dynhost
-gen0.rms_model = gen_dynhost
+line0.rms_model = line0_mdl
+line1.rms_model = line1_mdl
+load1.rms_model = load_mdl
+load2.rms_model = motor_mdl
+gen0.rms_model = big_gen1
 
 Pl0 = find_name_in_block('Pl0', load_mdl)
 u = find_name_in_block('u', motor_mdl)
 #Tp0 = find_name_in_block('Tp0', load_mdl)
-event = RmsEvent(device=load1, parameter=Pl0, time=.5, value=-0.12)
-event = RmsEvent(device=load2, parameter=u, time=-0.01, value=1.0)
-grid.add_rms_event(event)
+events_group = RmsEventsGroup("simulation1")
+event1 = RmsEvent(device=load1, parameter=Pl0, time=.5, value=-0.12, group=events_group)
+event2 = RmsEvent(device=load2, parameter=u, time=-0.01, value=1.0, group=events_group)
+grid.add_rms_event(event1)
+grid.add_rms_event(event2)
 print(Pl0)
 
 pf_options = gce.PowerFlowOptions(
@@ -206,6 +197,8 @@ options = RmsOptions(time_step=0.001,
 problem = RmsProblemDae(grid=grid,
                         options=options,
                         pf_results=res)
+
+problem.set_events_group(events_group)
 
 solver = BackEulerImplicitIntegration(
     problem=problem,
