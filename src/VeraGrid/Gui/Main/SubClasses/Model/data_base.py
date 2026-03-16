@@ -1005,6 +1005,7 @@ class DataBaseTableMain(DiagramsMain):
                             block=elm.block,
                             api_object=elm,
                             mode=DynamicEditorMode.RMS,
+                            templates_list=self.circuit.rms_models,
                             main_editor=True,
                         )
                         if self.rms_model_Editor_window.show():
@@ -1016,6 +1017,7 @@ class DataBaseTableMain(DiagramsMain):
                             block=elm.block,
                             api_object=elm,
                             mode=DynamicEditorMode.EMT,
+                            templates_list=self.circuit.emt_models,
                             main_editor=True,
                         )
 

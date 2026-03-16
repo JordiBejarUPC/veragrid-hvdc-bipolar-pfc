@@ -85,6 +85,10 @@
               <bool>true</bool>
              </property>
              <widget class="QWidget" name="tab">
+              <attribute name="icon">
+               <iconset resource="../Icons/icons.qrc">
+                <normaloff>:/Icons/icons/link-to-all.png</normaloff>:/Icons/icons/link-to-all.png</iconset>
+              </attribute>
               <attribute name="title">
                <string>Library</string>
               </attribute>
@@ -111,6 +115,10 @@
               </layout>
              </widget>
              <widget class="QWidget" name="tab_2">
+              <attribute name="icon">
+               <iconset resource="../Icons/icons.qrc">
+                <normaloff>:/Icons/icons/data.png</normaloff>:/Icons/icons/data.png</iconset>
+              </attribute>
               <attribute name="title">
                <string>Parameters</string>
               </attribute>
@@ -201,6 +209,13 @@
         <widget class="QLabel" name="currently_editing_object_label">
          <property name="text">
           <string>Device:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="deviceLabel">
+         <property name="text">
+          <string>dev</string>
          </property>
         </widget>
        </item>

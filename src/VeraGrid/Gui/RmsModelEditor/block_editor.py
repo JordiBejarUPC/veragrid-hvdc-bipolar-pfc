@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'block_editor.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.7.2
+## Created by: Qt User Interface Compiler version 6.10.1
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -71,7 +71,9 @@ class Ui_BlockEditorWindow(object):
 
         self.verticalLayout_5.addWidget(self.libraryTreeView)
 
-        self.tabWidget.addTab(self.tab, "")
+        icon1 = QIcon()
+        icon1.addFile(u":/Icons/icons/link-to-all.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget.addTab(self.tab, icon1, "")
         self.tab_2 = QWidget()
         self.tab_2.setObjectName(u"tab_2")
         self.verticalLayout_2 = QVBoxLayout(self.tab_2)
@@ -83,7 +85,9 @@ class Ui_BlockEditorWindow(object):
 
         self.verticalLayout_2.addWidget(self.parametersTableView)
 
-        self.tabWidget.addTab(self.tab_2, "")
+        icon2 = QIcon()
+        icon2.addFile(u":/Icons/icons/data.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget.addTab(self.tab_2, icon2, "")
 
         self.verticalLayout_4.addWidget(self.tabWidget)
 
@@ -119,6 +123,11 @@ class Ui_BlockEditorWindow(object):
         self.currently_editing_object_label.setObjectName(u"currently_editing_object_label")
 
         self.horizontalLayout_2.addWidget(self.currently_editing_object_label)
+
+        self.deviceLabel = QLabel(self.frame_2)
+        self.deviceLabel.setObjectName(u"deviceLabel")
+
+        self.horizontalLayout_2.addWidget(self.deviceLabel)
 
         self.horizontalSpacer_3 = QSpacerItem(859, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
@@ -159,6 +168,7 @@ class Ui_BlockEditorWindow(object):
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("BlockEditorWindow", u"Library", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("BlockEditorWindow", u"Parameters", None))
         self.currently_editing_object_label.setText(QCoreApplication.translate("BlockEditorWindow", u"Device:", None))
+        self.deviceLabel.setText(QCoreApplication.translate("BlockEditorWindow", u"dev", None))
         self.doItButton.setText(QCoreApplication.translate("BlockEditorWindow", u"Do it!", None))
         self.toolBar.setWindowTitle(QCoreApplication.translate("BlockEditorWindow", u"toolBar", None))
     # retranslateUi

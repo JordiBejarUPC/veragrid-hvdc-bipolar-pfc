@@ -13,17 +13,20 @@ from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
                                QDialog, QVBoxLayout, QDialogButtonBox, QLabel, QListWidget, QWidget,
-                               QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QTableWidget, QTableWidgetItem,
+                               QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QDoubleSpinBox, QTableWidget, QTableWidgetItem,
                                QColorDialog)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter, QIcon, QStandardItemModel, QStandardItem,
                            QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import Qt, QPointF, Signal
+
 
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
+from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.RmsModelEditor.block_editor import Ui_BlockEditorWindow
@@ -43,6 +46,16 @@ WIRE_COLOR: QColor = QColor("#587291")
 WIRE_HOVER_COLOR: QColor = QColor("#cc6f2c")
 HANDLE_FILL: QColor = QColor("#36536b")
 DEFAULT_BLOCK_FILL: QColor = QColor("#d9e7f5")
+PORT_LABEL_COLOR: QColor = QColor("#173042")
+PORT_LABEL_MAX_CHARS: int = 12
+BLOCK_HEADER_HEIGHT: float = 32.0
+BLOCK_PORT_ROW_HEIGHT: float = 18.0
+BLOCK_PORT_SECTION_PADDING: float = 14.0
+BLOCK_MIN_WIDTH: float = 186.0
+BLOCK_MIN_HEIGHT: float = 60.0
+TEMPLATE_NODE_TYPE: str = "TEMPLATE"
+PARAMETER_VALUE_TYPE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 500
+PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
 
 
 def _new_uid() -> int:
@@ -52,6 +65,134 @@ def _new_uid() -> int:
     :return:
     """
     return uuid.uuid4().int
+
+
+def truncate_port_label(text: str, max_chars: int = PORT_LABEL_MAX_CHARS) -> str:
+    """
+    Truncate a port label to the requested visible length.
+
+    :param text:
+    :param max_chars:
+    :return:
+    """
+    if len(text) <= max_chars:
+        return text
+    else:
+        return text[:max_chars]
+
+
+def clone_template_block(template_block: Block) -> Block:
+    """
+    Build a structural copy of a template block for editor insertion.
+
+    :param template_block:
+    :return:
+    """
+    uid_map: Dict[int, int] = dict()
+    block_data: Dict[str, Any] = template_block.to_dict()
+    cloned_data: Dict[str, Any] = remap_serialized_uids(block_data, uid_map)
+    cloned_block: Block = Block.parse(cloned_data)
+    cloned_block.diagram = clone_template_diagram(template_block.diagram, uid_map)
+    return cloned_block
+
+
+def remap_serialized_uids(data: Any, uid_map: Dict[int, int]) -> Any:
+    """
+    Recursively replace serialized UIDs with fresh values while preserving references.
+
+    :param data:
+    :param uid_map:
+    :return:
+    """
+    key: str
+    value: Any
+    remapped_data: Dict[str, Any]
+
+    if isinstance(data, dict):
+        remapped_data = dict()
+
+        for key, value in data.items():
+            if key == "uid" and isinstance(value, int):
+                if value in uid_map:
+                    remapped_data[key] = uid_map[value]
+                else:
+                    uid_map[value] = _new_uid()
+                    remapped_data[key] = uid_map[value]
+            else:
+                remapped_data[key] = remap_serialized_uids(value, uid_map)
+
+        return remapped_data
+    elif isinstance(data, list):
+        return [remap_serialized_uids(value, uid_map) for value in data]
+    else:
+        return data
+
+
+def clone_template_diagram(diagram: BlockDiagram, uid_map: Dict[int, int]) -> BlockDiagram:
+    """
+    Clone a template diagram while remapping block and connection identifiers.
+
+    :param diagram:
+    :param uid_map:
+    :return:
+    """
+    cloned_diagram: BlockDiagram = BlockDiagram()
+    node: Any
+    con: Any
+    mapped_uid: int
+    subdiagram: BlockDiagram | None
+
+    cloned_diagram.status = diagram.status
+
+    for _, node in diagram.node_data.items():
+        mapped_uid = uid_map.get(node.device_uid, node.device_uid)
+
+        if node.sub_diagram is not None:
+            subdiagram = clone_template_diagram(node.sub_diagram, uid_map)
+        else:
+            subdiagram = None
+
+        cloned_diagram.add_node(
+            name=node.name,
+            x=node.x,
+            y=node.y,
+            tpe=node.tpe,
+            device_uid=mapped_uid,
+            api_object_name=node.api_object_name,
+            state_ins=node.state_ins,
+            state_outs=list(node.state_outs),
+            algeb_ins=node.algeb_ins,
+            algeb_outs=list(node.algeb_outs),
+            color=node.color,
+            subdiagram=subdiagram
+        )
+
+    for _, con in diagram.con_data.items():
+        cloned_diagram.add_branch(
+            connectionitem_uid=_new_uid(),
+            device_uid_from=uid_map.get(con.from_uid, con.from_uid),
+            device_uid_to=uid_map.get(con.to_uid, con.to_uid),
+            port_number_from=con.port_number_from,
+            port_number_to=con.port_number_to,
+            color=con.color
+        )
+
+    return cloned_diagram
+
+
+def is_supported_library_payload(item_data: object) -> bool:
+    """
+    Check whether a tree item payload can be dragged into the editor scene.
+
+    :param item_data:
+    :return:
+    """
+    if isinstance(item_data, BlockType):
+        return True
+    elif isinstance(item_data, (RmsModelTemplate, EmtModelTemplate)):
+        return True
+    else:
+        return False
 
 
 def clone_block_for_editing(block: Block) -> Block:
@@ -137,8 +278,9 @@ class ResizeHandle(QGraphicsRectItem):
         if change == QGraphicsItem.GraphicsItemChange.ItemPositionChange:
             if self.block.resizing_from_handle:
                 new_pos: QPointF = value
-                min_width: int = 40
-                min_height: int = 30
+                min_width: float
+                min_height: float
+                min_width, min_height = self.block.get_minimum_block_size()
                 new_width: float = max(new_pos.x(), min_width)
                 new_height: float = max(new_pos.y(), min_height)
 
@@ -228,6 +370,7 @@ class PortItem(QGraphicsEllipseItem):
         self.connections: List["ConnectionItem"] | None = None
         self.index: int = index
         self.total: int = total
+        self.base_var: Var | None = None
 
         spacing: float = subsystem.rect().height() / (total + 1)
         y_pos: float = spacing * (index + 1)
@@ -481,6 +624,357 @@ class ParameterEditorDialog(QDialog):
             pass
 
 
+class BlockParameterKind(Enum):
+    """
+    Parameter row kinds shown in the side table.
+    """
+
+    EVENT = "Event"
+    FIXED = "Fixed"
+    EXPRESSION = "Expression"
+
+
+class BlockParameterRow:
+    """
+    Row description for the selected block parameter table.
+    """
+
+    __slots__ = ("name", "kind", "key_var", "value", "editable", "value_type")
+
+    def __init__(self,
+                 name: str,
+                 kind: BlockParameterKind,
+                 key_var: Var,
+                 value: Any,
+                 editable: bool,
+                 value_type: type):
+        """
+        Build a parameter row descriptor.
+
+        :param name:
+        :param kind:
+        :param key_var:
+        :param value:
+        :param editable:
+        :param value_type:
+        """
+        self.name: str = name
+        self.kind: BlockParameterKind = kind
+        self.key_var: Var = key_var
+        self.value: Any = value
+        self.editable: bool = editable
+        self.value_type: type = value_type
+
+
+class BlockParameterValueDelegate(QtWidgets.QStyledItemDelegate):
+    """
+    Delegate that chooses a numeric or text editor depending on the parameter row metadata.
+    """
+
+    def createEditor(self,
+                     parent: QtWidgets.QWidget,
+                     option: QtWidgets.QStyleOptionViewItem,
+                     index: QtCore.QModelIndex) -> QtWidgets.QWidget | None:
+        """
+        Create the editor widget for the parameter value cell.
+
+        :param parent:
+        :param option:
+        :param index:
+        :return:
+        """
+        value_type_name: str = str(index.model().data(index, PARAMETER_VALUE_TYPE_ROLE))
+        editable: bool = bool(index.model().data(index, PARAMETER_EDITABLE_ROLE))
+
+        if not editable:
+            return None
+        elif value_type_name == "float":
+            editor: QDoubleSpinBox = QDoubleSpinBox(parent)
+            editor.setDecimals(8)
+            editor.setMinimum(-1e200)
+            editor.setMaximum(1e200)
+            return editor
+        elif value_type_name == "int":
+            editor_int: QSpinBox = QSpinBox(parent)
+            editor_int.setMinimum(-999999999)
+            editor_int.setMaximum(999999999)
+            return editor_int
+        else:
+            return QLineEdit(parent)
+
+    def setEditorData(self, editor: QtWidgets.QWidget, index: QtCore.QModelIndex) -> None:
+        """
+        Load the current model value into the editor widget.
+
+        :param editor:
+        :param index:
+        :return:
+        """
+        value: Any = index.model().data(index, QtCore.Qt.ItemDataRole.EditRole)
+
+        if isinstance(editor, QDoubleSpinBox):
+            editor.setValue(float(value))
+        elif isinstance(editor, QSpinBox):
+            editor.setValue(int(value))
+        elif isinstance(editor, QLineEdit):
+            editor.setText(str(value))
+        else:
+            pass
+
+    def setModelData(self,
+                     editor: QtWidgets.QWidget,
+                     model: QtCore.QAbstractItemModel,
+                     index: QtCore.QModelIndex) -> None:
+        """
+        Push the editor value back into the model.
+
+        :param editor:
+        :param model:
+        :param index:
+        :return:
+        """
+        if isinstance(editor, QDoubleSpinBox):
+            model.setData(index, editor.value(), QtCore.Qt.ItemDataRole.EditRole)
+        elif isinstance(editor, QSpinBox):
+            model.setData(index, editor.value(), QtCore.Qt.ItemDataRole.EditRole)
+        elif isinstance(editor, QLineEdit):
+            model.setData(index, editor.text(), QtCore.Qt.ItemDataRole.EditRole)
+        else:
+            pass
+
+
+class BlockParametersTableModel(QtCore.QAbstractTableModel):
+    """
+    Table model that exposes the selected block parameters in the right-side panel.
+    """
+
+    def __init__(self,
+                 var_factory: VarFactory,
+                 parent: Optional[QtCore.QObject] = None):
+        """
+        Build the side-panel parameter table model.
+
+        :param var_factory:
+        :param parent:
+        """
+        super().__init__(parent)
+        self.var_factory: VarFactory = var_factory
+        self.block: Block | None = None
+        self.rows: List[BlockParameterRow] = list()
+        self.headers: List[str] = ["Parameter", "Value", "Kind"]
+
+    def set_block(self, block: Block | None) -> None:
+        """
+        Set the block whose parameters are shown in the table.
+
+        :param block:
+        :return:
+        """
+        self.beginResetModel()
+        self.block = block
+        self.rows = self.build_rows()
+        self.endResetModel()
+
+    def build_rows(self) -> List[BlockParameterRow]:
+        """
+        Build the visible rows for the current block.
+
+        :return:
+        """
+        rows: List[BlockParameterRow] = list()
+        var: Var
+        expr: Expr | Const
+        const: Const
+
+        if self.block is not None:
+            for var, expr in self.block.event_dict.items():
+                if isinstance(expr, Const):
+                    rows.append(BlockParameterRow(
+                        name=var.name,
+                        kind=BlockParameterKind.EVENT,
+                        key_var=var,
+                        value=expr.value,
+                        editable=True,
+                        value_type=self.get_python_value_type(expr.value)
+                    ))
+                else:
+                    rows.append(BlockParameterRow(
+                        name=var.name,
+                        kind=BlockParameterKind.EXPRESSION,
+                        key_var=var,
+                        value=str(expr),
+                        editable=False,
+                        value_type=str
+                    ))
+
+            for var, const in self.block.parameters.items():
+                rows.append(BlockParameterRow(
+                    name=var.name,
+                    kind=BlockParameterKind.FIXED,
+                    key_var=var,
+                    value=const.value,
+                    editable=False,
+                    value_type=self.get_python_value_type(const.value)
+                ))
+        else:
+            pass
+
+        return rows
+
+    def get_python_value_type(self, value: Any) -> type:
+        """
+        Normalize the editor type used for a parameter value.
+
+        :param value:
+        :return:
+        """
+        if isinstance(value, bool):
+            return str
+        elif isinstance(value, int):
+            return int
+        elif isinstance(value, float):
+            return float
+        else:
+            return str
+
+    def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
+        """
+        Return the visible row count.
+
+        :param parent:
+        :return:
+        """
+        if parent.isValid():
+            return 0
+        else:
+            return len(self.rows)
+
+    def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
+        """
+        Return the visible column count.
+
+        :param parent:
+        :return:
+        """
+        if parent.isValid():
+            return 0
+        else:
+            return len(self.headers)
+
+    def data(self,
+             index: QtCore.QModelIndex,
+             role: int = QtCore.Qt.ItemDataRole.DisplayRole) -> Any:
+        """
+        Return the data requested by the Qt view.
+
+        :param index:
+        :param role:
+        :return:
+        """
+        row_data: BlockParameterRow
+
+        if index.isValid():
+            row_data = self.rows[index.row()]
+
+            if role == QtCore.Qt.ItemDataRole.DisplayRole or role == QtCore.Qt.ItemDataRole.EditRole:
+                if index.column() == 0:
+                    return row_data.name
+                elif index.column() == 1:
+                    return "" if row_data.value is None else row_data.value
+                elif index.column() == 2:
+                    return row_data.kind.value
+                else:
+                    return None
+            elif role == PARAMETER_VALUE_TYPE_ROLE and index.column() == 1:
+                if row_data.value_type is float:
+                    return "float"
+                elif row_data.value_type is int:
+                    return "int"
+                else:
+                    return "text"
+            elif role == PARAMETER_EDITABLE_ROLE and index.column() == 1:
+                return row_data.editable
+            else:
+                return None
+        else:
+            return None
+
+    def headerData(self,
+                   section: int,
+                   orientation: QtCore.Qt.Orientation,
+                   role: int = QtCore.Qt.ItemDataRole.DisplayRole) -> Any:
+        """
+        Return table header data.
+
+        :param section:
+        :param orientation:
+        :param role:
+        :return:
+        """
+        if role == QtCore.Qt.ItemDataRole.DisplayRole:
+            if orientation == QtCore.Qt.Orientation.Horizontal:
+                return self.headers[section]
+            else:
+                return str(section + 1)
+        else:
+            return None
+
+    def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
+        """
+        Return the Qt flags for a parameter cell.
+
+        :param index:
+        :return:
+        """
+        if index.isValid():
+            row_data: BlockParameterRow = self.rows[index.row()]
+
+            if index.column() == 1 and row_data.editable:
+                return (QtCore.Qt.ItemFlag.ItemIsEnabled
+                        | QtCore.Qt.ItemFlag.ItemIsSelectable
+                        | QtCore.Qt.ItemFlag.ItemIsEditable)
+            else:
+                return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
+        else:
+            return QtCore.Qt.ItemFlag.NoItemFlags
+
+    def setData(self,
+                index: QtCore.QModelIndex,
+                value: Any,
+                role: int = QtCore.Qt.ItemDataRole.EditRole) -> bool:
+        """
+        Update an editable parameter value in the selected block.
+
+        :param index:
+        :param value:
+        :param role:
+        :return:
+        """
+        row_data: BlockParameterRow
+        new_value: Any
+
+        if index.isValid() and role == QtCore.Qt.ItemDataRole.EditRole:
+            row_data = self.rows[index.row()]
+
+            if index.column() == 1 and row_data.editable and self.block is not None:
+                if row_data.value_type is float:
+                    new_value = float(value)
+                elif row_data.value_type is int:
+                    new_value = int(value)
+                else:
+                    new_value = str(value)
+
+                self.block.event_dict[row_data.key_var] = self.var_factory.add_const(
+                    value=new_value,
+                    name=row_data.key_var.name
+                )
+                row_data.value = new_value
+                self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.DisplayRole, QtCore.Qt.ItemDataRole.EditRole])
+                return True
+            else:
+                return False
+        else:
+            return False
 class InspectModel(QWidget):
     """
     InspectModel
@@ -671,7 +1165,10 @@ class GenericBlockItem(QGraphicsRectItem):
     def resize_block(self, width, height):
         # Update geometry safely
         self.prepareGeometryChange()
-        QGraphicsRectItem.setRect(self, 0, 0, width, height)
+        min_width: float
+        min_height: float
+        min_width, min_height = self.get_minimum_block_size()
+        QGraphicsRectItem.setRect(self, 0, 0, max(width, min_width), max(height, min_height))
         self.update_ports()
         self.update_handle_position()
 
@@ -689,6 +1186,19 @@ class GenericBlockItem(QGraphicsRectItem):
     def set_rectangle(self, x, y, w, h):
         if not getattr(self, '_suppress_resize', False):
             self._set_rect_internal(w, h)
+
+    def get_minimum_block_size(self) -> tuple[float, float]:
+        """
+        Compute the minimum generic block size required by its ports.
+
+        :return:
+        """
+        port_rows: int = max(len(self.inputs), len(self.outputs), 1)
+        min_height: float = max(
+            BLOCK_MIN_HEIGHT,
+            BLOCK_HEADER_HEIGHT + BLOCK_PORT_SECTION_PADDING + port_rows * BLOCK_PORT_ROW_HEIGHT
+        )
+        return BLOCK_MIN_WIDTH, min_height
 
     def update_ports(self):
         for i, port in enumerate(self.inputs):
@@ -741,6 +1251,8 @@ class BlockItem(QGraphicsRectItem):
         self.name_item: QGraphicsTextItem | None = None
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
+        self.input_labels: List[QGraphicsTextItem] = list()
+        self.output_labels: List[QGraphicsTextItem] = list()
 
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
@@ -779,20 +1291,87 @@ class BlockItem(QGraphicsRectItem):
 
             self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
             self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
-
-            # Each port tooltip mirrors the symbolic variable so the editor state is inspectable.
-            for i, port in enumerate(self.inputs):
-                var_name: str = self.subsys.in_vars[i].name
-                port.setToolTip(f"Input {i}: {var_name}")
-
-            for i, port in enumerate(self.outputs):
-                var_name = self.subsys.out_vars[i].name
-                port.setToolTip(f"Output {i}: {var_name}")
+            self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
+            self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
+            self.refresh_port_metadata()
 
             self.resize_handle = ResizeHandle(self)
-            super().setRect(0, 0, 100, 60)
-            self.update_ports()
-            self.update_handle_position()
+            self.resize_to_content()
+        else:
+            pass
+
+    def create_port_label_item(self) -> QGraphicsTextItem:
+        """
+        Create a compact label item used beside a port.
+
+        :return:
+        """
+        label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
+        label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
+        label_item.setFont(label_font)
+        label_item.setDefaultTextColor(PORT_LABEL_COLOR)
+        label_item.setZValue(4)
+        return label_item
+
+    def get_minimum_block_size(self) -> tuple[float, float]:
+        """
+        Compute the minimum block size required by the port count.
+
+        :return:
+        """
+        port_rows: int = max(len(self.inputs), len(self.outputs), 1)
+        min_height: float = max(
+            BLOCK_MIN_HEIGHT,
+            BLOCK_HEADER_HEIGHT + BLOCK_PORT_SECTION_PADDING + port_rows * BLOCK_PORT_ROW_HEIGHT
+        )
+        return BLOCK_MIN_WIDTH, min_height
+
+    def resize_to_content(self) -> None:
+        """
+        Resize the block to the minimum size required by its ports.
+
+        :return:
+        """
+        min_width: float
+        min_height: float
+        min_width, min_height = self.get_minimum_block_size()
+        QGraphicsRectItem.setRect(self, 0, 0, min_width, min_height)
+        self.update_ports()
+        self.update_handle_position()
+
+    def refresh_port_metadata(self) -> None:
+        """
+        Refresh tooltips and visible labels for all ports.
+
+        :return:
+        """
+        i: int
+        port: PortItem
+        label_item: QGraphicsTextItem
+        variable_name: str
+
+        if self.subsys is not None:
+            for i, port in enumerate(self.inputs):
+                if port.base_var is None:
+                    port.base_var = self.subsys.in_vars[i]
+                else:
+                    pass
+
+                variable_name = self.subsys.in_vars[i].name
+                port.setToolTip(f"Input {i}: {variable_name}")
+                label_item = self.input_labels[i]
+                label_item.setPlainText(truncate_port_label(variable_name))
+
+            for i, port in enumerate(self.outputs):
+                if port.base_var is None:
+                    port.base_var = self.subsys.out_vars[i]
+                else:
+                    pass
+
+                variable_name = self.subsys.out_vars[i].name
+                port.setToolTip(f"Output {i}: {variable_name}")
+                label_item = self.output_labels[i]
+                label_item.setPlainText(truncate_port_label(variable_name))
         else:
             pass
 
@@ -840,6 +1419,7 @@ class BlockItem(QGraphicsRectItem):
         :return:
         """
         if self.subsys is not None:
+            current_scene: QGraphicsScene | None = self.scene()
             dialog: ParameterEditorDialog = ParameterEditorDialog(
                 var_factory=self.var_factory,
                 event_dict=self.subsys.event_dict,
@@ -850,6 +1430,11 @@ class BlockItem(QGraphicsRectItem):
             if dialog.exec() == QDialog.DialogCode.Accepted:
                 self.subsys.event_dict = dialog.event_dict
                 self.subsys.parameters = dialog.parameters
+
+                if isinstance(current_scene, DiagramScene):
+                    current_scene.editor.on_scene_selection_changed()
+                else:
+                    pass
             else:
                 pass
 
@@ -868,7 +1453,10 @@ class BlockItem(QGraphicsRectItem):
         :return:
         """
         self.prepareGeometryChange()
-        QGraphicsRectItem.setRect(self, 0, 0, width, height)
+        min_width: float
+        min_height: float
+        min_width, min_height = self.get_minimum_block_size()
+        QGraphicsRectItem.setRect(self, 0, 0, max(width, min_width), max(height, min_height))
         self.update_ports()
         self.update_handle_position()
 
@@ -895,14 +1483,26 @@ class BlockItem(QGraphicsRectItem):
         """
         i: int
         port: PortItem
+        input_spacing: float
+        output_spacing: float
+        port_section_height: float = max(self.rect().height() - BLOCK_HEADER_HEIGHT - 8.0, 1.0)
 
         for i, port in enumerate(self.inputs):
-            spacing: float = self.rect().height() / (len(self.inputs) + 1)
-            port.setPos(0, spacing * (i + 1))
+            input_spacing = port_section_height / (len(self.inputs) + 1)
+            port.setPos(0, BLOCK_HEADER_HEIGHT + input_spacing * (i + 1))
 
         for i, port in enumerate(self.outputs):
-            spacing = self.rect().height() / (len(self.outputs) + 1)
-            port.setPos(self.rect().width(), spacing * (i + 1))
+            output_spacing = port_section_height / (len(self.outputs) + 1)
+            port.setPos(self.rect().width(), BLOCK_HEADER_HEIGHT + output_spacing * (i + 1))
+
+        for i, label_item in enumerate(self.input_labels):
+            port = self.inputs[i]
+            label_item.setPos(14.0, port.pos().y() - 8.0)
+
+        for i, label_item in enumerate(self.output_labels):
+            port = self.outputs[i]
+            label_width: float = label_item.boundingRect().width()
+            label_item.setPos(self.rect().width() - label_width - 14.0, port.pos().y() - 8.0)
 
         self.update_handle_position()
 
@@ -1245,6 +1845,7 @@ class DiagramScene(QGraphicsScene):
                     pass
 
             target_block.subsys.in_vars[target_port.index] = dst_var
+            target_block.refresh_port_metadata()
             self.addItem(connection)
 
             self.editor.diagram.add_branch(
@@ -1260,7 +1861,7 @@ class DiagramScene(QGraphicsScene):
 
 
 class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
-    __slots__ = ("_block_role", "_mime_type")
+    __slots__ = ("_block_role", "_mime_type", "_drag_token_role", "_drag_payloads")
 
     def __init__(self, block_role: int, mime_type: str):
         """
@@ -1272,8 +1873,32 @@ class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
         super().__init__()
         self._block_role = block_role
         self._mime_type = mime_type
+        self._drag_token_role = block_role + 1
+        self._drag_payloads: Dict[str, object] = dict()
 
         self.setHorizontalHeaderLabels(["Models Library"])
+
+    def register_drag_payload(self, item: QtGui.QStandardItem, payload: object) -> None:
+        """
+        Register a draggable payload and attach its token to the tree item.
+
+        :param item:
+        :param payload:
+        :return:
+        """
+        token: str = str(_new_uid())
+        self._drag_payloads[token] = payload
+        item.setData(payload, self._block_role)
+        item.setData(token, self._drag_token_role)
+
+    def get_drag_payload(self, token: str) -> object | None:
+        """
+        Resolve a dragged token back into the original payload object.
+
+        :param token:
+        :return:
+        """
+        return self._drag_payloads.get(token, None)
 
     def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
         """
@@ -1287,7 +1912,7 @@ class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
             item: QtGui.QStandardItem | None = self.itemFromIndex(index)
             if item is not None:
                 item_data: object = item.data(self._block_role)
-                if isinstance(item_data, BlockType):
+                if is_supported_library_payload(item_data):
                     return (QtCore.Qt.ItemFlag.ItemIsEnabled
                             | QtCore.Qt.ItemFlag.ItemIsSelectable
                             | QtCore.Qt.ItemFlag.ItemIsDragEnabled)
@@ -1329,9 +1954,10 @@ class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
             if index.isValid():
                 item: QtGui.QStandardItem | None = self.itemFromIndex(index)
                 if item is not None:
+                    item_token: object = item.data(self._drag_token_role)
                     item_data: object = item.data(self._block_role)
-                    if isinstance(item_data, BlockType):
-                        mime_data.setData(self._mime_type, QtCore.QByteArray(item_data.name.encode("utf-8")))
+                    if isinstance(item_token, str) and is_supported_library_payload(item_data):
+                        mime_data.setData(self._mime_type, QtCore.QByteArray(item_token.encode("utf-8")))
                         return mime_data
                     else:
                         pass
@@ -1358,6 +1984,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  block: Block,
                  api_object: ALL_DEV_TYPES | None = None,
                  mode: DynamicEditorMode = DynamicEditorMode.RMS,
+                 templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate]] = None,
                  main_editor=False,
                  modal: bool = True):
         """
@@ -1389,6 +2016,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
 
+        # set object label
+        if api_object is not None:
+            self.ui.deviceLabel.setText(api_object.name)
+        else:
+            self.ui.deviceLabel.setText("")
+
         self.block_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 300
         self.mime_type: str = "application/x-veragrid-dynamics-block"
 
@@ -1411,6 +2044,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.block_counters: Dict[BlockType, int] = dict()
         self.scene: DiagramScene = DiagramScene(self)
         self.changes_applied: bool = False
+        self.parameters_table_model: BlockParametersTableModel = BlockParametersTableModel(
+            var_factory=self.var_factory,
+            parent=self.ui.parametersTableView
+        )
+
+        self.templates_list: List[RmsModelTemplate | EmtModelTemplate] = templates_list if templates_list is not None else list()
 
         if mode == DynamicEditorMode.RMS:
             self.tree_structure = {
@@ -1432,10 +2071,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     ("Line", BlockType.LINE),
                     ("Load", BlockType.LOAD),
                     ("Generic", BlockType.GENERIC),
-                ]
+                ],
             }
         elif mode == DynamicEditorMode.EMT:
-            self.tree_structure = {}
+            self.tree_structure = dict()
+        else:
+            self.tree_structure = dict()
+
+        if self.templates_list:
+            self.tree_structure["Templates"] = [(template.name, template) for template in self.templates_list]
+        else:
+            pass
 
         # build and add library model
         self.library_model = self.build_library_tree_model(
@@ -1447,6 +2093,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.libraryTreeView.expandAll()
         self.ui.libraryTreeView.setDragEnabled(True)
         self.ui.libraryTreeView.setHeaderHidden(False)
+        self.ui.parametersTableView.setModel(self.parameters_table_model)
+        self.ui.parametersTableView.setItemDelegateForColumn(
+            1,
+            BlockParameterValueDelegate(self.ui.parametersTableView)
+        )
+        self.ui.parametersTableView.horizontalHeader().setStretchLastSection(True)
+        self.ui.parametersTableView.verticalHeader().setVisible(False)
+        self.ui.parametersTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self.ui.parametersTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
 
         self.view: GraphicsView = GraphicsView(self.scene)
         self.ui.verticalLayout_3.removeWidget(self.ui.graphicsView)
@@ -1462,6 +2117,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.graphicsView.dropEvent = self.graphicsDropEvent
 
         self.ui.doItButton.clicked.connect(self.apply_changes)
+        self.scene.selectionChanged.connect(self.on_scene_selection_changed)
         if not self.block.diagram.node_data and self.main_editor:
             self.add_connection_vars()
             self.add_external_mapping_block()
@@ -1491,39 +2147,47 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             cat_item.setEditable(False)
             root_item.appendRow(cat_item)
 
-            for label, block_type in blocks:
+            for label, payload in blocks:
                 item: QtGui.QStandardItem = QtGui.QStandardItem(label)
                 item.setEditable(False)
-
-                item.setData(block_type, block_role)
+                model.register_drag_payload(item, payload)
                 cat_item.appendRow(item)
 
         return model
 
-    def get_block_type_from_mime_data(self, mime_data: QtCore.QMimeData) -> BlockType | None:
+    def get_library_payload_from_mime_data(self,
+                                           mime_data: QtCore.QMimeData) -> BlockType | RmsModelTemplate | EmtModelTemplate | None:
         """
-        Decode the dragged block type from the tree-view mime payload.
+        Decode the dragged library payload from the tree-view mime payload.
 
         :param mime_data:
         :return:
         """
-        block_type_name: str
-        block_type: BlockType
+        drag_token: str
+        payload: object | None
 
         if mime_data.hasFormat(self.mime_type):
-            block_type_name = bytes(mime_data.data(self.mime_type)).decode("utf-8")
+            drag_token = bytes(mime_data.data(self.mime_type)).decode("utf-8")
+            payload = self.library_model.get_drag_payload(drag_token)
 
-            for block_type in BlockType:
-                if block_type.name == block_type_name:
-                    return block_type
-                else:
-                    pass
-
-            return None
+            if isinstance(payload, BlockType):
+                return payload
+            elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate)):
+                return payload
+            else:
+                return None
         else:
             return None
 
     def create_generic_block_item(self, block_type: BlockType, x_pos, y_pos) -> BlockItem:
+        """
+        Create and place a generic block item.
+
+        :param block_type:
+        :param x_pos:
+        :param y_pos:
+        :return:
+        """
 
         dialog = GenericBlockDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -1555,6 +2219,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 algeb_outs=algeb_outs,
                 subdiagram=model.diagram
             )
+            return item
+        else:
+            return None
 
     def create_block_item(self, block_type: BlockType, x_pos: float, y_pos: float) -> BlockItem | None:
         """
@@ -1596,6 +2263,41 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return block_item
         else:
             return None
+
+    def create_template_block_item(self,
+                                   template: RmsModelTemplate | EmtModelTemplate,
+                                   x_pos: float,
+                                   y_pos: float) -> BlockItem | None:
+        """
+        Create and place a copied template block in the canvas scene.
+
+        :param template:
+        :param x_pos:
+        :param y_pos:
+        :return:
+        """
+        item_name: str = template.name
+        block_model: Block = clone_template_block(template.block)
+        block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+
+        if item_name:
+            block_model.name = item_name
+        else:
+            item_name = block_model.name
+
+        block_item.set_subsystem(block_model)
+        block_item.build_item()
+        self.block.add(block_model)
+        self.scene.addItem(block_item)
+        block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+        self.diagram.add_node(
+            name=item_name,
+            x=x_pos,
+            y=y_pos,
+            tpe=TEMPLATE_NODE_TYPE,
+            device_uid=block_model.uid
+        )
+        return block_item
 
     def remove_connection_item(self, item: ConnectionItem) -> None:
         """
@@ -1642,9 +2344,14 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         if source_port.subsystem.subsys is not None and target_port.subsystem.subsys is not None:
             dst_var: Var = source_port.subsystem.subsys.out_vars[source_port.index]
-            target_var: Var = target_port.subsystem.subsys.in_vars[target_port.index]
+            target_var: Var
             i: int
             eq: Expr
+
+            if target_port.base_var is not None:
+                target_var = target_port.base_var
+            else:
+                target_var = target_port.subsystem.subsys.in_vars[target_port.index]
 
             # The destination equations must be restored to the original local input variable.
             for i, eq in enumerate(target_port.subsystem.subsys.algebraic_eqs):
@@ -1652,6 +2359,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             for i, eq in enumerate(target_port.subsystem.subsys.state_eqs):
                 target_port.subsystem.subsys.state_eqs[i] = eq.subs({dst_var: target_var})
+
+            target_port.subsystem.subsys.in_vars[target_port.index] = target_var
+            target_port.subsystem.refresh_port_metadata()
         else:
             pass
 
@@ -1996,6 +2706,36 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return None
 
+    def get_selected_scene_block(self) -> Block | None:
+        """
+        Return the single selected block, if the current selection is unambiguous.
+
+        :return:
+        """
+        selected_items: List[QGraphicsItem] = self.scene.selectedItems()
+        selected_item: QGraphicsItem
+
+        if len(selected_items) == 1:
+            selected_item = selected_items[0]
+
+            if isinstance(selected_item, BlockItem):
+                return selected_item.subsys
+            elif isinstance(selected_item, GenericBlockItem):
+                return selected_item.subsys
+            else:
+                return None
+        else:
+            return None
+
+    def on_scene_selection_changed(self) -> None:
+        """
+        Refresh the right-side parameters table from the selected block.
+
+        :return:
+        """
+        selected_block: Block | None = self.get_selected_scene_block()
+        self.parameters_table_model.set_block(selected_block)
+
     def apply_changes(self) -> None:
         """
         Commit the edited working copy back into the original block.
@@ -2050,8 +2790,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         # Recreate nodes
         for uid, node in self.diagram.node_data.items():
-            block_type: BlockType = BlockType[node.tpe]
+            block_type: BlockType | None
             block_model: Block | None = self.get_block_from_main_block(node.device_uid)
+
+            if node.tpe in BlockType.__members__:
+                block_type = BlockType[node.tpe]
+            else:
+                block_type = None
 
             if block_model is not None:
 
@@ -2084,8 +2829,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     block_item.setBrush(brush)
                     uid_to_blockitem[uid] = block_item
 
-                    current_count: int = self.block_counters.get(block_type, 0) + 1
-                    self.block_counters[block_type] = current_count
+                    if block_type is not None:
+                        current_count: int = self.block_counters.get(block_type, 0) + 1
+                        self.block_counters[block_type] = current_count
+                    else:
+                        pass
 
         # Recreate connections
         for uid, con in self.diagram.con_data.items():
@@ -2125,9 +2873,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        block_type: BlockType | None = self.get_block_type_from_mime_data(event.mimeData())
+        payload: BlockType | RmsModelTemplate | EmtModelTemplate | None = self.get_library_payload_from_mime_data(
+            event.mimeData()
+        )
 
-        if block_type is not None:
+        if payload is not None:
             event.acceptProposedAction()
         else:
             event.ignore()
@@ -2139,9 +2889,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        block_type: BlockType | None = self.get_block_type_from_mime_data(event.mimeData())
+        payload: BlockType | RmsModelTemplate | EmtModelTemplate | None = self.get_library_payload_from_mime_data(
+            event.mimeData()
+        )
 
-        if block_type is not None:
+        if payload is not None:
             event.acceptProposedAction()
         else:
             event.ignore()
@@ -2153,31 +2905,42 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        block_type: BlockType | None = self.get_block_type_from_mime_data(event.mimeData())
+        payload: BlockType | RmsModelTemplate | EmtModelTemplate | None = self.get_library_payload_from_mime_data(
+            event.mimeData()
+        )
         scene_position: QtCore.QPointF = self.ui.graphicsView.mapToScene(
             int(event.position().x()),
             int(event.position().y())
         )
         block_item: BlockItem | None
 
-        if block_type is not None:
+        if payload is not None:
 
             block_item = None
 
-            if block_type == BlockType.GENERIC:
+            if isinstance(payload, BlockType) and payload == BlockType.GENERIC:
 
                 block_item = self.create_generic_block_item(
-                    block_type=block_type,
+                    block_type=payload,
                     x_pos=scene_position.x(),
                     y_pos=scene_position.y()
                 )
 
-            else:
+            elif isinstance(payload, BlockType):
                 block_item = self.create_block_item(
-                    block_type=block_type,
+                    block_type=payload,
                     x_pos=scene_position.x(),
                     y_pos=scene_position.y()
                 )
+
+            elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate)):
+                block_item = self.create_template_block_item(
+                    template=payload,
+                    x_pos=scene_position.x(),
+                    y_pos=scene_position.y()
+                )
+            else:
+                block_item = None
 
             if block_item is not None:
                 event.acceptProposedAction()
