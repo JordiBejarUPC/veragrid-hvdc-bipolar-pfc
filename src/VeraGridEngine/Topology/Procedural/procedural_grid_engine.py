@@ -354,7 +354,7 @@ class Graph:
                 voltage = closest_voltage[i - (self.m + self.n)]
                 load = None
 
-            node_objects.append(Node(tpe, id_number, x, y, load, voltage))
+            node_objects.append(Node(tpe, id_number, x, y, load, voltage, is_DC=False))
 
         return node_objects
 
@@ -375,7 +375,7 @@ class Topology:
 
     def __init__(self, network_graph: Graph, nodes: List[Node], edges: List[Edge], discretization: float = 25.0, transition_matrix: Dict[int, Dict[int, float]] = None):
         self.network_graph = network_graph
-        self.nodes = nodes #creo que no hace falta importar esto ya que edges incluye la misma info
+        self.nodes = nodes # creo que no hace falta importar esto ya que edges incluye la misma info
         self.edges = edges
         self.discretization = discretization  # km between buses
         self.transition_matrix = transition_matrix
@@ -415,22 +415,23 @@ class Topology:
             conn_counter = 0
 
             # Add the first bus to the Multicircuit
-            next_bus = input_node.voltage
+            next_bus_volt = input_node.voltage
             next_bus_lat = input_node.x
             next_bus_lon = input_node.y
             next_bus_tpe = input_node.tpe
             next_bus_id_number = input_node.id_number
-            bus = gce.Bus(
+            next_bus_is_DC = input_node.is_DC
+            next_bus = gce.Bus(
                 name=f"{next_bus_tpe}_{next_bus_id_number}",
-                Vnom=next_bus,
-                is_dc=False,
+                Vnom=next_bus_volt,
+                is_dc=next_bus_is_DC,
                 vmin=0.9, vmax=1.1,
                 angle_min=-6.28, angle_max=6.28,
                 latitude=next_bus_lat, longitude=next_bus_lon,
             )
-            bus.Vm_cost = next_bus * 1000
+            next_bus.Vm_cost = next_bus_volt * 1000
 
-            grid.add_bus(obj=bus)
+            grid.add_bus(obj=next_bus)
 
             voltage_options = sorted(self.transition_matrix.get(input_node.voltage, {}).keys())
 
@@ -438,37 +439,39 @@ class Topology:
 
                 # Update next bus to current bus
                 current_bus = next_bus
+                current_bus_volt = next_bus_volt
                 current_bus_lat = next_bus_lat
                 current_bus_lon = next_bus_lon
                 current_bus_tpe = next_bus_tpe
                 current_bus_id_number = next_bus_id_number
+                current_bus_is_DC = next_bus_is_DC
 
                 # Check if we are at the last connection
                 is_last_conn = (conn_counter == n_slots - 1)
 
                 # Add next bus to Multicircuit
                 if is_last_conn:
-                    next_bus = output_node.voltage
+                    next_bus_volt = output_node.voltage
 
                     # If statement to discard transitions that are not allowed by the transition matrix
-                    if self.transition_matrix[current_bus].get(next_bus) == 0:
-                        print(f"Added an intermediate bus to allow transition from {current_bus}kV to {next_bus}kV.")
+                    if self.transition_matrix[current_bus_volt].get(next_bus_volt) == 0:
+                        print(f"Added an intermediate bus to allow transition from {current_bus_volt}kV to {next_bus_volt}kV.")
                         # TODO: Find out a way to solve this case
                     else:
-                        bus = gce.Bus(
+                        next_bus = gce.Bus(
                             name=f"{output_node.tpe}_{output_node.id_number}_{i}",
-                            Vnom=next_bus,
-                            is_dc=False,
+                            Vnom=next_bus_volt,
+                            is_dc=output_node.is_DC,
                             vmin=0.9, vmax=1.1,
                             angle_min=-6.28, angle_max=6.28,
                             latitude=output_node.x, longitude=output_node.y,
                         )
-                        bus.Vm_cost = next_bus * 1000
+                        next_bus.Vm_cost = next_bus_volt * 1000
 
-                        grid.add_bus(obj=bus)
+                        grid.add_bus(obj=next_bus)
                 else:
                     next_bus_options = sorted([b for b in voltage_options])
-                    current_transitions =  self.transition_matrix[current_bus]
+                    current_transitions =  self.transition_matrix[current_bus_volt]
                     weights = []
                     for bus in next_bus_options:
                         # Default to 0 probability if a voltage is not in the matrix
@@ -476,22 +479,22 @@ class Topology:
                         weights.append(weight)
 
                     # random.choices returns a list, so get the first element [0]
-                    next_bus = random.choices(next_bus_options, weights=weights, k=1)[0]
-                    bus = gce.Bus(
-                        name=f"{input_node.tpe}_{bus.id_number}_{i}",
-                        Vnom=next_bus,
-                        is_dc=False,
+                    next_bus_volt = random.choices(next_bus_options, weights=weights, k=1)[0]
+                    next_bus = gce.Bus(
+                        name=f"intermediate_{bus.id_number}_{i}",
+                        Vnom=next_bus_volt,
+                        is_dc=current_bus_is_DC, # for now we keep it like this, since everything is AC
                         vmin=0.9, vmax=1.1,
                         angle_min=-6.28, angle_max=6.28,
-                        latitude=coord_calc(current_bus_lat,current_bus_lon,lengths[conn_counter])[0],
-                        longitude=coord_calc(current_bus_lat,current_bus_lon,lengths[conn_counter])[1]
+                        latitude=self.coord_calc(current_bus_lat, current_bus_lon, lengths[conn_counter], coord_output)[0],
+                        longitude=self.coord_calc(current_bus_lat,current_bus_lon,lengths[conn_counter],coord_output)[1]
                     )
-                    bus.Vm_cost = next_bus * 1000
+                    next_bus.Vm_cost = next_bus_volt * 1000
 
-                    grid.add_bus(obj=bus)
+                    grid.add_bus(obj=next_bus)
 
                 # Add connection between current bus and next bus to Multicircuit
-                conn_options = sorted(get_possible_connections(current_bus, next_bus))
+                conn_options = sorted(self.get_possible_connections(current_bus_volt, next_bus_volt, current_bus_is_DC, current_bus_is_DC))
                 if not conn_options:
                     valid_combo = False
                     print(f"Combo failed due to lack of next connection options.")
@@ -507,8 +510,8 @@ class Topology:
                     capex = catalogue_data_fetcher(connection.identifier, 'Dummy Cost [EUR/km]', file_name=catalogue_path)
 
                     line = gce.Line(
-                        name=f"Line_{bus_f.name}_{bus_t.name}_{idx_1D}",  # Added idx_1D to ensure uniqueness
-                        bus_from=bus_f, bus_to=bus_t,
+                        name=f"Line_{current_bus.name}_{next_bus.name}_{idx_1D}",  # Added idx_1D to ensure uniqueness
+                        bus_from=current_bus, bus_to=next_bus,
                         length=lengths[conn_counter], r=r, x=x, b=b, rate=p_rated,
                         capex=capex, opex=0, cost=100
                     )
@@ -534,8 +537,8 @@ class Topology:
                     )[0]
 
                     trafo = gce.Transformer2W(
-                        name=f"TR_{bus_f.name}_{bus_t.name}_{idx_1D}",  # Added idx_1D to ensure uniqueness
-                        bus_from=bus_f, bus_to=bus_t,
+                        name=f"TR_{current_bus.name}_{next_bus.name}_{idx_1D}",  # Added idx_1D to ensure uniqueness
+                        bus_from=current_bus, bus_to=next_bus,
                         HV=max(hv_val, lv_val), LV=min(hv_val, lv_val),
                         r=np.real(z_complex), x=np.imag(z_complex),
                         rate=rate, capex=capex, opex=0, cost=5000
@@ -546,6 +549,38 @@ class Topology:
 
             # TODO: Add the merge_lines function outside generate_markov and inside Topology
             # combination, length_elements_ = merge_lines(combination, length_elements_)
+
+    def coord_calc(self, current_bus_lat: float,current_bus_lon: float, length:float , coord_out: np.array):
+        """
+        Calculate the coordinates of the next bus based on the current bus, the length to be covered, and the output coordinates.
+        """
+        line_angle = np.arctan2(coord_out[1] - current_bus_lon, coord_out[0] - current_bus_lat)
+        delta_x = np.cos(line_angle) * length
+        delta_y = np.sin(line_angle) * length
+        new_coord = np.array([current_bus_lat + delta_x, current_bus_lon + delta_y])
+
+        return new_coord
+
+    def get_possible_connections(self, current_bus: int, next_bus: int, current_bus_is_DC: bool, next_bus_is_DC: bool):
+        """
+        Determines valid connections for a pair of buses, enforcing all rules.
+        Only considers type A connections for A-slots and type B connections for B-slots.
+        """
+
+        if current_bus == next_bus:
+            if not current_bus_is_DC and not next_bus_is_DC:
+                return ["underground cable"]
+            elif current_bus_is_DC and next_bus_is_DC:
+                return ["DC cable"]
+            else:
+                return ["VSC"]
+        else:
+            if not current_bus_is_DC and not next_bus_is_DC:
+                return ["transformer"]
+            elif current_bus_is_DC != next_bus_is_DC:
+                return ["VSC"]
+            else:
+                return []
 
 class Grid:
     """
@@ -558,13 +593,14 @@ class Grid:
 
 class Node:
 
-    def __init__(self, tpe: int, id_number: int, x: float, y: float, load: float, voltage: int):
+    def __init__(self, tpe: int, id_number: int, x: float, y: float, load: float, voltage: int, is_DC: bool):
         self.tpe = tpe # 0 for M, 1 for N, 2 for Steiner Point
         self.id_number = id_number
         self.x = x
         self.y = y
         self.load = load
         self.voltage = voltage
+        self.is_DC = is_DC
 
     #def add_node(self, candidate: int):
     #    self.candidates.append(candidate)
