@@ -36,7 +36,6 @@ from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.enumerations import (VarPowerFlowRefferenceType, 
                                         DynamicIntegrationMethod, 
@@ -210,9 +209,6 @@ def create_test_grid():
 
 def setup_vsc_model(grid, vsc):
     """Setup the VSC AC2AC model for the validation."""
-    # Create dynamic model host for VSC
-    vsc_dynhost = DynamicModelHost()
-    
     # Build VSC AC2AC model
     vsc_model = VscAc2acModel(grid.rms_var_factory)
     vsc_block = block_deep_copy(vsc_model.block)
@@ -227,8 +223,7 @@ def setup_vsc_model(grid, vsc):
     vsc_block.connect([vsc_block.in_vars[1]], [bus_ac.rms_model.model.out_vars[1]])  # theta_ac
     vsc_block.connect([vsc_block.in_vars[2]], [bus_dc.rms_model.model.out_vars[0]])  # vdc
     
-    vsc_dynhost.model = vsc_block
-    vsc.rms_model = vsc_dynhost
+    vsc.rms_model = vsc_block
     
     return vsc_block
 

@@ -16,7 +16,7 @@ from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource
 from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
+
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 from VeraGridEngine.enumerations import ConverterControlType
@@ -123,11 +123,7 @@ print(res.get_branch_df())
 # Build EMT models
 ######################################################################################################
 
-# Build dynamic_model_host
-line12_dynhost = DynamicModelHost()
-load_dynhost = DynamicModelHost()
-gen_dynhost = DynamicModelHost()
-gen3_dynhost = DynamicModelHost()
+
 
 #Initialise the EMT
 line12_mdl = get_pi_line_emt_template(grid.rms_var_factory).block
@@ -175,17 +171,11 @@ big_gen1 = Block(children=[genrow_mdl1])
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl1.out_vars[0]})
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl1.out_vars[1]})
 
-# add models to dyn_host
-line12_dynhost.model = line12_mdl
-load_dynhost.model = load_mdl
-gen_dynhost.model = big_gen1
-gen3_dynhost.model = dc_source
-
 # attach emt models to Veragrid objects
-line12.emt_model = line12_dynhost
-load1.emt_model = load_dynhost
-gen1.emt_model = gen_dynhost
-gen3.emt_model = gen3_dynhost
+line12.emt_model = line12_mdl
+load1.emt_model = load_mdl
+gen1.emt_model = big_gen1
+gen3.emt_model = dc_source
 gen3.emt_model.unify_blocks()
 
 Vpv0 = find_name_in_block('Vpv0', gen3.emt_model)
