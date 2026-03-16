@@ -12,17 +12,17 @@ from typing import List, Dict, Optional, Any
 from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
-                               QDialog, QVBoxLayout, QDialogButtonBox, QSplitter, QLabel, QDoubleSpinBox,
-                               QListView, QAbstractItemView, QPushButton, QListWidget, QWidget,
+                               QDialog, QVBoxLayout, QDialogButtonBox, QLabel, QListWidget, QWidget,
                                QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QTableWidget, QTableWidgetItem,
-                               QColorDialog, QCheckBox)
+                               QColorDialog)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter, QIcon, QStandardItemModel, QStandardItem,
                            QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
-from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QModelIndex, QMimeData, Signal
+from PySide6.QtCore import Qt, QPointF, Signal
 
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
+from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
+from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
-from VeraGridEngine import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -150,6 +150,7 @@ class ResizeHandle(QGraphicsRectItem):
         else:
             return super().itemChange(change, value)
 
+
 class GenericBlockDialog(QDialog):
     """
     Dialog to edit the created generic block
@@ -194,7 +195,6 @@ class GenericBlockDialog(QDialog):
         algeb_ins = self.algeb_inputs_spin.value()
         algeb_outs = [s.strip() for s in self.algeb_outputs_edit.text().split(",") if s.strip()]
         return name, state_ins, state_outs, algeb_ins, algeb_outs
-
 
 
 class PortItem(QGraphicsEllipseItem):
@@ -480,6 +480,7 @@ class ParameterEditorDialog(QDialog):
         else:
             pass
 
+
 class InspectModel(QWidget):
     """
     InspectModel
@@ -617,7 +618,7 @@ class GenericBlockItem(QGraphicsRectItem):
             var_factory=self.var_factory,
             block=self.block,
             api_object=self.api_object,
-            mode = self.mode
+            mode=self.mode
         )
 
         self.setBrush(QBrush(QColor("#C0C0C0")))
@@ -716,7 +717,6 @@ class GenericBlockItem(QGraphicsRectItem):
                     for conn in port.connections:
                         conn.update_path()
         return super().itemChange(change, value)
-
 
 
 class BlockItem(QGraphicsRectItem):
@@ -1358,16 +1358,36 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  block: Block,
                  api_object: ALL_DEV_TYPES | None = None,
                  mode: DynamicEditorMode = DynamicEditorMode.RMS,
-                 main_editor=False):
+                 main_editor=False,
+                 modal: bool = True):
         """
+        Initializes a dynamic block editor window used for editing and managing blocks within a graphical model.
 
-        :param block:
-        :param api_object:
+        This constructor sets up the user interface, initializes required attributes, creates a library model
+        for draggable block items, and optionally constructs a tree structure based on the specified mode.
+        It also configures drag-and-drop functionality for graphical items, connects various UI components
+        to their associated event handlers, and reconstructs the scene from an existing diagram.
+
+        :param var_factory: Factory object responsible for variable creation and management.
+        :type var_factory: VarFactory
+        :param block: The original block to be edited.
+        :type block: Block
+        :param api_object: Optional API object associated with the dynamic model.
+        :type api_object: ALL_DEV_TYPES | None
+        :param mode: Specifies the editor mode, either RMS or EMT.
+        :type mode: DynamicEditorMode
+        :param main_editor: Indicates whether this instance is the main editor for the block.
+        :type main_editor: bool
+        :param modal: Specifies whether the editor window should be modal.
+        :type modal: bool
         """
         super().__init__()
 
         self.ui = Ui_BlockEditorWindow()
         self.ui.setupUi(self)
+
+        if modal:
+            self.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
 
         self.block_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 300
         self.mime_type: str = "application/x-veragrid-dynamics-block"
@@ -1698,7 +1718,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         bus_con_item = None
         tpe = BlockType.BUS_CONNECTION
 
-        if self.api_object.device_type == DeviceType.LineDevice:
+        if isinstance(self.api_object, BranchParent):
 
             # add con bus from
             x0, y0 = 0, 0
@@ -1779,10 +1799,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block.external_mapping.update(
                 {VarPowerFlowRefferenceType.Vat: Vat})
 
-        else:
+        elif isinstance(self.api_object, InjectionParent):
             x0, y0 = 0, 0
             name = "Conn Bus"
-
             bus_con_item = BlockItem(var_factory=self.var_factory, name=name)
             if self.api_object.bus.rms_model.empty():
                 initialize_bus_rms(self.api_object.bus, self.var_factory)
@@ -1817,6 +1836,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block.external_mapping.update(
                 {VarPowerFlowRefferenceType.Va: Va})
 
+        else:
+            pass
+
     def add_external_mapping_block(self):
         """
         Add a block with the external mapping vars needed to connect the device to the grid
@@ -1825,7 +1847,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         bus_con_item = None
         tpe = BlockType.EXTERNAL_MAPPING
 
-        if self.api_object.device_type == DeviceType.LineDevice:
+        if isinstance(self.api_object, BranchParent):
 
             # add mapping bus from
             x0, y0 = 200, 200
@@ -1893,7 +1915,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pt: bus_to_mapping_blk.in_vars[0]})
             self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qt: bus_to_mapping_blk.in_vars[1]})
 
-        else:
+        elif isinstance(self.api_object, InjectionParent):
             x0, y0 = 0, 0
             name = "mapping Bus"
 
@@ -1925,6 +1947,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: bus_mapping_blk.in_vars[0]})
             self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: bus_mapping_blk.in_vars[1]})
 
+        else:
+            pass
+
     def add_api_obj_mapping(self):
         """
         Adds API object mapping for the main block based on the device type.
@@ -1939,7 +1964,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :raises RuntimeError: Raised if required attributes or methods are missing.
         :return: None
         """
-        if self.api_object.device_type == DeviceType.LineDevice:
+        if isinstance(self.api_object, BranchParent):
             g = self.var_factory.add_var("g")
             b = self.var_factory.add_var("b")
             bsh = self.var_factory.add_var("bsh")
