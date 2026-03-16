@@ -678,20 +678,53 @@ class ADVisitor(SymbolicToPythonVisitor):
         if node.op == '-': return f"(-({ov}))", f"(-({od}))"
         raise NotImplementedError
 
+    # def visit_func(self, node: Func, _: int) -> Tuple[str, str]:
+    #     av, ad = self.visit(node.arg, 0)
+    #     eps_str = "1e-15"
+    #
+    #     if _is_zero(ad):
+    #         if node.op == 'heaviside': return f"_heaviside({av})", "0.0"
+    #         if node.op == 'abs': return f"np.abs({av})", "0.0"
+    #         return f"np.{node.op}({av})", "0.0"
+    #
+    #     if node.op == 'sin': return f"np.sin({av})", f"(np.cos({av})*({ad}))"
+    #     if node.op == 'cos': return f"np.cos({av})", f"(-np.sin({av})*({ad}))"
+    #
+    #     if node.op == 'log':
+    #         return f"np.log({av})", f"({ad})/({av} + {eps_str})"
+    #     if node.op == 'sqrt':
+    #         return f"np.sqrt({av})", f"0.5*({ad})/(np.sqrt({av}) + {eps_str})"
+    #
+    #     raise NotImplementedError(f"Function {node.op} not supported in AD")
+
     def visit_func(self, node: Func, _: int) -> Tuple[str, str]:
         av, ad = self.visit(node.arg, 0)
         eps_str = "1e-15"
 
+        # Support non-smooth functions with zero AD derivative
+        if node.op == 'heaviside':
+            return f"_heaviside({av})", "0.0"
+
+        if node.op == 'abs':
+            if _is_zero(ad):
+                return f"np.abs({av})", "0.0"
+            return f"np.abs({av})", f"(np.sign({av})*({ad}))"
+
         if _is_zero(ad):
-            if node.op == 'heaviside': return f"_heaviside({av})", "0.0"
-            if node.op == 'abs': return f"np.abs({av})", "0.0"
             return f"np.{node.op}({av})", "0.0"
 
-        if node.op == 'sin': return f"np.sin({av})", f"(np.cos({av})*({ad}))"
-        if node.op == 'cos': return f"np.cos({av})", f"(-np.sin({av})*({ad}))"
+        if node.op == 'sin':
+            return f"np.sin({av})", f"(np.cos({av})*({ad}))"
+
+        if node.op == 'cos':
+            return f"np.cos({av})", f"(-np.sin({av})*({ad}))"
+
+        if node.op == 'exp':
+            return f"np.exp({av})", f"(np.exp({av})*({ad}))"
 
         if node.op == 'log':
             return f"np.log({av})", f"({ad})/({av} + {eps_str})"
+
         if node.op == 'sqrt':
             return f"np.sqrt({av})", f"0.5*({ad})/(np.sqrt({av}) + {eps_str})"
 
