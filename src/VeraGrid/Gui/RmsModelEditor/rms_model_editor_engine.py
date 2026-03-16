@@ -2386,3 +2386,122 @@ class EditEquations(QWidget):
 #         elif isinstance(self.current_editor, EditEquations):
 #             # TODO: add logic for this case
 #             pass
+
+    def rebuild_scene_from_diagram(self) -> None:
+        """
+        Rebuilds the graphical scene from saved diagram data
+        :return:
+        """
+        self.scene.clear()
+        # self.block_counters = self.diagram.block_counters
+
+        uid_to_blockitem = {}
+
+        # # set number of nodes of the editor
+        # self.nodes_index = self.diagram.index
+
+        # Recreate nodes
+        for uid, node in self.diagram.node_data.items():
+            block_type = BlockType[node.tpe]
+            if block_type == BlockType.GENERIC:
+
+                model_host = DynamicModelHost()
+
+                model_host.model = Block()
+                for model in self.main_block.get_all_blocks():
+                    if model.uid == node.device_uid:
+                        model_host.model = model
+
+                model_host.model.uid = uid
+                model_host.diagram = node.sub_diagram
+                item = ModelHostItem(
+                    var_factory=self.var_factory,
+                    model_host_sys=model_host,
+                    api_object_name=node.api_object_name,
+                    api_object=self.api_object,
+                    templates_list=self.templates_list,
+                    templates_catalogue=self.templates_catalogue
+                )
+
+                item.setPos(QPointF(node.x, node.y))
+                self.scene.addItem(item)
+                brush = item.brush()
+                brush.setColor(QColor(node.color))
+                item.setBrush(brush)
+
+                uid_to_blockitem[uid] = item
+
+            elif block_type == BlockType.BUS_CONNECTION:
+                bus_con_item = BlockItem(var_factory=self.var_factory, name=node.name)
+                bus_con_blk = Block()
+                for model in self.main_block.get_all_blocks():
+                    if model.uid == node.device_uid:
+                        bus_con_blk = model
+
+                bus_con_item.set_subsystem(bus_con_blk)
+                bus_con_item.build_item()
+
+                if bus_con_item.subsys is not None:
+                    self.scene.addItem(bus_con_item)
+                    bus_con_item.setPos(QPointF(node.x, node.y))
+                    bus_con_item.setBrush(QColor(node.color))
+
+                uid_to_blockitem[uid] = bus_con_item
+
+            elif block_type == BlockType.EXTERNAL_MAPPING:
+                bus_mapping_item = BlockItem(var_factory=self.var_factory, name=node.name)
+                bus_mapping_blk = Block()
+                for model in self.main_block.get_all_blocks():
+                    if model.uid == node.device_uid:
+                        bus_mapping_blk = model
+
+                bus_mapping_item.set_subsystem(bus_mapping_blk)
+                bus_mapping_item.build_item()
+
+                if bus_mapping_item.subsys is not None:
+                    self.scene.addItem(bus_mapping_item)
+                    bus_mapping_item.setPos(QPointF(node.x, node.y))
+                    bus_mapping_item.setBrush(QColor(node.color))
+
+                uid_to_blockitem[uid] = bus_mapping_item
+
+            else:
+
+                block_item = BlockItem(var_factory=self.var_factory, name=node.name)
+                block = Block()
+                for model in self.main_block.get_all_blocks():
+                    if model.uid == node.device_uid:
+                        block = model
+
+                block_item.set_subsystem(block)
+                block_item.build_item()
+                if block_item.subsys is not None:
+                    self.scene.addItem(block_item)
+                    block_item.setPos(QPointF(node.x, node.y))
+                    brush = block_item.brush()
+                    brush.setColor(QColor(node.color))
+                    block_item.setBrush(brush)
+                uid_to_blockitem[uid] = block_item
+
+        # Recreate connections
+        for uid, con in self.diagram.con_data.items():
+            src_item = uid_to_blockitem.get(con.from_uid)
+            dst_item = uid_to_blockitem.get(con.to_uid)
+            if not src_item or not dst_item:
+                continue
+
+            try:
+                src_port = src_item.outputs[con.port_number_from]
+                dst_port = dst_item.inputs[con.port_number_to]
+            except IndexError:
+                continue
+
+            connection = ConnectionItem(src_port, dst_port)
+            connection.uid = uid
+            pen = connection.pen()
+            pen.setColor(QColor(con.color))
+            connection.setPen(pen)
+            self.scene.addItem(connection)
+
+        self.block_system = self.scene.get_main_block()
+
