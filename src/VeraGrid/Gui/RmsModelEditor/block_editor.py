@@ -19,8 +19,8 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
 from PySide6.QtWidgets import (QApplication, QFrame, QGraphicsView, QHBoxLayout,
     QHeaderView, QLabel, QMainWindow, QMenuBar,
     QPushButton, QSizePolicy, QSpacerItem, QSplitter,
-    QTabWidget, QToolBar, QTreeView, QVBoxLayout,
-    QWidget)
+    QTabWidget, QTableView, QToolBar, QTreeView,
+    QVBoxLayout, QWidget)
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_BlockEditorWindow(object):
@@ -97,11 +97,11 @@ class Ui_BlockEditorWindow(object):
         self.verticalLayout_2 = QVBoxLayout(self.tab_2)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
         self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
-        self.parametersTreeView = QTreeView(self.tab_2)
-        self.parametersTreeView.setObjectName(u"parametersTreeView")
-        self.parametersTreeView.setFrameShape(QFrame.Shape.NoFrame)
+        self.parametersTableView = QTableView(self.tab_2)
+        self.parametersTableView.setObjectName(u"parametersTableView")
+        self.parametersTableView.setFrameShape(QFrame.Shape.NoFrame)
 
-        self.verticalLayout_2.addWidget(self.parametersTreeView)
+        self.verticalLayout_2.addWidget(self.parametersTableView)
 
         icon5 = QIcon()
         icon5.addFile(u":/Icons/icons/data.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)

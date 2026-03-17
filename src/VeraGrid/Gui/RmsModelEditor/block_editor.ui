@@ -136,7 +136,7 @@
                 <number>0</number>
                </property>
                <item>
-                <widget class="QTreeView" name="parametersTreeView">
+                <widget class="QTableView" name="parametersTableView">
                  <property name="frameShape">
                   <enum>QFrame::Shape::NoFrame</enum>
                  </property>

@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter,
                            QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import QAbstractItemModel
-from PySide6.QtCore import Qt, QPointF, QModelIndex, Signal
+from PySide6.QtCore import Qt, QPointF, QModelIndex, Signal, QAbstractTableModel
 
 
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
@@ -33,7 +33,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.RmsModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
                                                     get_symbolic_parser_function_names,
-                                                    Expr, Var, Comparison)
+                                                    Expr, Var, Const, Comparison)
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block
@@ -526,231 +526,323 @@ class ConnectionItem(QGraphicsPathItem):
         pen.setWidthF(2.5)
         self.setPen(pen)
 
-
-class ParamTreeItem:
+class ParametersTableModel(QAbstractTableModel):
     """
-    class to represent a node in the params tree
-    """
-    def __init__(self, name, parent=None, block=None, var=None, expr=None,
-                 is_param=False, editable=False):
-        self.name = name
-        self.parent = parent
-        self.children = []
-
-        self.block = block
-        self.var = var
-        self.expr = expr
-
-        self.is_param = is_param
-        self.editable = editable
-
-    def append_child(self, child):
-        self.children.append(child)
-
-    def child(self, row):
-        if 0 <= row < len(self.children):
-            return self.children[row]
-        return None
-
-    def child_count(self):
-        return len(self.children)
-
-    def row(self):
-        if self.parent:
-            return self.parent.children.index(self)
-        return 0
-
-
-class ParametersTreeModel(QAbstractItemModel):
-    """
-    Tree model for the parameters
+    Table model to display event parameters (editable) and fixed parameters (read-only).
     """
 
-    dataChangedSignal = Signal()
+    dataChangedSignal = Signal(dict)  # emit updated event_dict
 
-    def __init__(self, var_factory, main_block):
+    def __init__(self, var_factory, block: Block):
         super().__init__()
+
         self.var_factory = var_factory
-        self.blocks: List[Block] = [blk for blk in main_block.get_all_blocks()]
-        self.root_item = ParamTreeItem("root")
-        self.build_tree_from_block(main_block, self.root_item)
 
 
-    def add_block(self, block: Block):
-        """
-        add a node to the tree and refresh
-        :param block:
-        :type block:
-        :return:
-        :rtype:
-        """
-        if block not in self.blocks:
-            self.beginResetModel()
-            self.blocks.append(block)
-            self.build_tree_from_block(block, self.root_item)
-            self.endResetModel()
+        # Store two lists of tuples (var, expr)
+        self.event_params = list(block.event_dict.items())      # editable
+        self.fixed_params = list(block.parameters.items()) # read-only
 
-    def build_tree_from_block(self, block, parent_item):
-        """
-        create nodes and build tree
-        :param block:
-        :type block:
-        :param parent_item:
-        :type parent_item:
-        :return:
-        :rtype:
-        """
-        block_item = ParamTreeItem(
-            name=block.name if block.name else f"Block_{block.uid}",
-            parent=parent_item,
-            block=block
-        )
-        parent_item.append_child(block_item)
+        # Combine for easy row indexing
+        self.all_params = self.event_params + self.fixed_params
 
-        if block.event_dict:
-            event_group = ParamTreeItem("Editable Parameters", parent=block_item)
-            block_item.append_child(event_group)
+    def rowCount(self, parent=QModelIndex()) -> int:
+        return len(self.all_params)
 
-            for var, expr in block.event_dict.items():
-                param_item = ParamTreeItem(
-                    name=var.name,
-                    parent=event_group,
-                    block=block,
-                    var=var,
-                    expr=expr,
-                    is_param=True,
-                    editable=True
-                )
-                event_group.append_child(param_item)
+    def columnCount(self, parent=QModelIndex()) -> int:
+        return 2  # Parameter name, Value
 
-        if block.parameters:
-            param_group = ParamTreeItem("Non Editable Parameters", parent=block_item)
-            block_item.append_child(param_group)
-
-            for var, expr in block.parameters.items():
-                param_item = ParamTreeItem(
-                    name=var.name,
-                    parent=param_group,
-                    block=block,
-                    var=var,
-                    expr=expr,
-                    is_param=True,
-                    editable=False
-                )
-                param_group.append_child(param_item)
-
-        for child in block.children:
-            self.build_tree_from_block(child, block_item)
-
-    def columnCount(self, parent=QModelIndex()):
-        return 2
-
-    def rowCount(self, parent=QModelIndex()):
-        parent_item = parent.internalPointer() if parent.isValid() else self.root_item
-        return parent_item.child_count()
-
-    def index(self, row, column, parent=QModelIndex()):
-        if not self.hasIndex(row, column, parent):
-            return QModelIndex()
-
-        parent_item = parent.internalPointer() if parent.isValid() else self.root_item
-        child_item = parent_item.child(row)
-
-        if child_item:
-            return self.createIndex(row, column, child_item)
-
-        return QModelIndex()
-
-    def parent(self, index):
-        if not index.isValid():
-            return QModelIndex()
-
-        item = index.internalPointer()
-        parent_item = item.parent
-
-        if parent_item is None or parent_item == self.root_item:
-            return QModelIndex()
-
-        return self.createIndex(parent_item.row(), 0, parent_item)
-
-    def data(self, index, role=Qt.DisplayRole):
+    def data(self, index: QModelIndex, role=Qt.ItemDataRole.DisplayRole):
         if not index.isValid():
             return None
 
-        item = index.internalPointer()
+        var, expr = self.all_params[index.row()]
 
         if role in (Qt.DisplayRole, Qt.EditRole):
+            if index.column() == 0:  # Parameter name
+                return var.name
+            elif index.column() == 1:  # Value
+                if hasattr(expr, "value"):
+                    return str(expr.value)
+                return str(expr)
 
-            if index.column() == 0:
-                return item.name
-
-            elif index.column() == 1:
-                if item.is_param:
-                    if hasattr(item.expr, "value"):
-                        return str(item.expr.value)
-                    return str(item.expr)
-                return ""
-
-        if role == Qt.BackgroundRole:
-            if item.is_param and not item.editable:
-                return QColor("#f0f0f0")
+        # Optional: different background for fixed params
+        if role == Qt.BackgroundRole and index.row() >= len(self.event_params):
+            return QColor("#f0f0f0")  # gray for read-only
 
         return None
 
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role != Qt.DisplayRole:
             return None
-
         if orientation == Qt.Horizontal:
-            return ["Name", "Value"][section]
-
+            return ["Parameter", "Value"][section]
         return str(section + 1)
 
-    # -----------------------------
-    # EDITING
-    # -----------------------------
-    def flags(self, index):
+    def flags(self, index: QModelIndex):
         if not index.isValid():
-            return Qt.ItemIsEnabled
+            return Qt.ItemFlag.ItemIsEnabled
 
-        item = index.internalPointer()
+        flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
 
-        flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
-
-        if item.is_param and item.editable and index.column() == 1:
-            flags |= Qt.ItemIsEditable
+        # Only editable if it's an event parameter and the Value column
+        if index.row() < len(self.event_params) and index.column() == 1:
+            flags |= Qt.ItemFlag.ItemIsEditable
 
         return flags
 
-    def setData(self, index, value, role=Qt.EditRole):
-        if role != Qt.EditRole:
+    def setData(self, index: QModelIndex, value, role=Qt.EditRole):
+        if (
+            not index.isValid()
+            or role != Qt.EditRole
+            or index.column() != 1
+            or index.row() >= len(self.event_params)
+        ):
             return False
 
-        item = index.internalPointer()
-
-        if not item.is_param or not item.editable:
-            return False
+        var, expr = self.event_params[index.row()]
 
         try:
             value_float = float(value)
         except ValueError:
             value_float = value
 
-        new_expr = self.var_factory.add_const(
-            value=value_float,
-            name=item.var.name
-        )
+        # Update the event_dict copy
+        self.event_params[index.row()] = (var, self.var_factory.add_const(value=value_float, name=var.name))
 
-        # 🔥 ACTUALIZA EL BLOCK REAL
-        item.block.event_dict[item.var] = new_expr
-
-        # actualizar nodo
-        item.expr = new_expr
+        # Also update the combined list
+        self.all_params[index.row()] = self.event_params[index.row()]
 
         self.dataChanged.emit(index, index, [Qt.DisplayRole, Qt.EditRole])
-        self.dataChangedSignal.emit()
-
+        self.dataChangedSignal.emit(dict(self.event_params))  # emit updated event_dict
         return True
+#
+
+
+# class ParamTreeItem:
+#     """
+#     class to represent a node in the params tree
+#     """
+#     def __init__(self, name, parent=None, block=None, var=None, expr=None,
+#                  is_param=False, editable=False):
+#         self.name = name
+#         self.parent = parent
+#         self.children = []
+#
+#         self.block = block
+#         self.var = var
+#         self.expr = expr
+#
+#         self.is_param = is_param
+#         self.editable = editable
+#
+#     def append_child(self, child):
+#         self.children.append(child)
+#
+#     def child(self, row):
+#         if 0 <= row < len(self.children):
+#             return self.children[row]
+#         return None
+#
+#     def child_count(self):
+#         return len(self.children)
+#
+#     def row(self):
+#         if self.parent:
+#             return self.parent.children.index(self)
+#         return 0
+#
+#
+# class ParametersTreeModel(QAbstractItemModel):
+#     """
+#     Tree model for the parameters
+#     """
+#
+#     dataChangedSignal = Signal()
+#
+#     def __init__(self, var_factory, main_block):
+#         super().__init__()
+#         self.var_factory = var_factory
+#         self.blocks: List[Block] = [blk for blk in main_block.get_all_blocks()]
+#         self.root_item = ParamTreeItem("root")
+#         self.build_tree_from_block(main_block, self.root_item)
+#
+#
+#     def add_block(self, block: Block):
+#         """
+#         add a node to the tree and refresh
+#         :param block:
+#         :type block:
+#         :return:
+#         :rtype:
+#         """
+#         if block not in self.blocks:
+#             self.beginResetModel()
+#             self.blocks.append(block)
+#             self.build_tree_from_block(block, self.root_item)
+#             self.endResetModel()
+#
+#     def build_tree_from_block(self, block, parent_item):
+#         """
+#         create nodes and build tree
+#         :param block:
+#         :type block:
+#         :param parent_item:
+#         :type parent_item:
+#         :return:
+#         :rtype:
+#         """
+#         block_item = ParamTreeItem(
+#             name=block.name if block.name else f"Block_{block.uid}",
+#             parent=parent_item,
+#             block=block
+#         )
+#         parent_item.append_child(block_item)
+#
+#         if block.event_dict:
+#             event_group = ParamTreeItem("Editable Parameters", parent=block_item)
+#             block_item.append_child(event_group)
+#
+#             for var, expr in block.event_dict.items():
+#                 param_item = ParamTreeItem(
+#                     name=var.name,
+#                     parent=event_group,
+#                     block=block,
+#                     var=var,
+#                     expr=expr,
+#                     is_param=True,
+#                     editable=True
+#                 )
+#                 event_group.append_child(param_item)
+#
+#         if block.parameters:
+#             param_group = ParamTreeItem("Non Editable Parameters", parent=block_item)
+#             block_item.append_child(param_group)
+#
+#             for var, expr in block.parameters.items():
+#                 param_item = ParamTreeItem(
+#                     name=var.name,
+#                     parent=param_group,
+#                     block=block,
+#                     var=var,
+#                     expr=expr,
+#                     is_param=True,
+#                     editable=False
+#                 )
+#                 param_group.append_child(param_item)
+#
+#         for child in block.children:
+#             self.build_tree_from_block(child, block_item)
+#
+#     def columnCount(self, parent=QModelIndex()):
+#         return 2
+#
+#     def rowCount(self, parent=QModelIndex()):
+#         parent_item = parent.internalPointer() if parent.isValid() else self.root_item
+#         return parent_item.child_count()
+#
+#     def index(self, row, column, parent=QModelIndex()):
+#         if not self.hasIndex(row, column, parent):
+#             return QModelIndex()
+#
+#         parent_item = parent.internalPointer() if parent.isValid() else self.root_item
+#         child_item = parent_item.child(row)
+#
+#         if child_item:
+#             return self.createIndex(row, column, child_item)
+#
+#         return QModelIndex()
+#
+#     def parent(self, index):
+#         if not index.isValid():
+#             return QModelIndex()
+#
+#         item = index.internalPointer()
+#         parent_item = item.parent
+#
+#         if parent_item is None or parent_item == self.root_item:
+#             return QModelIndex()
+#
+#         return self.createIndex(parent_item.row(), 0, parent_item)
+#
+#     def data(self, index, role=Qt.DisplayRole):
+#         if not index.isValid():
+#             return None
+#
+#         item = index.internalPointer()
+#
+#         if role in (Qt.DisplayRole, Qt.EditRole):
+#
+#             if index.column() == 0:
+#                 return item.name
+#
+#             elif index.column() == 1:
+#                 if item.is_param:
+#                     if hasattr(item.expr, "value"):
+#                         return str(item.expr.value)
+#                     return str(item.expr)
+#                 return ""
+#
+#         if role == Qt.BackgroundRole:
+#             if item.is_param and not item.editable:
+#                 return QColor("#f0f0f0")
+#
+#         return None
+#
+#     def headerData(self, section, orientation, role=Qt.DisplayRole):
+#         if role != Qt.DisplayRole:
+#             return None
+#
+#         if orientation == Qt.Horizontal:
+#             return ["Name", "Value"][section]
+#
+#         return str(section + 1)
+#
+#     # -----------------------------
+#     # EDITING
+#     # -----------------------------
+#     def flags(self, index):
+#         if not index.isValid():
+#             return Qt.ItemIsEnabled
+#
+#         item = index.internalPointer()
+#
+#         flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
+#
+#         if item.is_param and item.editable and index.column() == 1:
+#             flags |= Qt.ItemIsEditable
+#
+#         return flags
+#
+#     def setData(self, index, value, role=Qt.EditRole):
+#         if role != Qt.EditRole:
+#             return False
+#
+#         item = index.internalPointer()
+#
+#         if not item.is_param or not item.editable:
+#             return False
+#
+#         try:
+#             value_float = float(value)
+#         except ValueError:
+#             value_float = value
+#
+#         new_expr = self.var_factory.add_const(
+#             value=value_float,
+#             name=item.var.name
+#         )
+#
+#         # 🔥 ACTUALIZA EL BLOCK REAL
+#         item.block.event_dict[item.var] = new_expr
+#
+#         # actualizar nodo
+#         item.expr = new_expr
+#
+#         self.dataChanged.emit(index, index, [Qt.DisplayRole, Qt.EditRole])
+#         self.dataChangedSignal.emit()
+#
+#         return True
 
 
 class ExpressionTextEditorDialog(QDialog):
@@ -1081,6 +1173,279 @@ class BlockParameterValueDelegate(QtWidgets.QStyledItemDelegate):
             model.setData(index, editor.text(), QtCore.Qt.ItemDataRole.EditRole)
         else:
             pass
+
+class BlockParametersTableModel(QtCore.QAbstractTableModel):
+    """
+    Table model that exposes the selected block parameters in the right-side panel.
+    """
+
+    def __init__(self,
+                 var_factory: VarFactory,
+                 parent: Optional[QtCore.QObject] = None):
+        """
+        Build the side-panel parameter table model.
+
+        :param var_factory:
+        :param parent:
+        """
+        super().__init__(parent)
+        self.var_factory: VarFactory = var_factory
+        self.block: Block | None = None
+        self.rows: List[BlockParameterRow] = list()
+        self.headers: List[str] = ["Parameter", "Value", "Kind"]
+
+    def set_block(self, block: Block | None) -> None:
+        """
+        Set the block whose parameters are shown in the table.
+
+        :param block:
+        :return:
+        """
+        self.beginResetModel()
+        self.block = block
+        self.rows = self.build_rows()
+        self.endResetModel()
+
+    def build_rows(self) -> List[BlockParameterRow]:
+        """
+        Build the visible rows for the current block.
+
+        :return:
+        """
+        rows: List[BlockParameterRow] = list()
+        var: Var
+        expr: Expr | Const
+        const: Const
+
+        if self.block is not None:
+            for var, expr in self.block.event_dict.items():
+                if isinstance(expr, Const):
+                    rows.append(BlockParameterRow(
+                        name=var.name,
+                        kind=BlockParameterKind.EVENT,
+                        key_var=var,
+                        value=expr.value,
+                        editable=True,
+                        value_type=self.get_python_value_type(expr.value)
+                    ))
+                else:
+                    rows.append(BlockParameterRow(
+                        name=var.name,
+                        kind=BlockParameterKind.EXPRESSION,
+                        key_var=var,
+                        value=expr,
+                        editable=False,
+                        value_type=str
+                    ))
+
+            for var, const in self.block.parameters.items():
+                rows.append(BlockParameterRow(
+                    name=var.name,
+                    kind=BlockParameterKind.FIXED,
+                    key_var=var,
+                    value=const.value,
+                    editable=False,
+                    value_type=self.get_python_value_type(const.value)
+                ))
+        else:
+            pass
+
+        return rows
+
+    def get_row(self, row_index: int) -> BlockParameterRow | None:
+        """
+        Return the row descriptor for a given table row.
+
+        :param row_index:
+        :return:
+        """
+        if 0 <= row_index < len(self.rows):
+            return self.rows[row_index]
+        else:
+            return None
+
+    def update_expression_row(self, row_index: int, expression: Expr) -> None:
+        """
+        Replace an expression row value and propagate it into the selected block.
+
+        :param row_index:
+        :param expression:
+        :return:
+        """
+        row_data: BlockParameterRow | None = self.get_row(row_index)
+        top_left: QtCore.QModelIndex
+        bottom_right: QtCore.QModelIndex
+
+        if row_data is not None and self.block is not None:
+            self.block.event_dict[row_data.key_var] = expression
+            row_data.value = expression
+            top_left = self.index(row_index, 1)
+            bottom_right = self.index(row_index, 1)
+            self.dataChanged.emit(top_left, bottom_right, [QtCore.Qt.ItemDataRole.DisplayRole, QtCore.Qt.ItemDataRole.EditRole])
+        else:
+            pass
+
+    def get_python_value_type(self, value: Any) -> type:
+        """
+        Normalize the editor type used for a parameter value.
+
+        :param value:
+        :return:
+        """
+        if isinstance(value, bool):
+            return str
+        elif isinstance(value, int):
+            return int
+        elif isinstance(value, float):
+            return float
+        else:
+            return str
+
+    def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
+        """
+        Return the visible row count.
+
+        :param parent:
+        :return:
+        """
+        if parent.isValid():
+            return 0
+        else:
+            return len(self.rows)
+
+    def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
+        """
+        Return the visible column count.
+
+        :param parent:
+        :return:
+        """
+        if parent.isValid():
+            return 0
+        else:
+            return len(self.headers)
+
+    def data(self,
+             index: QtCore.QModelIndex,
+             role: int = QtCore.Qt.ItemDataRole.DisplayRole) -> Any:
+        """
+        Return the data requested by the Qt view.
+
+        :param index:
+        :param role:
+        :return:
+        """
+        row_data: BlockParameterRow
+
+        if index.isValid():
+            row_data = self.rows[index.row()]
+
+            if role == QtCore.Qt.ItemDataRole.DisplayRole or role == QtCore.Qt.ItemDataRole.EditRole:
+                if index.column() == 0:
+                    return row_data.name
+                elif index.column() == 1:
+                    if row_data.value is None:
+                        return ""
+                    elif row_data.kind == BlockParameterKind.EXPRESSION and isinstance(row_data.value, Expr):
+                        return symbolic_to_string(row_data.value)
+                    else:
+                        return row_data.value
+                elif index.column() == 2:
+                    return row_data.kind.value
+                else:
+                    return None
+            elif role == PARAMETER_VALUE_TYPE_ROLE and index.column() == 1:
+                if row_data.value_type is float:
+                    return "float"
+                elif row_data.value_type is int:
+                    return "int"
+                else:
+                    return "text"
+            elif role == PARAMETER_EDITABLE_ROLE and index.column() == 1:
+                return row_data.editable
+            else:
+                return None
+        else:
+            return None
+
+    def headerData(self,
+                   section: int,
+                   orientation: QtCore.Qt.Orientation,
+                   role: int = QtCore.Qt.ItemDataRole.DisplayRole) -> Any:
+        """
+        Return table header data.
+
+        :param section:
+        :param orientation:
+        :param role:
+        :return:
+        """
+        if role == QtCore.Qt.ItemDataRole.DisplayRole:
+            if orientation == QtCore.Qt.Orientation.Horizontal:
+                return self.headers[section]
+            else:
+                return str(section + 1)
+        else:
+            return None
+
+    def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
+        """
+        Return the Qt flags for a parameter cell.
+
+        :param index:
+        :return:
+        """
+        if index.isValid():
+            row_data: BlockParameterRow = self.rows[index.row()]
+
+            if index.column() == 1 and row_data.editable:
+                return (QtCore.Qt.ItemFlag.ItemIsEnabled
+                        | QtCore.Qt.ItemFlag.ItemIsSelectable
+                        | QtCore.Qt.ItemFlag.ItemIsEditable)
+            else:
+                return QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
+        else:
+            return QtCore.Qt.ItemFlag.NoItemFlags
+
+    def setData(self,
+                index: QtCore.QModelIndex,
+                value: Any,
+                role: int = QtCore.Qt.ItemDataRole.EditRole) -> bool:
+        """
+        Update an editable parameter value in the selected block.
+
+        :param index:
+        :param value:
+        :param role:
+        :return:
+        """
+        row_data: BlockParameterRow
+        new_value: Any
+
+        if index.isValid() and role == QtCore.Qt.ItemDataRole.EditRole:
+            row_data = self.rows[index.row()]
+
+            if index.column() == 1 and row_data.editable and self.block is not None:
+                if row_data.value_type is float:
+                    new_value = float(value)
+                elif row_data.value_type is int:
+                    new_value = int(value)
+                else:
+                    new_value = str(value)
+
+                self.block.event_dict[row_data.key_var] = self.var_factory.add_const(
+                    value=new_value,
+                    name=row_data.key_var.name
+                )
+                row_data.value = new_value
+                self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.DisplayRole, QtCore.Qt.ItemDataRole.EditRole])
+                return True
+            else:
+                return False
+        else:
+            return False
+
+
 
 class InspectModel(QWidget):
     """
@@ -2163,7 +2528,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     RmsModelEditorGUI
     """
 
-    block_added = Signal(object)
+    # block_added = Signal(object)
 
     def __init__(self,
                  var_factory: VarFactory,
@@ -2233,10 +2598,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.block_counters: Dict[BlockType, int] = dict()
         self.scene: DiagramScene = DiagramScene(self)
         self.changes_applied: bool = False
-        # self.parameters_table_model: BlockParametersTableModel = BlockParametersTableModel(
-        #     var_factory=self.var_factory,
-        #     parent=self.ui.parametersTreeView
-        # )
+        self.parameters_table_model: BlockParametersTableModel = BlockParametersTableModel(
+            var_factory=self.var_factory,
+            parent=self.ui.parametersTableView
+        )
 
         self.templates_list: List[RmsModelTemplate | EmtModelTemplate] = templates_list if templates_list is not None else list()
 
@@ -2284,21 +2649,21 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.libraryTreeView.setHeaderHidden(False)
 
 
-        # self.ui.parametersTableView.setModel(self.parameters_table_model)
-        # self.ui.parametersTableView.setItemDelegateForColumn(
-        #     1,
-        #     BlockParameterValueDelegate(self.ui.parametersTableView)
-        # )
-        # self.ui.parametersTableView.horizontalHeader().setStretchLastSection(True)
-        # self.ui.parametersTableView.verticalHeader().setVisible(False)
-        # self.ui.parametersTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        # self.ui.parametersTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
-        # self.ui.parametersTableView.doubleClicked.connect(self.on_parameters_table_double_clicked)
-        #
-        #
-        #
-        # self.ui.parametersTableView.horizontalHeader().setStretchLastSection(True)
-        # self.ui.parametersTableView.verticalHeader().setVisible(False)
+        self.ui.parametersTableView.setModel(self.parameters_table_model)
+        self.ui.parametersTableView.setItemDelegateForColumn(
+            1,
+            BlockParameterValueDelegate(self.ui.parametersTableView)
+        )
+        self.ui.parametersTableView.horizontalHeader().setStretchLastSection(True)
+        self.ui.parametersTableView.verticalHeader().setVisible(False)
+        self.ui.parametersTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self.ui.parametersTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        self.ui.parametersTableView.doubleClicked.connect(self.on_parameters_table_double_clicked)
+
+
+
+        self.ui.parametersTableView.horizontalHeader().setStretchLastSection(True)
+        self.ui.parametersTableView.verticalHeader().setVisible(False)
 
         self.view: GraphicsView = GraphicsView(self.scene)
         self.ui.verticalLayout_3.removeWidget(self.ui.graphicsView)
@@ -2321,18 +2686,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.add_api_obj_mapping()
         self.rebuild_scene_from_diagram()
 
-        self.parameters_model = ParametersTreeModel(var_factory=self.var_factory, main_block=self.main_block)
-        self.ui.parametersTreeView.setModel(self.parameters_model)
-        self.ui.parametersTreeView.expandAll()
-
-        # Conecta el signal del editor al métod de añadir bloque
-        self.block_added.connect(self.parameters_model.add_block)
-
-
-        self.ui.parametersTreeView.header().setStretchLastSection(True)
-        header = self.ui.parametersTreeView.header()
-        header.setStretchLastSection(True)
-        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
+        # self.parameters_model = ParametersTreeModel(var_factory=self.var_factory, main_block=self.main_block)
+        # self.ui.parametersTreeView.setModel(self.parameters_model)
+        # self.ui.parametersTreeView.expandAll()
+        #
+        # # Conecta el signal del editor al métod de añadir bloque
+        # self.block_added.connect(self.parameters_model.add_block)
+        #
+        #
+        # self.ui.parametersTreeView.header().setStretchLastSection(True)
+        # header = self.ui.parametersTreeView.header()
+        # header.setStretchLastSection(True)
+        # header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
 
     def build_library_tree_model(self,
                                  block_role: int,
@@ -2403,8 +2768,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             name, state_ins, state_outs, algeb_ins, algeb_outs = dialog.get_values()
 
-            # model_host: DynamicModelHost = DynamicModelHost()
-
             model = create_generic_block(self.var_factory, state_ins, state_outs, algeb_ins, algeb_outs)
             self.main_block.add(model)
             item = GenericBlockItem(
@@ -2430,7 +2793,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 subdiagram=model.diagram
             )
 
-            self.block_added.emit(item.subsys)
+            # self.block_added.emit(item.subsys)
 
             return item
         else:
@@ -2474,7 +2837,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 device_uid=block_model.uid
             )
 
-            self.block_added.emit(block_item.subsys)
+            # self.block_added.emit(block_item.subsys)
 
             return block_item
         else:
@@ -3038,7 +3401,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         selected_block: Block | None = self.get_selected_scene_block()
-        # self.parameters_table_model.set_block(selected_block)
+        self.parameters_table_model.set_block(selected_block)
 
     def apply_changes(self) -> None:
         """
