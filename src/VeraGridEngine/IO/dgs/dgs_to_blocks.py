@@ -1798,6 +1798,16 @@ def _build_graphic_node_index(circuit: DgsCircuit) -> dict[str, object]:
     return node_by_id
 
 
+def build_graphic_node_index(circuit: DgsCircuit) -> Dict[str, object]:
+    """
+    Build a public index of graphical DGS nodes by identifier.
+
+    :param circuit: Parsed DGS circuit.
+    :return: Mapping from node id to graphical object.
+    """
+    return _build_graphic_node_index(circuit)
+
+
 def _build_blksig_adjacency(circuit: DgsCircuit) -> dict[str, set[str]]:
     """
     Build undirected adjacency graph over graphical nodes connected by BlkSig.
@@ -2152,6 +2162,17 @@ def _blk_sum_slot_raw_mode(blk_sum: BlkSum, slot: int) -> int:
     return 2
 
 
+def get_blk_sum_slot_raw_mode(blk_sum: BlkSum, slot: int) -> int:
+    """
+    Return the raw sign/mode code stored in a BlkSum input slot.
+
+    :param blk_sum: DGS sum block.
+    :param slot: Input slot index.
+    :return: Raw DGS slot mode.
+    """
+    return _blk_sum_slot_raw_mode(blk_sum, slot)
+
+
 def _blk_sum_slot_active_mode(blk_sum: BlkSum, slot: int) -> int:
     if slot == 0:
         return int(blk_sum.iInput0_act)
@@ -2162,6 +2183,17 @@ def _blk_sum_slot_active_mode(blk_sum: BlkSum, slot: int) -> int:
     if slot == 3:
         return int(blk_sum.iInput3_act)
     return 2
+
+
+def get_blk_sum_slot_active_mode(blk_sum: BlkSum, slot: int) -> int:
+    """
+    Return the active sign/mode code stored in a BlkSum input slot.
+
+    :param blk_sum: DGS sum block.
+    :param slot: Input slot index.
+    :return: Active DGS slot mode.
+    """
+    return _blk_sum_slot_active_mode(blk_sum, slot)
 
 
 def _blk_sum_slot_mode(blk_sum: BlkSum, slot: int) -> int:
@@ -2204,6 +2236,20 @@ def _blk_sum_signal_specs(
             outputs.append(sig_name)
 
     return input_terms, outputs
+
+
+def get_blk_sum_signal_specs(
+    blk_sum: BlkSum,
+    circuit: DgsCircuit,
+) -> Tuple[List[Tuple[str, float]], List[str]]:
+    """
+    Return the effective input terms and outputs of a DGS sum block.
+
+    :param blk_sum: DGS sum block.
+    :param circuit: Parsed DGS circuit.
+    :return: Tuple with signed input terms and output signal names.
+    """
+    return _blk_sum_signal_specs(blk_sum, circuit)
 
 
 def _build_sum_block_from_graphic_node(blk_sum: BlkSum, circuit: DgsCircuit) -> Tuple[Block, List[str], List[str]]:

@@ -3126,3 +3126,35 @@ class ProceduralGridMethods(Enum):
             return ProceduralGridMethods[s]
         except KeyError:
             return s
+
+
+class ProceduralLogicType(Enum):
+    """
+    Enumeration of procedural logic entry kinds.
+    """
+
+    Base = "base"
+    FixedSample = "fixed_sample"
+    SampledValue = "sampled_value"
+    FlipFlop = "flipflop"
+    AnalogFlipFlop = "analog_flipflop"
+    PickupDropoff = "pickup_dropoff"
+    ResetOnRisingEdge = "reset_on_rising_edge"
+    DelayedThresholdLatch = "delayed_threshold_latch"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return ProceduralLogicType[s]
+        except KeyError:
+            return s
