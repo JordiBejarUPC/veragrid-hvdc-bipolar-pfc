@@ -1276,9 +1276,11 @@ plt.grid(True)
 plt.legend()
 
 plt.subplot(2, 2, 2)
-plt.plot(tme, i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
-plt.plot(tme, i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
-plt.plot(tme, i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
+# SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
+# THAT MEANS THE CURRENTS ARE NEGATIVE
+plt.plot(tme, -i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
+plt.plot(tme, -i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
+plt.plot(tme, -i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
 plt.title("Current load")
 plt.xlabel("Time")
 plt.ylabel("Current load")
@@ -1319,9 +1321,11 @@ plt.grid(True)
 plt.legend()
 
 plt.subplot(2, 2, 2)
-plt.plot(tme, i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
-plt.plot(tme, i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
-plt.plot(tme, i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
+# SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
+# THAT MEANS THE CURRENTS ARE NEGATIVE
+plt.plot(tme, -i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
+plt.plot(tme, -i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
+plt.plot(tme, -i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
 plt.title("Current load")
 plt.xlabel("Time")
 plt.ylabel("Current load")
@@ -1341,9 +1345,11 @@ plt.grid(True)
 plt.legend()
 
 plt.subplot(2, 2, 4)
-plt.plot(tme, i_t_A_line_plt[:len(tme)], label='Current TO phase A from line', color='blue')
-plt.plot(tme, i_t_B_line_plt[:len(tme)], label='Current TO phase B from line', color='red')
-plt.plot(tme, i_t_C_line_plt[:len(tme)], label='Current TO phase C from line', color='green')
+# SIGNS IN THE TO SIDE ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE BUSES SO IN THE CASE OF THE FROM SIDE
+    # THAT MEANS THE CURRENTS ARE NEGATIVE
+plt.plot(tme, -i_t_A_line_plt[:len(tme)], label='Current TO phase A from line', color='blue')
+plt.plot(tme, -i_t_B_line_plt[:len(tme)], label='Current TO phase B from line', color='red')
+plt.plot(tme, -i_t_C_line_plt[:len(tme)], label='Current TO phase C from line', color='green')
 plt.title("Current to line")
 plt.xlabel("Time")
 plt.ylabel("Current to")

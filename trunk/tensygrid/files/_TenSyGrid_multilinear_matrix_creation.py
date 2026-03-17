@@ -230,8 +230,8 @@ if __name__ == "__main__":
     success, phasor_problem = small_signal_analysis(comparar = False)
     # sys.exit(0 if success else 1)
 
-    algebraic_eqs: list[str] = list([str(expression) for expression in phasor_problem._algebraic_eqs])
-    state_eqs: list[str] = list([str(expression) for expression in phasor_problem._state_eqs])
+    algebraic_eqs: list[str] = list(phasor_problem._algebraic_eqs)
+    state_eqs: list[str] = list(phasor_problem._state_eqs)
     algebraic_vars: list[str] = list([str(expression) for expression in phasor_problem._algebraic_vars])
     state_vars: list[str] = list([str(expression) for expression in phasor_problem._state_vars])
     print(f"\nState variables ({len(state_vars)}): {state_vars}")
@@ -244,6 +244,8 @@ if __name__ == "__main__":
         eqs=eqs,
         ineqs=[],
         state_vars=state_vars,
+        #state_ids=phasor_problem.uid2idx_vars,
         algebraic_vars=algebraic_vars,
+        #algebraic_ids=phasor_problem._algebraic_ids,
         verbose=True
     )

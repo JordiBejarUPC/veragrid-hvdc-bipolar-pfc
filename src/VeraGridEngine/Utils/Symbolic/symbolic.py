@@ -1715,9 +1715,137 @@ _FUNC_MAP = {
     "atan": atan,
     "sinh": sinh,
     "cosh": cosh,
+    "abs": abs,
+    "real": real,
+    "imag": imag,
+    "conj": conj,
+    "angle": angle,
     "heaviside": heaviside,
     "_dict_to_expression": _dict_to_expr
 }
+
+
+def _ast_to_symbolic(node: ast.AST, symbol_namespace: Mapping[str, Expr | NUMBER]) -> Expr | Comparison:
+    """
+    Convert a restricted Python AST into a symbolic expression tree.
+
+    :param node:
+    :param symbol_namespace:
+    :return:
+    """
+    left_expr: Expr | Comparison
+    right_expr: Expr | Comparison
+    function_name: str
+    function_ptr: Callable[[Any], Any] | None
+    op_symbol: str | None
+
+    if isinstance(node, ast.Expression):
+        return _ast_to_symbolic(node.body, symbol_namespace)
+    elif isinstance(node, ast.Constant):
+        if isinstance(node.value, (int, float, complex)) or node.value is None:
+            return Const(node.value)
+        else:
+            raise ValueError(f"Unsupported constant value {node.value!r}")
+    elif isinstance(node, ast.Name):
+        if node.id in symbol_namespace:
+            return _to_expr(symbol_namespace[node.id])
+        else:
+            raise ValueError(f"Unknown symbol '{node.id}'")
+    elif isinstance(node, ast.BinOp):
+        left_expr = _ast_to_symbolic(node.left, symbol_namespace)
+        right_expr = _ast_to_symbolic(node.right, symbol_namespace)
+        op_symbol = _BINOP_MAP.get(type(node.op), None)
+
+        if isinstance(left_expr, Expr) and isinstance(right_expr, Expr):
+            if op_symbol is not None:
+                return BinOp(left_expr, op_symbol, right_expr)
+            else:
+                raise ValueError(f"Unsupported binary operator {type(node.op).__name__}")
+        else:
+            raise ValueError("Binary expressions require symbolic operands")
+    elif isinstance(node, ast.UnaryOp):
+        op_symbol = _UNOP_MAP.get(type(node.op), None)
+        right_expr = _ast_to_symbolic(node.operand, symbol_namespace)
+
+        if isinstance(right_expr, Expr):
+            if op_symbol is not None:
+                return UnOp(op_symbol, right_expr)
+            else:
+                raise ValueError(f"Unsupported unary operator {type(node.op).__name__}")
+        else:
+            raise ValueError("Unary expressions require a symbolic operand")
+    elif isinstance(node, ast.Call):
+        if isinstance(node.func, ast.Name):
+            if len(node.args) == 1 and len(node.keywords) == 0:
+                function_name = node.func.id
+                function_ptr = _FUNC_MAP.get(function_name, None)
+                right_expr = _ast_to_symbolic(node.args[0], symbol_namespace)
+
+                if isinstance(right_expr, Expr):
+                    if function_ptr is not None:
+                        return function_ptr(right_expr)
+                    else:
+                        raise ValueError(f"Unknown function '{function_name}'")
+                else:
+                    raise ValueError("Function calls require a symbolic argument")
+            else:
+                raise ValueError("Only single-argument function calls are supported")
+        else:
+            raise ValueError("Only named functions are supported")
+    elif isinstance(node, ast.Compare):
+        if len(node.ops) == 1 and len(node.comparators) == 1:
+            left_expr = _ast_to_symbolic(node.left, symbol_namespace)
+            right_expr = _ast_to_symbolic(node.comparators[0], symbol_namespace)
+
+            if isinstance(left_expr, Expr) and isinstance(right_expr, Expr):
+                if isinstance(node.ops[0], ast.Lt):
+                    return left_expr < right_expr
+                elif isinstance(node.ops[0], ast.LtE):
+                    return left_expr <= right_expr
+                elif isinstance(node.ops[0], ast.Gt):
+                    return left_expr > right_expr
+                elif isinstance(node.ops[0], ast.GtE):
+                    return left_expr >= right_expr
+                elif isinstance(node.ops[0], ast.Eq):
+                    return left_expr == right_expr
+                else:
+                    raise ValueError(f"Unsupported comparison operator {type(node.ops[0]).__name__}")
+            else:
+                raise ValueError("Comparisons require symbolic operands")
+        else:
+            raise ValueError("Only simple two-sided comparisons are supported")
+    else:
+        raise ValueError(f"Unsupported expression node {type(node).__name__}")
+
+
+def string_to_symbolic(expression_text: str, symbol_namespace: Mapping[str, Expr | NUMBER]) -> Expr | Comparison:
+    """
+    Parse a textual symbolic expression into a symbolic tree using a safe AST walk.
+
+    :param expression_text:
+    :param symbol_namespace:
+    :return:
+    """
+    expression_tree: ast.Expression = ast.parse(expression_text, mode="eval")
+    return _ast_to_symbolic(expression_tree, symbol_namespace)
+
+
+def get_symbolic_parser_function_names() -> List[str]:
+    """
+    Return the public function names accepted by :func:`string_to_symbolic`.
+
+    :return:
+    """
+    function_name: str
+    function_names: List[str] = list()
+
+    for function_name in _FUNC_MAP.keys():
+        if function_name.startswith("_"):
+            pass
+        else:
+            function_names.append(function_name)
+
+    return function_names
 
 
 def symbolic_to_string(expr: Expr) -> str:
@@ -1759,6 +1887,8 @@ __all__ = [
     "heaviside",
     "piecewise",
     "symbolic_to_string",
+    "string_to_symbolic",
+    "get_symbolic_parser_function_names",
     "hard_sat",
     "f_exc",
     'expression2numba',

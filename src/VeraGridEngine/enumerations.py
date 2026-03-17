@@ -1227,7 +1227,6 @@ class SubObjectType(Enum):
     Associations = "AssociationsList"
     ListOfWires = 'ListOfWires'
     AdmittanceMatrix = "Admittance Matrix"
-    DynamicModelHostType = "DynamicModuleHost"
     DaeBlockType = "DaeBlock"
     VarType = "VarType"
     ConstType = "ConstType"

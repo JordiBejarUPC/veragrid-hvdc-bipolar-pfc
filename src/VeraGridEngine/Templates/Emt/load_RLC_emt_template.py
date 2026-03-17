@@ -32,7 +32,7 @@ def get_shunt_r_3ph_emt_template( grid : MultiCircuit, load: Load, name: str = "
     # Inputs (abc instantaneous voltages)
     v_A = vf.add_var("v_A_" + name)
     v_B = vf.add_var("v_B_" + name)
-    v_C = vf.add_var("vC_" + name)
+    v_C = vf.add_var("v_C_" + name)
     templ.block.in_vars = [v_A, v_B, v_C]
 
     # Parameters
