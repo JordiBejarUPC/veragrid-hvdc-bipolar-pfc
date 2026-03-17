@@ -12,6 +12,7 @@ from VeraGridEngine.IO.dgs.dgs_to_blocks import (
     extract_named_block_subgraph,
     export_named_block_subgraph_to_python,
     export_named_block_subgraph_tree_to_python,
+    export_root_slot_block_graphical_template_to_python,
     extract_elmcomp_direct_instances,
     extract_root_slot_block_graphical_tree,
     extract_root_slot_block_internal_only,
@@ -61,13 +62,10 @@ class TestDgsToBlocks(unittest.TestCase):
     def test_comments_and_powerfactory_procedural_lines_are_ignored(self) -> None:
         matches = [
             blk for blk in self.result.parsed_blocks.values()
-            if any("lastvalue" in line for line in blk.unsupported_lines)
+            if any("lastvalue" in blob for blob in blk.blkdef.equations_raw)
         ]
         self.assertGreater(len(matches), 0)
-
-        blk = matches[0]
-        self.assertGreater(len(blk.unsupported_lines), 0)
-        self.assertTrue(any("lastvalue" in line for line in blk.unsupported_lines))
+        self.assertTrue(all(not any("lastvalue" in line for line in blk.unsupported_lines) for blk in matches))
 
     def test_inc0_only_applies_if_no_previous_initialization_exists(self) -> None:
         blkdef = BlkDef()
@@ -239,8 +237,7 @@ class TestDgsToBlocks(unittest.TestCase):
         unsupported = [entry for entry in report if entry.status == "unsupported"]
 
         self.assertGreaterEqual(len(supported), 9)
-        self.assertEqual(len(unsupported), 1)
-        self.assertIn("selfix_const", unsupported[0].statement)
+        self.assertEqual(len(unsupported), 0)
 
     def test_support_report_for_smart_admittance(self) -> None:
         subgraph = extract_root_slot_block_internal_only(
@@ -315,6 +312,93 @@ class TestDgsToBlocks(unittest.TestCase):
             self.assertEqual(len(block.children), 0)
 
             self.assertTrue(hasattr(module, "get_synchronization_loop_emt_template"))
+
+    def test_can_export_graphical_template_with_child_procedural_logic(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            template_target = os.path.join(tmp, "dgs_sync_loop_graphical_template.py")
+
+            written_template = export_root_slot_block_graphical_template_to_python(
+                dgs_path=DGS_TEST_FILE,
+                output_path=template_target,
+                slot_name="Synchronization Loop",
+                root_name="Grid Forming Converter",
+            )
+
+            self.assertTrue(os.path.exists(written_template))
+
+            with open(written_template, 'r', encoding='utf-8') as fh:
+                generated_template = fh.read()
+
+            self.assertIn("PI_with_hold_and_reset_46.procedural_logic = [", generated_template)
+            self.assertIn("lastvalue(", generated_template)
+            self.assertIn("reset(", generated_template)
+
+            spec = importlib.util.spec_from_file_location("dgs_sync_loop_graphical_template", written_template)
+            assert spec is not None and spec.loader is not None
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            vf = VarFactory()
+            templ = module.get_template(vf)
+            child_by_name = {child.name: child for child in templ.block.children}
+            self.assertIn("PI with hold and reset", child_by_name)
+            self.assertGreater(len(child_by_name["PI with hold and reset"].procedural_logic), 0)
+
+    def test_can_export_pi_hold_template_with_top_level_procedural_logic(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            template_target = os.path.join(tmp, "dgs_pi_hold_template.py")
+
+            written_template = export_named_block_subgraph_to_python(
+                dgs_path=DGS_TEST_FILE,
+                output_path=template_target,
+                block_name="PI with hold and reset",
+            )
+
+            self.assertTrue(os.path.exists(written_template))
+
+            with open(written_template, 'r', encoding='utf-8') as fh:
+                generated_template = fh.read()
+
+            self.assertIn("templ.block.procedural_logic = [", generated_template)
+            self.assertIn("lastvalue(", generated_template)
+            self.assertIn("reset(", generated_template)
+
+            spec = importlib.util.spec_from_file_location("dgs_pi_hold_template", written_template)
+            assert spec is not None and spec.loader is not None
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            vf = VarFactory()
+            templ = module.get_template(vf)
+            self.assertGreater(len(templ.block.procedural_logic), 0)
+
+    def test_can_export_protection_template_with_procedural_logic(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            template_target = os.path.join(tmp, "dgs_protection_template.py")
+
+            written_template = export_named_block_subgraph_to_python(
+                dgs_path=DGS_TEST_FILE,
+                output_path=template_target,
+                block_name="Protection",
+            )
+
+            self.assertTrue(os.path.exists(written_template))
+
+            with open(written_template, 'r', encoding='utf-8') as fh:
+                generated_template = fh.read()
+
+            self.assertIn("templ.block.procedural_logic = [", generated_template)
+            self.assertIn("picdro(", generated_template)
+            self.assertIn("flipflop(", generated_template)
+
+            spec = importlib.util.spec_from_file_location("dgs_protection_template", written_template)
+            assert spec is not None and spec.loader is not None
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            vf = VarFactory()
+            templ = module.get_template(vf)
+            self.assertGreaterEqual(len(templ.block.procedural_logic), 10)
 
     def test_can_extract_synchronization_loop_internal_signal_tree(self) -> None:
         subgraph = extract_root_slot_block_internal_signal_tree(

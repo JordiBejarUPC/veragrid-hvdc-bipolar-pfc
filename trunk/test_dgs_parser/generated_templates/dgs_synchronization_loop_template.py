@@ -25,7 +25,6 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
     P_capab_high = vf.add_var('P_capab_high_' + name)
     P_capab_low = vf.add_var('P_capab_low_' + name)
     Pmeas = vf.add_var('Pmeas_' + name)
-    Pmeas_1 = vf.add_var('Pmeas_' + name)
     Pref_sat1 = vf.add_var('Pref_sat1_' + name)
     Pset = vf.add_var('Pset_' + name)
     Synchronization_Loop_xP_fil = vf.add_var('Synchronization Loop__xP_fil_' + name)
@@ -33,16 +32,12 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
     Synchronization_Loop_xt = vf.add_var('Synchronization Loop__xt_' + name)
     Synchronization_Loop_xw = vf.add_var('Synchronization Loop__xw_' + name)
     cosdelta = vf.add_var('cosdelta_' + name)
-    cosdelta_1 = vf.add_var('cosdelta_' + name)
     delta = vf.add_var('delta_' + name)
-    delta_1 = vf.add_var('delta_' + name)
     flag_overload = vf.add_var('flag_overload_' + name)
     sindelta = vf.add_var('sindelta_' + name)
-    sindelta_1 = vf.add_var('sindelta_' + name)
     w = vf.add_var('w_' + name)
     wref = vf.add_var('wref_' + name)
     wset = vf.add_var('wset_' + name)
-    wset_1 = vf.add_var('wset_' + name)
 
     # --- Derivative Variables ---
 
@@ -64,13 +59,14 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
     templ.block.init_eqs = {
         Synchronization_Loop_xw: vf.add_const(0.0, name=''),
         Synchronization_Loop_xt: delta,
-        Synchronization_Loop_xp_lim: Pmeas_1,
-        Synchronization_Loop_xP_fil: Pmeas_1,
-        delta_1: sym.atan2(sindelta_1, cosdelta_1),
-        Pref_sat1: Pmeas_1,
-        w: wset_1,
+        Synchronization_Loop_xp_lim: Pmeas,
+        Synchronization_Loop_xP_fil: Pmeas,
+        delta: sym.atan2(sindelta, cosdelta),
+        wref: vf.add_const(1.0, name=''),
+        Pref_sat1: Pmeas,
+        w: wset,
         wset: vf.add_const(1.0, name=''),
-        Pset: Pmeas_1,
+        Pset: Pmeas,
     }
     templ.block.name = name
 

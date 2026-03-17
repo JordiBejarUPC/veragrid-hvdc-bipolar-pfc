@@ -14,8 +14,16 @@ from typing import Any, Dict, Iterable, List, Set, Tuple
 
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_objects import BlkDef, BlkFrom, BlkGoto, BlkRef, BlkSig, BlkSlot, BlkSum, ElmComp, ElmDsl, DGSElement
+from VeraGridEngine.Utils.procedural_logic import (
+    FixedSampleLogic,
+    FlipFlopLogic,
+    PickupDropoffLogic,
+    ResetOnRisingEdgeLogic,
+    SampledValueLogic,
+    clone_procedural_logic_entries,
+)
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Comparison, Const, Expr, Func2, Var, abs, cos, exp, hard_sat, log, max, min, sin, sqrt
+from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp, Comparison, Const, Expr, Func2, Var, abs, cos, exp, hard_sat, log, max, min, sin, sqrt
 from VeraGridEngine.enumerations import BlockScopeMode
 
 def _safe_name(name: str) -> str:
@@ -104,6 +112,9 @@ def classify_dgs_statement(statement: str) -> tuple[str, str | None]:
     if diff_match is not None:
         return 'state', diff_match.group('lhs').strip()
 
+    if re.match(r'^reset\s*\(.+\)\s*$', stmt) is not None:
+        return 'procedural', None
+
     alg_match = re.match(r'^(?P<lhs>[^=]+?)\s*=\s*(?P<rhs>.+)$', stmt)
     if alg_match is not None:
         return 'algebraic', alg_match.group('lhs').strip()
@@ -120,7 +131,8 @@ def build_blkdef_statement_support_report(blkdef: BlkDef) -> List[DgsStatementRe
     """
     shared_signals: Dict[str, Var] = dict()
     symbol_table, _state_vars, _state_var_map, _diff_var_map, _param_var_map = _build_symbol_table(blkdef, shared_signals)
-    parser = DgsExpressionParser(symbol_table)
+    _predeclare_statement_lhs_symbols(blkdef, symbol_table)
+    parser = DgsExpressionParser(symbol_table, block_name=blkdef.loc_name)
 
     report: List[DgsStatementReportEntry] = list()
     init_seen: Set[str] = set()
@@ -130,6 +142,16 @@ def build_blkdef_statement_support_report(blkdef: BlkDef) -> List[DgsStatementRe
 
         if kind == 'ignored':
             report.append(DgsStatementReportEntry(idx, stmt, kind, lhs, 'ignored', 'ignored by parser policy'))
+            continue
+
+        if kind == 'procedural':
+            try:
+                parser.parse_procedural_statement(stmt)
+            except UnsupportedDgsExpression as exc:
+                report.append(DgsStatementReportEntry(idx, stmt, kind, lhs, 'unsupported', str(exc)))
+                continue
+
+            report.append(DgsStatementReportEntry(idx, stmt, kind, lhs, 'supported', 'parsed successfully'))
             continue
 
         rhs_text: str | None = None
@@ -193,6 +215,7 @@ def summarize_blkdef_support_report(entries: List[DgsStatementReportEntry]) -> D
         'algebraic': 0,
         'inc': 0,
         'inc0': 0,
+        'procedural': 0,
     }
 
     for entry in entries:
@@ -271,10 +294,107 @@ class UnsupportedDgsExpression(Exception):
     pass
 
 
+def _split_top_level_dsl_operator(expr: str, token: str) -> Tuple[str, str] | None:
+    depth: int = 0
+    text = expr.strip()
+    token_len = len(token)
+    idx: int = 0
+
+    while idx <= len(text) - token_len:
+        ch = text[idx]
+        if ch == '(':
+            depth += 1
+            idx += 1
+            continue
+        if ch == ')':
+            depth = max(0, depth - 1)
+            idx += 1
+            continue
+
+        if depth == 0 and text[idx:idx + token_len].lower() == token:
+            left = text[:idx].strip()
+            right = text[idx + token_len:].strip()
+            if left and right:
+                return left, right
+            return None
+
+        idx += 1
+
+    return None
+
+
+def _predeclare_statement_lhs_symbols(blkdef: BlkDef, symbol_table: Dict[str, Var]) -> None:
+    for stmt in _split_equation_statements(blkdef.equations_raw):
+        kind, lhs = classify_dgs_statement(stmt)
+        if kind in {'inc', 'inc0', 'state', 'algebraic'} and lhs is not None and lhs not in symbol_table:
+            symbol_table[lhs] = Var(name=f"{blkdef.loc_name}__{lhs}")
+
+
 class DgsExpressionParser(ast.NodeVisitor):
-    def __init__(self, symbol_table: Dict[str, Var]):
+    def __init__(self, symbol_table: Dict[str, Var], block_name: str = ""):
         self.symbol_table = symbol_table
+        self.block_name = block_name
         self._replacement_map: Dict[str, str] = {_safe_name(name): name for name in symbol_table.keys()}
+        self._procedural_mode_defaults: Dict[Var, Expr | Const] = dict()
+        self._procedural_logic_entries: List[Any] = list()
+        self._procedural_counter: int = 0
+        self._time_var: Var | None = None
+
+    @property
+    def procedural_mode_defaults(self) -> Dict[Var, Expr | Const]:
+        return self._procedural_mode_defaults
+
+    @property
+    def procedural_logic_entries(self) -> List[Any]:
+        return self._procedural_logic_entries
+
+    def _new_procedural_mode_var(self, prefix: str) -> Var:
+        base_name = f"{self.block_name}__proc_{prefix}_{self._procedural_counter}" if self.block_name else f"proc_{prefix}_{self._procedural_counter}"
+        self._procedural_counter += 1
+        var = Var(name=base_name)
+        self.symbol_table[base_name] = var
+        self._replacement_map[_safe_name(base_name)] = base_name
+        self._procedural_mode_defaults[var] = Const(0.0)
+        return var
+
+    def _get_time_var(self) -> Var:
+        if self._time_var is None:
+            self._time_var = Var(name='glob_time')
+        return self._time_var
+
+    def parse_procedural_statement(self, statement: str) -> None:
+        try:
+            tree = ast.parse(self.preprocess(statement), mode='eval')
+        except SyntaxError as exc:
+            raise UnsupportedDgsExpression(str(exc)) from exc
+
+        node = tree.body
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
+            raise UnsupportedDgsExpression("Unsupported procedural statement")
+
+        if node.func.id != 'reset' or len(node.args) != 3:
+            raise UnsupportedDgsExpression(f"Unsupported procedural helper '{node.func.id}'")
+
+        target_node = node.args[0]
+        if not isinstance(target_node, ast.Name):
+            raise UnsupportedDgsExpression("reset target must be a DSL variable name")
+
+        target_original = self._replacement_map.get(target_node.id)
+        if target_original is None or target_original not in self.symbol_table:
+            raise UnsupportedDgsExpression(f"Unknown reset target '{target_node.id}'")
+
+        target_var = self.symbol_table[target_original]
+        reset_expr = self.visit(node.args[1])
+        value_expr = self.visit(node.args[2])
+
+        self._procedural_logic_entries.append(
+            ResetOnRisingEdgeLogic(
+                target_var_name=target_var.name,
+                reset_expr=reset_expr,
+                value_expr=value_expr,
+                name=f"{target_var.name}_reset",
+            )
+        )
 
     def preprocess(self, expr: str) -> str:
         text: str = expr.strip()
@@ -282,6 +402,7 @@ class DgsExpressionParser(ast.NodeVisitor):
         text = text.replace('.and.', ' and ')
         text = text.replace('.or.', ' or ')
         text = text.replace('.not.', ' not ')
+        text = re.sub(r'(?<![<>=!])=(?!=)', '==', text)
 
         replacements: List[Tuple[str, str]] = list()
         for name in sorted(self.symbol_table.keys(), key=len, reverse=True):
@@ -293,6 +414,19 @@ class DgsExpressionParser(ast.NodeVisitor):
         return text
 
     def parse(self, expr: str) -> Expr | Comparison:
+        for token in ['.nor.', '.nand.', '.eor.']:
+            split_parts = _split_top_level_dsl_operator(expr, token)
+            if split_parts is not None:
+                left_raw, right_raw = split_parts
+                left_expr = _comparison_to_expr(self.parse(left_raw))
+                right_expr = _comparison_to_expr(self.parse(right_raw))
+
+                if token == '.nor.':
+                    return (Const(1.0) - left_expr) * (Const(1.0) - right_expr)
+                if token == '.nand.':
+                    return Const(1.0) - left_expr * right_expr
+                return left_expr + right_expr - Const(2.0) * left_expr * right_expr
+
         try:
             tree = ast.parse(self.preprocess(expr), mode='eval')
         except SyntaxError as exc:
@@ -316,6 +450,8 @@ class DgsExpressionParser(ast.NodeVisitor):
             return -operand
         if isinstance(node.op, ast.UAdd):
             return operand
+        if isinstance(node.op, ast.Not):
+            return Const(1.0) - _comparison_to_expr(operand)
         raise UnsupportedDgsExpression(ast.dump(node))
 
     def visit_BinOp(self, node: ast.BinOp) -> Expr:
@@ -394,22 +530,66 @@ class DgsExpressionParser(ast.NodeVisitor):
             return args[0] * args[0]
         if name in {'lim', 'lim_const'} and len(args) == 3:
             return hard_sat(args[0], args[1], args[2])
+        if name == 'limstate' and len(args) == 3:
+            return hard_sat(args[0], args[1], args[2])
         if name in {'select', 'select_const'} and len(args) == 3:
             cond = _comparison_to_expr(args[0])
             return cond * args[1] + (Const(1.0) - cond) * args[2]
+        if name in {'selfix', 'selfix_const'} and len(args) == 3:
+            if isinstance(args[0], Const) and args[0].value is not None:
+                return args[1] if float(args[0].value) > 0.5 else args[2]
+            selector = self._new_procedural_mode_var(name)
+            self._procedural_logic_entries.append(
+                FixedSampleLogic(
+                    output_var_name=selector.name,
+                    condition_expr=args[0],
+                    name=selector.name,
+                )
+            )
+            return selector * args[1] + (Const(1.0) - selector) * args[2]
+        if name == 'lastvalue' and len(args) == 1:
+            sampled = self._new_procedural_mode_var(name)
+            self._procedural_logic_entries.append(
+                SampledValueLogic(
+                    output_var_name=sampled.name,
+                    source_expr=args[0],
+                    name=sampled.name,
+                )
+            )
+            return sampled
+        if name == 'flipflop' and len(args) == 2:
+            latch = self._new_procedural_mode_var(name)
+            self._procedural_logic_entries.append(
+                FlipFlopLogic(
+                    output_var_name=latch.name,
+                    set_expr=args[0],
+                    reset_expr=args[1],
+                    name=latch.name,
+                )
+            )
+            return latch
+        if name in {'picdro', 'picdro_const'} and len(args) == 3:
+            latch = self._new_procedural_mode_var(name)
+            self._procedural_logic_entries.append(
+                PickupDropoffLogic(
+                    output_var_name=latch.name,
+                    bool_expr=args[0],
+                    pickup_delay_expr=args[1],
+                    drop_delay_expr=args[2],
+                    name=latch.name,
+                )
+            )
+            return latch
         if name == 'pi' and len(args) == 0:
             return Const(math.pi)
         if name == 'twopi' and len(args) == 0:
             return Const(2.0 * math.pi)
         if name == 'time' and len(args) == 0:
-            existing = self.symbol_table.get('time', None)
-            if existing is None:
-                existing = Var(name='time')
-                self.symbol_table['time'] = existing
-                self._replacement_map[_safe_name('time')] = 'time'
-            return existing
+            return self._get_time_var()
+        if name == 'rms' and len(args) == 0:
+            return Const(1.0)
 
-        if name in {'inc', 'lastvalue', 'reset', 'flipflop', 'lapprox', 'vardef'}:
+        if name in {'inc', 'reset', 'lapprox', 'vardef'}:
             raise UnsupportedDgsExpression(f"Unsupported PowerFactory helper '{name}'")
 
         raise UnsupportedDgsExpression(f"Unsupported function '{name}'")
@@ -421,9 +601,12 @@ class DgsExpressionParser(ast.NodeVisitor):
 @dataclass
 class ParsedDgsBlockDefinition:
     blkdef: BlkDef
+    symbol_table: Dict[str, Var]
     state_rhs: Dict[str, Expr]
     algebraic_rhs: Dict[str, Expr]
     init_rhs: Dict[str, Expr]
+    mode_dict: Dict[Var, Expr | Const]
+    procedural_logic: List[Any]
     unsupported_lines: List[str]
     signal_dependencies: Dict[str, Set[str]]
 
@@ -578,6 +761,126 @@ def _const_or_expr_to_python(value: Expr | Const, identifier_map: Dict[int, str]
     return _expr_to_python(value, identifier_map)
 
 
+def _expr_to_python_natural(expr: Expr, identifier_map: Dict[int, str]) -> str:
+    if isinstance(expr, Var):
+        return identifier_map[expr.uid]
+    if isinstance(expr, Const):
+        return repr(expr.value)
+    if isinstance(expr, Func2):
+        return f"sym.{expr.name}({_expr_to_python_natural(expr.arg1, identifier_map)}, {_expr_to_python_natural(expr.arg2, identifier_map)})"
+
+    from VeraGridEngine.Utils.Symbolic.symbolic import BinOp, Func, UnOp
+
+    if isinstance(expr, BinOp):
+        return f"({_expr_to_python_natural(expr.left, identifier_map)} {expr.op} {_expr_to_python_natural(expr.right, identifier_map)})"
+    if isinstance(expr, UnOp):
+        return f"({expr.op}{_expr_to_python_natural(expr.operand, identifier_map)})"
+    if isinstance(expr, Func):
+        return f"sym.{expr.op}({_expr_to_python_natural(expr.arg, identifier_map)})"
+    raise TypeError(f"Unsupported expression type for natural Python export: {type(expr).__name__}")
+
+
+def _expr_like_to_python(expr: Expr | Comparison, identifier_map: Dict[int, str]) -> str:
+    if isinstance(expr, Comparison):
+        cmp_op_map = {
+            CmpOp.EQ: "==",
+            CmpOp.LE: "<=",
+            CmpOp.GE: ">=",
+            CmpOp.LT: "<",
+            CmpOp.GT: ">",
+        }
+        rhs = _expr_to_python_natural(expr.rhs, identifier_map) if isinstance(expr.rhs, Expr) else repr(expr.rhs)
+        return f"({_expr_to_python_natural(expr.lhs, identifier_map)} {cmp_op_map[expr.op]} {rhs})"
+    return _expr_to_python_natural(expr, identifier_map)
+
+
+def _iter_block_local_vars(block: Block) -> List[Var]:
+    vars_found: List[Var] = list()
+    vars_found.extend(block.state_vars)
+    vars_found.extend(block.algebraic_vars)
+    vars_found.extend(block.diff_vars)
+    vars_found.extend(block.in_vars)
+    vars_found.extend(block.out_vars)
+    vars_found.extend(list(block.event_dict.keys()))
+    vars_found.extend(list(block.mode_dict.keys()))
+    return vars_found
+
+
+def _find_local_var_by_name(block: Block, var_name: str) -> Var:
+    for var in _iter_block_local_vars(block):
+        if var.name == var_name:
+            return var
+    raise KeyError(f"Variable '{var_name}' not found in block '{block.name}'")
+
+
+def _procedural_logic_import_names(block: Block) -> List[str]:
+    names: Set[str] = set()
+    for item in _iter_blocks_recursive(block):
+        for logic in item.procedural_logic:
+            if isinstance(logic, FixedSampleLogic):
+                names.add("selfix")
+            elif isinstance(logic, SampledValueLogic):
+                names.add("lastvalue")
+            elif isinstance(logic, FlipFlopLogic):
+                names.add("flipflop")
+            elif isinstance(logic, PickupDropoffLogic):
+                names.add("picdro")
+            elif isinstance(logic, ResetOnRisingEdgeLogic):
+                names.add("reset")
+    return sorted(names)
+
+
+def _procedural_logic_entry_to_python(logic: Any, block: Block, identifier_map: Dict[int, str]) -> str:
+    if isinstance(logic, FixedSampleLogic):
+        output_var = _find_local_var_by_name(block, logic.output_var_name)
+        text = f"selfix({_expr_like_to_python(logic.condition_expr, identifier_map)}, output={identifier_map[output_var.uid]})"
+        if logic.name != "" and logic.name != logic.output_var_name:
+            text = text[:-1] + f", name={repr(logic.name)})"
+        return text
+
+    if isinstance(logic, SampledValueLogic):
+        output_var = _find_local_var_by_name(block, logic.output_var_name)
+        text = f"lastvalue({_expr_like_to_python(logic.source_expr, identifier_map)}, output={identifier_map[output_var.uid]})"
+        if logic.name != "" and logic.name != logic.output_var_name:
+            text = text[:-1] + f", name={repr(logic.name)})"
+        return text
+
+    if isinstance(logic, FlipFlopLogic):
+        output_var = _find_local_var_by_name(block, logic.output_var_name)
+        text = (
+            f"flipflop({_expr_like_to_python(logic.set_expr, identifier_map)}, "
+            f"{_expr_like_to_python(logic.reset_expr, identifier_map)}, output={identifier_map[output_var.uid]})"
+        )
+        if logic.name != "" and logic.name != logic.output_var_name:
+            text = text[:-1] + f", name={repr(logic.name)})"
+        return text
+
+    if isinstance(logic, PickupDropoffLogic):
+        output_var = _find_local_var_by_name(block, logic.output_var_name)
+        text = (
+            f"picdro({_expr_like_to_python(logic.bool_expr, identifier_map)}, "
+            f"{_expr_like_to_python(logic.pickup_delay_expr, identifier_map)}, "
+            f"{_expr_like_to_python(logic.drop_delay_expr, identifier_map)}, output={identifier_map[output_var.uid]})"
+        )
+        if logic.name != "" and logic.name != logic.output_var_name:
+            text = text[:-1] + f", name={repr(logic.name)})"
+        return text
+
+    if isinstance(logic, ResetOnRisingEdgeLogic):
+        target_var = _find_local_var_by_name(block, logic.target_var_name)
+        default_name = f"{logic.target_var_name}_reset"
+        text = (
+            f"reset({identifier_map[target_var.uid]}, "
+            f"{_expr_like_to_python(logic.reset_expr, identifier_map)}, "
+            f"{_expr_like_to_python(logic.value_expr, identifier_map)})"
+        )
+        if logic.name != "" and logic.name != default_name:
+            text = text[:-1] + f", name={repr(logic.name)})"
+        return text
+
+    raise TypeError(f"Unsupported procedural logic export type: {type(logic).__name__}")
+
+
 def _emit_block_code(
     block: Block,
     identifier_map: Dict[int, str],
@@ -617,6 +920,13 @@ def _emit_block_code(
             lines.append(f"        {identifier_map[key.uid]}: {_const_or_expr_to_python(value, identifier_map)},")
         lines.append("    }")
 
+    if block.mode_dict:
+        lines.append(f"    # --- Retained Runtime Modes ---")
+        lines.append(f"    {block_var_name}.mode_dict = {{")
+        for key, value in block.mode_dict.items():
+            lines.append(f"        {identifier_map[key.uid]}: {_const_or_expr_to_python(value, identifier_map)},")
+        lines.append("    }")
+
     if block.init_eqs:
         lines.append(f"    # --- Initial Equations and Guesses ---")
         lines.append(f"    {block_var_name}.init_eqs = {{")
@@ -631,6 +941,12 @@ def _emit_block_code(
             lines.append(f"        {identifier_map[key.uid]}: {_const_or_expr_to_python(value, identifier_map)},")
         lines.append("    }")
 
+    if block.procedural_logic:
+        lines.append(f"    {block_var_name}.procedural_logic = [")
+        for logic in block.procedural_logic:
+            lines.append(f"        {_procedural_logic_entry_to_python(logic, block, identifier_map)},")
+        lines.append("    ]")
+
 
 def _emit_template_style_module(
     result: DgsRootBlockResult,
@@ -640,6 +956,8 @@ def _emit_template_style_module(
     block = subgraph.view_block
     identifier_map = _make_identifier_map(block)
     func_base_name = _safe_name(subgraph.selected_block.blkdef.loc_name).lower()
+    has_procedural_logic = any(len(item.procedural_logic) > 0 for item in _iter_blocks_recursive(block))
+    procedural_import_names = _procedural_logic_import_names(block)
 
     vars_out: Dict[int, Var] = dict()
     consts_out: Dict[int, Const] = dict()
@@ -666,6 +984,8 @@ def _emit_template_style_module(
     lines.append("from VeraGridEngine.Utils.Symbolic import symbolic as sym")
     lines.append("from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate")
     lines.append("from VeraGridEngine.Utils.Symbolic.block import Block")
+    if has_procedural_logic:
+        lines.append("from VeraGridEngine.Utils.procedural_logic import " + ", ".join(procedural_import_names))
     lines.append("from VeraGridEngine.enumerations import DeviceType")
     lines.append("")
     lines.append(f"def get_{func_base_name}_emt_template(vf: VarFactory, name: str = {repr(subgraph.selected_block.blkdef.loc_name)}) -> EmtModelTemplate:")
@@ -867,6 +1187,7 @@ def materialize_block_with_var_factory(block_data: dict | Block, vf: Any, name: 
         cloned.diff_init_eqs = {created_vars[k.uid]: v.subs(var_mapping) for k, v in block.diff_init_eqs.items()}
         cloned.parameters = {created_vars[k.uid]: _clone_const_with_factory(v, vf.add_const) for k, v in block.parameters.items()}
         cloned.init_values = {created_vars[k.uid]: _clone_const_with_factory(v, vf.add_const) for k, v in block.init_values.items()}
+        cloned.procedural_logic = clone_procedural_logic_entries(block.procedural_logic, var_mapping)
         cloned.children = [clone_block_recursive(child) for child in block.children]
         return cloned
 
@@ -908,7 +1229,8 @@ def _build_symbol_table(
 
 def _parse_blkdef(blkdef: BlkDef, shared_signals: Dict[str, Var]) -> ParsedDgsBlockDefinition:
     symbol_table, state_vars, state_var_map, diff_var_map, _param_var_map = _build_symbol_table(blkdef, shared_signals)
-    parser = DgsExpressionParser(symbol_table)
+    _predeclare_statement_lhs_symbols(blkdef, symbol_table)
+    parser = DgsExpressionParser(symbol_table, block_name=blkdef.loc_name)
 
     state_rhs: Dict[str, Expr] = dict()
     algebraic_rhs: Dict[str, Expr] = dict()
@@ -920,6 +1242,16 @@ def _parse_blkdef(blkdef: BlkDef, shared_signals: Dict[str, Var]) -> ParsedDgsBl
         stmt_kind, lhs_hint = classify_dgs_statement(stmt)
 
         if stmt_kind == 'ignored':
+            continue
+
+        if stmt_kind == 'procedural':
+            try:
+                parser.parse_procedural_statement(stmt)
+            except UnsupportedDgsExpression:
+                unsupported_lines.append(stmt)
+                continue
+
+            signal_dependencies[stmt] = set()
             continue
 
         init_match = re.match(r'^(?P<kind>inc0?|inc)\((?P<lhs>[^\)]+)\)\s*=\s*(?P<rhs>.+)$', stmt)
@@ -993,9 +1325,12 @@ def _parse_blkdef(blkdef: BlkDef, shared_signals: Dict[str, Var]) -> ParsedDgsBl
 
     return ParsedDgsBlockDefinition(
         blkdef=blkdef,
+        symbol_table=dict(symbol_table),
         state_rhs=state_rhs,
         algebraic_rhs=algebraic_rhs,
         init_rhs=init_rhs,
+        mode_dict=dict(parser.procedural_mode_defaults),
+        procedural_logic=list(parser.procedural_logic_entries),
         unsupported_lines=unsupported_lines,
         signal_dependencies=signal_dependencies,
     )
@@ -1162,6 +1497,17 @@ def _filter_internal_candidates(
 def _build_block_from_parsed(parsed: ParsedDgsBlockDefinition, shared_signals: Dict[str, Var]) -> Block:
     symbol_table, state_vars, _state_map, diff_var_map, param_var_map = _build_symbol_table(parsed.blkdef, shared_signals)
 
+    for name, old_var in parsed.symbol_table.items():
+        if name not in symbol_table:
+            symbol_table[name] = Var(name=old_var.name)
+
+    var_mapping: Dict[Any, Expr] = dict()
+    for name, old_var in parsed.symbol_table.items():
+        new_var = symbol_table.get(name, None)
+        if new_var is not None:
+            var_mapping[old_var] = new_var
+            var_mapping[old_var.name] = new_var
+
     algebraic_pairs: List[Tuple[Var, Expr]] = list()
     used_alg_names: Set[str] = set()
     for lhs_name, rhs_expr in parsed.algebraic_rhs.items():
@@ -1170,7 +1516,13 @@ def _build_block_from_parsed(parsed: ParsedDgsBlockDefinition, shared_signals: D
         else:
             lhs_var = Var(name=f"{parsed.blkdef.loc_name}__{lhs_name}")
             symbol_table[lhs_name] = lhs_var
-        algebraic_pairs.append((lhs_var, lhs_var - rhs_expr))
+
+        old_lhs_var = parsed.symbol_table.get(lhs_name, None)
+        if old_lhs_var is not None:
+            var_mapping[old_lhs_var] = lhs_var
+            var_mapping[old_lhs_var.name] = lhs_var
+
+        algebraic_pairs.append((lhs_var, lhs_var - rhs_expr.subs(var_mapping)))
         used_alg_names.add(lhs_name)
 
     algebraic_vars: List[Var] = [pair[0] for pair in algebraic_pairs]
@@ -1183,7 +1535,7 @@ def _build_block_from_parsed(parsed: ParsedDgsBlockDefinition, shared_signals: D
         if state_name in parsed.state_rhs:
             effective_state_vars.append(symbol_table[state_name])
             effective_diff_vars.append(diff_var_map[state_name])
-            state_eqs.append(parsed.state_rhs[state_name])
+            state_eqs.append(parsed.state_rhs[state_name].subs(var_mapping))
 
     event_dict: Dict[Var, Const] = {param_var: Const(None, name=param_name) for param_name, param_var in param_var_map.items()}
 
@@ -1195,7 +1547,25 @@ def _build_block_from_parsed(parsed: ParsedDgsBlockDefinition, shared_signals: D
         else:
             lhs_var = Var(name=f"{parsed.blkdef.loc_name}__{lhs_name}")
             symbol_table[lhs_name] = lhs_var
-        init_eqs[lhs_var] = rhs_expr
+
+        old_lhs_var = parsed.symbol_table.get(lhs_name, None)
+        if old_lhs_var is not None:
+            var_mapping[old_lhs_var] = lhs_var
+            var_mapping[old_lhs_var.name] = lhs_var
+
+        init_eqs[lhs_var] = rhs_expr.subs(var_mapping)
+
+    mode_dict: Dict[Var, Expr | Const] = dict()
+    for mode_var, rhs_expr in parsed.mode_dict.items():
+        mapped_var = var_mapping.get(mode_var, None)
+        if not isinstance(mapped_var, Var):
+            mapped_var = symbol_table.get(mode_var.name, None)
+        if not isinstance(mapped_var, Var):
+            mapped_var = Var(name=mode_var.name)
+            symbol_table[mode_var.name] = mapped_var
+        mode_dict[mapped_var] = rhs_expr.subs(var_mapping) if isinstance(rhs_expr, Expr) else rhs_expr
+
+    procedural_logic = clone_procedural_logic_entries(parsed.procedural_logic, var_mapping)
 
     return Block(
         name=parsed.blkdef.loc_name,
@@ -1207,7 +1577,9 @@ def _build_block_from_parsed(parsed: ParsedDgsBlockDefinition, shared_signals: D
         in_vars=[shared_signals[name] for name in parsed.blkdef.inputs if name in shared_signals],
         out_vars=[shared_signals[name] for name in parsed.blkdef.outputs if name in shared_signals],
         event_dict=event_dict,
+        mode_dict=mode_dict,
         init_eqs=init_eqs,
+        procedural_logic=procedural_logic,
     )
 
 
@@ -2170,6 +2542,43 @@ def get_graphical_adjacency() -> dict:
 def get_metadata() -> dict:
     return METADATA
 '''
+
+    out_path.write_text(module_text, encoding="utf-8")
+    return out_path
+
+
+def export_root_slot_block_graphical_template_to_python(
+    dgs_path: str,
+    output_path: str,
+    slot_name: str,
+    *,
+    root_name: str = "Grid Forming Converter",
+    root_typ_id: str | None = None,
+) -> Path:
+    """
+    Export the exact graphical tree of a root slot as a standalone EMT template module.
+
+    :param dgs_path: Source DGS file.
+    :param output_path: Destination `.py` file.
+    :param slot_name: Root slot name.
+    :param root_name: Root ElmComp display name.
+    :param root_typ_id: Optional exact root typ_id.
+    :return: Path to the generated Python module.
+    """
+    result = dgs_to_root_block(dgs_path, root_name=root_name, root_typ_id=root_typ_id)
+    graph_tree = extract_root_slot_block_graphical_tree(
+        dgs_path=dgs_path,
+        slot_name=slot_name,
+        root_name=root_name,
+        root_typ_id=root_typ_id,
+    )
+    if graph_tree is None:
+        raise ValueError(f"Could not extract graphical tree for slot '{slot_name}'")
+
+    out_path = Path(output_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    module_text = _emit_template_style_module(result, graph_tree, dgs_path)
 
     out_path.write_text(module_text, encoding="utf-8")
     return out_path

@@ -44,6 +44,7 @@ class Block:
                  out_vars: List[Var] | None = None,
                  event_dict: Dict[Var, Expr] | None = None,
                  mode_dict: Dict[Var, Expr] | None = None,
+                 procedural_logic: List[Any] | None = None,
                  external_mapping: Dict[VarPowerFlowRefferenceType, Var] | None = None,
                  api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] | None = None,
                  name: str = "",
@@ -60,10 +61,11 @@ class Block:
         :param out_vars: List of variables that already exist in algebraic_vars or state_vars that we want to expose
         :param init_eqs: List of equations that help initializing the block variables (algebraic and state)
         :param diff_init_eqs: List of equations that help initializing the block derivatives of state variables
-        :param event_dict: Dictionary of parameters that can change during the simulations
-        :param external_mapping: Dictionary of vars that are related to the Power flow initialization
-        :param name: name of the block
-        """
+         :param event_dict: Dictionary of parameters that can change during the simulations
+         :param procedural_logic: List of runtime procedural logic objects attached to the block
+         :param external_mapping: Dictionary of vars that are related to the Power flow initialization
+         :param name: name of the block
+         """
 
         self.name: str = name
 
@@ -110,6 +112,7 @@ class Block:
         # this is the dictionary of "parameters" that may change and their equations
         self.event_dict: Dict[Var, Expr | Const] = dict() if event_dict is None else event_dict
         self.mode_dict: Dict[Var, Expr | Const] = dict() if mode_dict is None else mode_dict
+        self.procedural_logic: List[Any] = list() if procedural_logic is None else procedural_logic
 
         self._diagram: BlockDiagram = BlockDiagram()
 
@@ -185,6 +188,8 @@ class Block:
                 }
                 for k, v in self.mode_dict.items()
             },
+
+            "procedural_logic": self._procedural_logic_to_dict(),
 
             "parameters": {
                 k.uid: {
@@ -275,6 +280,7 @@ class Block:
                 _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
                 for item in data.get("mode_dict", {}).values()
             },
+            procedural_logic=Block._procedural_logic_from_dict(data.get("procedural_logic", [])),
             external_mapping={
                 VarPowerFlowRefferenceType(k): _dict_to_expr(v)
                 for k, v in data["external_mapping"].items()
@@ -299,6 +305,26 @@ class Block:
         """
         d = self.to_dict()
         return Block.parse(d)
+
+    def _procedural_logic_to_dict(self) -> List[Dict[str, Any]]:
+        """
+        Serialize block-attached procedural logic.
+
+        :return: Serialized procedural logic entries.
+        """
+        from VeraGridEngine.Utils.procedural_logic import procedural_logic_to_dict
+        return procedural_logic_to_dict(self.procedural_logic)
+
+    @staticmethod
+    def _procedural_logic_from_dict(data: List[Dict[str, Any]]) -> List[Any]:
+        """
+        Deserialize block-attached procedural logic.
+
+        :param data: Serialized logic entries.
+        :return: Procedural logic objects.
+        """
+        from VeraGridEngine.Utils.procedural_logic import procedural_logic_from_dict
+        return procedural_logic_from_dict(data)
 
     def __deepcopy__(self, memo: Dict) -> "Block":
         return self.copy()
@@ -381,6 +407,7 @@ class Block:
                 not self.out_vars and
                 not self.event_dict and
                 not self.mode_dict and
+                not self.procedural_logic and
                 not self.external_mapping and
                 not self.api_obj_mapping and
                 not self.name
@@ -479,6 +506,8 @@ class Block:
             for diffvar, diff_init_eq in b.diff_init_eqs.items():
                 mdl_placeholder.diff_init_eqs[diffvar] = diff_init_eq
 
+            mdl_placeholder.procedural_logic.extend(b.procedural_logic)
+
         self.algebraic_vars = mdl_placeholder.algebraic_vars
         self.algebraic_eqs = mdl_placeholder.algebraic_eqs
         self.state_vars = mdl_placeholder.state_vars
@@ -491,6 +520,7 @@ class Block:
         self.diff_init_eqs = mdl_placeholder.diff_init_eqs
         self.reformulated_vars = mdl_placeholder.reformulated_vars
         self.external_mapping = mdl_placeholder.external_mapping
+        self.procedural_logic = mdl_placeholder.procedural_logic
         self.children = list()
 
     def get_vars(self) -> List[Var]:
@@ -578,6 +608,10 @@ class Block:
         for var_pf_ref, mdl_var in self.external_mapping.items():
             if mdl_var is old:
                 self.external_mapping.update({var_pf_ref: new})
+
+        if self.procedural_logic:
+            from VeraGridEngine.Utils.procedural_logic import clone_procedural_logic_entries
+            self.procedural_logic = clone_procedural_logic_entries(self.procedural_logic, {old: new, old.name: new})
 
     def update_model(self, old, new):
         """<

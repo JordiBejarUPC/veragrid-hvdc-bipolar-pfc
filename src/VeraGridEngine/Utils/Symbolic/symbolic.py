@@ -1514,7 +1514,12 @@ def expression2numba(expr: Expr,
         s = repr(expr.value)
 
     elif isinstance(expr, Var):
-        s = compiler_names_dict[expr.uid]
+        if expr.uid in compiler_names_dict:
+            s = compiler_names_dict[expr.uid]
+        elif expr.name in {"time", "glob_time"}:
+            s = "glob_time"
+        else:
+            raise KeyError(expr.uid)
 
     elif isinstance(expr, UnOp):
         operand = expression2numba(expr.operand,
@@ -1568,6 +1573,8 @@ def _emit_event_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None) -> str:
     if isinstance(expr, Var):
         if expr.uid in uid_map_t.keys():
             return uid_map_t[expr.uid]
+        if expr.name in {"time", "glob_time"}:
+            return "glob_time"
 
     if isinstance(expr, UnOp):
         return f"-({_emit_event_params_eq(expr.operand, uid_map_t)})"
@@ -1601,6 +1608,8 @@ def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_event_params: Di
             return uid_map_vars[expr.uid]  # positional variable
         elif expr.uid in uid_map_event_params.keys():
             return uid_map_event_params[expr.uid]  # positional variable
+        elif expr.name in {"time", "glob_time"}:
+            return "glob_time"
         else:
             return uid_map_params[expr.uid]
 
