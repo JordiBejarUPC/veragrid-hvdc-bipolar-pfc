@@ -35,24 +35,24 @@ def get_simple_generator_emt_template(grid: MultiCircuit, gen: Generator, name: 
     # --------------------------------------------------------------------------------------
     # Inputs: instantaneous abc terminal voltages in pu (at bus)
     # --------------------------------------------------------------------------------------
-    v_A = vf.add_var("v_A_" + name)
-    v_B = vf.add_var("v_B_" + name)
-    v_C = vf.add_var("v_C_" + name)
-    Tm = vf.add_var("Tm_" + name)
-    v_f = vf.add_var("v_f_" + name)
+    v_A = vf.add_var(name=f"v_A_{name}", ref = VarPowerFlowRefferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", ref = VarPowerFlowRefferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", ref = VarPowerFlowRefferenceType.v_C)
+    Tm = vf.add_var(name=f"Tm_{name}")
+    v_f = vf.add_var(name=f"v_f_{name}")
 
     # to connect complete block with gen block
-    Ipk = vf.add_var("Ipk")
-    Vpk = vf.add_var("Vpk")
-    phi = vf.add_var("phi")
-    phi_v = vf.add_var("phi_v")
+    Ipk = vf.add_var(name="Ipk", ref = VarPowerFlowRefferenceType.Ipk)
+    Vpk = vf.add_var(name="Vpk", ref = VarPowerFlowRefferenceType.Vpk)
+    phi = vf.add_var(name="phi", ref = VarPowerFlowRefferenceType.phi)
+    phi_v = vf.add_var(name="phi_v", ref = VarPowerFlowRefferenceType.phi_v)
     inputs = [v_A, v_B, v_C, Tm, v_f, phi_v, phi, Vpk, Ipk]
     # --------------------------------------------------------------------------------------
     # States (pu, except theta [rad])
     # --------------------------------------------------------------------------------------
 
     theta = vf.add_var("theta_" + name)  # electrical angle [rad]
-    omega = vf.add_var("omega_" + name)  # speed [pu]
+    omega = vf.add_var(name=f"omega_{name}")  # speed [pu]
     psi_d = vf.add_var("psi_d_" + name)  # flux linkages [pu] on psi_base = Vbase/omega_base
     psi_q = vf.add_var("psi_q_" + name)
     psi_f = vf.add_var("psi_f_" + name)
@@ -70,9 +70,9 @@ def get_simple_generator_emt_template(grid: MultiCircuit, gen: Generator, name: 
     # --------------------------------------------------------------------------------------
     # Algebraic eqs
     # --------------------------------------------------------------------------------------
-    i_A = vf.add_var("i_A_" + name)
-    i_B = vf.add_var("i_B_" + name)
-    i_C = vf.add_var("i_C_" + name)
+    i_A = vf.add_var(name=f"i_A_{name}", ref = VarPowerFlowRefferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B_{name}", ref = VarPowerFlowRefferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C_{name}", ref = VarPowerFlowRefferenceType.i_C)
 
     # dq0 voltages
     v_d = vf.add_var("v_d_" + name)
@@ -85,7 +85,7 @@ def get_simple_generator_emt_template(grid: MultiCircuit, gen: Generator, name: 
     i_0 = vf.add_var("i_0_" + name)
 
     # field
-    i_f = vf.add_var("i_f_" + name)
+    i_f = vf.add_var(name=f"i_f_{name}")
 
     # powers/torques
     Te = vf.add_var("Te_" + name)

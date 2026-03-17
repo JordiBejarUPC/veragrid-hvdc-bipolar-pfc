@@ -32,9 +32,9 @@ def get_simple_generator_emt_template(grid: MultiCircuit, gen: Generator, name: 
     # Inputs: instantaneous abc terminal voltages in pu (at bus)
     # --------------------------------------------------------------------------------------
     inputs = [
-        vf.add_var("v_A_" + name),
-        vf.add_var("v_B_" + name),
-        vf.add_var("v_C_" + name),
+        vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A),
+        vf.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B),
+        vf.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
     ]# --------------------------------------------------------------------------------------
     # States (pu, except theta [rad])
     # --------------------------------------------------------------------------------------
@@ -61,9 +61,9 @@ def get_simple_generator_emt_template(grid: MultiCircuit, gen: Generator, name: 
     # --------------------------------------------------------------------------------------
     # Algebraic eqs
     # --------------------------------------------------------------------------------------
-    i_A = vf.add_var("i_A_" + name)
-    i_B = vf.add_var("i_B_" + name)
-    i_C = vf.add_var("i_C_" + name)
+    i_A = vf.add_var(name=f"i_A_{name}", ref=VarPowerFlowRefferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B_{name}", ref=VarPowerFlowRefferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C_{name}", ref=VarPowerFlowRefferenceType.i_C)
 
     # dq0 voltages
     v_d = vf.add_var("v_d_" + name)

@@ -28,14 +28,10 @@ class BusEmtTemplateNABC(EmtModelTemplate):
 
         self.tpe: DeviceType = DeviceType.BusDevice
 
-        self.v_N = vf.add_var("v_N"+name) if mask[0] else None
-        self.v_A = vf.add_var("v_A"+name) if mask[1] else None
-        self.v_B = vf.add_var("v_B"+name) if mask[2] else None
-        self.v_C = vf.add_var("v_C"+name) if mask[3] else None
-        # self.d_v_N = vf.add_diff_var(name = f"d_v_N_{name}", base_var=self.v_N) if mask[0] else None
-        # self.d_v_A = vf.add_diff_var(name = f"d_v_A_{name}", base_var=self.v_A) if mask[1] else None
-        # self.d_v_B = vf.add_diff_var(name = f"d_v_B_{name}", base_var=self.v_B) if mask[2] else None
-        # self.d_v_C = vf.add_diff_var(name = f"d_v_C_{name}", base_var=self.v_C) if mask[3] else None
+        self.v_N = vf.add_var(name=f"v_N_{name}", ref = VarPowerFlowRefferenceType.v_N) if mask[0] else None
+        self.v_A = vf.add_var(name=f"v_A_{name}", ref = VarPowerFlowRefferenceType.v_A) if mask[1] else None
+        self.v_B = vf.add_var(name=f"v_B_{name}", ref = VarPowerFlowRefferenceType.v_B) if mask[2] else None
+        self.v_C = vf.add_var(name=f"v_C_{name}", ref = VarPowerFlowRefferenceType.v_C) if mask[3] else None
 
         v_list = [v for v in (self.v_N, self.v_A, self.v_B, self.v_C) if v is not None]
         if not v_list:

@@ -110,9 +110,9 @@ def get_shunt_r_3ph_emt_template(vf: VarFactory, name: str = "Shunt_R_3ph") -> E
     templ.name = name
 
     # Inputs (abc instantaneous voltages)
-    v_A = vf.add_var("v_A_" + name)
-    v_B = vf.add_var("v_B_" + name)
-    v_C = vf.add_var("v_C_" + name)
+    v_A = vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
     templ.block.in_vars = [v_A, v_B, v_C]
 
     # Parameters
@@ -134,9 +134,9 @@ def get_shunt_r_3ph_emt_template(vf: VarFactory, name: str = "Shunt_R_3ph") -> E
     templ.block.event_dict[Vnom] = vf.add_const(1.0)
 
     # Algebraic injected currents
-    i_A = vf.add_var("i_A_" + name)
-    i_B = vf.add_var("i_B_" + name)
-    i_C = vf.add_var("i_C_" + name)
+    i_A = vf.add_var(name=f"i_A_{name}", ref=VarPowerFlowRefferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B_{name}", ref=VarPowerFlowRefferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C_{name}", ref=VarPowerFlowRefferenceType.i_C)
 
     templ.block.algebraic_vars = [i_A, i_B, i_C]
     templ.block.algebraic_eqs = [
@@ -274,7 +274,9 @@ def get_shunt_l_3ph_emt_template(vf: VarFactory, name: str = "Shunt_L_3ph") -> E
     templ.name = name
 
     # Inputs and Parameters
-    v_A, v_B, v_C = [vf.add_var(f"v{p}_{name}") for p in ["A", "B", "C"]]
+    v_A = vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
     templ.block.in_vars = [v_A, v_B, v_C]
 
     L_A, L_B, L_C = [vf.add_var(f"L_{p}_{name}") for p in ["A", "B", "C"]]
@@ -428,7 +430,9 @@ def get_shunt_c_3ph_emt_template(vf: VarFactory, name: str = "Shunt_C_3ph") -> E
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
 
-    v_A, v_B, v_C = [vf.add_var(f"v{p}_{name}") for p in ["A", "B", "C"]]
+    v_A = vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
     templ.block.in_vars = [v_A, v_B, v_C]
 
     C_A, C_B, C_C = [vf.add_var(f"C_{p}_{name}") for p in ["A", "B", "C"]]
