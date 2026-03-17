@@ -5,6 +5,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.procedural_logic import sampled_value
 from VeraGridEngine.enumerations import DeviceType
 
 def get_smart_admittance_emt_template(vf: VarFactory, name: str = 'Smart_Admittance') -> EmtModelTemplate:
@@ -80,6 +81,21 @@ def get_smart_admittance_emt_template(vf: VarFactory, name: str = 'Smart_Admitta
     Smart_Admittance_inv_Xtrafo_Lout_pu = vf.add_var('Smart_Admittance__inv_Xtrafo_Lout_pu_' + name)
     Smart_Admittance_inv_k_eff_trafo = vf.add_var('Smart_Admittance__inv_k_eff_trafo_' + name)
     Smart_Admittance_k_eff_trafo = vf.add_var('Smart_Admittance__k_eff_trafo_' + name)
+    Smart_Admittance_proc_select_0 = vf.add_var('Smart_Admittance__proc_select_0_' + name)
+    Smart_Admittance_proc_select_1 = vf.add_var('Smart_Admittance__proc_select_1_' + name)
+    Smart_Admittance_proc_select_10 = vf.add_var('Smart_Admittance__proc_select_10_' + name)
+    Smart_Admittance_proc_select_11 = vf.add_var('Smart_Admittance__proc_select_11_' + name)
+    Smart_Admittance_proc_select_12 = vf.add_var('Smart_Admittance__proc_select_12_' + name)
+    Smart_Admittance_proc_select_13 = vf.add_var('Smart_Admittance__proc_select_13_' + name)
+    Smart_Admittance_proc_select_14 = vf.add_var('Smart_Admittance__proc_select_14_' + name)
+    Smart_Admittance_proc_select_2 = vf.add_var('Smart_Admittance__proc_select_2_' + name)
+    Smart_Admittance_proc_select_3 = vf.add_var('Smart_Admittance__proc_select_3_' + name)
+    Smart_Admittance_proc_select_4 = vf.add_var('Smart_Admittance__proc_select_4_' + name)
+    Smart_Admittance_proc_select_5 = vf.add_var('Smart_Admittance__proc_select_5_' + name)
+    Smart_Admittance_proc_select_6 = vf.add_var('Smart_Admittance__proc_select_6_' + name)
+    Smart_Admittance_proc_select_7 = vf.add_var('Smart_Admittance__proc_select_7_' + name)
+    Smart_Admittance_proc_select_8 = vf.add_var('Smart_Admittance__proc_select_8_' + name)
+    Smart_Admittance_proc_select_9 = vf.add_var('Smart_Admittance__proc_select_9_' + name)
     Smart_Admittance_rv = vf.add_var('Smart_Admittance__rv_' + name)
     Smart_Admittance_val_Id_target = vf.add_var('Smart_Admittance__val_Id_target_' + name)
     Smart_Admittance_val_Imag_calc = vf.add_var('Smart_Admittance__val_Imag_calc_' + name)
@@ -191,7 +207,7 @@ def get_smart_admittance_emt_template(vf: VarFactory, name: str = 'Smart_Admitta
             (i1d_hat_nodyn - (((Smart_Admittance_rv * ud_dif) + (uq_dif * Smart_Admittance_xv)) / denom)),
             (i1q_hat_nodyn - (((Smart_Admittance_rv * uq_dif) - (ud_dif * Smart_Admittance_xv)) / denom)),
             (Smart_Admittance_T_va_ramp - sym.Const(0.3)),
-            (Smart_Admittance_alpha_va - ((sym.heaviside((Smart_Admittance_T_va_ramp - sym.Const(1e-06))) * ((sym.Const(1.0) * sym.heaviside(((glob_time / Smart_Admittance_T_va_ramp) - sym.Const(1.0)))) + ((glob_time / Smart_Admittance_T_va_ramp) * (sym.Const(1) - sym.heaviside(((glob_time / Smart_Admittance_T_va_ramp) - sym.Const(1.0))))))) + ((sym.Const(1.0) - sym.heaviside((Smart_Admittance_T_va_ramp - sym.Const(1e-06)))) * sym.Const(1.0)))),
+            (Smart_Admittance_alpha_va - ((Smart_Admittance_proc_select_0 * ((sym.Const(1.0) * sym.heaviside(((glob_time / Smart_Admittance_T_va_ramp) - sym.Const(1.0)))) + ((glob_time / Smart_Admittance_T_va_ramp) * (sym.Const(1) - sym.heaviside(((glob_time / Smart_Admittance_T_va_ramp) - sym.Const(1.0))))))) + ((sym.Const(1.0) - Smart_Admittance_proc_select_0) * sym.Const(1.0)))),
             (id_raw - (((sym.Const(1.0) - Smart_Admittance_alpha_va) * i1d_hat_nodyn) + (Smart_Admittance_alpha_va * i1d_hat_dyn))),
             (iq_raw - (((sym.Const(1.0) - Smart_Admittance_alpha_va) * i1q_hat_nodyn) + (Smart_Admittance_alpha_va * i1q_hat_dyn))),
             (i2d_hat_dyn - Smart_Admittance_x2d_va),
@@ -207,8 +223,8 @@ def get_smart_admittance_emt_template(vf: VarFactory, name: str = 'Smart_Admitta
             (inv_V1vsc - (sym.Const(1.0) / safe_V1vsc)),
             (P_dis_normal - ((Smart_Admittance_PmvLim_discharge * sym.heaviside((Smart_Admittance_Pmax_dyn - Smart_Admittance_PmvLim_discharge))) + (Smart_Admittance_Pmax_dyn * (sym.Const(1) - sym.heaviside((Smart_Admittance_Pmax_dyn - Smart_Admittance_PmvLim_discharge)))))),
             (P_chg_normal - ((Smart_Admittance_PmvLim_charge * sym.heaviside((Smart_Admittance_PmvLim_charge - (-Smart_Admittance_Pmax_dyn)))) + ((-Smart_Admittance_Pmax_dyn) * (sym.Const(1) - sym.heaviside((Smart_Admittance_PmvLim_charge - (-Smart_Admittance_Pmax_dyn))))))),
-            (PPCChigh - (Smart_Admittance_PlantEff * ((sym.heaviside((FRT1_flag - sym.Const(0.5))) * Smart_Admittance_PmvLim_crit) + ((sym.Const(1.0) - sym.heaviside((FRT1_flag - sym.Const(0.5)))) * P_dis_normal)))),
-            (PPCClow - (Smart_Admittance_inv_PlantEff * ((sym.heaviside((FRT1_flag - sym.Const(0.5))) * (-Smart_Admittance_PmvLim_crit)) + ((sym.Const(1.0) - sym.heaviside((FRT1_flag - sym.Const(0.5)))) * P_chg_normal)))),
+            (PPCChigh - (Smart_Admittance_PlantEff * ((Smart_Admittance_proc_select_1 * Smart_Admittance_PmvLim_crit) + ((sym.Const(1.0) - Smart_Admittance_proc_select_1) * P_dis_normal)))),
+            (PPCClow - (Smart_Admittance_inv_PlantEff * ((Smart_Admittance_proc_select_2 * (-Smart_Admittance_PmvLim_crit)) + ((sym.Const(1.0) - Smart_Admittance_proc_select_2) * P_chg_normal)))),
             (idMVhigh - ((((PPCChigh * inv_V1vsc) * Smart_Admittance_inv_k_eff_trafo) * sym.heaviside((Smart_Admittance_CAPABILITY_Imax_conv - ((PPCChigh * inv_V1vsc) * Smart_Admittance_inv_k_eff_trafo)))) + (Smart_Admittance_CAPABILITY_Imax_conv * (sym.Const(1) - sym.heaviside((Smart_Admittance_CAPABILITY_Imax_conv - ((PPCChigh * inv_V1vsc) * Smart_Admittance_inv_k_eff_trafo))))))),
             (idMVlow - ((((PPCClow * inv_V1vsc) * Smart_Admittance_k_eff_trafo) * sym.heaviside((((PPCClow * inv_V1vsc) * Smart_Admittance_k_eff_trafo) - (-Smart_Admittance_CAPABILITY_Imax_conv)))) + ((-Smart_Admittance_CAPABILITY_Imax_conv) * (sym.Const(1) - sym.heaviside((((PPCClow * inv_V1vsc) * Smart_Admittance_k_eff_trafo) - (-Smart_Admittance_CAPABILITY_Imax_conv))))))),
             (lim1 - ((safe_V1vsc - Smart_Admittance_VdcRef) * Smart_Admittance_inv_Xtrafo_Lout_pu)),
@@ -224,23 +240,23 @@ def get_smart_admittance_emt_template(vf: VarFactory, name: str = 'Smart_Admitta
             (I_mag - sym.sqrt(I_mag_sq)),
             (iq_prio - (((-Smart_Admittance_CAPABILITY_Imax_conv) * sym.heaviside(((-Smart_Admittance_CAPABILITY_Imax_conv) - ((Smart_Admittance_CAPABILITY_Imax_conv * sym.heaviside((iq_lim_rect - Smart_Admittance_CAPABILITY_Imax_conv))) + (iq_lim_rect * (sym.Const(1) - sym.heaviside((iq_lim_rect - Smart_Admittance_CAPABILITY_Imax_conv)))))))) + (((Smart_Admittance_CAPABILITY_Imax_conv * sym.heaviside((iq_lim_rect - Smart_Admittance_CAPABILITY_Imax_conv))) + (iq_lim_rect * (sym.Const(1) - sym.heaviside((iq_lim_rect - Smart_Admittance_CAPABILITY_Imax_conv))))) * (sym.Const(1) - sym.heaviside(((-Smart_Admittance_CAPABILITY_Imax_conv) - ((Smart_Admittance_CAPABILITY_Imax_conv * sym.heaviside((iq_lim_rect - Smart_Admittance_CAPABILITY_Imax_conv))) + (iq_lim_rect * (sym.Const(1) - sym.heaviside((iq_lim_rect - Smart_Admittance_CAPABILITY_Imax_conv))))))))))),
             (id_avail - sym.sqrt(((sym.Const(0.0) * sym.heaviside((sym.Const(0.0) - ((Smart_Admittance_CAPABILITY_Imax_conv * Smart_Admittance_CAPABILITY_Imax_conv) - (iq_prio * iq_prio))))) + (((Smart_Admittance_CAPABILITY_Imax_conv * Smart_Admittance_CAPABILITY_Imax_conv) - (iq_prio * iq_prio)) * (sym.Const(1) - sym.heaviside((sym.Const(0.0) - ((Smart_Admittance_CAPABILITY_Imax_conv * Smart_Admittance_CAPABILITY_Imax_conv) - (iq_prio * iq_prio))))))))),
-            (id_prio - ((sym.heaviside((id_lim_rect - sym.Const(0.0))) * ((id_lim_rect * sym.heaviside((id_avail - id_lim_rect))) + (id_avail * (sym.Const(1) - sym.heaviside((id_avail - id_lim_rect)))))) + ((sym.Const(1.0) - sym.heaviside((id_lim_rect - sym.Const(0.0)))) * ((id_lim_rect * sym.heaviside((id_lim_rect - (-id_avail)))) + ((-id_avail) * (sym.Const(1) - sym.heaviside((id_lim_rect - (-id_avail))))))))),
-            (scale_bal - ((sym.heaviside((I_mag - Smart_Admittance_CAPABILITY_Imax_conv)) * (Smart_Admittance_CAPABILITY_Imax_conv / ((sym.Const(1e-06) * sym.heaviside((sym.Const(1e-06) - I_mag))) + (I_mag * (sym.Const(1) - sym.heaviside((sym.Const(1e-06) - I_mag))))))) + ((sym.Const(1.0) - sym.heaviside((I_mag - Smart_Admittance_CAPABILITY_Imax_conv))) * sym.Const(1.0)))),
+            (id_prio - ((Smart_Admittance_proc_select_3 * ((id_lim_rect * sym.heaviside((id_avail - id_lim_rect))) + (id_avail * (sym.Const(1) - sym.heaviside((id_avail - id_lim_rect)))))) + ((sym.Const(1.0) - Smart_Admittance_proc_select_3) * ((id_lim_rect * sym.heaviside((id_lim_rect - (-id_avail)))) + ((-id_avail) * (sym.Const(1) - sym.heaviside((id_lim_rect - (-id_avail))))))))),
+            (scale_bal - ((Smart_Admittance_proc_select_4 * (Smart_Admittance_CAPABILITY_Imax_conv / ((sym.Const(1e-06) * sym.heaviside((sym.Const(1e-06) - I_mag))) + (I_mag * (sym.Const(1) - sym.heaviside((sym.Const(1e-06) - I_mag))))))) + ((sym.Const(1.0) - Smart_Admittance_proc_select_4) * sym.Const(1.0)))),
             (id_bal - (id_lim_rect * scale_bal)),
             (iq_bal - (iq_lim_rect * scale_bal)),
-            (use_prio_Q - (((sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((FRT1_flag - sym.Const(0.5)))) * (sym.Const(1.0) - sym.heaviside((Smart_Admittance_Q_priority_flag - sym.Const(0.5)))))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((FRT1_flag - sym.Const(0.5)))) * (sym.Const(1.0) - sym.heaviside((Smart_Admittance_Q_priority_flag - sym.Const(0.5))))))) * sym.Const(0.0)))),
-            (id_pos_sat - ((sym.heaviside((use_prio_Q - sym.Const(0.5))) * id_prio) + ((sym.Const(1.0) - sym.heaviside((use_prio_Q - sym.Const(0.5)))) * id_bal))),
-            (iq_pos_sat - ((sym.heaviside((use_prio_Q - sym.Const(0.5))) * iq_prio) + ((sym.Const(1.0) - sym.heaviside((use_prio_Q - sym.Const(0.5)))) * iq_bal))),
-            (scale_final - ((sym.heaviside((I_mag - sym.Const(1e-06))) * (sym.sqrt(((id_pos_sat * id_pos_sat) + (iq_pos_sat * iq_pos_sat))) / I_mag)) + ((sym.Const(1.0) - sym.heaviside((I_mag - sym.Const(1e-06)))) * sym.Const(1.0)))),
+            (use_prio_Q - ((Smart_Admittance_proc_select_5 * sym.Const(1.0)) + ((sym.Const(1.0) - Smart_Admittance_proc_select_5) * sym.Const(0.0)))),
+            (id_pos_sat - ((Smart_Admittance_proc_select_6 * id_prio) + ((sym.Const(1.0) - Smart_Admittance_proc_select_6) * id_bal))),
+            (iq_pos_sat - ((Smart_Admittance_proc_select_7 * iq_prio) + ((sym.Const(1.0) - Smart_Admittance_proc_select_7) * iq_bal))),
+            (scale_final - ((Smart_Admittance_proc_select_8 * (sym.sqrt(((id_pos_sat * id_pos_sat) + (iq_pos_sat * iq_pos_sat))) / I_mag)) + ((sym.Const(1.0) - Smart_Admittance_proc_select_8) * sym.Const(1.0)))),
             (I_pos_used - (I_mag * scale_final)),
             (I_neg_avail - ((sym.Const(0.0) * sym.heaviside((sym.Const(0.0) - (Smart_Admittance_CAPABILITY_Imax_conv - I_pos_used)))) + ((Smart_Admittance_CAPABILITY_Imax_conv - I_pos_used) * (sym.Const(1) - sym.heaviside((sym.Const(0.0) - (Smart_Admittance_CAPABILITY_Imax_conv - I_pos_used))))))),
             (i2_mag - sym.sqrt(((id2_raw * id2_raw) + (iq2_raw * iq2_raw)))),
-            (scale_neg - ((sym.heaviside((i2_mag - I_neg_avail)) * (I_neg_avail / ((sym.Const(1e-06) * sym.heaviside((sym.Const(1e-06) - i2_mag))) + (i2_mag * (sym.Const(1) - sym.heaviside((sym.Const(1e-06) - i2_mag))))))) + ((sym.Const(1.0) - sym.heaviside((i2_mag - I_neg_avail))) * sym.Const(1.0)))),
+            (scale_neg - ((Smart_Admittance_proc_select_9 * (I_neg_avail / ((sym.Const(1e-06) * sym.heaviside((sym.Const(1e-06) - i2_mag))) + (i2_mag * (sym.Const(1) - sym.heaviside((sym.Const(1e-06) - i2_mag))))))) + ((sym.Const(1.0) - Smart_Admittance_proc_select_9) * sym.Const(1.0)))),
             (id_neg_sat - (id2_raw * scale_neg)),
             (iq_neg_sat - (iq2_raw * scale_neg)),
-            (viol_P - (((sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((id_raw - idMVhigh))) * (sym.Const(1.0) - sym.heaviside((idMVlow - id_raw))))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((id_raw - idMVhigh))) * (sym.Const(1.0) - sym.heaviside((idMVlow - id_raw)))))) * sym.Const(0.0)))),
-            (viol_Q - (((sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((iq_raw - ImaxInductive))) * (sym.Const(1.0) - sym.heaviside((ImaxCapacitive - iq_raw))))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((iq_raw - ImaxInductive))) * (sym.Const(1.0) - sym.heaviside((ImaxCapacitive - iq_raw)))))) * sym.Const(0.0)))),
-            (Overload_Flag - ((sym.heaviside((sym.Const(0.05) - glob_time)) * sym.Const(0.0)) + ((sym.Const(1.0) - sym.heaviside((sym.Const(0.05) - glob_time))) * (((sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((viol_P - sym.Const(0.5)))) * (sym.Const(1.0) - sym.heaviside((viol_Q - sym.Const(0.5)))))) * sym.Const(1.0)) + ((sym.Const(1.0) - (sym.Const(1.0) - ((sym.Const(1.0) - sym.heaviside((viol_P - sym.Const(0.5)))) * (sym.Const(1.0) - sym.heaviside((viol_Q - sym.Const(0.5))))))) * sym.Const(0.0)))))),
+            (viol_P - ((Smart_Admittance_proc_select_10 * sym.Const(1.0)) + ((sym.Const(1.0) - Smart_Admittance_proc_select_10) * sym.Const(0.0)))),
+            (viol_Q - ((Smart_Admittance_proc_select_11 * sym.Const(1.0)) + ((sym.Const(1.0) - Smart_Admittance_proc_select_11) * sym.Const(0.0)))),
+            (Overload_Flag - ((Smart_Admittance_proc_select_13 * sym.Const(0.0)) + ((sym.Const(1.0) - Smart_Admittance_proc_select_13) * ((Smart_Admittance_proc_select_12 * sym.Const(1.0)) + ((sym.Const(1.0) - Smart_Admittance_proc_select_12) * sym.Const(0.0)))))),
             (P_capab_high - PPCChigh),
             (P_capab_low - PPCClow),
             (Q_capab_high - (safe_V1vsc * sym.abs(ImaxInductive))),
@@ -249,7 +265,7 @@ def get_smart_admittance_emt_template(vf: VarFactory, name: str = 'Smart_Admitta
             (i1q_hat - iq_pos_sat),
             (i2d_hat - id_neg_sat),
             (i2q_hat - iq_neg_sat),
-            (Smart_Admittance_val_V_safe - ((sym.heaviside((sym.Const(0.01) - V1vsc)) * sym.Const(1.0)) + ((sym.Const(1.0) - sym.heaviside((sym.Const(0.01) - V1vsc))) * V1vsc))),
+            (Smart_Admittance_val_V_safe - ((Smart_Admittance_proc_select_14 * sym.Const(1.0)) + ((sym.Const(1.0) - Smart_Admittance_proc_select_14) * V1vsc))),
             (Smart_Admittance_val_Id_target - (Pvsc / Smart_Admittance_val_V_safe)),
             (Smart_Admittance_val_Iq_target - ((-Qvsc) / Smart_Admittance_val_V_safe)),
             (Smart_Admittance_val_Imag_calc - sym.sqrt(((Smart_Admittance_val_Id_target * Smart_Admittance_val_Id_target) + (Smart_Admittance_val_Iq_target * Smart_Admittance_val_Iq_target)))),
@@ -291,6 +307,24 @@ def get_smart_admittance_emt_template(vf: VarFactory, name: str = 'Smart_Admitta
         Smart_Admittance_Pmax_dyn: vf.add_const(None, name='Pmax_dyn'),
         Smart_Admittance_PmvLim_crit: vf.add_const(None, name='PmvLim_crit'),
         Smart_Admittance_VdcRef: vf.add_const(None, name='VdcRef'),
+    }
+    # --- Retained Runtime Modes ---
+    templ.block.mode_dict = {
+        Smart_Admittance_proc_select_0: vf.add_const(0.0, name=''),
+        Smart_Admittance_proc_select_1: vf.add_const(0.0, name=''),
+        Smart_Admittance_proc_select_2: vf.add_const(0.0, name=''),
+        Smart_Admittance_proc_select_3: vf.add_const(0.0, name=''),
+        Smart_Admittance_proc_select_4: vf.add_const(0.0, name=''),
+        Smart_Admittance_proc_select_5: vf.add_const(0.0, name=''),
+        Smart_Admittance_proc_select_6: vf.add_const(0.0, name=''),
+        Smart_Admittance_proc_select_7: vf.add_const(0.0, name=''),
+        Smart_Admittance_proc_select_8: vf.add_const(0.0, name=''),
+        Smart_Admittance_proc_select_9: vf.add_const(0.0, name=''),
+        Smart_Admittance_proc_select_10: vf.add_const(0.0, name=''),
+        Smart_Admittance_proc_select_11: vf.add_const(0.0, name=''),
+        Smart_Admittance_proc_select_12: vf.add_const(0.0, name=''),
+        Smart_Admittance_proc_select_13: vf.add_const(0.0, name=''),
+        Smart_Admittance_proc_select_14: vf.add_const(0.0, name=''),
     }
     # --- Initial Equations and Guesses ---
     templ.block.init_eqs = {
@@ -337,6 +371,23 @@ def get_smart_admittance_emt_template(vf: VarFactory, name: str = 'Smart_Admitta
         id_lim_rect: Smart_Admittance_val_Id_target,
         iq_lim_rect: Smart_Admittance_val_Iq_target,
     }
+    templ.block.procedural_logic = [
+        sampled_value(output=Smart_Admittance_proc_select_0, source=(Smart_Admittance_T_va_ramp > 1e-06)),
+        sampled_value(output=Smart_Admittance_proc_select_1, source=(FRT1_flag > 0.5)),
+        sampled_value(output=Smart_Admittance_proc_select_2, source=(FRT1_flag > 0.5)),
+        sampled_value(output=Smart_Admittance_proc_select_3, source=(id_lim_rect > 0.0)),
+        sampled_value(output=Smart_Admittance_proc_select_4, source=(I_mag > Smart_Admittance_CAPABILITY_Imax_conv)),
+        sampled_value(output=Smart_Admittance_proc_select_5, source=(1.0 - ((1.0 - sym.heaviside((FRT1_flag - 0.5))) * (1.0 - sym.heaviside((Smart_Admittance_Q_priority_flag - 0.5)))))),
+        sampled_value(output=Smart_Admittance_proc_select_6, source=(use_prio_Q > 0.5)),
+        sampled_value(output=Smart_Admittance_proc_select_7, source=(use_prio_Q > 0.5)),
+        sampled_value(output=Smart_Admittance_proc_select_8, source=(I_mag > 1e-06)),
+        sampled_value(output=Smart_Admittance_proc_select_9, source=(i2_mag > I_neg_avail)),
+        sampled_value(output=Smart_Admittance_proc_select_10, source=(1.0 - ((1.0 - sym.heaviside((id_raw - idMVhigh))) * (1.0 - sym.heaviside((idMVlow - id_raw)))))),
+        sampled_value(output=Smart_Admittance_proc_select_11, source=(1.0 - ((1.0 - sym.heaviside((iq_raw - ImaxInductive))) * (1.0 - sym.heaviside((ImaxCapacitive - iq_raw)))))),
+        sampled_value(output=Smart_Admittance_proc_select_12, source=(1.0 - ((1.0 - sym.heaviside((viol_P - 0.5))) * (1.0 - sym.heaviside((viol_Q - 0.5)))))),
+        sampled_value(output=Smart_Admittance_proc_select_13, source=(glob_time < 0.05)),
+        sampled_value(output=Smart_Admittance_proc_select_14, source=(V1vsc < 0.01)),
+    ]
     templ.block.name = name
 
     return templ

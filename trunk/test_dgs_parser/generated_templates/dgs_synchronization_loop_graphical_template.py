@@ -5,7 +5,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.procedural_logic import lastvalue, reset
+from VeraGridEngine.Utils.procedural_logic import lastvalue, reset, sampled_value
 from VeraGridEngine.enumerations import DeviceType
 
 def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchronization Loop') -> EmtModelTemplate:
@@ -37,8 +37,12 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
     DP_full = vf.add_var('DP_full_' + name)
     Dw = vf.add_var('Dw_' + name)
     Dw_1 = vf.add_var('Dw_' + name)
+    Freeze_Gate_proc_select_0 = vf.add_var('Freeze_Gate__proc_select_0_' + name)
+    Freeze_Gate_proc_select_0_1 = vf.add_var('Freeze_Gate__proc_select_0_' + name)
     Limit_ss_x = vf.add_var('Limit_ss__x_' + name)
-    PI_with_hold_and_reset_proc_lastvalue_0 = vf.add_var('PI with hold and reset__proc_lastvalue_0_' + name)
+    PI_with_hold_and_reset_proc_lastvalue_1 = vf.add_var('PI with hold and reset__proc_lastvalue_1_' + name)
+    PI_with_hold_and_reset_proc_select_0 = vf.add_var('PI with hold and reset__proc_select_0_' + name)
+    PI_with_hold_and_reset_proc_select_2 = vf.add_var('PI with hold and reset__proc_select_2_' + name)
     P_capab_high = vf.add_var('P_capab_high_' + name)
     P_capab_low = vf.add_var('P_capab_low_' + name)
     Pmeas = vf.add_var('Pmeas_' + name)
@@ -196,23 +200,37 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
 
     Freeze_Gate_7 = Block(
         algebraic_eqs=[
-            (y_out - ((sym.heaviside((flag_overload_1 - sym.Const(0.5))) * sym.Const(0.0)) + ((sym.Const(1.0) - sym.heaviside((flag_overload_1 - sym.Const(0.5)))) * u_in))),
+            (y_out - ((Freeze_Gate_proc_select_0 * sym.Const(0.0)) + ((sym.Const(1.0) - Freeze_Gate_proc_select_0) * u_in))),
         ],
         algebraic_vars=[y_out],
         in_vars=[flag_overload_1, u_in],
         out_vars=[y_out],
         name='Freeze_Gate'
     )
+    # --- Retained Runtime Modes ---
+    Freeze_Gate_7.mode_dict = {
+        Freeze_Gate_proc_select_0: vf.add_const(0.0, name=''),
+    }
+    Freeze_Gate_7.procedural_logic = [
+        sampled_value(output=Freeze_Gate_proc_select_0, source=(flag_overload_1 > 0.5)),
+    ]
 
     Freeze_Gate_8 = Block(
         algebraic_eqs=[
-            (y_out_1 - ((sym.heaviside((flag_overload_2 - sym.Const(0.5))) * sym.Const(0.0)) + ((sym.Const(1.0) - sym.heaviside((flag_overload_2 - sym.Const(0.5)))) * u_in_1))),
+            (y_out_1 - ((Freeze_Gate_proc_select_0_1 * sym.Const(0.0)) + ((sym.Const(1.0) - Freeze_Gate_proc_select_0_1) * u_in_1))),
         ],
         algebraic_vars=[y_out_1],
         in_vars=[flag_overload_2, u_in_1],
         out_vars=[y_out_1],
         name='Freeze_Gate'
     )
+    # --- Retained Runtime Modes ---
+    Freeze_Gate_8.mode_dict = {
+        Freeze_Gate_proc_select_0_1: vf.add_const(0.0, name=''),
+    }
+    Freeze_Gate_8.procedural_logic = [
+        sampled_value(output=Freeze_Gate_proc_select_0_1, source=(flag_overload_2 > 0.5)),
+    ]
 
     From_9 = Block(
         name='From'
@@ -384,11 +402,11 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
 
     PI_with_hold_and_reset_46 = Block(
         state_eqs=[
-            ((hold * sym.Const(0.0)) + ((sym.Const(1.0) - hold) * ((PI_with_hold_and_reset_GFOR_QREG_Kp / PI_with_hold_and_reset_GFOR_QREG_Ti) * yi_6))),
+            ((PI_with_hold_and_reset_proc_select_0 * sym.Const(0.0)) + ((sym.Const(1.0) - PI_with_hold_and_reset_proc_select_0) * ((PI_with_hold_and_reset_GFOR_QREG_Kp / PI_with_hold_and_reset_GFOR_QREG_Ti) * yi_6))),
         ],
         state_vars=[PI_with_hold_and_reset_x],
         algebraic_eqs=[
-            (yo_8 - ((hold * PI_with_hold_and_reset_proc_lastvalue_0) + ((sym.Const(1.0) - hold) * ((y_min_PI + ((((PI_with_hold_and_reset_GFOR_QREG_Kp * yi_6) + ((y_min_PI + ((PI_with_hold_and_reset_x - y_min_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_min_PI)))) - ((PI_with_hold_and_reset_x - y_max_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_max_PI))))) - y_min_PI) * sym.heaviside((((PI_with_hold_and_reset_GFOR_QREG_Kp * yi_6) + ((y_min_PI + ((PI_with_hold_and_reset_x - y_min_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_min_PI)))) - ((PI_with_hold_and_reset_x - y_max_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_max_PI))))) - y_min_PI)))) - ((((PI_with_hold_and_reset_GFOR_QREG_Kp * yi_6) + ((y_min_PI + ((PI_with_hold_and_reset_x - y_min_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_min_PI)))) - ((PI_with_hold_and_reset_x - y_max_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_max_PI))))) - y_max_PI) * sym.heaviside((((PI_with_hold_and_reset_GFOR_QREG_Kp * yi_6) + ((y_min_PI + ((PI_with_hold_and_reset_x - y_min_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_min_PI)))) - ((PI_with_hold_and_reset_x - y_max_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_max_PI))))) - y_max_PI))))))),
+            (yo_8 - ((PI_with_hold_and_reset_proc_select_2 * PI_with_hold_and_reset_proc_lastvalue_1) + ((sym.Const(1.0) - PI_with_hold_and_reset_proc_select_2) * ((y_min_PI + ((((PI_with_hold_and_reset_GFOR_QREG_Kp * yi_6) + ((y_min_PI + ((PI_with_hold_and_reset_x - y_min_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_min_PI)))) - ((PI_with_hold_and_reset_x - y_max_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_max_PI))))) - y_min_PI) * sym.heaviside((((PI_with_hold_and_reset_GFOR_QREG_Kp * yi_6) + ((y_min_PI + ((PI_with_hold_and_reset_x - y_min_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_min_PI)))) - ((PI_with_hold_and_reset_x - y_max_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_max_PI))))) - y_min_PI)))) - ((((PI_with_hold_and_reset_GFOR_QREG_Kp * yi_6) + ((y_min_PI + ((PI_with_hold_and_reset_x - y_min_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_min_PI)))) - ((PI_with_hold_and_reset_x - y_max_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_max_PI))))) - y_max_PI) * sym.heaviside((((PI_with_hold_and_reset_GFOR_QREG_Kp * yi_6) + ((y_min_PI + ((PI_with_hold_and_reset_x - y_min_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_min_PI)))) - ((PI_with_hold_and_reset_x - y_max_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_max_PI))))) - y_max_PI))))))),
         ],
         algebraic_vars=[yo_8],
         in_vars=[yi_6, hold, rst, y_max_PI, y_min_PI, x_init],
@@ -403,14 +421,18 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
     }
     # --- Retained Runtime Modes ---
     PI_with_hold_and_reset_46.mode_dict = {
-        PI_with_hold_and_reset_proc_lastvalue_0: vf.add_const(0.0, name=''),
+        PI_with_hold_and_reset_proc_select_0: vf.add_const(0.0, name=''),
+        PI_with_hold_and_reset_proc_lastvalue_1: vf.add_const(0.0, name=''),
+        PI_with_hold_and_reset_proc_select_2: vf.add_const(0.0, name=''),
     }
     # --- Initial Equations and Guesses ---
     PI_with_hold_and_reset_46.init_eqs = {
         PI_with_hold_and_reset_x: x_init,
     }
     PI_with_hold_and_reset_46.procedural_logic = [
-        lastvalue(yo_8, output=PI_with_hold_and_reset_proc_lastvalue_0),
+        sampled_value(output=PI_with_hold_and_reset_proc_select_0, source=hold),
+        lastvalue(yo_8, output=PI_with_hold_and_reset_proc_lastvalue_1),
+        sampled_value(output=PI_with_hold_and_reset_proc_select_2, source=hold),
         reset(PI_with_hold_and_reset_x, rst, x_init),
     ]
 

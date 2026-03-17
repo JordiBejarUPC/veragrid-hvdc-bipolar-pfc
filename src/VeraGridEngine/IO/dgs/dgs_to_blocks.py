@@ -15,6 +15,7 @@ from typing import Any, Dict, Iterable, List, Set, Tuple
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_objects import BlkDef, BlkFrom, BlkGoto, BlkRef, BlkSig, BlkSlot, BlkSum, ElmComp, ElmDsl, DGSElement
 from VeraGridEngine.Utils.procedural_logic import (
+    AnalogFlipFlopLogic,
     FixedSampleLogic,
     FlipFlopLogic,
     PickupDropoffLogic,
@@ -25,6 +26,9 @@ from VeraGridEngine.Utils.procedural_logic import (
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp, Comparison, Const, Expr, Func2, Var, abs, cos, exp, hard_sat, log, max, min, sin, sqrt
 from VeraGridEngine.enumerations import BlockScopeMode
+
+
+STRICT_PROCEDURAL_LOGIC_ONLY: bool = True
 
 def _safe_name(name: str) -> str:
     cleaned: str = re.sub(r"[^0-9a-zA-Z_]", "_", name)
@@ -532,9 +536,19 @@ class DgsExpressionParser(ast.NodeVisitor):
             return hard_sat(args[0], args[1], args[2])
         if name == 'limstate' and len(args) == 3:
             return hard_sat(args[0], args[1], args[2])
-        if name in {'select', 'select_const'} and len(args) == 3:
-            cond = _comparison_to_expr(args[0])
-            return cond * args[1] + (Const(1.0) - cond) * args[2]
+        if name in {'select', 'select_const', 'ifelse'} and len(args) == 3:
+            if isinstance(args[0], Const) and args[0].value is not None:
+                return args[1] if float(args[0].value) > 0.5 else args[2]
+
+            selector = self._new_procedural_mode_var(name)
+            self._procedural_logic_entries.append(
+                SampledValueLogic(
+                    output_var_name=selector.name,
+                    source_expr=args[0],
+                    name=selector.name,
+                )
+            )
+            return selector * args[1] + (Const(1.0) - selector) * args[2]
         if name in {'selfix', 'selfix_const'} and len(args) == 3:
             if isinstance(args[0], Const) and args[0].value is not None:
                 return args[1] if float(args[0].value) > 0.5 else args[2]
@@ -564,6 +578,18 @@ class DgsExpressionParser(ast.NodeVisitor):
                     output_var_name=latch.name,
                     set_expr=args[0],
                     reset_expr=args[1],
+                    name=latch.name,
+                )
+            )
+            return latch
+        if name == 'aflipflop' and len(args) == 3:
+            latch = self._new_procedural_mode_var(name)
+            self._procedural_logic_entries.append(
+                AnalogFlipFlopLogic(
+                    output_var_name=latch.name,
+                    input_expr=args[0],
+                    set_expr=args[1],
+                    reset_expr=args[2],
                     name=latch.name,
                 )
             )
@@ -820,9 +846,14 @@ def _procedural_logic_import_names(block: Block) -> List[str]:
             if isinstance(logic, FixedSampleLogic):
                 names.add("selfix")
             elif isinstance(logic, SampledValueLogic):
-                names.add("lastvalue")
+                if logic.output_var_name.startswith("proc_select_") or "__proc_select_" in logic.output_var_name or logic.output_var_name.startswith("proc_ifelse_") or "__proc_ifelse_" in logic.output_var_name:
+                    names.add("sampled_value")
+                else:
+                    names.add("lastvalue")
             elif isinstance(logic, FlipFlopLogic):
                 names.add("flipflop")
+            elif isinstance(logic, AnalogFlipFlopLogic):
+                names.add("aflipflop")
             elif isinstance(logic, PickupDropoffLogic):
                 names.add("picdro")
             elif isinstance(logic, ResetOnRisingEdgeLogic):
@@ -840,7 +871,10 @@ def _procedural_logic_entry_to_python(logic: Any, block: Block, identifier_map: 
 
     if isinstance(logic, SampledValueLogic):
         output_var = _find_local_var_by_name(block, logic.output_var_name)
-        text = f"lastvalue({_expr_like_to_python(logic.source_expr, identifier_map)}, output={identifier_map[output_var.uid]})"
+        if logic.output_var_name.startswith("proc_select_") or "__proc_select_" in logic.output_var_name or logic.output_var_name.startswith("proc_ifelse_") or "__proc_ifelse_" in logic.output_var_name:
+            text = f"sampled_value(output={identifier_map[output_var.uid]}, source={_expr_like_to_python(logic.source_expr, identifier_map)})"
+        else:
+            text = f"lastvalue({_expr_like_to_python(logic.source_expr, identifier_map)}, output={identifier_map[output_var.uid]})"
         if logic.name != "" and logic.name != logic.output_var_name:
             text = text[:-1] + f", name={repr(logic.name)})"
         return text
@@ -849,6 +883,17 @@ def _procedural_logic_entry_to_python(logic: Any, block: Block, identifier_map: 
         output_var = _find_local_var_by_name(block, logic.output_var_name)
         text = (
             f"flipflop({_expr_like_to_python(logic.set_expr, identifier_map)}, "
+            f"{_expr_like_to_python(logic.reset_expr, identifier_map)}, output={identifier_map[output_var.uid]})"
+        )
+        if logic.name != "" and logic.name != logic.output_var_name:
+            text = text[:-1] + f", name={repr(logic.name)})"
+        return text
+
+    if isinstance(logic, AnalogFlipFlopLogic):
+        output_var = _find_local_var_by_name(block, logic.output_var_name)
+        text = (
+            f"aflipflop({_expr_like_to_python(logic.input_expr, identifier_map)}, "
+            f"{_expr_like_to_python(logic.set_expr, identifier_map)}, "
             f"{_expr_like_to_python(logic.reset_expr, identifier_map)}, output={identifier_map[output_var.uid]})"
         )
         if logic.name != "" and logic.name != logic.output_var_name:

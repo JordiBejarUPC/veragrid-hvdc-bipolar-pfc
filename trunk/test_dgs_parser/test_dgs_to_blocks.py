@@ -256,6 +256,19 @@ class TestDgsToBlocks(unittest.TestCase):
         self.assertGreaterEqual(len(ignored), 20)
         self.assertEqual(len(unsupported), 0)
 
+    def test_support_report_for_protection(self) -> None:
+        subgraph = extract_root_slot_block_internal_only(
+            dgs_path=DGS_TEST_FILE,
+            slot_name="Protection",
+            root_name="Grid Forming Converter",
+        )
+        assert subgraph is not None
+
+        report = build_blkdef_statement_support_report(subgraph.selected_block.blkdef)
+        unsupported = [entry for entry in report if entry.status == "unsupported"]
+
+        self.assertEqual(len(unsupported), 0)
+
     def test_root_elmcomp_instance_mapping_contains_synchronization_loop(self) -> None:
         circuit = DgsCircuit()
         circuit.parse_dgs(DGS_TEST_FILE)
@@ -390,6 +403,7 @@ class TestDgsToBlocks(unittest.TestCase):
             self.assertIn("templ.block.procedural_logic = [", generated_template)
             self.assertIn("picdro(", generated_template)
             self.assertIn("flipflop(", generated_template)
+            self.assertIn("aflipflop(", generated_template)
 
             spec = importlib.util.spec_from_file_location("dgs_protection_template", written_template)
             assert spec is not None and spec.loader is not None
