@@ -203,11 +203,10 @@ def init_explicit_emt(
         compiler_names_dict: Dict[int, str],
         alias_names_dict: Dict[int, str],
         VARIABLE_PARAMS_NAME: str,
-        TIME_NAME: str,
         VARS_NAME: str,
         DIFF_NAME: str,
         CONSTANT_PARAMS_NAME: str,
-        verbose: bool = False):
+        verbose: bool = False) -> Optional[Tuple[Dict[int, float], Dict[int, float]]]:
 # ) -> Union[None, Tuple[Dict[int, float], Block]]:
     """
     Initializes the EMT model by solving initialization and differential equations.
@@ -231,10 +230,10 @@ def init_explicit_emt(
     :param compiler_names_dict: Map for variable naming in compilation.
     :param alias_names_dict: Map for variable aliases.
     :param VARIABLE_PARAMS_NAME: Name for variable parameter array.
-    :param TIME_NAME: Name for time variable.
     :param VARS_NAME: Name for state variable array.
     :param DIFF_NAME: Name for derivative array.
     :param CONSTANT_PARAMS_NAME: Name for constant parameter array.
+    :param verbose: Whether to print explicit initialization diagnostics.
     :return: Updated initial guesses and modified model block.
     """
 
@@ -280,7 +279,7 @@ def init_explicit_emt(
             if verbose:
                 print(f"event_param:{event_param.name} initialized from events_dict with: {result}")
         else:
-            event_params_array = event_params_array
+            event_param = event_param
 
     # Track pending equations that require dependency resolution
     init_pending: Dict[int, Tuple[Var, Union[Expr, Const]]] = dict()
@@ -366,7 +365,7 @@ def init_explicit_emt(
                 del init_pending[uid]
                 progress_made = True
             else:
-                progress_made = progress_made
+                uid = uid
 
         # Solve for Differential variables
         for uid in list(diff_pending.keys()):
@@ -411,7 +410,7 @@ def init_explicit_emt(
                 del diff_pending[uid]
                 progress_made = True
             else:
-                progress_made = progress_made
+                uid = uid
 
         # If no variables were resolved in this pass, the system is unsolvable
         if not progress_made:
@@ -419,6 +418,8 @@ def init_explicit_emt(
             return None
         else:
             progress_made = progress_made
+
+    return init_guess, diff_init_guess
 
 
 def init_pseudo_transient(problem: EmtProblemTemplate, options: EmtOptions) -> EmtInitializationReport:
@@ -449,7 +450,7 @@ def run_emt_explicit_initialization(problem: EmtProblemTemplate, verbose: bool =
         sys_vars=sys_vars,
         sys_diff_vars=sys_diff_vars,
         variable_parameters=problem.get_variable_parameters(),
-        event_parameters_eqs=problem._event_parameters_eqs,
+        event_parameters_eqs=problem.get_event_parameter_equations(),
         constant_parameters=problem.get_constant_parameters(),
         init_guess=problem.init_guess,
         diff_init_guess=problem.diff_init_guess,
@@ -457,16 +458,15 @@ def run_emt_explicit_initialization(problem: EmtProblemTemplate, verbose: bool =
         uid2idx_diff=problem.uid2idx_diff,
         uid2idx_params=problem.uid2idx_params,
         uid2idx_event_params=problem.uid2idx_event_params,
-        compiler_names_dict=problem._compiler_names_dict,
-        alias_names_dict=problem._alias_names_dict,
+        compiler_names_dict=problem.get_compiler_names_dict(),
+        alias_names_dict=problem.get_alias_names_dict(),
         VARIABLE_PARAMS_NAME=problem.VARIABLE_PARAMS_NAME,
-        TIME_NAME=problem.TIME_NAME,
         VARS_NAME=problem.VARS_NAME,
         DIFF_NAME=problem.DIFF_NAME,
         CONSTANT_PARAMS_NAME=problem.CONSTANT_PARAMS_NAME,
         verbose=verbose,
     )
-    problem._build_runtime_param_vectors()
+    problem.rebuild_runtime_param_vectors()
 
 
 class ReducedInitializationSystem:
@@ -503,8 +503,8 @@ class ReducedInitializationSystem:
         self.state_unknown_mask = state_unknown_mask
         self.residual_fn = SymbolicVector(
             eqs=residual_eqs,
-            compiler_names_dict=problem._compiler_names_dict,
-            alias_names_dict=problem._alias_names_dict,
+            compiler_names_dict=problem.get_compiler_names_dict(),
+            alias_names_dict=problem.get_alias_names_dict(),
             VARS_NAME=problem.VARS_NAME,
             DIFF_NAME=problem.DIFF_NAME,
             EVENT_PARAMS_NAME=problem.VARIABLE_PARAMS_NAME,
@@ -513,8 +513,8 @@ class ReducedInitializationSystem:
         self.jacobian_fn = SymbolicJacobian(
             eqs=residual_eqs,
             variables=unknown_vars,
-            compiler_names_dict=problem._compiler_names_dict,
-            alias_names_dict=problem._alias_names_dict,
+            compiler_names_dict=problem.get_compiler_names_dict(),
+            alias_names_dict=problem.get_alias_names_dict(),
             VARS_NAME=problem.VARS_NAME,
             DIFF_NAME=problem.DIFF_NAME,
             EVENT_PARAMS_NAME=problem.VARIABLE_PARAMS_NAME,
@@ -928,8 +928,8 @@ def _compute_missing_dx0(problem: EmtProblemTemplate, report: EmtInitializationR
     constant_params: np.ndarray = _build_constant_param_array(problem)
     state_rhs_fn = SymbolicVector(
         eqs=state_eqs,
-        compiler_names_dict=problem._compiler_names_dict,
-        alias_names_dict=problem._alias_names_dict,
+        compiler_names_dict=problem.get_compiler_names_dict(),
+        alias_names_dict=problem.get_alias_names_dict(),
         VARS_NAME=problem.VARS_NAME,
         DIFF_NAME=problem.DIFF_NAME,
         EVENT_PARAMS_NAME=problem.VARIABLE_PARAMS_NAME,
@@ -989,25 +989,49 @@ def run_emt_native_initialization(problem: EmtProblemTemplate, options: EmtOptio
     """
     report = EmtInitializationReport(method_requested=options.initialization_method)
     start_time: float = time.perf_counter()
-
-    reduced_system: ReducedInitializationSystem | None = _build_initialization_system_if_needed(problem, options, report)
     x: np.ndarray = problem.get_x0()
     x_seed: np.ndarray = x.copy()
     dx: np.ndarray = problem.get_dx0()
-    runtime_params: np.ndarray = _build_runtime_param_array(problem)
-    constant_params: np.ndarray = _build_constant_param_array(problem)
+    method_requested: EmtInitializationMethod = options.initialization_method
 
-    if reduced_system is None:
+    if method_requested == EmtInitializationMethod.Explicit:
         report.status = InitializationStatus.RESOLVED
         report.method_used = EmtInitializationMethod.Explicit
     else:
-        residual0: np.ndarray = _evaluate_initialization_residual(reduced_system, problem, x, dx, runtime_params, constant_params)
-        report.initial_residual_inf = _max_abs_value(residual0)
-        method_requested: EmtInitializationMethod = options.initialization_method
+        reduced_system: ReducedInitializationSystem | None
+        runtime_params: np.ndarray
+        constant_params: np.ndarray
 
-        if method_requested == EmtInitializationMethod.Explicit:
-            report.status = InitializationStatus.RESOLVED
+        try:
+            reduced_system = _build_initialization_system_if_needed(problem, options, report)
+            runtime_params = _build_runtime_param_array(problem)
+            constant_params = _build_constant_param_array(problem)
+        except (FloatingPointError, ZeroDivisionError, ValueError, RuntimeError):
+            reduced_system = None
+            runtime_params = np.zeros(0, dtype=np.float64)
+            constant_params = np.zeros(0, dtype=np.float64)
+            report.status = InitializationStatus.FAILED
             report.method_used = EmtInitializationMethod.Explicit
+            report.message = "Reduced initialization system construction failed; keeping explicit initialization."
+
+        if reduced_system is None:
+            if report.status == InitializationStatus.FAILED:
+                x[:] = x_seed
+            else:
+                report.status = InitializationStatus.RESOLVED
+                report.method_used = EmtInitializationMethod.Explicit
+        else:
+            try:
+                residual0: np.ndarray = _evaluate_initialization_residual(reduced_system, problem, x, dx, runtime_params, constant_params)
+                report.initial_residual_inf = _max_abs_value(residual0)
+            except (FloatingPointError, ZeroDivisionError, ValueError, RuntimeError):
+                x[:] = x_seed
+                report.status = InitializationStatus.FAILED
+                report.method_used = EmtInitializationMethod.Explicit
+                report.message = "Reduced initialization residual evaluation failed; keeping explicit initialization."
+                reduced_system = None
+
+        if reduced_system is None:
             report.final_residual_inf = report.initial_residual_inf
         else:
             use_newton: bool = method_requested in {EmtInitializationMethod.Auto, EmtInitializationMethod.ConsistentNewton}
@@ -1065,10 +1089,12 @@ def run_emt_native_initialization(problem: EmtProblemTemplate, options: EmtOptio
                     x[:] = x_seed
                     report.status = InitializationStatus.FAILED
                     report.method_used = EmtInitializationMethod.Explicit
+                    report.message = "Consistent initialization failed after pseudo-transient fallback; keeping explicit initialization."
             else:
                 x[:] = x_seed
                 report.status = InitializationStatus.FAILED
                 report.method_used = EmtInitializationMethod.Explicit
+                report.message = "Consistent initialization failed and pseudo-transient fallback was disabled."
 
     _apply_solution_to_problem(problem, x)
     _compute_missing_dx0(problem, report)

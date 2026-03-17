@@ -72,11 +72,11 @@ class TestEmtInitializationWorkflow(unittest.TestCase):
 
     def test_auto_initialization_is_not_worse_than_explicit_on_real_case(self) -> None:
         explicit_problem, _ = build_two_bus_real_emt_case(
-            zip_load=False,
+            zip_load=True,
             initialization_method=EmtInitializationMethod.Explicit,
         )
         auto_problem, _ = build_two_bus_real_emt_case(
-            zip_load=False,
+            zip_load=True,
             initialization_method=EmtInitializationMethod.Auto,
         )
 

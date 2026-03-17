@@ -217,7 +217,7 @@ def evaluate_algebraic_residual_inf(problem: EmtProblemTemplate) -> float:
 
 
 def build_two_bus_real_emt_case(
-        zip_load: bool = False,
+        zip_load: bool = True,
         initialization_method: EmtInitializationMethod = EmtInitializationMethod.Auto,
 ) -> Tuple[EmtProblemDae, TwoBusRealEmtContext]:
     """
@@ -272,9 +272,9 @@ def build_two_bus_real_emt_case(
     gen_mdl = get_generator_thevenin_rl_emt_template(grid=grid, gen=gen0).block
     line_mdl = get_pi_line_emt_template(grid=grid, line=line0).block
     if zip_load:
-        load_mdl = get_load_ZIP_3ph_emt_template(grid=grid, load=load).block
+        load_mdl = get_load_ZIP_3ph_emt_template(vf=grid.emt_var_factory).block
     else:
-        load_mdl = get_shunt_r_3ph_emt_template(grid=grid, load=load).block
+        load_mdl = get_shunt_r_3ph_emt_template(vf=grid.emt_var_factory).block
 
     gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]])
     gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]])

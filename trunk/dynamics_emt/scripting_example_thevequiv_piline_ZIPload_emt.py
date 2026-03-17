@@ -8,7 +8,6 @@ import numpy as np
 from time import perf_counter
 from typing import Any, cast, Dict, List, Optional
 
-import sys
 import os
 import matplotlib.pyplot as plt
 
@@ -569,12 +568,12 @@ def summarize_newton_trace(problem: EmtProblemDae) -> SolverTraceSummary:
                 residual_value: float = float(residual_value_any)
                 maximum_residual_inf = max(maximum_residual_inf, residual_value)
             else:
-                pass
+                maximum_residual_inf = maximum_residual_inf
 
             if int(current_record.get('step', -2)) == final_step_index:
                 last_step_newton_iterations += 1
             else:
-                pass
+                last_step_newton_iterations = last_step_newton_iterations
 
             record_index += 1
 
@@ -651,10 +650,10 @@ def get_solver_loop_time(solver: Any) -> float:
     :param solver: Solver instance.
     :return: Loop time in seconds or NaN.
     """
-    loop_time_any: Any = getattr(solver, "_last_sim_loop_time", np.nan)
-
-    if loop_time_any == loop_time_any:
-        return float(loop_time_any)
+    if isinstance(solver, StructuralCompiledSolver):
+        return float(solver.get_last_sim_loop_time())
+    elif isinstance(solver, StructuralVectorizedSolver):
+        return float(solver.get_last_sim_loop_time())
     else:
         return np.nan
 
@@ -666,17 +665,15 @@ def get_solver_build_stats(solver: Any) -> Dict[str, float]:
     :param solver: Solver instance.
     :return: Build statistics dictionary.
     """
-    build_stats_fn = getattr(solver, "get_backend_build_stats", None)
-
-    if callable(build_stats_fn):
-        raw_stats_any: Any = build_stats_fn()
+    if isinstance(solver, StructuralCompiledSolver):
+        raw_stats_any: Any = solver.get_backend_build_stats()
         out_stats: Dict[str, float] = dict()
 
         if isinstance(raw_stats_any, dict):
             for key, value in raw_stats_any.items():
                 out_stats[str(key)] = float(value)
         else:
-            pass
+            out_stats = out_stats
 
         return out_stats
     else:
@@ -690,17 +687,15 @@ def get_solver_runtime_stats(solver: Any) -> Dict[str, float]:
     :param solver: Solver instance.
     :return: Runtime statistics dictionary.
     """
-    runtime_stats_fn = getattr(solver, "get_last_runtime_stats", None)
-
-    if callable(runtime_stats_fn):
-        raw_stats_any: Any = runtime_stats_fn()
+    if isinstance(solver, StructuralCompiledSolver):
+        raw_stats_any: Any = solver.get_last_runtime_stats()
         out_stats: Dict[str, float] = dict()
 
         if isinstance(raw_stats_any, dict):
             for key, value in raw_stats_any.items():
                 out_stats[str(key)] = float(value)
         else:
-            pass
+            out_stats = out_stats
 
         return out_stats
     else:
@@ -723,7 +718,7 @@ def print_solver_runtime_stats(solver: Any, label: str) -> None:
         for key, value in runtime_stats.items():
             print(f"  {key}: {value:.0f}" if abs(value - round(value)) < 1e-12 else f"  {key}: {value:.6f}")
     else:
-        pass
+        runtime_stats = runtime_stats
 
 
 def build_full_parameter_vector(problem: EmtProblemDae,
@@ -746,7 +741,7 @@ def build_full_parameter_vector(problem: EmtProblemDae,
     if runtime_params.shape[0] > 0:
         runtime_params[:] = full_params[:runtime_params.shape[0]]
     else:
-        pass
+        runtime_params = runtime_params
 
     return np.asarray(full_params, dtype=np.float64)
 
@@ -904,7 +899,7 @@ def get_fastest_total_result(results: List[SolverBenchmarkResult]) -> SolverBenc
         if candidate_result.get_solver_total_s() < best_result.get_solver_total_s():
             best_result = candidate_result
         else:
-            pass
+            best_result = best_result
 
         result_index += 1
 
@@ -927,7 +922,7 @@ def get_fastest_sim_result(results: List[SolverBenchmarkResult]) -> SolverBenchm
         if candidate_result.get_simulate_s() < best_result.get_simulate_s():
             best_result = candidate_result
         else:
-            pass
+            best_result = best_result
 
         result_index += 1
 
@@ -984,11 +979,11 @@ def print_compiled_backend_build_stats(results: List[SolverBenchmarkResult]) -> 
                 for key, value in build_stats.items():
                     print(f"  {key}: {value:.6f}s")
             else:
-                pass
+                build_stats = build_stats
 
             return
         else:
-            pass
+            result_index = result_index
 
         result_index += 1
 
@@ -1050,7 +1045,7 @@ def benchmark_all_solvers() -> None:
             reference_y = y_arr.copy()
             reference_dy = dy_arr.copy()
         else:
-            pass
+            reference_y = reference_y
 
         results.append(result)
 
@@ -1121,14 +1116,14 @@ def benchmark_structural_compiled_cold_and_warm() -> None:
         for key, value in cold_runtime_stats.items():
             print(f"  {key}: {value:.0f}" if abs(value - round(value)) < 1e-12 else f"  {key}: {value:.6f}")
     else:
-        pass
+        cold_runtime_stats = cold_runtime_stats
 
     if len(warm_runtime_stats) > 0:
         print("Warm runtime stats")
         for key, value in warm_runtime_stats.items():
             print(f"  {key}: {value:.0f}" if abs(value - round(value)) < 1e-12 else f"  {key}: {value:.6f}")
     else:
-        pass
+        warm_runtime_stats = warm_runtime_stats
 
     raise SystemExit(0)
 
@@ -1173,7 +1168,7 @@ print(f"  build = {solver_build_s:.6f}s")
 print(f"  sim   = {solver_sim_s:.6f}s")
 print(f"  total = {solver_init_s + solver_build_s + solver_sim_s:.6f}s")
 
-if hasattr(solver, "get_backend_build_stats"):
+if isinstance(solver, StructuralCompiledSolver):
     print("StructuralCompiled backend build stats")
     for key, value in solver.get_backend_build_stats().items():
         print(f"  {key}: {value:.6f}s")
