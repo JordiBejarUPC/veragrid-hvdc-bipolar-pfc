@@ -274,7 +274,7 @@ def build_emt_options(chosen_solver: str, initialization_method: EmtInitializati
     :return: EMT options.
     """
     return EmtOptions(time_step=5e-6,
-                      simulation_time=0.03,
+                      simulation_time=0.06,
                       tolerance=1e-6,
                       solver=SOLVER_TYPE_MAP[chosen_solver],
                       integration_method=DynamicIntegrationMethod.DaeTrapezoidal,

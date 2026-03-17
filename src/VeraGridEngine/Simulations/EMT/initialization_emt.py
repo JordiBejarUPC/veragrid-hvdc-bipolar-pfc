@@ -617,11 +617,24 @@ def _build_reduced_initialization_system(
     :param allow_state_equilibrium: Whether unresolved states may use f(x,z,p)=0.
     :return: Reduced initialization system or None if nothing remains to solve.
     """
-    unknown_vars: List[Var] = list(problem.get_algebraic_vars())
-    residual_eqs: List[Expr] = list(problem.get_algebraic_eqs())
-    state_unknown_flags: List[float] = [0.0 for _ in unknown_vars]
+    unknown_vars: List[Var] = list()
+    residual_eqs: List[Expr] = list()
+    state_unknown_flags: List[float] = list()
     state_eq_lookup: Dict[int, Expr] = _build_state_equation_lookup(problem)
     init_eq_lookup: Dict[Var, Expr] = problem.sys_block.init_eqs
+
+    algebraic_vars: List[Var] = problem.get_algebraic_vars()
+    algebraic_eqs: List[Expr] = problem.get_algebraic_eqs()
+    alg_idx: int = 0
+    while alg_idx < len(algebraic_vars):
+        algebraic_var: Var = algebraic_vars[alg_idx]
+        if algebraic_var.uid in problem.init_guess:
+            algebraic_var = algebraic_var
+        else:
+            unknown_vars.append(algebraic_var)
+            residual_eqs.append(algebraic_eqs[alg_idx])
+            state_unknown_flags.append(0.0)
+        alg_idx += 1
 
     for state_var in problem.get_state_vars():
         if state_var.uid in problem.init_guess:
