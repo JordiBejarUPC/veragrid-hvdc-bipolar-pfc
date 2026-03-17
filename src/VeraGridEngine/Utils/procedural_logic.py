@@ -134,10 +134,11 @@ def select(
     when_true: Expr | Comparison | float | int,
     when_false: Expr | Comparison | float | int,
 ) -> Expr:
-    cond_expr = _bool_expr(boolexpr)
-    true_expr = _value_expr(when_true)
-    false_expr = _value_expr(when_false)
-    return cond_expr * true_expr + (Const(1.0) - cond_expr) * false_expr
+    _unused = (boolexpr, when_true, when_false)
+    raise RuntimeError(
+        "`select()` is blocked in equation expressions. Move the switching decision to "
+        "`block.procedural_logic` and consume the resulting mode/flag inside the equations."
+    )
 
 
 def ifelse(
@@ -145,7 +146,11 @@ def ifelse(
     when_true: Expr | Comparison | float | int,
     when_false: Expr | Comparison | float | int,
 ) -> Expr:
-    return select(boolexpr, when_true, when_false)
+    _unused = (boolexpr, when_true, when_false)
+    raise RuntimeError(
+        "`ifelse()` is blocked in equation expressions. Move the switching decision to "
+        "`block.procedural_logic` and consume the resulting mode/flag inside the equations."
+    )
 
 
 class ProceduralLogicBase:
@@ -442,6 +447,95 @@ class FlipFlopLogic(ProceduralLogicBase):
         )
 
 
+class AnalogFlipFlopLogic(ProceduralLogicBase):
+    __slots__ = [
+        "output_var_name",
+        "input_expr",
+        "set_expr",
+        "reset_expr",
+        "output_idx",
+        "state",
+        "initialized",
+        "held_value",
+    ]
+    logic_type = "analog_flipflop"
+
+    def __init__(
+        self,
+        output_var_name: str,
+        input_expr: Expr | Comparison,
+        set_expr: Expr | Comparison,
+        reset_expr: Expr | Comparison,
+        name: str = "",
+    ) -> None:
+        super().__init__(name=name)
+        self.output_var_name = output_var_name
+        self.input_expr = input_expr
+        self.set_expr = set_expr
+        self.reset_expr = reset_expr
+        self.output_idx = -1
+        self.state = 0.0
+        self.initialized = False
+        self.held_value = 0.0
+
+    def bind(self, problem: EmtProblemTemplate) -> None:
+        super().bind(problem)
+        output_var = _find_var_by_name(problem.sys_block, self.output_var_name)
+        self.output_idx = int(problem.uid2idx_event_params[output_var.uid])
+        self.state = 0.0
+        self.initialized = False
+        self.held_value = 0.0
+
+    def update(self, t: float, x: Vec, params: Vec) -> None:
+        input_value = self._eval_numeric(self.input_expr, t, x, params)
+        set_on = self._eval_bool(self.set_expr, t, x, params)
+        reset_on = self._eval_bool(self.reset_expr, t, x, params)
+
+        if not self.initialized:
+            if set_on and reset_on:
+                raise ValueError(f"aflipflop '{self.name or self.output_var_name}' cannot initialize with set=1 and reset=1")
+            self.state = 1.0 if set_on else 0.0
+            self.held_value = input_value
+            self.initialized = True
+        elif set_on and not reset_on and self.state < 0.5:
+            self.state = 1.0
+            self.held_value = input_value
+        elif (not set_on) and reset_on and self.state > 0.5:
+            self.state = 0.0
+
+        params[self.output_idx] = self.held_value if self.state > 0.5 else input_value
+
+    def to_dict(self) -> Dict[str, Any]:
+        data = super().to_dict()
+        data.update({
+            "output_var_name": self.output_var_name,
+            "input_expr": _expr_like_to_dict(self.input_expr),
+            "set_expr": _expr_like_to_dict(self.set_expr),
+            "reset_expr": _expr_like_to_dict(self.reset_expr),
+        })
+        return data
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "AnalogFlipFlopLogic":
+        return cls(
+            output_var_name=str(data["output_var_name"]),
+            input_expr=_expr_like_from_dict(data["input_expr"]),
+            set_expr=_expr_like_from_dict(data["set_expr"]),
+            reset_expr=_expr_like_from_dict(data["reset_expr"]),
+            name=str(data.get("name", "")),
+        )
+
+    def remap(self, var_mapping: Dict[Any, Expr]) -> "AnalogFlipFlopLogic":
+        name_mapping = _build_name_mapping(var_mapping)
+        return AnalogFlipFlopLogic(
+            output_var_name=name_mapping.get(self.output_var_name, self.output_var_name),
+            input_expr=_subs_expr_like(self.input_expr, var_mapping),
+            set_expr=_subs_expr_like(self.set_expr, var_mapping),
+            reset_expr=_subs_expr_like(self.reset_expr, var_mapping),
+            name=self.name,
+        )
+
+
 class PickupDropoffLogic(ProceduralLogicBase):
     __slots__ = [
         "output_var_name",
@@ -705,6 +799,23 @@ def flipflop(boolset: Expr | Comparison, boolreset: Expr | Comparison, output: V
     output_name = _coerce_var_name(output)
     return FlipFlopLogic(
         output_var_name=output_name,
+        set_expr=boolset,
+        reset_expr=boolreset,
+        name=output_name if name == "" else name,
+    )
+
+
+def aflipflop(
+    x: Expr | Comparison,
+    boolset: Expr | Comparison,
+    boolreset: Expr | Comparison,
+    output: Var | str,
+    name: str = "",
+) -> AnalogFlipFlopLogic:
+    output_name = _coerce_var_name(output)
+    return AnalogFlipFlopLogic(
+        output_var_name=output_name,
+        input_expr=x,
         set_expr=boolset,
         reset_expr=boolreset,
         name=output_name if name == "" else name,
@@ -1021,6 +1132,8 @@ def build_procedural_logic_entry(data: Dict[str, Any]) -> ProceduralLogicBase:
         return SampledValueLogic.from_dict(data)
     if logic_type == FlipFlopLogic.logic_type:
         return FlipFlopLogic.from_dict(data)
+    if logic_type == AnalogFlipFlopLogic.logic_type:
+        return AnalogFlipFlopLogic.from_dict(data)
     if logic_type == PickupDropoffLogic.logic_type:
         return PickupDropoffLogic.from_dict(data)
     if logic_type == ResetOnRisingEdgeLogic.logic_type:

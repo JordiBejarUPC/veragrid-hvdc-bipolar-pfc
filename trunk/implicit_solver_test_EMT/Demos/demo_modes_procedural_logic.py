@@ -6,12 +6,12 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import BoundaryUpdateWrapper, JitSymbolicSolver
 from VeraGridEngine.Utils.procedural_logic import (
+    aflipflop,
     DelayedThresholdLatchLogic,
     bool_and,
     bool_or,
     build_boundary_updater_from_block,
     flipflop,
-    ifelse,
     lastvalue,
     picdro,
     reset,
@@ -453,7 +453,7 @@ def create_boolean_operator_logic_system(vf: VarFactory) -> Tuple[Block, Dict[st
     - `trip_fast = picdro(x_fast > 0.65, 1 ms, 0)`
     - `trip_and = picdro((x_fast > 0.45) AND (x_slow > 0.30), 2 ms, 0)`
     - `master_trip = flipflop(trip_fast OR trip_and, 0)`
-    - `x_mem_dot = ifelse(master_trip > 0.5, 0, k_mem * (x_fast - x_mem))`
+    - `x_mem_dot = (1 - master_trip) * k_mem * (x_fast - x_mem)`
     - `x_mem_last = lastvalue(x_mem)`
     - `reset(x_mem, master_trip > 0.5, 0)`
     """
@@ -481,7 +481,7 @@ def create_boolean_operator_logic_system(vf: VarFactory) -> Tuple[Block, Dict[st
         state_eqs=[
             (Const(1.0) - x_fast) / tau_fast,
             (Const(1.0) - x_slow) / tau_slow,
-            ifelse(master_trip > 0.5, 0.0, k_mem * (x_fast - x_mem)),
+            (Const(1.0) - master_trip) * k_mem * (x_fast - x_mem),
         ],
         parameters={
             tau_fast: Const(3.0e-3),
@@ -526,6 +526,70 @@ def create_boolean_operator_logic_system(vf: VarFactory) -> Tuple[Block, Dict[st
         "trip_and": trip_and,
         "master_trip": master_trip,
         "x_mem_last": x_mem_last,
+    }
+
+
+def create_analog_flipflop_logic_system(vf: VarFactory) -> Tuple[Block, Dict[str, Var]]:
+    """
+    Demo system for `aflipflop(x, boolset, boolreset)`.
+
+    Logic
+    -----
+    - `set`   when `x_in > 0.45`
+    - `reset` when `x_reset > 0.70`
+    - `y_hold = aflipflop(x_in, set, reset)`
+
+    Expected behavior
+    -----------------
+    - before set: `y_hold = x_in`
+    - after set:  `y_hold` stores the value of `x_in` at the set instant
+    - after reset: `y_hold` follows `x_in` again
+    """
+    x_in: Var = vf.add_var("x_in_af_demo")
+    x_reset: Var = vf.add_var("x_reset_af_demo")
+
+    d_x_in: Var = vf.add_diff_var(name="d_x_in_af_demo", base_var=x_in)
+    d_x_reset: Var = vf.add_diff_var(name="d_x_reset_af_demo", base_var=x_reset)
+
+    y_hold: Var = vf.add_var("y_hold_af_demo")
+    ff_state: Var = vf.add_var("ff_state_af_demo")
+
+    tau_rise: Var = vf.add_var("tau_rise_af_demo")
+    tau_fall: Var = vf.add_var("tau_fall_af_demo")
+    tau_reset: Var = vf.add_var("tau_reset_af_demo")
+
+    set_expr = x_in > 0.45
+    reset_expr = x_reset > 0.70
+
+    block = Block(
+        name="AnalogFlipFlopProceduralDemo",
+        state_vars=[x_in, x_reset],
+        diff_vars=[d_x_in, d_x_reset],
+        state_eqs=[
+            (Const(1.0) - ff_state) * (Const(1.0) - x_in) / tau_rise - ff_state * x_in / tau_fall,
+            (Const(1.0) - x_reset) / tau_reset,
+        ],
+        parameters={
+            tau_rise: Const(2.5e-3),
+            tau_fall: Const(1.5e-3),
+            tau_reset: Const(7.5e-3),
+        },
+        mode_dict={
+            y_hold: Const(0.0),
+            ff_state: Const(0.0),
+        },
+    )
+
+    block.procedural_logic = [
+        aflipflop(x_in, set_expr, reset_expr, output=y_hold, name="analog_hold"),
+        flipflop(set_expr, reset_expr, output=ff_state, name="analog_hold_state"),
+    ]
+
+    return block, {
+        "x_in": x_in,
+        "x_reset": x_reset,
+        "y_hold": y_hold,
+        "ff_state": ff_state,
     }
 
 
@@ -592,6 +656,39 @@ def run_boolean_operator_case(
         "trip_and": problem.uid2idx_event_params[vars_map["trip_and"].uid],
         "master_trip": problem.uid2idx_event_params[vars_map["master_trip"].uid],
         "x_mem_last": problem.uid2idx_event_params[vars_map["x_mem_last"].uid],
+    }
+    tracing_updater = TracingBoundaryUpdater(base_updater=base_updater, tracked_indices=tracked_indices)
+
+    solver = JitSymbolicSolver(
+        problem=problem,
+        t0=0.0,
+        t_end=t_end,
+        h=dt,
+        method=DynamicIntegrationMethod.DaeTrapezoidal,
+        verbose=False,
+    )
+
+    params0 = problem.event_params_values.copy()
+    t, y_hist, dy_hist = solver.simulate(params0=params0, boundary_updater=tracing_updater)
+    return t, y_hist, dy_hist, problem, vars_map, tracing_updater
+
+
+def run_analog_flipflop_case(
+    t_end: float,
+    dt: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, EmtProblemTemplate, Dict[str, Var], TracingBoundaryUpdater]:
+    """Build and run the helper-based aflipflop demo."""
+    vf = VarFactory()
+    block, vars_map = create_analog_flipflop_logic_system(vf=vf)
+    block.unify_blocks()
+
+    problem = GenericEmtProblem(sys_block=block, glob_time=vf.add_var("t_glob_af_demo"))
+    base_updater = build_boundary_updater_from_block(problem)
+    assert base_updater is not None
+
+    tracked_indices = {
+        "y_hold": problem.uid2idx_event_params[vars_map["y_hold"].uid],
+        "ff_state": problem.uid2idx_event_params[vars_map["ff_state"].uid],
     }
     tracing_updater = TracingBoundaryUpdater(base_updater=base_updater, tracked_indices=tracked_indices)
 
@@ -817,7 +914,7 @@ def plot_boolean_operator_case(
     _add_vertical_marker(ax_dyn, t_fast_trip, "fast trip", color="tab:blue", linestyle="--")
     _add_vertical_marker(ax_dyn, t_and_trip, "AND trip", color="tab:orange", linestyle="--")
     _add_vertical_marker(ax_dyn, t_master_trip, "master latch / reset", color="tab:green", linestyle="-.")
-    ax_dyn.set_title("Demo 3: Procedural helpers with AND / OR / ifelse / reset / lastvalue")
+    ax_dyn.set_title("Demo 3: Procedural helpers with AND / OR / reset / lastvalue")
     ax_dyn.set_ylabel("Value")
     ax_dyn.grid(True)
     ax_dyn.legend(loc="upper right")
@@ -832,6 +929,78 @@ def plot_boolean_operator_case(
     _add_vertical_marker(ax_logic, t_master_trip, "master latch / reset", color="tab:green", linestyle="-.")
     ax_logic.set_yticks([0.5, 1.7, 2.9])
     ax_logic.set_yticklabels(["fast", "and", "or latch"])
+    ax_logic.set_ylim(-0.2, 3.6)
+    ax_logic.set_xlabel("Time [s]")
+    ax_logic.set_ylabel("Logic")
+    ax_logic.grid(True)
+    ax_logic.legend(loc="upper right")
+
+    fig.tight_layout()
+
+
+def plot_analog_flipflop_case(
+    t: np.ndarray,
+    y_hist: np.ndarray,
+    problem: EmtProblemTemplate,
+    vars_map: Dict[str, Var],
+    tracing_updater: TracingBoundaryUpdater,
+) -> None:
+    """Plot the helper-based aflipflop demo."""
+    idx_x_in: int = problem.get_var_idx(vars_map["x_in"])
+    idx_x_reset: int = problem.get_var_idx(vars_map["x_reset"])
+
+    x_in_hist = y_hist[:, idx_x_in]
+    x_reset_hist = y_hist[:, idx_x_reset]
+    logic_t = np.asarray(tracing_updater.trace_t, dtype=float)
+    y_hold = tracing_updater.get_trace("y_hold")
+    ff_state = tracing_updater.get_trace("ff_state")
+
+    t_set = _first_true_time(logic_t, ff_state)
+    t_reset = None
+    reset_idx = np.flatnonzero((ff_state[:-1] > 0.5) & (ff_state[1:] < 0.5)) if len(ff_state) >= 2 else np.array([], dtype=int)
+    if len(reset_idx) > 0:
+        t_reset = float(logic_t[int(reset_idx[0]) + 1])
+
+    held_value = None
+    if t_set is not None:
+        idx_hold = np.where(np.isclose(logic_t, t_set))[0]
+        if len(idx_hold) > 0:
+            held_value = float(y_hold[int(idx_hold[0])])
+
+    fig, axes = plt.subplots(
+        nrows=2,
+        ncols=1,
+        figsize=(11, 8),
+        sharex=True,
+        height_ratios=[3.0, 1.6],
+    )
+
+    ax_dyn = axes[0]
+    ax_logic = axes[1]
+
+    ax_dyn.plot(t, x_in_hist, label="x_in")
+    ax_dyn.plot(t, x_reset_hist, label="x_reset")
+    ax_dyn.step(logic_t, y_hold, where="post", linestyle="--", linewidth=2.0, label="y_hold = aflipflop(x_in, set, reset)")
+    ax_dyn.axhline(0.45, linestyle=":", linewidth=1.1, label="set threshold")
+    ax_dyn.axhline(0.70, linestyle="-.", linewidth=1.1, label="reset threshold")
+    if held_value is not None:
+        ax_dyn.axhline(held_value, color="tab:red", linestyle="--", linewidth=1.1, label=f"held value = {held_value:.4f}")
+    _add_vertical_marker(ax_dyn, t_set, "set / capture", color="tab:blue", linestyle="--")
+    _add_vertical_marker(ax_dyn, t_reset, "reset / release", color="tab:orange", linestyle="-.")
+    ax_dyn.set_title("Demo 4: aflipflop stores and releases an analog value")
+    ax_dyn.set_ylabel("Value")
+    ax_dyn.grid(True)
+    ax_dyn.legend(loc="upper right")
+
+    set_signal = (x_in_hist > 0.45).astype(float)
+    reset_signal = (x_reset_hist > 0.70).astype(float)
+    ax_logic.step(t, set_signal + 0.0, where="post", label="set = (x_in > 0.45)")
+    ax_logic.step(t, reset_signal + 1.2, where="post", label="reset = (x_reset > 0.70)")
+    ax_logic.step(logic_t, ff_state + 2.4, where="post", label="internal state")
+    _add_vertical_marker(ax_logic, t_set, "set / capture", color="tab:blue", linestyle="--")
+    _add_vertical_marker(ax_logic, t_reset, "reset / release", color="tab:orange", linestyle="-.")
+    ax_logic.set_yticks([0.5, 1.7, 2.9])
+    ax_logic.set_yticklabels(["set", "reset", "state"])
     ax_logic.set_ylim(-0.2, 3.6)
     ax_logic.set_xlabel("Time [s]")
     ax_logic.set_ylabel("Logic")
@@ -857,7 +1026,7 @@ def print_boolean_operator_summary(tracing_updater: TracingBoundaryUpdater) -> N
     print("trip_fast = picdro(x_fast > 0.65, 1e-3, 0)")
     print("trip_and  = picdro(bool_and(x_fast > 0.45, x_slow > 0.30), 2e-3, 0)")
     print("master    = flipflop(bool_or(trip_fast > 0.5, trip_and > 0.5), 0)")
-    print("x_mem_dot = ifelse(master_trip > 0.5, 0, k_mem * (x_fast - x_mem))")
+    print("x_mem_dot = (1 - master_trip) * k_mem * (x_fast - x_mem)")
     print(f"fast trip time:         {t_fast_trip}")
     print(f"and trip time:          {t_and_trip}")
     print(f"master trip time:       {t_master_trip}")
@@ -865,6 +1034,33 @@ def print_boolean_operator_summary(tracing_updater: TracingBoundaryUpdater) -> N
     print(f"final trip_and:          {trip_and[-1] if len(trip_and) else 'n/a'}")
     print(f"final master_trip:       {master_trip[-1] if len(master_trip) else 'n/a'}")
     print(f"final lastvalue(x_mem):  {x_mem_last[-1] if len(x_mem_last) else 'n/a'}")
+    print("")
+
+
+def print_analog_flipflop_summary(tracing_updater: TracingBoundaryUpdater) -> None:
+    """Print a compact summary of the aflipflop demo."""
+    logic_t = np.asarray(tracing_updater.trace_t, dtype=float)
+    y_hold = tracing_updater.get_trace("y_hold")
+    ff_state = tracing_updater.get_trace("ff_state")
+
+    t_set = _first_true_time(logic_t, ff_state)
+    t_reset = None
+    reset_idx = np.flatnonzero((ff_state[:-1] > 0.5) & (ff_state[1:] < 0.5)) if len(ff_state) >= 2 else np.array([], dtype=int)
+    if len(reset_idx) > 0:
+        t_reset = float(logic_t[int(reset_idx[0]) + 1])
+
+    held_value = None
+    if t_set is not None:
+        idx_hold = np.where(np.isclose(logic_t, t_set))[0]
+        if len(idx_hold) > 0:
+            held_value = float(y_hold[int(idx_hold[0])])
+
+    print("=== Demo 4: aflipflop analog memory ===")
+    print("y_hold = aflipflop(x_in, x_in > 0.45, x_reset > 0.70)")
+    print(f"set time:              {t_set}")
+    print(f"reset time:            {t_reset}")
+    print(f"captured value:        {held_value}")
+    print(f"final aflipflop value: {y_hold[-1] if len(y_hold) else 'n/a'}")
     print("")
 
 
@@ -917,13 +1113,20 @@ def main() -> None:
         dt=dt,
     )
 
+    t4, y4, _, problem4, vars4, tracing4 = run_analog_flipflop_case(
+        t_end=2.0e-2,
+        dt=dt,
+    )
+
     print_case_summary(name="Demo 1: Integrator freeze", protection=prot1)
     print_case_summary(name="Demo 2: Anti-windup disable", protection=prot2)
     print_boolean_operator_summary(tracing_updater=tracing3)
+    print_analog_flipflop_summary(tracing_updater=tracing4)
 
     plot_integrator_case(t1, y1, dy1, problem1, vars1, prot1)
     plot_antiwindup_case(t2, y2, dy2, problem2, vars2, prot2)
     plot_boolean_operator_case(t3, y3, problem3, vars3, tracing3)
+    plot_analog_flipflop_case(t4, y4, problem4, vars4, tracing4)
     plt.show()
 
 

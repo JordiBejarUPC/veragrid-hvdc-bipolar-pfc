@@ -15,6 +15,7 @@ from typing import Any, Dict, Iterable, List, Set, Tuple
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_objects import BlkDef, BlkFrom, BlkGoto, BlkRef, BlkSig, BlkSlot, BlkSum, ElmComp, ElmDsl, DGSElement
 from VeraGridEngine.Utils.procedural_logic import (
+    AnalogFlipFlopLogic,
     FixedSampleLogic,
     FlipFlopLogic,
     PickupDropoffLogic,
@@ -22,9 +23,12 @@ from VeraGridEngine.Utils.procedural_logic import (
     SampledValueLogic,
     clone_procedural_logic_entries,
 )
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block
 from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp, Comparison, Const, Expr, Func2, Var, abs, cos, exp, hard_sat, log, max, min, sin, sqrt
 from VeraGridEngine.enumerations import BlockScopeMode
+
+
+STRICT_PROCEDURAL_LOGIC_ONLY: bool = True
 
 def _safe_name(name: str) -> str:
     cleaned: str = re.sub(r"[^0-9a-zA-Z_]", "_", name)
@@ -532,9 +536,19 @@ class DgsExpressionParser(ast.NodeVisitor):
             return hard_sat(args[0], args[1], args[2])
         if name == 'limstate' and len(args) == 3:
             return hard_sat(args[0], args[1], args[2])
-        if name in {'select', 'select_const'} and len(args) == 3:
-            cond = _comparison_to_expr(args[0])
-            return cond * args[1] + (Const(1.0) - cond) * args[2]
+        if name in {'select', 'select_const', 'ifelse'} and len(args) == 3:
+            if isinstance(args[0], Const) and args[0].value is not None:
+                return args[1] if float(args[0].value) > 0.5 else args[2]
+
+            selector = self._new_procedural_mode_var(name)
+            self._procedural_logic_entries.append(
+                SampledValueLogic(
+                    output_var_name=selector.name,
+                    source_expr=args[0],
+                    name=selector.name,
+                )
+            )
+            return selector * args[1] + (Const(1.0) - selector) * args[2]
         if name in {'selfix', 'selfix_const'} and len(args) == 3:
             if isinstance(args[0], Const) and args[0].value is not None:
                 return args[1] if float(args[0].value) > 0.5 else args[2]
@@ -564,6 +578,18 @@ class DgsExpressionParser(ast.NodeVisitor):
                     output_var_name=latch.name,
                     set_expr=args[0],
                     reset_expr=args[1],
+                    name=latch.name,
+                )
+            )
+            return latch
+        if name == 'aflipflop' and len(args) == 3:
+            latch = self._new_procedural_mode_var(name)
+            self._procedural_logic_entries.append(
+                AnalogFlipFlopLogic(
+                    output_var_name=latch.name,
+                    input_expr=args[0],
+                    set_expr=args[1],
+                    reset_expr=args[2],
                     name=latch.name,
                 )
             )
@@ -632,6 +658,18 @@ class DgsBlockSubgraphResult:
     downstream: Dict[str, Set[str]]
 
 
+@dataclass
+class GraphicConnectionInstruction:
+    consumer_node_id: str
+    consumer_input_name: str
+    source_kind: str
+    consumer_input_index: int | None = None
+    source_output_name: str | None = None
+    source_output_index: int | None = None
+    source_node_id: str | None = None
+    source_root_name: str | None = None
+
+
 class DgsGraphicTreeResult:
     """
     Graphical internal tree reconstruction result.
@@ -651,6 +689,8 @@ class DgsGraphicTreeResult:
         "adjacency",
         "node_labels",
         "node_kinds",
+        "child_node_ids",
+        "connections",
     )
 
     def __init__(
@@ -661,6 +701,8 @@ class DgsGraphicTreeResult:
         adjacency: Dict[str, Set[str]],
         node_labels: Dict[str, str],
         node_kinds: Dict[str, str],
+        child_node_ids: List[str],
+        connections: List[GraphicConnectionInstruction],
     ) -> None:
         self.selected_block = selected_block
         self.view_block = view_block
@@ -668,6 +710,8 @@ class DgsGraphicTreeResult:
         self.adjacency = adjacency
         self.node_labels = node_labels
         self.node_kinds = node_kinds
+        self.child_node_ids = child_node_ids
+        self.connections = connections
 
 
 class DgsStatementReportEntry:
@@ -820,9 +864,14 @@ def _procedural_logic_import_names(block: Block) -> List[str]:
             if isinstance(logic, FixedSampleLogic):
                 names.add("selfix")
             elif isinstance(logic, SampledValueLogic):
-                names.add("lastvalue")
+                if logic.output_var_name.startswith("proc_select_") or "__proc_select_" in logic.output_var_name or logic.output_var_name.startswith("proc_ifelse_") or "__proc_ifelse_" in logic.output_var_name:
+                    names.add("sampled_value")
+                else:
+                    names.add("lastvalue")
             elif isinstance(logic, FlipFlopLogic):
                 names.add("flipflop")
+            elif isinstance(logic, AnalogFlipFlopLogic):
+                names.add("aflipflop")
             elif isinstance(logic, PickupDropoffLogic):
                 names.add("picdro")
             elif isinstance(logic, ResetOnRisingEdgeLogic):
@@ -840,7 +889,10 @@ def _procedural_logic_entry_to_python(logic: Any, block: Block, identifier_map: 
 
     if isinstance(logic, SampledValueLogic):
         output_var = _find_local_var_by_name(block, logic.output_var_name)
-        text = f"lastvalue({_expr_like_to_python(logic.source_expr, identifier_map)}, output={identifier_map[output_var.uid]})"
+        if logic.output_var_name.startswith("proc_select_") or "__proc_select_" in logic.output_var_name or logic.output_var_name.startswith("proc_ifelse_") or "__proc_ifelse_" in logic.output_var_name:
+            text = f"sampled_value(output={identifier_map[output_var.uid]}, source={_expr_like_to_python(logic.source_expr, identifier_map)})"
+        else:
+            text = f"lastvalue({_expr_like_to_python(logic.source_expr, identifier_map)}, output={identifier_map[output_var.uid]})"
         if logic.name != "" and logic.name != logic.output_var_name:
             text = text[:-1] + f", name={repr(logic.name)})"
         return text
@@ -849,6 +901,17 @@ def _procedural_logic_entry_to_python(logic: Any, block: Block, identifier_map: 
         output_var = _find_local_var_by_name(block, logic.output_var_name)
         text = (
             f"flipflop({_expr_like_to_python(logic.set_expr, identifier_map)}, "
+            f"{_expr_like_to_python(logic.reset_expr, identifier_map)}, output={identifier_map[output_var.uid]})"
+        )
+        if logic.name != "" and logic.name != logic.output_var_name:
+            text = text[:-1] + f", name={repr(logic.name)})"
+        return text
+
+    if isinstance(logic, AnalogFlipFlopLogic):
+        output_var = _find_local_var_by_name(block, logic.output_var_name)
+        text = (
+            f"aflipflop({_expr_like_to_python(logic.input_expr, identifier_map)}, "
+            f"{_expr_like_to_python(logic.set_expr, identifier_map)}, "
             f"{_expr_like_to_python(logic.reset_expr, identifier_map)}, output={identifier_map[output_var.uid]})"
         )
         if logic.name != "" and logic.name != logic.output_var_name:
@@ -983,7 +1046,10 @@ def _emit_template_style_module(
     lines.append("from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory")
     lines.append("from VeraGridEngine.Utils.Symbolic import symbolic as sym")
     lines.append("from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate")
-    lines.append("from VeraGridEngine.Utils.Symbolic.block import Block")
+    if isinstance(subgraph, DgsGraphicTreeResult) and len(subgraph.connections) > 0:
+        lines.append("from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block")
+    else:
+        lines.append("from VeraGridEngine.Utils.Symbolic.block import Block")
     if has_procedural_logic:
         lines.append("from VeraGridEngine.Utils.procedural_logic import " + ", ".join(procedural_import_names))
     lines.append("from VeraGridEngine.enumerations import DeviceType")
@@ -1011,12 +1077,36 @@ def _emit_template_style_module(
         lines.append(f"    {identifier_map[var.uid]} = vf.add_diff_var({repr(var.name + '_')} + name, base_var={base_name})")
     lines.append("")
     lines.append("    # --- Block Assembly ---")
+    if isinstance(subgraph, DgsGraphicTreeResult):
+        child_ref_names_by_node: Dict[str, str] = {
+            node_id: f"{_safe_name(block.children[idx].name)}_{idx}"
+            for idx, node_id in enumerate(subgraph.child_node_ids)
+        }
+    else:
+        child_ref_names_by_node = dict()
     child_ref_names: Dict[int, str] = {
-        id(child): f"{_safe_name(child.name)}_{idx}"
+        id(child): child_ref_names_by_node.get(getattr(subgraph, 'child_node_ids', [])[idx], f"{_safe_name(child.name)}_{idx}")
+        if isinstance(subgraph, DgsGraphicTreeResult) else f"{_safe_name(child.name)}_{idx}"
         for idx, child in enumerate(block.children)
     }
     for child in block.children:
         _emit_block_code(child, identifier_map, child_ref_names[id(child)], lines, child_ref_names)
+        lines.append("")
+    if isinstance(subgraph, DgsGraphicTreeResult) and len(subgraph.connections) > 0:
+        lines.append("    # --- Graphical Connections (resolved from From/To) ---")
+        for item in subgraph.connections:
+            consumer_ref = child_ref_names_by_node[item.consumer_node_id]
+            if item.source_kind == "block_output" and item.source_node_id is not None and item.source_output_index is not None and item.consumer_input_index is not None:
+                producer_ref = child_ref_names_by_node[item.source_node_id]
+                lines.append(
+                    f"    {consumer_ref}.connect([{consumer_ref}.in_vars[{item.consumer_input_index}]], "
+                    f"[{producer_ref}.out_vars[{item.source_output_index}]])"
+                )
+            elif item.source_kind == "root_input" and item.source_root_name is not None and item.consumer_input_index is not None:
+                lines.append(
+                    f"    {consumer_ref}.connect([{consumer_ref}.in_vars[{item.consumer_input_index}]], "
+                    f"[{identifier_map[find_name_in_block(item.source_root_name, block).uid]}])"
+                )
         lines.append("")
     _emit_block_code(block, identifier_map, "templ.block", lines, child_ref_names)
     lines.append("    templ.block.name = name")
@@ -1850,6 +1940,300 @@ def _build_graphic_node_signal_map(circuit: DgsCircuit) -> dict[str, set[str]]:
     return node_signals
 
 
+def _build_graph_signal_alias_map(
+    node_ids: Set[str],
+    node_by_id: Dict[str, object],
+    node_signals: Dict[str, Set[str]],
+) -> Dict[str, Set[str]]:
+    parent: Dict[str, str] = dict()
+
+    def _find(name: str) -> str:
+        root = parent.setdefault(name, name)
+        while root != parent[root]:
+            parent[root] = parent[parent[root]]
+            root = parent[root]
+        return root
+
+    def _union(a: str, b: str) -> None:
+        ra = _find(a)
+        rb = _find(b)
+        if ra != rb:
+            parent[rb] = ra
+
+    for node_id in node_ids:
+        node = node_by_id.get(node_id)
+        if not isinstance(node, BlkFrom):
+            continue
+
+        aliases = sorted(node_signals.get(node_id, set()))
+        if len(aliases) < 2:
+            continue
+
+        head = aliases[0]
+        for alias in aliases[1:]:
+            _union(head, alias)
+
+    groups: Dict[str, Set[str]] = dict()
+    for signal_names in node_signals.values():
+        for sig in signal_names:
+            root = _find(sig)
+            groups.setdefault(root, set()).add(sig)
+
+    alias_map: Dict[str, Set[str]] = dict()
+    for group in groups.values():
+        for sig in group:
+            alias_map[sig] = set(group)
+
+    return alias_map
+
+
+def _build_augmented_graphical_adjacency(
+    node_ids: Set[str],
+    adjacency: Dict[str, Set[str]],
+    node_by_id: Dict[str, object],
+    node_signals: Dict[str, Set[str]],
+    alias_map: Dict[str, Set[str]],
+) -> Dict[str, Set[str]]:
+    expanded: Dict[str, Set[str]] = {node_id: set(neigh for neigh in adjacency.get(node_id, set()) if neigh in node_ids) for node_id in node_ids}
+
+    routing_nodes: List[str] = [
+        node_id for node_id in node_ids
+        if isinstance(node_by_id.get(node_id), (BlkFrom, BlkGoto))
+    ]
+
+    for idx, left_id in enumerate(routing_nodes):
+        left_aliases: Set[str] = set()
+        for sig in node_signals.get(left_id, set()):
+            left_aliases |= alias_map.get(sig, {sig})
+
+        if len(left_aliases) == 0:
+            continue
+
+        for right_id in routing_nodes[idx + 1:]:
+            right_aliases: Set[str] = set()
+            for sig in node_signals.get(right_id, set()):
+                right_aliases |= alias_map.get(sig, {sig})
+
+            if len(left_aliases & right_aliases) == 0:
+                continue
+
+            expanded.setdefault(left_id, set()).add(right_id)
+            expanded.setdefault(right_id, set()).add(left_id)
+
+    return expanded
+
+
+def _graph_distance(adjacency: Dict[str, Set[str]], start_node: str, target_node: str) -> int:
+    if start_node == target_node:
+        return 0
+
+    visited: Set[str] = set()
+    frontier: List[Tuple[str, int]] = [(start_node, 0)]
+
+    while frontier:
+        node_id, dist = frontier.pop(0)
+        if node_id in visited:
+            continue
+        visited.add(node_id)
+
+        for nxt in adjacency.get(node_id, set()):
+            if nxt == target_node:
+                return dist + 1
+            if nxt not in visited:
+                frontier.append((nxt, dist + 1))
+
+    return 10**9
+
+
+def _node_signal_aliases(node_id: str, node_signals: Dict[str, Set[str]], alias_map: Dict[str, Set[str]]) -> Set[str]:
+    aliases: Set[str] = set()
+    for sig in node_signals.get(node_id, set()):
+        aliases |= alias_map.get(sig, {sig})
+    return aliases
+
+
+def _resolve_graphic_block_connections(
+    selected_block: ParsedDgsBlockDefinition,
+    child_node_ids: List[str],
+    child_blocks: Dict[str, Block],
+    child_input_specs: Dict[str, List[str]],
+    child_output_specs: Dict[str, List[str]],
+    adjacency: Dict[str, Set[str]],
+    node_by_id: Dict[str, object],
+    node_signals: Dict[str, Set[str]],
+    alias_map: Dict[str, Set[str]],
+    root_runtime_block: Block,
+) -> Tuple[List[GraphicConnectionInstruction], List[Var]]:
+    producer_entries: List[Tuple[str, str, Var]] = list()
+    root_inputs = {var.name: var for var in root_runtime_block.in_vars}
+    root_signal_vars = {var.name: var for var in (root_runtime_block.in_vars + root_runtime_block.out_vars + root_runtime_block.algebraic_vars + root_runtime_block.state_vars)}
+
+    for node_id in child_node_ids:
+        block = child_blocks[node_id]
+        for output_index, output_name in enumerate(child_output_specs.get(node_id, list())):
+            if output_index < len(block.out_vars):
+                producer_entries.append((node_id, output_name, block.out_vars[output_index]))
+
+    connections: List[GraphicConnectionInstruction] = list()
+
+    for consumer_node_id in child_node_ids:
+        for input_index, input_name in enumerate(child_input_specs.get(consumer_node_id, list())):
+            input_aliases = alias_map.get(input_name, {input_name})
+            candidates: List[Tuple[int, int, str, str]] = list()
+
+            for producer_node_id, output_name, _out_var in producer_entries:
+                if producer_node_id == consumer_node_id:
+                    continue
+                if len(input_aliases & alias_map.get(output_name, {output_name})) == 0:
+                    continue
+                distance = _graph_distance(adjacency, consumer_node_id, producer_node_id)
+                exact_score = 0 if output_name == input_name else 1
+                candidates.append((exact_score, distance, producer_node_id, output_name))
+
+            if len(candidates) > 0:
+                candidates.sort(key=lambda item: (item[0], item[1], item[2], item[3]))
+                best = candidates[0]
+                connections.append(
+                    GraphicConnectionInstruction(
+                        consumer_node_id=consumer_node_id,
+                        consumer_input_name=input_name,
+                        source_kind="block_output",
+                        consumer_input_index=input_index,
+                        source_node_id=best[2],
+                        source_output_name=best[3],
+                        source_output_index=child_output_specs.get(best[2], list()).index(best[3]),
+                    )
+                )
+                continue
+
+            root_candidates = [name for name in root_signal_vars.keys() if len(alias_map.get(name, {name}) & input_aliases) > 0]
+            if len(root_candidates) > 0:
+                root_candidates.sort(key=lambda name: (0 if name == input_name else 1, name))
+                connections.append(
+                    GraphicConnectionInstruction(
+                        consumer_node_id=consumer_node_id,
+                        consumer_input_name=input_name,
+                        source_kind="root_input",
+                        consumer_input_index=input_index,
+                        source_root_name=root_candidates[0],
+                    )
+                )
+
+    resolved_outputs: List[Var] = list()
+    for output_var in root_runtime_block.out_vars:
+        output_name = output_var.name
+        output_aliases = alias_map.get(output_name, {output_name})
+        candidates: List[Tuple[int, int, str, Var]] = list()
+        for producer_node_id, producer_output_name, out_var in producer_entries:
+            if len(output_aliases & alias_map.get(producer_output_name, {producer_output_name})) == 0:
+                continue
+            distance = _graph_distance(adjacency, producer_node_id, selected_block.blkdef.ID)
+            exact_score = 0 if producer_output_name == output_name else 1
+            candidates.append((exact_score, distance, producer_node_id, out_var))
+
+        if len(candidates) > 0:
+            candidates.sort(key=lambda item: (item[0], item[1], item[2]))
+            resolved_outputs.append(candidates[0][3])
+        else:
+            resolved_outputs.append(output_var)
+
+    return connections, resolved_outputs
+
+
+def _blk_sum_slot_raw_mode(blk_sum: BlkSum, slot: int) -> int:
+    if slot == 0:
+        return int(blk_sum.iInput0)
+    if slot == 1:
+        return int(blk_sum.iInput1)
+    if slot == 2:
+        return int(blk_sum.iInput2)
+    if slot == 3:
+        return int(blk_sum.iInput3)
+    return 2
+
+
+def _blk_sum_slot_active_mode(blk_sum: BlkSum, slot: int) -> int:
+    if slot == 0:
+        return int(blk_sum.iInput0_act)
+    if slot == 1:
+        return int(blk_sum.iInput1_act)
+    if slot == 2:
+        return int(blk_sum.iInput2_act)
+    if slot == 3:
+        return int(blk_sum.iInput3_act)
+    return 2
+
+
+def _blk_sum_slot_mode(blk_sum: BlkSum, slot: int) -> int:
+    active_mode = _blk_sum_slot_active_mode(blk_sum, slot)
+    if active_mode in {0, 1, 2}:
+        return active_mode
+    return _blk_sum_slot_raw_mode(blk_sum, slot)
+
+
+def _blk_sum_signal_specs(
+    blk_sum: BlkSum,
+    circuit: DgsCircuit,
+) -> Tuple[List[Tuple[str, float]], List[str]]:
+    incoming_by_slot: Dict[int, str] = dict()
+    outgoing_signals: List[str] = list()
+
+    for sig in circuit.blksigs:
+        clean = _normalize_graph_signal_name(sig.loc_name)
+        if clean == '':
+            continue
+        if sig.pnodto == blk_sum.ID:
+            incoming_by_slot[int(sig.inodto)] = clean
+        if sig.pnodfrom == blk_sum.ID:
+            outgoing_signals.append(clean)
+
+    input_terms: List[Tuple[str, float]] = list()
+    for slot in range(4):
+        sig_name = incoming_by_slot.get(slot, None)
+        if sig_name is None:
+            continue
+        mode = _blk_sum_slot_mode(blk_sum, slot)
+        if mode == 2:
+            continue
+        coeff = 1.0 if mode == 0 else -1.0
+        input_terms.append((sig_name, coeff))
+
+    outputs: List[str] = list()
+    for sig_name in outgoing_signals:
+        if sig_name not in outputs:
+            outputs.append(sig_name)
+
+    return input_terms, outputs
+
+
+def _build_sum_block_from_graphic_node(blk_sum: BlkSum, circuit: DgsCircuit) -> Tuple[Block, List[str], List[str]]:
+    input_terms, outputs = _blk_sum_signal_specs(blk_sum, circuit)
+
+    if len(outputs) == 0:
+        output_name = _safe_name(blk_sum.loc_name if blk_sum.loc_name != '' else blk_sum.ID)
+        outputs = [output_name]
+
+    out_var = Var(name=outputs[0])
+    in_vars: List[Var] = list()
+    rhs: Expr = Const(0.0)
+    input_names: List[str] = list()
+
+    for input_name, coeff in input_terms:
+        in_var = Var(name=input_name)
+        in_vars.append(in_var)
+        input_names.append(input_name)
+        rhs = rhs + (Const(coeff) * in_var)
+
+    block = Block(
+        algebraic_eqs=[out_var - rhs],
+        algebraic_vars=[out_var],
+        in_vars=in_vars,
+        out_vars=[out_var],
+        name=blk_sum.loc_name if blk_sum.loc_name != '' else 'Sum',
+    )
+    return block, input_names, outputs
+
+
 def _selected_block_signal_universe(parsed_block: ParsedDgsBlockDefinition) -> set[str]:
     """
     Return the relevant signal universe of a selected composite block.
@@ -2333,9 +2717,18 @@ def extract_root_slot_block_graphical_tree(
             explicit_component,
         )
         node_ids = explicit_component | rescued_component
+    if len(explicit_component) <= 1:
+        node_signals = _build_graphic_node_signal_map(circuit)
     node_labels: dict[str, str] = dict()
     node_kinds: dict[str, str] = dict()
     child_blocks: list[Block] = list()
+    child_blocks_by_node: dict[str, Block] = dict()
+    child_input_specs: dict[str, List[str]] = dict()
+    child_output_specs: dict[str, List[str]] = dict()
+    child_node_ids: list[str] = list()
+
+    alias_map = _build_graph_signal_alias_map(node_ids, node_by_id, node_signals)
+    local_adj = _build_augmented_graphical_adjacency(node_ids, adjacency, node_by_id, node_signals, alias_map)
 
     for node_id in sorted(node_ids, key=lambda nid: _graphic_node_label(node_by_id.get(nid, nid))):
         node_obj = node_by_id.get(node_id)
@@ -2347,18 +2740,61 @@ def extract_root_slot_block_graphical_tree(
         if node_id == root_node_id:
             continue
 
-        child_blocks.append(_graphic_node_to_block(node_id, node_obj, result.parsed_blocks))
-
-    local_adj: dict[str, set[str]] = dict()
-    for node_id in node_ids:
-        local_adj[node_id] = {dst for dst in adjacency.get(node_id, set()) if dst in node_ids}
+        if isinstance(node_obj, BlkRef):
+            parsed = result.parsed_blocks.get(node_obj.typ_id, None)
+            if parsed is None:
+                continue
+            blk = _build_block_from_parsed(parsed, dict())
+            blk.name = _graphic_node_label(node_obj)
+            child_blocks.append(blk)
+            child_blocks_by_node[node_id] = blk
+            child_input_specs[node_id] = list(parsed.blkdef.inputs)
+            child_output_specs[node_id] = list(parsed.blkdef.outputs)
+            child_node_ids.append(node_id)
+        elif isinstance(node_obj, BlkSum):
+            blk, input_specs, output_specs = _build_sum_block_from_graphic_node(node_obj, circuit)
+            child_blocks.append(blk)
+            child_blocks_by_node[node_id] = blk
+            child_input_specs[node_id] = input_specs
+            child_output_specs[node_id] = output_specs
+            child_node_ids.append(node_id)
 
     selected_runtime_block = _build_block_from_parsed(selection.parsed_block, dict())
+    connections, resolved_outputs = _resolve_graphic_block_connections(
+        selected_block=selection.parsed_block,
+        child_node_ids=child_node_ids,
+        child_blocks=child_blocks_by_node,
+        child_input_specs=child_input_specs,
+        child_output_specs=child_output_specs,
+        adjacency=local_adj,
+        node_by_id=node_by_id,
+        node_signals=node_signals,
+        alias_map=alias_map,
+        root_runtime_block=selected_runtime_block,
+    )
+
+    child_lookup = {node_id: child_blocks_by_node[node_id] for node_id in child_node_ids}
+    root_in_lookup = {var.name: var for var in selected_runtime_block.in_vars}
+    for instruction in connections:
+        consumer_block = child_lookup[instruction.consumer_node_id]
+        if instruction.consumer_input_index is None or instruction.consumer_input_index >= len(consumer_block.in_vars):
+            continue
+        consumer_var = consumer_block.in_vars[instruction.consumer_input_index]
+
+        if instruction.source_kind == "block_output" and instruction.source_node_id is not None and instruction.source_output_index is not None:
+            producer_block = child_lookup[instruction.source_node_id]
+            if instruction.source_output_index < len(producer_block.out_vars):
+                consumer_block.connect([consumer_var], [producer_block.out_vars[instruction.source_output_index]])
+        elif instruction.source_kind == "root_input" and instruction.source_root_name is not None:
+            root_var = root_in_lookup.get(instruction.source_root_name, None)
+            if root_var is not None:
+                consumer_block.connect([consumer_var], [root_var])
+
     view_block = Block(
         name=selection.parsed_block.blkdef.loc_name,
         children=child_blocks,
         in_vars=selected_runtime_block.in_vars,
-        out_vars=selected_runtime_block.out_vars,
+        out_vars=resolved_outputs,
         algebraic_vars=selected_runtime_block.algebraic_vars,
     )
 
@@ -2369,6 +2805,8 @@ def extract_root_slot_block_graphical_tree(
         adjacency=local_adj,
         node_labels=node_labels,
         node_kinds=node_kinds,
+        child_node_ids=child_node_ids,
+        connections=connections,
     )
 
 def export_named_block_subgraph_to_python(

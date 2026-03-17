@@ -659,7 +659,7 @@ class Block:
 
 
 def find_name_in_block(name: str, block: Block) -> Var | None:
-    for lst in [block.algebraic_vars, block.state_vars]:
+    for lst in [block.in_vars, block.out_vars, block.algebraic_vars, block.state_vars, block.diff_vars]:
         for var in lst:
             if name == var.name:
                 return var
