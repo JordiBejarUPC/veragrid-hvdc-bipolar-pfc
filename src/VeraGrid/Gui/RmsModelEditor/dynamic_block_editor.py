@@ -18,7 +18,7 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
                                QColorDialog, QCheckBox)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter, QIcon, QStandardItemModel, QStandardItem,
                            QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
-from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QModelIndex, QMimeData, Signal
+from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QModelIndex, QMimeData, Signal, QAbstractTableModel
 
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
@@ -338,147 +338,96 @@ class ConnectionItem(QGraphicsPathItem):
         pen.setWidthF(2.5)
         self.setPen(pen)
 
-
-class ParameterEditorDialog(QDialog):
+class ParametersTableModel(QAbstractTableModel):
     """
-    Dialog to edit event parameters and fixed parameters of a block.
+    Table model to display event parameters (editable) and fixed parameters (read-only).
     """
 
-    parametersUpdated = Signal(dict)
+    dataChangedSignal = Signal(dict)  # emit updated event_dict
 
-    def __init__(self,
-                 var_factory: VarFactory,
-                 event_dict: Dict[Var, Expr],
-                 parameters_dict: Dict[Var, Const],
-                 parent: Optional[QtWidgets.QWidget] = None):
-        """
-        Build the parameter editor dialog.
+    def __init__(self, var_factory, block: Block):
+        super().__init__()
 
-        :param var_factory:
-        :param event_dict:
-        :param parameters_dict:
-        :param parent:
-        """
-        super().__init__(parent)
+        self.var_factory = var_factory
 
-        self.setWindowTitle("Edit Model Parameters")
-        self.resize(450, 350)
 
-        self.var_factory: VarFactory = var_factory
-        self.event_dict: Dict[Var, Expr] = copy.deepcopy(event_dict)
-        self.parameters: Dict[Var, Const] = copy.deepcopy(parameters_dict)
-        self._vars_order: List[Var] = list()
+        # Store two lists of tuples (var, expr)
+        self.event_params = list(block.event_dict.items())      # editable
+        self.fixed_params = list(block.parameters.items()) # read-only
 
-        layout: QVBoxLayout = QVBoxLayout(self)
-        layout.addWidget(QLabel("Edit the values:"))
+        # Combine for easy row indexing
+        self.all_params = self.event_params + self.fixed_params
 
-        self.params_table: QTableWidget = QTableWidget(self)
-        self.params_table.setColumnCount(2)
-        self.params_table.setHorizontalHeaderLabels(["Parameter", "Value"])
-        self.params_table.horizontalHeader().setStretchLastSection(True)
-        self.params_table.verticalHeader().setVisible(False)
-        self.params_table.setEditTriggers(QtWidgets.QAbstractItemView.EditTrigger.AllEditTriggers)
-        layout.addWidget(self.params_table)
+    def rowCount(self, parent=QModelIndex()) -> int:
+        return len(self.all_params)
 
-        buttons: QDialogButtonBox = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
+    def columnCount(self, parent=QModelIndex()) -> int:
+        return 2  # Parameter name, Value
 
-        self.load_params_table()
-        self.load_fix_params_table()
-        self.params_table.cellChanged.connect(self.on_cell_changed)
+    def data(self, index: QModelIndex, role=Qt.ItemDataRole.DisplayRole):
+        if not index.isValid():
+            return None
 
-    def load_params_table(self) -> None:
-        """
-        Load editable event parameters into the table.
+        var, expr = self.all_params[index.row()]
 
-        :return:
-        """
-        var: Var
-        expr: Expr
+        if role in (Qt.DisplayRole, Qt.EditRole):
+            if index.column() == 0:  # Parameter name
+                return var.name
+            elif index.column() == 1:  # Value
+                if hasattr(expr, "value"):
+                    return str(expr.value)
+                return str(expr)
 
-        self.params_table.blockSignals(True)
+        # Optional: different background for fixed params
+        if role == Qt.BackgroundRole and index.row() >= len(self.event_params):
+            return QColor("#f0f0f0")  # gray for read-only
 
-        for var, expr in self.event_dict.items():
-            row: int = self.params_table.rowCount()
-            self.params_table.insertRow(row)
-            self._vars_order.append(var)
+        return None
 
-            name_item: QTableWidgetItem = QTableWidgetItem(var.name)
-            name_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
-            self.params_table.setItem(row, 0, name_item)
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        if role != Qt.DisplayRole:
+            return None
+        if orientation == Qt.Horizontal:
+            return ["Parameter", "Value"][section]
+        return str(section + 1)
 
-            if hasattr(expr, "value"):
-                value_item: QTableWidgetItem = QTableWidgetItem(str(expr.value))
-                value_item.setFlags(Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsEditable)
-            else:
-                value_item = QTableWidgetItem(str(expr))
-                value_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
+    def flags(self, index: QModelIndex):
+        if not index.isValid():
+            return Qt.ItemFlag.ItemIsEnabled
 
-            self.params_table.setItem(row, 1, value_item)
+        flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
 
-        self.params_table.blockSignals(False)
-        self.params_table.resizeColumnsToContents()
+        # Only editable if it's an event parameter and the Value column
+        if index.row() < len(self.event_params) and index.column() == 1:
+            flags |= Qt.ItemFlag.ItemIsEditable
 
-    def load_fix_params_table(self) -> None:
-        """
-        Load fixed parameters into the table.
+        return flags
 
-        :return:
-        """
-        var: Var
-        const: Const
+    def setData(self, index: QModelIndex, value, role=Qt.EditRole):
+        if (
+            not index.isValid()
+            or role != Qt.EditRole
+            or index.column() != 1
+            or index.row() >= len(self.event_params)
+        ):
+            return False
 
-        self.params_table.blockSignals(True)
+        var, expr = self.event_params[index.row()]
 
-        for var, const in self.parameters.items():
-            row: int = self.params_table.rowCount()
-            self.params_table.insertRow(row)
+        try:
+            value_float = float(value)
+        except ValueError:
+            value_float = value
 
-            name_item: QTableWidgetItem = QTableWidgetItem(var.name)
-            name_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
-            self.params_table.setItem(row, 0, name_item)
+        # Update the event_dict copy
+        self.event_params[index.row()] = (var, self.var_factory.add_const(value=value_float, name=var.name))
 
-            value: str = "" if const.value is None else str(const.value)
-            value_item: QTableWidgetItem = QTableWidgetItem(value)
-            value_item.setFlags(Qt.ItemFlag.ItemIsEnabled)
-            self.params_table.setItem(row, 1, value_item)
+        # Also update the combined list
+        self.all_params[index.row()] = self.event_params[index.row()]
 
-        self.params_table.blockSignals(False)
-        self.params_table.resizeColumnsToContents()
-
-    def on_cell_changed(self, row: int, column: int) -> None:
-        """
-        Update the event dictionary after user edits.
-
-        :param row:
-        :param column:
-        :return:
-        """
-        if column == 1:
-            if row < len(self._vars_order):
-                var: Var = self._vars_order[row]
-                item: QTableWidgetItem | None = self.params_table.item(row, 1)
-
-                if item is not None:
-                    text: str = item.text()
-
-                    try:
-                        value: float | str = float(text)
-                    except ValueError:
-                        value = text
-
-                    self.event_dict[var] = self.var_factory.add_const(value=value, name=var.name)
-                    self.parametersUpdated.emit(self.event_dict)
-                else:
-                    pass
-            else:
-                pass
-        else:
-            pass
+        self.dataChanged.emit(index, index, [Qt.DisplayRole, Qt.EditRole])
+        self.dataChangedSignal.emit(dict(self.event_params))  # emit updated event_dict
+        return True
 
 class InspectModel(QWidget):
     """
@@ -1428,6 +1377,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.libraryTreeView.setDragEnabled(True)
         self.ui.libraryTreeView.setHeaderHidden(False)
 
+
+
+        self.ui.parametersTableView.horizontalHeader().setStretchLastSection(True)
+        self.ui.parametersTableView.verticalHeader().setVisible(False)
+
         self.view: GraphicsView = GraphicsView(self.scene)
         self.ui.verticalLayout_3.removeWidget(self.ui.graphicsView)
         self.ui.graphicsView.deleteLater()
@@ -1447,6 +1401,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.add_external_mapping_block()
             self.add_api_obj_mapping()
         self.rebuild_scene_from_diagram()
+
+        self.parameters_model = ParametersTableModel(
+            var_factory=self.var_factory,
+            block=self.main_block
+        )
+        self.ui.parametersTableView.setModel(self.parameters_model)
+        self.ui.parametersTableView.horizontalHeader().setStretchLastSection(True)
 
     def build_library_tree_model(self,
                                  block_role: int,

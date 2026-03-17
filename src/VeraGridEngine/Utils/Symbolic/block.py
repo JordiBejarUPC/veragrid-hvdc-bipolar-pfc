@@ -448,6 +448,31 @@ class Block:
 
         return flat
 
+    def merge_incoming_block(self, block: Block):
+        block.unify_blocks()
+        self.algebraic_vars.extend(block.algebraic_vars)
+        self.algebraic_eqs.extend(block.algebraic_eqs)
+        self.state_vars.extend(block.state_vars)
+        self.state_eqs.extend(block.state_eqs)
+        self.diff_vars.extend(block.diff_vars)
+        self.reformulated_vars.extend(block.reformulated_vars)
+        self.external_mapping.update(block.external_mapping)
+        for event_param, eq in block.event_dict.items():
+            self.event_dict[event_param] = eq
+
+        for mode_param, eq in block.mode_dict.items():
+            self.mode_dict[mode_param] = eq
+
+        for param, const in block.parameters.items():
+            self.parameters[param] = const
+
+        for var, init_eq in block.init_eqs.items():
+            self.init_eqs[var] = init_eq
+
+        for diffvar, diff_init_eq in block.diff_init_eqs.items():
+            self.diff_init_eqs[diffvar] = diff_init_eq
+
+
     def unify_blocks(self):
         """
         This function collects all variables and equations of a block, returns a flat block
