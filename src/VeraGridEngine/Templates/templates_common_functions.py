@@ -803,7 +803,7 @@ def connect_line_phasor_rms_to(mdl1: Block, mdl2: Block):
         mdl2.connect([inpt], [outp])
 
 
-def connect_rms_models(mdl1: Block, mdl2: Block):
+def connect_models(mdl1: Block, mdl2: Block):
     """
     This function substitutes input variables for output variables to connect two rms models
     :param mdl1:
@@ -871,7 +871,7 @@ def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
 
     else:
         if not device.bus.rms_model.empty():
-            connect_rms_models(device.bus.rms_model, model)
+            connect_models(device.bus.rms_model, model)
 
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus.name} RMS model")
@@ -885,3 +885,118 @@ def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
 
     # set the model to the device
     device.rms_model = model
+
+
+def connect_line_emt_from(mdl1: Block, mdl2: Block):
+    """
+    Connects the bus voltages (mdl1) to the "from" side of the line (mdl2)
+    for simulations with explicit phases (e.g., EMT).
+    It only connects the phases present in both models (any NABC combination).
+
+    :param mdl1: Bus model (Block)
+    :param mdl2: Line model (Block)
+    :return: None
+    """
+    # Create a dictionary to map the bus output variable
+    # to the corresponding line input variable ("from" side)
+    phase_map = {
+        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.v_N_f,
+        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.v_A_f,
+        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.v_B_f,
+        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.v_C_f
+    }
+
+    # Find the variable pairs that match our mapping
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref in phase_map and phase_map[outp.ref] == inpt.ref
+    ]
+
+    # Connect all found pairs
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
+
+def connect_line_emt_to(mdl1: Block, mdl2: Block):
+    """
+    Connects the bus voltages (mdl1) to the "to" side of the line (mdl2)
+    for simulations with explicit phases (e.g., EMT).
+    It only connects the phases present in both models (any NABC combination).
+
+    :param mdl1: Bus model (Block)
+    :param mdl2: Line model (Block)
+    :return: None
+    """
+    # Create a dictionary to map the bus output variable
+    # to the corresponding line input variable ("to" side)
+    phase_map = {
+        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.v_N_t,
+        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.v_A_t,
+        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.v_B_t,
+        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.v_C_t
+    }
+
+    # Find the variable pairs that match our mapping
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref in phase_map and phase_map[outp.ref] == inpt.ref
+    ]
+
+    # Connect all found pairs
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
+
+
+def set_emt_model(device: Any, model: Block, var_factory: VarFactory):
+    """
+    Sets the EMT model for a given device, connects it to the bus(es),
+    and registers all its variables in the VarFactory.
+
+    :param device: The power system device (Line, Transformer, Generator, etc.)
+    :param model: The mathematical block model of the device
+    :param var_factory: Factory to register simulation variables
+    :return: None
+    """
+    # 1. Connect bus variables depending on the device type
+    if device.device_type in [DeviceType.BranchDevice, DeviceType.LineDevice, DeviceType.Transformer2WDevice,
+                              DeviceType.Transformer3WDevice]:
+
+        # Bus FROM connection
+        bus_from_model = device.bus_from.emt_model
+        if not bus_from_model.empty():
+            connect_line_emt_from(bus_from_model, model)
+        else:
+            raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_from.name} EMT model")
+
+        # Bus TO connection
+        bus_to_model = device.bus_to.emt_model
+        if not bus_to_model.empty():
+            connect_line_emt_to(bus_to_model, model)
+        else:
+            raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_to.name} EMT model")
+
+    else:
+        # Generic device connection (e.g., Loads, Generators connected to a single bus)
+        if not device.bus.emt_model.empty():
+            connect_models(device.bus.emt_model, model)
+        else:
+            raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus.name} EMT model")
+
+    # 2. Unify blocks and register all variables in the VarFactory
+    model.unify_blocks()
+
+    for vr in model.algebraic_vars:
+        var_factory.register_var(device, vr)
+
+    for vr in model.state_vars:
+        var_factory.register_var(device, vr)
+
+    # Added diff_vars for EMT simulations
+    for vr in model.diff_vars:
+        var_factory.register_var(device, vr)
+
+    # 3. Assign the configured model to the device
+    device.emt_model = model

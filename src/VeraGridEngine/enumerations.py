@@ -2723,7 +2723,7 @@ class VarPowerFlowRefferenceType(Enum):
     Iif = "Iif"  # Imaginary current at branch from end
     Irt = "Irt"  # Real current at branch to end
     Iit = "Iit"  # Imaginary current at branch to end
-    
+
     Vdc = "Vdc"  # Bus voltage for DC voltage in p.u.
     Idc = "Idc"  # Bus current for DC Bus in p.u.
 
@@ -2736,6 +2736,16 @@ class VarPowerFlowRefferenceType(Enum):
     d_v_A = "d_v_A"  # Bus voltage derivative at phase A.
     d_v_B = "d_v_B"  # Bus voltage derivative at phase B.
     d_v_C = "d_v_C"  # Bus voltage derivative at phase C.
+
+    v_N_f = "v_N_f"  # From Bus voltage at phase N.
+    v_A_f = "v_A_f"  # From Bus voltage at phase A.
+    v_B_f = "v_B_f"  # From Bus voltage at phase B.
+    v_C_f = "v_C_f"  # From Bus voltage at phase C.
+
+    v_N_t = "v_N_t"  # To Bus voltage at phase N.
+    v_A_t = "v_A_t"  # To Bus voltage at phase A.
+    v_B_t = "v_B_t"  # To Bus voltage at phase B.
+    v_C_t = "v_C_t"  # To Bus voltage at phase C.
 
     d_v_N_f = "d_v_N_f"  # From bus voltage derivative at phase N.
     d_v_A_f = "d_v_A_f"  # From bBus voltage derivative at phase A.

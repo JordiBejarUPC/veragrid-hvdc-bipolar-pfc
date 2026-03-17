@@ -54,8 +54,21 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     # Create ONLY active terminal voltage input vars
     #    (Connection to buses is done by the assembler, not here.)
     # -----------------------------
-    vf_vars = [vf.add_var(f"vf_{ph}_{name}") for ph in active_ph]
-    vt_vars = [vf.add_var(f"vt_{ph}_{name}") for ph in active_ph]
+    # vf_vars = [vf.add_var(f"vf_{ph}_{name}") for ph in active_ph]
+    # vt_vars = [vf.add_var(f"vt_{ph}_{name}") for ph in active_ph]
+
+    v_N_f = vf.add_var(name=f"vf_N_{name}", ref=VarPowerFlowRefferenceType.v_N_f) if ph_mask[0] else None
+    v_A_f = vf.add_var(name=f"vf_A_{name}", ref=VarPowerFlowRefferenceType.v_A_f) if ph_mask[1] else None
+    v_B_f = vf.add_var(name=f"vf_B_{name}", ref=VarPowerFlowRefferenceType.v_B_f) if ph_mask[2] else None
+    v_C_f = vf.add_var(name=f"vf_C_{name}", ref=VarPowerFlowRefferenceType.v_C_f) if ph_mask[3] else None
+
+    v_N_t = vf.add_var(name=f"vt_N_{name}", ref=VarPowerFlowRefferenceType.v_N_t) if ph_mask[0] else None
+    v_A_t = vf.add_var(name=f"vt_A_{name}", ref=VarPowerFlowRefferenceType.v_A_t) if ph_mask[1] else None
+    v_B_t = vf.add_var(name=f"vt_B_{name}", ref=VarPowerFlowRefferenceType.v_B_t) if ph_mask[2] else None
+    v_C_t = vf.add_var(name=f"vt_C_{name}", ref=VarPowerFlowRefferenceType.v_C_t) if ph_mask[3] else None
+
+    vf_vars = [v for v in (v_N_f, v_A_f, v_B_f, v_C_f) if v is not None]
+    vt_vars = [v for v in (v_N_t, v_A_t, v_B_t, v_C_t) if v is not None]
 
     # diff vars used for initialization
     d_vf_vars = [vf.add_diff_var(name=f"d_vf_{ph}_{name}", base_var=v_base) for ph, v_base in
