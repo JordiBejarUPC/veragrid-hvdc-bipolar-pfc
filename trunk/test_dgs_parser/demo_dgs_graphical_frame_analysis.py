@@ -1,11 +1,11 @@
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.IO.dgs.dgs_objects import BlkSum
 from VeraGridEngine.IO.dgs.dgs_to_blocks import (
-    _blk_sum_slot_active_mode,
-    _blk_sum_slot_raw_mode,
-    _blk_sum_signal_specs,
-    _build_graphic_node_index,
+    build_graphic_node_index,
     extract_root_slot_block_graphical_tree,
+    get_blk_sum_signal_specs,
+    get_blk_sum_slot_active_mode,
+    get_blk_sum_slot_raw_mode,
 )
 
 
@@ -14,6 +14,12 @@ SLOTS = ["Synchronization Loop", "Q/Vac droop"]
 
 
 def print_slot_frame(slot_name: str, circuit: DgsCircuit) -> None:
+    """
+    Print the full graphical frame reconstruction of one DGS slot.
+
+    :param slot_name: Root slot name.
+    :param circuit: Parsed DGS circuit.
+    """
     tree = extract_root_slot_block_graphical_tree(
         dgs_path=DGS_PATH,
         slot_name=slot_name,
@@ -22,7 +28,7 @@ def print_slot_frame(slot_name: str, circuit: DgsCircuit) -> None:
     if tree is None:
         raise ValueError(f"Could not resolve graphical frame for '{slot_name}'")
 
-    node_by_id = _build_graphic_node_index(circuit)
+    node_by_id = build_graphic_node_index(circuit)
 
     print("=" * 120)
     print(f"Graphical Frame: {slot_name}")
@@ -43,17 +49,17 @@ def print_slot_frame(slot_name: str, circuit: DgsCircuit) -> None:
         node = node_by_id.get(node_id)
         if not isinstance(node, BlkSum):
             continue
-        input_terms, outputs = _blk_sum_signal_specs(node, circuit)
-        rendered_terms = []
-        for signal_name, coeff in input_terms:
-            if coeff >= 0.0:
+        input_terms, outputs = get_blk_sum_signal_specs(node, circuit)
+        rendered_terms: list[str] = list()
+        for signal_name, coefficient in input_terms:
+            if coefficient >= 0.0:
                 rendered_terms.append(f"+ {signal_name}")
             else:
                 rendered_terms.append(f"- {signal_name}")
         rhs = " ".join(rendered_terms).lstrip("+ ") if rendered_terms else "0"
         print(f"  {node.loc_name} ({node_id})")
-        print(f"    raw modes     : i0={_blk_sum_slot_raw_mode(node, 0)}, i1={_blk_sum_slot_raw_mode(node, 1)}, i2={_blk_sum_slot_raw_mode(node, 2)}, i3={_blk_sum_slot_raw_mode(node, 3)}")
-        print(f"    active modes  : i0={_blk_sum_slot_active_mode(node, 0)}, i1={_blk_sum_slot_active_mode(node, 1)}, i2={_blk_sum_slot_active_mode(node, 2)}, i3={_blk_sum_slot_active_mode(node, 3)}")
+        print(f"    raw modes     : i0={get_blk_sum_slot_raw_mode(node, 0)}, i1={get_blk_sum_slot_raw_mode(node, 1)}, i2={get_blk_sum_slot_raw_mode(node, 2)}, i3={get_blk_sum_slot_raw_mode(node, 3)}")
+        print(f"    active modes  : i0={get_blk_sum_slot_active_mode(node, 0)}, i1={get_blk_sum_slot_active_mode(node, 1)}, i2={get_blk_sum_slot_active_mode(node, 2)}, i3={get_blk_sum_slot_active_mode(node, 3)}")
         print(f"    equation : {outputs[0]} = {rhs}")
 
     print(
@@ -64,6 +70,9 @@ def print_slot_frame(slot_name: str, circuit: DgsCircuit) -> None:
 
 
 def main() -> None:
+    """
+    Run the graphical frame analysis for the configured DGS slots.
+    """
     circuit = DgsCircuit()
     circuit.parse_dgs(DGS_PATH)
 
