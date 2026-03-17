@@ -34,6 +34,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_generator_emt_type_template, get_complete_generator_template, get_generator_sauer_pai_type_template
+from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
@@ -87,6 +88,7 @@ wire = gce.Wire(name="Panther 30/7 ACSR",
 tower.add_wire_relationship(wire=wire, xpos=-12.65, ypos=27.5, phase=1)
 tower.add_wire_relationship(wire=wire, xpos=0.0, ypos=27.5, phase=2)
 tower.add_wire_relationship(wire=wire, xpos=12.65, ypos=27.5, phase=3)
+
 tower.compute()
 
 # Aplicar física a la línea
@@ -124,7 +126,9 @@ for bus in grid.buses:
 # gen_mdl = get_generator_classical_type_template(grid=grid, gen = gen0).block
 # gen_mdl = get_generator_sauer_pai_type_template(grid=grid, gen = gen0).block
 
-gen_mdl = get_complete_generator_template(grid=grid, gen = gen0).block
+# gen_mdl = get_complete_generator_template(grid=grid, gen = gen0).block
+gen_mdl = get_simple_generator_emt_template(grid=grid, gen = gen0).block
+
 
 # line
 line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
@@ -239,7 +243,7 @@ if CHOSEN_SOLVER not in SOLVER_TYPE_MAP:
     raise ValueError(f"Solver '{CHOSEN_SOLVER}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
 
 options = EmtOptions(time_step = 5e-6, # 5e-7,
-                     simulation_time =  0.025,  #5e-6*10, # s
+                     simulation_time =  0.02,  #5e-6*10, # s
                      tolerance = 1e-6,
                      solver = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
@@ -892,12 +896,8 @@ def plot_simple_generator_emt_type():
 
     theta = find_name_in_block("theta_simple_emt_type_generator_template", gen_mdl)
     omega_gen = find_name_in_block("omega_simple_emt_type_generator_template", gen_mdl)
-    # theta_mec = find_name_in_block("theta_mec_emt_type_generator_template", gen_mdl)
-    # omega_mec_gen = find_name_in_block("w_mec_emt_type_generator_template", gen_mdl)
     theta_plt = y[:, problem.get_var_idx(theta)]
     omega_plt = y[:, problem.get_var_idx(omega_gen)]
-    # theta_mec_plt = y[:, problem.get_var_idx(theta_mec)]
-    # omega_mec_plt = y[:, problem.get_var_idx(omega_mec_gen)]
 
     plt.figure(figsize=(12, 8))
 
@@ -967,11 +967,11 @@ def plot_simple_generator_emt_type():
     print("Generating plots...")
     plt.show()
 
-    Pm_gen = find_name_in_block("P_m_simple_emt_type_generator_template", gen_mdl)
-    Qe_gen = find_name_in_block("Q_e_simple_emt_type_generator_template", gen_mdl)
-    Pe_gen = find_name_in_block("P_e_simple_emt_type_generator_template", gen_mdl)
-    Tm_gen = find_name_in_block("T_m_simple_emt_type_generator_template", gen_mdl)
-    Te_gen = find_name_in_block("T_e_simple_emt_type_generator_template", gen_mdl)
+    Pm_gen = find_name_in_block("Pm_simple_emt_type_generator_template", gen_mdl)
+    Qe_gen = find_name_in_block("Qe_simple_emt_type_generator_template", gen_mdl)
+    Pe_gen = find_name_in_block("Pe_simple_emt_type_generator_template", gen_mdl)
+    Tm_gen = find_name_in_block("Tm", gen_mdl)
+    Te_gen = find_name_in_block("Te_simple_emt_type_generator_template", gen_mdl)
     Pm_gen_plt = y[:, problem.get_var_idx(Pm_gen)]
     Qe_gen_plt = y[:, problem.get_var_idx(Qe_gen)]
     Pe_gen_plt = y[:, problem.get_var_idx(Pe_gen)]
@@ -1021,7 +1021,7 @@ def plot_simple_generator_emt_type():
     v_d_gen = find_name_in_block("v_d_simple_emt_type_generator_template", gen_mdl)
     v_q_gen = find_name_in_block("v_q_simple_emt_type_generator_template", gen_mdl)
     v_0_gen = find_name_in_block("v_0_simple_emt_type_generator_template", gen_mdl)
-    v_f_gen = find_name_in_block("v_f_simple_emt_type_generator_template", gen_mdl)
+    v_f_gen = find_name_in_block("Vf", gen_mdl)
     i_d_gen_plt = y[:, problem.get_var_idx(i_d_gen)]
     i_q_gen_plt = y[:, problem.get_var_idx(i_q_gen)]
     i_0_gen_plt = y[:, problem.get_var_idx(i_0_gen)]
@@ -1077,16 +1077,16 @@ def plot_simple_generator_emt_type():
     print("Generating plots...")
     plt.show()
 
-    i_f_A_line = find_name_in_block("if_line0_0", line0.emt_model)
-    i_f_B_line = find_name_in_block("if_line0_1", line0.emt_model)
-    i_f_C_line = find_name_in_block("if_line0_2", line0.emt_model)
+    i_f_A_line = find_name_in_block("if_pi_line_emt_template_0", line0.emt_model)
+    i_f_B_line = find_name_in_block("if_pi_line_emt_template_1", line0.emt_model)
+    i_f_C_line = find_name_in_block("if_pi_line_emt_template_2", line0.emt_model)
     i_f_A_line_plt = y[:, problem.get_var_idx(i_f_A_line)]
     i_f_B_line_plt = y[:, problem.get_var_idx(i_f_B_line)]
     i_f_C_line_plt = y[:, problem.get_var_idx(i_f_C_line)]
 
-    i_t_A_line = find_name_in_block("it_line0_0", line0.emt_model)
-    i_t_B_line = find_name_in_block("it_line0_1", line0.emt_model)
-    i_t_C_line = find_name_in_block("it_line0_2", line0.emt_model)
+    i_t_A_line = find_name_in_block("it_pi_line_emt_template_0", line0.emt_model)
+    i_t_B_line = find_name_in_block("it_pi_line_emt_template_1", line0.emt_model)
+    i_t_C_line = find_name_in_block("it_pi_line_emt_template_2", line0.emt_model)
     i_t_A_line_plt = y[:, problem.get_var_idx(i_t_A_line)]
     i_t_B_line_plt = y[:, problem.get_var_idx(i_t_B_line)]
     i_t_C_line_plt = y[:, problem.get_var_idx(i_t_C_line)]
@@ -1145,23 +1145,23 @@ def plot_simple_generator_emt_type():
     print("Generating plots...")
     plt.show()
 
-    i_ser_A = find_name_in_block("i_ser_line0_0", line0.emt_model)
-    i_ser_B = find_name_in_block("i_ser_line0_1", line0.emt_model)
-    i_ser_C = find_name_in_block("i_ser_line0_2", line0.emt_model)
+    i_ser_A = find_name_in_block("i_ser_pi_line_emt_template_0", line0.emt_model)
+    i_ser_B = find_name_in_block("i_ser_pi_line_emt_template_1", line0.emt_model)
+    i_ser_C = find_name_in_block("i_ser_pi_line_emt_template_2", line0.emt_model)
     i_ser_A_plt = y[:, problem.get_var_idx(i_ser_A)]
     i_ser_B_plt = y[:, problem.get_var_idx(i_ser_B)]
     i_ser_C_plt = y[:, problem.get_var_idx(i_ser_C)]
 
-    i_f_cap_A = find_name_in_block("i_cap_f_line0_0", line0.emt_model)
-    i_f_cap_B = find_name_in_block("i_cap_f_line0_1", line0.emt_model)
-    i_f_cap_C = find_name_in_block("i_cap_f_line0_2", line0.emt_model)
+    i_f_cap_A = find_name_in_block("i_cap_f_pi_line_emt_template_0", line0.emt_model)
+    i_f_cap_B = find_name_in_block("i_cap_f_pi_line_emt_template_1", line0.emt_model)
+    i_f_cap_C = find_name_in_block("i_cap_f_pi_line_emt_template_2", line0.emt_model)
     i_f_cap_A_plt = y[:, problem.get_var_idx(i_f_cap_A)]
     i_f_cap_B_plt = y[:, problem.get_var_idx(i_f_cap_B)]
     i_f_cap_C_plt = y[:, problem.get_var_idx(i_f_cap_C)]
 
-    i_t_cap_A = find_name_in_block("i_cap_t_line0_0", line0.emt_model)
-    i_t_cap_B = find_name_in_block("i_cap_t_line0_1", line0.emt_model)
-    i_t_cap_C = find_name_in_block("i_cap_t_line0_2", line0.emt_model)
+    i_t_cap_A = find_name_in_block("i_cap_t_pi_line_emt_template_0", line0.emt_model)
+    i_t_cap_B = find_name_in_block("i_cap_t_pi_line_emt_template_1", line0.emt_model)
+    i_t_cap_C = find_name_in_block("i_cap_t_pi_line_emt_template_2", line0.emt_model)
     i_t_cap_A_plt = y[:, problem.get_var_idx(i_t_cap_A)]
     i_t_cap_B_plt = y[:, problem.get_var_idx(i_t_cap_B)]
     i_t_cap_C_plt = y[:, problem.get_var_idx(i_t_cap_C)]

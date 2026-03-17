@@ -265,11 +265,15 @@ def init_explicit_emt(
                         print(f"event_param:{var.name} initialized from init_eqs with: {res}")
 
 
+                        # param_idx: int = variable_parameters.index(var)
+                        # if event_parameters_eqs[param_idx].value is None:
+                        #     event_parameters_eqs[param_idx] = Const(res)
+                        # else:
+                        #     pass
                         param_idx: int = variable_parameters.index(var)
-                        if event_parameters_eqs[param_idx].value is None:
-                            event_parameters_eqs[param_idx] = Const(res)
-                        else:
-                            pass
+                        # event_parameters_eqs[param_idx] = Const(res)
+                        event_parameters_eqs[param_idx].value = float(res)
+                        event_params_array[param_idx] = float(res)
 
                 # Logic for standard algebraic variables
                 else:

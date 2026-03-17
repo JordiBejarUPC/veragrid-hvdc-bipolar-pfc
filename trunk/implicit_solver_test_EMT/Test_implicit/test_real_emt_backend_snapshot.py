@@ -78,7 +78,7 @@ def build_two_bus_real_emt_case(zip_load: bool = False) -> Tuple[EmtProblemDae, 
     gen_mdl = get_generator_thevenin_rl_emt_template(grid=grid, gen=gen0).block
     line_mdl = get_pi_line_emt_template(grid=grid, line=line0).block
     if zip_load:
-        load_mdl = get_load_ZIP_3ph_emt_template(grid=grid, load=load).block
+        load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.emt_var_factory).block
     else:
         load_mdl = get_shunt_r_3ph_emt_template(grid=grid, load=load).block
 

@@ -597,7 +597,9 @@ class JitSymbolicSolver:
         if params0 is not None:
             ev_params = params0.copy()
         else:
-            ev_params = np.zeros(n_event_params, dtype=np.float64)
+            # ev_params = np.zeros(n_event_params, dtype=np.float64)
+            ev_params_list = [c for c in self.problem.event_params_values]
+            ev_params = np.array([float(val) if val is not None else 0.0 for val in ev_params_list], dtype=np.float64)
 
         trace_collector = self.problem.get_newton_trace_collector()
         diag_cfg = self._newton_diag_config

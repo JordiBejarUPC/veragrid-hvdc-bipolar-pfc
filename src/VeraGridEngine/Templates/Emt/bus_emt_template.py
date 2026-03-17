@@ -41,14 +41,7 @@ class BusEmtTemplateNABC(EmtModelTemplate):
         if not v_list:
             raise ValueError("Bus has no enabled phases")
 
-        # d_v_list = [dv for dv in (self.d_v_N, self.d_v_A, self.d_v_B, self.d_v_C) if dv is not None]
-        # if not d_v_list:
-        #     raise ValueError("Bus has no enabled phases")
-
         self._block = Block(
-            # state_vars=v_list,
-            # diff_vars = d_v_list,
-            # out_vars=v_list + d_v_list
             algebraic_vars=v_list,
             out_vars = v_list
         )
@@ -58,10 +51,6 @@ class BusEmtTemplateNABC(EmtModelTemplate):
             VarPowerFlowRefferenceType.v_A: self.v_A,
             VarPowerFlowRefferenceType.v_B: self.v_B,
             VarPowerFlowRefferenceType.v_C: self.v_C,
-            # VarPowerFlowRefferenceType.d_v_N: self.d_v_N,
-            # VarPowerFlowRefferenceType.d_v_A: self.d_v_A,
-            # VarPowerFlowRefferenceType.d_v_B: self.d_v_B,
-            # VarPowerFlowRefferenceType.d_v_C: self.d_v_C,
             VarPowerFlowRefferenceType.P: None,
             VarPowerFlowRefferenceType.Q: None
         }

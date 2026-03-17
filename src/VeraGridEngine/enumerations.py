@@ -2846,6 +2846,65 @@ class ParamPowerFlowRefferenceType(Enum):
     Pl0_C = "Pl0_C"  # Load active power phase C
     Ql0_C = "Ql0_C"  # Load reactive power phase C
 
+    # Three-phase line coupled R L and C
+    Rnn = "Rnn" # N-N line series resistance
+    Rna = "Rna"  # N-A line series resistance
+    Rnb = "Rnb"  # N-B line series resistance
+    Rnc = "Rnc"  # N-C line series resistance
+    Ran = "Ran"  # A-N line series resistance
+    Raa = "Raa"  # A-A line series resistance
+    Rab = "Rab"  # A-B line series resistance
+    Rac = "Rac"  # A-C line series resistance
+    Rbn = "Rbn"  # B-N line series resistance
+    Rba = "Rba"  # B-A line series resistance
+    Rbb = "Rbb"  # B-B line series resistance
+    Rbc = "Rbc"  # B-C line series resistance
+    Rcn = "Rcn"  # C-N line series resistance
+    Rca = "Rca"  # C-A line series resistance
+    Rcb = "Rcb"  # C-B line series resistance
+    Rcc = "Rcc"  # C-C line series resistance
+
+    Linv_nn = "Linv_nn"  # N-N line inverse series inductance
+    Linv_na = "Linv_na"  # N-A line inverse series inductance
+    Linv_nb = "Linv_nb"  # N-B line inverse series inductance
+    Linv_nc = "Linv_nc"  # N-C line inverse series inductance
+    Linv_an = "Linv_an"  # A-N line inverse series inductance
+    Linv_aa = "Linv_aa"  # A-A line inverse series inductance
+    Linv_ab = "Linv_ab"  # A-B line inverse series inductance
+    Linv_ac = "Linv_ac"  # A-C line inverse series inductance
+    Linv_bn = "Linv_bn"  # B-N line inverse series inductance
+    Linv_ba = "Linv_ba"  # B-A line inverse series inductance
+    Linv_bb = "Linv_bb"  # B-B line inverse series inductance
+    Linv_bc = "Linv_bc"  # B-C line inverse series inductance
+    Linv_cn = "Linv_cn"  # C-N line inverse series inductance
+    Linv_ca = "Linv_ca"  # C-A line inverse series inductance
+    Linv_cb = "Linv_cb"  # C-B line inverse series inductance
+    Linv_cc = "Linv_cc"  # C-C line inverse series inductance
+
+    Cnn = "Cnn"  # N-N line shunt capacitance
+    Cna = "Cna"  # N-A line shunt capacitance
+    Cnb = "Cnb"  # N-B line shunt capacitance
+    Cnc = "Cnc"  # N-C line shunt capacitance
+    Can = "Can"  # A-N line shunt capacitance
+    Caa = "Caa"  # A-A line shunt capacitance
+    Cab = "Cab"  # A-B line shunt capacitance
+    Cac = "Cac"  # A-C line shunt capacitance
+    Cbn = "Cbn"  # B-N line shunt capacitance
+    Cba = "Cba"  # B-A line shunt capacitance
+    Cbb = "Cbb"  # B-B line shunt capacitance
+    Cbc = "Cbc"  # B-C line shunt capacitance
+    Ccn = "Ccn"  # C-N line shunt capacitance
+    Cca = "Cca"  # C-A line shunt capacitance
+    Ccb = "Ccb"  # C-B line shunt capacitance
+    Ccc = "Ccc"  # C-C line shunt capacitance
+
+
+    # Active phases in a branch
+    phN = "phN" # 1 if the N wire is active, else 0.
+    phA = "phA"  # 1 if the A wire is active, else 0.
+    phB = "phB"  # 1 if the B wire is active, else 0.
+    phC = "phC"  # 1 if the C wire is active, else 0.
+
     # Machine / power flow parameters
     fn = "fn"
     ws = "ws"
@@ -2905,6 +2964,8 @@ class ParamPowerFlowRefferenceType(Enum):
     vf = "vf"
     tm0 = "tm0"
 
+    omega_base = "omega_base" # in rad/s
+    Sbase = "Sbase" # in MVA
 
 
     def __str__(self):
