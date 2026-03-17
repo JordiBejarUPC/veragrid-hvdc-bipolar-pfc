@@ -4,7 +4,7 @@
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block
 from VeraGridEngine.Utils.procedural_logic import lastvalue, reset, sampled_value
 from VeraGridEngine.enumerations import DeviceType
 
@@ -34,9 +34,13 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
 
     # --- Algebraic / Shared Variables ---
     COS_yi = vf.add_var('COS__[yi]_' + name)
+    DP = vf.add_var('DP_' + name)
+    DP2 = vf.add_var('DP2_' + name)
     DP_full = vf.add_var('DP_full_' + name)
+    DP_full_1 = vf.add_var('DP_full_' + name)
     Dw = vf.add_var('Dw_' + name)
     Dw_1 = vf.add_var('Dw_' + name)
+    Dw_2 = vf.add_var('Dw_' + name)
     Freeze_Gate_proc_select_0 = vf.add_var('Freeze_Gate__proc_select_0_' + name)
     Freeze_Gate_proc_select_0_1 = vf.add_var('Freeze_Gate__proc_select_0_' + name)
     Limit_ss_x = vf.add_var('Limit_ss__x_' + name)
@@ -46,10 +50,14 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
     P_capab_high = vf.add_var('P_capab_high_' + name)
     P_capab_low = vf.add_var('P_capab_low_' + name)
     Pmeas = vf.add_var('Pmeas_' + name)
+    Pref_sat = vf.add_var('Pref_sat_' + name)
     Pref_sat1 = vf.add_var('Pref_sat1_' + name)
     Pset = vf.add_var('Pset_' + name)
+    Pvsc_fil = vf.add_var('Pvsc_fil_' + name)
     SIN_yi = vf.add_var('SIN__[yi]_' + name)
+    W_base = vf.add_var('W_base_' + name)
     cosdelta = vf.add_var('cosdelta_' + name)
+    damping2 = vf.add_var('damping2_' + name)
     delta = vf.add_var('delta_' + name)
     f1 = vf.add_var('f1_' + name)
     flag_overload = vf.add_var('flag_overload_' + name)
@@ -62,8 +70,11 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
     u_in_1 = vf.add_var('u_in_' + name)
     w = vf.add_var('w_' + name)
     w_r = vf.add_var('w_r_' + name)
+    wdiff = vf.add_var('wdiff_' + name)
     wref = vf.add_var('wref_' + name)
+    wref_1 = vf.add_var('wref_' + name)
     wset = vf.add_var('wset_' + name)
+    wset_1 = vf.add_var('wset_' + name)
     x_init = vf.add_var('x_init_' + name)
     y_max_PI = vf.add_var('y_max_PI_' + name)
     y_min_PI = vf.add_var('y_min_PI_' + name)
@@ -113,7 +124,7 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
 
     v_1_2Hs_1 = Block(
         state_eqs=[
-            ((sym.Const(1.0) / (sym.Const(2.0) * v_1_2Hs_H)) * DP_full),
+            ((sym.Const(1.0) / (sym.Const(2.0) * v_1_2Hs_H)) * DP_full_1),
         ],
         state_vars=[v_1_2Hs_xw],
         algebraic_eqs=[
@@ -132,7 +143,7 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
 
     v_1_s_2 = Block(
         state_eqs=[
-            yi,
+            Dw,
         ],
         state_vars=[v_1_s_x],
         algebraic_eqs=[
@@ -147,7 +158,7 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
 
     v_1_s_3 = Block(
         state_eqs=[
-            yi_1,
+            Dw,
         ],
         state_vars=[v_1_s_x_1],
         algebraic_eqs=[
@@ -162,7 +173,7 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
 
     v_1_s_4 = Block(
         state_eqs=[
-            yi_2,
+            Dw,
         ],
         state_vars=[v_1_s_x_2],
         algebraic_eqs=[
@@ -200,7 +211,7 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
 
     Freeze_Gate_7 = Block(
         algebraic_eqs=[
-            (y_out - ((Freeze_Gate_proc_select_0 * sym.Const(0.0)) + ((sym.Const(1.0) - Freeze_Gate_proc_select_0) * u_in))),
+            (y_out - ((Freeze_Gate_proc_select_0 * sym.Const(0.0)) + ((sym.Const(1.0) - Freeze_Gate_proc_select_0) * DP_full_1))),
         ],
         algebraic_vars=[y_out],
         in_vars=[flag_overload_1, u_in],
@@ -212,12 +223,12 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         Freeze_Gate_proc_select_0: vf.add_const(0.0, name=''),
     }
     Freeze_Gate_7.procedural_logic = [
-        sampled_value(output=Freeze_Gate_proc_select_0, source=(flag_overload_1 > 0.5)),
+        sampled_value(output=Freeze_Gate_proc_select_0, source=(flag_overload > 0.5)),
     ]
 
     Freeze_Gate_8 = Block(
         algebraic_eqs=[
-            (y_out_1 - ((Freeze_Gate_proc_select_0_1 * sym.Const(0.0)) + ((sym.Const(1.0) - Freeze_Gate_proc_select_0_1) * u_in_1))),
+            (y_out_1 - ((Freeze_Gate_proc_select_0_1 * sym.Const(0.0)) + ((sym.Const(1.0) - Freeze_Gate_proc_select_0_1) * DP_full_1))),
         ],
         algebraic_vars=[y_out_1],
         in_vars=[flag_overload_2, u_in_1],
@@ -229,152 +240,12 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         Freeze_Gate_proc_select_0_1: vf.add_const(0.0, name=''),
     }
     Freeze_Gate_8.procedural_logic = [
-        sampled_value(output=Freeze_Gate_proc_select_0_1, source=(flag_overload_2 > 0.5)),
+        sampled_value(output=Freeze_Gate_proc_select_0_1, source=(flag_overload > 0.5)),
     ]
 
-    From_9 = Block(
-        name='From'
-    )
-
-    From_1_10 = Block(
-        name='From(1)'
-    )
-
-    From_12_11 = Block(
-        name='From(12)'
-    )
-
-    From_13_12 = Block(
-        name='From(13)'
-    )
-
-    From_18_13 = Block(
-        name='From(18)'
-    )
-
-    From_19_14 = Block(
-        name='From(19)'
-    )
-
-    From_2_15 = Block(
-        name='From(2)'
-    )
-
-    From_20_16 = Block(
-        name='From(20)'
-    )
-
-    From_3_17 = Block(
-        name='From(3)'
-    )
-
-    From_31_18 = Block(
-        name='From(31)'
-    )
-
-    From_38_19 = Block(
-        name='From(38)'
-    )
-
-    From_39_20 = Block(
-        name='From(39)'
-    )
-
-    From_4_21 = Block(
-        name='From(4)'
-    )
-
-    From_4_22 = Block(
-        name='From(4)'
-    )
-
-    From_5_23 = Block(
-        name='From(5)'
-    )
-
-    From_6_24 = Block(
-        name='From(6)'
-    )
-
-    From_66_25 = Block(
-        name='From(66)'
-    )
-
-    From_7_26 = Block(
-        name='From(7)'
-    )
-
-    From_8_27 = Block(
-        name='From(8)'
-    )
-
-    From_9_28 = Block(
-        name='From(9)'
-    )
-
-    Goto_29 = Block(
-        name='Goto'
-    )
-
-    Goto_14_30 = Block(
-        name='Goto(14)'
-    )
-
-    Goto_20_31 = Block(
-        name='Goto(20)'
-    )
-
-    Goto_21_32 = Block(
-        name='Goto(21)'
-    )
-
-    Goto_22_33 = Block(
-        name='Goto(22)'
-    )
-
-    Goto_24_34 = Block(
-        name='Goto(24)'
-    )
-
-    Goto_3_35 = Block(
-        name='Goto(3)'
-    )
-
-    Goto_4_36 = Block(
-        name='Goto(4)'
-    )
-
-    Goto_5_37 = Block(
-        name='Goto(5)'
-    )
-
-    Goto_54_38 = Block(
-        name='Goto(54)'
-    )
-
-    Goto_6_39 = Block(
-        name='Goto(6)'
-    )
-
-    Goto_6_40 = Block(
-        name='Goto(6)'
-    )
-
-    Goto_7_41 = Block(
-        name='Goto(7)'
-    )
-
-    Goto_8_42 = Block(
-        name='Goto(8)'
-    )
-
-    Goto_9_43 = Block(
-        name='Goto(9)'
-    )
-
-    K_44 = Block(
+    K_9 = Block(
         algebraic_eqs=[
-            (yo_6 - (Multiply_K_K * yi_4)),
+            (yo_6 - (Multiply_K_K * Dw)),
         ],
         algebraic_vars=[yo_6],
         in_vars=[yi_4],
@@ -382,11 +253,11 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         name='K'
     )
     # --- Parameter Values ---
-    K_44.event_dict = {
+    K_9.event_dict = {
         Multiply_K_K: vf.add_const(None, name='K'),
     }
 
-    Limit_ss_45 = Block(
+    Limit_ss_10 = Block(
         algebraic_eqs=[
             (yo_7 - Limit_ss_x),
         ],
@@ -396,49 +267,49 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         name='Limit_ss'
     )
     # --- Parameter Values ---
-    Limit_ss_45.event_dict = {
+    Limit_ss_10.event_dict = {
         Limit_ss_Tau: vf.add_const(None, name='Tau'),
     }
 
-    PI_with_hold_and_reset_46 = Block(
+    PI_with_hold_and_reset_11 = Block(
         state_eqs=[
-            ((PI_with_hold_and_reset_proc_select_0 * sym.Const(0.0)) + ((sym.Const(1.0) - PI_with_hold_and_reset_proc_select_0) * ((PI_with_hold_and_reset_GFOR_QREG_Kp / PI_with_hold_and_reset_GFOR_QREG_Ti) * yi_6))),
+            ((PI_with_hold_and_reset_proc_select_0 * sym.Const(0.0)) + ((sym.Const(1.0) - PI_with_hold_and_reset_proc_select_0) * ((PI_with_hold_and_reset_GFOR_QREG_Kp / PI_with_hold_and_reset_GFOR_QREG_Ti) * Dw))),
         ],
         state_vars=[PI_with_hold_and_reset_x],
         algebraic_eqs=[
-            (yo_8 - ((PI_with_hold_and_reset_proc_select_2 * PI_with_hold_and_reset_proc_lastvalue_1) + ((sym.Const(1.0) - PI_with_hold_and_reset_proc_select_2) * ((y_min_PI + ((((PI_with_hold_and_reset_GFOR_QREG_Kp * yi_6) + ((y_min_PI + ((PI_with_hold_and_reset_x - y_min_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_min_PI)))) - ((PI_with_hold_and_reset_x - y_max_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_max_PI))))) - y_min_PI) * sym.heaviside((((PI_with_hold_and_reset_GFOR_QREG_Kp * yi_6) + ((y_min_PI + ((PI_with_hold_and_reset_x - y_min_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_min_PI)))) - ((PI_with_hold_and_reset_x - y_max_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_max_PI))))) - y_min_PI)))) - ((((PI_with_hold_and_reset_GFOR_QREG_Kp * yi_6) + ((y_min_PI + ((PI_with_hold_and_reset_x - y_min_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_min_PI)))) - ((PI_with_hold_and_reset_x - y_max_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_max_PI))))) - y_max_PI) * sym.heaviside((((PI_with_hold_and_reset_GFOR_QREG_Kp * yi_6) + ((y_min_PI + ((PI_with_hold_and_reset_x - y_min_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_min_PI)))) - ((PI_with_hold_and_reset_x - y_max_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_max_PI))))) - y_max_PI))))))),
+            (yo_8 - ((PI_with_hold_and_reset_proc_select_2 * PI_with_hold_and_reset_proc_lastvalue_1) + ((sym.Const(1.0) - PI_with_hold_and_reset_proc_select_2) * ((y_min_PI + ((((PI_with_hold_and_reset_GFOR_QREG_Kp * Dw) + ((y_min_PI + ((PI_with_hold_and_reset_x - y_min_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_min_PI)))) - ((PI_with_hold_and_reset_x - y_max_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_max_PI))))) - y_min_PI) * sym.heaviside((((PI_with_hold_and_reset_GFOR_QREG_Kp * Dw) + ((y_min_PI + ((PI_with_hold_and_reset_x - y_min_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_min_PI)))) - ((PI_with_hold_and_reset_x - y_max_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_max_PI))))) - y_min_PI)))) - ((((PI_with_hold_and_reset_GFOR_QREG_Kp * Dw) + ((y_min_PI + ((PI_with_hold_and_reset_x - y_min_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_min_PI)))) - ((PI_with_hold_and_reset_x - y_max_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_max_PI))))) - y_max_PI) * sym.heaviside((((PI_with_hold_and_reset_GFOR_QREG_Kp * Dw) + ((y_min_PI + ((PI_with_hold_and_reset_x - y_min_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_min_PI)))) - ((PI_with_hold_and_reset_x - y_max_PI) * sym.heaviside((PI_with_hold_and_reset_x - y_max_PI))))) - y_max_PI))))))),
         ],
         algebraic_vars=[yo_8],
         in_vars=[yi_6, hold, rst, y_max_PI, y_min_PI, x_init],
         out_vars=[yo_8],
         name='PI with hold and reset'
     )
-    PI_with_hold_and_reset_46.diff_vars = [d_PI_with_hold_and_reset_x]
+    PI_with_hold_and_reset_11.diff_vars = [d_PI_with_hold_and_reset_x]
     # --- Parameter Values ---
-    PI_with_hold_and_reset_46.event_dict = {
+    PI_with_hold_and_reset_11.event_dict = {
         PI_with_hold_and_reset_GFOR_QREG_Kp: vf.add_const(None, name='GFOR_QREG_Kp'),
         PI_with_hold_and_reset_GFOR_QREG_Ti: vf.add_const(None, name='GFOR_QREG_Ti'),
     }
     # --- Retained Runtime Modes ---
-    PI_with_hold_and_reset_46.mode_dict = {
+    PI_with_hold_and_reset_11.mode_dict = {
         PI_with_hold_and_reset_proc_select_0: vf.add_const(0.0, name=''),
         PI_with_hold_and_reset_proc_lastvalue_1: vf.add_const(0.0, name=''),
         PI_with_hold_and_reset_proc_select_2: vf.add_const(0.0, name=''),
     }
     # --- Initial Equations and Guesses ---
-    PI_with_hold_and_reset_46.init_eqs = {
+    PI_with_hold_and_reset_11.init_eqs = {
         PI_with_hold_and_reset_x: x_init,
     }
-    PI_with_hold_and_reset_46.procedural_logic = [
+    PI_with_hold_and_reset_11.procedural_logic = [
         sampled_value(output=PI_with_hold_and_reset_proc_select_0, source=hold),
         lastvalue(yo_8, output=PI_with_hold_and_reset_proc_lastvalue_1),
         sampled_value(output=PI_with_hold_and_reset_proc_select_2, source=hold),
         reset(PI_with_hold_and_reset_x, rst, x_init),
     ]
 
-    PT1_47 = Block(
+    PT1_12 = Block(
         state_eqs=[
-            ((yi_7 - PT1_x) / PT1_T),
+            ((Dw - PT1_x) / PT1_T),
         ],
         state_vars=[PT1_x],
         algebraic_eqs=[
@@ -449,14 +320,14 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         out_vars=[yo_9],
         name='PT1'
     )
-    PT1_47.diff_vars = [d_PT1_x]
+    PT1_12.diff_vars = [d_PT1_x]
     # --- Parameter Values ---
-    PT1_47.event_dict = {
+    PT1_12.event_dict = {
         PT1_K: vf.add_const(None, name='K'),
         PT1_T: vf.add_const(None, name='T'),
     }
 
-    SIN_48 = Block(
+    SIN_13 = Block(
         algebraic_eqs=[
             (yo_10 - sym.sin(SIN_yi)),
         ],
@@ -466,25 +337,49 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         name='SIN'
     )
 
-    Summation_Point_49 = Block(
+    Summation_Point_14 = Block(
+        algebraic_eqs=[
+            (w - ((sym.Const(0.0) + (sym.Const(1.0) * W_base)) + (sym.Const(1.0) * Dw))),
+        ],
+        algebraic_vars=[w],
+        in_vars=[W_base, Dw_1],
+        out_vars=[w],
         name='Summation Point'
     )
 
-    Summation_Point_2_50 = Block(
+    Summation_Point_2_15 = Block(
+        algebraic_eqs=[
+            (DP_full_1 - ((sym.Const(0.0) + (sym.Const(-1.0) * damping2)) + (sym.Const(1.0) * DP))),
+        ],
+        algebraic_vars=[DP_full_1],
+        in_vars=[damping2, DP2],
+        out_vars=[DP_full_1],
         name='Summation Point(2)'
     )
 
-    Summation_Point_4_51 = Block(
+    Summation_Point_4_16 = Block(
+        algebraic_eqs=[
+            (wdiff - ((sym.Const(0.0) + (sym.Const(-1.0) * wref)) + (sym.Const(1.0) * wset))),
+        ],
+        algebraic_vars=[wdiff],
+        in_vars=[wref_1, wset_1],
+        out_vars=[wdiff],
         name='Summation Point(4)'
     )
 
-    Summation_Point_6_52 = Block(
+    Summation_Point_6_17 = Block(
+        algebraic_eqs=[
+            (DP - ((sym.Const(0.0) + (sym.Const(-1.0) * Pvsc_fil)) + (sym.Const(1.0) * Pref_sat))),
+        ],
+        algebraic_vars=[DP],
+        in_vars=[Pvsc_fil, Pref_sat],
+        out_vars=[DP],
         name='Summation Point(6)'
     )
 
-    angle_integrator_53 = Block(
+    angle_integrator_18 = Block(
         state_eqs=[
-            (Dw_1 * w_r),
+            (Dw * w_r),
         ],
         state_vars=[angle_integrator_x],
         algebraic_eqs=[
@@ -492,15 +387,15 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
             (delta - angle_integrator_x),
         ],
         algebraic_vars=[w_r, delta],
-        in_vars=[Dw_1, f1],
+        in_vars=[Dw_2, f1],
         out_vars=[delta],
         name='angle integrator'
     )
-    angle_integrator_53.diff_vars = [d_angle_integrator_x]
+    angle_integrator_18.diff_vars = [d_angle_integrator_x]
 
-    fn_to_wn_54 = Block(
+    fn_to_wn_19 = Block(
         algebraic_eqs=[
-            (yo_11 - ((sym.Const(2.0) * sym.Const(3.141592653589793)) * yi_9)),
+            (yo_11 - ((sym.Const(2.0) * sym.Const(3.141592653589793)) * Dw)),
         ],
         algebraic_vars=[yo_11],
         in_vars=[yi_9],
@@ -508,8 +403,31 @@ def get_synchronization_loop_emt_template(vf: VarFactory, name: str = 'Synchroni
         name='fn_to_wn'
     )
 
+    # --- Graphical Connections (resolved from From/To) ---
+    v_1_2Hs_1.connect([v_1_2Hs_1.in_vars[0]], [Summation_Point_2_15.out_vars[0]])
+    v_1_s_2.connect([v_1_s_2.in_vars[0]], [v_1_2Hs_1.out_vars[0]])
+    v_1_s_3.connect([v_1_s_3.in_vars[0]], [v_1_2Hs_1.out_vars[0]])
+    v_1_s_4.connect([v_1_s_4.in_vars[0]], [v_1_2Hs_1.out_vars[0]])
+    COS_6.connect([COS_6.in_vars[0]], [v_1_2Hs_1.out_vars[0]])
+    Freeze_Gate_7.connect([Freeze_Gate_7.in_vars[0]], [flag_overload])
+    Freeze_Gate_7.connect([Freeze_Gate_7.in_vars[1]], [Summation_Point_2_15.out_vars[0]])
+    Freeze_Gate_8.connect([Freeze_Gate_8.in_vars[0]], [flag_overload])
+    Freeze_Gate_8.connect([Freeze_Gate_8.in_vars[1]], [Summation_Point_2_15.out_vars[0]])
+    K_9.connect([K_9.in_vars[0]], [v_1_2Hs_1.out_vars[0]])
+    Limit_ss_10.connect([Limit_ss_10.in_vars[0]], [v_1_2Hs_1.out_vars[0]])
+    PI_with_hold_and_reset_11.connect([PI_with_hold_and_reset_11.in_vars[0]], [v_1_2Hs_1.out_vars[0]])
+    PT1_12.connect([PT1_12.in_vars[0]], [v_1_2Hs_1.out_vars[0]])
+    SIN_13.connect([SIN_13.in_vars[0]], [v_1_2Hs_1.out_vars[0]])
+    Summation_Point_14.connect([Summation_Point_14.in_vars[1]], [v_1_2Hs_1.out_vars[0]])
+    Summation_Point_2_15.connect([Summation_Point_2_15.in_vars[1]], [Summation_Point_6_17.out_vars[0]])
+    Summation_Point_4_16.connect([Summation_Point_4_16.in_vars[0]], [wref])
+    Summation_Point_4_16.connect([Summation_Point_4_16.in_vars[1]], [wset])
+    Summation_Point_6_17.connect([Summation_Point_6_17.in_vars[1]], [Pref_sat1])
+    angle_integrator_18.connect([angle_integrator_18.in_vars[0]], [v_1_2Hs_1.out_vars[0]])
+    fn_to_wn_19.connect([fn_to_wn_19.in_vars[0]], [v_1_2Hs_1.out_vars[0]])
+
     templ.block = Block(
-        children=[v_1_0, v_1_2Hs_1, v_1_s_2, v_1_s_3, v_1_s_4, C_5, COS_6, Freeze_Gate_7, Freeze_Gate_8, From_9, From_1_10, From_12_11, From_13_12, From_18_13, From_19_14, From_2_15, From_20_16, From_3_17, From_31_18, From_38_19, From_39_20, From_4_21, From_4_22, From_5_23, From_6_24, From_66_25, From_7_26, From_8_27, From_9_28, Goto_29, Goto_14_30, Goto_20_31, Goto_21_32, Goto_22_33, Goto_24_34, Goto_3_35, Goto_4_36, Goto_5_37, Goto_54_38, Goto_6_39, Goto_6_40, Goto_7_41, Goto_8_42, Goto_9_43, K_44, Limit_ss_45, PI_with_hold_and_reset_46, PT1_47, SIN_48, Summation_Point_49, Summation_Point_2_50, Summation_Point_4_51, Summation_Point_6_52, angle_integrator_53, fn_to_wn_54],
+        children=[v_1_0, v_1_2Hs_1, v_1_s_2, v_1_s_3, v_1_s_4, C_5, COS_6, Freeze_Gate_7, Freeze_Gate_8, K_9, Limit_ss_10, PI_with_hold_and_reset_11, PT1_12, SIN_13, Summation_Point_14, Summation_Point_2_15, Summation_Point_4_16, Summation_Point_6_17, angle_integrator_18, fn_to_wn_19],
         in_vars=[wset, wref, P_capab_high, P_capab_low, Pset, Pmeas, flag_overload],
         out_vars=[w, cosdelta, sindelta, Pref_sat1],
         name='Synchronization Loop'

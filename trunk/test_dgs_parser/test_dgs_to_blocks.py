@@ -4,6 +4,9 @@ import tempfile
 import unittest
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.IO.dgs.dgs_to_blocks import (
+    _blk_sum_slot_active_mode,
+    _blk_sum_slot_mode,
+    _blk_sum_slot_raw_mode,
     _parse_blkdef,
     _split_equation_statements,
     build_blkdef_statement_support_report,
@@ -18,7 +21,7 @@ from VeraGridEngine.IO.dgs.dgs_to_blocks import (
     extract_root_slot_block_internal_only,
     extract_root_slot_block_internal_signal_tree,
 )
-from VeraGridEngine.IO.dgs.dgs_objects import BlkDef
+from VeraGridEngine.IO.dgs.dgs_objects import BlkDef, BlkSum
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
 from VeraGridEngine.enumerations import BlockScopeMode
 
@@ -281,6 +284,26 @@ class TestDgsToBlocks(unittest.TestCase):
         matched = [entry for entry in entries if entry.type_name == "Synchronization Loop"]
         self.assertEqual(len(matched), 1)
 
+    def test_blk_sum_active_mode_is_authoritative(self) -> None:
+        blk_sum = BlkSum()
+        blk_sum.iInput0 = 1
+        blk_sum.iInput0_act = 0
+        blk_sum.iInput1 = 0
+        blk_sum.iInput1_act = 1
+
+        self.assertEqual(_blk_sum_slot_raw_mode(blk_sum, 0), 1)
+        self.assertEqual(_blk_sum_slot_active_mode(blk_sum, 0), 0)
+        self.assertEqual(_blk_sum_slot_mode(blk_sum, 0), 0)
+        self.assertEqual(_blk_sum_slot_mode(blk_sum, 1), 1)
+
+    def test_blk_sum_modes_match_active_modes_in_current_fixture(self) -> None:
+        circuit = DgsCircuit()
+        circuit.parse_dgs(DGS_TEST_FILE)
+
+        for blk_sum in circuit.blksums:
+            for slot in range(4):
+                self.assertEqual(_blk_sum_slot_raw_mode(blk_sum, slot), _blk_sum_slot_active_mode(blk_sum, slot))
+
     def test_can_export_synchronization_loop_to_python_module(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tree_target = os.path.join(tmp, "dgs_sync_loop_tree.py")
@@ -342,9 +365,14 @@ class TestDgsToBlocks(unittest.TestCase):
             with open(written_template, 'r', encoding='utf-8') as fh:
                 generated_template = fh.read()
 
-            self.assertIn("PI_with_hold_and_reset_46.procedural_logic = [", generated_template)
+            self.assertIn("PI_with_hold_and_reset_", generated_template)
+            self.assertIn(".procedural_logic = [", generated_template)
             self.assertIn("lastvalue(", generated_template)
             self.assertIn("reset(", generated_template)
+            self.assertIn(".connect(", generated_template)
+            self.assertIn("name='Summation Point", generated_template)
+            self.assertNotIn("name='From'", generated_template)
+            self.assertNotIn("name='Goto'", generated_template)
 
             spec = importlib.util.spec_from_file_location("dgs_sync_loop_graphical_template", written_template)
             assert spec is not None and spec.loader is not None
@@ -356,6 +384,40 @@ class TestDgsToBlocks(unittest.TestCase):
             child_by_name = {child.name: child for child in templ.block.children}
             self.assertIn("PI with hold and reset", child_by_name)
             self.assertGreater(len(child_by_name["PI with hold and reset"].procedural_logic), 0)
+            self.assertTrue(any(child.name.startswith("Summation Point") for child in templ.block.children))
+            self.assertTrue(all(not child.name.startswith("From") and not child.name.startswith("Goto") for child in templ.block.children))
+
+    def test_can_export_q_vac_droop_graphical_template_with_sum_points(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            template_target = os.path.join(tmp, "dgs_q_vac_graphical_template.py")
+
+            written_template = export_root_slot_block_graphical_template_to_python(
+                dgs_path=DGS_TEST_FILE,
+                output_path=template_target,
+                slot_name="Q/Vac droop",
+                root_name="Grid Forming Converter",
+            )
+
+            self.assertTrue(os.path.exists(written_template))
+
+            with open(written_template, 'r', encoding='utf-8') as fh:
+                generated_template = fh.read()
+
+            self.assertIn("name='Summation Point'", generated_template)
+            self.assertIn(".connect(", generated_template)
+            self.assertNotIn("name='From'", generated_template)
+            self.assertNotIn("name='Goto'", generated_template)
+
+            spec = importlib.util.spec_from_file_location("dgs_q_vac_graphical_template", written_template)
+            assert spec is not None and spec.loader is not None
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            vf = VarFactory()
+            templ = module.get_template(vf)
+            sum_children = [child for child in templ.block.children if child.name.startswith("Summation Point")]
+            self.assertGreaterEqual(len(sum_children), 5)
+            self.assertTrue(all(not child.name.startswith("From") and not child.name.startswith("Goto") for child in templ.block.children))
 
     def test_can_export_pi_hold_template_with_top_level_procedural_logic(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
