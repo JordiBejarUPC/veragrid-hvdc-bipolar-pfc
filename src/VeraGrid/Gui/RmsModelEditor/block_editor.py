@@ -178,7 +178,7 @@ class Ui_BlockEditorWindow(object):
 
         self.retranslateUi(BlockEditorWindow)
 
-        self.tabWidget.setCurrentIndex(1)
+        self.tabWidget.setCurrentIndex(0)
 
 
         QMetaObject.connectSlotsByName(BlockEditorWindow)
