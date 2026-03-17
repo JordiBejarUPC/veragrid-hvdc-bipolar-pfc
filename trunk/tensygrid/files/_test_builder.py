@@ -6,6 +6,7 @@ import numpy as np
 import sympy as sp
 from enum import Enum, auto
 from trunk.tensygrid.files._PolynomialMatrixBuilder_class import PolynomialMatrixBuilder
+from trunk.tensygrid.files._GenericMathematicalProblem import GenericMathematicalProblem
 
 class StabilityResult(object):
     """
@@ -74,6 +75,31 @@ class TestPolynomialStability(unittest.TestCase):
             
         for j in range(len(uOP)):
             v_dict[f'u{j+1}'] = float(uOP[j])
+        # --- 2. Instantiate the Compiler-Ready Object ---
+        print("Initializing Mathematical Problem...")
+
+        math_problem = GenericMathematicalProblem(eqs_str=eqs, xOP=xOP, uOP=uOP)
+
+        # --- 3. Quick Verification ---
+        algebraic_eqs: list[str] = list([str(expression) for expression in math_problem._algebraic_eqs])
+        state_eqs: list[str] = list([str(expression) for expression in math_problem._state_eqs])
+        algebraic_vars: list[str] = list([str(expression) for expression in math_problem._algebraic_vars])
+        state_vars: list[str] = list([str(expression) for expression in math_problem._state_vars])
+        print(f"\nState variables ({len(state_vars)}): {state_vars}")
+        print(f"\nAlgebraic variables ({len(algebraic_vars)}): {algebraic_vars}")
+
+        eqs: list[str] = algebraic_eqs + state_eqs
+        print(f"\nNumber of equations: {len(eqs)}")
+        print(f"\nEquation 1: {eqs[0]}")
+        builder = PolynomialMatrixBuilder(
+            eqs=eqs,
+            ineqs=[],
+            state_vars=state_vars,
+            # state_ids=phasor_problem.uid2idx_vars,
+            algebraic_vars=algebraic_vars,
+            # algebraic_ids=phasor_problem._algebraic_ids,
+            verbose=True
+        )
 
         builder.linearize(v_dict)
         res: Tuple[Any, Any, Any, Any, bool, float] = builder.compute_stability()

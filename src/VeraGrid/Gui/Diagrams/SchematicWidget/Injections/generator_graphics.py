@@ -7,8 +7,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 import numpy as np
-from PySide6 import QtWidgets, QtCore
-from PySide6.QtWidgets import QMenu
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGrid.Gui.Diagrams.generic_graphics import Circle
 from VeraGrid.Gui.messages import yes_no_question, info_msg
@@ -17,7 +15,7 @@ from VeraGrid.Gui.Diagrams.Editors.generator_editor import GeneratorQCurveEditor
 from VeraGrid.Gui.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
 from VeraGrid.Gui.WindPowerWizard.wind_power_wizzard import WindFarmWizard
 from VeraGrid.Gui.gui_functions import add_menu_entry
-from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
 from VeraGridEngine.enumerations import DeviceType
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
@@ -123,6 +121,7 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
             var_factory=self.editor.circuit.rms_var_factory,
             block=self.api_object.rms_model,
             api_object=self.api_object,
+            mode=DynamicEditorMode.RMS,
             main_editor=True,
         )
         rms_model_editor.show()

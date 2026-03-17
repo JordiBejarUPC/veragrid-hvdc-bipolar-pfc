@@ -15,7 +15,7 @@ from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType, 
 from VeraGridEngine.Templates.templates_common_functions import (tf_to_block, tf_to_diffblock_with_output,
                                                                  tf_to_diffblock_with_antiwindup,
                                                                  tf_to_block_with_states, 
-                                                                 to_implicit)
+                                                                 to_explicit)
 
 def get_simple_generator_emt_template(grid: MultiCircuit, gen: Generator, name: str = "simple_emt_type_generator_template") -> EmtModelTemplate:
     """

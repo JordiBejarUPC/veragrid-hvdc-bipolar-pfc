@@ -326,68 +326,48 @@ def tf_to_block2(
     )
     return block, y_states[0]
 
-def to_implicit(block: Block, vfactory: VarFactory) -> Block:
+def to_explicit(block: Block, vfactory: VarFactory) -> Block:
     """
     Convert a block with explicit state equations to implicit form.
-    This is done by introducing new algebraic variables for the derivatives and adding equations to relate them.
-    Instead of reusing diff_var objects (which are DiffVar type), we create new algebraic variables
-    and use connect() to substitute them properly.
+    
+    For each state variable x with equation dx/dt = f(x, y):
+    - Create a new algebraic variable dt_x representing the derivative
+    - Add dt_x to algebraic_vars
+    - Add equation: diff(x) - f(x, y) = 0 to algebraic_eqs
+    - Move x from state_vars to algebraic_vars
+    - Remove the state equation from state_eqs
+    
+    This transforms the explicit ODE form into DAE implicit form suitable
+    for solvers that expect algebraic equations.
     """
-    for diff_var in block.diff_vars:
-        base_var = diff_var.base_var
-        # Create a NEW algebraic variable to represent the derivative
-        new_alg_var = vfactory.add_var(f"dt_{base_var.name}")
-
-        # Base Var was not a state
-        if base_var in block.algebraic_vars:
-            # Move base_var to state
-            block.state_vars.append(base_var)
-            block.algebraic_vars.remove(base_var)
-            
-            # Add new_alg_var as algebraic (represents derivative)
-            block.algebraic_vars.append(new_alg_var)
-            
-            # State equation placeholder - we need to maintain 1-to-1 correspondence
-            # The actual constraint is: base_var's derivative = new_alg_var
-            # In the DAE formulation, this is implicit through the algebraic equations
-            # For now, use a placeholder that will be handled by the solver
-            block.state_eqs.append(Const(0.0))
-
-        # Remove base_var from algebraic_vars (it's now a state)
-        elif base_var in block.state_vars:
-            state_idx = block.state_vars.index(base_var)
-            old_state_eq = block.state_eqs[state_idx]
-            
-            # Replace state equation with algebraic constraint on the derivative
-            # The old state equation dx/dt = f(x,y) becomes: 0 = dt_x - f(x,y)
-            block.algebraic_vars.append(new_alg_var)
-            block.algebraic_eqs.append(new_alg_var - old_state_eq)
-            
-            # IMPORTANT: We still need a state equation for base_var!
-            # In semi-explicit DAE form, state equations are dx/dt = f(x,y)
-            # Since dx/dt is now new_alg_var (algebraic), we need:
-            # base_var = integral(new_alg_var) which is implicit
-            # Use a placeholder to maintain the correspondence
-            block.state_eqs[state_idx] = Const(0.0)
-
+    # Process each state variable and its corresponding state equation
+    # We iterate backwards to safely modify lists while iterating
+    for i, state_var in enumerate(block.state_vars):
+        state_eq = block.state_eqs[i]
+        
+        # Create a new algebraic variable for the derivative
+        if state_var.diff_var == None:
+            dt_var = vfactory.add_diff_var(f"dt_{state_var.name}")
+            block.diff_vars.append(dt_var)
         else:
-            raise ValueError(f"Case not supported")
+            dt_var = state_var.diff_var
 
+        implicit_eq = dt_var - state_eq
+        block.algebraic_vars.append(state_var)
+        block.algebraic_eqs.append(implicit_eq)
+        
+        block.init_eqs[dt_var] = vfactory.add_const(0.0)
 
-
-        # Use connect to substitute diff_var with new_alg_var in all equations
-        block.connect([diff_var], [new_alg_var])
-
-        # Set initialization for the new algebraic variable
-        block.init_eqs[new_alg_var] = Const(0.0)
-
-    # Clear diff_vars since we've converted them all
-    block.diff_vars = list()
-
+    
+    # The state_vars become algebraic_vars since they now appear in algebraic equations
+    block.state_vars = list()
+    block.state_eqs = list()
+    
+    
     # Recursively process children
     for b in block.children:
-        b = to_implicit(b, vfactory)
-
+        to_explicit(b, vfactory)
+    
     return block
 
 

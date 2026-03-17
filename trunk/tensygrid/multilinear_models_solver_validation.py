@@ -29,6 +29,7 @@ from VeraGridEngine.Simulations.Rms.numerical.back_euler_ts import BackEulerImpl
 
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 import VeraGridEngine.api as gce
 
@@ -129,7 +130,8 @@ gen0.rms_model = big_gen1
 
 Pl0 = find_name_in_block('Pl0', load_mdl)
 print(Pl0)
-event = RmsEvent(device=load, parameter=Pl0, time=.01, value=-0.9)
+events_group = RmsEventsGroup("simulation1")
+event = RmsEvent(device=load, parameter=Pl0, time=.01, value=-0.9, group=events_group)
 grid.add_rms_event(event)
 
 options = gce.PowerFlowOptions(
@@ -176,6 +178,8 @@ options = RmsOptions(time_step=0.001,
 problem = RmsProblemTensygrid(grid=grid,
                         options=options,
                         pf_results=res)
+
+problem.set_events_group(events_group)
 
 solver = BackEulerImplicitTensygrid(
     problem=problem,
