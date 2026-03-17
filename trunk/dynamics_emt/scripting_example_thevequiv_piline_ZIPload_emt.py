@@ -115,7 +115,7 @@ gen_mdl = get_generator_thevenin_rl_emt_template(grid=grid, gen = gen0).block
 line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 
 # load
-load_mdl = get_load_ZIP_3ph_emt_template(grid = grid, load = load).block
+load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.emt_var_factory).block
 
 # connection with buses
 gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
@@ -1319,16 +1319,16 @@ print("Generating plots...")
 plt.show()
 
 
-i_f_A_line = find_name_in_block("if_line0_0", line0.emt_model)
-i_f_B_line = find_name_in_block("if_line0_1", line0.emt_model)
-i_f_C_line = find_name_in_block("if_line0_2", line0.emt_model)
+i_f_A_line = find_name_in_block("if_pi_line_emt_template_0", line0.emt_model)
+i_f_B_line = find_name_in_block("if_pi_line_emt_template_1", line0.emt_model)
+i_f_C_line = find_name_in_block("if_pi_line_emt_template_2", line0.emt_model)
 i_f_A_line_plt = y[:, problem.get_var_idx(i_f_A_line)]
 i_f_B_line_plt = y[:, problem.get_var_idx(i_f_B_line)]
 i_f_C_line_plt = y[:, problem.get_var_idx(i_f_C_line)]
 
-i_t_A_line = find_name_in_block("it_line0_0", line0.emt_model)
-i_t_B_line = find_name_in_block("it_line0_1", line0.emt_model)
-i_t_C_line = find_name_in_block("it_line0_2", line0.emt_model)
+i_t_A_line = find_name_in_block("it_pi_line_emt_template_0", line0.emt_model)
+i_t_B_line = find_name_in_block("it_pi_line_emt_template_1", line0.emt_model)
+i_t_C_line = find_name_in_block("it_pi_line_emt_template_2", line0.emt_model)
 i_t_A_line_plt = y[:, problem.get_var_idx(i_t_A_line)]
 i_t_B_line_plt = y[:, problem.get_var_idx(i_t_B_line)]
 i_t_C_line_plt = y[:, problem.get_var_idx(i_t_C_line)]
@@ -1387,23 +1387,23 @@ plt.tight_layout()
 print("Generating plots...")
 plt.show()
 
-i_ser_A = find_name_in_block("i_ser_line0_0", line0.emt_model)
-i_ser_B = find_name_in_block("i_ser_line0_1", line0.emt_model)
-i_ser_C = find_name_in_block("i_ser_line0_2", line0.emt_model)
+i_ser_A = find_name_in_block("i_ser_pi_line_emt_template_0", line0.emt_model)
+i_ser_B = find_name_in_block("i_ser_pi_line_emt_template_1", line0.emt_model)
+i_ser_C = find_name_in_block("i_ser_pi_line_emt_template_2", line0.emt_model)
 i_ser_A_plt = y[:, problem.get_var_idx(i_ser_A)]
 i_ser_B_plt = y[:, problem.get_var_idx(i_ser_B)]
 i_ser_C_plt = y[:, problem.get_var_idx(i_ser_C)]
 
-i_f_cap_A = find_name_in_block("i_cap_f_line0_0", line0.emt_model)
-i_f_cap_B = find_name_in_block("i_cap_f_line0_1", line0.emt_model)
-i_f_cap_C = find_name_in_block("i_cap_f_line0_2", line0.emt_model)
+i_f_cap_A = find_name_in_block("i_cap_f_pi_line_emt_template_0", line0.emt_model)
+i_f_cap_B = find_name_in_block("i_cap_f_pi_line_emt_template_1", line0.emt_model)
+i_f_cap_C = find_name_in_block("i_cap_f_pi_line_emt_template_2", line0.emt_model)
 i_f_cap_A_plt = y[:, problem.get_var_idx(i_f_cap_A)]
 i_f_cap_B_plt = y[:, problem.get_var_idx(i_f_cap_B)]
 i_f_cap_C_plt = y[:, problem.get_var_idx(i_f_cap_C)]
 
-i_t_cap_A = find_name_in_block("i_cap_t_line0_0", line0.emt_model)
-i_t_cap_B = find_name_in_block("i_cap_t_line0_1", line0.emt_model)
-i_t_cap_C = find_name_in_block("i_cap_t_line0_2", line0.emt_model)
+i_t_cap_A = find_name_in_block("i_cap_t_pi_line_emt_template_0", line0.emt_model)
+i_t_cap_B = find_name_in_block("i_cap_t_pi_line_emt_template_1", line0.emt_model)
+i_t_cap_C = find_name_in_block("i_cap_t_pi_line_emt_template_2", line0.emt_model)
 i_t_cap_A_plt = y[:, problem.get_var_idx(i_t_cap_A)]
 i_t_cap_B_plt = y[:, problem.get_var_idx(i_t_cap_B)]
 i_t_cap_C_plt = y[:, problem.get_var_idx(i_t_cap_C)]

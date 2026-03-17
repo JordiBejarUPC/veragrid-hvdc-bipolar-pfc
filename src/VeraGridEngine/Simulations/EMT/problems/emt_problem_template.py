@@ -700,5 +700,9 @@ class EmtProblemTemplate(ABC):
         """
         return self._event_params_values
 
+    @property
+    def event_parameters_eqs(self):
+        return self._event_parameters_eqs
+
 
 

@@ -31,7 +31,8 @@ class EmtSimulationDriver(DriverTemplate):
     Dynamic wrapper to use with Qt
     """
 
-    def __init__(self, grid: MultiCircuit,
+    def __init__(self,
+                 grid: MultiCircuit,
                  options: EmtOptions,
                  pf_results: PowerFlowResults3Ph | None,
                  engine: EngineType = EngineType.VeraGrid):
@@ -57,11 +58,7 @@ class EmtSimulationDriver(DriverTemplate):
 
         self.options = options
 
-        self.results = EmtResults(values=np.empty(0),
-                                  time_array=pd.DatetimeIndex(pd.to_datetime(np.empty(0))),
-                                  uid2idx=dict(),
-                                  vars_glob_name2uid=dict(),
-                                  devices=[])
+        self.results = EmtResults | None = None
 
         self.line_states = {}
 

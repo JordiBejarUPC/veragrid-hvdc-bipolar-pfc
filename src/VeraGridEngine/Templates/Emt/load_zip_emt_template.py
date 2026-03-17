@@ -5,12 +5,12 @@
 import numpy as np
 
 from VeraGridEngine import MultiCircuit
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 
-def get_load_ZIP_3ph_emt_template(grid : MultiCircuit, load: Load,  name: str = "ZIP_Load_EMT_3ph") -> EmtModelTemplate:
+def get_load_ZIP_3ph_emt_template(vf: VarFactory,   name: str = "ZIP_Load_EMT_3ph") -> EmtModelTemplate:
     """
     ZIP load model template in the abc domain
     :param grid: MultiCircuit
@@ -24,9 +24,8 @@ def get_load_ZIP_3ph_emt_template(grid : MultiCircuit, load: Load,  name: str = 
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
 
-    vf: VarFactory = grid.rms_var_factory
-    fbase: float = grid.fBase
-    sbase: float = grid.Sbase
+    # fbase: float = grid.fBase
+    # sbase: float = grid.Sbase
 
     # Symbolic constants for math operations
     c0 = vf.add_const(0.0)
@@ -34,9 +33,9 @@ def get_load_ZIP_3ph_emt_template(grid : MultiCircuit, load: Load,  name: str = 
     c05 = vf.add_const(0.5)
 
     # Inputs: Instantaneous phase voltages from the grid
-    v_A = vf.add_var("v_A_" + name)
-    v_B = vf.add_var("v_B_" + name)
-    v_C = vf.add_var("v_C_" + name)
+    v_A = vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
     templ.block.in_vars = [v_A, v_B, v_C]
 
     # Used for initialization:
@@ -64,24 +63,9 @@ def get_load_ZIP_3ph_emt_template(grid : MultiCircuit, load: Load,  name: str = 
     eps = vf.add_var("eps_" + name)
     omega = vf.add_var("omega_" + name)
 
-    PA0 = load.Pa / sbase
-    QA0 = load.Qa / sbase
-    PB0 = load.Pb / sbase
-    QB0 = load.Qb / sbase
-    PC0 = load.Pc / sbase
-    QC0 = load.Qc / sbase
-    # Fundamental angular frequency
-    w_const = (2.0 * np.pi) * fbase
-    templ.block.event_dict[P0_A] = vf.add_const(PA0)
-    templ.block.event_dict[Q0_A] = vf.add_const(QA0)
-    templ.block.event_dict[P0_B] = vf.add_const(PB0)
-    templ.block.event_dict[Q0_B] = vf.add_const(QB0)
-    templ.block.event_dict[P0_C] = vf.add_const(PC0)
-    templ.block.event_dict[Q0_C] = vf.add_const(QC0)
     templ.block.event_dict[V0] = vf.add_const(np.sqrt(2))
     templ.block.event_dict[k_sogi] = vf.add_const(np.sqrt(2))
     templ.block.event_dict[eps] = vf.add_const(1e-12)
-    templ.block.event_dict[omega] = vf.add_const(w_const)
     templ.block.event_dict[d_v_A] = vf.add_const(None)
     templ.block.event_dict[d_v_B] = vf.add_const(None)
     templ.block.event_dict[d_v_C] = vf.add_const(None)
@@ -234,6 +218,16 @@ def get_load_ZIP_3ph_emt_template(grid : MultiCircuit, load: Load,  name: str = 
         VarPowerFlowRefferenceType.d_v_A: d_v_A,
         VarPowerFlowRefferenceType.d_v_B: d_v_B,
         VarPowerFlowRefferenceType.d_v_C: d_v_C,
+    }
+
+    templ.block.api_obj_mapping = {
+        ParamPowerFlowRefferenceType.omega_base: omega,
+        ParamPowerFlowRefferenceType.Pl0_A: P0_A,
+        ParamPowerFlowRefferenceType.Pl0_B: P0_B,
+        ParamPowerFlowRefferenceType.Pl0_C: P0_C,
+        ParamPowerFlowRefferenceType.Ql0_A: Q0_A,
+        ParamPowerFlowRefferenceType.Ql0_B: Q0_B,
+        ParamPowerFlowRefferenceType.Ql0_C: Q0_C,
     }
 
     return templ

@@ -79,7 +79,7 @@
               <enum>QTabWidget::TabPosition::North</enum>
              </property>
              <property name="currentIndex">
-              <number>1</number>
+              <number>0</number>
              </property>
              <property name="documentMode">
               <bool>true</bool>
@@ -136,7 +136,7 @@
                 <number>0</number>
                </property>
                <item>
-                <widget class="QTreeView" name="parametersTreeView">
+                <widget class="QTableView" name="parametersTableView">
                  <property name="frameShape">
                   <enum>QFrame::Shape::NoFrame</enum>
                  </property>
