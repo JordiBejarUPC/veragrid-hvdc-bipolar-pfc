@@ -326,7 +326,7 @@ class EmtProblemTemplate(ABC):
                 return float(expression.value)
 
         elif isinstance(expression, Var):
-            if expression.uid == self._glob_time.uid:
+            if expression.uid == self._glob_time.uid or expression.name in {"time", self.TIME_NAME}:
                 return float(tm)
             else:
                 idx_runtime: int | None = self._uid2idx_event_params.get(expression.uid, None)
@@ -349,6 +349,9 @@ class EmtProblemTemplate(ABC):
                 uid_bindings[uid] = float(self._parameters_values[idx].value)
 
             uid_bindings[self._glob_time.uid] = float(tm)
+            for var in expression.get_vars():
+                if var.name in {"time", self.TIME_NAME}:
+                    uid_bindings[var.uid] = float(tm)
 
             return float(expression.eval_uid(uid_bindings))
 

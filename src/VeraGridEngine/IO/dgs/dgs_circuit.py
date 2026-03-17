@@ -54,6 +54,12 @@ class DgsCircuit:
     _ELEMENT_CLASSES: List[Type[DGSElement]] = [
         General,
         BlkDef,
+        BlkFrom,
+        BlkGoto,
+        BlkRef,
+        BlkSig,
+        BlkSlot,
+        BlkSum,
         ChaRef,
         ChaVec,
         ElmComp,
@@ -121,6 +127,12 @@ class DgsCircuit:
 
         self.generals: List[General] = list()
         self.blkdefs: List[BlkDef] = list()
+        self.blkfroms: List[BlkFrom] = list()
+        self.blkgotos: List[BlkGoto] = list()
+        self.blkrefs: List[BlkRef] = list()
+        self.blksigs: List[BlkSig] = list()
+        self.blkslots: List[BlkSlot] = list()
+        self.blksums: List[BlkSum] = list()
         self.elmcomps: List[ElmComp] = list()
         self.elmdsls: List[ElmDsl] = list()
         self.elmbranches: List[ElmBranch] = list()
@@ -179,6 +191,12 @@ class DgsCircuit:
         self._CLASS_TO_LIST: Dict[Type[DGSElement], List[DGSElement]] = {
             General: self.generals,
             BlkDef: self.blkdefs,
+            BlkFrom: self.blkfroms,
+            BlkGoto: self.blkgotos,
+            BlkRef: self.blkrefs,
+            BlkSig: self.blksigs,
+            BlkSlot: self.blkslots,
+            BlkSum: self.blksums,
             ChaRef: self.charefs,
             ChaVec: self.chavecs,
             ElmComp: self.elmcomps,

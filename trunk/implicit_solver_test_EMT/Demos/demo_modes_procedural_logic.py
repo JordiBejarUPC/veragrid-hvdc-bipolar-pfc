@@ -5,6 +5,17 @@ from typing import Dict, List, Optional, Tuple
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import BoundaryUpdateWrapper, JitSymbolicSolver
+from VeraGridEngine.Utils.procedural_logic import (
+    DelayedThresholdLatchLogic,
+    bool_and,
+    bool_or,
+    build_boundary_updater_from_block,
+    flipflop,
+    ifelse,
+    lastvalue,
+    picdro,
+    reset,
+)
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
@@ -14,6 +25,50 @@ class GenericEmtProblem(EmtProblemTemplate):
     """Minimal generic EMT problem used for demo purposes."""
 
     __slots__ = []
+
+
+class TracingBoundaryUpdater(BoundaryUpdateWrapper):
+    """Wrapper that records selected runtime-parameter traces."""
+
+    __slots__ = ["base_updater", "tracked_indices", "trace_t", "trace_values"]
+
+    def __init__(self, base_updater: BoundaryUpdateWrapper, tracked_indices: Dict[str, int]) -> None:
+        self.base_updater = base_updater
+        self.tracked_indices = tracked_indices
+        self.trace_t: List[float] = []
+        self.trace_values: Dict[str, List[float]] = {name: [] for name in tracked_indices.keys()}
+
+    def update(self, t: float, x: np.ndarray, params: np.ndarray) -> None:
+        self.base_updater.update(t, x, params)
+        self.trace_t.append(float(t))
+        for name, idx in self.tracked_indices.items():
+            self.trace_values[name].append(float(params[idx]))
+
+    def get_next_forced_event_time(self, t_prev: float, t_target: float) -> Optional[float]:
+        return self.base_updater.get_next_forced_event_time(t_prev, t_target)
+
+    def get_trace(self, name: str) -> np.ndarray:
+        return np.asarray(self.trace_values[name], dtype=float)
+
+
+def _first_true_time(time_array: np.ndarray, signal: np.ndarray, threshold: float = 0.5) -> Optional[float]:
+    idx = np.flatnonzero(signal > threshold)
+    if len(idx) == 0:
+        return None
+    return float(time_array[int(idx[0])])
+
+
+def _first_cross_time(time_array: np.ndarray, signal: np.ndarray, threshold: float) -> Optional[float]:
+    idx = np.flatnonzero(signal >= threshold)
+    if len(idx) == 0:
+        return None
+    return float(time_array[int(idx[0])])
+
+
+def _add_vertical_marker(ax: plt.Axes, time_value: Optional[float], text: str, *, color: str, linestyle: str) -> None:
+    if time_value is None:
+        return
+    ax.axvline(time_value, color=color, linestyle=linestyle, linewidth=1.4, label=f"{text} = {time_value:.4f} s")
 
 
 class RichProtectionChainWrapper(BoundaryUpdateWrapper):
@@ -389,6 +444,91 @@ def create_antiwindup_trip_system(vf: VarFactory) -> Tuple[Block, Dict[str, Var]
     }
 
 
+def create_boolean_operator_logic_system(vf: VarFactory) -> Tuple[Block, Dict[str, Var]]:
+    """
+    Demo system using the new procedural helpers with explicit AND/OR logic.
+
+    Logic
+    -----
+    - `trip_fast = picdro(x_fast > 0.65, 1 ms, 0)`
+    - `trip_and = picdro((x_fast > 0.45) AND (x_slow > 0.30), 2 ms, 0)`
+    - `master_trip = flipflop(trip_fast OR trip_and, 0)`
+    - `x_mem_dot = ifelse(master_trip > 0.5, 0, k_mem * (x_fast - x_mem))`
+    - `x_mem_last = lastvalue(x_mem)`
+    - `reset(x_mem, master_trip > 0.5, 0)`
+    """
+    x_fast: Var = vf.add_var("x_fast_bool")
+    x_slow: Var = vf.add_var("x_slow_bool")
+    x_mem: Var = vf.add_var("x_mem_bool")
+
+    d_x_fast: Var = vf.add_diff_var(name="d_x_fast_bool", base_var=x_fast)
+    d_x_slow: Var = vf.add_diff_var(name="d_x_slow_bool", base_var=x_slow)
+    d_x_mem: Var = vf.add_diff_var(name="d_x_mem_bool", base_var=x_mem)
+
+    trip_fast: Var = vf.add_var("trip_fast")
+    trip_and: Var = vf.add_var("trip_and")
+    master_trip: Var = vf.add_var("master_trip")
+    x_mem_last: Var = vf.add_var("x_mem_last")
+
+    tau_fast: Var = vf.add_var("tau_fast_bool")
+    tau_slow: Var = vf.add_var("tau_slow_bool")
+    k_mem: Var = vf.add_var("k_mem_bool")
+
+    block = Block(
+        name="BooleanOperatorProceduralDemo",
+        state_vars=[x_fast, x_slow, x_mem],
+        diff_vars=[d_x_fast, d_x_slow, d_x_mem],
+        state_eqs=[
+            (Const(1.0) - x_fast) / tau_fast,
+            (Const(1.0) - x_slow) / tau_slow,
+            ifelse(master_trip > 0.5, 0.0, k_mem * (x_fast - x_mem)),
+        ],
+        parameters={
+            tau_fast: Const(3.0e-3),
+            tau_slow: Const(8.0e-3),
+            k_mem: Const(120.0),
+        },
+        mode_dict={
+            trip_fast: Const(0.0),
+            trip_and: Const(0.0),
+            master_trip: Const(0.0),
+            x_mem_last: Const(0.0),
+        },
+    )
+
+    block.procedural_logic = [
+        picdro(x_fast > 0.65, 1.0e-3, 0.0, output=trip_fast, name="trip_fast_channel"),
+        picdro(
+            bool_and(x_fast > 0.45, x_slow > 0.30),
+            2.0e-3,
+            0.0,
+            output=trip_and,
+            name="trip_and_channel",
+        ),
+        flipflop(
+            bool_or(trip_fast > 0.5, trip_and > 0.5),
+            0.0,
+            output=master_trip,
+            name="master_trip_latch",
+        ),
+        lastvalue(x_mem, output=x_mem_last, name="x_mem_last_sample"),
+        reset(x_mem, master_trip > 0.5, 0.0, name="x_mem_reset"),
+    ]
+
+    return block, {
+        "x_fast": x_fast,
+        "x_slow": x_slow,
+        "x_mem": x_mem,
+        "d_x_fast": d_x_fast,
+        "d_x_slow": d_x_slow,
+        "d_x_mem": d_x_mem,
+        "trip_fast": trip_fast,
+        "trip_and": trip_and,
+        "master_trip": master_trip,
+        "x_mem_last": x_mem_last,
+    }
+
+
 def run_case(
     builder,
     threshold: float,
@@ -396,12 +536,21 @@ def run_case(
     t_end: float,
     dt: float,
     reset_delay: Optional[float] = None,
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray, EmtProblemTemplate, Dict[str, Var], RichProtectionChainWrapper]:
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, EmtProblemTemplate, Dict[str, Var], DelayedThresholdLatchLogic]:
     """
     Build, simulate, and return a demo case.
     """
     vf = VarFactory()
     block, vars_map = builder(vf=vf)
+    logic = DelayedThresholdLatchLogic(
+        monitored_var_name=vars_map["y"].name,
+        mode_var_name=vars_map["mode_var"].name,
+        threshold=threshold,
+        delay=delay,
+        reset_delay=reset_delay,
+        name=f"logic_{block.name}",
+    )
+    block.procedural_logic = [logic]
     block.unify_blocks()
 
     glob_time: Var = vf.add_var("t_glob")
@@ -416,22 +565,51 @@ def run_case(
         verbose=False,
     )
 
-    protection = RichProtectionChainWrapper(
-        problem=problem,
-        monitored_var=vars_map["y"],
-        mode_var=vars_map["mode_var"],
-        threshold=threshold,
-        delay=delay,
-        reset_delay=reset_delay,
-    )
+    protection = build_boundary_updater_from_block(problem)
+    assert protection is not None
 
     params0 = problem.event_params_values.copy()
     t, y_hist, dy_hist = solver.simulate(params0=params0, boundary_updater=protection)
 
-    return t, y_hist, dy_hist, problem, vars_map, protection
+    return t, y_hist, dy_hist, problem, vars_map, logic
 
 
-def add_event_lines(ax: plt.Axes, protection: RichProtectionChainWrapper) -> None:
+def run_boolean_operator_case(
+    t_end: float,
+    dt: float,
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, EmtProblemTemplate, Dict[str, Var], TracingBoundaryUpdater]:
+    """Build and run the helper-based AND/OR procedural demo."""
+    vf = VarFactory()
+    block, vars_map = create_boolean_operator_logic_system(vf=vf)
+    block.unify_blocks()
+
+    problem = GenericEmtProblem(sys_block=block, glob_time=vf.add_var("t_glob_bool_demo"))
+    base_updater = build_boundary_updater_from_block(problem)
+    assert base_updater is not None
+
+    tracked_indices = {
+        "trip_fast": problem.uid2idx_event_params[vars_map["trip_fast"].uid],
+        "trip_and": problem.uid2idx_event_params[vars_map["trip_and"].uid],
+        "master_trip": problem.uid2idx_event_params[vars_map["master_trip"].uid],
+        "x_mem_last": problem.uid2idx_event_params[vars_map["x_mem_last"].uid],
+    }
+    tracing_updater = TracingBoundaryUpdater(base_updater=base_updater, tracked_indices=tracked_indices)
+
+    solver = JitSymbolicSolver(
+        problem=problem,
+        t0=0.0,
+        t_end=t_end,
+        h=dt,
+        method=DynamicIntegrationMethod.DaeTrapezoidal,
+        verbose=False,
+    )
+
+    params0 = problem.event_params_values.copy()
+    t, y_hist, dy_hist = solver.simulate(params0=params0, boundary_updater=tracing_updater)
+    return t, y_hist, dy_hist, problem, vars_map, tracing_updater
+
+
+def add_event_lines(ax: plt.Axes, protection: DelayedThresholdLatchLogic) -> None:
     """
     Add vertical lines for pickup, trip, and optional reset.
     """
@@ -462,7 +640,7 @@ def add_event_lines(ax: plt.Axes, protection: RichProtectionChainWrapper) -> Non
 
 def plot_logic_panel(
     ax: plt.Axes,
-    protection: RichProtectionChainWrapper,
+    protection: DelayedThresholdLatchLogic,
 ) -> None:
     """
     Plot internal logic signals of the protection chain.
@@ -491,7 +669,7 @@ def plot_integrator_case(
     dy_hist: np.ndarray,
     problem: EmtProblemTemplate,
     vars_map: Dict[str, Var],
-    protection: RichProtectionChainWrapper,
+    protection: DelayedThresholdLatchLogic,
 ) -> None:
     """
     Plot the integrator-freeze demo plus its internal logic.
@@ -534,7 +712,7 @@ def plot_antiwindup_case(
     dy_hist: np.ndarray,
     problem: EmtProblemTemplate,
     vars_map: Dict[str, Var],
-    protection: RichProtectionChainWrapper,
+    protection: DelayedThresholdLatchLogic,
 ) -> None:
     """
     Plot the anti-windup-disable demo plus its internal logic.
@@ -573,7 +751,124 @@ def plot_antiwindup_case(
     fig.tight_layout()
 
 
-def print_case_summary(name: str, protection: RichProtectionChainWrapper) -> None:
+def plot_boolean_operator_case(
+    t: np.ndarray,
+    y_hist: np.ndarray,
+    problem: EmtProblemTemplate,
+    vars_map: Dict[str, Var],
+    tracing_updater: TracingBoundaryUpdater,
+) -> None:
+    """Plot the helper-based AND/OR procedural demo."""
+    idx_x_fast: int = problem.get_var_idx(vars_map["x_fast"])
+    idx_x_slow: int = problem.get_var_idx(vars_map["x_slow"])
+    idx_x_mem: int = problem.get_var_idx(vars_map["x_mem"])
+
+    logic_t = np.asarray(tracing_updater.trace_t, dtype=float)
+    trip_fast = tracing_updater.get_trace("trip_fast")
+    trip_and = tracing_updater.get_trace("trip_and")
+    master_trip = tracing_updater.get_trace("master_trip")
+    x_mem_last = tracing_updater.get_trace("x_mem_last")
+
+    x_fast_hist = y_hist[:, idx_x_fast]
+    x_slow_hist = y_hist[:, idx_x_slow]
+    x_mem_hist = y_hist[:, idx_x_mem]
+
+    t_fast_pickup = _first_cross_time(t, x_fast_hist, 0.65)
+    t_and_pickup = _first_true_time(t, ((x_fast_hist > 0.45) & (x_slow_hist > 0.30)).astype(float))
+    t_fast_trip = _first_true_time(logic_t, trip_fast)
+    t_and_trip = _first_true_time(logic_t, trip_and)
+    t_master_trip = _first_true_time(logic_t, master_trip)
+
+    x_mem_last_before_trip: Optional[float] = None
+    if t_master_trip is not None:
+        idx_trip = np.where(np.isclose(logic_t, t_master_trip))[0]
+        if len(idx_trip) > 0:
+            x_mem_last_before_trip = float(x_mem_last[int(idx_trip[0])])
+
+    fig, axes = plt.subplots(
+        nrows=2,
+        ncols=1,
+        figsize=(11, 8),
+        sharex=True,
+        height_ratios=[3.0, 1.6],
+    )
+
+    ax_dyn = axes[0]
+    ax_logic = axes[1]
+
+    ax_dyn.plot(t, x_fast_hist, label="x_fast")
+    ax_dyn.plot(t, x_slow_hist, label="x_slow")
+    ax_dyn.plot(t, x_mem_hist, label="x_mem")
+    ax_dyn.step(logic_t, x_mem_last, where="post", linestyle="--", label="lastvalue(x_mem)")
+    ax_dyn.axhline(0.65, linestyle=":", linewidth=1.1, label="trip_fast threshold")
+    ax_dyn.axhline(0.45, linestyle=":", linewidth=1.1, label="AND fast threshold")
+    ax_dyn.axhline(0.30, linestyle="-.", linewidth=1.1, label="AND slow threshold")
+    if x_mem_last_before_trip is not None:
+        ax_dyn.axhline(
+            x_mem_last_before_trip,
+            color="tab:red",
+            linestyle="--",
+            linewidth=1.1,
+            label=f"last sample before reset = {x_mem_last_before_trip:.4f}",
+        )
+
+    _add_vertical_marker(ax_dyn, t_fast_pickup, "fast pickup start", color="tab:blue", linestyle=":")
+    _add_vertical_marker(ax_dyn, t_and_pickup, "AND pickup start", color="tab:orange", linestyle=":")
+    _add_vertical_marker(ax_dyn, t_fast_trip, "fast trip", color="tab:blue", linestyle="--")
+    _add_vertical_marker(ax_dyn, t_and_trip, "AND trip", color="tab:orange", linestyle="--")
+    _add_vertical_marker(ax_dyn, t_master_trip, "master latch / reset", color="tab:green", linestyle="-.")
+    ax_dyn.set_title("Demo 3: Procedural helpers with AND / OR / ifelse / reset / lastvalue")
+    ax_dyn.set_ylabel("Value")
+    ax_dyn.grid(True)
+    ax_dyn.legend(loc="upper right")
+
+    ax_logic.step(logic_t, trip_fast + 0.0, where="post", label="trip_fast = picdro(x_fast > 0.65)")
+    ax_logic.step(logic_t, trip_and + 1.2, where="post", label="trip_and = picdro((x_fast > 0.45) AND (x_slow > 0.30))")
+    ax_logic.step(logic_t, master_trip + 2.4, where="post", label="master_trip = flipflop(trip_fast OR trip_and, 0)")
+    _add_vertical_marker(ax_logic, t_fast_pickup, "fast pickup start", color="tab:blue", linestyle=":")
+    _add_vertical_marker(ax_logic, t_and_pickup, "AND pickup start", color="tab:orange", linestyle=":")
+    _add_vertical_marker(ax_logic, t_fast_trip, "fast trip", color="tab:blue", linestyle="--")
+    _add_vertical_marker(ax_logic, t_and_trip, "AND trip", color="tab:orange", linestyle="--")
+    _add_vertical_marker(ax_logic, t_master_trip, "master latch / reset", color="tab:green", linestyle="-.")
+    ax_logic.set_yticks([0.5, 1.7, 2.9])
+    ax_logic.set_yticklabels(["fast", "and", "or latch"])
+    ax_logic.set_ylim(-0.2, 3.6)
+    ax_logic.set_xlabel("Time [s]")
+    ax_logic.set_ylabel("Logic")
+    ax_logic.grid(True)
+    ax_logic.legend(loc="upper right")
+
+    fig.tight_layout()
+
+
+def print_boolean_operator_summary(tracing_updater: TracingBoundaryUpdater) -> None:
+    """Print a compact summary of the helper-based boolean demo."""
+    logic_t = np.asarray(tracing_updater.trace_t, dtype=float)
+    trip_fast = tracing_updater.get_trace("trip_fast")
+    trip_and = tracing_updater.get_trace("trip_and")
+    master_trip = tracing_updater.get_trace("master_trip")
+    x_mem_last = tracing_updater.get_trace("x_mem_last")
+
+    t_fast_trip = _first_true_time(logic_t, trip_fast)
+    t_and_trip = _first_true_time(logic_t, trip_and)
+    t_master_trip = _first_true_time(logic_t, master_trip)
+
+    print("=== Demo 3: AND / OR helper-based procedural logic ===")
+    print("trip_fast = picdro(x_fast > 0.65, 1e-3, 0)")
+    print("trip_and  = picdro(bool_and(x_fast > 0.45, x_slow > 0.30), 2e-3, 0)")
+    print("master    = flipflop(bool_or(trip_fast > 0.5, trip_and > 0.5), 0)")
+    print("x_mem_dot = ifelse(master_trip > 0.5, 0, k_mem * (x_fast - x_mem))")
+    print(f"fast trip time:         {t_fast_trip}")
+    print(f"and trip time:          {t_and_trip}")
+    print(f"master trip time:       {t_master_trip}")
+    print(f"final trip_fast:         {trip_fast[-1] if len(trip_fast) else 'n/a'}")
+    print(f"final trip_and:          {trip_and[-1] if len(trip_and) else 'n/a'}")
+    print(f"final master_trip:       {master_trip[-1] if len(master_trip) else 'n/a'}")
+    print(f"final lastvalue(x_mem):  {x_mem_last[-1] if len(x_mem_last) else 'n/a'}")
+    print("")
+
+
+def print_case_summary(name: str, protection: DelayedThresholdLatchLogic) -> None:
     """
     Print a compact summary of the protection sequence.
     """
@@ -617,11 +912,18 @@ def main() -> None:
         reset_delay=None,
     )
 
+    t3, y3, _, problem3, vars3, tracing3 = run_boolean_operator_case(
+        t_end=2.0e-2,
+        dt=dt,
+    )
+
     print_case_summary(name="Demo 1: Integrator freeze", protection=prot1)
     print_case_summary(name="Demo 2: Anti-windup disable", protection=prot2)
+    print_boolean_operator_summary(tracing_updater=tracing3)
 
     plot_integrator_case(t1, y1, dy1, problem1, vars1, prot1)
     plot_antiwindup_case(t2, y2, dy2, problem2, vars2, prot2)
+    plot_boolean_operator_case(t3, y3, problem3, vars3, tracing3)
     plt.show()
 
 

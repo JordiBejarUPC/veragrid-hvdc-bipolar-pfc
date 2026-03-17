@@ -8,5 +8,7 @@ from VeraGridEngine.IO.dgs.dgs_to_blocks import (
     extract_named_block_subgraph,
     export_named_block_subgraph_to_python,
     export_named_block_subgraph_tree_to_python,
+    extract_root_slot_block_graphical_tree,
+    export_root_slot_block_graphical_tree_to_python,
 )
 

@@ -599,6 +599,12 @@ class JitSymbolicSolver:
         else:
             ev_params = np.zeros(n_event_params, dtype=np.float64)
 
+        if boundary_updater is not None:
+            ev_params = self.problem.def_event_params_fn(ev_params, float(self.t0))
+            full_params0 = np.concatenate((ev_params, static_vals))
+            boundary_updater.update(float(self.t0), x_prev, full_params0)
+            ev_params[:] = full_params0[:len(ev_params)]
+
         trace_collector = self.problem.get_newton_trace_collector()
         diag_cfg = self._newton_diag_config
         diagnostics_enabled: bool = (

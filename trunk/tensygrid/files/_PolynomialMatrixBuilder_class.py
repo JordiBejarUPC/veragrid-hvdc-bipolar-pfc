@@ -537,12 +537,21 @@ class PolynomialMatrixBuilder:
 
                         # MULTILINEARITY CHECK: Prevent TypeError on float() cast
                         if not b_val_sym.is_number:
-                            raise ValueError(
-                                f"\n[TenSyGrid Error] Non-multilinear term detected: '{f}'.\n"
-                                f"Variable '{s.name}' has a degree higher than 1.\n"
-                                f"The iMTI representation requires strictly multilinear equations. "
-                                f"Please define an auxiliary algebraic variable to perform the 'lifting'."
+                            deg = sp.degree(f, s)
+                            if deg > 1:
+                                raise ValueError(
+                                    f"\n[TenSyGrid Error] Non-multilinear term detected: '{f}'.\n"
+                                    f"Variable '{s.name}' has a degree higher than 1 ({deg}).\n"
+                                    f"The iMTI representation requires strictly multilinear equations. "
+                                    f"Please define an auxiliary algebraic variable to perform the 'lifting'."
                             )
+                            elif deg < 1:
+                                raise ValueError(
+                                    f"\n[TenSyGrid Error] Non-multilinear term detected: '{f}'.\n"
+                                    f"Variable '{s.name}' has a degree lower than 1 ({deg}).\n"
+                                    f"The iMTI representation requires strictly multilinear equations. "
+                                    f"Please define an auxiliary algebraic variable to perform the 'lifting'."
+                                )
                         else:
                             pass
 

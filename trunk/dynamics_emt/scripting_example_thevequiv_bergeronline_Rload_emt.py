@@ -208,7 +208,7 @@ print(res.get_branch_df())
 # ==============================================================================
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")
 # ==============================================================================
-CHOSEN_SOLVER = "VECTORIZED"
+CHOSEN_SOLVER = "COMPILED"
 RUN_ALL_SOLVERS = False
 ENABLE_PLOTS = True
 ENABLE_NEWTON_TRACE = False
@@ -496,7 +496,9 @@ plt.grid(True)
 
 plt.subplot(2, 2, 2)
 for k, ph in enumerate(rt.active_ph):
-    plt.plot(t_plot, it_hist[:, k], label=f'Current phase {ph} from side t')
+    # SIGNS IN THE TO SIDE ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE BUSES SO IN THE CASE OF THE FROM SIDE
+    # THAT MEANS THE CURRENTS ARE NEGATIVE
+    plt.plot(t_plot, -it_hist[:, k], label=f'Current phase {ph} from side t')
 plt.title("Bergeron current to side")
 plt.xlabel("Time")
 plt.ylabel("Current")
@@ -514,7 +516,7 @@ plt.grid(True)
 
 plt.subplot(2, 2, 4)
 for k, ph in enumerate(rt.active_ph):
-    plt.plot(t_plot, Iht_hist[:, k], label=f'Ih_t phase {ph}')
+    plt.plot(t_plot, -Iht_hist[:, k], label=f'Ih_t phase {ph}')
 plt.title("Bergeron history current to side")
 plt.xlabel("Time")
 plt.ylabel("History current")
@@ -628,9 +630,11 @@ plt.grid(True)
 plt.legend()
 
 plt.subplot(2, 2, 2)
-plt.plot(tme, i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
-plt.plot(tme, i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
-plt.plot(tme, i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
+# SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
+# THAT MEANS THE CURRENTS ARE NEGATIVE
+plt.plot(tme, -i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
+plt.plot(tme, -i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
+plt.plot(tme, -i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
 plt.title("Current load")
 plt.xlabel("Time")
 plt.ylabel("Current load")
