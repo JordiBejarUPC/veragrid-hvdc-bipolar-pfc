@@ -17,7 +17,50 @@ from matplotlib import pyplot as plt
 
 import VeraGridEngine.api as vge
 
-def small_signal_analysis():
+
+def generate_plots(eigenvalues: np.ndarray, participation_factors: np.ndarray) -> None:
+    """Generate eigenvalue map and participation factor plots."""
+    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
+
+    # Eigenvalue map
+    ax1 = axes[0]
+    real_parts = np.real(eigenvalues)
+    imag_parts = np.imag(eigenvalues)
+    colors = ['red' if r > 0 else 'blue' for r in real_parts]
+    ax1.scatter(real_parts, imag_parts, c=colors, alpha=0.6, s=50)
+    ax1.axvline(x=0, color='k', linestyle='--', linewidth=1)
+    ax1.set_xlabel('Real Part')
+    ax1.set_ylabel('Imaginary Part')
+    ax1.set_title('Eigenvalue Map (Phasor RMS with Multilinear Generator)')
+    ax1.grid(True, alpha=0.3)
+
+    # Participation factors
+    ax2 = axes[1]
+    if participation_factors is not None and len(participation_factors) > 0:
+        n_modes = min(3, participation_factors.shape[1])
+        n_states = min(10, participation_factors.shape[0])
+        x = np.arange(n_states)
+        width = 0.25
+
+        for mode_idx in range(n_modes):
+            pf = participation_factors[:n_states, mode_idx]
+            pf = pf / np.sum(pf) if np.sum(pf) > 0 else pf
+            ax2.bar(x + mode_idx * width, pf, width,
+                    label=f'Mode {mode_idx + 1} ({np.real(eigenvalues[mode_idx]):.3f})')
+
+        ax2.set_xlabel('State Variable')
+        ax2.set_ylabel('Participation Factor')
+        ax2.set_title('Participation Factors (Dominant Modes)')
+        ax2.set_xticks(x + width)
+        ax2.set_xticklabels([f'State {i}' for i in range(n_states)])
+        ax2.legend()
+        ax2.grid(True, alpha=0.3, axis='y')
+
+    plt.tight_layout()
+    plt.show()
+
+
+def small_signal_analysis(show_plt: bool = False):
     """Perform small signal analysis on the phasor grid."""
     print("="*60)
     print("SMALL SIGNAL ANALYSIS - PHASOR RMS")
@@ -37,10 +80,8 @@ def small_signal_analysis():
     grid.add_bus(bus1)
     
     for bus in grid.buses:
-        # from VeraGridEngine.Templates.Rms.bus_phasor_rms_template import initialize_bus_phasor_rms
         vge.initialize_bus_phasor_rms(bus, vf=grid.rms_var_factory)
-        #initialize_bus_phasor_rms(bus, vf=grid.rms_var_factory)
-    
+
     line = vge.Line(name="Line", bus_from=bus0, bus_to=bus1,
                     r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=900.0)
     grid.add_line(line)
@@ -297,52 +338,15 @@ def small_signal_analysis():
     # ===================================================================
     # PLOT
     # ===================================================================
-    print("\n[7] Generating plots...")
-    
-    fig, axes = plt.subplots(1, 2, figsize=(14, 6))
-    
-    # Eigenvalue map
-    ax1 = axes[0]
-    real_parts = np.real(eigenvalues)
-    imag_parts = np.imag(eigenvalues)
-    colors = ['red' if r > 0 else 'blue' for r in real_parts]
-    ax1.scatter(real_parts, imag_parts, c=colors, alpha=0.6, s=50)
-    ax1.axvline(x=0, color='k', linestyle='--', linewidth=1)
-    ax1.set_xlabel('Real Part')
-    ax1.set_ylabel('Imaginary Part')
-    ax1.set_title('Eigenvalue Map (Phasor RMS with Multilinear Generator)')
-    ax1.grid(True, alpha=0.3)
-    
-    # Participation factors
-    ax2 = axes[1]
-    if participation_factors is not None and len(participation_factors) > 0:
-        n_modes = min(3, participation_factors.shape[1])
-        n_states = min(10, participation_factors.shape[0])
-        x = np.arange(n_states)
-        width = 0.25
-        
-        for mode_idx in range(n_modes):
-            pf = participation_factors[:n_states, mode_idx]
-            pf = pf / np.sum(pf) if np.sum(pf) > 0 else pf
-            ax2.bar(x + mode_idx*width, pf, width, 
-                    label=f'Mode {mode_idx+1} ({np.real(eigenvalues[mode_idx]):.3f})')
-        
-        ax2.set_xlabel('State Variable')
-        ax2.set_ylabel('Participation Factor')
-        ax2.set_title('Participation Factors (Dominant Modes)')
-        ax2.set_xticks(x + width)
-        ax2.set_xticklabels([f'State {i}' for i in range(n_states)])
-        ax2.legend()
-        ax2.grid(True, alpha=0.3, axis='y')
-    
-    plt.tight_layout()
-    plt.show()
+    if show_plt:
+        print("\n[7] Generating plots...")
+        generate_plots(eigenvalues, participation_factors)
 
-    vge.save_file(grid, "test.gridcal")
+    #vge.save_file(grid, "test.gridcal")
     
     return True
 
 
 if __name__ == "__main__":
-    success = small_signal_analysis()
+    success = small_signal_analysis(show_plt=True)
     sys.exit(0 if success else 1)
