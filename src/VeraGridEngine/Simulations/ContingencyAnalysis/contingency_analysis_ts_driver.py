@@ -98,6 +98,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             n=self.grid.get_bus_number(),
             nbr=self.grid.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True),
             time_array=self.grid.time_profile[self.time_indices],
+            original_time_array=self.grid.time_profile,
             bus_names=self.grid.get_bus_names(),
             branch_names=self.grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True),
             bus_types=np.ones(self.grid.get_bus_number(), dtype=int),
@@ -130,6 +131,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             n=nb,
             nbr=self.grid.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True),
             time_array=time_array,
+            original_time_array=self.grid.time_profile,
             branch_names=self.grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True),
             bus_names=self.grid.get_bus_names(),
             bus_types=np.ones(nb, dtype=int),
@@ -191,7 +193,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             # Sbus (ncon, nbus)
             results.S[it, :] = max_abs_per_col_cx(res_t.Sbus)
 
-            results.max_flows[it, :] = max_abs_per_col_cx(res_t.Sf)
+            results.max_flows[it, :] = max_abs_per_col_cx(res_t.Sf).real
 
             # Note: Loading is (ncon, nbranch)
 
@@ -244,6 +246,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             n=nb,
             nbr=self.grid.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True),
             time_array=time_array,
+            original_time_array=self.grid.time_profile,
             branch_names=self.grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True),
             bus_names=self.grid.get_bus_names(),
             bus_types=np.ones(nb, dtype=int),
@@ -353,6 +356,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             n=nbus,
             nbr=self.grid.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True),
             time_array=time_array,
+            original_time_array=self.grid.time_profile,
             branch_names=self.grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True),
             bus_names=self.grid.get_bus_names(),
             bus_types=np.ones(nbus, dtype=int),
@@ -453,6 +457,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             n=nb,
             nbr=self.grid.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True),
             time_array=time_array,
+            original_time_array=self.grid.time_profile,
             branch_names=self.grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True),
             bus_names=self.grid.get_bus_names(),
             bus_types=np.ones(nb, dtype=int),
@@ -485,6 +490,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             n=nb,
             nbr=self.grid.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True),
             time_array=time_array,
+            original_time_array=self.grid.time_profile,
             branch_names=self.grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True),
             bus_names=self.grid.get_bus_names(),
             bus_types=np.ones(nb, dtype=int),
