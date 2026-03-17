@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'block_editor.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.10.1
+## Created by: Qt User Interface Compiler version 6.7.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -19,15 +19,15 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
 from PySide6.QtWidgets import (QApplication, QFrame, QGraphicsView, QHBoxLayout,
     QHeaderView, QLabel, QMainWindow, QMenuBar,
     QPushButton, QSizePolicy, QSpacerItem, QSplitter,
-    QTabWidget, QTableView, QToolBar, QTreeView,
-    QVBoxLayout, QWidget)
+    QTabWidget, QToolBar, QTreeView, QVBoxLayout,
+    QWidget)
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_BlockEditorWindow(object):
     def setupUi(self, BlockEditorWindow):
         if not BlockEditorWindow.objectName():
             BlockEditorWindow.setObjectName(u"BlockEditorWindow")
-        BlockEditorWindow.resize(1118, 610)
+        BlockEditorWindow.resize(1122, 610)
         self.block_editor_actionCheckModel = QAction(BlockEditorWindow)
         self.block_editor_actionCheckModel.setObjectName(u"block_editor_actionCheckModel")
         icon = QIcon()
@@ -97,11 +97,11 @@ class Ui_BlockEditorWindow(object):
         self.verticalLayout_2 = QVBoxLayout(self.tab_2)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
         self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
-        self.parametersTableView = QTableView(self.tab_2)
-        self.parametersTableView.setObjectName(u"parametersTableView")
-        self.parametersTableView.setFrameShape(QFrame.Shape.NoFrame)
+        self.parametersTreeView = QTreeView(self.tab_2)
+        self.parametersTreeView.setObjectName(u"parametersTreeView")
+        self.parametersTreeView.setFrameShape(QFrame.Shape.NoFrame)
 
-        self.verticalLayout_2.addWidget(self.parametersTableView)
+        self.verticalLayout_2.addWidget(self.parametersTreeView)
 
         icon5 = QIcon()
         icon5.addFile(u":/Icons/icons/data.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
@@ -162,7 +162,7 @@ class Ui_BlockEditorWindow(object):
         BlockEditorWindow.setCentralWidget(self.centralwidget)
         self.menuBar = QMenuBar(BlockEditorWindow)
         self.menuBar.setObjectName(u"menuBar")
-        self.menuBar.setGeometry(QRect(0, 0, 1118, 23))
+        self.menuBar.setGeometry(QRect(0, 0, 1122, 23))
         BlockEditorWindow.setMenuBar(self.menuBar)
         self.toolBar = QToolBar(BlockEditorWindow)
         self.toolBar.setObjectName(u"toolBar")
@@ -178,7 +178,7 @@ class Ui_BlockEditorWindow(object):
 
         self.retranslateUi(BlockEditorWindow)
 
-        self.tabWidget.setCurrentIndex(0)
+        self.tabWidget.setCurrentIndex(1)
 
 
         QMetaObject.connectSlotsByName(BlockEditorWindow)

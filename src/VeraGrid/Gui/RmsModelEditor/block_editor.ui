@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1118</width>
+    <width>1122</width>
     <height>610</height>
    </rect>
   </property>
@@ -79,7 +79,7 @@
               <enum>QTabWidget::TabPosition::North</enum>
              </property>
              <property name="currentIndex">
-              <number>0</number>
+              <number>1</number>
              </property>
              <property name="documentMode">
               <bool>true</bool>
@@ -136,7 +136,7 @@
                 <number>0</number>
                </property>
                <item>
-                <widget class="QTableView" name="parametersTableView">
+                <widget class="QTreeView" name="parametersTreeView">
                  <property name="frameShape">
                   <enum>QFrame::Shape::NoFrame</enum>
                  </property>
@@ -249,7 +249,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1118</width>
+     <width>1122</width>
      <height>23</height>
     </rect>
    </property>
