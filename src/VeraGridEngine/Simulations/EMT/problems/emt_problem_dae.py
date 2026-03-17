@@ -29,7 +29,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
-from VeraGridEngine.Simulations.EMT.initialization_emt import init_explicit_emt
+from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt, run_emt_native_initialization
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 
@@ -229,6 +229,7 @@ class EmtProblemDae(EmtProblemTemplate):
         self._vars2device: Dict[int, ALL_DEV_TYPES] = dict()
         self._temp_init_guess: Dict[int, float] = dict()
         self._temp_diff_init_guess: Dict[int, float] = dict()
+        self.initialization_report: EmtInitializationReport | None = None
 
         self._scheduled_mode_events: Dict[int, List[Tuple[float, float, bool]]] = dict()
         self._mode_event_cursor: Dict[int, int] = dict()
@@ -285,13 +286,25 @@ class EmtProblemDae(EmtProblemTemplate):
 
         # 2) explicit init guesses initialization
         self._run_explicit_initialization()
-        # self.diff_init_guess.update(self.diff_init_guess)
+        self.initialization_report = run_emt_native_initialization(problem=self, options=self.options)
 
         t_done = _toc(t_build)
 
         if options.verbose > 0:
             self.logger.add_debug(f"init guess = {self.init_guess}")
             self.logger.add_debug(f"diff init guess = {self.diff_init_guess}")
+            if self.initialization_report is None:
+                pass
+            else:
+                self.logger.add_debug(
+                    f"EMT initialization used {self.initialization_report.method_used} | "
+                    f"status={self.initialization_report.status.name} | "
+                    f"res0={self.initialization_report.initial_residual_inf:.3e} | "
+                    f"resf={self.initialization_report.final_residual_inf:.3e} | "
+                    f"newton={self.initialization_report.newton_iterations} | "
+                    f"ptc={self.initialization_report.pseudo_transient_steps} | "
+                    f"auto_dx0={self.initialization_report.automatic_dx0_count}"
+                )
             self.logger.add_debug(
                 f"EMT electrical problem parsed in {t_done:.4f}s | "
                 f"vars={self._n_vars} (state={self._n_state}, alg={self._n_alg}) | "

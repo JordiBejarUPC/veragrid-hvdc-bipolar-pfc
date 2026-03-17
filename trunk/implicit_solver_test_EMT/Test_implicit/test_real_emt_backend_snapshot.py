@@ -20,6 +20,7 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_e
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.enumerations import (
     DynamicIntegrationMethod,
+    EmtInitializationMethod,
     EmtSolverTypes,
     ShuntConnectionType,
     VarPowerFlowRefferenceType,
@@ -33,7 +34,10 @@ def build_full_params(problem: EmtProblemDae, t_curr: float) -> np.ndarray:
     return np.concatenate((event_params, const_params))
 
 
-def build_two_bus_real_emt_case(zip_load: bool = False) -> Tuple[EmtProblemDae, Dict[str, Any]]:
+def build_two_bus_real_emt_case(
+        zip_load: bool = False,
+        initialization_method: EmtInitializationMethod = EmtInitializationMethod.Auto,
+) -> Tuple[EmtProblemDae, Dict[str, Any]]:
     grid = gce.MultiCircuit(Sbase=2.0, fbase=50.0)
 
     vnom = 10
@@ -137,6 +141,7 @@ def build_two_bus_real_emt_case(zip_load: bool = False) -> Tuple[EmtProblemDae, 
         tolerance=1e-6,
         solver=EmtSolverTypes.StructuralCompiled,
         integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
+        initialization_method=initialization_method,
         verbose=0,
     )
     problem = EmtProblemDae(grid=grid, options=options, pf_results=res)

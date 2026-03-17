@@ -32,7 +32,7 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
+from VeraGridEngine.enumerations import EmtInitializationMethod, VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -234,6 +234,7 @@ SHOW_INIT_GUESS_TABLE = read_env_flag("VERAGRID_EMT_SHOW_INIT_GUESS_TABLE", Fals
 BENCHMARK_COMPILED_COLD_WARM = read_env_flag("VERAGRID_EMT_BENCHMARK_COMPILED_COLD_WARM", False)
 DENSE_THRESHOLD = 0
 SOLVER_VERBOSE = read_env_flag("VERAGRID_EMT_SOLVER_VERBOSE", False)
+CHOSEN_INIT_METHOD = os.environ.get("VERAGRID_EMT_INIT_METHOD", "AUTO").strip().upper()
 
 SOLVER_TYPE_MAP = {
     "SYMBOLIC": EmtSolverTypes.Symbolic,
@@ -243,6 +244,7 @@ SOLVER_TYPE_MAP = {
 }
 
 ALL_SOLVER_KEYS = ["SYMBOLIC", "AD", "VECTORIZED", "COMPILED"]
+ALL_INIT_METHOD_KEYS = ["EXPLICIT", "CONSISTENTNEWTON", "PSEUDOTRANSIENT", "AUTO"]
 
 if REFERENCE_SOLVER in ALL_SOLVER_KEYS:
     BENCHMARK_SOLVER_KEYS = [REFERENCE_SOLVER] + [key for key in ALL_SOLVER_KEYS if key != REFERENCE_SOLVER]
@@ -252,12 +254,35 @@ else:
 if CHOSEN_SOLVER not in SOLVER_TYPE_MAP:
     raise ValueError(f"Solver '{CHOSEN_SOLVER}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
 
-options = EmtOptions(time_step = 5e-6,
-                     simulation_time =  0.03, # s
-                     tolerance = 1e-6,
-                     solver = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
-                     integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
-                     verbose = 0)
+if CHOSEN_INIT_METHOD not in ALL_INIT_METHOD_KEYS:
+    raise ValueError(f"Initialization method '{CHOSEN_INIT_METHOD}' no reconocido. Usa EXPLICIT, CONSISTENTNEWTON, PSEUDOTRANSIENT o AUTO.")
+
+
+INIT_METHOD_MAP = {
+    "EXPLICIT": EmtInitializationMethod.Explicit,
+    "CONSISTENTNEWTON": EmtInitializationMethod.ConsistentNewton,
+    "PSEUDOTRANSIENT": EmtInitializationMethod.PseudoTransient,
+    "AUTO": EmtInitializationMethod.Auto,
+}
+
+
+def build_emt_options(chosen_solver: str, initialization_method: EmtInitializationMethod) -> EmtOptions:
+    """
+    Build one EMT option set for this benchmark script.
+
+    :param chosen_solver: Solver key.
+    :param initialization_method: Initialization workflow.
+    :return: EMT options.
+    """
+    return EmtOptions(time_step=5e-6,
+                      simulation_time=0.03,
+                      tolerance=1e-6,
+                      solver=SOLVER_TYPE_MAP[chosen_solver],
+                      integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
+                      initialization_method=initialization_method,
+                      verbose=0)
+
+options = build_emt_options(CHOSEN_SOLVER, INIT_METHOD_MAP[CHOSEN_INIT_METHOD])
 
 
 class SolverTraceSummary:
@@ -491,14 +516,14 @@ def create_problem(enable_trace: bool = False) -> EmtProblemDae:
     :param enable_trace: Whether to attach a Newton diagnostics collector.
     :return: Configured EMT problem.
     """
-    local_problem = EmtProblemDae(grid=grid,
-                                  options=options,
-                                  pf_results=res)
+    local_problem: EmtProblemDae = EmtProblemDae(grid=grid,
+                                                 options=options,
+                                                 pf_results=res)
 
     if enable_trace:
         local_problem.set_newton_trace_collector(NewtonTraceCollector())
     else:
-        pass
+        local_problem = local_problem
 
     return local_problem
 
@@ -1113,6 +1138,7 @@ if RUN_ALL_SOLVERS:
 
 if BENCHMARK_COMPILED_COLD_WARM:
     benchmark_structural_compiled_cold_and_warm()
+
 
 problem = create_problem()
 
