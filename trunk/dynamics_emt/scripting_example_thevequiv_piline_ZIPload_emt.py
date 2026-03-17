@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block as find_name_in_symbolic_block
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
@@ -42,14 +42,14 @@ profiler = cProfile.Profile()
 profiler.enable()
 
 def find_name_in_block(name: str, block: Block):
-    for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()) + block.diff_vars:
-        if name == var.name:
-            return var
+    """
+    Return one symbolic variable by name from a block tree.
 
-    for mdl in block.children:
-        res = find_name_in_block(name, mdl)
-        if res is not None:
-            return res
+    :param name: Variable name.
+    :param block: Root block.
+    :return: Matching symbolic variable or None.
+    """
+    return find_name_in_symbolic_block(name, block)
 
 grid = gce.MultiCircuit(Sbase=2.0, fbase=50.0)
 
@@ -1209,16 +1209,16 @@ steps: int = int(t_end / h)
 tme: np.ndarray = np.linspace(0, t_end, steps)
 
 #
-v_A_0 = find_name_in_block("v_ABus0_emt_template", bus0.emt_model)
-v_B_0 = find_name_in_block("v_BBus0_emt_template", bus0.emt_model)
-v_C_0 = find_name_in_block("v_CBus0_emt_template", bus0.emt_model)
+v_A_0 = find_name_in_block("v_A_Bus0_emt_template", bus0.emt_model)
+v_B_0 = find_name_in_block("v_B_Bus0_emt_template", bus0.emt_model)
+v_C_0 = find_name_in_block("v_C_Bus0_emt_template", bus0.emt_model)
 v_A_0_plt = y[:, problem.get_var_idx(v_A_0)]
 v_B_0_plt = y[:, problem.get_var_idx(v_B_0)]
 v_C_0_plt = y[:, problem.get_var_idx(v_C_0)]
 
-v_A_1 = find_name_in_block("v_ABus1_emt_template", bus1.emt_model)
-v_B_1 = find_name_in_block("v_BBus1_emt_template", bus1.emt_model)
-v_C_1 = find_name_in_block("v_CBus1_emt_template", bus1.emt_model)
+v_A_1 = find_name_in_block("v_A_Bus1_emt_template", bus1.emt_model)
+v_B_1 = find_name_in_block("v_B_Bus1_emt_template", bus1.emt_model)
+v_C_1 = find_name_in_block("v_C_Bus1_emt_template", bus1.emt_model)
 v_A_1_plt = y[:, problem.get_var_idx(v_A_1)]
 v_B_1_plt = y[:, problem.get_var_idx(v_B_1)]
 v_C_1_plt = y[:, problem.get_var_idx(v_C_1)]
