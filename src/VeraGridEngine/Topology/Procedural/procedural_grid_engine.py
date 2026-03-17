@@ -18,6 +18,7 @@ from scipy.spatial.distance import cdist
 from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy.special import gammaincinv
 import random
+import panda as pd
 
 from trunk.dynamics.model_validation.gfl_vsc_validation import load_mdl
 
@@ -46,6 +47,8 @@ class ProceduralGridComputationEngine:
         Executes the Steiner Tree algorithm without further optimization.
         """
         print("Running Steiner Tree calculation")
+
+        _CATALOGUE_CACHE = {} # needed for the catalogue_data_fectcher() function
 
         # 1. Parse inputs
         coord_M = np.array([[sg.latitude, sg.longitude] for sg in self.candidates])
@@ -97,7 +100,12 @@ class ProceduralGridComputationEngine:
         500: {132: 0,  220: 0.15, 380: 0.15, 500: 0.7}
         }
 
-        topology = Topology(network, node_objects, edge_objects, discretization=25.0, transition_matrix=TRANSITION_MATRIX)
+        topology = Topology(network,
+                            node_objects,
+                            edge_objects,
+                            discretization=25.0,
+                            transition_matrix=TRANSITION_MATRIX,
+                            catalogue_path="path/to/catalogue.ods")
 
         # 4. Convert to VeraGrid object
         expansion_grid = Grid(topology)
@@ -113,7 +121,6 @@ class ProceduralGridComputationEngine:
         """
         print("Running Steiner Tree plus Optimization")
         # Add your Steiner Tree plus Optimization logic here
-        # TODO: Implement steiner tree + optimization
 
         return None
 
@@ -339,19 +346,19 @@ class Graph:
         node_objects = []
         for i, (x, y) in enumerate(coords_final_network):
             if i < self.m:
-                tpe = 0
+                tpe = "M"
                 id_number = i
                 voltage = self.vnom_M[i]
                 load = self.load_M[i]
 
             elif i < self.m + self.n:
-                tpe = 1
+                tpe = "N"
                 id_number = i - self.m
                 voltage = self.vnom_N[i - self.m]
                 load = self.load_N[i - self.m]
 
             else:
-                tpe = 2
+                tpe = "S" # S for Steiner Point
                 id_number = i - (self.m + self.n) + 1
                 voltage = closest_voltage[i - (self.m + self.n)]
                 load = None
@@ -375,12 +382,19 @@ class Topology:
     Contains a Graph instance via composition.
     """
 
-    def __init__(self, network_graph: Graph, nodes: List[Node], edges: List[Edge], discretization: float = 25.0, transition_matrix: Dict[int, Dict[int, float]] = None):
+    def __init__(self,
+                 network_graph: Graph,
+                 nodes: List[Node],
+                 edges: List[Edge],
+                 discretization: float = 25.0,
+                 transition_matrix: Dict[int, Dict[int, float]] = None,
+                 catalogue_path: str = "path/to/catalogue.ods"):
         self.network_graph = network_graph
         self.nodes = nodes # creo que no hace falta importar esto ya que edges incluye la misma info
         self.edges = edges
         self.discretization = discretization  # km between buses
         self.transition_matrix = transition_matrix
+        self.catalogue_path = catalogue_path
 
     def generate_markov(self):
         """
@@ -391,6 +405,7 @@ class Topology:
         for edge in self.edges:
 
             lengths = []
+            bus_name_log = [] # np.array(len(self.nodes), dtype=str)
 
             input_node = edge.start_node
             output_node = edge.end_node
@@ -415,6 +430,7 @@ class Topology:
 
             accumulated_length = 0.0
             conn_counter = 0
+            intermediate_bus_counter = 0
 
             # Add the first bus to the Multicircuit
             next_bus_volt = input_node.voltage
@@ -424,7 +440,7 @@ class Topology:
             next_bus_id_number = input_node.id_number
             next_bus_is_DC = input_node.is_DC
             next_bus = gce.Bus(
-                name=f"{next_bus_tpe}_{next_bus_id_number}",
+                name=f"{next_bus_tpe}{next_bus_id_number}",
                 Vnom=next_bus_volt,
                 is_dc=next_bus_is_DC,
                 vmin=0.9, vmax=1.1,
@@ -433,7 +449,10 @@ class Topology:
             )
             next_bus.Vm_cost = next_bus_volt * 1000
 
-            expansion_grid.add_bus(obj=next_bus)
+            if next_bus.name not in bus_name_log:
+                expansion_grid.add_bus(obj=next_bus)
+                # Add the bus in bus_name_log
+                bus_name_log.append(next_bus.name)
 
             voltage_options = sorted(self.transition_matrix.get(input_node.voltage, {}).keys())
 
@@ -444,8 +463,6 @@ class Topology:
                 current_bus_volt = next_bus_volt
                 current_bus_lat = next_bus_lat
                 current_bus_lon = next_bus_lon
-                current_bus_tpe = next_bus_tpe
-                current_bus_id_number = next_bus_id_number
                 current_bus_is_DC = next_bus_is_DC
 
                 # Check if we are at the last connection
@@ -461,7 +478,7 @@ class Topology:
                         # TODO: Find out a way to solve this case
                     else:
                         next_bus = gce.Bus(
-                            name=f"{output_node.tpe}_{output_node.id_number}_{i}",
+                            name=f"{output_node.tpe}{output_node.id_number}",
                             Vnom=next_bus_volt,
                             is_dc=output_node.is_DC,
                             vmin=0.9, vmax=1.1,
@@ -470,7 +487,11 @@ class Topology:
                         )
                         next_bus.Vm_cost = next_bus_volt * 1000
 
-                        expansion_grid.add_bus(obj=next_bus)
+                        if next_bus.name not in bus_name_log:
+                            expansion_grid.add_bus(obj=next_bus)
+                            # Add the bus in bus_name_log
+                            bus_name_log.append(next_bus.name)
+
                 else:
                     next_bus_options = sorted([b for b in voltage_options])
                     current_transitions =  self.transition_matrix[current_bus_volt]
@@ -483,7 +504,7 @@ class Topology:
                     # random.choices returns a list, so get the first element [0]
                     next_bus_volt = random.choices(next_bus_options, weights=weights, k=1)[0]
                     next_bus = gce.Bus(
-                        name=f"intermediate_{bus.id_number}_{i}",
+                        name=f"intermediate{intermediate_bus_counter}",
                         Vnom=next_bus_volt,
                         is_dc=current_bus_is_DC, # for now we keep it like this, since everything is AC
                         vmin=0.9, vmax=1.1,
@@ -495,6 +516,8 @@ class Topology:
 
                     expansion_grid.add_bus(obj=next_bus)
 
+                    intermediate_bus_counter += 1
+
                 # Add connection between current bus and next bus to Multicircuit
                 conn_options = sorted(self.get_possible_connections(current_bus_volt, next_bus_volt, current_bus_is_DC, current_bus_is_DC))
                 if not conn_options:
@@ -504,15 +527,17 @@ class Topology:
 
                 connection = random.choice(conn_options)
 
-                if connection.conn_type == "underground cable":
-                    r = catalogue_data_fetcher(connection.identifier, 'R [Ohm/km AC@20°C]', file_name=catalogue_path)
-                    x = catalogue_data_fetcher(connection.identifier, 'X [Ohm/km]', file_name=catalogue_path)
-                    b = catalogue_data_fetcher(connection.identifier, 'B [uS/km]', file_name=catalogue_path)
-                    p_rated = catalogue_data_fetcher(connection.identifier, 'Rated Power [MW]', file_name=catalogue_path)
-                    capex = catalogue_data_fetcher(connection.identifier, 'Dummy Cost [EUR/km]', file_name=catalogue_path)
+                # TODO: let the user choose the catalogue it wants using the "File" > "Import catalogue" from the GUI
+
+                if connection.conn_type == "overhead AC line":
+                    r = self.catalogue_data_fetcher(connection.identifier, 'R [Ohm/km AC@20°C]', file_name=self.catalogue_path)
+                    x = self.catalogue_data_fetcher(connection.identifier, 'X [Ohm/km]', file_name=self.catalogue_path)
+                    b = self.catalogue_data_fetcher(connection.identifier, 'B [uS/km]', file_name=self.catalogue_path)
+                    p_rated = self.catalogue_data_fetcher(connection.identifier, 'Rated Power [MW]', file_name=self.catalogue_path)
+                    capex = self.catalogue_data_fetcher(connection.identifier, 'Dummy Cost [EUR/km]', file_name=self.catalogue_path)
 
                     line = gce.Line(
-                        name=f"Line_{current_bus.name}_{next_bus.name}_{idx_1D}",  # Added idx_1D to ensure uniqueness
+                        name=f"AC_Line_{current_bus.name}_{next_bus.name}",  # Added idx_1D to ensure uniqueness
                         bus_from=current_bus, bus_to=next_bus,
                         length=lengths[conn_counter], r=r, x=x, b=b, rate=p_rated,
                         capex=capex, opex=0, cost=100
@@ -523,14 +548,14 @@ class Topology:
                     conn_counter += 1
 
                 elif connection.conn_type == "transformer":
-                    hv_val = catalogue_data_fetcher(conn_catalogue, 'HV (kV)', file_name=catalogue_path)
-                    lv_val = catalogue_data_fetcher(conn_catalogue, 'LV (kV)', file_name=catalogue_path)
-                    pcu = catalogue_data_fetcher(conn_catalogue, 'Copper losses (kW)', file_name=catalogue_path)
-                    pfe = catalogue_data_fetcher(conn_catalogue, 'No load losses (kW)', file_name=catalogue_path)
-                    i0 = catalogue_data_fetcher(conn_catalogue, 'No load current (%)', file_name=catalogue_path)
-                    vsc = catalogue_data_fetcher(conn_catalogue, 'V short circuit (%)', file_name=catalogue_path)
-                    rate = catalogue_data_fetcher(conn_catalogue, 'Rate (MVA)', file_name=catalogue_path)
-                    capex = catalogue_data_fetcher(conn_catalogue, 'Dummy Cost [EUR]', file_name=catalogue_path)
+                    hv_val = self.catalogue_data_fetcher(connection.identifier, 'HV (kV)', file_name=self.catalogue_path)
+                    lv_val = self.catalogue_data_fetcher(connection.identifier, 'LV (kV)', file_name=self.catalogue_path)
+                    pcu = self.catalogue_data_fetcher(connection.identifier, 'Copper losses (kW)', file_name=self.catalogue_path)
+                    pfe = self.catalogue_data_fetcher(connection.identifier, 'No load losses (kW)', file_name=self.catalogue_path)
+                    i0 = self.catalogue_data_fetcher(connection.identifier, 'No load current (%)', file_name=self.catalogue_path)
+                    vsc = self.catalogue_data_fetcher(connection.identifier, 'V short circuit (%)', file_name=self.catalogue_path)
+                    rate = self.catalogue_data_fetcher(connection.identifier, 'Rate (MVA)', file_name=self.catalogue_path)
+                    capex = self.catalogue_data_fetcher(connection.identifier, 'Dummy Cost [EUR]', file_name=self.catalogue_path)
 
                     z_complex = gce.Devices.Branches.transformer_type.get_impedances(
                         VH_bus=max(hv_val, lv_val), VL_bus=min(hv_val, lv_val),
@@ -539,7 +564,7 @@ class Topology:
                     )[0]
 
                     trafo = gce.Transformer2W(
-                        name=f"TR_{current_bus.name}_{next_bus.name}_{idx_1D}",  # Added idx_1D to ensure uniqueness
+                        name=f"TR_{current_bus.name}_{next_bus.name}",  # Added idx_1D to ensure uniqueness
                         bus_from=current_bus, bus_to=next_bus,
                         HV=max(hv_val, lv_val), LV=min(hv_val, lv_val),
                         r=np.real(z_complex), x=np.imag(z_complex),
@@ -571,7 +596,7 @@ class Topology:
 
         if current_bus == next_bus:
             if not current_bus_is_DC and not next_bus_is_DC:
-                return ["underground cable"]
+                return ["overhead AC line"]
             elif current_bus_is_DC and next_bus_is_DC:
                 return ["DC cable"]
             else:
@@ -584,6 +609,52 @@ class Topology:
             else:
                 return []
 
+    def catalogue_data_fetcher(self, identifier, parameter, file_name):
+        """
+        Fetches the specified parameter for a given identifier from the catalogue.
+        """
+        global _CATALOGUE_CACHE
+
+        if file_name not in _CATALOGUE_CACHE:
+            # print(f"Loading catalogue into memory: {file_name} ...")
+            try:
+                # Load all sheets
+                all_sheets = pd.read_excel(file_name, sheet_name=None, engine='odf')
+
+                file_lookup = {}
+                for df in all_sheets.values():
+                    if 'Name' in df.columns:
+                        # 1. Drop rows without a name
+                        df_clean = df.dropna(subset=['Name'])
+
+                        # 2. CRITICAL FIX: Remove duplicates, keeping the first occurrence
+                        # This prevents the "Index must be unique" error
+                        df_clean = df_clean.drop_duplicates(subset=['Name'], keep='first')
+
+                        # 3. Convert to dictionary
+                        records = df_clean.set_index('Name').to_dict(orient='index')
+                        file_lookup.update(records)
+
+                _CATALOGUE_CACHE[file_name] = file_lookup
+
+            except Exception as e:
+                print(f"Critical Error loading catalogue: {e}")
+                return None
+
+        # Retrieve data
+        file_data = _CATALOGUE_CACHE.get(file_name)
+        if file_data is None: return None
+
+        row_data = file_data.get(identifier)
+        if row_data is None:
+            # print(f"Error: Element '{element_name}' not found in catalogue.")
+            return None
+
+        val = row_data.get(parameter)
+        if val is None: return None
+
+        return float(val)
+
 class Grid:
     """
     Contains the data to create a VeraGrid object modeling the grid.
@@ -595,8 +666,8 @@ class Grid:
 
 class Node:
 
-    def __init__(self, tpe: int, id_number: int, x: float, y: float, load: float, voltage: int, is_DC: bool):
-        self.tpe = tpe # 0 for M, 1 for N, 2 for Steiner Point
+    def __init__(self, tpe: str, id_number: int, x: float, y: float, load: float, voltage: int, is_DC: bool):
+        self.tpe = tpe # M, N, or S
         self.id_number = id_number
         self.x = x
         self.y = y
@@ -623,10 +694,10 @@ class Bus:
 
 class Connection:
 
-    def __init__(self, bus_from: Bus, bus_to: Bus, tpe: int, catalogue_entry: str, length: float):
+    def __init__(self, bus_from: Bus, bus_to: Bus, tpe: str, catalogue_entry: str, length: float):
         self.bus_from = bus_from
         self.bus_to = bus_to
-        self.tpe = tpe  # 0 for cable, 1 for transformer
+        self.tpe = tpe  # "overhead AC line", "transformer", "VSC", etc.
         self.catalogue_entry = catalogue_entry
         self.length = length
 
