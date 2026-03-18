@@ -4,15 +4,13 @@ from scipy import sparse, linalg
 from sympy.parsing.sympy_parser import parse_expr
 from enum import Enum
 import builtins
-from typing import Callable, Optional
-
-from VeraGridEngine import RmsProblemPhasor
+from typing import Callable, Optional, Any
 
 # ------------------------------------------------------------------
 # Profiler Control
 # ------------------------------------------------------------------
 # If the script is not run via `mprof run` or `python -m memory_profiler`,
-# the 'profile' function won't be in builtins. We create a dummy to ensure 
+# the 'profile' function won't be in builtins. We create a dummy to ensure
 # zero-overhead execution as per our performance rules.
 
 if 'profile' not in builtins.__dict__:
@@ -66,24 +64,26 @@ class PolynomialMatrixBuilder:
 
     def __init__(
             self,
-            problem: RmsProblemPhasor,
-            eqs: list,
-            ineqs: list,
-            state_vars: list | None = None,
-            algebraic_vars: list | None = None,
+            problem: Optional[Any] = None,
+            eqs: Optional[list] = None,
+            ineqs: Optional[list] = None,
+            state_vars: Optional[list] = None,
+            algebraic_vars: Optional[list] = None,
             verbose: bool = False
     ) -> None:
         """
         Initializes the PolynomialMatrixBuilder.
 
-        :param eqs: Polynomial equality constraints as strings.
-        :type eqs: list
-        :param ineqs: Polynomial inequality constraints as strings.
-        :type ineqs: list
-        :param state_vars: Optional list of state variable names (have derivatives).
-        :type state_vars: list | None
-        :param algebraic_vars: Optional list of algebraic variable names (no derivatives).
-        :type algebraic_vars: list | None
+        :param problem: The simulation problem instance (e.g., GenericMathematicalProblem).
+        :type problem: Optional[Any]
+        :param eqs: Optional polynomial equality constraints. Extracted from problem if None.
+        :type eqs: Optional[list]
+        :param ineqs: Optional polynomial inequality constraints.
+        :type ineqs: Optional[list]
+        :param state_vars: Optional list of state variable names. Extracted from problem if None.
+        :type state_vars: Optional[list]
+        :param algebraic_vars: Optional list of algebraic variable names. Extracted from problem if None.
+        :type algebraic_vars: Optional[list]
         :param verbose: Print debugging information.
         :type verbose: bool
         :return: None
@@ -91,11 +91,82 @@ class PolynomialMatrixBuilder:
         """
         self.verbose: bool = verbose
 
-        # Initialize explicit lists for variables
+        # Initialize explicit lists for internal storage
         self.eqs: list = list()
         self.ineqs: list = list()
         self.state_vars: list = list()
         self.algebraic_vars: list = list()
+
+        # Step: Handle optional inputs and extract from problem if necessary.
+        processed_eqs: list = list()
+        processed_ineqs: list = list()
+        processed_state_vars: list = list()
+        processed_algebraic_vars: list = list()
+
+        # Helper method inline to safely extract string representation from any Node/BinOp
+        def _safe_to_string(item: Any) -> str:
+            if hasattr(item, 'expr'):
+                return str(getattr(item, 'expr'))
+            elif hasattr(item, 'to_string'):
+                return item.to_string()
+            return str(item)
+
+        has_problem: bool = problem is not None
+
+        # --- 1. Equations processing ---
+        if eqs is not None:
+            processed_eqs = eqs
+        else:
+            if has_problem:
+                if hasattr(problem, '_state_eqs'):
+                    s_eq: Any
+                    for s_eq in problem._state_eqs:
+                        processed_eqs.append(_safe_to_string(s_eq))
+                else:
+                    pass
+
+                if hasattr(problem, '_algebraic_eqs'):
+                    a_eq: Any
+                    for a_eq in problem._algebraic_eqs:
+                        processed_eqs.append(_safe_to_string(a_eq))
+                else:
+                    pass
+            else:
+                pass
+
+        # --- 2. Inequations processing ---
+        if ineqs is not None:
+            processed_ineqs = ineqs
+        else:
+            pass
+
+        # --- 3. State variables processing ---
+        if state_vars is not None:
+            processed_state_vars = state_vars
+        else:
+            if has_problem:
+                if hasattr(problem, '_state_vars'):
+                    s_var: Any
+                    for s_var in problem._state_vars:
+                        processed_state_vars.append(_safe_to_string(s_var))
+                else:
+                    pass
+            else:
+                pass
+
+        # --- 4. Algebraic variables processing ---
+        if algebraic_vars is not None:
+            processed_algebraic_vars = algebraic_vars
+        else:
+            if has_problem:
+                if hasattr(problem, '_algebraic_vars'):
+                    a_var: Any
+                    for a_var in problem._algebraic_vars:
+                        processed_algebraic_vars.append(_safe_to_string(a_var))
+                else:
+                    pass
+            else:
+                pass
 
         # Rule: Explicit state. Define global dictionary for the parser
         parsing_context: dict = dict()
@@ -119,41 +190,47 @@ class PolynomialMatrixBuilder:
         # Parse State Variables explicitly
         parsed_predefined: list = list()
 
-        if state_vars is not None:
-            s_name: str
-            for s_name in state_vars:
-                new_sym: sp.Symbol = sp.Symbol(s_name)
-                parsing_context[s_name] = new_sym
-                parsed_predefined.append(new_sym)
-                self.state_vars.append(new_sym)
-        else:
-            pass
+        s_name: str
+        for s_name in processed_state_vars:
+            new_sym: sp.Symbol = sp.Symbol(s_name)
+            parsing_context[s_name] = new_sym
+            parsed_predefined.append(new_sym)
+            self.state_vars.append(new_sym)
 
         # Parse Algebraic Variables explicitly
-        if algebraic_vars is not None:
-            a_name: str
-            for a_name in algebraic_vars:
-                new_sym: sp.Symbol = sp.Symbol(a_name)
-                parsing_context[a_name] = new_sym
-                parsed_predefined.append(new_sym)
-                self.algebraic_vars.append(new_sym)
-        else:
-            pass
+        a_name: str
+        for a_name in processed_algebraic_vars:
+            new_sym: sp.Symbol = sp.Symbol(a_name)
+            parsing_context[a_name] = new_sym
+            parsed_predefined.append(new_sym)
+            self.algebraic_vars.append(new_sym)
 
-        # Parse equations with explicit loops
-        eq_str: str
-        for eq_str in eqs:
+        # Parse equations with explicit loops and type defense against BinOp
+        raw_eq: Any
+        for raw_eq in processed_eqs:
+            eq_str: str
+            if isinstance(raw_eq, str):
+                eq_str = raw_eq
+            else:
+                eq_str = str(raw_eq)
+
             parsed_eq: sp.Expr = parse_expr(
-                str(eq_str),
+                eq_str,
                 local_dict=parsing_context,
                 evaluate=True
             )
             self.eqs.append(parsed_eq)
 
-        ineq_str: str
-        for ineq_str in ineqs:
+        raw_ineq: Any
+        for raw_ineq in processed_ineqs:
+            ineq_str: str
+            if isinstance(raw_ineq, str):
+                ineq_str = raw_ineq
+            else:
+                ineq_str = str(raw_ineq)
+
             parsed_ineq: sp.Expr = parse_expr(
-                str(ineq_str),
+                ineq_str,
                 local_dict=parsing_context,
                 evaluate=True
             )
@@ -162,18 +239,21 @@ class PolynomialMatrixBuilder:
         self.all_symbols: list = list()
         self.sym_to_idx: dict = dict()
 
-        # We merge lists for symbol extraction
+        # We merge lists for symbol extraction explicitly
         combined_exprs: list = list()
-        for eq in self.eqs:
-            combined_exprs.append(eq)
-        for ineq in self.ineqs:
-            combined_exprs.append(ineq)
+        parsed_e: sp.Expr
+        for parsed_e in self.eqs:
+            combined_exprs.append(parsed_e)
+        parsed_i: sp.Expr
+        for parsed_i in self.ineqs:
+            combined_exprs.append(parsed_i)
 
         # Pass the pre-parsed known symbols to the extractor
         self.extract_symbols(combined_exprs, predefined=parsed_predefined)
 
         # Build the symbol dictionary index explicitly
         idx: int = 0
+        sym: sp.Symbol
         for sym in self.all_symbols:
             self.sym_to_idx[sym.name] = idx
             idx = idx + 1
@@ -193,9 +273,9 @@ class PolynomialMatrixBuilder:
         self.Phi_W: np.ndarray = Phi_W_sp.toarray()
 
         # Protected interactive states
-        self._E: np.ndarray | None = None
-        self._A: np.ndarray | None = None
-        self._B: np.ndarray | None = None
+        self._E: Optional[np.ndarray] = None
+        self._A: Optional[np.ndarray] = None
+        self._B: Optional[np.ndarray] = None
 
     # ------------------------------------------------------------------
     # Getters and Setters
@@ -603,7 +683,7 @@ class PolynomialMatrixBuilder:
 
     @profile
     def linearize(
-        self, v_dict: dict, c_type: ConstraintType = ConstraintType.EQUALITY
+            self, v_dict: dict, c_type: ConstraintType = ConstraintType.EQUALITY
     ) -> np.ndarray:
         """
         Analytic linearization for iMTI models (CPN representation).
@@ -618,11 +698,11 @@ class PolynomialMatrixBuilder:
         S: np.ndarray
         Phi: np.ndarray
         S, Phi = self._get_matrices(c_type)
-        
+
         v: np.ndarray = self._build_v_vector(v_dict)
         F: np.ndarray = self._compute_jacobian(S, v)
         EABC: np.ndarray = Phi @ F.T
-        
+
         new_E: np.ndarray
         new_A: np.ndarray
         new_B: np.ndarray
@@ -632,7 +712,7 @@ class PolynomialMatrixBuilder:
         self.set_E(new_E)
         self.set_A(new_A)
         self.set_B(new_B)
-        
+
         return EABC
 
     # ------------------------------------------------------------------
@@ -658,10 +738,10 @@ class PolynomialMatrixBuilder:
         Build the operating-point vector from a dictionary.
 
         This function maps the provided values to their corresponding indices
-        in the state and algebraic vector. It handles both standard objects
-        (mapping by name) and RmsProblemPhasor (mapping by UID).
+        in the state and algebraic vector. It uses Duck Typing to handle keys
+        that might be strings, SymPy symbols, or VeraGrid objects.
 
-        :param v_dict: Operating point variables, either by name or by UID.
+        :param v_dict: Operating point variables mapped to their numerical values.
         :type v_dict: Optional[dict]
         :return: Vector array of operating points initialized with the mapped values.
         :rtype: np.ndarray
@@ -674,49 +754,38 @@ class PolynomialMatrixBuilder:
         # Step: Check if v_dict is not None to avoid runtime iteration errors.
         if v_dict is not None:
 
-            # Step: Check the class type using isinstance instead of getattr,
-            # as per eRoots Analytics standards.
-            if isinstance(self, RmsProblemPhasor):
+            # Step: Iterate directly. We process keys dynamically avoiding class checks.
+            key: Any
+            val: Any
+            for key, val in v_dict.items():
 
-                # Step: RmsProblemPhasor uses UID (integers) to map values.
-                # We iterate over the collection directly avoiding lambdas.
-                for uid, val in v_dict.items():
+                # Step: Ensure the value is not None to protect the numpy array.
+                if val is not None:
 
-                    # Step: Ensure the value is not None before assignment
-                    # to prevent type changes in the numpy float array.
-                    if val is not None:
-
-                        # Step: Lookup the index safely using the UID.
-                        # Based on previous context, uid2idx_vars holds this mapping.
-                        idx_opt: Optional[int] = self.uid2idx_vars.get(uid, None)
-
-                        if idx_opt is not None:
-                            v[idx_opt] = val
-                        else:
-                            # Explicit else: UID is not in our index map, skip gracefully.
-                            pass
+                    # Step: Duck Typing for key extraction.
+                    # We need a string to query self.sym_to_idx.
+                    key_str: str
+                    if isinstance(key, str):
+                        key_str = key
+                    elif hasattr(key, 'name'):
+                        # Handles SymPy symbols or VeraGrid nodes with a 'name' attribute
+                        key_str = str(getattr(key, 'name'))
                     else:
-                        # Explicit else: The value is None, skip assignment.
-                        pass
+                        # Fallback to absolute string representation
+                        key_str = str(key)
 
-            else:
-                # Step: Current (default) case where v_dict maps names (strings) to values.
-                for name, val in v_dict.items():
+                    # Step: Lookup the index safely using the string name.
+                    idx_opt: Optional[int] = self.sym_to_idx.get(key_str, None)
 
-                    # Step: Check if the value is None to protect the numpy array.
-                    if val is not None:
-
-                        # Step: Lookup the index safely using the string name.
-                        idx_opt: Optional[int] = self.sym_to_idx.get(name, None)
-
-                        if idx_opt is not None:
-                            v[idx_opt] = val
-                        else:
-                            # Explicit else: name not found in the index map.
-                            pass
+                    if idx_opt is not None:
+                        # Force float casting to avoid numpy internal type conversion issues
+                        v[idx_opt] = float(val)
                     else:
-                        # Explicit else: The value is None, skip assignment.
+                        # Explicit else: key not found in our extracted symbols, skip gracefully.
                         pass
+                else:
+                    # Explicit else: The value is None, skip assignment.
+                    pass
 
         else:
             # Explicit else: If v_dict is None, we do nothing and return the zeros array.
