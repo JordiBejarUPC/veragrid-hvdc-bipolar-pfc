@@ -24,6 +24,7 @@ class ContingencyAnalysisTimeSeriesResults(ResultsTemplate):
                  n: int,
                  nbr: int,
                  time_array: DateVec,
+                 original_time_array: DateVec,
                  bus_names: StrVec,
                  branch_names: StrVec,
                  bus_types: IntVec,
@@ -64,6 +65,10 @@ class ContingencyAnalysisTimeSeriesResults(ResultsTemplate):
         )
 
         self.nt = len(time_array)
+
+        # this is the complete time array because the report indices
+        # may be referring to a point outside the simulation range
+        self.original_time_array = original_time_array
 
         self.branch_names: StrVec = branch_names
         self.bus_names: StrVec = bus_names
@@ -236,7 +241,7 @@ class ContingencyAnalysisTimeSeriesResults(ResultsTemplate):
         elif result_type == ResultTypes.ContingencyAnalysisReport:
 
             return ResultsTable(
-                data=self.report.get_data(time_array=self.time_array, time_format='%Y/%m/%d  %H:%M.%S'),
+                data=self.report.get_data(time_array=self.original_time_array, time_format='%Y/%m/%d  %H:%M.%S'),
                 index=self.report.get_index(),
                 idx_device_type=DeviceType.NoDevice,
                 columns=self.report.get_headers(),
@@ -245,7 +250,7 @@ class ContingencyAnalysisTimeSeriesResults(ResultsTemplate):
             )
 
         elif result_type == ResultTypes.ContingencyStatisticalAnalysisReport:
-            df = self.report.get_summary_table(time_array=self.time_array, time_format='%Y/%m/%d  %H:%M.%S')
+            df = self.report.get_summary_table(time_array=self.original_time_array, time_format='%Y/%m/%d  %H:%M.%S')
 
             return ResultsTable(
                 data=df.values,

@@ -4,7 +4,9 @@ from scipy import sparse, linalg
 from sympy.parsing.sympy_parser import parse_expr
 from enum import Enum
 import builtins
-from typing import Callable
+from typing import Callable, Optional
+
+from VeraGridEngine import RmsProblemPhasor
 
 # ------------------------------------------------------------------
 # Profiler Control
@@ -64,6 +66,7 @@ class PolynomialMatrixBuilder:
 
     def __init__(
             self,
+            problem: RmsProblemPhasor,
             eqs: list,
             ineqs: list,
             state_vars: list | None = None,
@@ -141,7 +144,7 @@ class PolynomialMatrixBuilder:
         eq_str: str
         for eq_str in eqs:
             parsed_eq: sp.Expr = parse_expr(
-                eq_str,
+                str(eq_str),
                 local_dict=parsing_context,
                 evaluate=True
             )
@@ -150,7 +153,7 @@ class PolynomialMatrixBuilder:
         ineq_str: str
         for ineq_str in ineqs:
             parsed_ineq: sp.Expr = parse_expr(
-                ineq_str,
+                str(ineq_str),
                 local_dict=parsing_context,
                 evaluate=True
             )
@@ -537,12 +540,21 @@ class PolynomialMatrixBuilder:
 
                         # MULTILINEARITY CHECK: Prevent TypeError on float() cast
                         if not b_val_sym.is_number:
-                            raise ValueError(
-                                f"\n[TenSyGrid Error] Non-multilinear term detected: '{f}'.\n"
-                                f"Variable '{s.name}' has a degree higher than 1.\n"
-                                f"The iMTI representation requires strictly multilinear equations. "
-                                f"Please define an auxiliary algebraic variable to perform the 'lifting'."
+                            deg = sp.degree(f, s)
+                            if deg > 1:
+                                raise ValueError(
+                                    f"\n[TenSyGrid Error] Non-multilinear term detected: '{f}'.\n"
+                                    f"Variable '{s.name}' has a degree higher than 1 ({deg}).\n"
+                                    f"The iMTI representation requires strictly multilinear equations. "
+                                    f"Please define an auxiliary algebraic variable to perform the 'lifting'."
                             )
+                            elif deg < 1:
+                                raise ValueError(
+                                    f"\n[TenSyGrid Error] Non-multilinear term detected: '{f}'.\n"
+                                    f"Variable '{s.name}' has a degree lower than 1 ({deg}).\n"
+                                    f"The iMTI representation requires strictly multilinear equations. "
+                                    f"Please define an auxiliary algebraic variable to perform the 'lifting'."
+                                )
                         else:
                             pass
 
@@ -641,24 +653,75 @@ class PolynomialMatrixBuilder:
         else:
             return self.S_H, self.Phi_H
 
-    def _build_v_vector(self, v_dict: dict) -> np.ndarray:
+    def _build_v_vector(self, v_dict: Optional[dict]) -> np.ndarray:
         """
-        Build the operating-point vector from a name to value dictionary.
+        Build the operating-point vector from a dictionary.
 
-        :param v_dict: Operating point variables.
-        :type v_dict: dict
-        :return: Vector array of operating points.
+        This function maps the provided values to their corresponding indices
+        in the state and algebraic vector. It handles both standard objects
+        (mapping by name) and RmsProblemPhasor (mapping by UID).
+
+        :param v_dict: Operating point variables, either by name or by UID.
+        :type v_dict: Optional[dict]
+        :return: Vector array of operating points initialized with the mapped values.
         :rtype: np.ndarray
         """
+        # Step: Initialize the numpy array with zeros.
+        # The size is explicitly known in advance via len(self.all_symbols)
+        # complying with the performance rule of pre-allocating sizes.
         v: np.ndarray = np.zeros(len(self.all_symbols))
-        
-        for name, val in v_dict.items():
-            idx_opt: int | None = self.sym_to_idx.get(name, None)
-            if idx_opt is not None:
-                v[idx_opt] = val
+
+        # Step: Check if v_dict is not None to avoid runtime iteration errors.
+        if v_dict is not None:
+
+            # Step: Check the class type using isinstance instead of getattr,
+            # as per eRoots Analytics standards.
+            if isinstance(self, RmsProblemPhasor):
+
+                # Step: RmsProblemPhasor uses UID (integers) to map values.
+                # We iterate over the collection directly avoiding lambdas.
+                for uid, val in v_dict.items():
+
+                    # Step: Ensure the value is not None before assignment
+                    # to prevent type changes in the numpy float array.
+                    if val is not None:
+
+                        # Step: Lookup the index safely using the UID.
+                        # Based on previous context, uid2idx_vars holds this mapping.
+                        idx_opt: Optional[int] = self.uid2idx_vars.get(uid, None)
+
+                        if idx_opt is not None:
+                            v[idx_opt] = val
+                        else:
+                            # Explicit else: UID is not in our index map, skip gracefully.
+                            pass
+                    else:
+                        # Explicit else: The value is None, skip assignment.
+                        pass
+
             else:
-                pass
-                
+                # Step: Current (default) case where v_dict maps names (strings) to values.
+                for name, val in v_dict.items():
+
+                    # Step: Check if the value is None to protect the numpy array.
+                    if val is not None:
+
+                        # Step: Lookup the index safely using the string name.
+                        idx_opt: Optional[int] = self.sym_to_idx.get(name, None)
+
+                        if idx_opt is not None:
+                            v[idx_opt] = val
+                        else:
+                            # Explicit else: name not found in the index map.
+                            pass
+                    else:
+                        # Explicit else: The value is None, skip assignment.
+                        pass
+
+        else:
+            # Explicit else: If v_dict is None, we do nothing and return the zeros array.
+            pass
+
         return v
 
     @profile

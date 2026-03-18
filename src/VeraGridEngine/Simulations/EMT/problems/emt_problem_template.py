@@ -202,6 +202,38 @@ class EmtProblemTemplate(ABC):
             dtype=np.float64
         )
 
+    def rebuild_runtime_param_vectors(self) -> None:
+        """
+        Rebuild the runtime and constant parameter buffers.
+
+        :return: None
+        """
+        self._build_runtime_param_vectors()
+
+    def get_compiler_names_dict(self) -> Dict[int, str]:
+        """
+        Return the compiler-name mapping used by symbolic kernels.
+
+        :return: Compiler-name dictionary.
+        """
+        return dict(self._compiler_names_dict)
+
+    def get_alias_names_dict(self) -> Dict[int, str]:
+        """
+        Return the alias-name mapping used by symbolic kernels.
+
+        :return: Alias-name dictionary.
+        """
+        return dict(self._alias_names_dict)
+
+    def get_event_parameter_equations(self) -> List[Any]:
+        """
+        Return the runtime event-parameter equations.
+
+        :return: Event-parameter equations.
+        """
+        return list(self._event_parameters_eqs)
+
     def _rebuild_runtime_parameter_partition(self) -> None:
         """
         Rebuild the runtime parameter partition.
@@ -326,7 +358,7 @@ class EmtProblemTemplate(ABC):
                 return float(expression.value)
 
         elif isinstance(expression, Var):
-            if expression.uid == self._glob_time.uid:
+            if expression.uid == self._glob_time.uid or expression.name in {"time", self.TIME_NAME}:
                 return float(tm)
             else:
                 idx_runtime: int | None = self._uid2idx_event_params.get(expression.uid, None)
@@ -349,6 +381,9 @@ class EmtProblemTemplate(ABC):
                 uid_bindings[uid] = float(self._parameters_values[idx].value)
 
             uid_bindings[self._glob_time.uid] = float(tm)
+            for var in expression.get_vars():
+                if var.name in {"time", self.TIME_NAME}:
+                    uid_bindings[var.uid] = float(tm)
 
             return float(expression.eval_uid(uid_bindings))
 
@@ -696,6 +731,10 @@ class EmtProblemTemplate(ABC):
         :return: Current flat runtime parameter vector.
         """
         return self._event_params_values
+
+    @property
+    def event_parameters_eqs(self):
+        return self._event_parameters_eqs
 
 
 

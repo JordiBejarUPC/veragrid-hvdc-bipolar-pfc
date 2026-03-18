@@ -17,6 +17,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType
 
 
+
 def tf_to_block(var_factory: VarFactory,
                 num: List[Var | float],
                 den: List[Var | float],
@@ -40,6 +41,7 @@ def tf_to_block(var_factory: VarFactory,
     aux_eqs: List[Expr] = list()
     aux_vars: List[Expr] = list()
     init_eqs = dict()
+    diff_init_eqs = dict()  # ADDED
     x_save = x  # Initialize x_save to avoid unbound variable error
     # check if is an expression
     if not isinstance(x, Var):
@@ -68,6 +70,7 @@ def tf_to_block(var_factory: VarFactory,
             if base_var.diff_var is None:
                 new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + x.name, base_var=base_var)
                 diff_vars.append(new_diff)
+                diff_init_eqs[new_diff] = Const(0.0)  # ADDED
             diff_vars_x.append(base_var.diff_var)
             base_var = base_var.diff_var
     base_var = y
@@ -75,6 +78,7 @@ def tf_to_block(var_factory: VarFactory,
         if base_var.diff_var is None:
             new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + y.name, base_var=base_var)
             diff_vars.append(new_diff)
+            diff_init_eqs[new_diff] = Const(0.0)  # ADDED
         diff_vars_y.append(base_var.diff_var)
         base_var = base_var.diff_var
 
@@ -91,7 +95,9 @@ def tf_to_block(var_factory: VarFactory,
     block.in_vars       = [x]  # Input is x
     block.out_vars      = [y]  # Output is y
     block.init_eqs      = init_eqs
+    block.diff_init_eqs = diff_init_eqs  # ADDED
     return block, y
+
 
 
 def tf_to_diffblock_with_output(
@@ -133,6 +139,7 @@ def tf_to_diffblock_with_output(
     state_eqs = list()
     state_vars = list()
     init_eqs = dict()
+    diff_init_eqs = dict()   # ADDED
     base_var = x
     for i in range(1, len(num)):
         if i == 1 and create_state:
@@ -151,6 +158,7 @@ def tf_to_diffblock_with_output(
             if base_var.diff_var is None:
                 new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + x.name, base_var=base_var)
                 diff_vars.append(new_diff)
+                diff_init_eqs[new_diff] = Const(0.0)   # ADDED
             diff_vars_x.append(base_var.diff_var)
             base_var = base_var.diff_var
     base_var = y
@@ -158,6 +166,7 @@ def tf_to_diffblock_with_output(
         if base_var.diff_var is None:
             new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + y.name, base_var=base_var)
             diff_vars.append(new_diff)
+            diff_init_eqs[new_diff] = Const(0.0)   # ADDED
         diff_vars_y.append(base_var.diff_var)
         base_var = base_var.diff_var
 
@@ -172,8 +181,10 @@ def tf_to_diffblock_with_output(
     block.algebraic_eqs = [lhs - rhs] + aux_eqs
     block.diff_vars = diff_vars
     block.init_eqs = init_eqs
+    block.diff_init_eqs = diff_init_eqs   # ADDED
 
     return block, y, x
+
 
 
 def tf_to_block_with_states(
@@ -198,6 +209,7 @@ def tf_to_block_with_states(
 
     aux_eqs = []
     aux_vars = []
+    diff_init_eqs = dict()  # ADDED
     # check if x is a expression
     if not isinstance(x, Var):
         u = var_factory.add_var('u_' + name)
@@ -222,12 +234,14 @@ def tf_to_block_with_states(
         if y_states[i].diff_var is None:
             dy = var_factory.add_diff_var(f"d_{y_states[i].name}", base_var=y_states[i])
             diff_vars.append(dy)
+            diff_init_eqs[dy] = Const(0.0)  # ADDED
         diff_eqs.append(y_states[i + 1] - y_states[i].diff_var)
 
     for i in range(len(num) - 1):
         if x_states[i].diff_var is None:
             dx = var_factory.add_diff_var(f"d^{i}_{x_states[i].name}", base_var=x_states[i])
             diff_vars.append(dx)
+            diff_init_eqs[dx] = Const(0.0)  # ADDED
         diff_eqs.append(x_states[i + 1] - x_states[i].diff_var)
 
         # Last equation: linear combination
@@ -242,8 +256,10 @@ def tf_to_block_with_states(
         algebraic_eqs=diff_eqs + aux_eqs,
     )
     block.diff_vars = diff_vars
+    block.diff_init_eqs = diff_init_eqs  # ADDED
     block.name = 'TF'
     return block, y_states[0]
+
 
 
 def tf_to_block2(
@@ -384,6 +400,7 @@ def tf_to_diffblock_with_antiwindup(
 
     aux_eqs = []
     aux_vars = []
+    diff_init_eqs = dict()  # ADDED
 
     # If x is an expression, wrap it in a Var
     if not isinstance(x, Var):
@@ -402,6 +419,7 @@ def tf_to_diffblock_with_antiwindup(
         if base_var.diff_var is None:
             new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + x.name, base_var=base_var)
             diff_vars.append(new_diff)
+            diff_init_eqs[new_diff] = Const(0.0)  # ADDED
         diff_vars_x.append(x.diff_var)
         base_var = x.diff_var
 
@@ -411,6 +429,7 @@ def tf_to_diffblock_with_antiwindup(
         if base_var.diff_var is None:
             new_diff = var_factory.add_diff_var(name=f'dt_{i}_' + y.name, base_var=base_var)
             diff_vars.append(new_diff)
+            diff_init_eqs[new_diff] = Const(0.0)  # ADDED
         diff_vars_y.append(y.diff_var)
         base_var = y.diff_var
 
@@ -460,6 +479,7 @@ def tf_to_diffblock_with_antiwindup(
         algebraic_eqs=[eq_main] + aux_eqs,
         diff_vars=diff_vars,
     )
+    block.diff_init_eqs = diff_init_eqs  # ADDED
 
     # TODO: review multilinear implementation
     # if multilinear:
@@ -783,7 +803,7 @@ def connect_line_phasor_rms_to(mdl1: Block, mdl2: Block):
         mdl2.connect([inpt], [outp])
 
 
-def connect_rms_models(mdl1: Block, mdl2: Block):
+def connect_models(mdl1: Block, mdl2: Block):
     """
     This function substitutes input variables for output variables to connect two rms models
     :param mdl1:
@@ -851,7 +871,7 @@ def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
 
     else:
         if not device.bus.rms_model.empty():
-            connect_rms_models(device.bus.rms_model, model)
+            connect_models(device.bus.rms_model, model)
 
         else:
             raise ValueError(f"Connection Bus RMS model cannot be empty, initialize {device.bus.name} RMS model")
@@ -865,3 +885,118 @@ def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
 
     # set the model to the device
     device.rms_model = model
+
+
+def connect_line_emt_from(mdl1: Block, mdl2: Block):
+    """
+    Connects the bus voltages (mdl1) to the "from" side of the line (mdl2)
+    for simulations with explicit phases (e.g., EMT).
+    It only connects the phases present in both models (any NABC combination).
+
+    :param mdl1: Bus model (Block)
+    :param mdl2: Line model (Block)
+    :return: None
+    """
+    # Create a dictionary to map the bus output variable
+    # to the corresponding line input variable ("from" side)
+    phase_map = {
+        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.v_N_f,
+        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.v_A_f,
+        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.v_B_f,
+        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.v_C_f
+    }
+
+    # Find the variable pairs that match our mapping
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref in phase_map and phase_map[outp.ref] == inpt.ref
+    ]
+
+    # Connect all found pairs
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
+
+def connect_line_emt_to(mdl1: Block, mdl2: Block):
+    """
+    Connects the bus voltages (mdl1) to the "to" side of the line (mdl2)
+    for simulations with explicit phases (e.g., EMT).
+    It only connects the phases present in both models (any NABC combination).
+
+    :param mdl1: Bus model (Block)
+    :param mdl2: Line model (Block)
+    :return: None
+    """
+    # Create a dictionary to map the bus output variable
+    # to the corresponding line input variable ("to" side)
+    phase_map = {
+        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.v_N_t,
+        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.v_A_t,
+        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.v_B_t,
+        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.v_C_t
+    }
+
+    # Find the variable pairs that match our mapping
+    pairs = [
+        (outp, inpt)
+        for outp in mdl1.out_vars
+        for inpt in mdl2.in_vars
+        if outp.ref in phase_map and phase_map[outp.ref] == inpt.ref
+    ]
+
+    # Connect all found pairs
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
+
+
+def set_emt_model(device: Any, model: Block, var_factory: VarFactory):
+    """
+    Sets the EMT model for a given device, connects it to the bus(es),
+    and registers all its variables in the VarFactory.
+
+    :param device: The power system device (Line, Transformer, Generator, etc.)
+    :param model: The mathematical block model of the device
+    :param var_factory: Factory to register simulation variables
+    :return: None
+    """
+    # 1. Connect bus variables depending on the device type
+    if device.device_type in [DeviceType.BranchDevice, DeviceType.LineDevice, DeviceType.Transformer2WDevice,
+                              DeviceType.Transformer3WDevice]:
+
+        # Bus FROM connection
+        bus_from_model = device.bus_from.emt_model
+        if not bus_from_model.empty():
+            connect_line_emt_from(bus_from_model, model)
+        else:
+            raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_from.name} EMT model")
+
+        # Bus TO connection
+        bus_to_model = device.bus_to.emt_model
+        if not bus_to_model.empty():
+            connect_line_emt_to(bus_to_model, model)
+        else:
+            raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_to.name} EMT model")
+
+    else:
+        # Generic device connection (e.g., Loads, Generators connected to a single bus)
+        if not device.bus.emt_model.empty():
+            connect_models(device.bus.emt_model, model)
+        else:
+            raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus.name} EMT model")
+
+    # 2. Unify blocks and register all variables in the VarFactory
+    model.unify_blocks()
+
+    for vr in model.algebraic_vars:
+        var_factory.register_var(device, vr)
+
+    for vr in model.state_vars:
+        var_factory.register_var(device, vr)
+
+    # Added diff_vars for EMT simulations
+    for vr in model.diff_vars:
+        var_factory.register_var(device, vr)
+
+    # 3. Assign the configured model to the device
+    device.emt_model = model

@@ -31,65 +31,86 @@ def create_block_of_type(var_factory: VarFactory,
     # CONST (single output)
     if block_type == BlockType.CONST:
         blk = constant(var_factory, item_name)
+        blk.name = item_name
         return blk
 
     # GAIN (single input -> single output)
     if block_type == BlockType.GAIN:
         blk = gain(var_factory, item_name)
+        blk.name = item_name
         return blk
 
     # SUM / ADDER (2 inputs)
     if block_type == BlockType.SUM:
         blk = adder(var_factory, item_name)
+        blk.name = item_name
         return blk
 
     # SUBSTRACT (2 inputs)
     if block_type == BlockType.SUBSTR:
         blk = substract(var_factory, item_name)
+        blk.name = item_name
         return blk
 
     # PRODUCT (2 inputs)
     if block_type == BlockType.PRODUCT:
         blk = product(var_factory, item_name)
+        blk.name = item_name
         return blk
 
     # DIVIDE (2 inputs)
     if block_type == BlockType.DIVIDE:
         blk = divide(var_factory, item_name)
+        blk.name = item_name
         return blk
 
     # ABSOLUT (single input -> single output)
     if block_type == BlockType.ABS:
         blk = absolut(var_factory, item_name)
+        blk.name = item_name
         return blk
 
     # GENRAW (simple model)
     if block_type == BlockType.GENRAW:
-        return get_genrow_rms_template(var_factory).block
+        blk = get_genrow_rms_template(var_factory).block
+        blk.name = item_name
+        return blk
 
     # GENQEC (generator with saturation)
     if block_type == BlockType.GENQEC:
-        return get_genqec(var_factory, item_name).block
+        blk = get_genqec(var_factory, item_name).block
+        blk.name = item_name
+        return blk
 
     # GOVERNOR (governor with control)
     if block_type == BlockType.GOV:
-        return get_governor(var_factory, item_name).block
+        blk = get_governor(var_factory, item_name).block
+        blk.name = item_name
+        return blk
 
     # STABILIZER (stabilizer)
     if block_type == BlockType.STAB:
-        return get_stabilizer(var_factory, item_name).block
+        blk = get_stabilizer(var_factory, item_name).block
+        blk.name = item_name
+        return blk
 
     # EXCITER (exciter)
     if block_type == BlockType.EXCITER:
-        return get_exciter(var_factory, item_name).block
+        blk = get_exciter(var_factory, item_name).block
+        blk.name = item_name
+        return blk
 
     # LINE (line)
     if block_type == BlockType.LINE:
-        return get_line_rms_template(var_factory).block
+        blk = get_line_rms_template(var_factory).block
+        blk.name = item_name
+        return blk
 
     # LOAD (line)
     if block_type == BlockType.LOAD:
-        return get_load_rms_template(var_factory).block
+        blk = get_load_rms_template(var_factory).block
+        blk.name = item_name
+        return blk
 
     else:
         return None
