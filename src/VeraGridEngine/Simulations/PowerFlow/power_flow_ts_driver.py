@@ -324,7 +324,7 @@ class PowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         elif self.engine == EngineType.PGM:
             self.report_text('Running Power Grid Model... ')
             self.results = pgm_pf(self.grid, self.options, logger=self.logger, time_series=True)
-            self.results.area_names = [a.name for a in self.grid.areas]
+            self.results.area_names = np.array([a.name for a in self.grid.areas], dtype=str)
 
         else:
             raise Exception('Engine not implemented for Time Series:' + self.engine.value)

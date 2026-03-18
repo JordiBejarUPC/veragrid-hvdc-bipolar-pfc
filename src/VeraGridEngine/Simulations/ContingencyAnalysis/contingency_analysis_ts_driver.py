@@ -498,8 +498,8 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
         )
 
         # results.S[t, :] = res_t.S.real.max(axis=0)
-        results.max_flows = res.max_flows
-        results.max_loading = res.max_loading
+        results.max_flows = res.max_flows[self.time_indices].real
+        results.max_loading = res.max_loading[self.time_indices].real
 
         # translate_contingency_report(newton_report=res.report, veragrid_report=results.report)
 

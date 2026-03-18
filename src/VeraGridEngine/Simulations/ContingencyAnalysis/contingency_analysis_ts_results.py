@@ -250,16 +250,23 @@ class ContingencyAnalysisTimeSeriesResults(ResultsTemplate):
             )
 
         elif result_type == ResultTypes.ContingencyStatisticalAnalysisReport:
-            df = self.report.get_summary_table(time_array=self.original_time_array, time_format='%Y/%m/%d  %H:%M.%S')
 
-            return ResultsTable(
-                data=df.values,
-                index=df.index.tolist(),
-                idx_device_type=DeviceType.NoDevice,
-                columns=df.columns.tolist(),
-                cols_device_type=DeviceType.NoDevice,
-                title=result_type.value,
-            )
+            try:
+                df = self.report.get_summary_table(time_array=self.original_time_array,
+                                                   time_format='%Y/%m/%d  %H:%M.%S')
+
+                return ResultsTable(
+                    data=df.values,
+                    index=df.index.tolist(),
+                    idx_device_type=DeviceType.NoDevice,
+                    columns=df.columns.tolist(),
+                    cols_device_type=DeviceType.NoDevice,
+                    title=result_type.value,
+                )
+            except KeyError as e:
+                print(f"error getting summary table: {e}")
+                return None
+
 
         else:
             raise Exception('Result type not understood:' + str(result_type))
