@@ -30,29 +30,29 @@ class InjectionParent(PhysicalDevice):
 
     __slots__ = (
         '_bus',
-        'active',
+        '_active',
         '_active_prof',
-        'mttf',
-        'mttr',
-        'Cost',
+        '_mttf',
+        '_mttr',
+        '_Cost',
         '_Cost_prof',
-        'capex',
-        'opex',
+        '_capex',
+        '_opex',
         'facility',
         'technologies',
-        'scalable',
-        'shift_key',
-        'longitude',
-        'latitude',
+        '_scalable',
+        '_shift_key',
+        '_longitude',
+        '_latitude',
         '_shift_key_prof',
         '_use_kw',
-        'bus_pos',
+        '_bus_pos',
         '_conn',
         '_rms_model',
         '_emt_model',
         '_rms_template',
         '_emt_template',
-        'color'
+        'color',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -279,6 +279,7 @@ class InjectionParent(PhysicalDevice):
         Setter
         :param val: bool
         """
+        val = bool(val)
         if self.auto_update_enabled:
             if val != self._use_kw:
                 self._use_kw = val
@@ -444,3 +445,214 @@ class InjectionParent(PhysicalDevice):
             if val.value > mx:
                 col = val.api_object.color
         self.color = col
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def active(self) -> bool:
+        """
+        Get ``active``.
+
+        :return: bool
+        """
+        return self._active
+
+    @active.setter
+    def active(self, val: bool) -> None:
+        """
+        Set ``active``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._active = bool(val)
+
+    @property
+    def mttf(self) -> float:
+        """
+        Get ``mttf``.
+
+        :return: float
+        """
+        return self._mttf
+
+    @mttf.setter
+    def mttf(self, val: float) -> None:
+        """
+        Set ``mttf``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._mttf = float(val)
+
+    @property
+    def mttr(self) -> float:
+        """
+        Get ``mttr``.
+
+        :return: float
+        """
+        return self._mttr
+
+    @mttr.setter
+    def mttr(self, val: float) -> None:
+        """
+        Set ``mttr``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._mttr = float(val)
+
+    @property
+    def capex(self) -> float:
+        """
+        Get ``capex``.
+
+        :return: float
+        """
+        return self._capex
+
+    @capex.setter
+    def capex(self, val: float) -> None:
+        """
+        Set ``capex``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._capex = float(val)
+
+    @property
+    def opex(self) -> float:
+        """
+        Get ``opex``.
+
+        :return: float
+        """
+        return self._opex
+
+    @opex.setter
+    def opex(self, val: float) -> None:
+        """
+        Set ``opex``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._opex = float(val)
+
+    @property
+    def Cost(self) -> float:
+        """
+        Get ``Cost``.
+
+        :return: float
+        """
+        return self._Cost
+
+    @Cost.setter
+    def Cost(self, val: float) -> None:
+        """
+        Set ``Cost``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Cost = float(val)
+
+    @property
+    def scalable(self) -> bool:
+        """
+        Get ``scalable``.
+
+        :return: bool
+        """
+        return self._scalable
+
+    @scalable.setter
+    def scalable(self, val: bool) -> None:
+        """
+        Set ``scalable``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._scalable = bool(val)
+
+    @property
+    def shift_key(self) -> float:
+        """
+        Get ``shift_key``.
+
+        :return: float
+        """
+        return self._shift_key
+
+    @shift_key.setter
+    def shift_key(self, val: float) -> None:
+        """
+        Set ``shift_key``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._shift_key = float(val)
+
+    @property
+    def longitude(self) -> float:
+        """
+        Get ``longitude``.
+
+        :return: float
+        """
+        return self._longitude
+
+    @longitude.setter
+    def longitude(self, val: float) -> None:
+        """
+        Set ``longitude``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._longitude = float(val)
+
+    @property
+    def latitude(self) -> float:
+        """
+        Get ``latitude``.
+
+        :return: float
+        """
+        return self._latitude
+
+    @latitude.setter
+    def latitude(self, val: float) -> None:
+        """
+        Set ``latitude``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._latitude = float(val)
+
+    @property
+    def bus_pos(self) -> int:
+        """
+        Get ``bus_pos``.
+
+        :return: int
+        """
+        return self._bus_pos
+
+    @bus_pos.setter
+    def bus_pos(self, val: int) -> None:
+        """
+        Set ``bus_pos``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._bus_pos = int(val)

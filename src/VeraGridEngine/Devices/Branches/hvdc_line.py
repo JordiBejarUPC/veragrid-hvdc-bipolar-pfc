@@ -126,20 +126,20 @@ class HvdcLine(BranchParent):
     """
     __slots__ = (
         '_length',
-        'dispatchable',
-        'Pset',
-        'r',
-        'dc_link_voltage',
-        'angle_droop',
+        '_dispatchable',
+        '_Pset',
+        '_r',
+        '_dc_link_voltage',
+        '_angle_droop',
         'loss_factor',
         'mttf',
         'mttr',
-        'Vset_f',
-        'Vset_t',
-        'min_firing_angle_f',
-        'max_firing_angle_f',
-        'min_firing_angle_t',
-        'max_firing_angle_t',
+        '_Vset_f',
+        '_Vset_t',
+        '_min_firing_angle_f',
+        '_max_firing_angle_f',
+        '_min_firing_angle_t',
+        '_max_firing_angle_t',
         'capex',
         'opex',
         'build_status',
@@ -522,6 +522,7 @@ class HvdcLine(BranchParent):
 
     @length.setter
     def length(self, val: float):
+        val = float(val)
         if isinstance(val, float):
             if val > 0.0:
 
@@ -662,3 +663,214 @@ class HvdcLine(BranchParent):
         Qmin_t, Qmax_t = firing_angles_to_reactive_limits(P, self.min_firing_angle_t, self.max_firing_angle_t)
 
         return Qmin_f, Qmax_f, Qmin_t, Qmax_t
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def dispatchable(self) -> bool:
+        """
+        Get ``dispatchable``.
+
+        :return: bool
+        """
+        return self._dispatchable
+
+    @dispatchable.setter
+    def dispatchable(self, val: bool) -> None:
+        """
+        Set ``dispatchable``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._dispatchable = bool(val)
+
+    @property
+    def Pset(self) -> float:
+        """
+        Get ``Pset``.
+
+        :return: float
+        """
+        return self._Pset
+
+    @Pset.setter
+    def Pset(self, val: float) -> None:
+        """
+        Set ``Pset``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Pset = float(val)
+
+    @property
+    def r(self) -> float:
+        """
+        Get ``r``.
+
+        :return: float
+        """
+        return self._r
+
+    @r.setter
+    def r(self, val: float) -> None:
+        """
+        Set ``r``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._r = float(val)
+
+    @property
+    def dc_link_voltage(self) -> float:
+        """
+        Get ``dc_link_voltage``.
+
+        :return: float
+        """
+        return self._dc_link_voltage
+
+    @dc_link_voltage.setter
+    def dc_link_voltage(self, val: float) -> None:
+        """
+        Set ``dc_link_voltage``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._dc_link_voltage = float(val)
+
+    @property
+    def angle_droop(self) -> float:
+        """
+        Get ``angle_droop``.
+
+        :return: float
+        """
+        return self._angle_droop
+
+    @angle_droop.setter
+    def angle_droop(self, val: float) -> None:
+        """
+        Set ``angle_droop``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._angle_droop = float(val)
+
+    @property
+    def Vset_f(self) -> float:
+        """
+        Get ``Vset_f``.
+
+        :return: float
+        """
+        return self._Vset_f
+
+    @Vset_f.setter
+    def Vset_f(self, val: float) -> None:
+        """
+        Set ``Vset_f``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vset_f = float(val)
+
+    @property
+    def Vset_t(self) -> float:
+        """
+        Get ``Vset_t``.
+
+        :return: float
+        """
+        return self._Vset_t
+
+    @Vset_t.setter
+    def Vset_t(self, val: float) -> None:
+        """
+        Set ``Vset_t``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vset_t = float(val)
+
+    @property
+    def min_firing_angle_f(self) -> float:
+        """
+        Get ``min_firing_angle_f``.
+
+        :return: float
+        """
+        return self._min_firing_angle_f
+
+    @min_firing_angle_f.setter
+    def min_firing_angle_f(self, val: float) -> None:
+        """
+        Set ``min_firing_angle_f``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._min_firing_angle_f = float(val)
+
+    @property
+    def max_firing_angle_f(self) -> float:
+        """
+        Get ``max_firing_angle_f``.
+
+        :return: float
+        """
+        return self._max_firing_angle_f
+
+    @max_firing_angle_f.setter
+    def max_firing_angle_f(self, val: float) -> None:
+        """
+        Set ``max_firing_angle_f``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._max_firing_angle_f = float(val)
+
+    @property
+    def min_firing_angle_t(self) -> float:
+        """
+        Get ``min_firing_angle_t``.
+
+        :return: float
+        """
+        return self._min_firing_angle_t
+
+    @min_firing_angle_t.setter
+    def min_firing_angle_t(self, val: float) -> None:
+        """
+        Set ``min_firing_angle_t``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._min_firing_angle_t = float(val)
+
+    @property
+    def max_firing_angle_t(self) -> float:
+        """
+        Get ``max_firing_angle_t``.
+
+        :return: float
+        """
+        return self._max_firing_angle_t
+
+    @max_firing_angle_t.setter
+    def max_firing_angle_t(self, val: float) -> None:
+        """
+        Set ``max_firing_angle_t``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._max_firing_angle_t = float(val)

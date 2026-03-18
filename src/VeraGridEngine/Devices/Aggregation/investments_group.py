@@ -13,8 +13,8 @@ class InvestmentsGroup(EditableDevice):
     """
     __slots__ = (
         'category',
-        'discount_rate',
-        'CAPEX',
+        '_discount_rate',
+        '_CAPEX',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -54,4 +54,44 @@ class InvestmentsGroup(EditableDevice):
         self.discount_rate = discount_rate
 
         self.CAPEX = CAPEX
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def discount_rate(self) -> float:
+        """
+        Get ``discount_rate``.
+
+        :return: float
+        """
+        return self._discount_rate
+
+    @discount_rate.setter
+    def discount_rate(self, val: float) -> None:
+        """
+        Set ``discount_rate``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._discount_rate = float(val)
+
+    @property
+    def CAPEX(self) -> float:
+        """
+        Get ``CAPEX``.
+
+        :return: float
+        """
+        return self._CAPEX
+
+    @CAPEX.setter
+    def CAPEX(self, val: float) -> None:
+        """
+        Set ``CAPEX``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._CAPEX = float(val)
 

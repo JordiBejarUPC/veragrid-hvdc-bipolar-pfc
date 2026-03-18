@@ -90,7 +90,8 @@ class SymbolicJacobian:
                  dt=None,
                  use_jit=True,
                  batch_size=500,
-                 n_jobs=4):  # número de threads para compilación paralela
+                 n_jobs=4,
+                 static=False):  # número de threads para compilación paralela
 
         """
                 JIT‑compile a sparse Jacobian evaluator for *equations* w.r.t *variables*.
@@ -111,6 +112,8 @@ class SymbolicJacobian:
         h = Var('h')
         alias_names_dict[h.uid] = 'h'
         compiler_names_dict[h.uid] = 'h'
+        if static:
+            h = None
         # --- Build triplets and count variable usage ---------------------------------
         used_vars_count = defaultdict(int)
         triplets = []

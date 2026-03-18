@@ -95,7 +95,7 @@ class Contingency(PointerDeviceParent):
 
     @value.setter
     def value(self, val: float):
-        self._value = val
+        self._value = float(val)
 
     @property
     def group(self) -> ContingencyGroup:

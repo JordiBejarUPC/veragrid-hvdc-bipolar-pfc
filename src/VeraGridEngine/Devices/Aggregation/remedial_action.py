@@ -91,6 +91,7 @@ class RemedialAction(PointerDeviceParent):
 
     @value.setter
     def value(self, val: float):
+        val = float(val)
         self._value = val
 
     @property

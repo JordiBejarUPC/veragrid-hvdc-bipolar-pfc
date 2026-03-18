@@ -10,7 +10,7 @@ from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 import re
 
 
-class GenericMathematicalProblem(RmsProblemTemplate):
+class MTI_Problem(RmsProblemTemplate):
     """
     Mathematical DAE/ODE class.
 

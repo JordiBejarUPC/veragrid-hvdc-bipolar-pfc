@@ -24,11 +24,11 @@ class GeneratorParent(InjectionParent):
         'control_cn',
         '_P',
         '_P_prof',
-        'Pmax',
+        '_Pmax',
         '_Pmax_prof',
-        'Pmin',
+        '_Pmin',
         '_Pmin_prof',
-        'srap_enabled',
+        '_srap_enabled',
         '_srap_enabled_prof',
     )
 
@@ -129,6 +129,7 @@ class GeneratorParent(InjectionParent):
         Set active power value
         :param val: some float
         """
+        val = float(val)
         try:
             self._P = float(val)
         except ValueError:
@@ -243,3 +244,62 @@ class GeneratorParent(InjectionParent):
         :return:
         """
         return self.P_prof.toarray().astype(complex)
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def Pmin(self) -> float:
+        """
+        Get ``Pmin``.
+
+        :return: float
+        """
+        return self._Pmin
+
+    @Pmin.setter
+    def Pmin(self, val: float) -> None:
+        """
+        Set ``Pmin``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Pmin = float(val)
+
+    @property
+    def Pmax(self) -> float:
+        """
+        Get ``Pmax``.
+
+        :return: float
+        """
+        return self._Pmax
+
+    @Pmax.setter
+    def Pmax(self, val: float) -> None:
+        """
+        Set ``Pmax``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Pmax = float(val)
+
+    @property
+    def srap_enabled(self) -> bool:
+        """
+        Get ``srap_enabled``.
+
+        :return: bool
+        """
+        return self._srap_enabled
+
+    @srap_enabled.setter
+    def srap_enabled(self, val: bool) -> None:
+        """
+        Set ``srap_enabled``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._srap_enabled = bool(val)
