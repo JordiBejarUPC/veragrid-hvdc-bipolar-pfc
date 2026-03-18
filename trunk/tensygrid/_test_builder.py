@@ -1,12 +1,9 @@
 import unittest
-import sys
-import os
-from typing import List, Dict, Any, Optional, Tuple, Final
+from typing import List, Dict, Any, Tuple
 import numpy as np
-import sympy as sp
-from enum import Enum, auto
-from trunk.tensygrid.files._PolynomialMatrixBuilder_class import PolynomialMatrixBuilder
-from trunk.tensygrid.files._GenericMathematicalProblem import GenericMathematicalProblem
+
+from PolynomialMatrixBuilder import PolynomialMatrixBuilder
+from MTI_problem import MTI_Problem
 
 class StabilityResult(object):
     """
@@ -61,8 +58,8 @@ class TestPolynomialStability(unittest.TestCase):
             '-xp20 + 0.5101*u4 + 0.3917'
         ])
         
-        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=None, eqs=eqs, ineqs=list(), verbose=False)
-        
+        #builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=None, eqs=eqs, ineqs=list(), verbose=False)
+
         xOP: np.ndarray = np.array([-0.1668, -0.459, 0.5462, -1.3023, -0.4115, -0.5401, 1.3665, 0.7068, 0.6076, 0.9198,
                                     0.8994, 0.0327, -1.4159, -1.6809, 0.0378, 1.6635, 0.831, 1.0477, 1.7938, -0.4851])
         uOP: np.ndarray = np.array([-0.6336, 1.1019, -0.7170, 2.2000, 0.8906, -0.6354])
@@ -78,9 +75,10 @@ class TestPolynomialStability(unittest.TestCase):
         # --- 2. Instantiate the Compiler-Ready Object ---
         print("Initializing Mathematical Problem...")
 
-        math_problem = GenericMathematicalProblem(eqs_str=eqs, xOP=xOP, uOP=uOP)
+        math_problem = MTI_Problem(eqs_str=eqs, xOP=xOP, uOP=uOP)
         print(math_problem._state_eqs)
         # --- 3. Quick Verification ---
+        """
         algebraic_eqs: list[str] = list([str(expression) for expression in math_problem._algebraic_eqs])
         state_eqs: list[str] = list([str(expression) for expression in math_problem._state_eqs])
         algebraic_vars: list[str] = list([str(expression) for expression in math_problem._algebraic_vars])
@@ -88,10 +86,12 @@ class TestPolynomialStability(unittest.TestCase):
 
         print(f"\nState variables ({len(state_vars)}): {state_vars}")
         print(f"\nAlgebraic variables ({len(algebraic_vars)}): {algebraic_vars}")
-
+        
         eqs: list[str] = algebraic_eqs + state_eqs
         #print(f"\nNumber of equations: {len(eqs)}")
         #print(f"\nEquation 1: {math_problem._algebraic_eqs}")
+        """
+
         builder = PolynomialMatrixBuilder(
             problem=math_problem,
             verbose=True

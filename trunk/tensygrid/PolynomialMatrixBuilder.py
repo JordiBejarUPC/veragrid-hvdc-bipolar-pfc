@@ -3,29 +3,9 @@ import numpy as np
 from scipy import sparse, linalg
 from sympy.parsing.sympy_parser import parse_expr
 from enum import Enum
-import builtins
-from typing import Callable, Optional, Any
+from typing import Optional, Any
 
-# ------------------------------------------------------------------
-# Profiler Control
-# ------------------------------------------------------------------
-# If the script is not run via `mprof run` or `python -m memory_profiler`,
-# the 'profile' function won't be in builtins. We create a dummy to ensure
-# zero-overhead execution as per our performance rules.
 
-if 'profile' not in builtins.__dict__:
-    def profile(func: Callable) -> Callable:
-        """
-        Dummy decorator to prevent profiling overhead when not explicitly invoked.
-
-        :param func: The function to decorate.
-        :type func: Callable
-        :return: The unmodified function.
-        :rtype: Callable
-        """
-        return func
-else:
-    pass # In Python 3, memory_profiler injects directly into builtins during a run.
 
 # ------------------------------------------------------------------
 # Enums for Options
@@ -52,11 +32,7 @@ class PolynomialMatrixBuilder:
     """
 
     # Finalizing the class to prevent dynamic attribute assignment and save memory
-    __slots__ = [
-        'verbose', 'eqs', 'ineqs', 'all_symbols', 'sym_to_idx',
-        'S_H', 'Phi_H', 'S_W', 'Phi_W', '_E', '_A', '_B',
-        'state_vars', 'algebraic_vars'
-    ]
+    #__slots__ = ['verbose', 'eqs', 'ineqs', 'all_symbols', 'sym_to_idx','S_H', 'Phi_H', 'S_W', 'Phi_W', 'E', 'A', 'B', 'EABC''state_vars', 'algebraic_vars']
 
     # ------------------------------------------------------------------
     # Construction
@@ -273,73 +249,11 @@ class PolynomialMatrixBuilder:
         self.Phi_W: np.ndarray = Phi_W_sp.toarray()
 
         # Protected interactive states
-        self._E: Optional[np.ndarray] = None
-        self._A: Optional[np.ndarray] = None
-        self._B: Optional[np.ndarray] = None
+        self.E: Optional[np.ndarray] = None
+        self.A: Optional[np.ndarray] = None
+        self.B: Optional[np.ndarray] = None
+        self.EABC: Optional[np.ndarray] = None
 
-    # ------------------------------------------------------------------
-    # Getters and Setters
-    # ------------------------------------------------------------------
-
-    def get_E(self) -> np.ndarray | None:
-        """
-        Gets the E matrix.
-        
-        :return: The E matrix.
-        :rtype: np.ndarray | None
-        """
-        return self._E
-
-    def set_E(self, val: np.ndarray) -> None:
-        """
-        Sets the E matrix.
-        
-        :param val: The new matrix array.
-        :type val: np.ndarray
-        :return: None
-        :rtype: None
-        """
-        self._E = val
-
-    def get_A(self) -> np.ndarray | None:
-        """
-        Gets the A matrix.
-        
-        :return: The A matrix.
-        :rtype: np.ndarray | None
-        """
-        return self._A
-
-    def set_A(self, val: np.ndarray) -> None:
-        """
-        Sets the A matrix.
-        
-        :param val: The new matrix array.
-        :type val: np.ndarray
-        :return: None
-        :rtype: None
-        """
-        self._A = val
-
-    def get_B(self) -> np.ndarray | None:
-        """
-        Gets the B matrix.
-        
-        :return: The B matrix.
-        :rtype: np.ndarray | None
-        """
-        return self._B
-
-    def set_B(self, val: np.ndarray) -> None:
-        """
-        Sets the B matrix.
-        
-        :param val: The new matrix array.
-        :type val: np.ndarray
-        :return: None
-        :rtype: None
-        """
-        self._B = val
 
     # ------------------------------------------------------------------
     # Helper Functions (Replacing Lambdas and Nested Functions)
@@ -482,7 +396,6 @@ class PolynomialMatrixBuilder:
     # Matrix creation
     # ------------------------------------------------------------------
 
-    @profile
     def matrix_creation(self, all_exprs: list) -> tuple:
         """
         Creates the S and Phi sparse matrices with automatic L1 normalisation.
@@ -681,10 +594,7 @@ class PolynomialMatrixBuilder:
     # Linearisation – public entry point
     # ------------------------------------------------------------------
 
-    @profile
-    def linearize(
-            self, v_dict: dict, c_type: ConstraintType = ConstraintType.EQUALITY
-    ) -> np.ndarray:
+    def linearize(self, v_dict: dict, c_type: ConstraintType = ConstraintType.EQUALITY):
         """
         Analytic linearization for iMTI models (CPN representation).
 
@@ -701,19 +611,10 @@ class PolynomialMatrixBuilder:
 
         v: np.ndarray = self._build_v_vector(v_dict)
         F: np.ndarray = self._compute_jacobian(S, v)
-        EABC: np.ndarray = Phi @ F.T
+        self.EABC: np.ndarray = Phi @ F.T
+        self.E, self.A, self.B = self._split_EABC(self.EABC)
 
-        new_E: np.ndarray
-        new_A: np.ndarray
-        new_B: np.ndarray
-        new_E, new_A, new_B = self._split_EABC(EABC)
 
-        # Modifying internal state via setters
-        self.set_E(new_E)
-        self.set_A(new_A)
-        self.set_B(new_B)
-
-        return EABC
 
     # ------------------------------------------------------------------
     # Linearisation – private helpers
@@ -793,7 +694,6 @@ class PolynomialMatrixBuilder:
 
         return v
 
-    @profile
     def _compute_jacobian(self, S: np.ndarray, v: np.ndarray) -> np.ndarray:
         """
         Compute the analytic Jacobian of the monomial basis at point *v*.
@@ -879,7 +779,6 @@ class PolynomialMatrixBuilder:
     # Stability analysis
     # ------------------------------------------------------------------
 
-    @profile
     def compute_stability(self) -> tuple:
         """
         Compute generalised eigenvalues for the descriptor pair (A, E).
@@ -887,8 +786,8 @@ class PolynomialMatrixBuilder:
         :return: tuple of (eigenvalues, left_evecs, right_evecs, participation, is_stable, max_real)
         :rtype: tuple
         """
-        current_a: np.ndarray | None = self.get_A()
-        current_e: np.ndarray | None = self.get_E()
+        current_a: np.ndarray | None = self.A
+        current_e: np.ndarray | None = self.E
 
         if current_a is None or current_e is None:
             return None, None, None, None, False, None
@@ -967,9 +866,9 @@ class PolynomialMatrixBuilder:
             matrix_refs: list = [
                 ("S", self.S_H),
                 ("Phi", self.Phi_H),
-                ("E", self.get_E()),
-                ("A", self.get_A()),
-                ("B", self.get_B()),
+                ("E", self.E),
+                ("A", self.A),
+                ("B", self.B),
             ]
             
             for label, mat in matrix_refs:
@@ -1004,9 +903,9 @@ class PolynomialMatrixBuilder:
                 matrix_write_refs: list = [
                     ("S Matrix", self.S_H),
                     ("Phi Matrix", self.Phi_H),
-                    ("E Matrix", self.get_E()),
-                    ("A Matrix", self.get_A()),
-                    ("B Matrix", self.get_B()),
+                    ("E Matrix", self.E),
+                    ("A Matrix", self.A),
+                    ("B Matrix", self.B),
                 ]
                 
                 for label_w, mat_w in matrix_write_refs:
