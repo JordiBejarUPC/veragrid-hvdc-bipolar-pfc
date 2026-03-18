@@ -61,7 +61,7 @@ class TestPolynomialStability(unittest.TestCase):
             '-xp20 + 0.5101*u4 + 0.3917'
         ])
         
-        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(eqs, ineqs=list(), verbose=False)
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=None, eqs=eqs, ineqs=list(), verbose=False)
         
         xOP: np.ndarray = np.array([-0.1668, -0.459, 0.5462, -1.3023, -0.4115, -0.5401, 1.3665, 0.7068, 0.6076, 0.9198,
                                     0.8994, 0.0327, -1.4159, -1.6809, 0.0378, 1.6635, 0.831, 1.0477, 1.7938, -0.4851])
@@ -92,6 +92,7 @@ class TestPolynomialStability(unittest.TestCase):
         print(f"\nNumber of equations: {len(eqs)}")
         print(f"\nEquation 1: {eqs[0]}")
         builder = PolynomialMatrixBuilder(
+            problem=None,
             eqs=eqs,
             ineqs=[],
             state_vars=state_vars,
@@ -124,7 +125,7 @@ class TestPolynomialStability(unittest.TestCase):
             'y2 - x2'
         ])
 
-        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(eqs, ineqs=list(), verbose=False)
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=None, eqs=eqs, ineqs=list(), verbose=False)
         
         xOP: np.ndarray = np.array([-0.5737, -0.8193, -0.1597])
         uOP: np.ndarray = np.array([-100.6109, -217.5716, 318.1824])
@@ -163,7 +164,7 @@ class TestPolynomialStability(unittest.TestCase):
             "y1 - dx1"
         ])
 
-        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(eqs, ineqs=list(), verbose=False)
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=None, eqs=eqs, ineqs=list(), verbose=False)
 
         # Operating point provided in the snippet
         v_dict: Dict[str, float] = {'dx1': 1.0, 'x1': 2.0, 'u1': 3.0, 'y1': 4.0, 'z1': 5.0}

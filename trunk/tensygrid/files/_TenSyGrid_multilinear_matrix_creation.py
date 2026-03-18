@@ -13,21 +13,12 @@ import numpy as np
 import sys, os
 
 from trunk.tensygrid.files._PolynomialMatrixBuilder_class import PolynomialMatrixBuilder
+from matplotlib import pyplot as plt
+import VeraGridEngine.api as vge
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
 
-from matplotlib import pyplot as plt
 
-import VeraGridEngine.api as gce
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import SmallSignalStabilityRmsDriver
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityRmsOptions
-from VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor import RmsProblemPhasor
-from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Templates.Rms.bus_phasor_rms_template import initialize_bus_phasor_rms
-from VeraGridEngine.Templates.Rms.line_phasor_rms_template import get_line_phasor_rms_template
-from VeraGridEngine.Templates.Rms.load_phasor_current_rms_template import get_load_phasor_current_rms_template
-from VeraGridEngine.Templates.Rms.genqec_phasor_rms_template import get_complete_generator_template_phasor
-from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 
 
 def small_signal_analysis(comparar):
@@ -42,48 +33,51 @@ def small_signal_analysis(comparar):
     print("\n[1] Creating phasor grid...")
 
     Sbase = 100.0
-    grid = gce.MultiCircuit(Sbase=Sbase, fbase=50.0)
+    grid = vge.MultiCircuit(Sbase=Sbase, fbase=50.0)
 
-    bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
-    bus1 = gce.Bus(name="Bus1", Vnom=10)
+    bus0 = vge.Bus(name="Bus0", Vnom=10, is_slack=True)
+    bus1 = vge.Bus(name="Bus1", Vnom=10)
     grid.add_bus(bus0)
     grid.add_bus(bus1)
 
     for bus in grid.buses:
-        initialize_bus_phasor_rms(bus, vf=grid.rms_var_factory)
+        vge.initialize_bus_phasor_rms(bus, vf=grid.rms_var_factory)
 
-    line = gce.Line(name="Line", bus_from=bus0, bus_to=bus1,
+    line = vge.Line(name="Line", bus_from=bus0, bus_to=bus1,
                     r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=900.0)
     grid.add_line(line)
 
-    load = gce.Load(P=9.999999, Q=0.999999)
+    load = vge.Load(P=9.999999, Q=0.999999)
     grid.add_load(bus=bus1, api_obj=load)
 
-    gen = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900)
+    gen = vge.Generator(name="Gen0", P=10, vset=1.0, Snom=900)
     grid.add_generator(bus=bus0, api_obj=gen)
 
     # Build RMS models
-    genqec = get_complete_generator_template_phasor(grid.rms_var_factory, name="Gen0").block
+    genqec = vge.get_complete_generator_template_phasor(grid.rms_var_factory, name="Gen0").block
 
-    line_mdl = get_line_phasor_rms_template(grid.rms_var_factory).block
+    line_mdl = vge.get_line_phasor_rms_template(grid.rms_var_factory).block
     line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
     line_mdl.connect([line_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
     line_mdl.connect([line_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
     line_mdl.connect([line_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
 
     # Attach line model to the line device
-    set_rms_model(device=line, model=line_mdl, var_factory=grid.rms_var_factory)
+    vge.set_rms_model(device=line, model=line_mdl, var_factory=grid.rms_var_factory)
 
     genqec.connect([genqec.in_vars[0]], [bus0.rms_model.out_vars[0]])
     genqec.connect([genqec.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-    set_rms_model(device=gen, model=genqec, var_factory=grid.rms_var_factory)
+    vge.set_rms_model(device=gen, model=genqec, var_factory=grid.rms_var_factory)
 
-    load_mdl = get_load_phasor_current_rms_template(grid.rms_var_factory).block
+    load_mdl = vge.get_load_phasor_current_rms_template(grid.rms_var_factory).block
     load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
     load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
-    # Current values will be set after power flow
-    set_rms_model(device=load, model=load_mdl, var_factory=grid.rms_var_factory)
+    # Convert power to current: I = S* / V* (approximation for initialization)
+    # For V ≈ 1.0, Ir ≈ P, Ii ≈ Q
+    load_mdl.set_parameter_in_model(var_name="Ir0", new_value=-0.1)
+    load_mdl.set_parameter_in_model(var_name="Ii0", new_value=-0.01)
+    vge.set_rms_model(device=load, model=load_mdl, var_factory=grid.rms_var_factory)
 
     print("  ✓ Grid created with multilinear generator")
 
@@ -91,8 +85,8 @@ def small_signal_analysis(comparar):
     # POWER FLOW
     # ===================================================================
     print("\n[2] Running power flow...")
-    pf_options = gce.PowerFlowOptions()
-    pf_results = gce.power_flow(grid, pf_options)
+    pf_options = vge.PowerFlowOptions()
+    pf_results = vge.power_flow(grid, pf_options)
 
     if pf_results.converged:
         print(f"  ✓ Power flow converged")
@@ -108,14 +102,15 @@ def small_signal_analysis(comparar):
     # ===================================================================
     print("\n[3] Creating phasor problem...")
 
-    rms_options = RmsOptions(
+    rms_options = vge.RmsOptions(
         time_step=0.01,
         simulation_time=1.0,
         tolerance=1e-6,
         max_iter=20
     )
 
-    phasor_problem = RmsProblemPhasor(grid=grid, options=rms_options, pf_results=pf_results)
+    phasor_problem = vge.RmsProblemPhasor(grid=grid, options=rms_options, pf_results=pf_results)
+    print(f"  ✓ Phasor problem created with {phasor_problem.get_states_number()} states")
 
     if comparar:
         print(f"  ✓ Phasor problem created with {phasor_problem.get_states_number()} states")
@@ -125,11 +120,11 @@ def small_signal_analysis(comparar):
         # ===================================================================
         print("\n[4] Setting up small signal driver...")
 
-        ss_options = SmallSignalStabilityRmsOptions(ss_assessment_time=0)
+        ss_options = vge.SmallSignalStabilityRmsOptions(ss_assessment_time=0)
 
         # Create driver with dummy grid (it will create RmsProblemDae internally)
-        dummy_grid = gce.MultiCircuit(Sbase=Sbase)
-        driver = SmallSignalStabilityRmsDriver(
+        dummy_grid = vge.MultiCircuit(Sbase=Sbase)
+        driver = vge.SmallSignalStabilityRmsDriver(
             grid=dummy_grid,
             rms_options=rms_options,
             sss_options=ss_options,
@@ -241,11 +236,10 @@ if __name__ == "__main__":
     print(f"\nNumber of equations: {len(eqs)}")
     print(f"\nEquation 1: {eqs[0]}")
     builder = PolynomialMatrixBuilder(
+        problem=phasor_problem,
         eqs=eqs,
         ineqs=[],
         state_vars=state_vars,
-        #state_ids=phasor_problem.uid2idx_vars,
         algebraic_vars=algebraic_vars,
-        #algebraic_ids=phasor_problem._algebraic_ids,
         verbose=True
     )
