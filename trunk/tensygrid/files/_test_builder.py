@@ -79,26 +79,21 @@ class TestPolynomialStability(unittest.TestCase):
         print("Initializing Mathematical Problem...")
 
         math_problem = GenericMathematicalProblem(eqs_str=eqs, xOP=xOP, uOP=uOP)
-
+        print(math_problem._state_eqs)
         # --- 3. Quick Verification ---
         algebraic_eqs: list[str] = list([str(expression) for expression in math_problem._algebraic_eqs])
         state_eqs: list[str] = list([str(expression) for expression in math_problem._state_eqs])
         algebraic_vars: list[str] = list([str(expression) for expression in math_problem._algebraic_vars])
         state_vars: list[str] = list([str(expression) for expression in math_problem._state_vars])
+
         print(f"\nState variables ({len(state_vars)}): {state_vars}")
         print(f"\nAlgebraic variables ({len(algebraic_vars)}): {algebraic_vars}")
 
         eqs: list[str] = algebraic_eqs + state_eqs
-        print(f"\nNumber of equations: {len(eqs)}")
-        print(f"\nEquation 1: {eqs[0]}")
+        #print(f"\nNumber of equations: {len(eqs)}")
+        #print(f"\nEquation 1: {math_problem._algebraic_eqs}")
         builder = PolynomialMatrixBuilder(
-            problem=None,
-            eqs=eqs,
-            ineqs=[],
-            state_vars=state_vars,
-            # state_ids=phasor_problem.uid2idx_vars,
-            algebraic_vars=algebraic_vars,
-            # algebraic_ids=phasor_problem._algebraic_ids,
+            problem=math_problem,
             verbose=True
         )
 
