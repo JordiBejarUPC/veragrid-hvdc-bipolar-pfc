@@ -17,7 +17,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 from matplotlib import pyplot as plt
 
 import VeraGridEngine.api as vge
-from files.MTImatrix import MTImatrix
 
 
 def generate_plots(eigenvalues: np.ndarray, participation_factors: np.ndarray) -> None:
@@ -152,7 +151,7 @@ def small_signal_analysis(show_plt: bool = False, test_mti=False):
 
     phasor_problem = vge.RmsProblemPhasor(grid=grid, options=rms_options, pf_results=pf_results)
     print(f"  ✓ Phasor problem created with {phasor_problem.get_states_number()} states")
-    if test_mti: tensor_problem = MTImatrix(phasor_problem)
+    #if test_mti: tensor_problem = MTImatrix(phasor_problem)
 
     # ===================================================================
     # CREATE DRIVER AND SWAP PROBLEM
