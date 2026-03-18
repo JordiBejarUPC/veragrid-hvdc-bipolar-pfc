@@ -4,9 +4,10 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import numpy as np
+from typing import List
 import math
 
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import (Block, Var)
 from VeraGridEngine.Templates.templates_common_functions import tf_to_block
@@ -14,530 +15,237 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.enumerations import ConverterControlType
 
+TYPE_CHECKING = True
+if TYPE_CHECKING:
+    from VeraGridEngine.Devices.Substation.bus import Bus
+    from VeraGridEngine.Devices.Branches.transformer import Transformer2W, WindingType, WindingsConnection
 
-def inverse_park_transform_block(vfactory: VarFactory,
-                                 v_dq: list[Var],
-                                 theta: Var,
-                                 aux_vars = None,
-                                 multilinear: bool = False,
-                                 name:str =''):
+def parse_windings_connection(conn: WindingsConnection) -> tuple[WindingType, WindingType]:
     """
-    Create a symbolic inverse Park transform (dq → abc) block for voltages.
-
-    v_dq = [v_d_c, v_q_c]
-    theta : grid angle (from PLL)
-    multilinear : if True, use u_cos/u_sin auxiliary variables (for multilinearization)
+    Parse a WindingsConnection enum into (conn_f, conn_t) WindingType values.
+    
+    WindingsConnection values are two-character strings:
+    - G: GroundedStar
+    - S: NeutralStar (ungrounded star)  
+    - D: Delta
+    
+    Examples:
+    - GG -> (GroundedStar, GroundedStar)
+    - GD -> (GroundedStar, Delta)
+    - DD -> (Delta, Delta)
     """
-
-    v_d_c, v_q_c = v_dq
-
-    # abc variables
-    va_c = Var(name[0]+'a_'+name[-1])
-    vb_c = Var(name[0]+'b_'+name[-1])
-    vc_c = Var(name[0]+'c_'+name[-1])
-
-    sqrt3 = vfactory.add_const(np.sqrt(3))
-    reformulated_vars = []
-    if not multilinear:
-        # Non-multilinear form (explicit cos/sin)
-        algebraic_eqs = [
-            va_c - (v_d_c * sym.cos(theta) + v_q_c * sym.sin(theta)),
-
-            vb_c - ((-vfactory.add_const(0.5) * v_d_c - (sqrt3 / vfactory.add_const(2)) * v_q_c) * sym.cos(theta)
-                    + ((sqrt3 / vfactory.add_const(2)) * v_d_c - vfactory.add_const(0.5) * v_q_c) * sym.sin(theta)),
-
-            vc_c - ((-vfactory.add_const(0.5) * v_d_c + (sqrt3 / vfactory.add_const(2)) * v_q_c) * sym.cos(theta)
-                    + ((-sqrt3 / vfactory.add_const(2)) * v_d_c - vfactory.add_const(0.5) * v_q_c) * sym.sin(theta)),
-        ]
-        algebraic_vars = [va_c, vb_c, vc_c]
-        trig_block = Block()
-        aux_vars = None
-
-    inv_park_block = Block(
-        algebraic_eqs=algebraic_eqs,
-        algebraic_vars=algebraic_vars,
-        reformulated_vars = reformulated_vars
-    )
-    inv_park_block.add(trig_block)
-
-    return inv_park_block, (va_c, vb_c, vc_c), aux_vars
-
-def park_transform_block(vfactory: VarFactory, v_abc: list[Var], theta: Var, multilinear:bool = False, aux_vars = None, name:str = ''):
-    """
-    Create a symbolic Park transform (abc → dq) block for voltages and currents.
-
-    i_abc = [i_a, i_b, i_c]
-    v_abc = [v_a, v_b, v_c]
-    theta : grid angle (from PLL)
-    """
-
-    v_a, v_b, v_c = v_abc
-
-    # dq variables
-    x_d = Var(name + '_d')
-    x_q = Var(name + '_q')
-
-    if not multilinear:
-        algebraic_eqs = [
-            # dq voltages
-            x_d - (vfactory.add_const(1/3) * (
-                (vfactory.add_const(2) * sym.cos(theta) * v_a)
-                + (-sym.cos(theta) - vfactory.add_const(np.sqrt(3)) * sym.sin(theta)) * v_b
-                + (-sym.cos(theta) + vfactory.add_const(np.sqrt(3)) * sym.sin(theta)) * v_c
-            )),
-
-            x_q - (vfactory.add_const(1/3) * (
-                (vfactory.add_const(2) * sym.sin(theta) * v_a)
-                + (-sym.sin(theta) + vfactory.add_const(np.sqrt(3)) * sym.cos(theta)) * v_b
-                + (-sym.sin(theta) - vfactory.add_const(np.sqrt(3)) * sym.cos(theta)) * v_c
-            )),
-        ]
-        algebraic_vars = [x_d, x_q]
-        trig_block = Block()
-        aux_vars = None
-
-
-    park_block = Block(
-        algebraic_eqs=algebraic_eqs,
-        algebraic_vars=algebraic_vars
-    )
-    park_block.add(trig_block)
-
-    return park_block, (x_d, x_q), aux_vars
-
-def pll_transform_rms(vfactory: VarFactory, Vm, Va, name:str = ''):
-    #Variables 
-    theta = Var('theta')
-    vd = Var('vd')
-    vq = Var('vq')
-
-    #Parameters
-    Kp_pll = Var('Kp_pll')      
-    Ki_pll = Var('Ki_pll')        
-    fn = Var('fn')
-
-    event_dict = {
-        fn: vfactory.add_const(50),
-        Kp_pll: vfactory.add_const(0.001),
-        Ki_pll: vfactory.add_const(0.1),
+    conn_str = str(conn)
+    if len(conn_str) != 2:
+        raise ValueError(f"Invalid WindingsConnection: {conn}")
+    
+    char_to_winding = {
+        'G': WindingType.GroundedStar,
+        'S': WindingType.NeutralStar,
+        'D': WindingType.Delta,
     }
-    PI_block, omega = tf_to_block(vfactory,
-        num=[Ki_pll, Kp_pll],
-        den=[0, 1],
-        x= (Vm*sym.sin(Va - theta)),
-        name='PLL_integrator'
-    )
+    
+    conn_f = char_to_winding.get(conn_str[0])
+    conn_t = char_to_winding.get(conn_str[1])
+    
+    if conn_f is None or conn_t is None:
+        raise ValueError(f"Invalid WindingsConnection characters: {conn_str}")
+    
+    return conn_f, conn_t
 
-    res_block = Block(
-        state_eqs=[2*math.pi*fn*(omega-1)],
-        state_vars=[theta],
-        algebraic_eqs= [
-            vd - Vm*sym.sin(Va - theta),
-            vq - Vm*sym.cos(Va - theta),
-        ],
-        algebraic_vars = [vd,vq],
-        event_dict = event_dict,
-        children = [PI_block]
-    )
-
-    outputs = [vd, vq, theta, omega]
-    return res_block, outputs
-
-
-def pll_transform(vfactory: VarFactory, v_abc, multilinear:bool = False, name:str = ''):
-    theta = Var('theta')
-    omega = Var('omega')
-    omega_nom = vfactory.add_const(2*math.pi*50)
-    Kp_pll = vfactory.add_const(0.001)      # proportional gain
-    Ki_pll = vfactory.add_const(0.1)      # integral gain
-
-    park_block, v_dq, aux_vars = park_transform_block(vfactory, v_abc, theta, multilinear=multilinear, name = name) 
-    v_d, v_q = v_dq
-    res_block = Block()
-
-    pi_block, _ = tf_to_block(vfactory,
-        num=[Ki_pll, Kp_pll],
-        den=[0, 1],
-        x= v_d,
-        y = omega,
-        name='PLL_pi'
-    )
-    integrator, _ = tf_to_block(vfactory,
-        num=[1],
-        den=[0, 1],
-        x= (omega),
-        y = theta,
-        name='PLL_integrator'
-    )
-
-    res_block.add(pi_block)
-    res_block.add(integrator)
-    res_block.add(park_block)
-    return res_block, v_dq, omega, theta, aux_vars
-
-
-def build_gfl_converter_model(vfactory: VarFactory, inputs, 
-                              control1: ConverterControlType = ConverterControlType.Pac, 
-                              control2: ConverterControlType = ConverterControlType.Qac,
-                              multilinear:bool = False):
+def build_vsc_rms(vfactory: VarFactory, name:str = ''):
     """
     Build power control loop model for Grid Following Converter.
     Supports multiple control modes via ConverterControlType.
+    from bus is DC
+    to   bus is AC
+        """
 
-    Args:
-        inputs: [Vm, Va, Vdc] - AC voltage mag/angle, DC voltage
-        control1: First control mode (typically active power or DC voltage related)
-        control2: Second control mode (typically reactive power or AC voltage related)
-        multilinear: Use multilinearization for Park transforms
-
-    Returns:
-        gfl_block: The complete converter block
-        i_d, i_q: Current references
-        P, Q: Active and reactive power measurements
-    """
-    Vm     = inputs[0]  
-    Va     = inputs[1]  
-    v_dc   = inputs[2]  # DC voltage for DC voltage control mode
-    Pt_vsc = inputs[3]  # DC voltage for DC voltage control mode
-    Qt_vsc = inputs[4]  # DC voltage for DC voltage control mode
-
-    algebraic_eqs = []
-    algebraic_vars = []
-    gfl_block = Block()
-    control_blocks = []
-    
-    # ==============================
-    # Inputs and variables
-    # ==============================
-
-    pll_block, outputs = pll_transform_rms(vfactory, Vm, Va, name = 'vg')
-    v_d_g = outputs[0]
-    v_q_g = outputs[1]
-    theta = outputs[2]
-    omega = outputs[3]
-
-    # Parameters
-    Kp_icl = vfactory.add_var('Kp_icl')     # proportional gain for inner current loop
-    Ki_icl = vfactory.add_var('Ki_icl')     # integral gain for inner current loop
-    Kp_pol = vfactory.add_var('Kp_pol')     # proportional gain for outer power loop
-    Ki_pol = vfactory.add_var('Ki_pol')     # integral gain for outer power loop
-    Kp_vdc = vfactory.add_var('Kp_vdc')     # proportional gain for DC voltage control
-    Ki_vdc = vfactory.add_var('Ki_vdc')     # integral gain for DC voltage control
-    Kp_vac = vfactory.add_var('Kp_vac')     # proportional gain for AC voltage control
-    Ki_vac = vfactory.add_var('Ki_vac')     # integral gain for AC voltage control
-    R = vfactory.add_var('R') 
-    L = vfactory.add_var('L') 
-
-    # VARS
-    i_d = vfactory.add_var('i_d')
-    i_q = vfactory.add_var('i_q')
-    i_d_ref = vfactory.add_var('i_d_ref')
-    i_q_ref = vfactory.add_var('i_q_ref')
-    
-    # POWER LOOP 
-    P = vfactory.add_var('P')
-    Q = vfactory.add_var('Q') 
-    P_ref = vfactory.add_var('P_ref') 
-    Q_ref = vfactory.add_var('Q_ref') 
-    
-    # Voltage references for control modes
-    Vdc_ref = vfactory.add_var('Vdc_ref')
-    Vm_ac_ref = vfactory.add_var('Vm_ac_ref')
-    
-    v_d_c = vfactory.add_var('v_d_c')
-    v_q_c = vfactory.add_var('v_q_c')
-
-    event_dict = {
-        Kp_icl: vfactory.add_const(0.05),
-        Ki_icl: vfactory.add_const(1.0),
-        Kp_pol: vfactory.add_const(0.05),
-        Ki_pol: vfactory.add_const(1.0),
-        Kp_vdc: vfactory.add_const(0.1),
-        Ki_vdc: vfactory.add_const(2.0),
-        Kp_vac: vfactory.add_const(0.1),
-        Ki_vac: vfactory.add_const(2.0),
-        R: vfactory.add_const(0.1),
-        L: vfactory.add_const(0.1),
-        P_ref: vfactory.add_const(0.0),
-        Q_ref: vfactory.add_const(0.0),
-        Vdc_ref: vfactory.add_const(),
-        Vm_ac_ref: vfactory.add_const(None),
-    }
-
-    # P and Q at the point of common coupling
-    algebraic_eqs.append(P - vfactory.add_const(3/2)*(v_q_g*i_q + v_d_g*i_d))
-    algebraic_eqs.append(Q - vfactory.add_const(3/2)*(v_q_g*i_d - v_d_g*i_q))
-    algebraic_vars.append(P)
-    algebraic_vars.append(Q)
-
-    # ==============================
-    # CONTROL 1: Active Power Axis (i_q_ref)
-    # ==============================
-    # Control1 maps to i_q_ref (q-axis current controls active power)
-    
-    if control1 == ConverterControlType.Pac:
-        # Active power control at AC side
-        control_block_1, _ = tf_to_block(vfactory,
-            num=[Ki_pol, Kp_pol],
-            den=[0, 1],
-            x= P_ref - P,
-            y = i_q_ref,
-            name='Pac_ctrl'
-        )
-        control_blocks.append(control_block_1)
-        
-    elif control1 == ConverterControlType.Pdc:
-        # Active power control at DC side (Pdc ~ Pac in steady state)
-        # For simplicity, we control Pac which is approximately Pdc
-        control_block_1, _ = tf_to_block(vfactory,
-            num=[Ki_pol, Kp_pol],
-            den=[0, 1],
-            x= P_ref - P,  # P_ref represents desired Pdc
-            y = i_q_ref,
-            name='Pdc_ctrl'
-        )
-        control_blocks.append(control_block_1)
-        
-    elif control1 == ConverterControlType.Vm_dc:
-        # DC voltage control - regulates v_dc to Vdc_ref
-        # Positive i_q_ref increases power flow from DC to AC, reducing v_dc
-        control_block_1, _ = tf_to_block(vfactory,
-            num=[Ki_vdc, Kp_vdc],
-            den=[0, 1],
-            x= Vdc_ref - v_dc,
-            y = i_q_ref,
-            name='Vdc_ctrl'
-        )
-        control_blocks.append(control_block_1)
-    else:
-        raise ValueError(f"Control1 type {control1} not supported for GFL converter. "
-                        f"Supported: Pac, Pdc, Vm_dc")
-
-    # ==============================
-    # CONTROL 2: Reactive Power Axis (i_d_ref)
-    # ==============================
-    # Control2 maps to i_d_ref (d-axis current controls reactive power)
-    
-    if control2 == ConverterControlType.Qac:
-        # Reactive power control
-        control_block_2, _ = tf_to_block(vfactory,
-            num=[Ki_pol, Kp_pol],
-            den=[0, 1],
-            x= Q_ref - Q,
-            y = i_d_ref,
-            name='Qac_ctrl'
-        )
-        control_blocks.append(control_block_2)
-        
-    elif control2 == ConverterControlType.Vm_ac:
-        # AC voltage magnitude control
-        # Use v_q_g as the measured voltage magnitude in dq frame (vd ~ 0)
-        control_block_2, _ = tf_to_block(vfactory,
-            num=[Ki_vac, Kp_vac],
-            den=[0, 1],
-            x= Vm_ac_ref - v_q_g,  # v_q_g is approximately Vm in dq frame
-            y = i_d_ref,
-            name='Vac_ctrl'
-        )
-        control_blocks.append(control_block_2)
-    else:
-        raise ValueError(f"Control2 type {control2} not supported for GFL converter. "
-                        f"Supported: Qac, Vm_ac")
-
-    # Physical Current Limits, TODO add AntiWindup
-    I_max = vfactory.add_const(1.2)
-    operation = 'normal'
-    if operation == 'normal':
-        id_max = sym.sqrt(sym.max(I_max**2 - sym.max(i_q, i_q_ref)**2, vfactory.add_const(1e-5)))     
-        i_d_ref_sat = sym.hard_sat(i_d_ref, -id_max, id_max)
-        i_q_ref_sat = sym.hard_sat(i_q_ref, -I_max, I_max)
-
-    # Voltage Control Loop (Inner Current Loop)
-    control_block_iq , vq_hat = tf_to_block(vfactory,
-        num=[Ki_icl, Kp_icl],
-        den=[0, 1],
-        x= i_q_ref_sat - i_q,
-        name='vq_hat'
-    )
-    control_block_id , vd_hat = tf_to_block(vfactory,
-        num=[Ki_icl, Kp_icl],
-        den=[0, 1],
-        x= i_d_ref_sat - i_d,
-        name='vd_hat'
-    )
-
-    # EMT block (differential equations for currents)
-    dt_id = vfactory.add_diff_var('dt_id', base_var= i_d)
-    dt_iq = vfactory.add_diff_var('dt_iq', base_var= i_q)
-    EMT_block=Block(
-        algebraic_eqs = [
-            v_d_c - v_d_g - (R*i_d + L*dt_id - omega*L*i_q),
-            v_q_c - v_q_g - (R*i_q + L*dt_iq - omega*L*i_d),
-        ],
-        diff_vars= [dt_id, dt_iq]
-    )
-
-    md = vfactory.add_var('md')
-    mq = vfactory.add_var('mq')
-    k = vfactory.add_const(np.sqrt(3/8))
-    v_d_command = sym.hard_sat(md, -1, 1) * k * v_dc
-    v_q_command = sym.hard_sat(mq, -1, 1) * k * v_dc
-    algebraic_eqs.append(v_d_command - (vd_hat + v_d_g + L*(omega)*i_q))
-    algebraic_eqs.append(v_q_command - (vq_hat + v_q_g - L*(omega)*i_d))
-    algebraic_vars.extend([md, mq, v_q_c, v_d_c, i_d, i_q])
-
-    # Build initialization equations based on control modes
-    # P and Q are initialized from power flow results via external mapping
-    init_eqs = {
-        P: -Pt_vsc,
-        Q: -Qt_vsc,
-        theta: Va,
-        omega: vfactory.add_const(1),
-        v_d_g: vfactory.add_const(0),
-        v_q_g: Vm,
-        i_q: (2 / 3) * P / v_q_g,
-        i_d: (2 / 3) * Q / v_q_g,
-        i_q_ref: i_q,
-        i_d_ref: i_d,
-        v_d_c: v_d_g + (R*i_d - omega*L*i_q),
-        v_q_c: v_q_g + (R*i_q - omega*L*i_d),
-        vd_hat: v_d_c - (v_d_g + L*(omega)*i_q),
-        vq_hat: v_q_c - (v_q_g - L*(omega)*i_d),
-        Vdc_ref: v_dc,
-        Vm_ac_ref: Vm,
-    }
-    
-    # Add control-specific initialization
-    if control1 in [ConverterControlType.Pac, ConverterControlType.Pdc]:
-        init_eqs[P_ref] = P
-    elif control1 == ConverterControlType.Vm_dc:
-        init_eqs[Vdc_ref] = v_dc
-        # For DC voltage control, initialize i_q_ref based on initial power flow
-        init_eqs[i_q_ref] = (2 / 3) * P / v_q_g
-    
-    if control2 == ConverterControlType.Qac:
-        init_eqs[Q_ref] = Q
-    elif control2 == ConverterControlType.Vm_ac:
-        init_eqs[Vm_ac_ref] = Vm
-        # For AC voltage control, initialize i_d_ref based on initial reactive power
-        init_eqs[i_d_ref] = (2 / 3) * Q / v_q_g
-
-    gfl_block_aux = Block(
-        algebraic_eqs=algebraic_eqs,
-        algebraic_vars=algebraic_vars,
-        event_dict= event_dict,
-        init_eqs=init_eqs,
-        external_mapping={
-            VarPowerFlowRefferenceType.P:P,
-            VarPowerFlowRefferenceType.Q:Q,
-        }
-    )
-    gfl_block.add(gfl_block_aux)
-
-    # Add all control blocks
-    for ctrl_block in control_blocks:
-        gfl_block.add(ctrl_block)
-    gfl_block.add(control_block_id)
-    gfl_block.add(control_block_iq)
-
-    gfl_block.add(pll_block)
-    gfl_block.add(EMT_block)
-    gfl_block.unify_blocks()
-
-    return gfl_block, i_d, i_q, v_q_c, v_d_c, P, Q
-
-def VscGflBuild(vfactory: VarFactory, name: str = "",
-                control1: ConverterControlType = ConverterControlType.Pac,
-                control2: ConverterControlType = ConverterControlType.Qac) -> RmsModelTemplate:
-    """
-    VSC GFL (Grid Following) model
-    with from side the DC bus and to side the AC bus
-    
-    Args:
-        name: Model name
-        control1: First control mode (Pac, Pdc, or Vm_dc)
-        control2: Second control mode (Qac or Vm_ac)
-    
-    Supported control combinations:
-        - Pac + Qac: Active and reactive power control
-        - Pac + Vm_ac: Active power and AC voltage control
-        - Pdc + Qac: DC power and reactive power control
-        - Pdc + Vm_ac: DC power and AC voltage control
-        - Vm_dc + Qac: DC voltage and reactive power control
-        - Vm_dc + Vm_ac: DC voltage and AC voltage control
-    """
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.VscDevice
-    # Inputs: Vm, Va, Vdc (Pt_vsc and Qt_vsc come from power flow initialization)
-    inputs = [vfactory.add_var("Vm_"), vfactory.add_var("Va_"), vfactory.add_var("Vdc_")]
-    Vm = inputs[0]
-    Va = inputs[1]
-    v_dc = inputs[2]
+    templ.name = name
 
-    # Vars:
-    Pt_vsc = vfactory.add_var('Pt_vsc')
-    Qt_vsc = vfactory.add_var('Qt_vsc')
-    Pf_vsc = vfactory.add_var('Pf_vsc')
+    inputs: List[Var] = [vfactory.add_var("Im_placeholder" + name)]
 
+    Im = inputs[0]
+    Pf = vfactory.add_var("Pf_vsc")
+    Pt = vfactory.add_var("Pt_vsc")
 
-    # Parameters:
-    bt = vfactory.add_var('bt')
-    gt = vfactory.add_var('gt')
-    Qf = vfactory.add_var('Qf')
-    a0 = vfactory.add_var('a0')
-    a1 = vfactory.add_var('a1')
-    a2 = vfactory.add_var('a2')
-    
-    # Build the converter model with specified control modes
-    gfl_block, i_d, i_q, vd_c, vq_c, P, Q = build_gfl_converter_model(
-        vfactory = vfactory,
-        inputs=[Vm, Va, v_dc, Pt_vsc, Qt_vsc],
-        control1=control1,
-        control2=control2
-    )
+    alpha1 = vfactory.add_var("alpha1")
+    alpha2 = vfactory.add_var("alpha2")
+    alpha3 = vfactory.add_var("alpha3")
 
-    event_dict = {
-        Qf: vfactory.add_const(0.0),
-        bt: vfactory.add_const(0.0),
-        gt: vfactory.add_const(0.1),
-        a0: vfactory.add_const(0.0),
-        a1: vfactory.add_const(0.0),
-        a2: vfactory.add_const(0.0),
+    block = Block()
+    block.parameters[alpha1] = vfactory.add_const(0.0)
+    block.parameters[alpha2] = vfactory.add_const(0.0)
+    block.parameters[alpha3] = vfactory.add_const(0.0)
+
+    block.algebraic_vars = [Pf, Pt]
+
+    #Active power is conserved Reactive isnt
+    block.algebraic_eqs  = [
+        Pf - Pt - (alpha1 + alpha2*Im + alpha3*Im**2),
+    ]
+
+    block.external_mapping = {
+        VarPowerFlowRefferenceType.Pf: Pf,
+        VarPowerFlowRefferenceType.Pt: Pt,
     }
+
+    block.api_obj_mapping= {
+        ParamPowerFlowRefferenceType.alpha1 : alpha1,
+        ParamPowerFlowRefferenceType.alpha2 : alpha2,
+        ParamPowerFlowRefferenceType.alpha3 : alpha3,
+    }
+
+    block.in_vars =  inputs
+    templ.block = block
+
+    return templ
+
+def build_vsc_transformer_control(vf:VarFactory, name:str=''):
+    #Inputs
+    Vm  = vf.add_var('Vm')
+    vdc = vf.add_var('vdc')
+    inputs = [Vm, vdc]
+
+    #Variables
+    am = vf.add_var('am')
+    alpha = vf.add_var('am')
     
-    k = vfactory.add_const(np.sqrt(3/8))
-    Im = sym.sqrt(i_d**2 + i_q**2 + vfactory.add_const(1e-5))
-    vsc_block = Block(
+    #Reference Values:
+    p_ref = vf.add_var('p_ref')
+    v_ref = vf.add_var('v_ref')
+    i_ref = vf.add_var('i_ref')
+
+    #Controller Parameters:
+    Kp = vf.add_var('Kp') 
+    Ki = vf.add_var('Ki') 
+    Km = vf.add_var('Km') 
+    Ks = vf.add_var('Ks') 
+    alpha_max = vf.add_var('alpha_max') 
+    alpha_min = vf.add_var('alpha_min') 
+    u_max = vf.add_var('u_max') 
+    u_min = vf.add_var('u_min') 
+
+    block = Block()
+    block.algebraic_vars = [am, alpha]
+    outputs = []
+    return
+
+def build_trafo_vsc(vf:VarFactory, trafo:Transformer2W, name:str = ''):
+    #from bus is GRID
+    #to   bus is CONVERTER
+
+    templ = RmsModelTemplate()
+    templ.name = name
+    vdc = vf.add_var('vdc_'+ name, VarPowerFlowRefferenceType.Vdc)
+    vmf = vf.add_var('vmf_'+ name, VarPowerFlowRefferenceType.Vmf)
+    vmt = vf.add_var('vmt_'+ name, VarPowerFlowRefferenceType.Vmt)
+    vaf = vf.add_var('vaf_'+ name, VarPowerFlowRefferenceType.Vaf)
+    vat = vf.add_var('vat_'+ name, VarPowerFlowRefferenceType.Vat)
+    inputs = [vdc, vmf, vmt, vaf, vat]
+
+    #Variables
+    Qf = vf.add_var("Qf_" + name,VarPowerFlowRefferenceType.Qf)
+    Qt = vf.add_var("Qt_" + name,VarPowerFlowRefferenceType.Qt)
+    Pf = vf.add_var("Pf_" + name,VarPowerFlowRefferenceType.Pf)
+    Pt = vf.add_var("Pt_" + name,VarPowerFlowRefferenceType.Pt)
+    Im = vf.add_var("Im_" + name)
+    m = vf.add_var('m')
+    am = vf.add_var('am')
+    phi = vaf
+
+    #Parameters
+    ys = 1.0 / complex(trafo.R, trafo.X)
+    ysh = trafo.G + 1j * trafo.B
+    gt  = vf.add_var("g")
+    bt  = vf.add_var("b")
+    gFe = vf.add_var('gFe')
+    bmu = vf.add_var('bmu')
+    am_ref  = vf.add_var('am_ref')
+    phi_ref = vf.add_var('phi_ref')
+    vtap_f, vtap_t = trafo.get_virtual_taps()
+    
+    print(f"DEBUG Trafo: R={trafo.R}, X={trafo.X}, G={trafo.G}, B={trafo.B}")
+    print(f"DEBUG Trafo: tap_mod={trafo.tap_module}, tap_phase={trafo.tap_phase}, vtap_f={vtap_f}, vtap_t={vtap_t}")
+    print(f"vtap  p is {vtap_f}")
+    print(f"vtap  t is {vtap_t}")
+    print(f'ys is {ys} ysh is {ysh}')
+    
+    # Calculate phase displacement matching transformer_admittance logic
+    # Use conn attribute (preserves user intent) instead of conn_f/conn_t (may be overwritten by template)
+    conn_f, conn_t = parse_windings_connection(trafo.conn)
+    conn_y_from = conn_f == WindingType.NeutralStar or conn_f == WindingType.GroundedStar
+    conn_y_to = conn_t == WindingType.NeutralStar or conn_t == WindingType.GroundedStar
+    if conn_f == WindingType.Delta and conn_y_to:  # Dy
+        phase_displacement = np.deg2rad(60.0)
+    elif conn_y_from and conn_t == WindingType.Delta:  # Yd
+        phase_displacement = np.deg2rad(0.0)
+    else:
+        phase_displacement = 0.0
+
+    theta_hk = vaf - vat
+    k = vf.add_const(np.sqrt(3/8))
+    block = Block(
+        algebraic_vars=[am, Pf, Pt, Qf, Qt, Im],
         algebraic_eqs=[
-            Pf_vsc - (P - (a0 + a1*Im + a2*Im**2)),
-            Pt_vsc + P,
-            Qt_vsc + Q,
+            # From side: Pf = Re(Vf * (Yff*Vf + Yft*Vt)*)
+            vmt - vdc*am*k,
+            Pf - ((vmf ** 2 * (gFe + gt)) / (m * vtap_f) ** 2 - gt / (m * vtap_f * vtap_t) * vmf * vmt * sym.cos(
+                theta_hk - phi) - bt / (m * vtap_f * vtap_t) * vmf * vmt * sym.sin(
+                theta_hk - phi - phase_displacement)),
+            Qf - (-vmf ** 2 * (bmu / 2 + bt) / (m * vtap_f) ** 2 - gt / (m * vtap_f * vtap_t) * vmf * vmt * sym.sin(
+                theta_hk - phi) + bt / (m * vtap_f * vtap_t) * vmf * vmt * sym.cos(
+                theta_hk - phi - phase_displacement)),
+
+            # To side: Pt = Re(Vt * (Ytf*Vf + Ytt*Vt)*)
+            Pt - ((vmt ** 2 * (gFe + gt)) / vtap_t ** 2 - gt / (m * vtap_f * vtap_t) * vmt * vmf * sym.cos(
+                theta_hk - phi) + bt / (m * vtap_f * vtap_t) * vmt * vmf * sym.sin(
+                theta_hk - phi - phase_displacement)),
+            Qt - (-vmt ** 2 * (bmu / 2 + bt) / vtap_t ** 2 + gt / (m * vtap_f * vtap_t) * vmt * vmf * sym.sin(
+                theta_hk - phi) + bt / (m * vtap_f * vtap_t) * vmt * vmf * sym.cos(
+                theta_hk - phi - phase_displacement)),
+            Im - sym.sqrt(Pt**2 + Qt**2)/vmt,
+            phi - phi_ref,
+            am - am_ref,
         ],
-        algebraic_vars=[Pt_vsc, Qt_vsc, Pf_vsc],
         init_eqs={
-            # vsh: sym.sqrt((exp1**2 + exp2**2)/(gt**2 + bt**2))/Vm,
-            # ash: sym.atan((-gt*exp1 - bt*exp2)/(bt*exp1 - gt*exp2)),
+            am: vmt/k*vdc,
+            Im: sym.sqrt(Pt**2 + Qt**2)/vmt,
+            am_ref : am,
+            phi_ref: phi,
         },
-        event_dict= event_dict,
-        external_mapping={
-            VarPowerFlowRefferenceType.P: P,
-            VarPowerFlowRefferenceType.Q: Q,
+        event_dict={
+            m      : vf.add_const(trafo.tap_module),
+            phi_ref   : vf.add_const(None),
+            am_ref    : vf.add_const(None),
         },
-        in_vars= inputs,
-        out_vars = [Pt_vsc, Qt_vsc, Pf_vsc]
+        in_vars=inputs,
     )
-    vsc_block.external_mapping = {
-        VarPowerFlowRefferenceType.Vmt: inputs[0],
-        VarPowerFlowRefferenceType.Vat: inputs[1],
-        VarPowerFlowRefferenceType.Vdc: inputs[2],
-        VarPowerFlowRefferenceType.Pt: Pt_vsc,
-        VarPowerFlowRefferenceType.Qt: Qt_vsc,
-        VarPowerFlowRefferenceType.Pf: Pf_vsc,
+
+    block.external_mapping = {
+        VarPowerFlowRefferenceType.Vaf: vaf,
+        VarPowerFlowRefferenceType.Vat: vat,
+        VarPowerFlowRefferenceType.Vmf: vmf,
+        VarPowerFlowRefferenceType.Vmt: vmt,
+        VarPowerFlowRefferenceType.Pf: Pf,
+        VarPowerFlowRefferenceType.Pt: Pt,
         VarPowerFlowRefferenceType.Qf: Qf,
+        VarPowerFlowRefferenceType.Qt: Qt,
     }
 
-    vsc_block.add(gfl_block)
-    vsc_block.name = 'gfl_block'
+    block.api_obj_mapping = {
+        ParamPowerFlowRefferenceType.g: gt,
+        ParamPowerFlowRefferenceType.b: bt,
+        ParamPowerFlowRefferenceType.bsh: bmu,
+    }
+    block.parameters = {
+        gt:vf.add_const(ys.real),
+        bt:vf.add_const(ys.imag),
+        gFe:vf.add_const(ysh.real),
+        bmu:vf.add_const(ysh.imag)
+    }
 
-    templ._block = vsc_block
+    block.out_vars = [Im]
+    templ.block = block
     return templ

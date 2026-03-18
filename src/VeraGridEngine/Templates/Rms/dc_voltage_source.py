@@ -107,18 +107,17 @@ def DCCurrentSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTempla
     Idc = vfactory.add_var('Idc')
     Idc_src = vfactory.add_var('Idc_src')
     Pdc = vfactory.add_var('Pdc')
-    Idc_src0 = vfactory.add_var('Idc_src0')
     dVdcdt = vfactory.add_diff_var('dVdcdt', base_var=Vdc)
 
     # Parameters
     C = vfactory.add_var('C')
     Rpv = vfactory.add_var('Rpv')
-    Vpv0 = vfactory.add_var('Vpv0')
+    Idc_src0 = vfactory.add_var('Idc_src0')
 
     event_dict = {
         C: vfactory.add_const(0.01),
         Rpv: vfactory.add_const(0.001),
-        Vpv0: vfactory.add_const(None),
+        Idc_src0: vfactory.add_const(None),
     }
     dc_block = Block(
         algebraic_eqs=[
@@ -132,8 +131,8 @@ def DCCurrentSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTempla
         out_vars=[Pdc, Idc],
         init_eqs={
             Idc: Pdc / Vdc,
-            Vpv: Rpv * Idc + Vdc,
-            Vpv0: Rpv * Idc + Vdc,
+            Idc_src: Idc,
+            Idc_src0: Idc,
         },
         external_mapping={
             VarPowerFlowRefferenceType.P: Pdc,

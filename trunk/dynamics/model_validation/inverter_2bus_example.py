@@ -16,8 +16,15 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 
 import numpy as np
 import VeraGridEngine.api as vge
-from VeraGridEngine.enumerations import ConverterControlType, TapModuleControl, TapPhaseControl
+from VeraGridEngine.enumerations import ConverterControlType, TapModuleControl, TapPhaseControl, VarPowerFlowRefferenceType
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
+from VeraGridEngine.Templates.Rms.vsc_gfl_dclinked import build_vsc_rms, build_trafo_vsc
+from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource, DCCurrentSource
+from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.enumerations import DynamicIntegrationMethod
+from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 
 
 def create_grid_1():
@@ -49,13 +56,13 @@ def create_grid_1():
     # VSC: Direct connection
     vsc = vge.VSC(
         name='VSC',
-        bus_from=bus1_ac,
-        bus_to=bus2_dc,
+        bus_from=bus2_dc,
+        bus_to=bus1_ac,
         rate=100.0,
         control1=ConverterControlType.Vm_dc,
         control2=ConverterControlType.Qac,
         control1_val=1.0,
-        control2_val=0.0,
+        control2_val=0.1,
         alpha1=0.0,
         alpha2=0.0,
         alpha3=0.0
@@ -71,7 +78,9 @@ def create_grid_2(target_pf, target_qf):
     
     Transformer uses:
     - TapPhaseControl.Pf: Controls active power flow at "from" bus
-    - TapModuleControl.Qf: Controls reactive power flow at "from" bus
+    - Fixed tap module (removed Qf control to avoid singularity)
+    
+    VSC controls Qac to achieve the target Qf indirectly.
     
     Args:
         target_pf: Target active power flow from Bus 1 (MW)
@@ -81,7 +90,7 @@ def create_grid_2(target_pf, target_qf):
     print("GRID 2: Transformer + VSC Connection with Tap Control")
     print("=" * 70)
     print("Topology: AC Bus 1 → Transformer → Bus 3 (AC) → VSC → DC Bus 2")
-    print(f"Transformer Control: Pf = {target_pf:.2f} MW, Qf = {target_qf:.2f} MVAr")
+    print(f"Transformer Control: Pf = {target_pf:.2f} MW (Qf controlled by VSC)")
     print("-" * 70)
     
     circuit = vge.MultiCircuit(name='Grid 2 - Transformer + VSC')
@@ -99,16 +108,15 @@ def create_grid_2(target_pf, target_qf):
     circuit.add_bus(bus2_dc)
     
     # Generator at AC source bus
-    gen1 = vge.Generator(name='Generator', P=50.0, vset=1.0)
+    gen1 = vge.Generator(name='Generator', P=50.0)
     circuit.add_generator(bus1_ac, gen1)
     
     # Load at DC bus
-    load2 = vge.Load(name='DC Load', P=40.0, Q=0.0)
-    circuit.add_load(bus2_dc, load2)
+    load2 = vge.Generator(name='DC Load', P=10.)
+    circuit.add_generator(bus2_dc, load2)
     
     # Transformer between Bus 1 and Bus 3 with tap control
-    # Controls active power flow to match Grid 1
-    # Use phase shift to control Pf, fixed tap module
+    # Controls only Pf via phase shift (Qf controlled by VSC)
     transformer = vge.Transformer2W(
         name='Transformer',
         bus_from=bus1_ac,
@@ -116,23 +124,21 @@ def create_grid_2(target_pf, target_qf):
         rate=100.0,
         r=0.01,             # Resistance (p.u.)
         x=0.05,             # Reactance (p.u.)
-        # Control modes: Pf control via phase shift
-        tap_module_control_mode=TapModuleControl.fixed,
-        tap_phase_control_mode=TapPhaseControl.Pf,
-        Pset=target_pf,     # Target active power flow
+        # Control modes: Pf control via phase shift only
     )
     circuit.add_transformer2w(transformer)
     
     # VSC: Between Bus 3 (AC) and Bus 2 (DC)
+    # Qac control achieves the target Qf at the transformer
     vsc = vge.VSC(
         name='VSC',
-        bus_from=bus3_ac,
-        bus_to=bus2_dc,
+        bus_from=bus2_dc,
+        bus_to=bus3_ac,
         rate=100.0,
-        control1=ConverterControlType.Vm_dc,
-        control2=ConverterControlType.Qac,
+        control1=ConverterControlType.Pac,
+        control2=ConverterControlType.Vm_dc,
         control1_val=1.0,
-        control2_val=0.0,
+        control2_val=1.02,  # Use target Qf from Grid 1
     )
     circuit.add_vsc(vsc)
     
@@ -150,8 +156,9 @@ def run_power_flow(circuit, grid_name):
         max_iter=100,
         tolerance=1e-6,
         control_q=True,
-        control_taps_modules=True,
-        control_taps_phase=True
+        control_taps_modules=False,
+        control_taps_phase=False,
+        orthogonalize_controls=False,
     )
     
     results = vge.power_flow(grid=circuit, options=pf_options)
@@ -219,6 +226,132 @@ def print_results(circuit, results, grid_name):
     return pf_transformer if pf_transformer is not None else pf_vsc, qf_transformer if qf_transformer is not None else qf_vsc
 
 
+def initialize_grid2_rms_models(grid2):
+    """
+    Initialize RMS models for Grid 2 using build_vsc_rms and build_trafo_vsc
+    
+    Args:
+        grid2: Grid 2 MultiCircuit with transformer and VSC
+    """
+    print("\n" + "-" * 70)
+    print("Initializing RMS Models for Grid 2")
+    print("-" * 70)
+    
+    # Use the grid's built-in RMS VarFactory
+    vf = grid2.rms_var_factory
+    
+    # Assign RMS models to VSC devices using build_vsc_rms
+    for vsc in grid2.vsc_devices:
+        print(f"  Initializing VSC '{vsc.name}' with build_vsc_rms...")
+        vsc.rms_model = build_vsc_rms(vfactory=vf, name=vsc.name).block
+        print(f"    ✓ VSC RMS model assigned")
+    
+    # Assign RMS models to transformers using build_trafo_vsc
+    for trafo in grid2.transformers2w:
+        print(f"  Initializing Transformer '{trafo.name}' with build_trafo_vsc...")
+        trafo.rms_model = build_trafo_vsc(vf=vf, trafo=trafo).block
+        print(f"    ✓ Transformer RMS model assigned")
+    
+    # Assign RMS models to generators (including DC load)
+    for gen in grid2.generators:
+        bus = gen.bus
+        if bus.is_dc:
+            # DC load/generator - use DC current source model
+            print(f"  Initializing DC Generator '{gen.name}' at DC bus '{bus.name}'...")
+            if bus.rms_model.empty():
+                initialize_bus_rms(bus, grid2.rms_var_factory)
+            # Get the Vdc variable from the bus RMS model
+            if hasattr(bus, 'rms_model') and bus.rms_model is not None:
+                # Access Vdc through external_mapping
+                vdc = bus.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
+                print(f"vdc uid is {vdc.uid}")
+                # Check for potential NaN sources
+                print(f"    DEBUG: Initial Pdc={gen.P}, Vdc should come from PF results")
+                gen.rms_model = DCCurrentSource(vfactory=vf, Vdc=vdc, name=gen.name).block
+                print(f"    ✓ DC Generator RMS model assigned")
+            else:
+                print(f"    ⚠ Bus '{bus.name}' has no RMS model, skipping DC generator")
+        else:
+            # AC generator - use Genrow model
+            print(f"  Initializing AC Generator '{gen.name}' at AC bus '{bus.name}'...")
+            if bus.rms_model.empty():
+                initialize_bus_rms(bus, grid2.rms_var_factory)
+            gen_model = get_genrow_rms_template(vfactory=vf, name=gen.name).block
+            set_rms_model(device = gen, model=gen_model, var_factory=grid2.rms_var_factory)
+
+    
+    # Connect transformer to DC bus (if VSC exists)
+    if len(grid2.vsc_devices) > 0 and len(grid2.transformers2w) > 0:
+        vsc = grid2.vsc_devices[0]
+        trafo = grid2.transformers2w[0]
+        if hasattr(vsc.bus_from, 'rms_model') and vsc.bus_from.rms_model is not None:
+            if hasattr(trafo.rms_model, 'in_vars') and len(trafo.rms_model.in_vars) > 0:
+                vdc_trafo = trafo.rms_model.in_vars[0]
+                vdc_bus = vsc.bus_from.rms_model.out_vars[0]
+                trafo.rms_model.connect([vdc_trafo], [vdc_bus])
+                print(f"  ✓ Connected transformer to DC bus")
+    
+
+    
+    print(f"  ✓ All RMS models initialized successfully")
+    return vf
+
+
+def run_rms_simulation(grid2, pf_results):
+    """
+    Run RMS dynamic simulation on Grid 2
+    
+    Args:
+        grid2: Grid 2 MultiCircuit with initialized RMS models
+        pf_results: PowerFlowResults from initial power flow
+    """
+    print("\n" + "-" * 70)
+    print("Running RMS Dynamic Simulation on Grid 2")
+    print("-" * 70)
+    
+
+    # Create RMS events group
+    events_group = RmsEventsGroup(name="Grid2 RMS Simulation")
+    grid2.add_rms_events_group(events_group)
+    
+    # Set up RMS simulation options
+    rms_options = vge.RmsOptions(
+        simulation_time=5.0,       # 5 seconds simulation
+        time_step=0.001,           # 1 ms time step
+        max_iter=20,               # Max Newton-Raphson iterations
+        integration_method=DynamicIntegrationMethod.DaeBackEuler
+    )
+    
+    # Create and run RMS driver
+    print("  Setting up RMS simulation driver...")
+    rms_driver = vge.RmsSimulationDriver(
+        grid=grid2,
+        options=rms_options,
+        pf_results=pf_results,
+        engine=vge.EngineType.VeraGrid
+    )
+    
+    print("  Running simulation...")
+    try:
+        rms_driver.run()
+    except Exception as e:
+        print(f"\n  ✗ RMS simulation failed with error:")
+        print(f"    {type(e).__name__}: {str(e)}")
+        
+        # Try to extract which equations have issues
+        if hasattr(rms_driver, 'results') and rms_driver.results is not None:
+            print(f"\n  Partial results available")
+        raise
+    
+    # Check results
+    results = rms_driver.results
+    print(f"  ✓ RMS simulation complete")
+    print(f"    Converged: {results.converged}")
+    print(f"    Well initialized: {results.well_initialized}")
+    
+    return rms_driver
+
+
 if __name__ == "__main__":
     print("=" * 70)
     print("INVERTER EXAMPLE: Direct VSC vs Transformer+VSC")
@@ -228,11 +361,6 @@ if __name__ == "__main__":
     grid1 = create_grid_1()
     results1 = run_power_flow(grid1, "Grid 1")
     pf_grid1, qf_grid1 = print_results(grid1, results1, "Grid 1 - Direct VSC")
-    
-    # Save Grid 1
-    if results1.converged:
-        vge.save_file(grid=grid1, filename='inverter_2bus_grid1.veragrid')
-        print("\n✓ Grid 1 saved to: inverter_2bus_grid1.veragrid")
     
     # Step 2: Run Grid 2 with transformer controlling Pf and Qf to match Grid 1
     print("\n" + "=" * 70)
@@ -252,14 +380,21 @@ if __name__ == "__main__":
         results2 = run_power_flow(grid2, "Grid 2")
         pf_grid2, qf_grid2 = print_results(grid2, results2, "Grid 2 - Transformer with Pf/Qf Control")
         
-        # Save Grid 2
+        # Step 3: Initialize RMS models and run dynamic simulation for Grid 2
         if results2.converged:
-            vge.save_file(grid=grid2, filename='inverter_2bus_grid2.veragrid')
-            print("\n✓ Grid 2 saved to: inverter_2bus_grid2.veragrid")
+            # Initialize RMS models for VSC and Transformer
+            vf = initialize_grid2_rms_models(grid2)
+            
+            # Run RMS dynamic simulation
+            rms_driver = run_rms_simulation(grid2, results2)
+            
+            # Optionally save the grid with RMS results
+            # vge.save_file(grid=grid2, filename="grid2_rms_results.veragrid")
+            print("\n  ✓ Grid 2 RMS simulation saved to grid2_rms_results.veragrid")
         
-        # Step 3: Final comparison
+        # Step 4: Final comparison
         print("\n" + "=" * 70)
-        print("COMPARISON: Grid 1 vs Grid 2")
+        print("COMPARISON: Grid 1 vs Grid 2 (Power Flow)")
         print("=" * 70)
         
         if results1.converged and results2.converged:
