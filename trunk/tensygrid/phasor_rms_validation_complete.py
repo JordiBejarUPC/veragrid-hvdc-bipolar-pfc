@@ -34,6 +34,7 @@ from VeraGridEngine.Devices.Aggregation import RmsEvent
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.block import Block
+import VeraGridEngine.api as vge
 
 
 def find_name_in_block(name: str, block: Block):
@@ -214,6 +215,7 @@ def test_phasor_validation():
     # SIMULATION OPTIONS
     # ===================================================================
     print("\n[5] Setting up simulation...")
+
     options = RmsOptions(
         time_step=0.001,
         simulation_time=0.1,  # Short simulation for testing
