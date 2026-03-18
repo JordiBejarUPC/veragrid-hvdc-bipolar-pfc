@@ -2531,7 +2531,38 @@ class EmtSolverTypes(Enum):
         """
         return list(map(lambda c: c.value, cls))
 
+class RmsProblemTypes(Enum):
 
+    Tensygrid       = "Tensygrid"
+    PowerBalance    = "RmsProblemDae"
+    CurrentBalance  = "RmsProblemPhasor"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return RmsProblemTypes[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
+    
 class SmallSignalEmtBuildTypes(Enum):
     """
     Jacobian construction backends for implicit solvers.
@@ -2905,7 +2936,10 @@ class ParamPowerFlowRefferenceType(Enum):
     vf = "vf"
     tm0 = "tm0"
 
-
+    #VSC loss parameters
+    alpha1 = 'alpha1'
+    alpha2 = 'alpha2'
+    alpha3 = 'alpha3'
 
     def __str__(self):
         return self.value
