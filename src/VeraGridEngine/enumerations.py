@@ -2632,6 +2632,43 @@ class RmsInitializationMethod(Enum):
         return list(map(lambda c: c.value, cls))
 
 
+class EmtInitializationMethod(Enum):
+    """
+    EMT initialization workflow options.
+    """
+
+    Explicit = "Explicit"
+    ConsistentNewton = "ConsistentNewton"
+    PseudoTransient = "PseudoTransient"
+    Auto = "Auto"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return EmtInitializationMethod[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
+
+
 class GridReductionMethod(Enum):
     """
     GridReductionMethod
