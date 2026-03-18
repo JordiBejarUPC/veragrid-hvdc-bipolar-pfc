@@ -20,10 +20,10 @@ class ControllableShunt(ShuntParent):
     Controllable Shunt
     """
     __slots__ = (
-        'Bmin',
-        'Bmax',
-        'Gmin',
-        'Gmax',
+        '_Bmin',
+        '_Bmax',
+        '_Gmin',
+        '_Gmax',
         'g_per_step',
         'b_per_step',
         '_active_steps',
@@ -33,11 +33,11 @@ class ControllableShunt(ShuntParent):
         '_step_prof',
         'control_bus',
         '_control_bus_prof',
-        'Vset',
-        'Vmin',
-        'Vmax',
+        '_Vset',
+        '_Vmin',
+        '_Vmax',
         '_Vset_prof',
-        'control_mode'
+        'control_mode',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -200,6 +200,7 @@ class ControllableShunt(ShuntParent):
 
     @step.setter
     def step(self, value: int):
+        value = int(value)
 
         if self.auto_update_enabled:
 
@@ -382,3 +383,138 @@ class ControllableShunt(ShuntParent):
             return self._b_steps
         else:
             return np.diff(self._b_steps)
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def Gmax(self) -> float:
+        """
+        Get ``Gmax``.
+
+        :return: float
+        """
+        return self._Gmax
+
+    @Gmax.setter
+    def Gmax(self, val: float) -> None:
+        """
+        Set ``Gmax``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Gmax = float(val)
+
+    @property
+    def Gmin(self) -> float:
+        """
+        Get ``Gmin``.
+
+        :return: float
+        """
+        return self._Gmin
+
+    @Gmin.setter
+    def Gmin(self, val: float) -> None:
+        """
+        Set ``Gmin``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Gmin = float(val)
+
+    @property
+    def Bmax(self) -> float:
+        """
+        Get ``Bmax``.
+
+        :return: float
+        """
+        return self._Bmax
+
+    @Bmax.setter
+    def Bmax(self, val: float) -> None:
+        """
+        Set ``Bmax``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Bmax = float(val)
+
+    @property
+    def Bmin(self) -> float:
+        """
+        Get ``Bmin``.
+
+        :return: float
+        """
+        return self._Bmin
+
+    @Bmin.setter
+    def Bmin(self, val: float) -> None:
+        """
+        Set ``Bmin``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Bmin = float(val)
+
+    @property
+    def Vmin(self) -> float:
+        """
+        Get ``Vmin``.
+
+        :return: float
+        """
+        return self._Vmin
+
+    @Vmin.setter
+    def Vmin(self, val: float) -> None:
+        """
+        Set ``Vmin``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vmin = float(val)
+
+    @property
+    def Vset(self) -> float:
+        """
+        Get ``Vset``.
+
+        :return: float
+        """
+        return self._Vset
+
+    @Vset.setter
+    def Vset(self, val: float) -> None:
+        """
+        Set ``Vset``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vset = float(val)
+
+    @property
+    def Vmax(self) -> float:
+        """
+        Get ``Vmax``.
+
+        :return: float
+        """
+        return self._Vmax
+
+    @Vmax.setter
+    def Vmax(self, val: float) -> None:
+        """
+        Set ``Vmax``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vmax = float(val)

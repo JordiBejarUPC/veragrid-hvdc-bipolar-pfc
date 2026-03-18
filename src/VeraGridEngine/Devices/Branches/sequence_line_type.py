@@ -91,20 +91,20 @@ def get_line_impedances_with_b(r_ohm: float, x_ohm: float, b_us: float, length: 
 
 class SequenceLineType(EditableDevice):
     __slots__ = (
-        'Imax',
-        'Vnom',
-        'R',
-        'X',
-        'B',
-        'Cnf',
-        'R0',
-        'X0',
-        'B0',
-        'Cnf0',
-        'use_conductance',
-        'n_circuits',
-        'capex',
-        'opex'
+        '_Imax',
+        '_Vnom',
+        '_R',
+        '_X',
+        '_B',
+        '_Cnf',
+        '_R0',
+        '_X0',
+        '_B0',
+        '_Cnf0',
+        '_use_conductance',
+        '_n_circuits',
+        '_capex',
+        '_opex',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -282,3 +282,271 @@ class SequenceLineType(EditableDevice):
         adm.phC = 1
 
         return adm
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def Imax(self) -> float:
+        """
+        Get ``Imax``.
+
+        :return: float
+        """
+        return self._Imax
+
+    @Imax.setter
+    def Imax(self, val: float) -> None:
+        """
+        Set ``Imax``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Imax = float(val)
+
+    @property
+    def Vnom(self) -> float:
+        """
+        Get ``Vnom``.
+
+        :return: float
+        """
+        return self._Vnom
+
+    @Vnom.setter
+    def Vnom(self, val: float) -> None:
+        """
+        Set ``Vnom``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vnom = float(val)
+
+    @property
+    def R(self) -> float:
+        """
+        Get ``R``.
+
+        :return: float
+        """
+        return self._R
+
+    @R.setter
+    def R(self, val: float) -> None:
+        """
+        Set ``R``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R = float(val)
+
+    @property
+    def X(self) -> float:
+        """
+        Get ``X``.
+
+        :return: float
+        """
+        return self._X
+
+    @X.setter
+    def X(self, val: float) -> None:
+        """
+        Set ``X``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._X = float(val)
+
+    @property
+    def B(self) -> float:
+        """
+        Get ``B``.
+
+        :return: float
+        """
+        return self._B
+
+    @B.setter
+    def B(self, val: float) -> None:
+        """
+        Set ``B``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._B = float(val)
+
+    @property
+    def R0(self) -> float:
+        """
+        Get ``R0``.
+
+        :return: float
+        """
+        return self._R0
+
+    @R0.setter
+    def R0(self, val: float) -> None:
+        """
+        Set ``R0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R0 = float(val)
+
+    @property
+    def X0(self) -> float:
+        """
+        Get ``X0``.
+
+        :return: float
+        """
+        return self._X0
+
+    @X0.setter
+    def X0(self, val: float) -> None:
+        """
+        Set ``X0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._X0 = float(val)
+
+    @property
+    def B0(self) -> float:
+        """
+        Get ``B0``.
+
+        :return: float
+        """
+        return self._B0
+
+    @B0.setter
+    def B0(self, val: float) -> None:
+        """
+        Set ``B0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._B0 = float(val)
+
+    @property
+    def Cnf(self) -> float:
+        """
+        Get ``Cnf``.
+
+        :return: float
+        """
+        return self._Cnf
+
+    @Cnf.setter
+    def Cnf(self, val: float) -> None:
+        """
+        Set ``Cnf``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Cnf = float(val)
+
+    @property
+    def Cnf0(self) -> float:
+        """
+        Get ``Cnf0``.
+
+        :return: float
+        """
+        return self._Cnf0
+
+    @Cnf0.setter
+    def Cnf0(self, val: float) -> None:
+        """
+        Set ``Cnf0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Cnf0 = float(val)
+
+    @property
+    def use_conductance(self) -> bool:
+        """
+        Get ``use_conductance``.
+
+        :return: bool
+        """
+        return self._use_conductance
+
+    @use_conductance.setter
+    def use_conductance(self, val: bool) -> None:
+        """
+        Set ``use_conductance``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._use_conductance = bool(val)
+
+    @property
+    def n_circuits(self) -> int:
+        """
+        Get ``n_circuits``.
+
+        :return: int
+        """
+        return self._n_circuits
+
+    @n_circuits.setter
+    def n_circuits(self, val: int) -> None:
+        """
+        Set ``n_circuits``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._n_circuits = int(val)
+
+    @property
+    def capex(self) -> float:
+        """
+        Get ``capex``.
+
+        :return: float
+        """
+        return self._capex
+
+    @capex.setter
+    def capex(self, val: float) -> None:
+        """
+        Set ``capex``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._capex = float(val)
+
+    @property
+    def opex(self) -> float:
+        """
+        Get ``opex``.
+
+        :return: float
+        """
+        return self._opex
+
+    @opex.setter
+    def opex(self, val: float) -> None:
+        """
+        Set ``opex``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._opex = float(val)

@@ -15,16 +15,16 @@ from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 class SeriesReactance(BranchParent):
     __slots__ = (
-        'tolerance',
-        'r_fault',
-        'x_fault',
-        'fault_pos',
-        'R',
-        'X',
-        'R0',
-        'X0',
-        'R2',
-        'X2'
+        '_tolerance',
+        '_r_fault',
+        '_x_fault',
+        '_fault_pos',
+        '_R',
+        '_X',
+        '_R0',
+        '_X0',
+        '_R2',
+        '_X2',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -208,4 +208,196 @@ class SeriesReactance(BranchParent):
         self.R = np.round(R / Zbase, 6)
         self.X = np.round(X / Zbase, 6)
         self.rate = np.round(Imax * Vf * 1.73205080757, 6)  # nominal power in MVA = kA * kV * sqrt(3)
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def R(self) -> float:
+        """
+        Get ``R``.
+
+        :return: float
+        """
+        return self._R
+
+    @R.setter
+    def R(self, val: float) -> None:
+        """
+        Set ``R``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R = float(val)
+
+    @property
+    def X(self) -> float:
+        """
+        Get ``X``.
+
+        :return: float
+        """
+        return self._X
+
+    @X.setter
+    def X(self, val: float) -> None:
+        """
+        Set ``X``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._X = float(val)
+
+    @property
+    def R0(self) -> float:
+        """
+        Get ``R0``.
+
+        :return: float
+        """
+        return self._R0
+
+    @R0.setter
+    def R0(self, val: float) -> None:
+        """
+        Set ``R0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R0 = float(val)
+
+    @property
+    def X0(self) -> float:
+        """
+        Get ``X0``.
+
+        :return: float
+        """
+        return self._X0
+
+    @X0.setter
+    def X0(self, val: float) -> None:
+        """
+        Set ``X0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._X0 = float(val)
+
+    @property
+    def R2(self) -> float:
+        """
+        Get ``R2``.
+
+        :return: float
+        """
+        return self._R2
+
+    @R2.setter
+    def R2(self, val: float) -> None:
+        """
+        Set ``R2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R2 = float(val)
+
+    @property
+    def X2(self) -> float:
+        """
+        Get ``X2``.
+
+        :return: float
+        """
+        return self._X2
+
+    @X2.setter
+    def X2(self, val: float) -> None:
+        """
+        Set ``X2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._X2 = float(val)
+
+    @property
+    def tolerance(self) -> float:
+        """
+        Get ``tolerance``.
+
+        :return: float
+        """
+        return self._tolerance
+
+    @tolerance.setter
+    def tolerance(self, val: float) -> None:
+        """
+        Set ``tolerance``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._tolerance = float(val)
+
+    @property
+    def r_fault(self) -> float:
+        """
+        Get ``r_fault``.
+
+        :return: float
+        """
+        return self._r_fault
+
+    @r_fault.setter
+    def r_fault(self, val: float) -> None:
+        """
+        Set ``r_fault``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._r_fault = float(val)
+
+    @property
+    def x_fault(self) -> float:
+        """
+        Get ``x_fault``.
+
+        :return: float
+        """
+        return self._x_fault
+
+    @x_fault.setter
+    def x_fault(self, val: float) -> None:
+        """
+        Set ``x_fault``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._x_fault = float(val)
+
+    @property
+    def fault_pos(self) -> float:
+        """
+        Get ``fault_pos``.
+
+        :return: float
+        """
+        return self._fault_pos
+
+    @fault_pos.setter
+    def fault_pos(self, val: float) -> None:
+        """
+        Set ``fault_pos``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._fault_pos = float(val)
 

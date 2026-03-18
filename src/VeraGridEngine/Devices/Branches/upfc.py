@@ -17,21 +17,21 @@ from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
 
 class UPFC(BranchParent):
     __slots__ = (
-        'R',
-        'X',
-        'Rsh',
-        'Xsh',
-        'R0',
-        'X0',
-        'Rsh0',
-        'Xsh0',
-        'R2',
-        'X2',
-        'Rsh2',
-        'Xsh2',
-        'Vsh',
-        'Pfset',
-        'Qfset',
+        '_R',
+        '_X',
+        '_Rsh',
+        '_Xsh',
+        '_R0',
+        '_X0',
+        '_Rsh0',
+        '_Xsh0',
+        '_R2',
+        '_X2',
+        '_Rsh2',
+        '_Xsh2',
+        '_Vsh',
+        '_Pfset',
+        '_Qfset',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -227,3 +227,290 @@ class UPFC(BranchParent):
 
         if show_fig:
             plt.show()
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def R(self) -> float:
+        """
+        Get ``R``.
+
+        :return: float
+        """
+        return self._R
+
+    @R.setter
+    def R(self, val: float) -> None:
+        """
+        Set ``R``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R = float(val)
+
+    @property
+    def X(self) -> float:
+        """
+        Get ``X``.
+
+        :return: float
+        """
+        return self._X
+
+    @X.setter
+    def X(self, val: float) -> None:
+        """
+        Set ``X``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._X = float(val)
+
+    @property
+    def Rsh(self) -> float:
+        """
+        Get ``Rsh``.
+
+        :return: float
+        """
+        return self._Rsh
+
+    @Rsh.setter
+    def Rsh(self, val: float) -> None:
+        """
+        Set ``Rsh``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Rsh = float(val)
+
+    @property
+    def Xsh(self) -> float:
+        """
+        Get ``Xsh``.
+
+        :return: float
+        """
+        return self._Xsh
+
+    @Xsh.setter
+    def Xsh(self, val: float) -> None:
+        """
+        Set ``Xsh``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Xsh = float(val)
+
+    @property
+    def R0(self) -> float:
+        """
+        Get ``R0``.
+
+        :return: float
+        """
+        return self._R0
+
+    @R0.setter
+    def R0(self, val: float) -> None:
+        """
+        Set ``R0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R0 = float(val)
+
+    @property
+    def X0(self) -> float:
+        """
+        Get ``X0``.
+
+        :return: float
+        """
+        return self._X0
+
+    @X0.setter
+    def X0(self, val: float) -> None:
+        """
+        Set ``X0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._X0 = float(val)
+
+    @property
+    def Rsh0(self) -> float:
+        """
+        Get ``Rsh0``.
+
+        :return: float
+        """
+        return self._Rsh0
+
+    @Rsh0.setter
+    def Rsh0(self, val: float) -> None:
+        """
+        Set ``Rsh0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Rsh0 = float(val)
+
+    @property
+    def Xsh0(self) -> float:
+        """
+        Get ``Xsh0``.
+
+        :return: float
+        """
+        return self._Xsh0
+
+    @Xsh0.setter
+    def Xsh0(self, val: float) -> None:
+        """
+        Set ``Xsh0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Xsh0 = float(val)
+
+    @property
+    def R2(self) -> float:
+        """
+        Get ``R2``.
+
+        :return: float
+        """
+        return self._R2
+
+    @R2.setter
+    def R2(self, val: float) -> None:
+        """
+        Set ``R2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R2 = float(val)
+
+    @property
+    def X2(self) -> float:
+        """
+        Get ``X2``.
+
+        :return: float
+        """
+        return self._X2
+
+    @X2.setter
+    def X2(self, val: float) -> None:
+        """
+        Set ``X2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._X2 = float(val)
+
+    @property
+    def Rsh2(self) -> float:
+        """
+        Get ``Rsh2``.
+
+        :return: float
+        """
+        return self._Rsh2
+
+    @Rsh2.setter
+    def Rsh2(self, val: float) -> None:
+        """
+        Set ``Rsh2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Rsh2 = float(val)
+
+    @property
+    def Xsh2(self) -> float:
+        """
+        Get ``Xsh2``.
+
+        :return: float
+        """
+        return self._Xsh2
+
+    @Xsh2.setter
+    def Xsh2(self, val: float) -> None:
+        """
+        Set ``Xsh2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Xsh2 = float(val)
+
+    @property
+    def Vsh(self) -> float:
+        """
+        Get ``Vsh``.
+
+        :return: float
+        """
+        return self._Vsh
+
+    @Vsh.setter
+    def Vsh(self, val: float) -> None:
+        """
+        Set ``Vsh``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vsh = float(val)
+
+    @property
+    def Pfset(self) -> float:
+        """
+        Get ``Pfset``.
+
+        :return: float
+        """
+        return self._Pfset
+
+    @Pfset.setter
+    def Pfset(self, val: float) -> None:
+        """
+        Set ``Pfset``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Pfset = float(val)
+
+    @property
+    def Qfset(self) -> float:
+        """
+        Get ``Qfset``.
+
+        :return: float
+        """
+        return self._Qfset
+
+    @Qfset.setter
+    def Qfset(self, val: float) -> None:
+        """
+        Set ``Qfset``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Qfset = float(val)

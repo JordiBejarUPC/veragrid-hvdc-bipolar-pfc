@@ -11,7 +11,10 @@ class ContingencyGroup(EditableDevice):
     """
     The Contingency group
     """
-    __slots__ = ('category', 'active')
+    __slots__ = (
+        'category',
+        '_active',
+    )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key='category', units='', tpe=str, definition='Some tag to category the contingency group'),
@@ -37,4 +40,25 @@ class ContingencyGroup(EditableDevice):
         self.category = category
 
         self.active = bool(active)
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def active(self) -> bool:
+        """
+        Get ``active``.
+
+        :return: bool
+        """
+        return self._active
+
+    @active.setter
+    def active(self, val: bool) -> None:
+        """
+        Set ``active``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._active = bool(val)
 

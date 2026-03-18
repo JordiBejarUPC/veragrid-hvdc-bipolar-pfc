@@ -23,46 +23,41 @@ class Load(LoadParent):
     Load
     """
     __slots__ = (
-        'G',
-        'B',
-        'Ir',
-        'Ii',
+        '_G',
+        '_B',
+        '_Ir',
+        '_Ii',
         '_G_prof',
         '_B_prof',
         '_Ir_prof',
         '_Ii_prof',
-
-        'G1',
-        'B1',
-        'Ir1',
-        'Ii1',
+        '_G1',
+        '_B1',
+        '_Ir1',
+        '_Ii1',
         '_G1_prof',
         '_B1_prof',
         '_Ir1_prof',
         '_Ii1_prof',
-
-        'G2',
-        'B2',
-        'Ir2',
-        'Ii2',
+        '_G2',
+        '_B2',
+        '_Ir2',
+        '_Ii2',
         '_G2_prof',
         '_B2_prof',
         '_Ir2_prof',
         '_Ii2_prof',
-
-        'G3',
-        'B3',
-        'Ir3',
-        'Ii3',
+        '_G3',
+        '_B3',
+        '_Ir3',
+        '_Ii3',
         '_G3_prof',
         '_B3_prof',
         '_Ir3_prof',
         '_Ii3_prof',
-
         '_contract_power',
         '_n_customers',
         '_n_customers_prof',
-
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -701,6 +696,7 @@ class Load(LoadParent):
         Set the number of customers
         :param val: value greater than 0
         """
+        val = int(val)
         try:
             val2 = int(val)
             if val2 > 0:
@@ -723,6 +719,7 @@ class Load(LoadParent):
         Set the contracted power
         :param val: value greater than 0
         """
+        val = float(val)
         try:
             val2 = float(val)
             if val2 > 0:
@@ -795,6 +792,312 @@ class Load(LoadParent):
         if self._rms_model.empty():
             load_template = get_load_rms_template()
             self.rms_model = load_template.block
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def Ir(self) -> float:
+        """
+        Get ``Ir``.
+
+        :return: float
+        """
+        return self._Ir
+
+    @Ir.setter
+    def Ir(self, val: float) -> None:
+        """
+        Set ``Ir``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ir = float(val)
+
+    @property
+    def Ir1(self) -> float:
+        """
+        Get ``Ir1``.
+
+        :return: float
+        """
+        return self._Ir1
+
+    @Ir1.setter
+    def Ir1(self, val: float) -> None:
+        """
+        Set ``Ir1``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ir1 = float(val)
+
+    @property
+    def Ir2(self) -> float:
+        """
+        Get ``Ir2``.
+
+        :return: float
+        """
+        return self._Ir2
+
+    @Ir2.setter
+    def Ir2(self, val: float) -> None:
+        """
+        Set ``Ir2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ir2 = float(val)
+
+    @property
+    def Ir3(self) -> float:
+        """
+        Get ``Ir3``.
+
+        :return: float
+        """
+        return self._Ir3
+
+    @Ir3.setter
+    def Ir3(self, val: float) -> None:
+        """
+        Set ``Ir3``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ir3 = float(val)
+
+    @property
+    def Ii(self) -> float:
+        """
+        Get ``Ii``.
+
+        :return: float
+        """
+        return self._Ii
+
+    @Ii.setter
+    def Ii(self, val: float) -> None:
+        """
+        Set ``Ii``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ii = float(val)
+
+    @property
+    def Ii1(self) -> float:
+        """
+        Get ``Ii1``.
+
+        :return: float
+        """
+        return self._Ii1
+
+    @Ii1.setter
+    def Ii1(self, val: float) -> None:
+        """
+        Set ``Ii1``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ii1 = float(val)
+
+    @property
+    def Ii2(self) -> float:
+        """
+        Get ``Ii2``.
+
+        :return: float
+        """
+        return self._Ii2
+
+    @Ii2.setter
+    def Ii2(self, val: float) -> None:
+        """
+        Set ``Ii2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ii2 = float(val)
+
+    @property
+    def Ii3(self) -> float:
+        """
+        Get ``Ii3``.
+
+        :return: float
+        """
+        return self._Ii3
+
+    @Ii3.setter
+    def Ii3(self, val: float) -> None:
+        """
+        Set ``Ii3``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ii3 = float(val)
+
+    @property
+    def G(self) -> float:
+        """
+        Get ``G``.
+
+        :return: float
+        """
+        return self._G
+
+    @G.setter
+    def G(self, val: float) -> None:
+        """
+        Set ``G``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._G = float(val)
+
+    @property
+    def G1(self) -> float:
+        """
+        Get ``G1``.
+
+        :return: float
+        """
+        return self._G1
+
+    @G1.setter
+    def G1(self, val: float) -> None:
+        """
+        Set ``G1``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._G1 = float(val)
+
+    @property
+    def G2(self) -> float:
+        """
+        Get ``G2``.
+
+        :return: float
+        """
+        return self._G2
+
+    @G2.setter
+    def G2(self, val: float) -> None:
+        """
+        Set ``G2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._G2 = float(val)
+
+    @property
+    def G3(self) -> float:
+        """
+        Get ``G3``.
+
+        :return: float
+        """
+        return self._G3
+
+    @G3.setter
+    def G3(self, val: float) -> None:
+        """
+        Set ``G3``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._G3 = float(val)
+
+    @property
+    def B(self) -> float:
+        """
+        Get ``B``.
+
+        :return: float
+        """
+        return self._B
+
+    @B.setter
+    def B(self, val: float) -> None:
+        """
+        Set ``B``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._B = float(val)
+
+    @property
+    def B1(self) -> float:
+        """
+        Get ``B1``.
+
+        :return: float
+        """
+        return self._B1
+
+    @B1.setter
+    def B1(self, val: float) -> None:
+        """
+        Set ``B1``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._B1 = float(val)
+
+    @property
+    def B2(self) -> float:
+        """
+        Get ``B2``.
+
+        :return: float
+        """
+        return self._B2
+
+    @B2.setter
+    def B2(self, val: float) -> None:
+        """
+        Set ``B2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._B2 = float(val)
+
+    @property
+    def B3(self) -> float:
+        """
+        Get ``B3``.
+
+        :return: float
+        """
+        return self._B3
+
+    @B3.setter
+    def B3(self, val: float) -> None:
+        """
+        Set ``B3``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._B3 = float(val)
 
 
 

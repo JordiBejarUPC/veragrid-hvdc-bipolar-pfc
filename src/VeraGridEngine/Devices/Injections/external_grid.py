@@ -18,8 +18,8 @@ class ExternalGrid(LoadParent):
     __slots__ = (
         'mode',
         'substituted_device_id',
-        'Vm',
-        'Va',
+        '_Vm',
+        '_Va',
         '_Vm_prof',
         '_Va_prof',
     )
@@ -188,3 +188,43 @@ class ExternalGrid(LoadParent):
 
             if show_fig:
                 plt.show()
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def Vm(self) -> float:
+        """
+        Get ``Vm``.
+
+        :return: float
+        """
+        return self._Vm
+
+    @Vm.setter
+    def Vm(self, val: float) -> None:
+        """
+        Set ``Vm``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vm = float(val)
+
+    @property
+    def Va(self) -> float:
+        """
+        Get ``Va``.
+
+        :return: float
+        """
+        return self._Va
+
+    @Va.setter
+    def Va(self, val: float) -> None:
+        """
+        Set ``Va``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Va = float(val)
