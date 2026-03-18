@@ -21,9 +21,6 @@ class MTImatrix:
         self.problem = problem
 
 
-
-
-
         print("Surto del programa")
         #sys.exit(1)
 
