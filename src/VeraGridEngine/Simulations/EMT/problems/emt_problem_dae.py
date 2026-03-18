@@ -389,7 +389,7 @@ class EmtProblemDae(EmtProblemTemplate):
                     compiler_names_dict=self._compiler_names_dict,
                     alias_names_dict=self._alias_names_dict,
                     VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                    TIME_NAME=self.TIME_NAME,
+                    # TIME_NAME=self.TIME_NAME,
                     VARS_NAME=self.VARS_NAME,
                     DIFF_NAME=self.DIFF_NAME,
                     CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
