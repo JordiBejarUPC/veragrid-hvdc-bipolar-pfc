@@ -112,7 +112,7 @@ def create_grid_2(target_pf, target_qf):
     circuit.add_generator(bus1_ac, gen1)
     
     # Load at DC bus
-    load2 = vge.Generator(name='DC Load', P=10.)
+    load2 = vge.Generator(name='DC Load', P=1.)
     circuit.add_generator(bus2_dc, load2)
     
     # Transformer between Bus 1 and Bus 3 with tap control
