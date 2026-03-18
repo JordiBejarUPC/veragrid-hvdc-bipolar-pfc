@@ -320,7 +320,7 @@ def small_signal_analysis(show_plt: bool = False):
         state_vars = driver.problem.get_state_vars
 
         for i, ev in unstable:
-            # Find the state with highest participation for this mode
+            # Find the state with the highest participation for this mode
             if participation_factors is not None and i < participation_factors.shape[1]:
                 pf = participation_factors[:, i]
                 max_pf_idx = np.argmax(pf)
