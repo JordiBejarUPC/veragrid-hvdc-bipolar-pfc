@@ -1777,3 +1777,36 @@ class EmtProblemDae(EmtProblemTemplate):
         if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base] is not None:
             load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base]] = Const(w0)
 
+    def _assign_api_obj_mapping_generator(self, gen):
+
+        # -----------------------------
+        # 2. Compute continuous parameters in PU
+        # -----------------------------
+        fbase = self.grid.fBase
+        sbase = self.grid.Sbase
+
+        w0 = 2.0 * np.pi * fbase
+
+        # PA0 = load.Pa / sbase # p.u.
+        # QA0 = load.Qa / sbase # p.u.
+        # PB0 = load.Pb / sbase # p.u.
+        # QB0 = load.Qb / sbase # p.u.
+        # PC0 = load.Pc / sbase # p.u.
+        # QC0 = load.Qc / sbase # p.u.
+        #
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_A] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_A]] = Const(PA0)
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_B] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_B]] = Const(PB0)
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_C] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_C]] = Const(PC0)
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_A] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_A]] = Const(QA0)
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_B] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_B]] = Const(QB0)
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_C] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_C]] = Const(QC0)
+        #
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base]] = Const(w0)
+
