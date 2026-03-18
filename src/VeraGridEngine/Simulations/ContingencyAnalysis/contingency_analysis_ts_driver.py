@@ -24,6 +24,7 @@ from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_ts_resu
 from VeraGridEngine.enumerations import SimulationTypes
 from VeraGridEngine.Simulations.driver_template import TimeSeriesDriverTemplate
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
+from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_results import ContingencyAnalysisResults
 from VeraGridEngine.Compilers.circuit_to_newton_pa import newton_pa_contingencies, translate_contingency_report, \
     NEWTON_PA_AVAILABLE
 from VeraGridEngine.Compilers.circuit_to_gslv import (gslv_contingencies_ts, GSLV_AVAILABLE)
@@ -50,9 +51,7 @@ def max_abs_per_col_cx(A: CxMat) -> CxVec:
 
     for j in range(A.shape[1]):  # for each col (device)
         for i in range(A.shape[0]):  # for each row (contingency)
-
-            val = abs(A[i, j])
-            if val > abs(res[j]):
+            if abs(A[i, j]) > abs(res[j]):
                 res[j] = A[i, j]
 
     return res
@@ -170,7 +169,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
                                               opf_results=self.opf_time_series_results,
                                               t_idx=t)
 
-            res_t = nonlinear_contingency_analysis(
+            res_t: ContingencyAnalysisResults = nonlinear_contingency_analysis(
                 nc=nc,
                 options=self.options,
                 linear_multiple_contingencies=linear_multiple_contingencies,
@@ -499,8 +498,8 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
         )
 
         # results.S[t, :] = res_t.S.real.max(axis=0)
-        results.max_flows = res.max_values.Sf
-        results.max_loading = res.max_values.loading
+        results.max_flows = res.max_flows
+        results.max_loading = res.max_loading
 
         # translate_contingency_report(newton_report=res.report, veragrid_report=results.report)
 

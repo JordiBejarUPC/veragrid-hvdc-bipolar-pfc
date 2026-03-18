@@ -17,12 +17,12 @@ class Switch(BranchParent):
     :ref:`buses<bus>`) in **VeraGrid**. A Switch is a devices that cuts or allows the flow.
     """
     __slots__ = (
-        'R',
-        'X',
-        'retained',
-        'normal_open',
-        'rated_current',
-        'graphic_type'
+        '_R',
+        '_X',
+        '_retained',
+        '_normal_open',
+        '_rated_current',
+        'graphic_type',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -105,6 +105,103 @@ class Switch(BranchParent):
         self.rated_current = float(rated_current)
 
         self.graphic_type: SwitchGraphicType = graphic_type
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def R(self) -> float:
+        """
+        Get ``R``.
+
+        :return: float
+        """
+        return self._R
+
+    @R.setter
+    def R(self, val: float) -> None:
+        """
+        Set ``R``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R = float(val)
+
+    @property
+    def X(self) -> float:
+        """
+        Get ``X``.
+
+        :return: float
+        """
+        return self._X
+
+    @X.setter
+    def X(self, val: float) -> None:
+        """
+        Set ``X``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._X = float(val)
+
+    @property
+    def retained(self) -> bool:
+        """
+        Get ``retained``.
+
+        :return: bool
+        """
+        return self._retained
+
+    @retained.setter
+    def retained(self, val: bool) -> None:
+        """
+        Set ``retained``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._retained = bool(val)
+
+    @property
+    def normal_open(self) -> bool:
+        """
+        Get ``normal_open``.
+
+        :return: bool
+        """
+        return self._normal_open
+
+    @normal_open.setter
+    def normal_open(self, val: bool) -> None:
+        """
+        Set ``normal_open``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._normal_open = bool(val)
+
+    @property
+    def rated_current(self) -> float:
+        """
+        Get ``rated_current``.
+
+        :return: float
+        """
+        return self._rated_current
+
+    @rated_current.setter
+    def rated_current(self, val: float) -> None:
+        """
+        Set ``rated_current``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._rated_current = float(val)
 
 
 

@@ -19,26 +19,22 @@ class CurrentInjection(InjectionParent):
     CurrentInjection
     """
     __slots__ = (
-        'Ir',
-        'Ii',
+        '_Ir',
+        '_Ii',
         '_Ir_prof',
         '_Ii_prof',
-
-        'Ir1',
-        'Ii1',
+        '_Ir1',
+        '_Ii1',
         '_Ir1_prof',
         '_Ii1_prof',
-
-        'Ir2',
-        'Ii2',
+        '_Ir2',
+        '_Ii2',
         '_Ir2_prof',
         '_Ii2_prof',
-
-        'Ir3',
-        'Ii3',
+        '_Ir3',
+        '_Ii3',
         '_Ir3_prof',
         '_Ii3_prof',
-
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -377,3 +373,157 @@ class CurrentInjection(InjectionParent):
 
             if show_fig:
                 plt.show()
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def Ir(self) -> float:
+        """
+        Get ``Ir``.
+
+        :return: float
+        """
+        return self._Ir
+
+    @Ir.setter
+    def Ir(self, val: float) -> None:
+        """
+        Set ``Ir``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ir = float(val)
+
+    @property
+    def Ir1(self) -> float:
+        """
+        Get ``Ir1``.
+
+        :return: float
+        """
+        return self._Ir1
+
+    @Ir1.setter
+    def Ir1(self, val: float) -> None:
+        """
+        Set ``Ir1``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ir1 = float(val)
+
+    @property
+    def Ir2(self) -> float:
+        """
+        Get ``Ir2``.
+
+        :return: float
+        """
+        return self._Ir2
+
+    @Ir2.setter
+    def Ir2(self, val: float) -> None:
+        """
+        Set ``Ir2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ir2 = float(val)
+
+    @property
+    def Ir3(self) -> float:
+        """
+        Get ``Ir3``.
+
+        :return: float
+        """
+        return self._Ir3
+
+    @Ir3.setter
+    def Ir3(self, val: float) -> None:
+        """
+        Set ``Ir3``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ir3 = float(val)
+
+    @property
+    def Ii(self) -> float:
+        """
+        Get ``Ii``.
+
+        :return: float
+        """
+        return self._Ii
+
+    @Ii.setter
+    def Ii(self, val: float) -> None:
+        """
+        Set ``Ii``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ii = float(val)
+
+    @property
+    def Ii1(self) -> float:
+        """
+        Get ``Ii1``.
+
+        :return: float
+        """
+        return self._Ii1
+
+    @Ii1.setter
+    def Ii1(self, val: float) -> None:
+        """
+        Set ``Ii1``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ii1 = float(val)
+
+    @property
+    def Ii2(self) -> float:
+        """
+        Get ``Ii2``.
+
+        :return: float
+        """
+        return self._Ii2
+
+    @Ii2.setter
+    def Ii2(self, val: float) -> None:
+        """
+        Set ``Ii2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ii2 = float(val)
+
+    @property
+    def Ii3(self) -> float:
+        """
+        Get ``Ii3``.
+
+        :return: float
+        """
+        return self._Ii3
+
+    @Ii3.setter
+    def Ii3(self, val: float) -> None:
+        """
+        Set ``Ii3``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ii3 = float(val)

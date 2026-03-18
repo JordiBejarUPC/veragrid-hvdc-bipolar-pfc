@@ -42,9 +42,9 @@ class MeasurementTemplate(PointerDeviceParent):
     """
 
     __slots__ = (
-        'value',
+        '_value',
         '_value_prof',
-        'sigma',
+        '_sigma',
         '_sigma_prof',
     )
 
@@ -150,6 +150,46 @@ class MeasurementTemplate(PointerDeviceParent):
         :return: value in p.u.
         """
         return self.get_sigma_at(t) / Sbase
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def value(self) -> float:
+        """
+        Get ``value``.
+
+        :return: float
+        """
+        return self._value
+
+    @value.setter
+    def value(self, val: float) -> None:
+        """
+        Set ``value``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._value = float(val)
+
+    @property
+    def sigma(self) -> float:
+        """
+        Get ``sigma``.
+
+        :return: float
+        """
+        return self._sigma
+
+    @sigma.setter
+    def sigma(self, val: float) -> None:
+        """
+        Set ``sigma``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._sigma = float(val)
 
 
 class PiMeasurement(MeasurementTemplate):
