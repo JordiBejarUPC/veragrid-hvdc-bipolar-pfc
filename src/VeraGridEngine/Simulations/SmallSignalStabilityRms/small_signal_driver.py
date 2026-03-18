@@ -26,26 +26,48 @@ from VeraGridEngine.basic_structures import Vec, Mat
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae, RmsProblemTemplate
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
+from VeraGridEngine.Simulations.Rms.rms_problem_factory import build_rms_problem
 
 
 def compute_state_matrix(problem: RmsProblemTemplate, x: Vec, dx: Vec) -> tuple[Mat, Mat]:
     """
     Small Signal Stability analysis state matrix computation.
+    Handles rank-deficient (singular) Jacobian matrices using SVD-based pseudo-inverse.
     :param problem: RmsProblemTemplate
     :param x: Vec. Variables value at assessment time
     :param dx: Vec. Derivatives value at assessment time
     :return
     """
     h = problem.get_dt_value()
-
+    #h = 0.001 
     fx = problem.get_j11(x, dx, h)  # ∂f/∂x
     fy = problem.get_j12(x, dx, h)  # ∂f/∂y
     gx = problem.get_j21(x, dx, h)  # ∂g/∂x
     gy = problem.get_j22(x, dx, h)  # ∂g/∂y
 
-    gy_lu = spla.splu(gy)
+    # Convert to dense for SVD-based solve (handles singular matrices)
 
-    gy_inv_gx = gy_lu.solve(gx.toarray())
+    
+
+    differential_vars = problem.get_diff_var_number()
+    if differential_vars == 0:
+        gy_lu = spla.splu(gy)
+
+        gy_inv_gx = gy_lu.solve(gx.toarray())
+    else:
+        # Badly conditioned or singular: use SVD-based pseudo-inverse
+        # Regularize small singular values for numerical stability    gy_dense = gy.toarray()
+        gx_dense = gx.toarray()
+        gy_dense = gy.toarray()
+        tol = 1e-10
+        U, s, Vh = la.svd(gy_dense, full_matrices=False)
+        s_reg = np.where(s > tol, s, 0.0)
+        s_inv = np.where(s_reg > 0, 1.0 / s_reg, 0.0)
+        
+        # Compute pseudo-inverse: gy^+ = V @ diag(s_inv) @ U^T
+        gy_pinv = Vh.T @ np.diag(s_inv) @ U.T
+        gy_inv_gx = gy_pinv @ gx_dense
+
     A = fx.toarray() - fy.toarray() @ gy_inv_gx
 
     A_bal, scale_factors = la.matrix_balance(A=A, separate=False)
@@ -225,8 +247,29 @@ def run_dense_small_signal_stability(problem: RmsProblemTemplate,
     # We obtain the balanced matrix
     A_bal, A_orig = compute_state_matrix(problem=problem, x=x, dx=dx)
 
+    differential_vars = problem.get_diff_var_number()
+    if differential_vars == 0:
     # Scipy returns w such that w^TA = lambda w^H. We must conjugate it to W^TA = lambda W^T.
-    eig_results = list(la.eig(A_bal, left=True, right=True))
+        eig_results = list(la.eig(A_bal, left=True, right=True))
+    else:
+        h = problem.get_dt_value()
+        h = 1e9
+        E_matrix = problem.get_E_matrix(x, dx)
+        fx = problem.get_j11(x, dx, h)
+        fy = problem.get_j12(x, dx, h)
+        gx = problem.get_j21(x, dx, h)
+        gy = problem.get_j22(x, dx, h)
+    
+        # 1. BUILD THE ENHANCED JACOBIAN (Sparse)
+        J_top = sp.hstack([fx, fy])
+        J_bot = sp.hstack([gx, gy])
+        A_matrix = sp.vstack([J_top, J_bot])
+        
+        # Debug: Check A_matrix row 70 for large values
+        A_dense = A_matrix.toarray()
+        
+        # Convert to dense for eig
+        eig_results = list(la.eig(A_dense, -E_matrix, left=True, right=True))
 
     eigenvalues = eig_results[0]
     w_raw = eig_results[1]
@@ -287,10 +330,21 @@ def run_sparse_small_signal_stability(problem: RmsProblemTemplate,
     # 2. SUPER-LU FACTORIZATION OF THE ENTIRE SYSTEM
     J_aug_lu = spla.splu(J_aug)
 
-    # 3. CREATE THE SHIFT-AND-INVERT OPERATOR (A^-1 * v)
-    op_methods = SparseShiftAndInvertMethods(n_states=n_states,
+    if problem.get_diff_var_number() == 0:
+        # 3. CREATE THE SHIFT-AND-INVERT OPERATOR (A^-1 * v)
+        op_methods = SparseShiftAndInvertMethods(n_states=n_states,
                                              total_size=J_aug.shape[0],
                                              J_aug_lu=J_aug_lu)
+    else:
+        # 3. CREATE THE SHIFT-AND-INVERT OPERATOR (A^-1 * E * v)
+        E = problem.get_E_matrix()
+        n_states = problem.get_diff_var_number()
+        op_methods = SparseGeneralizedShiftInvertMethods(
+            n_states=n_states,
+            total_size=J_aug.shape[0],
+            J_aug_lu=J_aug_lu,
+            E=E
+        )
 
     Inv_A_op = spla.LinearOperator(shape=(n_states, n_states),
                                    matvec=op_methods.matvec,
@@ -362,6 +416,30 @@ def run_sparse_small_signal_stability(problem: RmsProblemTemplate,
 
     return eigenvalues, participation_factors, damping_ratios, conjugate_freq, np.empty(0), None
 
+class SparseGeneralizedShiftInvertMethods:
+    """
+    Helper class to hold the matvec and rmatvec operations for the Sparse LinearOperator for 
+    generalized eigenvalues.
+    """
+    __slots__ = ['n_states', 'total_size', 'J_aug_lu', 'E']
+
+    def __init__(self, n_states: int, total_size: int, J_aug_lu, E: sp.spmatrix):
+        self.n_states = n_states
+        self.total_size = total_size
+        self.J_aug_lu = J_aug_lu
+        self.E = E.tocsc()
+
+    def matvec(self, v: np.ndarray) -> np.ndarray:
+        rhs = np.zeros(self.total_size, dtype=np.complex128)
+        rhs[:self.n_states] = self.E @ v
+        sol = self.J_aug_lu.solve(rhs)
+        return sol[:self.n_states]
+
+    def rmatvec(self, v: np.ndarray) -> np.ndarray:
+        rhs = np.zeros(self.total_size, dtype=np.complex128)
+        rhs[:self.n_states] = v
+        sol = self.J_aug_lu.solve(rhs, trans='H')
+        return self.E.T @ sol[:self.n_states]
 
 class SparseShiftAndInvertMethods:
     """
