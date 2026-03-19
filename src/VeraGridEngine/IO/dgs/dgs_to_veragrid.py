@@ -2224,9 +2224,9 @@ def convert_dgs_to_controllable_shunt_from_elmshnt(elmshnt: ElmShnt,
         b_steps, initial_step, bmin, bmax = _build_elmshnt_step_model(elmshnt=elmshnt, logger=logger)
 
         if int(elmshnt.iswitch) != 0:
-            control_mode=ShuntControlMode.Discrete
+            control_mode = ShuntControlMode.Discrete
         else:
-            control_mode=ShuntControlMode.Locked
+            control_mode = ShuntControlMode.Locked
 
         vset: float = float(elmshnt.usetp)
 
