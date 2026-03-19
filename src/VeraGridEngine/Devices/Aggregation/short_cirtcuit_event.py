@@ -19,7 +19,7 @@ class ShortCircuitEvent(PointerDeviceParent):
         '_fault_type',
         '_method',
         '_phases',
-        'active',
+        '_active',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -120,3 +120,24 @@ class ShortCircuitEvent(PointerDeviceParent):
             self._check()
         else:
             self._method = val
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def active(self) -> bool:
+        """
+        Get ``active``.
+
+        :return: bool
+        """
+        return self._active
+
+    @active.setter
+    def active(self, val: bool) -> None:
+        """
+        Set ``active``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._active = bool(val)

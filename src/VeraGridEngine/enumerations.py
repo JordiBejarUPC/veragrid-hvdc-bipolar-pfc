@@ -2567,7 +2567,38 @@ class EmtSolverTypes(Enum):
         """
         return list(map(lambda c: c.value, cls))
 
+class RmsProblemTypes(Enum):
 
+    Tensygrid       = "Tensygrid"
+    PowerBalance    = "RmsProblemDae"
+    CurrentBalance  = "RmsProblemPhasor"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return RmsProblemTypes[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
+    
 class SmallSignalEmtBuildTypes(Enum):
     """
     Jacobian construction backends for implicit solvers.
@@ -2656,6 +2687,43 @@ class RmsInitializationMethod(Enum):
         """
         try:
             return RmsInitializationMethod[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
+
+
+class EmtInitializationMethod(Enum):
+    """
+    EMT initialization workflow options.
+    """
+
+    Explicit = "Explicit"
+    ConsistentNewton = "ConsistentNewton"
+    PseudoTransient = "PseudoTransient"
+    Auto = "Auto"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return EmtInitializationMethod[s]
         except KeyError:
             return s
 
@@ -2759,7 +2827,7 @@ class VarPowerFlowRefferenceType(Enum):
     Iif = "Iif"  # Imaginary current at branch from end
     Irt = "Irt"  # Real current at branch to end
     Iit = "Iit"  # Imaginary current at branch to end
-    
+
     Vdc = "Vdc"  # Bus voltage for DC voltage in p.u.
     Idc = "Idc"  # Bus current for DC Bus in p.u.
 
@@ -2772,6 +2840,16 @@ class VarPowerFlowRefferenceType(Enum):
     d_v_A = "d_v_A"  # Bus voltage derivative at phase A.
     d_v_B = "d_v_B"  # Bus voltage derivative at phase B.
     d_v_C = "d_v_C"  # Bus voltage derivative at phase C.
+
+    v_N_f = "v_N_f"  # From Bus voltage at phase N.
+    v_A_f = "v_A_f"  # From Bus voltage at phase A.
+    v_B_f = "v_B_f"  # From Bus voltage at phase B.
+    v_C_f = "v_C_f"  # From Bus voltage at phase C.
+
+    v_N_t = "v_N_t"  # To Bus voltage at phase N.
+    v_A_t = "v_A_t"  # To Bus voltage at phase A.
+    v_B_t = "v_B_t"  # To Bus voltage at phase B.
+    v_C_t = "v_C_t"  # To Bus voltage at phase C.
 
     d_v_N_f = "d_v_N_f"  # From bus voltage derivative at phase N.
     d_v_A_f = "d_v_A_f"  # From bBus voltage derivative at phase A.
@@ -2789,8 +2867,8 @@ class VarPowerFlowRefferenceType(Enum):
     i_C = "i_C"  # Injection current at phase C in p.u.
     phi_v = "phi_v"  # voltage angle in the network
     phi = "phi" # network angle
-    Vpk = "Vpk" # rms peak value of voltage
-    Ipk = "Ipk"  # rms peak value of current
+    Vpk = "Vpk" # rms peak value of voltage in p.u.
+    Ipk = "Ipk"  # rms peak value of current in p.u.
 
     P_N = "P_N"  # Bus active power in phase N in p.u.
     P_A = "P_A"  # Bus active power in phase A in p.u.
@@ -2882,6 +2960,65 @@ class ParamPowerFlowRefferenceType(Enum):
     Pl0_C = "Pl0_C"  # Load active power phase C
     Ql0_C = "Ql0_C"  # Load reactive power phase C
 
+    # Three-phase line coupled R L and C
+    Rnn = "Rnn" # N-N line series resistance
+    Rna = "Rna"  # N-A line series resistance
+    Rnb = "Rnb"  # N-B line series resistance
+    Rnc = "Rnc"  # N-C line series resistance
+    Ran = "Ran"  # A-N line series resistance
+    Raa = "Raa"  # A-A line series resistance
+    Rab = "Rab"  # A-B line series resistance
+    Rac = "Rac"  # A-C line series resistance
+    Rbn = "Rbn"  # B-N line series resistance
+    Rba = "Rba"  # B-A line series resistance
+    Rbb = "Rbb"  # B-B line series resistance
+    Rbc = "Rbc"  # B-C line series resistance
+    Rcn = "Rcn"  # C-N line series resistance
+    Rca = "Rca"  # C-A line series resistance
+    Rcb = "Rcb"  # C-B line series resistance
+    Rcc = "Rcc"  # C-C line series resistance
+
+    Linv_nn = "Linv_nn"  # N-N line inverse series inductance
+    Linv_na = "Linv_na"  # N-A line inverse series inductance
+    Linv_nb = "Linv_nb"  # N-B line inverse series inductance
+    Linv_nc = "Linv_nc"  # N-C line inverse series inductance
+    Linv_an = "Linv_an"  # A-N line inverse series inductance
+    Linv_aa = "Linv_aa"  # A-A line inverse series inductance
+    Linv_ab = "Linv_ab"  # A-B line inverse series inductance
+    Linv_ac = "Linv_ac"  # A-C line inverse series inductance
+    Linv_bn = "Linv_bn"  # B-N line inverse series inductance
+    Linv_ba = "Linv_ba"  # B-A line inverse series inductance
+    Linv_bb = "Linv_bb"  # B-B line inverse series inductance
+    Linv_bc = "Linv_bc"  # B-C line inverse series inductance
+    Linv_cn = "Linv_cn"  # C-N line inverse series inductance
+    Linv_ca = "Linv_ca"  # C-A line inverse series inductance
+    Linv_cb = "Linv_cb"  # C-B line inverse series inductance
+    Linv_cc = "Linv_cc"  # C-C line inverse series inductance
+
+    Cnn = "Cnn"  # N-N line shunt capacitance
+    Cna = "Cna"  # N-A line shunt capacitance
+    Cnb = "Cnb"  # N-B line shunt capacitance
+    Cnc = "Cnc"  # N-C line shunt capacitance
+    Can = "Can"  # A-N line shunt capacitance
+    Caa = "Caa"  # A-A line shunt capacitance
+    Cab = "Cab"  # A-B line shunt capacitance
+    Cac = "Cac"  # A-C line shunt capacitance
+    Cbn = "Cbn"  # B-N line shunt capacitance
+    Cba = "Cba"  # B-A line shunt capacitance
+    Cbb = "Cbb"  # B-B line shunt capacitance
+    Cbc = "Cbc"  # B-C line shunt capacitance
+    Ccn = "Ccn"  # C-N line shunt capacitance
+    Cca = "Cca"  # C-A line shunt capacitance
+    Ccb = "Ccb"  # C-B line shunt capacitance
+    Ccc = "Ccc"  # C-C line shunt capacitance
+
+
+    # Active phases in a branch
+    phN = "phN" # 1 if the N wire is active, else 0.
+    phA = "phA"  # 1 if the A wire is active, else 0.
+    phB = "phB"  # 1 if the B wire is active, else 0.
+    phC = "phC"  # 1 if the C wire is active, else 0.
+
     # Machine / power flow parameters
     fn = "fn"
     ws = "ws"
@@ -2941,6 +3078,13 @@ class ParamPowerFlowRefferenceType(Enum):
     vf = "vf"
     tm0 = "tm0"
 
+    #VSC loss parameters
+    alpha1 = 'alpha1'
+    alpha2 = 'alpha2'
+    alpha3 = 'alpha3'    
+    
+    omega_base = "omega_base" # in rad/s
+    Sbase = "Sbase" # in MVA
 
 
     def __str__(self):
@@ -3065,6 +3209,38 @@ class EmtLineTypes(Enum):
         except KeyError:
             return s
 
+class BlockScopeMode(Enum):
+    """
+    Block extraction scope modes for DGS block parsing.
+    """
+    InternalOnly = "InternalOnly"
+    DownstreamOnly = "DownstreamOnly"
+    UpstreamOnly = "UpstreamOnly"
+    FullDependency = "FullDependency"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return BlockScopeMode[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
 
 class BlockType(Enum):
     """
@@ -3128,5 +3304,37 @@ class ProceduralGridMethods(Enum):
         """
         try:
             return ProceduralGridMethods[s]
+        except KeyError:
+            return s
+
+
+class ProceduralLogicType(Enum):
+    """
+    Enumeration of procedural logic entry kinds.
+    """
+
+    Base = "base"
+    FixedSample = "fixed_sample"
+    SampledValue = "sampled_value"
+    FlipFlop = "flipflop"
+    AnalogFlipFlop = "analog_flipflop"
+    PickupDropoff = "pickup_dropoff"
+    ResetOnRisingEdge = "reset_on_rising_edge"
+    DelayedThresholdLatch = "delayed_threshold_latch"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return ProceduralLogicType[s]
         except KeyError:
             return s

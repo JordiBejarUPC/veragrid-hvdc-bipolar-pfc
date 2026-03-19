@@ -41,6 +41,65 @@ class VoltageLevelTemplate(EditableDevice):
         self.n_bays: int = 1
         self.add_disconnectors: bool = False
 
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def voltage(self) -> float:
+        """
+        Get ``voltage``.
+
+        :return: float
+        """
+        return self._voltage
+
+    @voltage.setter
+    def voltage(self, val: float) -> None:
+        """
+        Set ``voltage``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._voltage = float(val)
+
+    @property
+    def n_bays(self) -> int:
+        """
+        Get ``n_bays``.
+
+        :return: int
+        """
+        return self._n_bays
+
+    @n_bays.setter
+    def n_bays(self, val: int) -> None:
+        """
+        Set ``n_bays``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._n_bays = int(val)
+
+    @property
+    def add_disconnectors(self) -> bool:
+        """
+        Get ``add_disconnectors``.
+
+        :return: bool
+        """
+        return self._add_disconnectors
+
+    @add_disconnectors.setter
+    def add_disconnectors(self, val: bool) -> None:
+        """
+        Set ``add_disconnectors``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._add_disconnectors = bool(val)
+
 
 
 

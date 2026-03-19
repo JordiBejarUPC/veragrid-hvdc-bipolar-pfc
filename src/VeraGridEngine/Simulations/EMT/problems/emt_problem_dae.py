@@ -22,14 +22,14 @@ from itertools import chain
 
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, DeviceType
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
-from VeraGridEngine.Simulations.EMT.initialization_emt import init_explicit_emt
+from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt, run_emt_native_initialization
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 
@@ -229,6 +229,7 @@ class EmtProblemDae(EmtProblemTemplate):
         self._vars2device: Dict[int, ALL_DEV_TYPES] = dict()
         self._temp_init_guess: Dict[int, float] = dict()
         self._temp_diff_init_guess: Dict[int, float] = dict()
+        self.initialization_report: EmtInitializationReport | None = None
 
         self._scheduled_mode_events: Dict[int, List[Tuple[float, float, bool]]] = dict()
         self._mode_event_cursor: Dict[int, int] = dict()
@@ -285,13 +286,25 @@ class EmtProblemDae(EmtProblemTemplate):
 
         # 2) explicit init guesses initialization
         self._run_explicit_initialization()
-        # self.diff_init_guess.update(self.diff_init_guess)
+        self.initialization_report = run_emt_native_initialization(problem=self, options=self.options)
 
         t_done = _toc(t_build)
 
         if options.verbose > 0:
             self.logger.add_debug(f"init guess = {self.init_guess}")
             self.logger.add_debug(f"diff init guess = {self.diff_init_guess}")
+            if self.initialization_report is None:
+                pass
+            else:
+                self.logger.add_debug(
+                    f"EMT initialization used {self.initialization_report.method_used} | "
+                    f"status={self.initialization_report.status.name} | "
+                    f"res0={self.initialization_report.initial_residual_inf:.3e} | "
+                    f"resf={self.initialization_report.final_residual_inf:.3e} | "
+                    f"newton={self.initialization_report.newton_iterations} | "
+                    f"ptc={self.initialization_report.pseudo_transient_steps} | "
+                    f"auto_dx0={self.initialization_report.automatic_dx0_count}"
+                )
             self.logger.add_debug(
                 f"EMT electrical problem parsed in {t_done:.4f}s | "
                 f"vars={self._n_vars} (state={self._n_state}, alg={self._n_alg}) | "
@@ -376,7 +389,7 @@ class EmtProblemDae(EmtProblemTemplate):
                     compiler_names_dict=self._compiler_names_dict,
                     alias_names_dict=self._alias_names_dict,
                     VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                    TIME_NAME=self.TIME_NAME,
+                    # TIME_NAME=self.TIME_NAME,
                     VARS_NAME=self.VARS_NAME,
                     DIFF_NAME=self.DIFF_NAME,
                     CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
@@ -400,6 +413,7 @@ class EmtProblemDae(EmtProblemTemplate):
                         f"[EMT][init_explicit] failed for block '{block_name}'. Error: {error_detail}")
 
                     print(f"EMT explicit initialization failed for block {block_name}. Error detail: {error_detail}")
+
 
         self._build_runtime_param_vectors()
 
@@ -523,6 +537,10 @@ class EmtProblemDae(EmtProblemTemplate):
             # Process device model automatically to unify blocks and apply events
             mdl: Block = self._process_device_model(br, sys_block, grid, glob_time)
 
+            # assign parameters from the static model
+            # self._assign_api_obj_mapping_branch(br=br)
+
+            # init vars from PF for both bergeron and other lines.
             if is_bergeron:
                 # Build voltage lists from bus blocks: [vN,vA,vB,vC], missing -> Const(0)
                 v_f_vars: List[Any] = _get_bus_v_list(grid=self.grid, bus_block=br.bus_from.emt_model,
@@ -598,6 +616,9 @@ class EmtProblemDae(EmtProblemTemplate):
         for inj in grid.get_injection_devices_iter():
             mdl: Block = self._process_device_model(inj, sys_block, grid, glob_time)
             b: int = bus_dict[inj.bus]
+
+            if inj.device_type == DeviceType.LoadDevice:
+                self._assign_api_obj_mapping_load(inj)
 
             # currents in injections are defined as entering the bus (sign convention)
             for ph in range(4):
@@ -1617,4 +1638,188 @@ class EmtProblemDae(EmtProblemTemplate):
 
         return df
 
+
+    def _assign_api_obj_mapping_branch(self, br):
+        # -----------------------------
+        # 1. Assign phase flags USING ENUMS
+        # -----------------------------
+        ph_mappings = [
+            (ParamPowerFlowRefferenceType.phN, br.ys.phN),
+            (ParamPowerFlowRefferenceType.phA, br.ys.phA),
+            (ParamPowerFlowRefferenceType.phB, br.ys.phB),
+            (ParamPowerFlowRefferenceType.phC, br.ys.phC),
+        ]
+
+        # Creem una màscara booleana i n'extraiem els índexs globals actius
+        ph_mask = [bool(br.ys.phN), bool(br.ys.phA), bool(br.ys.phB), bool(br.ys.phC)]
+        idx_global = [i for i, active in enumerate(ph_mask) if active]
+        m = len(idx_global)
+
+        for enum_key, ph_val in ph_mappings:
+            br.emt_model.parameters[br.emt_model.api_obj_mapping[enum_key]] = Const(ph_val)
+
+        # -----------------------------
+        # 2. Compute continuous parameters in PU
+        # -----------------------------
+        fbase = self.grid.fBase
+        w0 = 2.0 * np.pi * fbase
+        Vbase = br.bus_from.Vnom * 1e3
+        sbase = self.grid.Sbase
+        S = sbase * 1e6
+        Zbase = (Vbase * Vbase) / S
+        Ybase = 1.0 / Zbase
+
+        # Z_phys i Y_phys ara seran matrius de mida m x m
+        Z_phys = br.template.z_nabc * br.length
+        Y_phys = br.template.y_nabc * br.length
+
+        Z_pu = Z_phys / Zbase
+        Y_pu = Y_phys / Ybase
+
+        R_full = np.real(Z_pu)
+        X_full = np.imag(Z_pu)
+        L_full = X_full / (w0 + 1e-20)
+
+        Bsh_full = np.imag(Y_pu)
+        C_full = Bsh_full / (w0 + 1e-20)
+        C_full = C_full/2.0
+
+        # -----------------------------
+        # 3. Validations
+        # -----------------------------
+        # Ara validem contra la mida m x m real de les fases actives
+        if R_full.shape != (m, m):
+            raise ValueError(
+                f"Line '{br.name}' must have a {m}x{m} Z matrix based on active phases. Got {R_full.shape}.")
+
+        if L_full.shape != R_full.shape or C_full.shape != R_full.shape:
+            raise ValueError(
+                f"Line '{br.name}' has inconsistent matrix shapes: "
+                f"R={R_full.shape}, L={L_full.shape}, C={C_full.shape}."
+            )
+
+        try:
+            L_inv = np.linalg.inv(L_full)
+        except np.linalg.LinAlgError:
+            raise ValueError(f"Inductance matrix L for line '{br.name}' is singular and cannot be inverted.")
+
+        # -----------------------------
+        # 4. Assign Matrix values (R, Linv, C) USING ENUM MATRICES
+        # -----------------------------
+        r_enums = [
+            [ParamPowerFlowRefferenceType.Rnn, ParamPowerFlowRefferenceType.Rna, ParamPowerFlowRefferenceType.Rnb,
+             ParamPowerFlowRefferenceType.Rnc],
+            [ParamPowerFlowRefferenceType.Ran, ParamPowerFlowRefferenceType.Raa, ParamPowerFlowRefferenceType.Rab,
+             ParamPowerFlowRefferenceType.Rac],
+            [ParamPowerFlowRefferenceType.Rbn, ParamPowerFlowRefferenceType.Rba, ParamPowerFlowRefferenceType.Rbb,
+             ParamPowerFlowRefferenceType.Rbc],
+            [ParamPowerFlowRefferenceType.Rcn, ParamPowerFlowRefferenceType.Rca, ParamPowerFlowRefferenceType.Rcb,
+             ParamPowerFlowRefferenceType.Rcc]
+        ]
+        linv_enums = [
+            [ParamPowerFlowRefferenceType.Linv_nn, ParamPowerFlowRefferenceType.Linv_na,
+             ParamPowerFlowRefferenceType.Linv_nb, ParamPowerFlowRefferenceType.Linv_nc],
+            [ParamPowerFlowRefferenceType.Linv_an, ParamPowerFlowRefferenceType.Linv_aa,
+             ParamPowerFlowRefferenceType.Linv_ab, ParamPowerFlowRefferenceType.Linv_ac],
+            [ParamPowerFlowRefferenceType.Linv_bn, ParamPowerFlowRefferenceType.Linv_ba,
+             ParamPowerFlowRefferenceType.Linv_bb, ParamPowerFlowRefferenceType.Linv_bc],
+            [ParamPowerFlowRefferenceType.Linv_cn, ParamPowerFlowRefferenceType.Linv_ca,
+             ParamPowerFlowRefferenceType.Linv_cb, ParamPowerFlowRefferenceType.Linv_cc]
+        ]
+        c_enums = [
+            [ParamPowerFlowRefferenceType.Cnn, ParamPowerFlowRefferenceType.Cna, ParamPowerFlowRefferenceType.Cnb,
+             ParamPowerFlowRefferenceType.Cnc],
+            [ParamPowerFlowRefferenceType.Can, ParamPowerFlowRefferenceType.Caa, ParamPowerFlowRefferenceType.Cab,
+             ParamPowerFlowRefferenceType.Cac],
+            [ParamPowerFlowRefferenceType.Cbn, ParamPowerFlowRefferenceType.Cba, ParamPowerFlowRefferenceType.Cbb,
+             ParamPowerFlowRefferenceType.Cbc],
+            [ParamPowerFlowRefferenceType.Ccn, ParamPowerFlowRefferenceType.Cca, ParamPowerFlowRefferenceType.Ccb,
+             ParamPowerFlowRefferenceType.Ccc]
+        ]
+
+        # PAS 1: Inicialitzem TODES les 16 variables a 0.0 per seguretat.
+        # Això evita que les fases inactives deixin els paràmetres del model "en l'aire"
+        for i in range(4):
+            for j in range(4):
+                br.emt_model.parameters[br.emt_model.api_obj_mapping[r_enums[i][j]]] = Const(0.0)
+                br.emt_model.parameters[br.emt_model.api_obj_mapping[linv_enums[i][j]]] = Const(0.0)
+                br.emt_model.parameters[br.emt_model.api_obj_mapping[c_enums[i][j]]] = Const(0.0)
+
+        # PAS 2: Sobreescrivim només les cel·les pertinents agafant els valors de la matriu m x m
+        # 'i_red' i 'j_red' van de 0 a m-1 (índexs de la matriu física R_full, L_inv, etc.)
+        # 'i_glob' i 'j_glob' van de 0 a 3 (índexs globals associats als Enums)
+        for i_red, i_glob in enumerate(idx_global):
+            for j_red, j_glob in enumerate(idx_global):
+                br.emt_model.parameters[br.emt_model.api_obj_mapping[r_enums[i_glob][j_glob]]] = Const(
+                    float(R_full[i_red, j_red]))
+                br.emt_model.parameters[br.emt_model.api_obj_mapping[linv_enums[i_glob][j_glob]]] = Const(
+                    float(L_inv[i_red, j_red]))
+                br.emt_model.parameters[br.emt_model.api_obj_mapping[c_enums[i_glob][j_glob]]] = Const(
+                    float(C_full[i_red, j_red]))
+
+    def _assign_api_obj_mapping_load(self, load):
+
+        # -----------------------------
+        # 2. Compute continuous parameters in PU
+        # -----------------------------
+        fbase = self.grid.fBase
+        sbase = self.grid.Sbase
+
+        w0 = 2.0 * np.pi * fbase
+
+        PA0 = load.Pa / sbase # p.u.
+        QA0 = load.Qa / sbase # p.u.
+        PB0 = load.Pb / sbase # p.u.
+        QB0 = load.Qb / sbase # p.u.
+        PC0 = load.Pc / sbase # p.u.
+        QC0 = load.Qc / sbase # p.u.
+
+        if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_A] is not None:
+            load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_A]] = Const(PA0)
+        if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_B] is not None:
+            load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_B]] = Const(PB0)
+        if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_C] is not None:
+            load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_C]] = Const(PC0)
+        if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_A] is not None:
+            load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_A]] = Const(QA0)
+        if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_B] is not None:
+            load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_B]] = Const(QB0)
+        if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_C] is not None:
+            load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_C]] = Const(QC0)
+
+        if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base] is not None:
+            load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base]] = Const(w0)
+
+    def _assign_api_obj_mapping_generator(self, gen):
+
+        # -----------------------------
+        # 2. Compute continuous parameters in PU
+        # -----------------------------
+        fbase = self.grid.fBase
+        sbase = self.grid.Sbase
+
+        w0 = 2.0 * np.pi * fbase
+
+        # PA0 = load.Pa / sbase # p.u.
+        # QA0 = load.Qa / sbase # p.u.
+        # PB0 = load.Pb / sbase # p.u.
+        # QB0 = load.Qb / sbase # p.u.
+        # PC0 = load.Pc / sbase # p.u.
+        # QC0 = load.Qc / sbase # p.u.
+        #
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_A] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_A]] = Const(PA0)
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_B] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_B]] = Const(PB0)
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_C] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_C]] = Const(PC0)
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_A] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_A]] = Const(QA0)
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_B] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_B]] = Const(QB0)
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_C] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_C]] = Const(QC0)
+        #
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base]] = Const(w0)
 

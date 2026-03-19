@@ -106,17 +106,17 @@ def nonlinear_contingency_analysis(nc: NumericalCircuit,
             report_progress2(ic, len(linear_multiple_contingencies.contingency_groups_used) * 100)
 
         # run
-        pf_res = multi_island_pf_nc(nc=nc,
+        con_pf_res = multi_island_pf_nc(nc=nc,
                                     options=pf_opts,
                                     V_guess=base_res.voltage,
                                     logger=logger)
 
-        results.Sf[ic, :] = pf_res.Sf
-        results.Sbus[ic, :] = pf_res.Sbus
-        results.loading[ic, :] = pf_res.loading
-        results.voltage[ic, :] = pf_res.voltage
+        results.Sf[ic, :] = con_pf_res.Sf
+        results.Sbus[ic, :] = con_pf_res.Sbus
+        results.loading[ic, :] = con_pf_res.loading
+        results.voltage[ic, :] = con_pf_res.voltage
         multi_contingency = linear_multiple_contingencies.multi_contingencies[ic] if options.use_srap else None
-        contingency_loadings = np.abs(pf_res.Sf / (nc.passive_branch_data.contingency_rates + 1e-9))
+        contingency_loadings = np.abs(con_pf_res.Sf / (nc.passive_branch_data.contingency_rates + 1e-9))
 
         results.report.analyze(t=t_idx,
                                t_prob=t_prob,
@@ -124,7 +124,7 @@ def nonlinear_contingency_analysis(nc: NumericalCircuit,
                                nc=nc,
                                base_flow=np.abs(base_res.Sf),
                                base_loading=np.abs(base_res.loading),
-                               contingency_flows=np.abs(pf_res.Sf),
+                               contingency_flows=np.abs(con_pf_res.Sf),
                                contingency_loadings=contingency_loadings,
                                contingency_group_idx=ic,
                                contingency_group=contingency_group,

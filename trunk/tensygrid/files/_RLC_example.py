@@ -16,7 +16,6 @@ from VeraGridEngine.Simulations.Rms.problems.rms_problem_tensygrid import (
     RmsProblemTensygrid,
 )
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 
 from VeraGridEngine.enumerations import (
     DynamicIntegrationMethod,
@@ -110,8 +109,6 @@ grid.add_load(bus=bus_rlc, api_obj=capacitor)
 # Build RMS dynamic models (templates generate equations)
 ######################################################################
 
-line_dynhost = DynamicModelHost()
-load_dynhost = DynamicModelHost()
 
 # Templates (NO manual equations)
 line_mdl = get_line_rms_template(grid.rms_var_factory).block
@@ -151,11 +148,8 @@ load_mdl.connect(
 )
 
 # Attach models
-line_dynhost.model = line_mdl
-load_dynhost.model = load_mdl
-
-line_rl.rms_model = line_dynhost
-capacitor.rms_model = load_dynhost
+line_rl.rms_model = line_mdl
+capacitor.rms_model = load_mdl
 
 ######################################################################
 # Power flow (initial operating point)

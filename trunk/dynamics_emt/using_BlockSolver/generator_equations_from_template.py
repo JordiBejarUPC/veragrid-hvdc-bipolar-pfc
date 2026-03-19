@@ -16,7 +16,7 @@ from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Utils.Symbolic.symbolic import Const
 import VeraGridEngine.api as gce
-from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_generator_emt_template
+from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.rms_driver import RmsSimulationDriver
 
@@ -30,7 +30,7 @@ bus1 = Bus(name="Bus1", Vnom= v_base)
 grid.add_bus(bus1)
 
 gen1 = Generator(name="Gen1", P=160, vset=1.0, Sbase = 160, Snom = 160)
-gen1_template = get_generator_emt_template()
+gen1_template = get_simple_generator_emt_template()
 gen1.emt_model = gen1_template.block
 
 grid.add_generator(bus=bus1, api_obj=gen1)

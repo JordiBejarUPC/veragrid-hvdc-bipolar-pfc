@@ -16,9 +16,9 @@ class Investment(PointerDeviceParent):
     Investment
     """
     __slots__ = (
-        'CAPEX',
+        '_CAPEX',
         '_group',
-        'status',
+        '_status',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -88,3 +88,43 @@ class Investment(PointerDeviceParent):
     def category(self, val):
         # The category is set through the group, so no implementation here
         pass
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def CAPEX(self) -> float:
+        """
+        Get ``CAPEX``.
+
+        :return: float
+        """
+        return self._CAPEX
+
+    @CAPEX.setter
+    def CAPEX(self, val: float) -> None:
+        """
+        Set ``CAPEX``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._CAPEX = float(val)
+
+    @property
+    def status(self) -> bool:
+        """
+        Get ``status``.
+
+        :return: bool
+        """
+        return self._status
+
+    @status.setter
+    def status(self, val: bool) -> None:
+        """
+        Set ``status``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._status = bool(val)

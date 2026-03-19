@@ -21,10 +21,10 @@ if TYPE_CHECKING:
 
 class VSC(BranchParent):
     __slots__ = (
-        'kdp',
-        'alpha1',
-        'alpha2',
-        'alpha3',
+        '_kdp',
+        '_alpha1',
+        '_alpha2',
+        '_alpha3',
         '_control1',
         '_control1_prof',
         '_control2',
@@ -40,9 +40,9 @@ class VSC(BranchParent):
         '_control2_val_prof',
         '_fault_control_prof',
         '_bus_dc_n',
-        'min_ac_voltage',
-        'x',
-        'y'
+        '_min_ac_voltage',
+        '_x',
+        '_y',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -483,6 +483,7 @@ class VSC(BranchParent):
 
     @control1_val.setter
     def control1_val(self, value: float):
+        value = float(value)
         self._control1_val = value
 
     @property
@@ -519,6 +520,7 @@ class VSC(BranchParent):
 
     @control2_val.setter
     def control2_val(self, value: float):
+        value = float(value)
         self._control2_val = value
 
     @property
@@ -665,3 +667,138 @@ class VSC(BranchParent):
         Is this a 3-terminal VSC?
         """
         return self.bus_from is not None and self.bus_to is not None and self._bus_dc_n is not None
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def alpha1(self) -> float:
+        """
+        Get ``alpha1``.
+
+        :return: float
+        """
+        return self._alpha1
+
+    @alpha1.setter
+    def alpha1(self, val: float) -> None:
+        """
+        Set ``alpha1``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._alpha1 = float(val)
+
+    @property
+    def alpha2(self) -> float:
+        """
+        Get ``alpha2``.
+
+        :return: float
+        """
+        return self._alpha2
+
+    @alpha2.setter
+    def alpha2(self, val: float) -> None:
+        """
+        Set ``alpha2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._alpha2 = float(val)
+
+    @property
+    def alpha3(self) -> float:
+        """
+        Get ``alpha3``.
+
+        :return: float
+        """
+        return self._alpha3
+
+    @alpha3.setter
+    def alpha3(self, val: float) -> None:
+        """
+        Set ``alpha3``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._alpha3 = float(val)
+
+    @property
+    def kdp(self) -> float:
+        """
+        Get ``kdp``.
+
+        :return: float
+        """
+        return self._kdp
+
+    @kdp.setter
+    def kdp(self, val: float) -> None:
+        """
+        Set ``kdp``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._kdp = float(val)
+
+    @property
+    def min_ac_voltage(self) -> float:
+        """
+        Get ``min_ac_voltage``.
+
+        :return: float
+        """
+        return self._min_ac_voltage
+
+    @min_ac_voltage.setter
+    def min_ac_voltage(self, val: float) -> None:
+        """
+        Set ``min_ac_voltage``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._min_ac_voltage = float(val)
+
+    @property
+    def x(self) -> float:
+        """
+        Get ``x``.
+
+        :return: float
+        """
+        return self._x
+
+    @x.setter
+    def x(self, val: float) -> None:
+        """
+        Set ``x``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._x = float(val)
+
+    @property
+    def y(self) -> float:
+        """
+        Get ``y``.
+
+        :return: float
+        """
+        return self._y
+
+    @y.setter
+    def y(self, val: float) -> None:
+        """
+        Set ``y``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._y = float(val)
