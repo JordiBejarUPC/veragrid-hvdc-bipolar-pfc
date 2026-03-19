@@ -3,7 +3,7 @@ import numpy as np
 from scipy import sparse, linalg
 from sympy.parsing.sympy_parser import parse_expr
 from enum import Enum
-from typing import Optional, Any
+from typing import Optional, Any, List, Tuple
 
 
 
@@ -416,12 +416,11 @@ class PolynomialMatrixBuilder:
 
         eq_idx: int = 0
         for eq in all_exprs:
-            """
             if self.verbose:
                 print(f"\nEquation {eq_idx + 1}: {eq}")
             else:
                 pass
-            """
+
 
             terms: list
             if eq.is_Add:
@@ -593,6 +592,20 @@ class PolynomialMatrixBuilder:
     # ------------------------------------------------------------------
     # Linearisation – public entry point
     # ------------------------------------------------------------------
+    def linearize_with_problem(self, problem: Any, v_dict_override: Optional[dict] = None) -> np.ndarray:
+        """
+        Syncs the MTI_Problem's internal state (including dxOP) with the builder
+        to ensure nonlinear terms are linearized at the correct operating point.
+        """
+        # Start with the problem's full initial guess (x, y, dx, u, etc.)
+        full_v = problem.init_guess.copy()
+
+        # Override with any specific values from your test's v_dict
+        if v_dict_override:
+            full_v.update(v_dict_override)
+
+        # Call the standard linearization
+        return self.linearize(full_v)
 
     def linearize(self, v_dict: dict, c_type: ConstraintType = ConstraintType.EQUALITY):
         """
@@ -779,7 +792,7 @@ class PolynomialMatrixBuilder:
     # Stability analysis
     # ------------------------------------------------------------------
 
-    def compute_stability(self) -> tuple:
+    def compute_stability(self) -> Tuple[None, None, None, None, bool, float]:
         """
         Compute generalised eigenvalues for the descriptor pair (A, E).
 
