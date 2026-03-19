@@ -98,7 +98,6 @@ sc_driver = vge.ShortCircuitDriver(grid=grid,
                                    pf_results=res_pf,
                                    pf_results3ph=None)
 sc_driver.run()
-
 res_sc = sc_driver.results
 
 print('Short-circuit results:')
