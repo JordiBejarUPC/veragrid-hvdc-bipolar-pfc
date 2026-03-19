@@ -117,7 +117,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
 
         self.report_text("Analyzing...")
 
-        nb = self.grid.get_bus_number()
+        n_bus = self.grid.get_bus_number()
 
         time_array = self.grid.time_profile[self.time_indices]
 
@@ -127,13 +127,13 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             con_names = [con.name for con in self.options.contingency_groups]
 
         results = ContingencyAnalysisTimeSeriesResults(
-            n=nb,
+            n=n_bus,
             nbr=self.grid.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True),
             time_array=time_array,
             original_time_array=self.grid.time_profile,
             branch_names=self.grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True),
             bus_names=self.grid.get_bus_names(),
-            bus_types=np.ones(nb, dtype=int),
+            bus_types=np.ones(n_bus, dtype=int),
             con_names=con_names,
             clustering_results=self.clustering_results
         )
@@ -498,8 +498,8 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
         )
 
         # results.S[t, :] = res_t.S.real.max(axis=0)
-        results.max_flows = res.max_flows
-        results.max_loading = res.max_loading
+        results.max_flows = res.max_flows[self.time_indices].real
+        results.max_loading = res.max_loading[self.time_indices].real
 
         # translate_contingency_report(newton_report=res.report, veragrid_report=results.report)
 
