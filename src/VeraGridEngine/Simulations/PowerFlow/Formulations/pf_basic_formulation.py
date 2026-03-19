@@ -87,16 +87,6 @@ class PfBasicFormulation(PfFormulationTemplate):
             self.Vm[self.idx_dVm]
         ]
 
-    def modify_y_diagonal(self, prev_val: complex, new_val: complex, i: int):
-        """
-        Alter the Ybus diagonal.
-        Used in shunt discrete controls
-        :param prev_val: Old shunt value
-        :param new_val: New shunt value
-        :param i: column or row (Ybus is square)
-        """
-        self.adm.Ybus[i, i] += new_val - prev_val
-
     def update_bus_types(self, pq: IntVec, pv: IntVec, pqv: IntVec, p: IntVec):
         """
 
@@ -213,22 +203,28 @@ class PfBasicFormulation(PfFormulationTemplate):
             for bus_i, sh_i in self.buses_with_discrete_shunts_control:
                 if self.Vm[bus_i] > self.nc.shunt_data.vmax[sh_i]:
                     # decrease B
+                    g_steps: IntVec = self.nc.shunt_data.g_steps[sh_i]
+                    b_steps: IntVec = self.nc.shunt_data.b_steps[sh_i]
                     if self.shunt_step[sh_i] > 0:
-                        b_steps: IntVec = self.nc.shunt_data.b_steps[sh_i]
+                        prev_g = g_steps[self.shunt_step[sh_i]] / self.nc.Sbase
                         prev_b = b_steps[self.shunt_step[sh_i]] / self.nc.Sbase
                         self.shunt_step[sh_i] -= 1
+                        g = prev_g - g_steps[self.shunt_step[sh_i]] / self.nc.Sbase
                         b = prev_b - b_steps[self.shunt_step[sh_i]] / self.nc.Sbase
-                        self.modify_y_diagonal(prev_val=complex(0.0, prev_b), new_val=complex(0.0, b), i=bus_i)
+                        self.adm.Ybus[bus_i, bus_i] += complex(g, b) - complex(prev_g, prev_b)
                         any_change = True
 
                 elif self.Vm[bus_i] < self.nc.shunt_data.vmin[sh_i]:
                     # increase B
+                    g_steps: IntVec = self.nc.shunt_data.g_steps[sh_i]
                     b_steps: IntVec = self.nc.shunt_data.b_steps[sh_i]
                     if self.shunt_step[sh_i] < (len(b_steps) - 1):
+                        prev_g = g_steps[self.shunt_step[sh_i]] / self.nc.Sbase
                         prev_b = b_steps[self.shunt_step[sh_i]] / self.nc.Sbase
                         self.shunt_step[sh_i] += 1
+                        g = prev_g + g_steps[self.shunt_step[sh_i]] / self.nc.Sbase
                         b = prev_b + b_steps[self.shunt_step[sh_i]] / self.nc.Sbase
-                        self.modify_y_diagonal(prev_val=complex(0.0, prev_b), new_val=complex(0.0, b), i=bus_i)
+                        self.adm.Ybus[bus_i, bus_i] += complex(g, b) - complex(prev_g, prev_b)
                         any_change = True
                 else:
                     # within boundaries
