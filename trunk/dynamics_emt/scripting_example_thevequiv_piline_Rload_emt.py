@@ -114,7 +114,7 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 grid.add_load(bus=bus1, api_obj=load)
 
 for bus in grid.buses:
-    get_bus_emt_template(grid, bus, vf=grid.emt_var_factory)
+    get_bus_emt_template(grid, bus)
 
 ######################################################################################################
 # Build EMT models
@@ -128,7 +128,6 @@ line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 # line_mdl = get_pi_line_emt_template(vf= grid.emt_var_factory).block
 
 # load
-# load_mdl = get_shunt_r_3ph_emt_template(grid = grid, load = load).block
 load_mdl = get_shunt_r_3ph_emt_template(vf = grid.emt_var_factory).block
 
 ######################################################################################################
@@ -230,7 +229,7 @@ print(res.get_branch_df())
 # ==============================================================================
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")
 # ==============================================================================
-CHOSEN_SOLVER = "SYMBOLIC"
+CHOSEN_SOLVER = "VECTORIZED"
 RUN_ALL_SOLVERS = False
 ENABLE_PLOTS = True
 ENABLE_NEWTON_TRACE = False
@@ -260,7 +259,8 @@ options = EmtOptions(time_step = 5e-6,
 def create_problem() -> EmtProblemDae:
     local_problem = EmtProblemDae(grid=grid,
                                   options=options,
-                                  pf_results=res)
+                                  pf_results_3Ph=res,
+                                  pf_results= None)
 
     if ENABLE_NEWTON_TRACE:
         local_problem.set_newton_trace_collector(NewtonTraceCollector())
