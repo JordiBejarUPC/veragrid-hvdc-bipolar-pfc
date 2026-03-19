@@ -9,8 +9,8 @@ from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, Devic
 
 class GenericAreaGroup(EditableDevice):
     __slots__ = (
-        'latitude',
-        'longitude',
+        '_latitude',
+        '_longitude',
         'color',
     )
 
@@ -41,6 +41,46 @@ class GenericAreaGroup(EditableDevice):
         self.longitude = float(longitude)
 
         self.color = color if color is not None else self.rnd_color()
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def longitude(self) -> float:
+        """
+        Get ``longitude``.
+
+        :return: float
+        """
+        return self._longitude
+
+    @longitude.setter
+    def longitude(self, val: float) -> None:
+        """
+        Set ``longitude``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._longitude = float(val)
+
+    @property
+    def latitude(self) -> float:
+        """
+        Get ``latitude``.
+
+        :return: float
+        """
+        return self._latitude
+
+    @latitude.setter
+    def latitude(self, val: float) -> None:
+        """
+        Set ``latitude``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._latitude = float(val)
 
 
 

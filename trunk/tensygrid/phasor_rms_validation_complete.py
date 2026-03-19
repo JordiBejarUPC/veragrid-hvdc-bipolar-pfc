@@ -31,8 +31,10 @@ from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complet
 from VeraGridEngine.Templates.Rms.genqec_phasor_rms_template import get_genqec_phasor, get_complete_generator_template_phasor
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.block import Block
+import VeraGridEngine.api as vge
 
 
 def find_name_in_block(name: str, block: Block):
@@ -129,8 +131,8 @@ def test_phasor_validation():
     
     # For phasor grid, use current-based load model
     load_mdl_phasor = get_load_phasor_current_rms_template(grid_phasor.rms_var_factory).block
-    load_mdl_phasor.connect([load_mdl_phasor.in_vars[0]], [bus1_phasor.rms_model.model.out_vars[0]])
-    load_mdl_phasor.connect([load_mdl_phasor.in_vars[1]], [bus1_phasor.rms_model.model.out_vars[1]])
+    load_mdl_phasor.connect([load_mdl_phasor.in_vars[0]], [bus1_phasor.rms_model.out_vars[0]])
+    load_mdl_phasor.connect([load_mdl_phasor.in_vars[1]], [bus1_phasor.rms_model.out_vars[1]])
     # Current values will be set after power flow
     set_rms_model(device=load_phasor, model=load_mdl_phasor, var_factory=grid_phasor.rms_var_factory)
     
@@ -139,8 +141,8 @@ def test_phasor_validation():
     # Use set_rms_model for proper current balance accumulation
     set_rms_model(device=line_phasor, model=line_phasor_mdl, var_factory=grid_phasor.rms_var_factory)
 
-    genqec_phasor.connect([genqec_phasor.in_vars[0]], [bus0_phasor.rms_model.model.out_vars[0]])
-    genqec_phasor.connect([genqec_phasor.in_vars[1]], [bus0_phasor.rms_model.model.out_vars[1]])
+    genqec_phasor.connect([genqec_phasor.in_vars[0]], [bus0_phasor.rms_model.out_vars[0]])
+    genqec_phasor.connect([genqec_phasor.in_vars[1]], [bus0_phasor.rms_model.out_vars[1]])
     set_rms_model(device=gen_phasor, model=genqec_phasor, var_factory=grid_phasor.rms_var_factory)
     # Note: line and load models attached via set_rms_model for proper current balance
     
@@ -193,14 +195,18 @@ def test_phasor_validation():
     # ===================================================================
     print("\n[4] Adding load step event...")
     
+    # Create events groups
+    events_group_polar = RmsEventsGroup("polar_simulation")
+    events_group_phasor = RmsEventsGroup("phasor_simulation")
+
     # Add event to polar grid
     Pl0_polar = find_name_in_block('Pl0', load_mdl_polar)
-    event_polar = RmsEvent(device=load_polar, parameter=Pl0_polar, time=0.05, value=-0.098)
+    event_polar = RmsEvent(device=load_polar, parameter=Pl0_polar, time=0.05, value=-0.098, group=events_group_polar)
     grid_polar.add_rms_event(event_polar)
-    
+
     # Add event to phasor grid (current-based load) - step Ir
     Ir0_phasor = find_name_in_block('Ir0', load_mdl_phasor)
-    event_phasor = RmsEvent(device=load_phasor, parameter=Ir0_phasor, time=0.05, value=Ir_init * 0.98)
+    event_phasor = RmsEvent(device=load_phasor, parameter=Ir0_phasor, time=0.05, value=Ir_init * 0.98, group=events_group_phasor)
     grid_phasor.add_rms_event(event_phasor)
     
     print("  Events added to both grids")
@@ -209,6 +215,7 @@ def test_phasor_validation():
     # SIMULATION OPTIONS
     # ===================================================================
     print("\n[5] Setting up simulation...")
+
     options = RmsOptions(
         time_step=0.001,
         simulation_time=0.1,  # Short simulation for testing
@@ -225,6 +232,8 @@ def test_phasor_validation():
     print("\n[7] Running phasor simulation...")
     
     problem_phasor = RmsProblemPhasor(grid=grid_phasor, options=options, pf_results=res_phasor)
+    problem_phasor.set_events_group(events_group_phasor)
+    problem_phasor.set_initialize_flag()
     solver_phasor = BackEulerImplicitIntegration(
         problem=problem_phasor,
         t0=0,

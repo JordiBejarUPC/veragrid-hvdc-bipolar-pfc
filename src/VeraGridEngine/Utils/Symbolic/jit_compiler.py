@@ -40,6 +40,7 @@ from enum import Enum
 from numba import types
 from typing import Dict, List, Callable, Tuple, Set, Any
 import os
+from pathlib import Path
 import importlib.util
 import hashlib
 import scipy.sparse as sp
@@ -68,8 +69,8 @@ def _compile_to_file(full_source: str, func_name: str) -> Callable:
     header = "import numpy as np\nimport math\nfrom VeraGridEngine.Utils.Symbolic.symbolic import heaviside_num as _heaviside\n\n"
     full_content = header + full_source
 
-    root_dir = os.getcwd()
-    cache_dir = os.path.join(root_dir, "__pycache_jit__")
+    repo_root = Path(__file__).resolve().parents[4]
+    cache_dir = str(repo_root / "__pycache_jit__")
     os.makedirs(cache_dir, exist_ok=True)
 
     if cache_dir not in sys.path:
@@ -677,20 +678,53 @@ class ADVisitor(SymbolicToPythonVisitor):
         if node.op == '-': return f"(-({ov}))", f"(-({od}))"
         raise NotImplementedError
 
+    # def visit_func(self, node: Func, _: int) -> Tuple[str, str]:
+    #     av, ad = self.visit(node.arg, 0)
+    #     eps_str = "1e-15"
+    #
+    #     if _is_zero(ad):
+    #         if node.op == 'heaviside': return f"_heaviside({av})", "0.0"
+    #         if node.op == 'abs': return f"np.abs({av})", "0.0"
+    #         return f"np.{node.op}({av})", "0.0"
+    #
+    #     if node.op == 'sin': return f"np.sin({av})", f"(np.cos({av})*({ad}))"
+    #     if node.op == 'cos': return f"np.cos({av})", f"(-np.sin({av})*({ad}))"
+    #
+    #     if node.op == 'log':
+    #         return f"np.log({av})", f"({ad})/({av} + {eps_str})"
+    #     if node.op == 'sqrt':
+    #         return f"np.sqrt({av})", f"0.5*({ad})/(np.sqrt({av}) + {eps_str})"
+    #
+    #     raise NotImplementedError(f"Function {node.op} not supported in AD")
+
     def visit_func(self, node: Func, _: int) -> Tuple[str, str]:
         av, ad = self.visit(node.arg, 0)
         eps_str = "1e-15"
 
+        # Support non-smooth functions with zero AD derivative
+        if node.op == 'heaviside':
+            return f"_heaviside({av})", "0.0"
+
+        if node.op == 'abs':
+            if _is_zero(ad):
+                return f"np.abs({av})", "0.0"
+            return f"np.abs({av})", f"(np.sign({av})*({ad}))"
+
         if _is_zero(ad):
-            if node.op == 'heaviside': return f"_heaviside({av})", "0.0"
-            if node.op == 'abs': return f"np.abs({av})", "0.0"
             return f"np.{node.op}({av})", "0.0"
 
-        if node.op == 'sin': return f"np.sin({av})", f"(np.cos({av})*({ad}))"
-        if node.op == 'cos': return f"np.cos({av})", f"(-np.sin({av})*({ad}))"
+        if node.op == 'sin':
+            return f"np.sin({av})", f"(np.cos({av})*({ad}))"
+
+        if node.op == 'cos':
+            return f"np.cos({av})", f"(-np.sin({av})*({ad}))"
+
+        if node.op == 'exp':
+            return f"np.exp({av})", f"(np.exp({av})*({ad}))"
 
         if node.op == 'log':
             return f"np.log({av})", f"({ad})/({av} + {eps_str})"
+
         if node.op == 'sqrt':
             return f"np.sqrt({av})", f"0.5*({ad})/(np.sqrt({av}) + {eps_str})"
 
@@ -1354,6 +1388,7 @@ class RMSCompiler(EquationCompiler):
         self.compiler_names_dict = compiler_names_dict
         self.diff_vars = diff_vars
         self.v_params = v_params
+        self.compiler_names_dict[dt_var.uid] = 'h'
 
     def compile_rhs(self, equations: List[Expr], func_name: str) -> Callable[[Vec, Vec, Vec, Vec], Vec]:
         """

@@ -14,51 +14,6 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 
 
-
-# def parse_float(s: str) -> float:
-#     """
-#     Parse a float from a string accepting both comma and dot as decimal separators.
-#     Handles cases like:
-#       - "1.5" -> 1.5
-#       - "1,5" -> 1.5
-#       - "1.234,56" -> 1234.56  (common European)
-#       - "1,234.56" -> 1234.56  (common US)
-#     Raises ValueError if it cannot be parsed.
-#     """
-#     if s is None:
-#         raise ValueError("Empty string")
-#
-#     s = s.strip()
-#     if s == "":
-#         raise ValueError("Empty string")
-#
-#     # Remove spaces
-#     s = s.replace(" ", "")
-#
-#     # If there are both '.' and ',' assume the last one is the decimal separator:
-#     # common convention: "1.234,56" (dot thousands, comma decimal) -> remove dots, comma->dot
-#     # or "1,234.56" (comma thousands, dot decimal) -> remove commas, keep dot.
-#     if '.' in s and ',' in s:
-#         # decide which occurs last
-#         if s.rfind(',') > s.rfind('.'):
-#             # comma is decimal separator
-#             s = s.replace('.', '')
-#             s = s.replace(',', '.')
-#         else:
-#             # dot is decimal separator
-#             s = s.replace(',', '')
-#     else:
-#         # only comma or only dot or none: normalize comma -> dot
-#         s = s.replace(',', '.')
-#
-#     # Now s should look like a normal Python float literal, maybe with +/-
-#     if not re.fullmatch(r'[+-]?\d+(\.\d+)?', s):
-#         raise ValueError(f"Not a valid float: {s}")
-#
-#     return float(s)
-#
-#
-
 class EventRow:
     """Encapsulates a row in the RMS event table."""
 

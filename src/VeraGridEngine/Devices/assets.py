@@ -15,7 +15,7 @@ import VeraGridEngine.Devices as dev
 import VeraGridEngine.Templates as tem
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, BRANCH_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES
 from VeraGridEngine.Devices.Parents.editable_device import GCPROP_TYPES
-from VeraGridEngine.enumerations import DeviceType, ActionType, SubObjectType
+from VeraGridEngine.enumerations import DeviceType, ActionType
 from VeraGridEngine.basic_structures import Logger, ListSet
 from VeraGridEngine.data_logger import DataLogger
 
@@ -110,12 +110,17 @@ class Assets:
         '_p2xs',
         '_diagrams',
         '_rms_models',
+        '_emt_models',
         'template_objects_dict',
         'profile_magnitudes',
         'device_type_name_dict',
         'device_associations',
         '_rms_events',
         '_rms_events_groups',
+        '_emt_events',
+        '_emt_events_groups',
+        '_dynamic_plots',
+        '_dynamic_plot_entries',
         '_rms_var_factory',
         '_emt_var_factory'
     )
@@ -186,6 +191,18 @@ class Assets:
 
         # List of events group
         self._rms_events_groups: List[dev.RmsEventsGroup] = list()
+
+        # List of EMT events
+        self._emt_events: List[dev.EmtEvent] = list()
+
+        # List of EMT events groups
+        self._emt_events_groups: List[dev.EmtEventsGroup] = list()
+
+        # List of dynamic plots
+        self._dynamic_plots: List[dev.DynamicPlot] = list()
+
+        # List of dynamic plot entries
+        self._dynamic_plot_entries: List[dev.DynamicPlotEntry] = list()
 
         # Lists of measurements
         self._pi_measurements: List[dev.PiMeasurement] = list()
@@ -264,7 +281,7 @@ class Assets:
         # owners
         self._owners: List[dev.Owner] = list()
 
-        # Modelling authority
+        # Modeling authority
         self._modelling_authorities: List[dev.ModellingAuthority] = list()
 
         # fuels
@@ -291,8 +308,11 @@ class Assets:
         # list of power to gas devices
         self._p2xs: List[dev.FluidP2x] = list()
 
-        # list of wire types
+        # list of RMS models
         self._rms_models: List[dev.RmsModelTemplate] = list()
+
+        # list of EMT models
+        self._emt_models: List[dev.EmtModelTemplate] = list()
 
         # list of declared diagrams
         self._diagrams: List[Union[dev.MapDiagram, dev.SchematicDiagram]] = list()
@@ -369,8 +389,12 @@ class Assets:
                 dev.Investment(),
             ],
             "Dynamic": [
+                dev.RmsEventsGroup(),
                 dev.RmsEvent(),
-                dev.RmsEventsGroup()
+                dev.EmtEventsGroup(),
+                dev.EmtEvent(),
+                # dev.DynamicPlotEntry()
+                # dev.DynamicPlot(),
             ],
             "Catalogue": [
                 dev.Wire(),
@@ -378,7 +402,8 @@ class Assets:
                 dev.UndergroundLineType(),
                 dev.SequenceLineType(),
                 dev.TransformerType(),
-                dev.RmsModelTemplate()
+                dev.RmsModelTemplate(),
+                dev.EmtModelTemplate()
             ],
             "Measurements": [
                 dev.PiMeasurement(),
@@ -4558,6 +4583,261 @@ class Assets:
                 self.delete_rms_events_group(grp)
 
     # ------------------------------------------------------------------------------------------------------------------
+    # Emt Events group
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def emt_events_groups(self) -> List[dev.EmtEventsGroup]:
+        """
+
+        :return:
+        """
+        return self._emt_events_groups
+
+    @emt_events_groups.setter
+    def emt_events_groups(self, value: List[dev.EmtEventsGroup]):
+        self._emt_events_groups = value
+
+    def get_emt_events_groups_names(self) -> StrVec:
+        """
+
+        :return:
+        """
+        return np.array([e.name for e in self._emt_events_groups])
+
+    def add_emt_events_group(self, obj: dev.EmtEventsGroup):
+        """
+        Add emt events group
+        :param obj: EmtEventsGroup
+        """
+        self._emt_events_groups.append(obj)
+
+    def delete_emt_events_group(self, obj: dev.EmtEventsGroup):
+        """
+        Delete zone
+        :param obj: index
+        """
+        try:
+            self._emt_events_groups.remove(obj)
+        except ValueError:
+            pass
+
+        to_del = [evt for evt in self._emt_events if evt.group == obj]
+        for evt in to_del:
+            self.delete_emt_event(evt)
+
+    def get_emt_event_by_groups(self) -> List[Tuple[dev.EmtEventsGroup, List[dev.EmtEvent]]]:
+        """
+        Get a dictionary of EMT event groups and their
+        :return: list of EMT event groups and their list of associated EMT events
+        """
+        d = {e: list() for e in self._emt_events_groups}
+
+        for evt in self._emt_events:
+            evt_list = d.get(evt.group, None)
+
+            if evt_list is not None:
+                evt_list.append(evt)
+
+        res = list()
+        for evt_group in self._emt_events_groups:
+
+            inv_list = d.get(evt_group, None)
+
+            if inv_list is not None:
+                res.append((evt_group, inv_list))
+            else:
+                res.append((evt_group, list()))
+
+        return res
+
+    def get_emt_event_by_groups_index_dict(self) -> Dict[int, List[dev.EmtEvent]]:
+        """
+        Get a dictionary of EMT event groups
+        :return: Dict[EMT event group index] = list of EMT events
+        """
+        d = {e: idx for idx, e in enumerate(self._emt_events_groups)}
+
+        res = dict()
+        for evt in self._emt_events:
+            inv_group_idx = d.get(evt.group, None)
+            inv_list = res.get(inv_group_idx, None)
+            if inv_list is None:
+                res[inv_group_idx] = [evt]
+            else:
+                inv_list.append(evt)
+
+        return res
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # EmtEvent
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def emt_events(self) -> List[dev.EmtEvent]:
+        """
+
+        :return:
+        """
+        return self._emt_events
+
+    @emt_events.setter
+    def emt_events(self, value: List[dev.EmtEvent]):
+        self._emt_events = value
+
+    def add_emt_event(self, obj: dev.EmtEvent):
+        """
+        Add emt_event
+        :param obj: EmtEvent
+        """
+        self._emt_events.append(obj)
+
+    def delete_emt_event(self, obj: dev.EmtEvent, del_group: bool = False):
+        """
+        Delete zone
+        :param obj: index
+        :param del_group: delete_with_dialogue the group?
+        """
+        try:
+            self._emt_events.remove(obj)
+        except ValueError:
+            pass
+
+        if del_group:
+            to_del = list()
+            for grp in self.emt_events_groups:
+                found = False
+                for elm in self.emt_events:
+                    if elm.group == grp:
+                        found = True
+
+                if not found:
+                    to_del.append(grp)
+
+            for grp in to_del:
+                self.delete_emt_events_group(grp)
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # Dynamic Plot
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def dynamic_plots(self) -> List[dev.DynamicPlot]:
+        """
+
+        :return:
+        """
+        return self._dynamic_plots
+
+    @dynamic_plots.setter
+    def dynamic_plots(self, value: List[dev.DynamicPlot]):
+        self._dynamic_plots = value
+
+    def get_dynamic_plots_names(self) -> StrVec:
+        """
+
+        :return:
+        """
+        return np.array([e.name for e in self._dynamic_plots])
+
+    def add_dynamic_plot(self, obj: dev.DynamicPlot):
+        """
+        Add dynamic plot
+        :param obj: DynamicPlot
+        """
+        self._dynamic_plots.append(obj)
+
+    def delete_dynamic_plot(self, obj: dev.DynamicPlot):
+        """
+        Delete dynamic plot
+        :param obj: index
+        """
+        try:
+            self._dynamic_plots.remove(obj)
+        except ValueError:
+            pass
+
+        to_del = [entry for entry in self._dynamic_plot_entries if entry.plot == obj]
+        for entry in to_del:
+            self.delete_dynamic_plot_entry(entry)
+
+    def get_dynamic_plot_entries_by_plot(self) -> List[Tuple[dev.DynamicPlot, List[dev.DynamicPlotEntry]]]:
+        """
+        Get a dictionary of dynamic plots and their
+        :return: list of dynamic plots and their list of associated plot entries
+        """
+        d = {e: list() for e in self._dynamic_plots}
+
+        for entry in self._dynamic_plot_entries:
+            entry_list = d.get(entry.plot, None)
+
+            if entry_list is not None:
+                entry_list.append(entry)
+
+        res = list()
+        for plot in self._dynamic_plots:
+
+            inv_list = d.get(plot, None)
+
+            if inv_list is not None:
+                res.append((plot, inv_list))
+            else:
+                res.append((plot, list()))
+
+        return res
+
+    def get_dynamic_plot_entries_by_plot_index_dict(self) -> Dict[int, List[dev.DynamicPlotEntry]]:
+        """
+        Get a dictionary of dynamic plots
+        :return: Dict[dynamic plot index] = list of dynamic plot entries
+        """
+        d = {e: idx for idx, e in enumerate(self._dynamic_plots)}
+
+        res = dict()
+        for entry in self._dynamic_plot_entries:
+            inv_group_idx = d.get(entry.plot, None)
+            inv_list = res.get(inv_group_idx, None)
+            if inv_list is None:
+                res[inv_group_idx] = [entry]
+            else:
+                inv_list.append(entry)
+
+        return res
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # DynamicPlotEntry
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def dynamic_plot_entries(self) -> List[dev.DynamicPlotEntry]:
+        """
+
+        :return:
+        """
+        return self._dynamic_plot_entries
+
+    @dynamic_plot_entries.setter
+    def dynamic_plot_entries(self, value: List[dev.DynamicPlotEntry]):
+        self._dynamic_plot_entries = value
+
+    def add_dynamic_plot_entry(self, obj: dev.DynamicPlotEntry):
+        """
+        Add dynamic plot entry
+        :param obj: DynamicPlotEntry
+        """
+        self._dynamic_plot_entries.append(obj)
+
+    def delete_dynamic_plot_entry(self, obj: dev.DynamicPlotEntry):
+        """
+        Delete dynamic plot entry
+        :param obj: index
+        """
+        try:
+            self._dynamic_plot_entries.remove(obj)
+        except ValueError:
+            pass
+
+    # ------------------------------------------------------------------------------------------------------------------
     # Remedial action
     # ------------------------------------------------------------------------------------------------------------------
 
@@ -5635,6 +5915,77 @@ class Assets:
         except ValueError:
             pass
 
+    def get_rms_models_by_device_type(self, tpe: DeviceType) -> List[dev.RmsModelTemplate]:
+        """
+        Get a list of RmsModelTemplate filtering by device type
+        :param tpe:
+        :return:
+        """
+        return [elm for elm in self.rms_models if elm.tpe == tpe]
+
+    # ------------------------------------------------------------------------------------------------------------------
+    # EmtModel
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def emt_models(self) -> List[dev.EmtModelTemplate]:
+        """
+        list of emt models
+        :return:
+        """
+        return self._emt_models
+
+    @emt_models.setter
+    def emt_models(self, value: List[dev.EmtModelTemplate]):
+        self._emt_models = value
+
+    def get_emt_models_number(self) -> int:
+        """
+        Get number of EMT models
+        """
+        return len(self._emt_models)
+
+    def add_emt_model(self, obj: dev.EmtModelTemplate):
+        """
+        Add emt model to the collection
+        :param obj: DynamicModel instance
+        """
+        if obj is not None:
+            if isinstance(obj, dev.EmtModelTemplate):
+                self._emt_models.append(obj)
+            else:
+                print('The template is not a EmtModelTemplate!')
+
+    def delete_emt_model(self, obj: dev.EmtModelTemplate):
+        """
+        Delete EMT model from the collection
+        :param obj: DynamicModel object
+        """
+        for elm in self.buses:
+            if elm.emt_model.template == obj:
+                elm.emt_model.template = None
+
+        for elm in self.get_injection_devices_iter():
+            if elm.emt_model.template == obj:
+                elm.emt_model.template = None
+
+        for elm in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+            if elm.emt_model.template == obj:
+                elm.emt_model.template = None
+
+        try:
+            self._emt_models.remove(obj)
+        except ValueError:
+            pass
+
+    def get_emt_models_by_device_type(self, tpe: DeviceType) -> List[dev.EmtModelTemplate]:
+        """
+        Get a list of EmtModelTemplate filtering by device type
+        :param tpe:
+        :return:
+        """
+        return [elm for elm in self.emt_models if elm.tpe == tpe]
+
     # ------------------------------------------------------------------------------------------------------------------
     #
     #
@@ -6453,11 +6804,26 @@ class Assets:
         elif device_type == DeviceType.RmsModelTemplateDevice:
             return self.rms_models
 
+        elif device_type == DeviceType.EmtModelTemplateDevice:
+            return self.emt_models
+
         elif device_type == DeviceType.RmsEventDevice:
             return self.rms_events
 
         elif device_type == DeviceType.RmsEventsGroupDevice:
             return self.rms_events_groups
+
+        elif device_type == DeviceType.EmtEventDevice:
+            return self.emt_events
+
+        elif device_type == DeviceType.EmtEventsGroupDevice:
+            return self.emt_events_groups
+
+        elif device_type == DeviceType.DynamicPlotGroupDevice:
+            return self.dynamic_plots
+
+        elif device_type == DeviceType.DynamicPlotEntry:
+            return self.dynamic_plot_entries
 
         else:
             raise Exception('Element type not understood ' + str(device_type))
@@ -6674,11 +7040,26 @@ class Assets:
         elif device_type == DeviceType.RmsModelTemplateDevice:
             self._rms_models = devices
 
+        elif device_type == DeviceType.EmtModelTemplateDevice:
+            self._emt_models = devices
+
         elif device_type == DeviceType.RmsEventDevice:
             self._rms_events = devices
 
         elif device_type == DeviceType.RmsEventsGroupDevice:
             self._rms_events_groups = devices
+
+        elif device_type == DeviceType.EmtEventDevice:
+            self._emt_events = devices
+
+        elif device_type == DeviceType.EmtEventsGroupDevice:
+            self._emt_events_groups = devices
+
+        elif device_type == DeviceType.DynamicPlotGroupDevice:
+            self._dynamic_plots = devices
+
+        elif device_type == DeviceType.DynamicPlotEntry:
+            self._dynamic_plot_entries = devices
 
         else:
             raise Exception('Element type not understood ' + str(device_type))
@@ -6879,11 +7260,26 @@ class Assets:
         elif obj.device_type == DeviceType.RmsModelTemplateDevice:
             self.add_rms_model(obj=obj)
 
+        elif obj.device_type == DeviceType.EmtModelTemplateDevice:
+            self.add_emt_model(obj=obj)
+
         elif obj.device_type == DeviceType.RmsEventDevice:
             self.add_rms_event(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventsGroupDevice:
             self.add_rms_events_group(obj=obj)
+
+        elif obj.device_type == DeviceType.EmtEventDevice:
+            self.add_emt_event(obj=obj)
+
+        elif obj.device_type == DeviceType.EmtEventsGroupDevice:
+            self.add_emt_events_group(obj=obj)
+
+        elif obj.device_type == DeviceType.DynamicPlotGroupDevice:
+            self.add_dynamic_plot(obj=obj)
+
+        elif obj.device_type == DeviceType.DynamicPlotEntry:
+            self.add_dynamic_plot_entry(obj=obj)
 
         elif obj.device_type == DeviceType.SwitchDevice:
             self.add_switch(obj=obj)
@@ -7095,11 +7491,26 @@ class Assets:
         elif obj.device_type == DeviceType.RmsModelTemplateDevice:
             self.delete_rms_model(obj=obj)
 
+        elif obj.device_type == DeviceType.EmtModelTemplateDevice:
+            self.delete_emt_model(obj=obj)
+
         elif obj.device_type == DeviceType.RmsEventDevice:
             self.delete_rms_event(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventsGroupDevice:
             self.delete_rms_events_group(obj=obj)
+
+        elif obj.device_type == DeviceType.EmtEventDevice:
+            self.delete_emt_event(obj=obj)
+
+        elif obj.device_type == DeviceType.EmtEventsGroupDevice:
+            self.delete_emt_events_group(obj=obj)
+
+        elif obj.device_type == DeviceType.DynamicPlotGroupDevice:
+            self.delete_dynamic_plot(obj=obj)
+
+        elif obj.device_type == DeviceType.DynamicPlotEntry:
+            self.delete_dynamic_plot_entry(obj=obj)
 
         else:
             raise Exception('Element type not understood ' + str(obj.device_type))
@@ -7280,6 +7691,8 @@ class Assets:
                 DeviceType.CountryDevice: self.countries,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.Owner: self.owners,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.LoadDevice:
@@ -7289,6 +7702,9 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.StaticGeneratorDevice:
@@ -7298,6 +7714,9 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.ControllableShuntDevice:
@@ -7307,6 +7726,9 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.CurrentInjectionDevice:
@@ -7316,6 +7738,9 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.GeneratorDevice:
@@ -7327,6 +7752,9 @@ class Assets:
                 DeviceType.EmissionGasDevice: self.emission_gases,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.BatteryDevice:
@@ -7336,6 +7764,9 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.ShuntDevice:
@@ -7345,6 +7776,9 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.ExternalGridDevice:
@@ -7354,6 +7788,9 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
                 DeviceType.FacilityDevice: self.facilities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.LineDevice:
@@ -7362,6 +7799,9 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.SwitchDevice:
@@ -7370,6 +7810,9 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.Transformer2WDevice:
@@ -7378,6 +7821,9 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.WindingDevice:
@@ -7386,6 +7832,9 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.Transformer3WDevice:
@@ -7393,6 +7842,9 @@ class Assets:
             dictionary_of_lists = {
                 DeviceType.Owner: self.owners,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.BusDevice: self.buses,
+                # DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                # DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.HVDCLineDevice:
@@ -7401,6 +7853,9 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.VscDevice:
@@ -7409,6 +7864,9 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.UpfcDevice:
@@ -7417,6 +7875,9 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.SeriesReactanceDevice:
@@ -7425,6 +7886,9 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.DCLineDevice:
@@ -7433,6 +7897,9 @@ class Assets:
                 DeviceType.Owner: self.owners,
                 DeviceType.BranchGroupDevice: self.branch_groups,
                 DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.BusDevice: self.buses,
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
         elif elm_type == DeviceType.SubstationDevice:
@@ -7593,6 +8060,10 @@ class Assets:
             elm = dev.RmsModelTemplate()
             dictionary_of_lists = dict()
 
+        elif elm_type == DeviceType.EmtModelTemplateDevice:
+            elm = dev.EmtModelTemplate()
+            dictionary_of_lists = dict()
+
         elif elm_type == DeviceType.RmsEventDevice:
             elm = dev.RmsEvent()
             dictionary_of_lists = {DeviceType.RmsEventsGroupDevice: self.rms_events_groups}
@@ -7600,6 +8071,25 @@ class Assets:
         elif elm_type == DeviceType.RmsEventsGroupDevice:
             elm = dev.RmsEventsGroup()
             dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.EmtEventDevice:
+            elm = dev.EmtEvent()
+            dictionary_of_lists = {DeviceType.EmtEventsGroupDevice: self.emt_events_groups}
+
+        elif elm_type == DeviceType.EmtEventsGroupDevice:
+            elm = dev.EmtEventsGroup()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.DynamicPlotGroupDevice:
+            elm = dev.DynamicPlot()
+            dictionary_of_lists = dict()
+
+        elif elm_type == DeviceType.DynamicPlotEntry:
+            elm = dev.DynamicPlotEntry()
+            dictionary_of_lists = {
+                DeviceType.DynamicPlotGroupDevice: self.dynamic_plots,
+                DeviceType.RmsEventsGroupDevice: self.rms_events_groups,
+            }
 
         elif elm_type == DeviceType.PiMeasurementDevice:
             elm = dev.PiMeasurement()

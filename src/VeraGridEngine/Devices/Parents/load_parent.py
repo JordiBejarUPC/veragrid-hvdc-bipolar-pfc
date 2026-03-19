@@ -22,24 +22,21 @@ class LoadParent(InjectionParent):
     """
 
     __slots__ = (
-        'P',
+        '_P',
         '_P_prof',
-        'Q',
+        '_Q',
         '_Q_prof',
-
-        'Pa',
+        '_Pa',
         '_Pa_prof',
-        'Qa',
+        '_Qa',
         '_Qa_prof',
-
-        'Pb',
+        '_Pb',
         '_Pb_prof',
-        'Qb',
+        '_Qb',
         '_Qb_prof',
-
-        'Pc',
+        '_Pc',
         '_Pc_prof',
-        'Qc',
+        '_Qc',
         '_Qc_prof',
     )
 
@@ -440,3 +437,157 @@ class LoadParent(InjectionParent):
 
         self.Q += other.Q
         self.Q_prof = self.Q_prof.toarray() + other.Q_prof.toarray()
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def P(self) -> float:
+        """
+        Get ``P``.
+
+        :return: float
+        """
+        return self._P
+
+    @P.setter
+    def P(self, val: float) -> None:
+        """
+        Set ``P``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._P = float(val)
+
+    @property
+    def Pa(self) -> float:
+        """
+        Get ``Pa``.
+
+        :return: float
+        """
+        return self._Pa
+
+    @Pa.setter
+    def Pa(self, val: float) -> None:
+        """
+        Set ``Pa``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Pa = float(val)
+
+    @property
+    def Pb(self) -> float:
+        """
+        Get ``Pb``.
+
+        :return: float
+        """
+        return self._Pb
+
+    @Pb.setter
+    def Pb(self, val: float) -> None:
+        """
+        Set ``Pb``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Pb = float(val)
+
+    @property
+    def Pc(self) -> float:
+        """
+        Get ``Pc``.
+
+        :return: float
+        """
+        return self._Pc
+
+    @Pc.setter
+    def Pc(self, val: float) -> None:
+        """
+        Set ``Pc``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Pc = float(val)
+
+    @property
+    def Q(self) -> float:
+        """
+        Get ``Q``.
+
+        :return: float
+        """
+        return self._Q
+
+    @Q.setter
+    def Q(self, val: float) -> None:
+        """
+        Set ``Q``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Q = float(val)
+
+    @property
+    def Qa(self) -> float:
+        """
+        Get ``Qa``.
+
+        :return: float
+        """
+        return self._Qa
+
+    @Qa.setter
+    def Qa(self, val: float) -> None:
+        """
+        Set ``Qa``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Qa = float(val)
+
+    @property
+    def Qb(self) -> float:
+        """
+        Get ``Qb``.
+
+        :return: float
+        """
+        return self._Qb
+
+    @Qb.setter
+    def Qb(self, val: float) -> None:
+        """
+        Set ``Qb``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Qb = float(val)
+
+    @property
+    def Qc(self) -> float:
+        """
+        Get ``Qc``.
+
+        :return: float
+        """
+        return self._Qc
+
+    @Qc.setter
+    def Qc(self, val: float) -> None:
+        """
+        Set ``Qc``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Qc = float(val)

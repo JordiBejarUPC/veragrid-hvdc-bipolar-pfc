@@ -87,7 +87,7 @@ class ContingencyAnalysisOptions(OptionsTemplate):
 
         self.srap_deadband: float = srap_deadband
 
-        self.srap_rever_to_nominal_rating: bool = srap_rever_to_nominal_rating
+        self.srap_revert_to_nominal_rating: bool = srap_rever_to_nominal_rating
 
         self.detailed_massive_report = detailed_massive_report
 

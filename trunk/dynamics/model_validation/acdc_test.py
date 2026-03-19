@@ -26,7 +26,7 @@ from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
+
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 from VeraGridEngine.enumerations import ConverterControlType
@@ -127,28 +127,28 @@ vsc_mdl        =  block_deep_copy(VSCShuntBuild2().block, grid.rms_var_factory)
 pv_control_block       =  block_deep_copy(PVControlBuild2().block, grid.rms_var_factory)
 pv_cell_block  =  block_deep_copy(PVCellBuild().block, grid.rms_var_factory)
 
-genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
+load_mdl.connect([load_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
 
-line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]]) 
+line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]]) 
 
-vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
-vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
+vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
+vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.out_vars[1]])
 
-vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.model.out_vars[0]])
+vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.out_vars[0]])
 
-#vsc_mdl.connect([vsc_mdl.in_vars[3]], [bus3.rms_model.model.out_vars[1]]) 
+#vsc_mdl.connect([vsc_mdl.in_vars[3]], [bus3.rms_model.out_vars[1]]) 
 
-pv_cell_block.connect([pv_cell_block.in_vars[0]], [bus3.rms_model.model.out_vars[0]])
+pv_cell_block.connect([pv_cell_block.in_vars[0]], [bus3.rms_model.out_vars[0]])
 
-pv_control_block.connect([pv_control_block.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
-pv_control_block.connect([pv_control_block.in_vars[1]], [bus3.rms_model.model.out_vars[0]])
+pv_control_block.connect([pv_control_block.in_vars[0]], [bus2.rms_model.out_vars[0]])
+pv_control_block.connect([pv_control_block.in_vars[1]], [bus3.rms_model.out_vars[0]])
 pv_control_block.connect([pv_control_block.in_vars[2]], [vsc_mdl.out_vars[2]])
 pv_control_block.connect([pv_control_block.in_vars[3]], [vsc_mdl.out_vars[3]])
 pv_control_block.connect([pv_control_block.in_vars[4]], [pv_cell_block.out_vars[0]])
@@ -158,19 +158,12 @@ big_gen1 = Block(children=[genrow_mdl1])
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl1.out_vars[0]})
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl1.out_vars[1]})
 
-# add models to dyn_host
-line12_dynhost.model = line12_mdl
-load_dynhost.model = load_mdl
-gen_dynhost.model = big_gen1
-gen3_dynhost.model = Block(children=[pv_cell_block, pv_control_block], external_mapping= pv_cell_block.external_mapping)
-vsc_dynhost.model = vsc_mdl
-
 # attach rms models to Veragrid objects
-line12.rms_model = line12_dynhost
-load1.rms_model = load_dynhost
-gen1.rms_model = gen_dynhost
-vsc1.rms_model = vsc_dynhost
-gen3.rms_model = gen3_dynhost
+line12.rms_model = line12_mdl
+load1.rms_model = load_mdl
+gen1.rms_model = big_gen1
+gen3.rms_model = Block(children=[pv_cell_block, pv_control_block], external_mapping=pv_cell_block.external_mapping)
+vsc1.rms_model = vsc_mdl
 
 options = RmsOptions(time_step=0.001,
                      simulation_time=0.5,
@@ -216,8 +209,8 @@ plt.grid(True)
 plt.tight_layout()
 plt.show()
 
-pv_all = gen3.rms_model.model 
-vdc = find_name_in_block('Vdc', bus3.rms_model.model)
+pv_all = gen3.rms_model 
+vdc = find_name_in_block('Vdc', bus3.rms_model)
 vhs = vsc_mdl.out_vars[2]
 ahs = vsc_mdl.out_vars[3]
 

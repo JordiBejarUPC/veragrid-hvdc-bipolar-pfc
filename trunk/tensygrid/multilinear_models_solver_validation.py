@@ -26,9 +26,10 @@ from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_tensygrid import RmsProblemTensygrid
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_ts import BackEulerImplicitTensygrid
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
+
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 import VeraGridEngine.api as gce
 
@@ -90,10 +91,7 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 # Build Rms models
 ######################################################################################################
 
-# Build dynamic_model_host
-line_dynhost = DynamicModelHost()
-load_dynhost = DynamicModelHost()
-gen_dynhost = DynamicModelHost()
+
 
 # line
 line0_mdl = get_line_rms_template(grid.rms_var_factory).block
@@ -106,38 +104,34 @@ genqec1_mdl = get_complete_generator_template(grid.rms_var_factory).block
 
 # connection with buses
 
-genqec1_mdl.connect([genqec1_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
-genqec1_mdl.connect([genqec1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
+genqec1_mdl.connect([genqec1_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+genqec1_mdl.connect([genqec1_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
+line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-line0_mdl.connect([line0_mdl.in_vars[2]], [bus1.rms_model.model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[3]], [bus1.rms_model.model.out_vars[1]])
+line0_mdl.connect([line0_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
+line0_mdl.connect([line0_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
 
 u_gov = find_name_in_block("u_gov1", genqec1_mdl)
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
 # external mapping
 big_gen1 = Block(children=[genqec1_mdl])
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec1_mdl.out_vars[0]})
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec1_mdl.out_vars[1]})
 
-# add models to dyn_host
-line_dynhost.model = line0_mdl
-load_dynhost.model = load_mdl
-gen_dynhost.model = big_gen1
-
 # attach rms models to Veragrid objects
-line0.rms_model = line_dynhost
-load.rms_model = load_dynhost
-gen0.rms_model = gen_dynhost
+line0.rms_model = line0_mdl
+load.rms_model = load_mdl
+gen0.rms_model = big_gen1
 
 Pl0 = find_name_in_block('Pl0', load_mdl)
 print(Pl0)
-event = RmsEvent(device=load, parameter=Pl0, time=.01, value=-0.9)
+events_group = RmsEventsGroup("simulation1")
+event = RmsEvent(device=load, parameter=Pl0, time=.01, value=-0.9, group=events_group)
 grid.add_rms_event(event)
 
 options = gce.PowerFlowOptions(
@@ -184,6 +178,8 @@ options = RmsOptions(time_step=0.001,
 problem = RmsProblemTensygrid(grid=grid,
                         options=options,
                         pf_results=res)
+
+problem.set_events_group(events_group)
 
 solver = BackEulerImplicitTensygrid(
     problem=problem,
@@ -247,7 +243,7 @@ Tm = genqec1_mdl.out_vars[0]
 u_cos = find_name_in_block("u_cos", genqec1_mdl)
 u_sin = find_name_in_block("u_sin", genqec1_mdl)
 delta_idx = problem.get_var_idx(find_name_in_block("delta", genqec1_mdl))
-vm_idx =  problem.get_var_idx(bus0.rms_model.model.out_vars[1])
+vm_idx =  problem.get_var_idx(bus0.rms_model.out_vars[1])
 delta_values = y[:, delta_idx]
 vm_values = y[:, vm_idx]
 cos_x = np.cos(vm_values - delta_values)

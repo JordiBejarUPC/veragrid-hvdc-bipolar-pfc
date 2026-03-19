@@ -85,6 +85,9 @@ class RmsProblemTemplate(ABC):
     def get_j22(self, x: Vec, dx: Vec, h: float):
         raise NotImplementedError("get_j22")
 
+    def get_E_matrix(self, x:Vec, dx:Vec):
+        raise NotImplementedError("get_E_matrix")
+
     def get_dt(self):
         return NotImplementedError("get_dt")
 
@@ -104,8 +107,9 @@ class RmsProblemTemplate(ABC):
         :param current: current value (zero based)
         :param total: total value
         """
-        val = ((current + 1) / total) * 100
-        self.progress_signal.emit(val)
+        if self.progress_signal is not None:
+            val = ((current + 1) / total) * 100
+            self.progress_signal.emit(val)
 
     def report_text(self, val: str):
         """

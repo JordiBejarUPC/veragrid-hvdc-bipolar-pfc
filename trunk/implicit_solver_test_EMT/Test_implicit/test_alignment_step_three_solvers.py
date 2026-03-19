@@ -185,7 +185,7 @@ def _dummy_fused_residual(
 @pytest.mark.parametrize(
     ("solver_kind", "expected_updates"),
     [
-        ("symbolic", [0.05, 0.10, 0.15, 0.20]),
+        ("symbolic", [0.00, 0.05, 0.10, 0.15, 0.20]),
         ("ad", [0.05, 0.10, 0.15, 0.20]),
         ("structural", [0.00, 0.05, 0.10, 0.15, 0.20]),
     ],

@@ -11,6 +11,7 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
+from VeraGridEngine.Simulations.Rms.rms_problem_factory import build_rms_problem
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.enumerations import EngineType, SimulationTypes, DynamicIntegrationMethod
@@ -77,13 +78,12 @@ class RmsSimulationDriver(DriverTemplate):
 
         rms_events_group_names: StrVec = np.array([elm.name for elm in rms_events_groups])
 
-        problem = RmsProblemDae(
+        problem = build_rms_problem(
             grid=self.grid,
             options=self.options,
             pf_results=self.pf_results,
             progress_signal=self.progress_signal,
         )
-
         self.results = RmsResults(
             time_array=pd.DatetimeIndex(pd.to_datetime(t * 1e9)),
             rms_events_group_names=rms_events_group_names,

@@ -161,4 +161,4 @@ def initialize_hvdc_rms(hvdc: HvdcLine, hvdc_idx: int, vf: VarFactory, nc: Numer
     :param vf: VarFactory
     :param nc: NumericalCircuit with compiled data
     """
-    hvdc.rms_model.model = HvdcRmsTemplate(nc, hvdc=hvdc, hvdc_idx=hvdc_idx, vf=vf).block
+    hvdc.rms_model = HvdcRmsTemplate(nc, hvdc=hvdc, hvdc_idx=hvdc_idx, vf=vf).block

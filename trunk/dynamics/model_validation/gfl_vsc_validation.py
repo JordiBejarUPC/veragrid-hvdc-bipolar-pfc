@@ -25,9 +25,9 @@ from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.enumerations import ConverterControlType
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_generalized_formulation import PfGeneralizedFormulation
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
@@ -256,11 +256,7 @@ res.Sbus = solution.Scalc
 print('Voltage magnitudes (p.u.): ', abs(res.voltage))
 print('Voltage angles (deg): ', np.angle(res.voltage, deg=True))
 
-# Build dynamic_model_host
-line12_dynhost = DynamicModelHost()
-load_dynhost = DynamicModelHost()
-gen_dynhost = DynamicModelHost()
-gen3_dynhost = DynamicModelHost()
+
 
 #Initialise the RMS
 line12_mdl = get_line_rms_template(grid.rms_var_factory).block
@@ -277,52 +273,46 @@ genrow_mdl1 = get_complete_generator_template(grid.rms_var_factory).block
 vsc_mdl = VscGflBuild(grid.rms_var_factory, control1=CONTROL1_MODE, control2=CONTROL2_MODE).block
 
 pv_cell_block  =  PVCellBuild(grid.rms_var_factory).block
-dc_source = DCVoltageSource(grid.rms_var_factory, bus3.rms_model.model.out_vars[0]).block
+dc_source = DCVoltageSource(grid.rms_var_factory, bus3.rms_model.out_vars[0]).block
 
-genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
+load_mdl.connect([load_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
 
-line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]]) 
+line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]]) 
 
 # Updated connections for new VSC model with 3 inputs: [Vm, Va, Vdc]
 print("\nDEBUG: Before connect:")
 print(f"  VSC in_vars[0] (Vm): {vsc_mdl.in_vars[0].name} (uid={vsc_mdl.in_vars[0].uid})")
-print(f"  Bus2 out_vars[0]: {bus2.rms_model.model.out_vars[0].name} (uid={bus2.rms_model.model.out_vars[0].uid})")
+print(f"  Bus2 out_vars[0]: {bus2.rms_model.out_vars[0].name} (uid={bus2.rms_model.out_vars[0].uid})")
 
-vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])  # Vm
-vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])  # Va
-vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.model.out_vars[0]])  # Vdc
+vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])  # Vm
+vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.out_vars[1]])  # Va
+vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.out_vars[0]])  # Vdc
 
 print("\nDEBUG: After connect:")
 print(f"  VSC in_vars[0] (Vm): {vsc_mdl.in_vars[0].name} (uid={vsc_mdl.in_vars[0].uid})")
 
-#vsc_mdl.connect([vsc_mdl.in_vars[3]], [bus3.rms_model.model.out_vars[1]]) 
-#pv_cell_block.connect([pv_cell_block.in_vars[0]], [bus3.rms_model.model.out_vars[0]])
+#vsc_mdl.connect([vsc_mdl.in_vars[3]], [bus3.rms_model.out_vars[1]]) 
+#pv_cell_block.connect([pv_cell_block.in_vars[0]], [bus3.rms_model.out_vars[0]])
 
 # external mapping
 big_gen1 = Block(children=[genrow_mdl1])
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl1.out_vars[0]})
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl1.out_vars[1]})
 
-# add models to dyn_host
-line12_dynhost.model = line12_mdl
-load_dynhost.model = load_mdl
-gen_dynhost.model = big_gen1
-gen3_dynhost.model = dc_source
-
 # attach rms models to Veragrid objects
-line12.rms_model = line12_dynhost
-load1.rms_model = load_dynhost
-gen1.rms_model = gen_dynhost
-gen3.rms_model = gen3_dynhost
-gen3.rms_model.model.unify_blocks()
-vsc1.rms_model.model = vsc_mdl
+line12.rms_model = line12_mdl
+load1.rms_model = load_mdl
+gen1.rms_model = big_gen1
+gen3.rms_model = dc_source
+gen3.rms_model.unify_blocks()
+vsc1.rms_model = vsc_mdl
 
 # Check init_eqs BEFORE unify_blocks
 print("\nDEBUG: Before unify_blocks - checking child blocks init_eqs:")
@@ -331,15 +321,15 @@ for i, child in enumerate(vsc_mdl.children):
     for var, expr in list(child.init_eqs.items())[:3]:  # Show first 3
         print(f"    {var.name} = {expr}")
 
-vsc1.rms_model.model.unify_blocks()  # Merge init_eqs from child blocks
+vsc1.rms_model.unify_blocks()  # Merge init_eqs from child blocks
 
 # Debug: Check the external mapping of the VSC model
 print("\nDEBUG: VSC Model External Mapping:")
-for ref_type, var in vsc1.rms_model.model.external_mapping.items():
+for ref_type, var in vsc1.rms_model.external_mapping.items():
     print(f"  {ref_type.value}: {var.name} (uid={var.uid})")
 
 print("\nDEBUG: VSC Model init_eqs:")
-for var, expr in vsc1.rms_model.model.init_eqs.items():
+for var, expr in vsc1.rms_model.init_eqs.items():
     expr_vars = []
     if hasattr(expr, 'free_symbols'):
         expr_vars = [str(s) for s in expr.free_symbols]
@@ -350,12 +340,12 @@ for var, expr in vsc1.rms_model.model.init_eqs.items():
 # Set initial value for Vpv0 in the DC source to avoid None values
 # Get the DC voltage from bus3 power flow results
 Vdc_bus3 = abs(res.voltage[2])  # Bus 3 is the DC bus
-Vpv0_var = find_name_in_block('Vpv0', gen3.rms_model.model)
+Vpv0_var = find_name_in_block('Vpv0', gen3.rms_model)
 # Set the value in the event_dict (where Vpv0 is stored as a parameter)
 from VeraGridEngine.Utils.Symbolic.symbolic import Const
-gen3.rms_model.model.event_dict[Vpv0_var] = Const(Vdc_bus3 + 0.001)  # Slightly higher than Vdc
+gen3.rms_model.event_dict[Vpv0_var] = Const(Vdc_bus3 + 0.001)  # Slightly higher than Vdc
 
-Vpv0 = find_name_in_block('Vpv0', gen3.rms_model.model)
+Vpv0 = find_name_in_block('Vpv0', gen3.rms_model)
 
 # Find appropriate reference variable based on control mode
 if CONTROL1_MODE == ConverterControlType.Vm_dc:
@@ -368,8 +358,9 @@ else:
     ref_var = find_name_in_block('P_ref', vsc_mdl)
     print(f"Using P_ref for control mode {CONTROL1_MODE}")
 
-event1 = RmsEvent(device=gen3, parameter=Vpv0, time=.2, value=0.3)
-event2 = RmsEvent(device=vsc1, parameter=ref_var, time=.2, value=0.1)
+events_group = RmsEventsGroup("simulation1")
+event1 = RmsEvent(device=gen3, parameter=Vpv0, time=.2, value=0.3, group=events_group)
+event2 = RmsEvent(device=vsc1, parameter=ref_var, time=.2, value=0.1, group=events_group)
 grid.add_rms_event(event1)
 grid.add_rms_event(event2)
 
@@ -385,6 +376,8 @@ options = RmsOptions(time_step=0.001,
 problem = RmsProblemDae(grid=grid,
                         options=options,
                         pf_results=res)
+
+problem.set_events_group(events_group)
 
 solver = BackEulerImplicitIntegration(
     problem=problem,
@@ -417,8 +410,8 @@ plt.tight_layout()
 plt.title(f'VSC GFL Control: {CONTROL1_MODE.value} + {CONTROL2_MODE.value}')
 # plt.show()  # Disabled to prevent hanging
 
-pv_all = gen3.rms_model.model 
-vdc = find_name_in_block('Vdc', bus3.rms_model.model)
+pv_all = gen3.rms_model 
+vdc = find_name_in_block('Vdc', bus3.rms_model)
 v_d = find_name_in_block('vd', vsc_mdl)
 v_q = find_name_in_block('vq', vsc_mdl)
 v_d_c = find_name_in_block('v_d_c', vsc_mdl)
@@ -427,8 +420,8 @@ P = find_name_in_block('P', vsc_mdl)
 Q = find_name_in_block('Q', vsc_mdl)
 i_d = find_name_in_block('i_d', vsc_mdl)
 i_q = find_name_in_block('i_q', vsc_mdl)
-Idc = find_name_in_block('Idc', gen3.rms_model.model)
-Vdc = find_name_in_block('Vdc', bus3.rms_model.model)
+Idc = find_name_in_block('Idc', gen3.rms_model)
+Vdc = find_name_in_block('Vdc', bus3.rms_model)
 Pdc = find_name_in_block('Pdc', dc_source)
 
 plt.figure(figsize=(10, 6))

@@ -58,13 +58,20 @@ class Association:
         :return:
         """
         if self.api_object.idtag != self.api_object.idtag:
-            # Different refference objects
+            # Different reference objects
             return False
         if self.value != self.value:
             # different values
             return False
 
         return True
+
+    def copy(self) -> "Association":
+        """
+        copy
+        :return:
+        """
+        return Association(api_object=self.api_object, value=self.value)
 
 
 class Associations:
@@ -222,6 +229,16 @@ class Associations:
         Clear data
         """
         self._data.clear()
+
+    def copy(self):
+        """
+        Copy data
+        :return:
+        """
+        elm = Associations(device_type=self.device_type)
+        for key, val in self._data.items():
+            elm._data[key] = val.copy()
+        return elm
 
     def __eq__(self, other: "Associations") -> bool:
         """

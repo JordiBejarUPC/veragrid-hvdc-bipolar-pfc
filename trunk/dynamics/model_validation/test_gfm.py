@@ -25,9 +25,10 @@ from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
+
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.enumerations import ConverterControlType
 import VeraGridEngine.api as gce
 
@@ -86,57 +87,46 @@ pf_driver.run()
 res = pf_driver.results
 print('PF Voltage magnitudes (p.u.): ', abs(res.voltage))
 
-# Build dynamic_model_host
-line12_dynhost = DynamicModelHost()
-load_dynhost = DynamicModelHost()
-gen_dynhost = DynamicModelHost()
-gen3_dynhost = DynamicModelHost()
-vsc_dynhost = DynamicModelHost()
+
 
 # Initialize the RMS
 line12_mdl = block_deep_copy(get_line_rms_template(grid.rms_var_factory).block)
 load_mdl = block_deep_copy(ZIPLoadBuild(grid.rms_var_factory, Pl0 =-0.005, Ql0 =-0.001).block)
 genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.rms_var_factory).block)
 vsc_mdl = block_deep_copy(VscGfmBuild(grid.rms_var_factory).block)
-dc_source = block_deep_copy(DCVoltageSource(grid.rms_var_factory, bus3.rms_model.model.out_vars[0]).block)
+dc_source = block_deep_copy(DCVoltageSource(grid.rms_var_factory, bus3.rms_model.out_vars[0]).block)
 
 # Connections
-genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
+load_mdl.connect([load_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
 
-line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
-line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]]) 
+line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
+line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]]) 
 
-vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.rms_model.model.out_vars[0]])
-vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.model.out_vars[1]])
-vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.model.out_vars[0]])
+vsc_mdl.connect([vsc_mdl.in_vars[0]], [bus2.rms_model.out_vars[0]])
+vsc_mdl.connect([vsc_mdl.in_vars[1]], [bus2.rms_model.out_vars[1]])
+vsc_mdl.connect([vsc_mdl.in_vars[2]], [bus3.rms_model.out_vars[0]])
 
 # external mapping
 big_gen1 = Block(children=[genrow_mdl1])
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl1.out_vars[0]})
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl1.out_vars[1]})
 
-# add models to dyn_host
-line12_dynhost.model = line12_mdl
-load_dynhost.model = load_mdl
-gen_dynhost.model = big_gen1
-gen3_dynhost.model = dc_source
-vsc_dynhost.model = vsc_mdl
-
 # attach rms models to Veragrid objects
-line12.rms_model = line12_dynhost
-load1.rms_model = load_dynhost
-gen1.rms_model = gen_dynhost
-vsc1.rms_model = vsc_dynhost
-gen3.rms_model = gen3_dynhost
+line12.rms_model = line12_mdl
+load1.rms_model = load_mdl
+gen1.rms_model = big_gen1
+vsc1.rms_model = vsc_mdl
+gen3.rms_model = dc_source
 
 # Event: Change P_ref of GFM at t=0.5
 Pref = find_name_in_block('P_ref', vsc_mdl)
-event = RmsEvent(device=vsc1, parameter=Pref, time=0.5, value=0.6)
+events_group = RmsEventsGroup("simulation1")
+event = RmsEvent(device=vsc1, parameter=Pref, time=0.5, value=0.6, group=events_group)
 grid.add_rms_event(event)
 
 # Initialize RMS simulation
@@ -153,6 +143,8 @@ problem = RmsProblemDae(grid=grid,
                         options=options,
                         pf_results=res)
 
+problem.set_events_group(events_group)
+
 solver = BackEulerImplicitIntegration(
     problem=problem,
     t0=0,
@@ -164,7 +156,7 @@ solver = BackEulerImplicitIntegration(
 t, y, well_initialized, converged = solver.simulate()
 
 # Variables to follow
-Vm2 = find_name_in_block("Vm_", bus2.rms_model.model)
+Vm2 = find_name_in_block("Vm_", bus2.rms_model)
 omega = find_name_in_block("omega", vsc_mdl)
 P_vsc = find_name_in_block("P", vsc_mdl)
 Q_vsc = find_name_in_block("Q", vsc_mdl)
