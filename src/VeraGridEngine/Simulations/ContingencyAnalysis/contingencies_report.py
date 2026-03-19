@@ -513,7 +513,7 @@ class ContingencyResultsReport:
                 srap_max_power: float = 1400.0,
                 srap_deadband: float = 0.0,
                 contingency_deadband: float = 0.0,
-                srap_rever_to_nominal_rating: bool = False,
+                srap_revert_to_nominal_rating: bool = False,
                 multi_contingency: LinearMultiContingency = None,
                 PTDF: Mat = None,
                 available_power: Vec = None,
@@ -541,7 +541,7 @@ class ContingencyResultsReport:
         :param srap_max_power: Max amount of power to lower using SRAP conditions
         :param srap_deadband: (in %)
         :param contingency_deadband:
-        :param srap_rever_to_nominal_rating:
+        :param srap_revert_to_nominal_rating:
         :param multi_contingency: list of buses for SRAP conditions
         :param PTDF: PTDF for SRAP conditions
         :param available_power: Array of power available for SRAP
@@ -685,7 +685,7 @@ class ContingencyResultsReport:
                                                   bus_indices=indices,
                                                   sensitivities=sensitivities)
 
-                    if srap_rever_to_nominal_rating:
+                    if srap_revert_to_nominal_rating:
                         rate_goal = nc.passive_branch_data.rates[m]
 
                     else:
