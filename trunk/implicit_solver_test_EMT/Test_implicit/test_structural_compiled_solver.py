@@ -5,6 +5,12 @@ import numba as nb
 import numpy as np
 
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.diagnostic import (
+    NewtonDiagnosticsConfig,
+    NewtonTraceCollector,
+    maybe_apply_backtracking,
+    maybe_check_index1,
+)
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EagerEquationCompiler
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
@@ -422,6 +428,84 @@ class TestStructuralCompiledSolver(unittest.TestCase):
         rounded_updates = [round(v, 8) for v in updater.update_calls]
         self.assertIn(0.05, rounded_updates)
         self.assertIn(0.15, rounded_updates)
+
+    def test_structural_solvers_record_newton_trace_data(self) -> None:
+        for solver_class in (StructuralVectorizedSolver, StructuralCompiledSolver):
+            with self.subTest(solver=solver_class.__name__):
+                block, _ = build_repeated_decay_block(n_states=2, k_val=1.5)
+                problem = GenericEmtProblem(block, Var(f"t_{solver_class.__name__}"))
+                collector = NewtonTraceCollector()
+                problem.set_newton_trace_collector(collector)
+
+                solver = solver_class(
+                    problem=problem,
+                    t0=0.0,
+                    t_end=0.05,
+                    h=0.01,
+                    method=DynamicIntegrationMethod.DaeTrapezoidal,
+                    pred_method=DynamicIntegrationMethod.OdeEuler,
+                    dense_threshold=100,
+                    verbose=False,
+                )
+
+                x0 = np.array([1.0, 0.5], dtype=np.float64)
+                dx0 = -1.5 * x0
+                p0 = np.zeros(problem.get_variable_parameter_number(), dtype=np.float64)
+
+                solver.simulate(x0=x0, dx0=dx0, params0=p0)
+
+                self.assertGreater(len(collector.records), 0)
+                self.assertIn("solver", collector.records[0])
+                self.assertIn("res_norm_inf", collector.records[0])
+
+    def test_runtime_index1_check_detects_singular_algebraic_block(self) -> None:
+        jacobian = np.array(
+            [
+                [1.0, 0.0],
+                [0.0, 0.0],
+            ],
+            dtype=np.float64,
+        )
+        config = NewtonDiagnosticsConfig(
+            enable_index1_check=True,
+            index1_max_block_n=10,
+            enable_fallback=False,
+            compute_dense_cond=False,
+        )
+
+        with self.assertRaises(RuntimeError):
+            maybe_check_index1(jacobian, n_state=1, config=config)
+
+    def test_backtracking_helper_reduces_step_when_full_newton_worsens_residual(self) -> None:
+        x_iter = np.array([0.0], dtype=np.float64)
+        delta = np.array([10.0], dtype=np.float64)
+        trial_x = np.zeros(1, dtype=np.float64)
+        trial_res = np.zeros(1, dtype=np.float64)
+        config = NewtonDiagnosticsConfig(
+            enable_backtracking=True,
+            backtracking_beta=0.5,
+            backtracking_min_alpha=1.0e-3,
+            backtracking_max_iter=6,
+            enable_fallback=False,
+            compute_dense_cond=False,
+        )
+
+        def evaluate_residual(candidate_x: np.ndarray, out_res: np.ndarray) -> float:
+            out_res[0] = (candidate_x[0] - 1.0) ** 2
+            return float(abs(out_res[0]))
+
+        maybe_apply_backtracking(
+            x_iter,
+            delta,
+            res_norm=1.0,
+            trial_x=trial_x,
+            trial_res=trial_res,
+            evaluate_residual=evaluate_residual,
+            config=config,
+        )
+
+        self.assertLess(abs(x_iter[0] - 1.0), abs(10.0 - 1.0))
+        self.assertLess((x_iter[0] - 1.0) ** 2, 1.0)
 
 
 if __name__ == "__main__":

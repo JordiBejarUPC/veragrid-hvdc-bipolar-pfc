@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Tuple, Union, TYPE_CHECKING
+from typing import Tuple, Union
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -15,52 +15,53 @@ from VeraGridEngine.Devices.Substation.substation import Substation
 from VeraGridEngine.Devices.Substation.busbar import BusBar
 from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
+from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
+from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
-
-if TYPE_CHECKING:
-    from VeraGridEngine.Utils.Symbolic.block import Var
 
 
 class Bus(PhysicalDevice):
     __slots__ = (
-        'active',
+        '_active',
         '_active_prof',
         'color',
-        'Vnom',
-        'Vmin',
-        'Vm_cost',
-        'Vmax',
-        'Vm0',
-        'Va0',
+        '_Vnom',
+        '_Vmin',
+        '_Vm_cost',
+        '_Vmax',
+        '_Vm0',
+        '_Va0',
         '_Vmin_prof',
         '_Vmax_prof',
-        'angle_min',
-        'angle_max',
-        'angle_cost',
+        '_angle_min',
+        '_angle_max',
+        '_angle_cost',
         'Qmin_sum',
         'Qmax_sum',
-        'r_fault',
-        'x_fault',
+        '_r_fault',
+        '_x_fault',
         'country',
         'area',
         'zone',
         'substation',
         '_voltage_level',
         'type',
-        'is_slack',
-        'is_dc',
-        'x',
-        'y',
-        'h',
-        'w',
-        'longitude',
-        'latitude',
-        'is_grounded',
+        '_is_slack',
+        '_is_dc',
+        '_x',
+        '_y',
+        '_h',
+        '_w',
+        '_longitude',
+        '_latitude',
+        '_is_grounded',
         'graphic_type',
         '_bus_bar',
         '_rms_model',
         '_emt_model',
+        '_rms_template',
+        '_emt_template',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -110,10 +111,14 @@ class Bus(PhysicalDevice):
         GCProp(key='longitude', units='deg', tpe=float, definition='longitude of the bus.', profile_name=''),
         GCProp(key='latitude', units='deg', tpe=float, definition='latitude of the bus.', profile_name=''),
         GCProp(key='is_grounded', units='', tpe=bool, definition='Is this bus neutral grounded?.'),
-        GCProp(key='rms_model', units='', tpe=SubObjectType.DynamicModelHostType,
+        GCProp(key='rms_model', units='', tpe=SubObjectType.DaeBlockType,
                       definition='RMS dynamic model', display=False),
-        GCProp(key='emt_model', units='', tpe=SubObjectType.DynamicModelHostType,
+        GCProp(key='emt_model', units='', tpe=SubObjectType.DaeBlockType,
                       definition='EMT dynamic model', display=False),
+        GCProp(key='rms_template', units='', tpe=DeviceType.RmsModelTemplateDevice,
+               definition='RMS template used', display=True),
+        GCProp(key='emt_template', units='', tpe=DeviceType.EmtModelTemplateDevice,
+               definition='Emt template used', display=True),
         GCProp(key='color', units='', tpe=str, definition='Color to paint the element in the diagram',
                       is_color=True),
     )
@@ -286,33 +291,77 @@ class Bus(PhysicalDevice):
         self.color = color if color is not None else "#000000"
 
         # The model of the bus is fixed, then it can already be defined here
-        self._rms_model: DynamicModelHost = DynamicModelHost()
+        self._rms_model: Block = Block()
+        self._rms_template: RmsModelTemplate | None = None
 
-        self._emt_model: DynamicModelHost = DynamicModelHost()
-
-
+        self._emt_model: Block = Block()
+        self._emt_template: EmtModelTemplate | None = None
 
     @property
-    def rms_model(self) -> DynamicModelHost:
+    def rms_model(self) -> Block:
         """
-        RMS model
-        :return: DynamicModelHost
+        Get the RMS model
         """
         return self._rms_model
 
     @rms_model.setter
-    def rms_model(self, value: DynamicModelHost):
-        if isinstance(value, DynamicModelHost):
-            self._rms_model = value
+    def rms_model(self, val: Block):
+        if isinstance(val, Block):
+            self._rms_model = val
+        else:
+            raise ValueError(f"RMS model cannot accept {val}")
 
     @property
-    def emt_model(self) -> DynamicModelHost:
+    def emt_model(self) -> Block:
+        """
+        Get the EMT model
+        """
         return self._emt_model
 
     @emt_model.setter
-    def emt_model(self, value: DynamicModelHost):
-        if isinstance(value, DynamicModelHost):
-            self._emt_model = value
+    def emt_model(self, val: Block):
+        if isinstance(val, Block):
+            self._emt_model = val
+        else:
+            raise ValueError(f"EMT model cannot accept {val}")
+
+    @property
+    def rms_template(self) -> RmsModelTemplate | None:
+        """
+        Get the RMS model
+        """
+        return self._rms_template
+
+    @rms_template.setter
+    def rms_template(self, val: RmsModelTemplate):
+        if isinstance(val, RmsModelTemplate):
+            self._rms_template = val
+
+            if self.auto_update_enabled:
+                self.rms_model = val.block.copy()
+        elif val is None:
+            self._rms_template = None
+        else:
+            raise ValueError(f"RMS template cannot accept {val}")
+
+    @property
+    def emt_template(self) -> EmtModelTemplate | None:
+        """
+        Get the EMT template
+        """
+        return self._emt_template
+
+    @emt_template.setter
+    def emt_template(self, val: EmtModelTemplate):
+        if isinstance(val, EmtModelTemplate):
+            self._emt_template = val
+
+            if self.auto_update_enabled:
+                self.emt_model = val.block.copy()
+        elif val is None:
+            self._emt_template = None
+        else:
+            raise ValueError(f"EMT template cannot accept {val}")
 
     @property
     def active_prof(self) -> Profile:
@@ -541,3 +590,404 @@ class Bus(PhysicalDevice):
             self._bus_bar = val
         else:
             raise ValueError("The value must be a BusBar")
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def active(self) -> bool:
+        """
+        Get ``active``.
+
+        :return: bool
+        """
+        return self._active
+
+    @active.setter
+    def active(self, val: bool) -> None:
+        """
+        Set ``active``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._active = bool(val)
+
+    @property
+    def is_slack(self) -> bool:
+        """
+        Get ``is_slack``.
+
+        :return: bool
+        """
+        return self._is_slack
+
+    @is_slack.setter
+    def is_slack(self, val: bool) -> None:
+        """
+        Set ``is_slack``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._is_slack = bool(val)
+
+    @property
+    def is_dc(self) -> bool:
+        """
+        Get ``is_dc``.
+
+        :return: bool
+        """
+        return self._is_dc
+
+    @is_dc.setter
+    def is_dc(self, val: bool) -> None:
+        """
+        Set ``is_dc``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._is_dc = bool(val)
+
+    @property
+    def Vnom(self) -> float:
+        """
+        Get ``Vnom``.
+
+        :return: float
+        """
+        return self._Vnom
+
+    @Vnom.setter
+    def Vnom(self, val: float) -> None:
+        """
+        Set ``Vnom``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vnom = float(val)
+
+    @property
+    def Vm0(self) -> float:
+        """
+        Get ``Vm0``.
+
+        :return: float
+        """
+        return self._Vm0
+
+    @Vm0.setter
+    def Vm0(self, val: float) -> None:
+        """
+        Set ``Vm0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vm0 = float(val)
+
+    @property
+    def Va0(self) -> float:
+        """
+        Get ``Va0``.
+
+        :return: float
+        """
+        return self._Va0
+
+    @Va0.setter
+    def Va0(self, val: float) -> None:
+        """
+        Set ``Va0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Va0 = float(val)
+
+    @property
+    def Vmin(self) -> float:
+        """
+        Get ``Vmin``.
+
+        :return: float
+        """
+        return self._Vmin
+
+    @Vmin.setter
+    def Vmin(self, val: float) -> None:
+        """
+        Set ``Vmin``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vmin = float(val)
+
+    @property
+    def Vmax(self) -> float:
+        """
+        Get ``Vmax``.
+
+        :return: float
+        """
+        return self._Vmax
+
+    @Vmax.setter
+    def Vmax(self, val: float) -> None:
+        """
+        Set ``Vmax``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vmax = float(val)
+
+    @property
+    def Vm_cost(self) -> float:
+        """
+        Get ``Vm_cost``.
+
+        :return: float
+        """
+        return self._Vm_cost
+
+    @Vm_cost.setter
+    def Vm_cost(self, val: float) -> None:
+        """
+        Set ``Vm_cost``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vm_cost = float(val)
+
+    @property
+    def angle_min(self) -> float:
+        """
+        Get ``angle_min``.
+
+        :return: float
+        """
+        return self._angle_min
+
+    @angle_min.setter
+    def angle_min(self, val: float) -> None:
+        """
+        Set ``angle_min``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._angle_min = float(val)
+
+    @property
+    def angle_max(self) -> float:
+        """
+        Get ``angle_max``.
+
+        :return: float
+        """
+        return self._angle_max
+
+    @angle_max.setter
+    def angle_max(self, val: float) -> None:
+        """
+        Set ``angle_max``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._angle_max = float(val)
+
+    @property
+    def angle_cost(self) -> float:
+        """
+        Get ``angle_cost``.
+
+        :return: float
+        """
+        return self._angle_cost
+
+    @angle_cost.setter
+    def angle_cost(self, val: float) -> None:
+        """
+        Set ``angle_cost``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._angle_cost = float(val)
+
+    @property
+    def r_fault(self) -> float:
+        """
+        Get ``r_fault``.
+
+        :return: float
+        """
+        return self._r_fault
+
+    @r_fault.setter
+    def r_fault(self, val: float) -> None:
+        """
+        Set ``r_fault``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._r_fault = float(val)
+
+    @property
+    def x_fault(self) -> float:
+        """
+        Get ``x_fault``.
+
+        :return: float
+        """
+        return self._x_fault
+
+    @x_fault.setter
+    def x_fault(self, val: float) -> None:
+        """
+        Set ``x_fault``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._x_fault = float(val)
+
+    @property
+    def x(self) -> float:
+        """
+        Get ``x``.
+
+        :return: float
+        """
+        return self._x
+
+    @x.setter
+    def x(self, val: float) -> None:
+        """
+        Set ``x``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._x = float(val)
+
+    @property
+    def y(self) -> float:
+        """
+        Get ``y``.
+
+        :return: float
+        """
+        return self._y
+
+    @y.setter
+    def y(self, val: float) -> None:
+        """
+        Set ``y``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._y = float(val)
+
+    @property
+    def h(self) -> float:
+        """
+        Get ``h``.
+
+        :return: float
+        """
+        return self._h
+
+    @h.setter
+    def h(self, val: float) -> None:
+        """
+        Set ``h``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._h = float(val)
+
+    @property
+    def w(self) -> float:
+        """
+        Get ``w``.
+
+        :return: float
+        """
+        return self._w
+
+    @w.setter
+    def w(self, val: float) -> None:
+        """
+        Set ``w``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._w = float(val)
+
+    @property
+    def longitude(self) -> float:
+        """
+        Get ``longitude``.
+
+        :return: float
+        """
+        return self._longitude
+
+    @longitude.setter
+    def longitude(self, val: float) -> None:
+        """
+        Set ``longitude``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._longitude = float(val)
+
+    @property
+    def latitude(self) -> float:
+        """
+        Get ``latitude``.
+
+        :return: float
+        """
+        return self._latitude
+
+    @latitude.setter
+    def latitude(self, val: float) -> None:
+        """
+        Set ``latitude``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._latitude = float(val)
+
+    @property
+    def is_grounded(self) -> bool:
+        """
+        Get ``is_grounded``.
+
+        :return: bool
+        """
+        return self._is_grounded
+
+    @is_grounded.setter
+    def is_grounded(self, val: bool) -> None:
+        """
+        Set ``is_grounded``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._is_grounded = bool(val)

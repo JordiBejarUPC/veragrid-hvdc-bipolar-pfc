@@ -6,6 +6,7 @@ import numpy as np
 import sympy as sp
 from enum import Enum, auto
 from trunk.tensygrid.files._PolynomialMatrixBuilder_class import PolynomialMatrixBuilder
+from trunk.tensygrid.files._GenericMathematicalProblem import GenericMathematicalProblem
 
 class StabilityResult(object):
     """
@@ -60,7 +61,7 @@ class TestPolynomialStability(unittest.TestCase):
             '-xp20 + 0.5101*u4 + 0.3917'
         ])
         
-        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(eqs, ineqs=list(), verbose=False)
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=None, eqs=eqs, ineqs=list(), verbose=False)
         
         xOP: np.ndarray = np.array([-0.1668, -0.459, 0.5462, -1.3023, -0.4115, -0.5401, 1.3665, 0.7068, 0.6076, 0.9198,
                                     0.8994, 0.0327, -1.4159, -1.6809, 0.0378, 1.6635, 0.831, 1.0477, 1.7938, -0.4851])
@@ -74,6 +75,27 @@ class TestPolynomialStability(unittest.TestCase):
             
         for j in range(len(uOP)):
             v_dict[f'u{j+1}'] = float(uOP[j])
+        # --- 2. Instantiate the Compiler-Ready Object ---
+        print("Initializing Mathematical Problem...")
+
+        math_problem = GenericMathematicalProblem(eqs_str=eqs, xOP=xOP, uOP=uOP)
+        print(math_problem._state_eqs)
+        # --- 3. Quick Verification ---
+        algebraic_eqs: list[str] = list([str(expression) for expression in math_problem._algebraic_eqs])
+        state_eqs: list[str] = list([str(expression) for expression in math_problem._state_eqs])
+        algebraic_vars: list[str] = list([str(expression) for expression in math_problem._algebraic_vars])
+        state_vars: list[str] = list([str(expression) for expression in math_problem._state_vars])
+
+        print(f"\nState variables ({len(state_vars)}): {state_vars}")
+        print(f"\nAlgebraic variables ({len(algebraic_vars)}): {algebraic_vars}")
+
+        eqs: list[str] = algebraic_eqs + state_eqs
+        #print(f"\nNumber of equations: {len(eqs)}")
+        #print(f"\nEquation 1: {math_problem._algebraic_eqs}")
+        builder = PolynomialMatrixBuilder(
+            problem=math_problem,
+            verbose=True
+        )
 
         builder.linearize(v_dict)
         res: Tuple[Any, Any, Any, Any, bool, float] = builder.compute_stability()
@@ -98,7 +120,7 @@ class TestPolynomialStability(unittest.TestCase):
             'y2 - x2'
         ])
 
-        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(eqs, ineqs=list(), verbose=False)
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=None, eqs=eqs, ineqs=list(), verbose=False)
         
         xOP: np.ndarray = np.array([-0.5737, -0.8193, -0.1597])
         uOP: np.ndarray = np.array([-100.6109, -217.5716, 318.1824])
@@ -137,7 +159,7 @@ class TestPolynomialStability(unittest.TestCase):
             "y1 - dx1"
         ])
 
-        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(eqs, ineqs=list(), verbose=False)
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=None, eqs=eqs, ineqs=list(), verbose=False)
 
         # Operating point provided in the snippet
         v_dict: Dict[str, float] = {'dx1': 1.0, 'x1': 2.0, 'u1': 3.0, 'y1': 4.0, 'z1': 5.0}

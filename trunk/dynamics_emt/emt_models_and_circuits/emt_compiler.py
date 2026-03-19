@@ -145,7 +145,7 @@ def compile_emt(grid: MultiCircuit,
         bus_block.vars_glob_name2uid = vars_glob_name2uid
 
         # add bus block
-        bus_block.add(bus.emt_model.model)
+        bus_block.add(bus.emt_model)
 
         # store and initialize the block solver
         dta.set_bus_block(i=ii, block=bus_block)
@@ -273,8 +273,8 @@ def compile_emt(grid: MultiCircuit,
         G_inj[np.ix_(idx, idx)] += Gc  # elm.Gc is now 4x4
 
         # record block into the bus block
-        if not elm.emt_model.model.check_empty():
-            dta.set_bus_block(i=bus_idx, block=elm.emt_model.model)
+        if not elm.emt_model.check_empty():
+            dta.set_bus_block(i=bus_idx, block=elm.emt_model)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Generators
@@ -294,10 +294,10 @@ def compile_emt(grid: MultiCircuit,
         # Stamp the 4×4 matrix
         G_inj[np.ix_(idx, idx)] += Gc  # elm.Gc is now 4x4
 
-        if elm.emt_model.model.event_dict is not None:
+        if elm.emt_model.event_dict is not None:
             collect_events = {
                 key: {"times": [], "values": []}
-                for key in elm.emt_model.model.event_dict.keys()
+                for key in elm.emt_model.event_dict.keys()
             }
             # TODO: find events
             # find out if there are events affecting the device parameters
@@ -308,19 +308,19 @@ def compile_emt(grid: MultiCircuit,
                     collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
                     # TODO: implement the function in block: apply_event
                 for param, events_info in collect_events.items():
-                    default_value = copy.deepcopy(elm.emt_model.model.event_dict[param])
-                    elm.emt_model.model.event_dict[param] = piecewise(dta.tme,
+                    default_value = copy.deepcopy(elm.emt_model.event_dict[param])
+                    elm.emt_model.event_dict[param] = piecewise(dta.tme,
                                                                       np.array(events_info["times"]),
                                                                       np.array(events_info["values"]), default_value)
-            for state_var in elm.emt_model.model.state_vars:
+            for state_var in elm.emt_model.state_vars:
                 vars2device[state_var.uid] = elm
                 vars_glob_name2uid[state_var.name + elm.name] = state_var.uid
-            for algeb_var in elm.emt_model.model.algebraic_vars:
+            for algeb_var in elm.emt_model.algebraic_vars:
                 vars2device[algeb_var.uid] = elm
                 vars_glob_name2uid[algeb_var.name + elm.name] = algeb_var.uid
 
             # record block into the bus block
-            dta.set_bus_block(i=bus_idx, block=elm.emt_model.model)
+            dta.set_bus_block(i=bus_idx, block=elm.emt_model)
 
             # initialize generator variables ---------------------------------------------------------------------------
             init_guess: Dict[int, float] = dict()

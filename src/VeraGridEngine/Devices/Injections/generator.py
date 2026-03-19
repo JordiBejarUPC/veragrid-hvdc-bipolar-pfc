@@ -22,28 +22,33 @@ from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 class Generator(GeneratorParent):
     __slots__ = (
-        'enabled_dispatch',
+        '_enabled_dispatch',
         '_enabled_dispatch_prof',
-        'R1', 'X1', 'R0', 'X0', 'R2', 'X2',
-        'Pf',
+        '_R1',
+        '_X1',
+        '_R0',
+        '_X0',
+        '_R2',
+        '_X2',
+        '_Pf',
         '_Pf_prof',
-        'is_controlled',
+        '_is_controlled',
         '_Snom',
-        'Vset',
+        '_Vset',
         '_Vset_prof',
-        'use_reactive_power_curve',
+        '_use_reactive_power_curve',
         'qmin_set',
         'qmax_set',
         'q_curve',
         'custom_q_points',
-        'Cost2',
-        'Cost0',
-        'StartupCost',
-        'ShutdownCost',
-        'MinTimeUp',
-        'MinTimeDown',
-        'RampUp',
-        'RampDown',
+        '_Cost2',
+        '_Cost0',
+        '_StartupCost',
+        '_ShutdownCost',
+        '_MinTimeUp',
+        '_MinTimeDown',
+        '_RampUp',
+        '_RampDown',
         '_Qmin_prof',
         '_Qmax_prof',
         '_Cost2_prof',
@@ -60,8 +65,8 @@ class Generator(GeneratorParent):
         'Kp',
         'Ki',
         'Kw',
-        'must_run',
-        '_must_run_prof'
+        '_must_run',
+        '_must_run_prof',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -582,6 +587,7 @@ class Generator(GeneratorParent):
 
     @Qmax.setter
     def Qmax(self, val):
+        val = float(val)
         self.qmax_set = val
 
     @property
@@ -594,6 +600,7 @@ class Generator(GeneratorParent):
 
     @Qmin.setter
     def Qmin(self, val):
+        val = float(val)
         self.qmin_set = val
 
     @property
@@ -611,6 +618,7 @@ class Generator(GeneratorParent):
         if the reactive power curve was generated automatically, then it is refreshed
         :param val: float value
         """
+        val = float(val)
         self._Snom = val
 
     def __iadd__(self, other: "Generator"):
@@ -628,6 +636,388 @@ class Generator(GeneratorParent):
         self.Qmax += other.Qmax
         self.Qmin += other.Qmin
 
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def is_controlled(self) -> bool:
+        """
+        Get ``is_controlled``.
+
+        :return: bool
+        """
+        return self._is_controlled
+
+    @is_controlled.setter
+    def is_controlled(self, val: bool) -> None:
+        """
+        Set ``is_controlled``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._is_controlled = bool(val)
+
+    @property
+    def Pf(self) -> float:
+        """
+        Get ``Pf``.
+
+        :return: float
+        """
+        return self._Pf
+
+    @Pf.setter
+    def Pf(self, val: float) -> None:
+        """
+        Set ``Pf``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Pf = float(val)
+
+    @property
+    def Vset(self) -> float:
+        """
+        Get ``Vset``.
+
+        :return: float
+        """
+        return self._Vset
+
+    @Vset.setter
+    def Vset(self, val: float) -> None:
+        """
+        Set ``Vset``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vset = float(val)
+
+    @property
+    def use_reactive_power_curve(self) -> bool:
+        """
+        Get ``use_reactive_power_curve``.
+
+        :return: bool
+        """
+        return self._use_reactive_power_curve
+
+    @use_reactive_power_curve.setter
+    def use_reactive_power_curve(self, val: bool) -> None:
+        """
+        Set ``use_reactive_power_curve``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._use_reactive_power_curve = bool(val)
+
+    @property
+    def R1(self) -> float:
+        """
+        Get ``R1``.
+
+        :return: float
+        """
+        return self._R1
+
+    @R1.setter
+    def R1(self, val: float) -> None:
+        """
+        Set ``R1``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R1 = float(val)
+
+    @property
+    def X1(self) -> float:
+        """
+        Get ``X1``.
+
+        :return: float
+        """
+        return self._X1
+
+    @X1.setter
+    def X1(self, val: float) -> None:
+        """
+        Set ``X1``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._X1 = float(val)
+
+    @property
+    def R0(self) -> float:
+        """
+        Get ``R0``.
+
+        :return: float
+        """
+        return self._R0
+
+    @R0.setter
+    def R0(self, val: float) -> None:
+        """
+        Set ``R0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R0 = float(val)
+
+    @property
+    def X0(self) -> float:
+        """
+        Get ``X0``.
+
+        :return: float
+        """
+        return self._X0
+
+    @X0.setter
+    def X0(self, val: float) -> None:
+        """
+        Set ``X0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._X0 = float(val)
+
+    @property
+    def R2(self) -> float:
+        """
+        Get ``R2``.
+
+        :return: float
+        """
+        return self._R2
+
+    @R2.setter
+    def R2(self, val: float) -> None:
+        """
+        Set ``R2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R2 = float(val)
+
+    @property
+    def X2(self) -> float:
+        """
+        Get ``X2``.
+
+        :return: float
+        """
+        return self._X2
+
+    @X2.setter
+    def X2(self, val: float) -> None:
+        """
+        Set ``X2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._X2 = float(val)
+
+    @property
+    def Cost2(self) -> float:
+        """
+        Get ``Cost2``.
+
+        :return: float
+        """
+        return self._Cost2
+
+    @Cost2.setter
+    def Cost2(self, val: float) -> None:
+        """
+        Set ``Cost2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Cost2 = float(val)
+
+    @property
+    def Cost0(self) -> float:
+        """
+        Get ``Cost0``.
+
+        :return: float
+        """
+        return self._Cost0
+
+    @Cost0.setter
+    def Cost0(self, val: float) -> None:
+        """
+        Set ``Cost0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Cost0 = float(val)
+
+    @property
+    def StartupCost(self) -> float:
+        """
+        Get ``StartupCost``.
+
+        :return: float
+        """
+        return self._StartupCost
+
+    @StartupCost.setter
+    def StartupCost(self, val: float) -> None:
+        """
+        Set ``StartupCost``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._StartupCost = float(val)
+
+    @property
+    def ShutdownCost(self) -> float:
+        """
+        Get ``ShutdownCost``.
+
+        :return: float
+        """
+        return self._ShutdownCost
+
+    @ShutdownCost.setter
+    def ShutdownCost(self, val: float) -> None:
+        """
+        Set ``ShutdownCost``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._ShutdownCost = float(val)
+
+    @property
+    def MinTimeUp(self) -> float:
+        """
+        Get ``MinTimeUp``.
+
+        :return: float
+        """
+        return self._MinTimeUp
+
+    @MinTimeUp.setter
+    def MinTimeUp(self, val: float) -> None:
+        """
+        Set ``MinTimeUp``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._MinTimeUp = float(val)
+
+    @property
+    def MinTimeDown(self) -> float:
+        """
+        Get ``MinTimeDown``.
+
+        :return: float
+        """
+        return self._MinTimeDown
+
+    @MinTimeDown.setter
+    def MinTimeDown(self, val: float) -> None:
+        """
+        Set ``MinTimeDown``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._MinTimeDown = float(val)
+
+    @property
+    def RampUp(self) -> float:
+        """
+        Get ``RampUp``.
+
+        :return: float
+        """
+        return self._RampUp
+
+    @RampUp.setter
+    def RampUp(self, val: float) -> None:
+        """
+        Set ``RampUp``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._RampUp = float(val)
+
+    @property
+    def RampDown(self) -> float:
+        """
+        Get ``RampDown``.
+
+        :return: float
+        """
+        return self._RampDown
+
+    @RampDown.setter
+    def RampDown(self, val: float) -> None:
+        """
+        Set ``RampDown``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._RampDown = float(val)
+
+    @property
+    def enabled_dispatch(self) -> bool:
+        """
+        Get ``enabled_dispatch``.
+
+        :return: bool
+        """
+        return self._enabled_dispatch
+
+    @enabled_dispatch.setter
+    def enabled_dispatch(self, val: bool) -> None:
+        """
+        Set ``enabled_dispatch``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._enabled_dispatch = bool(val)
+
+    @property
+    def must_run(self) -> bool:
+        """
+        Get ``must_run``.
+
+        :return: bool
+        """
+        return self._must_run
+
+    @must_run.setter
+    def must_run(self, val: bool) -> None:
+        """
+        Set ``must_run``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._must_run = bool(val)
+
     # def initialize_rms(self, var_factory: VarFactory):
     #     """
     #     Initialize the RMS model
@@ -635,4 +1025,4 @@ class Generator(GeneratorParent):
     #
     #     if self._rms_model.empty():
     #         generator_template = get_complete_generator_template(var_factory)
-    #         self.rms_model.model = generator_template.block
+    #         self.rms_model = generator_template.block

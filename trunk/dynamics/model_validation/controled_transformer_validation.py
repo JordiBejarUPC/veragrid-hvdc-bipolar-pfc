@@ -24,9 +24,10 @@ from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
+
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, TapModuleControl, TapPhaseControl, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.enumerations import WindingType
 import VeraGridEngine.api as gce
 
@@ -211,10 +212,7 @@ print(f"Trafo flows (PF): Qf={res.Sf[trafo_idx_1].imag:.6f}, Qt={res.St[trafo_id
 print(f"Trafo 1 Tap Module: {trafo_1.tap_module:.6f}, Phase: {np.degrees(trafo_1.tap_phase):.6f} deg")
 print(f"Trafo 2 Tap Module: {trafo_2.tap_module:.6f}, Phase: {np.degrees(trafo_2.tap_phase):.6f} deg")
 
-# Build dynamic_model_host
-line12_dynhost = DynamicModelHost()
-load_dynhost = DynamicModelHost()
-gen_dynhost = DynamicModelHost()
+
 
 #Initialise the RMS
 line12_mdl = block_deep_copy(get_line_rms_template(grid.rms_var_factory).block)
@@ -229,34 +227,30 @@ else:
     
 genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.rms_var_factory).block)
 
-genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
+genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus3.rms_model.model.out_vars[0]])
+load_mdl.connect([load_mdl.in_vars[0]], [bus3.rms_model.out_vars[0]])
 
-line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+line12_mdl.connect([line12_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
-line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.model.out_vars[0]])
-line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.model.out_vars[1]])
+line12_mdl.connect([line12_mdl.in_vars[2]], [bus2.rms_model.out_vars[0]])
+line12_mdl.connect([line12_mdl.in_vars[3]], [bus2.rms_model.out_vars[1]])
 
 # external mapping
 big_gen1 = Block(children=[genrow_mdl1])
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl1.out_vars[0]})
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl1.out_vars[1]})
 
-# add models to dyn_host
-line12_dynhost.model = line12_mdl
-load_dynhost.model = load_mdl
-gen_dynhost.model = big_gen1
-
 # attach rms models to Veragrid objects
-line12.rms_model = line12_dynhost
-load1.rms_model = load_dynhost
-gen1.rms_model = gen_dynhost
+line12.rms_model = line12_mdl
+load1.rms_model = load_mdl
+gen1.rms_model = big_gen1
 
 Pl0 = find_name_in_block('P0', load_mdl)
-event = RmsEvent(device=load1, parameter=Pl0, time=.2, value=0.1)
+events_group = RmsEventsGroup("simulation1")
+event = RmsEvent(device=load1, parameter=Pl0, time=.2, value=0.1, group=events_group)
 grid.add_rms_event(event)
 
 options = RmsOptions(time_step=0.001,
@@ -271,6 +265,8 @@ options = RmsOptions(time_step=0.001,
 problem = RmsProblemDae(grid=grid,
                         options=options,
                         pf_results=res)
+
+problem.set_events_group(events_group)
 
 solver = BackEulerImplicitIntegration(
     problem=problem,
@@ -303,10 +299,10 @@ plt.xlim([0, xlim])
 plt.grid(True)
 
 plt.subplot(2, 1, 2)
-Pf1 = find_name_in_block('Pf', trafo_1.rms_model.model)
-Qf1 = find_name_in_block('Qf', trafo_1.rms_model.model)
-Pf2 = find_name_in_block('Pf', trafo_2.rms_model.model)
-Qf2 = find_name_in_block('Qf', trafo_2.rms_model.model)
+Pf1 = find_name_in_block('Pf', trafo_1.rms_model)
+Qf1 = find_name_in_block('Qf', trafo_1.rms_model)
+Pf2 = find_name_in_block('Pf', trafo_2.rms_model)
+Qf2 = find_name_in_block('Qf', trafo_2.rms_model)
 
 plt.plot(t, y[:, problem.get_var_idx(Pf1)], label="Pf Trafo 1 (pu)")
 plt.plot(t, y[:, problem.get_var_idx(Qf1)], label="Qf Trafo 1 (pu)")

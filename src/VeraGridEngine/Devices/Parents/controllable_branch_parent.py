@@ -17,28 +17,37 @@ from VeraGridEngine.Devices.profile import Profile
 
 class ControllableBranchParent(BranchParent):
     __slots__ = (
-        'tolerance',
-        'R', 'X', 'G', 'B',
-        'R0', 'X0', 'G0', 'B0',
-        'R2', 'X2', 'G2', 'B2',
+        '_tolerance',
+        '_R',
+        '_X',
+        '_G',
+        '_B',
+        '_R0',
+        '_X0',
+        '_G0',
+        '_B0',
+        '_R2',
+        '_X2',
+        '_G2',
+        '_B2',
         '_tap_changer',
-        'tap_module',
+        '_tap_module',
         '_tap_module_prof',
         '_tap_module_max',
         '_tap_module_min',
         '_tap_phase_control_mode',
         '_tap_phase_control_mode_prof',
-        'Pset',
+        '_Pset',
         '_Pset_prof',
-        'Qset',
+        '_Qset',
         '_Qset_prof',
-        'tap_phase',
+        '_tap_phase',
         '_tap_phase_prof',
         '_tap_phase_max',
         '_tap_phase_min',
         '_tap_module_control_mode',
         '_tap_module_control_mode_prof',
-        'vset',
+        '_vset',
         '_vset_prof',
         'regulation_branch',
         'regulation_bus',
@@ -477,6 +486,7 @@ class ControllableBranchParent(BranchParent):
 
     @tap_module_min.setter
     def tap_module_min(self, val: float):
+        val = float(val)
         if isinstance(val, float):
             self._tap_module_min = val
         else:
@@ -492,6 +502,7 @@ class ControllableBranchParent(BranchParent):
 
     @tap_module_max.setter
     def tap_module_max(self, val: float):
+        val = float(val)
         if isinstance(val, float):
             self._tap_module_max = val
         else:
@@ -507,6 +518,7 @@ class ControllableBranchParent(BranchParent):
 
     @tap_phase_min.setter
     def tap_phase_min(self, val: float):
+        val = float(val)
         if isinstance(val, float):
             self._tap_phase_min = val
         else:
@@ -522,6 +534,7 @@ class ControllableBranchParent(BranchParent):
 
     @tap_phase_max.setter
     def tap_phase_max(self, val: float):
+        val = float(val)
         if isinstance(val, float):
             self._tap_phase_max = val
         else:
@@ -650,3 +663,347 @@ class ControllableBranchParent(BranchParent):
         else:
             self.tap_module = self.tap_changer.get_tap_module()
             self.tap_phase = self.tap_changer.get_tap_phase()
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def R(self) -> float:
+        """
+        Get ``R``.
+
+        :return: float
+        """
+        return self._R
+
+    @R.setter
+    def R(self, val: float) -> None:
+        """
+        Set ``R``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R = float(val)
+
+    @property
+    def X(self) -> float:
+        """
+        Get ``X``.
+
+        :return: float
+        """
+        return self._X
+
+    @X.setter
+    def X(self, val: float) -> None:
+        """
+        Set ``X``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._X = float(val)
+
+    @property
+    def G(self) -> float:
+        """
+        Get ``G``.
+
+        :return: float
+        """
+        return self._G
+
+    @G.setter
+    def G(self, val: float) -> None:
+        """
+        Set ``G``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._G = float(val)
+
+    @property
+    def B(self) -> float:
+        """
+        Get ``B``.
+
+        :return: float
+        """
+        return self._B
+
+    @B.setter
+    def B(self, val: float) -> None:
+        """
+        Set ``B``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._B = float(val)
+
+    @property
+    def R0(self) -> float:
+        """
+        Get ``R0``.
+
+        :return: float
+        """
+        return self._R0
+
+    @R0.setter
+    def R0(self, val: float) -> None:
+        """
+        Set ``R0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R0 = float(val)
+
+    @property
+    def X0(self) -> float:
+        """
+        Get ``X0``.
+
+        :return: float
+        """
+        return self._X0
+
+    @X0.setter
+    def X0(self, val: float) -> None:
+        """
+        Set ``X0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._X0 = float(val)
+
+    @property
+    def G0(self) -> float:
+        """
+        Get ``G0``.
+
+        :return: float
+        """
+        return self._G0
+
+    @G0.setter
+    def G0(self, val: float) -> None:
+        """
+        Set ``G0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._G0 = float(val)
+
+    @property
+    def B0(self) -> float:
+        """
+        Get ``B0``.
+
+        :return: float
+        """
+        return self._B0
+
+    @B0.setter
+    def B0(self, val: float) -> None:
+        """
+        Set ``B0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._B0 = float(val)
+
+    @property
+    def R2(self) -> float:
+        """
+        Get ``R2``.
+
+        :return: float
+        """
+        return self._R2
+
+    @R2.setter
+    def R2(self, val: float) -> None:
+        """
+        Set ``R2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R2 = float(val)
+
+    @property
+    def X2(self) -> float:
+        """
+        Get ``X2``.
+
+        :return: float
+        """
+        return self._X2
+
+    @X2.setter
+    def X2(self, val: float) -> None:
+        """
+        Set ``X2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._X2 = float(val)
+
+    @property
+    def G2(self) -> float:
+        """
+        Get ``G2``.
+
+        :return: float
+        """
+        return self._G2
+
+    @G2.setter
+    def G2(self, val: float) -> None:
+        """
+        Set ``G2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._G2 = float(val)
+
+    @property
+    def B2(self) -> float:
+        """
+        Get ``B2``.
+
+        :return: float
+        """
+        return self._B2
+
+    @B2.setter
+    def B2(self, val: float) -> None:
+        """
+        Set ``B2``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._B2 = float(val)
+
+    @property
+    def tolerance(self) -> float:
+        """
+        Get ``tolerance``.
+
+        :return: float
+        """
+        return self._tolerance
+
+    @tolerance.setter
+    def tolerance(self, val: float) -> None:
+        """
+        Set ``tolerance``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._tolerance = float(val)
+
+    @property
+    def tap_module(self) -> float:
+        """
+        Get ``tap_module``.
+
+        :return: float
+        """
+        return self._tap_module
+
+    @tap_module.setter
+    def tap_module(self, val: float) -> None:
+        """
+        Set ``tap_module``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._tap_module = float(val)
+
+    @property
+    def vset(self) -> float:
+        """
+        Get ``vset``.
+
+        :return: float
+        """
+        return self._vset
+
+    @vset.setter
+    def vset(self, val: float) -> None:
+        """
+        Set ``vset``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._vset = float(val)
+
+    @property
+    def Qset(self) -> float:
+        """
+        Get ``Qset``.
+
+        :return: float
+        """
+        return self._Qset
+
+    @Qset.setter
+    def Qset(self, val: float) -> None:
+        """
+        Set ``Qset``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Qset = float(val)
+
+    @property
+    def tap_phase(self) -> float:
+        """
+        Get ``tap_phase``.
+
+        :return: float
+        """
+        return self._tap_phase
+
+    @tap_phase.setter
+    def tap_phase(self, val: float) -> None:
+        """
+        Set ``tap_phase``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._tap_phase = float(val)
+
+    @property
+    def Pset(self) -> float:
+        """
+        Get ``Pset``.
+
+        :return: float
+        """
+        return self._Pset
+
+    @Pset.setter
+    def Pset(self, val: float) -> None:
+        """
+        Set ``Pset``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Pset = float(val)

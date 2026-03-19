@@ -2224,15 +2224,15 @@ def convert_dgs_to_controllable_shunt_from_elmshnt(elmshnt: ElmShnt,
         b_steps, initial_step, bmin, bmax = _build_elmshnt_step_model(elmshnt=elmshnt, logger=logger)
 
         if int(elmshnt.iswitch) != 0:
-            is_controlled = True
+            control_mode=ShuntControlMode.Discrete
         else:
-            is_controlled = False
+            control_mode=ShuntControlMode.Locked
+
         vset: float = float(elmshnt.usetp)
 
         cshunt: dev.ControllableShunt = dev.ControllableShunt(
             name=name,
             idtag=_ref_id(elmshnt.ID),
-            is_nonlinear=False,
             number_of_steps=int(len(b_steps)),
             step=int(initial_step),
             g_per_step=0.0,
@@ -2243,7 +2243,7 @@ def convert_dgs_to_controllable_shunt_from_elmshnt(elmshnt: ElmShnt,
             Gmax=0.0,
             active=(elmshnt.outserv == 0),
             vset=vset,
-            is_controlled=is_controlled,
+            control_mode=control_mode,
             control_bus=bus,
         )
 
@@ -2299,7 +2299,6 @@ def convert_dgs_to_controllable_shunt(elmsvs: ElmSvs,
 
     bmin = float(elmsvs.qmin)
     bmax = float(elmsvs.qmax)
-
     vset = float(elmsvs.usetp)
 
     # Build a small stepped model for B so the device can represent bmin / 0 / bmax when applicable
@@ -2316,7 +2315,6 @@ def convert_dgs_to_controllable_shunt(elmsvs: ElmSvs,
     cshunt = dev.ControllableShunt(
         name=name,
         idtag=_ref_id(elmsvs.ID),
-        is_nonlinear=False,
         number_of_steps=int(len(b_steps)),
         step=int(initial_step),
         g_per_step=0.0,
@@ -2327,7 +2325,7 @@ def convert_dgs_to_controllable_shunt(elmsvs: ElmSvs,
         Gmax=0.0,
         active=(elmsvs.outserv == 0),
         vset=vset,
-        is_controlled=True,
+        control_mode=ShuntControlMode.Continuous,
         control_bus=bus
     )
 

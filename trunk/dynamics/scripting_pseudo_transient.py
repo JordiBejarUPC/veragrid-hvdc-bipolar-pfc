@@ -72,7 +72,7 @@ grid.add_line(line0)
 
 # load
 load = gce.Load(P= 9.999999, Q= 0.999999)
-load_mdl = load.rms_model.model
+load_mdl = load.rms_model
 grid.add_load(bus=bus1, api_obj=load)
 
 # Generators
@@ -139,24 +139,24 @@ gov1_mdl.connect([gov1_mdl.in_vars[1]], [genqec1_mdl.out_vars[4]])
 
 # connection with buses
 
-genqec1_mdl.connect([genqec1_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
-genqec1_mdl.connect([genqec1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
+genqec1_mdl.connect([genqec1_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+genqec1_mdl.connect([genqec1_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
 
 
-exc1_mdl.connect([exc1_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[0]])
+exc1_mdl.connect([exc1_mdl.in_vars[1]], [bus0.rms_model.out_vars[0]])
 
 
-line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.model.out_vars[1]])
+line0_mdl.connect([line0_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+line0_mdl.connect([line0_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-line0_mdl.connect([line0_mdl.in_vars[2]], [bus1.rms_model.model.out_vars[0]])
-line0_mdl.connect([line0_mdl.in_vars[3]], [bus1.rms_model.model.out_vars[1]])
+line0_mdl.connect([line0_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
+line0_mdl.connect([line0_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
 
 u_gov = find_name_in_block("u_gov1", gov1_mdl)
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.model.out_vars[0]])
-load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.model.out_vars[1]])
+load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
 
 
 big_gen1 = Block(children = [genqec1_mdl, exc1_mdl, gov1_mdl, stabil1_mdl])
@@ -170,13 +170,13 @@ big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec1_mdl.out_
 
 
 # attach rms models to Veragrid objects
-gen0.rms_model.model = big_gen1
+gen0.rms_model = big_gen1
 
 
-line0.rms_model.model = line0_mdl
+line0.rms_model = line0_mdl
 
 
-load.rms_model.model = load_mdl
+load.rms_model = load_mdl
 
 Pl0 = find_name_in_block('Pl0', load_mdl)
 event = RmsEvent(device=load, parameter=Pl0, time=.5, value=-0.12)

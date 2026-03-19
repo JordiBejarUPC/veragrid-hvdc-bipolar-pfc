@@ -11,21 +11,21 @@ from VeraGridEngine.Devices.Branches.tap_changer import TapChanger
 
 class TransformerType(EditableDevice):
     __slots__ = (
-        'HV',
-        'LV',
-        'Sn',
-        'Pcu',
-        'Pfe',
-        'I0',
-        'Vsc',
+        '_HV',
+        '_LV',
+        '_Sn',
+        '_Pcu',
+        '_Pfe',
+        '_I0',
+        '_Vsc',
         'GR_hv1',
         'GX_hv1',
         '_tap_changer',
         'conn_hv',
         'conn_lv',
-        'vector_group_number',
-        'capex',
-        'opex'
+        '_vector_group_number',
+        '_capex',
+        '_opex',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -151,6 +151,7 @@ class TransformerType(EditableDevice):
 
     @tap_module_min.setter
     def tap_module_min(self, val: float):
+        val = float(val)
         # this is a read only property
         pass
 
@@ -164,6 +165,7 @@ class TransformerType(EditableDevice):
 
     @tap_module_max.setter
     def tap_module_max(self, val: float):
+        val = float(val)
         # this is a read only property
         pass
 
@@ -177,6 +179,7 @@ class TransformerType(EditableDevice):
 
     @tap_phase_min.setter
     def tap_phase_min(self, val: float):
+        val = float(val)
         # this is a read only property
         pass
 
@@ -190,6 +193,7 @@ class TransformerType(EditableDevice):
 
     @tap_phase_max.setter
     def tap_phase_max(self, val: float):
+        val = float(val)
         # this is a read only property
         pass
 
@@ -203,6 +207,7 @@ class TransformerType(EditableDevice):
 
     @total_positions.setter
     def total_positions(self, value: int):
+        value = int(value)
         if isinstance(value, int):
             self._tap_changer.total_positions = value
         else:
@@ -218,6 +223,7 @@ class TransformerType(EditableDevice):
 
     @neutral_position.setter
     def neutral_position(self, value: int):
+        value = int(value)
         if isinstance(value, int):
             if 0 <= value < self._tap_changer.total_positions:
                 self._tap_changer.neutral_position = value
@@ -236,6 +242,7 @@ class TransformerType(EditableDevice):
 
     @dV.setter
     def dV(self, value: float):
+        value = float(value)
         if isinstance(value, float):
             self._tap_changer.dV = value
         else:
@@ -251,6 +258,7 @@ class TransformerType(EditableDevice):
 
     @asymmetry_angle.setter
     def asymmetry_angle(self, value: float):
+        value = float(value)
         if isinstance(value, float):
             self._tap_changer.asymmetry_angle = value
         else:
@@ -305,6 +313,198 @@ class TransformerType(EditableDevice):
                           dV=self.dV,
                           asymmetry_angle=self.asymmetry_angle,
                           tc_type=self.tc_type)
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def HV(self) -> float:
+        """
+        Get ``HV``.
+
+        :return: float
+        """
+        return self._HV
+
+    @HV.setter
+    def HV(self, val: float) -> None:
+        """
+        Set ``HV``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._HV = float(val)
+
+    @property
+    def LV(self) -> float:
+        """
+        Get ``LV``.
+
+        :return: float
+        """
+        return self._LV
+
+    @LV.setter
+    def LV(self, val: float) -> None:
+        """
+        Set ``LV``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._LV = float(val)
+
+    @property
+    def Sn(self) -> float:
+        """
+        Get ``Sn``.
+
+        :return: float
+        """
+        return self._Sn
+
+    @Sn.setter
+    def Sn(self, val: float) -> None:
+        """
+        Set ``Sn``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Sn = float(val)
+
+    @property
+    def Pcu(self) -> float:
+        """
+        Get ``Pcu``.
+
+        :return: float
+        """
+        return self._Pcu
+
+    @Pcu.setter
+    def Pcu(self, val: float) -> None:
+        """
+        Set ``Pcu``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Pcu = float(val)
+
+    @property
+    def Pfe(self) -> float:
+        """
+        Get ``Pfe``.
+
+        :return: float
+        """
+        return self._Pfe
+
+    @Pfe.setter
+    def Pfe(self, val: float) -> None:
+        """
+        Set ``Pfe``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Pfe = float(val)
+
+    @property
+    def I0(self) -> float:
+        """
+        Get ``I0``.
+
+        :return: float
+        """
+        return self._I0
+
+    @I0.setter
+    def I0(self, val: float) -> None:
+        """
+        Set ``I0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._I0 = float(val)
+
+    @property
+    def Vsc(self) -> float:
+        """
+        Get ``Vsc``.
+
+        :return: float
+        """
+        return self._Vsc
+
+    @Vsc.setter
+    def Vsc(self, val: float) -> None:
+        """
+        Set ``Vsc``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vsc = float(val)
+
+    @property
+    def capex(self) -> float:
+        """
+        Get ``capex``.
+
+        :return: float
+        """
+        return self._capex
+
+    @capex.setter
+    def capex(self, val: float) -> None:
+        """
+        Set ``capex``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._capex = float(val)
+
+    @property
+    def opex(self) -> float:
+        """
+        Get ``opex``.
+
+        :return: float
+        """
+        return self._opex
+
+    @opex.setter
+    def opex(self, val: float) -> None:
+        """
+        Set ``opex``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._opex = float(val)
+
+    @property
+    def vector_group_number(self) -> int:
+        """
+        Get ``vector_group_number``.
+
+        :return: int
+        """
+        return self._vector_group_number
+
+    @vector_group_number.setter
+    def vector_group_number(self, val: int) -> None:
+        """
+        Set ``vector_group_number``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._vector_group_number = int(val)
 
 
 def get_impedances(VH_bus: float, VL_bus: float, Sn: float, HV: float, LV: float,

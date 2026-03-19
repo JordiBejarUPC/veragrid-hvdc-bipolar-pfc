@@ -16,8 +16,16 @@ from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 class FluidInjectionTemplate(PhysicalDevice):
-    __slots__ = ('active', '_active_prof', 'efficiency', 'max_flow_rate',
-                 '_plant', '_generator', 'build_status', 'facility')
+    __slots__ = (
+        '_active',
+        '_active_prof',
+        '_efficiency',
+        '_max_flow_rate',
+        '_plant',
+        '_generator',
+        'build_status',
+        'facility',
+    )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key='active', units='', tpe=bool, definition='Is the load active?', profile_name='active_prof'),
@@ -124,3 +132,62 @@ class FluidInjectionTemplate(PhysicalDevice):
             self._active_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a active_prof')
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def active(self) -> bool:
+        """
+        Get ``active``.
+
+        :return: bool
+        """
+        return self._active
+
+    @active.setter
+    def active(self, val: bool) -> None:
+        """
+        Set ``active``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._active = bool(val)
+
+    @property
+    def efficiency(self) -> float:
+        """
+        Get ``efficiency``.
+
+        :return: float
+        """
+        return self._efficiency
+
+    @efficiency.setter
+    def efficiency(self, val: float) -> None:
+        """
+        Set ``efficiency``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._efficiency = float(val)
+
+    @property
+    def max_flow_rate(self) -> float:
+        """
+        Get ``max_flow_rate``.
+
+        :return: float
+        """
+        return self._max_flow_rate
+
+    @max_flow_rate.setter
+    def max_flow_rate(self, val: float) -> None:
+        """
+        Set ``max_flow_rate``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._max_flow_rate = float(val)

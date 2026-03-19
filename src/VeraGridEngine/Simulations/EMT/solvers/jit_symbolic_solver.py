@@ -15,8 +15,9 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, BinOp, UnOp
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import (with_newton_diagnostics, NewtonDiagnosticsConfig,
-                                                      NewtonSolveContext, dense_lstsq_fallback,
-                                                      sparse_lsqr_fallback)
+                                                       NewtonSolveContext, dense_lstsq_fallback,
+                                                       sparse_lsqr_fallback, maybe_check_index1,
+                                                       maybe_apply_backtracking)
 from VeraGridEngine.basic_structures import Vec, Mat, IntVec, CscMat
 
 
@@ -241,7 +242,7 @@ class JitSymbolicSolver:
         'problem', 't0', 't_end', 'h', 'method', 'pred_method', 'dense_threshold', 'verbose',
         'steps', 't', 'y', 'dy', 'jit_kernels', 'jit_jacobian_symbolic',
         'state_vars', 'algebraic_vars', 'state_eqs', 'algebraic_eqs', 'diff_vars',
-        'jit_compiler', '_residual_debug_info'
+        'jit_compiler', '_residual_debug_info', '_newton_diag_config'
     ]
 
     def __init__(self,
@@ -252,7 +253,8 @@ class JitSymbolicSolver:
                  method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
                  pred_method:DynamicIntegrationMethod = None,
                  dense_threshold: int = 100,
-                 verbose: bool = False)-> None:
+                 verbose: bool = False,
+                 newton_diag_config: NewtonDiagnosticsConfig | None = None)-> None:
         """
         :param problem: The DAE problem definition.
         :param t0: Initial time.
@@ -271,6 +273,12 @@ class JitSymbolicSolver:
         self.pred_method = pred_method
         self.dense_threshold = dense_threshold
         self.verbose = verbose
+        self._newton_diag_config = newton_diag_config or NewtonDiagnosticsConfig(
+            compute_dense_cond=False,
+            enable_fallback=False,
+            enable_index1_check=False,
+            enable_backtracking=False,
+        )
 
         self.steps = int(np.ceil((t_end - t0) / h))
         self.t: Vec = np.empty(self.steps + 1)
@@ -303,7 +311,8 @@ class JitSymbolicSolver:
         :type method: DynamicIntegrationMethod
         :rtype: None
         """
-        print(f"--- [JIT] Compiling Implicit Kernel ({method}) ---")
+        if self.verbose:
+            print(f"--- [JIT] Compiling Implicit Kernel ({method}) ---")
 
         sorted_vars: List[Any] = list()
         sorted_vars.extend(self.state_vars)
@@ -319,6 +328,7 @@ class JitSymbolicSolver:
 
         equations: List[Expr] = list()
         residual_debug_info: List[dict] = list()
+        synthetic_diff_terms: List[Var] = [Var(name=f"d_{sv.name}", base_var=sv) for sv in self.state_vars]
 
         # for i, rhs in enumerate(self.state_eqs):
         #     # sv = self.state_vars[i]
@@ -327,23 +337,17 @@ class JitSymbolicSolver:
         #     equations.append(d_term - rhs)
 
         for i, rhs in enumerate(self.state_eqs):
-            d_term = self.diff_vars[i]  # real associated diff_var
+            sv = self.state_vars[i]
+            d_term = synthetic_diff_terms[i]
 
             equations.append(d_term - rhs)
 
-            sv = self.state_vars[i]
             residual_debug_info.append({
                 "kind": "STATE",
                 "label": f"d_{sv.name} - rhs_{sv.name}",
                 "var_name": sv.name,
                 "state_idx": var_uid_to_global_idx[sv.uid],
             })
-
-
-        if len(self.algebraic_eqs) != len(self.algebraic_vars):
-            print("[WARNING] len(algebraic_eqs) != len(algebraic_vars)")
-            print(f"          algebraic_eqs  = {len(self.algebraic_eqs)}")
-            print(f"          algebraic_vars = {len(self.algebraic_vars)}")
 
         equations.extend(self.algebraic_eqs)
 
@@ -409,7 +413,8 @@ class JitSymbolicSolver:
         else:
             pass
 
-        print(f"--- [JIT-SD] Compiling Hybrid Symbolic Jacobian ({'SPARSE' if use_sparse else 'DENSE'}) ---")
+        if self.verbose:
+            print(f"--- [JIT-SD] Compiling Hybrid Symbolic Jacobian ({'SPARSE' if use_sparse else 'DENSE'}) ---")
         t0 = time.time()
 
         sorted_vars: List[Any] = list()
@@ -425,11 +430,12 @@ class JitSymbolicSolver:
             var_uid_to_idx[v.uid] = i
 
         equations: List[Expr] = list()
+        synthetic_diff_terms: List[Var] = [Var(name=f"d_{sv.name}", base_var=sv) for sv in self.state_vars]
 
         for i, rhs in enumerate(self.state_eqs):
-            d_term = self.diff_vars[i]
+            d_term = synthetic_diff_terms[i]
             equations.append(d_term - rhs)
-        base_var_uid_to_diff_var: dict = {dv.base_var.uid: dv for dv in self.diff_vars}
+        base_var_uid_to_diff_var: dict = {sv.uid: synthetic_diff_terms[i] for i, sv in enumerate(self.state_vars)}
         equations.extend(self.algebraic_eqs)
 
         N = len(sorted_vars)
@@ -473,7 +479,8 @@ class JitSymbolicSolver:
                     else:
                         pass
 
-            print(f"   [JIT-SD] Topology Analysis: {nnz} non-zeros (Sparsity: {1.0 - nnz / (N ** 2):.2%})")
+            if self.verbose:
+                print(f"   [JIT-SD] Topology Analysis: {nnz} non-zeros (Sparsity: {1.0 - nnz / (N ** 2):.2%})")
         else:
             for r, eq in enumerate(equations):
                 for c, v in enumerate(sorted_vars):
@@ -514,7 +521,8 @@ class JitSymbolicSolver:
         )
 
         self.jit_jacobian_symbolic[cache_key] = evaluator_obj
-        print(f"   [JIT-SD] Compilation finished in {time.time() - t0:.4f}s")
+        if self.verbose:
+            print(f"   [JIT-SD] Compilation finished in {time.time() - t0:.4f}s")
 
     def simulate(self,
                  x0: Union[Vec | None] = None,
@@ -580,6 +588,8 @@ class JitSymbolicSolver:
         dx_prev = dx0.copy()
         x_prev2 = x0.copy()
         x_iter = x0.copy()
+        trial_x = np.zeros_like(x_iter)
+        trial_res = np.zeros(n_eqs, dtype=np.float64)
 
         static_vals = np.array([c.value for c in self.problem.get_parameters_values()])
         n_event_params = self.problem.get_variable_parameter_number()
@@ -587,16 +597,44 @@ class JitSymbolicSolver:
         if params0 is not None:
             ev_params = params0.copy()
         else:
-            ev_params = np.zeros(n_event_params, dtype=np.float64)
+            # ev_params = np.zeros(n_event_params, dtype=np.float64)
+            ev_params_list = [c for c in self.problem.event_params_values]
+            ev_params = np.array([float(val) if val is not None else 0.0 for val in ev_params_list], dtype=np.float64)
+
+        if boundary_updater is not None:
+            ev_params = self.problem.def_event_params_fn(ev_params, float(self.t0))
+            full_params0 = np.concatenate((ev_params, static_vals))
+            boundary_updater.update(float(self.t0), x_prev, full_params0)
+            ev_params[:] = full_params0[:len(ev_params)]
 
         trace_collector = self.problem.get_newton_trace_collector()
+        diag_cfg = self._newton_diag_config
+        diagnostics_enabled: bool = (
+            trace_collector is not None
+            or diag_cfg.compute_dense_cond
+            or diag_cfg.enable_fallback
+            or diag_cfg.enable_index1_check
+            or diag_cfg.enable_backtracking
+        )
 
-        diag_cfg = NewtonDiagnosticsConfig(step_norm_explode=1e6, dense_cond_warn=1e12, compute_dense_cond=False,
-                                           enable_fallback=True)
-        dense_solve = with_newton_diagnostics(np.linalg.solve, fallback_solve=dense_lstsq_fallback,
-                                              collector=trace_collector, config=diag_cfg, solver_name="dense")
-        sparse_solve = with_newton_diagnostics(sp.linalg.spsolve, fallback_solve=sparse_lsqr_fallback,
-                                               collector=trace_collector, config=diag_cfg, solver_name="sparse")
+        dense_solve = None
+        sparse_solve = None
+
+        if diagnostics_enabled:
+            dense_solve = with_newton_diagnostics(
+                np.linalg.solve,
+                fallback_solve=dense_lstsq_fallback,
+                collector=trace_collector,
+                config=diag_cfg,
+                solver_name="dense",
+            )
+            sparse_solve = with_newton_diagnostics(
+                sp.linalg.spsolve,
+                fallback_solve=sparse_lsqr_fallback,
+                collector=trace_collector,
+                config=diag_cfg,
+                solver_name="sparse",
+            )
 
         if self.verbose:
             print(f"-> Starting JIT Simulation ({method}, {self.steps} steps)...")
@@ -683,6 +721,16 @@ class JitSymbolicSolver:
 
                 x_iter[:] = x_prev
                 x_iter[:n_states] = x_prev[:n_states] + h_eff * dx_prev[:n_states]
+
+                if i == 0 and is_first_local_step and method == DynamicIntegrationMethod.DaeTrapezoidal:
+                    predictor = Predictor(n_states=n_states)
+                    predictor.predict(
+                        x_iter=x_iter,
+                        x_prev=x_prev,
+                        dx_prev=dx_prev,
+                        h=h_eff,
+                        pred_method=self.pred_method,
+                    )
 
                 for k in range(15):
                     ctx = NewtonSolveContext(
@@ -818,12 +866,38 @@ class JitSymbolicSolver:
                         history2=x_prev2
                     )
 
-                    if use_dense_solver:
-                        delta = dense_solve(J_final, -res, ctx)
-                    else:
-                        delta = sparse_solve(J_final, -res, ctx)
+                    if diagnostics_enabled:
+                        maybe_check_index1(J_final, n_states, ctx=ctx, config=diag_cfg)
 
-                    x_iter += delta
+                    if use_dense_solver:
+                        if diagnostics_enabled:
+                            delta = dense_solve(J_final, -res, ctx)
+                        else:
+                            delta = np.linalg.solve(J_final, -res)
+                    else:
+                        if diagnostics_enabled:
+                            delta = sparse_solve(J_final, -res, ctx)
+                        else:
+                            delta = sp.linalg.spsolve(J_final, -res)
+
+                    if diag_cfg.enable_backtracking:
+                        def _evaluate_trial_residual(candidate_x: Vec, out_res: Vec) -> float:
+                            out_res[:] = 0.0
+                            for candidate_kernel in kernel_list_eff:
+                                candidate_kernel(candidate_x, full_params, x_prev, dx_prev, h_eff, out_res, x_prev2)
+                            return float(np.linalg.norm(out_res, np.inf))
+
+                        maybe_apply_backtracking(
+                            x_iter,
+                            delta,
+                            float(np.linalg.norm(res, np.inf)),
+                            trial_x,
+                            trial_res,
+                            evaluate_residual=_evaluate_trial_residual,
+                            config=diag_cfg,
+                        )
+                    else:
+                        x_iter += delta
 
                 if method == DynamicIntegrationMethod.DaeTrapezoidal:
                     dx_prev[:n_states] = (

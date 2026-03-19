@@ -113,7 +113,7 @@ class Transformer3W(PhysicalDevice):
         '_cn1',
         '_cn2',
         '_cn3',
-        'active',
+        '_active',
         '_active_prof',
         '_V1',
         '_V2',
@@ -138,8 +138,8 @@ class Transformer3W(PhysicalDevice):
         '_winding1',
         '_winding2',
         '_winding3',
-        'x',
-        'y',
+        '_x',
+        '_y',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -398,6 +398,7 @@ class Transformer3W(PhysicalDevice):
 
     @V1.setter
     def V1(self, val: float):
+        val = float(val)
         self._V1 = val
         self.winding1.HV = val
 
@@ -410,6 +411,7 @@ class Transformer3W(PhysicalDevice):
 
     @V2.setter
     def V2(self, val: float):
+        val = float(val)
         self._V2 = val
         self.winding2.HV = val
 
@@ -422,6 +424,7 @@ class Transformer3W(PhysicalDevice):
 
     @V3.setter
     def V3(self, val: float):
+        val = float(val)
         self._V3 = val
         self.winding3.HV = val
 
@@ -486,6 +489,7 @@ class Transformer3W(PhysicalDevice):
 
     @r12.setter
     def r12(self, val: float):
+        val = float(val)
         self._r12 = val
         self.compute_delta_to_star()
 
@@ -498,6 +502,7 @@ class Transformer3W(PhysicalDevice):
 
     @r23.setter
     def r23(self, val: float):
+        val = float(val)
         self._r23 = val
         self.compute_delta_to_star()
 
@@ -510,6 +515,7 @@ class Transformer3W(PhysicalDevice):
 
     @r31.setter
     def r31(self, val: float):
+        val = float(val)
         self._r31 = val
         self.compute_delta_to_star()
 
@@ -522,6 +528,7 @@ class Transformer3W(PhysicalDevice):
 
     @x12.setter
     def x12(self, val: float):
+        val = float(val)
         self._x12 = val
         self.compute_delta_to_star()
 
@@ -534,6 +541,7 @@ class Transformer3W(PhysicalDevice):
 
     @x23.setter
     def x23(self, val: float):
+        val = float(val)
         self._x23 = val
         self.compute_delta_to_star()
 
@@ -546,6 +554,7 @@ class Transformer3W(PhysicalDevice):
 
     @x31.setter
     def x31(self, val: float):
+        val = float(val)
         self._x31 = val
         self.compute_delta_to_star()
 
@@ -558,6 +567,7 @@ class Transformer3W(PhysicalDevice):
 
     @rate1.setter
     def rate1(self, val: float):
+        val = float(val)
         self._rate1 = val
         self.compute_delta_to_star()
 
@@ -570,6 +580,7 @@ class Transformer3W(PhysicalDevice):
 
     @rate2.setter
     def rate2(self, val: float):
+        val = float(val)
         self._rate2 = val
         self.compute_delta_to_star()
 
@@ -582,6 +593,7 @@ class Transformer3W(PhysicalDevice):
 
     @rate3.setter
     def rate3(self, val: float):
+        val = float(val)
         self._rate3 = val
         self.compute_delta_to_star()
 
@@ -595,6 +607,7 @@ class Transformer3W(PhysicalDevice):
 
     @Pcu12.setter
     def Pcu12(self, value: float) -> None:
+        value = float(value)
         self._Pcu12 = value
         self._recalc_from_definition(Sbase=100)
 
@@ -609,6 +622,7 @@ class Transformer3W(PhysicalDevice):
 
     @Pcu23.setter
     def Pcu23(self, value: float) -> None:
+        value = float(value)
         self._Pcu23 = value
         self._recalc_from_definition(Sbase=100)
 
@@ -623,6 +637,7 @@ class Transformer3W(PhysicalDevice):
 
     @Pcu31.setter
     def Pcu31(self, value: float) -> None:
+        value = float(value)
         self._Pcu31 = value
         self._recalc_from_definition(Sbase=100)
 
@@ -637,6 +652,7 @@ class Transformer3W(PhysicalDevice):
 
     @Vsc12.setter
     def Vsc12(self, value: float) -> None:
+        value = float(value)
         self._Vsc12 = value
         self._recalc_from_definition(Sbase=100)
 
@@ -651,6 +667,7 @@ class Transformer3W(PhysicalDevice):
 
     @Vsc23.setter
     def Vsc23(self, value: float) -> None:
+        value = float(value)
         self._Vsc23 = value
         self._recalc_from_definition(Sbase=100)
 
@@ -665,6 +682,7 @@ class Transformer3W(PhysicalDevice):
 
     @Vsc31.setter
     def Vsc31(self, value: float) -> None:
+        value = float(value)
         self._Vsc31 = value
         self._recalc_from_definition(Sbase=100)
 
@@ -679,6 +697,7 @@ class Transformer3W(PhysicalDevice):
 
     @Pfe.setter
     def Pfe(self, value: float) -> None:
+        value = float(value)
         self._Pfe = value
         self._recalc_from_definition(Sbase=100)
 
@@ -693,6 +712,7 @@ class Transformer3W(PhysicalDevice):
 
     @I0.setter
     def I0(self, value: float) -> None:
+        value = float(value)
         self._I0 = value
         self._recalc_from_definition(Sbase=100)
 
@@ -815,3 +835,62 @@ class Transformer3W(PhysicalDevice):
         self._rate3 = Sn3
 
         self._recalc_from_definition(Sbase)
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def active(self) -> bool:
+        """
+        Get ``active``.
+
+        :return: bool
+        """
+        return self._active
+
+    @active.setter
+    def active(self, val: bool) -> None:
+        """
+        Set ``active``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._active = bool(val)
+
+    @property
+    def x(self) -> float:
+        """
+        Get ``x``.
+
+        :return: float
+        """
+        return self._x
+
+    @x.setter
+    def x(self, val: float) -> None:
+        """
+        Set ``x``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._x = float(val)
+
+    @property
+    def y(self) -> float:
+        """
+        Get ``y``.
+
+        :return: float
+        """
+        return self._y
+
+    @y.setter
+    def y(self, val: float) -> None:
+        """
+        Set ``y``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._y = float(val)

@@ -362,24 +362,33 @@ def compute_current_loads(bus_idx: IntVec,
 
         elif delta and ab_connected:
 
-            Iab = np.conj(Idelta[ab] / np.sqrt(3)) * np.exp(1j * voltage_angle_ab)
-
-            I[a2] = -Iab
-            I[b2] = -(-Iab)
+            if a2 >= 0 and b2 >= 0:
+                Iab = np.conj(Idelta[ab] / np.sqrt(3)) * np.exp(1j * voltage_angle_ab)
+                I[a2] = -Iab
+                I[b2] = -(-Iab)
+            else:
+                I[a2] = zero_load
+                I[b2] = zero_load
 
         elif delta and bc_connected:
 
-            Ibc = np.conj(Idelta[bc] / np.sqrt(3)) * np.exp(1j * voltage_angle_bc)
-
-            I[b2] = -Ibc
-            I[c2] = -(-Ibc)
+            if b2 >= 0 and c2 >= 0:
+                Ibc = np.conj(Idelta[bc] / np.sqrt(3)) * np.exp(1j * voltage_angle_bc)
+                I[b2] = -Ibc
+                I[c2] = -(-Ibc)
+            else:
+                I[b2] = zero_load
+                I[c2] = zero_load
 
         elif delta and ca_connected:
 
-            Ica = np.conj(Idelta[ca] / np.sqrt(3)) * np.exp(1j * voltage_angle_ca)
-
-            I[a2] = -(-Ica)
-            I[c2] = -Ica
+            if c2 >= 0 and a2 >= 0:
+                Ica = np.conj(Idelta[ca] / np.sqrt(3)) * np.exp(1j * voltage_angle_ca)
+                I[a2] = -(-Ica)
+                I[c2] = -Ica
+            else:
+                I[a2] = zero_load
+                I[c2] = zero_load
 
         elif star and a_connected and b_connected and c_connected and n_connected:
 
@@ -566,18 +575,30 @@ def compute_power_loads(bus_idx: IntVec,
 
         elif delta and ab_connected:
 
-            I[a2] -= np.conj(Sdelta[ab] / (V[a2] - V[b2]))
-            I[b2] -= np.conj(Sdelta[ab] / (V[b2] - V[a2]))
+            if a2 >= 0 and b2 >= 0:
+                I[a2] -= np.conj(Sdelta[ab] / (V[a2] - V[b2]))
+                I[b2] -= np.conj(Sdelta[ab] / (V[b2] - V[a2]))
+            else:
+                I[a2] -= zero_load
+                I[b2] -= zero_load
 
         elif delta and bc_connected:
 
-            I[b2] -= np.conj(Sdelta[bc] / (V[b2] - V[c2]))
-            I[c2] -= np.conj(Sdelta[bc] / (V[c2] - V[b2]))
+            if b2 >= 0 and c2 >= 0:
+                I[b2] -= np.conj(Sdelta[bc] / (V[b2] - V[c2]))
+                I[c2] -= np.conj(Sdelta[bc] / (V[c2] - V[b2]))
+            else:
+                I[b2] -= zero_load
+                I[c2] -= zero_load
 
         elif delta and ca_connected:
 
-            I[c2] -= np.conj(Sdelta[ca] / (V[c2] - V[a2]))
-            I[a2] -= np.conj(Sdelta[ca] / (V[a2] - V[c2]))
+            if c2 >= 0 and a2 >= 0:
+                I[c2] -= np.conj(Sdelta[ca] / (V[c2] - V[a2]))
+                I[a2] -= np.conj(Sdelta[ca] / (V[a2] - V[c2]))
+            else:
+                I[c2] -= zero_load
+                I[a2] -= zero_load
 
         elif star and a_connected and b_connected and c_connected and n_connected:
 

@@ -18,6 +18,7 @@ from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbol
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
+from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
 
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 
@@ -30,7 +31,8 @@ class EmtSimulationDriver(DriverTemplate):
     Dynamic wrapper to use with Qt
     """
 
-    def __init__(self, grid: MultiCircuit,
+    def __init__(self,
+                 grid: MultiCircuit,
                  options: EmtOptions,
                  pf_results: PowerFlowResults3Ph | None,
                  engine: EngineType = EngineType.VeraGrid):
@@ -56,11 +58,7 @@ class EmtSimulationDriver(DriverTemplate):
 
         self.options = options
 
-        self.results = EmtResults(values=np.empty(0),
-                                  time_array=pd.DatetimeIndex(pd.to_datetime(np.empty(0))),
-                                  uid2idx=dict(),
-                                  vars_glob_name2uid=dict(),
-                                  devices=[])
+        self.results = EmtResults | None = None
 
         self.line_states = {}
 
@@ -100,12 +98,29 @@ class EmtSimulationDriver(DriverTemplate):
                                 options=self.options,
                                 pf_results=self.pf_results)
 
+        newton_diag_config = NewtonDiagnosticsConfig(
+            step_norm_explode=self.options.newton_step_norm_explode,
+            dense_cond_warn=self.options.newton_dense_cond_warn,
+            compute_dense_cond=self.options.newton_compute_dense_cond,
+            dense_cond_max_n=self.options.newton_dense_cond_max_n,
+            enable_fallback=self.options.newton_enable_fallback,
+            enable_index1_check=self.options.newton_enable_index1_check,
+            index1_max_block_n=self.options.newton_index1_max_block_n,
+            index1_warn_pivot_ratio=self.options.newton_index1_warn_pivot_ratio,
+            index1_fail_pivot_ratio=self.options.newton_index1_fail_pivot_ratio,
+            enable_backtracking=self.options.newton_enable_backtracking,
+            backtracking_beta=self.options.newton_backtracking_beta,
+            backtracking_min_alpha=self.options.newton_backtracking_min_alpha,
+            backtracking_max_iter=self.options.newton_backtracking_max_iter,
+        )
+
         solver = self.solvers_dict[self.options.solver](
             problem=problem,
             t0=0.0,
             t_end=self.options.simulation_time,
             h=self.options.time_step,
             method=self.options.integration_method,
+            newton_diag_config=newton_diag_config,
         )
 
         boundary_updater = cast(Any, problem)

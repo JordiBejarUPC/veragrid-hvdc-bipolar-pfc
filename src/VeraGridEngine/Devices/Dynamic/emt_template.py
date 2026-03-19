@@ -23,8 +23,10 @@ class EmtModelTemplate(PointerDeviceParent):
         '_device_type')
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        GCProp('block', units="p.u.", tpe=SubObjectType.DaeBlockType,
-                      definition='DAE block', editable=False, display=False),
+        GCProp('block', units="", tpe=SubObjectType.DaeBlockType,
+               definition='DAE block', editable=False, display=False),
+        GCProp('tpe', units="", tpe=DeviceType,
+               definition='Device type', editable=True, display=True),
     )
 
     def __init__(self, idtag="", name: str = ""):
@@ -33,7 +35,7 @@ class EmtModelTemplate(PointerDeviceParent):
                          code="",
                          device=None,
                          comment="",
-                         device_type=DeviceType.RmsModelTemplateDevice)
+                         device_type=DeviceType.EmtModelTemplateDevice)
 
         self._tpe: DeviceType = DeviceType.NoDevice
         self._block: Block = Block()

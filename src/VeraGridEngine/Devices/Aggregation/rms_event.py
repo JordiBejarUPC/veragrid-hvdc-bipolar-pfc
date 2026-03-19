@@ -4,14 +4,8 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from typing import Union, Any, Tuple
-import numpy as np
-
 from VeraGridEngine import SubObjectType
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCProp
-#
-# from VeraGridEngine.Devices.Branches import *
-# from VeraGridEngine.Devices.Injections import *
-
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
@@ -24,10 +18,10 @@ class RmsEvent(PointerDeviceParent):
     """
     __slots__ = (
         'parameter',
-        'time',
-        'value',
+        '_time',
+        '_value',
         '_group',
-        'force_step_alignment'
+        '_force_step_alignment',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -96,15 +90,61 @@ class RmsEvent(PointerDeviceParent):
     def group(self, val: RmsEventsGroup):
         self._group = val
 
-    @property
-    def category(self):
-        """
-        Display the group category
-        :return:
-        """
-        return self.group.category
+    # Scalar property accessors coerce assignments to the declared schema types.
 
-    @category.setter
-    def category(self, val):
-        # The category is set through the group, so no implementation here
-        pass
+    @property
+    def time(self) -> float:
+        """
+        Get ``time``.
+
+        :return: float
+        """
+        return self._time
+
+    @time.setter
+    def time(self, val: float) -> None:
+        """
+        Set ``time``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._time = float(val)
+
+    @property
+    def value(self) -> float:
+        """
+        Get ``value``.
+
+        :return: float
+        """
+        return self._value
+
+    @value.setter
+    def value(self, val: float) -> None:
+        """
+        Set ``value``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._value = float(val)
+
+    @property
+    def force_step_alignment(self) -> bool:
+        """
+        Get ``force_step_alignment``.
+
+        :return: bool
+        """
+        return self._force_step_alignment
+
+    @force_step_alignment.setter
+    def force_step_alignment(self, val: bool) -> None:
+        """
+        Set ``force_step_alignment``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._force_step_alignment = bool(val)

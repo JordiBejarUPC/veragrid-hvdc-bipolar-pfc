@@ -11,12 +11,9 @@ import scipy.sparse as sp
 import math
 import concurrent.futures
 
-from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr,                                                    heaviside_num, expression2numba,
+from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, heaviside_num, expression2numba,
                                                     get_expression_vars)
 from VeraGridEngine.basic_structures import Vec, IntVec
-
-
-
 
 
 def compile_jac_block(block_id,
@@ -93,7 +90,8 @@ class SymbolicJacobian:
                  dt=None,
                  use_jit=True,
                  batch_size=500,
-                 n_jobs=4):  # número de threads para compilación paralela
+                 n_jobs=4,
+                 static=False):  # número de threads para compilación paralela
 
         """
                 JIT‑compile a sparse Jacobian evaluator for *equations* w.r.t *variables*.
@@ -110,10 +108,12 @@ class SymbolicJacobian:
                         sparsity_pattern : tuple(np.ndarray, np.ndarray)
                             Row/col indices of structurally non‑zero entries.
                 """
-        
+
         h = Var('h')
         alias_names_dict[h.uid] = 'h'
         compiler_names_dict[h.uid] = 'h'
+        if static:
+            h = None
         # --- Build triplets and count variable usage ---------------------------------
         used_vars_count = defaultdict(int)
         triplets = []
@@ -406,6 +406,7 @@ class SymbolicDerivative:
             self.func(x, xn, dx, h, self.data)
         return self.data
 
+
 class SymbolicParamsVectorInit:
     """
     SymbolicFunction
@@ -474,4 +475,3 @@ class SymbolicParamsVectorInit:
         if self.func is not None:
             self.func(variables, event_params, glob_time, self.data)
         return self.data
-
