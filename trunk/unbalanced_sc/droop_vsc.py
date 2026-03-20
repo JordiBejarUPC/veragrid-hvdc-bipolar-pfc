@@ -44,7 +44,7 @@ vsc = vge.VSC(bus_from=bus_dc,
               control1_val=-12.0,
               control2_val=-0.0,
               fault_control=ConverterFaultControlType.WECC_WT_Type_4B,
-              kdp=3.0,
+              kdp=0.00003,
               u_setpoint_min=0.95,
               u_setpoint_max=1.05,
               u_setpoint=1.01,
@@ -69,7 +69,10 @@ grid.add_generator(bus_slack, generator_ac)
 vge.save_file(grid, 'droop_vsc.veragrid')
 pf_options = PowerFlowOptions(solver_type=SolverType.NR,
                               retry_with_other_methods=False,
-                              limit_i_vsc=False)
+                              limit_i_vsc=False,
+                              max_iter=100,
+                              verbose=1)
+
 res_pf = vge.power_flow(grid=grid, options=pf_options)
 
 print(res_pf.get_voltage_df())

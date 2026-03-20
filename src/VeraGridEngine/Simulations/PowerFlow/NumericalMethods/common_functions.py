@@ -45,16 +45,12 @@ def voltage_q_droop(ut: complex,
     else:
         u = u
 
-    u = 1.01456
-
     du_droop = u_setpoint + du_setpoint - u  # Voltage deviation [pu]
 
     if abs(droop) > 0.0:
-        Q_droop = S_r * 100 / droop  # Additional reactive power for the specified voltage droop [MVAr]
-    else:
-        return Q_setpoint # If the voltage droop is zero, the actual reactive power is the same as the setpoint
+        Q_droop = S_r * 100 * droop  # Additional reactive power for the specified voltage droop [MVAr]
 
-    Q = -Q_setpoint * S_base + Q_droop * du_droop  # Actual reactive power output [MVAr]
+    Q = Q_setpoint * S_base - Q_droop * du_droop  # Actual reactive power output [MVAr]
 
     # Reactive power limits
     if Q > Q_max:
@@ -64,7 +60,7 @@ def voltage_q_droop(ut: complex,
     else:
         Q = Q
 
-    return -Q / S_base
+    return Q / S_base
 
 
 @nb.njit(cache=True, fastmath=True)
