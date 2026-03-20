@@ -24,10 +24,10 @@ grid.add_bus(obj=bus_slack)
 # ------------------------------------------------------------------------------------------------------------------
 #   Line
 # ------------------------------------------------------------------------------------------------------------------
-line_wt_ac = vge.Line(name='Line WT-AC', bus_from=bus_wt, bus_to=bus_ac, r=1, x=10, rate=2.5)
+line_wt_ac = vge.Line(name='Line WT-AC', bus_from=bus_wt, bus_to=bus_ac, r=0.01, x=0.1, rate=2.5)
 grid.add_line(line_wt_ac)
 
-line_slack_ac = vge.Line(name='Line AC-Slack', bus_from=bus_ac, bus_to=bus_slack, r=1, x=10, rate=2.5)
+line_slack_ac = vge.Line(name='Line AC-Slack', bus_from=bus_ac, bus_to=bus_slack, r=0.01, x=0.1, rate=2.5)
 grid.add_line(line_slack_ac)
 
 # ------------------------------------------------------------------------------------------------------------------

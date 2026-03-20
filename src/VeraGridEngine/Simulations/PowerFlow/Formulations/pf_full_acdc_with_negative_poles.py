@@ -1787,12 +1787,12 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         for vsc in self.k_vsc_qt:
             if self.nc.vsc_data.Kdp[vsc] != 0.0:
-                Qt_vsc_[vsc] = voltage_q_droop(ut=V[self.nc.vsc_data.T[vsc]],
+                Qt_ref_[vsc] = voltage_q_droop(ut=V[self.nc.vsc_data.T[vsc]],
                                                u_setpoint_min=self.nc.vsc_data.u_setpoint_min[vsc],
                                                u_setpoint_max=self.nc.vsc_data.u_setpoint_max[vsc],
                                                u_setpoint=self.nc.vsc_data.u_setpoint[vsc],
                                                du_setpoint=self.nc.vsc_data.du_setpoint[vsc],
-                                               Q_setpoint=self.Qt_vsc[vsc],
+                                               Q_setpoint=Qt_vsc_[vsc],
                                                S_r=self.nc.vsc_data.rates[vsc],
                                                droop=self.nc.vsc_data.Kdp[vsc],
                                                Q_min=self.nc.vsc_data.Q_min[vsc],
