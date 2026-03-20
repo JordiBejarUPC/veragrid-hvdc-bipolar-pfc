@@ -19,7 +19,7 @@ from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 import VeraGridEngine.Utils.Symbolic.symbolic_ml as sym_ml
-from VeraGridEngine.Templates.templates_common_functions import to_explicit
+from VeraGridEngine.Templates.templates_common_functions import to_implicit
 
 def get_genqec_phasor(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     """
@@ -433,7 +433,7 @@ def get_complete_generator_template_phasor(vfactory: VarFactory, name="complete 
 
     # Flatten all blocks before converting to implicit form
     templ.block.unify_blocks()
-    # templ.block = to_explicit(templ.block, vfactory)
+    # templ.block = to_implicit(templ.block, vfactory)
     # External mapping for phasor coordinates (current balance)
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Vr: genqec_mdl.in_vars[0],

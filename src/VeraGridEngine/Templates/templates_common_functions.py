@@ -326,7 +326,7 @@ def tf_to_block2(
     )
     return block, y_states[0]
 
-def to_explicit(block: Block, vfactory: VarFactory) -> Block:
+def to_implicit(block: Block, vfactory: VarFactory) -> Block:
     """
     Convert a block with explicit state equations to implicit form.
     
@@ -366,7 +366,7 @@ def to_explicit(block: Block, vfactory: VarFactory) -> Block:
     
     # Recursively process children
     for b in block.children:
-        to_explicit(b, vfactory)
+        to_implicit(b, vfactory)
     
     return block
 
