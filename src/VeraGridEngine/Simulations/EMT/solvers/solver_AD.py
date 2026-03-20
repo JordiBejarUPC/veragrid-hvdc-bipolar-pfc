@@ -9,7 +9,13 @@ import scipy.sparse as sp
 import time
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, BinOp, UnOp, Func
 
-from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
+    EmtBoundaryUpdateProtocol,
+    EmtProblemTemplate,
+    get_solver_forced_event_time,
+    is_problem_owned_boundary_updater,
+    resolve_solver_boundary_updater,
+)
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
@@ -548,14 +554,14 @@ class JitAdSolver:
                  x0: Union[Vec | None] = None,
                  dx0: Union[Vec | None] = None,
                  params0: Union[Vec | None] = None,
-                 boundary_updater: BoundaryUpdaterInterface | None = None) -> Tuple[Vec, Mat, Mat]:
+                 boundary_updater: EmtBoundaryUpdateProtocol | None = None) -> Tuple[Vec, Mat, Mat]:
         """
         Main JIT simulation loop using the Automatic Differentiation (AD) backend.
 
         :param x0: Initial state vector.
         :param dx0: Initial derivative vector.
         :param params0: Initial event parameters.
-        :param boundary_updater: Wrapper object to update boundary conditions.
+        :param boundary_updater: Optional override for the problem boundary updater.
         :return: A tuple containing the time vector and state trajectory matrix.
         """
         t_start = time.time()
@@ -586,6 +592,8 @@ class JitAdSolver:
         else:
             pass
 
+        active_boundary_updater = resolve_solver_boundary_updater(self.problem, boundary_updater, float(self.t0))
+
         self.y[0, :] = x0.copy()
         self.dy[0, :] = dx0.copy()
 
@@ -602,7 +610,15 @@ class JitAdSolver:
         if params0 is not None:
             ev_params = params0.copy()
         else:
-            ev_params = np.zeros(n_event_params, dtype=np.float64)
+            ev_params = self.problem.event_params_values.copy()
+
+        should_initialize_at_t0: bool = is_problem_owned_boundary_updater(self.problem, active_boundary_updater)
+
+        if active_boundary_updater is not None and should_initialize_at_t0:
+            runtime_params0 = self.problem.def_event_params_fn(ev_params, float(self.t0))
+            full_params0 = np.concatenate((runtime_params0, static_vals))
+            active_boundary_updater.update(float(self.t0), x_prev, full_params0)
+            ev_params[:] = full_params0[:n_event_params]
 
         trace_collector = self.problem.get_newton_trace_collector()
         diag_cfg = self._newton_diag_config
@@ -652,14 +668,11 @@ class JitAdSolver:
 
             while t_local_prev < (t_step_target - 1e-15):
 
-                forced_event_time = None
-                if boundary_updater is None:
-                    pass
-                else:
-                    forced_event_time = boundary_updater.get_next_forced_event_time(
-                        t_prev=float(t_local_prev),
-                        t_target=float(t_step_target),
-                    )
+                forced_event_time = get_solver_forced_event_time(
+                    active_boundary_updater,
+                    float(t_local_prev),
+                    float(t_step_target),
+                )
 
                 if forced_event_time is None:
                     t_curr = t_step_target
@@ -684,8 +697,8 @@ class JitAdSolver:
                 runtime_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
                 full_params = np.concatenate((runtime_params, static_vals))
 
-                if boundary_updater is not None:
-                    boundary_updater.update(t_curr, x_prev, full_params)
+                if active_boundary_updater is not None:
+                    active_boundary_updater.update(t_curr, x_prev, full_params)
                 else:
                     pass
 
