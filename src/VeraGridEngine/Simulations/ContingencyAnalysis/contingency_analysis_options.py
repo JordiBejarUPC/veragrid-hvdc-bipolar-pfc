@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: MPL-2.0
 from typing import List, Union, Tuple
 from VeraGridEngine.enumerations import ContingencyMethod, SubObjectType, DeviceType
-from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions, SolverType
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis_options import LinearAnalysisOptions
 from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
@@ -35,10 +34,8 @@ class ContingencyAnalysisOptions(OptionsTemplate):
     )
 
     def __init__(self,
-                 use_provided_flows: bool = False,
-                 Pf: Vec = None,
-                 pf_options=PowerFlowOptions(SolverType.Linear),
-                 lin_options=LinearAnalysisOptions(),
+                 pf_options:PowerFlowOptions | None = None,
+                 lin_options:LinearAnalysisOptions|None = None,
                  use_srap: bool = False,
                  srap_max_power: float = 1400.0,
                  srap_top_n: int = 5,
@@ -50,8 +47,6 @@ class ContingencyAnalysisOptions(OptionsTemplate):
                  contingency_groups: Union[List[ContingencyGroup], None] = None):
         """
         ContingencyAnalysisOptions
-        :param use_provided_flows: Use the provided flows?
-        :param Pf: Power flows (at the from bus)
         :param pf_options: PowerFlowOptions
         :param lin_options: LinearAnalysisOptions
         :param use_srap: use the SRAP check?
@@ -60,24 +55,20 @@ class ContingencyAnalysisOptions(OptionsTemplate):
         :param srap_deadband: Dead band over the SRAP rating. If greater than zero,
                               the SRAP is investigated for values over the branch
                               protections rating until the specified value. (in %)
-        :param srap_rever_to_nominal_rating: If checked the SRAP objective solution is the branch nominal rate.
-                                             Otherwise the objective rating is the contingency rating.
-        :param detailed_massive_report: If checked, a massive posibly intractable report is generated.
+        :param srap_rever_to_nominal_rating: If checked, the SRAP objective solution is the branch nominal rate.
+                                             Otherwise, the objective rating is the contingency rating.
+        :param detailed_massive_report: If checked, a massive possibly intractable report is generated.
         :param contingency_deadband: Deadband to report contingencies
         :param contingency_method: ContingencyEngine to use (PowerFlow, PTDF, ...)
         :param contingency_groups: List of contingencies to use, if None all will be used
         """
         OptionsTemplate.__init__(self, name="ContingencyAnalysisOptions")
 
-        self.use_provided_flows = use_provided_flows
-
-        self.Pf: Vec = Pf
-
         self.contingency_method = contingency_method
 
-        self.pf_options = pf_options
+        self.pf_options = PowerFlowOptions(SolverType.Linear) if pf_options is None else pf_options
 
-        self.lin_options = lin_options
+        self.lin_options = LinearAnalysisOptions() if lin_options is None else lin_options
 
         self.use_srap: bool = use_srap
 

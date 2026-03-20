@@ -2686,8 +2686,6 @@ def gslv_contingencies_snapshot(circuit: MultiCircuit,
                            opf_results=opf_results)
 
     con_opt_gslv = pg.ContingencyAnalysisOptions(
-        use_provided_flows=con_opt.use_provided_flows,
-        Pf=con_opt.Pf,
         pf_options=get_gslv_pf_options(con_opt.pf_options),
         lin_options=pg.LinearAnalysisOptions(
             distributeSlack=con_opt.lin_options.distribute_slack,
@@ -2740,8 +2738,6 @@ def gslv_contingencies_ts(circuit: MultiCircuit,
                            opf_results=None)
 
     con_opt_gslv = pg.ContingencyAnalysisOptions(
-        use_provided_flows=con_opt.use_provided_flows,
-        Pf=con_opt.Pf,
         pf_options=get_gslv_pf_options(con_opt.pf_options),
         lin_options=pg.LinearAnalysisOptions(
             distributeSlack=con_opt.lin_options.distribute_slack,

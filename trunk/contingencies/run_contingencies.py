@@ -17,13 +17,11 @@ fname = '/home/santi/Documentos/Git/GitHub/VeraGrid/Grids_and_profiles/grids/IEE
 main_circuit = FileOpen(fname).open()
 
 options_ = ContingencyAnalysisOptions(
-    use_provided_flows=False,
-    Pf=None,
     contingency_method=en.ContingencyMethod.PowerFlow,
     pf_options=PowerFlowOptions(),
 )
 
-simulation = ContingencyAnalysisTimeSeries(
+simulation = ContingencyAnalysisTimeSeriesDriver(
     grid=main_circuit,
     options=options_,
     time_indices=main_circuit.get_all_time_indices(),

@@ -514,7 +514,7 @@ class ContingencyResultsReport:
                 srap_deadband: float = 0.0,
                 contingency_deadband: float = 0.0,
                 srap_revert_to_nominal_rating: bool = False,
-                multi_contingency: LinearMultiContingency = None,
+                multi_contingency: LinearMultiContingency | None = None,
                 PTDF: Mat = None,
                 available_power: Vec = None,
                 srap_used_power: Mat = None,
