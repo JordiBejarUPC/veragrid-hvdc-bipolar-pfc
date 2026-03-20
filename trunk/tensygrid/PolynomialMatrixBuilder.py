@@ -234,13 +234,36 @@ class PolynomialMatrixBuilder:
             self.sym_to_idx[sym.name] = idx
             idx = idx + 1
 
+        # --- ALGORITHM: TWO-PASS COMPILATION FOR AUTOMATIC LIFTING ---
+        # PASS 1: Discovery Phase.
+        # We run a dry execution of matrix_creation. This forces _get_monomial_weights
+        # to process the equations, find the exponents (e.g. x1**2), generate the new
+        # auxiliary variables, and register them into self.all_symbols safely.
+        self.matrix_creation(self.eqs)
+
+        # With the non-linear variables now discovered, we generate their
+        # algebraic constraints (e.g. x1 - x1_mulaux0 = 0) and append them to self.eqs.
+        self._generate_lifting_equations()
+
+        # PASS 2: Final Assembly Phase.
+        # We run matrix_creation again. Since self.all_symbols already contains the
+        # lifted variables, the memory pre-allocation will be exact, and self.eqs
+        # now contains the mathematical constraints to keep the matrix square.
         S_H_sp: sparse.csc_matrix
         Phi_H_sp: sparse.csr_matrix
         S_H_sp, Phi_H_sp = self.matrix_creation(self.eqs)
 
+        # For inequalities, a single pass is usually enough, but we process them
+        # after the state has stabilized.
         S_W_sp: sparse.csc_matrix
         Phi_W_sp: sparse.csr_matrix
         S_W_sp, Phi_W_sp = self.matrix_creation(self.ineqs)
+
+        # Store dense arrays
+        self.S_H: np.ndarray = S_H_sp.toarray()
+        self.Phi_H: np.ndarray = Phi_H_sp.toarray()
+        self.S_W: np.ndarray = S_W_sp.toarray()
+        self.Phi_W: np.ndarray = Phi_W_sp.toarray()
 
         # Store dense arrays
         self.S_H: np.ndarray = S_H_sp.toarray()
@@ -638,6 +661,88 @@ class PolynomialMatrixBuilder:
 
             return current_eq_coeffs
 
+    def _generate_lifting_equations(self) -> None:
+        """
+        Automatically generates and appends the algebraic constraint equations
+        for all internally generated auxiliary variables (lifting).
+        This ensures the system matrix remains square and mathematically valid.
+
+        :return: None
+        :rtype: None
+        """
+        # Rule: Explicit lists
+        new_constraints: list = list()
+
+        sym: sp.Symbol
+        for sym in self.all_symbols:
+            s_name: str = sym.name
+
+            # --- ALGORITHM: LIFTING DETECTION ---
+            is_mul: bool = "_mulaux" in s_name
+            is_inv: bool = "_invaux" in s_name
+
+            if is_mul:
+                # Generate x_base - x_aux = 0
+                base_name_m: str = s_name.split("_mulaux")[0]
+                base_sym_m: Optional[sp.Symbol] = self._get_symbol_by_name(base_name_m)
+
+                if base_sym_m is not None:
+                    constraint_m: sp.Expr = base_sym_m - sym
+                    # Prevent duplicates if method is called safely multiple times
+                    if constraint_m not in self.eqs:
+                        new_constraints.append(constraint_m)
+                    else:
+                        pass
+                else:
+                    pass
+
+            elif is_inv:
+                # Generate x_base * x_aux - 1.0 = 0
+                base_name_i: str = s_name.split("_invaux")[0]
+                base_sym_i: Optional[sp.Symbol] = self._get_symbol_by_name(base_name_i)
+
+                if base_sym_i is not None:
+                    constraint_i: sp.Expr = base_sym_i * sym - 1.0
+                    if constraint_i not in self.eqs:
+                        new_constraints.append(constraint_i)
+                    else:
+                        pass
+                else:
+                    pass
+            else:
+                pass
+
+        # --- ALGORITHM: MATRIX AUGMENTATION ---
+        # Append the new structural equations directly to the core list
+        if len(new_constraints) > 0:
+            if self.verbose:
+                print(f"Adding {len(new_constraints)} lifting constraints to the system.")
+            else:
+                pass
+
+            constraint_eq: sp.Expr
+            for constraint_eq in new_constraints:
+                self.eqs.append(constraint_eq)
+        else:
+            pass
+
+    def _get_symbol_by_name(self, name: str) -> Optional[sp.Symbol]:
+        """
+        Helper method to retrieve a sympy Symbol safely.
+
+        :param name: The string name of the symbol to find.
+        :type name: str
+        :return: The sympy Symbol if found, None otherwise.
+        :rtype: Optional[sp.Symbol]
+        """
+        target_sym: sp.Symbol
+        for target_sym in self.all_symbols:
+            if target_sym.name == name:
+                return target_sym
+            else:
+                pass
+        return None
+
     # ------------------------------------------------------------------
     # Linearisation – public entry point
     # ------------------------------------------------------------------
@@ -699,59 +804,84 @@ class PolynomialMatrixBuilder:
     def _build_v_vector(self, v_dict: Optional[dict]) -> np.ndarray:
         """
         Build the operating-point vector from a dictionary.
-
-        This function maps the provided values to their corresponding indices
-        in the state and algebraic vector. It uses Duck Typing to handle keys
-        that might be strings, SymPy symbols, or VeraGrid objects.
+        Includes automatic synchronization for lifted multilinear variables.
 
         :param v_dict: Operating point variables mapped to their numerical values.
         :type v_dict: Optional[dict]
         :return: Vector array of operating points initialized with the mapped values.
         :rtype: np.ndarray
         """
-        # Step: Initialize the numpy array with zeros.
-        # The size is explicitly known in advance via len(self.all_symbols)
-        # complying with the performance rule of pre-allocating sizes.
+        # Rule: Pre-allocate vector size
         v: np.ndarray = np.zeros(len(self.all_symbols))
 
-        # Step: Check if v_dict is not None to avoid runtime iteration errors.
         if v_dict is not None:
-
-            # Step: Iterate directly. We process keys dynamically avoiding class checks.
             key: Any
             val: Any
             for key, val in v_dict.items():
-
-                # Step: Ensure the value is not None to protect the numpy array.
                 if val is not None:
-
-                    # Step: Duck Typing for key extraction.
-                    # We need a string to query self.sym_to_idx.
-                    key_str: str
+                    # Rule: Explicit isinstance checks replacing getattr
+                    key_str: str = ""
                     if isinstance(key, str):
                         key_str = key
-                    elif hasattr(key, 'name'):
-                        # Handles SymPy symbols or VeraGrid nodes with a 'name' attribute
-                        key_str = str(getattr(key, 'name'))
+                    elif isinstance(key, sp.Symbol):
+                        key_str = key.name
                     else:
-                        # Fallback to absolute string representation
                         key_str = str(key)
 
-                    # Step: Lookup the index safely using the string name.
                     idx_opt: Optional[int] = self.sym_to_idx.get(key_str, None)
 
                     if idx_opt is not None:
-                        # Force float casting to avoid numpy internal type conversion issues
                         v[idx_opt] = float(val)
                     else:
-                        # Explicit else: key not found in our extracted symbols, skip gracefully.
                         pass
                 else:
-                    # Explicit else: The value is None, skip assignment.
                     pass
 
+            # --- ALGORITHM: LIFTING VARIABLES SYNCHRONIZATION ---
+            # Automatically evaluate the operating point for internally generated
+            # auxiliary variables (e.g., x1_mulaux0) to prevent zero-derivatives
+            # in the Jacobian evaluation.
+            sym: sp.Symbol
+            for sym in self.all_symbols:
+                s_name: str = sym.name
+
+                is_mul: bool = "_mulaux" in s_name
+                is_inv: bool = "_invaux" in s_name
+
+                if is_mul:
+                    base_name_m: str = s_name.split("_mulaux")[0]
+                    base_idx_m: Optional[int] = self.sym_to_idx.get(base_name_m, None)
+
+                    if base_idx_m is not None:
+                        idx_m: Optional[int] = self.sym_to_idx.get(s_name, None)
+                        if idx_m is not None:
+                            # A multiplier auxiliary is a direct copy of the base variable
+                            v[idx_m] = float(v[base_idx_m])
+                        else:
+                            pass
+                    else:
+                        pass
+
+                elif is_inv:
+                    base_name_i: str = s_name.split("_invaux")[0]
+                    base_idx_i: Optional[int] = self.sym_to_idx.get(base_name_i, None)
+
+                    if base_idx_i is not None:
+                        idx_i: Optional[int] = self.sym_to_idx.get(s_name, None)
+                        if idx_i is not None:
+                            # An inverse auxiliary represents 1/x
+                            base_val: float = float(v[base_idx_i])
+                            if abs(base_val) > 1e-12:
+                                v[idx_i] = 1.0 / base_val
+                            else:
+                                v[idx_i] = 0.0
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    pass
         else:
-            # Explicit else: If v_dict is None, we do nothing and return the zeros array.
             pass
 
         return v
@@ -836,6 +966,7 @@ class PolynomialMatrixBuilder:
         B: np.ndarray = EABC[:, idx_u]
 
         return E, A, B
+
 
     # ------------------------------------------------------------------
     # Stability analysis
