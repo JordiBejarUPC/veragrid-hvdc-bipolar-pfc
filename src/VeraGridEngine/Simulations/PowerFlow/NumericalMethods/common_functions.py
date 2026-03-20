@@ -47,8 +47,7 @@ def voltage_q_droop(ut: complex,
 
     du_droop = u_setpoint + du_setpoint - u  # Voltage deviation [pu]
 
-    if abs(droop) > 0.0:
-        Q_droop = S_r * 100 * droop  # Additional reactive power for the specified voltage droop [MVAr]
+    Q_droop = S_r * 100 / droop  # Additional reactive power for the specified voltage droop [MVAr]
 
     Q = Q_setpoint * S_base - Q_droop * du_droop  # Actual reactive power output [MVAr]
 

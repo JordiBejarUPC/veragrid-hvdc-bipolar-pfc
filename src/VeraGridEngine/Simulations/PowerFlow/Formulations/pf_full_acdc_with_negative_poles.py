@@ -1786,19 +1786,39 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         tm[3] = time.time()
 
         for vsc in self.k_vsc_qt:
+
             if self.nc.vsc_data.Kdp[vsc] != 0.0:
-                Qt_ref_[vsc] = voltage_q_droop(ut=V[self.nc.vsc_data.T[vsc]],
-                                               u_setpoint_min=self.nc.vsc_data.u_setpoint_min[vsc],
-                                               u_setpoint_max=self.nc.vsc_data.u_setpoint_max[vsc],
-                                               u_setpoint=self.nc.vsc_data.u_setpoint[vsc],
-                                               du_setpoint=self.nc.vsc_data.du_setpoint[vsc],
-                                               Q_setpoint=Qt_vsc_[vsc],
-                                               S_r=self.nc.vsc_data.rates[vsc],
-                                               droop=self.nc.vsc_data.Kdp[vsc],
-                                               Q_min=self.nc.vsc_data.Q_min[vsc],
-                                               Q_max=self.nc.vsc_data.Q_max[vsc],
-                                               S_base=self.nc.Sbase
-                                               )
+
+                if self.nc.vsc_data.control1[vsc] == ConverterControlType.Qac:
+                    Q_setpoint = self.nc.vsc_data.control1_val[vsc]
+                    Qt_vsc_[vsc] = voltage_q_droop(ut=V[self.nc.vsc_data.T[vsc]],
+                                                   u_setpoint_min=self.nc.vsc_data.u_setpoint_min[vsc],
+                                                   u_setpoint_max=self.nc.vsc_data.u_setpoint_max[vsc],
+                                                   u_setpoint=self.nc.vsc_data.u_setpoint[vsc],
+                                                   du_setpoint=self.nc.vsc_data.du_setpoint[vsc],
+                                                   Q_setpoint=Q_setpoint,
+                                                   S_r=self.nc.vsc_data.rates[vsc],
+                                                   droop=self.nc.vsc_data.Kdp[vsc],
+                                                   Q_min=self.nc.vsc_data.Q_min[vsc],
+                                                   Q_max=self.nc.vsc_data.Q_max[vsc],
+                                                   S_base=self.nc.Sbase
+                                                   )
+                elif self.nc.vsc_data.control2[vsc] == ConverterControlType.Qac:
+                    Q_setpoint = self.nc.vsc_data.control2_val[vsc]
+                    Qt_vsc_[vsc] = voltage_q_droop(ut=V[self.nc.vsc_data.T[vsc]],
+                                                   u_setpoint_min=self.nc.vsc_data.u_setpoint_min[vsc],
+                                                   u_setpoint_max=self.nc.vsc_data.u_setpoint_max[vsc],
+                                                   u_setpoint=self.nc.vsc_data.u_setpoint[vsc],
+                                                   du_setpoint=self.nc.vsc_data.du_setpoint[vsc],
+                                                   Q_setpoint=Q_setpoint,
+                                                   S_r=self.nc.vsc_data.rates[vsc],
+                                                   droop=self.nc.vsc_data.Kdp[vsc],
+                                                   Q_min=self.nc.vsc_data.Q_min[vsc],
+                                                   Q_max=self.nc.vsc_data.Q_max[vsc],
+                                                   S_base=self.nc.Sbase
+                                                   )
+
+
         T_vsc = self.nc.vsc_data.T
         It = np.sqrt(Pt_vsc_ * Pt_vsc_ + Qt_vsc_ * Qt_vsc_) / Vm_[T_vsc]
         It2 = It * It
