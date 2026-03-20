@@ -280,7 +280,7 @@ class PolynomialMatrixBuilder:
         :rtype: tuple
         """
         name: str = sym.name
-        
+
         if name.startswith('dx'):
             return (0, name)
         elif name.startswith('xp'):
@@ -421,7 +421,7 @@ class PolynomialMatrixBuilder:
             else:
                 pass
 
-
+            # We split the equation into the different terms
             terms: list
             if eq.is_Add:
                 terms = list(eq.args)
@@ -430,6 +430,7 @@ class PolynomialMatrixBuilder:
 
             current_eq_coeffs: dict = dict()
 
+            # It gets the factors of each term that go in S and Phi
             for term in terms:
                 current_eq_coeffs = self._get_monomial_weights(
                     term, S_list, monom_to_idx, current_eq_coeffs
@@ -447,14 +448,14 @@ class PolynomialMatrixBuilder:
             S = sparse.csc_matrix(S_raw)
             num_cols: int = S_raw.shape[1]
             phi_rows: list = list()
-            
+
             for eq_dict in Phi_data:
                 row: np.ndarray = np.zeros(num_cols)
                 # Dictionary iteration is safe here as it represents matrix columns
                 for col_idx, val in eq_dict.items():
                     row[col_idx] = val
                 phi_rows.append(row)
-                
+
             Phi = sparse.csr_matrix(np.vstack(phi_rows))
         else:
             # Matrices are empty, use correct shapes
@@ -488,17 +489,18 @@ class PolynomialMatrixBuilder:
         coeff_sym: sp.Expr
         symbolic_part: tuple
         coeff_sym, symbolic_part = term.as_coeff_mul()
-        
+
         factors: tuple = sp.Mul.make_args(sp.Mul(*symbolic_part))
         requires_expansion: bool = False
-        
+
+        # Checks if the term is of the form k(a+y_i)x or k(a+y_i+y_j)x => Later requires expansion
         for f in factors:
             f_vars: list = list(f.free_symbols)
             if len(f_vars) > 1:
                 requires_expansion = True
             else:
-                pass 
-                
+                pass
+
         if requires_expansion:
             if self.verbose:
                 print(f"   Expanding complex term: {term}")
@@ -506,17 +508,17 @@ class PolynomialMatrixBuilder:
                 pass
 
             expanded_sub_terms: tuple = sp.Add.make_args(term.expand())
-            
+
             for sub_t in expanded_sub_terms:
                 current_eq_coeffs = self._get_monomial_weights(
                     sub_t, S_list, monom_to_idx, current_eq_coeffs
                 )
             return current_eq_coeffs
-            
+
         else:
             global_phi: float = float(coeff_sym)
             weights: list = list()
-            
+
             for _ in range(len(self.all_symbols)):
                 weights.append(0.0)
 
@@ -530,25 +532,72 @@ class PolynomialMatrixBuilder:
                     if idx_val is not None:
                         b_val_sym: sp.Expr = sp.diff(f, s)
 
-                        # MULTILINEARITY CHECK: Prevent TypeError on float() cast
+                        # --- MULTILINEARITY CHECK (Lifting) ---
                         if not b_val_sym.is_number:
-                            deg = sp.degree(f, s)
-                            if deg > 1:
-                                raise ValueError(
-                                    f"\n[TenSyGrid Error] Non-multilinear term detected: '{f}'.\n"
-                                    f"Variable '{s.name}' has a degree higher than 1 ({deg}).\n"
-                                    f"The iMTI representation requires strictly multilinear equations. "
-                                    f"Please define an auxiliary algebraic variable to perform the 'lifting'."
-                            )
-                            elif deg < 1:
-                                raise ValueError(
-                                    f"\n[TenSyGrid Error] Non-multilinear term detected: '{f}'.\n"
-                                    f"Variable '{s.name}' has a degree lower than 1 ({deg}).\n"
-                                    f"The iMTI representation requires strictly multilinear equations. "
-                                    f"Please define an auxiliary algebraic variable to perform the 'lifting'."
+                            # In SymPy, degree might return 0 for denominators,
+                            # we check the Power structure for robustness.
+                            deg: int = 1
+                            if isinstance(f, sp.Pow):
+                                deg = int(f.exp)
+                            else:
+                                deg = int(sp.degree(f, s))
+
+                            if deg > 1 or deg < 1:
+                                # 1. Determine lifting type and number of variables
+                                is_positive: bool = deg > 1
+                                num_aux: int = int(deg - 1) if is_positive else int(-deg + 1)
+                                prefix: str = "mulaux" if is_positive else "invaux"
+
+                                new_vars_names: list = list([f"{s.name}_{prefix}{i}" for i in range(num_aux)])
+                                new_symbols_list: list = list()
+
+                                vars_added: bool = False
+
+                                # 2. Register variables in the global state
+                                for v_name in new_vars_names:
+                                    if v_name not in self.sym_to_idx:
+                                        new_sym_obj: sp.Symbol = sp.Symbol(v_name)
+                                        self.all_symbols.append(new_sym_obj)
+                                        self.sym_to_idx[v_name] = len(self.all_symbols) - 1
+                                        new_symbols_list.append(new_sym_obj)
+                                        vars_added = True
+                                    else:
+                                        # Retrieve existing symbol object
+                                        new_symbols_list.append(sp.Symbol(v_name))
+
+                                # 3. CRITICAL: If variables were added, previous monoms in S_list
+                                # have the wrong dimension. We must pad them with zeros.
+                                if vars_added:
+                                    new_total_size: int = len(self.all_symbols)
+                                    for i in range(len(S_list)):
+                                        current_vec: np.ndarray = S_list[i]
+                                        padding_size: int = new_total_size - current_vec.shape[0]
+                                        if padding_size > 0:
+                                            # Use np.concatenate for zero overhead padding
+                                            S_list[i] = np.concatenate([current_vec, np.zeros(padding_size)])
+                                        else:
+                                            pass
+                                else:
+                                    pass
+
+                                # 4. Create the multilinear equivalent expression
+                                multilinear_f: sp.Expr = s
+                                for sym_aux in new_symbols_list:
+                                    multilinear_f = multilinear_f * sym_aux
+
+                                if self.verbose:
+                                    print(f"LIFTING: {f} -> {multilinear_f}")
+                                else:
+                                    pass
+
+                                # 5. RE-CALL: Re-process the term with the new multilinear form
+                                # This will now use the updated 'weights' size (e.g., size 12)
+                                new_term: sp.Expr = (term / f) * multilinear_f
+                                return self._get_monomial_weights(
+                                    new_term, S_list, monom_to_idx, current_eq_coeffs
                                 )
-                        else:
-                            pass
+                            else:
+                                pass
 
                         b_val: float = float(b_val_sym)
                         a_val: float = float(f.subs(s, 0))
@@ -572,7 +621,7 @@ class PolynomialMatrixBuilder:
             monom_tuple: tuple = tuple(weights)
             existing_idx: int | None = monom_to_idx.get(monom_tuple, None)
             final_idx: int = 0
-            
+
             if existing_idx is None:
                 final_idx = len(S_list)
                 monom_to_idx[monom_tuple] = final_idx
@@ -581,7 +630,7 @@ class PolynomialMatrixBuilder:
                 final_idx = existing_idx
 
             current_val: float | None = current_eq_coeffs.get(final_idx, None)
-            
+
             if current_val is None:
                 current_eq_coeffs[final_idx] = global_phi
             else:
@@ -727,7 +776,7 @@ class PolynomialMatrixBuilder:
 
             zeros_per_col: np.ndarray = np.sum(np.abs(X) < 1e-12, axis=1)
             single_zero_cols: tuple = np.where(zeros_per_col == 1)
-            
+
             for col in single_zero_cols[0]:
                 zero_row_tuple: tuple = np.where(np.abs(X[col, :]) < 1e-12)
                 zero_row: int = int(zero_row_tuple[0][0])
@@ -764,9 +813,9 @@ class PolynomialMatrixBuilder:
             idx_counter = idx_counter + 1
 
         n_eqs: int = int(EABC.shape[0])
-        
+
         E: np.ndarray = np.zeros((n_eqs, n_eqs))
-        
+
         for i in range(len(idx_dx)):
             if i < n_eqs:
                 col_idx_e: int = idx_dx[i]
@@ -775,13 +824,13 @@ class PolynomialMatrixBuilder:
                 pass
 
         A: np.ndarray = np.zeros((n_eqs, n_eqs))
-        
+
         cols_to_take: int = len(idx_vars)
         if cols_to_take > n_eqs:
             cols_to_take = n_eqs
         else:
             pass
-            
+
         A[:, :cols_to_take] = EABC[:, idx_vars[:cols_to_take]]
 
         B: np.ndarray = EABC[:, idx_u]
@@ -812,7 +861,7 @@ class PolynomialMatrixBuilder:
             evecs_left: np.ndarray
             evecs_right: np.ndarray
             evals, evecs_left, evecs_right = linalg.eig(current_a, current_e, left=True, right=True)
-            
+
             finite_evs: np.ndarray = evals[np.isfinite(evals)]
 
             if len(finite_evs) == 0:
@@ -828,12 +877,12 @@ class PolynomialMatrixBuilder:
 
             max_real: float = float(np.max(np.real(finite_evs)))
             is_stable: bool = False
-            
+
             if max_real < 0.0:
                 is_stable = True
             else:
                 pass
-                
+
             return evals, evecs_left, evecs_right, participation_matrix, is_stable, max_real
 
         except linalg.LinAlgError as e:
@@ -883,7 +932,7 @@ class PolynomialMatrixBuilder:
                 ("A", self.A),
                 ("B", self.B),
             ]
-            
+
             for label, mat in matrix_refs:
                 if mat is not None:
                     print(f"\n--- {label} Matrix ---")
@@ -894,7 +943,7 @@ class PolynomialMatrixBuilder:
             print("\n--- Stability Analysis ---")
             print(f"Is stable:     {is_stable}")
             print(f"Max Real Part: {max_real}")
-            
+
             if eigenvalues is not None:
                 valid_evs: list = list(eigenvalues[np.isfinite(eigenvalues)])
                 sorted_evs: list = sorted(valid_evs, key=self._get_real_part, reverse=True)
@@ -909,10 +958,10 @@ class PolynomialMatrixBuilder:
         if save_path is not None:
             import os
             os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
-            
+
             # Using an explicit file writer structure
             with open(save_path, "w", encoding="utf-8") as f:
-                
+
                 matrix_write_refs: list = [
                     ("S Matrix", self.S_H),
                     ("Phi Matrix", self.Phi_H),
@@ -920,7 +969,7 @@ class PolynomialMatrixBuilder:
                     ("A Matrix", self.A),
                     ("B Matrix", self.B),
                 ]
-                
+
                 for label_w, mat_w in matrix_write_refs:
                     if mat_w is not None:
                         formatted_mat: str = self._arr2str(mat_w)
@@ -933,17 +982,17 @@ class PolynomialMatrixBuilder:
                     f"Is stable:     {is_stable}\n"
                     f"Max Real Part: {max_real}\n"
                 )
-                
+
                 if eigenvalues is not None:
                     evs_str_list: list = list()
                     for ev in eigenvalues:
                         evs_str_list.append(f"  {ev}")
-                    
+
                     # Using a simple loop instead of join with comprehension
                     evs_txt: str = ""
                     for s_ev in evs_str_list:
                         evs_txt = evs_txt + s_ev + "\n"
-                        
+
                     stability_txt = stability_txt + f"Eigenvalues:\n{evs_txt}\n"
                 else:
                     pass
