@@ -7,10 +7,12 @@ from typing import Callable, List
 import numpy as np
 import numba as nb
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
+from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import multi_island_pf_nc
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_results import ContingencyAnalysisResults
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysis, LinearMultiContingencies
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_options import ContingencyAnalysisOptions
 from VeraGridEngine.basic_structures import Logger, CxVec, IntVec, StrVec, Mat, Vec
+from VeraGridEngine.enumerations import SolverType
 
 
 def linear_contingency_analysis(nc: NumericalCircuit,
@@ -66,21 +68,19 @@ def linear_contingency_analysis(nc: NumericalCircuit,
                                           ptdf_threshold=options.lin_options.ptdf_threshold,
                                           lodf_threshold=options.lin_options.lodf_threshold)
 
+    # run 0
+    if options.pf_options.solver_type == SolverType.Linear:
+        # if linear, just re-use the linear analysis
+        Sbus: CxVec = nc.get_power_injections()  # MW
+        flows_n = linear_analysis.get_flows(Sbus=Sbus, P_hvdc=nc.hvdc_data.Pset)
+    else:
+        # Run a proper base power flow
+        base_res = multi_island_pf_nc(nc=nc, options=options.pf_options)
+        flows_n = base_res.Sf.real
+
     # get the contingency branch indices
     mon_idx = nc.passive_branch_data.get_monitor_enabled_indices()
     Pbus = nc.get_power_injections().real
-
-    # compute the branch Sf in "n"
-    if options.use_provided_flows:
-        flows_n = options.Pf
-
-        if options.Pf is None:
-            msg = 'The option to use the provided flows is enabled, but no flows are available'
-            logger.add_error(msg)
-            raise Exception(msg)
-    else:
-        Sbus: CxVec = nc.get_power_injections()  # MW
-        flows_n = linear_analysis.get_flows(Sbus=Sbus, P_hvdc=nc.hvdc_data.Pset)
 
     loadings_n = flows_n / (nc.passive_branch_data.rates + 1e-9)
 

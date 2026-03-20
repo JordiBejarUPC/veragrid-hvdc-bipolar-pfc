@@ -1,5 +1,6 @@
 import os
 import VeraGridEngine as gce
+
 # from VeraGridEngine import Contingency, SolverType, ResultTypes  # Import Contingency explicitly
 
 
@@ -30,13 +31,13 @@ main_circuit.add_contingency(gce.Contingency(device=branches[5], name=branches[5
 pf_options = gce.PowerFlowOptions(solver_type=gce.SolverType.NR)
 
 # declare the contingency options
-options_ = gce.ContingencyAnalysisOptions(use_provided_flows=False,
-                                          Pf=None,
-                                          contingency_method=gce.ContingencyMethod.PowerFlow,
-                                          # if no power flow options are provided
-                                          # if no power flow options are provided
-                                          # a linear power flow is used
-                                          pf_options=pf_options)
+options_ = gce.ContingencyAnalysisOptions(
+    contingency_method=gce.ContingencyMethod.PowerFlow,
+    # if no power flow options are provided
+    # if no power flow options are provided
+    # a linear power flow is used
+    pf_options=pf_options
+)
 
 # Get all the defined contingency groups from the circuit
 contingency_groups = main_circuit.get_contingency_groups()
