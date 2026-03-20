@@ -1980,6 +1980,13 @@ def get_vsc_data(
         data.monitor_loading[i] = int(elm.monitor_loading)
 
         data.Kdp[ii] = elm.kdp
+        data.u_setpoint_min[ii] = elm.u_setpoint_min
+        data.u_setpoint_max[ii] = elm.u_setpoint_max
+        data.u_setpoint[ii] = elm.u_setpoint
+        data.du_setpoint[ii] = elm.du_setpoint
+        data.Q_min[ii] = elm.Q_min
+        data.Q_max[ii] = elm.Q_max
+
         data.alpha1[ii] = elm.alpha1
         data.alpha2[ii] = elm.alpha2
         data.alpha3[ii] = elm.alpha3

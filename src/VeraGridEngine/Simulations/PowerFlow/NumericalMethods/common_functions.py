@@ -10,6 +10,63 @@ from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, CscMat, CxMat
 from typing import Tuple
 
 
+def voltage_q_droop(ut: complex,
+                    u_setpoint_min: float,
+                    u_setpoint_max: float,
+                    u_setpoint: float,
+                    du_setpoint: float,
+                    Q_setpoint: float,
+                    S_r: float,
+                    droop: float,
+                    Q_min: float,
+                    Q_max: float,
+                    S_base: float
+                    ):
+    """
+    Find the actual reactive power output for generators controlled with a voltage droop.
+    :param ut: Actual voltage value at the terminal [pu]
+    :param u_setpoint_min: Minimum voltage setpoint [pu]
+    :param u_setpoint_max: Maximum voltage setpoint [pu]
+    :param u_setpoint: Specified voltage setpoint [pu]
+    :param du_setpoint: Voltage signal coming from the station controller [pu]
+    :param Q_setpoint: Specified dispatch reactive power [MVAr]
+    :param S_r: Rated apparent power [MVA]
+    :param droop: Voltage droop value [%]
+    :param Q_min: Minimum reactive power the converter can inject/absorb [MVAr]
+    :param Q_max: Maximum reactive power the converter can inject/absorb [MVAr]
+    :param S_base: Base power of the network [MVA]
+    """
+    u = np.abs(ut)
+    # Voltage limits
+    if u > u_setpoint_max:
+        u = u_setpoint_max
+    elif u < u_setpoint_min:
+        u = u_setpoint_min
+    else:
+        u = u
+
+    u = 1.01456
+
+    du_droop = u_setpoint + du_setpoint - u  # Voltage deviation [pu]
+
+    if abs(droop) > 0.0:
+        Q_droop = S_r * 100 / droop  # Additional reactive power for the specified voltage droop [MVAr]
+    else:
+        return Q_setpoint # If the voltage droop is zero, the actual reactive power is the same as the setpoint
+
+    Q = -Q_setpoint * S_base + Q_droop * du_droop  # Actual reactive power output [MVAr]
+
+    # Reactive power limits
+    if Q > Q_max:
+        Q = Q_max
+    elif Q < Q_min:
+        Q = Q_min
+    else:
+        Q = Q
+
+    return -Q / S_base
+
+
 @nb.njit(cache=True, fastmath=True)
 def polar_to_rect(Vm, Va) -> CxVec:
     """

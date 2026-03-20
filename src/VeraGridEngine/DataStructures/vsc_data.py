@@ -28,7 +28,14 @@ class VscData(BranchParentData):
 
         self.F_dcn = np.zeros(self.nelm, dtype=int)
 
-        self.Kdp: Vec = np.ones(self.nelm, dtype=float)
+        self.Kdp: Vec = np.full(self.nelm, fill_value=0.0, dtype=float)
+        self.u_setpoint_min: Vec = np.full(self.nelm, fill_value=0.9, dtype=float)
+        self.u_setpoint_max: Vec = np.full(self.nelm, fill_value=1.1, dtype=float)
+        self.u_setpoint: Vec = np.full(self.nelm, fill_value=1.0, dtype=float)
+        self.du_setpoint: Vec = np.full(self.nelm, fill_value=0.0, dtype=float)
+        self.Q_min: Vec = np.full(self.nelm, fill_value=-999.0, dtype=float)
+        self.Q_max: Vec = np.full(self.nelm, fill_value=999.0, dtype=float)
+
         self.alpha1: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha1)
         self.alpha2: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha2)
         self.alpha3: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha3)
@@ -66,6 +73,13 @@ class VscData(BranchParentData):
         # data.T_ac = self.T_ac[elm_idx]
 
         data.Kdp = self.Kdp[elm_idx]
+        data.u_setpoint_min = self.u_setpoint_min[elm_idx]
+        data.u_setpoint_max = self.u_setpoint_max[elm_idx]
+        data.u_setpoint = self.u_setpoint[elm_idx]
+        data.du_setpoint = self.du_setpoint[elm_idx]
+        data.Q_min = self.Q_min[elm_idx]
+        data.Q_max = self.Q_max[elm_idx]
+
         data.alpha1 = self.alpha1[elm_idx]
         data.alpha2 = self.alpha2[elm_idx]
         data.alpha3 = self.alpha3[elm_idx]
@@ -116,6 +130,13 @@ class VscData(BranchParentData):
         data.F_dcn = self.F_dcn.copy()
 
         data.Kdp = self.Kdp.copy()
+        data.u_setpoint_min = self.u_setpoint_min.copy()
+        data.u_setpoint_max = self.u_setpoint_max.copy()
+        data.u_setpoint = self.u_setpoint.copy()
+        data.du_setpoint = self.du_setpoint.copy()
+        data.Q_min = self.Q_min.copy()
+        data.Q_max = self.Q_max.copy()
+
         data.dc = self.dc.copy()
         data.alpha1 = self.alpha1.copy()
         data.alpha2 = self.alpha2.copy()

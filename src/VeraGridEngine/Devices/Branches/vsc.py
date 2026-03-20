@@ -22,6 +22,12 @@ if TYPE_CHECKING:
 class VSC(BranchParent):
     __slots__ = (
         '_kdp',
+        '_u_setpoint_min',
+        '_u_setpoint_max',
+        '_u_setpoint',
+        '_du_setpoint',
+        '_Q_min',
+        '_Q_max',
         '_alpha1',
         '_alpha2',
         '_alpha3',
@@ -58,7 +64,13 @@ class VSC(BranchParent):
                       definition='Losses linear parameter (IEC 62751-2 loss Correction).'),
         GCProp(key='alpha3', units='', tpe=float,
                       definition='Losses quadratic parameter (IEC 62751-2 loss Correction).'),
-        GCProp(key='kdp', units='p.u./p.u.', tpe=float, definition='Droop Power/Voltage slope.'),
+        GCProp(key='kdp', units='%', tpe=float, definition='Droop Power/Voltage slope.'),
+        GCProp(key='u_setpoint_min', units='p.u.', tpe=float, definition='Minimum voltage setpoint.'),
+        GCProp(key='u_setpoint_max', units='p.u.', tpe=float, definition='Maximum voltage setpoint.'),
+        GCProp(key='u_setpoint', units='p.u.', tpe=float, definition='Specified voltage setpoint.'),
+        GCProp(key='du_setpoint', units='p.u.', tpe=float, definition='Voltage signal coming from the station controller.'),
+        GCProp(key='Q_min', units='MVAr', tpe=float, definition='Minimum reactive power the converter can inject/absorb.'),
+        GCProp(key='Q_max', units='MVAr', tpe=float, definition='Maximum reactive power the converter can inject/absorb.'),
         GCProp(key='control1', units='', tpe=ConverterControlType, profile_name="control1_prof",
                       definition='Control mode 1.'),
         GCProp(key='control2', units='', tpe=ConverterControlType, profile_name="control2_prof",
@@ -97,7 +109,13 @@ class VSC(BranchParent):
                  code='',
                  active=True,
                  rate: float = 100.0,
-                 kdp=-0.05,
+                 kdp: float = 0.0,
+                 u_setpoint_min: float = 0.9,
+                 u_setpoint_max: float = 1.1,
+                 u_setpoint: float = 1.0,
+                 du_setpoint: float = 0.0,
+                 Q_min: float = -999.0,
+                 Q_max: float = 999.0,
                  alpha1=0.0001,
                  alpha2=0.015,
                  alpha3=0.2,
@@ -133,7 +151,13 @@ class VSC(BranchParent):
         :param code:
         :param active:
         :param rate:
-        :param kdp:
+        :param kdp: Voltage droop value [%]
+        :param u_setpoint_min: Minimum voltage setpoint [pu]
+        :param u_setpoint_max: Maximum voltage setpoint [pu]
+        :param u_setpoint: Specified voltage setpoint [pu]
+        :param du_setpoint: Voltage signal coming from the station controller [pu]
+        :param Q_min: Minimum reactive power the converter can inject/absorb [MVAr]
+        :param Q_max: Maximum reactive power the converter can inject/absorb [MVAr]
         :param alpha1:
         :param alpha2:
         :param alpha3:
@@ -236,6 +260,13 @@ class VSC(BranchParent):
         # self._bus_to = bus_to
 
         self.kdp = float(kdp)
+        self.u_setpoint_min = float(u_setpoint_min)
+        self.u_setpoint_max = float(u_setpoint_max)
+        self.u_setpoint = float(u_setpoint)
+        self.du_setpoint = float(du_setpoint)
+        self.Q_min = float(Q_min)
+        self.Q_max = float(Q_max)
+
         self.alpha1 = float(alpha1)
         self.alpha2 = float(alpha2)
         self.alpha3 = float(alpha3)
@@ -745,6 +776,120 @@ class VSC(BranchParent):
         :return: None
         """
         self._kdp = float(val)
+
+    @property
+    def u_setpoint_min(self) -> float:
+        """
+        Get ``u_setpoint_min``.
+
+        :return: float
+        """
+        return self._u_setpoint_min
+
+    @u_setpoint_min.setter
+    def u_setpoint_min(self, val: float) -> None:
+        """
+        Set ``u_setpoint_min``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._u_setpoint_min = float(val)
+
+    @property
+    def u_setpoint_max(self) -> float:
+        """
+        Get ``u_setpoint_max``.
+
+        :return: float
+        """
+        return self._u_setpoint_max
+
+    @u_setpoint_max.setter
+    def u_setpoint_max(self, val: float) -> None:
+        """
+        Set ``u_setpoint_max``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._u_setpoint_max = float(val)
+
+    @property
+    def u_setpoint(self) -> float:
+        """
+        Get ``u_setpoint``.
+
+        :return: float
+        """
+        return self._u_setpoint
+
+    @u_setpoint.setter
+    def u_setpoint(self, val: float) -> None:
+        """
+        Set ``u_setpoint``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._u_setpoint = float(val)
+
+    @property
+    def du_setpoint(self) -> float:
+        """
+        Get ``du_setpoint``.
+
+        :return: float
+        """
+        return self._du_setpoint
+
+    @du_setpoint.setter
+    def du_setpoint(self, val: float) -> None:
+        """
+        Set ``du_setpoint``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._du_setpoint = float(val)
+
+    @property
+    def Q_min(self) -> float:
+        """
+        Get ``Q_min``.
+
+        :return: float
+        """
+        return self._Q_min
+
+    @Q_min.setter
+    def Q_min(self, val: float) -> None:
+        """
+        Set ``Q_min``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Q_min = float(val)
+
+    @property
+    def Q_max(self) -> float:
+        """
+        Get ``Q_max``.
+
+        :return: float
+        """
+        return self._Q_max
+
+    @Q_max.setter
+    def Q_max(self, val: float) -> None:
+        """
+        Set ``Q_max``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Q_max = float(val)
 
     @property
     def min_ac_voltage(self) -> float:

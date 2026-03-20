@@ -21,7 +21,7 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import compute_fx_error
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_formulation_template import PfFormulationTemplate
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import (compute_zip_power, compute_power,
-                                                                                    polar_to_rect)
+                                                                                    polar_to_rect, voltage_q_droop)
 from VeraGridEngine.enumerations import (TapPhaseControl, TapModuleControl, HvdcControlType, ConverterControlType, ConverterFaultControlType)
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, Logger
 
@@ -1785,6 +1785,20 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         # VSC ----------------------------------------------------------------------------------------------------------
         tm[3] = time.time()
 
+        for vsc in self.k_vsc_qt:
+            Qt_vsc_[vsc] = voltage_q_droop(ut=self.V[self.nc.vsc_data.T[vsc]],
+                                           u_setpoint_min=self.nc.vsc_data.u_setpoint_min[vsc],
+                                           u_setpoint_max=self.nc.vsc_data.u_setpoint_max[vsc],
+                                           u_setpoint=self.nc.vsc_data.u_setpoint[vsc],
+                                           du_setpoint=self.nc.vsc_data.du_setpoint[vsc],
+                                           Q_setpoint=self.Qt_vsc[vsc],
+                                           S_r=self.nc.vsc_data.rates[vsc],
+                                           droop=self.nc.vsc_data.Kdp[vsc],
+                                           Q_min=self.nc.vsc_data.Q_min[vsc],
+                                           Q_max=self.nc.vsc_data.Q_max[vsc],
+                                           S_base=self.nc.Sbase
+                                           )
+        print(Qt_vsc_)
         T_vsc = self.nc.vsc_data.T
         It = np.sqrt(Pt_vsc_ * Pt_vsc_ + Qt_vsc_ * Qt_vsc_) / Vm_[T_vsc]
         It2 = It * It
