@@ -8,7 +8,7 @@
 from typing import List
 import numpy as np
 
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, ConverterControlType
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block, Var, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -43,7 +43,12 @@ For KCL connection:
 def StandardConverterEmtBuild(
     vfactory: VarFactory,
     name: str = "standard_converter_emt",
-    P_ref0: float = 0.0
+    P_ref0: float = 0.0,
+    control1: ConverterControlType | None = None,
+    control2: ConverterControlType | None = None,
+    control1_val: float | None = None,
+    control2_val: float | None = None,
+    vdc_kp: float = 2.0,
 ) -> EmtModelTemplate:
     """
     Build a standard ideal converter model for EMT simulation.
@@ -91,13 +96,26 @@ def StandardConverterEmtBuild(
     # =================================================================
     # Active power reference (can be controlled externally)
     P_ref = vfactory.add_var(name=f"P_ref_{name}")
+    Vdc_ref = vfactory.add_var(name=f"Vdc_ref_{name}")
 
     # =================================================================
     # PARAMETERS
     # =================================================================
 
+    regulate_vdc = (
+        control1 == ConverterControlType.Vm_dc
+        or control2 == ConverterControlType.Vm_dc
+    )
+
+    vdc_ref0 = 1.0
+    if control1 == ConverterControlType.Vm_dc and control1_val is not None:
+        vdc_ref0 = float(control1_val)
+    elif control2 == ConverterControlType.Vm_dc and control2_val is not None:
+        vdc_ref0 = float(control2_val)
+
     event_dict = {
         P_ref: vfactory.add_const(P_ref0),
+        Vdc_ref: vfactory.add_const(vdc_ref0),
     }
 
     # =================================================================
@@ -107,11 +125,12 @@ def StandardConverterEmtBuild(
 
     eps = vfactory.add_const(1e-10)
     v_sq = v_A * v_A + v_B * v_B + v_C * v_C
+    P_cmd = P_ref + vfactory.add_const(vdc_kp) * (v_dc - Vdc_ref) if regulate_vdc else P_ref
 
-    algebraic_eqs.append(i_A - P_ref * v_A / (v_sq + eps))
-    algebraic_eqs.append(i_B - P_ref * v_B / (v_sq + eps))
-    algebraic_eqs.append(i_C - P_ref * v_C / (v_sq + eps))
-    algebraic_eqs.append(v_dc * i_dc + P_ref)
+    algebraic_eqs.append(i_A - P_cmd * v_A / (v_sq + eps))
+    algebraic_eqs.append(i_B - P_cmd * v_B / (v_sq + eps))
+    algebraic_eqs.append(i_C - P_cmd * v_C / (v_sq + eps))
+    algebraic_eqs.append(v_dc * i_dc + P_cmd)
 
     # =================================================================
     # ALGEBRAIC VARIABLES
@@ -187,7 +206,6 @@ def StandardConverterEmtBuild(
         VarPowerFlowRefferenceType.Idc: i_dc,
 
         VarPowerFlowRefferenceType.P: None,
-        # VarPowerFlowRefferenceType.P: P_ref,
     }
 
     converter_block.name = name

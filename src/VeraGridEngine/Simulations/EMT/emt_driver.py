@@ -5,7 +5,6 @@
 
 import numpy as np
 import pandas as pd
-from typing import Any, cast
 
 from VeraGridEngine import EmtSolverTypes
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -58,7 +57,7 @@ class EmtSimulationDriver(DriverTemplate):
 
         self.options = options
 
-        self.results = EmtResults | None = None
+        self.results: EmtResults | None = None
 
         self.line_states = {}
 
@@ -96,7 +95,8 @@ class EmtSimulationDriver(DriverTemplate):
 
         problem = EmtProblemDae(grid=self.grid,
                                 options=self.options,
-                                pf_results=self.pf_results)
+                                pf_results_3Ph=self.pf_results,
+                                pf_results=None)
 
         newton_diag_config = NewtonDiagnosticsConfig(
             step_norm_explode=self.options.newton_step_norm_explode,
@@ -123,8 +123,7 @@ class EmtSimulationDriver(DriverTemplate):
             newton_diag_config=newton_diag_config,
         )
 
-        boundary_updater = cast(Any, problem)
-        t, y, dy = solver.simulate(boundary_updater=boundary_updater)
+        t, y, dy = solver.simulate()
 
         # profiler.disable()
         # stats = pstats.Stats(profiler).sort_stats('cumtime')

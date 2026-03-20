@@ -188,6 +188,12 @@ def get_xfmr_emt_template(
         vf.add_var(name=f"d_vt_C_{name}", ref=VarPowerFlowRefferenceType.d_v_C_t),
     ]
 
+    for d_var in d_v_f:
+        templ.block.event_dict[d_var] = vf.add_const(None)
+
+    for d_var in d_v_t:
+        templ.block.event_dict[d_var] = vf.add_const(None)
+
     i_leak = [vf.add_var(name=f"i_leak_{ph}_{name}") for ph in ("A", "B", "C")]
     lam_leg = [vf.add_var(name=f"lam_leg_{ph}_{name}") for ph in ("A", "B", "C")]
     q_f = [vf.add_var(name=f"qf_{ph}_{name}") for ph in ("A", "B", "C")]

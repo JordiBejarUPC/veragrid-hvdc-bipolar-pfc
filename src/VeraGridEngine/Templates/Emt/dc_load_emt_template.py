@@ -73,7 +73,7 @@ def get_dc_load_emt_template(
 
     if R_dc is not None and R_dc > 0:
         # Constant resistance mode: I = V / R
-        alg_eqs.append(i_dc - v_dc / R_dc)
+        alg_eqs.append(i_dc + v_dc / R_dc)
         alg_eqs.append(p_dc - v_dc * i_dc)
     else:
         # Constant power mode: I = P / V
@@ -94,7 +94,7 @@ def get_dc_load_emt_template(
     eps = vf.add_const(1e-10)
     if R_dc is not None and R_dc > 0:
         templ.block.init_eqs = {
-            i_dc: (v_dc / R_dc),
+            i_dc: (-v_dc / R_dc),
             p_dc: (v_dc * i_dc),
         }
     else:

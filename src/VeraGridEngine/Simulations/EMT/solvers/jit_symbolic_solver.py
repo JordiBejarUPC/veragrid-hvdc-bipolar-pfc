@@ -8,7 +8,12 @@ import numpy as np
 import numba as nb
 import scipy.sparse as sp
 import time
-from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
+    EmtBoundaryUpdateProtocol,
+    EmtProblemTemplate,
+    get_solver_forced_event_time,
+    resolve_solver_boundary_updater,
+)
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, BinOp, UnOp, Func
@@ -528,13 +533,13 @@ class JitSymbolicSolver:
                  x0: Union[Vec | None] = None,
                  dx0: Union[Vec | None] = None,
                  params0: Union[Vec | None] = None,
-                 boundary_updater: BoundaryUpdateWrapper | None = None) -> Tuple[Vec, Mat, Mat]:
+                 boundary_updater: EmtBoundaryUpdateProtocol | None = None) -> Tuple[Vec, Mat, Mat]:
         """
         Main JIT simulation loop using the Symbolic Differentiation (SD) backend.
         :param x0: Initial state vector.
         :param dx0: Initial derivative vector.
         :param params0: Initial event parameters.
-        :param boundary_updater: Boundary condition updater, defaults to None.
+        :param boundary_updater: Optional override for the problem boundary updater.
         :return: A tuple containing the time vector and the state trajectory matrix. Tuple[Vec, Mat]
         """
         t_start = time.time()
@@ -580,6 +585,8 @@ class JitSymbolicSolver:
         else:
             pass
 
+        active_boundary_updater = resolve_solver_boundary_updater(self.problem, boundary_updater, float(self.t0))
+
         self.t[0] = self.t0
         self.y[0, :] = x0.copy()
         self.dy[0, :] = dx0.copy()
@@ -597,14 +604,12 @@ class JitSymbolicSolver:
         if params0 is not None:
             ev_params = params0.copy()
         else:
-            # ev_params = np.zeros(n_event_params, dtype=np.float64)
-            ev_params_list = [c for c in self.problem.event_params_values]
-            ev_params = np.array([float(val) if val is not None else 0.0 for val in ev_params_list], dtype=np.float64)
+            ev_params = self.problem.event_params_values.copy()
 
-        if boundary_updater is not None:
+        if active_boundary_updater is not None:
             ev_params = self.problem.def_event_params_fn(ev_params, float(self.t0))
             full_params0 = np.concatenate((ev_params, static_vals))
-            boundary_updater.update(float(self.t0), x_prev, full_params0)
+            active_boundary_updater.update(float(self.t0), x_prev, full_params0)
             ev_params[:] = full_params0[:len(ev_params)]
 
         trace_collector = self.problem.get_newton_trace_collector()
@@ -655,18 +660,11 @@ class JitSymbolicSolver:
             is_first_local_step: bool = True
 
             while t_local_prev < (t_step_target - 1e-15):
-                forced_event_time: Optional[float] = None
-
-                if boundary_updater is None:
-                    pass
-                else:
-                    if hasattr(boundary_updater, 'get_next_forced_event_time'):
-                        forced_event_time = boundary_updater.get_next_forced_event_time(
-                            t_prev=t_local_prev,
-                            t_target=t_step_target
-                        )
-                    else:
-                        pass
+                forced_event_time = get_solver_forced_event_time(
+                    active_boundary_updater,
+                    t_local_prev,
+                    t_step_target,
+                )
 
                 if forced_event_time is None:
                     t_curr: float = t_step_target
@@ -713,10 +711,10 @@ class JitSymbolicSolver:
                 else:
                     pass
 
-                if boundary_updater is None:
+                if active_boundary_updater is None:
                     pass
                 else:
-                    boundary_updater.update(t_curr, x_prev, full_params)
+                    active_boundary_updater.update(t_curr, x_prev, full_params)
                     ev_params[:] = full_params[:len(ev_params)]
 
                 x_iter[:] = x_prev
