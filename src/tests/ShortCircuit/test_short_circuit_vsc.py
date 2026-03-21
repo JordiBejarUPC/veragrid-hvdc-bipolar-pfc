@@ -166,3 +166,22 @@ def test_short_circuit_vsc_14buses_disconnection():
          1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0])
 
     assert np.allclose(abs(res_sc.voltage1[:, 1]), Usc_reference, atol=1e-6)
+
+
+def test_ieee14_droop_vsc():
+    grid = vge.open_file('data/grids/test_ieee14_droop_vsc.veragrid')
+
+    # ------------------------------------------------------------------------------------------------------------------
+    #   AC/DC Power Flow under healthy conditions
+    # ------------------------------------------------------------------------------------------------------------------
+    pf_options_1 = PowerFlowOptions(solver_type=SolverType.NR,
+                                    retry_with_other_methods=False)
+    res_pf = vge.power_flow(grid=grid, options=pf_options_1)
+
+    power_factory = np.array([
+        1.000000, 0.956300, 0.902994, 0.929376, 0.940030, 0.925800, 0.916305, 0.903538, 0.906176, 0.911815, 0.931089, 0.920778, 0.908115,
+        0.982396, 0.962955, 0.971214, 0.967765, 0.964102, 0.973142, 0.969388, 0.964802,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0
+    ], dtype=float)
+
+    assert np.allclose(np.abs(res_pf.voltage), power_factory, atol=1e-6)
