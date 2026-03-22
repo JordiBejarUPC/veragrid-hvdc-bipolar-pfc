@@ -82,6 +82,7 @@ for ac_bus_name, vsc_name, rate, p_gen in vsc_specs:
         u_setpoint=1.0,
         Q_min=-rate,
         Q_max=rate,
+        min_ac_voltage=0.85,
     )
     grid.add_vsc(vsc)
 
@@ -129,4 +130,6 @@ with zipfile.ZipFile(OUTPUT, 'w', zipfile.ZIP_DEFLATED) as zf:
 # Step 6: Verify
 grid2 = gce.open_file(OUTPUT)
 print(f"\nVerification: {len(grid2.buses)} buses, {len(grid2.vsc_devices)} VSCs, {len(grid2.generators)} gens")
+for vsc in grid2.vsc_devices:
+    print(f"  {vsc.name}: min_ac_voltage = {vsc.min_ac_voltage} p.u.")
 print("File saved to", OUTPUT)
