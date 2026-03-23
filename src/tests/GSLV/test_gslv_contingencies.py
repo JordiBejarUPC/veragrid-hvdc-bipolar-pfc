@@ -100,7 +100,8 @@ def test_gslv_contingencies_ts_pf():
 
     opts = vg.ContingencyAnalysisOptions(
         pf_options=vg.PowerFlowOptions(solver_type=vg.SolverType.NR),
-        contingency_method=vg.ContingencyMethod.PowerFlow
+        contingency_method=vg.ContingencyMethod.PowerFlow,
+        detailed_massive_report=True
     )
 
     # Native engine
@@ -137,7 +138,8 @@ def test_gslv_contingencies_ts_linear():
 
     opts = vg.ContingencyAnalysisOptions(
         pf_options=vg.PowerFlowOptions(solver_type=vg.SolverType.NR),
-        contingency_method=vg.ContingencyMethod.Linear
+        contingency_method=vg.ContingencyMethod.Linear,
+        detailed_massive_report=True
     )
 
     # Native engine

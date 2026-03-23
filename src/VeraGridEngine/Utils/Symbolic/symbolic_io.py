@@ -610,7 +610,7 @@ def block_deep_copy(block: Block, var_factory: VarFactory):
     :return:
     """
     saver = BlockSaver(var_factory)
-    d = saver.save_block(block, main=False)
+    d = saver.save_block(block, main=True)
     const_save = saver.get_const_to_save()
     vars_save = saver.get_vars_to_save()
     diff_vars_save = saver.get_diff_vars_to_save()

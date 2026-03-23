@@ -433,7 +433,7 @@ def test_mlodf() -> None:
 
         # Theoretical method
         pf_options = gce.PowerFlowOptions(
-            solver_type=gce.SolverType.NR,
+            solver_type=gce.SolverType.Linear,
             verbose=0,
             control_q=False
         )

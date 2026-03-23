@@ -102,7 +102,7 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 grid.add_load(bus=bus1, api_obj=load)
 
 for bus in grid.buses:
-    get_bus_emt_template(grid, bus, vf=grid.emt_var_factory)
+    get_bus_emt_template(grid, bus)
 
 ######################################################################################################
 # Build EMT models
@@ -274,7 +274,7 @@ def build_emt_options(chosen_solver: str, initialization_method: EmtInitializati
     :return: EMT options.
     """
     return EmtOptions(time_step=5e-6,
-                      simulation_time=0.03,
+                      simulation_time=0.06,
                       tolerance=1e-6,
                       solver=SOLVER_TYPE_MAP[chosen_solver],
                       integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
@@ -517,7 +517,8 @@ def create_problem(enable_trace: bool = False) -> EmtProblemDae:
     """
     local_problem: EmtProblemDae = EmtProblemDae(grid=grid,
                                                  options=options,
-                                                 pf_results=res)
+                                                 pf_results_3Ph=res,
+                                                 pf_results=None)
 
     if enable_trace:
         local_problem.set_newton_trace_collector(NewtonTraceCollector())

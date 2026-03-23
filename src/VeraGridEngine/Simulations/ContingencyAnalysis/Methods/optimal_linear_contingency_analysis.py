@@ -73,17 +73,8 @@ def optimal_linear_contingency_analysis(grid: MultiCircuit,
     mon_idx = nc.passive_branch_data.get_monitor_enabled_indices()
     Pbus = nc.get_power_injections().real
 
-    # compute the branch Sf in "n"
-    if options.use_provided_flows:
-        flows_n = options.Pf
-
-        if options.Pf is None:
-            msg = 'The option to use the provided flows is enabled, but no flows are available'
-            calling_class.logger.add_error(msg)
-            raise Exception(msg)
-    else:
-        Sbus: CxVec = nc.get_power_injections()
-        flows_n = linear_analysis.get_flows(Sbus=Sbus, P_hvdc=nc.hvdc_data.Pset)
+    Sbus: CxVec = nc.get_power_injections()
+    flows_n = linear_analysis.get_flows(Sbus=Sbus, P_hvdc=nc.hvdc_data.Pset)
 
     loadings_n = flows_n / (nc.passive_branch_data.rates + 1e-9)
 
