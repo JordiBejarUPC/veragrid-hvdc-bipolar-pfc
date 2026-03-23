@@ -230,6 +230,21 @@ class ScenarioTreeModel(QAbstractItemModel):
         self.beginResetModel()
         self.endResetModel()
 
+    def refresh_data(self) -> None:
+        """
+        Refresh all cell data without resetting the model structure.
+        Preserves tree expansion state and selection.
+        Emit dataChanged for every node in the tree.
+        """
+        for node in self._multiverse.iter_nodes_depth_first():
+            if node.parent is None:
+                row: int = self._multiverse.root_nodes.index(node)
+            else:
+                row = node.row()
+            top_left: QModelIndex = self.createIndex(row, 0, node)
+            bottom_right: QModelIndex = self.createIndex(row, len(self._headers) - 1, node)
+            self.dataChanged.emit(top_left, bottom_right, [Qt.ItemDataRole.DisplayRole])
+
     # -------------------------------------------------------------------------
     # CRUD wrappers synchronized with Qt model notifications
     # -------------------------------------------------------------------------

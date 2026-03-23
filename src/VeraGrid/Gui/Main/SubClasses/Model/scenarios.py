@@ -10,7 +10,7 @@ from VeraGrid.Gui.scenario_tree_model import ScenarioTreeModel
 from VeraGrid.Gui import gui_functions as gf
 from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.Devices.multiverse import ScenarioNode
+from VeraGridEngine.Devices.multiverse import MultiVerse, ScenarioNode
 
 
 class ScenariosMain(TimeEventsMain):
@@ -46,6 +46,27 @@ class ScenariosMain(TimeEventsMain):
 
         # Connect double-click signal to apply scenario
         self.ui.multiverseTreeView.doubleClicked.connect(self.on_scenario_double_clicked)
+
+        # Show the initially active scenario (root) in the label
+        self.ui.activeScenarioLabel.setText(f"Current: {self.multiverse.current_model.name}")
+
+    # ------------------------------------------------------------------
+    # Property override: rebuilds MultiVerse and resets the scenario tree
+    # whenever a new grid is loaded, replacing the old root entirely.
+    # ------------------------------------------------------------------
+    @property
+    def circuit(self) -> MultiCircuit:
+        return self.multiverse.current_model
+
+    @circuit.setter
+    def circuit(self, val: MultiCircuit) -> None:
+        # Rebuild the entire MultiVerse so the root node's data matches the new grid
+        self.multiverse = MultiVerse(current_model=val)
+
+        if hasattr(self, 'scenario_tree_model'):
+            self.scenario_tree_model._multiverse = self.multiverse
+            self.scenario_tree_model.refresh()
+            self.ui.activeScenarioLabel.setText(f"Current: {val.name}")
 
     def get_selected_scenario_index(self) -> QModelIndex | None:
         """
@@ -106,19 +127,15 @@ class ScenariosMain(TimeEventsMain):
     def on_scenario_selection_changed(self) -> None:
         """
         Handle scenario selection changes in the tree view.
-        Updates the UI to reflect the selected scenario.
+        The active scenario label is not changed here — it only reflects the activated scenario.
         """
-        node: ScenarioNode | None = self.get_selected_scenario_node()
-        if node is not None:
-            circuit: MultiCircuit = node.data
-            self.ui.activeScenarioLabel.setText(f"Selected: {circuit.name}")
-        else:
-            self.ui.activeScenarioLabel.setText("No selection")
+        pass
 
     def on_scenario_double_clicked(self, index: QModelIndex) -> None:
         """
         Handle double-click on a scenario node.
-        Sets the double-clicked scenario as the current working scenario.
+        Commits any unsaved edits on the current scenario, then composes and activates
+        the selected scenario via the delta chain.
 
         :param index: The QModelIndex of the double-clicked item
         """
@@ -130,10 +147,14 @@ class ScenariosMain(TimeEventsMain):
         if node is None:
             return
 
-        circuit: MultiCircuit = node.data
+        if node is self.multiverse.current_node:
+            self.show_warning_toast(f"'{node.data.name}' is already the active scenario")
+            return
 
-        # Set as the current model in the multiverse
-        self.multiverse.current_model = circuit
+        circuit: MultiCircuit = self.multiverse.activate_scenario(node.node_id)
+
+        # Refresh counts: commit_current() may have updated the previous node's delta
+        self.scenario_tree_model.refresh_data()
 
         # Update the UI label
         self.ui.activeScenarioLabel.setText(f"Current: {circuit.name}")
@@ -235,7 +256,7 @@ class ScenariosMain(TimeEventsMain):
     def add_child_scenario(self) -> None:
         """
         Add a child scenario to the selected scenario node.
-        Prompts the user for a scenario name and creates a new MultiCircuit.
+        The child starts as a copy of the parent's composed circuit (delta chain applied).
         """
         parent_index: QModelIndex | None = self.get_selected_scenario_index()
 
@@ -257,20 +278,27 @@ class ScenariosMain(TimeEventsMain):
         )
 
         if scenario_name is not None:
-            # Create a new MultiCircuit as a copy of the parent's circuit
-            new_circuit: MultiCircuit = parent_node.data.copy()
-            new_circuit.name = scenario_name
+            # Non-root nodes store a delta, not a full circuit.
+            # A brand-new child starts with an empty delta (no changes from parent yet).
+            initial_delta: MultiCircuit = MultiCircuit(name=scenario_name)
 
             # Add the child node through the model
             node: ScenarioNode = self.scenario_tree_model.append_child(
                 parent_index=parent_index,
-                data=new_circuit
+                data=initial_delta
             )
+
+            # Activate the new child immediately
+            circuit: MultiCircuit = self.multiverse.activate_scenario(node.node_id)
+            self.scenario_tree_model.refresh_data()
+            self.ui.activeScenarioLabel.setText(f"Current: {circuit.name}")
+            self.update_date_dependent_combos()
+            self.view_objects_data()
 
             # Expand the parent node to show the new child
             self.ui.multiverseTreeView.expand(parent_index)
 
-            self.show_info_toast(f"Child scenario '{scenario_name}' added")
+            self.show_info_toast(f"Child scenario '{scenario_name}' added and activated")
         else:
             # User cancelled the operation
             pass
@@ -331,7 +359,7 @@ class ScenariosMain(TimeEventsMain):
     def set_as_current_scenario(self) -> None:
         """
         Set the selected scenario as the current working scenario.
-        Updates the multiverse's current model.
+        Commits any unsaved edits on the current scenario first, then activates the selected one.
         """
         selected_index: QModelIndex | None = self.get_selected_scenario_index()
 
@@ -345,10 +373,14 @@ class ScenariosMain(TimeEventsMain):
             warning_msg("Invalid scenario selected", "Set Current Scenario")
             return
 
-        circuit: MultiCircuit = node.data
+        if node is self.multiverse.current_node:
+            self.show_warning_toast(f"'{node.data.name}' is already the active scenario")
+            return
 
-        # Set as the current model in the multiverse
-        self.multiverse.current_model = circuit
+        circuit: MultiCircuit = self.multiverse.activate_scenario(node.node_id)
+
+        # Refresh counts: commit_current() may have updated the previous node's delta
+        self.scenario_tree_model.refresh_data()
 
         # Update the UI label
         self.ui.activeScenarioLabel.setText(f"Current: {circuit.name}")
