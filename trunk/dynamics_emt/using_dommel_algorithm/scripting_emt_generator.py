@@ -10,7 +10,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.generator import Generator
 from plot_emt_results import plot_ilines, plot_generators, plot_isource, plot_voltages, plot_v_i
-from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_generator_emt_template
+from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
@@ -58,7 +58,7 @@ bus1_template = get_bus_emt_template(grid.rms_var_factory)
 bus1.emt_model = bus1_template.block
 
 gen1 = Generator(name="Gen1",freq = 50, Snom=grid.Sbase)
-gen1_template = get_generator_emt_template()
+gen1_template = get_simple_generator_emt_template()
 gen1.emt_model = gen1_template.block
 
 gen1_mdl = gen1.emt_model

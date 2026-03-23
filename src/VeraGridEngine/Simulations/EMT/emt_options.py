@@ -6,7 +6,7 @@
 from typing import Tuple
 
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
@@ -23,6 +23,17 @@ class EmtOptions(OptionsTemplate):
         GCProp(key="solver", tpe=EmtSolverTypes),
         GCProp(key="integration_method", tpe=DynamicIntegrationMethod),
         GCProp(key="verbose", tpe=int),
+        GCProp(key="initialization_method", tpe=EmtInitializationMethod),
+        GCProp(key="init_newton_tol", tpe=float),
+        GCProp(key="init_newton_max_iter", tpe=int),
+        GCProp(key="init_newton_backtracking", tpe=bool),
+        GCProp(key="init_dense_threshold", tpe=int),
+        GCProp(key="init_pseudo_transient_enable", tpe=bool),
+        GCProp(key="init_ptc_dtau0", tpe=float),
+        GCProp(key="init_ptc_dtau_min", tpe=float),
+        GCProp(key="init_ptc_dtau_max", tpe=float),
+        GCProp(key="init_ptc_max_iter", tpe=int),
+        GCProp(key="init_allow_state_equilibrium", tpe=bool),
         GCProp(key="newton_compute_dense_cond", tpe=bool),
         GCProp(key="newton_enable_fallback", tpe=bool),
         GCProp(key="newton_enable_index1_check", tpe=bool),
@@ -45,6 +56,17 @@ class EmtOptions(OptionsTemplate):
                  solver: EmtSolverTypes = EmtSolverTypes.StructuralAD,
                  integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
                  verbose: int = 0,
+                 initialization_method: EmtInitializationMethod = EmtInitializationMethod.Auto,
+                 init_newton_tol: float = 1e-8,
+                 init_newton_max_iter: int = 20,
+                 init_newton_backtracking: bool = True,
+                 init_dense_threshold: int = 48,
+                 init_pseudo_transient_enable: bool = True,
+                 init_ptc_dtau0: float = 1.0,
+                 init_ptc_dtau_min: float = 1e-6,
+                 init_ptc_dtau_max: float = 1e1,
+                 init_ptc_max_iter: int = 60,
+                 init_allow_state_equilibrium: bool = True,
                  newton_compute_dense_cond: bool = False,
                  newton_enable_fallback: bool = False,
                  newton_enable_index1_check: bool = False,
@@ -74,6 +96,17 @@ class EmtOptions(OptionsTemplate):
         self.solver: EmtSolverTypes = solver
         self.integration_method: DynamicIntegrationMethod = integration_method
         self.verbose = verbose
+        self.initialization_method: EmtInitializationMethod = initialization_method
+        self.init_newton_tol: float = init_newton_tol
+        self.init_newton_max_iter: int = init_newton_max_iter
+        self.init_newton_backtracking: bool = init_newton_backtracking
+        self.init_dense_threshold: int = init_dense_threshold
+        self.init_pseudo_transient_enable: bool = init_pseudo_transient_enable
+        self.init_ptc_dtau0: float = init_ptc_dtau0
+        self.init_ptc_dtau_min: float = init_ptc_dtau_min
+        self.init_ptc_dtau_max: float = init_ptc_dtau_max
+        self.init_ptc_max_iter: int = init_ptc_max_iter
+        self.init_allow_state_equilibrium: bool = init_allow_state_equilibrium
         self.newton_compute_dense_cond = newton_compute_dense_cond
         self.newton_enable_fallback = newton_enable_fallback
         self.newton_enable_index1_check = newton_enable_index1_check

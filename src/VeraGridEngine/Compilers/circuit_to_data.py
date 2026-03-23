@@ -902,8 +902,8 @@ def get_shunt_data(
             data.qmax[ii] = elm.Bmax
 
             data.step[ii] = elm.step
-            data.g_steps.insert(i=ii, x=np.cumsum(elm.g_steps))
-            data.b_steps.insert(i=ii, x=np.cumsum(elm.b_steps))
+            data.g_steps.insert(i=ii, x=np.insert(np.cumsum(elm.g_steps), 0, 0))
+            data.b_steps.insert(i=ii, x=np.insert(np.cumsum(elm.b_steps), 0, 0))
 
             data.active[ii] = elm.get_active_at(t_idx)
             data.cost[ii] = elm.get_Cost_at(t_idx)
@@ -912,7 +912,7 @@ def get_shunt_data(
                 data.Y[ii] += elm.get_Y_at(t_idx)
 
             if elm.control_mode == ShuntControlMode.Discrete:
-                data.Y[ii] += (elm.step + 1) * (0.0 + 1j * elm.b_steps[elm.step])
+                data.Y[ii] += elm.step * complex(elm.g_steps[elm.step], elm.b_steps[elm.step])
 
             if fill_three_phase:
                 if elm.conn == ShuntConnectionType.GroundedStar:

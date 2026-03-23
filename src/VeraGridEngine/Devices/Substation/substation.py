@@ -28,16 +28,16 @@ class Substation(PhysicalDevice):
         '_region',
         '_municipality',
         'address',
-        'irradiation',
+        '_irradiation',
         '_irradiation_prof',
-        'temperature',
+        '_temperature',
         '_temperature_prof',
-        'wind_speed',
+        '_wind_speed',
         '_wind_speed_prof',
-        'terrain_roughness',
+        '_terrain_roughness',
         'modelling_authority',
-        'latitude',
-        'longitude',
+        '_latitude',
+        '_longitude',
         'color',
     )
 
@@ -428,3 +428,119 @@ class Substation(PhysicalDevice):
         :return:
         """
         return datetime.datetime.fromtimestamp(self._decommissioned_date)
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def longitude(self) -> float:
+        """
+        Get ``longitude``.
+
+        :return: float
+        """
+        return self._longitude
+
+    @longitude.setter
+    def longitude(self, val: float) -> None:
+        """
+        Set ``longitude``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._longitude = float(val)
+
+    @property
+    def latitude(self) -> float:
+        """
+        Get ``latitude``.
+
+        :return: float
+        """
+        return self._latitude
+
+    @latitude.setter
+    def latitude(self, val: float) -> None:
+        """
+        Set ``latitude``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._latitude = float(val)
+
+    @property
+    def irradiation(self) -> float:
+        """
+        Get ``irradiation``.
+
+        :return: float
+        """
+        return self._irradiation
+
+    @irradiation.setter
+    def irradiation(self, val: float) -> None:
+        """
+        Set ``irradiation``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._irradiation = float(val)
+
+    @property
+    def temperature(self) -> float:
+        """
+        Get ``temperature``.
+
+        :return: float
+        """
+        return self._temperature
+
+    @temperature.setter
+    def temperature(self, val: float) -> None:
+        """
+        Set ``temperature``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._temperature = float(val)
+
+    @property
+    def wind_speed(self) -> float:
+        """
+        Get ``wind_speed``.
+
+        :return: float
+        """
+        return self._wind_speed
+
+    @wind_speed.setter
+    def wind_speed(self, val: float) -> None:
+        """
+        Set ``wind_speed``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._wind_speed = float(val)
+
+    @property
+    def terrain_roughness(self) -> float:
+        """
+        Get ``terrain_roughness``.
+
+        :return: float
+        """
+        return self._terrain_roughness
+
+    @terrain_roughness.setter
+    def terrain_roughness(self, val: float) -> None:
+        """
+        Set ``terrain_roughness``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._terrain_roughness = float(val)

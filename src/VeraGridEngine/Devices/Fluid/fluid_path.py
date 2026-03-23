@@ -19,8 +19,8 @@ class FluidPath(PhysicalDevice):
     __slots__ = (
         'source',
         'target',
-        'min_flow',
-        'max_flow',
+        '_min_flow',
+        '_max_flow',
         'color',
         '_locations',
     )
@@ -119,3 +119,43 @@ class FluidPath(PhysicalDevice):
 
         ok = bus_from is not None and bus_to is not None
         return bus_from, bus_to, ok
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def min_flow(self) -> float:
+        """
+        Get ``min_flow``.
+
+        :return: float
+        """
+        return self._min_flow
+
+    @min_flow.setter
+    def min_flow(self, val: float) -> None:
+        """
+        Set ``min_flow``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._min_flow = float(val)
+
+    @property
+    def max_flow(self) -> float:
+        """
+        Get ``max_flow``.
+
+        :return: float
+        """
+        return self._max_flow
+
+    @max_flow.setter
+    def max_flow(self, val: float) -> None:
+        """
+        Set ``max_flow``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._max_flow = float(val)

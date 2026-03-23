@@ -16,12 +16,6 @@ pf_drv.run()
 
 con_opf = vg.ContingencyAnalysisOptions(
 
-    # use the provided flows?
-    use_provided_flows=True,
-
-    # Pass here more exact base flows, otherwise linear ones will be computed
-    Pf=pf_drv.results.Sf,
-
     # Contingency method to use
     contingency_method=vg.ContingencyMethod.PowerFlow,
 

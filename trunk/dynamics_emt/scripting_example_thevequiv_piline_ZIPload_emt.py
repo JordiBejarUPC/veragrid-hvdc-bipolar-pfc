@@ -8,13 +8,12 @@ import numpy as np
 from time import perf_counter
 from typing import Any, cast, Dict, List, Optional
 
-import sys
 import os
 import matplotlib.pyplot as plt
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 
-from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block as find_name_in_symbolic_block
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
@@ -32,7 +31,7 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
+from VeraGridEngine.enumerations import EmtInitializationMethod, VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -43,14 +42,14 @@ profiler = cProfile.Profile()
 profiler.enable()
 
 def find_name_in_block(name: str, block: Block):
-    for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()) + block.diff_vars:
-        if name == var.name:
-            return var
+    """
+    Return one symbolic variable by name from a block tree.
 
-    for mdl in block.children:
-        res = find_name_in_block(name, mdl)
-        if res is not None:
-            return res
+    :param name: Variable name.
+    :param block: Root block.
+    :return: Matching symbolic variable or None.
+    """
+    return find_name_in_symbolic_block(name, block)
 
 grid = gce.MultiCircuit(Sbase=2.0, fbase=50.0)
 
@@ -103,7 +102,7 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 grid.add_load(bus=bus1, api_obj=load)
 
 for bus in grid.buses:
-    get_bus_emt_template(grid, bus, vf=grid.emt_var_factory)
+    get_bus_emt_template(grid, bus)
 
 ######################################################################################################
 # Build EMT models
@@ -115,7 +114,7 @@ gen_mdl = get_generator_thevenin_rl_emt_template(grid=grid, gen = gen0).block
 line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 
 # load
-load_mdl = get_load_ZIP_3ph_emt_template(grid = grid, load = load).block
+load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.emt_var_factory).block
 
 # connection with buses
 gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
@@ -234,6 +233,7 @@ SHOW_INIT_GUESS_TABLE = read_env_flag("VERAGRID_EMT_SHOW_INIT_GUESS_TABLE", Fals
 BENCHMARK_COMPILED_COLD_WARM = read_env_flag("VERAGRID_EMT_BENCHMARK_COMPILED_COLD_WARM", False)
 DENSE_THRESHOLD = 0
 SOLVER_VERBOSE = read_env_flag("VERAGRID_EMT_SOLVER_VERBOSE", False)
+CHOSEN_INIT_METHOD = os.environ.get("VERAGRID_EMT_INIT_METHOD", "AUTO").strip().upper()
 
 SOLVER_TYPE_MAP = {
     "SYMBOLIC": EmtSolverTypes.Symbolic,
@@ -243,6 +243,7 @@ SOLVER_TYPE_MAP = {
 }
 
 ALL_SOLVER_KEYS = ["SYMBOLIC", "AD", "VECTORIZED", "COMPILED"]
+ALL_INIT_METHOD_KEYS = ["EXPLICIT", "CONSISTENTNEWTON", "PSEUDOTRANSIENT", "AUTO"]
 
 if REFERENCE_SOLVER in ALL_SOLVER_KEYS:
     BENCHMARK_SOLVER_KEYS = [REFERENCE_SOLVER] + [key for key in ALL_SOLVER_KEYS if key != REFERENCE_SOLVER]
@@ -252,12 +253,35 @@ else:
 if CHOSEN_SOLVER not in SOLVER_TYPE_MAP:
     raise ValueError(f"Solver '{CHOSEN_SOLVER}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
 
-options = EmtOptions(time_step = 5e-6,
-                     simulation_time =  0.03, # s
-                     tolerance = 1e-6,
-                     solver = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
-                     integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
-                     verbose = 0)
+if CHOSEN_INIT_METHOD not in ALL_INIT_METHOD_KEYS:
+    raise ValueError(f"Initialization method '{CHOSEN_INIT_METHOD}' no reconocido. Usa EXPLICIT, CONSISTENTNEWTON, PSEUDOTRANSIENT o AUTO.")
+
+
+INIT_METHOD_MAP = {
+    "EXPLICIT": EmtInitializationMethod.Explicit,
+    "CONSISTENTNEWTON": EmtInitializationMethod.ConsistentNewton,
+    "PSEUDOTRANSIENT": EmtInitializationMethod.PseudoTransient,
+    "AUTO": EmtInitializationMethod.Auto,
+}
+
+
+def build_emt_options(chosen_solver: str, initialization_method: EmtInitializationMethod) -> EmtOptions:
+    """
+    Build one EMT option set for this benchmark script.
+
+    :param chosen_solver: Solver key.
+    :param initialization_method: Initialization workflow.
+    :return: EMT options.
+    """
+    return EmtOptions(time_step=5e-6,
+                      simulation_time=0.06,
+                      tolerance=1e-6,
+                      solver=SOLVER_TYPE_MAP[chosen_solver],
+                      integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
+                      initialization_method=initialization_method,
+                      verbose=0)
+
+options = build_emt_options(CHOSEN_SOLVER, INIT_METHOD_MAP[CHOSEN_INIT_METHOD])
 
 
 class SolverTraceSummary:
@@ -491,14 +515,15 @@ def create_problem(enable_trace: bool = False) -> EmtProblemDae:
     :param enable_trace: Whether to attach a Newton diagnostics collector.
     :return: Configured EMT problem.
     """
-    local_problem = EmtProblemDae(grid=grid,
-                                  options=options,
-                                  pf_results=res)
+    local_problem: EmtProblemDae = EmtProblemDae(grid=grid,
+                                                 options=options,
+                                                 pf_results_3Ph=res,
+                                                 pf_results=None)
 
     if enable_trace:
         local_problem.set_newton_trace_collector(NewtonTraceCollector())
     else:
-        pass
+        local_problem = local_problem
 
     return local_problem
 
@@ -544,12 +569,12 @@ def summarize_newton_trace(problem: EmtProblemDae) -> SolverTraceSummary:
                 residual_value: float = float(residual_value_any)
                 maximum_residual_inf = max(maximum_residual_inf, residual_value)
             else:
-                pass
+                maximum_residual_inf = maximum_residual_inf
 
             if int(current_record.get('step', -2)) == final_step_index:
                 last_step_newton_iterations += 1
             else:
-                pass
+                last_step_newton_iterations = last_step_newton_iterations
 
             record_index += 1
 
@@ -626,10 +651,10 @@ def get_solver_loop_time(solver: Any) -> float:
     :param solver: Solver instance.
     :return: Loop time in seconds or NaN.
     """
-    loop_time_any: Any = getattr(solver, "_last_sim_loop_time", np.nan)
-
-    if loop_time_any == loop_time_any:
-        return float(loop_time_any)
+    if isinstance(solver, StructuralCompiledSolver):
+        return float(solver.get_last_sim_loop_time())
+    elif isinstance(solver, StructuralVectorizedSolver):
+        return float(solver.get_last_sim_loop_time())
     else:
         return np.nan
 
@@ -641,17 +666,15 @@ def get_solver_build_stats(solver: Any) -> Dict[str, float]:
     :param solver: Solver instance.
     :return: Build statistics dictionary.
     """
-    build_stats_fn = getattr(solver, "get_backend_build_stats", None)
-
-    if callable(build_stats_fn):
-        raw_stats_any: Any = build_stats_fn()
+    if isinstance(solver, StructuralCompiledSolver):
+        raw_stats_any: Any = solver.get_backend_build_stats()
         out_stats: Dict[str, float] = dict()
 
         if isinstance(raw_stats_any, dict):
             for key, value in raw_stats_any.items():
                 out_stats[str(key)] = float(value)
         else:
-            pass
+            out_stats = out_stats
 
         return out_stats
     else:
@@ -665,17 +688,15 @@ def get_solver_runtime_stats(solver: Any) -> Dict[str, float]:
     :param solver: Solver instance.
     :return: Runtime statistics dictionary.
     """
-    runtime_stats_fn = getattr(solver, "get_last_runtime_stats", None)
-
-    if callable(runtime_stats_fn):
-        raw_stats_any: Any = runtime_stats_fn()
+    if isinstance(solver, StructuralCompiledSolver):
+        raw_stats_any: Any = solver.get_last_runtime_stats()
         out_stats: Dict[str, float] = dict()
 
         if isinstance(raw_stats_any, dict):
             for key, value in raw_stats_any.items():
                 out_stats[str(key)] = float(value)
         else:
-            pass
+            out_stats = out_stats
 
         return out_stats
     else:
@@ -698,7 +719,7 @@ def print_solver_runtime_stats(solver: Any, label: str) -> None:
         for key, value in runtime_stats.items():
             print(f"  {key}: {value:.0f}" if abs(value - round(value)) < 1e-12 else f"  {key}: {value:.6f}")
     else:
-        pass
+        runtime_stats = runtime_stats
 
 
 def build_full_parameter_vector(problem: EmtProblemDae,
@@ -721,7 +742,7 @@ def build_full_parameter_vector(problem: EmtProblemDae,
     if runtime_params.shape[0] > 0:
         runtime_params[:] = full_params[:runtime_params.shape[0]]
     else:
-        pass
+        runtime_params = runtime_params
 
     return np.asarray(full_params, dtype=np.float64)
 
@@ -879,7 +900,7 @@ def get_fastest_total_result(results: List[SolverBenchmarkResult]) -> SolverBenc
         if candidate_result.get_solver_total_s() < best_result.get_solver_total_s():
             best_result = candidate_result
         else:
-            pass
+            best_result = best_result
 
         result_index += 1
 
@@ -902,7 +923,7 @@ def get_fastest_sim_result(results: List[SolverBenchmarkResult]) -> SolverBenchm
         if candidate_result.get_simulate_s() < best_result.get_simulate_s():
             best_result = candidate_result
         else:
-            pass
+            best_result = best_result
 
         result_index += 1
 
@@ -959,11 +980,11 @@ def print_compiled_backend_build_stats(results: List[SolverBenchmarkResult]) -> 
                 for key, value in build_stats.items():
                     print(f"  {key}: {value:.6f}s")
             else:
-                pass
+                build_stats = build_stats
 
             return
         else:
-            pass
+            result_index = result_index
 
         result_index += 1
 
@@ -1025,7 +1046,7 @@ def benchmark_all_solvers() -> None:
             reference_y = y_arr.copy()
             reference_dy = dy_arr.copy()
         else:
-            pass
+            reference_y = reference_y
 
         results.append(result)
 
@@ -1096,14 +1117,14 @@ def benchmark_structural_compiled_cold_and_warm() -> None:
         for key, value in cold_runtime_stats.items():
             print(f"  {key}: {value:.0f}" if abs(value - round(value)) < 1e-12 else f"  {key}: {value:.6f}")
     else:
-        pass
+        cold_runtime_stats = cold_runtime_stats
 
     if len(warm_runtime_stats) > 0:
         print("Warm runtime stats")
         for key, value in warm_runtime_stats.items():
             print(f"  {key}: {value:.0f}" if abs(value - round(value)) < 1e-12 else f"  {key}: {value:.6f}")
     else:
-        pass
+        warm_runtime_stats = warm_runtime_stats
 
     raise SystemExit(0)
 
@@ -1113,6 +1134,7 @@ if RUN_ALL_SOLVERS:
 
 if BENCHMARK_COMPILED_COLD_WARM:
     benchmark_structural_compiled_cold_and_warm()
+
 
 problem = create_problem()
 
@@ -1147,7 +1169,7 @@ print(f"  build = {solver_build_s:.6f}s")
 print(f"  sim   = {solver_sim_s:.6f}s")
 print(f"  total = {solver_init_s + solver_build_s + solver_sim_s:.6f}s")
 
-if hasattr(solver, "get_backend_build_stats"):
+if isinstance(solver, StructuralCompiledSolver):
     print("StructuralCompiled backend build stats")
     for key, value in solver.get_backend_build_stats().items():
         print(f"  {key}: {value:.6f}s")
@@ -1188,16 +1210,16 @@ steps: int = int(t_end / h)
 tme: np.ndarray = np.linspace(0, t_end, steps)
 
 #
-v_A_0 = find_name_in_block("v_ABus0_emt_template", bus0.emt_model)
-v_B_0 = find_name_in_block("v_BBus0_emt_template", bus0.emt_model)
-v_C_0 = find_name_in_block("v_CBus0_emt_template", bus0.emt_model)
+v_A_0 = find_name_in_block("v_A_Bus0_emt_template", bus0.emt_model)
+v_B_0 = find_name_in_block("v_B_Bus0_emt_template", bus0.emt_model)
+v_C_0 = find_name_in_block("v_C_Bus0_emt_template", bus0.emt_model)
 v_A_0_plt = y[:, problem.get_var_idx(v_A_0)]
 v_B_0_plt = y[:, problem.get_var_idx(v_B_0)]
 v_C_0_plt = y[:, problem.get_var_idx(v_C_0)]
 
-v_A_1 = find_name_in_block("v_ABus1_emt_template", bus1.emt_model)
-v_B_1 = find_name_in_block("v_BBus1_emt_template", bus1.emt_model)
-v_C_1 = find_name_in_block("v_CBus1_emt_template", bus1.emt_model)
+v_A_1 = find_name_in_block("v_A_Bus1_emt_template", bus1.emt_model)
+v_B_1 = find_name_in_block("v_B_Bus1_emt_template", bus1.emt_model)
+v_C_1 = find_name_in_block("v_C_Bus1_emt_template", bus1.emt_model)
 v_A_1_plt = y[:, problem.get_var_idx(v_A_1)]
 v_B_1_plt = y[:, problem.get_var_idx(v_B_1)]
 v_C_1_plt = y[:, problem.get_var_idx(v_C_1)]
@@ -1276,9 +1298,11 @@ plt.grid(True)
 plt.legend()
 
 plt.subplot(2, 2, 2)
-plt.plot(tme, i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
-plt.plot(tme, i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
-plt.plot(tme, i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
+# SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
+# THAT MEANS THE CURRENTS ARE NEGATIVE
+plt.plot(tme, -i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
+plt.plot(tme, -i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
+plt.plot(tme, -i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
 plt.title("Current load")
 plt.xlabel("Time")
 plt.ylabel("Current load")
@@ -1291,16 +1315,16 @@ print("Generating plots...")
 plt.show()
 
 
-i_f_A_line = find_name_in_block("if_line0_0", line0.emt_model)
-i_f_B_line = find_name_in_block("if_line0_1", line0.emt_model)
-i_f_C_line = find_name_in_block("if_line0_2", line0.emt_model)
+i_f_A_line = find_name_in_block("if_pi_line_emt_template_0", line0.emt_model)
+i_f_B_line = find_name_in_block("if_pi_line_emt_template_1", line0.emt_model)
+i_f_C_line = find_name_in_block("if_pi_line_emt_template_2", line0.emt_model)
 i_f_A_line_plt = y[:, problem.get_var_idx(i_f_A_line)]
 i_f_B_line_plt = y[:, problem.get_var_idx(i_f_B_line)]
 i_f_C_line_plt = y[:, problem.get_var_idx(i_f_C_line)]
 
-i_t_A_line = find_name_in_block("it_line0_0", line0.emt_model)
-i_t_B_line = find_name_in_block("it_line0_1", line0.emt_model)
-i_t_C_line = find_name_in_block("it_line0_2", line0.emt_model)
+i_t_A_line = find_name_in_block("it_pi_line_emt_template_0", line0.emt_model)
+i_t_B_line = find_name_in_block("it_pi_line_emt_template_1", line0.emt_model)
+i_t_C_line = find_name_in_block("it_pi_line_emt_template_2", line0.emt_model)
 i_t_A_line_plt = y[:, problem.get_var_idx(i_t_A_line)]
 i_t_B_line_plt = y[:, problem.get_var_idx(i_t_B_line)]
 i_t_C_line_plt = y[:, problem.get_var_idx(i_t_C_line)]
@@ -1319,9 +1343,11 @@ plt.grid(True)
 plt.legend()
 
 plt.subplot(2, 2, 2)
-plt.plot(tme, i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
-plt.plot(tme, i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
-plt.plot(tme, i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
+# SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
+# THAT MEANS THE CURRENTS ARE NEGATIVE
+plt.plot(tme, -i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
+plt.plot(tme, -i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
+plt.plot(tme, -i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
 plt.title("Current load")
 plt.xlabel("Time")
 plt.ylabel("Current load")
@@ -1341,9 +1367,11 @@ plt.grid(True)
 plt.legend()
 
 plt.subplot(2, 2, 4)
-plt.plot(tme, i_t_A_line_plt[:len(tme)], label='Current TO phase A from line', color='blue')
-plt.plot(tme, i_t_B_line_plt[:len(tme)], label='Current TO phase B from line', color='red')
-plt.plot(tme, i_t_C_line_plt[:len(tme)], label='Current TO phase C from line', color='green')
+# SIGNS IN THE TO SIDE ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE BUSES SO IN THE CASE OF THE FROM SIDE
+    # THAT MEANS THE CURRENTS ARE NEGATIVE
+plt.plot(tme, -i_t_A_line_plt[:len(tme)], label='Current TO phase A from line', color='blue')
+plt.plot(tme, -i_t_B_line_plt[:len(tme)], label='Current TO phase B from line', color='red')
+plt.plot(tme, -i_t_C_line_plt[:len(tme)], label='Current TO phase C from line', color='green')
 plt.title("Current to line")
 plt.xlabel("Time")
 plt.ylabel("Current to")
@@ -1355,23 +1383,23 @@ plt.tight_layout()
 print("Generating plots...")
 plt.show()
 
-i_ser_A = find_name_in_block("i_ser_line0_0", line0.emt_model)
-i_ser_B = find_name_in_block("i_ser_line0_1", line0.emt_model)
-i_ser_C = find_name_in_block("i_ser_line0_2", line0.emt_model)
+i_ser_A = find_name_in_block("i_ser_pi_line_emt_template_0", line0.emt_model)
+i_ser_B = find_name_in_block("i_ser_pi_line_emt_template_1", line0.emt_model)
+i_ser_C = find_name_in_block("i_ser_pi_line_emt_template_2", line0.emt_model)
 i_ser_A_plt = y[:, problem.get_var_idx(i_ser_A)]
 i_ser_B_plt = y[:, problem.get_var_idx(i_ser_B)]
 i_ser_C_plt = y[:, problem.get_var_idx(i_ser_C)]
 
-i_f_cap_A = find_name_in_block("i_cap_f_line0_0", line0.emt_model)
-i_f_cap_B = find_name_in_block("i_cap_f_line0_1", line0.emt_model)
-i_f_cap_C = find_name_in_block("i_cap_f_line0_2", line0.emt_model)
+i_f_cap_A = find_name_in_block("i_cap_f_pi_line_emt_template_0", line0.emt_model)
+i_f_cap_B = find_name_in_block("i_cap_f_pi_line_emt_template_1", line0.emt_model)
+i_f_cap_C = find_name_in_block("i_cap_f_pi_line_emt_template_2", line0.emt_model)
 i_f_cap_A_plt = y[:, problem.get_var_idx(i_f_cap_A)]
 i_f_cap_B_plt = y[:, problem.get_var_idx(i_f_cap_B)]
 i_f_cap_C_plt = y[:, problem.get_var_idx(i_f_cap_C)]
 
-i_t_cap_A = find_name_in_block("i_cap_t_line0_0", line0.emt_model)
-i_t_cap_B = find_name_in_block("i_cap_t_line0_1", line0.emt_model)
-i_t_cap_C = find_name_in_block("i_cap_t_line0_2", line0.emt_model)
+i_t_cap_A = find_name_in_block("i_cap_t_pi_line_emt_template_0", line0.emt_model)
+i_t_cap_B = find_name_in_block("i_cap_t_pi_line_emt_template_1", line0.emt_model)
+i_t_cap_C = find_name_in_block("i_cap_t_pi_line_emt_template_2", line0.emt_model)
 i_t_cap_A_plt = y[:, problem.get_var_idx(i_t_cap_A)]
 i_t_cap_B_plt = y[:, problem.get_var_idx(i_t_cap_B)]
 i_t_cap_C_plt = y[:, problem.get_var_idx(i_t_cap_C)]

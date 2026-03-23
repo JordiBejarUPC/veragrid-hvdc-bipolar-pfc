@@ -22,14 +22,15 @@ from itertools import chain
 
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, DeviceType
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
-from VeraGridEngine.Simulations.EMT.initialization_emt import init_explicit_emt
+from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
+from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt, run_emt_native_initialization
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 
@@ -211,17 +212,20 @@ class EmtProblemDae(EmtProblemTemplate):
     def __init__(self,
                  grid: MultiCircuit,
                  options: EmtOptions,
-                 pf_results: PowerFlowResults3Ph | None)-> None:
+                 pf_results_3Ph: PowerFlowResults3Ph | None,
+                 pf_results: PowerFlowResults | None,)-> None:
         """
         Initializes the EMT Problem by parsing the grid and passing the
         resulting mathematical block to the BaseProblem constructor.
         :param grid:
         :param options:
+        :param pf_results_3Ph:
         :param pf_results:
         """
         self.logger = Logger()
         self.grid = grid
         self.options = options
+        self.power_flow_results_3ph = pf_results_3Ph
         self.power_flow_results = pf_results
 
         self._vars_info: Dict[ALL_DEV_TYPES, List[Var]] = dict()
@@ -229,6 +233,7 @@ class EmtProblemDae(EmtProblemTemplate):
         self._vars2device: Dict[int, ALL_DEV_TYPES] = dict()
         self._temp_init_guess: Dict[int, float] = dict()
         self._temp_diff_init_guess: Dict[int, float] = dict()
+        self.initialization_report: EmtInitializationReport | None = None
 
         self._scheduled_mode_events: Dict[int, List[Tuple[float, float, bool]]] = dict()
         self._mode_event_cursor: Dict[int, int] = dict()
@@ -248,7 +253,7 @@ class EmtProblemDae(EmtProblemTemplate):
         t_build = _tic()
 
         # build on local sys_block
-        self._build_structure_and_collect(sys_block, grid, pf_results, glob_time)
+        self._build_structure_and_collect(sys_block, grid, glob_time)
 
         sys_block.unify_blocks()
         _deduplicate_block_entities(sys_block)
@@ -285,13 +290,25 @@ class EmtProblemDae(EmtProblemTemplate):
 
         # 2) explicit init guesses initialization
         self._run_explicit_initialization()
-        # self.diff_init_guess.update(self.diff_init_guess)
+        self.initialization_report = run_emt_native_initialization(problem=self, options=self.options)
 
         t_done = _toc(t_build)
 
         if options.verbose > 0:
             self.logger.add_debug(f"init guess = {self.init_guess}")
             self.logger.add_debug(f"diff init guess = {self.diff_init_guess}")
+            if self.initialization_report is None:
+                pass
+            else:
+                self.logger.add_debug(
+                    f"EMT initialization used {self.initialization_report.method_used} | "
+                    f"status={self.initialization_report.status.name} | "
+                    f"res0={self.initialization_report.initial_residual_inf:.3e} | "
+                    f"resf={self.initialization_report.final_residual_inf:.3e} | "
+                    f"newton={self.initialization_report.newton_iterations} | "
+                    f"ptc={self.initialization_report.pseudo_transient_steps} | "
+                    f"auto_dx0={self.initialization_report.automatic_dx0_count}"
+                )
             self.logger.add_debug(
                 f"EMT electrical problem parsed in {t_done:.4f}s | "
                 f"vars={self._n_vars} (state={self._n_state}, alg={self._n_alg}) | "
@@ -376,7 +393,7 @@ class EmtProblemDae(EmtProblemTemplate):
                     compiler_names_dict=self._compiler_names_dict,
                     alias_names_dict=self._alias_names_dict,
                     VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                    TIME_NAME=self.TIME_NAME,
+                    # TIME_NAME=self.TIME_NAME,
                     VARS_NAME=self.VARS_NAME,
                     DIFF_NAME=self.DIFF_NAME,
                     CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
@@ -400,6 +417,7 @@ class EmtProblemDae(EmtProblemTemplate):
                         f"[EMT][init_explicit] failed for block '{block_name}'. Error: {error_detail}")
 
                     print(f"EMT explicit initialization failed for block {block_name}. Error detail: {error_detail}")
+
 
         self._build_runtime_param_vectors()
 
@@ -434,7 +452,6 @@ class EmtProblemDae(EmtProblemTemplate):
             self,
             sys_block: Block,
             grid: MultiCircuit,
-            pf_results: PowerFlowResults3Ph | None,
             glob_time: Var
     ) -> None:
         """
@@ -444,7 +461,6 @@ class EmtProblemDae(EmtProblemTemplate):
 
         :param sys_block: Block with the system DAE
         :param grid: MultiCircuit
-        :param pf_results: Power flow results in 3ph
         :param glob_time: Variable that stores the global time of the simulation
         :return: None
         """
@@ -489,7 +505,10 @@ class EmtProblemDae(EmtProblemTemplate):
         # KCL accumulator per bus-phase
         I_kcl: Dict[int, List[Any]] = dict()
         for i in range(n_bus):
-            I_kcl[i] = list([c0, c0, c0, c0])
+            if self.grid.buses[i].is_dc:
+                I_kcl[i] = list([c0]) # only one current in DC
+            else:
+                I_kcl[i] = list([c0, c0, c0, c0]) # possibility of NABC currents for AC
 
         # Bases (for Bergeron constructor)
         h: float = float(self.options.time_step)
@@ -503,6 +522,11 @@ class EmtProblemDae(EmtProblemTemplate):
         for bus_idx, bus in enumerate(grid.buses):
             bus_dict[bus] = int(bus_idx)
 
+        # Create VSC index mapping for power flow initialization
+        vsc_idx_dict: Dict[Any, int] = dict()
+        for vsc_idx, vsc in enumerate(grid.vsc_devices):
+            vsc_idx_dict[vsc] = vsc_idx
+
         # -------------------------
         # 1) BRANCHES
         # -------------------------
@@ -512,17 +536,18 @@ class EmtProblemDae(EmtProblemTemplate):
             t: int = bus_dict[br.bus_to]
 
             is_bergeron: bool = False
-            if br.emt_model_type is not None:
+
+            if hasattr(br, 'emt_model_type') and br.emt_model_type is not None:
                 if br.emt_model_type.value == "Bergeron":
                     is_bergeron = True
-                else:
-                    pass
-            else:
-                pass
 
             # Process device model automatically to unify blocks and apply events
             mdl: Block = self._process_device_model(br, sys_block, grid, glob_time)
 
+            # assign parameters from the static model
+            # self._assign_api_obj_mapping_branch(br=br)
+
+            # init vars from PF for both bergeron and other lines.
             if is_bergeron:
                 # Build voltage lists from bus blocks: [vN,vA,vB,vC], missing -> Const(0)
                 v_f_vars: List[Any] = _get_bus_v_list(grid=self.grid, bus_block=br.bus_from.emt_model,
@@ -535,14 +560,13 @@ class EmtProblemDae(EmtProblemTemplate):
                                                                     fbase=fbase)
                 rt.bind_terminals(v_f_vars, v_t_vars)
 
-                if pf_results is not None:
+                if self.power_flow_results_3ph is not None:
                     self._try_set_bergeron_pf_init(
                         mdl=mdl,
                         rt=rt,
                         branch_index=branch_idx,
                         f_bus_idx=f,
                         t_bus_idx=t,
-                        pf_results=pf_results,
                         sbase=grid.Sbase,
                     )
                 else:
@@ -563,30 +587,66 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 # --- Non-Bergeron branches ---
                 # Add terminal currents into KCL
-                for ph in range(4):
-                    If_expr: Any | None = mdl.E(br_if_keys[ph])
-                    It_expr: Any | None = mdl.E(br_it_keys[ph])
+                is_dc_from = br.bus_from.is_dc
+                is_dc_to = br.bus_to.is_dc
+                is_vsc = br in vsc_idx_dict
 
+                if is_dc_from:
+                    If_expr: Any | None = mdl.E(VarPowerFlowRefferenceType.Idc)
                     # currents in branches are defined as going out of the bus (sign convention)
                     if If_expr is not None:
-                        I_kcl[f][ph] = I_kcl[f][ph] - If_expr
+                        # For DC buses, I_kcl[f] is a list with one element [c0]
+                        I_kcl[f][0] = I_kcl[f][0] - If_expr
                     else:
                         pass
 
+                else:
+                    for ph in range(4):
+                        if is_vsc:
+                            If_expr: Any | None = mdl.E(inj_i_keys[ph])
+                        else:
+                            If_expr = mdl.E(br_if_keys[ph])
+
+                        # currents in branches are defined as going out of the bus (sign convention)
+                        if If_expr is not None:
+                            I_kcl[f][ph] = I_kcl[f][ph] - If_expr
+                        else:
+                            pass
+
+                if is_dc_to:
+                    It_expr: Any | None = mdl.E(VarPowerFlowRefferenceType.Idc)
+                    # currents in branches are defined as going out of the bus (sign convention)
                     if It_expr is not None:
-                        I_kcl[t][ph] = I_kcl[t][ph] - It_expr
+                        # For DC buses, I_kcl[t] is a list with one element [c0]
+                        I_kcl[t][0] = I_kcl[t][0] - It_expr
                     else:
                         pass
+
+                else:
+                    for ph in range(4):
+                        if is_vsc:
+                            It_expr: Any | None = mdl.E(inj_i_keys[ph])
+                        else:
+                            It_expr = mdl.E(br_it_keys[ph])
+
+                        # currents in branches are defined as going out of the bus (sign convention)
+                        if It_expr is not None:
+                            I_kcl[t][ph] = I_kcl[t][ph] - It_expr
+                        else:
+                            pass
+
 
                 # PF init for branch internal variables (and if/it)
-                if pf_results is not None:
+                vsc_index = vsc_idx_dict.get(br, -1)
+                if self.power_flow_results_3ph is not None:
                     self._try_set_branch_pf_init(
                         mdl=mdl,
                         branch_index=branch_idx,
                         f_bus_idx=f,
                         t_bus_idx=t,
-                        pf_results=pf_results,
-                        sbase=grid.Sbase
+                        sbase=grid.Sbase,
+                        is_vsc=is_vsc,
+                        vsc_index=vsc_index
                     )
                 else:
                     pass
@@ -599,19 +659,31 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl: Block = self._process_device_model(inj, sys_block, grid, glob_time)
             b: int = bus_dict[inj.bus]
 
-            # currents in injections are defined as entering the bus (sign convention)
-            for ph in range(4):
-                i_expr: Any | None = mdl.E(inj_i_keys[ph])
+            if inj.device_type == DeviceType.LoadDevice:
+                self._assign_api_obj_mapping_load(inj)
+
+            if inj.bus.is_dc:
+                i_expr: Any | None = mdl.E(VarPowerFlowRefferenceType.Idc)
                 if i_expr is not None:
-                    I_kcl[b][ph] = I_kcl[b][ph] + i_expr
+                    # currents in injections are defined as entering the bus (sign convention)
+                    I_kcl[b][0] = I_kcl[b][0] + i_expr
                 else:
                     pass
 
-            if pf_results is not None:
+            else:
+                for ph in range(4):
+                    i_expr: Any | None = mdl.E(inj_i_keys[ph])
+                    if i_expr is not None:
+                        # currents in injections are defined as entering the bus (sign convention)
+                        I_kcl[b][ph] = I_kcl[b][ph] + i_expr
+                    else:
+                        pass
+
+            if self.power_flow_results_3ph is not None:
                 self._try_set_inj_pf_init(
+                    inj = inj,
                     mdl=mdl,
                     bus_index=b,
-                    pf_results=pf_results,
                     sbase=grid.Sbase,
                 )
             else:
@@ -624,8 +696,10 @@ class EmtProblemDae(EmtProblemTemplate):
         for bus_idx, bus in enumerate(grid.buses):
             mdl: Block = self._process_device_model(bus, sys_block, grid, glob_time)
 
-            if pf_results is not None:
-                self._try_set_bus_pf_init(mdl=mdl, bus_index=bus_idx, pf_results=pf_results)
+            if self.power_flow_results_3ph is not None:
+                self._try_set_bus_pf_init(bus=bus,
+                                          mdl=mdl,
+                                          bus_index=bus_idx)
             else:
                 pass
 
@@ -638,12 +712,20 @@ class EmtProblemDae(EmtProblemTemplate):
 
             # EMT: bus equations must be KCL per existing phase.
             mdl.algebraic_eqs = list()
-            for ph_i, v_key in enumerate(ph_v_keys):
-                v_expr: Any | None = mdl.E(v_key)
-                if v_expr is not None:
-                    mdl.algebraic_eqs.append(I_kcl[bus_idx][ph_i])
-                else:
-                    pass
+
+            if bus.is_dc:
+                # DC bus: only one equation for Vdc
+                v_dc_expr: Any | None = mdl.E(VarPowerFlowRefferenceType.Vdc)
+                if v_dc_expr is not None:
+                    mdl.algebraic_eqs.append(I_kcl[bus_idx][0])
+            else:
+                # AC bus: KCL per phase
+                for ph_i, v_key in enumerate(ph_v_keys):
+                    v_expr: Any | None = mdl.E(v_key)
+                    if v_expr is not None:
+                        mdl.algebraic_eqs.append(I_kcl[bus_idx][ph_i])
+                    else:
+                        pass
 
             if len(mdl.algebraic_eqs) == 0:
                 self.logger.add_error("Bus has no phases (no voltage vars)", value=str(bus_idx))
@@ -765,59 +847,72 @@ class EmtProblemDae(EmtProblemTemplate):
     # ---------------------------------------------------------------------
     # PF INIT
     # ---------------------------------------------------------------------
-    def _try_set_bus_pf_init(self, mdl: Block, bus_index: int, pf_results: PowerFlowResults3Ph) -> None:
+    def _try_set_bus_pf_init(self, bus,
+                             mdl: Block,
+                             bus_index: int) -> None:
         """
         Initialize bus voltage variables from three-phase power-flow results.
 
         Phasor results are transformed into instantaneous abc-domain values at t = 0.
         Only variables that exist in the model external mapping are initialized.
 
+        :param bus: Bus device
         :param mdl: Bus symbolic block.
         :param bus_index: Bus index in the power-flow results.
-        :param pf_results: Three-phase power-flow results.
         :return: None
         """
         omega_base: float = 2.0 * np.pi * self.grid.fBase
 
-        if mdl.E(VarPowerFlowRefferenceType.v_N) is not None:
-            V_N = pf_results.voltage_N[bus_index]
-            v_N: float = np.sqrt(2.0) * np.imag(V_N)
-            d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
+        if bus.is_dc:
 
-            self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_N, v_N)
-            self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
+            if self.power_flow_results is not None:
+                # DC bus: use Vdc (magnitude) -> angle is not applicable for DC
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Vdc,
+                                    float(np.abs(self.power_flow_results.voltage[bus_index])))
+            else:
+                raise ValueError(f"EMT simulation with DC branches requires the non unbalanced PowerFlow to be calculated.")
+
         else:
-            pass
 
-        if mdl.E(VarPowerFlowRefferenceType.v_A) is not None:
-            V_A = pf_results.voltage_A[bus_index]
-            v_A: float = np.sqrt(2.0) * np.imag(V_A)
-            d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
+            if mdl.E(VarPowerFlowRefferenceType.v_N) is not None:
+                V_N = self.power_flow_results_3ph.voltage_N[bus_index]
+                v_N: float = np.sqrt(2.0) * np.imag(V_N)
+                d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
 
-            self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_A, v_A)
-            self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
-        else:
-            pass
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_N, v_N)
+                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
+            else:
+                pass
 
-        if mdl.E(VarPowerFlowRefferenceType.v_B) is not None:
-            V_B = pf_results.voltage_B[bus_index]
-            v_B: float = np.sqrt(2.0) * np.imag(V_B)
-            d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
+            if mdl.E(VarPowerFlowRefferenceType.v_A) is not None:
+                V_A = self.power_flow_results_3ph.voltage_A[bus_index]
+                v_A: float = np.sqrt(2.0) * np.imag(V_A)
+                d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
 
-            self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_B, v_B)
-            self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
-        else:
-            pass
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_A, v_A)
+                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
+            else:
+                pass
 
-        if mdl.E(VarPowerFlowRefferenceType.v_C) is not None:
-            V_C = pf_results.voltage_C[bus_index]
-            v_C: float = np.sqrt(2.0) * np.imag(V_C)
-            d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
+            if mdl.E(VarPowerFlowRefferenceType.v_B) is not None:
+                V_B = self.power_flow_results_3ph.voltage_B[bus_index]
+                v_B: float = np.sqrt(2.0) * np.imag(V_B)
+                d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
 
-            self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_C, v_C)
-            self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
-        else:
-            pass
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_B, v_B)
+                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
+            else:
+                pass
+
+            if mdl.E(VarPowerFlowRefferenceType.v_C) is not None:
+                V_C = self.power_flow_results_3ph.voltage_C[bus_index]
+                v_C: float = np.sqrt(2.0) * np.imag(V_C)
+                d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
+
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_C, v_C)
+                self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
+            else:
+                pass
 
     def _try_set_branch_pf_init(
             self,
@@ -825,8 +920,9 @@ class EmtProblemDae(EmtProblemTemplate):
             branch_index: int,
             f_bus_idx: int,
             t_bus_idx: int,
-            pf_results: PowerFlowResults3Ph,
-            sbase: float
+            sbase: float,
+            is_vsc: bool = False,
+            vsc_index: int = -1
     ) -> None:
         """
         Initialize branch variables from three-phase power-flow results.
@@ -843,7 +939,6 @@ class EmtProblemDae(EmtProblemTemplate):
         :param branch_index: Branch index in the power-flow results.
         :param f_bus_idx: From-bus index in the power-flow results.
         :param t_bus_idx: To-bus index in the power-flow results.
-        :param pf_results: Three-phase power-flow results.
         :param sbase: Base power of the grid.
         :return: None
         """
@@ -888,23 +983,23 @@ class EmtProblemDae(EmtProblemTemplate):
         }
 
         voltage_dict: Dict[str, Optional[np.ndarray]] = {
-            "N": pf_results.voltage_N,
-            "A": pf_results.voltage_A,
-            "B": pf_results.voltage_B,
-            "C": pf_results.voltage_C,
+            "N": self.power_flow_results_3ph.voltage_N,
+            "A": self.power_flow_results_3ph.voltage_A,
+            "B": self.power_flow_results_3ph.voltage_B,
+            "C": self.power_flow_results_3ph.voltage_C,
         }
 
         sf_array_dict: Dict[str, Optional[np.ndarray]] = {
             "N": None,
-            "A": pf_results.Sf_A,
-            "B": pf_results.Sf_B,
-            "C": pf_results.Sf_C,
+            "A": self.power_flow_results_3ph.Sf_A,
+            "B": self.power_flow_results_3ph.Sf_B,
+            "C": self.power_flow_results_3ph.Sf_C,
         }
         st_array_dict: Dict[str, Optional[np.ndarray]] = {
             "N": None,
-            "A": pf_results.St_A,
-            "B": pf_results.St_B,
-            "C": pf_results.St_C,
+            "A": self.power_flow_results_3ph.St_A,
+            "B": self.power_flow_results_3ph.St_B,
+            "C": self.power_flow_results_3ph.St_C,
         }
 
 
@@ -998,7 +1093,18 @@ class EmtProblemDae(EmtProblemTemplate):
         self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pt, value=float(np.real(st_sum)))
         self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qt, value=float(np.imag(st_sum)))
 
-    def _try_set_inj_pf_init(self, mdl: Block, bus_index: int, pf_results: PowerFlowResults3Ph, sbase: float) -> None:
+        if is_vsc and vsc_index >= 0:
+            if self.power_flow_results is not None:
+                P_vsc = -float(np.real(self.power_flow_results.St_vsc[vsc_index]))
+                self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.P, value=P_vsc)
+
+
+
+    def _try_set_inj_pf_init(self,
+                             inj,
+                             mdl: Block,
+                             bus_index: int,
+                             sbase: float) -> None:
         """
         Initialize injection variables from three-phase power-flow results.
 
@@ -1006,112 +1112,133 @@ class EmtProblemDae(EmtProblemTemplate):
         present in the model external mapping. It also initializes the aggregated
         active and reactive powers and, if available, the positive-sequence angle.
 
+        :param inj: injection device
         :param mdl: Injection symbolic block.
         :param bus_index: Bus index in the power-flow results.
-        :param pf_results: Three-phase power-flow results.
         :param sbase: Base power of the grid.
         :return: None
         """
 
-        phase_specs: List[Tuple[
-            str, Any, Any, VarPowerFlowRefferenceType, VarPowerFlowRefferenceType, VarPowerFlowRefferenceType]] = [
-            ("N", pf_results.Sbus_N, pf_results.voltage_N,
-             VarPowerFlowRefferenceType.i_N, VarPowerFlowRefferenceType.P_N, VarPowerFlowRefferenceType.Q_N),
+        if inj.bus.is_dc:
+            p_dc = float(np.real(self.power_flow_results.Sbus[bus_index]))
+            v_dc = float(np.abs(self.power_flow_results.voltage[bus_index]))
 
-            ("A", pf_results.Sbus_A, pf_results.voltage_A,
-             VarPowerFlowRefferenceType.i_A, VarPowerFlowRefferenceType.P_A, VarPowerFlowRefferenceType.Q_A),
+            self.set_init_guess(mdl=mdl, reference_powerflow=VarPowerFlowRefferenceType.P,
+                                val=p_dc)
 
-            ("B", pf_results.Sbus_B, pf_results.voltage_B,
-             VarPowerFlowRefferenceType.i_B, VarPowerFlowRefferenceType.P_B, VarPowerFlowRefferenceType.Q_B),
+            if v_dc != 0.0:
+                self.set_if_exists(mdl=mdl,
+                                   key=VarPowerFlowRefferenceType.Idc,
+                                   value=p_dc / v_dc)
+            else:
+                self.set_if_exists(mdl=mdl,
+                                   key=VarPowerFlowRefferenceType.Idc,
+                                   value=0.0)
 
-            ("C", pf_results.Sbus_C, pf_results.voltage_C,
-             VarPowerFlowRefferenceType.i_C, VarPowerFlowRefferenceType.P_C, VarPowerFlowRefferenceType.Q_C),
-        ]
+        else:
 
-        for _, S_arr, V_arr, i_key, P_key, Q_key in phase_specs:
-            uses_any: bool = (
-                    (mdl.E(i_key) is not None)
-                    or (mdl.E(P_key) is not None)
-                    or (mdl.E(Q_key) is not None)
-            )
+            phase_specs: List[Tuple[
+                str, Any, Any, VarPowerFlowRefferenceType, VarPowerFlowRefferenceType, VarPowerFlowRefferenceType]] = [
+                ("N", self.power_flow_results_3ph.Sbus_N, self.power_flow_results_3ph.voltage_N,
+                 VarPowerFlowRefferenceType.i_N, VarPowerFlowRefferenceType.P_N, VarPowerFlowRefferenceType.Q_N),
 
-            if uses_any:
-                if S_arr is None or V_arr is None:
-                    self.set_if_exists(mdl=mdl, key=i_key, value=0.0)
-                    self.set_if_exists(mdl=mdl, key=P_key, value=0.0)
-                    self.set_if_exists(mdl=mdl, key=Q_key, value=0.0)
-                else:
-                    S = S_arr[bus_index] / sbase
-                    V = V_arr[bus_index]
+                ("A", self.power_flow_results_3ph.Sbus_A, self.power_flow_results_3ph.voltage_A,
+                 VarPowerFlowRefferenceType.i_A, VarPowerFlowRefferenceType.P_A, VarPowerFlowRefferenceType.Q_A),
 
-                    if V == 0:
-                        I = 0.0 + 0.0j
+                ("B", self.power_flow_results_3ph.Sbus_B, self.power_flow_results_3ph.voltage_B,
+                 VarPowerFlowRefferenceType.i_B, VarPowerFlowRefferenceType.P_B, VarPowerFlowRefferenceType.Q_B),
+
+                ("C", self.power_flow_results_3ph.Sbus_C, self.power_flow_results_3ph.voltage_C,
+                 VarPowerFlowRefferenceType.i_C, VarPowerFlowRefferenceType.P_C, VarPowerFlowRefferenceType.Q_C),
+            ]
+
+            for _, S_arr, V_arr, i_key, P_key, Q_key in phase_specs:
+                uses_any: bool = (
+                        (mdl.E(i_key) is not None)
+                        or (mdl.E(P_key) is not None)
+                        or (mdl.E(Q_key) is not None)
+                )
+
+                if uses_any:
+                    if S_arr is None or V_arr is None:
+                        self.set_if_exists(mdl=mdl, key=i_key, value=0.0)
+                        self.set_if_exists(mdl=mdl, key=P_key, value=0.0)
+                        self.set_if_exists(mdl=mdl, key=Q_key, value=0.0)
                     else:
-                        I = np.conj(S / V)
+                        S = S_arr[bus_index] / sbase
+                        V = V_arr[bus_index]
 
-                    i0: float = np.sqrt(2.0) * np.imag(I)
+                        if V == 0:
+                            I = 0.0 + 0.0j
+                        else:
+                            I = np.conj(S / V)
 
-                    self.set_if_exists(mdl=mdl, key=i_key, value=float(i0))
-                    self.set_if_exists(mdl=mdl, key=P_key, value=float(np.real(S)))
-                    self.set_if_exists(mdl=mdl, key=Q_key, value=float(np.imag(S)))
+                        i0: float = np.sqrt(2.0) * np.imag(I)
 
+                        self.set_if_exists(mdl=mdl, key=i_key, value=float(i0))
+                        self.set_if_exists(mdl=mdl, key=P_key, value=float(np.real(S)))
+                        self.set_if_exists(mdl=mdl, key=Q_key, value=float(np.imag(S)))
+
+                else:
+                    pass
+
+            if mdl.E(VarPowerFlowRefferenceType.phi) is not None:
+                a = np.exp(1j * 2.0 * np.pi / 3.0)
+
+                # Terminal voltage phasors
+                VA = self.power_flow_results_3ph.voltage_A[bus_index]
+                VB = self.power_flow_results_3ph.voltage_B[bus_index]
+                VC = self.power_flow_results_3ph.voltage_C[bus_index]
+
+                # Terminal complex powers (generator convention must match PF sign)
+                SA = self.power_flow_results_3ph.Sbus_A[bus_index] / sbase
+                SB = self.power_flow_results_3ph.Sbus_B[bus_index] / sbase
+                SC = self.power_flow_results_3ph.Sbus_C[bus_index] / sbase
+
+                # Terminal current phasors leaving the generator
+                IA = 0.0 + 0.0j if VA == 0 else np.conj(SA / VA)
+                IB = 0.0 + 0.0j if VB == 0 else np.conj(SB / VB)
+                IC = 0.0 + 0.0j if VC == 0 else np.conj(SC / VC)
+
+                # Positive-sequence phasors
+                V1 = (VA + a * VB + (a * a) * VC) / 3.0
+                I1 = (IA + a * IB + (a * a) * IC) / 3.0
+
+                phi_V = float(np.angle(V1))
+                phi_I = float(np.angle(I1))
+                ang = phi_I - phi_V
+                phi = float(np.arctan2(np.sin(ang), np.cos(ang)))
+
+                Vpk = np.sqrt(2) * np.abs(V1)
+                Ipk = np.sqrt(2) * np.abs(I1)
+
+                self.set_external_param(mdl, VarPowerFlowRefferenceType.phi_v, float(phi_V))
+                self.set_external_param(mdl, VarPowerFlowRefferenceType.phi, float(phi))
+                self.set_external_param(mdl, VarPowerFlowRefferenceType.Vpk, float(Vpk))
+                self.set_external_param(mdl, VarPowerFlowRefferenceType.Ipk, float(Ipk))
             else:
                 pass
 
-        if mdl.E(VarPowerFlowRefferenceType.phi) is not None:
-            a = np.exp(1j * 2.0 * np.pi / 3.0)
+            omega_base: float = 2.0 * np.pi * self.grid.fBase
+            if mdl.E(VarPowerFlowRefferenceType.d_v_N) is not None:
+                V_N = self.power_flow_results_3ph.voltage_N[bus_index]
+                d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
+                self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
 
-            # Terminal voltage phasors
-            VA = pf_results.voltage_A[bus_index]
-            VB = pf_results.voltage_B[bus_index]
-            VC = pf_results.voltage_C[bus_index]
+            if mdl.E(VarPowerFlowRefferenceType.d_v_A) is not None:
+                V_A = self.power_flow_results_3ph.voltage_A[bus_index]
+                d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
+                self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
 
-            # Terminal complex powers (generator convention must match PF sign)
-            SA = pf_results.Sbus_A[bus_index] / sbase
-            SB = pf_results.Sbus_B[bus_index] / sbase
-            SC = pf_results.Sbus_C[bus_index] / sbase
+            if mdl.E(VarPowerFlowRefferenceType.d_v_B) is not None:
+                V_B = self.power_flow_results_3ph.voltage_B[bus_index]
+                d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
+                self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
 
-            # Terminal current phasors leaving the generator
-            IA = 0.0 + 0.0j if VA == 0 else np.conj(SA / VA)
-            IB = 0.0 + 0.0j if VB == 0 else np.conj(SB / VB)
-            IC = 0.0 + 0.0j if VC == 0 else np.conj(SC / VC)
-
-            # Positive-sequence phasors
-            V1 = (VA + a * VB + (a * a) * VC) / 3.0
-            I1 = (IA + a * IB + (a * a) * IC) / 3.0
-
-            phi_V = float(np.angle(V1))
-            phi_I = float(np.angle(I1))
-            ang = phi_I - phi_V
-            phi = float(np.arctan2(np.sin(ang), np.cos(ang)))
-
-            Vpk = np.sqrt(2) * np.abs(V1)
-            Ipk = np.sqrt(2) * np.abs(I1)
-
-            self.set_external_param(mdl, VarPowerFlowRefferenceType.phi_v, float(phi_V))
-            self.set_external_param(mdl, VarPowerFlowRefferenceType.phi, float(phi))
-            self.set_external_param(mdl, VarPowerFlowRefferenceType.Vpk, float(Vpk))
-            self.set_external_param(mdl, VarPowerFlowRefferenceType.Ipk, float(Ipk))
-        else:
-            pass
-
-        omega_base: float = 2.0 * np.pi * self.grid.fBase
-        if mdl.E(VarPowerFlowRefferenceType.d_v_N) is not None:
-            V_N = pf_results.voltage_N[bus_index]
-            d_v_N: float = omega_base * np.sqrt(2.0) * np.real(V_N)
-            self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_N, d_v_N)
-        if mdl.E(VarPowerFlowRefferenceType.d_v_A) is not None:
-            V_A = pf_results.voltage_A[bus_index]
-            d_v_A: float = omega_base * np.sqrt(2.0) * np.real(V_A)
-            self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_A, d_v_A)
-        if mdl.E(VarPowerFlowRefferenceType.d_v_B) is not None:
-            V_B = pf_results.voltage_B[bus_index]
-            d_v_B: float = omega_base * np.sqrt(2.0) * np.real(V_B)
-            self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_B, d_v_B)
-        if mdl.E(VarPowerFlowRefferenceType.d_v_C) is not None:
-            V_C = pf_results.voltage_C[bus_index]
-            d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
-            self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
+            if mdl.E(VarPowerFlowRefferenceType.d_v_C) is not None:
+                V_C = self.power_flow_results_3ph.voltage_C[bus_index]
+                d_v_C: float = omega_base * np.sqrt(2.0) * np.real(V_C)
+                self.set_external_param(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
 
     def _try_set_bergeron_pf_init(
             self,
@@ -1120,7 +1247,6 @@ class EmtProblemDae(EmtProblemTemplate):
             branch_index: int,
             f_bus_idx: int,
             t_bus_idx: int,
-            pf_results: PowerFlowResults3Ph,
             sbase: float
     ) -> None:
         """
@@ -1137,24 +1263,24 @@ class EmtProblemDae(EmtProblemTemplate):
         Only active phases in the Bergeron runtime are considered.
         """
         voltage_dict: Dict[str, Optional[np.ndarray]] = {
-            "N": pf_results.voltage_N,
-            "A": pf_results.voltage_A,
-            "B": pf_results.voltage_B,
-            "C": pf_results.voltage_C,
+            "N": self.power_flow_results_3ph.voltage_N,
+            "A": self.power_flow_results_3ph.voltage_A,
+            "B": self.power_flow_results_3ph.voltage_B,
+            "C": self.power_flow_results_3ph.voltage_C,
         }
 
         sf_array_dict: Dict[str, Optional[np.ndarray]] = {
             "N": None,
-            "A": pf_results.Sf_A,
-            "B": pf_results.Sf_B,
-            "C": pf_results.Sf_C,
+            "A": self.power_flow_results_3ph.Sf_A,
+            "B": self.power_flow_results_3ph.Sf_B,
+            "C": self.power_flow_results_3ph.Sf_C,
         }
 
         st_array_dict: Dict[str, Optional[np.ndarray]] = {
             "N": None,
-            "A": pf_results.St_A,
-            "B": pf_results.St_B,
-            "C": pf_results.St_C,
+            "A": self.power_flow_results_3ph.St_A,
+            "B": self.power_flow_results_3ph.St_B,
+            "C": self.power_flow_results_3ph.St_C,
         }
 
         v_f0_red = np.zeros(rt.m, dtype=np.float64)
@@ -1617,4 +1743,193 @@ class EmtProblemDae(EmtProblemTemplate):
 
         return df
 
+
+    def _assign_api_obj_mapping_branch(self, br):
+        # -----------------------------
+        # 1. Assign phase flags USING ENUMS
+        # -----------------------------
+        ph_mappings = [
+            (ParamPowerFlowRefferenceType.phN, br.ys.phN),
+            (ParamPowerFlowRefferenceType.phA, br.ys.phA),
+            (ParamPowerFlowRefferenceType.phB, br.ys.phB),
+            (ParamPowerFlowRefferenceType.phC, br.ys.phC),
+        ]
+
+        # Creem una màscara booleana i n'extraiem els índexs globals actius
+        ph_mask = [bool(br.ys.phN), bool(br.ys.phA), bool(br.ys.phB), bool(br.ys.phC)]
+        idx_global = [i for i, active in enumerate(ph_mask) if active]
+        m = len(idx_global)
+
+        for enum_key, ph_val in ph_mappings:
+            br.emt_model.parameters[br.emt_model.api_obj_mapping[enum_key]] = Const(ph_val)
+
+        # -----------------------------
+        # 2. Compute continuous parameters in PU
+        # -----------------------------
+        fbase = self.grid.fBase
+        w0 = 2.0 * np.pi * fbase
+        Vbase = br.bus_from.Vnom * 1e3
+        sbase = self.grid.Sbase
+        S = sbase * 1e6
+        Zbase = (Vbase * Vbase) / S
+        Ybase = 1.0 / Zbase
+
+        # Z_phys i Y_phys ara seran matrius de mida m x m
+        Z_phys = br.template.z_nabc * br.length
+        Y_phys = br.template.y_nabc * br.length
+
+        Z_pu = Z_phys / Zbase
+        Y_pu = Y_phys / Ybase
+
+        R_full = np.real(Z_pu)
+        X_full = np.imag(Z_pu)
+        L_full = X_full / (w0 + 1e-20)
+
+        Bsh_full = np.imag(Y_pu)
+        C_full = Bsh_full / (w0 + 1e-20)
+        C_full = C_full/2.0
+
+        # -----------------------------
+        # 3. Validations
+        # -----------------------------
+        # Ara validem contra la mida m x m real de les fases actives
+        if R_full.shape != (m, m):
+            raise ValueError(
+                f"Line '{br.name}' must have a {m}x{m} Z matrix based on active phases. Got {R_full.shape}.")
+
+        if L_full.shape != R_full.shape or C_full.shape != R_full.shape:
+            raise ValueError(
+                f"Line '{br.name}' has inconsistent matrix shapes: "
+                f"R={R_full.shape}, L={L_full.shape}, C={C_full.shape}."
+            )
+
+        try:
+            L_inv = np.linalg.inv(L_full)
+        except np.linalg.LinAlgError:
+            raise ValueError(f"Inductance matrix L for line '{br.name}' is singular and cannot be inverted.")
+
+        # -----------------------------
+        # 4. Assign Matrix values (R, Linv, C) USING ENUM MATRICES
+        # -----------------------------
+        r_enums = [
+            [ParamPowerFlowRefferenceType.Rnn, ParamPowerFlowRefferenceType.Rna, ParamPowerFlowRefferenceType.Rnb,
+             ParamPowerFlowRefferenceType.Rnc],
+            [ParamPowerFlowRefferenceType.Ran, ParamPowerFlowRefferenceType.Raa, ParamPowerFlowRefferenceType.Rab,
+             ParamPowerFlowRefferenceType.Rac],
+            [ParamPowerFlowRefferenceType.Rbn, ParamPowerFlowRefferenceType.Rba, ParamPowerFlowRefferenceType.Rbb,
+             ParamPowerFlowRefferenceType.Rbc],
+            [ParamPowerFlowRefferenceType.Rcn, ParamPowerFlowRefferenceType.Rca, ParamPowerFlowRefferenceType.Rcb,
+             ParamPowerFlowRefferenceType.Rcc]
+        ]
+        linv_enums = [
+            [ParamPowerFlowRefferenceType.Linv_nn, ParamPowerFlowRefferenceType.Linv_na,
+             ParamPowerFlowRefferenceType.Linv_nb, ParamPowerFlowRefferenceType.Linv_nc],
+            [ParamPowerFlowRefferenceType.Linv_an, ParamPowerFlowRefferenceType.Linv_aa,
+             ParamPowerFlowRefferenceType.Linv_ab, ParamPowerFlowRefferenceType.Linv_ac],
+            [ParamPowerFlowRefferenceType.Linv_bn, ParamPowerFlowRefferenceType.Linv_ba,
+             ParamPowerFlowRefferenceType.Linv_bb, ParamPowerFlowRefferenceType.Linv_bc],
+            [ParamPowerFlowRefferenceType.Linv_cn, ParamPowerFlowRefferenceType.Linv_ca,
+             ParamPowerFlowRefferenceType.Linv_cb, ParamPowerFlowRefferenceType.Linv_cc]
+        ]
+        c_enums = [
+            [ParamPowerFlowRefferenceType.Cnn, ParamPowerFlowRefferenceType.Cna, ParamPowerFlowRefferenceType.Cnb,
+             ParamPowerFlowRefferenceType.Cnc],
+            [ParamPowerFlowRefferenceType.Can, ParamPowerFlowRefferenceType.Caa, ParamPowerFlowRefferenceType.Cab,
+             ParamPowerFlowRefferenceType.Cac],
+            [ParamPowerFlowRefferenceType.Cbn, ParamPowerFlowRefferenceType.Cba, ParamPowerFlowRefferenceType.Cbb,
+             ParamPowerFlowRefferenceType.Cbc],
+            [ParamPowerFlowRefferenceType.Ccn, ParamPowerFlowRefferenceType.Cca, ParamPowerFlowRefferenceType.Ccb,
+             ParamPowerFlowRefferenceType.Ccc]
+        ]
+
+        # PAS 1: Inicialitzem TODES les 16 variables a 0.0 per seguretat.
+        # Això evita que les fases inactives deixin els paràmetres del model "en l'aire"
+        for i in range(4):
+            for j in range(4):
+                br.emt_model.parameters[br.emt_model.api_obj_mapping[r_enums[i][j]]] = Const(0.0)
+                br.emt_model.parameters[br.emt_model.api_obj_mapping[linv_enums[i][j]]] = Const(0.0)
+                br.emt_model.parameters[br.emt_model.api_obj_mapping[c_enums[i][j]]] = Const(0.0)
+
+        # PAS 2: Sobreescrivim només les cel·les pertinents agafant els valors de la matriu m x m
+        # 'i_red' i 'j_red' van de 0 a m-1 (índexs de la matriu física R_full, L_inv, etc.)
+        # 'i_glob' i 'j_glob' van de 0 a 3 (índexs globals associats als Enums)
+        for i_red, i_glob in enumerate(idx_global):
+            for j_red, j_glob in enumerate(idx_global):
+                br.emt_model.parameters[br.emt_model.api_obj_mapping[r_enums[i_glob][j_glob]]] = Const(
+                    float(R_full[i_red, j_red]))
+                br.emt_model.parameters[br.emt_model.api_obj_mapping[linv_enums[i_glob][j_glob]]] = Const(
+                    float(L_inv[i_red, j_red]))
+                br.emt_model.parameters[br.emt_model.api_obj_mapping[c_enums[i_glob][j_glob]]] = Const(
+                    float(C_full[i_red, j_red]))
+
+    def _assign_api_obj_mapping_load(self, load):
+
+        # -----------------------------
+        # 2. Compute continuous parameters in PU
+        # -----------------------------
+        fbase = self.grid.fBase
+        sbase = self.grid.Sbase
+
+        w0 = 2.0 * np.pi * fbase
+
+        PA0 = load.Pa / sbase # p.u.
+        QA0 = load.Qa / sbase # p.u.
+        PB0 = load.Pb / sbase # p.u.
+        QB0 = load.Qb / sbase # p.u.
+        PC0 = load.Pc / sbase # p.u.
+        QC0 = load.Qc / sbase # p.u.
+
+        if not load.bus.is_dc:
+
+            if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_A] is not None:
+                load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_A]] = Const(PA0)
+            if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_B] is not None:
+                load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_B]] = Const(PB0)
+            if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_C] is not None:
+                load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_C]] = Const(PC0)
+            if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_A] is not None:
+                load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_A]] = Const(QA0)
+            if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_B] is not None:
+                load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_B]] = Const(QB0)
+            if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_C] is not None:
+                load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_C]] = Const(QC0)
+
+            if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base] is not None:
+                load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base]] = Const(w0)
+
+        else:
+            pass
+
+    def _assign_api_obj_mapping_generator(self, gen):
+
+        # -----------------------------
+        # 2. Compute continuous parameters in PU
+        # -----------------------------
+        fbase = self.grid.fBase
+        sbase = self.grid.Sbase
+
+        w0 = 2.0 * np.pi * fbase
+
+        # PA0 = load.Pa / sbase # p.u.
+        # QA0 = load.Qa / sbase # p.u.
+        # PB0 = load.Pb / sbase # p.u.
+        # QB0 = load.Qb / sbase # p.u.
+        # PC0 = load.Pc / sbase # p.u.
+        # QC0 = load.Qc / sbase # p.u.
+        #
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_A] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_A]] = Const(PA0)
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_B] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_B]] = Const(PB0)
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_C] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_C]] = Const(PC0)
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_A] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_A]] = Const(QA0)
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_B] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_B]] = Const(QB0)
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_C] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_C]] = Const(QC0)
+        #
+        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base] is not None:
+        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base]] = Const(w0)
 

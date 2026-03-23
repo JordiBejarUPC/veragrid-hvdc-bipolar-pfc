@@ -12,7 +12,7 @@ from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 class VoltageLevel(PhysicalDevice):
     __slots__ = (
-        'Vnom',
+        '_Vnom',
         'substation',
     )
 
@@ -46,3 +46,24 @@ class VoltageLevel(PhysicalDevice):
         self.Vnom = float(Vnom)
 
         self.substation: Union[None, Substation] = substation
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def Vnom(self) -> float:
+        """
+        Get ``Vnom``.
+
+        :return: float
+        """
+        return self._Vnom
+
+    @Vnom.setter
+    def Vnom(self, val: float) -> None:
+        """
+        Set ``Vnom``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vnom = float(val)

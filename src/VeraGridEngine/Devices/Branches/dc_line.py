@@ -20,9 +20,9 @@ class DcLine(BranchParent):
         'measurements',
         '_length',
         'tolerance',
-        'r_fault',
-        'fault_pos',
-        'R',
+        '_r_fault',
+        '_fault_pos',
+        '_R',
         'template',
         '_locations',
     )
@@ -197,6 +197,7 @@ class DcLine(BranchParent):
 
     @length.setter
     def length(self, val: float):
+        val = float(val)
         if isinstance(val, float):
             if val > 0.0:
 
@@ -327,5 +328,64 @@ class DcLine(BranchParent):
         Get the branch defining coordinates
         """
         return [self.bus_from.get_coordinates(), self.bus_to.get_coordinates()]
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def R(self) -> float:
+        """
+        Get ``R``.
+
+        :return: float
+        """
+        return self._R
+
+    @R.setter
+    def R(self, val: float) -> None:
+        """
+        Set ``R``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R = float(val)
+
+    @property
+    def r_fault(self) -> float:
+        """
+        Get ``r_fault``.
+
+        :return: float
+        """
+        return self._r_fault
+
+    @r_fault.setter
+    def r_fault(self, val: float) -> None:
+        """
+        Set ``r_fault``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._r_fault = float(val)
+
+    @property
+    def fault_pos(self) -> float:
+        """
+        Get ``fault_pos``.
+
+        :return: float
+        """
+        return self._fault_pos
+
+    @fault_pos.setter
+    def fault_pos(self, val: float) -> None:
+        """
+        Set ``fault_pos``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._fault_pos = float(val)
 
 

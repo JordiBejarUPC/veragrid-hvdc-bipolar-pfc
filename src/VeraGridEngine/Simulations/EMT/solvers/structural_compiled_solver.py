@@ -2245,7 +2245,7 @@ class StructuralCompiledSolver:
         self._residual_assembler.evaluate(x_prev, full_params, x_prev, dx_prev, self._h, x_prev2, self._residual_buffer)
         self._jacobian_evaluator.evaluate(x_prev, full_params, x_prev, dx_prev, self._h, x_prev2)
 
-        loop_start: float = time.time()
+        loop_start: float = time.perf_counter()
 
         if self._verbose:
             print("-> StructuralCompiled simulation started")
@@ -2485,7 +2485,7 @@ class StructuralCompiledSolver:
             dy[step_index + 1, :] = dx_prev
             step_index += 1
 
-        self._last_sim_loop_time = time.time() - loop_start
+        self._last_sim_loop_time = time.perf_counter() - loop_start
 
         if self._verbose:
             print(f"-> StructuralCompiled simulation finished in {self._last_sim_loop_time:.4f}s")

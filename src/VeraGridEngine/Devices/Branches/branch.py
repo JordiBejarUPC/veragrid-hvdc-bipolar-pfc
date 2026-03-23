@@ -61,6 +61,27 @@ class BranchType(Enum):
 
 
 class Branch(BranchParent):
+    __slots__ = (
+        'measurements',
+        '_length',
+        '_tolerance',
+        '_r_fault',
+        '_x_fault',
+        '_fault_pos',
+        '_R',
+        '_X',
+        '_B',
+        '_G',
+        'tap_changer',
+        '_tap_module',
+        '_angle',
+        'branch_type',
+        'template',
+        '_bus_to_regulated',
+        '_vset',
+        'conv',
+        'inv_conv',
+    )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key='R', units='p.u.', tpe=float, definition='Total positive sequence resistance.'),
@@ -493,6 +514,255 @@ class Branch(BranchParent):
             elm.Cost_prof = self.Cost_prof
 
         return elm
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def R(self) -> float:
+        """
+        Get ``R``.
+
+        :return: float
+        """
+        return self._R
+
+    @R.setter
+    def R(self, val: float) -> None:
+        """
+        Set ``R``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._R = float(val)
+
+    @property
+    def X(self) -> float:
+        """
+        Get ``X``.
+
+        :return: float
+        """
+        return self._X
+
+    @X.setter
+    def X(self, val: float) -> None:
+        """
+        Set ``X``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._X = float(val)
+
+    @property
+    def B(self) -> float:
+        """
+        Get ``B``.
+
+        :return: float
+        """
+        return self._B
+
+    @B.setter
+    def B(self, val: float) -> None:
+        """
+        Set ``B``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._B = float(val)
+
+    @property
+    def G(self) -> float:
+        """
+        Get ``G``.
+
+        :return: float
+        """
+        return self._G
+
+    @G.setter
+    def G(self, val: float) -> None:
+        """
+        Set ``G``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._G = float(val)
+
+    @property
+    def tolerance(self) -> float:
+        """
+        Get ``tolerance``.
+
+        :return: float
+        """
+        return self._tolerance
+
+    @tolerance.setter
+    def tolerance(self, val: float) -> None:
+        """
+        Set ``tolerance``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._tolerance = float(val)
+
+    @property
+    def length(self) -> float:
+        """
+        Get ``length``.
+
+        :return: float
+        """
+        return self._length
+
+    @length.setter
+    def length(self, val: float) -> None:
+        """
+        Set ``length``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._length = float(val)
+
+    @property
+    def tap_module(self) -> float:
+        """
+        Get ``tap_module``.
+
+        :return: float
+        """
+        return self._tap_module
+
+    @tap_module.setter
+    def tap_module(self, val: float) -> None:
+        """
+        Set ``tap_module``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._tap_module = float(val)
+
+    @property
+    def angle(self) -> float:
+        """
+        Get ``angle``.
+
+        :return: float
+        """
+        return self._angle
+
+    @angle.setter
+    def angle(self, val: float) -> None:
+        """
+        Set ``angle``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._angle = float(val)
+
+    @property
+    def bus_to_regulated(self) -> bool:
+        """
+        Get ``bus_to_regulated``.
+
+        :return: bool
+        """
+        return self._bus_to_regulated
+
+    @bus_to_regulated.setter
+    def bus_to_regulated(self, val: bool) -> None:
+        """
+        Set ``bus_to_regulated``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._bus_to_regulated = bool(val)
+
+    @property
+    def vset(self) -> float:
+        """
+        Get ``vset``.
+
+        :return: float
+        """
+        return self._vset
+
+    @vset.setter
+    def vset(self, val: float) -> None:
+        """
+        Set ``vset``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._vset = float(val)
+
+    @property
+    def r_fault(self) -> float:
+        """
+        Get ``r_fault``.
+
+        :return: float
+        """
+        return self._r_fault
+
+    @r_fault.setter
+    def r_fault(self, val: float) -> None:
+        """
+        Set ``r_fault``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._r_fault = float(val)
+
+    @property
+    def x_fault(self) -> float:
+        """
+        Get ``x_fault``.
+
+        :return: float
+        """
+        return self._x_fault
+
+    @x_fault.setter
+    def x_fault(self, val: float) -> None:
+        """
+        Set ``x_fault``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._x_fault = float(val)
+
+    @property
+    def fault_pos(self) -> float:
+        """
+        Get ``fault_pos``.
+
+        :return: float
+        """
+        return self._fault_pos
+
+    @fault_pos.setter
+    def fault_pos(self, val: float) -> None:
+        """
+        Set ``fault_pos``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._fault_pos = float(val)
 
 
 def convert_branch(branch: Branch):

@@ -26,7 +26,7 @@ from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
-from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
+
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 from VeraGridEngine.enumerations import ConverterControlType
@@ -97,11 +97,7 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 # Build Rms models
 ######################################################################################################
 
-# Build dynamic_model_host
-line0_dynhost = DynamicModelHost()
-line1_dynhost = DynamicModelHost()
-load_dynhost = DynamicModelHost()
-gen_dynhost = DynamicModelHost()
+
 
 # line
 line0_mdl = block_deep_copy(get_line_rms_template(grid.rms_var_factory).block)
@@ -143,17 +139,11 @@ big_gen1 = Block(children=[genrow_mdl1])
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genrow_mdl1.out_vars[0]})
 big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl1.out_vars[1]})
 
-# add models to dyn_host
-line0_dynhost.model = line0_mdl
-line1_dynhost.model = line1_mdl
-load_dynhost.model = load_mdl
-gen_dynhost.model = big_gen1
-
 # attach rms models to Veragrid objects
-line0.rms_model = line0_dynhost
-line1.rms_model = line1_dynhost
-load1.rms_model = load_dynhost
-gen0.rms_model = gen_dynhost
+line0.rms_model = line0_mdl
+line1.rms_model = line1_mdl
+load1.rms_model = load_mdl
+gen0.rms_model = big_gen1
 options = gce.PowerFlowOptions(
     solver_type=gce.SolverType.NR,
     retry_with_other_methods=False,

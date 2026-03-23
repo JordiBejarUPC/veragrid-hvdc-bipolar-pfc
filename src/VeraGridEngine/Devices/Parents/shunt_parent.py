@@ -22,32 +22,27 @@ class ShuntParent(InjectionParent):
     """
 
     __slots__ = (
-        'G',
+        '_G',
         '_G_prof',
-        'B',
+        '_B',
         '_B_prof',
-
-        'G0',
+        '_G0',
         '_G0_prof',
-        'B0',
+        '_B0',
         '_B0_prof',
-
-        'Ga',
+        '_Ga',
         '_Ga_prof',
-        'Ba',
+        '_Ba',
         '_Ba_prof',
-
-        'Gb',
+        '_Gb',
         '_Gb_prof',
-        'Bb',
+        '_Bb',
         '_Bb_prof',
-
-        'Gc',
+        '_Gc',
         '_Gc_prof',
-        'Bc',
+        '_Bc',
         '_Bc_prof',
-
-        '_ysh'
+        '_ysh',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -506,3 +501,195 @@ class ShuntParent(InjectionParent):
         self.ysh.phA = 1
         self.ysh.phB = 1
         self.ysh.phC = 1
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def G(self) -> float:
+        """
+        Get ``G``.
+
+        :return: float
+        """
+        return self._G
+
+    @G.setter
+    def G(self, val: float) -> None:
+        """
+        Set ``G``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._G = float(val)
+
+    @property
+    def G0(self) -> float:
+        """
+        Get ``G0``.
+
+        :return: float
+        """
+        return self._G0
+
+    @G0.setter
+    def G0(self, val: float) -> None:
+        """
+        Set ``G0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._G0 = float(val)
+
+    @property
+    def Ga(self) -> float:
+        """
+        Get ``Ga``.
+
+        :return: float
+        """
+        return self._Ga
+
+    @Ga.setter
+    def Ga(self, val: float) -> None:
+        """
+        Set ``Ga``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ga = float(val)
+
+    @property
+    def Gb(self) -> float:
+        """
+        Get ``Gb``.
+
+        :return: float
+        """
+        return self._Gb
+
+    @Gb.setter
+    def Gb(self, val: float) -> None:
+        """
+        Set ``Gb``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Gb = float(val)
+
+    @property
+    def Gc(self) -> float:
+        """
+        Get ``Gc``.
+
+        :return: float
+        """
+        return self._Gc
+
+    @Gc.setter
+    def Gc(self, val: float) -> None:
+        """
+        Set ``Gc``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Gc = float(val)
+
+    @property
+    def B(self) -> float:
+        """
+        Get ``B``.
+
+        :return: float
+        """
+        return self._B
+
+    @B.setter
+    def B(self, val: float) -> None:
+        """
+        Set ``B``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._B = float(val)
+
+    @property
+    def B0(self) -> float:
+        """
+        Get ``B0``.
+
+        :return: float
+        """
+        return self._B0
+
+    @B0.setter
+    def B0(self, val: float) -> None:
+        """
+        Set ``B0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._B0 = float(val)
+
+    @property
+    def Ba(self) -> float:
+        """
+        Get ``Ba``.
+
+        :return: float
+        """
+        return self._Ba
+
+    @Ba.setter
+    def Ba(self, val: float) -> None:
+        """
+        Set ``Ba``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Ba = float(val)
+
+    @property
+    def Bb(self) -> float:
+        """
+        Get ``Bb``.
+
+        :return: float
+        """
+        return self._Bb
+
+    @Bb.setter
+    def Bb(self, val: float) -> None:
+        """
+        Set ``Bb``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Bb = float(val)
+
+    @property
+    def Bc(self) -> float:
+        """
+        Get ``Bc``.
+
+        :return: float
+        """
+        return self._Bc
+
+    @Bc.setter
+    def Bc(self, val: float) -> None:
+        """
+        Set ``Bc``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Bc = float(val)

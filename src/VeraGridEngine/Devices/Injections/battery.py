@@ -16,15 +16,15 @@ class Battery(Generator):
     """
     __slots__ = (
         'device_type',
-        'charge_efficiency',
-        'discharge_efficiency',
-        'max_soc',
-        'min_soc',
+        '_charge_efficiency',
+        '_discharge_efficiency',
+        '_max_soc',
+        '_min_soc',
         'min_soc_charge',
         'charge_per_cycle',
-        'discharge_per_cycle',
-        'Enom',
-        'soc_0',
+        '_discharge_per_cycle',
+        '_Enom',
+        '_soc_0',
         'soc',
         'min_energy',
         'energy',
@@ -145,3 +145,138 @@ class Battery(Generator):
         """
         super().__iadd__(other)
         self.Enom += other.Enom
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def Enom(self) -> float:
+        """
+        Get ``Enom``.
+
+        :return: float
+        """
+        return self._Enom
+
+    @Enom.setter
+    def Enom(self, val: float) -> None:
+        """
+        Set ``Enom``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Enom = float(val)
+
+    @property
+    def max_soc(self) -> float:
+        """
+        Get ``max_soc``.
+
+        :return: float
+        """
+        return self._max_soc
+
+    @max_soc.setter
+    def max_soc(self, val: float) -> None:
+        """
+        Set ``max_soc``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._max_soc = float(val)
+
+    @property
+    def min_soc(self) -> float:
+        """
+        Get ``min_soc``.
+
+        :return: float
+        """
+        return self._min_soc
+
+    @min_soc.setter
+    def min_soc(self, val: float) -> None:
+        """
+        Set ``min_soc``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._min_soc = float(val)
+
+    @property
+    def soc_0(self) -> float:
+        """
+        Get ``soc_0``.
+
+        :return: float
+        """
+        return self._soc_0
+
+    @soc_0.setter
+    def soc_0(self, val: float) -> None:
+        """
+        Set ``soc_0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._soc_0 = float(val)
+
+    @property
+    def charge_efficiency(self) -> float:
+        """
+        Get ``charge_efficiency``.
+
+        :return: float
+        """
+        return self._charge_efficiency
+
+    @charge_efficiency.setter
+    def charge_efficiency(self, val: float) -> None:
+        """
+        Set ``charge_efficiency``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._charge_efficiency = float(val)
+
+    @property
+    def discharge_efficiency(self) -> float:
+        """
+        Get ``discharge_efficiency``.
+
+        :return: float
+        """
+        return self._discharge_efficiency
+
+    @discharge_efficiency.setter
+    def discharge_efficiency(self, val: float) -> None:
+        """
+        Set ``discharge_efficiency``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._discharge_efficiency = float(val)
+
+    @property
+    def discharge_per_cycle(self) -> float:
+        """
+        Get ``discharge_per_cycle``.
+
+        :return: float
+        """
+        return self._discharge_per_cycle
+
+    @discharge_per_cycle.setter
+    def discharge_per_cycle(self, val: float) -> None:
+        """
+        Set ``discharge_per_cycle``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._discharge_per_cycle = float(val)

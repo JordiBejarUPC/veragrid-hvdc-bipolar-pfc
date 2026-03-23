@@ -12,7 +12,7 @@ from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from plot_emt_results import plot_ilines, plot_generators, plot_isource, plot_voltages, plot_v_i, plot_itrafo
-from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_generator_emt_template
+from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
@@ -83,7 +83,7 @@ trafo0.conn_f = WindingType.GroundedStar
 trafo0.conn_t = WindingType.GroundedStar
 
 gen1 = Generator(name="Gen1",freq = 50, Snom=grid.Sbase, vset=1.0 )
-gen1_template = get_generator_emt_template()
+gen1_template = get_simple_generator_emt_template()
 gen1.emt_model = gen1_template.block
 
 gen1_mdl = gen1.emt_model

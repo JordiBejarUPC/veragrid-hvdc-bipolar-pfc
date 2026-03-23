@@ -113,7 +113,7 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 grid.add_load(bus=bus1, api_obj=load)
 
 for bus in grid.buses:
-    get_bus_emt_template(grid, bus, vf=grid.emt_var_factory)
+    get_bus_emt_template(grid, bus)
 
 ######################################################################################################
 # Build EMT models
@@ -127,7 +127,7 @@ gen_mdl = get_generator_thevenin_rl_emt_template(grid=grid, gen = gen0).block
 line_mdl = get_bergeron_line_emt_template(grid = grid, line = line0).block
 
 # load
-load_mdl = get_shunt_r_3ph_emt_template(grid = grid, load = load).block
+load_mdl = get_shunt_r_3ph_emt_template(vf = grid.emt_var_factory).block
 
 # connection with buses
 gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
@@ -208,7 +208,7 @@ print(res.get_branch_df())
 # ==============================================================================
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")
 # ==============================================================================
-CHOSEN_SOLVER = "VECTORIZED"
+CHOSEN_SOLVER = "COMPILED"
 RUN_ALL_SOLVERS = False
 ENABLE_PLOTS = True
 ENABLE_NEWTON_TRACE = False
@@ -238,7 +238,8 @@ options = EmtOptions(time_step = 5e-6,
 def create_problem() -> EmtProblemDae:
     local_problem = EmtProblemDae(grid=grid,
                                   options=options,
-                                  pf_results=res)
+                                  pf_results_3Ph=res,
+                                  pf_results=None)
 
     if ENABLE_NEWTON_TRACE:
         local_problem.set_newton_trace_collector(NewtonTraceCollector())
@@ -496,7 +497,9 @@ plt.grid(True)
 
 plt.subplot(2, 2, 2)
 for k, ph in enumerate(rt.active_ph):
-    plt.plot(t_plot, it_hist[:, k], label=f'Current phase {ph} from side t')
+    # SIGNS IN THE TO SIDE ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE BUSES SO IN THE CASE OF THE FROM SIDE
+    # THAT MEANS THE CURRENTS ARE NEGATIVE
+    plt.plot(t_plot, -it_hist[:, k], label=f'Current phase {ph} from side t')
 plt.title("Bergeron current to side")
 plt.xlabel("Time")
 plt.ylabel("Current")
@@ -514,7 +517,7 @@ plt.grid(True)
 
 plt.subplot(2, 2, 4)
 for k, ph in enumerate(rt.active_ph):
-    plt.plot(t_plot, Iht_hist[:, k], label=f'Ih_t phase {ph}')
+    plt.plot(t_plot, -Iht_hist[:, k], label=f'Ih_t phase {ph}')
 plt.title("Bergeron history current to side")
 plt.xlabel("Time")
 plt.ylabel("History current")
@@ -540,16 +543,16 @@ plt.show()
 
 
 #
-v_A_0 = find_name_in_block("v_ABus0_emt_template", bus0.emt_model)
-v_B_0 = find_name_in_block("v_BBus0_emt_template", bus0.emt_model)
-v_C_0 = find_name_in_block("v_CBus0_emt_template", bus0.emt_model)
+v_A_0 = find_name_in_block("v_A_Bus0_emt_template", bus0.emt_model)
+v_B_0 = find_name_in_block("v_B_Bus0_emt_template", bus0.emt_model)
+v_C_0 = find_name_in_block("v_C_Bus0_emt_template", bus0.emt_model)
 v_A_0_plt = y[:, problem.get_var_idx(v_A_0)]
 v_B_0_plt = y[:, problem.get_var_idx(v_B_0)]
 v_C_0_plt = y[:, problem.get_var_idx(v_C_0)]
 
-v_A_1 = find_name_in_block("v_ABus1_emt_template", bus1.emt_model)
-v_B_1 = find_name_in_block("v_BBus1_emt_template", bus1.emt_model)
-v_C_1 = find_name_in_block("v_CBus1_emt_template", bus1.emt_model)
+v_A_1 = find_name_in_block("v_A_Bus1_emt_template", bus1.emt_model)
+v_B_1 = find_name_in_block("v_B_Bus1_emt_template", bus1.emt_model)
+v_C_1 = find_name_in_block("v_C_Bus1_emt_template", bus1.emt_model)
 v_A_1_plt = y[:, problem.get_var_idx(v_A_1)]
 v_B_1_plt = y[:, problem.get_var_idx(v_B_1)]
 v_C_1_plt = y[:, problem.get_var_idx(v_C_1)]
@@ -628,9 +631,11 @@ plt.grid(True)
 plt.legend()
 
 plt.subplot(2, 2, 2)
-plt.plot(tme, i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
-plt.plot(tme, i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
-plt.plot(tme, i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
+# SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
+# THAT MEANS THE CURRENTS ARE NEGATIVE
+plt.plot(tme, -i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
+plt.plot(tme, -i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
+plt.plot(tme, -i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
 plt.title("Current load")
 plt.xlabel("Time")
 plt.ylabel("Current load")

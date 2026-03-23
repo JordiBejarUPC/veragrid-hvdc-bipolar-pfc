@@ -96,7 +96,6 @@ def setup_rms_models_expanded(grid):
     # Step 2: Generator RMS models
     print("\n2. Setting up Generator RMS models...")
     for gen in grid.get_generators():
-        host = gce.DynamicModelHost(name=f"Gen_{gen.name}")
         template = get_genrow_rms_template(grid.rms_var_factory, name=f"Gen_{gen.name}")
         genrow_mdl = template.block
         
@@ -111,14 +110,12 @@ def setup_rms_models_expanded(grid):
         big_gen.external_mapping.update({VarPowerFlowRefferenceType.Q: genrow_mdl.out_vars[1]})
         big_gen.unify_blocks()
         
-        host.model = big_gen
-        gen.rms_model = host
+        gen.rms_model = big_gen
         print(f"   ✓ Generator {gen.name} connected")
     
     # Step 3: Load RMS models (with minus sign for injection direction)
     print("\n3. Setting up Load RMS models...")
     for load in grid.get_loads():
-        host = gce.DynamicModelHost(name=f"Load_{load.name}")
         Pl0_pu = load.P / grid.Sbase
         Ql0_pu = load.Q / grid.Sbase
         # Negative sign because load consumes power (injection is negative)
@@ -131,14 +128,12 @@ def setup_rms_models_expanded(grid):
         load_mdl.connect([load_mdl.in_vars[0]], [bus.rms_model.out_vars[0]])  # Vm
         load_mdl.unify_blocks()
         
-        host.model = load_mdl
-        load.rms_model = host
+        load.rms_model = load_mdl
         print(f"   ✓ Load {load.name} connected (P={load.P}MW, Q={load.Q}MVAr)")
     
     # Step 4: Line RMS models
     print("\n4. Setting up Line RMS models...")
     for line in grid.lines:
-        host = gce.DynamicModelHost(name=f"Line_{line.name}")
         line_mdl = get_line_rms_template(grid.rms_var_factory, name=f"Line_{line.name}").block
         
         from_bus = line.bus_from
@@ -151,8 +146,7 @@ def setup_rms_models_expanded(grid):
         line_mdl.connect([line_mdl.in_vars[3]], [to_bus.rms_model.out_vars[1]])    # Vat
         line_mdl.unify_blocks()
         
-        host.model = line_mdl
-        line.rms_model = host
+        line.rms_model = line_mdl
         print(f"   ✓ Line {line.name} connected")
     
     print(f"\n=== RMS Models Setup Complete ===")

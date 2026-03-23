@@ -27,13 +27,31 @@ class Ui_BlockEditorWindow(object):
     def setupUi(self, BlockEditorWindow):
         if not BlockEditorWindow.objectName():
             BlockEditorWindow.setObjectName(u"BlockEditorWindow")
-        BlockEditorWindow.resize(1007, 510)
+        BlockEditorWindow.resize(1122, 610)
         self.block_editor_actionCheckModel = QAction(BlockEditorWindow)
         self.block_editor_actionCheckModel.setObjectName(u"block_editor_actionCheckModel")
         icon = QIcon()
         icon.addFile(u":/Icons/icons/calculator.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.block_editor_actionCheckModel.setIcon(icon)
         self.block_editor_actionCheckModel.setMenuRole(QAction.MenuRole.NoRole)
+        self.actionCenter = QAction(BlockEditorWindow)
+        self.actionCenter.setObjectName(u"actionCenter")
+        icon1 = QIcon()
+        icon1.addFile(u":/Icons/icons/resize.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionCenter.setIcon(icon1)
+        self.actionCenter.setMenuRole(QAction.MenuRole.NoRole)
+        self.actionZoom_in = QAction(BlockEditorWindow)
+        self.actionZoom_in.setObjectName(u"actionZoom_in")
+        icon2 = QIcon()
+        icon2.addFile(u":/Icons/icons/zoom_in.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionZoom_in.setIcon(icon2)
+        self.actionZoom_in.setMenuRole(QAction.MenuRole.NoRole)
+        self.actionZoom_out = QAction(BlockEditorWindow)
+        self.actionZoom_out.setObjectName(u"actionZoom_out")
+        icon3 = QIcon()
+        icon3.addFile(u":/Icons/icons/zoom_out.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.actionZoom_out.setIcon(icon3)
+        self.actionZoom_out.setMenuRole(QAction.MenuRole.NoRole)
         self.centralwidget = QWidget(BlockEditorWindow)
         self.centralwidget.setObjectName(u"centralwidget")
         self.verticalLayout = QVBoxLayout(self.centralwidget)
@@ -71,7 +89,9 @@ class Ui_BlockEditorWindow(object):
 
         self.verticalLayout_5.addWidget(self.libraryTreeView)
 
-        self.tabWidget.addTab(self.tab, "")
+        icon4 = QIcon()
+        icon4.addFile(u":/Icons/icons/link-to-all.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget.addTab(self.tab, icon4, "")
         self.tab_2 = QWidget()
         self.tab_2.setObjectName(u"tab_2")
         self.verticalLayout_2 = QVBoxLayout(self.tab_2)
@@ -83,7 +103,9 @@ class Ui_BlockEditorWindow(object):
 
         self.verticalLayout_2.addWidget(self.parametersTableView)
 
-        self.tabWidget.addTab(self.tab_2, "")
+        icon5 = QIcon()
+        icon5.addFile(u":/Icons/icons/data.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        self.tabWidget.addTab(self.tab_2, icon5, "")
 
         self.verticalLayout_4.addWidget(self.tabWidget)
 
@@ -120,6 +142,11 @@ class Ui_BlockEditorWindow(object):
 
         self.horizontalLayout_2.addWidget(self.currently_editing_object_label)
 
+        self.deviceLabel = QLabel(self.frame_2)
+        self.deviceLabel.setObjectName(u"deviceLabel")
+
+        self.horizontalLayout_2.addWidget(self.deviceLabel)
+
         self.horizontalSpacer_3 = QSpacerItem(859, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_2.addItem(self.horizontalSpacer_3)
@@ -135,7 +162,7 @@ class Ui_BlockEditorWindow(object):
         BlockEditorWindow.setCentralWidget(self.centralwidget)
         self.menuBar = QMenuBar(BlockEditorWindow)
         self.menuBar.setObjectName(u"menuBar")
-        self.menuBar.setGeometry(QRect(0, 0, 1007, 23))
+        self.menuBar.setGeometry(QRect(0, 0, 1122, 23))
         BlockEditorWindow.setMenuBar(self.menuBar)
         self.toolBar = QToolBar(BlockEditorWindow)
         self.toolBar.setObjectName(u"toolBar")
@@ -144,6 +171,10 @@ class Ui_BlockEditorWindow(object):
         BlockEditorWindow.addToolBar(Qt.ToolBarArea.TopToolBarArea, self.toolBar)
 
         self.toolBar.addAction(self.block_editor_actionCheckModel)
+        self.toolBar.addSeparator()
+        self.toolBar.addAction(self.actionCenter)
+        self.toolBar.addAction(self.actionZoom_out)
+        self.toolBar.addAction(self.actionZoom_in)
 
         self.retranslateUi(BlockEditorWindow)
 
@@ -156,9 +187,13 @@ class Ui_BlockEditorWindow(object):
     def retranslateUi(self, BlockEditorWindow):
         BlockEditorWindow.setWindowTitle(QCoreApplication.translate("BlockEditorWindow", u"BlockEditorWindow", None))
         self.block_editor_actionCheckModel.setText(QCoreApplication.translate("BlockEditorWindow", u"CheckModel", None))
+        self.actionCenter.setText(QCoreApplication.translate("BlockEditorWindow", u"Center", None))
+        self.actionZoom_in.setText(QCoreApplication.translate("BlockEditorWindow", u"Zoom in", None))
+        self.actionZoom_out.setText(QCoreApplication.translate("BlockEditorWindow", u"Zoom out", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("BlockEditorWindow", u"Library", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("BlockEditorWindow", u"Parameters", None))
         self.currently_editing_object_label.setText(QCoreApplication.translate("BlockEditorWindow", u"Device:", None))
+        self.deviceLabel.setText(QCoreApplication.translate("BlockEditorWindow", u"dev", None))
         self.doItButton.setText(QCoreApplication.translate("BlockEditorWindow", u"Do it!", None))
         self.toolBar.setWindowTitle(QCoreApplication.translate("BlockEditorWindow", u"toolBar", None))
     # retranslateUi

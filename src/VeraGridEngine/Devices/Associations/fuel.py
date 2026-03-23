@@ -9,7 +9,11 @@ from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, Devic
 
 
 class Fuel(EditableDevice):
-    __slots__ = ('cost', '_cost_prof', 'color')
+    __slots__ = (
+        '_cost',
+        '_cost_prof',
+        'color',
+    )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key='cost', units='e/t', tpe=float, definition='Cost of fuel (e / ton)',
@@ -59,3 +63,24 @@ class Fuel(EditableDevice):
             self._cost_prof.set(arr=val)
         else:
             raise Exception(str(type(val)) + 'not supported to be set into a cost_prof')
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def cost(self) -> float:
+        """
+        Get ``cost``.
+
+        :return: float
+        """
+        return self._cost
+
+    @cost.setter
+    def cost(self, val: float) -> None:
+        """
+        Set ``cost``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._cost = float(val)
