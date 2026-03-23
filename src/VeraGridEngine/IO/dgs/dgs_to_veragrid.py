@@ -12,7 +12,9 @@ from VeraGridEngine.enumerations import (
     TapChangerTypes,
     TapModuleControl,
     WindingType,
-    ShuntControlMode
+    ShuntControlMode,
+    ConverterControlType,
+    ConverterFaultControlType
 )
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Branches.wire import Wire
@@ -431,8 +433,8 @@ def convert_dgs_to_bus(elmterm: ElmTerm,
         Vnom=float(elmterm.uknom),
         vmin=0.9,
         vmax=1.1,
-        xpos=float(x),
-        ypos=float(-y),
+        xpos=float(x) * 5,
+        ypos=float(-y) * 5,
         active=(int(elmterm.outserv or 0) == 0),
     )
 
@@ -1894,7 +1896,7 @@ def convert_dgs_to_static_gen(elmgenstat: ElmGenstat,
                               parallel_index: int = 0,
                               parallel_count: int = 1) -> Tuple[dev.Bus, dev.StaticGenerator]:
     """
-    Convert ElmGenstat to VeraGrid Load.
+    Convert ElmGenstat to VeraGrid Static Generator.
     """
     bus = get_injection_bus(elm_id=elmgenstat.ID,
                             stacubic_dict=stacubic_dict,
@@ -1926,6 +1928,60 @@ def convert_dgs_to_static_gen(elmgenstat: ElmGenstat,
         pass
 
     return bus, stagen
+
+
+def convert_dgs_staticgen_to_vsc(elmgenstat: ElmGenstat,
+                                 stacubic_dict: Dict[str, List[int]],
+                                 buses: List[dev.Bus],
+                                 logger: Logger,
+                                 cubics_by_objid: Dict[str, List[StaCubic]],
+                                 bus_by_term_id: Dict[str, dev.Bus],
+                                 parallel_index: int = 0,
+                                 parallel_count: int = 1) -> Tuple[dev.Bus, dev.VSC]:
+    """
+    Convert ElmGenstat to VeraGrid VSC.
+    """
+    ac_bus = get_injection_bus(elm_id=elmgenstat.ID,
+                               stacubic_dict=stacubic_dict,
+                               buses=buses,
+                               cubics_by_objid=cubics_by_objid,
+                               bus_by_term_id=bus_by_term_id)
+
+    dc_bus = dev.Bus(name=f'{_ref_id(ac_bus.name)}_DC',
+                     is_dc=True,
+                     is_slack=True,
+                     xpos=ac_bus.x,
+                     ypos=ac_bus.y - 200,)
+
+    vsc_name = _get_non_empty_name(elmgenstat.loc_name, f"VSC_{_ref_id(elmgenstat.ID)}")
+    vsc_name = _get_parallel_device_name(vsc_name, parallel_index, parallel_count)
+    vsc_idtag = _get_parallel_device_idtag(_ref_id(elmgenstat.ID), parallel_index, parallel_count)
+
+    vsc = dev.VSC(
+        name=vsc_name,
+        idtag=vsc_idtag,
+        active=not bool(elmgenstat.outserv),
+        bus_from=dc_bus,
+        bus_to=ac_bus,
+        rate=float(elmgenstat.sgn),
+        alpha1=0.0,
+        alpha2=0.0,
+        alpha3=0.0,
+        control1=ConverterControlType.Pac,
+        control2=ConverterControlType.Qac,
+        control1_val=-1.0 * float(elmgenstat.pgini),
+        control2_val=-1.0 * float(elmgenstat.qgini),
+        fault_control=ConverterFaultControlType.WECC_WT_Type_4B,
+        kdp=float(elmgenstat.ddroop),
+        u_setpoint_min=float(elmgenstat.usp_min),
+        u_setpoint_max=float(elmgenstat.usp_max),
+        u_setpoint=float(elmgenstat.usetp),
+        du_setpoint=0.0,
+        Q_min=float(elmgenstat.cQ_min),
+        Q_max=float(elmgenstat.cQ_max)
+    )
+
+    return dc_bus, vsc
 
 
 def convert_dgs_to_external_grid(elmxnet: ElmXnet,
@@ -2827,22 +2883,40 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
         grid.add_load(bus=bus, api_obj=load)
 
-    # Loads
+    # Static Generators
     for elmgenstat in dgs_grid.elmgenstats:
-        parallel_count = _get_parallel_device_count(count=int(elmgenstat.ngnum))
-        for parallel_index in range(parallel_count):
-            bus, stagen = convert_dgs_to_static_gen(
-                elmgenstat=elmgenstat,
-                stacubic_dict=stacubic_dict,
-                buses=grid.buses,
-                logger=logger,
-                cubics_by_objid=cubics_by_objid,
-                bus_by_term_id=bus_by_term_id,
-                parallel_index=parallel_index,
-                parallel_count=parallel_count
-            )
 
-            grid.add_static_generator(bus=bus, api_obj=stagen)
+        parallel_count = _get_parallel_device_count(count=int(elmgenstat.ngnum))
+
+        for parallel_index in range(parallel_count):
+
+            if elmgenstat.cCategory == 'Wind':
+                dc_bus, vsc = convert_dgs_staticgen_to_vsc(
+                    elmgenstat=elmgenstat,
+                    stacubic_dict=stacubic_dict,
+                    buses=grid.buses,
+                    logger=logger,
+                    cubics_by_objid=cubics_by_objid,
+                    bus_by_term_id=bus_by_term_id,
+                    parallel_index=parallel_index,
+                    parallel_count=parallel_count
+                )
+                grid.add_bus(dc_bus)
+                grid.add_vsc(vsc)
+
+            else:
+                bus, stagen = convert_dgs_to_static_gen(
+                    elmgenstat=elmgenstat,
+                    stacubic_dict=stacubic_dict,
+                    buses=grid.buses,
+                    logger=logger,
+                    cubics_by_objid=cubics_by_objid,
+                    bus_by_term_id=bus_by_term_id,
+                    parallel_index=parallel_index,
+                    parallel_count=parallel_count
+                )
+
+                grid.add_static_generator(bus=bus, api_obj=stagen)
 
     # external grids
     for eg in dgs_grid.elmxnets:

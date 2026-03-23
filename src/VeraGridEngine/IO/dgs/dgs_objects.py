@@ -608,9 +608,16 @@ class ElmGenstat(DGSElement):
         DgsProperty('pgini', 'r', 'Active Power Setpoint in MW', py_name='pgini'),
         DgsProperty('qgini', 'r', 'Reactive Power Setpoint in MVAr', py_name='qgini'),
         DgsProperty('av_mode', 'a', 'Active Power Control Mode', py_name='av_mode'),
+        DgsProperty('mode_inp', 'a:6', 'Dispatch: Input mode', py_name='mode_inp'),
         DgsProperty('ip_ctrl', 'i', 'Reference Machine Flag', py_name='ip_ctrl'),
         DgsProperty('cCategory', 'a:40', 'plant types', py_name='cCategory'),
         DgsProperty('c_pmod', 'a:40', 'plant model', py_name='c_pmod'),
+        DgsProperty('ddroop', 'r', 'Voltage droop value [%]', py_name='ddroop'),
+        DgsProperty('usp_max', 'r', 'Maximum voltage setpoint [pu]', py_name='usp_max'),
+        DgsProperty('usp_min', 'r', 'Minimum voltage setpoint [pu]', py_name='usp_min'),
+        DgsProperty('usetp', 'r', 'Specified voltage setpoint [pu]', py_name='usetp'),
+        DgsProperty('cQ_min', 'r', 'Minimum reactive power to inject/absorb [MVAr]', py_name='cQ_min'),
+        DgsProperty('cQ_max', 'r', 'Maximum reactive power to inject/absorb [MVAr]', py_name='cQ_max'),
     ]
 
     def __init__(self) -> None:
@@ -625,9 +632,16 @@ class ElmGenstat(DGSElement):
         self.pgini: float = 0.0
         self.qgini: float = 0.0
         self.av_mode: str = ""
+        self.mode_inp: str = ""
         self.ip_ctrl: int = 0
         self.cCategory: str = ""
         self.c_pmod: str = ""
+        self.ddroop: float = 0.0
+        self.usp_max: float = 0.0
+        self.usp_min: float = 0.0
+        self.usetp: float = 0.0
+        self.cQ_min: float = 0.0
+        self.cQ_max: float = 0.0
 
 
 class ElmLne(DGSElement):
