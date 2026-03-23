@@ -20,10 +20,10 @@ class EmtEvent(PointerDeviceParent):
     """
     __slots__ = (
         'parameter',
-        '_time',
-        '_value',
+        'time',
+        'value',
         '_group',
-        '_force_step_alignment',
+        'force_step_alignment'
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -46,7 +46,7 @@ class EmtEvent(PointerDeviceParent):
                  group: EmtEventsGroup = None,
                  force_step_alignment: bool = False,
                  idtag: Union[str, None] = None,
-                 name="RmsEvent",
+                 name="EmtEvent",
                  code='',
 
                  comment: str = ""):
@@ -91,62 +91,3 @@ class EmtEvent(PointerDeviceParent):
     @group.setter
     def group(self, val: EmtEventsGroup):
         self._group = val
-
-    # Scalar property accessors coerce assignments to the declared schema types.
-
-    @property
-    def time(self) -> float:
-        """
-        Get ``time``.
-
-        :return: float
-        """
-        return self._time
-
-    @time.setter
-    def time(self, val: float) -> None:
-        """
-        Set ``time``.
-
-        :param val: Value to assign.
-        :return: None
-        """
-        self._time = float(val)
-
-    @property
-    def value(self) -> float:
-        """
-        Get ``value``.
-
-        :return: float
-        """
-        return self._value
-
-    @value.setter
-    def value(self, val: float) -> None:
-        """
-        Set ``value``.
-
-        :param val: Value to assign.
-        :return: None
-        """
-        self._value = float(val)
-
-    @property
-    def force_step_alignment(self) -> bool:
-        """
-        Get ``force_step_alignment``.
-
-        :return: bool
-        """
-        return self._force_step_alignment
-
-    @force_step_alignment.setter
-    def force_step_alignment(self, val: bool) -> None:
-        """
-        Set ``force_step_alignment``.
-
-        :param val: Value to assign.
-        :return: None
-        """
-        self._force_step_alignment = bool(val)

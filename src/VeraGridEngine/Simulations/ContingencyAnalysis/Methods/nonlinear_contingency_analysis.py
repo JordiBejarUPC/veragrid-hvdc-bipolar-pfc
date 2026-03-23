@@ -9,7 +9,6 @@ import numpy as np
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_results import ContingencyAnalysisResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import multi_island_pf_nc
-from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions, SolverType
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis import LinearAnalysis, LinearMultiContingencies
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_options import ContingencyAnalysisOptions
 from VeraGridEngine.basic_structures import Logger, IntVec, StrVec
@@ -48,28 +47,22 @@ def nonlinear_contingency_analysis(nc: NumericalCircuit,
     if logger is None:
         logger = Logger()
 
-    if options.pf_options is None:
-        pf_opts = PowerFlowOptions(solver_type=SolverType.Linear,
-                                   ignore_single_node_islands=True)
-
-    else:
-        pf_opts = options.pf_options
-
     # declare the results
-    results = ContingencyAnalysisResults(ncon=len(linear_multiple_contingencies.contingency_groups_used),
+    results = ContingencyAnalysisResults(
+        ncon=len(linear_multiple_contingencies.contingency_groups_used),
                                          nbr=nc.nbr,
                                          nbus=nc.nbus,
                                          branch_names=nc.passive_branch_data.names,
                                          bus_names=nc.bus_data.names,
                                          bus_types=nc.bus_data.bus_types,
-                                         con_names=linear_multiple_contingencies.get_contingency_group_names())
+                                         con_names=linear_multiple_contingencies.get_contingency_group_names()
+    )
 
     # get contingency groups dictionary
     mon_idx = nc.passive_branch_data.get_monitor_enabled_indices()
 
     # run 0
-    base_res = multi_island_pf_nc(nc=nc,
-                                  options=pf_opts)
+    base_res = multi_island_pf_nc(nc=nc, options=options.pf_options)
 
     if options.use_srap:
 
@@ -107,7 +100,7 @@ def nonlinear_contingency_analysis(nc: NumericalCircuit,
 
         # run
         con_pf_res = multi_island_pf_nc(nc=nc,
-                                    options=pf_opts,
+                                    options=options.pf_options,
                                     V_guess=base_res.voltage,
                                     logger=logger)
 

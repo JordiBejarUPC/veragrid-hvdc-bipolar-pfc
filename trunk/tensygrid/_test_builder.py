@@ -1,10 +1,11 @@
 import unittest
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, Optional
 import numpy as np
-from networkx.algorithms.threshold import eigenvalues
 
+# Assuming these modules are in the correct fully qualified path as per eRoots rules
 from PolynomialMatrixBuilder import PolynomialMatrixBuilder
 from MTI_problem import MTI_Problem
+
 
 class StabilityResult(object):
     """
@@ -18,23 +19,34 @@ class StabilityResult(object):
         Initializes the result container.
 
         :param evals: Numpy array with calculated eigenvalues.
+        :type evals: np.ndarray
         :param stable: Boolean indicating if the system is stable.
+        :type stable: bool
         :param margin: Real value of the stability margin.
+        :type margin: float
         """
         self.eigenvalues: np.ndarray = evals
         self.is_stable: bool = stable
         self.margin: float = margin
 
+
 class TestPolynomialStability(unittest.TestCase):
     """
-    Test suite to validate the stability of polynomial systems.
+    Test suite to validate the stability of polynomial systems using
+    the iMTI / CPN representation builder.
     """
-    __slots__: List[str] = list()  # Final class with no persistent internal state between tests
+    # Final class with no persistent internal state between tests
+    __slots__: List[str] = list()
 
     def test_unstable_20x20_system(self) -> None:
         """
-        Test 1: Linear Unstable System (20 equations).
-        Validates that the constructor and stability calculation identify an unstable system.
+        Test 1: Large-Scale Linear State-Space System.
+        Validates the parsing, matrix allocation, and eigenvalue computation for a
+        20-dimensional linear system. Ensures that the underlying sparse matrix builders
+        correctly identify a naturally unstable system with a margin of 0.489.
+
+        :return: None
+        :rtype: None
         """
         eqs: List[str] = list([
             '-xp1 + 0.3440*x10 + 0.4474',
@@ -58,59 +70,53 @@ class TestPolynomialStability(unittest.TestCase):
             '-xp19 + 0.2644*u5 + 0.4517*x12 + 1.1073',
             '-xp20 + 0.5101*u4 + 0.3917'
         ])
-        
-        #builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=None, eqs=eqs, ineqs=list(), verbose=False)
 
         xOP: np.ndarray = np.array([-0.1668, -0.459, 0.5462, -1.3023, -0.4115, -0.5401, 1.3665, 0.7068, 0.6076, 0.9198,
                                     0.8994, 0.0327, -1.4159, -1.6809, 0.0378, 1.6635, 0.831, 1.0477, 1.7938, -0.4851])
         uOP: np.ndarray = np.array([-0.6336, 1.1019, -0.7170, 2.2000, 0.8906, -0.6354])
 
+        # Initialize dictionary properly
         v_dict: Dict[str, float] = dict()
+
+        # Populate operational point variables
+        i: int
         for i in range(20):
-            v_dict[f'x{i+1}'] = float(xOP[i])
-            v_dict[f'xp{i+1}'] = 0.0
-            v_dict[f'dx{i+1}'] = 0.0
-            
+            v_dict[f'x{i + 1}'] = float(xOP[i])
+            v_dict[f'xp{i + 1}'] = 0.0
+            v_dict[f'dx{i + 1}'] = 0.0
+
+        j: int
         for j in range(len(uOP)):
-            v_dict[f'u{j+1}'] = float(uOP[j])
-        # --- 2. Instantiate the Compiler-Ready Object ---
-        print("Initializing Mathematical Problem...")
+            v_dict[f'u{j + 1}'] = float(uOP[j])
 
-        math_problem = MTI_Problem(eqs_str=eqs, v_dict=v_dict)
-        # --- 3. Quick Verification ---
-        """
-        algebraic_eqs: list[str] = list([str(expression) for expression in math_problem._algebraic_eqs])
-        state_eqs: list[str] = list([str(expression) for expression in math_problem._state_eqs])
-        algebraic_vars: list[str] = list([str(expression) for expression in math_problem._algebraic_vars])
-        state_vars: list[str] = list([str(expression) for expression in math_problem._state_vars])
-
-        print(f"\nState variables ({len(state_vars)}): {state_vars}")
-        print(f"\nAlgebraic variables ({len(algebraic_vars)}): {algebraic_vars}")
-        
-        eqs: list[str] = algebraic_eqs + state_eqs
-        #print(f"\nNumber of equations: {len(eqs)}")
-        #print(f"\nEquation 1: {math_problem._algebraic_eqs}")
-        """
-
-        builder = PolynomialMatrixBuilder(
+        # Instantiate compiler and builder
+        math_problem: MTI_Problem = MTI_Problem(eqs_str=eqs, v_dict=v_dict)
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(
             problem=math_problem,
             verbose=False
         )
 
         builder.linearize(v_dict)
         res: Tuple[Any, Any, Any, Any, bool, float] = builder.compute_stability()
+
         stable: bool = res[4]
         margin: float = res[5]
-        
+
+        # Explicit evaluation of states
         if stable:
-            self.fail("The system should be unstable.")
+            self.fail("The system should be evaluated as unstable.")
         else:
-            self.assertAlmostEqual(margin, 0.489, places=3)
+            self.assertAlmostEqual(margin, 0.489, places=3, msg="Mismatch in stability margin.")
 
     def test_stable_nonlinear_5x5_system(self) -> None:
         """
-        Test 2: Nonlinear Stable System (3 DAEs + 2 Algebraic).
-        Validates handling of complex expressions and stability detection.
+        Test 2: Nonlinear Differential-Algebraic System (3 DAEs + 2 Algebraic).
+        Validates the handling of mixed state and algebraic equations with complex
+        float coefficients. Ensures the generalized eigenvalue solver correctly
+        processes algebraic constraints to find a stable margin of -0.00584.
+
+        :return: None
+        :rtype: None
         """
         eqs: List[str] = list([
             '-xp1 + (x3 + 0.2732*1/3*((-2*u1+u2+u3)*x2 + 1.73205081*(u2-u3)*x1) + 314.159265)*(-y2)',
@@ -120,78 +126,178 @@ class TestPolynomialStability(unittest.TestCase):
             'y2 - x2'
         ])
 
-        #builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=None, eqs=eqs, ineqs=list(), verbose=False)
-        
         xOP: np.ndarray = np.array([-0.5737, -0.8193, -0.1597])
         uOP: np.ndarray = np.array([-100.6109, -217.5716, 318.1824])
         yOP: np.ndarray = np.array([-0.5737, -0.8193])
 
         v_dict: Dict[str, float] = dict()
+
+        i: int
         for i in range(len(xOP)):
-            v_dict[f'x{i+1}'] = float(xOP[i])
-            v_dict[f'xp{i+1}'] = 0.0
-            v_dict[f'dx{i+1}'] = 0.0
-            
+            v_dict[f'x{i + 1}'] = float(xOP[i])
+            v_dict[f'xp{i + 1}'] = 0.0
+            v_dict[f'dx{i + 1}'] = 0.0
+
+        j: int
         for j in range(len(uOP)):
-            v_dict[f'u{j+1}'] = float(uOP[j])
-            
+            v_dict[f'u{j + 1}'] = float(uOP[j])
+
+        k: int
         for k in range(len(yOP)):
-            v_dict[f'y{k+1}'] = float(yOP[k])
+            v_dict[f'y{k + 1}'] = float(yOP[k])
 
+        math_problem: MTI_Problem = MTI_Problem(eqs_str=eqs, v_dict=v_dict)
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=math_problem, verbose=False)
+        builder.linearize(v_dict)
 
-        math_problem = MTI_Problem(eqs_str=eqs, v_dict=v_dict)
-        builder = PolynomialMatrixBuilder(problem=math_problem, verbose=False)
+        res: Tuple[Any, Any, Any, Any, bool, float] = builder.compute_stability()
+        stable: bool = res[4]
+        margin: float = res[5]
+
+        if not stable:
+            self.fail("The system should be evaluated as stable.")
+        else:
+            self.assertLess(margin, 0, msg="Stable system must have a negative margin.")
+            self.assertAlmostEqual(margin, -0.00584, places=4, msg="Mismatch in stability margin.")
+
+    def test_nonlinear_unstable_manual_system(self) -> None:
+        """
+        Test 3: Implicit Descriptor System (State-Dependent E-Matrix).
+        Verifies the builder's capability to handle implicit formulations where the
+        state derivative is multiplied by an algebraic variable (e.g., dx1*y1).
+        This tests the proper assembly of a non-identity E matrix.
+        Expects an unstable margin of 0.400.
+
+        :return: None
+        :rtype: None
+        """
+        eqs: List[str] = list([
+            "3*dx1*y1 + 6*(1/2+1/2*z1)*(2/3-1/3*u1)*x1",
+            "y1 - dx1"
+        ])
+        v_dict: Dict[str, float] = dict({
+            'xp1': 1.0,
+            'x1': 2.0,
+            'u1': 3.0,
+            'y1': 4.0,
+            'z1': 5.0
+        })
+
+        math_problem: MTI_Problem = MTI_Problem(eqs_str=eqs, v_dict=v_dict)
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=math_problem, verbose=False)
+
+        builder.linearize(v_dict)
+        res: Tuple[Any, Any, Any, Any, bool, float] = builder.compute_stability()
+        stable: bool = res[4]
+        margin: float = res[5]
+
+        if stable:
+            self.fail("Expected the implicit system to be unstable based on the eigenvalues.")
+        else:
+            self.assertAlmostEqual(margin, 0.400, places=3, msg=f"Expected stability margin 0.4, got {margin:.3f}")
+
+    def test_quadratic_system(self) -> None:
+        """
+        Test 4: Quadratic System (Multilinear Lifting of Powers).
+        Validates that the algorithm correctly parses the Python power operator (**2),
+        triggers the automatic multilinear lifting process, and successfully
+        augments the matrices without truncating equations.
+        Expects an unstable margin of 3.436.
+
+        :return: None
+        :rtype: None
+        """
+        eqs: List[str] = list([
+            "xp1 - x1**2 - x2",
+            "xp2 - x1*x2 - 1"
+        ])
+        v_dict: Dict[str, float] = dict({
+            'xp1': 0.0,
+            'xp2': 0.0,
+            'x1': 1.0,
+            'x2': 3.5
+        })
+
+        math_problem: MTI_Problem = MTI_Problem(eqs_str=eqs, v_dict=v_dict)
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=math_problem, verbose=False)
+
+        builder.linearize(v_dict)
+        res: Tuple[Any, Any, Any, Any, bool, float] = builder.compute_stability()
+        stable: bool = res[4]
+        margin: float = res[5]
+
+        if stable:
+            self.fail("Expected the quadratic system to be unstable based on the eigenvalues.")
+        else:
+            self.assertAlmostEqual(margin, 3.436, places=3, msg=f"Expected stability margin 3.436, got {margin:.3f}")
+
+    def test_inverse_system(self) -> None:
+        """
+        Test 5: Inverse Nonlinear System (Fractional Lifting).
+        Verifies the automatic handling of inverse states (e.g., 1/x2). Tests if the
+        builder correctly generates the internal multiplier auxiliary variables and
+        their algebraic coupling constraints (x2 * y1 - 1 = 0) to yield a stable
+        margin of -1.000.
+
+        :return: None
+        :rtype: None
+        """
+        eqs: List[str] = list([
+            "xp1 + x1 - y1",
+            "xp2 + x2 - 2",
+            "y1 - 1/x2"
+        ])
+        v_dict: Dict[str, float] = dict({
+            'xp1': -1.0,
+            'xp2': 1.0,
+            'x1': 2.0,
+            'x2': 1.0
+        })
+
+        math_problem: MTI_Problem = MTI_Problem(eqs_str=eqs, v_dict=v_dict)
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=math_problem, verbose=False)
+
         builder.linearize(v_dict)
         res: Tuple[Any, Any, Any, Any, bool, float] = builder.compute_stability()
         stable: bool = res[4]
         margin: float = res[5]
 
         if not stable:
-            self.fail("The system should be stable.")
+            self.fail("Expected the fractional system to be stable based on the eigenvalues.")
         else:
-            self.assertLess(margin, 0)
-            self.assertAlmostEqual(margin, -0.00584, places=4)
+            self.assertAlmostEqual(margin, -1.000, places=3, msg=f"Expected stability margin -1.0, got {margin:.3f}")
 
-    def test_nonlinear_unstable_manual_system(self) -> None:
+
+    def test_sqrt(self) -> None:
         """
-        Test 3: Mixed Nonlinear Unstable System.
-        Uses manual dictionary input to verify builder logic on custom variable naming.
+        Test 6:
+
+        :return: None
+        :rtype: None
         """
         eqs: List[str] = list([
-            "3*dx1*y1 + 6*(1/2+1/2*z1)*(2/3-1/3*u1)*x1",
-            "y1 - dx1"
+            "sqrt(x1) + x1*y1+1",
+            "2*xp1+x1",
+            "y1-x1**2-1"
         ])
-        v_dict: Dict[str, float] = {'xp1': 1.0, 'x1': 2.0, 'u1': 3.0, 'y1': 4.0, 'z1': 5.0}
-        math_problem = MTI_Problem(eqs_str=eqs, v_dict=v_dict)
-        builder = PolynomialMatrixBuilder(problem=math_problem, verbose=False)
-        # Operating point provided in the snippet
-        # --- Sanity Check Block ---
-        print("--- Builder Symbol Mapping ---")
-        print(f"Total symbols found: {len(builder.all_symbols)}")
-        print(f"Symbols list: {[s.name for s in builder.all_symbols]}")
+        v_dict: Dict[str, float] = dict({
+            'xp1': 0.5,
+            'x1': 1.0
+        })
 
-        # Check if dx1 is categorized as Priority 0 (Differential)
-        idx_dx = [i for i, s in enumerate(builder.all_symbols) if s.name.startswith(('dx', 'xp'))]
-        print(f"Indices of differential variables (E-matrix): {idx_dx}")
+        math_problem: MTI_Problem = MTI_Problem(eqs_str=eqs, v_dict=v_dict)
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=math_problem, verbose=False)
 
-        # Check if the operating point for dx1 is actually reaching the vector
-        v_vector = builder._build_v_vector(v_dict)
-        for i, s in enumerate(builder.all_symbols):
-            if s.name == 'dx1':
-                print(f"Verified: Variable '{s.name}' at index {i} has value {v_vector[i]}")
-
-        if not idx_dx:
-            print("WARNING: No differential variables (dx/xp) detected. E matrix will be empty/identity!")
-        # --------------------------
         builder.linearize(v_dict)
-        
         res: Tuple[Any, Any, Any, Any, bool, float] = builder.compute_stability()
         stable: bool = res[4]
         margin: float = res[5]
-        print(res[0])
-        # Assertions based on provided snippet requirements
-        self.assertFalse(stable, "Expected the system to be unstable based on the eigenvalues.")
-        self.assertAlmostEqual(margin, 0.400, places=3, msg=f"Expected stability margin 0.4, got {margin:.3f}")
+
+        if not stable:
+            self.fail("Expected the fractional system to be stable based on the eigenvalues.")
+        else:
+            self.assertAlmostEqual(margin, -0.500, places=3, msg=f"Expected stability margin -0.5, got {margin:.3f}")
+
 
 if __name__ == "__main__":
     # Standard unittest execution

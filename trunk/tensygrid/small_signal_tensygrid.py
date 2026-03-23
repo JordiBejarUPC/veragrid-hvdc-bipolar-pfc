@@ -8,11 +8,14 @@ Small Signal Analysis for Phasor-based RMS Grid.
 
 This script creates the phasor problem manually and injects it into the SmallSignalStabilityRmsDriver.
 """
+from typing import Tuple, Any
+
 #import sys
 #import numpy as np
 from PolynomialMatrixBuilder import PolynomialMatrixBuilder
 #from matplotlib import pyplot as plt
 import VeraGridEngine.api as vge
+from VeraGridEngine import to_implicit
 
 
 def define_problem():
@@ -45,6 +48,7 @@ def define_problem():
 
     # Build RMS models
     genqec = vge.get_complete_generator_template_phasor(grid.rms_var_factory, name="Gen0").block
+    genqec = vge.to_implicit(genqec, grid.rms_var_factory)
 
     line_mdl = vge.get_line_phasor_rms_template(grid.rms_var_factory).block
     line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
@@ -106,12 +110,70 @@ def define_problem():
 
 
 def solve_problem(phasor_problem):
-    builder = PolynomialMatrixBuilder(
+    # 1. Initialize the builder.
+    # The __init__ will trigger the lifting and register auxiliary symbols.
+    builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(
         problem=phasor_problem,
         verbose=True
     )
-    builder.linearize(v_dict={})
-    evals, evecs_left, evecs_right, participation_matrix, is_stable, max_real= builder.compute_stability
+
+    # 2. Construct the v_dict (operating point)
+    # Rules: Initialize dict with dict()
+    v_dict: dict = dict()
+
+    # Extract base guesses from phasor_problem.
+    # We assume phasor_problem.init_guess is a dict {id: value}
+    # and phasor_problem.sys_vars is a dict {id: sympy_var_or_obj}
+    base_guesses: dict = getattr(phasor_problem, "init_guess", dict())
+    sys_vars: dict = getattr(phasor_problem, "sys_vars", dict())
+
+    # Map original variables to their values using string keys
+    for var_id, value in base_guesses.items():
+        var_obj: any = sys_vars.get(var_id, None)
+        if var_obj is not None:
+            # Conversion to string to match builder.sym_to_idx keys
+            var_name: str = str(var_obj)
+            v_dict[var_name] = float(value)
+        else:
+            pass
+
+    # 3. Handle Auxiliary Variables (The "Lifting" variables)
+    # We iterate over all symbols registered in the builder
+    for sym in builder.all_symbols:
+        s_name: str = sym.name
+
+        # If the symbol is not in our v_dict, it's likely an auxiliary one
+        if s_name not in v_dict:
+            # Case A: Multiplication Auxiliary (x_mulauxN -> value = x)
+            if "_mulaux" in s_name:
+                parent_name: str = s_name.split("_mulaux")[0]
+                parent_val: float | None = v_dict.get(parent_name, None)
+                if parent_val is not None:
+                    v_dict[s_name] = parent_val
+                else:
+                    pass
+
+            # Case B: Inverse Auxiliary (x_invauxN -> value = 1/x)
+            elif "_invaux" in s_name:
+                parent_name: str = s_name.split("_invaux")[0]
+                parent_val: float | None = v_dict.get(parent_name, None)
+                if parent_val is not None and parent_val != 0.0:
+                    v_dict[s_name] = 1.0 / parent_val
+                elif parent_val == 0.0:
+                    # Avoid division by zero, set a small epsilon or 0.0
+                    v_dict[s_name] = 0.0
+                else:
+                    pass
+            else:
+                pass
+        else:
+            # Already mapped
+            pass
+
+    builder.linearize(v_dict=v_dict)
+    res: Tuple[Any, Any, Any, Any, bool, float] = builder.compute_stability()
+    stable: bool = res[4]
+    margin: float = res[5]
     pass
 
 

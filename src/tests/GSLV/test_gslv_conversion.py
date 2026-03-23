@@ -185,8 +185,6 @@ def test_contingencies_ts():
     grid = vg.open_file(filename=os.path.join('data', 'grids', 'IEEE39_1W.gridcal'))
 
     options = vg.ContingencyAnalysisOptions(
-        use_provided_flows=False,
-        Pf=None,
         pf_options=vg.PowerFlowOptions(vg.SolverType.Linear),
         lin_options=vg.LinearAnalysisOptions(),
         use_srap=False,

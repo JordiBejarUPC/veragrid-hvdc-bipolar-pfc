@@ -224,6 +224,31 @@ class ContingencyAnalysisDriver(DriverTemplate):
             self.results.voltage = con_res.voltage
             # self.results.max_flows = con_res.Sf[0, :]
             # self.results.max_loading = con_res.loading[0, :]
+            for entry in con_res.report.entries:
+                self.results.report.add(
+                    time_index=entry.time_index,
+                    t_prob=entry.t_prob,
+                    mon_idx=entry.mon_idx,
+                    con_group_idx=entry.con_group_idx,
+                    area_from=entry.area_from,
+                    area_to=entry.area_to,
+                    base_name=entry.base_name,
+                    contingency_name=entry.contingency_name,
+                    base_rating=entry.base_rating,
+                    contingency_rating=entry.contingency_rating,
+                    srap_rating=entry.srap_rating,
+                    base_flow=entry.base_flow.real,
+                    post_contingency_flow=entry.post_contingency_flow.real,
+                    post_srap_flow=entry.post_srap_flow.real,
+                    base_loading=entry.base_loading,
+                    post_contingency_loading=entry.post_contingency_loading,
+                    post_srap_loading=entry.post_srap_loading,
+                    msg_ov=entry.msg_ov,
+                    msg_srap=entry.msg_srap,
+                    srap_power=entry.srap_power,
+                    solved_by_srap=entry.solved_by_srap
+                )
+
 
         return self.results
 

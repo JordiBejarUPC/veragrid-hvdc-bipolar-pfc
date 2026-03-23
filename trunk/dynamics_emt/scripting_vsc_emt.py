@@ -156,13 +156,19 @@ vsc_mdl = StandardConverterEmtBuild(
     vfactory=circuit.emt_var_factory,
     name=vsc.name,
     P_ref0=p_transfer_mw / circuit.Sbase,
+    control1=vsc.control1,
+    control2=vsc.control2,
+    control1_val=vsc.control1_val,
+    control2_val=vsc.control2_val,
 ).block
 
-# DC Load model (constant power load)
+# DC Load model (constant resistance load around the PF point)
+dc_load_r_pu = circuit.Sbase / p_transfer_mw
 dc_load_mdl = get_dc_load_emt_template(
     grid=circuit,
     load_name=dc_load.name,
     P_dc=dc_load.P,
+    R_dc=dc_load_r_pu,
     name="dc_load_emt"
 ).block
 
@@ -271,14 +277,19 @@ options = EmtOptions(
     verbose=1
 )
 
-
 def create_problem() -> EmtProblemDae:
     local_problem = EmtProblemDae(
         grid=circuit,
         options=options,
-        pf_results_3Ph=pf_res_3ph,
+        pf_results_3Ph=None,
         pf_results=pf_results
     )
+    # local_problem = EmtProblemDae(
+    #     grid=circuit,
+    #     options=options,
+    #     pf_results_3Ph=None,
+    #     pf_results=None
+    # )
 
     if ENABLE_NEWTON_TRACE:
         local_problem.set_newton_trace_collector(NewtonTraceCollector())

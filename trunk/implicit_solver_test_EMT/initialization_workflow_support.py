@@ -267,7 +267,7 @@ def build_two_bus_real_emt_case(
     grid.add_load(bus=bus1, api_obj=load)
 
     for bus in grid.buses:
-        get_bus_emt_template(grid, bus, vf=grid.emt_var_factory)
+        get_bus_emt_template(grid, bus)
 
     gen_mdl = get_generator_thevenin_rl_emt_template(grid=grid, gen=gen0).block
     line_mdl = get_pi_line_emt_template(grid=grid, line=line0).block
@@ -334,7 +334,7 @@ def build_two_bus_real_emt_case(
         initialization_method=initialization_method,
         verbose=0,
     )
-    problem = EmtProblemDae(grid=grid, options=options, pf_results=pf_results)
+    problem = EmtProblemDae(grid=grid, options=options, pf_results_3Ph=pf_results, pf_results=None)
 
     context = TwoBusRealEmtContext(
         grid=grid,

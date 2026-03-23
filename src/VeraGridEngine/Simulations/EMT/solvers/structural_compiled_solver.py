@@ -28,7 +28,12 @@ from VeraGridEngine.Utils.Symbolic.diagnostic import (
 )
 from VeraGridEngine.Utils.Symbolic.symbolic import BinOp, Const, Expr, Func, UnOp, Var
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EagerEquationCompiler, _compile_to_file
-from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
+    EmtBoundaryUpdateProtocol,
+    EmtProblemTemplate,
+    get_solver_forced_event_time,
+    resolve_solver_boundary_updater,
+)
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.basic_structures import Mat, Vec
 
@@ -890,55 +895,53 @@ class StructuralCompiledVectorKernel:
         return self._row_count
 
 
-def _compile_fused_residual_kernel(kernel_specs: List[StructuralCompiledVectorKernel], cache_token: str) -> Callable[..., Any]:
+class StructuralCompiledResidualDispatcher:
     """
-    Build the eager residual dispatcher that reuses preallocated work buffers.
+    Residual dispatcher that orchestrates compiled group kernels explicitly.
 
-    :param kernel_specs: Vectorized residual kernels.
-    :type kernel_specs: List[StructuralCompiledVectorKernel]
-    :return: Compiled fused residual dispatcher.
-    :rtype: Callable[..., Any]
+    The structural group kernels are already eagerly compiled with Numba. Keeping
+    the final scatter loop in Python avoids fragile JIT/global binding behavior in
+    the dispatcher layer and mirrors the residual assembly strategy used by the
+    vectorized solver.
     """
-    lines: List[str] = list()
-    kernel_index: int = 0
-    func_name: str = f"structural_compiled_fused_residual_{cache_token}"
 
-    # The dispatcher clears the global residual first and then reuses one work row per group.
-    lines.append(f"def {func_name}(states, params, history, d_history, h, history2, data_out, work_buffers):")
-    lines.append("    data_out[:] = 0.0")
+    __slots__ = ["_kernel_specs"]
 
-    while kernel_index < len(kernel_specs):
-        kernel_spec: StructuralCompiledVectorKernel = kernel_specs[kernel_index]
-        function_name: str = f"kernel_{kernel_index}"
-        indices_name: str = f"indices_{kernel_index}"
-        target_name: str = f"target_{kernel_index}"
-        row_count: int = kernel_spec.get_row_count()
+    def __init__(self, kernel_specs: List[StructuralCompiledVectorKernel]) -> None:
+        self._kernel_specs = kernel_specs
 
-        # Each structural group writes into its dedicated row of the work matrix.
-        lines.append(f"    local_out_{kernel_index} = work_buffers[{kernel_index}, :{row_count}]")
-        lines.append(
-            f"    {function_name}(states, params, history, d_history, h, {indices_name}, local_out_{kernel_index}, history2)"
-        )
-        lines.append(f"    for local_index_{kernel_index} in range({row_count}):")
-        lines.append(
-            f"        data_out[{target_name}[local_index_{kernel_index}]] = local_out_{kernel_index}[local_index_{kernel_index}]"
-        )
+    def __call__(
+            self,
+            states: Vec,
+            params: Vec,
+            history: Vec,
+            d_history: Vec,
+            h: float,
+            history2: Vec,
+            data_out: Vec,
+            work_buffers: Float64Matrix,
+    ) -> None:
+        data_out[:] = 0.0
 
-        kernel_index += 1
+        kernel_index: int = 0
+        while kernel_index < len(self._kernel_specs):
+            kernel_spec: StructuralCompiledVectorKernel = self._kernel_specs[kernel_index]
+            row_count: int = kernel_spec.get_row_count()
+            local_out: Float64Vector = work_buffers[kernel_index, :row_count]
 
-    py_func: Callable[..., Any] = _compile_to_file("\n".join(lines), func_name)
+            kernel_spec.get_kernel()(
+                states,
+                params,
+                history,
+                d_history,
+                h,
+                kernel_spec.get_indices(),
+                local_out,
+                history2,
+            )
 
-    for kernel_index, kernel_spec in enumerate(kernel_specs):
-        py_func.__globals__[f"kernel_{kernel_index}"] = kernel_spec.get_kernel()
-        py_func.__globals__[f"indices_{kernel_index}"] = kernel_spec.get_indices()
-        py_func.__globals__[f"target_{kernel_index}"] = kernel_spec.get_target_rows()
-
-    return _safe_njit(
-        py_func,
-        signature_tpe=_build_fused_residual_signature(),
-        fastmath=True,
-        cache=True,
-    )
+            data_out[kernel_spec.get_target_rows()] = local_out[:row_count]
+            kernel_index += 1
 
 
 def _compile_master_jacobian_kernel(
@@ -1002,9 +1005,10 @@ class StructuralCompiledResidualAssembler:
         """
         t_start: float = time.perf_counter()
         self._kernel_specs: List[StructuralCompiledVectorKernel] = kernel_specs
+        _unused_cache_token: str = cache_token
 
         t_dispatcher_start: float = time.perf_counter()
-        self._dispatcher: Callable[..., Any] = _compile_fused_residual_kernel(kernel_specs, cache_token)
+        self._dispatcher: Callable[..., Any] = StructuralCompiledResidualDispatcher(kernel_specs)
         dispatcher_build_s: float = time.perf_counter() - t_dispatcher_start
 
         max_kernel_size: int = 0
@@ -2113,7 +2117,7 @@ class StructuralCompiledSolver:
             x0: Vec | None = None,
             dx0: Vec | None = None,
             params0: Vec | None = None,
-            boundary_updater: StructuralCompiledBoundaryUpdateWrapper | None = None,
+            boundary_updater: EmtBoundaryUpdateProtocol | None = None,
     ) -> Tuple[Vec, Mat, Mat]:
         """
         Run the implicit EMT simulation with eager structural kernels.
@@ -2124,8 +2128,8 @@ class StructuralCompiledSolver:
         :type dx0: Vec | None
         :param params0: Optional initial runtime parameters.
         :type params0: Vec | None
-        :param boundary_updater: Optional boundary updater.
-        :type boundary_updater: StructuralCompiledBoundaryUpdateWrapper | None
+        :param boundary_updater: Optional override for the problem boundary updater.
+        :type boundary_updater: EmtBoundaryUpdateProtocol | None
         :return: Time vector, state trajectory and differential trajectory.
         :rtype: Tuple[Vec, Mat, Mat]
         """
@@ -2154,13 +2158,15 @@ class StructuralCompiledSolver:
         else:
             dx_prev = np.array(dx0, dtype=np.float64, copy=True)
 
+        active_boundary_updater = resolve_solver_boundary_updater(self._problem, boundary_updater, float(self._t0))
+
         x_prev2: Vec = x_prev.copy()
         x_iter: Vec = x_prev.copy()
         trial_state: Vec = np.zeros(self._n_vars, dtype=np.float64)
         trial_residual: Vec = np.zeros(self._n_vars, dtype=np.float64)
 
         if params0 is None:
-            runtime_params: Vec = np.zeros(self._n_event_parameters, dtype=np.float64)
+            runtime_params = self._problem.event_params_values.copy()
         else:
             runtime_params = np.array(params0, dtype=np.float64, copy=True)
 
@@ -2180,10 +2186,10 @@ class StructuralCompiledSolver:
         else:
             pass
 
-        if boundary_updater is None:
+        if active_boundary_updater is None:
             pass
         else:
-            boundary_updater.update(float(self._t0), x_prev, full_params)
+            active_boundary_updater.update(float(self._t0), x_prev, full_params)
 
         if self._n_event_parameters > 0:
             runtime_params[:] = full_params[:self._n_event_parameters]
@@ -2262,13 +2268,11 @@ class StructuralCompiledSolver:
             while t_local_prev < (t_step_target - 1e-15):
                 forced_event_time: float | None
 
-                if boundary_updater is None:
-                    forced_event_time = None
-                else:
-                    forced_event_time = boundary_updater.get_next_forced_event_time(
-                        t_prev=float(t_local_prev),
-                        t_target=float(t_step_target),
-                    )
+                forced_event_time = get_solver_forced_event_time(
+                    active_boundary_updater,
+                    float(t_local_prev),
+                    float(t_step_target),
+                )
 
                 if forced_event_time is None:
                     t_curr: float = t_step_target
@@ -2297,10 +2301,10 @@ class StructuralCompiledSolver:
                 else:
                     pass
 
-                if boundary_updater is None:
+                if active_boundary_updater is None:
                     pass
                 else:
-                    boundary_updater.update(float(t_curr), x_prev, full_params)
+                    active_boundary_updater.update(float(t_curr), x_prev, full_params)
 
                 if self._n_event_parameters > 0:
                     runtime_params[:] = full_params[:self._n_event_parameters]

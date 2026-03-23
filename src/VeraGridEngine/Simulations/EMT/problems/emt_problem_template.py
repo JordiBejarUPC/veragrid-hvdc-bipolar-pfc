@@ -5,7 +5,7 @@
 
 from abc import ABC
 import numpy as np
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Protocol
 
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
@@ -35,6 +35,87 @@ def _get_external_mapping(mdl: Block) -> Optional[Dict[Any, Var]]:
         return None
     else:
         return external_mapping
+
+
+class EmtBoundaryUpdateProtocol(Protocol):
+    """
+    Structural protocol implemented by EMT boundary update providers.
+    """
+
+    def update(self, t: float, x: Vec, params: Vec) -> None:
+        """
+        Update the full parameter vector in place.
+        """
+        ...
+
+    def get_next_forced_event_time(self, t_prev: float, t_target: float) -> float | None:
+        """
+        Return the next exact-alignment event time inside ``(t_prev, t_target]``.
+        """
+        ...
+
+
+def resolve_solver_boundary_updater(
+        problem: "EmtProblemTemplate",
+        boundary_updater: Any,
+        t0: float,
+) -> Any:
+    """
+    Resolve the boundary updater consumed by an EMT solver.
+
+    The problem-owned updater remains the default, but demos and legacy callers
+    may still provide external wrappers that only implement ``update()``.
+    """
+    problem.reset_boundary_update_state(float(t0))
+
+    if boundary_updater is None:
+        return problem.boundary_update
+
+    return boundary_updater
+
+
+def get_solver_forced_event_time(boundary_updater: Any, t_prev: float, t_target: float) -> float | None:
+    """
+    Query the next forced-alignment event time if the updater exposes it.
+
+    Legacy boundary updaters that only implement ``update()`` are treated as
+    having no forced event alignment requirements.
+    """
+    if boundary_updater is None:
+        return None
+
+    get_next_time = getattr(boundary_updater, "get_next_forced_event_time", None)
+
+    if callable(get_next_time):
+        next_time: Any = get_next_time(float(t_prev), float(t_target))
+
+        if next_time is None:
+            return None
+
+        return float(next_time)
+
+    return None
+
+
+def is_problem_owned_boundary_updater(problem: "EmtProblemTemplate", boundary_updater: Any) -> bool:
+    """
+    Return whether the updater is owned by the EMT problem itself.
+
+    This distinguishes endogenous problem boundary logic from external wrappers
+    supplied by tests or demos.
+    """
+    if boundary_updater is None:
+        return False
+
+    if boundary_updater is problem:
+        return True
+
+    problem_boundary_updater = problem.boundary_update
+
+    if problem_boundary_updater is None:
+        return False
+
+    return boundary_updater is problem_boundary_updater
 
 
 class EmtProblemTemplate(ABC):
@@ -120,6 +201,15 @@ class EmtProblemTemplate(ABC):
         :return: Global time symbolic variable.
         """
         return self._glob_time
+
+    @property
+    def boundary_update(self) -> EmtBoundaryUpdateProtocol | None:
+        """
+        Return the boundary update provider consumed by EMT solvers.
+
+        Problems without endogenous boundary logic return ``None``.
+        """
+        return None
 
     def _finalize_order_and_maps(self)->None:
         """
@@ -209,6 +299,16 @@ class EmtProblemTemplate(ABC):
         :return: None
         """
         self._build_runtime_param_vectors()
+
+    def reset_boundary_update_state(self, t0: float = 0.0) -> None:
+        """
+        Reset runtime parameter values before a new EMT simulation starts.
+
+        :param t0: Initial simulation time.
+        :return: None
+        """
+        self._event_params_values = self._initialize_runtime_parameter_values(float(t0))
+        self._event_params_values = self.def_event_params_fn(self._event_params_values, float(t0))
 
     def get_compiler_names_dict(self) -> Dict[int, str]:
         """
