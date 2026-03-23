@@ -56,7 +56,6 @@ def tf_to_block(var_factory: VarFactory,
     diff_vars = list()
     state_eqs = list()
     state_vars = list()
-    init_eqs = dict()
     base_var = x
     for i in range(1, len(num)):
         if i == 1 and create_state:
@@ -900,10 +899,10 @@ def connect_line_emt_from(mdl1: Block, mdl2: Block):
     # Create a dictionary to map the bus output variable
     # to the corresponding line input variable ("from" side)
     phase_map = {
-        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.v_N_f,
-        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.v_A_f,
-        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.v_B_f,
-        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.v_C_f
+        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.vf_N,
+        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.vf_A,
+        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.vf_B,
+        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.vf_C
     }
 
     # Find the variable pairs that match our mapping
@@ -931,10 +930,10 @@ def connect_line_emt_to(mdl1: Block, mdl2: Block):
     # Create a dictionary to map the bus output variable
     # to the corresponding line input variable ("to" side)
     phase_map = {
-        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.v_N_t,
-        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.v_A_t,
-        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.v_B_t,
-        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.v_C_t
+        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.vt_N,
+        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.vt_A,
+        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.vt_B,
+        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.vt_C
     }
 
     # Find the variable pairs that match our mapping

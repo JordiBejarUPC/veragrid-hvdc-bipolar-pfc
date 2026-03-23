@@ -1784,6 +1784,10 @@ def get_complete_generator_template(vf: VarFactory, name="complete_generator_emt
     templ.block.children.append(exciter_mdl)
     templ.block.unify_blocks()
     templ.block.external_mapping = {
+        VarPowerFlowRefferenceType.v_N: None,
+        VarPowerFlowRefferenceType.v_A: gen_mdl.in_vars[0],
+        VarPowerFlowRefferenceType.v_B: gen_mdl.in_vars[1],
+        VarPowerFlowRefferenceType.v_C: gen_mdl.in_vars[2],
         VarPowerFlowRefferenceType.P_N: None,
         VarPowerFlowRefferenceType.Q_N: None,
         VarPowerFlowRefferenceType.P_A: None,

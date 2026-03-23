@@ -48,8 +48,31 @@ class BusRmsTemplate(RmsModelTemplate):
             self.Vm = vf.add_var("Vm", VarPowerFlowRefferenceType.Vm)
             self.Va = vf.add_var("Va", VarPowerFlowRefferenceType.Va)
 
+            algebraic_eqs = []
+            event_dict = {}
+            init_eqs = {}
+
+            if is_slack:
+                vm_ref = vf.add_var("Vm_ref")
+                va_ref = vf.add_var("Va_ref")
+                algebraic_eqs = [
+                    self.Vm - vm_ref,
+                    self.Va - va_ref,
+                ]
+                event_dict = {
+                    vm_ref: vf.add_const(1.0),
+                    va_ref: vf.add_const(0.0),
+                }
+                init_eqs = {
+                    self.Vm: vm_ref,
+                    self.Va: va_ref,
+                }
+
             self._block = Block(
                 algebraic_vars=[self.Vm, self.Va],
+                algebraic_eqs=algebraic_eqs,
+                event_dict=event_dict,
+                init_eqs=init_eqs,
                 out_vars=[self.Vm, self.Va]
             )
     

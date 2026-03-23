@@ -417,14 +417,17 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 if not elm.bus.is_dc:
                     Vm, Va = get_bus_rms_algebraic_vars(elm.bus.rms_model)
-                    elm.rms_model.update_model(
-                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
-                    elm.rms_model.update_model(
-                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Va], Va)
+                    if VarPowerFlowRefferenceType.Vm in elm.rms_model.external_mapping:
+                        elm.rms_model.update_model(
+                            elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
+                    if VarPowerFlowRefferenceType.Va in elm.rms_model.external_mapping:
+                        elm.rms_model.update_model(
+                            elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Va], Va)
                 else:
                     Vdc = elm.bus.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
-                    elm.rms_model.update_model(
-                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc], Vdc)
+                    if VarPowerFlowRefferenceType.Vdc in elm.rms_model.external_mapping:
+                        elm.rms_model.update_model(
+                            elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc], Vdc)
                     
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
 
