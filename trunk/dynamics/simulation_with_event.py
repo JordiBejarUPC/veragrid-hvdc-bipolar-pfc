@@ -183,6 +183,8 @@ def test_simulation_with_event():
                             options=options,
                             pf_results=res)
 
+    problem.set_events_group(events_group)
+
     solver = BackEulerImplicitIntegration(
         problem=problem,
         t0=0,

@@ -1119,9 +1119,9 @@ def get_complete_generator_template(vfactory: VarFactory, name="complete generat
     templ.block.children.append(governor_mdl)
     templ.block.children.append(stabilizer_mdl)
     templ.block.children.append(exciter_mdl)
-    # necessari for tensygrid but still not working well
+    # necessary for tensygrid but still not working well
     # templ.block = to_implicit(templ.block, vfactory=vfactory)
-    templ.block.unify_blocks()
+    # templ.block.unify_blocks()
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Vm: genqec_mdl.in_vars[0],
         VarPowerFlowRefferenceType.Va: genqec_mdl.in_vars[1],
