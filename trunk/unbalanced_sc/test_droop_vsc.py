@@ -1,6 +1,6 @@
 import VeraGridEngine.api as vge
 from VeraGridEngine import PowerFlowOptions, ShortCircuitOptions
-from VeraGridEngine.enumerations import ConverterControlType, MethodShortCircuit, ConverterFaultControlType
+from VeraGridEngine.enumerations import MethodShortCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 import numpy as np
 
