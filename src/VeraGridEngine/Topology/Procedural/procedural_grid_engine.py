@@ -18,9 +18,8 @@ from scipy.spatial.distance import cdist
 from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy.special import gammaincinv
 import random
-import panda as pd
+import pandas as pd
 
-from trunk.dynamics.model_validation.gfl_vsc_validation import load_mdl
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
