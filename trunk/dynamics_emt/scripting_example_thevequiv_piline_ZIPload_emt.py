@@ -108,7 +108,7 @@ for bus in grid.buses:
 # Build EMT models
 ######################################################################################################
 # generator
-gen_mdl = get_generator_thevenin_rl_emt_template(grid=grid, gen = gen0).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.emt_var_factory).block
 
 # line
 line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
@@ -276,7 +276,7 @@ def build_emt_options(chosen_solver: str, initialization_method: EmtInitializati
     return EmtOptions(time_step=5e-6,
                       simulation_time=0.06,
                       tolerance=1e-6,
-                      solver=SOLVER_TYPE_MAP[chosen_solver],
+                      solver_type=SOLVER_TYPE_MAP[chosen_solver],
                       integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
                       initialization_method=initialization_method,
                       verbose=0)

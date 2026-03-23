@@ -122,7 +122,7 @@ for bus in grid.buses:
 ######################################################################################################
 
 # generator
-gen_mdl = get_generator_thevenin_rl_emt_template(grid=grid, gen = gen0).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf= grid.emt_var_factory).block
 
 # line
 line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
@@ -130,6 +130,8 @@ line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 
 # load
 load_mdl = get_shunt_r_3ph_emt_template(vf = grid.emt_var_factory).block
+
+load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_3ph", new_value=1.0)
 
 ######################################################################################################
 # Add models to devices
@@ -271,7 +273,7 @@ if CHOSEN_SOLVER not in SOLVER_TYPE_MAP:
 options = EmtOptions(time_step = 5e-6,
                      simulation_time =  0.01, # s
                      tolerance = 1e-6,
-                     solver = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
+                     solver_type = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
                      verbose = 1)
 

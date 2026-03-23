@@ -110,7 +110,10 @@ transformer = gce.Transformer2W(
 circuit.add_transformer2w(transformer)
 
 # VSC: Bus 3 (DC) -> Bus 2 (AC)
-p_transfer_mw = 50.0 # MW
+p_transfer_mw = 30.0 # MW
+q_transfer_mvar = 0.0 # MVAr
+emt_control1 = ConverterControlType.Pdc
+emt_control2 = ConverterControlType.Qac
 vsc = gce.VSC(
     name='VSC',
     bus_from=bus3_dc,  # DC side
@@ -118,7 +121,7 @@ vsc = gce.VSC(
     rate=100.0,
     control1=ConverterControlType.Qac,
     control2=ConverterControlType.Vm_dc,
-    control1_val=0.0,
+    control1_val=q_transfer_mvar,
     control2_val=1.0,
 )
 circuit.add_vsc(vsc)
@@ -130,55 +133,6 @@ dc_load = gce.Load(
     Q=0.0,
 )
 circuit.add_load(bus3_dc, dc_load)
-
-###########################################################################################################################
-# BUILD EMT BLOCK
-###########################################################################################################################
-
-# =====================================================================
-# INITIALIZE BUS EMT MODELS
-# =====================================================================
-for bus in circuit.buses:
-    get_bus_emt_template(grid=circuit, bus=bus)
-
-# =====================================================================
-# BUILD DEVICE EMT MODELS
-# =====================================================================
-
-# Generator model (Thevenin equivalent)
-gen_mdl = get_generator_thevenin_rl_emt_template(grid=circuit, gen=gen1).block
-
-# Transformer model (series RL with ideal transformer)
-trafo_mdl = get_transformer_emt_template(grid=circuit, trafo=transformer, name=transformer.name).block
-
-# VSC model (standard converter: DC -> AC with power balance)
-vsc_mdl = StandardConverterEmtBuild(
-    vfactory=circuit.emt_var_factory,
-    name=vsc.name,
-    P_ref0=p_transfer_mw / circuit.Sbase,
-    control1=vsc.control1,
-    control2=vsc.control2,
-    control1_val=vsc.control1_val,
-    control2_val=vsc.control2_val,
-).block
-
-# DC Load model (constant resistance load around the PF point)
-dc_load_r_pu = circuit.Sbase / p_transfer_mw
-dc_load_mdl = get_dc_load_emt_template(
-    grid=circuit,
-    load_name=dc_load.name,
-    P_dc=dc_load.P,
-    R_dc=dc_load_r_pu,
-    name="dc_load_emt"
-).block
-
-# =====================================================================
-# ASSIGN MODELS TO DEVICES
-# =====================================================================
-set_emt_model(device=gen1, model=gen_mdl, var_factory=circuit.emt_var_factory)
-set_emt_model(device=transformer, model=trafo_mdl, var_factory=circuit.emt_var_factory)
-set_emt_model(device=vsc, model=vsc_mdl, var_factory=circuit.emt_var_factory)
-set_emt_model(device=dc_load, model=dc_load_mdl, var_factory=circuit.emt_var_factory)
 
 ###########################################################################################################################
 # POWER FLOW
@@ -205,6 +159,59 @@ print(f"Converged: {pf_results.converged}")
 if pf_results.converged:
     print(pf_results.get_bus_df())
     print(pf_results.get_branch_df())
+
+###########################################################################################################################
+# BUILD EMT BLOCK
+###########################################################################################################################
+
+# =====================================================================
+# INITIALIZE BUS EMT MODELS
+# =====================================================================
+for bus in circuit.buses:
+    get_bus_emt_template(grid=circuit, bus=bus)
+
+# =====================================================================
+# BUILD DEVICE EMT MODELS
+# =====================================================================
+
+# Generator model (Thevenin equivalent)
+gen_mdl = get_generator_thevenin_rl_emt_template(grid=circuit, gen=gen1).block
+
+# Transformer model (series RL with ideal transformer)
+trafo_mdl = get_transformer_emt_template(grid=circuit, trafo=transformer, name=transformer.name).block
+
+# VSC model (standard converter: DC -> AC with power balance)
+vsc_mdl = StandardConverterEmtBuild(
+    vfactory=circuit.emt_var_factory,
+    name=vsc.name,
+    sbase=circuit.Sbase,
+    fbase=circuit.fBase,
+    P_ref0=p_transfer_mw,
+    Q_ref0=q_transfer_mvar,
+    P_loss0=float(pf_results.losses_vsc[circuit.get_vsc().index(vsc)]),
+    control1=emt_control1,
+    control2=emt_control2,
+    control1_val=p_transfer_mw,
+    control2_val=q_transfer_mvar,
+).block
+
+# DC Load model (constant resistance load around the PF point)
+dc_load_r_pu = circuit.Sbase / p_transfer_mw
+dc_load_mdl = get_dc_load_emt_template(
+    grid=circuit,
+    load_name=dc_load.name,
+    P_dc=dc_load.P,
+    R_dc=dc_load_r_pu,
+    name="dc_load_emt"
+).block
+
+# =====================================================================
+# ASSIGN MODELS TO DEVICES
+# =====================================================================
+set_emt_model(device=gen1, model=gen_mdl, var_factory=circuit.emt_var_factory)
+set_emt_model(device=transformer, model=trafo_mdl, var_factory=circuit.emt_var_factory)
+set_emt_model(device=vsc, model=vsc_mdl, var_factory=circuit.emt_var_factory)
+set_emt_model(device=dc_load, model=dc_load_mdl, var_factory=circuit.emt_var_factory)
 
 ###########################################################################################################################
 # 3ph POWER FLOW (for EMT initialization)
@@ -268,8 +275,8 @@ SOLVER_TYPE_MAP = {
 }
 
 options = EmtOptions(
-    time_step=5e-6,
-    simulation_time=0.02,  # 20 ms
+    time_step=5e-5,
+    simulation_time=0.05,  # 50 ms
     tolerance=1e-6,
     solver=SOLVER_TYPE_MAP[CHOSEN_SOLVER],
     integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
@@ -429,15 +436,15 @@ steps: int = int(options.simulation_time / h)
 tme: np.ndarray = np.linspace(0, options.simulation_time, steps)
 
 # Find voltage variables in buses
-v_A_bus1 = find_name_in_block(f"v_A_emt_bus_template", bus1_ac.emt_model)
-v_B_bus1 = find_name_in_block(f"v_B_emt_bus_template", bus1_ac.emt_model)
-v_C_bus1 = find_name_in_block(f"v_C_emt_bus_template", bus1_ac.emt_model)
+v_A_bus1 = find_name_in_block(f"v_A_Bus1_AC_emt_template", bus1_ac.emt_model)
+v_B_bus1 = find_name_in_block(f"v_B_Bus1_AC_emt_template", bus1_ac.emt_model)
+v_C_bus1 = find_name_in_block(f"v_C_Bus1_AC_emt_template", bus1_ac.emt_model)
 
-v_A_bus2 = find_name_in_block(f"v_A_emt_bus_template", bus2_ac.emt_model)
-v_B_bus2 = find_name_in_block(f"v_B_emt_bus_template", bus2_ac.emt_model)
-v_C_bus2 = find_name_in_block(f"v_C_emt_bus_template", bus2_ac.emt_model)
+v_A_bus2 = find_name_in_block(f"v_A_Bus2_AC_emt_template", bus2_ac.emt_model)
+v_B_bus2 = find_name_in_block(f"v_B_Bus2_AC_emt_template", bus2_ac.emt_model)
+v_C_bus2 = find_name_in_block(f"v_C_Bus2_AC_emt_template", bus2_ac.emt_model)
 
-v_DC_bus3 = find_name_in_block(f"v_DC_emt_bus_template", bus3_dc.emt_model)
+v_DC_bus3 = find_name_in_block(f"v_DC_Bus3_DC_emt_template", bus3_dc.emt_model)
 
 # Generator currents
 i_A_gen = find_name_in_block(f"i_A_emt_thevenin_eq_generator_template", gen_mdl)
@@ -452,7 +459,7 @@ i_B_vsc = find_name_in_block(f"i_B_{vsc.name}", vsc_mdl)
 i_C_vsc = find_name_in_block(f"i_C_{vsc.name}", vsc_mdl)
 
 # DC current
-i_DC_vsc = find_name_in_block(f"Idc_{vsc.name}", vsc_mdl)
+i_DC_vsc = find_name_in_block(f"i_dc_{vsc.name}", vsc_mdl)
 
 # Plot voltages at AC buses
 plt.figure(figsize=(14, 10))
