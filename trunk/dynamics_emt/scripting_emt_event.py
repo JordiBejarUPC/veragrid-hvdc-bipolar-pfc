@@ -246,7 +246,7 @@ if CHOSEN_SOLVER not in SOLVER_TYPE_MAP:
 options = EmtOptions(time_step = 5e-6,
                      simulation_time =  0.06, # s
                      tolerance = 1e-6,
-                     solver = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
+                     solver_type = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
                      verbose = 1)
 

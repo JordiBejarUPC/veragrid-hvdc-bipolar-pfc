@@ -21,6 +21,7 @@ from typing import Dict, List, Any, Set, Optional, Tuple
 from itertools import chain
 
 from VeraGridEngine.Devices import MultiCircuit
+from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Devices.Aggregation.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise, Const
@@ -32,6 +33,7 @@ from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHist
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt, run_emt_native_initialization
+from trunk.veragrid_fmu_import import finalize_emt_fmu_cs_devices, finalize_emt_fmu_me_devices, queue_emt_fmu_cs_device, queue_emt_fmu_me_device #TODO: importing from trunk!
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     EmtBoundaryUpdateProtocol,
@@ -216,8 +218,10 @@ class EmtProblemDae(EmtProblemTemplate):
     def __init__(self,
                  grid: MultiCircuit,
                  options: EmtOptions,
-                 pf_results_3Ph: PowerFlowResults3Ph | None,
-                 pf_results: PowerFlowResults | None = None)-> None:
+                 pf_results_3Ph: PowerFlowResults3Ph | None = None,
+                 pf_results: PowerFlowResults | None = None,
+                 progress_signal: DummySignal | None = None,
+                 progress_text: DummySignal | None = None, )-> None:
         """
         Initializes the EMT Problem by parsing the grid and passing the
         resulting mathematical block to the BaseProblem constructor.
@@ -268,7 +272,10 @@ class EmtProblemDae(EmtProblemTemplate):
         _deduplicate_block_entities(sys_block)
 
         # initialize template with the complete block
-        super().__init__(sys_block=sys_block, glob_time=glob_time)
+        super().__init__(sys_block=sys_block, glob_time=glob_time, progress_signal=progress_signal,
+                         progress_text=progress_text)
+
+
 
         # Mark retained runtime parameters:
         #   - scheduled mode parameters
@@ -289,14 +296,26 @@ class EmtProblemDae(EmtProblemTemplate):
             )
 
         self._runtime_parameter_eqs0 = list(self._runtime_all_eqs_source)
+        # finalize_emt_fmu_cs_devices(self) # TODO: comented to make it work, find what this is about (Andrés)
+        # finalize_emt_fmu_me_devices(self)
+
+        if len(self._runtime_mode_parameters) > 0:
+            self._initialize_mode_event_state()
+        else:
+            pass
 
         # 1) PF guesses
         self.init_guess.update(self._temp_init_guess)
         self.diff_init_guess.update(self._temp_diff_init_guess)
+        if self.progress_signal is not None:
+            self.progress_signal.emit(10)
 
         # 2) explicit init guesses initialization
         self._run_explicit_initialization()
         self.initialization_report = run_emt_native_initialization(problem=self, options=self.options)
+
+        if self.progress_signal is not None:
+            self.progress_signal.emit(20)
 
         # EMT event groups are activated only after the initialization stage.
         # Some runtime parameters start as Const(None) placeholders and are
@@ -450,6 +469,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         self._register_runtime_event_parameters(dev=dev, mdl=mdl)
         self._add_model_to_system_mappings(dev, mdl)
+        queue_emt_fmu_cs_device(self, dev, mdl)
+        queue_emt_fmu_me_device(self, dev, mdl)
         sys_block.add(mdl)
 
         # register init_eqs blocks
@@ -558,7 +579,7 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl: Block = self._process_device_model(br, sys_block, grid, glob_time)
 
             # assign parameters from the static model
-            # self._assign_api_obj_mapping_branch(br=br)
+            # self._assign_api_obj_mapping_branch(br=br) # TODO: uncomment when working
 
             # init vars from PF for both bergeron and other lines.
             if is_bergeron:
@@ -704,6 +725,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
             if inj.device_type == DeviceType.LoadDevice:
                 self._assign_api_obj_mapping_load(inj)
+            elif inj.device_type == DeviceType.GeneratorDevice:
+                self._assign_api_obj_mapping_generator(inj)
 
             if inj.bus.is_dc:
                 i_expr: Any | None = mdl.E(VarPowerFlowRefferenceType.Idc)
@@ -2121,7 +2144,10 @@ class EmtProblemDae(EmtProblemTemplate):
             if mapped_var is None:
                 pass
             else:
-                self._temp_init_guess[mapped_var.uid] = float(value)
+                if mapped_var in mdl.event_dict:
+                    mdl.event_dict[mapped_var] = self.grid.emt_var_factory.add_const(float(value))
+                else:
+                    self._temp_init_guess[mapped_var.uid] = float(value)
 
     def _initialize_mode_event_state(self) -> None:
         """
@@ -2511,7 +2537,7 @@ class EmtProblemDae(EmtProblemTemplate):
         return df
 
 
-    def _assign_api_obj_mapping_branch(self, br):
+    def _assign_api_obj_mapping_branch(self, br): # TODO: still not working: branches need their phase number before creating the template not after!
         # -----------------------------
         # 1. Assign phase flags USING ENUMS
         # -----------------------------
@@ -2522,7 +2548,7 @@ class EmtProblemDae(EmtProblemTemplate):
             (ParamPowerFlowRefferenceType.phC, br.ys.phC),
         ]
 
-        # Creem una màscara booleana i n'extraiem els índexs globals actius
+        # Create a boolean mask and extract active global indices
         ph_mask = [bool(br.ys.phN), bool(br.ys.phA), bool(br.ys.phB), bool(br.ys.phC)]
         idx_global = [i for i, active in enumerate(ph_mask) if active]
         m = len(idx_global)
@@ -2609,17 +2635,15 @@ class EmtProblemDae(EmtProblemTemplate):
              ParamPowerFlowRefferenceType.Ccc]
         ]
 
-        # PAS 1: Inicialitzem TODES les 16 variables a 0.0 per seguretat.
-        # Això evita que les fases inactives deixin els paràmetres del model "en l'aire"
+        # Initialize all 16 vars at zero to after assign nonzero values to active phases
         for i in range(4):
             for j in range(4):
                 br.emt_model.parameters[br.emt_model.api_obj_mapping[r_enums[i][j]]] = Const(0.0)
                 br.emt_model.parameters[br.emt_model.api_obj_mapping[linv_enums[i][j]]] = Const(0.0)
                 br.emt_model.parameters[br.emt_model.api_obj_mapping[c_enums[i][j]]] = Const(0.0)
 
-        # PAS 2: Sobreescrivim només les cel·les pertinents agafant els valors de la matriu m x m
-        # 'i_red' i 'j_red' van de 0 a m-1 (índexs de la matriu física R_full, L_inv, etc.)
-        # 'i_glob' i 'j_glob' van de 0 a 3 (índexs globals associats als Enums)
+        # 'i_red' i 'j_red' from 0 to m-1 (physical matrix inidices R_full, L_inv, etc.)
+        # 'i_glob' i 'j_glob' from 0 to 3 (global indices associated to enums)
         for i_red, i_glob in enumerate(idx_global):
             for j_red, j_glob in enumerate(idx_global):
                 br.emt_model.parameters[br.emt_model.api_obj_mapping[r_enums[i_glob][j_glob]]] = Const(
@@ -2673,30 +2697,15 @@ class EmtProblemDae(EmtProblemTemplate):
         # 2. Compute continuous parameters in PU
         # -----------------------------
         fbase = self.grid.fBase
-        sbase = self.grid.Sbase
-
         w0 = 2.0 * np.pi * fbase
 
-        # PA0 = load.Pa / sbase # p.u.
-        # QA0 = load.Qa / sbase # p.u.
-        # PB0 = load.Pb / sbase # p.u.
-        # QB0 = load.Qb / sbase # p.u.
-        # PC0 = load.Pc / sbase # p.u.
-        # QC0 = load.Qc / sbase # p.u.
-        #
-        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_A] is not None:
-        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_A]] = Const(PA0)
-        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_B] is not None:
-        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_B]] = Const(PB0)
-        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_C] is not None:
-        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_C]] = Const(PC0)
-        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_A] is not None:
-        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_A]] = Const(QA0)
-        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_B] is not None:
-        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_B]] = Const(QB0)
-        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_C] is not None:
-        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_C]] = Const(QC0)
-        #
-        # if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base] is not None:
-        #     load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base]] = Const(w0)
+        if gen.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base] is not None:
+            gen.emt_model.parameters[gen.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base]] = Const(w0)
+        if gen.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.R1] is not None:
+            gen.emt_model.parameters[gen.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.R1]] = Const(gen.R1)
+        if gen.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.X1] is not None:
+            gen.emt_model.parameters[gen.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.X1]] = Const(gen.X1)
+        if gen.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.X0] is not None:
+            gen.emt_model.parameters[gen.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.X0]] = Const(gen.X0)
+
 

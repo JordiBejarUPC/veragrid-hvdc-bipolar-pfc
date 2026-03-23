@@ -43,7 +43,11 @@ For KCL connection:
 def StandardConverterEmtBuild(
     vfactory: VarFactory,
     name: str = "standard_converter_emt",
+    sbase: float = 1.0,
+    fbase: float = 50.0,
     P_ref0: float = 0.0,
+    Q_ref0: float = 0.0,
+    P_loss0: float = 0.0,
     control1: ConverterControlType | None = None,
     control2: ConverterControlType | None = None,
     control1_val: float | None = None,
@@ -51,14 +55,22 @@ def StandardConverterEmtBuild(
     vdc_kp: float = 2.0,
 ) -> EmtModelTemplate:
     """
-    Build a standard ideal converter model for EMT simulation.
+    Build a current-controlled averaged EMT converter model.
 
-    The converter maintains power balance between AC and DC sides:
-        P_ac = v_A * i_A + v_B * i_B + v_C * i_C = V_dc * I_dc = P_dc
+    The AC-side current reference is synthesized from fundamental-frequency P/Q
+    commands in a synchronized rotating frame and then tracked by first-order
+    current dynamics. This is a better physical approximation of a grid-following
+    converter than an instantaneous constant-power current source.
+
+    ``P_ref``, ``Q_ref`` and ``P_loss`` are interpreted in system-base units
+    (MW / MVAr on ``sbase``), because that is the convention used by the EMT
+    initialization layer when it maps power-flow values into external references.
 
     Args:
         vfactory: Variable factory for creating symbolic variables
         name: Name for the converter model
+        sbase: System base power used to convert external power references to pu
+        fbase: System base frequency for the synchronized current references
 
     Returns:
         EmtModelTemplate with the converter block
@@ -82,21 +94,25 @@ def StandardConverterEmtBuild(
     # =================================================================
     # OUTPUT VARIABLES (to buses)
     # =================================================================
-    # AC side instantaneous currents (entering the AC bus)
     i_A = vfactory.add_var(name=f"i_A_{name}", ref=VarPowerFlowRefferenceType.i_A)
     i_B = vfactory.add_var(name=f"i_B_{name}", ref=VarPowerFlowRefferenceType.i_B)
     i_C = vfactory.add_var(name=f"i_C_{name}", ref=VarPowerFlowRefferenceType.i_C)
+    theta = vfactory.add_var(name=f"theta_{name}")
 
-    # DC side current (entering the DC bus)
-    # Note: For the KCL, we need If_dc or It_dc depending on which bus is DC
+    d_theta = vfactory.add_diff_var(name=f"d_theta_{name}", base_var=theta)
+
     i_dc = vfactory.add_var(name=f"i_dc_{name}", ref=VarPowerFlowRefferenceType.Idc)
 
     # =================================================================
     # INTERNAL VARIABLES
     # =================================================================
-    # Active power reference (can be controlled externally)
     P_ref = vfactory.add_var(name=f"P_ref_{name}")
+    Q_ref = vfactory.add_var(name=f"Q_ref_{name}")
     Vdc_ref = vfactory.add_var(name=f"Vdc_ref_{name}")
+    P_loss = vfactory.add_var(name=f"P_loss_{name}")
+    omega_base = vfactory.add_var(name=f"omega_base_{name}")
+    phi_v = vfactory.add_var(name=f"phi_v_{name}")
+    Vpk = vfactory.add_var(name=f"Vpk_{name}")
 
     # =================================================================
     # PARAMETERS
@@ -107,30 +123,55 @@ def StandardConverterEmtBuild(
         or control2 == ConverterControlType.Vm_dc
     )
 
+    regulate_q = control1 == ConverterControlType.Qac or control2 == ConverterControlType.Qac
+
     vdc_ref0 = 1.0
     if control1 == ConverterControlType.Vm_dc and control1_val is not None:
         vdc_ref0 = float(control1_val)
     elif control2 == ConverterControlType.Vm_dc and control2_val is not None:
         vdc_ref0 = float(control2_val)
 
+    eps = vfactory.add_const(1e-10)
+    c_two_over_three = vfactory.add_const(2.0 / 3.0)
+    c_sqrt3_over_two = vfactory.add_const(np.sqrt(3.0) / 2.0)
+    c_half = vfactory.add_const(0.5)
+    c_sbase = vfactory.add_const(max(float(sbase), 1e-12))
     event_dict = {
         P_ref: vfactory.add_const(P_ref0),
+        Q_ref: vfactory.add_const(Q_ref0),
         Vdc_ref: vfactory.add_const(vdc_ref0),
+        P_loss: vfactory.add_const(P_loss0),
+        omega_base: vfactory.add_const(2.0 * np.pi * float(fbase)),
+        phi_v: vfactory.add_const(0.0),
+        Vpk: vfactory.add_const(np.sqrt(2.0)),
     }
 
     # =================================================================
-    # ALGEBRAIC EQUATIONS
+    # CURRENT REFERENCE EQUATIONS
     # =================================================================
-    algebraic_eqs = []
+    P_dc_cmd = P_ref + vfactory.add_const(vdc_kp) * (v_dc - Vdc_ref) if regulate_vdc else P_ref
+    Q_cmd = Q_ref if regulate_q else vfactory.add_const(0.0)
+    P_dc_cmd_pu = P_dc_cmd / c_sbase
+    Q_cmd_pu = Q_cmd / c_sbase
+    P_ac_cmd_pu = P_dc_cmd_pu + P_loss / c_sbase
 
-    eps = vfactory.add_const(1e-10)
-    v_sq = v_A * v_A + v_B * v_B + v_C * v_C
-    P_cmd = P_ref + vfactory.add_const(vdc_kp) * (v_dc - Vdc_ref) if regulate_vdc else P_ref
+    i_d_cmd = c_two_over_three * Q_cmd_pu / (Vpk + eps)
+    i_q_cmd = c_two_over_three * P_ac_cmd_pu / (Vpk + eps)
 
-    algebraic_eqs.append(i_A - P_cmd * v_A / (v_sq + eps))
-    algebraic_eqs.append(i_B - P_cmd * v_B / (v_sq + eps))
-    algebraic_eqs.append(i_C - P_cmd * v_C / (v_sq + eps))
-    algebraic_eqs.append(v_dc * i_dc + P_cmd)
+    i_A_cmd = i_d_cmd * sym.cos(theta) + i_q_cmd * sym.sin(theta)
+    i_B_cmd = ((-c_half * i_d_cmd - c_sqrt3_over_two * i_q_cmd) * sym.cos(theta)
+               + ((c_sqrt3_over_two * i_d_cmd) - c_half * i_q_cmd) * sym.sin(theta))
+    i_C_cmd = ((-c_half * i_d_cmd + c_sqrt3_over_two * i_q_cmd) * sym.cos(theta)
+               + ((-c_sqrt3_over_two * i_d_cmd) - c_half * i_q_cmd) * sym.sin(theta))
+
+    state_eqs = [omega_base]
+
+    algebraic_eqs = [
+        i_A - i_A_cmd,
+        i_B - i_B_cmd,
+        i_C - i_C_cmd,
+        v_dc * i_dc + P_dc_cmd_pu,
+    ]
 
     # =================================================================
     # ALGEBRAIC VARIABLES
@@ -140,14 +181,18 @@ def StandardConverterEmtBuild(
     # =================================================================
     # INITIALIZATION EQUATIONS
     # =================================================================
-    # Use power flow results for initialization
-    # The P_ref will be set from power flow initialization
-    init_eqs = {}
+    init_eqs = {
+        i_dc: -P_dc_cmd_pu / (v_dc + eps),
+        theta: phi_v,
+    }
 
     # =================================================================
     # BUILD THE BLOCK
     # =================================================================
     converter_block = Block(
+        state_eqs=state_eqs,
+        state_vars=[theta],
+        diff_vars=[d_theta],
         algebraic_eqs=algebraic_eqs,
         algebraic_vars=algebraic_vars,
         event_dict=event_dict,
@@ -204,8 +249,10 @@ def StandardConverterEmtBuild(
 
         # For KCL at DC bus (bus_from)
         VarPowerFlowRefferenceType.Idc: i_dc,
-
         VarPowerFlowRefferenceType.P: None,
+        VarPowerFlowRefferenceType.Q: None,
+        VarPowerFlowRefferenceType.phi_v: phi_v,
+        VarPowerFlowRefferenceType.Vpk: Vpk,
     }
 
     converter_block.name = name

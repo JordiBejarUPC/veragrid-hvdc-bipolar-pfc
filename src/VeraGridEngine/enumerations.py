@@ -1357,6 +1357,7 @@ class StudyResultsType(Enum):
     NetTransferCapacityTimeSeries = 'NetTransferCapacityTimeSeries'
     StochasticPowerFlow = 'StochasticPowerFlow'
     RmsSimulation = "RmsSimulation"
+    EmtSimulation = "EmtSimulation"
     SmallSignalStability = "SmallSignalStability"
 
     def __str__(self):
@@ -2562,6 +2563,36 @@ class RmsProblemTypes(Enum):
         :return:
         """
         return list(map(lambda c: c.value, cls))
+
+class EmtProblemTypes(Enum):
+
+    CurrentBalance       = "EmtProblemDae"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return EmtProblemTypes[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
     
 class SmallSignalEmtBuildTypes(Enum):
     """
@@ -2794,6 +2825,9 @@ class VarPowerFlowRefferenceType(Enum):
 
     Vdc = "Vdc"  # Bus voltage for DC voltage in p.u.
     Idc = "Idc"  # Bus current for DC Bus in p.u.
+
+    If_dc = "If_dc"  # Branch from current for DC Bus in p.u.
+    It_dc = "It_dc"  # Branch from current for DC Bus in p.u.
 
     # from Power Flow 3ph
     v_N = "v_N"  # Bus voltage at phase N.
@@ -3038,6 +3072,7 @@ class ParamPowerFlowRefferenceType(Enum):
     # Electrical / additional machine parameters
     R1 = "R1"
     X1 = "X1"
+    X0 = "X0"
     freq = "freq"  # corresponds to Var("frequ")
     vf = "vf"
     tm0 = "tm0"

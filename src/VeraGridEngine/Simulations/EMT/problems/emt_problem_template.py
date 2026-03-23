@@ -8,8 +8,9 @@ import numpy as np
 from typing import Dict, List, Optional, Any, Protocol
 
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, piecewise
 from VeraGridEngine.basic_structures import Vec
+from VeraGridEngine.Simulations.driver_template import DummySignal
 
 
 def _get_diff_var_sort_key(diff_var: Var) -> int:
@@ -131,7 +132,11 @@ class EmtProblemTemplate(ABC):
     DIFF_NAME = "diff"
     TIME_NAME = "glob_time"
 
-    def __init__(self, sys_block: Block, glob_time: Var)->None:
+    def __init__(self, sys_block: Block,
+                 glob_time: Var,
+                 progress_signal: DummySignal | None = None,
+                 progress_text: DummySignal | None = None,
+                 )->None:
         """
         Initialize the EMT problem template.
 
@@ -193,6 +198,9 @@ class EmtProblemTemplate(ABC):
         self._constant_params_values: Vec = np.zeros(0, dtype=np.float64)
         self._build_runtime_param_vectors()
 
+        self.progress_signal = DummySignal() if progress_signal is None else progress_signal
+        self.progress_text = DummySignal(str) if progress_text is None else progress_text
+
     @property
     def glob_time(self) -> Var:
         """
@@ -236,17 +244,21 @@ class EmtProblemTemplate(ABC):
         self._uid2idx_diff: Dict[int, int] = dict()
         self._uid2idx_t: Dict[int, int] = dict()
 
+        self._vars_glob_name2uid: Dict[str, int] = dict()
+
         i: int = 0
         for v in self._state_vars:
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{i}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{i}"
             self._uid2idx_vars[v.uid] = i
+            self._vars_glob_name2uid[v.name] = v.uid
             i += 1
 
         for v in self._algebraic_vars:
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{i}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{i}"
             self._uid2idx_vars[v.uid] = i
+            self._vars_glob_name2uid[v.name] = v.uid
             i += 1
 
         for j, p in enumerate(self._constant_parameters):
@@ -263,6 +275,7 @@ class EmtProblemTemplate(ABC):
             self._compiler_names_dict[d.uid] = f"{self.DIFF_NAME}[{k}]"
             self._alias_names_dict[d.uid] = f"{self.DIFF_NAME}_{k}"
             self._uid2idx_diff[d.uid] = k
+            self._vars_glob_name2uid[d.name] = d.uid
 
         self._compiler_names_dict[self._glob_time.uid] = self.TIME_NAME
         self._uid2idx_t[self._glob_time.uid] = 0
@@ -298,6 +311,44 @@ class EmtProblemTemplate(ABC):
 
         :return: None
         """
+        self._build_runtime_param_vectors()
+
+    def set_events_group(self, emt_events_group) -> None:
+        """Apply a selected EMT events group to the runtime parameter equations.
+
+        The method is generic with respect to the specific EMT templates used in the
+        problem. Any runtime parameter exposed through `event_dict` / `mode_dict`
+        can be reassigned with a piecewise time function driven by the selected
+        group of `grid.emt_events`.
+        """
+        self._event_parameters_eqs = list(self._runtime_all_eqs_source)
+
+        collect_events = {param: {"times": [], "values": []} for param in self._variable_parameters}
+        emt_events = getattr(self.grid, "emt_events", [])
+        selected_events = [
+            evt for evt in emt_events
+            if getattr(getattr(evt, "group", None), "idtag", None) == emt_events_group.idtag
+        ]
+
+        for emt_evt in selected_events:
+            parameter = emt_evt.parameter
+            if parameter in collect_events:
+                collect_events[parameter]["times"].append(float(emt_evt.time))
+                collect_events[parameter]["values"].append(float(emt_evt.value))
+
+        for parameter, info in collect_events.items():
+            if len(info["times"]) == 0:
+                continue
+            param_index = self._variable_parameters.index(parameter)
+            default_value = self._event_parameters_eqs[param_index]
+            self._event_parameters_eqs[param_index] = piecewise(
+                time_var=self._glob_time,
+                t_events=np.asarray(info["times"], dtype=np.float64),
+                new_values=np.asarray(info["values"], dtype=np.float64),
+                default_value=default_value,
+            )
+
+        self._rebuild_runtime_parameter_partition()
         self._build_runtime_param_vectors()
 
     def reset_boundary_update_state(self, t0: float = 0.0) -> None:
@@ -490,6 +541,7 @@ class EmtProblemTemplate(ABC):
         else:
             return float(expression)
 
+
     def get_state_vars(self)->List[Var]:
         """
         Return the ordered list of state variables.
@@ -497,6 +549,7 @@ class EmtProblemTemplate(ABC):
         :return: Ordered list of state variables.
         """
         return self._state_vars
+
 
     def get_algebraic_vars(self)->List[Var]:
         """
@@ -506,6 +559,18 @@ class EmtProblemTemplate(ABC):
         """
         return self._algebraic_vars
 
+    def state_and_algebraic_vars(self) -> List[Var]:
+        """
+        :return:
+        """
+        variables = list()
+        for lst in [self._state_vars, self._algebraic_vars]:
+            for var in lst:
+                variables.append(var)
+
+        return variables
+
+
     def get_state_eqs(self)->List[Any]:
         """
         Return the ordered list of state equations.
@@ -513,6 +578,7 @@ class EmtProblemTemplate(ABC):
         :return: Ordered list of state equations.
         """
         return self._state_eqs
+
 
     def get_algebraic_eqs(self)->List[Any]:
         """
@@ -522,6 +588,7 @@ class EmtProblemTemplate(ABC):
         """
         return self._algebraic_eqs
 
+
     def get_variable_parameters(self)-> List[Var]:
         """
         Return the ordered list of runtime parameters.
@@ -529,6 +596,7 @@ class EmtProblemTemplate(ABC):
         :return: Ordered list of runtime parameters.
         """
         return self._variable_parameters
+
 
     def get_constant_parameters(self)-> List[Var]:
         """
@@ -538,6 +606,7 @@ class EmtProblemTemplate(ABC):
         """
         return self._constant_parameters
 
+
     def get_diff_vars(self)-> List[Var]:
         """
         Return the ordered list of differential variables.
@@ -545,6 +614,7 @@ class EmtProblemTemplate(ABC):
         :return: Ordered list of differential variables.
         """
         return self._diff_vars
+
 
     def get_parameters_values(self)-> List[Const]:
         """
@@ -715,6 +785,13 @@ class EmtProblemTemplate(ABC):
         :return: Flat differential index.
         """
         return self._uid2idx_diff[dv.uid]
+
+    @property
+    def vars_glob_name2uid(self):
+        """
+        :return:
+        """
+        return self._vars_glob_name2uid
 
     def set_init_guess(self, mdl: Block, reference_powerflow: Any, val: float) -> None:
         """
