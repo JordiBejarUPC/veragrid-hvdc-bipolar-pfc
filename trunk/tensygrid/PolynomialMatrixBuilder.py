@@ -6,7 +6,6 @@ from enum import Enum
 from typing import Optional, Any, List, Tuple
 
 
-
 # ------------------------------------------------------------------
 # Enums for Options
 # ------------------------------------------------------------------
@@ -32,7 +31,7 @@ class PolynomialMatrixBuilder:
     """
 
     # Finalizing the class to prevent dynamic attribute assignment and save memory
-    #__slots__ = ['verbose', 'eqs', 'ineqs', 'all_symbols', 'sym_to_idx','S_H', 'Phi_H', 'S_W', 'Phi_W', 'E', 'A', 'B', 'EABC''state_vars', 'algebraic_vars']
+    # __slots__ = ['verbose', 'eqs', 'ineqs', 'all_symbols', 'sym_to_idx','S_H', 'Phi_H', 'S_W', 'Phi_W', 'E', 'A', 'B', 'EABC''state_vars', 'algebraic_vars']
 
     # ------------------------------------------------------------------
     # Construction
@@ -265,18 +264,11 @@ class PolynomialMatrixBuilder:
         self.S_W: np.ndarray = S_W_sp.toarray()
         self.Phi_W: np.ndarray = Phi_W_sp.toarray()
 
-        # Store dense arrays
-        self.S_H: np.ndarray = S_H_sp.toarray()
-        self.Phi_H: np.ndarray = Phi_H_sp.toarray()
-        self.S_W: np.ndarray = S_W_sp.toarray()
-        self.Phi_W: np.ndarray = Phi_W_sp.toarray()
-
         # Protected interactive states
         self.E: Optional[np.ndarray] = None
         self.A: Optional[np.ndarray] = None
         self.B: Optional[np.ndarray] = None
         self.EABC: Optional[np.ndarray] = None
-
 
     # ------------------------------------------------------------------
     # Helper Functions (Replacing Lambdas and Nested Functions)
@@ -488,11 +480,11 @@ class PolynomialMatrixBuilder:
         return S, Phi
 
     def _get_monomial_weights(
-        self,
-        term: sp.Expr,
-        S_list: list,
-        monom_to_idx: dict,
-        current_eq_coeffs: dict
+            self,
+            term: sp.Expr,
+            S_list: list,
+            monom_to_idx: dict,
+            current_eq_coeffs: dict
     ) -> dict:
         """
         Processes a term to extract its global coefficients and internal weights.
@@ -559,24 +551,33 @@ class PolynomialMatrixBuilder:
                         if not b_val_sym.is_number:
                             # In SymPy, degree might return 0 for denominators,
                             # we check the Power structure for robustness.
-                            deg: int = 1
+                            # ALGORITHM: Extract degree as float to prevent truncating 0.5 to 0
+                            deg: float = 1.0
                             if isinstance(f, sp.Pow):
-                                deg = int(f.exp)
+                                deg = float(f.exp)
                             else:
-                                deg = int(sp.degree(f, s))
+                                deg = float(sp.degree(f, s))
 
-                            if deg > 1 or deg < 1:
+                            # Floating point comparison for safety
+                            is_sqrt: bool = abs(deg - 0.5) < 1e-6
+
+                            if (deg > 1.0 or deg < 0.0) and not is_sqrt:
                                 # 1. Determine lifting type and number of variables
-                                is_positive: bool = deg > 1
-                                num_aux: int = int(deg - 1) if is_positive else int(-deg + 1)
+                                is_positive: bool = deg > 1.0
+                                num_aux: int = int(deg - 1.0) if is_positive else int(-deg + 1.0)
                                 prefix: str = "mulaux" if is_positive else "invaux"
 
-                                new_vars_names: list = list([f"{s.name}_{prefix}{i}" for i in range(num_aux)])
-                                new_symbols_list: list = list()
+                                # Rule: Explicit loop instead of list comprehension
+                                new_vars_names: list = list()
+                                i_aux: int
+                                for i_aux in range(num_aux):
+                                    new_vars_names.append(str(f"{s.name}_{prefix}{i_aux}"))
 
+                                new_symbols_list: list = list()
                                 vars_added: bool = False
 
                                 # 2. Register variables in the global state
+                                v_name: str
                                 for v_name in new_vars_names:
                                     if v_name not in self.sym_to_idx:
                                         new_sym_obj: sp.Symbol = sp.Symbol(v_name)
@@ -586,18 +587,19 @@ class PolynomialMatrixBuilder:
                                         vars_added = True
                                     else:
                                         # Retrieve existing symbol object
-                                        new_symbols_list.append(sp.Symbol(v_name))
+                                        idx_existing: int = self.sym_to_idx[v_name]
+                                        new_symbols_list.append(self.all_symbols[idx_existing])
 
-                                # 3. CRITICAL: If variables were added, previous monoms in S_list
-                                # have the wrong dimension. We must pad them with zeros.
+                                # 3. CRITICAL: If variables were added, pad S_list
                                 if vars_added:
                                     new_total_size: int = len(self.all_symbols)
-                                    for i in range(len(S_list)):
-                                        current_vec: np.ndarray = S_list[i]
+                                    i_p: int
+                                    for i_p in range(len(S_list)):
+                                        current_vec: np.ndarray = S_list[i_p]
                                         padding_size: int = new_total_size - current_vec.shape[0]
                                         if padding_size > 0:
                                             # Use np.concatenate for zero overhead padding
-                                            S_list[i] = np.concatenate([current_vec, np.zeros(padding_size)])
+                                            S_list[i_p] = np.concatenate([current_vec, np.zeros(padding_size)])
                                         else:
                                             pass
                                 else:
@@ -605,6 +607,7 @@ class PolynomialMatrixBuilder:
 
                                 # 4. Create the multilinear equivalent expression
                                 multilinear_f: sp.Expr = s
+                                sym_aux: sp.Symbol
                                 for sym_aux in new_symbols_list:
                                     multilinear_f = multilinear_f * sym_aux
 
@@ -614,10 +617,61 @@ class PolynomialMatrixBuilder:
                                     pass
 
                                 # 5. RE-CALL: Re-process the term with the new multilinear form
-                                # This will now use the updated 'weights' size (e.g., size 12)
                                 new_term: sp.Expr = (term / f) * multilinear_f
                                 return self._get_monomial_weights(
                                     new_term, S_list, monom_to_idx, current_eq_coeffs
+                                )
+
+                            elif is_sqrt:
+                                # 1. Determine lifting type: sqrt(s) -> s_sqrtaux0, s_sqrtaux1
+                                # We MUST use TWO variables to maintain the strict multilinear basis
+                                new_vars_names_sqrt: list = list([str(f"{s.name}_sqrtaux0"), str(f"{s.name}_sqrtaux1")])
+                                new_symbols_list_sqrt: list = list()
+                                vars_added_sqrt: bool = False
+
+                                # 2. Register variables in the global state
+                                v_name_sqrt: str
+                                for v_name_sqrt in new_vars_names_sqrt:
+                                    if v_name_sqrt not in self.sym_to_idx:
+                                        new_sym_obj_sqrt: sp.Symbol = sp.Symbol(v_name_sqrt)
+                                        self.all_symbols.append(new_sym_obj_sqrt)
+                                        self.sym_to_idx[v_name_sqrt] = len(self.all_symbols) - 1
+                                        new_symbols_list_sqrt.append(new_sym_obj_sqrt)
+                                        vars_added_sqrt = True
+                                    else:
+                                        # Retrieve existing symbol object explicitly from registry
+                                        idx_existing_sqrt: int = self.sym_to_idx[v_name_sqrt]
+                                        new_symbols_list_sqrt.append(self.all_symbols[idx_existing_sqrt])
+
+                                # 3. CRITICAL: Pad previous monoms in S_list
+                                if vars_added_sqrt:
+                                    new_total_size_sqrt: int = len(self.all_symbols)
+                                    i_p_sqrt: int
+                                    for i_p_sqrt in range(len(S_list)):
+                                        current_vec_sqrt: np.ndarray = S_list[i_p_sqrt]
+                                        padding_size_sqrt: int = new_total_size_sqrt - current_vec_sqrt.shape[0]
+                                        if padding_size_sqrt > 0:
+                                            # Zero overhead padding
+                                            S_list[i_p_sqrt] = np.concatenate(
+                                                [current_vec_sqrt, np.zeros(padding_size_sqrt)])
+                                        else:
+                                            pass
+                                else:
+                                    pass
+
+                                # 4. Create the multilinear equivalent expression
+                                # The term itself is replaced by the first auxiliary symbol
+                                multilinear_f_sqrt: sp.Expr = new_symbols_list_sqrt[0]
+
+                                if self.verbose:
+                                    print(f"LIFTING SQRT: {f} -> {multilinear_f_sqrt} (with multilinear constraints)")
+                                else:
+                                    pass
+
+                                # 5. RE-CALL: Re-process the term with the new form
+                                new_term_sqrt: sp.Expr = (term / f) * multilinear_f_sqrt
+                                return self._get_monomial_weights(
+                                    new_term_sqrt, S_list, monom_to_idx, current_eq_coeffs
                                 )
                             else:
                                 pass
@@ -680,6 +734,7 @@ class PolynomialMatrixBuilder:
             # --- ALGORITHM: LIFTING DETECTION ---
             is_mul: bool = "_mulaux" in s_name
             is_inv: bool = "_invaux" in s_name
+            is_sqrt: bool = "_sqrtaux" in s_name
 
             if is_mul:
                 # Generate x_base - x_aux = 0
@@ -709,8 +764,32 @@ class PolynomialMatrixBuilder:
                         pass
                 else:
                     pass
-            else:
-                pass
+
+
+            elif is_sqrt:
+                # We need to find both aux variables to form the multilinear constraints
+                if s_name.endswith("_sqrtaux0"):
+                    base_name_s: str = s_name.split("_sqrtaux0")[0]
+                    base_sym_s: Optional[sp.Symbol] = self._get_symbol_by_name(base_name_s)
+                    sym_aux1: Optional[sp.Symbol] = self._get_symbol_by_name(f"{base_name_s}_sqrtaux1")
+                    if base_sym_s is not None and sym_aux1 is not None:
+                        # Constraint 1: base - z0*z1 = 0 (Strict multilinear square)
+                        constraint_s1: sp.Expr = base_sym_s - (sym * sym_aux1)
+                        if constraint_s1 not in self.eqs:
+                            new_constraints.append(constraint_s1)
+                        else:
+                            pass
+                        # Constraint 2: z0 - z1 = 0 (Equality enforcement)
+                        constraint_s2: sp.Expr = sym - sym_aux1
+                        if constraint_s2 not in self.eqs:
+                            new_constraints.append(constraint_s2)
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    # _sqrtaux1 is handled when the loop processes _sqrtaux0
+                    pass
 
         # --- ALGORITHM: MATRIX AUGMENTATION ---
         # Append the new structural equations directly to the core list
@@ -781,8 +860,6 @@ class PolynomialMatrixBuilder:
         self.EABC: np.ndarray = Phi @ F.T
         self.E, self.A, self.B = self._split_EABC(self.EABC)
 
-
-
     # ------------------------------------------------------------------
     # Linearisation – private helpers
     # ------------------------------------------------------------------
@@ -847,6 +924,7 @@ class PolynomialMatrixBuilder:
 
                 is_mul: bool = "_mulaux" in s_name
                 is_inv: bool = "_invaux" in s_name
+                is_sqrt: bool = "_sqrtaux" in s_name
 
                 if is_mul:
                     base_name_m: str = s_name.split("_mulaux")[0]
@@ -879,8 +957,24 @@ class PolynomialMatrixBuilder:
                             pass
                     else:
                         pass
-                else:
-                    pass
+
+
+                elif is_sqrt:
+                    # Sync BOTH auxiliary variables
+                    if s_name.endswith("_sqrtaux0") or s_name.endswith("_sqrtaux1"):
+                        base_name_s: str = s_name.split("_sqrtaux")[0]
+                        base_idx_s: Optional[int] = self.sym_to_idx.get(base_name_s, None)
+                        if base_idx_s is not None:
+                            idx_aux: Optional[int] = self.sym_to_idx.get(s_name, None)
+                            if idx_aux is not None:
+                                base_val_num: float = float(v[base_idx_s])
+                                v[idx_aux] = float(np.sqrt(max(0.0, base_val_num)))
+                            else:
+                                pass
+                        else:
+                            pass
+                    else:
+                        pass
         else:
             pass
 
@@ -967,7 +1061,6 @@ class PolynomialMatrixBuilder:
 
         return E, A, B
 
-
     # ------------------------------------------------------------------
     # Stability analysis
     # ------------------------------------------------------------------
@@ -1031,12 +1124,12 @@ class PolynomialMatrixBuilder:
     # ------------------------------------------------------------------
 
     def report(
-        self,
-        eigenvalues: np.ndarray | None = None,
-        is_stable: bool = False,
-        max_real: float | None = None,
-        print_matrices: bool = True,
-        save_path: str | None = None,
+            self,
+            eigenvalues: np.ndarray | None = None,
+            is_stable: bool = False,
+            max_real: float | None = None,
+            print_matrices: bool = True,
+            save_path: str | None = None,
     ) -> None:
         """
         Print and/or save all matrices and stability results.
