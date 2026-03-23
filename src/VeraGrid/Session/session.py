@@ -314,7 +314,11 @@ class SimulationSession:
         for driver_type, drv in self.drivers.items():
             if study_name == drv.tpe.value or study_name == drv.name:
                 if drv.results is not None:
-                    return ResultsModel(drv.results.mdl(result_type=study_type))
+                    tbl = drv.results.mdl(result_type=study_type)
+                    if tbl is None:
+                        return None
+                    else:
+                        return ResultsModel(tbl)
                 else:
                     print('There seem to be no results :(')
                     return None

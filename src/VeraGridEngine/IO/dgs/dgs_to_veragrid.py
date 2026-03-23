@@ -12,6 +12,7 @@ from VeraGridEngine.enumerations import (
     TapChangerTypes,
     TapModuleControl,
     WindingType,
+    ShuntControlMode
 )
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Branches.wire import Wire
@@ -2197,7 +2198,8 @@ def convert_dgs_to_controllable_shunt_from_elmshnt(elmshnt: ElmShnt,
                                                    buses: List[dev.Bus],
                                                    logger: Logger,
                                                    cubics_by_objid: Dict[str, List[StaCubic]],
-                                                   bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[
+                                                   bus_by_term_id: Dict[str, dev.Bus],
+                                                   frequency: float) -> Tuple[
     dev.Bus, dev.ControllableShunt]:
     """
     Convert stepped ElmShnt (ncapx > 1) to VeraGrid ControllableShunt.
@@ -2217,39 +2219,58 @@ def convert_dgs_to_controllable_shunt_from_elmshnt(elmshnt: ElmShnt,
                                      cubics_by_objid=cubics_by_objid,
                                      bus_by_term_id=bus_by_term_id)
 
-    b_steps, initial_step, bmin, bmax = _build_elmshnt_step_model(elmshnt=elmshnt, logger=logger)
+    if elmshnt.i_cont == 1: # Continuous
 
-    if int(elmshnt.iswitch) != 0:
-        is_controlled = True
-    else:
-        is_controlled = False
-    vset: float = float(elmshnt.usetp)
+        b_steps, initial_step, bmin, bmax = _build_elmshnt_step_model(elmshnt=elmshnt, logger=logger)
 
-    cshunt: dev.ControllableShunt = dev.ControllableShunt(
-        name=name,
-        idtag=_ref_id(elmshnt.ID),
-        is_nonlinear=False,
-        number_of_steps=int(len(b_steps)),
-        step=int(initial_step),
-        g_per_step=0.0,
-        b_per_step=0.0,
-        Bmin=bmin,
-        Bmax=bmax,
-        Gmin=0.0,
-        Gmax=0.0,
-        active=(elmshnt.outserv == 0),
-        vset=vset,
-        is_controlled=is_controlled,
-        control_bus=bus,
-    )
+        if int(elmshnt.iswitch) != 0:
+            control_mode = ShuntControlMode.Discrete
+        else:
+            control_mode = ShuntControlMode.Locked
 
-    # Override step arrays to match the DGS stepped-bank model (OFF + ncapx identical increments).
-    cshunt.b_steps = b_steps
-    cshunt.g_steps = np.zeros(len(b_steps), dtype=float)
-    cshunt.active_steps = np.ones(len(b_steps), dtype=int)
+        vset: float = float(elmshnt.usetp)
 
-    # Ensure B/G are coherent with the initial step after overriding arrays
-    cshunt.step = int(initial_step)
+        cshunt: dev.ControllableShunt = dev.ControllableShunt(
+            name=name,
+            idtag=_ref_id(elmshnt.ID),
+            number_of_steps=int(len(b_steps)),
+            step=int(initial_step),
+            g_per_step=0.0,
+            b_per_step=0.0,
+            Bmin=bmin,
+            Bmax=bmax,
+            Gmin=0.0,
+            Gmax=0.0,
+            active=(elmshnt.outserv == 0),
+            vset=vset,
+            control_mode=control_mode,
+            control_bus=bus,
+        )
+
+        # Override step arrays to match the DGS stepped-bank model (OFF + ncapx identical increments).
+        cshunt.b_steps = b_steps
+        cshunt.g_steps = np.zeros(len(b_steps), dtype=float)
+        cshunt.active_steps = np.ones(len(b_steps), dtype=int)
+
+        # Ensure B/G are coherent with the initial step after overriding arrays
+        cshunt.step = int(initial_step)
+
+    elif elmshnt.i_cont == 0: # Discrete
+
+        g_mw, b_mvar = _extract_shunt_gb(elmshnt=elmshnt, f=frequency, logger=logger)
+
+        cshunt: dev.ControllableShunt = dev.ControllableShunt(
+            name=name,
+            idtag=_ref_id(elmshnt.ID),
+            number_of_steps=elmshnt.ncapx,
+            step=elmshnt.ncapa,
+            g_per_step=g_mw,
+            b_per_step=b_mvar,
+            active=(elmshnt.outserv == 0),
+            vmax=elmshnt.usetp_mx,
+            vmin=elmshnt.usetp_mn,
+            control_mode=ShuntControlMode.Discrete
+        )
 
     return bus, cshunt
 
@@ -2278,7 +2299,6 @@ def convert_dgs_to_controllable_shunt(elmsvs: ElmSvs,
 
     bmin = float(elmsvs.qmin)
     bmax = float(elmsvs.qmax)
-
     vset = float(elmsvs.usetp)
 
     # Build a small stepped model for B so the device can represent bmin / 0 / bmax when applicable
@@ -2295,7 +2315,6 @@ def convert_dgs_to_controllable_shunt(elmsvs: ElmSvs,
     cshunt = dev.ControllableShunt(
         name=name,
         idtag=_ref_id(elmsvs.ID),
-        is_nonlinear=False,
         number_of_steps=int(len(b_steps)),
         step=int(initial_step),
         g_per_step=0.0,
@@ -2306,7 +2325,7 @@ def convert_dgs_to_controllable_shunt(elmsvs: ElmSvs,
         Gmax=0.0,
         active=(elmsvs.outserv == 0),
         vset=vset,
-        is_controlled=True,
+        control_mode=ShuntControlMode.Continuous,
         control_bus=bus
     )
 
@@ -2846,7 +2865,8 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
                 buses=grid.buses,
                 logger=logger,
                 cubics_by_objid=cubics_by_objid,
-                bus_by_term_id=bus_by_term_id
+                bus_by_term_id=bus_by_term_id,
+                frequency=frequency
             )
 
             grid.add_controllable_shunt(bus=bus, api_obj=cshunt)

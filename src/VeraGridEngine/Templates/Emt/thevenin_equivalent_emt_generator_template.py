@@ -77,17 +77,17 @@ def get_generator_thevenin_rl_emt_template(
     # ----------------------------------------------------------------------------------
     # Inputs: bus terminal instantaneous phase voltages
     # ----------------------------------------------------------------------------------
-    v_A = vf.add_var("v_A_" + name)
-    v_B = vf.add_var("v_B_" + name)
-    v_C = vf.add_var("v_C_" + name)
+    v_A = vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
     inputs = [v_A, v_B, v_C]
 
     # ----------------------------------------------------------------------------------
     # States
     # ----------------------------------------------------------------------------------
-    i_A = vf.add_var("i_A_" + name)
-    i_B = vf.add_var("i_B_" + name)
-    i_C = vf.add_var("i_C_" + name)
+    i_A = vf.add_var(name=f"i_A_{name}", ref=VarPowerFlowRefferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B_{name}", ref=VarPowerFlowRefferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C_{name}", ref=VarPowerFlowRefferenceType.i_C)
     theta = vf.add_var("theta_" + name)
 
     # Diff vars

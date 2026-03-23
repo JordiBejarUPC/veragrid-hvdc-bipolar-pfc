@@ -257,8 +257,8 @@ class OverheadLineType(EditableDevice):
     __slots__ = (
         'wires_in_tower',
         '_Vnom',
-        'earth_resistivity',
-        'frequency',
+        '_earth_resistivity',
+        '_frequency',
         '_Imax',
         '_z_nabc',
         '_z_phases_nabc',
@@ -272,8 +272,8 @@ class OverheadLineType(EditableDevice):
         '_y_phases_abc',
         '_y_seq',
         '_y_0123',
-        'capex',
-        'opex'
+        '_capex',
+        '_opex',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -873,6 +873,84 @@ class OverheadLineType(EditableDevice):
 
     def __str__(self) -> str:
         return self.name
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def earth_resistivity(self) -> float:
+        """
+        Get ``earth_resistivity``.
+
+        :return: float
+        """
+        return self._earth_resistivity
+
+    @earth_resistivity.setter
+    def earth_resistivity(self, val: float) -> None:
+        """
+        Set ``earth_resistivity``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._earth_resistivity = float(val)
+
+    @property
+    def frequency(self) -> float:
+        """
+        Get ``frequency``.
+
+        :return: float
+        """
+        return self._frequency
+
+    @frequency.setter
+    def frequency(self, val: float) -> None:
+        """
+        Set ``frequency``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._frequency = float(val)
+
+    @property
+    def capex(self) -> float:
+        """
+        Get ``capex``.
+
+        :return: float
+        """
+        return self._capex
+
+    @capex.setter
+    def capex(self, val: float) -> None:
+        """
+        Set ``capex``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._capex = float(val)
+
+    @property
+    def opex(self) -> float:
+        """
+        Get ``opex``.
+
+        :return: float
+        """
+        return self._opex
+
+    @opex.setter
+    def opex(self, val: float) -> None:
+        """
+        Set ``opex``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._opex = float(val)
 
 
 def get_d_ij(xi, yi, xj, yj):

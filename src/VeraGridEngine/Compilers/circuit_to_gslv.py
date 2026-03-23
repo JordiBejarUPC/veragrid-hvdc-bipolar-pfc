@@ -2686,8 +2686,6 @@ def gslv_contingencies_snapshot(circuit: MultiCircuit,
                            opf_results=opf_results)
 
     con_opt_gslv = pg.ContingencyAnalysisOptions(
-        use_provided_flows=con_opt.use_provided_flows,
-        Pf=con_opt.Pf,
         pf_options=get_gslv_pf_options(con_opt.pf_options),
         lin_options=pg.LinearAnalysisOptions(
             distributeSlack=con_opt.lin_options.distribute_slack,
@@ -2699,7 +2697,7 @@ def gslv_contingencies_snapshot(circuit: MultiCircuit,
         srap_max_power=con_opt.srap_max_power,
         srap_top_n=con_opt.srap_top_n,
         srap_dead_band=con_opt.srap_deadband,
-        srap_rever_to_nominal_rating=con_opt.srap_rever_to_nominal_rating,
+        srap_rever_to_nominal_rating=con_opt.srap_revert_to_nominal_rating,
         detailed_massive_report=con_opt.detailed_massive_report,
         contingency_dead_band=con_opt.contingency_deadband,
         contingency_method=contingency_method_dict[con_opt.contingency_method],
@@ -2740,8 +2738,6 @@ def gslv_contingencies_ts(circuit: MultiCircuit,
                            opf_results=None)
 
     con_opt_gslv = pg.ContingencyAnalysisOptions(
-        use_provided_flows=con_opt.use_provided_flows,
-        Pf=con_opt.Pf,
         pf_options=get_gslv_pf_options(con_opt.pf_options),
         lin_options=pg.LinearAnalysisOptions(
             distributeSlack=con_opt.lin_options.distribute_slack,
@@ -2753,7 +2749,7 @@ def gslv_contingencies_ts(circuit: MultiCircuit,
         srap_max_power=con_opt.srap_max_power,
         srap_top_n=con_opt.srap_top_n,
         srap_dead_band=con_opt.srap_deadband,
-        srap_rever_to_nominal_rating=con_opt.srap_rever_to_nominal_rating,
+        srap_rever_to_nominal_rating=con_opt.srap_revert_to_nominal_rating,
         detailed_massive_report=con_opt.detailed_massive_report,
         contingency_dead_band=con_opt.contingency_deadband,
         contingency_method=contingency_method_dict[con_opt.contingency_method],

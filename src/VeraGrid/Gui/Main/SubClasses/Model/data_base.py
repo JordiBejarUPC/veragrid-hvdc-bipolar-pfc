@@ -29,7 +29,7 @@ from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
-from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, generate_map_diagram
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget, make_diagram_from_buses
@@ -114,7 +114,6 @@ class DataBaseTableMain(DiagramsMain):
         """
         Setup the database left tree object
         """
-
 
         db_tree_model = gf.get_tree_model(d=self.circuit.get_template_objects_str_dict(),
                                           top='Objects',
@@ -971,21 +970,13 @@ class DataBaseTableMain(DiagramsMain):
 
                     elif elm_type == DeviceType.DynamicModelHostDevice.value:
 
-                        # var_factory: VarFactory,
-                        # api_object_model_host,
-                        # templates_list,
-                        # templates_catalogue,
-                        # api_object_name,
-                        # api_object = None,
-                        # main_editor = False,
-
                         self.rms_model_Editor_window = DynamicBlockEditorGUI(
                             var_factory=self.circuit.rms_var_factory,
-                            templates_list=self.circuit.rms_models,
-                            block=elm.block
+                            block=elm.rms_model,
+                            api_object=elm,
+                            mode=DynamicEditorMode.RMS,
+                            main_editor=True,
                         )
-
-                        self.rms_model_Editor_window.resize(int(1.81 * 700.0), 700)
                         self.rms_model_Editor_window.show()
 
                     elif elm_type == DeviceType.LineDevice.value:
@@ -1008,26 +999,30 @@ class DataBaseTableMain(DiagramsMain):
                         if dlg.exec():
                             pass
 
-                    # elif elm_type == DeviceType.RmsEventDevice.value:
-                    #     lines = []
-                    #     injections = []
-                    #     for line in self.circuit.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-                    #         lines.append(line)
-                    #     for injection in self.circuit.get_injection_devices_iter():
-                    #         injections.append(injection)
-                    #
-                    #     all_devices = lines + injections
-                    #
-                    #     idx = self.ui.dataStructureTableView.currentIndex()
-                    #
-                    #     self.rms_events_Editor_window = RmsEventEditor(devices=all_devices,
-                    #                                                    event=elm)
-                    #     self.rms_events_Editor_window.resize(int(1.81 * 700.0), 700)
-                    #
-                    #     # TODO: check if we are actually editing the object directly
-                    #     if self.rms_events_Editor_window.exec() == QtWidgets.QDialog.DialogCode.Accepted:
-                    #         # update event
-                    #         self.circuit.rms_events[idx_proxy] = self.rms_events_Editor_window.get_updated_event()
+                    elif elm_type == DeviceType.RmsModelTemplateDevice.value:
+                        self.rms_model_Editor_window = DynamicBlockEditorGUI(
+                            var_factory=self.circuit.rms_var_factory,
+                            block=elm.block,
+                            api_object=elm,
+                            mode=DynamicEditorMode.RMS,
+                            templates_list=self.circuit.rms_models,
+                            main_editor=True,
+                        )
+                        if self.rms_model_Editor_window.show():
+                            elm.block = self.rms_model_Editor_window.block
+
+                    elif elm_type == DeviceType.EmtModelTemplateDevice.value:
+                        self.rms_model_Editor_window = DynamicBlockEditorGUI(
+                            var_factory=self.circuit.rms_var_factory,
+                            block=elm.block,
+                            api_object=elm,
+                            mode=DynamicEditorMode.EMT,
+                            templates_list=self.circuit.emt_models,
+                            main_editor=True,
+                        )
+
+                        if self.rms_model_Editor_window.show():
+                            elm.block = self.rms_model_Editor_window.block
 
                     else:
 

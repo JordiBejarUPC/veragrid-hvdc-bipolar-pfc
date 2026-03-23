@@ -11,7 +11,7 @@ import pandas as pd
 from VeraGridEngine import ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise)
-from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector,   SymbolicDerivative
+from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector, SymbolicDerivative, SymbolicJacobian
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializationMethod
@@ -20,6 +20,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResu
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.initialization import init_explicit, init_pseudo_transient
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
@@ -576,6 +577,16 @@ class RmsProblemPhasor(RmsProblemTemplate):
         self._uid2idx_diff: Dict[int, int] = dict()
         self._uid2idx_t: Dict[int, int] = dict()
 
+        #We put algebraic_vars that are actually states first
+        self._algebraic_vars.sort(key=lambda obj: obj.diff_var is None)
+        diff_vars_from_states    = [var.diff_var for var in self._state_vars]
+        for i, var in enumerate(diff_vars_from_states):
+            state_var = self._state_vars[i]
+            if var is None:
+                diff_vars_from_states[i] = self.grid.rms_var_factory.add_diff_var(name = 'aux', base_var=state_var)
+        diff_vars_from_algebraic = [var.diff_var for var in self._algebraic_vars if var.diff_var is not None]
+        self._diff_vars = diff_vars_from_states + diff_vars_from_algebraic
+
         i = 0
         for v in self._state_vars:
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{i}]"
@@ -621,6 +632,9 @@ class RmsProblemPhasor(RmsProblemTemplate):
                 eq = eq.subs({diff_var: Const(0)})
                 eq = eq.simplify()
             self._stability_eqs.append(eq)
+
+        # Store a copy of the original event parameters equations for later use with set_events_group
+        self._event_parameters_eqs0 = self._event_parameters_eqs.copy()
 
         # add events modifying values of event_parameters equations
 
@@ -826,6 +840,61 @@ class RmsProblemPhasor(RmsProblemTemplate):
 
         return pd.DataFrame(data=vars_names, columns=["key", "var_name", "value"])
 
+    def get_E_matrix(self, x:Vec, dx:Vec):
+        #We first find all diff_vars 
+        xdot = list() 
+        # for var in self._state_vars:
+        #     if var.diff_var is None:
+        #         diff_var = self.grid.rms_var_factory.add_diff_var(name = '', base_var=var)
+        #         xdot.append(diff_var)
+        #     else:
+        #         xdot.append(var.diff_var)
+        # for var in self._diff_vars:
+        #     if var not in xdot:
+        #         xdot.append(var)
+        all_eqs = self._state_eqs + self._algebraic_eqs
+        xdot = self._diff_vars
+        E_call = SymbolicJacobian(
+            eqs= all_eqs,
+            variables=xdot,
+            compiler_names_dict=self._compiler_names_dict,
+            alias_names_dict= self._alias_names_dict,
+            VARS_NAME=self.VARS_NAME,
+            DIFF_NAME=self.DIFF_NAME,
+            EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+            PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+            static=True
+        )
+
+        n_states = self.get_states_number()
+        n_diff   = self.get_diff_var_number()
+        vp = self._variable_parameters_values
+        cp = self._constant_params
+
+        n_vars = self._n_vars
+        E_value = np.zeros((n_vars, n_vars))
+        E_partial = E_call(x, dx, vp, cp, h=0).toarray()
+        print(f"DEBUG: E_partial shape: {E_partial.shape}")
+        print(f"DEBUG: E_partial sample values (non-zero):")
+        nz = np.nonzero(E_partial)
+        for i in range(min(20, len(nz[0]))):
+            row, col = nz[0][i], nz[1][i]
+            print(f"  E_partial[{row},{col}] = {E_partial[row,col]}")
+        
+        # Debug: show equation 70
+        print(f"\nDEBUG: Equation 70:")
+        print(f"  {all_eqs[70]}")
+        print(f"\nDEBUG: Diff vars involved in row 70:")
+        for col in range(E_partial.shape[1]):
+            if abs(E_partial[70, col]) > 1e-10:
+                print(f"  diff_var[{col}] = {xdot[col]}, value = {E_partial[70, col]}")
+        
+        E_value[:, :n_diff] = E_partial
+        E_value[:n_states, :n_states] -= np.eye(n_states, dtype=E_value.dtype)
+
+        return E_value
+
+
     def get_device_vars_dict(self) -> Dict[ALL_DEV_TYPES, List[Var]]:
         """Get dictionary of device variables."""
         return self._vars_info
@@ -867,6 +936,14 @@ class RmsProblemPhasor(RmsProblemTemplate):
     @property
     def get_state_vars(self):
         return self._state_vars
+
+    @property
+    def get_algebraic_eqs(self):
+        return self._algebraic_eqs
+
+    @property
+    def get_state_eqs(self):
+        return self._state_eqs
 
     def get_all_vars_number(self) -> int:
         return self._n_vars
@@ -938,7 +1015,54 @@ class RmsProblemPhasor(RmsProblemTemplate):
 
     def get_dt(self):
         return self._dt
-    
+
     def get_dt_value(self):
         dt_value = self._variable_parameters_values[-2]
         return dt_value
+
+    def set_events_group(self, rms_events_group: RmsEventsGroup):
+        """
+        Set the events group to use for this simulation.
+        This filters events by group and recompiles the event parameters function.
+
+        :param rms_events_group: The RmsEventsGroup to use
+        """
+        # Restore original event parameters equations
+        self._event_parameters_eqs = self._event_parameters_eqs0.copy()
+
+        # Collect events for this group only
+        collect_events = {
+            param: {"times": [], "values": []}
+            for param in self._variable_parameters
+        }
+
+        # Filter events by group
+        rms_evts = [evt for evt in self.grid.rms_events if evt.group.idtag == rms_events_group.idtag]
+        for rms_evt in rms_evts:
+            collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
+            collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
+
+        # Apply piecewise functions for events
+        for param, events_info in collect_events.items():
+            if events_info["times"]:  # Only if there are events for this parameter
+                default_value = self._event_parameters_eqs[self._variable_parameters.index(param)]
+                self._event_parameters_eqs[self._variable_parameters.index(param)] = piecewise(
+                    time_var=self._glob_time,
+                    t_events=np.array(events_info["times"]),
+                    new_values=np.array(events_info["values"]),
+                    default_value=default_value
+                )
+
+        # Recompile the event parameters function
+        self._event_params_fn = SymbolicParamsVector(
+            eqs=self._event_parameters_eqs,
+            compiler_names_dict=self._compiler_names_dict,
+            alias_names_dict=self._alias_names_dict,
+            EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+            TIME_NAME=self.TIME_NAME,
+        )
+
+        # Reinitialize variable parameters values
+        variable_parameters_init = np.ones(self.get_variable_parameter_number())
+        self._variable_parameters_values = self._event_params_fn(variable_parameters_init, 0.0)
+        self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, 0.0)

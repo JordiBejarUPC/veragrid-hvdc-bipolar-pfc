@@ -1565,8 +1565,6 @@ class SimulationsMain(TimeEventsMain):
         pf_options = self.get_selected_power_flow_options()
 
         options = sim.ContingencyAnalysisOptions(
-            use_provided_flows=False,
-            Pf=None,
             pf_options=pf_options,
             lin_options=self.get_linear_options(),
             use_srap=self.ui.use_srap_checkBox.isChecked(),

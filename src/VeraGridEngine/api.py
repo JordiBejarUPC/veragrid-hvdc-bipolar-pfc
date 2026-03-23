@@ -17,6 +17,7 @@ from VeraGridEngine.Devices import *
 from VeraGridEngine.DataStructures import *
 from VeraGridEngine.Topology import *
 from VeraGridEngine.Compilers import *
+from VeraGridEngine.Templates import *
 from VeraGridEngine.IO.file_open import FileOpen, FileOpenOptions
 from VeraGridEngine.IO.file_save import FileSave, FileSavingOptions
 from VeraGridEngine.IO.veragrid.remote import (gather_model_as_jsons_for_communication, RemoteInstruction,
@@ -455,8 +456,6 @@ def contingencies_ts(circuit: MultiCircuit,
 
     # declare the contingency analysis options
     options_contingencies = ContingencyAnalysisOptions(
-        use_provided_flows=False,
-        Pf=None,
         pf_options=PowerFlowOptions(SolverType.Linear),
         lin_options=LinearAnalysisOptions(),
         use_srap=use_srap,

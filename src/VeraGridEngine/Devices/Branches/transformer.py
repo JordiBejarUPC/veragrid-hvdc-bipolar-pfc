@@ -6,8 +6,6 @@ from __future__ import annotations
 
 import numpy as np
 from typing import Tuple
-
-from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.basic_structures import Logger, Mat, IntVec
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import (WindingsConnection, BuildStatus, TapPhaseControl,
@@ -15,25 +13,24 @@ from VeraGridEngine.enumerations import (WindingsConnection, BuildStatus, TapPha
 from VeraGridEngine.Devices.Parents.controllable_branch_parent import ControllableBranchParent
 from VeraGridEngine.Devices.Branches.transformer_type import TransformerType, reverse_transformer_short_circuit_study
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
-from VeraGridEngine.Utils.Symbolic.symbolic import cos, sin
 
 
 class Transformer2W(ControllableBranchParent):
     __slots__ = (
-        'HV',
-        'LV',
-        'Sn',
-        'Pcu',
-        'Pfe',
-        'I0',
-        'Vsc',
+        '_HV',
+        '_LV',
+        '_Sn',
+        '_Pcu',
+        '_Pfe',
+        '_I0',
+        '_Vsc',
         'conn',
         'template',
         'possible_transformer_types',
         '_conn_f',
         '_conn_t',
         '_vector_group_number',
-        '_phases'
+        '_phases',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -229,8 +226,8 @@ class Transformer2W(ControllableBranchParent):
                                           tc_type=tc_type)
 
         # set the high and low voltage values
-        self.HV: None | float = None if HV is None else float(HV)
-        self.LV: None | float = None if LV is None else float(LV)
+        self._HV: float = None if HV is None else float(HV)
+        self._LV: float = None if LV is None else float(LV)
 
         if self.bus_from and self.bus_to:
             self.set_hv_and_lv(HV, LV)
@@ -850,3 +847,138 @@ class Transformer2W(ControllableBranchParent):
             return zeros, zeros, zeros, zeros
 
         return Yff, Yft, Ytf, Ytt
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def HV(self) -> float:
+        """
+        Get ``HV``.
+
+        :return: float
+        """
+        return self._HV
+
+    @HV.setter
+    def HV(self, val: float) -> None:
+        """
+        Set ``HV``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._HV = float(val)
+
+    @property
+    def LV(self) -> float:
+        """
+        Get ``LV``.
+
+        :return: float
+        """
+        return self._LV
+
+    @LV.setter
+    def LV(self, val: float) -> None:
+        """
+        Set ``LV``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._LV = float(val)
+
+    @property
+    def Sn(self) -> float:
+        """
+        Get ``Sn``.
+
+        :return: float
+        """
+        return self._Sn
+
+    @Sn.setter
+    def Sn(self, val: float) -> None:
+        """
+        Set ``Sn``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Sn = float(val)
+
+    @property
+    def Pcu(self) -> float:
+        """
+        Get ``Pcu``.
+
+        :return: float
+        """
+        return self._Pcu
+
+    @Pcu.setter
+    def Pcu(self, val: float) -> None:
+        """
+        Set ``Pcu``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Pcu = float(val)
+
+    @property
+    def Pfe(self) -> float:
+        """
+        Get ``Pfe``.
+
+        :return: float
+        """
+        return self._Pfe
+
+    @Pfe.setter
+    def Pfe(self, val: float) -> None:
+        """
+        Set ``Pfe``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Pfe = float(val)
+
+    @property
+    def I0(self) -> float:
+        """
+        Get ``I0``.
+
+        :return: float
+        """
+        return self._I0
+
+    @I0.setter
+    def I0(self, val: float) -> None:
+        """
+        Set ``I0``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._I0 = float(val)
+
+    @property
+    def Vsc(self) -> float:
+        """
+        Get ``Vsc``.
+
+        :return: float
+        """
+        return self._Vsc
+
+    @Vsc.setter
+    def Vsc(self, val: float) -> None:
+        """
+        Set ``Vsc``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Vsc = float(val)
