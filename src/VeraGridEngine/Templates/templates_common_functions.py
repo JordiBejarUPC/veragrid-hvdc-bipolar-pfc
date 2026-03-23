@@ -356,7 +356,7 @@ def to_implicit(block: Block, vfactory: VarFactory) -> Block:
         block.algebraic_vars.append(state_var)
         block.algebraic_eqs.append(implicit_eq)
         
-        block.init_eqs[dt_var] = vfactory.add_const(0.0)
+        block.init_eqs[dt_var] = block.init_eqs[state_eq]
 
     
     # The state_vars become algebraic_vars since they now appear in algebraic equations
