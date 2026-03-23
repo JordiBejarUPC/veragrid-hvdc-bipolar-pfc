@@ -7573,6 +7573,17 @@ class Assets:
             for elm in elements:
                 yield elm
 
+    def get_all_elements_number(self) -> int:
+        """
+        Get all elements number
+        :return: int
+        """
+        a = 0
+        for key, tpe in self.device_type_name_dict.items():
+            a += len(self.get_elements_by_type(device_type=tpe))
+
+        return a
+
     def get_all_elements_dict(self,
                               use_secondary_key: bool = False,
                               use_rdfid: bool = False,

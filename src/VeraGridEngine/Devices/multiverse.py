@@ -78,6 +78,9 @@ class MultiVerse:
         Initializes an instance of the class with the specified model and necessary
         attributes for processing scenario nodes and model comparison.
 
+        Automatically creates a root scenario node from the current_model.
+        If the current_model has an empty name, it is set to "Base Scenario".
+
         :param current_model: The currently edited and used model. It is used as the currently edited model
         :type current_model: MultiCircuit
         """
@@ -90,6 +93,13 @@ class MultiVerse:
 
         # Currently edited and used model
         self._current_model: MultiCircuit = current_model
+
+        # Set a default name if the current model has an empty name
+        if current_model.name is None or current_model.name.strip() == "":
+            current_model.name = "Base Scenario"
+
+        # Create the initial root scenario node from the current model
+        self.create_node(data=current_model, parent_id=None, position=0)
 
     @property
     def base_model(self) -> MultiCircuit:

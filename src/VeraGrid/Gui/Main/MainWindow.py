@@ -1572,42 +1572,21 @@ class Ui_mainWindow(object):
         self.modelTabWidget.addTab(self.DataTab, icon49, "")
         self.tab_13 = QWidget()
         self.tab_13.setObjectName(u"tab_13")
-        self.verticalLayout_48 = QVBoxLayout(self.tab_13)
-        self.verticalLayout_48.setObjectName(u"verticalLayout_48")
-        self.scenarioSplitter = QSplitter(self.tab_13)
-        self.scenarioSplitter.setObjectName(u"scenarioSplitter")
-        self.scenarioSplitter.setOrientation(Qt.Orientation.Horizontal)
-        self.frame_43 = QFrame(self.scenarioSplitter)
-        self.frame_43.setObjectName(u"frame_43")
-        self.frame_43.setFrameShape(QFrame.Shape.NoFrame)
-        self.frame_43.setFrameShadow(QFrame.Shadow.Raised)
-        self.verticalLayout_47 = QVBoxLayout(self.frame_43)
+        self.verticalLayout_47 = QVBoxLayout(self.tab_13)
         self.verticalLayout_47.setObjectName(u"verticalLayout_47")
-        self.multiverseTreeView = QTreeView(self.frame_43)
+        self.multiverseTreeView = QTreeView(self.tab_13)
         self.multiverseTreeView.setObjectName(u"multiverseTreeView")
         self.multiverseTreeView.setFrameShape(QFrame.Shape.NoFrame)
 
         self.verticalLayout_47.addWidget(self.multiverseTreeView)
 
-        self.frame_58 = QFrame(self.frame_43)
+        self.frame_58 = QFrame(self.tab_13)
         self.frame_58.setObjectName(u"frame_58")
         self.frame_58.setFrameShape(QFrame.Shape.NoFrame)
         self.frame_58.setFrameShadow(QFrame.Shadow.Raised)
         self.horizontalLayout_18 = QHBoxLayout(self.frame_58)
         self.horizontalLayout_18.setObjectName(u"horizontalLayout_18")
         self.horizontalLayout_18.setContentsMargins(0, 0, 0, 0)
-        self.addScenarioButton = QPushButton(self.frame_58)
-        self.addScenarioButton.setObjectName(u"addScenarioButton")
-        self.addScenarioButton.setIcon(icon103)
-
-        self.horizontalLayout_18.addWidget(self.addScenarioButton)
-
-        self.removeScenarioButton = QPushButton(self.frame_58)
-        self.removeScenarioButton.setObjectName(u"removeScenarioButton")
-        self.removeScenarioButton.setIcon(icon104)
-
-        self.horizontalLayout_18.addWidget(self.removeScenarioButton)
-
         self.horizontalSpacer_17 = QSpacerItem(735, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
 
         self.horizontalLayout_18.addItem(self.horizontalSpacer_17)
@@ -1619,23 +1598,6 @@ class Ui_mainWindow(object):
 
 
         self.verticalLayout_47.addWidget(self.frame_58)
-
-        self.scenarioSplitter.addWidget(self.frame_43)
-        self.frame_52 = QFrame(self.scenarioSplitter)
-        self.frame_52.setObjectName(u"frame_52")
-        self.frame_52.setFrameShape(QFrame.Shape.NoFrame)
-        self.frame_52.setFrameShadow(QFrame.Shadow.Raised)
-        self.verticalLayout_49 = QVBoxLayout(self.frame_52)
-        self.verticalLayout_49.setObjectName(u"verticalLayout_49")
-        self.listView = QListView(self.frame_52)
-        self.listView.setObjectName(u"listView")
-        self.listView.setFrameShape(QFrame.Shape.NoFrame)
-
-        self.verticalLayout_49.addWidget(self.listView)
-
-        self.scenarioSplitter.addWidget(self.frame_52)
-
-        self.verticalLayout_48.addWidget(self.scenarioSplitter)
 
         icon119 = QIcon()
         icon119.addFile(u":/Icons/icons/tree.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
@@ -5876,8 +5838,6 @@ class Ui_mainWindow(object):
         self.set_profile_value_pushButton.setText("")
         self.tabWidget_5.setTabText(self.tabWidget_5.indexOf(self.tab_16), QCoreApplication.translate("mainWindow", u"Time series", None))
         self.modelTabWidget.setTabText(self.modelTabWidget.indexOf(self.DataTab), QCoreApplication.translate("mainWindow", u"Database", None))
-        self.addScenarioButton.setText("")
-        self.removeScenarioButton.setText("")
         self.activeScenarioLabel.setText(QCoreApplication.translate("mainWindow", u"...", None))
         self.modelTabWidget.setTabText(self.modelTabWidget.indexOf(self.tab_13), QCoreApplication.translate("mainWindow", u"Scenarios", None))
 #if QT_CONFIG(tooltip)

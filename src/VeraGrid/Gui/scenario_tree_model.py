@@ -29,7 +29,8 @@ class ScenarioTreeModel(QAbstractItemModel):
         self._multiverse: MultiVerse = multiverse
         self._headers: List[str] = [
             "Name",
-            "IdTag",
+            "Objects",
+            "Comment"
         ]
 
     @property
@@ -119,10 +120,8 @@ class ScenarioTreeModel(QAbstractItemModel):
         if not index.isValid():
             return None
 
-        if role not in (
-                Qt.ItemDataRole.DisplayRole,
-                Qt.ItemDataRole.EditRole,
-        ):
+        if role not in (Qt.ItemDataRole.DisplayRole,
+                        Qt.ItemDataRole.EditRole):
             return None
 
         node: ScenarioNode = index.internalPointer()
@@ -130,9 +129,11 @@ class ScenarioTreeModel(QAbstractItemModel):
         column: int = index.column()
 
         if column == 0:
-            return getattr(circuit, "name", "")
-        elif column == 1:
-            return getattr(circuit, "idtag", "")
+            return circuit.name
+        if column == 1:
+            return f"{circuit.get_all_elements_number()}"
+        if column == 2:
+            return circuit.comments
 
         return None
 
@@ -161,15 +162,11 @@ class ScenarioTreeModel(QAbstractItemModel):
         column: int = index.column()
 
         if column == 0:
-            if hasattr(circuit, "name"):
-                circuit.name = str(value)
-            else:
-                return False
-        elif column == 1:
-            if hasattr(circuit, "idtag"):
-                circuit.idtag = str(value)
-            else:
-                return False
+            circuit.name = str(value)
+        if column == 1:
+            return False
+        if column == 2:
+            circuit.comments = str(value)
         else:
             return False
 
@@ -187,9 +184,9 @@ class ScenarioTreeModel(QAbstractItemModel):
             return Qt.ItemFlag.NoItemFlags
 
         return (
-            Qt.ItemFlag.ItemIsEnabled
-            | Qt.ItemFlag.ItemIsSelectable
-            | Qt.ItemFlag.ItemIsEditable
+                Qt.ItemFlag.ItemIsEnabled
+                | Qt.ItemFlag.ItemIsSelectable
+                | Qt.ItemFlag.ItemIsEditable
         )
 
     def headerData(
