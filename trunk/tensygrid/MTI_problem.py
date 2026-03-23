@@ -163,40 +163,99 @@ class MTI_Problem(RmsProblemTemplate):
         self._uid2idx_t[self._glob_time.uid] = 0
 
     def _parse_and_compile(self, eqs: List[str], s_d: dict, v_d: dict) -> None:
-        """Parses strings to symbolic residues and triggers JIT compilation."""
+        """
+        Parses strings to symbolic residues and triggers JIT compilation.
+        Converts SymPy expressions into VeraGrid Var structures safely.
+
+        :param eqs: List of equation strings.
+        :type eqs: List[str]
+        :param s_d: Dictionary mapping strings to SymPy Symbols.
+        :type s_d: dict
+        :param v_d: Dictionary mapping strings to VeraGrid Var objects.
+        :type v_d: dict
+        :return: None
+        :rtype: None
+        """
+        # Rule: Explicit initialization and no lambdas.
+        # We pass our explicit function to handle the 'sqrt' logic.
+        custom_math: dict = dict()
+        custom_math["sqrt"] = _convert_sqrt_to_pow
+
+        eq_str: str
         for eq_str in eqs:
             # Convert string to SymPy expression using locals for variable mapping
-            expr_sympy = sp.sympify(eq_str, locals=s_d)
-            eq_symbols = list(expr_sympy.free_symbols)
-            eq_vars = [v_d[s.name] for s in eq_symbols]
+            expr_sympy: sp.Expr = sp.sympify(eq_str, locals=s_d)
+            eq_symbols: list = list(expr_sympy.free_symbols)
 
-            # Lambdify to convert SymPy to VeraGrid Var objects
-            func = sp.lambdify(eq_symbols, expr_sympy)
-            expr_var = func(*eq_vars)
+            # Extract the actual Var objects matching the SymPy symbols
+            eq_vars: list = list()
+            s: sp.Symbol
+            for s in eq_symbols:
+                eq_vars.append(v_d[s.name])
+
+            # ALGORITHM: Lambdify maps the SymPy tree to a callable Python function.
+            # By injecting custom_math, any 'sqrt' is intercepted and evaluated via __pow__.
+            func: Any = sp.lambdify(
+                eq_symbols,
+                expr_sympy,
+                modules=[custom_math, "numpy"]
+            )
+            expr_var: Any = func(*eq_vars)
 
             # Categorize residue: If it contains a derivative, it's a state equation
-            if any(re.match(r'^(xp|dx)\d+', s.name) for s in eq_symbols):
+            is_state: bool = False
+            s_check: sp.Symbol
+            for s_check in eq_symbols:
+                # Using standard if/else logic
+                if re.match(r'^(xp|dx)\d+', s_check.name):
+                    is_state = True
+                else:
+                    pass
+
+            if is_state:
                 self._state_eqs.append(expr_var)
             else:
                 self._algebraic_eqs.append(expr_var)
 
-        self._state_algeb_vars = self._state_vars + self._algebraic_vars
-        self._n_state, self._n_alg = len(self._state_vars), len(self._algebraic_vars)
-        self._n_algebraic, self._n_diff = len(self._algebraic_eqs), len(self._diff_vars)
+        # Rule: Explicit list building instead of adding lists (no 'list1 + list2')
+        self._state_algeb_vars = list()
+
+        v_state: Var
+        for v_state in self._state_vars:
+            self._state_algeb_vars.append(v_state)
+
+        v_alg: Var
+        for v_alg in self._algebraic_vars:
+            self._state_algeb_vars.append(v_alg)
+
+        self._n_state = len(self._state_vars)
+        self._n_alg = len(self._algebraic_vars)
+        self._n_algebraic = len(self._algebraic_eqs)
+        self._n_diff = len(self._diff_vars)
 
         # Standard simulation parameters (internal to the RMS solver)
         self._n_event_params = 0
-        self._dt, self._delta = Var('dt'), Var('delta')
-        self._variable_parameters.extend([self._dt, self._delta])
-        self._event_parameters_eqs.extend([Const(1e-3), Const(1)])
+        self._dt = Var('dt')
+        self._delta = Var('delta')
 
-        for p in [self._dt, self._delta]:
-            self._compiler_names_dict[p.uid] = f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
-            self._alias_names_dict[p.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
+        self._variable_parameters.append(self._dt)
+        self._variable_parameters.append(self._delta)
+
+        self._event_parameters_eqs.append(Const(1e-3))
+        self._event_parameters_eqs.append(Const(1.0))
+
+        # Register event parameters explicitly
+        p_list: list = list([self._dt, self._delta])
+        p: Var
+        for p in p_list:
+            self._compiler_names_dict[p.uid] = str(f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]")
+            self._alias_names_dict[p.uid] = str(f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}")
             self._uid2idx_event_params[p.uid] = self._n_event_params
-            self._n_event_params += 1
 
-        self.timings = {}
+            # Explicit counter increment
+            self._n_event_params = self._n_event_params + 1
+
+        self.timings = dict()
         self._compile_system()
 
     def _compile_system(self) -> None:
@@ -211,3 +270,18 @@ class MTI_Problem(RmsProblemTemplate):
         if self._n_state > 0:
             self._rhs_state_fn = rms_compiler.compile_rhs(self._state_eqs, "rhs_state")
         self.timings["Compilation"] = time.time() - t0
+
+
+def _convert_sqrt_to_pow(x: Any) -> Any:
+    """
+    ALGORITHM: Maps the square root operation to a fractional power.
+    This allows SymPy's lambdify to evaluate 'sqrt' using the native
+    dunder method __pow__ of the custom 'Var' object, avoiding the
+    need for a dedicated .sqrt() attribute.
+
+    :param x: The base variable or expression (typically a Var object).
+    :type x: Any
+    :return: The resulting expression object representing x raised to 0.5.
+    :rtype: Any
+    """
+    return x ** 0.5
