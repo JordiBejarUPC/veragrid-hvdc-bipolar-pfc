@@ -1,5 +1,6 @@
 <RCC>
   <qresource prefix="Icons">
+    <file>icons/tree.png</file>
     <file>icons/json.png</file>
     <file>icons/h5.png</file>
     <file>icons/sqlite.png</file>

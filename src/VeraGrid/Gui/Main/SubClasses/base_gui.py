@@ -20,6 +20,7 @@ from PySide6 import QtGui, QtWidgets, QtCore
 
 # Engine imports
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.multiverse import MultiVerse
 import VeraGridEngine.Simulations as sim
 from VeraGridEngine.enumerations import EngineType, DeviceType, SimulationTypes
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
@@ -133,7 +134,8 @@ class BaseMainGui(QMainWindow):
         self.ui.setupUi(self)
 
         # Declare circuit
-        self.circuit: MultiCircuit = MultiCircuit()
+        # self.circuit: MultiCircuit = MultiCircuit()
+        self.multiverse: MultiVerse = MultiVerse(current_model=MultiCircuit())
 
         self.lock_ui = False
         self.ui.progress_frame.setVisible(self.lock_ui)
@@ -280,6 +282,15 @@ class BaseMainGui(QMainWindow):
         """
         if not self.any_thread_running():
             self.LOCK(False)
+
+    @property
+    def circuit(self) -> MultiCircuit:
+        return self.multiverse.current_model
+
+    @circuit.setter
+    def circuit(self, val: MultiCircuit):
+        self.multiverse.current_model = val
+        self.multiverse.base_model = val
 
     @property
     def file_name(self) -> str:

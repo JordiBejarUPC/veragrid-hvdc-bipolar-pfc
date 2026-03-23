@@ -16,8 +16,9 @@ BaseMainGui
 ServerMain
 CompiledArraysMain
 DiagramsMain
-ObjectsTableMain
+DataBaseTableMain
 TimeEventsMain
+ScenariosMain
 SimulationsMain
 ResultsMain
 ConfigurationMain

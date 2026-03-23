@@ -160,6 +160,7 @@ class MultiCircuit(Assets):
         'Sbase',
         'fBase',
         'logger',
+        'parent'
     )
 
     def __init__(self,
@@ -2965,7 +2966,7 @@ class MultiCircuit(Assets):
             elm.P = results.load_power[i]
 
         for i, elm in enumerate(self.get_hvdc()):
-            elm.Pset.set(results.hvdc_Pf[i])
+            elm.Pset = results.hvdc_Pf[i]
 
     def get_reduction_sets(
             self,

@@ -18,7 +18,7 @@ from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import MapWidget
 from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg, info_msg
-from VeraGrid.Gui.Main.SubClasses.Model.time_events import TimeEventsMain
+from VeraGrid.Gui.Main.SubClasses.Model.scenarios import ScenariosMain
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 from VeraGrid.Session.server_driver import RemoteJobDriver
@@ -41,7 +41,7 @@ from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, Solv
                                          RmsInitializationMethod)
 
 
-class SimulationsMain(TimeEventsMain):
+class SimulationsMain(ScenariosMain):
     """
     SimulationsMain
     """
@@ -53,7 +53,7 @@ class SimulationsMain(TimeEventsMain):
         """
 
         # create main window
-        TimeEventsMain.__init__(self, parent)
+        ScenariosMain.__init__(self, parent)
 
         self._remote_jobs: Dict[str, RemoteJobDriver] = dict()
 
