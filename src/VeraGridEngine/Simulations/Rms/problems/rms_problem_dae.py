@@ -202,13 +202,13 @@ class RmsProblemDae(RmsProblemTemplate):
             if elm.is_dc:
                 # DC bus: use Vdc (magnitude) - angle is not applicable for DC
                 self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Vdc,
-                                    np.abs(self.power_flow_results.voltage[bus_num]))
+                                    float(np.abs(self.power_flow_results.voltage[bus_num])))
             else:
                 # AC bus: use Vm and Va
                 self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Vm,
-                                    np.abs(self.power_flow_results.voltage[bus_num]))
+                                    float(np.abs(self.power_flow_results.voltage[bus_num])))
                 self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Va,
-                                    np.angle(self.power_flow_results.voltage[bus_num]))
+                                    float(np.angle(self.power_flow_results.voltage[bus_num])))
 
             # add model to system block
             self.sys_block.add(elm.rms_model)
