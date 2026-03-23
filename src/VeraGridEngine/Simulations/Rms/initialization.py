@@ -102,6 +102,7 @@ def init_explicit(mdl: Block,
                   constant_parameters: List[Var],
                   init_guess: Dict[int, float],
                   uid2idx_vars: Dict[int, int],
+                  uid2idx_diff: Dict[int, int],
                   uid2idx_params: Dict[int, int],
                   uid2idx_event_params: Dict[int, int],
                   compiler_names_dict: Dict[int, str],
@@ -129,6 +130,8 @@ def init_explicit(mdl: Block,
     :type init_guess: Dict[Tuple[int, str], float]
     :param uid2idx_vars:
     :type uid2idx_vars: Dict[int, int]
+    :param uid2idx_diff:
+    :type uid2idx_diff: Dict[int, int]
     :param uid2idx_params:
     :type uid2idx_params: Dict[int, int]
     :param uid2idx_event_params:
@@ -162,10 +165,14 @@ def init_explicit(mdl: Block,
 
     # initialize array for model variables
     x = np.ones(len(sys_vars))
+    # x_diff = np.ones(len(uid2idx_diff))
 
     # assign initial guesses for known variables
     for uid, val in init_guess.items():
-        x[uid2idx_vars[uid]] = val
+        if uid in uid2idx_vars:
+            x[uid2idx_vars[uid]] = val
+        # else:
+        #     x_diff[uid2idx_diff[uid]] = val
 
     # initialize array for model params
     params_array = np.zeros(len(constant_parameters))
@@ -245,6 +252,8 @@ def init_explicit(mdl: Block,
                     uid_bindings.update({vr.uid: event_params_array[uid2idx_event_params[vr.uid]]})
                 elif vr.uid in uid2idx_vars:
                     uid_bindings.update({vr.uid: x[uid2idx_vars[vr.uid]]})
+                # elif vr.uid in uid2idx_diff:
+                #     uid_bindings.update({vr.uid: x_diff[uid2idx_diff[vr.uid]]})
 
             result = eq.eval_uid(uid_bindings)
             # eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
@@ -270,12 +279,18 @@ def init_explicit(mdl: Block,
                         uid_bindings.update({vr.uid: x[uid2idx_vars[vr.uid]]})
                     elif vr.uid in uid2idx_params:
                         uid_bindings.update({vr.uid: params_array[uid2idx_params[vr.uid]]})
+                    # elif vr.uid in uid2idx_diff:
+                    #     uid_bindings.update({vr.uid: x[uid2idx_diff[vr.uid]]})
 
                 result = eq.eval_uid(uid_bindings)
                 # eq_fn = rms_compiler.compile_rhs([eq], "equation")
                 # result = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
                 init_guess[var.uid] = result
-                x[uid2idx_vars[var.uid]] = result
+                if var.uid in uid2idx_vars:
+                    x[uid2idx_vars[var.uid]] = result
+                # else:
+                #     x_diff[uid2idx_diff[var.uid]] = result
+
 
             else:
                 # compile equations
