@@ -268,6 +268,37 @@ class TestPolynomialStability(unittest.TestCase):
             self.assertAlmostEqual(margin, -1.000, places=3, msg=f"Expected stability margin -1.0, got {margin:.3f}")
 
 
+    def test_sqrt(self) -> None:
+        """
+        Test 6:
+
+        :return: None
+        :rtype: None
+        """
+        eqs: List[str] = list([
+            "sqrt(x1) + x1*y1+1",
+            "2*xp1+x1",
+            "y1-x1**2-1"
+        ])
+        v_dict: Dict[str, float] = dict({
+            'xp1': 0.5,
+            'x1': 1.0
+        })
+
+        math_problem: MTI_Problem = MTI_Problem(eqs_str=eqs, v_dict=v_dict)
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=math_problem, verbose=False)
+
+        builder.linearize(v_dict)
+        res: Tuple[Any, Any, Any, Any, bool, float] = builder.compute_stability()
+        stable: bool = res[4]
+        margin: float = res[5]
+
+        if not stable:
+            self.fail("Expected the fractional system to be stable based on the eigenvalues.")
+        else:
+            self.assertAlmostEqual(margin, -0.500, places=3, msg=f"Expected stability margin -0.5, got {margin:.3f}")
+
+
 if __name__ == "__main__":
     # Standard unittest execution
     unittest.main()
