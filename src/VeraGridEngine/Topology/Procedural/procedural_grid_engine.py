@@ -99,14 +99,14 @@ class ProceduralGridComputationEngine:
         for sg in self.candidates_substations:
             for i, bus in enumerate(self.grid.get_substation_buses(sg)):
                 bus.name = f"Candidate_{i}"
-                bus.Vm_cost = bus.Vnom * 1000
-                self.candidate_buses += bus
+                bus.Vm_cost = bus.Vnom * bus.Vm_cost
+                self.candidate_buses.append(bus)
 
         for sg in self.targets_substations:
             for i, bus in enumerate(self.grid.get_substation_buses(sg)):
                 bus.name = f"Target_{i}"
-                bus.Vm_cost = bus.Vnom * 1000
-                self.targets_substations += bus
+                bus.Vm_cost = bus.Vnom * bus.Vm_cost
+                self.target_buses.append(bus)
 
         # TRANSITION_MATRIX = {
         #     132: {132: 0.7, 220: 0.15, 380: 0.15, 500: 0},
