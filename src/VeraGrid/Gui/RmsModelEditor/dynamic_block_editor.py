@@ -1402,7 +1402,7 @@ class BlockParametersTableModel(QtCore.QAbstractTableModel):
     Table model that exposes the selected block variables, equations, and parameters.
     """
 
-    block_updated = Signal(int)
+    block_updated = Signal(object)
 
     def __init__(self,
                  var_factory: VarFactory,
