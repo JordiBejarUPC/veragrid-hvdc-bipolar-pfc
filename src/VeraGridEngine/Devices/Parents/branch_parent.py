@@ -281,7 +281,7 @@ class BranchParent(PhysicalDevice):
             self._rms_template = val
 
             if self.auto_update_enabled:
-                self.rms_model = val.block.copy()
+                self.rms_model = val.block.copy() # TODO: var factory needed to copy the vars!
         elif val is None:
             self._rms_template = None
         else:
@@ -300,7 +300,7 @@ class BranchParent(PhysicalDevice):
             self._emt_template = val
 
             if self.auto_update_enabled:
-                self.emt_model = val.block.copy()
+                self.emt_model = val.block.copy() # TODO: var factory needed to copy the vars!
         elif val is None:
             self._emt_template = None
         else:

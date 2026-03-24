@@ -79,7 +79,6 @@ class RmsProblemTensygrid(RmsProblemTemplate):
     VARIABLE_PARAMS_NAME = "vprms"
     CONSTANT_PARAMS_NAME = "cprms"
     DIFF_NAME = "diff"
-    ALTER_PARAMS_NAME = "alter"
     TIME_NAME = "glob_time"
 
     def __init__(self,
