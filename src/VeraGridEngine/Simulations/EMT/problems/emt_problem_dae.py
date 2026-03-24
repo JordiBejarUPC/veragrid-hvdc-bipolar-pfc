@@ -27,7 +27,7 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, DeviceType, EmtLineTypes
-from VeraGridEngine.basic_structures import Logger, CxVec, Vec
+from VeraGridEngine.basic_structures import Logger, CxVec
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
@@ -408,78 +408,179 @@ class EmtProblemDae(EmtProblemTemplate):
         sys_vars: Dict[int, Var] = {v.uid: v for v in (self._state_vars + self._algebraic_vars)}
         sys_diff_vars: Dict[int, Var] = {dv.uid: dv for dv in self._diff_vars}
 
+        seen_blocks: set[int] = set()
+
         for mdl in chain(self._models_with_init_eqs, self._models_with_diff_init_eqs):
-            try:
-                init_explicit_emt(
-                    mdl=mdl,
-                    sys_vars=sys_vars,
-                    sys_diff_vars=sys_diff_vars,
-                    variable_parameters=self._variable_parameters,
-                    event_parameters_eqs=self._event_parameters_eqs,
-                    constant_parameters=self._constant_parameters,
-                    init_guess=self.init_guess,
-                    diff_init_guess = self.diff_init_guess,
-                    uid2idx_vars=self.uid2idx_vars,
-                    uid2idx_diff = self.uid2idx_diff,
-                    uid2idx_params=self.uid2idx_params,
-                    uid2idx_event_params=self.uid2idx_event_params,
-                    compiler_names_dict=self._compiler_names_dict,
-                    alias_names_dict=self._alias_names_dict,
-                    VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                    # TIME_NAME=self.TIME_NAME,
-                    VARS_NAME=self.VARS_NAME,
-                    DIFF_NAME=self.DIFF_NAME,
-                    CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-                    verbose=bool(self.options.verbose > 0),
-                )
-            except Exception as e:
-                block_name: str = _get_block_name(mdl)
-                error_detail = f"{type(e).__name__}: {str(e)}"
+            mdl_id = id(mdl)
 
-                self.logger.add_warning(
-                    msg="EMT explicit initialization failed for block.",
-                    device=block_name,
-                    value=error_detail,
-                    expected_value="Successful explicit initialization",
-                    device_class="EMT",
-                    device_property="init_explicit"
-                )
+            if mdl_id not in seen_blocks:
+                seen_blocks.add(mdl_id)
 
-                if self.options.verbose > 0:
-                    self.logger.add_debug(
-                        f"[EMT][init_explicit] failed for block '{block_name}'. Error: {error_detail}")
+                try:
+                    init_explicit_emt(
+                        mdl=mdl,
+                        sys_vars=sys_vars,
+                        sys_diff_vars=sys_diff_vars,
+                        variable_parameters=self._variable_parameters,
+                        event_parameters_eqs=self._event_parameters_eqs,
+                        constant_parameters=self._constant_parameters,
+                        init_guess=self.init_guess,
+                        diff_init_guess=self.diff_init_guess,
+                        uid2idx_vars=self.uid2idx_vars,
+                        uid2idx_diff=self.uid2idx_diff,
+                        uid2idx_params=self.uid2idx_params,
+                        uid2idx_event_params=self.uid2idx_event_params,
+                        compiler_names_dict=self._compiler_names_dict,
+                        alias_names_dict=self._alias_names_dict,
+                        VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                        # TIME_NAME=self.TIME_NAME,
+                        VARS_NAME=self.VARS_NAME,
+                        DIFF_NAME=self.DIFF_NAME,
+                        CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+                        verbose=bool(self.options.verbose > 0),
+                    )
+                except Exception as e:
+                    block_name: str = _get_block_name(mdl)
+                    error_detail = f"{type(e).__name__}: {str(e)}"
 
-                    print(f"EMT explicit initialization failed for block {block_name}. Error detail: {error_detail}")
+                    self.logger.add_warning(
+                        msg="EMT explicit initialization failed for block.",
+                        device=block_name,
+                        value=error_detail,
+                        expected_value="Successful explicit initialization",
+                        device_class="EMT",
+                        device_property="init_explicit"
+                    )
+
+                    if self.options.verbose > 0:
+                        self.logger.add_debug(
+                            f"[EMT][init_explicit] failed for block '{block_name}'. Error: {error_detail}"
+                        )
+
+                        print(
+                            f"EMT explicit initialization failed for block {block_name}. "
+                            f"Error detail: {error_detail}"
+                        )
 
 
         self._build_runtime_param_vectors()
 
     def _process_device_model(self, dev: Any, sys_block: Block, grid: MultiCircuit, glob_time: Var) -> Block:
         """
-        Extracts, unifies, applies events, and registers a device's EMT model
-        into the global system block.
+        Register a device EMT model into the global system block.
+
+        The device model is flattened before being attached to the system block.
+        Some wrapper-style models store ``api_obj_mapping`` in nested child blocks,
+        while ``unify_blocks()`` does not propagate that metadata to the top-level
+        block. For that reason, the mapping is rebuilt first and restored on the
+        device block before flattening.
 
         :param dev: Device object from the grid.
         :param sys_block: Main DAE system block.
         :param grid: MultiCircuit instance.
         :param glob_time: Global time variable.
-        :return: The unified device block.
+        :return: Unified device block.
         """
-        mdl = dev.emt_model
+        mdl: Block = dev.emt_model
+
+        resolved_api_mapping: Dict[ParamPowerFlowRefferenceType, Any] = self._collect_api_obj_mapping(mdl)
+        if len(resolved_api_mapping) > 0:
+            mdl.api_obj_mapping = resolved_api_mapping
+        else:
+            pass
+
         mdl.unify_blocks()
 
         self._register_runtime_event_parameters(dev=dev, mdl=mdl)
         self._add_model_to_system_mappings(dev, mdl)
-        # queue_emt_fmu_cs_device(self, dev, mdl) #TODO: fix when fmu import in this branch
-        # queue_emt_fmu_me_device(self, dev, mdl)
         sys_block.add(mdl)
 
-        # register init_eqs blocks
         self._register_init_model(mdl)
         self._register_diff_init_model(mdl)
 
         return mdl
 
+    def _collect_api_obj_mapping(self, mdl: Block) -> Dict[ParamPowerFlowRefferenceType, Any]:
+        """
+        Collect the API object mapping from a block hierarchy.
+
+        Wrapper models may keep the parameter mapping in nested child blocks.
+        This method traverses the hierarchy and merges the first occurrence
+        of each mapping key so the top-level block preserves the metadata
+        required by PF-derived parameter assignment.
+
+        :param mdl: Root block to inspect.
+        :return: Flattened API object mapping.
+        """
+        mapping: Dict[ParamPowerFlowRefferenceType, Any] = dict()
+        stack: List[Block] = list([mdl])
+        visited: Set[int] = set()
+
+        while len(stack) > 0:
+            block: Block = stack.pop()
+            block_id: int = id(block)
+
+            if block_id not in visited:
+                visited.add(block_id)
+
+                local_mapping: Any = block.api_obj_mapping
+                if isinstance(local_mapping, dict):
+                    for key, val in local_mapping.items():
+                        if key not in mapping:
+                            mapping[key] = val
+                        else:
+                            pass
+                else:
+                    pass
+
+                for child in block.children:
+                    stack.append(child)
+            else:
+                pass
+
+        return mapping
+
+    def _to_const(self, value: Any) -> Const:
+        """
+        Convert a numeric value into a ``Const`` symbolic expression.
+
+        :param value: Numeric or already-constant value.
+        :return: Constant symbolic expression.
+        """
+        if isinstance(value, Const):
+            return value
+        else:
+            return Const(float(value))
+
+    def _assign_api_obj_param_if_present(
+            self,
+            mdl: Block,
+            key: ParamPowerFlowRefferenceType,
+            value: Any
+    ) -> None:
+        """
+        Assign a mapped model parameter when the mapping key exists.
+
+        Some device models do not expose every optional API mapping entry.
+        This method performs a defensive assignment and keeps the original
+        semantics of silently skipping unavailable parameters.
+
+        :param mdl: Device symbolic block.
+        :param key: Parameter mapping key.
+        :param value: Value to assign.
+        :return: None.
+        """
+        api_obj_mapping: Any = mdl.api_obj_mapping
+
+        if isinstance(api_obj_mapping, dict):
+            target: Any | None = api_obj_mapping.get(key, None)
+
+            if target is not None:
+                mdl.parameters[target] = self._to_const(value)
+            else:
+                pass
+        else:
+            pass
     # ---------------------------------------------------------------------
     # BUILD STRUCTURE
     # ---------------------------------------------------------------------
@@ -490,109 +591,111 @@ class EmtProblemDae(EmtProblemTemplate):
             glob_time: Var
     ) -> None:
         """
-        EMT (abc) assembly: nodal KCL per phase.
-        - Unknowns: bus phase voltages (v_N,v_A,v_B,v_C as available)
-        - Algebraic equations: KCL per bus-phase: sum(i_phase) = 0
+        Build the EMT system structure and collect all algebraic KCL equations.
 
-        :param sys_block: Block with the system DAE
-        :param grid: MultiCircuit
-        :param glob_time: Variable that stores the global time of the simulation
-        :return: None
+        This routine assembles the EMT nodal equations in abc coordinates.
+        The unknowns are the bus phase voltages and the algebraic equations
+        are the KCL balances at each bus-phase.
+
+        The function preserves the original sign conventions:
+        - Branch currents are defined as leaving the bus, therefore they are
+          subtracted from the KCL accumulator.
+        - Injection currents are defined as entering the bus, therefore they are
+          added to the KCL accumulator.
+
+        :param sys_block: Block containing the full system DAE.
+        :param grid: Network model to assemble.
+        :param glob_time: Global simulation time variable.
+        :return: None.
         """
-
         bus_dict: Dict[Any, int] = dict()
-        n_bus: int = len(grid.buses)
 
-        # --- helpers ---
         ph_v_keys: List[VarPowerFlowRefferenceType] = list([
             VarPowerFlowRefferenceType.v_N,
             VarPowerFlowRefferenceType.v_A,
             VarPowerFlowRefferenceType.v_B,
             VarPowerFlowRefferenceType.v_C,
         ])
-
         inj_i_keys: List[VarPowerFlowRefferenceType] = list([
             VarPowerFlowRefferenceType.i_N,
             VarPowerFlowRefferenceType.i_A,
             VarPowerFlowRefferenceType.i_B,
             VarPowerFlowRefferenceType.i_C,
         ])
-
-        # These MUST exist in VarPowerFlowRefferenceType for non-Bergeron branches:
-        # current leaving FROM bus into the branch:
         br_if_keys: List[VarPowerFlowRefferenceType] = list([
             VarPowerFlowRefferenceType.if_N,
             VarPowerFlowRefferenceType.if_A,
             VarPowerFlowRefferenceType.if_B,
             VarPowerFlowRefferenceType.if_C,
         ])
-
-        # current leaving TO bus into the branch:
         br_it_keys: List[VarPowerFlowRefferenceType] = list([
             VarPowerFlowRefferenceType.it_N,
             VarPowerFlowRefferenceType.it_A,
             VarPowerFlowRefferenceType.it_B,
             VarPowerFlowRefferenceType.it_C,
         ])
+        br_vf_keys: List[VarPowerFlowRefferenceType] = list([
+            VarPowerFlowRefferenceType.vf_N,
+            VarPowerFlowRefferenceType.vf_A,
+            VarPowerFlowRefferenceType.vf_B,
+            VarPowerFlowRefferenceType.vf_C,
+        ])
+        br_vt_keys: List[VarPowerFlowRefferenceType] = list([
+            VarPowerFlowRefferenceType.vt_N,
+            VarPowerFlowRefferenceType.vt_A,
+            VarPowerFlowRefferenceType.vt_B,
+            VarPowerFlowRefferenceType.vt_C,
+        ])
 
         c0: Any = grid.emt_var_factory.add_const(0.0)
 
-        # KCL accumulator per bus-phase
         I_kcl: Dict[int, List[Any]] = dict()
-        for i in range(n_bus):
-            if self.grid.buses[i].is_dc:
-                I_kcl[i] = list([c0]) # only one current in DC
-            else:
-                I_kcl[i] = list([c0, c0, c0, c0]) # possibility of NABC currents for AC
-
-        # Bases (for Bergeron constructor)
-        h: float = float(self.options.time_step)
-        Sbase: float = float(grid.Sbase)
-        fbase: float = float(grid.fBase)
-
-        # -------------------------
-        # 0) BUS DICT SETUP
-        # -------------------------
-        # Pre-allocate dictionary mapping to find buses quickly during branch/injection iteration
         for bus_idx, bus in enumerate(grid.buses):
+            if bus.is_dc:
+                I_kcl[bus_idx] = list([c0])
+            else:
+                I_kcl[bus_idx] = list([c0, c0, c0, c0])
+
             bus_dict[bus] = int(bus_idx)
 
-        # Create VSC index mapping for power flow initialization
+        h: float = float(self.options.time_step)
+        sbase: float = float(grid.Sbase)
+        fbase: float = float(grid.fBase)
+
         vsc_idx_dict: Dict[Any, int] = dict()
         for vsc_idx, vsc in enumerate(grid.vsc_devices):
             vsc_idx_dict[vsc] = vsc_idx
 
-        # -------------------------
-        # 1) BRANCHES
-        # -------------------------
-        # Process all branches to extract their currents and map their internal models
         for branch_idx, br in enumerate(grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):
             f: int = bus_dict[br.bus_from]
             t: int = bus_dict[br.bus_to]
-
-            is_bergeron: bool = False
-
-            if br.emt_model.name == EmtLineTypes.Bergeron:
-                is_bergeron = True
-
-
-            # Process device model automatically to unify blocks and apply events
             mdl: Block = self._process_device_model(br, sys_block, grid, glob_time)
 
-            # assign parameters from the static model
-            # self._assign_api_obj_mapping_branch(br=br) # TODO: uncomment when working
+            is_bergeron: bool = False
+            if br.emt_model.name == EmtLineTypes.Bergeron:
+                is_bergeron = True
+            else:
+                pass
 
-            # init vars from PF for both bergeron and other lines.
             if is_bergeron:
-                # Build voltage lists from bus blocks: [vN,vA,vB,vC], missing -> Const(0)
-                v_f_vars: List[Any] = _get_bus_v_list(grid=self.grid, bus_block=br.bus_from.emt_model,
-                                                      ph_v_keys=ph_v_keys)
-                v_t_vars: List[Any] = _get_bus_v_list(grid=self.grid, bus_block=br.bus_to.emt_model,
-                                                      ph_v_keys=ph_v_keys)
+                v_f_vars: List[Any] = _get_bus_v_list(
+                    grid=grid,
+                    bus_block=br.bus_from.emt_model,
+                    ph_v_keys=ph_v_keys
+                )
+                v_t_vars: List[Any] = _get_bus_v_list(
+                    grid=grid,
+                    bus_block=br.bus_to.emt_model,
+                    ph_v_keys=ph_v_keys
+                )
 
-                # Create runtime companion that owns buffers + update_history
-                rt: BergeronHistoryRuntime = BergeronHistoryRuntime(line=br, line_block=mdl, h=h, sbase=Sbase,
-                                                                    fbase=fbase)
+                rt: BergeronHistoryRuntime = BergeronHistoryRuntime(
+                    line=br,
+                    line_block=mdl,
+                    h=h,
+                    sbase=sbase,
+                    fbase=fbase
+                )
                 rt.bind_terminals(v_f_vars, v_t_vars)
 
                 if self.power_flow_results_3ph is not None:
@@ -604,23 +707,26 @@ class EmtProblemDae(EmtProblemTemplate):
                         t_bus_idx=t,
                         sbase=grid.Sbase,
                     )
-                elif self.power_flow_results is not None:
-
-                    if self.options.verbose:
-                        print(f"Initializing bergeron line variables assuming a balanced power flow")
-
-                    self._try_set_bergeron_pf_init_balanced(
-                        mdl=mdl,
-                        rt=rt,
-                        branch_index=branch_idx,
-                        f_bus_idx=f,
-                        t_bus_idx=t,
-                        sbase=grid.Sbase,
-                    )
                 else:
-                    if self.options.verbose:
-                        print(f"No Power Flow results given.")
-                    pass
+                    if self.power_flow_results is not None:
+                        if self.options.verbose:
+                            print("Initializing bergeron line variables assuming a balanced power flow")
+                        else:
+                            pass
+
+                        self._try_set_bergeron_pf_init_balanced(
+                            mdl=mdl,
+                            rt=rt,
+                            branch_index=branch_idx,
+                            f_bus_idx=f,
+                            t_bus_idx=t,
+                            sbase=grid.Sbase,
+                        )
+                    else:
+                        if self.options.verbose:
+                            print("No Power Flow results given.")
+                        else:
+                            pass
 
                 i_f_exprs: List[Any]
                 i_t_exprs: List[Any]
@@ -629,113 +735,80 @@ class EmtProblemDae(EmtProblemTemplate):
                 for ph in range(4):
                     if i_f_exprs[ph] is not None:
                         I_kcl[f][ph] = I_kcl[f][ph] - i_f_exprs[ph]
+                    else:
+                        pass
+
                     if i_t_exprs[ph] is not None:
                         I_kcl[t][ph] = I_kcl[t][ph] - i_t_exprs[ph]
+                    else:
+                        pass
 
                 self.history_models.append(rt)
 
             else:
-                # --- Non-Bergeron branches ---
-                # Add terminal currents into KCL
-                is_dc_from = br.bus_from.is_dc
-                is_dc_to = br.bus_to.is_dc
-                is_vsc = br in vsc_idx_dict
+                is_vsc: bool = br in vsc_idx_dict
+                side_bus_indices: List[int] = list([f, t])
+                side_buses: List[Any] = list([br.bus_from, br.bus_to])
+                side_current_keys: List[List[VarPowerFlowRefferenceType]] = list([br_if_keys, br_it_keys])
 
-                if is_dc_from:
-                    If_expr: Any | None = mdl.E(VarPowerFlowRefferenceType.Idc)
-                    # currents in branches are defined as going out of the bus (sign convention)
-                    if If_expr is not None:
-                        # For DC buses, I_kcl[f] is a list with one element [c0]
-                        I_kcl[f][0] = I_kcl[f][0] - If_expr
-                    else:
-                        pass
+                for side_idx in range(2):
+                    side_bus_idx: int = side_bus_indices[side_idx]
+                    side_bus: Any = side_buses[side_idx]
+                    current_keys: List[VarPowerFlowRefferenceType] = side_current_keys[side_idx]
 
-                else:
-                    for ph in range(4):
-                        if is_vsc:
-                            If_expr: Any | None = mdl.E(inj_i_keys[ph])
+                    if side_bus.is_dc:
+                        side_dc_expr: Any | None = mdl.E(VarPowerFlowRefferenceType.Idc)
+                        if side_dc_expr is not None:
+                            I_kcl[side_bus_idx][0] = I_kcl[side_bus_idx][0] - side_dc_expr
                         else:
-                            If_expr = mdl.E(br_if_keys[ph])
+                            pass
+                    else:
+                        for ph in range(4):
+                            if is_vsc:
+                                side_expr: Any | None = mdl.E(inj_i_keys[ph])
+                            else:
+                                side_expr = mdl.E(current_keys[ph])
 
-                        # currents in branches are defined as going out of the bus (sign convention)
-                        if If_expr is not None:
-                            I_kcl[f][ph] = I_kcl[f][ph] - If_expr
+                            if side_expr is not None:
+                                I_kcl[side_bus_idx][ph] = I_kcl[side_bus_idx][ph] - side_expr
+                            else:
+                                pass
+
+                terminal_buses: List[Any] = list([br.bus_from, br.bus_to])
+                terminal_voltage_keys: List[List[VarPowerFlowRefferenceType]] = list([br_vf_keys, br_vt_keys])
+
+                for term_idx in range(2):
+                    terminal_bus: Any = terminal_buses[term_idx]
+                    terminal_keys: List[VarPowerFlowRefferenceType] = terminal_voltage_keys[term_idx]
+                    external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(br.emt_model)
+
+                    if terminal_bus.is_dc:
+                        v_dc, _, _, _ = get_bus_emt_algebraic_vars(terminal_bus.emt_model)
+
+                        if external_mapping is not None:
+                            mapped_var: Optional[Var] = external_mapping.get(VarPowerFlowRefferenceType.Vdc, None)
+                            if mapped_var is not None:
+                                br.emt_model.update_model(mapped_var, v_dc)
+                            else:
+                                pass
+                        else:
+                            pass
+                    else:
+                        v_n, v_a, v_b, v_c = get_bus_emt_algebraic_vars(terminal_bus.emt_model)
+                        terminal_voltage_vars: List[Any] = list([v_n, v_a, v_b, v_c])
+
+                        if external_mapping is not None:
+                            for ph in range(4):
+                                mapped_var = external_mapping.get(terminal_keys[ph], None)
+                                if mapped_var is not None:
+                                    br.emt_model.update_model(mapped_var, terminal_voltage_vars[ph])
+                                else:
+                                    pass
                         else:
                             pass
 
-                if is_dc_to:
-                    It_expr: Any | None = mdl.E(VarPowerFlowRefferenceType.Idc)
-                    # currents in branches are defined as going out of the bus (sign convention)
-                    if It_expr is not None:
-                        # For DC buses, I_kcl[t] is a list with one element [c0]
-                        I_kcl[t][0] = I_kcl[t][0] - It_expr
-                    else:
-                        pass
+                vsc_index: int = vsc_idx_dict.get(br, -1)
 
-                else:
-                    for ph in range(4):
-                        if is_vsc:
-                            It_expr: Any | None = mdl.E(inj_i_keys[ph])
-                        else:
-                            It_expr = mdl.E(br_it_keys[ph])
-
-                        # currents in branches are defined as going out of the bus (sign convention)
-                        if It_expr is not None:
-                            I_kcl[t][ph] = I_kcl[t][ph] - It_expr
-                        else:
-                            pass
-
-
-                # substitute in_vars with the actual voltage var from the bus
-                # bus from
-                if br.bus_from.is_dc:
-                    Vdc_f, _, _, _ = get_bus_emt_algebraic_vars(br.bus_from.emt_model)
-
-                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc] is not None:
-                        br.emt_model.update_model(
-                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc], Vdc_f)
-
-                else:
-                    V_Nf, V_Af, V_Bf, V_Cf = get_bus_emt_algebraic_vars(br.bus_from.emt_model)
-
-                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.vf_N] is not None:
-                        br.emt_model.update_model(
-                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.vf_N], V_Nf)
-                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.vf_A] is not None:
-                        br.emt_model.update_model(
-                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.vf_A], V_Af)
-                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.vf_B] is not None:
-                        br.emt_model.update_model(
-                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.vf_B], V_Bf)
-                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.vf_C] is not None:
-                        br.emt_model.update_model(
-                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.vf_C], V_Cf)
-
-                # bus to
-                if br.bus_to.is_dc:
-                    Vdc_t, _, _, _ = get_bus_emt_algebraic_vars(br.bus_to.emt_model)
-
-                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc] is not None:
-                        br.emt_model.update_model(
-                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc], Vdc_t)
-                else:
-                    V_Nt, V_At, V_Bt, V_Ct = get_bus_emt_algebraic_vars(br.bus_to.emt_model)
-
-                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.vt_N] is not None:
-                        br.emt_model.update_model(
-                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.vt_N], V_Nt)
-                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.vt_A] is not None:
-                        br.emt_model.update_model(
-                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.vt_A], V_At)
-                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.vt_B] is not None:
-                        br.emt_model.update_model(
-                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.vt_B], V_Bt)
-                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.vt_C] is not None:
-                        br.emt_model.update_model(
-                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.vt_C], V_Ct)
-
-                # PF init for branch internal variables (and if/it)
-                vsc_index = vsc_idx_dict.get(br, -1)
                 if self.power_flow_results_3ph is not None:
                     self._try_set_branch_pf_init(
                         mdl=mdl,
@@ -746,152 +819,157 @@ class EmtProblemDae(EmtProblemTemplate):
                         is_vsc=is_vsc,
                         vsc_index=vsc_index
                     )
-                elif self.power_flow_results is not None:
-                    if self.options.verbose:
-                        print(f"Initializing branch variables assuming a balanced power flow")
-
-                    self._try_set_branch_pf_init_balanced(
-                        mdl=mdl,
-                        branch_index=branch_idx,
-                        f_bus_idx=f,
-                        t_bus_idx=t,
-                        sbase=grid.Sbase,
-                        is_vsc=is_vsc,
-                        vsc_index=vsc_index)
                 else:
-                    if self.options.verbose:
-                        print(f"No Power Flow results given.")
-                    pass
+                    if self.power_flow_results is not None:
+                        if self.options.verbose:
+                            print("Initializing branch variables assuming a balanced power flow")
+                        else:
+                            pass
 
+                        self._try_set_branch_pf_init_balanced(
+                            mdl=mdl,
+                            branch_index=branch_idx,
+                            f_bus_idx=f,
+                            t_bus_idx=t,
+                            sbase=grid.Sbase,
+                            is_vsc=is_vsc,
+                            vsc_index=vsc_index
+                        )
+                    else:
+                        if self.options.verbose:
+                            print("No Power Flow results given.")
+                        else:
+                            pass
 
-        # -------------------------
-        # 2) INJECTIONS
-        # -------------------------
-        # Process all injection devices to add their currents into the KCL accumulators
         for inj in grid.get_injection_devices_iter():
             mdl: Block = self._process_device_model(inj, sys_block, grid, glob_time)
             b: int = bus_dict[inj.bus]
 
             if inj.device_type == DeviceType.LoadDevice:
                 self._assign_api_obj_mapping_load(inj)
-            elif inj.device_type == DeviceType.GeneratorDevice:
-                self._assign_api_obj_mapping_generator(inj)
-
-            if inj.bus.is_dc:
-                i_expr: Any | None = mdl.E(VarPowerFlowRefferenceType.Idc)
-                if i_expr is not None:
-                    # currents in injections are defined as entering the bus (sign convention)
-                    I_kcl[b][0] = I_kcl[b][0] + i_expr
+            else:
+                if inj.device_type == DeviceType.GeneratorDevice:
+                    self._assign_api_obj_mapping_generator(inj)
                 else:
                     pass
 
+            if inj.bus.is_dc:
+                i_dc_expr: Any | None = mdl.E(VarPowerFlowRefferenceType.Idc)
+                if i_dc_expr is not None:
+                    I_kcl[b][0] = I_kcl[b][0] + i_dc_expr
+                else:
+                    pass
             else:
                 for ph in range(4):
                     i_expr: Any | None = mdl.E(inj_i_keys[ph])
                     if i_expr is not None:
-                        # currents in injections are defined as entering the bus (sign convention)
                         I_kcl[b][ph] = I_kcl[b][ph] + i_expr
                     else:
                         pass
 
-            # substitute in_vars with the actual voltage var from the bus
+            inj_external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(inj.emt_model)
+
             if inj.bus.is_dc:
-                Vdc, _, _, _ = get_bus_emt_algebraic_vars(inj.bus.emt_model)
+                v_dc, _, _, _ = get_bus_emt_algebraic_vars(inj.bus.emt_model)
 
-                if inj.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc] is not None:
-                    inj.emt_model.update_model(
-                        inj.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc], Vdc)
-
+                if inj_external_mapping is not None:
+                    mapped_var = inj_external_mapping.get(VarPowerFlowRefferenceType.Vdc, None)
+                    if mapped_var is not None:
+                        inj.emt_model.update_model(mapped_var, v_dc)
+                    else:
+                        pass
+                else:
+                    pass
             else:
-                V_N, V_A, V_B, V_C = get_bus_emt_algebraic_vars(inj.bus.emt_model)
+                v_n, v_a, v_b, v_c = get_bus_emt_algebraic_vars(inj.bus.emt_model)
+                inj_bus_voltage_vars: List[Any] = list([v_n, v_a, v_b, v_c])
 
-                if inj.emt_model.external_mapping[VarPowerFlowRefferenceType.v_N] is not None:
-                    inj.emt_model.update_model(
-                        inj.emt_model.external_mapping[VarPowerFlowRefferenceType.v_N], V_N)
-                if inj.emt_model.external_mapping[VarPowerFlowRefferenceType.v_A] is not None:
-                    inj.emt_model.update_model(
-                        inj.emt_model.external_mapping[VarPowerFlowRefferenceType.v_A], V_A)
-                if inj.emt_model.external_mapping[VarPowerFlowRefferenceType.v_B] is not None:
-                    inj.emt_model.update_model(
-                        inj.emt_model.external_mapping[VarPowerFlowRefferenceType.v_B], V_B)
-                if inj.emt_model.external_mapping[VarPowerFlowRefferenceType.v_C] is not None:
-                    inj.emt_model.update_model(
-                        inj.emt_model.external_mapping[VarPowerFlowRefferenceType.v_C], V_C)
-
+                if inj_external_mapping is not None:
+                    for ph in range(4):
+                        mapped_var = inj_external_mapping.get(ph_v_keys[ph], None)
+                        if mapped_var is not None:
+                            inj.emt_model.update_model(mapped_var, inj_bus_voltage_vars[ph])
+                        else:
+                            pass
+                else:
+                    pass
 
             if self.power_flow_results_3ph is not None:
                 self._try_set_inj_pf_init(
-                    inj = inj,
-                    mdl=mdl,
-                    bus_index=b,
-                    sbase=grid.Sbase,
-                )
-            elif self.power_flow_results is not None:
-                if self.options.verbose:
-                    print(f"Initializing injection variables assuming a balanced power flow")
-
-                self._try_set_inj_pf_init_balanced(
                     inj=inj,
                     mdl=mdl,
                     bus_index=b,
                     sbase=grid.Sbase,
                 )
             else:
-                if self.options.verbose:
-                    print(f"No Power Flow results given.")
-                pass
+                if self.power_flow_results is not None:
+                    if self.options.verbose:
+                        print("Initializing injection variables assuming a balanced power flow")
+                    else:
+                        pass
 
-        # -------------------------
-        # 3) BUSES
-        # -------------------------
-        # Process the bus blocks themselves to prepare their models
+                    self._try_set_inj_pf_init_balanced(
+                        inj=inj,
+                        mdl=mdl,
+                        bus_index=b,
+                        sbase=grid.Sbase,
+                    )
+                else:
+                    if self.options.verbose:
+                        print("No Power Flow results given.")
+                    else:
+                        pass
+
         for bus_idx, bus in enumerate(grid.buses):
             mdl: Block = self._process_device_model(bus, sys_block, grid, glob_time)
 
             if self.power_flow_results_3ph is not None:
-                self._try_set_bus_pf_init(bus=bus,
-                                          mdl=mdl,
-                                          bus_index=bus_idx)
-
-            elif self.power_flow_results is not None:
-                if self.options.verbose:
-                    print(f"Initializing bus variables assuming a balanced power flow")
-
-                self._try_set_bus_pf_init_balanced(bus=bus,
-                                                   mdl=mdl,
-                                                   bus_index=bus_idx)
+                self._try_set_bus_pf_init(
+                    bus=bus,
+                    mdl=mdl,
+                    bus_index=bus_idx
+                )
             else:
-                if self.options.verbose:
-                    print(f"No Power Flow results given.")
-                pass
+                if self.power_flow_results is not None:
+                    if self.options.verbose:
+                        print("Initializing bus variables assuming a balanced power flow")
+                    else:
+                        pass
 
+                    self._try_set_bus_pf_init_balanced(
+                        bus=bus,
+                        mdl=mdl,
+                        bus_index=bus_idx
+                    )
+                else:
+                    if self.options.verbose:
+                        print("No Power Flow results given.")
+                    else:
+                        pass
 
-        # -------------------------
-        # 4) FINAL: stamp KCL equations into each bus model (per existing phase)
-        # -------------------------
-        # The accumulated KCL for each phase is assigned as the algebraic equation for the respective bus voltage
         for bus_idx, bus in enumerate(grid.buses):
             mdl: Block = bus.emt_model
-
-            # EMT: bus equations must be KCL per existing phase.
             mdl.algebraic_eqs = list()
 
             if bus.is_dc:
-                # DC bus: only one equation for Vdc
                 v_dc_expr: Any | None = mdl.E(VarPowerFlowRefferenceType.Vdc)
                 if v_dc_expr is not None:
                     mdl.algebraic_eqs.append(I_kcl[bus_idx][0])
+                else:
+                    pass
             else:
-                # AC bus: KCL per phase
-                for ph_i, v_key in enumerate(ph_v_keys):
+                for ph_idx, v_key in enumerate(ph_v_keys):
                     v_expr: Any | None = mdl.E(v_key)
                     if v_expr is not None:
-                        mdl.algebraic_eqs.append(I_kcl[bus_idx][ph_i])
+                        mdl.algebraic_eqs.append(I_kcl[bus_idx][ph_idx])
                     else:
                         pass
 
             if len(mdl.algebraic_eqs) == 0:
-                self.logger.add_error("Bus has no phases (no voltage vars)", value=str(bus_idx))
+                self.logger.add_error(
+                    "Bus has no phases (no voltage vars)",
+                    value=str(bus_idx)
+                )
             else:
                 pass
 
@@ -1534,7 +1612,7 @@ class EmtProblemDae(EmtProblemTemplate):
             )
             st_total = pf_results.St_vsc[vsc_index] / sbase
 
-            voltage_dict: Dict[str, CxVec] = {
+            voltage_dict: Dict[str, complex] = {
                 "N": 0.0 + 0.0j,
                 "A": 0.0 + 0.0j,
                 "B": 0.0 + 0.0j,
@@ -2628,7 +2706,7 @@ class EmtProblemDae(EmtProblemTemplate):
         m = len(idx_global)
 
         for enum_key, ph_val in ph_mappings:
-            br.emt_model.parameters[br.emt_model.api_obj_mapping[enum_key]] = Const(ph_val)
+            self._assign_api_obj_param_if_present(br.emt_model, enum_key, Const(ph_val))
 
         # -----------------------------
         # 2. Compute continuous parameters in PU
@@ -2712,74 +2790,84 @@ class EmtProblemDae(EmtProblemTemplate):
         # Initialize all 16 vars at zero to after assign nonzero values to active phases
         for i in range(4):
             for j in range(4):
-                br.emt_model.parameters[br.emt_model.api_obj_mapping[r_enums[i][j]]] = Const(0.0)
-                br.emt_model.parameters[br.emt_model.api_obj_mapping[linv_enums[i][j]]] = Const(0.0)
-                br.emt_model.parameters[br.emt_model.api_obj_mapping[c_enums[i][j]]] = Const(0.0)
+                self._assign_api_obj_param_if_present(br.emt_model, r_enums[i][j], 0.0)
+                self._assign_api_obj_param_if_present(br.emt_model, linv_enums[i][j], 0.0)
+                self._assign_api_obj_param_if_present(br.emt_model, c_enums[i][j], 0.0)
 
         # 'i_red' i 'j_red' from 0 to m-1 (physical matrix inidices R_full, L_inv, etc.)
         # 'i_glob' i 'j_glob' from 0 to 3 (global indices associated to enums)
         for i_red, i_glob in enumerate(idx_global):
             for j_red, j_glob in enumerate(idx_global):
-                br.emt_model.parameters[br.emt_model.api_obj_mapping[r_enums[i_glob][j_glob]]] = Const(
-                    float(R_full[i_red, j_red]))
-                br.emt_model.parameters[br.emt_model.api_obj_mapping[linv_enums[i_glob][j_glob]]] = Const(
-                    float(L_inv[i_red, j_red]))
-                br.emt_model.parameters[br.emt_model.api_obj_mapping[c_enums[i_glob][j_glob]]] = Const(
-                    float(C_full[i_red, j_red]))
+                self._assign_api_obj_param_if_present(
+                    br.emt_model,
+                    r_enums[i_glob][j_glob],
+                    float(R_full[i_red, j_red])
+                )
+                self._assign_api_obj_param_if_present(
+                    br.emt_model,
+                    linv_enums[i_glob][j_glob],
+                    float(L_inv[i_red, j_red])
+                )
+                self._assign_api_obj_param_if_present(
+                    br.emt_model,
+                    c_enums[i_glob][j_glob],
+                    float(C_full[i_red, j_red])
+                )
 
-    def _assign_api_obj_mapping_load(self, load):
+    def _assign_api_obj_mapping_load(self, load) -> None:
+        """
+        Assign PF-derived static load parameters into the EMT model API mapping.
 
-        # -----------------------------
-        # 2. Compute continuous parameters in PU
-        # -----------------------------
-        fbase = self.grid.fBase
-        sbase = self.grid.Sbase
+        :param load: Load device.
+        :return: None.
+        """
+        fbase: float = self.grid.fBase
+        sbase: float = self.grid.Sbase
+        w0: float = 2.0 * np.pi * fbase
 
-        w0 = 2.0 * np.pi * fbase
-
-        PA0 = load.Pa / sbase # p.u.
-        QA0 = load.Qa / sbase # p.u.
-        PB0 = load.Pb / sbase # p.u.
-        QB0 = load.Qb / sbase # p.u.
-        PC0 = load.Pc / sbase # p.u.
-        QC0 = load.Qc / sbase # p.u.
+        p_values: List[float] = list([
+            load.Pa / sbase,
+            load.Pb / sbase,
+            load.Pc / sbase,
+        ])
+        q_values: List[float] = list([
+            load.Qa / sbase,
+            load.Qb / sbase,
+            load.Qc / sbase,
+        ])
+        p_keys: List[ParamPowerFlowRefferenceType] = list([
+            ParamPowerFlowRefferenceType.Pl0_A,
+            ParamPowerFlowRefferenceType.Pl0_B,
+            ParamPowerFlowRefferenceType.Pl0_C,
+        ])
+        q_keys: List[ParamPowerFlowRefferenceType] = list([
+            ParamPowerFlowRefferenceType.Ql0_A,
+            ParamPowerFlowRefferenceType.Ql0_B,
+            ParamPowerFlowRefferenceType.Ql0_C,
+        ])
 
         if not load.bus.is_dc:
+            for idx in range(3):
+                self._assign_api_obj_param_if_present(load.emt_model, p_keys[idx], p_values[idx])
+                self._assign_api_obj_param_if_present(load.emt_model, q_keys[idx], q_values[idx])
 
-            if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_A] is not None:
-                load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_A]] = Const(PA0)
-            if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_B] is not None:
-                load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_B]] = Const(PB0)
-            if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_C] is not None:
-                load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Pl0_C]] = Const(PC0)
-            if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_A] is not None:
-                load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_A]] = Const(QA0)
-            if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_B] is not None:
-                load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_B]] = Const(QB0)
-            if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_C] is not None:
-                load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.Ql0_C]] = Const(QC0)
-
-            if load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base] is not None:
-                load.emt_model.parameters[load.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base]] = Const(w0)
-
+            self._assign_api_obj_param_if_present(load.emt_model, ParamPowerFlowRefferenceType.omega_base, w0)
         else:
             pass
 
-    def _assign_api_obj_mapping_generator(self, gen):
+    def _assign_api_obj_mapping_generator(self, gen) -> None:
+        """
+        Assign PF-derived static generator parameters into the EMT model API mapping.
 
-        # -----------------------------
-        # 2. Compute continuous parameters in PU
-        # -----------------------------
-        fbase = self.grid.fBase
-        w0 = 2.0 * np.pi * fbase
+        :param gen: Generator device.
+        :return: None.
+        """
+        fbase: float = self.grid.fBase
+        w0: float = 2.0 * np.pi * fbase
 
-        if gen.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base] is not None:
-            gen.emt_model.parameters[gen.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base]] = Const(w0)
-        if gen.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.R1] is not None:
-            gen.emt_model.parameters[gen.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.R1]] = Const(gen.R1)
-        if gen.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.X1] is not None:
-            gen.emt_model.parameters[gen.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.X1]] = Const(gen.X1)
-        if gen.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.X0] is not None:
-            gen.emt_model.parameters[gen.emt_model.api_obj_mapping[ParamPowerFlowRefferenceType.X0]] = Const(gen.X0)
+        self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.omega_base, w0)
+        self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.R1, gen.R1)
+        self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.X1, gen.X1)
+        self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.X0, gen.X0)
 
 

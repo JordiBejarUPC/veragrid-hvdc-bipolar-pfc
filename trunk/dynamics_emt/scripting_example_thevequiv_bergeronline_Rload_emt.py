@@ -40,6 +40,7 @@ from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbol
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
+from VeraGridEngine.Templates.templates_common_functions import set_emt_model
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
@@ -124,33 +125,43 @@ for bus in grid.buses:
 gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.emt_var_factory).block
 
 # line
-line_mdl = get_bergeron_line_emt_template(grid = grid, line = line0).block
+line_mdl = get_bergeron_line_emt_template(vf = grid.emt_var_factory, line = line0).block
 
 # load
 load_mdl = get_shunt_r_3ph_emt_template(vf = grid.emt_var_factory).block
 
-# connection with buses
-gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
-gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # v_B
-gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # v_C
+######################################################################################################
+# Add models to devices
+######################################################################################################
 
+set_emt_model(device=gen0, model=gen_mdl, var_factory= grid.emt_var_factory)
 
-# u_gov = find_name_in_block("u_gov1", gov1_mdl)
+set_emt_model(device=line0, model=line_mdl, var_factory= grid.emt_var_factory)
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]]) # v_A
-load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]]) # v_B
-load_mdl.connect([load_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]]) # v_C
-
-# external mapping
-big_gen1 = Block(children=[gen_mdl])
-
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: gen_mdl.out_vars[0]})
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: gen_mdl.out_vars[1]})
-
-# attach emt models to Veragrid objects
-line0.emt_model= line_mdl
-load.emt_model= load_mdl
-gen0.emt_model= big_gen1
+set_emt_model(device=load, model=load_mdl, var_factory= grid.emt_var_factory)
+#
+# # connection with buses
+# gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
+# gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # v_B
+# gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # v_C
+#
+#
+# # u_gov = find_name_in_block("u_gov1", gov1_mdl)
+#
+# load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]]) # v_A
+# load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]]) # v_B
+# load_mdl.connect([load_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]]) # v_C
+#
+# # external mapping
+# big_gen1 = Block(children=[gen_mdl])
+#
+# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: gen_mdl.out_vars[0]})
+# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: gen_mdl.out_vars[1]})
+#
+# # attach emt models to Veragrid objects
+# line0.emt_model= line_mdl
+# load.emt_model= load_mdl
+# gen0.emt_model= big_gen1
 
 # gce.save_file(grid=grid, filename="grid_save_event.veragrid")
 
