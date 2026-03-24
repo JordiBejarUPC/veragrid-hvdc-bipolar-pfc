@@ -8,7 +8,7 @@ from PySide6 import QtWidgets
 from VeraGrid.Gui.Main.SubClasses.Model.time_events import TimeEventsMain
 from VeraGrid.Gui.scenario_tree_model import ScenarioTreeModel
 from VeraGrid.Gui import gui_functions as gf
-from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
+from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.multiverse import MultiVerse, ScenarioNode
 
@@ -205,7 +205,7 @@ class ScenariosMain(TimeEventsMain):
                 function_ptr=self.rename_scenario
             )
 
-            # Set as current scenario - only available if a node is selected
+            # Set as the current scenario - only available if a node is selected
             gf.add_menu_entry(
                 menu=context_menu,
                 text="Set as current scenario",
@@ -224,7 +224,7 @@ class ScenariosMain(TimeEventsMain):
                 function_ptr=self.remove_scenario
             )
 
-            # Convert global position to local position of the tree view
+            # Convert the global position to the local position of the tree view
             mapped_pos: QPoint = self.ui.multiverseTreeView.viewport().mapToGlobal(pos)
             context_menu.exec(mapped_pos)
         else:
