@@ -33,7 +33,7 @@ from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHist
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt, run_emt_native_initialization
-from trunk.veragrid_fmu_import import finalize_emt_fmu_cs_devices, finalize_emt_fmu_me_devices, queue_emt_fmu_cs_device, queue_emt_fmu_me_device #TODO: importing from trunk!
+# from trunk.veragrid_fmu_import import finalize_emt_fmu_cs_devices, finalize_emt_fmu_me_devices, queue_emt_fmu_cs_device, queue_emt_fmu_me_device #TODO: importing from trunk!
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     EmtBoundaryUpdateProtocol,
@@ -469,8 +469,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         self._register_runtime_event_parameters(dev=dev, mdl=mdl)
         self._add_model_to_system_mappings(dev, mdl)
-        queue_emt_fmu_cs_device(self, dev, mdl)
-        queue_emt_fmu_me_device(self, dev, mdl)
+        # queue_emt_fmu_cs_device(self, dev, mdl) #TODO: fix when fmu import in this branch
+        # queue_emt_fmu_me_device(self, dev, mdl)
         sys_block.add(mdl)
 
         # register init_eqs blocks
