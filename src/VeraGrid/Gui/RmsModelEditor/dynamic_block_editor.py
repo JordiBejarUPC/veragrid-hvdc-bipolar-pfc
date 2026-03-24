@@ -569,44 +569,242 @@ class ConnectionItem(QGraphicsPathItem):
     Orthogonal graphical connection between two ports.
     """
 
-    def __init__(self, source_port: PortItem, target_port: PortItem):
+    def __init__(self, source_port: PortItem, target_port: PortItem,
+                 diagram=None, con_uid=None, elbow_points=None, uid=None):
         """
         Build the connection item.
 
         :param source_port:
         :param target_port:
+        :param diagram: BlockDiagram reference to update on elbow change
+        :param con_uid: Connection uid in the diagram
+        :param elbow_points: Custom elbow points (list of QPointF)
+        :param uid: Optional specific uid to use
         """
         super().__init__()
-        self.uid: int = _new_uid()
+        self.uid: int = uid if uid is not None else _new_uid()
         self.setZValue(-1)
         self.source_port: PortItem = source_port
         self.target_port: PortItem = target_port
+        self.diagram = diagram
+        self.con_uid = con_uid if con_uid is not None else self.uid
+        self.custom_elbow_points: List[QPointF] = []
+        self._dragging: bool = False
+        self._drag_type: str = None  # 'horizontal' or 'vertical'
+        self._drag_segment_idx: int = -1
+        self._original_elbows: List[QPointF] = []
+
+        if elbow_points:
+            self.custom_elbow_points = [QPointF(x, y) for x, y in elbow_points]
+
         if self.source_port.connections is None:
             self.source_port.connections = list()
-        else:
-            pass
         self.source_port.connections.append(self)
 
         if self.target_port.connections is None:
             self.target_port.connections = list()
-        else:
-            pass
         self.target_port.connections.append(self)
+
         self.setPen(QPen(WIRE_COLOR, 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         self.setAcceptHoverEvents(True)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
 
         self.update_path()
 
     def update_path(self) -> None:
         """
         Recompute the orthogonal path from current port positions.
+        Uses custom elbow points if available, otherwise builds default path.
 
         :return:
         """
         start: QPointF = self.source_port.scenePos()
         end: QPointF = self.target_port.scenePos()
-        path: QPainterPath = build_orthogonal_connection_path(start, end)
+
+        if self.custom_elbow_points:
+            path: QPainterPath = self._build_path_with_elbows(start, end, self.custom_elbow_points)
+        else:
+            path = build_orthogonal_connection_path(start, end)
         self.setPath(path)
+
+    def _build_path_with_elbows(self, start: QPointF, end: QPointF, elbows: List[QPointF]) -> QPainterPath:
+        """
+        Build a path through the given elbow points.
+
+        :param start:
+        :param end:
+        :param elbows:
+        :return:
+        """
+        path: QPainterPath = QPainterPath(start)
+        for elbow in elbows:
+            path.lineTo(elbow)
+        path.lineTo(end)
+        return path
+
+    def _get_path_points(self) -> List[QPointF]:
+        """
+        Get all points that define the path (start, elbows, end).
+
+        :return: List of QPointF
+        """
+        start: QPointF = self.source_port.scenePos()
+        end: QPointF = self.target_port.scenePos()
+
+        if self.custom_elbow_points:
+            points = [start] + list(self.custom_elbow_points) + [end]
+        else:
+            points = self._get_default_elbows(start, end)
+        return points
+
+    def _get_default_elbows(self, start: QPointF, end: QPointF) -> List[QPointF]:
+        """
+        Get default elbow points for the path.
+
+        :param start:
+        :param end:
+        :return:
+        """
+        delta_x: float = end.x() - start.x()
+        offset: float = min(WIRE_ELBOW_OFFSET, abs(delta_x) / 2.0) if delta_x != 0 else WIRE_ELBOW_OFFSET
+        start_elbow_x: float = start.x() + offset
+        end_elbow_x: float = end.x() - offset
+
+        if end.x() >= start.x():
+            mid1 = QPointF(start_elbow_x, start.y())
+            mid2 = QPointF(start_elbow_x, end.y())
+        else:
+            middle_x: float = start.x() + max(WIRE_ELBOW_OFFSET, abs(delta_x) / 2.0)
+            mid1 = QPointF(middle_x, start.y())
+            mid2 = QPointF(middle_x, end.y())
+
+        return [start, mid1, mid2, end]
+
+    def _find_segment_at_point(self, pos: QPointF) -> tuple[int, str, QPointF, QPointF] | None:
+        """
+        Find which segment contains the given point.
+
+        :param pos: Point to check
+        :return: (segment_index, segment_direction, segment_start, segment_end) or None
+        """
+        points = self._get_path_points()
+        threshold = 15.0
+
+        for i in range(len(points) - 1):
+            p1 = points[i]
+            p2 = points[i + 1]
+
+            if abs(p1.y() - p2.y()) < 1:
+                min_x, max_x = min(p1.x(), p2.x()), max(p1.x(), p2.x())
+                if min_x - threshold <= pos.x() <= max_x + threshold and abs(pos.y() - p1.y()) <= threshold:
+                    return (i, 'horizontal', p1, p2)
+            elif abs(p1.x() - p2.x()) < 1:
+                min_y, max_y = min(p1.y(), p2.y()), max(p1.y(), p2.y())
+                if min_y - threshold <= pos.y() <= max_y + threshold and abs(pos.x() - p1.x()) <= threshold:
+                    return (i, 'vertical', p1, p2)
+
+        return None
+
+    def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """
+        Handle mouse press to start dragging a segment.
+
+        :param event:
+        :return:
+        """
+        pos = event.scenePos()
+        segment_info = self._find_segment_at_point(pos)
+
+        if segment_info is not None:
+            self._drag_segment_idx, self._drag_type, p1, p2 = segment_info
+
+            if not self.custom_elbow_points:
+                self.custom_elbow_points = [QPointF(p) for p in self._get_default_elbows(
+                    self.source_port.scenePos(), self.target_port.scenePos()
+                )][1:-1]
+
+            elbow_idx = self._drag_segment_idx - 1
+            if elbow_idx < 0 or elbow_idx >= len(self.custom_elbow_points):
+                super().mousePressEvent(event)
+                return
+
+            self._dragging = True
+            self._original_elbows = [QPointF(p) for p in self.custom_elbow_points]
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """
+        Handle mouse move to drag a segment.
+
+        :param event:
+        :return:
+        """
+        if self._dragging:
+            pos = event.scenePos()
+            elbow_idx = self._drag_segment_idx - 1
+
+            if self._drag_type == 'horizontal':
+                new_y = pos.y()
+                self.custom_elbow_points[elbow_idx] = QPointF(
+                    self.custom_elbow_points[elbow_idx].x(), new_y
+                )
+                if elbow_idx + 1 < len(self.custom_elbow_points):
+                    self.custom_elbow_points[elbow_idx + 1] = QPointF(
+                        self.custom_elbow_points[elbow_idx + 1].x(), new_y
+                    )
+            else:
+                new_x = pos.x()
+                self.custom_elbow_points[elbow_idx] = QPointF(
+                    new_x, self.custom_elbow_points[elbow_idx].y()
+                )
+                if elbow_idx + 1 < len(self.custom_elbow_points):
+                    self.custom_elbow_points[elbow_idx + 1] = QPointF(
+                        new_x, self.custom_elbow_points[elbow_idx + 1].y()
+                    )
+
+            self.update_path()
+            self._update_diagram()
+            event.accept()
+        else:
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """
+        Handle mouse release to stop dragging.
+
+        :param event:
+        :return:
+        """
+        self._dragging = False
+        self._drag_segment_idx = -1
+        self._drag_type = None
+        self._original_elbows = []
+        super().mouseReleaseEvent(event)
+
+    def _update_diagram(self) -> None:
+        """
+        Update the diagram's connection data with new elbow points.
+
+        :return:
+        """
+        if self.diagram is not None and self.con_uid is not None:
+            if self.con_uid in self.diagram.con_data:
+                self.diagram.con_data[self.con_uid].elbow_points = [
+                    (p.x(), p.y()) for p in self.custom_elbow_points
+                ]
+
+    def set_elbow_points(self, elbows: List[QPointF]) -> None:
+        """
+        Set custom elbow points and update the path.
+
+        :param elbows:
+        :return:
+        """
+        self.custom_elbow_points = [QPointF(x, y) for x, y in elbows]
+        self.update_path()
 
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         """
@@ -634,98 +832,98 @@ class ConnectionItem(QGraphicsPathItem):
         pen.setWidthF(2.5)
         self.setPen(pen)
 
-class ParametersTableModel(QAbstractTableModel):
-    """
-    Table model to display event parameters (editable) and fixed parameters (read-only).
-    """
-
-    dataChangedSignal = Signal(dict)  # emit updated event_dict
-
-    def __init__(self, var_factory, block: Block):
-        super().__init__()
-
-        self.var_factory = var_factory
-
-
-        # Store two lists of tuples (var, expr)
-        self.event_params = list(block.event_dict.items())      # editable
-        self.fixed_params = list(block.parameters.items()) # read-only
-
-        # Combine for easy row indexing
-        self.all_params = self.event_params + self.fixed_params
-
-    def rowCount(self, parent=QModelIndex()) -> int:
-        return len(self.all_params)
-
-    def columnCount(self, parent=QModelIndex()) -> int:
-        return 2  # Parameter name, Value
-
-    def data(self, index: QModelIndex, role=Qt.ItemDataRole.DisplayRole):
-        if not index.isValid():
-            return None
-
-        var, expr = self.all_params[index.row()]
-
-        if role in (Qt.DisplayRole, Qt.EditRole):
-            if index.column() == 0:  # Parameter name
-                return var.name
-            elif index.column() == 1:  # Value
-                if hasattr(expr, "value"):
-                    return str(expr.value)
-                return str(expr)
-
-        # Optional: different background for fixed params
-        if role == Qt.BackgroundRole and index.row() >= len(self.event_params):
-            return QColor("#f0f0f0")  # gray for read-only
-
-        return None
-
-    def headerData(self, section, orientation, role=Qt.DisplayRole):
-        if role != Qt.DisplayRole:
-            return None
-        if orientation == Qt.Horizontal:
-            return ["Parameter", "Value"][section]
-        return str(section + 1)
-
-    def flags(self, index: QModelIndex):
-        if not index.isValid():
-            return Qt.ItemFlag.ItemIsEnabled
-
-        flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
-
-        # Only editable if it's an event parameter and the Value column
-        if index.row() < len(self.event_params) and index.column() == 1:
-            flags |= Qt.ItemFlag.ItemIsEditable
-
-        return flags
-
-    def setData(self, index: QModelIndex, value, role=Qt.EditRole):
-        if (
-            not index.isValid()
-            or role != Qt.EditRole
-            or index.column() != 1
-            or index.row() >= len(self.event_params)
-        ):
-            return False
-
-        var, expr = self.event_params[index.row()]
-
-        try:
-            value_float = float(value)
-        except ValueError:
-            value_float = value
-
-        # Update the event_dict copy
-        self.event_params[index.row()] = (var, self.var_factory.add_const(value=value_float, name=var.name))
-
-        # Also update the combined list
-        self.all_params[index.row()] = self.event_params[index.row()]
-
-        self.dataChanged.emit(index, index, [Qt.DisplayRole, Qt.EditRole])
-        self.dataChangedSignal.emit(dict(self.event_params))  # emit updated event_dict
-        return True
+# class ParametersTableModel(QAbstractTableModel):
+#     """
+#     Table model to display event parameters (editable) and fixed parameters (read-only).
+#     """
 #
-
+#     dataChangedSignal = Signal(dict)  # emit updated event_dict
+#
+#     def __init__(self, var_factory, block: Block):
+#         super().__init__()
+#
+#         self.var_factory = var_factory
+#
+#
+#         # Store two lists of tuples (var, expr)
+#         self.event_params = list(block.event_dict.items())      # editable
+#         self.fixed_params = list(block.parameters.items()) # read-only
+#
+#         # Combine for easy row indexing
+#         self.all_params = self.event_params + self.fixed_params
+#
+#     def rowCount(self, parent=QModelIndex()) -> int:
+#         return len(self.all_params)
+#
+#     def columnCount(self, parent=QModelIndex()) -> int:
+#         return 2  # Parameter name, Value
+#
+#     def data(self, index: QModelIndex, role=Qt.ItemDataRole.DisplayRole):
+#         if not index.isValid():
+#             return None
+#
+#         var, expr = self.all_params[index.row()]
+#
+#         if role in (Qt.DisplayRole, Qt.EditRole):
+#             if index.column() == 0:  # Parameter name
+#                 return var.name
+#             elif index.column() == 1:  # Value
+#                 if hasattr(expr, "value"):
+#                     return str(expr.value)
+#                 return str(expr)
+#
+#         # Optional: different background for fixed params
+#         if role == Qt.BackgroundRole and index.row() >= len(self.event_params):
+#             return QColor("#f0f0f0")  # gray for read-only
+#
+#         return None
+#
+#     def headerData(self, section, orientation, role=Qt.DisplayRole):
+#         if role != Qt.DisplayRole:
+#             return None
+#         if orientation == Qt.Horizontal:
+#             return ["Parameter", "Value"][section]
+#         return str(section + 1)
+#
+#     def flags(self, index: QModelIndex):
+#         if not index.isValid():
+#             return Qt.ItemFlag.ItemIsEnabled
+#
+#         flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
+#
+#         # Only editable if it's an event parameter and the Value column
+#         if index.row() < len(self.event_params) and index.column() == 1:
+#             flags |= Qt.ItemFlag.ItemIsEditable
+#
+#         return flags
+#
+#     def setData(self, index: QModelIndex, value, role=Qt.EditRole):
+#         if (
+#             not index.isValid()
+#             or role != Qt.EditRole
+#             or index.column() != 1
+#             or index.row() >= len(self.event_params)
+#         ):
+#             return False
+#
+#         var, expr = self.event_params[index.row()]
+#
+#         try:
+#             value_float = float(value)
+#         except ValueError:
+#             value_float = value
+#
+#         # Update the event_dict copy
+#         self.event_params[index.row()] = (var, self.var_factory.add_const(value=value_float, name=var.name))
+#
+#         # Also update the combined list
+#         self.all_params[index.row()] = self.event_params[index.row()]
+#
+#         self.dataChanged.emit(index, index, [Qt.DisplayRole, Qt.EditRole])
+#         self.dataChangedSignal.emit(dict(self.event_params))  # emit updated event_dict
+#         return True
+# #
+#
 
 # class ParamTreeItem:
 #     """
@@ -1812,6 +2010,8 @@ class BlockParametersTableModel(QtCore.QAbstractTableModel):
                 font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
                 font.setBold(True)
                 return font
+            elif role == QtCore.Qt.ItemDataRole.ForegroundRole and row_data.is_section:
+                return QColor("#333333")
             else:
                 return None
         else:
@@ -2847,7 +3047,10 @@ class DiagramScene(QGraphicsScene):
         target_block: BlockItem = target_port.subsystem
 
         if source_block.subsys is not None and target_block.subsys is not None:
-            connection: ConnectionItem = ConnectionItem(source_port, target_port)
+            connection: ConnectionItem = ConnectionItem(
+                source_port, target_port,
+                diagram=self.editor.diagram
+            )
             dst_var: Var = source_block.subsys.out_vars[source_port.index]
             target_input_var: Var = target_block.subsys.in_vars[target_port.index]
             # key: VarPowerFlowRefferenceType
@@ -3160,10 +3363,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.ui.doItButton.clicked.connect(self.apply_changes)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
-        # if not self.main_block.diagram.node_data and self.main_editor:
-        #     self.add_connection_vars()
-        #     self.add_external_mapping_block()
-        #     self.add_api_obj_mapping()
+        if not self.main_block.diagram.node_data and self.main_editor:
+            self.add_connection_vars()
+            self.add_external_mapping_block()
+            self.add_api_obj_mapping()
         self.rebuild_scene_from_diagram()
 
         # self.parameters_model = ParametersTreeModel(var_factory=self.var_factory, main_block=self.main_block)
@@ -4081,8 +4284,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 except IndexError:
                     continue
 
-                connection: ConnectionItem = ConnectionItem(src_port, dst_port)
-                connection.uid = uid
+                elbow_points: List[QPointF] = [QPointF(x, y) for x, y in con.elbow_points] if con.elbow_points else []
+                connection: ConnectionItem = ConnectionItem(
+                    src_port, dst_port,
+                    diagram=self.diagram,
+                    con_uid=uid,
+                    elbow_points=elbow_points
+                )
 
                 pen: QPen = connection.pen()
                 pen.setColor(QColor(con.color))
