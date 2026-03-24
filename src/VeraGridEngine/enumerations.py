@@ -2839,15 +2839,15 @@ class VarPowerFlowRefferenceType(Enum):
     d_v_B = "d_v_B"  # Bus voltage derivative at phase B.
     d_v_C = "d_v_C"  # Bus voltage derivative at phase C.
 
-    v_N_f = "v_N_f"  # From Bus voltage at phase N.
-    v_A_f = "v_A_f"  # From Bus voltage at phase A.
-    v_B_f = "v_B_f"  # From Bus voltage at phase B.
-    v_C_f = "v_C_f"  # From Bus voltage at phase C.
+    vf_N = "vf_N"  # From Bus voltage at phase N.
+    vf_A = "vf_A"  # From Bus voltage at phase A.
+    vf_B = "vf_B"  # From Bus voltage at phase B.
+    vf_C = "vf_C"  # From Bus voltage at phase C.
 
-    v_N_t = "v_N_t"  # To Bus voltage at phase N.
-    v_A_t = "v_A_t"  # To Bus voltage at phase A.
-    v_B_t = "v_B_t"  # To Bus voltage at phase B.
-    v_C_t = "v_C_t"  # To Bus voltage at phase C.
+    vt_N = "vt_N"  # To Bus voltage at phase N.
+    vt_A = "vt_A"  # To Bus voltage at phase A.
+    vt_B = "vt_B"  # To Bus voltage at phase B.
+    vt_C = "vt_C"  # To Bus voltage at phase C.
 
     d_v_N_f = "d_v_N_f"  # From bus voltage derivative at phase N.
     d_v_A_f = "d_v_A_f"  # From bBus voltage derivative at phase A.

@@ -77,7 +77,6 @@ class Line(BranchParent):
         'Pt',
         'Qf',
         'Qt',
-        'emt_model_type',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -122,8 +121,7 @@ class Line(BranchParent):
         GCProp(key='possible_sequence_line_types', units='', tpe=SubObjectType.Associations,
                definition='Possible sequence line types (>1 to denote association), - to denote no association',
                display=False),
-        GCProp(key='emt_model_type', units='', tpe=EmtLineTypes,
-               definition='Line EMT model'),
+
     )
 
     def __init__(self,
@@ -260,7 +258,6 @@ class Line(BranchParent):
         # Line locations
         self._locations: LineLocations = LineLocations()
 
-        self.emt_model_type: EmtLineTypes = EmtLineTypes.Bergeron
 
     @property
     def R(self):

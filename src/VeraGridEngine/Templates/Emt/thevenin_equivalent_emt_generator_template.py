@@ -62,6 +62,7 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
+    templ.block.name = name
 
     # ----------------------------------------------------------------------------------
     # Constants for symbolic expressions
@@ -154,6 +155,10 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
     # External mapping
     # ----------------------------------------------------------------------------------
     templ.block.external_mapping = {
+        VarPowerFlowRefferenceType.v_N: None,
+        VarPowerFlowRefferenceType.v_A: v_A,
+        VarPowerFlowRefferenceType.v_B: v_B,
+        VarPowerFlowRefferenceType.v_C: v_C,
         VarPowerFlowRefferenceType.P: None,
         VarPowerFlowRefferenceType.Q: None,
         VarPowerFlowRefferenceType.P_N: None,

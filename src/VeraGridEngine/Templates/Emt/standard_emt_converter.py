@@ -77,6 +77,8 @@ def StandardConverterEmtBuild(
     """
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.VscDevice
+    templ.name = name
+    templ.block.name = name
 
     # =================================================================
     # INPUT VARIABLES (from buses)

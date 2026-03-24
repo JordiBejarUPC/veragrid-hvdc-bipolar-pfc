@@ -134,6 +134,7 @@ def get_xfmr_emt_template(
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.TransformerTypeDevice
     templ.name = name
+    templ.block.name = name
 
     vf: VarFactory = grid.emt_var_factory
     omega_base = 2.0 * math.pi * float(grid.fBase)
@@ -168,14 +169,14 @@ def get_xfmr_emt_template(
         five_legged = False
 
     v_f = [
-        vf.add_var(name=f"vf_A_{name}", ref=VarPowerFlowRefferenceType.v_A_f),
-        vf.add_var(name=f"vf_B_{name}", ref=VarPowerFlowRefferenceType.v_B_f),
-        vf.add_var(name=f"vf_C_{name}", ref=VarPowerFlowRefferenceType.v_C_f),
+        vf.add_var(name=f"vf_A_{name}", ref=VarPowerFlowRefferenceType.vf_A),
+        vf.add_var(name=f"vf_B_{name}", ref=VarPowerFlowRefferenceType.vf_B),
+        vf.add_var(name=f"vf_C_{name}", ref=VarPowerFlowRefferenceType.vf_C),
     ]
     v_t = [
-        vf.add_var(name=f"vt_A_{name}", ref=VarPowerFlowRefferenceType.v_A_t),
-        vf.add_var(name=f"vt_B_{name}", ref=VarPowerFlowRefferenceType.v_B_t),
-        vf.add_var(name=f"vt_C_{name}", ref=VarPowerFlowRefferenceType.v_C_t),
+        vf.add_var(name=f"vt_A_{name}", ref=VarPowerFlowRefferenceType.vt_A),
+        vf.add_var(name=f"vt_B_{name}", ref=VarPowerFlowRefferenceType.vt_B),
+        vf.add_var(name=f"vt_C_{name}", ref=VarPowerFlowRefferenceType.vt_C),
     ]
     d_v_f = [
         vf.add_var(name=f"d_vf_A_{name}", ref=VarPowerFlowRefferenceType.d_v_A_f),

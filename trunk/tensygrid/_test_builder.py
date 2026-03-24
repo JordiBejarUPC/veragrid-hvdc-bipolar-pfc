@@ -298,6 +298,75 @@ class TestPolynomialStability(unittest.TestCase):
         else:
             self.assertAlmostEqual(margin, -0.500, places=3, msg=f"Expected stability margin -0.5, got {margin:.3f}")
 
+    def test_imti_paper_nonlinear_rl_circuit(self) -> None:
+        """
+        Test 7: Non-linear RL Circuit with Magnitude Feedback (iMTI Paper inspired).
+
+        This test implements a physical use-case modeled after the iMTI CPN
+        methodology described in the Small-Signal Stability paper.
+        It evaluates a 2-state system where the algebraic magnitude of the
+        states feeds back into the derivatives, requiring exact analytic
+        linearization of the non-polynomial 'sqrt' function to find the
+        true system eigenvalues.
+
+        :return: None
+        :rtype: None
+        """
+        # 1. ALGORITHM: Define the system equations
+        # Eq 1 & 2: Differential equations (dx/dt) with cross-coupled non-linear feedback
+        # Eq 3: The algebraic constraint for the magnitude (Euclidean norm)
+        eqs: List[str] = list([
+            "xp1 + x1 + 0.1*y1 - 3.5",
+            "xp2 + x2 - 0.2*y1 - 3.0",
+            "y1 - sqrt(x1**2 + x2**2)"
+        ])
+
+        # 2. ALGORITHM: Define the exact steady-state operating point
+        # We use a 3-4-5 Pythagorean triple to ensure clean, rational analytics.
+        # sqrt(3^2 + 4^2) = 5.0
+        v_dict: Dict[str, float] = dict({
+            'x1': 3.0,
+            'x2': 4.0,
+            'y1': 5.0,
+            'xp1': 0.0,
+            'xp2': 0.0
+        })
+
+        # 3. Build the mathematical problem mapping
+        math_problem: MTI_Problem = MTI_Problem(eqs_str=eqs, v_dict=v_dict)
+
+        # 4. Instantiate the builder enforcing the eRoots multilinear lifting rules
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=math_problem, verbose=False)
+
+        # 5. Execute the analytic iMTI linearization
+        builder.linearize(v_dict)
+
+        # Retrieve stability results: (evals, evecs_left, evecs_right, participation, is_stable, max_real)
+        res: Tuple[Optional[Any], Optional[Any], Optional[Any], Optional[Any], bool, Optional[
+            float]] = builder.compute_stability()
+
+        stable: bool = res[4]
+        margin: Optional[float] = res[5]
+        print(res[0])
+        # 6. ALGORITHM: Assertions based on the analytic Jacobian
+        # The theoretical characteristic equation for this point is L^2 + 1.9L + 0.9 = 0
+        # The true eigenvalues are exactly -0.9 and -1.0.
+        # The maximum real part (stability margin) is therefore -0.9.
+        if not stable:
+            self.fail("Expected the non-linear magnitude-feedback system to be stable.")
+        else:
+            pass
+
+        if margin is not None:
+            self.assertAlmostEqual(
+                margin,
+                -0.900,
+                places=3,
+                msg=str(f"Expected stability margin -0.9, got {margin:.3f}")
+            )
+        else:
+            self.fail("Margin was None, eigenvalue computation failed.")
+
 
 if __name__ == "__main__":
     # Standard unittest execution
