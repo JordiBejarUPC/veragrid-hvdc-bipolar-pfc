@@ -244,7 +244,7 @@ class MapLineContainer(GenericDiagramWidget, QGraphicsItemGroup):
             self.editor.add_to_scene(graphic_object=segment_graphic_object)
 
             # add it to the graphics manager dict
-            self.editor.graphics_manager.add_device(self.api_object, segment_graphic_object)
+            self.editor.graphics_manager.add_device(self.api_object, segment_graphic_object.container)
 
         self.update_connectors()
 
