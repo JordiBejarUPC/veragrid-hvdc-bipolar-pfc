@@ -27,7 +27,6 @@ The model provides:
 
 def get_dc_load_emt_template(
     grid: MultiCircuit,
-    load_name: str = "dc_load",
     P_dc: float = 0.0,  # DC power in MW (p.u. after conversion)
     R_dc: float = None,  # Resistance in p.u. (if constant resistance mode)
     name: str = "dc_load_emt_template"

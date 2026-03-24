@@ -15,7 +15,7 @@ from VeraGridEngine.Devices.Branches.line import Line
 
 
 def get_bergeron_line_emt_template(
-    grid: MultiCircuit,
+    vf: VarFactory,
     line: Line,
     name: str | None = None,
 ) -> EmtModelTemplate:

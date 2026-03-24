@@ -292,6 +292,8 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     mapping: Dict[VarPowerFlowRefferenceType, Var | None] = {
         if_keys["N"]: None, if_keys["A"]: None, if_keys["B"]: None, if_keys["C"]: None,
         it_keys["N"]: None, it_keys["A"]: None, it_keys["B"]: None, it_keys["C"]: None,
+        vf_keys["N"]: None, vf_keys["A"]: None, vf_keys["B"]: None, vf_keys["C"]: None,
+        vt_keys["N"]: None, vt_keys["A"]: None, vt_keys["B"]: None, vt_keys["C"]: None,
         Sf_keys["A"]: None, Sf_keys["B"]: None, Sf_keys["C"]: None,
         St_keys["A"]: None, St_keys["B"]: None, St_keys["C"]: None,
         d_vf_keys["N"]: None, d_vf_keys["A"]: None, d_vf_keys["B"]: None, d_vf_keys["C"]: None,
@@ -300,6 +302,8 @@ def get_pi_line_emt_template(grid: MultiCircuit,
 
     # Fill only active phases
     for k, ph in enumerate(active_ph):
+        mapping[vf_keys[ph]] = vf_vars[k]
+        mapping[vt_keys[ph]] = vt_vars[k]
         mapping[if_keys[ph]] = if_act[k]
         mapping[it_keys[ph]] = it_act[k]
         mapping[d_vf_keys[ph]] = d_vf_vars[k]

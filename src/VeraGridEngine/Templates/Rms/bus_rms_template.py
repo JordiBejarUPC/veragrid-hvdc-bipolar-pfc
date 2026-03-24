@@ -48,31 +48,9 @@ class BusRmsTemplate(RmsModelTemplate):
             self.Vm = vf.add_var("Vm", VarPowerFlowRefferenceType.Vm)
             self.Va = vf.add_var("Va", VarPowerFlowRefferenceType.Va)
 
-            algebraic_eqs = []
-            event_dict = {}
-            init_eqs = {}
-
-            if is_slack:
-                vm_ref = vf.add_var("Vm_ref")
-                va_ref = vf.add_var("Va_ref")
-                algebraic_eqs = [
-                    self.Vm - vm_ref,
-                    self.Va - va_ref,
-                ]
-                event_dict = {
-                    vm_ref: vf.add_const(1.0),
-                    va_ref: vf.add_const(0.0),
-                }
-                init_eqs = {
-                    self.Vm: vm_ref,
-                    self.Va: va_ref,
-                }
 
             self._block = Block(
                 algebraic_vars=[self.Vm, self.Va],
-                algebraic_eqs=algebraic_eqs,
-                event_dict=event_dict,
-                init_eqs=init_eqs,
                 out_vars=[self.Vm, self.Va]
             )
     
@@ -91,13 +69,6 @@ def initialize_bus_rms(bus: Bus, vf: VarFactory):
     """
     bus.rms_model = BusRmsTemplate(vf=vf, is_dc=bus.is_dc).block
 
-# def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Var]:
-#     """
-#     Initializes rms model if not initialized
-#     :return: Vm, Va rms vars
-#     """
-#
-#     return bus_rms_model.algebraic_vars[0], bus_rms_model.algebraic_vars[1]
 
 
 def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Optional[Var]]:
@@ -119,12 +90,12 @@ def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Optional[Var]
     if vdc is not None:
         return vdc, None
 
-    vm = mapping.get(VarPowerFlowRefferenceType.Vm, None)
-    va = mapping.get(VarPowerFlowRefferenceType.Va, None)
+    Vm = mapping.get(VarPowerFlowRefferenceType.Vm, None)
+    Va = mapping.get(VarPowerFlowRefferenceType.Va, None)
 
-    if vm is None or va is None:
+    if Vm is None or Va is None:
         raise ValueError("Invalid RMS bus model: expected either (Vdc) or (Vm, Va)")
 
-    return vm, va
+    return Vm, Va
 
 
