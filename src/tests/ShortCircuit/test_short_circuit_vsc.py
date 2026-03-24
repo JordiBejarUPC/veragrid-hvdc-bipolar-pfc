@@ -6,6 +6,10 @@ import numpy as np
 
 
 def test_short_circuit_vsc_3buses():
+    """
+    This test is performed to a simple 3-bus system with just one VSC, in order to check that the shor-circuit
+    results matches the RMS dynamic simulation of PowerFactory.
+    """
     grid = vge.MultiCircuit()
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -89,6 +93,10 @@ def test_short_circuit_vsc_3buses():
 
 
 def test_short_circuit_vsc_14buses():
+    """
+    This test is performed to the modified IEEE 14-bus system with 8 VSCs, in order to check that the shor-circuit
+    results matches the RMS dynamic simulation of PowerFactory.
+    """
     grid = vge.open_file('data/grids/test_ieee_14_VSC.veragrid')
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -130,6 +138,11 @@ def test_short_circuit_vsc_14buses():
 
 
 def test_short_circuit_vsc_14buses_disconnection():
+    """
+    This test is performed to the modified IEEE 14-bus system with 8 VSCs, in order to check that the threshold for
+    voltage disconnection of converters is correctly replicated in VeraGrid from PowerFactory, and that the shor-circuit
+    results matches the RMS dynamic simulation of PowerFactory.
+    """
     grid = vge.open_file('data/grids/ieee14_voltage_disconnection.veragrid')
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -169,6 +182,11 @@ def test_short_circuit_vsc_14buses_disconnection():
 
 
 def test_ieee14_droop_vsc():
+    """
+    This test is performed to the modified IEEE 14-bus system with 8 VSCs, in order to check that the voltage-Q droop
+    is correctly replicated in VeraGrid from PowerFactory, and that the shor-circuit results matches the RMS dynamic
+    simulation of PowerFactory.
+    """
     grid = vge.open_file('data/grids/test_ieee14_droop_vsc.veragrid')
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -188,6 +206,13 @@ def test_ieee14_droop_vsc():
 
 
 def test_dgs_parse_droop_vsc():
+    """
+    This test is performed to a simple 3-bus system with just one VSC, in order to check that the shor-circuit
+    results matches the RMS dynamic simulation of PowerFactory.
+    Also is tested that the external grid is correctly implemented in VeraGrid and that the equivalent impedance gives
+    the same short-circuit current like in PowerFactory.
+    Finally, the WindTurbine element in PowerFactory, has to be converted into one VSC and one DC bus.
+    """
     grid = vge.open_file('data/grids/test_droop_vsc.dgs')
 
     # ------------------------------------------------------------------------------------------------------------------
@@ -218,6 +243,50 @@ def test_dgs_parse_droop_vsc():
     sc_driver.run()
     res_sc = sc_driver.results
 
-    power_factory = np.array([1.0, 0.70796575, 1.0])
+    power_factory = np.array([0.99170819, 0.7050249, 1.0])
+
+    assert np.allclose(np.abs(res_sc.voltage1[:,0]), power_factory, atol=1e-6)
+
+
+def test_dgs_parse_external_grid_sc():
+    """
+    This test is performed to the modified IEEE 14-bus system with 8 VSCs, in order to check that the external grid
+    is correctly replicated in VeraGrid from PowerFactory, and that the shor-circuit results matches the RMS dynamic
+    simulation of PowerFactory.
+    """
+    grid = vge.open_file('data/grids/test_ieee14_external_grid.dgs')
+
+    # ------------------------------------------------------------------------------------------------------------------
+    #   AC/DC Power Flow under healthy conditions
+    # ------------------------------------------------------------------------------------------------------------------
+    pf_options = PowerFlowOptions(solver_type=SolverType.NR,
+                                  retry_with_other_methods=False,
+                                  limit_i_vsc=False)
+    res_pf = vge.power_flow(grid=grid, options=pf_options)
+
+    # ------------------------------------------------------------------------------------------------------------------
+    #   AC/DC Short-Circuit with converter's current limitation
+    # ------------------------------------------------------------------------------------------------------------------
+    grid.buses[12].r_fault = 10.0 / (33 ** 2 / 100)
+
+    grid.add_short_circuit_event(
+        vge.ShortCircuitEvent(
+            device=grid.buses[12],
+            method=MethodShortCircuit.sequences_vsc,
+        )
+    )
+
+    sc_driver = vge.ShortCircuitDriver(grid=grid,
+                                       options=ShortCircuitOptions(),
+                                       pf_options=pf_options,
+                                       pf_results=res_pf,
+                                       pf_results3ph=None)
+    sc_driver.run()
+    res_sc = sc_driver.results
+
+    power_factory = np.array([0.999996, 0.921418, 0.846479, 0.860157, 0.876627, 0.836218, 0.824691,
+                              0.802934, 0.807092, 0.816660, 0.833479, 0.806162, 0.729752,
+                              0.948161, 0.910504, 0.890309, 0.886104, 0.877510, 0.885294, 0.868819, 0.815547,
+                              1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0], dtype=float)
 
     assert np.allclose(np.abs(res_sc.voltage1[:,0]), power_factory, atol=1e-6)

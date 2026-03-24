@@ -1984,14 +1984,15 @@ def convert_dgs_staticgen_to_vsc(elmgenstat: ElmGenstat,
     return dc_bus, vsc
 
 
-def convert_dgs_to_external_grid(elmxnet: ElmXnet,
-                                 stacubic_dict: Dict[str, List[int]],
-                                 buses: List[dev.Bus],
-                                 logger: Logger,
-                                 cubics_by_objid: Dict[str, List[StaCubic]],
-                                 bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.ExternalGrid]:
+def convert_dgs_external_grid_to_generator(elmxnet: ElmXnet,
+                                           stacubic_dict: Dict[str, List[int]],
+                                           buses: List[dev.Bus],
+                                           logger: Logger,
+                                           cubics_by_objid: Dict[str, List[StaCubic]],
+                                           bus_by_term_id: Dict[str, dev.Bus],
+                                           Sbase: float) -> Tuple[dev.Bus, dev.Generator]:
     """
-    Convert ElmXnet to VeraGrid Load.
+    Convert ElmXnet to VeraGrid Generator.
     """
     bus = get_injection_bus(elm_id=elmxnet.ID,
                             stacubic_dict=stacubic_dict,
@@ -2000,6 +2001,66 @@ def convert_dgs_to_external_grid(elmxnet: ElmXnet,
                             bus_by_term_id=bus_by_term_id)
 
     bustype = str(elmxnet.bustp).strip().upper()
+
+    k = elmxnet.rntxn # R/X ratio
+    Sk = elmxnet.snss # Short-circuit power Sk''
+    c = elmxnet.cmax # Maximum voltage factor
+
+    # Synchronous reactances
+    xd = elmxnet.xd
+    xq = elmxnet.xq
+    if xd == xq:
+        x = xd
+    elif xd <= xq:
+        x = xd
+    else:
+        x = xq
+
+    Snom = x * np.sqrt(1 + k**2) * Sk / c # Nominal Power of the external grid [MVA]
+    r1 = x * k * Sbase / Snom # Positive-sequence equivalent resistance [pu]
+    x1 = x * Sbase / Snom # Positive-sequence equivalent reactance [pu]
+
+    gen = dev.Generator(
+        name=elmxnet.loc_name or f"Gen_{_ref_id(elmxnet.ID)}",
+        active=not bool(elmxnet.outserv),
+        r1=r1,
+        x1=x1,
+    )
+
+    if bustype == 'SL':
+        bus.is_slack = True
+
+    elif bustype == 'PV':
+        gen.vset = elmxnet.usetp
+        gen.P = elmxnet.pgini
+
+    elif bustype == 'PQ':
+        gen.P = elmxnet.pgini
+        gen.power_factor = np.cos(np.atan(elmxnet.qgini / elmxnet.pgini))
+    else:
+        gen.P = elmxnet.pgini
+        gen.power_factor = np.cos(np.atan(elmxnet.qgini / elmxnet.pgini))
+
+    return bus, gen
+
+
+def convert_dgs_to_external_grid(elmxnet: ElmXnet,
+                                 stacubic_dict: Dict[str, List[int]],
+                                 buses: List[dev.Bus],
+                                 logger: Logger,
+                                 cubics_by_objid: Dict[str, List[StaCubic]],
+                                 bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.ExternalGrid]:
+    """
+    Convert ElmXnet to VeraGrid External Grid.
+    """
+    bus = get_injection_bus(elm_id=elmxnet.ID,
+                            stacubic_dict=stacubic_dict,
+                            buses=buses,
+                            cubics_by_objid=cubics_by_objid,
+                            bus_by_term_id=bus_by_term_id)
+
+    bustype = str(elmxnet.bustp).strip().upper()
+
     xgrid = dev.ExternalGrid(
         name=elmxnet.loc_name or f"Load_{_ref_id(elmxnet.ID)}",
         active=not bool(elmxnet.outserv)
@@ -2920,15 +2981,31 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
     # external grids
     for eg in dgs_grid.elmxnets:
-        bus, ext_grd = convert_dgs_to_external_grid(
-            elmxnet=eg,
-            stacubic_dict=stacubic_dict,
-            buses=grid.buses,
-            logger=logger,
-            cubics_by_objid=cubics_by_objid,
-            bus_by_term_id=bus_by_term_id
-        )
-        grid.add_external_grid(bus=bus, api_obj=ext_grd)
+
+        short_circuit = True
+
+        if short_circuit:
+            bus, gen = convert_dgs_external_grid_to_generator(
+                elmxnet=eg,
+                stacubic_dict=stacubic_dict,
+                buses=grid.buses,
+                logger=logger,
+                cubics_by_objid=cubics_by_objid,
+                bus_by_term_id=bus_by_term_id,
+                Sbase=grid.Sbase,
+            )
+            grid.add_generator(bus=bus, api_obj=gen)
+
+        else:
+            bus, ext_grd = convert_dgs_to_external_grid(
+                elmxnet=eg,
+                stacubic_dict=stacubic_dict,
+                buses=grid.buses,
+                logger=logger,
+                cubics_by_objid=cubics_by_objid,
+                bus_by_term_id=bus_by_term_id
+            )
+            grid.add_external_grid(bus=bus, api_obj=ext_grd)
 
     # Shunts (fixed)
     for elmshnt in dgs_grid.elmshnts:

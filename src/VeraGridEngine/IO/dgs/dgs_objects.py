@@ -1326,6 +1326,9 @@ class ElmXnet(DGSElement):
         DgsProperty('ikssmin', 'r', 'Minimum Initial Symmetrical Short-Circuit Current in kA', py_name='ikssmin'),
         DgsProperty('r0tx0', 'r', 'Ratio R0 / X0', py_name='r0tx0'),
         DgsProperty('r0tx0min', 'r', 'Minimum Ratio R0 / X0', py_name='r0tx0min'),
+        DgsProperty('cmax', 'r', 'Maximum voltage factor', py_name='cmax'),
+        DgsProperty('xd', 'r', 'd synchronous reactance', py_name='xd'),
+        DgsProperty('xq', 'r', 'q synchronous reactance', py_name='xq'),
     ]
 
     def __init__(self) -> None:
@@ -1350,6 +1353,9 @@ class ElmXnet(DGSElement):
         self.ikssmin: float = 0.0
         self.r0tx0: float = 0.0
         self.r0tx0min: float = 0.0
+        self.cmax: float = 1.0
+        self.xd: float = 0.2
+        self.xq: float = 0.2
 
 
 class ElmZone(DGSElement):

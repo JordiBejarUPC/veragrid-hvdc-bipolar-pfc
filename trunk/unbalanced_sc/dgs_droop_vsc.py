@@ -4,7 +4,7 @@ from VeraGridEngine.enumerations import MethodShortCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 import numpy as np
 
-grid = vge.open_file('trunk/unbalanced_sc/test_droop_vsc.dgs')
+grid = vge.open_file('test_droop_vsc.dgs')
 
 # ------------------------------------------------------------------------------------------------------------------
 #   AC/DC Power Flow under healthy conditions
@@ -13,6 +13,8 @@ pf_options = PowerFlowOptions(solver_type=SolverType.NR,
                               retry_with_other_methods=False,
                               limit_i_vsc=False)
 res_pf = vge.power_flow(grid=grid, options=pf_options)
+
+print(np.abs(res_pf.voltage))
 
 # ------------------------------------------------------------------------------------------------------------------
 #   AC/DC Short-Circuit with converter's current limitation
