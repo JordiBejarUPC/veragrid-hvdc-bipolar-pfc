@@ -26,7 +26,7 @@ from VeraGridEngine.Devices.Aggregation.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, DeviceType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, DeviceType, EmtLineTypes
 from VeraGridEngine.basic_structures import Logger, CxVec, Vec
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
@@ -572,9 +572,9 @@ class EmtProblemDae(EmtProblemTemplate):
 
             is_bergeron: bool = False
 
-            if hasattr(br, 'emt_model_type') and br.emt_model_type is not None:
-                if br.emt_model_type.value == "Bergeron":
-                    is_bergeron = True
+            if br.emt_model.name == EmtLineTypes.Bergeron:
+                is_bergeron = True
+
 
             # Process device model automatically to unify blocks and apply events
             mdl: Block = self._process_device_model(br, sys_block, grid, glob_time)

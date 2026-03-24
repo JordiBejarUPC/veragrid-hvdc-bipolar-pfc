@@ -6,6 +6,7 @@
 from typing import Dict, Any
 import numpy as np
 
+from VeraGridEngine import EmtLineTypes
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -15,7 +16,7 @@ from VeraGridEngine.Utils.Symbolic.block import Var, Expr
 
 def get_pi_line_emt_template(grid: MultiCircuit,
                              line: Line,
-                             name: str = "pi_line_emt_template") -> EmtModelTemplate:
+                             name: str = EmtLineTypes.PI) -> EmtModelTemplate:
     """
     :param grid: Multicircuit
     :param line: Line object to apply the template
@@ -25,6 +26,8 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LineDevice
     templ.name = name
+
+    templ.block.name = EmtLineTypes.PI
 
     vf: VarFactory = grid.emt_var_factory
     fbase: float = grid.fBase

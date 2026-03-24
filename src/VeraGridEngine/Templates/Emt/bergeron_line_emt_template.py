@@ -29,7 +29,7 @@ def get_bergeron_line_emt_template(
     templ.tpe = DeviceType.LineDevice
     templ.name = name
 
-    templ.block.name = name
+    templ.block.name = EmtLineTypes.Bergeron
 
 
     ph_labels = ["N", "A", "B", "C"]
