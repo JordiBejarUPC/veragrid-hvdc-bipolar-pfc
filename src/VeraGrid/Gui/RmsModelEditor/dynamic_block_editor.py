@@ -234,7 +234,7 @@ def clone_block_for_editing(block: Block) -> Block:
     :return:
     """
     editable_block: Block = block.copy()
-    editable_block.diagram = block.diagram.copy()
+    # editable_block.diagram = block.diagram.copy()
     return editable_block
 
 
@@ -273,7 +273,7 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     target_block.var_mapping = source_clone.var_mapping
     target_block.event_dict = source_clone.event_dict
     target_block.mode_dict = source_clone.mode_dict
-    target_block.diagram = source_clone.diagram
+    target_block.diagram = source_block.diagram
 
 
 def build_block_symbol_namespace(block: Block) -> Dict[str, Expr]:
@@ -2016,7 +2016,8 @@ class GenericBlockItem(QGraphicsRectItem):
                  var_factory: VarFactory,
                  block: Block,
                  api_object,
-                 mode: DynamicEditorMode
+                 mode: DynamicEditorMode,
+                 position_changed_callback=None
                  ):
         """
 
@@ -2026,6 +2027,7 @@ class GenericBlockItem(QGraphicsRectItem):
         :param api_object:
         :param templates_list:
         :param templates_catalogue:
+        :param position_changed_callback:
         """
         super().__init__(0, 0, 100, 60)
 
@@ -2036,6 +2038,7 @@ class GenericBlockItem(QGraphicsRectItem):
         self.block = block
         self.mode = mode
         self.api_object = api_object
+        self.position_changed_callback = position_changed_callback
 
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle = False
@@ -2162,6 +2165,8 @@ class GenericBlockItem(QGraphicsRectItem):
                 if port.connections:
                     for conn in port.connections:
                         conn.update_path()
+            if self.position_changed_callback is not None:
+                self.position_changed_callback(value.x(), value.y())
         return super().itemChange(change, value)
 
 
@@ -2170,17 +2175,19 @@ class BlockItem(QGraphicsRectItem):
     Graphics item representing a symbolic block.
     """
 
-    def __init__(self, var_factory: VarFactory, name: str):
+    def __init__(self, var_factory: VarFactory, name: str, position_changed_callback=None):
         """
         Build the graphical block item.
 
         :param var_factory:
         :param name:
+        :param position_changed_callback:
         """
         super().__init__(0, 0, 100, 60)
 
         self.var_factory: VarFactory = var_factory
         self.name: str = name
+        self.position_changed_callback = position_changed_callback
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle: bool = False
         self.subsys: Block | None = None
@@ -2490,6 +2497,8 @@ class BlockItem(QGraphicsRectItem):
                         conn.update_path()
                 else:
                     pass
+            if self.position_changed_callback is not None:
+                self.position_changed_callback(value.x(), value.y())
             return super().itemChange(change, value)
         else:
             return super().itemChange(change, value)
@@ -3048,10 +3057,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.var_factory = var_factory
         # Todo: is this correct?
         self.original_block: Block = block  # api_object.rms_model
-        self.block: Block = clone_block_for_editing(block)
-        self.main_block: Block = self.block
+        self.main_block: Block = clone_block_for_editing(block)
 
-        self.diagram: BlockDiagram = self.block.diagram
+        self.diagram: BlockDiagram = self.main_block.diagram
         self.api_object = api_object
         self.mode = mode
         self.main_editor = main_editor
@@ -3152,10 +3160,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.ui.doItButton.clicked.connect(self.apply_changes)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
-        if not self.block.diagram.node_data and self.main_editor:
-            self.add_connection_vars()
-            self.add_external_mapping_block()
-            self.add_api_obj_mapping()
+        # if not self.main_block.diagram.node_data and self.main_editor:
+        #     self.add_connection_vars()
+        #     self.add_external_mapping_block()
+        #     self.add_api_obj_mapping()
         self.rebuild_scene_from_diagram()
 
         # self.parameters_model = ParametersTreeModel(var_factory=self.var_factory, main_block=self.main_block)
@@ -3246,7 +3254,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 var_factory=self.var_factory,
                 block=model,
                 api_object=self.api_object,
-                mode=self.mode
+                mode=self.mode,
+                position_changed_callback=lambda x, y: self.on_block_position_changed(model.uid, x, y)
             )
 
             item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -3293,10 +3302,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # The symbolic block has to be attached first so the graphics item can build its ports from it.
             self.block_counters[block_type] = count
             block_item.set_subsystem(block_model)
+            block_item.position_changed_callback = lambda x, y: self.on_block_position_changed(block_model.uid, x, y)
             block_item.build_item()
 
             # The editor block is the authoritative model container for later save/rebuild steps.
-            self.block.add(block_model)
+            self.main_block.add(block_model)
             self.scene.addItem(block_item)
             block_item.setPos(QtCore.QPointF(x_pos, y_pos))
 
@@ -3337,6 +3347,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             item_name = block_model.name
 
         block_item.set_subsystem(block_model)
+        block_item.position_changed_callback = lambda x, y: self.on_block_position_changed(block_model.uid, x, y)
         block_item.build_item()
         self.block.add(block_model)
         self.scene.addItem(block_item)
@@ -3757,6 +3768,20 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return None
 
+    def on_block_position_changed(self, device_uid: int, x: float, y: float) -> None:
+        """
+        Update the diagram node position when a block is moved by the user.
+
+        :param device_uid:
+        :param x:
+        :param y:
+        :return:
+        """
+        if device_uid in self.diagram.node_data:
+            self.diagram.node_data[device_uid].x = x
+            self.diagram.node_data[device_uid].y = y
+            print("")
+
     def get_selected_scene_block(self) -> Block | None:
         """
         Return the single selected block, if the current selection is unambiguous.
@@ -4013,7 +4038,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         var_factory=self.var_factory,
                         block=block_model,
                         api_object=self.api_object,
-                        mode=self.mode
+                        mode=self.mode,
+                        position_changed_callback=lambda x, y, uid=block_model.uid: self.on_block_position_changed(uid, x, y)
                     )
                     self.scene.addItem(generic_item)
                     generic_item.setPos(QPointF(node.x, node.y))
@@ -4027,6 +4053,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 else:
                     block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=node.name)
                     block_item.set_subsystem(block_model)
+                    block_item.position_changed_callback = lambda x, y, uid=block_model.uid: self.on_block_position_changed(uid, x, y)
                     block_item.build_item()
                     self.scene.addItem(block_item)
                     block_item.setPos(QPointF(node.x, node.y))
@@ -4139,6 +4166,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     x_pos=scene_position.x(),
                     y_pos=scene_position.y()
                 )
+                print("")
 
             elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate)):
                 block_item = self.create_template_block_item(
