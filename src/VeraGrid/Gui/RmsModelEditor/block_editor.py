@@ -97,11 +97,30 @@ class Ui_BlockEditorWindow(object):
         self.verticalLayout_2 = QVBoxLayout(self.tab_2)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
         self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
+
+        self.variablesLabel = QLabel("Variables")
+        self.variablesLabel.setStyleSheet("font-weight: bold; padding: 4px;")
+        self.verticalLayout_2.addWidget(self.variablesLabel)
+        self.variablesTableView = QTableView(self.tab_2)
+        self.variablesTableView.setObjectName(u"variablesTableView")
+        self.variablesTableView.setFrameShape(QFrame.Shape.NoFrame)
+        self.verticalLayout_2.addWidget(self.variablesTableView)
+
+        self.parametersLabel = QLabel("Parameters")
+        self.parametersLabel.setStyleSheet("font-weight: bold; padding: 4px;")
+        self.verticalLayout_2.addWidget(self.parametersLabel)
         self.parametersTableView = QTableView(self.tab_2)
         self.parametersTableView.setObjectName(u"parametersTableView")
         self.parametersTableView.setFrameShape(QFrame.Shape.NoFrame)
-
         self.verticalLayout_2.addWidget(self.parametersTableView)
+
+        self.equationsLabel = QLabel("Equations")
+        self.equationsLabel.setStyleSheet("font-weight: bold; padding: 4px;")
+        self.verticalLayout_2.addWidget(self.equationsLabel)
+        self.equationsTableView = QTableView(self.tab_2)
+        self.equationsTableView.setObjectName(u"equationsTableView")
+        self.equationsTableView.setFrameShape(QFrame.Shape.NoFrame)
+        self.verticalLayout_2.addWidget(self.equationsTableView)
 
         icon5 = QIcon()
         icon5.addFile(u":/Icons/icons/data.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
