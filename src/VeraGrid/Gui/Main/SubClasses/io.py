@@ -644,16 +644,16 @@ class IoMain(ConfigurationMain):
 
                     # we were able to compose the file correctly, now save it
                     self.file_name = filename
+                    options = self.get_file_save_options()
+                    options.file_type = FileType.VeraGrid
                     self.save_file_now(
-                        self.file_name,
+                        filename=self.file_name,
                         type_selected=type_selected,
-                        options=FileSavingOptions(
-                            file_type=FileType.VeraGrid
-                        )
+                        options=options,
                     )
             else:
                 # save directly
-                self.save_file_now(self.file_name)
+                self.save_file_now(filename=self.file_name)
 
     def get_file_save_options(self) -> filedrv.FileSavingOptions:
         """
@@ -667,8 +667,11 @@ class IoMain(ConfigurationMain):
         # get json files to store
         json_files = {"gui_config": self.get_gui_config_data()}
 
-        options = filedrv.FileSavingOptions(sessions_data=sessions_data,
-                                            dictionary_of_json_files=json_files)
+        options = filedrv.FileSavingOptions(
+            sessions_data=sessions_data,
+            dictionary_of_json_files=json_files,
+            multiverse=self.multiverse,
+        )
 
         return options
 
@@ -685,7 +688,8 @@ class IoMain(ConfigurationMain):
         :param options: FileSavingOptions to override the default ones
         """
 
-        if ('file_save' not in self.stuff_running_now) and ('file_open' not in self.stuff_running_now):
+        if ((SimulationTypes.FileSave not in self.stuff_running_now) and
+                (SimulationTypes.FileOpen not in self.stuff_running_now)):
             # lock the ui
             self.LOCK()
 
@@ -1089,11 +1093,13 @@ class IoMain(ConfigurationMain):
 
             # we were able to compose the file correctly, now save it
             self.file_name = filename
-            self.save_file_now(self.file_name,
-                               type_selected=type_selected,
-                               options=FileSavingOptions(
-                                   file_type=FileType.DGS
-                               ))
+            self.save_file_now(
+                filename=self.file_name,
+                type_selected=type_selected,
+                options=FileSavingOptions(
+                    file_type=FileType.DGS
+                )
+            )
 
     def export_cim(self):
         """
@@ -1119,11 +1125,13 @@ class IoMain(ConfigurationMain):
 
             # we were able to compose the file correctly, now save it
             self.file_name = filename
-            self.save_file_now(self.file_name,
-                               type_selected=type_selected,
-                               options=FileSavingOptions(
-                                   file_type=FileType.CIM
-                               ))
+            self.save_file_now(
+                filename=self.file_name,
+                type_selected=type_selected,
+                options=FileSavingOptions(
+                    file_type=FileType.CIM
+                )
+            )
 
     def export_cgmes(self):
         """
@@ -1160,7 +1168,7 @@ class IoMain(ConfigurationMain):
                 # we were able to compose the file correctly, now save it
                 self.file_name = filename
                 self.save_file_now(
-                    self.file_name,
+                    filename=self.file_name,
                     type_selected=type_selected,
                     options=FileSavingOptions(
                         file_type=FileType.PGM
@@ -1194,7 +1202,7 @@ class IoMain(ConfigurationMain):
             # we were able to compose the file correctly, now save it
             self.file_name = filename
             self.save_file_now(
-                self.file_name,
+                filename=self.file_name,
                 type_selected=type_selected,
                 options=FileSavingOptions(
                     file_type=FileType.VeraGrid_json
@@ -1226,11 +1234,12 @@ class IoMain(ConfigurationMain):
             # we were able to compose the file correctly, now save it
             self.file_name = filename
             self.save_file_now(
-                self.file_name,
+                filename=self.file_name,
                 type_selected=type_selected,
                 options=FileSavingOptions(
                     file_type=FileType.VeraGrid_h5
-                ))
+                )
+            )
 
     def export_excel(self):
         """
@@ -1257,7 +1266,7 @@ class IoMain(ConfigurationMain):
             # we were able to compose the file correctly, now save it
             self.file_name = filename
             self.save_file_now(
-                self.file_name,
+                filename=self.file_name,
                 type_selected=type_selected,
                 options=FileSavingOptions(
                     file_type=FileType.VeraGrid_xlsx4
@@ -1289,7 +1298,7 @@ class IoMain(ConfigurationMain):
             # we were able to compose the file correctly, now save it
             self.file_name = filename
             self.save_file_now(
-                self.file_name,
+                filename=self.file_name,
                 type_selected=type_selected,
                 options=FileSavingOptions(
                     file_type=FileType.VeraGrid_sqlite

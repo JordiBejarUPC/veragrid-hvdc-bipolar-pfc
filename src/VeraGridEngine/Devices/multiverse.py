@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Tuple
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 
 
@@ -410,11 +410,9 @@ class MultiVerse:
 
         return node
 
-    def _is_descendant(
-            self,
-            candidate_parent: ScenarioNode,
-            candidate_child: ScenarioNode | None,
-    ) -> bool:
+    def _is_descendant(self,
+                       candidate_parent: ScenarioNode,
+                       candidate_child: ScenarioNode | None) -> bool:
         """
 
         :param candidate_parent:
@@ -439,24 +437,21 @@ class MultiVerse:
         self._nodes_by_id.clear()
         self._next_id = 1
 
-    def iter_nodes_depth_first(self) -> list[ScenarioNode]:
+    def iter_nodes_depth_first(self) -> List[ScenarioNode]:
         """
 
         :return:
         """
-        result: list[ScenarioNode] = []
-        root: ScenarioNode
+        result: List[ScenarioNode] = list()
 
         for root in self._root_nodes:
             self._collect_subtree_depth_first(root, result)
 
         return result
 
-    def _collect_subtree_depth_first(
-            self,
-            node: ScenarioNode,
-            result: list[ScenarioNode],
-    ) -> None:
+    def _collect_subtree_depth_first(self,
+                                     node: ScenarioNode,
+                                     result: List[ScenarioNode]) -> None:
         """
 
         :param node:
@@ -469,12 +464,12 @@ class MultiVerse:
         for child in node.children:
             self._collect_subtree_depth_first(child, result)
 
-    def get_sorted_node_data(self) -> list[MultiCircuit]:
+    def get_sorted_node_data(self) -> List[MultiCircuit]:
         """
         Deterministic preorder traversal.
         Good if you only want the MultiCircuit objects in a stable order.
         """
-        nodes: list[ScenarioNode] = self.iter_nodes_depth_first()
+        nodes: List[ScenarioNode] = self.iter_nodes_depth_first()
         return [node.data for node in nodes]
 
     def to_record_list(self) -> List[Dict[str, Any]]:
@@ -499,8 +494,30 @@ class MultiVerse:
 
         return records
 
-    def to_json(self, indent: int = 2) -> str:
-        return json.dumps(self.to_record_list(), indent=indent)
+    def get_save_data(self) -> Tuple[Dict[str, Dict[str, str]], Dict[str, MultiCircuit]]:
+        """
+
+        :return:
+        """
+        multiverse_meta_data = dict()
+        multiverse_model_data = dict()
+
+        base_circuit: MultiCircuit = self._root_nodes[0].data
+
+        for node in self.iter_nodes_depth_first():
+
+            multiverse_meta_data[node.node_id] = {
+                "node_id": node.node_id,
+                "data": node.data.idtag,
+                "parent": node.parent.node_id if node.parent is not None else None,
+                "children": [chl.node_id for chl in node.children],
+            }
+
+            # we want to store all those models that are not the root
+            # if node.data != base_circuit:
+            multiverse_model_data[node.data.idtag] = node.data
+
+        return multiverse_meta_data, multiverse_model_data
 
 
 def from_json(base_circuit: MultiCircuit,

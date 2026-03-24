@@ -3,8 +3,10 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import json
+
 try:
     import orjson
+
     _HAS_ORJSON = True
 except ImportError:
     _HAS_ORJSON = False
@@ -20,6 +22,7 @@ from VeraGridEngine.Devices.types import VERAGRID_FILE_TYPE
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.IO.veragrid.generic_io_functions import parse_config_df, CustomJSONizer
 from VeraGridEngine.Simulations.driver_template import DriverToSave
+from VeraGridEngine.IO.veragrid.pack_unpack import gather_model_as_data_frames, gather_model_as_jsons
 import VeraGridEngine.Devices as dev
 
 
@@ -97,60 +100,96 @@ def save_results_in_zip(f_zip_ptr: zipfile.ZipFile,
                 f_zip_ptr.writestr(filename, buffer.getvalue())
 
 
-def save_veragrid_data_to_zip(dfs: Dict[str, pd.DataFrame],
-                              filename_zip: str,
-                              model_data: Dict[str, Dict[str, str]],
+def save_veragrid_data_to_zip(filename_zip: str,
+                              circuit: dev.MultiCircuit,
                               sessions_data: List[DriverToSave],
                               diagrams: List[Union[dev.MapDiagram, dev.SchematicDiagram]],
                               json_files: Dict[str, dict],
+                              multiverse: dev.MultiVerse | None = None,
                               text_func: Union[None, Callable[[str], None]] = None,
                               progress_func: Union[None, Callable[[float], None]] = None,
                               logger=Logger()):
     """
     Save a list of DataFrames to a zip file without saving to disk the csv files
-    :param dfs: dictionary of pandas dataFrames {name: DataFrame}
     :param filename_zip: file name where to save all
-    :param model_data: dictionary of json data opposed to the dataframes collection
+    :param circuit: MultiCircuit object
     :param sessions_data: List of DriverToSave instances, representing the results drivers data
     :param diagrams: List of Diagram objects
     :param json_files: List of configuration json files to save Dict[file_name, dictionary to save]
+    :param multiverse: MultiVerse object
     :param text_func: pointer to function that prints the names
     :param progress_func: pointer to function that prints the progress 0~100
     :param logger: Logger object
     """
 
-    n = len(dfs)
     n_failed = 0
     # open zip file for writing
     with zipfile.ZipFile(filename_zip, 'w', zipfile.ZIP_DEFLATED) as f_zip_ptr:
 
-        # save the config files
+        # save the config files ----------------------------------------------------------------------------------------
         for name, value in json_files.items():
             filename = name + ".json"
             f_zip_ptr.writestr(filename, json.dumps(value))
 
-        # save the VeraGrid object as json data
-        for key, data in model_data.items():
+        # save multiverse ----------------------------------------------------------------------------------------------
+        # The multiverse includes all models
+        if multiverse is not None:
 
-            if key == "model_data":
-                ext = ".model"
-            elif key == "symbolic_data":
-                ext = ".symbolic"
-            else:
-                raise ValueError(f"Unhandled data package to save {key}")
+            # get the multiverse data
+            multiverse_meta_data, multiverse_model_data = multiverse.get_save_data()
 
-            for object_type_name, object_data in data.items():
-                filename = key + "/" + object_type_name + ext
-                try:
-                    f_zip_ptr.writestr(filename, json.dumps(object_data, indent=4, cls=CustomJSONizer))
-                except TypeError as e:
-                    logger.add_error(msg=str(e), device_class=object_type_name)
-                    warn(f"{object_type_name}: {e}")
+            # save the multiverse metadata
+            filename = "multiverse/metadata.json"
+            f_zip_ptr.writestr(filename, json.dumps(multiverse_meta_data, indent=4))
 
-        # save diagrams
+            # save the diff data
+            for diff_idtag, diff_grid in multiverse_model_data.items():
+
+                for key, data in gather_model_as_jsons(diff_grid).items():
+
+                    if key == "model_data":
+                        ext = ".model"
+                        rel_path = "model_data"
+                    elif key == "symbolic_data":
+                        ext = ".symbolic"
+                        rel_path = "model_data/symbolic_data"
+                    else:
+                        raise ValueError(f"Unhandled data package to save {key}")
+
+                    for object_type_name, object_data in data.items():
+                        filename = f"multiverse/{diff_idtag}/{rel_path}/{object_type_name + ext}"
+                        try:
+                            f_zip_ptr.writestr(filename, json.dumps(object_data, indent=4, cls=CustomJSONizer))
+                        except TypeError as e:
+                            logger.add_error(msg=str(e), device_class=object_type_name)
+                            warn(f"{object_type_name}: {e}")
+        else:
+            # save the main model --------------------------------------------------------------------------------------
+            # In this case, we only want to save the main model, since no multiverse was provided
+            for key, data in gather_model_as_jsons(circuit).items():
+
+                if key == "model_data":
+                    ext = ".model"
+                elif key == "symbolic_data":
+                    ext = ".symbolic"
+                else:
+                    raise ValueError(f"Unhandled data package to save {key}")
+
+                for object_type_name, object_data in data.items():
+                    filename = key + "/" + object_type_name + ext
+                    try:
+                        f_zip_ptr.writestr(filename, json.dumps(object_data, indent=4, cls=CustomJSONizer))
+                    except TypeError as e:
+                        logger.add_error(msg=str(e), device_class=object_type_name)
+                        warn(f"{object_type_name}: {e}")
+
+        # save diagrams ------------------------------------------------------------------------------------------------
         for diagram in diagrams:
             filename = "diagrams/" + diagram.idtag + ".diagram"
             f_zip_ptr.writestr(filename, json.dumps(diagram.get_data_dict(), indent=4))
+
+        # gather the dataframes (legacy) -------------------------------------------------------------------------------
+        dfs = gather_model_as_data_frames(circuit, logger=logger, legacy=False)
 
         # for each DataFrame and name...
         i = 0
@@ -160,7 +199,7 @@ def save_veragrid_data_to_zip(dfs: Dict[str, pd.DataFrame],
                 text_func('Flushing ' + name + ' to ' + filename_zip + '...')
 
             if progress_func is not None:
-                progress_func((i + 1) / n * 100)
+                progress_func((i + 1) / len(dfs) * 100)
 
             if name.endswith('_prof'):
 
@@ -192,7 +231,7 @@ def save_veragrid_data_to_zip(dfs: Dict[str, pd.DataFrame],
 
             i += 1
 
-        # Save the results into the zip file
+        # Save the results into the zip file ---------------------------------------------------------------------------
         save_results_in_zip(f_zip_ptr=f_zip_ptr,
                             filename_zip=filename_zip,
                             sessions_data=sessions_data,
@@ -305,9 +344,12 @@ def get_frames_from_zip(file_name_zip: str,
     :param logger:
     :return: list of DataFrames
     """
-    data = {'diagrams': list(),
-            'model_data': dict(),
-            'symbolic_data': dict()}
+    data = {
+        'diagrams': list(),
+        'model_data': dict(),
+        'symbolic_data': dict(),
+        'multiverse': dict()
+    }
     json_files = dict()
 
     # open the zip file
@@ -355,8 +397,7 @@ def get_frames_from_zip(file_name_zip: str,
                 data['symbolic_data'][object_name] = load_json_from_file_pointer(file_pointer)
 
             elif extension == '.csv':
-                df = pd.read_csv(file_pointer, index_col=None)
-                data[name] = df
+                data[name] = pd.read_csv(file_pointer, index_col=None)
 
             elif extension == '.npy':
                 try:
@@ -367,8 +408,7 @@ def get_frames_from_zip(file_name_zip: str,
 
             elif extension == '.pkl':
                 try:
-                    df = pd.read_pickle(file_pointer)
-                    data[name] = df
+                    data[name] = pd.read_pickle(file_pointer)
                 except ValueError as e:
                     logger.add_error(str(e), device=file_pointer.name)
                 except AttributeError as e:
@@ -376,8 +416,7 @@ def get_frames_from_zip(file_name_zip: str,
 
             elif extension == '.parquet':
                 try:
-                    df = pd.read_parquet(file_pointer)
-                    data[name] = df
+                    data[name] = pd.read_parquet(file_pointer)
                 except ValueError as e:
                     logger.add_error(str(e), device=file_pointer.name)
                 except AttributeError as e:
