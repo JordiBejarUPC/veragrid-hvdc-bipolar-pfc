@@ -1658,9 +1658,9 @@ class GridMapWidget(BaseDiagramWidget):
                                   'locations. If you are unsure of the effects of this updating, click no and perform '
                                   'the individual length update in a new map or in the specific line.')
         if ok:
-            line_graphics_list = self.graphics_manager.graphic_dict[DeviceType.LineDevice]
+            line_graphics_dict = self.graphics_manager.get_device_type_dict(DeviceType.LineDevice)
 
-            for key, line_graphic in line_graphics_list.items():
+            for key, line_graphic in line_graphics_dict.items():
                 line_graphic.calculate_total_length()
 
             self.gui.show_info_toast(message='Line lengths UPDATED')
