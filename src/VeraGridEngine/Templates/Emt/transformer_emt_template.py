@@ -53,6 +53,7 @@ def get_transformer_emt_template(
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.TransformerTypeDevice
     templ.name = name
+    templ.block.name = name
 
     vf: VarFactory = grid.emt_var_factory
     fbase: float = grid.fBase

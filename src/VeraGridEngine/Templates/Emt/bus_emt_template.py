@@ -28,6 +28,7 @@ class BusEmtTemplate(EmtModelTemplate):
         super().__init__(name=name)
 
         self.tpe: DeviceType = DeviceType.BusDevice
+        self._block.name = name
         if is_dc:
             # For a DC bus in EMT, we track the instantaneous DC voltage.
             self.v_DC = vf.add_var(name=f"v_DC_{name}", ref=VarPowerFlowRefferenceType.Vdc)

@@ -313,6 +313,7 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
+    templ.block.name = name
 
     # --------------------------------------------------------------------------------------
     # Inputs: instantaneous abc terminal voltages in pu (at bus)

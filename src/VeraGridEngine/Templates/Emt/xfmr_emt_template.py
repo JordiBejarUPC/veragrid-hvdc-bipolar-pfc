@@ -134,6 +134,7 @@ def get_xfmr_emt_template(
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.TransformerTypeDevice
     templ.name = name
+    templ.block.name = name
 
     vf: VarFactory = grid.emt_var_factory
     omega_base = 2.0 * math.pi * float(grid.fBase)

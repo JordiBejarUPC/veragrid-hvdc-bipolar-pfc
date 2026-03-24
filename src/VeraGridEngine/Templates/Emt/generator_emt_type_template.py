@@ -26,6 +26,8 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
 
+    templ.block.name = name
+
     # --------------------------------------------------------------------------------------
     # Inputs: instantaneous abc terminal voltages in pu (at bus)
     # --------------------------------------------------------------------------------------
@@ -293,6 +295,7 @@ def get_generator_emt_type_template(vf: VarFactory, name: str = "emt_type_genera
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
+    templ.block.name = name
 
     # ----------------------------------------------------------------------------------
     # Constants and Base Values
@@ -811,6 +814,7 @@ def get_generator_sauer_pai_type_template(vf: VarFactory, name: str = "sauer_pai
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
+    templ.block.name = name
 
     # ------------------------------------------------------------------
     # Constants
@@ -1752,6 +1756,7 @@ def get_complete_generator_template(vf: VarFactory, name="complete_generator_emt
     templ = EmtModelTemplate(name=name)
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
+    templ.block.name = name
 
     # generate models
     gen_mdl = get_simple_generator_emt_template(vf = vf).block

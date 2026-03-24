@@ -62,6 +62,7 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
+    templ.block.name = name
 
     # ----------------------------------------------------------------------------------
     # Constants for symbolic expressions

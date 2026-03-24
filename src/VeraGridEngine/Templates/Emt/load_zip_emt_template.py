@@ -23,6 +23,7 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory,   name: str = "ZIP_Load_EMT_3p
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
+    templ.block.name = name
 
     # fbase: float = grid.fBase
     # sbase: float = grid.Sbase

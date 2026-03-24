@@ -52,6 +52,8 @@ def get_dc_load_emt_template(
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
 
+    templ.block.name = name
+
     vf: VarFactory = grid.emt_var_factory
     sbase: float = grid.Sbase
 
