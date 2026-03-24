@@ -7,6 +7,7 @@ import pstats
 import numpy as np
 from time import perf_counter
 from typing import Any, cast
+import pandas as pd
 
 import sys
 import os
@@ -46,7 +47,7 @@ from VeraGridEngine.Devices.Aggregation.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.Aggregation import EmtEvent
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
+from VeraGridEngine.enumerations import EmtInitializationMethod, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -247,6 +248,7 @@ options = EmtOptions(time_step = 5e-6,
                      simulation_time =  0.06, # s
                      tolerance = 1e-6,
                      solver_type = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
+                     initialization_method = EmtInitializationMethod.Auto,
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
                      verbose = 1)
 
@@ -463,6 +465,19 @@ print("="*50 + "\n")
 if not ENABLE_PLOTS:
     print("Plotting disabled; stopping after solver/profiler report.")
     raise SystemExit(0)
+
+# ==============================================================================
+# SAVE RESULTS
+# ==============================================================================
+# res = np.concatenate((y, dy), axis=1)
+#
+# cols_y = [f"y{i}" for i in range(y.shape[1])]
+# cols_dy = [f"dy{i}" for i in range(dy.shape[1])]
+# cols = cols_y + cols_dy
+# results_df = pd.DataFrame(res, index=t, columns=cols)
+# results_df.index.name = "time_s"
+# name = "simulation_with_event_emt.csv"
+# results_df.to_csv(name, index=False)
 
 # ==============================================================================
 # PLOTTING

@@ -43,7 +43,7 @@ from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import St
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
+from VeraGridEngine.enumerations import EmtInitializationMethod, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -242,6 +242,7 @@ options = EmtOptions(time_step = 5e-6,
                      simulation_time =  0.05, # s
                      tolerance = 1e-6,
                      solver_type = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
+                     initialization_method = EmtInitializationMethod.Auto,
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
                      verbose = 1)
 
