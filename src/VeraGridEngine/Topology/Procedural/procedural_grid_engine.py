@@ -55,20 +55,71 @@ class ProceduralGridComputationEngine:
 
         Vnom_kV_M = []
         for sg in self.candidates:
-            # TODO: Extract the voltage from each bus
             bus_list = self.grid.get_substation_buses(sg) # bus_list = self.grid.get_voltage_levels()
-            # TODO: Check the assumption below
-            Vnom_kV_M.append(bus_list[0])  # Assuming the first bus represents the substation voltage
+            # unpack values from list
+            for bus in bus_list:
+                Vnom_kV_M.append(bus.Vnom)
+
+
+        Vnom_kV_M = np.array(Vnom_kV_M, dtype=float)
 
         Vnom_kV_N = []
         for sg in self.targets:
-            # TODO: Extract the voltage from each bus
             bus_list = self.grid.get_substation_buses(sg)
-            # TODO: Check the assumption below
-            Vnom_kV_N.append(bus_list[0])  # Assuming the first bus represents the substation voltage
+            voltage_list = [bus.Vnom for bus in bus_list]
+            for bus_val in voltage_list:
+                Vnom_kV_N.append(bus_val)
 
-        load_MW_M = None # TODO: How do we enter the generation and load capacities in the substations?
-        load_MW_N = None # TODO: How do we enter the generation and load capacities in the substations?
+        Vnom_kV_N = np.array(Vnom_kV_N, dtype=float)
+
+        print(f"Vnom_kV_M: {Vnom_kV_M}")
+        print(f"Vnom_kV_N: {Vnom_kV_N}")
+
+        gen_list = self.grid.get_generators()
+        loads_list = self.grid.get_loads()
+
+        # TODO: do not distinguish btw loads and gens
+
+        load_MW_M = []
+        for sg in self.candidates:
+            total_power_mw = 0.0
+
+            for gen in gen_list:
+
+                if gen.bus.substation is sg:
+                    total_power_mw += gen.P  # generation adds
+
+            for load in loads_list:
+                if load.bus.substation is sg:
+                    total_power_mw -= load.P  # load subtracts
+
+            load_MW_M.append(total_power_mw)
+
+        load_MW_N = []
+        for sg in self.targets:
+            total_power_mw = 0.0
+
+            for gen in gen_list:
+                gen_bus = getattr(gen, "bus", None)
+                gen_substation = getattr(gen_bus, "substation", None)
+
+                if gen_substation is sg:
+                    total_power_mw += getattr(gen, "P", 0.0)
+
+            for load in loads_list:
+                load_bus = getattr(load, "bus", None)
+                load_substation = getattr(load_bus, "substation", None)
+
+                if load_substation is sg:
+                    total_power_mw -= getattr(load, "P", 0.0)
+
+            load_MW_N.append(total_power_mw)
+
+        load_MW_M = np.array(load_MW_M, dtype=float)
+        load_MW_N = np.array(load_MW_N, dtype=float)
+
+        print(f"load_MW_M: {load_MW_M}")
+        print(f"load_MW_N: {load_MW_N}")
 
         # 2A. Run VSA: Create an initial radial topology with a Steiner tree approach
         network = Graph(coord_M, coord_N, Vnom_kV_M, Vnom_kV_N, load_MW_M, load_MW_N, max_iteration=15000)
@@ -106,10 +157,10 @@ class ProceduralGridComputationEngine:
                             transition_matrix=TRANSITION_MATRIX,
                             catalogue_path="path/to/catalogue.ods")
 
-        # 4. Convert to VeraGrid object
-        expansion_grid = Grid(topology)
+        topology.generate_markov()
+        topology.add_loads()
 
-        # 5. Display in the diagram
+        # 4. Display in the diagram
         # TODO: Display in the diagram section of the GUI
 
         return None
@@ -127,7 +178,15 @@ class Graph:
     """
     Handles the mathematical matrix operations and optimization.
     """
-    def __init__(self, m_coords, n_coords, vnom_M, vnom_N, load_M, load_N, max_iteration=1500):
+    def __init__(self,
+                 m_coords: np.array,
+                 n_coords: np.array,
+                 vnom_M: np.array,
+                 vnom_N: np.array,
+                 load_M: np.array,
+                 load_N: np.array,
+                 max_iteration: int =1500):
+
         self.m_coords = m_coords
         self.n_coords = n_coords
         self.vnom_M = vnom_M
@@ -388,6 +447,7 @@ class Topology:
                  discretization: float = 25.0,
                  transition_matrix: Dict[int, Dict[int, float]] = None,
                  catalogue_path: str = "path/to/catalogue.ods"):
+
         self.network_graph = network_graph
         self.nodes = nodes # creo que no hace falta importar esto ya que edges incluye la misma info
         self.edges = edges
@@ -474,7 +534,8 @@ class Topology:
                     # If statement to discard transitions that are not allowed by the transition matrix
                     if self.transition_matrix[current_bus_volt].get(next_bus_volt) == 0:
                         print(f"Added an intermediate bus to allow transition from {current_bus_volt}kV to {next_bus_volt}kV.")
-                        # TODO: Find out a way to solve this case
+                        next_bus_volts = self.last_bus_fix(self.transition_matrix, current_bus_volt, next_bus_volt, expansion_grid)
+                        break
                     else:
                         next_bus = gce.Bus(
                             name=f"{output_node.tpe}{output_node.id_number}",
@@ -654,14 +715,12 @@ class Topology:
 
         return float(val)
 
-class Grid:
-    """
-    Contains the data to create a VeraGrid object modeling the grid.
-    Contains a Topology instance via composition.
-    """
-    def __init__(self, topology: Topology):
-        self.topology = topology
-        # Additional attributes for Grid can be added here
+    def last_bus_fix(self, transition_matrix, current_bus_volt, next_bus_volt):
+        pass
+
+    def add_loads(self):
+        'Function to add loads and generators to the VeraGrid grid object'
+        pass
 
 class Node:
 
