@@ -48,7 +48,7 @@ def build_two_bus_real_emt_case(
     grid.add_bus(bus1)
 
     line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
-    line0.emt_model_type = gce.EmtLineTypes.PI
+
 
     tower = gce.OverheadLineType(name="Tower", Vnom=vnom)
     wire = gce.Wire(

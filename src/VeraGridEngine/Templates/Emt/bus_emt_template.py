@@ -2,63 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
+from typing import Tuple, Optional
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
-
-# depending on the number of phases of the bus a different model must be created.
-class BusEmtTemplateNABC(EmtModelTemplate):
-
-    def __init__(self,
-                 vf: VarFactory,
-                 mask: list[bool],
-                 is_dc: bool = False,
-                 name: str = "emt_bus_template"):
-        """
-        Created the EMT Template of a Bus
-        :param vf: VarFactory
-        :param mask: list[bool] with true if the phase exist and false if it doesn't in the order [N,A,B,C]
-        :param name: Name of the EMT Model
-        """
-
-        super().__init__(name=name)
-
-        self.tpe: DeviceType = DeviceType.BusDevice
-
-        self.v_N = vf.add_var(name=f"v_N_{name}", ref = VarPowerFlowRefferenceType.v_N) if mask[0] else None
-        self.v_A = vf.add_var(name=f"v_A_{name}", ref = VarPowerFlowRefferenceType.v_A) if mask[1] else None
-        self.v_B = vf.add_var(name=f"v_B_{name}", ref = VarPowerFlowRefferenceType.v_B) if mask[2] else None
-        self.v_C = vf.add_var(name=f"v_C_{name}", ref = VarPowerFlowRefferenceType.v_C) if mask[3] else None
-
-        v_list = [v for v in (self.v_N, self.v_A, self.v_B, self.v_C) if v is not None]
-        if not v_list:
-            raise ValueError("Bus has no enabled phases")
-
-        self._block = Block(
-            algebraic_vars=v_list,
-            out_vars = v_list
-        )
-
-        self._block.external_mapping = {
-            VarPowerFlowRefferenceType.v_N: self.v_N,
-            VarPowerFlowRefferenceType.v_A: self.v_A,
-            VarPowerFlowRefferenceType.v_B: self.v_B,
-            VarPowerFlowRefferenceType.v_C: self.v_C,
-            VarPowerFlowRefferenceType.P: None,
-            VarPowerFlowRefferenceType.Q: None
-        }
-
-    @property
-    def block(self) -> Block:
-        """
-        block
-        :return: Block
-        """
-        return self._block
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
 
 class BusEmtTemplate(EmtModelTemplate):
@@ -77,6 +28,7 @@ class BusEmtTemplate(EmtModelTemplate):
         super().__init__(name=name)
 
         self.tpe: DeviceType = DeviceType.BusDevice
+        self._block.name = name
         if is_dc:
             # For a DC bus in EMT, we track the instantaneous DC voltage.
             self.v_DC = vf.add_var(name=f"v_DC_{name}", ref=VarPowerFlowRefferenceType.Vdc)
@@ -168,6 +120,39 @@ def get_bus_emt_template(grid: MultiCircuit,
 
     # choose template depending on the number of phases
     bus.emt_model = BusEmtTemplate(vf=vf, mask = mask, is_dc = bus.is_dc, name = f"{bus.name}_emt_template").block
+
+
+def get_bus_emt_algebraic_vars(bus_emt_model: Block) -> Tuple[Optional[Var], Optional[Var], Optional[Var], Optional[Var]]:
+    """
+    Return the EMT bus algebraic voltage variables.
+
+    For AC buses:
+        returns (v_N, v_A, v_B, v_C)
+        Missing phases are returned as None.
+
+    For DC buses:
+        returns (Vdc, None, None, None)
+
+    :param bus_emt_model: EMT bus block
+    :return: Tuple with four positions to preserve a stable API
+    """
+    mapping = bus_emt_model.external_mapping
+
+    # DC bus
+    vdc = mapping.get(VarPowerFlowRefferenceType.Vdc, None)
+    if vdc is not None:
+        return vdc, None, None, None
+
+    # AC bus
+    v_n = mapping.get(VarPowerFlowRefferenceType.v_N, None)
+    v_a = mapping.get(VarPowerFlowRefferenceType.v_A, None)
+    v_b = mapping.get(VarPowerFlowRefferenceType.v_B, None)
+    v_c = mapping.get(VarPowerFlowRefferenceType.v_C, None)
+
+    if v_n is None and v_a is None and v_b is None and v_c is None:
+        raise ValueError("Invalid EMT bus model: no voltage algebraic variables found")
+
+    return v_n, v_a, v_b, v_c
 
 
 

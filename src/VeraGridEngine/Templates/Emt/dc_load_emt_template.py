@@ -27,7 +27,6 @@ The model provides:
 
 def get_dc_load_emt_template(
     grid: MultiCircuit,
-    load_name: str = "dc_load",
     P_dc: float = 0.0,  # DC power in MW (p.u. after conversion)
     R_dc: float = None,  # Resistance in p.u. (if constant resistance mode)
     name: str = "dc_load_emt_template"
@@ -52,6 +51,8 @@ def get_dc_load_emt_template(
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
+
+    templ.block.name = name
 
     vf: VarFactory = grid.emt_var_factory
     sbase: float = grid.Sbase
@@ -87,6 +88,7 @@ def get_dc_load_emt_template(
     templ.block.out_vars = [i_dc, p_dc]
 
     templ.block.external_mapping = {
+        VarPowerFlowRefferenceType.Vdc: v_dc,
         VarPowerFlowRefferenceType.Idc: i_dc,
         VarPowerFlowRefferenceType.P: None,
     }

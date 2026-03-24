@@ -76,7 +76,7 @@ grid.add_bus(bus1)
 
 # Lines
 line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
-line0.emt_model_type = gce.EmtLineTypes.PI
+
 
 # physical configuration (Overhead line tower)
 tower = gce.OverheadLineType(name="Tower", Vnom=vnom)

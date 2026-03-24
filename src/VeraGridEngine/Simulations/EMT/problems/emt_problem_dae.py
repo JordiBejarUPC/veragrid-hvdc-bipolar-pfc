@@ -26,14 +26,15 @@ from VeraGridEngine.Devices.Aggregation.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, DeviceType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, DeviceType, EmtLineTypes
 from VeraGridEngine.basic_structures import Logger, CxVec, Vec
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt, run_emt_native_initialization
-from trunk.veragrid_fmu_import import finalize_emt_fmu_cs_devices, finalize_emt_fmu_me_devices, queue_emt_fmu_cs_device, queue_emt_fmu_me_device #TODO: importing from trunk!
+from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_algebraic_vars
+# from trunk.veragrid_fmu_import import finalize_emt_fmu_cs_devices, finalize_emt_fmu_me_devices, queue_emt_fmu_cs_device, queue_emt_fmu_me_device #TODO: importing from trunk!
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     EmtBoundaryUpdateProtocol,
@@ -469,8 +470,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         self._register_runtime_event_parameters(dev=dev, mdl=mdl)
         self._add_model_to_system_mappings(dev, mdl)
-        queue_emt_fmu_cs_device(self, dev, mdl)
-        queue_emt_fmu_me_device(self, dev, mdl)
+        # queue_emt_fmu_cs_device(self, dev, mdl) #TODO: fix when fmu import in this branch
+        # queue_emt_fmu_me_device(self, dev, mdl)
         sys_block.add(mdl)
 
         # register init_eqs blocks
@@ -571,9 +572,9 @@ class EmtProblemDae(EmtProblemTemplate):
 
             is_bergeron: bool = False
 
-            if hasattr(br, 'emt_model_type') and br.emt_model_type is not None:
-                if br.emt_model_type.value == "Bergeron":
-                    is_bergeron = True
+            if br.emt_model.name == EmtLineTypes.Bergeron:
+                is_bergeron = True
+
 
             # Process device model automatically to unify blocks and apply events
             mdl: Block = self._process_device_model(br, sys_block, grid, glob_time)
@@ -685,6 +686,54 @@ class EmtProblemDae(EmtProblemTemplate):
                             pass
 
 
+                # substitute in_vars with the actual voltage var from the bus
+                # bus from
+                if br.bus_from.is_dc:
+                    Vdc_f, _, _, _ = get_bus_emt_algebraic_vars(br.bus_from.emt_model)
+
+                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc] is not None:
+                        br.emt_model.update_model(
+                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc], Vdc_f)
+
+                else:
+                    V_Nf, V_Af, V_Bf, V_Cf = get_bus_emt_algebraic_vars(br.bus_from.emt_model)
+
+                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.vf_N] is not None:
+                        br.emt_model.update_model(
+                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.vf_N], V_Nf)
+                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.vf_A] is not None:
+                        br.emt_model.update_model(
+                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.vf_A], V_Af)
+                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.vf_B] is not None:
+                        br.emt_model.update_model(
+                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.vf_B], V_Bf)
+                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.vf_C] is not None:
+                        br.emt_model.update_model(
+                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.vf_C], V_Cf)
+
+                # bus to
+                if br.bus_to.is_dc:
+                    Vdc_t, _, _, _ = get_bus_emt_algebraic_vars(br.bus_to.emt_model)
+
+                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc] is not None:
+                        br.emt_model.update_model(
+                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc], Vdc_t)
+                else:
+                    V_Nt, V_At, V_Bt, V_Ct = get_bus_emt_algebraic_vars(br.bus_to.emt_model)
+
+                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.vt_N] is not None:
+                        br.emt_model.update_model(
+                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.vt_N], V_Nt)
+                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.vt_A] is not None:
+                        br.emt_model.update_model(
+                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.vt_A], V_At)
+                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.vt_B] is not None:
+                        br.emt_model.update_model(
+                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.vt_B], V_Bt)
+                    if br.emt_model.external_mapping[VarPowerFlowRefferenceType.vt_C] is not None:
+                        br.emt_model.update_model(
+                            br.emt_model.external_mapping[VarPowerFlowRefferenceType.vt_C], V_Ct)
+
                 # PF init for branch internal variables (and if/it)
                 vsc_index = vsc_idx_dict.get(br, -1)
                 if self.power_flow_results_3ph is not None:
@@ -744,6 +793,31 @@ class EmtProblemDae(EmtProblemTemplate):
                         I_kcl[b][ph] = I_kcl[b][ph] + i_expr
                     else:
                         pass
+
+            # substitute in_vars with the actual voltage var from the bus
+            if inj.bus.is_dc:
+                Vdc, _, _, _ = get_bus_emt_algebraic_vars(inj.bus.emt_model)
+
+                if inj.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc] is not None:
+                    inj.emt_model.update_model(
+                        inj.emt_model.external_mapping[VarPowerFlowRefferenceType.Vdc], Vdc)
+
+            else:
+                V_N, V_A, V_B, V_C = get_bus_emt_algebraic_vars(inj.bus.emt_model)
+
+                if inj.emt_model.external_mapping[VarPowerFlowRefferenceType.v_N] is not None:
+                    inj.emt_model.update_model(
+                        inj.emt_model.external_mapping[VarPowerFlowRefferenceType.v_N], V_N)
+                if inj.emt_model.external_mapping[VarPowerFlowRefferenceType.v_A] is not None:
+                    inj.emt_model.update_model(
+                        inj.emt_model.external_mapping[VarPowerFlowRefferenceType.v_A], V_A)
+                if inj.emt_model.external_mapping[VarPowerFlowRefferenceType.v_B] is not None:
+                    inj.emt_model.update_model(
+                        inj.emt_model.external_mapping[VarPowerFlowRefferenceType.v_B], V_B)
+                if inj.emt_model.external_mapping[VarPowerFlowRefferenceType.v_C] is not None:
+                    inj.emt_model.update_model(
+                        inj.emt_model.external_mapping[VarPowerFlowRefferenceType.v_C], V_C)
+
 
             if self.power_flow_results_3ph is not None:
                 self._try_set_inj_pf_init(

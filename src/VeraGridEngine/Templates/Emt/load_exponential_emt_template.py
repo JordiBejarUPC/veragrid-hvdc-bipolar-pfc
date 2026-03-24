@@ -21,6 +21,7 @@ def ExponentialLoad3phEmtBuild(vf: VarFactory, name: str = "EXP_Load_EMT_3ph") -
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
+    templ.block.name = name
 
     v_A = vf.add_var("v_A_" + name)
     v_B = vf.add_var("v_B_" + name)
