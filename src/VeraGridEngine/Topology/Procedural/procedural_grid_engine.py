@@ -7,12 +7,8 @@ from typing import Dict, List, TYPE_CHECKING
 
 import numpy as np
 import VeraGridEngine.Devices as dev
-from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
-import VeraGridEngine as gce
-from VeraGridEngine import Substation
-from VeraGridEngine.Devices.types import BRANCH_TYPES
 from VeraGridEngine.enumerations import DeviceType, ProceduralGridMethods
-from VeraGridEngine.basic_structures import Mat
+from VeraGridEngine.basic_structures import Mat, Vec
 import matplotlib.pyplot as plt
 from scipy.spatial.distance import cdist
 from scipy.sparse.csgraph import minimum_spanning_tree
@@ -20,135 +16,160 @@ from scipy.special import gammaincinv
 import random
 import pandas as pd
 
-
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+
+
+class TransitionMatrix:
+
+    def __init__(self, grid: MultiCircuit):
+
+        # Find out my unique voltages
+        voltages = set()
+        for branch in grid.get_branches(add_vsc=True, add_hvdc=True, add_switch=True):
+            V1 = branch.bus_from.Vnom
+            V2 = branch.bus_to.Vnom
+            voltages.add(V1)
+            voltages.add(V2)
+
+        self.voltages_sorted = sorted(voltages)
+        self.voltages_dict = {v: i for i, v in enumerate(self.voltages_sorted)}
+        self.transition_matrix = np.zeros((len(self.voltages_sorted), len(self.voltages_sorted)))
+        for branch in grid.get_branches(add_vsc=True, add_hvdc=True, add_switch=True):
+            V1 = branch.bus_from.Vnom
+            V2 = branch.bus_to.Vnom
+            i1 = self.voltages_dict[V1]
+            i2 = self.voltages_dict[V2]
+
+            self.transition_matrix[i1, i2] += 1.0
+            self.transition_matrix[i2, i1] += 1.0
+
+        # normalize
+        for i in range(self.transition_matrix.shape[0]):
+            self.transition_matrix[i, :] /= self.transition_matrix[i, :].sum()
+
+    def at(self, V1: float, V2: float):
+        """
+        Get probability associated to V1, transitioning to V2
+        :param V1: Voltage Source
+        :param V2: Voltage target
+        :return: Probability of transition
+        """
+        i1 = self.voltages_dict[V1]
+        i2 = self.voltages_dict[V2]
+        return self.transition_matrix[i1, i2]
+
+    def get_most_likely_transition_voltage(self, V: float):
+        """
+        Get the most likely voltage to transition to, given a voltage
+        :param V: Some voltage source
+        :return: The most likely voltage target
+        """
+        i1 = self.voltages_dict[V]
+        i2 = np.argmax(self.transition_matrix[i1, :])
+        return self.voltages_sorted[i2]
+
 
 class ProceduralGridComputationEngine:
     """
     Core engine for procedural grid expansion calculations.
     """
 
-    def __init__(
-        self,
-        grid: MultiCircuit,
-        method: ProceduralGridMethods,
-        targets: List[Substation],
-        candidates: List[Substation]
-    ):
+    def __init__(self,
+                 grid: MultiCircuit,
+                 method: ProceduralGridMethods,
+                 targets: List[dev.Substation],
+                 candidates: List[dev.Substation]):
+        """
+
+        :param grid: MultiCircuit instance
+        :param method: Method to use
+        :param targets: List of substations to connect
+        :param candidates: List of Substation that we may want to connect
+        """
         self.grid = grid
         self.method = method
-        self.targets = targets
-        self.candidates = candidates
+        self.targets_substations = targets
+        self.candidates_substations = candidates
+
+        self.target_buses: List[dev.Bus] = list()
+        self.candidate_buses: List[dev.Bus] = list()
+        self.steiner_buses: List[dev.Bus] = list()  # this is a result
+
+        for sg in self.candidates_substations:
+            self.candidate_buses += self.grid.get_substation_buses(sg)
+
+        for sg in self.targets_substations:
+            self.target_buses += self.grid.get_substation_buses(sg)
+
+        # TRANSITION_MATRIX = {
+        #     132: {132: 0.7, 220: 0.15, 380: 0.15, 500: 0},
+        #     220: {132: 0.15, 220: 0.7, 380: 0.1, 500: 0.05},
+        #     380: {132: 0.15, 220: 0.1, 380: 0.7, 500: 0.05},
+        #     500: {132: 0, 220: 0.15, 380: 0.15, 500: 0.7}
+        # }
+
+        self.transition_matrix = TransitionMatrix(grid)
 
     def run_steiner_alone(self):
         """
         Executes the Steiner Tree algorithm without further optimization.
         """
-        print("Running Steiner Tree calculation")
-
-        _CATALOGUE_CACHE = {} # needed for the catalogue_data_fectcher() function
-
-        # 1. Parse inputs
-        coord_M = np.array([[sg.latitude, sg.longitude] for sg in self.candidates])
-        coord_N = np.array([[sg.latitude, sg.longitude] for sg in self.targets])
-
-        Vnom_kV_M = []
-        for sg in self.candidates:
-            bus_list = self.grid.get_substation_buses(sg) # bus_list = self.grid.get_voltage_levels()
-            # unpack values from list
-            for bus in bus_list:
-                Vnom_kV_M.append(bus.Vnom)
-
-
-        Vnom_kV_M = np.array(Vnom_kV_M, dtype=float)
-
-        Vnom_kV_N = []
-        for sg in self.targets:
-            bus_list = self.grid.get_substation_buses(sg)
-            voltage_list = [bus.Vnom for bus in bus_list]
-            for bus_val in voltage_list:
-                Vnom_kV_N.append(bus_val)
-
-        Vnom_kV_N = np.array(Vnom_kV_N, dtype=float)
-
-        print(f"Vnom_kV_M: {Vnom_kV_M}")
-        print(f"Vnom_kV_N: {Vnom_kV_N}")
-
-        gen_list = self.grid.get_generators()
-        loads_list = self.grid.get_loads()
-
-        # TODO: do not distinguish btw loads and gens
-
-        load_MW_M = []
-        for sg in self.candidates:
-            total_power_mw = 0.0
-
-            for gen in gen_list:
-
-                if gen.bus.substation is sg:
-                    total_power_mw += gen.P  # generation adds
-
-            for load in loads_list:
-                if load.bus.substation is sg:
-                    total_power_mw -= load.P  # load subtracts
-
-            load_MW_M.append(total_power_mw)
-
-        load_MW_N = []
-        for sg in self.targets:
-            total_power_mw = 0.0
-
-            for gen in gen_list:
-                gen_bus = getattr(gen, "bus", None)
-                gen_substation = getattr(gen_bus, "substation", None)
-
-                if gen_substation is sg:
-                    total_power_mw += getattr(gen, "P", 0.0)
-
-            for load in loads_list:
-                load_bus = getattr(load, "bus", None)
-                load_substation = getattr(load_bus, "substation", None)
-
-                if load_substation is sg:
-                    total_power_mw -= getattr(load, "P", 0.0)
-
-            load_MW_N.append(total_power_mw)
-
-        load_MW_M = np.array(load_MW_M, dtype=float)
-        load_MW_N = np.array(load_MW_N, dtype=float)
-
-        print(f"load_MW_M: {load_MW_M}")
-        print(f"load_MW_N: {load_MW_N}")
 
         # 2A. Run VSA: Create an initial radial topology with a Steiner tree approach
-        network = Graph(coord_M, coord_N, Vnom_kV_M, Vnom_kV_N, load_MW_M, load_MW_N, max_iteration=15000)
-        raw_vector, history = network.run_vsa()
-        raw_steiner_pts = network.decode_solution(raw_vector)
+        network = ProceduralGridGraph(target_buses=self.target_buses,
+                                      candidate_buses=self.candidate_buses,
+                                      max_iterations=15000)
+
+        initial_steiner_points, history = network.run_vsa()
 
         # 2B. Prune redundant nodes
-        final_steiner_pts = network.prune_redundant_nodes(raw_steiner_pts)
+        final_steiner_pts = network.prune_redundant_nodes(initial_steiner_points)
+
+
 
         # 2C. Get edges of the final network
-        coords_final_network = np.vstack((network.all_coords, final_steiner_pts))
-        _, final_mst = network.get_mst_cost(coords_final_network)
-        edges = network.generate_edges(final_mst)
+        coords_final_network = np.r_[network.base_coords, final_steiner_pts]
+        dist_matrix = cdist(coords_final_network, coords_final_network, metric='euclidean')
+        final_mst = minimum_spanning_tree(dist_matrix).toarray()
+
+        # generate edges
+        rows, cols = np.where(final_mst > 0)
+        edges = list(zip(rows, cols))
 
         # 2E. Assign voltages to Steiner Points
-        closest_voltage = network.assign_voltages_to_Steiner_Points(final_steiner_pts)
+        closest_voltage = np.zeros(final_steiner_pts.shape[0])
+        for i in range(final_steiner_pts.shape[0]):
+            distances = np.linalg.norm(network.base_coords - final_steiner_pts[i, :], axis=1)
+            closest = np.argmin(distances)
+            closest_voltage[i] = network.base_voltages[closest]
 
         # 2F. Create Node and Edge objects
-        node_objects = network.create_node_objects(coords_final_network, closest_voltage)
-        edge_objects = network.create_edge_objects(node_objects, edges)
+        for i in range(final_steiner_pts.shape[0]):
+            self.steiner_buses.append(
+                dev.Bus(
+                    name=f"Intermediate_{i}",
+                    longitude=final_steiner_pts[i, 0],
+                    latitude=final_steiner_pts[i, 1]
+                )
+            )
+        all_buses = self.candidate_buses + self.target_buses + self.steiner_buses
 
         # 3. Create Topology from Graph
 
-        TRANSITION_MATRIX = {
-        132: {132: 0.7,  220: 0.15, 380: 0.15, 500: 0},
-        220: {132: 0.15, 220: 0.7,  380: 0.1,  500: 0.05},
-        380: {132: 0.15, 220: 0.1,  380: 0.7,  500: 0.05},
-        500: {132: 0,  220: 0.15, 380: 0.15, 500: 0.7}
-        }
+        # TRANSITION_MATRIX = {
+        #     132: {132: 0.7, 220: 0.15, 380: 0.15, 500: 0},
+        #     220: {132: 0.15, 220: 0.7, 380: 0.1, 500: 0.05},
+        #     380: {132: 0.15, 220: 0.1, 380: 0.7, 500: 0.05},
+        #     500: {132: 0, 220: 0.15, 380: 0.15, 500: 0.7}
+        # }
+
+        # TODO: Topology should accept:
+        #  - edges
+        #  - all_buses
+        #  - grid  -> the catalogue comes here
+        #  - TransitionMatrix
+        #  - other numerical paramters like discretization
 
         topology = Topology(network,
                             node_objects,
@@ -174,10 +195,12 @@ class ProceduralGridComputationEngine:
 
         return None
 
-class Graph:
+
+class ProceduralGridGraphLegacy:
     """
     Handles the mathematical matrix operations and optimization.
     """
+
     def __init__(self,
                  m_coords: np.array,
                  n_coords: np.array,
@@ -185,7 +208,7 @@ class Graph:
                  vnom_N: np.array,
                  load_M: np.array,
                  load_N: np.array,
-                 max_iteration: int =1500):
+                 max_iteration: int = 1500):
 
         self.m_coords = m_coords
         self.n_coords = n_coords
@@ -353,7 +376,8 @@ class Graph:
         plt.scatter(self.m_coords[:, 0], self.m_coords[:, 1], c='green', s=100, marker='s', label='POIs',
                     zorder=2)
 
-        plt.scatter(self.n_coords[:, 0], self.n_coords[:, 1], c='blue', s=100, marker='s', label='Network Extension Points',
+        plt.scatter(self.n_coords[:, 0], self.n_coords[:, 1], c='blue', s=100, marker='s',
+                    label='Network Extension Points',
                     zorder=2)
 
         # Draw Steiner Points
@@ -416,7 +440,7 @@ class Graph:
                 load = self.load_N[i - self.m]
 
             else:
-                tpe = "S" # S for Steiner Point
+                tpe = "S"  # S for Steiner Point
                 id_number = i - (self.m + self.n) + 1
                 voltage = closest_voltage[i - (self.m + self.n)]
                 load = None
@@ -429,7 +453,7 @@ class Graph:
 
         edge_objects = []
         for edge in final_edges:
-            edge_objects.append(Edge(node_objects[edge[0]],node_objects[edge[1]]))
+            edge_objects.append(Edge(node_objects[edge[0]], node_objects[edge[1]]))
 
         return edge_objects
 
@@ -441,7 +465,7 @@ class Topology:
     """
 
     def __init__(self,
-                 network_graph: Graph,
+                 network_graph: ProceduralGridGraph,
                  nodes: List[Node],
                  edges: List[Edge],
                  discretization: float = 25.0,
@@ -449,7 +473,7 @@ class Topology:
                  catalogue_path: str = "path/to/catalogue.ods"):
 
         self.network_graph = network_graph
-        self.nodes = nodes # creo que no hace falta importar esto ya que edges incluye la misma info
+        self.nodes = nodes  # creo que no hace falta importar esto ya que edges incluye la misma info
         self.edges = edges
         self.discretization = discretization  # km between buses
         self.transition_matrix = transition_matrix
@@ -459,12 +483,12 @@ class Topology:
         """
         Generates combinations that are valid by construction.
         """
-        expansion_grid = gce.MultiCircuit()
+        expansion_grid = MultiCircuit()
 
         for edge in self.edges:
 
             lengths = []
-            bus_name_log = [] # np.array(len(self.nodes), dtype=str)
+            bus_name_log = []  # np.array(len(self.nodes), dtype=str)
 
             input_node = edge.start_node
             output_node = edge.end_node
@@ -498,7 +522,7 @@ class Topology:
             next_bus_tpe = input_node.tpe
             next_bus_id_number = input_node.id_number
             next_bus_is_DC = input_node.is_DC
-            next_bus = gce.Bus(
+            next_bus = dev.Bus(
                 name=f"{next_bus_tpe}{next_bus_id_number}",
                 Vnom=next_bus_volt,
                 is_dc=next_bus_is_DC,
@@ -533,11 +557,13 @@ class Topology:
 
                     # If statement to discard transitions that are not allowed by the transition matrix
                     if self.transition_matrix[current_bus_volt].get(next_bus_volt) == 0:
-                        print(f"Added an intermediate bus to allow transition from {current_bus_volt}kV to {next_bus_volt}kV.")
-                        next_bus_volts = self.last_bus_fix(self.transition_matrix, current_bus_volt, next_bus_volt, expansion_grid)
+                        print(
+                            f"Added an intermediate bus to allow transition from {current_bus_volt}kV to {next_bus_volt}kV.")
+                        next_bus_volts = self.last_bus_fix(self.transition_matrix, current_bus_volt, next_bus_volt,
+                                                           expansion_grid)
                         break
                     else:
-                        next_bus = gce.Bus(
+                        next_bus = dev.Bus(
                             name=f"{output_node.tpe}{output_node.id_number}",
                             Vnom=next_bus_volt,
                             is_dc=output_node.is_DC,
@@ -554,11 +580,11 @@ class Topology:
 
                 else:
                     next_bus_options = sorted([b for b in voltage_options])
-                    current_transitions =  self.transition_matrix[current_bus_volt]
+                    current_transitions = self.transition_matrix[current_bus_volt]
                     weights = []
                     for bus in next_bus_options:
                         # Default to 0 probability if a voltage is not in the matrix
-                        weight = current_transitions.get(bus,0.0)
+                        weight = current_transitions.get(bus, 0.0)
                         weights.append(weight)
 
                     # random.choices returns a list, so get the first element [0]
@@ -566,11 +592,13 @@ class Topology:
                     next_bus = gce.Bus(
                         name=f"intermediate{intermediate_bus_counter}",
                         Vnom=next_bus_volt,
-                        is_dc=current_bus_is_DC, # for now we keep it like this, since everything is AC
+                        is_dc=current_bus_is_DC,  # for now we keep it like this, since everything is AC
                         vmin=0.9, vmax=1.1,
                         angle_min=-6.28, angle_max=6.28,
-                        latitude=self.coord_calc(current_bus_lat, current_bus_lon, lengths[conn_counter], coord_output)[0],
-                        longitude=self.coord_calc(current_bus_lat,current_bus_lon,lengths[conn_counter],coord_output)[1]
+                        latitude=self.coord_calc(current_bus_lat, current_bus_lon, lengths[conn_counter], coord_output)[
+                            0],
+                        longitude=
+                        self.coord_calc(current_bus_lat, current_bus_lon, lengths[conn_counter], coord_output)[1]
                     )
                     next_bus.Vm_cost = next_bus_volt * 1000
 
@@ -579,7 +607,8 @@ class Topology:
                     intermediate_bus_counter += 1
 
                 # Add connection between current bus and next bus to Multicircuit
-                conn_options = sorted(self.get_possible_connections(current_bus_volt, next_bus_volt, current_bus_is_DC, current_bus_is_DC))
+                conn_options = sorted(self.get_possible_connections(current_bus_volt, next_bus_volt, current_bus_is_DC,
+                                                                    current_bus_is_DC))
                 if not conn_options:
                     valid_combo = False
                     print(f"Combo failed due to lack of next connection options.")
@@ -590,11 +619,14 @@ class Topology:
                 # TODO: let the user choose the catalogue it wants using the "File" > "Import catalogue" from the GUI
 
                 if connection.conn_type == "overhead AC line":
-                    r = self.catalogue_data_fetcher(connection.identifier, 'R [Ohm/km AC@20°C]', file_name=self.catalogue_path)
+                    r = self.catalogue_data_fetcher(connection.identifier, 'R [Ohm/km AC@20°C]',
+                                                    file_name=self.catalogue_path)
                     x = self.catalogue_data_fetcher(connection.identifier, 'X [Ohm/km]', file_name=self.catalogue_path)
                     b = self.catalogue_data_fetcher(connection.identifier, 'B [uS/km]', file_name=self.catalogue_path)
-                    p_rated = self.catalogue_data_fetcher(connection.identifier, 'Rated Power [MW]', file_name=self.catalogue_path)
-                    capex = self.catalogue_data_fetcher(connection.identifier, 'Dummy Cost [EUR/km]', file_name=self.catalogue_path)
+                    p_rated = self.catalogue_data_fetcher(connection.identifier, 'Rated Power [MW]',
+                                                          file_name=self.catalogue_path)
+                    capex = self.catalogue_data_fetcher(connection.identifier, 'Dummy Cost [EUR/km]',
+                                                        file_name=self.catalogue_path)
 
                     line = gce.Line(
                         name=f"AC_Line_{current_bus.name}_{next_bus.name}",  # Added idx_1D to ensure uniqueness
@@ -608,14 +640,22 @@ class Topology:
                     conn_counter += 1
 
                 elif connection.conn_type == "transformer":
-                    hv_val = self.catalogue_data_fetcher(connection.identifier, 'HV (kV)', file_name=self.catalogue_path)
-                    lv_val = self.catalogue_data_fetcher(connection.identifier, 'LV (kV)', file_name=self.catalogue_path)
-                    pcu = self.catalogue_data_fetcher(connection.identifier, 'Copper losses (kW)', file_name=self.catalogue_path)
-                    pfe = self.catalogue_data_fetcher(connection.identifier, 'No load losses (kW)', file_name=self.catalogue_path)
-                    i0 = self.catalogue_data_fetcher(connection.identifier, 'No load current (%)', file_name=self.catalogue_path)
-                    vsc = self.catalogue_data_fetcher(connection.identifier, 'V short circuit (%)', file_name=self.catalogue_path)
-                    rate = self.catalogue_data_fetcher(connection.identifier, 'Rate (MVA)', file_name=self.catalogue_path)
-                    capex = self.catalogue_data_fetcher(connection.identifier, 'Dummy Cost [EUR]', file_name=self.catalogue_path)
+                    hv_val = self.catalogue_data_fetcher(connection.identifier, 'HV (kV)',
+                                                         file_name=self.catalogue_path)
+                    lv_val = self.catalogue_data_fetcher(connection.identifier, 'LV (kV)',
+                                                         file_name=self.catalogue_path)
+                    pcu = self.catalogue_data_fetcher(connection.identifier, 'Copper losses (kW)',
+                                                      file_name=self.catalogue_path)
+                    pfe = self.catalogue_data_fetcher(connection.identifier, 'No load losses (kW)',
+                                                      file_name=self.catalogue_path)
+                    i0 = self.catalogue_data_fetcher(connection.identifier, 'No load current (%)',
+                                                     file_name=self.catalogue_path)
+                    vsc = self.catalogue_data_fetcher(connection.identifier, 'V short circuit (%)',
+                                                      file_name=self.catalogue_path)
+                    rate = self.catalogue_data_fetcher(connection.identifier, 'Rate (MVA)',
+                                                       file_name=self.catalogue_path)
+                    capex = self.catalogue_data_fetcher(connection.identifier, 'Dummy Cost [EUR]',
+                                                        file_name=self.catalogue_path)
 
                     z_complex = gce.Devices.Branches.transformer_type.get_impedances(
                         VH_bus=max(hv_val, lv_val), VL_bus=min(hv_val, lv_val),
@@ -637,7 +677,7 @@ class Topology:
             # TODO: Add the merge_lines function outside generate_markov and inside Topology
             # combination, length_elements_ = merge_lines(combination, length_elements_)
 
-    def coord_calc(self, current_bus_lat: float,current_bus_lon: float, length:float , coord_out: np.array):
+    def coord_calc(self, current_bus_lat: float, current_bus_lon: float, length: float, coord_out: np.array):
         """
         Calculate the coordinates of the next bus based on the current bus, the length to be covered, and the output coordinates.
         """
@@ -722,10 +762,11 @@ class Topology:
         'Function to add loads and generators to the VeraGrid grid object'
         pass
 
+
 class Node:
 
     def __init__(self, tpe: str, id_number: int, x: float, y: float, load: float, voltage: int, is_DC: bool):
-        self.tpe = tpe # M, N, or S
+        self.tpe = tpe  # M, N, or S
         self.id_number = id_number
         self.x = x
         self.y = y
@@ -733,8 +774,9 @@ class Node:
         self.voltage = voltage
         self.is_DC = is_DC
 
-    #def add_node(self, candidate: int):
+    # def add_node(self, candidate: int):
     #    self.candidates.append(candidate)
+
 
 class Edge:
 
@@ -742,24 +784,164 @@ class Edge:
         self.start_node = start_node
         self.end_node = end_node
 
-class Bus:
 
-    def __init__(self, id_number: int, x: float, y: float, load: float, voltage: int):
-        self.id_number = id_number
-        self.x = x
-        self.y = y
-        self.voltage = voltage
+class ProceduralGridGraph:
 
-class Connection:
+    def __init__(self,
+                 target_buses: List[dev.Bus],
+                 candidate_buses: List[dev.Bus],
+                 max_iterations: int = 1000, ):
+        """
 
-    def __init__(self, bus_from: Bus, bus_to: Bus, tpe: str, catalogue_entry: str, length: float):
-        self.bus_from = bus_from
-        self.bus_to = bus_to
-        self.tpe = tpe  # "overhead AC line", "transformer", "VSC", etc.
-        self.catalogue_entry = catalogue_entry
-        self.length = length
+        :param target_buses:
+        :param candidate_buses:
+        :param max_iterations: Maximum number of iterations
+        """
+        self.target_buses: List[dev.Bus] = target_buses
+        self.candidate_buses: List[dev.Bus] = candidate_buses
+        self.max_iterations: int = max_iterations
 
+        self.n_target = len(self.target_buses)
+        self.n_candidate = len(self.candidate_buses)
 
-if __name__ == '__main__':
+        self.n_steiner = self.n_target + self.n_candidate - 2
 
-    pass
+        # 1. Parse inputs
+        self.coord_candidate = np.zeros((self.n_candidate, 2))  # dim, (lon, lat)
+        self.coord_target = np.zeros((self.n_target, 2))  # dim, (lon, lat)
+        Vnom_kV_candidate = np.zeros(self.n_candidate)
+        Vnom_kV_target = np.zeros(self.n_target)
+
+        self.min_lon = np.inf
+        self.min_lat = np.inf
+        self.max_lon = 0
+        self.max_lat = 0
+
+        for i, bus in enumerate(self.target_buses):
+            lon, lat = bus.try_to_find_coordinates()
+            self.coord_target[i, 0] = lon
+            self.coord_target[i, 1] = lat
+            Vnom_kV_target[i] = bus.Vnom
+
+            self.min_lon = min(self.min_lon, lon)
+            self.min_lat = min(self.min_lat, lat)
+            self.max_lon = max(self.max_lon, lon)
+            self.max_lat = max(self.max_lat, lat)
+
+        for i, bus in enumerate(self.candidate_buses):
+            lon, lat = bus.try_to_find_coordinates()
+            self.coord_candidate[i, 0] = lon
+            self.coord_candidate[i, 1] = lat
+            Vnom_kV_candidate[i] = bus.Vnom
+
+            self.min_lon = min(self.min_lon, lon)
+            self.min_lat = min(self.min_lat, lat)
+            self.max_lon = max(self.max_lon, lon)
+            self.max_lat = max(self.max_lat, lat)
+
+        self.base_coords = np.r_[self.coord_candidate, self.coord_target]
+        self.base_voltages = np.r_[Vnom_kV_candidate, Vnom_kV_target]
+
+    def calculate_fitness(self, mu_lon: Vec, mu_lat: Vec):
+        """
+        VSA Fitness: MST Length + Degree Penalty.
+        :param mu_lat: steiner points latitudes
+        :param mu_lon: steiner points longitudes
+        """
+        steiner_coords = np.c_[mu_lon, mu_lat]
+        all_coords = np.r_[self.base_coords, self.coord_target, steiner_coords]
+
+        # MST Calculation
+        dist_matrix = cdist(all_coords, all_coords)
+        mst_matrix = minimum_spanning_tree(dist_matrix)
+        mst_array = mst_matrix.toarray()
+
+        total_length = np.sum(mst_array)
+
+        # Penalty for Degree > 3 (Geometrically impossible for optimal ST)
+        adj = mst_array + mst_array.T
+        degrees = np.count_nonzero(adj, axis=1)
+        steiner_degrees = degrees[self.n_target + self.n_candidate:]
+
+        penalty = 0
+        for d in steiner_degrees:
+            if d > 3: penalty += 10000
+
+        return total_length + penalty
+
+    def run_vsa(self):
+        """
+
+        :return: best_solution (dim, (lat, lon))
+        """
+        dim = self.n_steiner * 2
+
+        mu_lon = np.random.uniform(self.min_lon, self.max_lon, dim)
+        mu_lat = np.random.uniform(self.min_lat, self.max_lat, dim)
+
+        best_fitness = self.calculate_fitness(mu_lon=mu_lon, mu_lat=mu_lat)
+        best_solution = np.c_[mu_lat, mu_lon]
+
+        convergence_history = []
+
+        radius_max = np.sqrt((self.max_lat - self.min_lat) ** 2 + (self.max_lon - self.min_lon) ** 2) / 2.0
+        x_param = 0.1
+
+        # print("Running VSA...\n")
+        for k in range(self.max_iterations):
+            a_t = 1.0 - (k / self.max_iterations)
+            a_t = max(a_t, 0.0001)
+            r_t = radius_max * (1 / x_param) * gammaincinv(x_param, a_t)
+
+            candidate_lon = mu_lon + r_t * np.random.randn(dim)
+            candidate_lat = mu_lat + r_t * np.random.randn(dim)
+
+            candidate_lon = np.clip(candidate_lon, self.min_lon, self.max_lon)
+            candidate_lat = np.clip(candidate_lat, self.min_lat, self.max_lat)
+
+            fitness = self.calculate_fitness(mu_lon=candidate_lon, mu_lat=candidate_lat)
+
+            if fitness < best_fitness:
+                best_fitness = fitness
+                best_solution = np.c_[candidate_lon, candidate_lat]
+
+            convergence_history.append(best_fitness)
+
+        return best_solution, convergence_history
+
+    def prune_redundant_nodes(self, steiner_coords: Mat):
+        """
+        Iteratively removes Steiner points with Degree <= 2.
+        :param steiner_coords: steiner points coordinates (dim, (lon, lat))
+        """
+        current_steiner = steiner_coords.copy()
+
+        while True:
+            if len(current_steiner) == 0:
+                break
+
+            # 1. Build MST with current set
+            all_coords = np.r_[self.base_coords, self.coord_target, current_steiner]
+
+            dist_matrix = cdist(all_coords, all_coords, metric='euclidean')
+            mst_array = minimum_spanning_tree(dist_matrix).toarray()
+            # cost = np.sum(mst_array)
+
+            # 2. Check degrees
+            adj = mst_array + mst_array.T
+            degrees = np.count_nonzero(adj, axis=1)
+
+            # Extract Steiner degrees (indices after fixed nodes)
+            st_degrees = degrees[self.n_target + self.n_candidate:]
+
+            # 3. Identify useful points (Degree >= 3)
+            useful_indices = np.where(st_degrees > 2)[0]
+
+            # If no nodes are redundant, stop pruning
+            if len(useful_indices) == len(current_steiner):
+                break
+
+            print(f"Pruning... Removed {len(current_steiner) - len(useful_indices)} nodes.\n")
+            current_steiner = current_steiner[useful_indices, :]
+
+        return current_steiner

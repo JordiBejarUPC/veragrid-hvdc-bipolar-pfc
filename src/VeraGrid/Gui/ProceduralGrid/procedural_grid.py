@@ -12,10 +12,9 @@ from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import S
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import haversine_distance
 from VeraGrid.Gui.ProceduralGrid.procedural_grid_ui import Ui_Dialog
 from VeraGrid.Gui.gui_functions import get_list_model, enums_to_model
-from VeraGridEngine import MultiCircuit
 from VeraGridEngine.enumerations import ProceduralGridMethods
 from VeraGridEngine.Topology.Procedural.procedural_grid_engine import ProceduralGridComputationEngine
-#from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.simulations import SimulationsMain
@@ -94,7 +93,9 @@ class ProceduralGridWindow(QtWidgets.QDialog):
 
             self.candidate_list.clear()
             for i in sorted_indices[:top_n]:
-                self.candidate_list.append(self.all_substations_graphics_in_diagram_list[i])
+                candidate = self.all_substations_graphics_in_diagram_list[i]
+                if candidate not in self.connection_substations_graphics_list:
+                    self.candidate_list.append(candidate)
 
             # display the candidates list
             self.ui.candidateSubstationListView.setModel(get_list_model(
