@@ -297,50 +297,14 @@ def init_explicit(mdl: Block,
                 init_guess[var.uid] = init_val
                 x[uid2idx_vars[var.uid]] = init_val
 
-                # else:
-            #     # compile equation
-            #     eq_fn = rms_compiler.compile_rhs([eq], "equation")
-            #
-            #     idx = uid2idx_vars[var.uid]
-            #
-            #     # Solve with Newton
-            #     init_val = solve_newton(
-            #         eq_fn=eq_fn,
-            #         x=x,
-            #         idx=idx,
-            #         event_params_array=event_params_array,
-            #         params_array=params_array,
-            #         dummy_diff=dummy_diff,
-            #         tol=1e-8,
-            #         max_iter=20
-            #     )
-            #
-            #     init_guess[var.uid] = init_val
-            #     x[idx] = init_val
+
+def init_custom(mdl, init_guess):
+    for lst in [mdl.state_vars, mdl.algebraic_vars]:
+        for var in lst:
+            init_guess[var.uid] = mdl.init_values[var.uid]
 
 
 
-            # else:
-            #     # eq_fn = SymbolicVector([eq], compiler_names_dict, alias_names_dict, VARS_NAME, DIFF_NAME,
-            #     #                        VARIABLE_PARAMS_NAME, CONSTANT_PARAMS_NAME)
-            #     eq_fn = rms_compiler.compile_rhs([eq], "equation")
-            #     init_val = 0
-            #     tol = 1e-8
-            #     error = 1
-            #     alpha = 1.3
-            #     x0 = 1.2
-            #     x[uid2idx_vars[var.uid]] = x0
-            #     while error > tol:
-            #         try:
-            #             init_val = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
-            #         except:
-            #             x[uid2idx_vars[var.uid]] = -0.1
-            #             init_val = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
-            #         x[uid2idx_vars[var.uid]] = (1 - alpha) * x0 + alpha * init_val
-            #         error = np.linalg.norm(init_val - x0)
-            #         x0 = x[uid2idx_vars[var.uid]]
-            #     init_guess[var.uid] = init_val
-            #     x[uid2idx_vars[var.uid]] = init_val
 
 
 class PseudoTransientInitProblem:

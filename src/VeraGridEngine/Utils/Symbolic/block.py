@@ -7,6 +7,8 @@ from __future__ import annotations
 
 import uuid
 from typing import List, Dict, Any
+
+from VeraGridEngine import VarFactory
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
@@ -468,6 +470,18 @@ class Block:
         """
         self.children.remove(val)
 
+    def check_valid_init_method(self, var_factory: VarFactory):
+
+        explicit = True
+        for lst in [self.state_vars, self.algebraic_vars]:
+            for var in lst:
+                if self.init_eqs[var] is None:
+                    explicit = False
+                if self.init_values[var] is None:
+                    self.init_values[var] = var_factory.add_const(0)
+        return explicit
+
+
     def get_all_blocks(self) -> List[Block]:
         """
         Depth-first collection of all *primitive* Blocks.
@@ -531,6 +545,9 @@ class Block:
 
             for var, init_eq in b.init_eqs.items():
                 mdl_placeholder.init_eqs[var] = init_eq
+
+            for var, init_val in b.init_values.items():
+                mdl_placeholder.init_values[var] = init_val
 
             for diffvar, diff_init_eq in b.diff_init_eqs.items():
                 mdl_placeholder.diff_init_eqs[diffvar] = diff_init_eq
