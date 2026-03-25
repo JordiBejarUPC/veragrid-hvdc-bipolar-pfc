@@ -113,6 +113,85 @@ def get_shunt_r_3ph_emt_template(vf: VarFactory, name: str = "Shunt_R_3ph") -> E
 
     return templ
 
+def get_shunt_r_1ph_emt_template(vf: VarFactory, name: str = "Shunt_R_1ph") -> EmtModelTemplate:
+    """
+    mono-phase shunt resistor
+    Inputs:  vA, (instantaneous phase-to-ground voltages)
+    Outputs: i_A(injected currents into the bus; negative for consumption)
+    """
+
+    templ = EmtModelTemplate()
+    templ.tpe = DeviceType.LoadDevice
+    templ.name = name
+    templ.block.name = name
+
+    # Inputs (abc instantaneous voltages)
+    v_A = vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
+    templ.block.in_vars = [v_A]
+
+    # Parameters
+    R_A = vf.add_var("R_A_" + name)
+    templ.block.event_dict[R_A] = vf.add_const(None)
+
+    Pl0_A = vf.add_var("Pl0_A_" + name)
+    templ.block.parameters[Pl0_A] = vf.add_const(None)
+
+    Vnom = vf.add_var("Vnom_" + name)
+    templ.block.event_dict[Vnom] = vf.add_const(1.0)
+
+    # Algebraic injected currents
+    i_A = vf.add_var(name=f"i_A_{name}", ref=VarPowerFlowRefferenceType.i_A)
+
+    templ.block.algebraic_vars = [i_A]
+    templ.block.algebraic_eqs = [
+        i_A + v_A / R_A,   # i_inj = -v/R
+    ]
+
+    templ.block.external_mapping = {
+        VarPowerFlowRefferenceType.v_N: None,
+        VarPowerFlowRefferenceType.v_A: v_A,
+        VarPowerFlowRefferenceType.v_B: None,
+        VarPowerFlowRefferenceType.v_C: None,
+        VarPowerFlowRefferenceType.P: None,
+        VarPowerFlowRefferenceType.Q: None,
+        VarPowerFlowRefferenceType.P_N: None,
+        VarPowerFlowRefferenceType.Q_N: None,
+        VarPowerFlowRefferenceType.P_A: None,
+        VarPowerFlowRefferenceType.Q_A: None,
+        VarPowerFlowRefferenceType.P_B: None,
+        VarPowerFlowRefferenceType.Q_B: None,
+        VarPowerFlowRefferenceType.P_C: None,
+        VarPowerFlowRefferenceType.Q_C: None,
+        VarPowerFlowRefferenceType.i_N: None,
+        VarPowerFlowRefferenceType.i_A: i_A,
+        VarPowerFlowRefferenceType.i_B: None,
+        VarPowerFlowRefferenceType.i_C: None,
+        VarPowerFlowRefferenceType.phi_v: None,
+        VarPowerFlowRefferenceType.phi: None,
+        VarPowerFlowRefferenceType.Vpk: None,
+        VarPowerFlowRefferenceType.Ipk: None,
+        VarPowerFlowRefferenceType.d_v_N: None,
+        VarPowerFlowRefferenceType.d_v_A: None,
+        VarPowerFlowRefferenceType.d_v_B: None,
+        VarPowerFlowRefferenceType.d_v_C: None,
+    }
+
+    templ.block.api_obj_mapping = {
+        ParamPowerFlowRefferenceType.omega_base: None,
+        ParamPowerFlowRefferenceType.Pl0_A: Pl0_A,
+        ParamPowerFlowRefferenceType.Pl0_B: None,
+        ParamPowerFlowRefferenceType.Pl0_C: None,
+        ParamPowerFlowRefferenceType.Ql0_A: None,
+        ParamPowerFlowRefferenceType.Ql0_B: None,
+        ParamPowerFlowRefferenceType.Ql0_C: None,
+    }
+
+    templ.block.init_eqs = {
+        R_A: Vnom**2 / Pl0_A,
+    }
+
+    return templ
+
 def get_shunt_l_3ph_emt_template(vf: VarFactory, name: str = "Shunt_L_3ph") -> EmtModelTemplate:
 
     templ = EmtModelTemplate()
