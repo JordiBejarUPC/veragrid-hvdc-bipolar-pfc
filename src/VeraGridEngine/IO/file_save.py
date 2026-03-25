@@ -134,6 +134,10 @@ def save_veragrid(circuit: MultiCircuit,
 
     logger = Logger()
 
+    if options.multiverse is not None:
+        # this is to make the leaf the actual diff for saving
+        options.multiverse.commit_current()
+
     save_veragrid_data_to_zip(filename_zip=file_name,
                               circuit=circuit,
                               sessions_data=options.sessions_data,
