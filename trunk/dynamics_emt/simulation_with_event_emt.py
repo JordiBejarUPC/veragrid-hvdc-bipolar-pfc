@@ -223,8 +223,8 @@ def test_simulation_with_event_emt():
     cols = cols_y + cols_dy
     results_df = pd.DataFrame(res, index=t, columns=cols)
     results_df.index.name = "time_s"
-    name = "simulation_with_event_FROM_TEST.csv"
-    results_df.to_csv(name, index=False)
+    # name = "simulation_with_event_FROM_TEST.csv"
+    # results_df.to_csv(name, index=False)
 
     results_df = results_df[reference_df.columns]
 
