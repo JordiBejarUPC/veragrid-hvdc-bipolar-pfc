@@ -26,6 +26,7 @@ from VeraGridEngine.enumerations import (
     ShuntConnectionType,
     VarPowerFlowRefferenceType,
 )
+from VeraGridEngine.Templates.templates_common_functions import set_emt_model
 
 
 def build_full_params(problem: EmtProblemDae, t_curr: float) -> np.ndarray:
@@ -80,7 +81,7 @@ def build_two_bus_real_emt_case(
     for bus in grid.buses:
         get_bus_emt_template(grid, bus)
 
-    gen_mdl = get_generator_thevenin_rl_emt_template(grid=grid, gen=gen0).block
+    gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.emt_var_factory).block
     line_mdl = get_pi_line_emt_template(grid=grid, line=line0).block
     if zip_load:
         load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.emt_var_factory).block
@@ -102,28 +103,11 @@ def build_two_bus_real_emt_case(
             else:
                 load_mdl.event_dict[var] = load_mdl.event_dict[var]
 
-    gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]])
-    gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]])
-    gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]])
+    set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.emt_var_factory)
 
-    line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]])
-    line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]])
-    line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]])
-    line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.out_vars[0]])
-    line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.out_vars[1]])
-    line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.out_vars[2]])
+    set_emt_model(device=line0, model=line_mdl, var_factory=grid.emt_var_factory)
 
-    load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]])
-    load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]])
-    load_mdl.connect([load_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]])
-
-    big_gen = Block(children=[gen_mdl])
-    big_gen.external_mapping.update({VarPowerFlowRefferenceType.P: gen_mdl.out_vars[0]})
-    big_gen.external_mapping.update({VarPowerFlowRefferenceType.Q: gen_mdl.out_vars[1]})
-
-    line0.emt_model = line_mdl
-    load.emt_model = load_mdl
-    gen0.emt_model = big_gen
+    set_emt_model(device=load, model=load_mdl, var_factory=grid.emt_var_factory)
 
     pf_options = PowerFlowOptions(
         solver_type=gce.SolverType.NR,
@@ -155,7 +139,7 @@ def build_two_bus_real_emt_case(
         time_step=5e-6,
         simulation_time=2e-4,
         tolerance=1e-6,
-        solver=EmtSolverTypes.StructuralCompiled,
+        solver_type=EmtSolverTypes.StructuralCompiled,
         integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
         initialization_method=initialization_method,
         verbose=0,
