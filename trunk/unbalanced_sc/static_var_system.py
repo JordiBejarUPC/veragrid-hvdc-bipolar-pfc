@@ -29,7 +29,6 @@ Qfixcap = 0.0 # Q per capacitor MSC
 usetp = 1.0 # Voltage setpoint [pu]
 
 usvs = 0.926691 * np.exp(1j * -10.2621 * np.pi/180) # Bus voltage measurement [pu]
-usvs = 0.897381 * np.exp(1j * -9.866362 * np.pi/180) # Bus voltage measurement [pu]
 
 ysvs = qmin * nncap + tcrqact + Qfixcap * nfixcap # Fixed admittance based on 1 MVA / Ub^2
 
