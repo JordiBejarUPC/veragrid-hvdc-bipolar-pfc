@@ -18,10 +18,11 @@ CompiledArraysMain
 DiagramsMain
 DataBaseTableMain
 TimeEventsMain
-ScenariosMain
 SimulationsMain
 ResultsMain
 ConfigurationMain
 IoMain
 ScriptingMain
-MainGUI
+
+ScenariosMain
+VeraGridMainGUI

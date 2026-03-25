@@ -19,3 +19,7 @@ from VeraGridEngine.Devices.Dynamic import *
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
 from VeraGridEngine.Devices.multiverse import MultiVerse, ScenarioNode
+
+
+class Multiverse:
+    pass

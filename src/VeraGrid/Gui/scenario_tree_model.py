@@ -125,7 +125,7 @@ class ScenarioTreeModel(QAbstractItemModel):
             return None
 
         node: ScenarioNode = index.internalPointer()
-        circuit: MultiCircuit = node.data
+        circuit: MultiCircuit = node.circuit
         column: int = index.column()
 
         if column == 0:
@@ -158,7 +158,7 @@ class ScenarioTreeModel(QAbstractItemModel):
             return False
 
         node: ScenarioNode = index.internalPointer()
-        circuit: MultiCircuit = node.data
+        circuit: MultiCircuit = node.circuit
         column: int = index.column()
 
         if column == 0:

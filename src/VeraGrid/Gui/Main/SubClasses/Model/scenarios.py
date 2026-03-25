@@ -5,7 +5,7 @@
 from PySide6.QtCore import Qt, QPoint, QModelIndex
 from PySide6 import QtWidgets
 
-from VeraGrid.Gui.Main.SubClasses.Model.time_events import TimeEventsMain
+from VeraGrid.Gui.Main.SubClasses.Scripting.scripting import ScriptingMain
 from VeraGrid.Gui.scenario_tree_model import ScenarioTreeModel
 from VeraGrid.Gui import gui_functions as gf
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
@@ -13,7 +13,7 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.multiverse import MultiVerse, ScenarioNode
 
 
-class ScenariosMain(TimeEventsMain):
+class ScenariosMain(ScriptingMain):
     """
     Scenarios Main
     """
@@ -26,7 +26,7 @@ class ScenariosMain(TimeEventsMain):
         """
 
         # create main window
-        TimeEventsMain.__init__(self, parent)
+        ScriptingMain.__init__(self, parent)
 
         self.scenario_tree_model: ScenarioTreeModel = ScenarioTreeModel(multiverse=self.multiverse)
 
@@ -148,7 +148,7 @@ class ScenariosMain(TimeEventsMain):
             return
 
         if node is self.multiverse.current_node:
-            self.show_warning_toast(f"'{node.data.name}' is already the active scenario")
+            self.show_warning_toast(f"'{node.circuit.name}' is already the active scenario")
             return
 
         circuit: MultiCircuit = self.multiverse.activate_scenario(node.node_id)
@@ -274,7 +274,7 @@ class ScenariosMain(TimeEventsMain):
         child_count: int = parent_node.child_count()
         scenario_name: str | None = self.prompt_scenario_name(
             title="Add Child Scenario",
-            default_name=f"{parent_node.data.name} - Child {child_count + 1}"
+            default_name=f"{parent_node.circuit.name} - Child {child_count + 1}"
         )
 
         if scenario_name is not None:
@@ -320,7 +320,7 @@ class ScenariosMain(TimeEventsMain):
             warning_msg("Invalid scenario selected", "Remove Scenario")
             return
 
-        circuit: MultiCircuit = node.data
+        circuit: MultiCircuit = node.circuit
         child_count: int = node.child_count()
 
         # Build confirmation message
@@ -374,10 +374,13 @@ class ScenariosMain(TimeEventsMain):
             return
 
         if node is self.multiverse.current_node:
-            self.show_warning_toast(f"'{node.data.name}' is already the active scenario")
+            self.show_warning_toast(f"'{node.circuit.name}' is already the active scenario")
             return
 
         circuit: MultiCircuit = self.multiverse.activate_scenario(node.node_id)
+
+        # set the session drivers
+        self.session.drivers = node.drivers
 
         # Refresh counts: commit_current() may have updated the previous node's delta
         self.scenario_tree_model.refresh_data()
@@ -388,5 +391,6 @@ class ScenariosMain(TimeEventsMain):
         # Update other UI elements that depend on the circuit
         self.update_date_dependent_combos()
         self.view_objects_data()
+        self.update_available_results()
 
         self.show_info_toast(f"Current scenario set to '{circuit.name}'")

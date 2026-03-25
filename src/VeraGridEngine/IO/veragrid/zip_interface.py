@@ -41,6 +41,7 @@ def load_json_from_file_pointer(file_pointer) -> dict:
 def save_results_in_zip(f_zip_ptr: zipfile.ZipFile,
                         filename_zip: str,
                         sessions_data: List[DriverToSave],
+                        folder: str,
                         text_func: Union[None, Callable[[str], None]] = None,
                         progress_func: Union[None, Callable[[float], None]] = None):
     """
@@ -48,6 +49,7 @@ def save_results_in_zip(f_zip_ptr: zipfile.ZipFile,
     :param f_zip_ptr:
     :param filename_zip:
     :param sessions_data:
+    :param folder:
     :param text_func:
     :param progress_func:
     :return:
@@ -63,7 +65,7 @@ def save_results_in_zip(f_zip_ptr: zipfile.ZipFile,
             # traverse the registered results
             for arr_name, arr_prop in session_data.results.data_variables.items():
 
-                filename = 'sessions/' + session_data.name + '/' + session_data.tpe.value + '/' + arr_name
+                filename = folder + '/' + session_data.name + '/' + session_data.tpe.value + '/' + arr_name
 
                 if text_func is not None:
                     text_func('Flushing ' + filename + ' to ' + filename_zip + '...')
@@ -103,7 +105,6 @@ def save_results_in_zip(f_zip_ptr: zipfile.ZipFile,
 def save_veragrid_data_to_zip(filename_zip: str,
                               circuit: dev.MultiCircuit,
                               sessions_data: List[DriverToSave],
-                              diagrams: List[Union[dev.MapDiagram, dev.SchematicDiagram]],
                               json_files: Dict[str, dict],
                               multiverse: dev.MultiVerse | None = None,
                               text_func: Union[None, Callable[[str], None]] = None,
@@ -114,8 +115,7 @@ def save_veragrid_data_to_zip(filename_zip: str,
     :param filename_zip: file name where to save all
     :param circuit: MultiCircuit object
     :param sessions_data: List of DriverToSave instances, representing the results drivers data
-    :param diagrams: List of Diagram objects
-    :param json_files: List of configuration json files to save Dict[file_name, dictionary to save]
+    :param json_files: List of configuration json files to save such as gui_config Dict[file_name, dictionary to save]
     :param multiverse: MultiVerse object
     :param text_func: pointer to function that prints the names
     :param progress_func: pointer to function that prints the progress 0~100
@@ -145,24 +145,31 @@ def save_veragrid_data_to_zip(filename_zip: str,
             # save the diff data
             for diff_idtag, diff_grid in multiverse_model_data.items():
 
+                base_path = f"multiverse/{diff_idtag}"
+
                 for key, data in gather_model_as_jsons(diff_grid).items():
 
                     if key == "model_data":
                         ext = ".model"
-                        rel_path = "model_data"
+                        sub_folder = "model_data"
                     elif key == "symbolic_data":
                         ext = ".symbolic"
-                        rel_path = "model_data/symbolic_data"
+                        sub_folder = "model_data/symbolic_data"
                     else:
                         raise ValueError(f"Unhandled data package to save {key}")
 
                     for object_type_name, object_data in data.items():
-                        filename = f"multiverse/{diff_idtag}/{rel_path}/{object_type_name + ext}"
+                        filename = f"{base_path}/{sub_folder}/{object_type_name + ext}"
                         try:
                             f_zip_ptr.writestr(filename, json.dumps(object_data, indent=4, cls=CustomJSONizer))
                         except TypeError as e:
                             logger.add_error(msg=str(e), device_class=object_type_name)
                             warn(f"{object_type_name}: {e}")
+
+                # save diagrams
+                for diagram in diff_grid.diagrams:
+                    filename = f"{base_path}/diagrams/{diagram.idtag}.diagram"
+                    f_zip_ptr.writestr(filename, json.dumps(diagram.get_data_dict(), indent=4))
         else:
             # save the main model --------------------------------------------------------------------------------------
             # In this case, we only want to save the main model, since no multiverse was provided
@@ -183,10 +190,18 @@ def save_veragrid_data_to_zip(filename_zip: str,
                         logger.add_error(msg=str(e), device_class=object_type_name)
                         warn(f"{object_type_name}: {e}")
 
-        # save diagrams ------------------------------------------------------------------------------------------------
-        for diagram in diagrams:
-            filename = "diagrams/" + diagram.idtag + ".diagram"
-            f_zip_ptr.writestr(filename, json.dumps(diagram.get_data_dict(), indent=4))
+            # save diagrams --------------------------------------------------------------------------------------------
+            for diagram in circuit.diagrams:
+                filename = f"diagrams/{diagram.idtag}.diagram"
+                f_zip_ptr.writestr(filename, json.dumps(diagram.get_data_dict(), indent=4))
+
+            # Save the results into the zip file -----------------------------------------------------------------------
+            save_results_in_zip(f_zip_ptr=f_zip_ptr,
+                                filename_zip=filename_zip,
+                                folder="sessions",
+                                sessions_data=sessions_data,
+                                text_func=text_func,
+                                progress_func=progress_func)
 
         # gather the dataframes (legacy) -------------------------------------------------------------------------------
         dfs = gather_model_as_data_frames(circuit, logger=logger, legacy=False)
@@ -231,12 +246,7 @@ def save_veragrid_data_to_zip(filename_zip: str,
 
             i += 1
 
-        # Save the results into the zip file ---------------------------------------------------------------------------
-        save_results_in_zip(f_zip_ptr=f_zip_ptr,
-                            filename_zip=filename_zip,
-                            sessions_data=sessions_data,
-                            text_func=text_func,
-                            progress_func=progress_func)
+
 
     if n_failed:
         print('Failed to pickle several profiles, but saved them as csv.\nFor improved speed install Pandas >= 1.2')
@@ -335,7 +345,7 @@ def read_data_frame_from_zip(file_pointer,
 def get_frames_from_zip(file_name_zip: str,
                         text_func: Union[None, Callable[[str], None]] = None,
                         progress_func: Union[None, Callable[[float], None]] = None,
-                        logger=Logger()) -> Tuple[VERAGRID_FILE_TYPE, Dict[str, Any]]:
+                        logger=Logger()) -> Tuple[VERAGRID_FILE_TYPE, Dict[str, Any], bool]:
     """
     Open the csv files from a zip file
     :param file_name_zip: name of the zip file
@@ -351,87 +361,128 @@ def get_frames_from_zip(file_name_zip: str,
         'multiverse': dict()
     }
     json_files = dict()
-
+    has_multiverse_data = False
     # open the zip file
     try:
         zip_file_pointer = zipfile.ZipFile(file_name_zip)
     except zipfile.BadZipFile:
-        return data, json_files
+        return data, json_files, has_multiverse_data
 
     names = zip_file_pointer.namelist()
 
-    n = len(names)
+    if 'multiverse/metadata.json' in names:
+        has_multiverse_data = True
+        # Loading a multiverse file ------------------------------------------------------------------------------------
+        n = len(names)
 
-    # for each file in the zip file...
-    for i, file_name in enumerate(names):
+        # for each file in the zip file...
+        for i, file_name in enumerate(names):
 
-        # split the file name into name and extension
-        name, extension = os.path.splitext(file_name)
+            # split the file name into name and extension
+            path = file_name.split('/')
+            name, extension = os.path.splitext(path[-1])
 
-        if text_func is not None:
-            text_func('Unpacking ' + name + ' from ' + file_name_zip)
+            if text_func is not None:
+                text_func('Unpacking ' + name + ' from ' + file_name_zip)
 
-        if progress_func is not None:
-            progress_func((i + 1) / n * 100)
+            if progress_func is not None:
+                progress_func((i + 1) / n * 100)
 
-        # create a buffer to read the file
-        file_pointer = zip_file_pointer.open(file_name)
+            # create a buffer to read the file
+            file_pointer = zip_file_pointer.open(file_name)
 
-        try:
-            if name.lower() == "config":
-                df = pd.read_csv(file_pointer, index_col=0)
-                data = parse_config_df(df, data)
+            if path[0] == "multiverse":
+                model_idtag = path[1]
 
-            elif extension == '.json':
-                json_files[name] = load_json_from_file_pointer(file_pointer)
-
-            elif extension == '.diagram':
-                data['diagrams'].append(load_json_from_file_pointer(file_pointer))
-
-            elif extension == '.model':
-                folder, object_name = name.split("/")
-                data['model_data'][object_name] = load_json_from_file_pointer(file_pointer)
-
-            elif extension == '.symbolic':
-                folder, object_name = name.split("/")
-                data['symbolic_data'][object_name] = load_json_from_file_pointer(file_pointer)
-
-            elif extension == '.csv':
-                data[name] = pd.read_csv(file_pointer, index_col=None)
-
-            elif extension == '.npy':
-                try:
-                    df = np.load(file_pointer)
-                except ValueError:
-                    df = np.load(file_pointer, allow_pickle=True)
-                data[name] = df
-
-            elif extension == '.pkl':
-                try:
-                    data[name] = pd.read_pickle(file_pointer)
-                except ValueError as e:
-                    logger.add_error(str(e), device=file_pointer.name)
-                except AttributeError as e:
-                    logger.add_error(str(e) + ' Upgrading pandas might help.', device=file_pointer.name)
-
-            elif extension == '.parquet':
-                try:
-                    data[name] = pd.read_parquet(file_pointer)
-                except ValueError as e:
-                    logger.add_error(str(e), device=file_pointer.name)
-                except AttributeError as e:
-                    logger.add_error(str(e) + ' Upgrading pandas might help.', device=file_pointer.name)
+                if model_idtag not in data['multiverse']:
+                    # initialize the dict
+                    data['multiverse'][model_idtag] = {
+                        'diagrams': list(),
+                        'model_data': dict(),
+                        'symbolic_data': dict(),
+                    }
 
             else:
-                logger.add_info("Unsupported file type inside .veragrid", value=file_name)
+                if name.lower() == "config":
+                    df = pd.read_csv(file_pointer, index_col=0)
+                    data = parse_config_df(df, data)
 
-        except EOFError:
-            logger.add_error("EOF error", device=file_pointer.name)
+    else:
 
-        except zipfile.BadZipFile:
-            logger.add_error("Bad zip file error", device=file_pointer.name)
+        # Loading a flat file structure with no multiverse -------------------------------------------------------------
+        has_multiverse_data = False
+        n = len(names)
 
-    return data, json_files
+        # for each file in the zip file...
+        for i, file_name in enumerate(names):
+
+            # split the file name into name and extension
+            name, extension = os.path.splitext(file_name)
+
+            if text_func is not None:
+                text_func('Unpacking ' + name + ' from ' + file_name_zip)
+
+            if progress_func is not None:
+                progress_func((i + 1) / n * 100)
+
+            # create a buffer to read the file
+            file_pointer = zip_file_pointer.open(file_name)
+
+            try:
+                if name.lower() == "config":
+                    df = pd.read_csv(file_pointer, index_col=0)
+                    data = parse_config_df(df, data)
+
+                elif extension == '.json':
+                    json_files[name] = load_json_from_file_pointer(file_pointer)
+
+                elif extension == '.diagram':
+                    data['diagrams'].append(load_json_from_file_pointer(file_pointer))
+
+                elif extension == '.model':
+                    folder, object_name = name.split("/")
+                    data['model_data'][object_name] = load_json_from_file_pointer(file_pointer)
+
+                elif extension == '.symbolic':
+                    folder, object_name = name.split("/")
+                    data['symbolic_data'][object_name] = load_json_from_file_pointer(file_pointer)
+
+                elif extension == '.csv':
+                    data[name] = pd.read_csv(file_pointer, index_col=None)
+
+                elif extension == '.npy':
+                    try:
+                        df = np.load(file_pointer)
+                    except ValueError:
+                        df = np.load(file_pointer, allow_pickle=True)
+                    data[name] = df
+
+                elif extension == '.pkl':
+                    try:
+                        data[name] = pd.read_pickle(file_pointer)
+                    except ValueError as e:
+                        logger.add_error(str(e), device=file_pointer.name)
+                    except AttributeError as e:
+                        logger.add_error(str(e) + ' Upgrading pandas might help.', device=file_pointer.name)
+
+                elif extension == '.parquet':
+                    try:
+                        data[name] = pd.read_parquet(file_pointer)
+                    except ValueError as e:
+                        logger.add_error(str(e), device=file_pointer.name)
+                    except AttributeError as e:
+                        logger.add_error(str(e) + ' Upgrading pandas might help.', device=file_pointer.name)
+
+                else:
+                    logger.add_info("Unsupported file type inside .veragrid", value=file_name)
+
+            except EOFError:
+                logger.add_error("EOF error", device=file_pointer.name)
+
+            except zipfile.BadZipFile:
+                logger.add_error("Bad zip file error", device=file_pointer.name)
+
+    return data, json_files, has_multiverse_data
 
 
 def get_session_tree(file_name_zip: str):

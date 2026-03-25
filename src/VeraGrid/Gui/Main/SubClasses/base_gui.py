@@ -128,7 +128,7 @@ class BaseMainGui(QMainWindow):
 
         @param parent:
         """
-        # create main window
+        # create the main window
         QMainWindow.__init__(self, parent)
         self.ui = Ui_mainWindow()
         self.ui.setupUi(self)

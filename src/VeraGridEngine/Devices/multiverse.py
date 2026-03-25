@@ -5,16 +5,21 @@
 from __future__ import annotations
 
 import json
-from typing import List, Dict, Any, Tuple
+from typing import List, Dict, Any, Tuple, TYPE_CHECKING
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.enumerations import SimulationTypes
+
+if TYPE_CHECKING:
+    from VeraGridEngine.Simulations.types import DRIVER_OBJECTS
 
 
 class ScenarioNode:
     __slots__ = (
         "node_id",
-        "data",
+        "circuit",
         "parent",
         "children",
+        "drivers"
     )
 
     def __init__(
@@ -41,9 +46,11 @@ class ScenarioNode:
         :param parent: Parent node, or ``None`` for root nodes.
         """
         self.node_id: int = node_id
-        self.data: MultiCircuit = data
+        self.circuit: MultiCircuit = data
         self.parent: ScenarioNode | None = parent
         self.children: list[ScenarioNode] = []
+
+        self.drivers: Dict[SimulationTypes, DRIVER_OBJECTS] = dict()
 
     def append_child(self, child: ScenarioNode) -> None:
         child.parent = self
@@ -84,7 +91,7 @@ class MultiVerse:
         "_current_node",
     )
 
-    def __init__(self, current_model: MultiCircuit) -> None:
+    def __init__(self, current_model: MultiCircuit | None = None) -> None:
         """
         Initializes an instance of the class with the specified model and necessary
         attributes for processing scenario nodes and model comparison.
@@ -102,19 +109,20 @@ class MultiVerse:
         # Model to compare the current model against (kept for backwards compatibility)
         self._base_model: MultiCircuit | None = current_model
 
-        # Currently edited and used model
-        self._current_model: MultiCircuit = current_model
+        # Currently edited and used model (acts as the place to compose the model of a delta)
+        self._current_model: MultiCircuit | None = current_model
 
         # Currently active scenario node
         self._current_node: ScenarioNode | None = None
 
         # Set a default name if the current model has an empty name
-        if current_model.name is None or current_model.name.strip() == "":
-            current_model.name = "Base Scenario"
+        if current_model is not None:
+            if current_model.name is None or current_model.name.strip() == "":
+                current_model.name = "Base Scenario"
 
-        # Create the initial root scenario node from the current model
-        root_node = self.create_node(data=current_model, parent_id=None, position=0)
-        self._current_node = root_node
+            # Create the initial root scenario node from the current model
+            root_node = self.create_node(data=current_model, parent_id=None, position=0)
+            self._current_node = root_node
 
     @property
     def base_model(self) -> MultiCircuit:
@@ -141,7 +149,7 @@ class MultiVerse:
             raise ValueError("Current model must be a MultiCircuit object")
 
     @property
-    def current_node(self) -> ScenarioNode | None:
+    def current_node(self) -> ScenarioNode:
         return self._current_node
 
     @property
@@ -167,7 +175,7 @@ class MultiVerse:
         :return: Fully composed MultiCircuit for that node
         """
         if node.parent is None:
-            return node.data.copy()
+            return node.circuit.copy()
 
         # Collect the path from this node up to (but not including) the root
         chain: list[ScenarioNode] = []
@@ -179,14 +187,14 @@ class MultiVerse:
         chain.reverse()  # root-child → … → node
 
         # Start from a copy of the root's authoritative circuit
-        composed: MultiCircuit = root.data.copy()
+        composed: MultiCircuit = root.circuit.copy()
 
         # Apply each delta going down the chain (node.data IS the delta for non-root nodes)
         for step in chain:
-            composed.merge_circuit(new_grid=step.data)
+            composed.merge_circuit(new_grid=step.circuit)
 
         # Preserve the target scenario's name (composed inherits root's name otherwise)
-        composed.name = node.data.name
+        composed.name = node.circuit.name
 
         return composed
 
@@ -207,7 +215,7 @@ class MultiVerse:
             return
 
         # Preserve the user-facing scenario name before we overwrite node.data
-        scenario_name: str = self._current_node.data.name
+        scenario_name: str = self._current_node.circuit.name
 
         # Compose parent's full circuit to use as the diff base
         parent_circuit: MultiCircuit = self.checkout(self._current_node.parent)
@@ -219,7 +227,7 @@ class MultiVerse:
         )
 
         delta.name = scenario_name
-        self._current_node.data = delta
+        self._current_node.circuit = delta
 
     def activate_scenario(self, node_id: int) -> MultiCircuit:
         """
@@ -240,7 +248,7 @@ class MultiVerse:
         self.commit_current()
 
         if target.parent is None:
-            composed: MultiCircuit = target.data
+            composed: MultiCircuit = target.circuit
         else:
             composed = self.checkout(target)
 
@@ -333,7 +341,7 @@ class MultiVerse:
         :return:
         """
         node: ScenarioNode = self.get_node(node_id)
-        node.data = data
+        node.circuit = data
         return node
 
     def delete_node(self, node_id: int) -> ScenarioNode:
@@ -470,7 +478,7 @@ class MultiVerse:
         Good if you only want the MultiCircuit objects in a stable order.
         """
         nodes: List[ScenarioNode] = self.iter_nodes_depth_first()
-        return [node.data for node in nodes]
+        return [node.circuit for node in nodes]
 
     def to_record_list(self) -> List[Dict[str, Any]]:
         """
@@ -488,7 +496,7 @@ class MultiVerse:
                     "node_id": node.node_id,
                     "parent_id": parent_id,
                     "position": position,
-                    "idtag": node.data.idtag,  # MultiCircuit Idtag
+                    "idtag": node.circuit.idtag,  # MultiCircuit Idtag
                 }
             )
 
@@ -502,82 +510,73 @@ class MultiVerse:
         multiverse_meta_data = dict()
         multiverse_model_data = dict()
 
-        base_circuit: MultiCircuit = self._root_nodes[0].data
+        base_circuit: MultiCircuit = self._root_nodes[0].circuit
 
         for node in self.iter_nodes_depth_first():
-
             multiverse_meta_data[node.node_id] = {
                 "node_id": node.node_id,
-                "data": node.data.idtag,
+                "data": node.circuit.idtag,
                 "parent": node.parent.node_id if node.parent is not None else None,
                 "children": [chl.node_id for chl in node.children],
             }
 
             # we want to store all those models that are not the root
             # if node.data != base_circuit:
-            multiverse_model_data[node.data.idtag] = node.data
+            multiverse_model_data[node.circuit.idtag] = node.circuit
 
         return multiverse_meta_data, multiverse_model_data
 
+    def parse_json(self,
+                   diffs_dict: Dict[str, MultiCircuit],
+                   records: Dict[str, Dict[str, str]]):
+        """
+         Parse the json metadata to fill this object
+        :param diffs_dict:
+        :param records: json file name or zip file pointer
+        :return:
+        """
+        built_nodes: dict[int, ScenarioNode] = {}
+        max_id: int = 0
 
-def from_json(base_circuit: MultiCircuit,
-              diffs_dict: Dict[str, MultiCircuit],
-              f_name) -> MultiVerse:
-    """
-    
-    :param base_circuit: 
-    :param diffs_dict: 
-    :param f_name: json file name or zip file pointer 
-    :return: 
-    """
-    handler: MultiVerse = MultiVerse(base_circuit)
-    built_nodes: dict[int, ScenarioNode] = {}
-    max_id: int = 0
+        for record in records:
 
-    # Read the json data
-    with open(f_name, "r") as f:
-        records: List[Dict[str, Any]] = json.load(f)
+            # get the record values
+            node_id: int = int(record["node_id"])
+            parent_id_raw: Any = record["parent_id"]
+            parent_id: int | None = None if parent_id_raw is None else int(parent_id_raw)
+            position: int = int(record["position"])
+            idtag: str = str(record["idtag"])
 
-    for record in records:
+            parent: ScenarioNode | None = None
+            if parent_id is not None:
+                if parent_id not in built_nodes:
+                    raise ValueError(
+                        f"Parent id {parent_id} was not found before child {node_id}"
+                    )
+                parent = built_nodes[parent_id]
 
-        # get the record values
-        node_id: int = int(record["node_id"])
-        parent_id_raw: Any = record["parent_id"]
-        parent_id: int | None = None if parent_id_raw is None else int(parent_id_raw)
-        position: int = int(record["position"])
-        idtag: str = str(record["idtag"])
+            node: ScenarioNode = ScenarioNode(
+                node_id=node_id,
+                data=diffs_dict[idtag],
+                parent=parent,
+            )
 
-        parent: ScenarioNode | None = None
-        if parent_id is not None:
-            if parent_id not in built_nodes:
-                raise ValueError(
-                    f"Parent id {parent_id} was not found before child {node_id}"
-                )
-            parent = built_nodes[parent_id]
+            if parent is None:
+                if 0 < position < self.roots_number():
+                    self.insert_node(position, node)
+                else:
+                    raise ValueError(f"Invalid root position {position} for node {node_id}")
 
-        node: ScenarioNode = ScenarioNode(
-            node_id=node_id,
-            data=diffs_dict[idtag],
-            parent=parent,
-        )
-
-        if parent is None:
-            if 0 < position < handler.roots_number():
-                handler.insert_node(position, node)
             else:
-                raise ValueError(f"Invalid root position {position} for node {node_id}")
+                if 0 < position < len(parent.children):
+                    parent.children.insert(position, node)
+                else:
+                    raise ValueError(f"Invalid child position {position} for node {node_id}")
 
-        else:
-            if 0 < position < len(parent.children):
-                parent.children.insert(position, node)
-            else:
-                raise ValueError(f"Invalid child position {position} for node {node_id}")
+            self.set_node(node_id, node)
+            built_nodes[node_id] = node
 
-        handler.set_node(node_id, node)
-        built_nodes[node_id] = node
+            if node_id > max_id:
+                max_id = node_id
 
-        if node_id > max_id:
-            max_id = node_id
-
-    handler._next_id = max_id + 1
-    return handler
+        self._next_id = max_id + 1
