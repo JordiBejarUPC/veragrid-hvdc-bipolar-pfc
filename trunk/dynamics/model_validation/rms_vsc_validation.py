@@ -15,16 +15,34 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import numpy as np
+import matplotlib.pyplot as plt
 import VeraGridEngine.api as vge
 from VeraGridEngine.enumerations import ConverterControlType, TapModuleControl, TapPhaseControl, VarPowerFlowRefferenceType
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 from VeraGridEngine.Templates.Rms.vsc_gfl_dclinked import build_vsc_rms, build_trafo_vsc
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource, DCCurrentSource
 from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Aggregation import RmsEvent
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
+from VeraGridEngine.Utils.Symbolic.block import Block
+
+
+def find_name_in_block(name: str, block: Block):
+    """Recursively find a variable by name in the block and all its children."""
+    for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
+        if name == var.name:
+            return var
+    
+    for mdl in block.children:
+        res = find_name_in_block(name, mdl)
+        if res is not None:
+            return res
+    
+    return None
 
 
 def create_grid_1():
@@ -276,7 +294,7 @@ def initialize_grid2_rms_models(grid2):
             print(f"  Initializing AC Generator '{gen.name}' at AC bus '{bus.name}'...")
             if bus.rms_model.empty():
                 initialize_bus_rms(bus, grid2.rms_var_factory)
-            gen_model = get_genrow_rms_template(vfactory=vf, name=gen.name).block
+            gen_model = get_complete_generator_template(vfactory=vf, name=gen.name).block
             set_rms_model(device = gen, model=gen_model, var_factory=grid2.rms_var_factory)
 
     
@@ -289,6 +307,10 @@ def initialize_grid2_rms_models(grid2):
                 vdc_trafo = trafo.rms_model.in_vars[0]
                 vdc_bus = vsc.bus_from.rms_model.out_vars[0]
                 trafo.rms_model.connect([vdc_trafo], [vdc_bus])
+                
+                pt_vsc = vsc.rms_model.in_vars[1]
+                pt_trafo = trafo.rms_model.out_vars[1]
+                vsc.rms_model.connect([pt_vsc], [pt_trafo])
                 print(f"  ✓ Connected transformer to DC bus")
     
 
@@ -304,6 +326,9 @@ def run_rms_simulation(grid2, pf_results):
     Args:
         grid2: Grid 2 MultiCircuit with initialized RMS models
         pf_results: PowerFlowResults from initial power flow
+    
+    Returns:
+        Tuple of (rms_driver, t, y, results)
     """
     print("\n" + "-" * 70)
     print("Running RMS Dynamic Simulation on Grid 2")
@@ -314,10 +339,30 @@ def run_rms_simulation(grid2, pf_results):
     events_group = RmsEventsGroup(name="Grid2 RMS Simulation")
     grid2.add_rms_events_group(events_group)
     
+    # Find DC generator and its Idc_src0 variable for the event
+    dc_gen = None
+    for gen in grid2.generators:
+        if gen.bus.is_dc:
+            dc_gen = gen
+            break
+    
+    if dc_gen is not None and hasattr(dc_gen, 'rms_model') and dc_gen.rms_model is not None:
+        idc_src0_var = find_name_in_block('Idc_src0', dc_gen.rms_model)
+        if idc_src0_var is not None:
+            event = RmsEvent(
+                device=dc_gen,
+                parameter=idc_src0_var,
+                time=0.1,
+                value=0.011,
+                group=events_group
+            )
+            grid2.add_rms_event(event)
+            print(f"  Added event: Idc_src0 step at t=1.0s to value=0.5")
+    
     # Set up RMS simulation options
     rms_options = vge.RmsOptions(
-        simulation_time=5.0,       # 5 seconds simulation
-        time_step=0.001,           # 1 ms time step
+        simulation_time=2,       # 0.5 seconds simulation
+        time_step=0.005,           # 1 ms time step
         max_iter=20,               # Max Newton-Raphson iterations
         integration_method=DynamicIntegrationMethod.DaeBackEuler
     )
@@ -349,7 +394,155 @@ def run_rms_simulation(grid2, pf_results):
     print(f"    Converged: {results.converged}")
     print(f"    Well initialized: {results.well_initialized}")
     
-    return rms_driver
+    # Extract time and values for plotting
+    time_step = rms_driver.options.time_step
+    t = np.arange(len(results.time_array)) * time_step
+    y = results.values[:, :, 0]  # First event group
+    
+    return rms_driver, t, y, results
+
+
+def plot_rms_results(grid2, t, y, results):
+    """Plot VSC and Transformer dynamic simulation variables."""
+    print("\n" + "-" * 70)
+    print("Plotting RMS Results")
+    print("-" * 70)
+    
+    uid2idx = results.uid2idx
+    
+    fig, axes = plt.subplots(3, 1, figsize=(12, 10))
+    
+    vsc = grid2.vsc_devices[0] if len(grid2.vsc_devices) > 0 else None
+    trafo = grid2.transformers2w[0] if len(grid2.transformers2w) > 0 else None
+    dc_gen = None
+    for gen in grid2.generators:
+        if gen.bus.is_dc:
+            dc_gen = gen
+            break
+    
+    ax1 = axes[0]
+    ax2 = axes[1]
+    ax3 = axes[2]
+    
+    vsc_plotted = False
+    trafo_plotted = False
+    dc_plotted = False
+    
+    if vsc is not None and hasattr(vsc, 'rms_model') and vsc.rms_model is not None:
+        pf_vsc = find_name_in_block('Pf_vsc', vsc.rms_model)
+        pt_vsc = find_name_in_block('Pt_vsc', vsc.rms_model)
+        
+        if pf_vsc is not None:
+            idx = uid2idx.get(pf_vsc.uid)
+            if idx is not None:
+                ax1.plot(t, y[:, idx], label='VSC Pf', linewidth=1.5)
+                vsc_plotted = True
+        
+        if pt_vsc is not None:
+            idx = uid2idx.get(pt_vsc.uid)
+            if idx is not None:
+                ax1.plot(t, y[:, idx], label='VSC Pt', linewidth=1.5)
+                vsc_plotted = True
+    
+    if trafo is not None and hasattr(trafo, 'rms_model') and trafo.rms_model is not None:
+        pf_trafo = find_name_in_block('Pf_' + trafo.name, trafo.rms_model)
+        qf_trafo = find_name_in_block('Qf_' + trafo.name, trafo.rms_model)
+        pt_trafo = find_name_in_block('Pt_' + trafo.name, trafo.rms_model)
+        qt_trafo = find_name_in_block('Qt_' + trafo.name, trafo.rms_model)
+        
+        if pf_trafo is not None:
+            idx = uid2idx.get(pf_trafo.uid)
+            if idx is not None:
+                ax2.plot(t, y[:, idx], label='Trafo Pf', linewidth=1.5)
+                trafo_plotted = True
+        
+        if qf_trafo is not None:
+            idx = uid2idx.get(qf_trafo.uid)
+            if idx is not None:
+                ax2.plot(t, y[:, idx], label='Trafo Qf', linewidth=1.5)
+                trafo_plotted = True
+        
+        if pt_trafo is not None:
+            idx = uid2idx.get(pt_trafo.uid)
+            if idx is not None:
+                ax2.plot(t, y[:, idx], label='Trafo Pt', linewidth=1.5)
+                trafo_plotted = True
+        
+        if qt_trafo is not None:
+            idx = uid2idx.get(qt_trafo.uid)
+            if idx is not None:
+                ax2.plot(t, y[:, idx], label='Trafo Qt', linewidth=1.5)
+                trafo_plotted = True
+    
+    if dc_gen is not None and hasattr(dc_gen, 'rms_model') and dc_gen.rms_model is not None:
+        idc = find_name_in_block('Idc', dc_gen.rms_model)
+        idc_src = find_name_in_block('Idc_src', dc_gen.rms_model)
+        idc_src0 = find_name_in_block('Idc_src0', dc_gen.rms_model)
+        pdc = find_name_in_block('Pdc', dc_gen.rms_model)
+        
+        if idc is not None:
+            idx = uid2idx.get(idc.uid)
+            if idx is not None:
+                ax3.plot(t, y[:, idx], label='DC Idc', linewidth=1.5)
+                dc_plotted = True
+        
+        if idc_src is not None:
+            idx = uid2idx.get(idc_src.uid)
+            if idx is not None:
+                ax3.plot(t, y[:, idx], label='DC Idc_src', linewidth=1.5)
+                dc_plotted = True
+        
+        if idc_src0 is not None:
+            idx = uid2idx.get(idc_src0.uid)
+            if idx is not None:
+                ax3.plot(t, y[:, idx], label='DC Idc_src0 (event)', linewidth=1.5, linestyle='--')
+                dc_plotted = True
+        
+        if pdc is not None:
+            idx = uid2idx.get(pdc.uid)
+            if idx is not None:
+                ax3.plot(t, y[:, idx], label='DC Pdc', linewidth=1.5)
+                dc_plotted = True
+        
+        # Also plot Vdc from the bus
+        if dc_gen.bus.is_dc and hasattr(dc_gen.bus, 'rms_model') and dc_gen.bus.rms_model is not None:
+            vdc_bus = find_name_in_block('Vdc', dc_gen.bus.rms_model)
+            if vdc_bus is not None:
+                idx = uid2idx.get(vdc_bus.uid)
+                if idx is not None:
+                    ax3.plot(t, y[:, idx], label='Bus Vdc', linewidth=1.5)
+                    dc_plotted = True
+    
+    if vsc_plotted:
+        ax1.set_xlabel('Time (s)')
+        ax1.set_ylabel('Power (pu)')
+        ax1.set_title('VSC Power Variables')
+        ax1.legend(loc='upper right')
+        ax1.grid(True)
+        ax1.set_xlim([0, t[-1]])
+    
+    if trafo_plotted:
+        ax2.set_xlabel('Time (s)')
+        ax2.set_ylabel('Power (pu)')
+        ax2.set_title('Transformer Power Variables')
+        ax2.legend(loc='upper right')
+        ax2.grid(True)
+        ax2.set_xlim([0, t[-1]])
+    
+    if dc_plotted:
+        ax3.set_xlabel('Time (s)')
+        ax3.set_ylabel('Current/Power (pu)')
+        ax3.set_title('DC Generator Variables')
+        ax3.legend(loc='upper right')
+        ax3.grid(True)
+        ax3.set_xlim([0, t[-1]])
+        ax3.axvline(x=1.0, color='red', linestyle=':', alpha=0.7, label='Event at t=1.0s')
+    
+    plt.tight_layout()
+    plt.show()
+    plt.savefig('rms_vsc_validation_results.png', dpi=150)
+    print("  ✓ Plot saved to rms_vsc_validation_results.png")
+    plt.close()
 
 
 if __name__ == "__main__":
@@ -386,8 +579,11 @@ if __name__ == "__main__":
             vf = initialize_grid2_rms_models(grid2)
             
             # Run RMS dynamic simulation
-            rms_driver = run_rms_simulation(grid2, results2)
+            rms_driver, t, y, sim_results = run_rms_simulation(grid2, results2)
             
+            # Plot VSC and Transformer variables
+            plot_rms_results(grid2, t[:-1], y[:-1], sim_results)
+            print(y[-2])
             # Optionally save the grid with RMS results
             # vge.save_file(grid=grid2, filename="grid2_rms_results.veragrid")
             print("\n  ✓ Grid 2 RMS simulation saved to grid2_rms_results.veragrid")

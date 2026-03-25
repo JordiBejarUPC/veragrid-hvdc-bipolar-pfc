@@ -64,11 +64,14 @@ def build_vsc_rms(vfactory: VarFactory, name:str = ''):
     templ.tpe = DeviceType.VscDevice
     templ.name = name
 
-    inputs: List[Var] = [vfactory.add_var("Im_placeholder" + name)]
+    inputs: List[Var] = [vfactory.add_var("Im_placeholder" + name), vfactory.add_var('Pt_placeholder')]
 
     Im = inputs[0]
-    Pf = vfactory.add_var("Pf_vsc")
-    Pt = vfactory.add_var("Pt_vsc")
+    Pt = inputs[1]
+    vdc = vfactory.add_var("vdc", VarPowerFlowRefferenceType.Vdc)
+    Pf  = vfactory.add_var("Pf_vsc")
+    Qt  = vfactory.add_var("Qt_vsc")
+    Idc = vfactory.add_var("Idc")
 
     alpha1 = vfactory.add_var("alpha1")
     alpha2 = vfactory.add_var("alpha2")
@@ -79,16 +82,19 @@ def build_vsc_rms(vfactory: VarFactory, name:str = ''):
     block.parameters[alpha2] = vfactory.add_const(0.0)
     block.parameters[alpha3] = vfactory.add_const(0.0)
 
-    block.algebraic_vars = [Pf, Pt]
+    block.algebraic_vars = [Pf, Qt, Pt]
 
     #Active power is conserved Reactive isnt
     block.algebraic_eqs  = [
         Pf - Pt - 0.0*(alpha1 + alpha2*Im + alpha3*Im**2),
+        Idc + Pf/vdc, 
+        Qt -  k*mI*vmf*Idc*sym.sin()
     ]
 
     block.external_mapping = {
         VarPowerFlowRefferenceType.Pf: Pf,
         VarPowerFlowRefferenceType.Pt: Pt,
+        VarPowerFlowRefferenceType.Qt: Qt,
     }
 
     block.api_obj_mapping= {
@@ -106,21 +112,21 @@ def build_vsc_transformer_control(vf:VarFactory, name:str=''):
     #Inputs
     Vm  = vf.add_var('Vm')
     vdc = vf.add_var('vdc')
-    inputs = [Vm, vdc]
+    inputs = [Vm, vdc, alpha]
 
     #Variables
     am = vf.add_var('am')
-    alpha = vf.add_var('am')
+    alpha = vf.add_var('alpha')
     
     #Reference Values:
-    p_ref = vf.add_var('p_ref')
     v_ref = vf.add_var('v_ref')
-    i_ref = vf.add_var('i_ref')
+    vdc_ref = vf.add_var('vdc_ref')
 
     #Controller Parameters:
     Kp = vf.add_var('Kp') 
     Ki = vf.add_var('Ki') 
     Km = vf.add_var('Km') 
+    Tm = vf.add_var('Km') 
     Ks = vf.add_var('Ks') 
     alpha_max = vf.add_var('alpha_max') 
     alpha_min = vf.add_var('alpha_min') 
@@ -128,8 +134,47 @@ def build_vsc_transformer_control(vf:VarFactory, name:str=''):
     u_min = vf.add_var('u_min') 
 
     block = Block()
+
+    block.event_dict = {
+        Kp: vf.add_const()
+    }
+
+    block.event_dict = {
+        Kp: vf.add_const(1.0),
+        Ki: vf.add_const(10.0),
+        Km: vf.add_const(1.0),
+        Tm: vf.add_const(0.05),
+        Ks: vf.add_const(1.0),
+        alpha_max: vf.add_const(1.5708),
+        alpha_min: vf.add_const(0.0),
+        u_max: vf.add_const(1.0),
+        u_min: vf.add_const(-1.0),
+    }
+
     block.algebraic_vars = [am, alpha]
-    outputs = []
+
+    voltage_control_block, _ = tf_to_block(
+        var_factory= vf,
+        num = [Km],
+        den = [1, Tm],
+        x = v_ref - Vm,
+        y = am,
+    )         
+
+    power_control_block, _ = tf_to_block(
+        var_factory= vf,
+        num = [Ki, Kp],
+        den = [0, 1],
+        x = vdc_ref - vdc,
+        y = alpha,
+    )         
+
+    block.init_eqs ={
+        vdc_ref: vdc,
+        v_ref: Vm,
+    }
+    block.children = [voltage_control_block, power_control_block]
+    outputs = [am, alpha]
     return
 
 def build_trafo_vsc(vf:VarFactory, trafo:Transformer2W, name:str = ''):
@@ -143,7 +188,10 @@ def build_trafo_vsc(vf:VarFactory, trafo:Transformer2W, name:str = ''):
     vmt = vf.add_var('vmt_'+ name, VarPowerFlowRefferenceType.Vmt)
     vaf = vf.add_var('vaf_'+ name, VarPowerFlowRefferenceType.Vaf)
     vat = vf.add_var('vat_'+ name, VarPowerFlowRefferenceType.Vat)
-    inputs = [vdc, vmf, vmt, vaf, vat]
+    m = vf.add_var('m')
+    am = vf.add_var('am')
+    phi = vf.add_var('phi')
+    inputs = [vdc, vmf, vmt, vaf, vat, m]
 
     #Variables
     Qf = vf.add_var("Qf_" + name,VarPowerFlowRefferenceType.Qf)
@@ -151,9 +199,7 @@ def build_trafo_vsc(vf:VarFactory, trafo:Transformer2W, name:str = ''):
     Pf = vf.add_var("Pf_" + name,VarPowerFlowRefferenceType.Pf)
     Pt = vf.add_var("Pt_" + name,VarPowerFlowRefferenceType.Pt)
     Im = vf.add_var("Im_" + name)
-    m = vf.add_var('m')
-    am = vf.add_var('am')
-    phi = vaf
+
 
     #Parameters
     ys = 1.0 / complex(trafo.R, trafo.X)
@@ -162,8 +208,11 @@ def build_trafo_vsc(vf:VarFactory, trafo:Transformer2W, name:str = ''):
     bt  = vf.add_var("b")
     gFe = vf.add_var('gFe')
     bmu = vf.add_var('bmu')
+    vat_ref = vf.add_var('vat_ref')
     am_ref  = vf.add_var('am_ref')
     phi_ref = vf.add_var('phi_ref')
+    Q_ref = vf.add_var('phi_ref')
+    P_ref = vf.add_var('phi_ref')
     vtap_f, vtap_t = trafo.get_virtual_taps()
     
     print(f"DEBUG Trafo: R={trafo.R}, X={trafo.X}, G={trafo.G}, B={trafo.B}")
@@ -187,7 +236,7 @@ def build_trafo_vsc(vf:VarFactory, trafo:Transformer2W, name:str = ''):
     theta_hk = vaf - vat
     k = vf.add_const(np.sqrt(3/8))
     block = Block(
-        algebraic_vars=[am, Pf, Pt, Qf, Qt, Im],
+        algebraic_vars=[am, Pf, Pt, Qf, Qt, Im, phi],
         algebraic_eqs=[
             # From side: Pf = Re(Vf * (Yff*Vf + Yft*Vt)*)
             vmt - vdc*am*k,
@@ -214,11 +263,13 @@ def build_trafo_vsc(vf:VarFactory, trafo:Transformer2W, name:str = ''):
             Im: sym.sqrt(Pt**2 + Qt**2)/vmt,
             am_ref : am,
             phi_ref: phi,
+            P_ref: Pf,
         },
         event_dict={
             m      : vf.add_const(trafo.tap_module),
-            phi_ref   : vf.add_const(None),
-            am_ref    : vf.add_const(None),
+            phi_ref   : vf.add_const(trafo.tap_phase),
+            P_ref   : vf.add_const(None),
+            am_ref   : vf.add_const(None),
         },
         in_vars=inputs,
     )
@@ -246,6 +297,6 @@ def build_trafo_vsc(vf:VarFactory, trafo:Transformer2W, name:str = ''):
         bmu:vf.add_const(ysh.imag)
     }
 
-    block.out_vars = [Im]
+    block.out_vars = [Im, Pt]
     templ.block = block
     return templ

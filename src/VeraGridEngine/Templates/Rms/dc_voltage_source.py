@@ -119,6 +119,7 @@ def DCCurrentSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTempla
         C: vfactory.add_const(0.01),
         Rpv: vfactory.add_const(0.001),
         Vpv0: vfactory.add_const(None),
+        Idc_src0: vfactory.add_const(None),
     }
     dc_block = Block(
         algebraic_eqs=[
@@ -133,6 +134,7 @@ def DCCurrentSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTempla
         init_eqs={
             Idc: Pdc / Vdc,
             Idc_src0: Pdc / Vdc,
+            Idc_src: Pdc / Vdc,
             Vpv0: Vdc + Rpv * (Pdc / Vdc),
         },
         external_mapping={

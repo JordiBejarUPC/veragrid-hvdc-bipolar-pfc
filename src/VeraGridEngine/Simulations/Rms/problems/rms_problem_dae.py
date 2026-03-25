@@ -506,9 +506,14 @@ class RmsProblemDae(RmsProblemTemplate):
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)
                 else:
-                    if not elm.is_dc and (elm.idtag not in ac_virtual_buses):
+                    if elm.is_dc:
+                        self._algebraic_eqs.append(P[i])
+                    elif (elm.idtag not in ac_virtual_buses):
+                        #Do nothing
+                        _ = 0
+                    else:
                         self._algebraic_eqs.append(Q[i])
-                    self._algebraic_eqs.append(P[i])
+                        self._algebraic_eqs.append(P[i])
 
         # We define the parameter dt and delta
         self._dt = Var(name='dt')
@@ -806,7 +811,7 @@ class RmsProblemDae(RmsProblemTemplate):
         if reference_powerflow in mdl.external_mapping:
             var = mdl.external_mapping[reference_powerflow]
             self.init_guess[var.uid] = val
-            print(f"DEBUG: set_init_guess {reference_powerflow.value} = {val} for var {var.name} (uid={var.uid})")
+            #print(f"DEBUG: set_init_guess {reference_powerflow.value} = {val} for var {var.name} (uid={var.uid})")
         else:
             print(
                 f"DEBUG: set_init_guess {reference_powerflow.value} NOT FOUND in external_mapping. Available: {[k.value for k in mdl.external_mapping.keys()]}")
