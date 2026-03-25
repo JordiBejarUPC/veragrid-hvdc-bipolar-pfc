@@ -3260,6 +3260,25 @@ class MultiCircuit(Assets):
                                  device=elm.name)
         return logger
 
+    def check_emt_models(self) -> Logger:
+        """
+        This function checks that a device has a valid emt model
+        :return:
+        """
+        logger = Logger()
+
+        for elm in self.get_branches_iter():
+            if elm.emt_model.empty():
+                logger.add_error("Missing EMT model",
+                                 device_class=elm.device_type.value,
+                                 device=elm.name)
+        for elm in self.get_injection_devices_iter():
+            if elm.emt_model.empty():
+                logger.add_error("Missing EMT model",
+                                 device_class=elm.device_type.value,
+                                 device=elm.name)
+        return logger
+
 
 
 

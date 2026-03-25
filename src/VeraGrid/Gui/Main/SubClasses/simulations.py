@@ -38,7 +38,7 @@ from VeraGridEngine.enumerations import (DeviceType, AvailableTransferMode, Solv
                                          BranchImpedanceMode, ResultTypes, SimulationTypes, NodalCapacityMethod,
                                          ContingencyFilteringMethods, InvestmentsEvaluationObjectives,
                                          ReliabilityMode, OpfDispatchMode, DynamicIntegrationMethod,
-                                         RmsInitializationMethod)
+                                         RmsInitializationMethod, EmtInitializationMethod)
 
 
 class SimulationsMain(TimeEventsMain):
@@ -246,6 +246,28 @@ class SimulationsMain(TimeEventsMain):
              RmsInitializationMethod.PseudoTransient]
         )
         self.ui.rms_initialization_method_comboBox.setModel(rms_initialization_method_mdl)
+
+        # emt simulation
+        self.emt_integration_method_dict, emt_integration_method_mdl = gf.enums_to_model(
+            [DynamicIntegrationMethod.DaeBackEuler,
+             DynamicIntegrationMethod.DaeTrapezoidal,
+             DynamicIntegrationMethod.DaeBDF2,
+             DynamicIntegrationMethod.DaeBackEuler,
+             DynamicIntegrationMethod.OdeEuler]
+        )
+        # TODO: it doesn't exist yet!
+        # self.ui.emt_integration_method_comboBox.setModel(emt_integration_method_mdl)
+
+        self.emt_initialization_method_dict, emt_initialization_method_mdl = gf.enums_to_model(
+            [EmtInitializationMethod.Explicit,
+             EmtInitializationMethod.ConsistentNewton,
+             EmtInitializationMethod.PseudoTransient,
+             EmtInitializationMethod.Auto]
+        )
+
+        # TODO: it doesn't exist yet!
+        # self.ui.emt_initialization_method_comboBox.setModel(emt_initialization_method_mdl)
+
 
         # dictionaries for available results
         self.available_results_dict: Union[Dict[str, Dict[str, ResultTypes]], None] = dict()
@@ -898,6 +920,7 @@ class SimulationsMain(TimeEventsMain):
 
         return ops
 
+
     def get_selected_small_signal_stability_options(self) -> sim.SmallSignalStabilityRmsOptions:
         """
         Gather SmallSignal simulation run options
@@ -906,6 +929,23 @@ class SimulationsMain(TimeEventsMain):
         ops = sim.SmallSignalStabilityRmsOptions(
             k=None,
             ss_assessment_time=self.ui.ss_assessment_time_spinBox_2.value(),
+        )
+
+        return ops
+
+    def get_selected_emt_simulation_options(self) -> sim.EmtOptions:
+        """
+        Gather emt simulation run options
+        :return: sim.EmtOptions
+        """
+        # TODO: connect proper ui boxes! (they don't exist yet)
+        ops = sim.EmtOptions(
+            # time_step=self.ui.h_spinBox.value(),
+            # simulation_time=self.ui.sim_time_spinBox.value(),
+            # tolerance=self.ui.tolerance_emt_spinBox.value(),
+            # solver_type=self.ui.solver_type_emt_spinBox.value(),
+            # integration_method=self.emt_integration_method_dict[self.ui.emt_integration_method_comboBox.currentText()],
+            # initialization_method=self.emt_initialization_method_dict[self.ui.emt_initialization_method_comboBox.currentText()],
         )
 
         return ops
@@ -1130,6 +1170,18 @@ class SimulationsMain(TimeEventsMain):
 
         else:
             self.run_small_signal_stability()
+
+    def emt_dispatcher(self):
+        """
+        Dispatch the reliability action
+        :return:
+        """
+        if self.server_driver.is_running():
+            instruction = RemoteInstruction(operation=SimulationTypes.EmtDynamic_run)
+            self.run_remote(instruction=instruction)
+
+        else:
+            self.run_emt()
 
     def run_power_flow(self):
         """
@@ -3331,6 +3383,76 @@ class SimulationsMain(TimeEventsMain):
 
         else:
             warning_msg('There are no rms simulation results.', 'Rms simulation')
+
+        if not self.session.is_anything_running():
+            self.UNLOCK()
+
+    def run_emt(self):
+        """
+        Run emt simulation
+        :return:
+        """
+        if self.circuit.valid_for_simulation():
+
+            if not self.session.is_this_running(SimulationTypes.EmtDynamic_run):
+
+                logger = self.circuit.check_emt_models()
+                if logger.has_errors():
+                    # Show dialogue
+                    dlg = LogsDialogue(name="EMT pre simulation check",
+                                       logger=logger)
+                    dlg.setModal(True)
+                    dlg.exec()
+                    return
+                else:
+
+                    self.remove_simulation(SimulationTypes.EmtDynamic_run)
+
+                    _, pf_results = self.session.power_flow
+
+                    if pf_results is not None:
+
+                        self.ui.progress_label.setText('Running emt simulation...')
+                        QtGui.QGuiApplication.processEvents()
+                        self.LOCK()
+
+                        drv = sim.EmtSimulationDriver(grid=self.circuit,
+                                                      options=self.get_selected_emt_simulation_options(),
+                                                      pf_results_3Ph = ph_results_3Ph,
+                                                      pf_results=pf_results)
+
+                        self.session.run(drv,
+                                         post_func=self.post_emt,
+                                         prog_func=self.ui.progressBar.setValue,
+                                         text_func=self.ui.progress_label.setText)
+
+
+
+
+                    else:
+                        info_msg('Run a power flow simulation first.\n'
+                                 'The results are needed to initialize this simulation.')
+            else:
+                self.show_warning_toast('Another emt simulation is running already...')
+
+        else:
+            pass
+
+    def post_emt(self):
+        """
+
+        :return:
+        """
+        _, results = self.session.emt_dynamic_simulation
+
+        if results is not None:
+
+            # delete from the current simulations
+            self.remove_simulation(SimulationTypes.RmsDynamic_run)
+            self.update_available_results()
+
+        else:
+            warning_msg('There are no emt simulation results.', 'Rms simulation')
 
         if not self.session.is_anything_running():
             self.UNLOCK()

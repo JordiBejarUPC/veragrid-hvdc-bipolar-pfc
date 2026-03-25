@@ -280,8 +280,6 @@ class EmtProblemDae(EmtProblemTemplate):
 
         t_build = _tic()
 
-        self._validate_emt_models_exist()
-
         # build on local sys_block
         self._build_structure_and_collect(sys_block, grid, glob_time)
 
@@ -479,33 +477,6 @@ class EmtProblemDae(EmtProblemTemplate):
 
 
         self._build_runtime_param_vectors()
-
-    def _validate_emt_models_exist(self) -> None:
-        """
-        Validate that all devices have their emt_model properly assigned before building.
-
-        This check prevents cryptic KeyError exceptions during _build_structure_and_collect
-        when a device's emt_model is empty (not initialized via set_emt_model).
-
-        :raises EmtTopologyError: If any device is missing its emt_model.
-        """
-        missing_models: List[Tuple[str, str, str]] = []
-
-        for br in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-            if br.emt_model.empty():
-                missing_models.append((br.name, "branch", f"bus_from={getattr(br, 'bus_from', '?').name}, bus_to={getattr(br, 'bus_to', '?').name}"))
-
-        for inj in self.grid.get_injection_devices_iter():
-            if inj.emt_model.empty():
-                inj_bus_name = getattr(inj.bus, 'name', '?') if hasattr(inj, 'bus') else '?'
-                missing_models.append((inj.name, inj.device_type.value if hasattr(inj, 'device_type') else "injection", f"bus={inj_bus_name}"))
-
-        if missing_models:
-            errors = []
-            for dev_name, dev_type, details in missing_models:
-                errors.append(f"  - Device '{dev_name}' ({dev_type}) {details} has no emt_model assigned (emt_model is empty)")
-            error_msg = "TopologyError: Some devices are missing their emt_model. Assign EMT models before creating EmtProblemDae:\n" + "\n".join(errors)
-            raise EmtTopologyError(error_msg)
 
     def _validate_connections(self) -> None:
         """
