@@ -655,10 +655,6 @@ class JitAdSolver:
             pass
 
         for i in range(self.steps):
-            if self.verbose:
-                print(f"Simulating at step {i}")
-            else:
-                pass
 
             t_step_start = float(t[i])
             t_step_target = float(t[i + 1])

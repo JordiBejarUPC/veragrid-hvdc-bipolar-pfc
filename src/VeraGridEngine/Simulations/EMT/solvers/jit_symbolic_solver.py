@@ -394,16 +394,6 @@ class JitSymbolicSolver:
             jit_func = nb.njit(cache=True, fastmath=True)(py_func)
             batched_kernels.append(jit_func)
 
-        if self.verbose:
-            print("\n[DBG] Residual debug info order")
-            for r, info in enumerate(self._residual_debug_info[:80]):
-                print(
-                    f"{r:>4} | "
-                    f"{info['kind']:<5} | "
-                    f"{(info['state_idx'] if info['state_idx'] is not None else 'None'):>4} | "
-                    f"{info['var_name']}"
-                )
-
         self.jit_kernels[method] = batched_kernels
 
     def _build_jit_symbolic_hybrid(self, method: DynamicIntegrationMethod, use_sparse: bool)-> None:
@@ -647,10 +637,6 @@ class JitSymbolicSolver:
             pass
 
         for i in range(self.steps):
-            if self.verbose:
-                print(f"Simulating at step {i}")
-            else:
-                pass
 
             t_step_start: float = self.t0 + i * self.h
             t_step_target: float = self.t0 + (i + 1) * self.h
