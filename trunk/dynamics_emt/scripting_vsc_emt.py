@@ -175,7 +175,7 @@ for bus in circuit.buses:
 # =====================================================================
 
 # Generator model (Thevenin equivalent)
-gen_mdl = get_generator_thevenin_rl_emt_template(grid=circuit, gen=gen1).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf = circuit.emt_var_factory).block
 
 # Transformer model (series RL with ideal transformer)
 trafo_mdl = get_transformer_emt_template(grid=circuit, trafo=transformer, name=transformer.name).block
@@ -199,7 +199,6 @@ vsc_mdl = StandardConverterEmtBuild(
 dc_load_r_pu = circuit.Sbase / p_transfer_mw
 dc_load_mdl = get_dc_load_emt_template(
     grid=circuit,
-    load_name=dc_load.name,
     P_dc=dc_load.P,
     R_dc=dc_load_r_pu,
     name="dc_load_emt"

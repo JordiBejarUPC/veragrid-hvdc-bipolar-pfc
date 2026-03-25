@@ -56,6 +56,20 @@ def _toc(t0: float) -> float:
     return time.perf_counter() - t0
 
 
+class EmtTopologyError(Exception):
+    """
+    Exception raised when EMT topology validation fails.
+    This includes orphaned in_vars/out_vars and floating bus phases.
+    """
+
+    def __init__(self, message: str):
+        """
+        :param message: Descriptive error message indicating the topology issue.
+        """
+        self.message = message
+        super().__init__(self.message)
+
+
 def _unique_keep_order(seq: List[Var]) -> List[Var]:
     """
     Remove duplicated variables by UID while preserving the first appearance order.
@@ -266,17 +280,19 @@ class EmtProblemDae(EmtProblemTemplate):
 
         t_build = _tic()
 
+        self._validate_emt_models_exist()
+
         # build on local sys_block
         self._build_structure_and_collect(sys_block, grid, glob_time)
 
         sys_block.unify_blocks()
         _deduplicate_block_entities(sys_block)
 
+        self._validate_connections()
+
         # initialize template with the complete block
         super().__init__(sys_block=sys_block, glob_time=glob_time, progress_signal=progress_signal,
                          progress_text=progress_text)
-
-
 
         # Mark retained runtime parameters:
         #   - scheduled mode parameters
@@ -464,6 +480,152 @@ class EmtProblemDae(EmtProblemTemplate):
 
 
         self._build_runtime_param_vectors()
+
+    def _validate_emt_models_exist(self) -> None:
+        """
+        Validate that all devices have their emt_model properly assigned before building.
+
+        This check prevents cryptic KeyError exceptions during _build_structure_and_collect
+        when a device's emt_model is empty (not initialized via set_emt_model).
+
+        :raises EmtTopologyError: If any device is missing its emt_model.
+        """
+        missing_models: List[Tuple[str, str, str]] = []
+
+        for br in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+            if br.emt_model.empty():
+                missing_models.append((br.name, "branch", f"bus_from={getattr(br, 'bus_from', '?').name}, bus_to={getattr(br, 'bus_to', '?').name}"))
+
+        for inj in self.grid.get_injection_devices_iter():
+            if inj.emt_model.empty():
+                inj_bus_name = getattr(inj.bus, 'name', '?') if hasattr(inj, 'bus') else '?'
+                missing_models.append((inj.name, inj.device_type.value if hasattr(inj, 'device_type') else "injection", f"bus={inj_bus_name}"))
+
+        if missing_models:
+            errors = []
+            for dev_name, dev_type, details in missing_models:
+                errors.append(f"  - Device '{dev_name}' ({dev_type}) {details} has no emt_model assigned (emt_model is empty)")
+            error_msg = "TopologyError: Some devices are missing their emt_model. Assign EMT models before creating EmtProblemDae:\n" + "\n".join(errors)
+            raise EmtTopologyError(error_msg)
+
+    def _validate_connections(self) -> None:
+        """
+        Validate EMT topology connectivity.
+
+        Checks that each phase exposed by a bus must be connected to at least 2 elements
+        (branches or injections). A floating phase indicates an open circuit.
+
+        The phase connection mapping is:
+        - Branch in_vars with ref vf_N/A/B/C connect to bus_from's v_N/A/B/C
+        - Branch in_vars with ref vt_N/A/B/C connect to bus_to's v_N/A/B/C
+        - Injection device in_vars with ref v_N/A/B/C connect to their bus's v_N/A/B/C
+
+        :raises EmtTopologyError: If topology inconsistencies are found.
+        """
+        # TODO: only for AC connections!
+        phase_ref_to_bus_phase = {
+            VarPowerFlowRefferenceType.vf_N: VarPowerFlowRefferenceType.v_N,
+            VarPowerFlowRefferenceType.vf_A: VarPowerFlowRefferenceType.v_A,
+            VarPowerFlowRefferenceType.vf_B: VarPowerFlowRefferenceType.v_B,
+            VarPowerFlowRefferenceType.vf_C: VarPowerFlowRefferenceType.v_C,
+            VarPowerFlowRefferenceType.vt_N: VarPowerFlowRefferenceType.v_N,
+            VarPowerFlowRefferenceType.vt_A: VarPowerFlowRefferenceType.v_A,
+            VarPowerFlowRefferenceType.vt_B: VarPowerFlowRefferenceType.v_B,
+            VarPowerFlowRefferenceType.vt_C: VarPowerFlowRefferenceType.v_C,
+        }
+
+        branch_phase_refs = {
+            VarPowerFlowRefferenceType.vf_N, VarPowerFlowRefferenceType.vf_A,
+            VarPowerFlowRefferenceType.vf_B, VarPowerFlowRefferenceType.vf_C,
+            VarPowerFlowRefferenceType.vt_N, VarPowerFlowRefferenceType.vt_A,
+            VarPowerFlowRefferenceType.vt_B, VarPowerFlowRefferenceType.vt_C,
+        }
+
+        ac_phases = [
+            VarPowerFlowRefferenceType.v_N,
+            VarPowerFlowRefferenceType.v_A,
+            VarPowerFlowRefferenceType.v_B,
+            VarPowerFlowRefferenceType.v_C,
+        ]
+
+        bus_phase_connections: Dict[Tuple[Any, VarPowerFlowRefferenceType], Set[str]] = {}
+        for bus in self.grid.buses:
+            for phase in ac_phases:
+                bus_phase_connections[(bus, phase)] = set()
+
+        vsc_ac_phase_refs = {
+            VarPowerFlowRefferenceType.v_A,
+            VarPowerFlowRefferenceType.v_B,
+            VarPowerFlowRefferenceType.v_C,
+        }
+
+        for br in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+            if not hasattr(br, 'emt_model') or br.emt_model is None:
+                continue
+            if not hasattr(br, 'bus_from') or not hasattr(br, 'bus_to'):
+                continue
+
+            is_bergeron = (br.emt_model.name == EmtLineTypes.Bergeron)
+
+            if is_bergeron:
+                if hasattr(br, 'ys') and br.ys is not None:
+                    if br.ys.phN:
+                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_N)].add(f"branch_from:{br.name}")
+                        bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_N)].add(f"branch_to:{br.name}")
+                    if br.ys.phA:
+                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_A)].add(f"branch_from:{br.name}")
+                        bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_A)].add(f"branch_to:{br.name}")
+                    if br.ys.phB:
+                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_B)].add(f"branch_from:{br.name}")
+                        bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_B)].add(f"branch_to:{br.name}")
+                    if br.ys.phC:
+                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_C)].add(f"branch_from:{br.name}")
+                        bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_C)].add(f"branch_to:{br.name}")
+                continue
+
+            for in_var in br.emt_model.in_vars:
+                if in_var.ref in branch_phase_refs:
+                    bus_phase = phase_ref_to_bus_phase[in_var.ref]
+                    if in_var.ref in {VarPowerFlowRefferenceType.vf_N, VarPowerFlowRefferenceType.vf_A,
+                                      VarPowerFlowRefferenceType.vf_B, VarPowerFlowRefferenceType.vf_C}:
+                        bus_phase_connections[(br.bus_from, bus_phase)].add(f"branch_from:{br.name}")
+                    elif in_var.ref in {VarPowerFlowRefferenceType.vt_N, VarPowerFlowRefferenceType.vt_A,
+                                        VarPowerFlowRefferenceType.vt_B, VarPowerFlowRefferenceType.vt_C}:
+                        bus_phase_connections[(br.bus_to, bus_phase)].add(f"branch_to:{br.name}")
+                elif in_var.ref in vsc_ac_phase_refs:
+                    if br.bus_to.is_dc:
+                        bus_phase_connections[(br.bus_from, in_var.ref)].add(f"branch_from:{br.name}")
+                    else:
+                        bus_phase_connections[(br.bus_to, in_var.ref)].add(f"branch_to:{br.name}")
+
+        for inj in self.grid.get_injection_devices_iter():
+            if not hasattr(inj, 'emt_model') or inj.emt_model is None:
+                continue
+            if not hasattr(inj, 'bus'):
+                continue
+
+            inj_bus = inj.bus
+            for in_var in inj.emt_model.in_vars:
+                if in_var.ref in ac_phases:
+                    bus_phase_connections[(inj_bus, in_var.ref)].add(f"injection:{inj.name}")
+
+        floating_phases: List[str] = []
+        for bus in self.grid.buses:
+            if bus.is_dc:
+                continue
+            bus_out_refs = {v.ref for v in bus.emt_model.out_vars}
+            for phase in ac_phases:
+                connections = bus_phase_connections.get((bus, phase), set())
+                if phase in bus_out_refs and len(connections) < 2:
+                    floating_phases.append(
+                        f"  - Bus '{bus.name}' phase '{phase.value}' is floating "
+                        f"(connected to {len(connections)} element(s): {connections})"
+                    )
+
+        if floating_phases:
+            error_msg = "TopologyError: Floating bus phases detected (each phase must be connected to at least 2 elements):\n"
+            error_msg += "\n".join(floating_phases)
+            raise EmtTopologyError(error_msg)
 
     def _process_device_model(self, dev: Any, sys_block: Block, grid: MultiCircuit, glob_time: Var) -> Block:
         """

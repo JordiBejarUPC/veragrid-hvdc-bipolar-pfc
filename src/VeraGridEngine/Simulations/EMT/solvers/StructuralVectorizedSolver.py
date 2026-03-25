@@ -914,8 +914,6 @@ class StructuralVectorizedSolver:
         if verbose: print(f"-> Starting VECTORIZED Simulation (Integration loop)...")
 
         for i in range(steps):
-            if verbose:
-                print(f"Simulating at step {i}")
 
             t_step_start: float = float(t[i])
             t_step_target: float = float(t[i + 1])
