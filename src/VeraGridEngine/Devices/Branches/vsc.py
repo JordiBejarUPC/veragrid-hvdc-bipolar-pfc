@@ -47,6 +47,7 @@ class VSC(BranchParent):
         '_fault_control_prof',
         '_bus_dc_n',
         '_min_ac_voltage',
+        '_ysvs',
         '_x',
         '_y',
     )
@@ -96,6 +97,8 @@ class VSC(BranchParent):
         GCProp(key='min_ac_voltage', units='p.u.', tpe=float,
                       definition='Minimum AC voltage threshold. '
                                  'If the AC bus voltage drops below this value, the VSC is disconnected.'),
+        GCProp(key='ysvs', units='p.u.', tpe=float,
+               definition='Admittance of non-controlled Static Var Systems.'),
         GCProp(key='x', units='px', tpe=float, definition='x position'),
         GCProp(key='y', units='px', tpe=float, definition='y position'),
     )
@@ -137,6 +140,7 @@ class VSC(BranchParent):
                  control1_dev: Bus | BRANCH_TYPES | None = None,
                  control2_dev: Bus | BRANCH_TYPES | None = None,
                  min_ac_voltage: float = 0.1,
+                 ysvs: float = 0.0,
                  x: float = 0.0,
                  y: float = 0.0):
         """
@@ -174,6 +178,8 @@ class VSC(BranchParent):
         :param control1:
         :param control2:
         :param fault_control:
+        :param min_ac_voltage: Voltage threshold below which the converter is disconnected
+        :param ysvs: Admittance of Static Var Systems
         :param x: graphical x position (px)
         :param y: graphical y position (px)
         """
@@ -293,6 +299,8 @@ class VSC(BranchParent):
         self._control2_val_prof: Profile = Profile(default_value=self._control2_val, data_type=float)
 
         self.min_ac_voltage = float(min_ac_voltage)
+
+        self.ysvs = float(ysvs)
 
         self.x = float(x)
         self.y = float(y)
@@ -909,6 +917,25 @@ class VSC(BranchParent):
         :return: None
         """
         self._min_ac_voltage = float(val)
+
+    @property
+    def ysvs(self) -> float:
+        """
+        Get ``ysvs``.
+
+        :return: float
+        """
+        return self._ysvs
+
+    @ysvs.setter
+    def ysvs(self, val: float) -> None:
+        """
+        Set ``ysvs``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._ysvs = float(val)
 
     @property
     def x(self) -> float:

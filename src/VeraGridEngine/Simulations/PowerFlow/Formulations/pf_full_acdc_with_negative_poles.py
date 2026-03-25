@@ -1787,7 +1787,16 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         for vsc in self.k_vsc_qt:
 
-            if self.nc.vsc_data.Kdp[vsc] != 0.0:
+            if self.nc.vsc_data.ysvs[vsc] != 0.0:
+
+                if self.nc.vsc_data.control1[vsc] == ConverterControlType.Qac:
+                    Qt_vsc_[vsc] = np.abs(V[self.nc.vsc_data.T[vsc]]**2) * self.nc.vsc_data.ysvs[vsc] / self.nc.Sbase
+
+                elif self.nc.vsc_data.control2[vsc] == ConverterControlType.Qac:
+                    Qt_vsc_[vsc] = np.abs(V[self.nc.vsc_data.T[vsc]]**2) * self.nc.vsc_data.ysvs[vsc] / self.nc.Sbase
+
+
+            elif self.nc.vsc_data.Kdp[vsc] != 0.0:
 
                 if self.nc.vsc_data.control1[vsc] == ConverterControlType.Qac:
                     Q_setpoint = self.nc.vsc_data.control1_val[vsc]

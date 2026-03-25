@@ -950,6 +950,10 @@ class ElmSvs(DGSElement):
         # Voltage setpoint for controlled operation (p.u.). Not always present in the DGS header.
         # If absent in the file, it will remain at its default value (1.0).
         DgsProperty('usetp', 'r', 'Voltage Setpoint in p.u.', py_name='usetp'),
+
+        DgsProperty('i_ctrl', 'i', 'Control mode', py_name='i_ctrl'),
+        DgsProperty('nncap', 'i', 'Actual number of capacitors', py_name='nncap'),
+        DgsProperty('tcrqact', 'r', 'Actual value of TCR [Mvar]', py_name='tcrqact'),
     ]
 
     def __init__(self) -> None:
@@ -976,6 +980,10 @@ class ElmSvs(DGSElement):
 
         # Voltage setpoint (p.u.) for controlled shunts
         self.usetp: float = 1.0
+
+        self.i_ctrl: int = 0 # Control mode
+        self.nncap: int = 0  # Actual number of capacitors
+        self.tcrqact: int = 0  # Actual value of TCR [Mvar]
 
 
 class ElmSite(DGSElement):

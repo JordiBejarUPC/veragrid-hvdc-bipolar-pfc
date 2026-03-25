@@ -2392,14 +2392,14 @@ def convert_dgs_to_controllable_shunt_from_elmshnt(elmshnt: ElmShnt,
     return bus, cshunt
 
 
-def convert_dgs_to_controllable_shunt(elmsvs: ElmSvs,
-                                      stacubic_dict: Dict[str, List[int]],
-                                      buses: List[dev.Bus],
-                                      logger: Logger,
-                                      cubics_by_objid: Dict[str, List[StaCubic]],
-                                      bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.ControllableShunt]:
+def convert_dgs_svs_to_vsc(elmsvs: ElmSvs,
+                           stacubic_dict: Dict[str, List[int]],
+                           buses: List[dev.Bus],
+                           logger: Logger,
+                           cubics_by_objid: Dict[str, List[StaCubic]],
+                           bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.VSC]:
     """
-    Convert ElmSvs (PowerFactory SVS/SVC) to VeraGrid ControllableShunt.
+    Convert ElmSvs (PowerFactory SVS/SVC) to VeraGrid VSC.
 
     Notes
     -----
@@ -2408,53 +2408,123 @@ def convert_dgs_to_controllable_shunt(elmsvs: ElmSvs,
     """
     name = elmsvs.loc_name or f"ElmSvs_{_ref_id(elmsvs.ID)}"
 
-    bus = get_injection_bus(elm_id=elmsvs.ID,
-                            stacubic_dict=stacubic_dict,
-                            buses=buses,
-                            cubics_by_objid=cubics_by_objid,
-                            bus_by_term_id=bus_by_term_id)
+    ac_bus = get_injection_bus(elm_id=elmsvs.ID,
+                               stacubic_dict=stacubic_dict,
+                               buses=buses,
+                               cubics_by_objid=cubics_by_objid,
+                               bus_by_term_id=bus_by_term_id)
 
-    bmin = float(elmsvs.qmin)
-    bmax = float(elmsvs.qmax)
-    vset = float(elmsvs.usetp)
+    dc_bus = dev.Bus(name=f'{_ref_id(ac_bus.name)}_DC',
+                     is_dc=True,
+                     is_slack=True,
+                     xpos=ac_bus.x,
+                     ypos=ac_bus.y - 200, )
 
-    # Build a small stepped model for B so the device can represent bmin / 0 / bmax when applicable
-    if bmin < 0.0 and bmax > 0.0:
-        b_steps = np.array([bmin, -bmin, bmax], dtype=float)
-        initial_step = 1
-    elif bmin == bmax:
-        b_steps = np.array([bmax], dtype=float)
-        initial_step = 0
-    else:
-        b_steps = np.array([bmin, (bmax - bmin)], dtype=float)
-        initial_step = 0
+    vsc_name = _get_non_empty_name(elmsvs.loc_name, f"SVS_{_ref_id(elmsvs.ID)}")
 
-    cshunt = dev.ControllableShunt(
-        name=name,
+    control_mode = elmsvs.i_ctrl
+
+    if control_mode == 2: # Reactive Power Control
+        pass
+    elif control_mode == 1: # Voltage Control
+        pass
+    else: # No Control
+        control1 = ConverterControlType.Pac
+        control2 = ConverterControlType.Qac
+
+        # Fixed admittance based on 1 MVA / Ub^2
+        ysvs = elmsvs.qmin * elmsvs.nncap + elmsvs.tcrqact + elmsvs.Qfixcap * elmsvs.nfixcap
+
+        # SVS Range
+        ymin = elmsvs.qmin * elmsvs.nxcap + elmsvs.Qfixcap * elmsvs.nfixcap
+        ymax = elmsvs.tcrmax + elmsvs.Qfixcap * elmsvs.nfixcap
+        ysvs = max(min(ysvs, ymax), ymin)
+
+        control1_val = 0.0  # Active power injection of the SVS [MW]
+        control2_val = np.abs(1.0 ** 2) * np.conj(ysvs)  # Reactive power injection of the SVS [MVAr]
+
+    vsc = dev.VSC(
+        name=vsc_name,
         idtag=_ref_id(elmsvs.ID),
-        number_of_steps=int(len(b_steps)),
-        step=int(initial_step),
-        g_per_step=0.0,
-        b_per_step=0.0,
-        Bmin=bmin,
-        Bmax=bmax,
-        Gmin=0.0,
-        Gmax=0.0,
-        active=(elmsvs.outserv == 0),
-        vset=vset,
-        control_mode=ShuntControlMode.Continuous,
-        control_bus=bus
+        active=not bool(elmsvs.outserv),
+        bus_from=dc_bus,
+        bus_to=ac_bus,
+        rate=max(np.abs(elmsvs.tcrmax), np.abs(elmsvs.qmin)),
+        alpha1=0.0,
+        alpha2=0.0,
+        alpha3=0.0,
+        control1=control1,
+        control2=control2,
+        control1_val=control1_val,
+        control2_val=control2_val,
+        ysvs=ysvs
     )
 
-    # Override step arrays to match the constructed block model
-    cshunt.b_steps = b_steps
-    cshunt.g_steps = np.zeros(len(b_steps), dtype=float)
-    cshunt.active_steps = np.ones(len(b_steps), dtype=int)
+    return dc_bus, vsc
 
-    # Ensure B/G are coherent with the initial step after overriding arrays
-    cshunt.step = int(initial_step)
-
-    return bus, cshunt
+# def convert_dgs_to_controllable_shunt(elmsvs: ElmSvs,
+#                            stacubic_dict: Dict[str, List[int]],
+#                            buses: List[dev.Bus],
+#                            logger: Logger,
+#                            cubics_by_objid: Dict[str, List[StaCubic]],
+#                            bus_by_term_id: Dict[str, dev.Bus]) -> Tuple[dev.Bus, dev.ControllableShunt]:
+#     """
+#     Convert ElmSvs (PowerFactory SVS/SVC) to VeraGrid ControllableShunt.
+#
+#     Notes
+#     -----
+#     - Electrical connectivity is obtained via StaCubic, consistent with other injected devices.
+#     - If the DGS does not provide a voltage setpoint, Vset defaults to 1.0 p.u. (per project convention).
+#     """
+#     name = elmsvs.loc_name or f"ElmSvs_{_ref_id(elmsvs.ID)}"
+#
+#     bus = get_injection_bus(elm_id=elmsvs.ID,
+#                             stacubic_dict=stacubic_dict,
+#                             buses=buses,
+#                             cubics_by_objid=cubics_by_objid,
+#                             bus_by_term_id=bus_by_term_id)
+#
+#     bmin = float(elmsvs.qmin)
+#     bmax = float(elmsvs.qmax)
+#     vset = float(elmsvs.usetp)
+#
+#     # Build a small stepped model for B so the device can represent bmin / 0 / bmax when applicable
+#     if bmin < 0.0 and bmax > 0.0:
+#         b_steps = np.array([bmin, -bmin, bmax], dtype=float)
+#         initial_step = 1
+#     elif bmin == bmax:
+#         b_steps = np.array([bmax], dtype=float)
+#         initial_step = 0
+#     else:
+#         b_steps = np.array([bmin, (bmax - bmin)], dtype=float)
+#         initial_step = 0
+#
+#     cshunt = dev.ControllableShunt(
+#         name=name,
+#         idtag=_ref_id(elmsvs.ID),
+#         number_of_steps=int(len(b_steps)),
+#         step=int(initial_step),
+#         g_per_step=0.0,
+#         b_per_step=0.0,
+#         Bmin=bmin,
+#         Bmax=bmax,
+#         Gmin=0.0,
+#         Gmax=0.0,
+#         active=(elmsvs.outserv == 0),
+#         vset=vset,
+#         control_mode=ShuntControlMode.Continuous,
+#         control_bus=bus
+#     )
+#
+#     # Override step arrays to match the constructed block model
+#     cshunt.b_steps = b_steps
+#     cshunt.g_steps = np.zeros(len(b_steps), dtype=float)
+#     cshunt.active_steps = np.ones(len(b_steps), dtype=int)
+#
+#     # Ensure B/G are coherent with the initial step after overriding arrays
+#     cshunt.step = int(initial_step)
+#
+#     return bus, cshunt
 
 
 def _pf_from_pq(p_mw: float, q_mvar: float, default: float = 0.8) -> float:
@@ -3036,7 +3106,7 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
 
     # Controllable shunts (SVC/SVS)
     for elmsvs in dgs_grid.elmsvss:
-        bus, cshunt = convert_dgs_to_controllable_shunt(
+        dc_bus, vsc = convert_dgs_svs_to_vsc(
             elmsvs=elmsvs,
             stacubic_dict=stacubic_dict,
             buses=grid.buses,
@@ -3045,7 +3115,19 @@ def dgs_to_circuit(path: str, logger: Logger | None = None) -> dev.MultiCircuit:
             bus_by_term_id=bus_by_term_id
         )
 
-        grid.add_controllable_shunt(bus=bus, api_obj=cshunt)
+        grid.add_bus(dc_bus)
+        grid.add_vsc(vsc)
+
+        # bus, cshunt = convert_dgs_to_controllable_shunt(
+        #     elmsvs=elmsvs,
+        #     stacubic_dict=stacubic_dict,
+        #     buses=grid.buses,
+        #     logger=logger,
+        #     cubics_by_objid=cubics_by_objid,
+        #     bus_by_term_id=bus_by_term_id
+        # )
+
+        # grid.add_controllable_shunt(bus=bus, api_obj=cshunt)
 
     # Loads (LV)
     if len(dgs_grid.elmlodlvs) > 0 or len(dgs_grid.elmlodlvps) > 0:
