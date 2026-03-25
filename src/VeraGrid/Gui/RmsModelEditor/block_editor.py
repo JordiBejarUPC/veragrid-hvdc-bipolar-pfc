@@ -97,33 +97,41 @@ class Ui_BlockEditorWindow(object):
         self.verticalLayout_2 = QVBoxLayout(self.tab_2)
         self.verticalLayout_2.setObjectName(u"verticalLayout_2")
         self.verticalLayout_2.setContentsMargins(0, 0, 0, 0)
+        self.variablesLabel = QLabel(self.tab_2)
+        self.variablesLabel.setObjectName(u"variablesLabel")
 
-        self.variablesLabel = QLabel("Variables")
-        self.variablesLabel.setStyleSheet("font-weight: bold; padding: 4px;")
         self.verticalLayout_2.addWidget(self.variablesLabel)
+
         self.variablesTableView = QTableView(self.tab_2)
         self.variablesTableView.setObjectName(u"variablesTableView")
         self.variablesTableView.setFrameShape(QFrame.Shape.NoFrame)
+
         self.verticalLayout_2.addWidget(self.variablesTableView)
 
-        self.parametersLabel = QLabel("Parameters")
-        self.parametersLabel.setStyleSheet("font-weight: bold; padding: 4px;")
+        self.parametersLabel = QLabel(self.tab_2)
+        self.parametersLabel.setObjectName(u"parametersLabel")
+
         self.verticalLayout_2.addWidget(self.parametersLabel)
+
         self.parametersTableView = QTableView(self.tab_2)
         self.parametersTableView.setObjectName(u"parametersTableView")
         self.parametersTableView.setFrameShape(QFrame.Shape.NoFrame)
+
         self.verticalLayout_2.addWidget(self.parametersTableView)
 
-        self.equationsLabel = QLabel("Equations")
-        self.equationsLabel.setStyleSheet("font-weight: bold; padding: 4px;")
+        self.equationsLabel = QLabel(self.tab_2)
+        self.equationsLabel.setObjectName(u"equationsLabel")
+
         self.verticalLayout_2.addWidget(self.equationsLabel)
+
         self.equationsTableView = QTableView(self.tab_2)
         self.equationsTableView.setObjectName(u"equationsTableView")
         self.equationsTableView.setFrameShape(QFrame.Shape.NoFrame)
+
         self.verticalLayout_2.addWidget(self.equationsTableView)
 
         icon5 = QIcon()
-        icon5.addFile(u":/Icons/icons/data.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
+        icon5.addFile(u":/Icons/icons/edit.png", QSize(), QIcon.Mode.Normal, QIcon.State.Off)
         self.tabWidget.addTab(self.tab_2, icon5, "")
 
         self.verticalLayout_4.addWidget(self.tabWidget)
@@ -210,7 +218,19 @@ class Ui_BlockEditorWindow(object):
         self.actionZoom_in.setText(QCoreApplication.translate("BlockEditorWindow", u"Zoom in", None))
         self.actionZoom_out.setText(QCoreApplication.translate("BlockEditorWindow", u"Zoom out", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("BlockEditorWindow", u"Library", None))
-        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("BlockEditorWindow", u"Parameters", None))
+#if QT_CONFIG(tooltip)
+        self.tabWidget.setTabToolTip(self.tabWidget.indexOf(self.tab), QCoreApplication.translate("BlockEditorWindow", u"Drag and drop models into the scene", None))
+#endif // QT_CONFIG(tooltip)
+        self.variablesLabel.setStyleSheet(QCoreApplication.translate("BlockEditorWindow", u"font-weight: bold; padding: 4px;", None))
+        self.variablesLabel.setText(QCoreApplication.translate("BlockEditorWindow", u"Variables", None))
+        self.parametersLabel.setStyleSheet(QCoreApplication.translate("BlockEditorWindow", u"font-weight: bold; padding: 4px;", None))
+        self.parametersLabel.setText(QCoreApplication.translate("BlockEditorWindow", u"Parameters", None))
+        self.equationsLabel.setStyleSheet(QCoreApplication.translate("BlockEditorWindow", u"font-weight: bold; padding: 4px;", None))
+        self.equationsLabel.setText(QCoreApplication.translate("BlockEditorWindow", u"Equations", None))
+        self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("BlockEditorWindow", u"Edit Selected", None))
+#if QT_CONFIG(tooltip)
+        self.tabWidget.setTabToolTip(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("BlockEditorWindow", u"Select one block to edit its variables and equations", None))
+#endif // QT_CONFIG(tooltip)
         self.currently_editing_object_label.setText(QCoreApplication.translate("BlockEditorWindow", u"Device:", None))
         self.deviceLabel.setText(QCoreApplication.translate("BlockEditorWindow", u"dev", None))
         self.doItButton.setText(QCoreApplication.translate("BlockEditorWindow", u"Do it!", None))
