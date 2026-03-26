@@ -5,7 +5,7 @@
 from __future__ import annotations
 import os
 from datetime import datetime
-from typing import Union, List, Any, Dict, TYPE_CHECKING
+from typing import Union, List, Any, Dict
 
 from VeraGridEngine.IO.file_open import determine_file_type
 from VeraGridEngine.IO.cim.cgmes.cgmes_create_instances import create_cgmes_headers
@@ -28,13 +28,12 @@ from VeraGridEngine.IO.veragrid.h5_interface import save_h5
 from VeraGridEngine.IO.raw.rawx_parser_writer import write_rawx
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesProfileType
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.multiverse import MultiVerse
 from VeraGridEngine.Simulations.driver_template import DriverToSave
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.enumerations import CGMESVersions, SimulationTypes, FileType
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 
-if TYPE_CHECKING:
-    from VeraGridEngine.Simulations.types import DRIVER_OBJECTS
 
 
 class FileSavingOptions:
@@ -43,20 +42,19 @@ class FileSavingOptions:
     """
 
     def __init__(self,
-                 cgmes_boundary_set: str = "",
-                 simulation_drivers: List[DRIVER_OBJECTS] = None,
+                 file_type: FileType | None = None,
                  sessions_data: List[DriverToSave] = None,
+                 multiverse: MultiVerse | None = None,
                  dictionary_of_json_files: Dict[str, Dict[str, Any]] = None,
+                 cgmes_boundary_set: str = "",
                  cgmes_version: CGMESVersions = CGMESVersions.v2_4_15,
                  cgmes_profiles: Union[None, List[CgmesProfileType]] = None,
                  cgmes_one_file_per_profile: bool = False,
                  cgmes_map_areas_like_raw: bool = False,
-                 raw_version: str = "33",
-                 file_type: FileType | None = None):
+                 raw_version: str = "33"):
         """
         Constructor
         :param cgmes_boundary_set: CGMES boundary set zip file path
-        :param simulation_drivers: List of Simulation Drivers
         :param sessions_data: List of sessions_data
         :param dictionary_of_json_files: Dictionary of json files
         :param cgmes_version: Version to use with CGMES
@@ -66,13 +64,17 @@ class FileSavingOptions:
         :param raw_version: Version to use when exporting raw/rawx files
         """
 
-        self.cgmes_version: CGMESVersions = cgmes_version
-
-        self.cgmes_boundary_set: str = cgmes_boundary_set
+        self.file_type: FileType | None = file_type
 
         self.sessions_data: List[DriverToSave] = list() if sessions_data is None else sessions_data
 
+        self.multiverse: MultiVerse | None = multiverse
+
         self.dictionary_of_json_files = dict() if dictionary_of_json_files is None else dictionary_of_json_files
+
+        self.cgmes_version: CGMESVersions = cgmes_version
+
+        self.cgmes_boundary_set: str = cgmes_boundary_set
 
         # File type description as it appears in the file saving dialogue i.e. VeraGrid zip (*.veragrid)
         self.type_selected: str = ""
@@ -94,8 +96,6 @@ class FileSavingOptions:
         self.cgmes_map_areas_like_raw = cgmes_map_areas_like_raw
 
         self.raw_version = raw_version
-
-        self.file_type: FileType | None = file_type
 
     def get_power_flow_results(self) -> Union[None, PowerFlowResults]:
         """
@@ -129,23 +129,21 @@ def save_veragrid(circuit: MultiCircuit,
                   progress_func=None) -> Logger:
     """
     Save the circuit information in zip format
+    If a multiverse is passed in the options, it is "commited" before saving
     :return: logger with information
     """
 
     logger = Logger()
 
-    dfs = gather_model_as_data_frames(circuit,
-                                      logger=logger,
-                                      legacy=False)
+    if options.multiverse is not None:
+        # this is to make the leaf the actual diff for saving
+        options.multiverse.commit_current()
 
-    model_data = gather_model_as_jsons(circuit)
-
-    save_veragrid_data_to_zip(dfs=dfs,
-                              filename_zip=file_name,
-                              model_data=model_data,
+    save_veragrid_data_to_zip(filename_zip=file_name,
+                              circuit=circuit,
                               sessions_data=options.sessions_data,
-                              diagrams=circuit.diagrams,
                               json_files=options.dictionary_of_json_files,
+                              multiverse=options.multiverse,
                               text_func=text_func,
                               progress_func=progress_func,
                               logger=logger)
