@@ -53,6 +53,11 @@ def _assert_same_multiverse(expected, loaded) -> None:
 
         assert loaded_parent_id == expected_parent_id
         assert loaded_node.circuit.name == expected_node.circuit.name
+        assert len(loaded_node.diagrams) == len(expected_node.diagrams)
+
+        for expected_diagram, loaded_diagram in zip(expected_node.diagrams, loaded_node.diagrams):
+            assert loaded_diagram is not expected_diagram
+            assert loaded_diagram.name == expected_diagram.name
 
         _assert_circuits_equal(
             expected.checkout(expected_node),
@@ -342,6 +347,117 @@ def test_multiverse_root_edits_are_persisted_in_place() -> None:
     assert _get_bus_by_name(root.circuit, "root_only_bus") is not None
     assert _get_bus_by_name(root_grid, "root_only_bus") is not None
     assert _get_bus_by_name(mv.current_model, "root_only_bus") is not None
+
+
+def test_multicircuit_copy_deep_copies_diagrams() -> None:
+    """
+    Verify that MultiCircuit.copy() duplicates stored diagrams instead of sharing them.
+
+    Child scenario activation relies on checkout(), which uses circuit copies. If diagrams are
+    shared by reference, edits in one scenario can leak visually into other scenarios.
+    """
+    original = _load_grid("lynn5node.gridcal")
+    original.add_diagram(vge.SchematicDiagram(name="Schematic Copy Test"))
+    original.add_diagram(vge.MapDiagram(name="Map Copy Test"))
+    original_schematic_index = len(original.diagrams) - 2
+
+    copied = original.copy()
+
+    assert len(copied.diagrams) == len(original.diagrams)
+
+    for original_diagram, copied_diagram in zip(original.diagrams, copied.diagrams):
+        assert copied_diagram is not original_diagram
+        assert copied_diagram.name == original_diagram.name
+
+    copied.diagrams[original_schematic_index].name = "Modified Diagram Name"
+    assert original.diagrams[original_schematic_index].name == "Schematic Copy Test"
+
+
+def test_multiverse_child_starts_with_copies_of_parent_diagrams() -> None:
+    """
+    Verify that a newly created child scenario inherits deep-copied diagrams from its parent.
+
+    The child should start with the same diagram content as the parent, but diagram objects
+    must not be shared by reference between the two scenarios.
+    """
+    mv = vge.MultiVerse(_load_grid("lynn5node.gridcal"))
+    root = mv.root_nodes[0]
+    child = mv.create_node(
+        data=vge.MultiCircuit(name="child"),
+        parent_id=root.node_id,
+        position=root.child_count(),
+    )
+
+    assert len(child.diagrams) == len(root.diagrams)
+
+    for root_diagram, child_diagram in zip(root.diagrams, child.diagrams):
+        assert child_diagram is not root_diagram
+        assert child_diagram.name == root_diagram.name
+
+
+def test_multiverse_child_diagram_edits_persist_across_switches() -> None:
+    """
+    Verify that child-specific diagram edits survive commit and scenario switching.
+
+    This covers the workflow where the user activates a child, edits its diagrams, commits,
+    switches to the parent, and later comes back to the child.
+    """
+    mv = vge.MultiVerse(_load_grid("lynn5node.gridcal"))
+    root = mv.root_nodes[0]
+    child = mv.create_node(
+        data=vge.MultiCircuit(name="child"),
+        parent_id=root.node_id,
+        position=root.child_count(),
+    )
+
+    mv.activate_scenario(child.node_id)
+    original_root_diagram_name = root.diagrams[0].name
+    child_diagram_name = "Child Diagram Edited"
+    mv.current_model.diagrams[0].name = child_diagram_name
+    mv.commit_current()
+
+    assert child.diagrams[0].name == child_diagram_name
+    assert root.diagrams[0].name == original_root_diagram_name
+
+    mv.activate_scenario(root.node_id)
+    assert mv.current_model.diagrams[0].name == original_root_diagram_name
+
+    mv.activate_scenario(child.node_id)
+    assert mv.current_model.diagrams[0].name == child_diagram_name
+    assert child.diagrams[0].name == child_diagram_name
+
+
+def test_multiverse_reactivated_child_rebinds_branch_bus_references() -> None:
+    """
+    Verify that reactivating a child scenario rebinds branch endpoint references to the
+    buses of the newly composed current model.
+
+    This protects the root -> child -> root -> child workflow used before running a simulation.
+    """
+    mv = vge.MultiVerse(_load_grid("lynn5node.gridcal"))
+    root = mv.root_nodes[0]
+    child = mv.create_node(
+        data=vge.MultiCircuit(name="child"),
+        parent_id=root.node_id,
+        position=root.child_count(),
+    )
+
+    mv.activate_scenario(child.node_id)
+
+    bus_from = mv.current_model.buses[0]
+    bus_to = mv.current_model.buses[1]
+    new_line = vge.Line(name="child_line", bus_from=bus_from, bus_to=bus_to)
+    mv.current_model.add_line(new_line)
+    mv.commit_current()
+
+    mv.activate_scenario(root.node_id)
+    child_grid = mv.activate_scenario(child.node_id)
+
+    child_bus_set = set(child_grid.buses)
+    restored_line = next(line for line in child_grid.lines if line.name == "child_line")
+
+    assert restored_line.bus_from in child_bus_set
+    assert restored_line.bus_to in child_bus_set
 
 
 def test_multiverse_get_save_data_contains_consistent_metadata() -> None:

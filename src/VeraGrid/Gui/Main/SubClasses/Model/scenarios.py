@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from PySide6.QtCore import Qt, QPoint, QModelIndex
+from PySide6.QtCore import Qt, QPoint, QModelIndex, QItemSelectionModel
 from PySide6 import QtWidgets
 
 from VeraGrid.Gui.Main.SubClasses.Scripting.scripting import ScriptingMain
@@ -166,6 +166,13 @@ class ScenariosMain(ScriptingMain):
                 function_ptr=self.rename_scenario
             )
 
+            gf.add_menu_entry(
+                menu=context_menu,
+                text="Commit scenario",
+                icon_path=":/Icons/icons/save.png",
+                function_ptr=self.commit_scenario
+            )
+
             # Separator
             context_menu.addSeparator()
 
@@ -262,11 +269,28 @@ class ScenariosMain(ScriptingMain):
             circuit: MultiCircuit = self.multiverse.activate_scenario(node.node_id)
             self.scenario_tree_model.refresh_data()
             self.ui.activeScenarioLabel.setText(f"Current: {circuit.name}")
+            self.reload_diagrams_for_active_scenario()
             self.update_date_dependent_combos()
             self.view_objects_data()
+            self.update_available_results()
 
             # Expand the parent node to show the new child
             self.ui.multiverseTreeView.expand(parent_index)
+
+            # Select the newly created child in the tree
+            child_index: QModelIndex = self.scenario_tree_model.index(
+                row=node.row(),
+                column=0,
+                parent=parent_index,
+            )
+            if child_index.isValid():
+                self.ui.multiverseTreeView.setCurrentIndex(child_index)
+                self.ui.multiverseTreeView.selectionModel().select(
+                    child_index,
+                    QItemSelectionModel.SelectionFlag.ClearAndSelect
+                    | QItemSelectionModel.SelectionFlag.Rows,
+                )
+                self.ui.multiverseTreeView.scrollTo(child_index)
 
             self.show_info_toast(f"Child scenario '{scenario_name}' added and activated")
         else:
@@ -387,6 +411,31 @@ class ScenariosMain(ScriptingMain):
 
         # Use the tree view's built-in editing capability
         self.ui.multiverseTreeView.edit(selected_index)
+
+    def commit_scenario(self) -> None:
+        """
+        Commit the currently active scenario node, persisting its edits into the stored
+        node representation.
+        """
+        selected_index: QModelIndex | None = self.get_selected_scenario_index()
+
+        if selected_index is None or not selected_index.isValid():
+            warning_msg("Please select a scenario to commit", "Commit Scenario")
+            return
+
+        node: ScenarioNode | None = self.scenario_tree_model.get_node(selected_index)
+
+        if node is None:
+            warning_msg("Invalid scenario selected", "Commit Scenario")
+            return
+
+        if node is not self.multiverse.current_node:
+            warning_msg("Only the current scenario can be committed. Activate it first.", "Commit Scenario")
+            return
+
+        self.multiverse.commit_current()
+        self.scenario_tree_model.refresh_data()
+        self.show_info_toast(f"Scenario '{node.circuit.name}' committed")
 
     def set_as_current_scenario(self) -> None:
         """

@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
+import copy
 from typing import List, Dict, Any, Tuple, TYPE_CHECKING
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import SimulationTypes
@@ -16,6 +17,7 @@ class ScenarioNode:
     __slots__ = (
         "node_id",
         "circuit",
+        "diagrams",
         "parent",
         "children",
         "drivers"
@@ -25,6 +27,7 @@ class ScenarioNode:
             self,
             node_id: int,
             data: MultiCircuit,
+            diagrams: list[Any] | None = None,
             parent: ScenarioNode | None = None,
             children: list[ScenarioNode] | None = None
     ) -> None:
@@ -47,6 +50,7 @@ class ScenarioNode:
         """
         self.node_id: int = node_id
         self.circuit: MultiCircuit = data
+        self.diagrams: list[Any] = copy.deepcopy(diagrams if diagrams is not None else data.diagrams)
         self.parent: ScenarioNode | None = parent
         self.children: list[ScenarioNode] = children if children is not None else list()
 
@@ -205,7 +209,9 @@ class MultiVerse:
         :return: Fully composed MultiCircuit for that node
         """
         if node.parent is None:
-            return node.circuit.copy()
+            composed = node.circuit.copy()
+            composed.diagrams = copy.deepcopy(node.diagrams)
+            return composed
 
         # Collect the path from this node up to (but not including) the root
         chain: list[ScenarioNode] = []
@@ -225,6 +231,7 @@ class MultiVerse:
 
         # Preserve the target scenario's name (composed inherits root's name otherwise)
         composed.name = node.circuit.name
+        composed.diagrams = copy.deepcopy(node.diagrams)
 
         return composed
 
@@ -242,6 +249,8 @@ class MultiVerse:
 
         if self._current_node.parent is None:
             # Root: current_model IS root.data, already up to date
+            self._current_node.diagrams = copy.deepcopy(self._current_model.diagrams)
+            self._current_node.circuit.diagrams = copy.deepcopy(self._current_model.diagrams)
             return
 
         # Preserve the user-facing scenario name before we overwrite node.data
@@ -257,7 +266,9 @@ class MultiVerse:
         )
 
         delta.name = scenario_name
+        delta.diagrams = copy.deepcopy(self._current_model.diagrams)
         self._current_node.circuit = delta
+        self._current_node.diagrams = copy.deepcopy(self._current_model.diagrams)
 
     def _store_composed_node_data(self, node: ScenarioNode, composed: MultiCircuit) -> None:
         """
@@ -271,6 +282,7 @@ class MultiVerse:
 
         if node.parent is None:
             node.circuit = composed
+            node.diagrams = copy.deepcopy(composed.diagrams)
             if self._base_model is not None and node in self._root_nodes:
                 self._base_model = node.circuit
             return
@@ -281,7 +293,9 @@ class MultiVerse:
             force_second_pass=True,
         )
         delta.name = scenario_name
+        delta.diagrams = copy.deepcopy(composed.diagrams)
         node.circuit = delta
+        node.diagrams = copy.deepcopy(composed.diagrams)
 
     def merge_children_into_parent(self, parent_id: int) -> ScenarioNode:
         """
@@ -376,6 +390,7 @@ class MultiVerse:
 
         if target.parent is None:
             composed: MultiCircuit = target.circuit
+            composed.diagrams = copy.deepcopy(target.diagrams)
         else:
             composed = self.checkout(target)
 
@@ -398,12 +413,15 @@ class MultiVerse:
         :return:
         """
         parent: ScenarioNode | None = None
+        node_diagrams: list[Any] | None = None
         if parent_id is not None:
             parent = self.get_node(parent_id)
+            node_diagrams = copy.deepcopy(parent.diagrams)
 
         node: ScenarioNode = ScenarioNode(
             node_id=self._generate_id(),
             data=data,
+            diagrams=node_diagrams,
             parent=parent,
         )
 
@@ -640,6 +658,9 @@ class MultiVerse:
         base_circuit: MultiCircuit = self._root_nodes[0].circuit
 
         for node in self.iter_nodes_depth_first():
+            save_grid = node.circuit.copy()
+            save_grid.diagrams = copy.deepcopy(node.diagrams)
+
             multiverse_meta_data[node.node_id] = {
                 "node_id": node.node_id,
                 "circuit_idtag": node.circuit.idtag,
@@ -649,7 +670,7 @@ class MultiVerse:
 
             # we want to store all those models that are not the root
             # if node.data != base_circuit:
-            multiverse_model_data[node.circuit.idtag] = node.circuit
+            multiverse_model_data[node.circuit.idtag] = save_grid
 
         return multiverse_meta_data, multiverse_model_data
 
@@ -694,6 +715,7 @@ class MultiVerse:
                 node = ScenarioNode(
                     node_id=node_id,
                     data=diffs_dict[circuit_idtag],
+                    diagrams=diffs_dict[circuit_idtag].diagrams,
                     parent=parent,
                 )
 

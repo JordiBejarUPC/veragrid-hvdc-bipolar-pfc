@@ -361,6 +361,7 @@ class MultiCircuit(Assets):
                 'qf_measurements',
                 'if_measurements',
                 'modelling_authorities',
+                'diagrams',
                 ]
 
         for pr in ppts:
@@ -3260,7 +3261,6 @@ class MultiCircuit(Assets):
                                  device_class=elm.device_type.value,
                                  device=elm.name)
         return logger
-
 
 
 
