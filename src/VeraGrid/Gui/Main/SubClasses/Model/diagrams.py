@@ -1806,11 +1806,12 @@ class DiagramsMain(CompiledArraysMain):
         """
         diagram = SchematicDiagram(name=name)
 
-        diagram_widget = SchematicWidget(gui=self,
-                                         circuit=self.circuit,
-                                         diagram=diagram,
-                                         default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
-                                         time_index=self.get_diagram_slider_index())
+        diagram_widget = SchematicWidget(
+            gui=self,
+            diagram=diagram,
+            default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
+            time_index=self.get_diagram_slider_index()
+        )
 
         diagram_widget.setStretchFactor(1, 10)
         diagram_widget.center_nodes()
@@ -1847,7 +1848,7 @@ class DiagramsMain(CompiledArraysMain):
                                                      prog_func=None,
                                                      text_func=None)
 
-                diagram_widget.set_data(circuit=self.circuit, diagram=diagram)
+                diagram_widget.set_data(diagram=diagram)
 
             elif isinstance(diagram_widget, GridMapWidget):
                 diagram_widget.update_device_sizes(asynchronously=False)
@@ -1885,11 +1886,12 @@ class DiagramsMain(CompiledArraysMain):
                                              text_func=None,
                                              name=name)
 
-        diagram_widget = SchematicWidget(gui=self,
-                                         circuit=self.circuit,
-                                         diagram=diagram,
-                                         default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
-                                         time_index=self.get_diagram_slider_index())
+        diagram_widget = SchematicWidget(
+            gui=self,
+            diagram=diagram,
+            default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
+            time_index=self.get_diagram_slider_index()
+        )
 
         diagram_widget.setStretchFactor(1, 10)
         diagram_widget.center_nodes()
@@ -1916,11 +1918,12 @@ class DiagramsMain(CompiledArraysMain):
             if isinstance(widget, SchematicWidget):
                 diagram = widget.create_schematic_from_selection()
 
-                widget = SchematicWidget(gui=self,
-                                         circuit=self.circuit,
-                                         diagram=diagram,
-                                         default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
-                                         time_index=self.get_diagram_slider_index())
+                widget = SchematicWidget(
+                    gui=self,
+                    diagram=diagram,
+                    default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
+                    time_index=self.get_diagram_slider_index()
+                )
 
                 self.add_diagram_widget_and_diagram(diagram_widget=widget, diagram=diagram)
                 self.set_diagrams_list_view()
@@ -1984,11 +1987,12 @@ class DiagramsMain(CompiledArraysMain):
                                                     root_bus=root_bus,
                                                     max_level=dlg.value)
 
-                    diagram_widget = SchematicWidget(gui=self,
-                                                     circuit=self.circuit,
-                                                     diagram=diagram,
-                                                     default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
-                                                     time_index=self.get_diagram_slider_index())
+                    diagram_widget = SchematicWidget(
+                        gui=self,
+                        diagram=diagram,
+                        default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
+                        time_index=self.get_diagram_slider_index()
+                    )
 
                     self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
                                                         diagram=diagram)
@@ -2014,11 +2018,12 @@ class DiagramsMain(CompiledArraysMain):
                                             root_bus=root_bus,
                                             max_level=dlg.value)
 
-            diagram_widget = SchematicWidget(gui=self,
-                                             circuit=self.circuit,
-                                             diagram=diagram,
-                                             default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
-                                             time_index=self.get_diagram_slider_index())
+            diagram_widget = SchematicWidget(
+                gui=self,
+                diagram=diagram,
+                default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
+                time_index=self.get_diagram_slider_index()
+            )
 
             self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget, diagram=diagram)
             self.set_diagrams_list_view()
@@ -2042,11 +2047,12 @@ class DiagramsMain(CompiledArraysMain):
                                               buses=selected_buses,
                                               name=substations[0].name + " diagram")
 
-            diagram_widget = SchematicWidget(gui=self,
-                                             circuit=self.circuit,
-                                             diagram=diagram,
-                                             default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
-                                             time_index=self.get_diagram_slider_index())
+            diagram_widget = SchematicWidget(
+                gui=self,
+                diagram=diagram,
+                default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
+                time_index=self.get_diagram_slider_index()
+            )
 
             self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
                                                 diagram=diagram)
@@ -2102,11 +2108,12 @@ class DiagramsMain(CompiledArraysMain):
         for diagram in self.circuit.diagrams:
 
             if isinstance(diagram, dev.SchematicDiagram):
-                diagram_widget = SchematicWidget(gui=self,
-                                                 circuit=self.circuit,
-                                                 diagram=diagram,
-                                                 default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
-                                                 time_index=self.get_diagram_slider_index())
+                diagram_widget = SchematicWidget(
+                    gui=self,
+                    diagram=diagram,
+                    default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
+                    time_index=self.get_diagram_slider_index()
+                )
 
                 diagram_widget.setStretchFactor(1, 10)
                 diagram_widget.center_nodes()
@@ -2125,7 +2132,6 @@ class DiagramsMain(CompiledArraysMain):
                     longitude=diagram.longitude,
                     latitude=diagram.latitude,
                     name=diagram.name,
-                    circuit=self.circuit,
                     diagram=diagram
                 )
 
@@ -2160,8 +2166,6 @@ class DiagramsMain(CompiledArraysMain):
 
         cmap_text = self.ui.palette_comboBox.currentText()
         cmap = self.cmap_dict[cmap_text]
-
-
 
         if self.circuit.get_substation_number() > 0:
             # showing this menu only makes sense if there is anything there
@@ -2223,7 +2227,6 @@ class DiagramsMain(CompiledArraysMain):
                                    longitude=diagram.longitude,
                                    latitude=diagram.latitude,
                                    name=diagram.name,
-                                   circuit=self.circuit,
                                    diagram=diagram)
 
         self.add_diagram_widget_and_diagram(diagram_widget=map_widget, diagram=diagram)
@@ -2759,12 +2762,13 @@ class DiagramsMain(CompiledArraysMain):
                         # build group
                         if name:
                             self.circuit.add_rms_events_group(dev.RmsEventsGroup(idtag=None,
-                                                   name=name))
+                                                                                 name=name))
 
 
                 else:
                     rms_events_dialog = RmsEventDialogue(circuit=self.circuit,
-                                                         parameters_list=[var for var in target_device.rms_model.event_dict.keys()],
+                                                         parameters_list=[var for var in
+                                                                          target_device.rms_model.event_dict.keys()],
                                                          target_device_name=target_device.type_name + ": " + target_device.name)
 
                     if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
@@ -3230,7 +3234,6 @@ class DiagramsMain(CompiledArraysMain):
                 current_study = self.ui.available_results_to_color_comboBox.currentText()
 
                 if current_study == sim.ShortCircuitDriver.tpe.value:
-
                     results: sim.ShortCircuitResults = self.session.get_results(SimulationTypes.ShortCircuit_run)
                     self.sc_colouring(diagram_widget=diagram_widget,
                                       results=results,

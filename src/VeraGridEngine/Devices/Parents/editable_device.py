@@ -1238,6 +1238,29 @@ class EditableDevice(metaclass=EditableDeviceMeta):
                                 device_property=prop.name,
                                 value=str(new_obj))
 
+    def rebind_device_references(self,
+                                 objects_by_idtag: Dict[str, Any],
+                                 props: List[GCProp] | None = None) -> None:
+        """
+        Rebind direct device-pointer properties to equivalent objects from a target lookup.
+
+        This is useful when an object has been copied from another circuit and its pointer
+        properties still reference objects from that old circuit instance.
+
+        :param objects_by_idtag: idtag -> target object lookup
+        :param props: Optional subset of properties to process. If omitted, all registered
+                      properties are considered.
+        """
+        selected_props = self.registered_properties.values() if props is None else props
+
+        for prop in selected_props:
+            if isinstance(prop.tpe, DeviceType):
+                val = self.get_property_value(prop=prop, t_idx=None)
+                if val is not None and hasattr(val, "idtag"):
+                    pointed = objects_by_idtag.get(val.idtag, None)
+                    if pointed is not None:
+                        self.set_property_value(prop=prop, value=pointed, t_idx=None)
+
     def compare(self, other: Any,
                 logger: Logger,
                 detailed_profile_comparison=False,

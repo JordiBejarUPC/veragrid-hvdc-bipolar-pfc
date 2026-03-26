@@ -9,12 +9,13 @@ import json
 from collections.abc import Callable
 from typing import Union, List, Tuple
 
+from VeraGridEngine.Devices.multiverse import MultiVerse
 from VeraGridEngine.IO.cim.cgmes.cgmes_data_parser import CgmesDataParser
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesRecoveryMode
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.veragrid.excel_interface import (load_from_xls, interpret_excel_v3, interprete_excel_v2)
-from VeraGridEngine.IO.veragrid.pack_unpack import (parse_veragrid_data)
+from VeraGridEngine.IO.veragrid.pack_unpack import (parse_veragrid_data, parse_multiverse_data)
 from VeraGridEngine.IO.matpower.legacy.matpower_parser import interpret_data_v1
 from VeraGridEngine.IO.matpower.matpower_circuit import MatpowerCircuit
 from VeraGridEngine.IO.matpower.matpower_to_veragrid import matpower_to_veragrid
@@ -102,8 +103,6 @@ class FileOpenOptions:
         self.psse_adjust_taps_to_discrete_positions = psse_adjust_taps_to_discrete_positions
         self.psse_use_short_names = psse_use_short_names
         self.psse_flatten_virtual_taps = psse_flatten_virtual_taps
-
-
 
 
 def open_cgmes(files: List[str] | str,
@@ -314,11 +313,13 @@ class FileOpen:
         """
         self.file_name: Union[str, List[str]] = file_name
 
-        self.circuit: Union[MultiCircuit, None] = None
+        self.circuit: MultiCircuit | None = None
+
+        self.multiverse: MultiVerse | None = None
 
         self.options: FileOpenOptions = options if options is not None else FileOpenOptions()
 
-        self.cgmes_circuit: Union[CgmesCircuit, None] = None
+        self.cgmes_circuit: CgmesCircuit | None = None
 
         self.json_files = dict()
 
@@ -360,16 +361,26 @@ class FileOpen:
         # --- VeraGrid Core & Excel Variants ---
         if self.file_type == FileType.VeraGrid:
             # open file content
-            data_dictionary, self.json_files = get_frames_from_zip(self.file_name,
-                                                                   text_func=text_func,
-                                                                   progress_func=progress_func,
-                                                                   logger=self.logger)
+            (data_dictionary,
+             self.json_files,
+             has_multiverse_data) = get_frames_from_zip(self.file_name,
+                                                        text_func=text_func,
+                                                        progress_func=progress_func,
+                                                        logger=self.logger)
             # interpret file content
             if data_dictionary is not None:
-                self.circuit = parse_veragrid_data(data=data_dictionary,
-                                                   text_func=text_func,
-                                                   progress_func=progress_func,
-                                                   logger=self.logger)
+                if has_multiverse_data:
+                    self.multiverse = parse_multiverse_data(data=data_dictionary,
+                                                            metadata=self.json_files["metadata"],
+                                                            text_func=text_func,
+                                                            progress_func=progress_func,
+                                                            logger=self.logger)
+                else:
+
+                    self.circuit = parse_veragrid_data(data=data_dictionary,
+                                                       text_func=text_func,
+                                                       progress_func=progress_func,
+                                                       logger=self.logger)
             else:
                 self.logger.add("Error while reading the file :(")
                 return None
@@ -377,20 +388,32 @@ class FileOpen:
         # --- VeraGrid Data Serialization ---
         elif self.file_type == FileType.VeraGrid_delta:
             # open file content
-            data_dictionary, self.json_files = get_frames_from_zip(self.file_name,
-                                                                   text_func=text_func,
-                                                                   progress_func=progress_func,
-                                                                   logger=self.logger)
+            (data_dictionary,
+             self.json_files,
+             has_multiverse_data) = get_frames_from_zip(self.file_name,
+                                                        text_func=text_func,
+                                                        progress_func=progress_func,
+                                                        logger=self.logger)
             # interpret file content
             if data_dictionary is not None:
-                self.circuit = parse_veragrid_data(data=data_dictionary,
-                                                   previous_circuit=self._previous_circuit,
-                                                   text_func=text_func,
-                                                   progress_func=progress_func,
-                                                   logger=self.logger)
+
+                if has_multiverse_data:
+                    self.multiverse = parse_multiverse_data(data=data_dictionary,
+                                                            text_func=text_func,
+                                                            progress_func=progress_func,
+                                                            logger=self.logger)
+                else:
+
+                    self.circuit = parse_veragrid_data(data=data_dictionary,
+                                                       previous_circuit=self._previous_circuit,
+                                                       text_func=text_func,
+                                                       progress_func=progress_func,
+                                                       logger=self.logger)
             else:
                 self.logger.add("Error while reading the file :(")
                 return None
+
+
         elif self.file_type == FileType.VeraGrid_ejson3:
             with open(self.file_name, encoding="utf-8") as f:
                 data = json.load(f)
