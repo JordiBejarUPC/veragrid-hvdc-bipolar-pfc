@@ -176,21 +176,28 @@ def init_explicit(mdl: Block,
 
     # compute and assign known event parameters value
     event_params_array = np.ones(len(variable_parameters))
-    for event_param in mdl.event_dict.keys():
-        eq = mdl.event_dict[event_param]
+    # for event_param in mdl.event_dict.keys():
+    #     eq = mdl.event_dict[event_param]
+    #
+    #     if (isinstance(eq, Const) and eq.value is not None) or not isinstance(eq, Const):
+    #         vars_list = find_vars_order(eq)
+    #
+    #         uid_bindings: Dict[int, float] = {
+    #             var.uid: event_params_array[uid2idx_event_params[var.uid]]
+    #             for var in vars_list
+    #         }
+    #         result = eq.eval_uid(uid_bindings)
+    #         # eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
+    #         #                                  VARIABLE_PARAMS_NAME, TIME_NAME)
+    #         # result = float(eq_fn(x, event_params_array, 0.0)[0])
+    #         event_params_array[uid2idx_event_params[event_param.uid]] = result
 
-        if (isinstance(eq, Const) and eq.value is not None) or not isinstance(eq, Const):
-            vars_list = find_vars_order(eq)
+    # unify event_dict and init_equations
 
-            uid_bindings: Dict[int, float] = {
-                var.uid: event_params_array[uid2idx_event_params[var.uid]]
-                for var in vars_list
-            }
-            result = eq.eval_uid(uid_bindings)
-            # eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
-            #                                  VARIABLE_PARAMS_NAME, TIME_NAME)
-            # result = float(eq_fn(x, event_params_array, 0.0)[0])
-            event_params_array[uid2idx_event_params[event_param.uid]] = result
+    dic_total = mdl.event_dict.copy()
+    dic_total.update(mdl.init_eqs)
+
+
 
     # compute and assign missing init_vars and None event parameters
 
@@ -202,10 +209,10 @@ def init_explicit(mdl: Block,
 
     dependencies = {}
 
-    for var, eq in mdl.init_eqs.items():
+    for var, eq in dic_total.items():
 
         vars_in_eq = get_expression_vars(eq)
-        deps = [v for v in vars_in_eq if v in mdl.init_eqs]
+        deps = [v for v in vars_in_eq if v in dic_total]
 
         dependencies[var] = deps
 
@@ -230,12 +237,12 @@ def init_explicit(mdl: Block,
             if in_degree[v] == 0:
                 queue.append(v)
 
-    if len(topo_order) != len(mdl.init_eqs):
+    if len(topo_order) != len(dic_total):
         raise RuntimeError("Cycle detected between different variables")
 
     # evaluate
     for var in topo_order:
-        eq = mdl.init_eqs[var]
+        eq = dic_total[var]
         vars_list = find_vars_order(eq)
 
         if var in mdl.event_dict.keys():
@@ -253,8 +260,7 @@ def init_explicit(mdl: Block,
             # result = float(eq_fn(x, event_params_array, 0.0)[0])
             event_params_array[uid2idx_event_params[var.uid]] = result
             index = variable_parameters.index(var)
-            if event_parameters_eqs[index].value is None:
-                event_parameters_eqs[index] = Const(result)
+            event_parameters_eqs[index] = Const(result)
 
         else:
             # check if implicit equation

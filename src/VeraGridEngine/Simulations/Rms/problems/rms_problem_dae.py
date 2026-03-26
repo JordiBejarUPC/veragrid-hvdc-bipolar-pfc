@@ -450,7 +450,10 @@ class RmsProblemDae(RmsProblemTemplate):
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
 
                     #Todo: add check to see if all the initialization equations are there, otherwise raise error
+                    # if not elm.rms_model.check_valid_init_method():
+                    #     init_custom(elm.rms_model, self.init_guess)
 
+                    # else:
                     init_explicit(
                         mdl=elm.rms_model,
                         sys_vars=self.sys_vars,

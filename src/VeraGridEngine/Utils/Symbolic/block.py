@@ -8,7 +8,6 @@ from __future__ import annotations
 import uuid
 from typing import List, Dict, Any
 
-from VeraGridEngine import VarFactory
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
@@ -470,15 +469,15 @@ class Block:
         """
         self.children.remove(val)
 
-    def check_valid_init_method(self, var_factory: VarFactory):
+    def check_valid_init_method(self):
 
         explicit = True
         for lst in [self.state_vars, self.algebraic_vars]:
             for var in lst:
                 if self.init_eqs[var] is None:
                     explicit = False
-                if self.init_values[var] is None:
-                    self.init_values[var] = var_factory.add_const(0)
+                # if self.init_values[var] is None:
+                #     self.init_values[var] = Const(0)
         return explicit
 
 
