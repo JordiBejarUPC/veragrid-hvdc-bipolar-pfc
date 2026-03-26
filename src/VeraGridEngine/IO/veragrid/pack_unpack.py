@@ -1706,12 +1706,14 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
 
 
 def parse_multiverse_data(data: dict[str, VERAGRID_FILE_TYPE],
-                         text_func: Union[Callable, None] = None,
-                         progress_func: Union[Callable, None] = None,
-                         logger: Logger = Logger()) -> dev.MultiVerse:
+                          metadata: Dict[str, Dict[str | int | float]],
+                          text_func: Union[Callable, None] = None,
+                          progress_func: Union[Callable, None] = None,
+                          logger: Logger = Logger()) -> dev.MultiVerse:
     """
 
     :param data:
+    :param metadata:
     :param text_func:
     :param progress_func:
     :param logger:
@@ -1722,13 +1724,14 @@ def parse_multiverse_data(data: dict[str, VERAGRID_FILE_TYPE],
     diffs_dict: Dict[str, MultiCircuit] = dict()
 
     for idtag, model_data in data["multiverse"].items():
-        grid = parse_veragrid_data(data=model_data,
-                                   text_func=text_func,
-                                   progress_func=progress_func,
-                                   logger=logger)
-        diffs_dict[grid.idtag] = grid
-
-    metadata = data["multiverse"]["metadata.json"]
+        if idtag != "metadata.json":
+            grid = parse_veragrid_data(data=model_data,
+                                       text_func=text_func,
+                                       progress_func=progress_func,
+                                       logger=logger)
+            # The multiverse metadata references the archive entry idtag used as the folder name.
+            # Keep the loaded circuit aligned with that identifier for stable round-trips.
+            diffs_dict[grid.idtag] = grid
 
     mv.parse_json(diffs_dict, metadata)
 

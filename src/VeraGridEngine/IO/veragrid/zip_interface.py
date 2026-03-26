@@ -246,8 +246,6 @@ def save_veragrid_data_to_zip(filename_zip: str,
 
             i += 1
 
-
-
     if n_failed:
         print('Failed to pickle several profiles, but saved them as csv.\nFor improved speed install Pandas >= 1.2')
 
@@ -354,23 +352,28 @@ def get_frames_from_zip(file_name_zip: str,
     :param logger:
     :return: list of DataFrames
     """
-    data = {
-        'diagrams': list(),
-        'model_data': dict(),
-        'symbolic_data': dict(),
-        'multiverse': dict()
-    }
+
     json_files = dict()
     has_multiverse_data = False
     # open the zip file
     try:
         zip_file_pointer = zipfile.ZipFile(file_name_zip)
     except zipfile.BadZipFile:
+        data = {
+            'diagrams': list(),
+            'model_data': dict(),
+            'symbolic_data': dict()
+        }
         return data, json_files, has_multiverse_data
 
     names = zip_file_pointer.namelist()
 
     if 'multiverse/metadata.json' in names:
+
+        data = {
+            'multiverse': dict()
+        }
+
         has_multiverse_data = True
         # Loading a multiverse file ------------------------------------------------------------------------------------
         n = len(names)
@@ -394,7 +397,7 @@ def get_frames_from_zip(file_name_zip: str,
             if path[0] == "multiverse":
                 model_idtag = path[1]
 
-                if model_idtag not in data['multiverse']:
+                if model_idtag not in data['multiverse']: # and ".json" not in model_idtag:
                     # initialize the dict
                     data['multiverse'][model_idtag] = {
                         'diagrams': list(),
@@ -402,14 +405,77 @@ def get_frames_from_zip(file_name_zip: str,
                         'symbolic_data': dict(),
                     }
 
+                # model_data = data['multiverse'][model_idtag]
+
+                try:
+                    if name.lower() == "config":
+                        df = pd.read_csv(file_pointer, index_col=0)
+                        data[name] = parse_config_df(df, data)
+
+                    elif extension == '.json':
+                        json_files[name] = load_json_from_file_pointer(file_pointer)
+
+                    elif extension == '.diagram':
+                        data['multiverse'][model_idtag]['diagrams'].append(load_json_from_file_pointer(file_pointer))
+
+                    elif extension == '.model':
+                        data['multiverse'][model_idtag]['model_data'][name] = load_json_from_file_pointer(file_pointer)
+
+                    elif extension == '.symbolic':
+                        data['multiverse'][model_idtag]['symbolic_data'][name] = load_json_from_file_pointer(file_pointer)
+
+                    elif extension == '.csv':
+                        data['multiverse'][model_idtag][name] = pd.read_csv(file_pointer, index_col=None)
+
+                    elif extension == '.npy':
+                        try:
+                            df = np.load(file_pointer)
+                        except ValueError:
+                            df = np.load(file_pointer, allow_pickle=True)
+                        data['multiverse'][model_idtag][name] = df
+
+                    elif extension == '.pkl':
+                        try:
+                            data['multiverse'][model_idtag][name] = pd.read_pickle(file_pointer)
+                        except ValueError as e:
+                            logger.add_error(str(e), device=file_pointer.name)
+                        except AttributeError as e:
+                            logger.add_error(str(e) + ' Upgrading pandas might help.', device=file_pointer.name)
+
+                    elif extension == '.parquet':
+                        try:
+                            data['multiverse'][model_idtag][name] = pd.read_parquet(file_pointer)
+                        except ValueError as e:
+                            logger.add_error(str(e), device=file_pointer.name)
+                        except AttributeError as e:
+                            logger.add_error(str(e) + ' Upgrading pandas might help.', device=file_pointer.name)
+
+                    else:
+                        logger.add_info("Unsupported file type inside .veragrid", value=file_name)
+
+                except EOFError:
+                    logger.add_error("EOF error", device=file_pointer.name)
+
+                except zipfile.BadZipFile:
+                    logger.add_error("Bad zip file error", device=file_pointer.name)
+
             else:
                 if name.lower() == "config":
                     df = pd.read_csv(file_pointer, index_col=0)
-                    data = parse_config_df(df, data)
+                    data[name] = parse_config_df(df, data)
+
+        return data, json_files, has_multiverse_data
 
     else:
 
         # Loading a flat file structure with no multiverse -------------------------------------------------------------
+
+        data = {
+            'diagrams': list(),
+            'model_data': dict(),
+            'symbolic_data': dict()
+        }
+
         has_multiverse_data = False
         n = len(names)
 
@@ -431,7 +497,7 @@ def get_frames_from_zip(file_name_zip: str,
             try:
                 if name.lower() == "config":
                     df = pd.read_csv(file_pointer, index_col=0)
-                    data = parse_config_df(df, data)
+                    data[name] = parse_config_df(df, data)
 
                 elif extension == '.json':
                     json_files[name] = load_json_from_file_pointer(file_pointer)
@@ -482,7 +548,7 @@ def get_frames_from_zip(file_name_zip: str,
             except zipfile.BadZipFile:
                 logger.add_error("Bad zip file error", device=file_pointer.name)
 
-    return data, json_files, has_multiverse_data
+        return data, json_files, has_multiverse_data
 
 
 def get_session_tree(file_name_zip: str):

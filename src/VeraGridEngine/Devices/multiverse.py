@@ -27,6 +27,7 @@ class ScenarioNode:
             node_id: int,
             data: MultiCircuit,
             parent: ScenarioNode | None = None,
+            children: list[ScenarioNode] | None = None
     ) -> None:
         """
         Initializes a ScenarioNode with a unique identifier and its associated circuit data.
@@ -48,31 +49,61 @@ class ScenarioNode:
         self.node_id: int = node_id
         self.circuit: MultiCircuit = data
         self.parent: ScenarioNode | None = parent
-        self.children: list[ScenarioNode] = []
+        self.children: list[ScenarioNode] = children if children is not None else list()
 
         self.drivers: Dict[SimulationTypes, DRIVER_OBJECTS] = dict()
 
     def append_child(self, child: ScenarioNode) -> None:
+        """
+
+        :param child:
+        :return:
+        """
         child.parent = self
         self.children.append(child)
 
     def insert_child(self, position: int, child: ScenarioNode) -> None:
+        """
+
+        :param position:
+        :param child:
+        :return:
+        """
         child.parent = self
         self.children.insert(position, child)
 
     def remove_child(self, child: ScenarioNode) -> None:
+        """
+
+        :param child:
+        :return:
+        """
         self.children.remove(child)
         child.parent = None
 
     def remove_child_at(self, position: int) -> ScenarioNode:
+        """
+
+        :param position:
+        :return:
+        """
         child: ScenarioNode = self.children.pop(position)
         child.parent = None
         return child
 
     def child(self, row: int) -> ScenarioNode:
+        """
+
+        :param row:
+        :return:
+        """
         return self.children[row]
 
     def child_count(self) -> int:
+        """
+
+        :return:
+        """
         return len(self.children)
 
     def row(self) -> int:
@@ -515,8 +546,8 @@ class MultiVerse:
         for node in self.iter_nodes_depth_first():
             multiverse_meta_data[node.node_id] = {
                 "node_id": node.node_id,
-                "data": node.circuit.idtag,
-                "parent": node.parent.node_id if node.parent is not None else None,
+                "circuit_idtag": node.circuit.idtag,
+                "parent_id": node.parent.node_id if node.parent is not None else None,
                 "children": [chl.node_id for chl in node.children],
             }
 
@@ -528,55 +559,68 @@ class MultiVerse:
 
     def parse_json(self,
                    diffs_dict: Dict[str, MultiCircuit],
-                   records: Dict[str, Dict[str, str]]):
+                   metadata: Dict[str, Dict[str | int | float]]):
         """
          Parse the json metadata to fill this object
         :param diffs_dict:
-        :param records: json file name or zip file pointer
+        :param metadata: json file name or zip file pointer
         :return:
         """
-        built_nodes: dict[int, ScenarioNode] = {}
+        self.clear()
+        self._base_model = None
+        self._current_model = None
+        self._current_node = None
+
+        built_nodes: dict[int, ScenarioNode] = dict()
         max_id: int = 0
 
-        for record in records:
+        # Build nodes from parent links; metadata may be serialized as a dict with string keys.
+        pending: Dict[int, Dict[str | int | float]] = {
+            int(node_id): record for node_id, record in metadata.items()
+        }
 
-            # get the record values
-            node_id: int = int(record["node_id"])
-            parent_id_raw: Any = record["parent_id"]
-            parent_id: int | None = None if parent_id_raw is None else int(parent_id_raw)
-            position: int = int(record["position"])
-            idtag: str = str(record["idtag"])
+        while pending:
+            progressed: bool = False
 
-            parent: ScenarioNode | None = None
-            if parent_id is not None:
-                if parent_id not in built_nodes:
-                    raise ValueError(
-                        f"Parent id {parent_id} was not found before child {node_id}"
-                    )
-                parent = built_nodes[parent_id]
+            for metadata_node_id in list(pending.keys()):
+                record = pending[metadata_node_id]
 
-            node: ScenarioNode = ScenarioNode(
-                node_id=node_id,
-                data=diffs_dict[idtag],
-                parent=parent,
-            )
+                node_id: int = int(record["node_id"])
+                circuit_idtag: str = str(record["circuit_idtag"])
+                parent_id_raw = record["parent_id"]
+                parent_id: int | None = None if parent_id_raw is None else int(parent_id_raw)
 
-            if parent is None:
-                if 0 < position < self.roots_number():
-                    self.insert_node(position, node)
+                if parent_id is not None and parent_id not in built_nodes:
+                    continue
+
+                parent: ScenarioNode | None = None if parent_id is None else built_nodes[parent_id]
+
+                node = ScenarioNode(
+                    node_id=node_id,
+                    data=diffs_dict[circuit_idtag],
+                    parent=parent,
+                )
+
+                if parent is None:
+                    self._root_nodes.append(node)
                 else:
-                    raise ValueError(f"Invalid root position {position} for node {node_id}")
+                    parent.append_child(node)
 
-            else:
-                if 0 < position < len(parent.children):
-                    parent.children.insert(position, node)
-                else:
-                    raise ValueError(f"Invalid child position {position} for node {node_id}")
+                self.set_node(node_id, node)
+                built_nodes[node_id] = node
+                del pending[metadata_node_id]
+                progressed = True
 
-            self.set_node(node_id, node)
-            built_nodes[node_id] = node
+                if node_id > max_id:
+                    max_id = node_id
 
-            if node_id > max_id:
-                max_id = node_id
+            if not progressed:
+                unresolved = ", ".join(str(node_id) for node_id in pending.keys())
+                raise ValueError(f"Could not resolve multiverse metadata parent links for nodes: {unresolved}")
 
         self._next_id = max_id + 1
+
+        if self._root_nodes:
+            self._current_node = self._root_nodes[0]
+            self._current_model = self._current_node.circuit
+            self._base_model = self._root_nodes[0].circuit

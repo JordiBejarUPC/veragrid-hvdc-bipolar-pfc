@@ -369,10 +369,18 @@ class FileOpen:
                                                         logger=self.logger)
             # interpret file content
             if data_dictionary is not None:
-                self.circuit = parse_veragrid_data(data=data_dictionary,
-                                                   text_func=text_func,
-                                                   progress_func=progress_func,
-                                                   logger=self.logger)
+                if has_multiverse_data:
+                    self.multiverse = parse_multiverse_data(data=data_dictionary,
+                                                            metadata=self.json_files["metadata"],
+                                                            text_func=text_func,
+                                                            progress_func=progress_func,
+                                                            logger=self.logger)
+                else:
+
+                    self.circuit = parse_veragrid_data(data=data_dictionary,
+                                                       text_func=text_func,
+                                                       progress_func=progress_func,
+                                                       logger=self.logger)
             else:
                 self.logger.add("Error while reading the file :(")
                 return None

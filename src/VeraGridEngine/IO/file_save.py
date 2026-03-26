@@ -129,6 +129,7 @@ def save_veragrid(circuit: MultiCircuit,
                   progress_func=None) -> Logger:
     """
     Save the circuit information in zip format
+    If a multiverse is passed in the options, it is "commited" before saving
     :return: logger with information
     """
 
