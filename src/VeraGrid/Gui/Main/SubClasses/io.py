@@ -12,6 +12,7 @@ import VeraGrid.Session.export_results_driver as exprtdrv
 import VeraGrid.Session.file_handler as filedrv
 from VeraGrid.Gui.GridMerge.grid_diff import GridDiffDialogue
 from VeraGrid.Gui.GridMerge.grid_merge import GridMergeDialogue
+from VeraGrid.Gui.scenario_tree_model import ScenarioTreeModel
 from VeraGrid.plugins import install_plugin, get_plugin_info
 from VeraGrid.Gui.CoordinatesInput.coordinates_dialogue import CoordinatesInputGUI
 from VeraGrid.Gui.general_dialogues import LogsDialogue, CustomQuestionDialogue, FileTypeSelector, CgmesOptionsSelector
@@ -19,7 +20,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidg
 from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg, info_msg
 from VeraGrid.Gui.GridGenerator.grid_generator_dialogue import GridGeneratorGUI
 from VeraGrid.Gui.RosetaExplorer.RosetaExplorer import RosetaExplorerGUI
-from VeraGrid.Gui.Main.SubClasses.Settings.configuration import ConfigurationMain
+from VeraGrid.Gui.Main.SubClasses.Model.scenarios import ScenariosMain
 from VeraGrid.Gui.CGMESDialogue.cgmes_export import CgmesExportDialogue
 from VeraGrid.Gui.PsseDialogue.psse_export import PsseExportDialogue
 from VeraGrid.Gui.PsseDialogue.psse_import import PsseImportDialogue
@@ -36,7 +37,7 @@ from VeraGrid.templates import (get_cables_catalogue, get_transformer_catalogue,
                                 get_sequence_lines_catalogue)
 
 
-class IoMain(ConfigurationMain):
+class IoMain(ScenariosMain):
     """
     Inputs-Outputs Main
     """
@@ -48,7 +49,7 @@ class IoMain(ConfigurationMain):
         """
 
         # create the main window
-        ConfigurationMain.__init__(self, parent)
+        ScenariosMain.__init__(self, parent)
 
         self.rosetta_gui: Union[RosetaExplorerGUI, None] = None
 
@@ -367,13 +368,26 @@ class IoMain(ConfigurationMain):
 
                 # assign the loaded circuit
                 self.new_project_now(create_default_diagrams=False)
-                if self.open_file_thread_object.circuit is not None:
+
+
+                if self.open_file_thread_object.multiverse is not None:
+                    # A multiverse file already contains the complete scenario tree and active
+                    # scenario. Reassigning through self.circuit would rebuild a fresh
+                    # single-root MultiVerse and discard the loaded multiverse information.
+                    self.multiverse = self.open_file_thread_object.multiverse
+                    self.ui.activeScenarioLabel.setText(f"Current: {self.circuit.name}")
+                    self.file_name = self.open_file_thread_object.file_name
+
+                elif self.open_file_thread_object.circuit is not None:
                     self.circuit = self.open_file_thread_object.circuit
                     self.file_name = self.open_file_thread_object.file_name
 
                 if self.circuit.has_diagrams():
                     # create the diagrams that came with the file
-                    self.create_circuit_stored_diagrams()
+                    if self.open_file_thread_object.multiverse is not None:
+                        self.reload_diagrams_for_active_scenario()
+                    else:
+                        self.create_circuit_stored_diagrams()
 
                 else:
                     if self.circuit.get_bus_number() > 300:

@@ -18,6 +18,7 @@ import pandas as pd
 # GUI imports
 from PySide6 import QtGui, QtWidgets, QtCore
 
+from VeraGrid.Gui.scenario_tree_model import ScenarioTreeModel
 # Engine imports
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.multiverse import MultiVerse
@@ -135,7 +136,8 @@ class BaseMainGui(QMainWindow):
 
         # Declare circuit
         # self.circuit: MultiCircuit = MultiCircuit()
-        self.multiverse: MultiVerse = MultiVerse(current_model=MultiCircuit())
+        self._multiverse: MultiVerse = MultiVerse(current_model=MultiCircuit())
+        self.scenario_tree_model: ScenarioTreeModel = ScenarioTreeModel(multiverse=self._multiverse)
 
         self.lock_ui = False
         self.ui.progress_frame.setVisible(self.lock_ui)
@@ -282,6 +284,16 @@ class BaseMainGui(QMainWindow):
         """
         if not self.any_thread_running():
             self.LOCK(False)
+
+    @property
+    def multiverse(self) -> MultiVerse:
+        return self._multiverse
+
+    @multiverse.setter
+    def multiverse(self, val: MultiVerse):
+        self._multiverse = val
+        self.scenario_tree_model = ScenarioTreeModel(multiverse=val)
+        self.ui.multiverseTreeView.setModel(self.scenario_tree_model)
 
     @property
     def circuit(self) -> MultiCircuit:

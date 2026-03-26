@@ -5,7 +5,7 @@
 from PySide6.QtCore import Qt, QPoint, QModelIndex, QItemSelectionModel
 from PySide6 import QtWidgets
 
-from VeraGrid.Gui.Main.SubClasses.Scripting.scripting import ScriptingMain
+from VeraGrid.Gui.Main.SubClasses.Settings.configuration import ConfigurationMain
 from VeraGrid.Gui.scenario_tree_model import ScenarioTreeModel
 from VeraGrid.Gui import gui_functions as gf
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
@@ -13,7 +13,7 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.multiverse import MultiVerse, ScenarioNode
 
 
-class ScenariosMain(ScriptingMain):
+class ScenariosMain(ConfigurationMain):
     """
     Scenarios Main
     """
@@ -26,9 +26,9 @@ class ScenariosMain(ScriptingMain):
         """
 
         # create main window
-        ScriptingMain.__init__(self, parent)
+        ConfigurationMain.__init__(self, parent)
 
-        self.scenario_tree_model: ScenarioTreeModel = ScenarioTreeModel(multiverse=self.multiverse)
+
 
         self.ui.multiverseTreeView.setModel(self.scenario_tree_model)
 
@@ -59,11 +59,9 @@ class ScenariosMain(ScriptingMain):
     def circuit(self, val: MultiCircuit) -> None:
         # Rebuild the entire MultiVerse so the root node's data matches the new grid
         self.multiverse = MultiVerse(current_model=val)
-
-        if hasattr(self, 'scenario_tree_model'):
-            self.scenario_tree_model._multiverse = self.multiverse
-            self.scenario_tree_model.refresh()
-            self.ui.activeScenarioLabel.setText(f"Current: {val.name}")
+        self.scenario_tree_model = ScenarioTreeModel(multiverse=self.multiverse)
+        self.ui.multiverseTreeView.setModel(self.scenario_tree_model)
+        self.ui.activeScenarioLabel.setText(f"Current: {val.name}")
 
     def get_selected_scenario_index(self) -> QModelIndex | None:
         """
