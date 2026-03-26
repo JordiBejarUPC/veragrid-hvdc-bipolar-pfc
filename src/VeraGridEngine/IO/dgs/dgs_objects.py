@@ -952,8 +952,12 @@ class ElmSvs(DGSElement):
         DgsProperty('usetp', 'r', 'Voltage Setpoint in p.u.', py_name='usetp'),
 
         DgsProperty('i_ctrl', 'i', 'Control mode', py_name='i_ctrl'),
+        DgsProperty('i_droop', 'i', 'Droop control enabled?', py_name='i_droop'),
+        DgsProperty('ddroop', 'r', 'Droop [%]', py_name='ddroop'),
+        DgsProperty('Srated', 'r', 'Rated reactive power [Mvar]', py_name='Srated'),
         DgsProperty('nncap', 'i', 'Actual number of capacitors', py_name='nncap'),
         DgsProperty('tcrqact', 'r', 'Actual value of TCR [Mvar]', py_name='tcrqact'),
+        DgsProperty('qsetp', 'r', 'Reactive Power Setpoint [Mvar]', py_name='qsetp'),
     ]
 
     def __init__(self) -> None:
@@ -981,9 +985,13 @@ class ElmSvs(DGSElement):
         # Voltage setpoint (p.u.) for controlled shunts
         self.usetp: float = 1.0
 
+        self.ddroop: float = 0.0  # Droop [%]
+        self.Srated: float = 0.0  # Rated reactive power [Mvar]
         self.i_ctrl: int = 0 # Control mode
+        self.i_droop: int = 0  # Droop control
         self.nncap: int = 0  # Actual number of capacitors
-        self.tcrqact: int = 0  # Actual value of TCR [Mvar]
+        self.tcrqact: float = 0.0  # Actual value of TCR [Mvar]
+        self.qsetp: float = 0.0  # Reactive Power Setpoint [Mvar]
 
 
 class ElmSite(DGSElement):

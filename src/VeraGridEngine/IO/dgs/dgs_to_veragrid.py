@@ -2425,9 +2425,48 @@ def convert_dgs_svs_to_vsc(elmsvs: ElmSvs,
     control_mode = elmsvs.i_ctrl
 
     if control_mode == 2: # Reactive Power Control
-        pass
+
+        control1 = ConverterControlType.Pac
+        control1_val = 0.0  # Active power injection of the SVS [MW]
+
+        control2 = ConverterControlType.Qac
+        control2_val = elmsvs.qsetp  # Reactive power injection of the SVS [MVAr]
+
+        rate = max(np.abs(elmsvs.tcrmax), np.abs(elmsvs.qmin))
+        kpd = 0.0  # Droop [%]
+        ysvs = 0.0  # Fixed admittance based on 1 MVA / Ub^2
+        u_setpoint = 1.0  # Voltage Setpoint [pu]
+
     elif control_mode == 1: # Voltage Control
-        pass
+        if elmsvs.i_droop == 0: # No droop, just sets the voltage to the given setpoint
+
+            control1 = ConverterControlType.Pac
+            control1_val = 0.0  # Active power injection of the SVS [MW]
+
+            control2 = ConverterControlType.Vm_ac
+            control2_val = elmsvs.usetp # Voltage setpoint [pu]
+
+            ysvs = 0.0 # Fixed admittance based on 1 MVA / Ub^2
+            rate = max(np.abs(elmsvs.tcrmax), np.abs(elmsvs.qmin))
+            kpd = 0.0 # Droop [%]
+            u_setpoint = 1.0  # Voltage Setpoint [pu]
+
+        else: # Droop Control
+
+            kpd = elmsvs.ddroop # Droop [%]
+            rate = elmsvs.Srated # Rated Power [MVA]
+            u_setpoint = elmsvs.usetp # Voltage Setpoint [pu]
+
+            control1 = ConverterControlType.Pac
+            control1_val = 0.0  # Active power injection of the SVS [MW]
+
+            control2 = ConverterControlType.Qac
+            Qdroop = rate / kpd * 100
+            Q = Qdroop * (np.abs(1.0) - u_setpoint)  # Reactive power injection of the SVS [MVAr]
+            control2_val = Q  # Reactive power injection of the SVS [MVAr]
+
+            ysvs = 0.0  # Fixed admittance based on 1 MVA / Ub^2
+
     else: # No Control
         control1 = ConverterControlType.Pac
         control2 = ConverterControlType.Qac
@@ -2443,13 +2482,17 @@ def convert_dgs_svs_to_vsc(elmsvs: ElmSvs,
         control1_val = 0.0  # Active power injection of the SVS [MW]
         control2_val = np.abs(1.0 ** 2) * np.conj(ysvs)  # Reactive power injection of the SVS [MVAr]
 
+        rate = max(np.abs(elmsvs.tcrmax), np.abs(elmsvs.qmin))
+        kpd = 0.0  # Droop [%]
+        u_setpoint = 1.0  # Voltage Setpoint [pu]
+
     vsc = dev.VSC(
         name=vsc_name,
         idtag=_ref_id(elmsvs.ID),
         active=not bool(elmsvs.outserv),
         bus_from=dc_bus,
         bus_to=ac_bus,
-        rate=max(np.abs(elmsvs.tcrmax), np.abs(elmsvs.qmin)),
+        rate=rate,
         alpha1=0.0,
         alpha2=0.0,
         alpha3=0.0,
@@ -2457,7 +2500,9 @@ def convert_dgs_svs_to_vsc(elmsvs: ElmSvs,
         control2=control2,
         control1_val=control1_val,
         control2_val=control2_val,
-        ysvs=ysvs
+        ysvs=ysvs,
+        kdp=kpd,
+        u_setpoint=u_setpoint
     )
 
     return dc_bus, vsc

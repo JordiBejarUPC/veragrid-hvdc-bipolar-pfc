@@ -728,7 +728,6 @@ class ConverterFaultControlType(Enum):
     """
     Standard = 'Standard'
     WECC_WT_Type_4B = 'WECC_WT_Type_4B'
-    Static_Var_System = 'Static_Var_System'
 
     def __str__(self):
         return str(self.value)
