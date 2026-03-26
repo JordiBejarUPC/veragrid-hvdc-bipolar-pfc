@@ -23,7 +23,6 @@ def test_add_stuff_roundtrip() -> None:
 
     # add stuff
     lynn_original = vge.open_file(filename=os.path.join("data", "grids", "lynn5node.gridcal"))
-    lynn_original.delete_profiles()
 
     # add elements one by one
     for elm in lynn_original.items():
@@ -31,6 +30,11 @@ def test_add_stuff_roundtrip() -> None:
 
     # calculate the difference of the modified grid with the original
     ok_diff, diff_logger, diff = grid1.differentiate_circuits(base_grid=original)
+
+    # Align the comparison grid to the diff time axis so profile-aware comparisons stay valid.
+    if diff.time_profile is not None:
+        lynn_original.time_profile = diff.time_profile.copy()
+        lynn_original.ensure_profiles_exist()
 
     # the calculated difference should be equal to the grid we added
     ok_compare, comp_logger = diff.compare_circuits(grid2=lynn_original, skip_internals=True)
@@ -198,3 +202,37 @@ def test_grid_collisions_with_save_load() -> None:
         comp_logger.print()
     #
     assert ok_compare
+
+
+def test_differentiate_circuits_preserves_time_profile_consistency() -> None:
+    """
+    Verify that a differential grid created from a time-series circuit keeps a valid time profile.
+
+    This protects the case where a diff is produced from a time-series grid and later serialized
+    or loaded through multiverse logic. The diff must carry the source time axis and keep its
+    contained object profiles aligned with that axis.
+    """
+    original = vge.open_file(filename=os.path.join("data", "grids", "IEEE39_1W.gridcal"))
+    modified = vge.open_file(filename=os.path.join("data", "grids", "IEEE39_1W.gridcal"))
+
+    assert original.time_profile is not None
+    assert modified.time_profile is not None
+
+    modified.buses[0].active_prof[0] = not modified.buses[0].active_prof[0]
+    modified.loads[0].P_prof[0] *= 1.1
+
+    ok_diff, diff_logger, diff = modified.differentiate_circuits(base_grid=original)
+
+    if not ok_diff:
+        diff_logger.print()
+
+    assert ok_diff
+    assert diff.time_profile is not None
+    assert diff.get_time_number() == modified.get_time_number()
+
+    for bus in diff.buses:
+        assert bus.active_prof.size() == diff.get_time_number()
+
+    for load in diff.loads:
+        assert load.active_prof.size() == diff.get_time_number()
+        assert load.P_prof.size() == diff.get_time_number()
