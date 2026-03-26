@@ -543,7 +543,7 @@ class MultiVerse:
         if fallback_node is None and self._root_nodes:
             fallback_node = self._root_nodes[0]
 
-        if deleted_active_subtree or fallback_node is not None:
+        if deleted_active_subtree:
             self._set_fallback_active_node(fallback_node)
 
         return node
@@ -676,6 +676,7 @@ class MultiVerse:
                 "node_id": node.node_id,
                 "circuit_idtag": node.circuit.idtag,
                 "parent_id": node.parent.node_id if node.parent is not None else None,
+                "position": self._root_nodes.index(node) if node.parent is None else node.row(),
                 "children": [chl.node_id for chl in node.children],
             }
 
@@ -732,6 +733,8 @@ class MultiVerse:
                     continue
 
                 parent: ScenarioNode | None = None if parent_id is None else built_nodes[parent_id]
+                position_raw = record.get("position", None)
+                position = None if position_raw is None else int(position_raw)
 
                 node = ScenarioNode(
                     node_id=node_id,
@@ -741,9 +744,15 @@ class MultiVerse:
                 )
 
                 if parent is None:
-                    self._root_nodes.append(node)
+                    if position is None:
+                        self._root_nodes.append(node)
+                    else:
+                        self._root_nodes.insert(position, node)
                 else:
-                    parent.append_child(node)
+                    if position is None:
+                        parent.append_child(node)
+                    else:
+                        parent.insert_child(position, node)
 
                 self.set_node(node_id, node)
                 built_nodes[node_id] = node

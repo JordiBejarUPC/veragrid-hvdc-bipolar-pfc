@@ -41,9 +41,6 @@ class ScenariosMain(ConfigurationMain):
         # Connect context menu signal
         self.ui.multiverseTreeView.customContextMenuRequested.connect(self.show_scenario_tree_context_menu)
 
-        # Connect selection change signal
-        self.ui.multiverseTreeView.selectionModel().selectionChanged.connect(self.on_scenario_selection_changed)
-
         # Show the initially active scenario (root) in the label
         self.ui.activeScenarioLabel.setText(f"Current: {self.multiverse.current_model.name}")
 
@@ -116,13 +113,6 @@ class ScenariosMain(ConfigurationMain):
                 return None
         else:
             return None
-
-    def on_scenario_selection_changed(self) -> None:
-        """
-        Handle scenario selection changes in the tree view.
-        The active scenario label is not changed here — it only reflects the activated scenario.
-        """
-        pass
 
     def show_scenario_tree_context_menu(self, pos: QPoint) -> None:
         """

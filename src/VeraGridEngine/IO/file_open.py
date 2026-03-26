@@ -399,6 +399,7 @@ class FileOpen:
 
                 if has_multiverse_data:
                     self.multiverse = parse_multiverse_data(data=data_dictionary,
+                                                            metadata=self.json_files["metadata"],
                                                             text_func=text_func,
                                                             progress_func=progress_func,
                                                             logger=self.logger)
