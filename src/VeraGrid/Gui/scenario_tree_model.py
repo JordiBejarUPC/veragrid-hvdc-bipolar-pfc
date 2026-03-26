@@ -344,3 +344,23 @@ class ScenarioTreeModel(QAbstractItemModel):
         )
         self.endResetModel()
         return True
+
+    def merge_children_into_parent(self, index: QModelIndex) -> bool:
+        """
+        Merge all direct children of the selected node into that node.
+
+        A model reset is used because the operation can both remove nodes and
+        reparent descendants in one step.
+
+        :param index: Parent QModelIndex
+        :return: True if the merge was applied
+        """
+        if not index.isValid():
+            return False
+
+        node: ScenarioNode = index.internalPointer()
+
+        self.beginResetModel()
+        self._multiverse.merge_children_into_parent(node.node_id)
+        self.endResetModel()
+        return True

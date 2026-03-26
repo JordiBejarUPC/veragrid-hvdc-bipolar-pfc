@@ -4,7 +4,6 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-import json
 from typing import List, Dict, Any, Tuple, TYPE_CHECKING
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import SimulationTypes
@@ -259,6 +258,103 @@ class MultiVerse:
 
         delta.name = scenario_name
         self._current_node.circuit = delta
+
+    def _store_composed_node_data(self, node: ScenarioNode, composed: MultiCircuit) -> None:
+        """
+        Persist a fully composed circuit back into the node storage model.
+
+        Root nodes keep the full authoritative circuit.
+        Non-root nodes store only the delta against their parent.
+        """
+        scenario_name: str = node.circuit.name
+        composed.name = scenario_name
+
+        if node.parent is None:
+            node.circuit = composed
+            if self._base_model is not None and node in self._root_nodes:
+                self._base_model = node.circuit
+            return
+
+        parent_circuit: MultiCircuit = self.checkout(node.parent)
+        _ok, _logger, delta = composed.differentiate_circuits(
+            base_grid=parent_circuit,
+            force_second_pass=True,
+        )
+        delta.name = scenario_name
+        node.circuit = delta
+
+    def merge_children_into_parent(self, parent_id: int) -> ScenarioNode:
+        """
+        Merge all direct children into the specified parent node.
+
+        Child deltas are merged into the parent in the current sibling order.
+        After the merge:
+        - the parent keeps the merged scenario
+        - direct child nodes are removed
+        - former grandchildren are rebased and attached directly under the parent
+
+        If several children modify the same objects, later children win because they
+        are merged after earlier siblings.
+        """
+        self.commit_current()
+
+        parent: ScenarioNode = self.get_node(parent_id)
+        direct_children: list[ScenarioNode] = list(parent.children)
+
+        if not direct_children:
+            if self._current_node is parent:
+                self._current_model = parent.circuit if parent.parent is None else self.checkout(parent)
+            return parent
+
+        merged_parent_model: MultiCircuit = self.checkout(parent)
+
+        for child in direct_children:
+            merged_parent_model.merge_circuit(new_grid=child.circuit)
+
+        rebased_grandchildren: list[tuple[ScenarioNode, MultiCircuit]] = list()
+        for child in direct_children:
+            for grandchild in child.children:
+                rebased_grandchildren.append((grandchild, self.checkout(grandchild)))
+
+        self._store_composed_node_data(parent, merged_parent_model)
+
+        reparented_children: list[ScenarioNode] = list()
+        for grandchild, full_grid in rebased_grandchildren:
+            scenario_name: str = grandchild.circuit.name
+            _ok, _logger, delta = full_grid.differentiate_circuits(
+                base_grid=merged_parent_model,
+                force_second_pass=True,
+            )
+            delta.name = scenario_name
+            grandchild.circuit = delta
+            grandchild.parent = None
+            reparented_children.append(grandchild)
+
+        affected_current_node = self._current_node
+        current_node_was_removed = any(affected_current_node is child for child in direct_children)
+        current_node_was_rebased = any(
+            self._is_descendant(candidate_parent=child, candidate_child=affected_current_node)
+            for child in direct_children
+        ) if affected_current_node is not None else False
+
+        parent.children = list()
+
+        for child in direct_children:
+            child.parent = None
+            child.children = list()
+            if child.node_id in self._nodes_by_id:
+                del self._nodes_by_id[child.node_id]
+
+        for grandchild in reparented_children:
+            parent.append_child(grandchild)
+
+        if current_node_was_removed or self._current_node is parent:
+            self._current_node = parent
+            self._current_model = parent.circuit if parent.parent is None else merged_parent_model
+        elif current_node_was_rebased and self._current_node is not None:
+            self._current_model = self.checkout(self._current_node)
+
+        return parent
 
     def activate_scenario(self, node_id: int) -> MultiCircuit:
         """

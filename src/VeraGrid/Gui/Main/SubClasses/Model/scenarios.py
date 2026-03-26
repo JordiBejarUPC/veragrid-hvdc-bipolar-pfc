@@ -44,9 +44,6 @@ class ScenariosMain(ScriptingMain):
         # Connect selection change signal
         self.ui.multiverseTreeView.selectionModel().selectionChanged.connect(self.on_scenario_selection_changed)
 
-        # Connect double-click signal to apply scenario
-        self.ui.multiverseTreeView.doubleClicked.connect(self.on_scenario_double_clicked)
-
         # Show the initially active scenario (root) in the label
         self.ui.activeScenarioLabel.setText(f"Current: {self.multiverse.current_model.name}")
 
@@ -131,40 +128,6 @@ class ScenariosMain(ScriptingMain):
         """
         pass
 
-    def on_scenario_double_clicked(self, index: QModelIndex) -> None:
-        """
-        Handle double-click on a scenario node.
-        Commits any unsaved edits on the current scenario, then composes and activates
-        the selected scenario via the delta chain.
-
-        :param index: The QModelIndex of the double-clicked item
-        """
-        if not index.isValid():
-            return
-
-        node: ScenarioNode | None = self.scenario_tree_model.get_node(index)
-
-        if node is None:
-            return
-
-        if node is self.multiverse.current_node:
-            self.show_warning_toast(f"'{node.circuit.name}' is already the active scenario")
-            return
-
-        circuit: MultiCircuit = self.multiverse.activate_scenario(node.node_id)
-
-        # Refresh counts: commit_current() may have updated the previous node's delta
-        self.scenario_tree_model.refresh_data()
-
-        # Update the UI label
-        self.ui.activeScenarioLabel.setText(f"Current: {circuit.name}")
-
-        # Update other UI elements that depend on the circuit
-        self.update_date_dependent_combos()
-        self.view_objects_data()
-
-        self.show_info_toast(f"Applied scenario '{circuit.name}'")
-
     def show_scenario_tree_context_menu(self, pos: QPoint) -> None:
         """
         Display context menu for scenario tree operations.
@@ -211,6 +174,13 @@ class ScenariosMain(ScriptingMain):
                 text="Set as current scenario",
                 icon_path=":/Icons/icons/schematic.png",
                 function_ptr=self.set_as_current_scenario
+            )
+
+            gf.add_menu_entry(
+                menu=context_menu,
+                text="Merge children into scenario",
+                icon_path=":/Icons/icons/fusion.png",
+                function_ptr=self.merge_children_into_scenario
             )
 
             # Separator before delete
@@ -342,6 +312,68 @@ class ScenariosMain(ScriptingMain):
             # User cancelled the operation
             pass
 
+    def merge_children_into_scenario(self) -> None:
+        """
+        Merge all direct child scenarios into the selected scenario.
+        The selected node keeps the merged result and any grandchildren are
+        rebased directly under it.
+        """
+        selected_index: QModelIndex | None = self.get_selected_scenario_index()
+
+        if selected_index is None or not selected_index.isValid():
+            warning_msg("Please select a scenario to merge into", "Merge Children")
+            return
+
+        node: ScenarioNode | None = self.scenario_tree_model.get_node(selected_index)
+
+        if node is None:
+            warning_msg("Invalid scenario selected", "Merge Children")
+            return
+
+        child_count: int = node.child_count()
+        if child_count == 0:
+            self.show_warning_toast(f"Scenario '{node.circuit.name}' has no child scenarios")
+            return
+
+        ok: bool = yes_no_question(
+            f"Merge {child_count} child scenario(s) into '{node.circuit.name}'?\n\n"
+            f"This will remove the direct child scenarios after their changes are applied.",
+            "Merge Children"
+        )
+
+        if not ok:
+            return
+
+        success: bool = self.scenario_tree_model.merge_children_into_parent(selected_index)
+
+        if not success:
+            warning_msg("Failed to merge child scenarios", "Merge Children")
+            return
+
+        merged_circuit: MultiCircuit = self.multiverse.current_model
+
+        self.ui.activeScenarioLabel.setText(f"Current: {merged_circuit.name}")
+        self.update_date_dependent_combos()
+        self.view_objects_data()
+        self.update_available_results()
+        self.ui.multiverseTreeView.expand(selected_index)
+
+        self.show_info_toast(f"Merged {child_count} child scenario(s) into '{node.circuit.name}'")
+
+    def reload_diagrams_for_active_scenario(self) -> None:
+        """
+        Rebuild the diagram widgets from the currently active scenario circuit.
+
+        This intentionally avoids assigning through ``self.circuit`` because that setter
+        rebuilds the whole MultiVerse.
+        """
+        self.remove_all_diagrams()
+
+        if self.circuit.has_diagrams():
+            self.create_circuit_stored_diagrams()
+        else:
+            self.add_complete_bus_branch_diagram()
+
     def rename_scenario(self) -> None:
         """
         Rename the selected scenario node.
@@ -387,6 +419,8 @@ class ScenariosMain(ScriptingMain):
 
         # Update the UI label
         self.ui.activeScenarioLabel.setText(f"Current: {circuit.name}")
+
+        self.reload_diagrams_for_active_scenario()
 
         # Update other UI elements that depend on the circuit
         self.update_date_dependent_combos()
