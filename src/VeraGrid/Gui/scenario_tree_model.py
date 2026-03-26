@@ -176,9 +176,9 @@ class ScenarioTreeModel(QAbstractItemModel):
 
         if column == 0:
             circuit.name = str(value)
-        if column == 1:
+        elif column == 1:
             return False
-        if column == 2:
+        elif column == 2:
             circuit.comments = str(value)
         else:
             return False

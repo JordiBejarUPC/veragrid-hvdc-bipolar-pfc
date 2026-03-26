@@ -59,8 +59,6 @@ class ScenariosMain(ConfigurationMain):
     def circuit(self, val: MultiCircuit) -> None:
         # Rebuild the entire MultiVerse so the root node's data matches the new grid
         self.multiverse = MultiVerse(current_model=val)
-        self.scenario_tree_model = ScenarioTreeModel(multiverse=self.multiverse)
-        self.ui.multiverseTreeView.setModel(self.scenario_tree_model)
         self.ui.activeScenarioLabel.setText(f"Current: {val.name}")
 
     def get_selected_scenario_index(self) -> QModelIndex | None:
@@ -253,6 +251,10 @@ class ScenariosMain(ConfigurationMain):
         )
 
         if scenario_name is not None:
+            # The child must inherit the latest parent state, including diagrams.
+            # Commit first so parent-owned node storage reflects any pending edits.
+            self.multiverse.commit_current()
+
             # Non-root nodes store a delta, not a full circuit.
             # A brand-new child starts with an empty delta (no changes from parent yet).
             initial_delta: MultiCircuit = MultiCircuit(name=scenario_name)
@@ -323,10 +325,39 @@ class ScenariosMain(ConfigurationMain):
         ok: bool = yes_no_question(message, "Remove Scenario")
 
         if ok:
+            # Deletion always falls back to the parent node, or to the first remaining root
+            # when a non-last root is deleted. Capture that target before mutating the tree.
+            fallback_node: ScenarioNode | None = node.parent
+            if fallback_node is None:
+                remaining_roots = [root for root in self.multiverse.root_nodes if root is not node]
+                fallback_node = remaining_roots[0] if remaining_roots else None
+
             # Remove the node through the model
-            success: bool = self.scenario_tree_model.remove_node(selected_index)
+            try:
+                success: bool = self.scenario_tree_model.remove_node(selected_index)
+            except ValueError as exc:
+                warning_msg(str(exc), "Remove Scenario")
+                return
 
             if success:
+                # Keep the tree selection and the active circuit views aligned with the
+                # scenario that survived the deletion.
+                if fallback_node is not None:
+                    fallback_index = self.scenario_tree_model.index_for_node(fallback_node)
+                    if fallback_index.isValid():
+                        self.ui.multiverseTreeView.setCurrentIndex(fallback_index)
+                        self.ui.multiverseTreeView.selectionModel().select(
+                            fallback_index,
+                            QItemSelectionModel.SelectionFlag.ClearAndSelect
+                            | QItemSelectionModel.SelectionFlag.Rows,
+                        )
+                        self.ui.multiverseTreeView.scrollTo(fallback_index)
+
+                self.ui.activeScenarioLabel.setText(f"Current: {self.multiverse.current_model.name}")
+                self.reload_diagrams_for_active_scenario()
+                self.update_date_dependent_combos()
+                self.view_objects_data()
+                self.update_available_results()
                 self.show_info_toast(f"Scenario '{circuit.name}' removed")
             else:
                 warning_msg("Failed to remove scenario", "Remove Scenario")
@@ -374,11 +405,22 @@ class ScenariosMain(ConfigurationMain):
 
         merged_circuit: MultiCircuit = self.multiverse.current_model
 
+        # The merge target becomes the active scenario after the children disappear.
         self.ui.activeScenarioLabel.setText(f"Current: {merged_circuit.name}")
+        self.reload_diagrams_for_active_scenario()
         self.update_date_dependent_combos()
         self.view_objects_data()
         self.update_available_results()
-        self.ui.multiverseTreeView.expand(selected_index)
+        parent_index = self.scenario_tree_model.index_for_node(self.multiverse.current_node)
+        if parent_index.isValid():
+            self.ui.multiverseTreeView.expand(parent_index)
+            self.ui.multiverseTreeView.setCurrentIndex(parent_index)
+            self.ui.multiverseTreeView.selectionModel().select(
+                parent_index,
+                QItemSelectionModel.SelectionFlag.ClearAndSelect
+                | QItemSelectionModel.SelectionFlag.Rows,
+            )
+            self.ui.multiverseTreeView.scrollTo(parent_index)
 
         self.show_info_toast(f"Merged {child_count} child scenario(s) into '{node.circuit.name}'")
 
