@@ -150,15 +150,13 @@ class ScenariosMain(ScriptingMain):
 
         # Add child scenario - only available if a node is selected
         if has_selection:
+            # Set as the current scenario - only available if a node is selected
             gf.add_menu_entry(
                 menu=context_menu,
-                text="Add child scenario",
-                icon_path=":/Icons/icons/plus.png",
-                function_ptr=self.add_child_scenario
+                text="Set as current scenario",
+                icon_path=":/Icons/icons/schematic.png",
+                function_ptr=self.set_as_current_scenario
             )
-
-            # Separator
-            context_menu.addSeparator()
 
             # Rename scenario - only available if a node is selected
             gf.add_menu_entry(
@@ -168,12 +166,14 @@ class ScenariosMain(ScriptingMain):
                 function_ptr=self.rename_scenario
             )
 
-            # Set as the current scenario - only available if a node is selected
+            # Separator
+            context_menu.addSeparator()
+
             gf.add_menu_entry(
                 menu=context_menu,
-                text="Set as current scenario",
-                icon_path=":/Icons/icons/schematic.png",
-                function_ptr=self.set_as_current_scenario
+                text="Add child scenario",
+                icon_path=":/Icons/icons/plus.png",
+                function_ptr=self.add_child_scenario
             )
 
             gf.add_menu_entry(
