@@ -63,7 +63,6 @@ grid.add_bus(bus1)
 
 # Lines
 line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
-line0.emt_model_type = gce.EmtLineTypes.PI
 
 # physical configuration (Overhead line tower)
 tower = gce.OverheadLineType(name="Tower", Vnom=vnom)
@@ -102,13 +101,13 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 grid.add_load(bus=bus1, api_obj=load)
 
 for bus in grid.buses:
-    get_bus_emt_template(grid, bus, vf=grid.emt_var_factory)
+    get_bus_emt_template(grid, bus)
 
 ######################################################################################################
 # Build EMT models
 ######################################################################################################
 # generator
-gen_mdl = get_generator_thevenin_rl_emt_template(grid=grid, gen = gen0).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.emt_var_factory).block
 
 # line
 line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
@@ -276,7 +275,7 @@ def build_emt_options(chosen_solver: str, initialization_method: EmtInitializati
     return EmtOptions(time_step=5e-6,
                       simulation_time=0.06,
                       tolerance=1e-6,
-                      solver=SOLVER_TYPE_MAP[chosen_solver],
+                      solver_type=SOLVER_TYPE_MAP[chosen_solver],
                       integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
                       initialization_method=initialization_method,
                       verbose=0)
@@ -517,7 +516,8 @@ def create_problem(enable_trace: bool = False) -> EmtProblemDae:
     """
     local_problem: EmtProblemDae = EmtProblemDae(grid=grid,
                                                  options=options,
-                                                 pf_results=res)
+                                                 pf_results_3Ph=res,
+                                                 pf_results=None)
 
     if enable_trace:
         local_problem.set_newton_trace_collector(NewtonTraceCollector())

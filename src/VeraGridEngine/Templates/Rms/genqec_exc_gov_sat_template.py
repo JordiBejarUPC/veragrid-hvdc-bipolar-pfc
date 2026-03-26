@@ -14,7 +14,7 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Templates.templates_common_functions import (tf_to_block, tf_to_diffblock_with_output,
                                                                  tf_to_diffblock_with_antiwindup,
                                                                  tf_to_block_with_states, 
-                                                                 to_explicit)
+                                                                 to_implicit)
 
 
 
@@ -1119,8 +1119,9 @@ def get_complete_generator_template(vfactory: VarFactory, name="complete generat
     templ.block.children.append(governor_mdl)
     templ.block.children.append(stabilizer_mdl)
     templ.block.children.append(exciter_mdl)
-    #templ.block.unify_blocks()
-    #templ.block = to_explicit(templ.block, vfactory=vfactory)
+    # necessary for tensygrid but still not working well
+    # templ.block = to_implicit(templ.block, vfactory=vfactory)
+    # templ.block.unify_blocks()
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Vm: genqec_mdl.in_vars[0],
         VarPowerFlowRefferenceType.Va: genqec_mdl.in_vars[1],

@@ -56,7 +56,6 @@ def tf_to_block(var_factory: VarFactory,
     diff_vars = list()
     state_eqs = list()
     state_vars = list()
-    init_eqs = dict()
     base_var = x
     for i in range(1, len(num)):
         if i == 1 and create_state:
@@ -326,7 +325,7 @@ def tf_to_block2(
     )
     return block, y_states[0]
 
-def to_explicit(block: Block, vfactory: VarFactory) -> Block:
+def to_implicit(block: Block, vfactory: VarFactory) -> Block:
     """
     Convert a block with explicit state equations to implicit form.
     
@@ -356,7 +355,7 @@ def to_explicit(block: Block, vfactory: VarFactory) -> Block:
         block.algebraic_vars.append(state_var)
         block.algebraic_eqs.append(implicit_eq)
         
-        block.init_eqs[dt_var] = vfactory.add_const(0.0)
+        block.init_eqs[dt_var] = block.init_eqs[state_eq]
 
     
     # The state_vars become algebraic_vars since they now appear in algebraic equations
@@ -366,7 +365,7 @@ def to_explicit(block: Block, vfactory: VarFactory) -> Block:
     
     # Recursively process children
     for b in block.children:
-        to_explicit(b, vfactory)
+        to_implicit(b, vfactory)
     
     return block
 
@@ -900,10 +899,10 @@ def connect_line_emt_from(mdl1: Block, mdl2: Block):
     # Create a dictionary to map the bus output variable
     # to the corresponding line input variable ("from" side)
     phase_map = {
-        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.v_N_f,
-        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.v_A_f,
-        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.v_B_f,
-        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.v_C_f
+        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.vf_N,
+        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.vf_A,
+        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.vf_B,
+        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.vf_C
     }
 
     # Find the variable pairs that match our mapping
@@ -931,10 +930,10 @@ def connect_line_emt_to(mdl1: Block, mdl2: Block):
     # Create a dictionary to map the bus output variable
     # to the corresponding line input variable ("to" side)
     phase_map = {
-        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.v_N_t,
-        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.v_A_t,
-        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.v_B_t,
-        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.v_C_t
+        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.vt_N,
+        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.vt_A,
+        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.vt_B,
+        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.vt_C
     }
 
     # Find the variable pairs that match our mapping
@@ -946,6 +945,84 @@ def connect_line_emt_to(mdl1: Block, mdl2: Block):
     ]
 
     # Connect all found pairs
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
+
+
+def connect_vsc_emt_from(mdl1: Block, mdl2: Block, is_dc_bus: bool = False):
+    """
+    Connects the bus voltages to the "from" side of the VSC model.
+    For DC buses, connects Vdc. For AC buses, connects abc voltages.
+
+    :param mdl1: Bus model (Block)
+    :param mdl2: VSC model (Block)
+    :param is_dc_bus: True if bus_from is DC
+    :return: None
+    """
+    if is_dc_bus:
+        # DC bus: connect Vdc
+        dc_map = {
+            VarPowerFlowRefferenceType.Vdc: VarPowerFlowRefferenceType.Vdc
+        }
+        pairs = [
+            (outp, inpt)
+            for outp in mdl1.out_vars
+            for inpt in mdl2.in_vars
+            if outp.ref in dc_map and dc_map[outp.ref] == inpt.ref
+        ]
+    else:
+        # AC bus: connect abc voltages
+        phase_map = {
+            VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.v_A,
+            VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.v_B,
+            VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.v_C
+        }
+        pairs = [
+            (outp, inpt)
+            for outp in mdl1.out_vars
+            for inpt in mdl2.in_vars
+            if outp.ref in phase_map and phase_map[outp.ref] == inpt.ref
+        ]
+
+    for outp, inpt in pairs:
+        mdl2.connect([inpt], [outp])
+
+
+def connect_vsc_emt_to(mdl1: Block, mdl2: Block, is_dc_bus: bool = False):
+    """
+    Connects the bus voltages to the "to" side of the VSC model.
+    For DC buses, connects Vdc. For AC buses, connects abc voltages.
+
+    :param mdl1: Bus model (Block)
+    :param mdl2: VSC model (Block)
+    :param is_dc_bus: True if bus_to is DC
+    :return: None
+    """
+    if is_dc_bus:
+        # DC bus: connect Vdc
+        dc_map = {
+            VarPowerFlowRefferenceType.Vdc: VarPowerFlowRefferenceType.Vdc
+        }
+        pairs = [
+            (outp, inpt)
+            for outp in mdl1.out_vars
+            for inpt in mdl2.in_vars
+            if outp.ref in dc_map and dc_map[outp.ref] == inpt.ref
+        ]
+    else:
+        # AC bus: connect abc voltages
+        phase_map = {
+            VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.v_A,
+            VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.v_B,
+            VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.v_C
+        }
+        pairs = [
+            (outp, inpt)
+            for outp in mdl1.out_vars
+            for inpt in mdl2.in_vars
+            if outp.ref in phase_map and phase_map[outp.ref] == inpt.ref
+        ]
+
     for outp, inpt in pairs:
         mdl2.connect([inpt], [outp])
 
@@ -975,6 +1052,21 @@ def set_emt_model(device: Any, model: Block, var_factory: VarFactory):
         bus_to_model = device.bus_to.emt_model
         if not bus_to_model.empty():
             connect_line_emt_to(bus_to_model, model)
+        else:
+            raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_to.name} EMT model")
+
+    elif device.device_type == DeviceType.VscDevice:
+
+        # VSC: bus_from is DC, bus_to is AC
+        bus_from_model = device.bus_from.emt_model
+        if not bus_from_model.empty():
+            connect_vsc_emt_from(bus_from_model, model, is_dc_bus=device.bus_from.is_dc)
+        else:
+            raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_from.name} EMT model")
+
+        bus_to_model = device.bus_to.emt_model
+        if not bus_to_model.empty():
+            connect_vsc_emt_to(bus_to_model, model, is_dc_bus=device.bus_to.is_dc)
         else:
             raise ValueError(f"Connection Bus EMT model cannot be empty, initialize {device.bus_to.name} EMT model")
 

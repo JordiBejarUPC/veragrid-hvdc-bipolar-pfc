@@ -84,7 +84,6 @@ class RmsProblemDae(RmsProblemTemplate):
     VARIABLE_PARAMS_NAME = "vprms"
     CONSTANT_PARAMS_NAME = "cprms"
     DIFF_NAME = "diff"
-    ALTER_PARAMS_NAME = "alter"
     TIME_NAME = "glob_time"
 
     def __init__(self,
@@ -189,11 +188,12 @@ class RmsProblemDae(RmsProblemTemplate):
             # Todo: missing default initialization for the model
             bus_dict[elm] = bus_num
 
-            # flatten model
+            # default initialization
             if elm.rms_model.empty():
                 initialize_bus_rms(elm, self.grid.rms_var_factory)
                 # initialize_bus_rms, get_bus_rms_algebraic_vars
 
+            # flatten model
             elm.rms_model.unify_blocks()
 
             self.add_variables_to_compilation_dicts(elm, elm.rms_model)
@@ -202,13 +202,13 @@ class RmsProblemDae(RmsProblemTemplate):
             if elm.is_dc:
                 # DC bus: use Vdc (magnitude) - angle is not applicable for DC
                 self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Vdc,
-                                    np.abs(self.power_flow_results.voltage[bus_num]))
+                                    float(np.abs(self.power_flow_results.voltage[bus_num])))
             else:
                 # AC bus: use Vm and Va
                 self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Vm,
-                                    np.abs(self.power_flow_results.voltage[bus_num]))
+                                    float(np.abs(self.power_flow_results.voltage[bus_num])))
                 self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Va,
-                                    np.angle(self.power_flow_results.voltage[bus_num]))
+                                    float(np.angle(self.power_flow_results.voltage[bus_num])))
 
             # add model to system block
             self.sys_block.add(elm.rms_model)
@@ -308,7 +308,19 @@ class RmsProblemDae(RmsProblemTemplate):
                 # flatten model to collect all variables including those from child blocks
                 mdl.unify_blocks()
 
-
+                # get parameters from api object
+                elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha1]] = Const(elm.alpha1)
+                elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha2]] = Const(elm.alpha2)
+                elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha3]] = Const(elm.alpha3)
+                
+                #We connect the vsc to its transformer
+                if elm.bus_from.is_dc:
+                    for branch_num, other_elm in enumerate(self.grid.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True)):
+                        if other_elm.bus_to.idtag == elm.bus_to.idtag:
+                            mdl.connect([mdl.in_vars[0]], [other_elm.rms_model.out_vars[0]])
+                        else:
+                            _ = 0
+                            #Do nothing
 
                 St_vsc = self.power_flow_results.St_vsc / self.grid.Sbase
                 Sf_vsc = (self.power_flow_results.Pfn_vsc[i] + self.power_flow_results.Pfp_vsc[i]) / self.grid.Sbase
@@ -323,7 +335,7 @@ class RmsProblemDae(RmsProblemTemplate):
                 t = bus_dict[elm.bus_to]
                 setP(P, P_used, f, -mdl.E(VarPowerFlowRefferenceType.Pf))
                 setP(P, P_used, t, -mdl.E(VarPowerFlowRefferenceType.Pt))
-                setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
+                #setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
                 self.sys_block.add(mdl)
 
         # Populating HVDC init guess (similar to VSCs)
@@ -403,18 +415,25 @@ class RmsProblemDae(RmsProblemTemplate):
                 if elm.bus.rms_model.empty():
                     initialize_bus_rms(elm.bus, self.grid.rms_var_factory)
 
-                Vm, Va = get_bus_rms_algebraic_vars(elm.bus.rms_model)
-
-                elm.rms_model.update_model(
-                    elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
-                elm.rms_model.update_model(
-                    elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Va], Va)
-
+                if not elm.bus.is_dc:
+                    Vm, Va = get_bus_rms_algebraic_vars(elm.bus.rms_model)
+                    if VarPowerFlowRefferenceType.Vm in elm.rms_model.external_mapping:
+                        elm.rms_model.update_model(
+                            elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
+                    if VarPowerFlowRefferenceType.Va in elm.rms_model.external_mapping:
+                        elm.rms_model.update_model(
+                            elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Va], Va)
+                else:
+                    Vdc = elm.bus.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
+                    if VarPowerFlowRefferenceType.Vdc in elm.rms_model.external_mapping:
+                        elm.rms_model.update_model(
+                            elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc], Vdc)
+                    
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
 
                 if elm.bus.is_dc:
                     self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.P,
-                                        np.real(self.power_flow_results.Sbus[bus_index]))
+                                        np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
                 else:
                     self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.P,
                                         np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
@@ -481,13 +500,14 @@ class RmsProblemDae(RmsProblemTemplate):
             self.progress_signal.emit(10)
 
         # add the nodal balance equations
+        ac_virtual_buses = [elm.bus_to.idtag for elm in grid.get_vsc()]
         for i, elm in enumerate(self.grid.buses):
             mdl = block_deep_copy(elm.rms_model, grid.rms_var_factory)
             if len(mdl.algebraic_eqs) == 0:
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)
                 else:
-                    if not elm.is_dc:
+                    if not elm.is_dc and (elm.idtag not in ac_virtual_buses):
                         self._algebraic_eqs.append(Q[i])
                     self._algebraic_eqs.append(P[i])
 

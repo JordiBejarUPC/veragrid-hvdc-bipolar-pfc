@@ -63,8 +63,8 @@ def DCVoltageSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTempla
         out_vars=[Pdc, Idc],
         init_eqs={
             Idc: Pdc / Vdc,
-            Vpv: Rpv * Idc + Vdc,
-            Vpv0: Rpv * Idc + Vdc,
+            Vpv0: Vdc + Rpv * (Pdc / Vdc),
+            Vpv: Vpv0,
         },
         external_mapping={
             VarPowerFlowRefferenceType.P: Pdc,
@@ -132,8 +132,8 @@ def DCCurrentSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTempla
         out_vars=[Pdc, Idc],
         init_eqs={
             Idc: Pdc / Vdc,
-            Vpv: Rpv * Idc + Vdc,
-            Vpv0: Rpv * Idc + Vdc,
+            Idc_src0: Pdc / Vdc,
+            Vpv0: Vdc + Rpv * (Pdc / Vdc),
         },
         external_mapping={
             VarPowerFlowRefferenceType.P: Pdc,

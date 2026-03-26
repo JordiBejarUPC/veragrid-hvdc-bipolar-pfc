@@ -33,21 +33,21 @@ class BranchParent(PhysicalDevice):
     __slots__ = (
         '_bus_from',
         '_bus_to',
-        'active',
+        '_active',
         '_active_prof',
-        'temp_base',
-        'temp_oper',
+        '_temp_base',
+        '_temp_oper',
         '_temp_oper_prof',
-        'alpha',
-        'reducible',
+        '_alpha',
+        '_reducible',
         'contingency_enabled',
-        'monitor_loading',
-        'mttf',
-        'mttr',
-        'Cost',
+        '_monitor_loading',
+        '_mttf',
+        '_mttr',
+        '_Cost',
         '_Cost_prof',
-        'capex',
-        'opex',
+        '_capex',
+        '_opex',
         'build_status',
         '_rate',
         '_rate_prof',
@@ -56,8 +56,8 @@ class BranchParent(PhysicalDevice):
         '_protection_rating_factor',
         '_protection_rating_factor_prof',
         'color',
-        'bus_from_pos',
-        'bus_to_pos',
+        '_bus_from_pos',
+        '_bus_to_pos',
         'group',
         '_rms_model',
         '_emt_model',
@@ -281,7 +281,7 @@ class BranchParent(PhysicalDevice):
             self._rms_template = val
 
             if self.auto_update_enabled:
-                self.rms_model = val.block.copy()
+                self.rms_model = val.block.copy() # TODO: var factory needed to copy the vars!
         elif val is None:
             self._rms_template = None
         else:
@@ -300,7 +300,7 @@ class BranchParent(PhysicalDevice):
             self._emt_template = val
 
             if self.auto_update_enabled:
-                self.emt_model = val.block.copy()
+                self.emt_model = val.block.copy() # TODO: var factory needed to copy the vars!
         elif val is None:
             self._emt_template = None
         else:
@@ -497,6 +497,7 @@ class BranchParent(PhysicalDevice):
 
     @rate.setter
     def rate(self, val: float):
+        val = float(val)
         if isinstance(val, float):
             self._rate = val
         else:
@@ -512,6 +513,7 @@ class BranchParent(PhysicalDevice):
 
     @contingency_factor.setter
     def contingency_factor(self, val: float):
+        val = float(val)
         if isinstance(val, float):
             self._contingency_factor = val
         else:
@@ -527,6 +529,7 @@ class BranchParent(PhysicalDevice):
 
     @protection_rating_factor.setter
     def protection_rating_factor(self, val: float):
+        val = float(val)
         if isinstance(val, float):
             self._protection_rating_factor = val
         else:
@@ -744,3 +747,252 @@ class BranchParent(PhysicalDevice):
             self.bus_to = new_bus
         else:
             pass
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def active(self) -> bool:
+        """
+        Get ``active``.
+
+        :return: bool
+        """
+        return self._active
+
+    @active.setter
+    def active(self, val: bool) -> None:
+        """
+        Set ``active``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._active = bool(val)
+
+    @property
+    def reducible(self) -> bool:
+        """
+        Get ``reducible``.
+
+        :return: bool
+        """
+        return self._reducible
+
+    @reducible.setter
+    def reducible(self, val: bool) -> None:
+        """
+        Set ``reducible``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._reducible = bool(val)
+
+    @property
+    def monitor_loading(self) -> bool:
+        """
+        Get ``monitor_loading``.
+
+        :return: bool
+        """
+        return self._monitor_loading
+
+    @monitor_loading.setter
+    def monitor_loading(self, val: bool) -> None:
+        """
+        Set ``monitor_loading``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._monitor_loading = bool(val)
+
+    @property
+    def mttf(self) -> float:
+        """
+        Get ``mttf``.
+
+        :return: float
+        """
+        return self._mttf
+
+    @mttf.setter
+    def mttf(self, val: float) -> None:
+        """
+        Set ``mttf``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._mttf = float(val)
+
+    @property
+    def mttr(self) -> float:
+        """
+        Get ``mttr``.
+
+        :return: float
+        """
+        return self._mttr
+
+    @mttr.setter
+    def mttr(self, val: float) -> None:
+        """
+        Set ``mttr``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._mttr = float(val)
+
+    @property
+    def Cost(self) -> float:
+        """
+        Get ``Cost``.
+
+        :return: float
+        """
+        return self._Cost
+
+    @Cost.setter
+    def Cost(self, val: float) -> None:
+        """
+        Set ``Cost``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Cost = float(val)
+
+    @property
+    def capex(self) -> float:
+        """
+        Get ``capex``.
+
+        :return: float
+        """
+        return self._capex
+
+    @capex.setter
+    def capex(self, val: float) -> None:
+        """
+        Set ``capex``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._capex = float(val)
+
+    @property
+    def opex(self) -> float:
+        """
+        Get ``opex``.
+
+        :return: float
+        """
+        return self._opex
+
+    @opex.setter
+    def opex(self, val: float) -> None:
+        """
+        Set ``opex``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._opex = float(val)
+
+    @property
+    def bus_from_pos(self) -> int:
+        """
+        Get ``bus_from_pos``.
+
+        :return: int
+        """
+        return self._bus_from_pos
+
+    @bus_from_pos.setter
+    def bus_from_pos(self, val: int) -> None:
+        """
+        Set ``bus_from_pos``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._bus_from_pos = int(val)
+
+    @property
+    def bus_to_pos(self) -> int:
+        """
+        Get ``bus_to_pos``.
+
+        :return: int
+        """
+        return self._bus_to_pos
+
+    @bus_to_pos.setter
+    def bus_to_pos(self, val: int) -> None:
+        """
+        Set ``bus_to_pos``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._bus_to_pos = int(val)
+
+    @property
+    def temp_base(self) -> float:
+        """
+        Get ``temp_base``.
+
+        :return: float
+        """
+        return self._temp_base
+
+    @temp_base.setter
+    def temp_base(self, val: float) -> None:
+        """
+        Set ``temp_base``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._temp_base = float(val)
+
+    @property
+    def temp_oper(self) -> float:
+        """
+        Get ``temp_oper``.
+
+        :return: float
+        """
+        return self._temp_oper
+
+    @temp_oper.setter
+    def temp_oper(self, val: float) -> None:
+        """
+        Set ``temp_oper``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._temp_oper = float(val)
+
+    @property
+    def alpha(self) -> float:
+        """
+        Get ``alpha``.
+
+        :return: float
+        """
+        return self._alpha
+
+    @alpha.setter
+    def alpha(self, val: float) -> None:
+        """
+        Set ``alpha``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._alpha = float(val)

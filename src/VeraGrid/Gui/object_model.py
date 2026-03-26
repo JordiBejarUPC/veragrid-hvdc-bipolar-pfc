@@ -13,6 +13,7 @@ from enum import EnumMeta
 from VeraGrid.Gui.gui_functions import (IntDelegate, ComboDelegate, TextDelegate, FloatDelegate, ColorPickerDelegate,
                                         ComplexDelegate, LineLocationsDelegate, DateTimeDelegate)
 from VeraGrid.Gui.wrappable_table_model import WrappableTableModel
+from VeraGridEngine import RmsModelTemplate
 from VeraGridEngine.Devices import Bus, ContingencyGroup
 from VeraGridEngine.Devices.Parents.editable_device import GCProp, GCPROP_TYPES
 from VeraGridEngine.enumerations import DeviceType
@@ -323,6 +324,7 @@ class ObjectsModel(WrappableTableModel):
                 if self.attributes[attr_idx] not in self.non_editable_attributes:
 
                     if prop.tpe is ContingencyGroup and value != "":
+                        # if isinstance(value, RmsModelTemplate):
                         value2 = ContingencyGroup(value)
                     else:
                         value2 = value

@@ -44,10 +44,10 @@ def accept_line_connection(V1: float, V2: float, branch_connection_voltage_toler
 class Line(BranchParent):
     __slots__ = (
         '_length',
-        'tolerance',
-        'r_fault',
-        'x_fault',
-        'fault_pos',
+        '_tolerance',
+        '_r_fault',
+        '_x_fault',
+        '_fault_pos',
         '_R',
         '_X',
         '_B',
@@ -77,7 +77,6 @@ class Line(BranchParent):
         'Pt',
         'Qf',
         'Qt',
-        'emt_model_type'
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -122,8 +121,7 @@ class Line(BranchParent):
         GCProp(key='possible_sequence_line_types', units='', tpe=SubObjectType.Associations,
                definition='Possible sequence line types (>1 to denote association), - to denote no association',
                display=False),
-        GCProp(key='emt_model_type', units='', tpe=EmtLineTypes,
-               definition='Line EMT model'),
+
     )
 
     def __init__(self,
@@ -260,7 +258,6 @@ class Line(BranchParent):
         # Line locations
         self._locations: LineLocations = LineLocations()
 
-        self.emt_model_type: EmtLineTypes = EmtLineTypes.Bergeron
 
     @property
     def R(self):
@@ -368,6 +365,7 @@ class Line(BranchParent):
 
     @circuit_idx.setter
     def circuit_idx(self, value):
+        value = int(value)
         if value > 0:
             self._circuit_idx = int(value)
 
@@ -415,6 +413,7 @@ class Line(BranchParent):
         :param val:
         :return:
         """
+        val = float(val)
         self.set_length(val)
 
     def set_length(self, val: float):
@@ -780,3 +779,81 @@ class Line(BranchParent):
             obj = SequenceLineType(R=self.R, R0=self.R, X=self.X, X0=self.X, B=self.B * 1e6, B0=self.B * 1e6)
         self.ys = obj.get_ys_nabc()
         self.ysh = obj.get_ysh_nabc()
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def tolerance(self) -> float:
+        """
+        Get ``tolerance``.
+
+        :return: float
+        """
+        return self._tolerance
+
+    @tolerance.setter
+    def tolerance(self, val: float) -> None:
+        """
+        Set ``tolerance``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._tolerance = float(val)
+
+    @property
+    def r_fault(self) -> float:
+        """
+        Get ``r_fault``.
+
+        :return: float
+        """
+        return self._r_fault
+
+    @r_fault.setter
+    def r_fault(self, val: float) -> None:
+        """
+        Set ``r_fault``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._r_fault = float(val)
+
+    @property
+    def x_fault(self) -> float:
+        """
+        Get ``x_fault``.
+
+        :return: float
+        """
+        return self._x_fault
+
+    @x_fault.setter
+    def x_fault(self, val: float) -> None:
+        """
+        Set ``x_fault``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._x_fault = float(val)
+
+    @property
+    def fault_pos(self) -> float:
+        """
+        Get ``fault_pos``.
+
+        :return: float
+        """
+        return self._fault_pos
+
+    @fault_pos.setter
+    def fault_pos(self, val: float) -> None:
+        """
+        Set ``fault_pos``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._fault_pos = float(val)

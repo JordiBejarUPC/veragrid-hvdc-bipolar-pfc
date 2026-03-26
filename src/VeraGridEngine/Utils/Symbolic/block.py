@@ -34,7 +34,6 @@ class Block:
                  reformulated_vars: List[Var] | None = None,
                  differential_eqs: List[Expr] | None = None,
                  parameters: Dict[Var, Const] | None = None,
-                 alter_params: List[Var] | None = None,
                  init_values: Dict[Var, Const] | None = None,
                  init_eqs: Dict[Var, Expr] | None = None,
                  diff_init_eqs: Dict[Var, Expr] | None = None,
@@ -94,7 +93,6 @@ class Block:
 
         self.parameters: Dict[Var, Const] = dict() if parameters is None else parameters
 
-        self.alter_params: List[Var] = list() if alter_params is None else alter_params
         self.discrete_eqs: Dict[Var, Expr] = dict() if discrete_eqs is None else discrete_eqs
         self.external_mapping: Dict[VarPowerFlowRefferenceType, Var | None] = (dict()
                                                                                if external_mapping is None
@@ -249,7 +247,6 @@ class Block:
                 _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
                 for item in data["parameters"].values()
             },
-            alter_params=None,
             init_values={
                 _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
                 for item in data["init_values"].values()
@@ -305,6 +302,14 @@ class Block:
         """
         d = self.to_dict()
         return Block.parse(d)
+
+    def deep_copy(self)-> "Block":
+        """
+        Deep copy using var factory
+        :return:
+        :rtype:
+        """
+
 
     def _procedural_logic_to_dict(self) -> List[Dict[str, Any]]:
         """
@@ -398,7 +403,6 @@ class Block:
                 not self.reformulated_vars and
                 not self.differential_eqs and
                 not self.parameters and
-                not self.alter_params and
                 not self.init_values and
                 not self.init_eqs and
                 not self.diff_init_eqs and

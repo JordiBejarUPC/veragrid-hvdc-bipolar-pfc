@@ -34,13 +34,14 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_generator_emt_type_template, get_complete_generator_template, get_generator_sauer_pai_type_template
-from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
+
+from VeraGridEngine.Templates.templates_common_functions import set_emt_model
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
@@ -75,7 +76,7 @@ grid.add_bus(bus1)
 
 # Lines
 line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
-line0.emt_model_type = gce.EmtLineTypes.PI
+
 
 # physical configuration (Overhead line tower)
 tower = gce.OverheadLineType(name="Tower", Vnom=vnom)
@@ -106,7 +107,7 @@ load = gce.Load(name="load",P1= P_ph, P2= P_ph, P3= P_ph, Q1= 0.0, Q2= 0.0, Q3= 
 load.conn = ShuntConnectionType.GroundedStar
 
 # Generator
-gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq = 50, r1=0.001, x1=1.7)
+gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq = 50, r1=0.001, x1=1.7, x0 = 0.14)
 # r1=Ra, x1=xd'
 
 grid.add_line(line0)
@@ -115,7 +116,7 @@ grid.add_load(bus=bus1, api_obj=load)
 
 
 for bus in grid.buses:
-    get_bus_emt_template(grid, bus, vf=grid.emt_var_factory)
+    get_bus_emt_template(grid, bus)
 
 ######################################################################################################
 # Build EMT models
@@ -126,8 +127,9 @@ for bus in grid.buses:
 # gen_mdl = get_generator_classical_type_template(grid=grid, gen = gen0).block
 # gen_mdl = get_generator_sauer_pai_type_template(grid=grid, gen = gen0).block
 
-# gen_mdl = get_complete_generator_template(grid=grid, gen = gen0).block
-gen_mdl = get_simple_generator_emt_template(grid=grid, gen = gen0).block
+gen_mdl = get_complete_generator_template(vf= grid.emt_var_factory).block
+# gen_mdl = get_simple_generator_emt_template(grid=grid, gen = gen0).block
+
 
 
 # line
@@ -135,36 +137,48 @@ line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 
 # load
 # load_mdl = get_load_ZIP_3ph_emt_template(grid = grid, load = load).block
-load_mdl = get_shunt_r_3ph_emt_template(grid = grid, load = load).block
-
-# connection with buses
-gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
-gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # v_B
-gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # v_C
+load_mdl = get_shunt_r_3ph_emt_template(vf= grid.emt_var_factory).block
+# load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_3ph", new_value=1.0)
 
 
-line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # line vf_A
-line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # line vf_B
-line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # line vf_C
+######################################################################################################
+# Add models to devices
+######################################################################################################
 
-line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.out_vars[0]]) # line vt_A
-line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.out_vars[1]]) # line vt_B
-line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.out_vars[2]]) # line vt_C
+set_emt_model(device=gen0, model=gen_mdl, var_factory= grid.emt_var_factory)
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]]) # v_A
-load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]]) # v_B
-load_mdl.connect([load_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]]) # v_C
+set_emt_model(device=line0, model=line_mdl, var_factory= grid.emt_var_factory)
 
-# external mapping
-big_gen1 = Block(children=[gen_mdl])
+set_emt_model(device=load, model=load_mdl, var_factory= grid.emt_var_factory)
 
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: gen_mdl.out_vars[0]})
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: gen_mdl.out_vars[1]})
-
-# attach emt models to Veragrid objects
-line0.emt_model= line_mdl
-load.emt_model= load_mdl
-gen0.emt_model= big_gen1
+# # connection with buses
+# gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
+# gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # v_B
+# gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # v_C
+#
+#
+# line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # line vf_A
+# line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # line vf_B
+# line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # line vf_C
+#
+# line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.out_vars[0]]) # line vt_A
+# line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.out_vars[1]]) # line vt_B
+# line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.out_vars[2]]) # line vt_C
+#
+# load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]]) # v_A
+# load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]]) # v_B
+# load_mdl.connect([load_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]]) # v_C
+#
+# # external mapping
+# big_gen1 = Block(children=[gen_mdl])
+#
+# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: gen_mdl.out_vars[0]})
+# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: gen_mdl.out_vars[1]})
+#
+# # attach emt models to Veragrid objects
+# line0.emt_model= line_mdl
+# load.emt_model= load_mdl
+# gen0.emt_model= big_gen1
 
 # gce.save_file(grid=grid, filename="grid_save_event.veragrid")
 
@@ -245,15 +259,15 @@ if CHOSEN_SOLVER not in SOLVER_TYPE_MAP:
 options = EmtOptions(time_step = 5e-6, # 5e-7,
                      simulation_time =  0.02,  #5e-6*10, # s
                      tolerance = 1e-6,
-                     solver = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
+                     solver_type = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
                      verbose = 1)
-
 
 def create_problem() -> EmtProblemDae:
     local_problem = EmtProblemDae(grid=grid,
                                   options=options,
-                                  pf_results=res)
+                                  pf_results_3Ph=res,
+                                  pf_results=None)
 
     if ENABLE_NEWTON_TRACE:
         local_problem.set_newton_trace_collector(NewtonTraceCollector())
@@ -475,16 +489,16 @@ def plot_generator_emt_type():
     tme: np.ndarray = np.linspace(0, t_end, steps)
 
     #
-    v_A_0 = find_name_in_block("v_ABus0_emt_template", bus0.emt_model)
-    v_B_0 = find_name_in_block("v_BBus0_emt_template", bus0.emt_model)
-    v_C_0 = find_name_in_block("v_CBus0_emt_template", bus0.emt_model)
+    v_A_0 = find_name_in_block("v_A_Bus0_emt_template", bus0.emt_model)
+    v_B_0 = find_name_in_block("v_B_Bus0_emt_template", bus0.emt_model)
+    v_C_0 = find_name_in_block("v_C_Bus0_emt_template", bus0.emt_model)
     v_A_0_plt = y[:, problem.get_var_idx(v_A_0)]
     v_B_0_plt = y[:, problem.get_var_idx(v_B_0)]
     v_C_0_plt = y[:, problem.get_var_idx(v_C_0)]
 
-    v_A_1 = find_name_in_block("v_ABus1_emt_template", bus1.emt_model)
-    v_B_1 = find_name_in_block("v_BBus1_emt_template", bus1.emt_model)
-    v_C_1 = find_name_in_block("v_CBus1_emt_template", bus1.emt_model)
+    v_A_1 = find_name_in_block("v_A_Bus1_emt_template", bus1.emt_model)
+    v_B_1 = find_name_in_block("v_B_Bus1_emt_template", bus1.emt_model)
+    v_C_1 = find_name_in_block("v_C_Bus1_emt_template", bus1.emt_model)
     v_A_1_plt = y[:, problem.get_var_idx(v_A_1)]
     v_B_1_plt = y[:, problem.get_var_idx(v_B_1)]
     v_C_1_plt = y[:, problem.get_var_idx(v_C_1)]
@@ -852,16 +866,16 @@ def plot_simple_generator_emt_type():
     tme: np.ndarray = np.linspace(0, t_end, steps)
 
     #
-    v_A_0 = find_name_in_block("v_ABus0_emt_template", bus0.emt_model)
-    v_B_0 = find_name_in_block("v_BBus0_emt_template", bus0.emt_model)
-    v_C_0 = find_name_in_block("v_CBus0_emt_template", bus0.emt_model)
+    v_A_0 = find_name_in_block("v_A_Bus0_emt_template", bus0.emt_model)
+    v_B_0 = find_name_in_block("v_B_Bus0_emt_template", bus0.emt_model)
+    v_C_0 = find_name_in_block("v_C_Bus0_emt_template", bus0.emt_model)
     v_A_0_plt = y[:, problem.get_var_idx(v_A_0)]
     v_B_0_plt = y[:, problem.get_var_idx(v_B_0)]
     v_C_0_plt = y[:, problem.get_var_idx(v_C_0)]
 
-    v_A_1 = find_name_in_block("v_ABus1_emt_template", bus1.emt_model)
-    v_B_1 = find_name_in_block("v_BBus1_emt_template", bus1.emt_model)
-    v_C_1 = find_name_in_block("v_CBus1_emt_template", bus1.emt_model)
+    v_A_1 = find_name_in_block("v_A_Bus1_emt_template", bus1.emt_model)
+    v_B_1 = find_name_in_block("v_B_Bus1_emt_template", bus1.emt_model)
+    v_C_1 = find_name_in_block("v_C_Bus1_emt_template", bus1.emt_model)
     v_A_1_plt = y[:, problem.get_var_idx(v_A_1)]
     v_B_1_plt = y[:, problem.get_var_idx(v_B_1)]
     v_C_1_plt = y[:, problem.get_var_idx(v_C_1)]
@@ -1215,16 +1229,16 @@ def plot_generator_classical_model():
     tme: np.ndarray = np.linspace(0, t_end, steps)
 
     #
-    v_A_0 = find_name_in_block("v_ABus0_emt_template", bus0.emt_model)
-    v_B_0 = find_name_in_block("v_BBus0_emt_template", bus0.emt_model)
-    v_C_0 = find_name_in_block("v_CBus0_emt_template", bus0.emt_model)
+    v_A_0 = find_name_in_block("v_A_Bus0_emt_template", bus0.emt_model)
+    v_B_0 = find_name_in_block("v_B_Bus0_emt_template", bus0.emt_model)
+    v_C_0 = find_name_in_block("v_C_Bus0_emt_template", bus0.emt_model)
     v_A_0_plt = y[:, problem.get_var_idx(v_A_0)]
     v_B_0_plt = y[:, problem.get_var_idx(v_B_0)]
     v_C_0_plt = y[:, problem.get_var_idx(v_C_0)]
 
-    v_A_1 = find_name_in_block("v_ABus1_emt_template", bus1.emt_model)
-    v_B_1 = find_name_in_block("v_BBus1_emt_template", bus1.emt_model)
-    v_C_1 = find_name_in_block("v_CBus1_emt_template", bus1.emt_model)
+    v_A_1 = find_name_in_block("v_A_Bus1_emt_template", bus1.emt_model)
+    v_B_1 = find_name_in_block("v_B_Bus1_emt_template", bus1.emt_model)
+    v_C_1 = find_name_in_block("v_C_Bus1_emt_template", bus1.emt_model)
     v_A_1_plt = y[:, problem.get_var_idx(v_A_1)]
     v_B_1_plt = y[:, problem.get_var_idx(v_B_1)]
     v_C_1_plt = y[:, problem.get_var_idx(v_C_1)]
@@ -1590,16 +1604,16 @@ def plot_generator_sauer_pai_model():
     tme: np.ndarray = np.linspace(0, t_end, steps)
 
     #
-    v_A_0 = find_name_in_block("v_ABus0_emt_template", bus0.emt_model)
-    v_B_0 = find_name_in_block("v_BBus0_emt_template", bus0.emt_model)
-    v_C_0 = find_name_in_block("v_CBus0_emt_template", bus0.emt_model)
+    v_A_0 = find_name_in_block("v_A_Bus0_emt_template", bus0.emt_model)
+    v_B_0 = find_name_in_block("v_B_Bus0_emt_template", bus0.emt_model)
+    v_C_0 = find_name_in_block("v_C_Bus0_emt_template", bus0.emt_model)
     v_A_0_plt = y[:, problem.get_var_idx(v_A_0)]
     v_B_0_plt = y[:, problem.get_var_idx(v_B_0)]
     v_C_0_plt = y[:, problem.get_var_idx(v_C_0)]
 
-    v_A_1 = find_name_in_block("v_ABus1_emt_template", bus1.emt_model)
-    v_B_1 = find_name_in_block("v_BBus1_emt_template", bus1.emt_model)
-    v_C_1 = find_name_in_block("v_CBus1_emt_template", bus1.emt_model)
+    v_A_1 = find_name_in_block("v_A_Bus1_emt_template", bus1.emt_model)
+    v_B_1 = find_name_in_block("v_B_Bus1_emt_template", bus1.emt_model)
+    v_C_1 = find_name_in_block("v_C_Bus1_emt_template", bus1.emt_model)
     v_A_1_plt = y[:, problem.get_var_idx(v_A_1)]
     v_B_1_plt = y[:, problem.get_var_idx(v_B_1)]
     v_C_1_plt = y[:, problem.get_var_idx(v_C_1)]

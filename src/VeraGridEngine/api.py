@@ -456,8 +456,6 @@ def contingencies_ts(circuit: MultiCircuit,
 
     # declare the contingency analysis options
     options_contingencies = ContingencyAnalysisOptions(
-        use_provided_flows=False,
-        Pf=None,
         pf_options=PowerFlowOptions(SolverType.Linear),
         lin_options=LinearAnalysisOptions(),
         use_srap=use_srap,

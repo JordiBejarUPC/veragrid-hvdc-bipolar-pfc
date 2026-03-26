@@ -5,7 +5,7 @@
 
 from typing import Tuple, List
 
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, SubObjectType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, SubObjectType, RmsProblemTypes
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
@@ -20,6 +20,7 @@ class RmsOptions(OptionsTemplate):
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key="integration_method", tpe=DynamicIntegrationMethod),
         GCProp(key="initialization_method", tpe=RmsInitializationMethod),
+        GCProp(key="problem_type", tpe=RmsProblemTypes),
         GCProp(key="time_step", tpe=float),
         GCProp(key="simulation_time", tpe=float),
         GCProp(key="tolerance", tpe=float),
@@ -34,6 +35,7 @@ class RmsOptions(OptionsTemplate):
                  tolerance: float = 1e-6,
                  integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeBackEuler,
                  initialization_method: RmsInitializationMethod = RmsInitializationMethod.Explicit,
+                 problem_type: RmsProblemTypes = RmsProblemTypes.PowerBalance,
                  vars_to_save: List[Var] | None = None,
                  use_init_values: bool = False,
                  max_iter: int = 1000,
@@ -51,6 +53,7 @@ class RmsOptions(OptionsTemplate):
 
         self.integration_method: DynamicIntegrationMethod = integration_method
         self.initialization_method: RmsInitializationMethod = initialization_method
+        self.problem_type: RmsProblemTypes = problem_type
         self.time_step: float = time_step
         self.simulation_time: float = simulation_time
         self.tolerance: float = tolerance

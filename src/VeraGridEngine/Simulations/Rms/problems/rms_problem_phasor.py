@@ -100,7 +100,6 @@ class RmsProblemPhasor(RmsProblemTemplate):
     VARIABLE_PARAMS_NAME = "vprms"
     CONSTANT_PARAMS_NAME = "cprms"
     DIFF_NAME = "diff"
-    ALTER_PARAMS_NAME = "alter"
     TIME_NAME = "glob_time"
 
 
@@ -936,6 +935,14 @@ class RmsProblemPhasor(RmsProblemTemplate):
     @property
     def get_state_vars(self):
         return self._state_vars
+
+    @property
+    def get_algebraic_eqs(self):
+        return self._algebraic_eqs
+
+    @property
+    def get_state_eqs(self):
+        return self._state_eqs
 
     def get_all_vars_number(self) -> int:
         return self._n_vars

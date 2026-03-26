@@ -18,10 +18,10 @@ class RmsEvent(PointerDeviceParent):
     """
     __slots__ = (
         'parameter',
-        'time',
-        'value',
+        '_time',
+        '_value',
         '_group',
-        'force_step_alignment'
+        '_force_step_alignment',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -89,3 +89,62 @@ class RmsEvent(PointerDeviceParent):
     @group.setter
     def group(self, val: RmsEventsGroup):
         self._group = val
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def time(self) -> float:
+        """
+        Get ``time``.
+
+        :return: float
+        """
+        return self._time
+
+    @time.setter
+    def time(self, val: float) -> None:
+        """
+        Set ``time``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._time = float(val)
+
+    @property
+    def value(self) -> float:
+        """
+        Get ``value``.
+
+        :return: float
+        """
+        return self._value
+
+    @value.setter
+    def value(self, val: float) -> None:
+        """
+        Set ``value``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._value = float(val)
+
+    @property
+    def force_step_alignment(self) -> bool:
+        """
+        Get ``force_step_alignment``.
+
+        :return: bool
+        """
+        return self._force_step_alignment
+
+    @force_step_alignment.setter
+    def force_step_alignment(self, val: bool) -> None:
+        """
+        Set ``force_step_alignment``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._force_step_alignment = bool(val)

@@ -37,8 +37,8 @@ class BackEulerImplicitIntegration:
         :type max_iter: int
         """
 
-        if not problem.is_initialized():
-            raise Exception('Problem is not initialized')
+        # if not problem.is_initialized():
+        #     raise Exception('Problem is not initialized')
 
         self.problem = problem
         self.t0 = t0

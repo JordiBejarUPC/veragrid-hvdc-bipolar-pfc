@@ -1388,6 +1388,7 @@ class RMSCompiler(EquationCompiler):
         self.compiler_names_dict = compiler_names_dict
         self.diff_vars = diff_vars
         self.v_params = v_params
+        self.compiler_names_dict[dt_var.uid] = 'h'
 
     def compile_rhs(self, equations: List[Expr], func_name: str) -> Callable[[Vec, Vec, Vec, Vec], Vec]:
         """

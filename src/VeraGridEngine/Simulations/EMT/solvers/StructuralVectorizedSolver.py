@@ -25,7 +25,12 @@ from VeraGridEngine.Utils.Symbolic.diagnostic import (
     sparse_lsqr_fallback,
     with_newton_diagnostics,
 )
-from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
+    EmtBoundaryUpdateProtocol,
+    EmtProblemTemplate,
+    get_solver_forced_event_time,
+    resolve_solver_boundary_updater,
+)
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler, MatrixVectorizedCompiler, _compile_to_file
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.basic_structures import Vec, Mat
@@ -171,36 +176,45 @@ def canonicalize_expression(
     return canonical_str, found_runtime_vars_ordered
 
 
-def _compile_fused_residual(kernels_data: List[Dict[str, Any]]) -> Callable[..., Any]:
+class FusedResidualDispatcher:
     """
-    Compiles a fused residual kernel that calls all sub-kernels in sequence.
+    Lightweight dispatcher that applies all vectorized residual kernels in order.
 
-    :param kernels_data: List of dictionaries containing the kernel functions and their indices.
-    :type kernels_data: List[Dict[str, Any]]
-    :return: A Numba JIT compiled fused function.
-    :rtype: Callable[..., Any]
+    The per-group kernels are already Numba compiled. Keeping the final scatter
+    step in Python avoids fragile tuple-of-array handling inside Numba and keeps
+    the residual assembly semantics explicit.
     """
-    lines: List[str] = list()
-    signature_payload = "|".join(
-        f"{i}:{list(k_data['target'])}:{tuple(k_data['indices'].shape)}"
-        for i, k_data in enumerate(kernels_data)
-    )
-    func_name = f"fused_residual_kernel_{hashlib.md5(signature_payload.encode()).hexdigest()[:12]}"
 
-    lines.append(f"def {func_name}(states, params, history, d_history, h, args, out, history2=None):")
-    lines.append("    out[:] = 0.0")
+    __slots__ = ["_kernels_data"]
 
-    for i, k_data in enumerate(kernels_data):
-        lines.append(f"    target_{i} = args[{2 * i}]")
-        lines.append(f"    indices_{i} = args[{2 * i + 1}]")
-        lines.append(f"    r_part_{i} = func_{i}(states, params, history, d_history, h, indices_{i}, history2)")
-        lines.append(f"    out[target_{i}] = r_part_{i}")
+    def __init__(self, kernels_data: List[Dict[str, Any]]) -> None:
+        self._kernels_data = kernels_data
 
-    py_func = _compile_to_file("\n".join(lines), func_name)
-    for i, k_data in enumerate(kernels_data):
-        py_func.__globals__[f"func_{i}"] = k_data['func']
+    def __call__(
+            self,
+            states: Vec,
+            params: Vec,
+            history: Vec,
+            d_history: Vec,
+            h: float,
+            args: Tuple[Any, ...],
+            out: Vec,
+            history2: Vec | None = None,
+    ) -> None:
+        _unused_args: Tuple[Any, ...] = args
+        out[:] = 0.0
 
-    return nb.njit(fastmath=True, cache=True)(py_func)
+        for kernel_data in self._kernels_data:
+            residual_part = kernel_data['func'](
+                states,
+                params,
+                history,
+                d_history,
+                h,
+                kernel_data['indices'],
+                history2,
+            )
+            out[kernel_data['target']] = residual_part
 
 @nb.njit(cache=True, fastmath=True)
 def _scatter_color_jvp_to_csc_data(
@@ -486,18 +500,7 @@ class SparseADJacobian:
         for c in range(self.n_colors):
             self._seed_matrix[c, self.color_groups[c]] = 1.0
 
-        func_name = f"master_jac_{method}_{self.n_rows}_{self.n_cols}_{self.n_colors}"
-        src: List[str] = list([
-            f"def {func_name}(states, seed_matrix, params, history, d_history, h, history2, data, color_ptr, col_ptr, row_idx, data_idx):"
-        ])
-        for c in range(self.n_colors):
-            src.append(f"    jvp_{c} = kernel(states, seed_matrix[{c}], params, history, d_history, h, history2)")
-            src.append(f"    _scatter(jvp_{c}, data, color_ptr, col_ptr, row_idx, data_idx, {c})")
-
-        py_func = _compile_to_file("\n".join(src), func_name)
-        py_func.__globals__["_scatter"] = _scatter_color_jvp_to_csc_data
-        py_func.__globals__["kernel"] = self.ad_kernel
-        self.master_jac = _safe_njit(py_func, fastmath=True, cache=True)
+        self.master_jac = None
 
     @staticmethod
     def _greedy_color_columns(col_rows: List[List[int]], n_rows: int) -> Tuple[np.ndarray, int]:
@@ -542,8 +545,20 @@ class SparseADJacobian:
         return colors, int(max_color + 1)
 
     def __call__(self, states, params, history, d_history, h, history2=None) -> csc_matrix:
-        self.master_jac(states, self._seed_matrix, params, history, d_history, h, history2, self.J.data, self.color_ptr,
-                        self.col_ptr, self.row_idx, self.data_idx)
+        data = self.J.data
+
+        for c in range(self.n_colors):
+            jvp = self.ad_kernel(states, self._seed_matrix[c], params, history, d_history, h, history2)
+            _scatter_color_jvp_to_csc_data(
+                jvp,
+                data,
+                self.color_ptr,
+                self.col_ptr,
+                self.row_idx,
+                self.data_idx,
+                c,
+            )
+
         return self.J
 
 # ==============================================================================
@@ -746,7 +761,7 @@ class StructuralVectorizedSolver:
         # -----------------------------
         # PHASE 4: DISPATCHER SETUP
         # -----------------------------
-        self.fused_residual = _compile_fused_residual(self.vec_kernels)
+        self.fused_residual = FusedResidualDispatcher(self.vec_kernels)
 
         temp_args: List[Any] = list()
         for k in self.vec_kernels:
@@ -773,7 +788,7 @@ class StructuralVectorizedSolver:
                  x0: Union[Vec| None] = None,
                  dx0: Union[Vec| None] = None,
                  params0: Union[Vec| None] = None,
-                 boundary_updater: BoundaryUpdateWrapper| None = None) -> Tuple[Vec, Mat, Mat]:
+                 boundary_updater: EmtBoundaryUpdateProtocol | None = None) -> Tuple[Vec, Mat, Mat]:
 
         """
         Run the vectorized DAE time-domain simulation.
@@ -781,7 +796,7 @@ class StructuralVectorizedSolver:
         :param x0: Initial state vector.
         :param dx0: Initial derivative vector.
         :param params0: Initial event parameters.
-        :param boundary_updater: Boundary condition updater.
+        :param boundary_updater: Optional override for the problem boundary updater.
         :return: Time vector and state trajectory matrix.
         """
 
@@ -793,12 +808,14 @@ class StructuralVectorizedSolver:
             dx0 = self.problem.get_dx0()
         else: pass
 
+        active_boundary_updater = resolve_solver_boundary_updater(self.problem, boundary_updater, float(self.t0))
+
         if params0 is None:
-            params0 = np.zeros(len(self._event_parameters), dtype=np.float64)
+            params0 = self.problem.event_params_values.copy()
         else: pass
 
         return self._simulate_vectorized(self.t0, self.t_end, self.h, x0, dx0, params0, self.method,
-                                         boundary_updater, self.verbose, self.dense_threshold)
+                                         active_boundary_updater, self.verbose, self.dense_threshold)
 
     def _simulate_vectorized(self,
                              t0:float,
@@ -808,7 +825,7 @@ class StructuralVectorizedSolver:
                              dx0: Vec,
                              params0: Vec,
                              method: DynamicIntegrationMethod,
-                             boundary_updater: BoundaryUpdateWrapper,
+                             boundary_updater: EmtBoundaryUpdateProtocol | None,
                              verbose: bool,
                              dense_threshold: int)-> Tuple[Vec, Mat, Mat]:
         if not self.vectorized_ready:
@@ -830,7 +847,7 @@ class StructuralVectorizedSolver:
         trial_residual: Vec = np.zeros(self._n_vars, dtype=np.float64)
 
         static_params = np.array([c.value for c in self._parameters_values], dtype=np.float64)
-        ev_params = np.asarray(params0, dtype=np.float64)
+        ev_params = np.array(params0, dtype=np.float64, copy=True)
 
         full_params = np.empty(len(self._event_parameters) + len(static_params), dtype=np.float64)
 
@@ -897,8 +914,6 @@ class StructuralVectorizedSolver:
         if verbose: print(f"-> Starting VECTORIZED Simulation (Integration loop)...")
 
         for i in range(steps):
-            if verbose:
-                print(f"Simulating at step {i}")
 
             t_step_start: float = float(t[i])
             t_step_target: float = float(t[i + 1])
@@ -908,14 +923,11 @@ class StructuralVectorizedSolver:
 
             while t_local_prev < (t_step_target - 1e-15):
 
-                forced_event_time: float | None = None
-                if boundary_updater is None:
-                    pass
-                else:
-                    forced_event_time = boundary_updater.get_next_forced_event_time(
-                        t_prev=float(t_local_prev),
-                        t_target=float(t_step_target),
-                    )
+                forced_event_time = get_solver_forced_event_time(
+                    boundary_updater,
+                    float(t_local_prev),
+                    float(t_step_target),
+                )
 
                 if forced_event_time is None:
                     t_curr = t_step_target

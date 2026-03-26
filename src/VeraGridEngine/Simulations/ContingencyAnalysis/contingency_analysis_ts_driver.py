@@ -24,6 +24,7 @@ from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_ts_resu
 from VeraGridEngine.enumerations import SimulationTypes
 from VeraGridEngine.Simulations.driver_template import TimeSeriesDriverTemplate
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
+from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_results import ContingencyAnalysisResults
 from VeraGridEngine.Compilers.circuit_to_newton_pa import newton_pa_contingencies, translate_contingency_report, \
     NEWTON_PA_AVAILABLE
 from VeraGridEngine.Compilers.circuit_to_gslv import (gslv_contingencies_ts, GSLV_AVAILABLE)
@@ -50,9 +51,7 @@ def max_abs_per_col_cx(A: CxMat) -> CxVec:
 
     for j in range(A.shape[1]):  # for each col (device)
         for i in range(A.shape[0]):  # for each row (contingency)
-
-            val = abs(A[i, j])
-            if val > abs(res[j]):
+            if abs(A[i, j]) > abs(res[j]):
                 res[j] = A[i, j]
 
     return res
@@ -118,7 +117,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
 
         self.report_text("Analyzing...")
 
-        nb = self.grid.get_bus_number()
+        n_bus = self.grid.get_bus_number()
 
         time_array = self.grid.time_profile[self.time_indices]
 
@@ -128,13 +127,13 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             con_names = [con.name for con in self.options.contingency_groups]
 
         results = ContingencyAnalysisTimeSeriesResults(
-            n=nb,
+            n=n_bus,
             nbr=self.grid.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True),
             time_array=time_array,
             original_time_array=self.grid.time_profile,
             branch_names=self.grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True),
             bus_names=self.grid.get_bus_names(),
-            bus_types=np.ones(nb, dtype=int),
+            bus_types=np.ones(n_bus, dtype=int),
             con_names=con_names,
             clustering_results=self.clustering_results
         )
@@ -170,7 +169,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
                                               opf_results=self.opf_time_series_results,
                                               t_idx=t)
 
-            res_t = nonlinear_contingency_analysis(
+            res_t: ContingencyAnalysisResults = nonlinear_contingency_analysis(
                 nc=nc,
                 options=self.options,
                 linear_multiple_contingencies=linear_multiple_contingencies,
@@ -191,7 +190,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             # Sf[i_con, k_br]
 
             # Sbus (ncon, nbus)
-            results.S[it, :] = max_abs_per_col_cx(res_t.Sbus)
+            results.S[it, :] = max_abs_per_col_cx(res_t.Sbus).real
 
             results.max_flows[it, :] = max_abs_per_col_cx(res_t.Sf).real
 
@@ -485,24 +484,47 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
 
         time_array = self.grid.time_profile[self.time_indices]
 
-        nb = self.grid.get_bus_number()
+        nbus = self.grid.get_bus_number()
         results = ContingencyAnalysisTimeSeriesResults(
-            n=nb,
+            n=nbus,
             nbr=self.grid.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True),
             time_array=time_array,
             original_time_array=self.grid.time_profile,
             branch_names=self.grid.get_branch_names(add_hvdc=False, add_vsc=False, add_switch=True),
             bus_names=self.grid.get_bus_names(),
-            bus_types=np.ones(nb, dtype=int),
+            bus_types=np.ones(nbus, dtype=int),
             con_names=self.grid.get_contingency_group_names(),
             clustering_results=self.clustering_results
         )
 
         # results.S[t, :] = res_t.S.real.max(axis=0)
-        results.max_flows = res.max_values.Sf
-        results.max_loading = res.max_values.loading
+        results.max_flows = res.max_flows[self.time_indices].real
+        results.max_loading = res.max_loading[self.time_indices].real
 
-        # translate_contingency_report(newton_report=res.report, veragrid_report=results.report)
+        for entry in res.report.entries:
+            self.results.report.add(
+                time_index=entry.time_index,
+                t_prob=entry.t_prob,
+                mon_idx=entry.mon_idx,
+                con_group_idx=entry.con_group_idx,
+                area_from=entry.area_from,
+                area_to=entry.area_to,
+                base_name=entry.base_name,
+                contingency_name=entry.contingency_name,
+                base_rating=entry.base_rating,
+                contingency_rating=entry.contingency_rating,
+                srap_rating=entry.srap_rating,
+                base_flow=entry.base_flow.real,
+                post_contingency_flow=entry.post_contingency_flow.real,
+                post_srap_flow=entry.post_srap_flow.real,
+                base_loading=entry.base_loading,
+                post_contingency_loading=entry.post_contingency_loading,
+                post_srap_loading=entry.post_srap_loading,
+                msg_ov=entry.msg_ov,
+                msg_srap=entry.msg_srap,
+                srap_power=entry.srap_power,
+                solved_by_srap=entry.solved_by_srap
+            )
 
         return results
 

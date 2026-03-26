@@ -85,4 +85,5 @@ class StaticGenerator(LoadParent):
         if the reactive power curve was generated automatically, then it is refreshed
         :param val: float value
         """
+        val = float(val)
         self._Snom = val

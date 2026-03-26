@@ -16,13 +16,13 @@ from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 class FluidNode(PhysicalDevice):
     __slots__ = (
-        'min_level',
-        'max_level',
-        'max_soc',
-        'min_soc',
-        'initial_level',
-        'spillage_cost',
-        'inflow',
+        '_min_level',
+        '_max_level',
+        '_max_soc',
+        '_min_soc',
+        '_initial_level',
+        '_spillage_cost',
+        '_inflow',
         '_bus',
         'build_status',
         'color',
@@ -256,3 +256,138 @@ class FluidNode(PhysicalDevice):
         if isinstance(val, Bus):
             self._bus = val
             self._bus.internal = True
+
+    # Scalar property accessors coerce assignments to the declared schema types.
+
+    @property
+    def min_level(self) -> float:
+        """
+        Get ``min_level``.
+
+        :return: float
+        """
+        return self._min_level
+
+    @min_level.setter
+    def min_level(self, val: float) -> None:
+        """
+        Set ``min_level``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._min_level = float(val)
+
+    @property
+    def max_level(self) -> float:
+        """
+        Get ``max_level``.
+
+        :return: float
+        """
+        return self._max_level
+
+    @max_level.setter
+    def max_level(self, val: float) -> None:
+        """
+        Set ``max_level``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._max_level = float(val)
+
+    @property
+    def min_soc(self) -> float:
+        """
+        Get ``min_soc``.
+
+        :return: float
+        """
+        return self._min_soc
+
+    @min_soc.setter
+    def min_soc(self, val: float) -> None:
+        """
+        Set ``min_soc``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._min_soc = float(val)
+
+    @property
+    def max_soc(self) -> float:
+        """
+        Get ``max_soc``.
+
+        :return: float
+        """
+        return self._max_soc
+
+    @max_soc.setter
+    def max_soc(self, val: float) -> None:
+        """
+        Set ``max_soc``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._max_soc = float(val)
+
+    @property
+    def initial_level(self) -> float:
+        """
+        Get ``initial_level``.
+
+        :return: float
+        """
+        return self._initial_level
+
+    @initial_level.setter
+    def initial_level(self, val: float) -> None:
+        """
+        Set ``initial_level``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._initial_level = float(val)
+
+    @property
+    def spillage_cost(self) -> float:
+        """
+        Get ``spillage_cost``.
+
+        :return: float
+        """
+        return self._spillage_cost
+
+    @spillage_cost.setter
+    def spillage_cost(self, val: float) -> None:
+        """
+        Set ``spillage_cost``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._spillage_cost = float(val)
+
+    @property
+    def inflow(self) -> float:
+        """
+        Get ``inflow``.
+
+        :return: float
+        """
+        return self._inflow
+
+    @inflow.setter
+    def inflow(self, val: float) -> None:
+        """
+        Set ``inflow``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._inflow = float(val)

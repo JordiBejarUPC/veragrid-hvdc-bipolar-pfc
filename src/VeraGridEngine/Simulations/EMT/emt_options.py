@@ -6,24 +6,25 @@
 from typing import Tuple
 
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, EmtProblemTypes
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
 class EmtOptions(OptionsTemplate):
     """
-    Rms simulation options
+    EMT simulation options
     """
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key="time_step", tpe=float),
         GCProp(key="simulation_time", tpe=float),
         GCProp(key="tolerance", tpe=float),
-        GCProp(key="solver", tpe=EmtSolverTypes),
+        GCProp(key="solver_type", tpe=EmtSolverTypes),
         GCProp(key="integration_method", tpe=DynamicIntegrationMethod),
         GCProp(key="verbose", tpe=int),
         GCProp(key="initialization_method", tpe=EmtInitializationMethod),
+        GCProp(key="problem_type", tpe=EmtProblemTypes),
         GCProp(key="init_newton_tol", tpe=float),
         GCProp(key="init_newton_max_iter", tpe=int),
         GCProp(key="init_newton_backtracking", tpe=bool),
@@ -50,13 +51,14 @@ class EmtOptions(OptionsTemplate):
     )
 
     def __init__(self,
-                 time_step: float = 0.0001,
-                 simulation_time: float = 5,
+                 time_step: float = 5e-6,
+                 simulation_time: float = 0.02,
                  tolerance: float = 1e-6,
-                 solver: EmtSolverTypes = EmtSolverTypes.StructuralAD,
+                 solver_type: EmtSolverTypes = EmtSolverTypes.StructuralAD,
                  integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
                  verbose: int = 0,
                  initialization_method: EmtInitializationMethod = EmtInitializationMethod.Auto,
+                 problem_type: EmtProblemTypes = EmtProblemTypes.CurrentBalance,
                  init_newton_tol: float = 1e-8,
                  init_newton_max_iter: int = 20,
                  init_newton_backtracking: bool = True,
@@ -93,10 +95,11 @@ class EmtOptions(OptionsTemplate):
         self.time_step: float = time_step
         self.simulation_time: float = simulation_time
         self.tolerance: float = tolerance
-        self.solver: EmtSolverTypes = solver
+        self.solver_type: EmtSolverTypes = solver_type
         self.integration_method: DynamicIntegrationMethod = integration_method
         self.verbose = verbose
         self.initialization_method: EmtInitializationMethod = initialization_method
+        self.problem_type: EmtProblemTypes = problem_type
         self.init_newton_tol: float = init_newton_tol
         self.init_newton_max_iter: int = init_newton_max_iter
         self.init_newton_backtracking: bool = init_newton_backtracking

@@ -11,11 +11,9 @@ from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType, ParamPowerFlowRefferenceType
 
-def get_generator_thevenin_rl_emt_template(
-        grid: MultiCircuit,
-        gen: Generator,
+def get_generator_thevenin_rl_emt_template(vf: VarFactory,
         name: str = "emt_thevenin_eq_generator_template"
 ) -> EmtModelTemplate:
     """
@@ -57,16 +55,14 @@ def get_generator_thevenin_rl_emt_template(
         using the Thevenin steady-state relation:
             E = V + (R + jX) I
 
-    :param grid: MultiCircuit
-    :param gen: Generator object
+    :param vf: EMT  aVarFactory
     :param name: Model name
     :return: EmtModelTemplate
     """
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
-
-    vf: VarFactory = grid.emt_var_factory
+    templ.block.name = name
 
     # ----------------------------------------------------------------------------------
     # Constants for symbolic expressions
@@ -159,6 +155,10 @@ def get_generator_thevenin_rl_emt_template(
     # External mapping
     # ----------------------------------------------------------------------------------
     templ.block.external_mapping = {
+        VarPowerFlowRefferenceType.v_N: None,
+        VarPowerFlowRefferenceType.v_A: v_A,
+        VarPowerFlowRefferenceType.v_B: v_B,
+        VarPowerFlowRefferenceType.v_C: v_C,
         VarPowerFlowRefferenceType.P: None,
         VarPowerFlowRefferenceType.Q: None,
         VarPowerFlowRefferenceType.P_N: None,
@@ -186,20 +186,21 @@ def get_generator_thevenin_rl_emt_template(
     # ----------------------------------------------------------------------------------
     # Event dict
     # ----------------------------------------------------------------------------------
-    w_base = 2.0 * np.pi * grid.fBase
-
-    # Use the generator positive-sequence impedance as the simplest Thevenin impedance
-    # for the test model.
-    Rs_num = max(gen.R1, 1e-6)
-    Xs_num = max(gen.X1, 1e-6)
 
     E_re = Vpk + R_s * Ipk * sym.cos(phi) - X_s * Ipk * sym.sin(phi)
     E_im = R_s * Ipk * sym.sin(phi) + X_s * Ipk * sym.cos(phi)
 
+    templ.block.api_obj_mapping = {
+        ParamPowerFlowRefferenceType.omega_base: omega_base,
+        ParamPowerFlowRefferenceType.R1: R_s,
+        ParamPowerFlowRefferenceType.X1: X_s,
+        ParamPowerFlowRefferenceType.X0: None,
+    }
+
     templ.block.event_dict = {
-        omega_base: vf.add_const(w_base),
-        R_s: vf.add_const(Rs_num),
-        X_s: vf.add_const(Xs_num),
+        # omega_base: vf.add_const(None),
+        # R_s: vf.add_const(None),
+        # X_s: vf.add_const(None),
 
         # PF-derived init-only values
         phi_v: vf.add_const(None),

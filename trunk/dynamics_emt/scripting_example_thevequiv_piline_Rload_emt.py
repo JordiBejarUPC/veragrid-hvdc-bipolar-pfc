@@ -29,6 +29,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
+from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
 
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
@@ -43,7 +44,7 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType, EmtInitializationMethod
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -75,7 +76,7 @@ grid.add_bus(bus1)
 
 # Lines
 line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
-line0.emt_model_type = gce.EmtLineTypes.PI
+
 
 # physical configuration (Overhead line tower)
 tower = gce.OverheadLineType(name="Tower", Vnom=vnom)
@@ -102,7 +103,7 @@ R_ph =100 #ohm
 v_ph = vnom / (3**0.5)
 P_ph = (v_ph**2) / R_ph # kv*kv/ohm = MW
 Q_ph = 0.0
-load = gce.Load(name="load",P1= P_ph, P2= P_ph, P3= P_ph, Q1= Q_ph, Q2= Q_ph, Q3= Q_ph)
+load = gce.Load(name="load", P= 3.0*P_ph, Q = 3.0*Q_ph, P1= P_ph, P2= P_ph, P3= P_ph, Q1= Q_ph, Q2= Q_ph, Q3= Q_ph)
 load.conn = ShuntConnectionType.GroundedStar
 
 # Generators
@@ -114,22 +115,23 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 grid.add_load(bus=bus1, api_obj=load)
 
 for bus in grid.buses:
-    get_bus_emt_template(grid, bus, vf=grid.emt_var_factory)
+    get_bus_emt_template(grid, bus)
 
 ######################################################################################################
 # Build EMT models
 ######################################################################################################
 
 # generator
-gen_mdl = get_generator_thevenin_rl_emt_template(grid=grid, gen = gen0).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf= grid.emt_var_factory).block
 
 # line
 line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 # line_mdl = get_pi_line_emt_template(vf= grid.emt_var_factory).block
 
 # load
-# load_mdl = get_shunt_r_3ph_emt_template(grid = grid, load = load).block
 load_mdl = get_shunt_r_3ph_emt_template(vf = grid.emt_var_factory).block
+
+load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_3ph", new_value=1.0)
 
 ######################################################################################################
 # Add models to devices
@@ -198,34 +200,53 @@ pf_options = PowerFlowOptions(
     initialize_angles=False,
     generate_report=False,
 )
-
-power_flow = PowerFlowDriver3Ph(grid, pf_options)
+# Balanced powerflow
+power_flow = PowerFlowDriver(grid, pf_options)
 power_flow.run()
 res = power_flow.results
-print("res.m (branch number)= ", res.m)
-print("res.n (bus number)= ", res.n)
-print("res.n_gen = ", res.n_gen)
-print("res.n_load ", res.n_load)
+print("Balanced power flow results")
 print("res.bus_names = ", res.bus_names)
 print("res.branch_names = ", res.branch_names)
-print("res.load_names = ", res.load_names)
 print("res.bus_types = ", res.bus_types)
-print("res.voltage_A = ", res.voltage_A)
-print("res.voltage_B = ", res.voltage_B)
-print("res.voltage_C = ", res.voltage_C)
-print("res.Sbus_A = ", res.Sbus_A)
-print("res.Sbus_B = ", res.Sbus_B)
-print("res.Sbus_C = ", res.Sbus_C)
-print("res.Sf_A = ", res.Sf_A)
-print("res.Sf_B = ", res.Sf_B)
-print("res.Sf_C = ", res.Sf_C)
-print("res.St_A = ", res.St_A)
-print("res.St_B = ", res.St_B)
-print("res.St_C = ", res.St_C)
+print("res.voltage_A = ", res.voltage)
+print("res.Sbus_A = ", res.Sbus)
+print("res.Sf_A = ", res.Sf)
+print("res.St_A = ", res.St)
 
 print(f"Converged: {res.converged}")
 print(res.get_bus_df())
 print(res.get_branch_df())
+
+# 3ph powerflow
+
+power_flow = PowerFlowDriver3Ph(grid, pf_options)
+power_flow.run()
+res3h = power_flow.results
+print("3Ph power flow results")
+print("res3h.m (branch number)= ", res3h.m)
+print("res3h.n (bus number)= ", res3h.n)
+print("res3h.n_gen = ", res3h.n_gen)
+print("res3h.n_load ", res3h.n_load)
+print("res3h.bus_names = ", res3h.bus_names)
+print("res3h.branch_names = ", res3h.branch_names)
+print("res3h.load_names = ", res3h.load_names)
+print("res3h.bus_types = ", res3h.bus_types)
+print("res3h.voltage_A = ", res3h.voltage_A)
+print("res3h.voltage_B = ", res3h.voltage_B)
+print("res3h.voltage_C = ", res3h.voltage_C)
+print("res3h.Sbus_A = ", res3h.Sbus_A)
+print("res3h.Sbus_B = ", res3h.Sbus_B)
+print("res3h.Sbus_C = ", res3h.Sbus_C)
+print("res3h.Sf_A = ", res3h.Sf_A)
+print("res3h.Sf_B = ", res3h.Sf_B)
+print("res3h.Sf_C = ", res3h.Sf_C)
+print("res3h.St_A = ", res3h.St_A)
+print("res3h.St_B = ", res3h.St_B)
+print("res3h.St_C = ", res3h.St_C)
+
+print(f"Converged: {res3h.converged}")
+print(res3h.get_bus_df())
+print(res3h.get_branch_df())
 
 # ==============================================================================
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")
@@ -252,14 +273,20 @@ if CHOSEN_SOLVER not in SOLVER_TYPE_MAP:
 options = EmtOptions(time_step = 5e-6,
                      simulation_time =  0.01, # s
                      tolerance = 1e-6,
-                     solver = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
+                     solver_type = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
+                     initialization_method = EmtInitializationMethod.Auto,
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
                      verbose = 1)
 
 
 def create_problem() -> EmtProblemDae:
+    # local_problem = EmtProblemDae(grid=grid,
+    #                               options=options,
+    #                               pf_results_3Ph=res3h,
+    #                               pf_results= res)
     local_problem = EmtProblemDae(grid=grid,
                                   options=options,
+                                  pf_results_3Ph=None,
                                   pf_results=res)
 
     if ENABLE_NEWTON_TRACE:
@@ -585,16 +612,16 @@ print("Generating plots...")
 plt.show()
 
 
-i_f_A_line = find_name_in_block("if_pi_line_emt_template_0", line0.emt_model)
-i_f_B_line = find_name_in_block("if_pi_line_emt_template_1", line0.emt_model)
-i_f_C_line = find_name_in_block("if_pi_line_emt_template_2", line0.emt_model)
+i_f_A_line = find_name_in_block("if_Pi_0", line0.emt_model)
+i_f_B_line = find_name_in_block("if_Pi_1", line0.emt_model)
+i_f_C_line = find_name_in_block("if_Pi_2", line0.emt_model)
 i_f_A_line_plt = y[:, problem.get_var_idx(i_f_A_line)]
 i_f_B_line_plt = y[:, problem.get_var_idx(i_f_B_line)]
 i_f_C_line_plt = y[:, problem.get_var_idx(i_f_C_line)]
 
-i_t_A_line = find_name_in_block("it_pi_line_emt_template_0", line0.emt_model)
-i_t_B_line = find_name_in_block("it_pi_line_emt_template_1", line0.emt_model)
-i_t_C_line = find_name_in_block("it_pi_line_emt_template_2", line0.emt_model)
+i_t_A_line = find_name_in_block("it_Pi_0", line0.emt_model)
+i_t_B_line = find_name_in_block("it_Pi_1", line0.emt_model)
+i_t_C_line = find_name_in_block("it_Pi_2", line0.emt_model)
 i_t_A_line_plt = y[:, problem.get_var_idx(i_t_A_line)]
 i_t_B_line_plt = y[:, problem.get_var_idx(i_t_B_line)]
 i_t_C_line_plt = y[:, problem.get_var_idx(i_t_C_line)]
@@ -653,23 +680,23 @@ plt.tight_layout()
 print("Generating plots...")
 plt.show()
 
-i_ser_A = find_name_in_block("i_ser_pi_line_emt_template_0", line0.emt_model)
-i_ser_B = find_name_in_block("i_ser_pi_line_emt_template_1", line0.emt_model)
-i_ser_C = find_name_in_block("i_ser_pi_line_emt_template_2", line0.emt_model)
+i_ser_A = find_name_in_block("i_ser_Pi_0", line0.emt_model)
+i_ser_B = find_name_in_block("i_ser_Pi_1", line0.emt_model)
+i_ser_C = find_name_in_block("i_ser_Pi_2", line0.emt_model)
 i_ser_A_plt = y[:, problem.get_var_idx(i_ser_A)]
 i_ser_B_plt = y[:, problem.get_var_idx(i_ser_B)]
 i_ser_C_plt = y[:, problem.get_var_idx(i_ser_C)]
 
-i_f_cap_A = find_name_in_block("i_cap_f_pi_line_emt_template_0", line0.emt_model)
-i_f_cap_B = find_name_in_block("i_cap_f_pi_line_emt_template_1", line0.emt_model)
-i_f_cap_C = find_name_in_block("i_cap_f_pi_line_emt_template_2", line0.emt_model)
+i_f_cap_A = find_name_in_block("i_cap_f_Pi_0", line0.emt_model)
+i_f_cap_B = find_name_in_block("i_cap_f_Pi_1", line0.emt_model)
+i_f_cap_C = find_name_in_block("i_cap_f_Pi_2", line0.emt_model)
 i_f_cap_A_plt = y[:, problem.get_var_idx(i_f_cap_A)]
 i_f_cap_B_plt = y[:, problem.get_var_idx(i_f_cap_B)]
 i_f_cap_C_plt = y[:, problem.get_var_idx(i_f_cap_C)]
 
-i_t_cap_A = find_name_in_block("i_cap_t_pi_line_emt_template_0", line0.emt_model)
-i_t_cap_B = find_name_in_block("i_cap_t_pi_line_emt_template_1", line0.emt_model)
-i_t_cap_C = find_name_in_block("i_cap_t_pi_line_emt_template_2", line0.emt_model)
+i_t_cap_A = find_name_in_block("i_cap_t_Pi_0", line0.emt_model)
+i_t_cap_B = find_name_in_block("i_cap_t_Pi_1", line0.emt_model)
+i_t_cap_C = find_name_in_block("i_cap_t_Pi_2", line0.emt_model)
 i_t_cap_A_plt = y[:, problem.get_var_idx(i_t_cap_A)]
 i_t_cap_B_plt = y[:, problem.get_var_idx(i_t_cap_B)]
 i_t_cap_C_plt = y[:, problem.get_var_idx(i_t_cap_C)]

@@ -46,7 +46,7 @@ class EmtEvent(PointerDeviceParent):
                  group: EmtEventsGroup = None,
                  force_step_alignment: bool = False,
                  idtag: Union[str, None] = None,
-                 name="RmsEvent",
+                 name="EmtEvent",
                  code='',
 
                  comment: str = ""):
