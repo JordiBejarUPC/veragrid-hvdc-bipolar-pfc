@@ -324,6 +324,7 @@ class MultiVerse:
 
         for child in direct_children:
             merged_parent_model.merge_circuit(new_grid=child.circuit)
+            merged_parent_model.diagrams = copy.deepcopy(child.diagrams)
 
         rebased_grandchildren: list[tuple[ScenarioNode, MultiCircuit]] = list()
         for child in direct_children:
@@ -491,6 +492,18 @@ class MultiVerse:
 
     def delete_node(self, node_id: int) -> ScenarioNode:
         """
+        Delete a node and its entire subtree from the multiverse.
+
+        The non-obvious part of this operation is active-state repair. The GUI and the save
+        path both assume that ``current_node`` and ``current_model`` always point to a valid
+        scenario still owned by this tree. If the deleted subtree contains the active node,
+        leaving those references untouched would keep them pointing at detached objects that are
+        no longer in ``_nodes_by_id`` nor reachable from any root.
+
+        The fallback policy is:
+        - if the deleted subtree had a parent, activate that parent
+        - otherwise, activate the first remaining root if one exists
+        - otherwise, clear current/base state because the multiverse became empty
 
         :param node_id:
         :return:
@@ -502,7 +515,32 @@ class MultiVerse:
         else:
             node.parent.remove_child(node)
 
+        deleted_active_subtree = self._is_descendant(candidate_parent=node, candidate_child=self._current_node)
         self._delete_from_registry_recursive(node)
+
+        if deleted_active_subtree:
+            fallback_node: ScenarioNode | None = None
+            if node.parent is not None:
+                fallback_node = node.parent
+            elif self._root_nodes:
+                fallback_node = self._root_nodes[0]
+
+            self._current_node = fallback_node
+            if fallback_node is None:
+                self._current_model = None
+                self._base_model = None
+            elif fallback_node.parent is None:
+                self._current_model = fallback_node.circuit
+                self._current_model.diagrams = copy.deepcopy(fallback_node.diagrams)
+                self._base_model = fallback_node.circuit
+            else:
+                self._current_model = self.checkout(fallback_node)
+                if self._root_nodes:
+                    self._base_model = self._root_nodes[0].circuit
+
+        elif node.parent is None:
+            self._base_model = self._root_nodes[0].circuit if self._root_nodes else None
+
         return node
 
     def _delete_from_registry_recursive(self, node: ScenarioNode) -> None:
@@ -531,37 +569,7 @@ class MultiVerse:
         :param position:
         :return:
         """
-        node: ScenarioNode = self.get_node(node_id)
-
-        new_parent: ScenarioNode | None = None
-        if new_parent_id is not None:
-            new_parent = self.get_node(new_parent_id)
-
-        if new_parent is node:
-            raise ValueError("A node cannot be its own parent")
-
-        if self._is_descendant(candidate_parent=node, candidate_child=new_parent):
-            raise ValueError("Cannot move a node under one of its descendants")
-
-        if node.parent is None:
-            self._root_nodes.remove(node)
-        else:
-            node.parent.remove_child(node)
-
-        node.parent = new_parent
-
-        if new_parent is None:
-            if position is None:
-                self._root_nodes.append(node)
-            else:
-                self._root_nodes.insert(position, node)
-        else:
-            if position is None:
-                new_parent.append_child(node)
-            else:
-                new_parent.insert_child(position, node)
-
-        return node
+        raise NotImplementedError("Scenario reparenting is disabled until delta rebasing is implemented")
 
     def _is_descendant(self,
                        candidate_parent: ScenarioNode,
@@ -652,16 +660,14 @@ class MultiVerse:
 
         :return:
         """
-        multiverse_meta_data = dict()
+        multiverse_node_data = dict()
         multiverse_model_data = dict()
-
-        base_circuit: MultiCircuit = self._root_nodes[0].circuit
 
         for node in self.iter_nodes_depth_first():
             save_grid = node.circuit.copy()
             save_grid.diagrams = copy.deepcopy(node.diagrams)
 
-            multiverse_meta_data[node.node_id] = {
+            multiverse_node_data[node.node_id] = {
                 "node_id": node.node_id,
                 "circuit_idtag": node.circuit.idtag,
                 "parent_id": node.parent.node_id if node.parent is not None else None,
@@ -672,11 +678,16 @@ class MultiVerse:
             # if node.data != base_circuit:
             multiverse_model_data[node.circuit.idtag] = save_grid
 
+        multiverse_meta_data = {
+            "active_node_id": None if self._current_node is None else self._current_node.node_id,
+            "nodes": multiverse_node_data,
+        }
+
         return multiverse_meta_data, multiverse_model_data
 
     def parse_json(self,
                    diffs_dict: Dict[str, MultiCircuit],
-                   metadata: Dict[str, Dict[str | int | float]]):
+                   metadata: Dict[str, Dict[str | int | float] | int | None]):
         """
          Parse the json metadata to fill this object
         :param diffs_dict:
@@ -692,8 +703,13 @@ class MultiVerse:
         max_id: int = 0
 
         # Build nodes from parent links; metadata may be serialized as a dict with string keys.
+        if "nodes" in metadata and isinstance(metadata["nodes"], dict):
+            node_metadata = metadata["nodes"]
+        else:
+            node_metadata = metadata
+
         pending: Dict[int, Dict[str | int | float]] = {
-            int(node_id): record for node_id, record in metadata.items()
+            int(node_id): record for node_id, record in node_metadata.items()
         }
 
         while pending:
@@ -739,6 +755,14 @@ class MultiVerse:
         self._next_id = max_id + 1
 
         if self._root_nodes:
-            self._current_node = self._root_nodes[0]
-            self._current_model = self._current_node.circuit
+            active_node_id_raw = metadata.get("active_node_id", None) if isinstance(metadata, dict) else None
+            if active_node_id_raw is None:
+                self._current_node = self._root_nodes[0]
+            else:
+                self._current_node = self.get_node(int(active_node_id_raw))
+
+            if self._current_node.parent is None:
+                self._current_model = self._current_node.circuit
+            else:
+                self._current_model = self.checkout(self._current_node)
             self._base_model = self._root_nodes[0].circuit

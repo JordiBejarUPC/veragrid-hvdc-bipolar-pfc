@@ -145,15 +145,45 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
     }
 
 
-def order_multiverse_records(metadata: Dict[str, Dict[str | int | float]]) -> List[Dict[str, Any]]:
+def get_multiverse_node_metadata(metadata: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    """
+    Extract the per-node metadata dictionary from a multiverse metadata payload.
+
+    Newer files wrap node records under ``nodes`` and may include top-level metadata such as
+    ``active_node_id``. Older files store the node records directly at the top level.
+    """
+    # New-format multiverse metadata is a small envelope:
+    # {
+    #     "active_node_id": ...,
+    #     "nodes": {
+    #         <node_id>: {...},
+    #         ...
+    #     }
+    # }
+    # In that case, only the nested ``nodes`` mapping contains per-node records.
+    nodes = metadata.get("nodes", None)
+
+    # Accept the new wrapped format only if the value really is the node dictionary.
+    # This avoids accidentally treating malformed metadata as valid node content.
+    if isinstance(nodes, dict):
+        return nodes
+
+    # Older files predate the metadata envelope and store the node records directly at
+    # the top level. Returning ``metadata`` as-is keeps the loader backward compatible.
+    return metadata
+
+
+def order_multiverse_records(metadata: Dict[str, Dict[str | int | float]] | Dict[str, Any]) -> List[Dict[str, Any]]:
     """
     Return multiverse metadata records in a parent-before-child order.
 
     The multiverse payloads must be parsed in dependency order because child delta payloads
     may reference objects inherited from their parent composed scenario.
     """
+    node_metadata = get_multiverse_node_metadata(metadata)
+
     pending_records: Dict[int, Dict[str, Any]] = {
-        int(node_id): dict(record) for node_id, record in metadata.items()
+        int(node_id): dict(record) for node_id, record in node_metadata.items()
     }
     ordered_records: List[Dict[str, Any]] = list()
 
@@ -1741,7 +1771,7 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
 
 
 def parse_multiverse_data(data: dict[str, VERAGRID_FILE_TYPE],
-                          metadata: Dict[str, Dict[str | int | float]],
+                          metadata: Dict[str, Dict[str | int | float] | int | None],
                           text_func: Union[Callable, None] = None,
                           progress_func: Union[Callable, None] = None,
                           logger: Logger = Logger()) -> dev.MultiVerse:
@@ -1783,6 +1813,7 @@ def parse_multiverse_data(data: dict[str, VERAGRID_FILE_TYPE],
     #   parent circuit as previous_circuit so child references to inherited objects can be resolved.
     # - Then, after the tree exists, parse each node's diagrams against that node's full composed
     #   scenario, never against the raw delta payload.
+    node_metadata = get_multiverse_node_metadata(metadata)
     ordered_records = order_multiverse_records(metadata)
 
     for record in ordered_records:
@@ -1819,7 +1850,7 @@ def parse_multiverse_data(data: dict[str, VERAGRID_FILE_TYPE],
 
     # Parse diagrams only after the multiverse tree exists, so each node can resolve them
     # against its full composed scenario instead of its raw delta payload.
-    for record in metadata.values():
+    for record in node_metadata.values():
         node_id = int(record["node_id"])
         circuit_idtag = str(record["circuit_idtag"])
         node = mv.get_node(node_id)
@@ -1840,7 +1871,12 @@ def parse_multiverse_data(data: dict[str, VERAGRID_FILE_TYPE],
 
         node.diagrams = parsed_diagrams
 
+    active_node_id_raw = metadata.get("active_node_id", None) if isinstance(metadata, dict) else None
     if mv.current_node is not None and mv.current_model is not None:
         mv.current_model.diagrams = copy.deepcopy(mv.current_node.diagrams)
+
+    if active_node_id_raw is not None and (
+            mv.current_node is None or mv.current_node.node_id != int(active_node_id_raw)):
+        mv.activate_scenario(int(active_node_id_raw))
 
     return mv

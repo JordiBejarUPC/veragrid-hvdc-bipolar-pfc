@@ -295,6 +295,28 @@ class BaseMainGui(QMainWindow):
         self.scenario_tree_model = ScenarioTreeModel(multiverse=val)
         self.ui.multiverseTreeView.setModel(self.scenario_tree_model)
 
+        selection_model = self.ui.multiverseTreeView.selectionModel()
+        if selection_model is not None and hasattr(self, 'on_scenario_selection_changed'):
+            # setModel() replaces the view's selection model, so the previous signal connection
+            # is lost whenever a freshly loaded multiverse installs a new tree model.
+            selection_model.selectionChanged.connect(self.on_scenario_selection_changed)
+
+        # A loaded multiverse should present the whole scenario tree immediately.
+        self.ui.multiverseTreeView.expandAll()
+
+        # Restore the saved active scenario visually so the tree selection matches the
+        # multiverse current_node/current_model pair as soon as the model is assigned.
+        current_index = self.scenario_tree_model.index_for_node(val.current_node)
+        if current_index.isValid():
+            self.ui.multiverseTreeView.setCurrentIndex(current_index)
+            if selection_model is not None:
+                selection_model.select(
+                    current_index,
+                    QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect
+                    | QtCore.QItemSelectionModel.SelectionFlag.Rows,
+                )
+            self.ui.multiverseTreeView.scrollTo(current_index)
+
     @property
     def circuit(self) -> MultiCircuit:
         return self.multiverse.current_model

@@ -170,6 +170,14 @@ def save_veragrid_data_to_zip(filename_zip: str,
                 for diagram in diff_grid.diagrams:
                     filename = f"{base_path}/diagrams/{diagram.idtag}.diagram"
                     f_zip_ptr.writestr(filename, json.dumps(diagram.get_data_dict(), indent=4))
+
+            # Save the results into the zip file -----------------------------------------------------------------------
+            save_results_in_zip(f_zip_ptr=f_zip_ptr,
+                                filename_zip=filename_zip,
+                                folder="sessions",
+                                sessions_data=sessions_data,
+                                text_func=text_func,
+                                progress_func=progress_func)
         else:
             # save the main model --------------------------------------------------------------------------------------
             # In this case, we only want to save the main model, since no multiverse was provided

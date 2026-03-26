@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from typing import List, Any
 
+from PySide6 import QtGui
 from PySide6.QtCore import QAbstractItemModel, QModelIndex, Qt
 
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -32,6 +33,12 @@ class ScenarioTreeModel(QAbstractItemModel):
             "Objects",
             "Comment"
         ]
+        # Reuse existing application icons so root scenarios and child scenarios are
+        # visually distinct in the tree without adding new GUI resources.
+        self._root_icon = QtGui.QIcon()
+        self._root_icon.addPixmap(QtGui.QPixmap(":/Icons/icons/schematic.png"))
+        self._scenario_icon = QtGui.QIcon()
+        self._scenario_icon.addPixmap(QtGui.QPixmap(":/Icons/icons/grid_icon.png"))
 
     @property
     def multiverse(self) -> MultiVerse:
@@ -119,6 +126,12 @@ class ScenarioTreeModel(QAbstractItemModel):
         """
         if not index.isValid():
             return None
+
+        if role == Qt.ItemDataRole.DecorationRole and index.column() == 0:
+            node: ScenarioNode = index.internalPointer()
+            if node.parent is None:
+                return self._root_icon
+            return self._scenario_icon
 
         if role not in (Qt.ItemDataRole.DisplayRole,
                         Qt.ItemDataRole.EditRole):
@@ -223,6 +236,32 @@ class ScenarioTreeModel(QAbstractItemModel):
             return index.internalPointer()
         return None
 
+    def index_for_node(self, node: ScenarioNode | None, column: int = 0) -> QModelIndex:
+        """
+        Build the QModelIndex that points to a specific scenario node.
+
+        :param node: Scenario node to locate
+        :param column: Target column
+        :return: QModelIndex for the node, or invalid index if the node is not part of the model
+        """
+        if node is None:
+            return QModelIndex()
+
+        if node.parent is None:
+            try:
+                row = self._multiverse.root_nodes.index(node)
+            except ValueError:
+                return QModelIndex()
+            return self.createIndex(row, column, node)
+
+        # Recreate the parent index first so Qt receives a fully valid hierarchical index
+        # for nodes that are not direct roots.
+        parent_index = self.index_for_node(node.parent, 0)
+        if not parent_index.isValid():
+            return QModelIndex()
+
+        return self.index(node.row(), column, parent_index)
+
     def refresh(self) -> None:
         """
         Full model reset after external structural changes.
@@ -307,42 +346,6 @@ class ScenarioTreeModel(QAbstractItemModel):
         self.beginRemoveRows(parent_index, row, row)
         self._multiverse.delete_node(node.node_id)
         self.endRemoveRows()
-        return True
-
-    def move_node_to_parent(
-            self,
-            index: QModelIndex,
-            new_parent_index: QModelIndex | None,
-            position: int | None = None,
-    ) -> bool:
-        """
-        Move a node to a new parent.
-
-        This uses a model reset because it is simpler and safer than wiring
-        beginMoveRows/endMoveRows for all tree cases.
-
-        :param index: Node to move
-        :param new_parent_index: New parent index, or None/invalid for root
-        :param position: Insertion position, or append if None
-        :return: True if moved
-        """
-        if not index.isValid():
-            return False
-
-        node: ScenarioNode = index.internalPointer()
-
-        new_parent_id: int | None = None
-        if new_parent_index is not None and new_parent_index.isValid():
-            new_parent_node: ScenarioNode = new_parent_index.internalPointer()
-            new_parent_id = new_parent_node.node_id
-
-        self.beginResetModel()
-        self._multiverse.move_node(
-            node_id=node.node_id,
-            new_parent_id=new_parent_id,
-            position=position,
-        )
-        self.endResetModel()
         return True
 
     def merge_children_into_parent(self, index: QModelIndex) -> bool:
