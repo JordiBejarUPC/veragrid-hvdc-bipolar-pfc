@@ -21,12 +21,7 @@ TimeEventsMain
 SimulationsMain
 ResultsMain
 ConfigurationMain
-
-
 ScenariosMain
-
 IoMain
 ScriptingMain
-
-
 VeraGridMainGUI

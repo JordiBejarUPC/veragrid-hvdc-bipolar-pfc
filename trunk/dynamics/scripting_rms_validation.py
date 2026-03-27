@@ -51,7 +51,7 @@ def inspect_gy(gy: sp.spmatrix, tol: float = 1e-12) -> None:
             print(ns[:, 0])
 
 from matplotlib import pyplot as plt
-from VeraGridEngine.Simulations import SmallSignalStabilityRmsDriver, SmallSignalStabilityRmsOptions
+from VeraGridEngine.Simulations import SmallSignalStabilityRmsDriver, RmsSmallSignalStabilityOptions
 
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
@@ -211,7 +211,7 @@ options = RmsOptions(time_step=0.001,
 ######################################################################################################
 
 
-ss_options = SmallSignalStabilityRmsOptions(ss_assessment_time=0)
+ss_options = RmsSmallSignalStabilityOptions(ss_assessment_time=0)
 
 # Create driver with dummy grid (it will create RmsProblemDae internally)
 driver = SmallSignalStabilityRmsDriver(
