@@ -14,7 +14,7 @@ from scipy.spatial.distance import cdist
 from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy.special import gammaincinv
 import random
-import pandas as pd
+from .procedural_grid_debugger import ProceduralGridDebugger
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -145,6 +145,8 @@ class ProceduralGridComputationEngine:
         self.candidate_buses: List[dev.Bus] = list()
         self.steiner_buses: List[dev.Bus] = list()  # this is a result
 
+        self.debugger = ProceduralGridDebugger(enabled=True)
+
         for sg in self.candidates_substations:
             for i, bus in enumerate(self.grid.get_substation_buses(sg)):
                 bus.name = f"Candidate_{i}"
@@ -184,19 +186,37 @@ class ProceduralGridComputationEngine:
                                       max_iterations=15000)
 
         initial_steiner_points, history = network.run_vsa()
-        print("Passed VSA.")
+        print("Passed VSA.\n")
         # 2B. Prune redundant nodes
         final_steiner_pts = network.prune_redundant_nodes(initial_steiner_points)
-        print("Passed pruning.")
+        print("Passed pruning.\n")
         # 2C. Get edges of the final network
         coords_final_network = np.r_[network.base_coords, final_steiner_pts]
         dist_matrix = cdist(coords_final_network, coords_final_network, metric='euclidean')
         final_mst = minimum_spanning_tree(dist_matrix).toarray()
-        print("Passed MST.")
+        print("Passed MST.\n")
         # generate edges
         rows, cols = np.where(final_mst > 0)
         edges = list(zip(rows, cols))
-        print("Passed edges.")
+
+        self.debugger.validate_edge_indices(
+            edges=edges,
+            n_nodes=coords_final_network.shape[0],
+        )
+
+        self.debugger.print_edges(edges=edges)
+
+        self.debugger.plot_mst_graph(
+            coords_final_network=coords_final_network,
+            edges=edges,
+            n_candidate=len(self.candidate_buses),
+            n_target=len(self.target_buses),
+            final_steiner_pts=final_steiner_pts,
+        )
+
+        # TODO: Print element_transition_matrix for debugging
+
+        print("Passed edges.\n")
         # 2E. Assign voltages to Steiner Points
         closest_voltage = np.zeros(final_steiner_pts.shape[0])
         for i in range(final_steiner_pts.shape[0]):
@@ -206,15 +226,17 @@ class ProceduralGridComputationEngine:
 
         # 2F. Create Node buses (M, N, S)
         for i in range(final_steiner_pts.shape[0]):
-            self.steiner_buses.append(
-                dev.Bus(
+            sp_bus = dev.Bus(
                     name=f"Intermediate_{i}",
                     Vnom=float(closest_voltage[i]),
                     longitude=final_steiner_pts[i, 0],
                     latitude=final_steiner_pts[i, 1],
                 )
-            )
-        print("Passed bus creation.")
+            # Remove list if you do not need it anymore
+            self.steiner_buses.append(sp_bus)
+            self.grid.add_bus(obj=sp_bus)
+
+        print("Passed bus creation.\n")
         all_buses = self.candidate_buses + self.target_buses + self.steiner_buses
 
         # 3. Create Topology from Graph
@@ -232,9 +254,18 @@ class ProceduralGridComputationEngine:
                             transition_matrix=self.transition_matrix,
                             discretization=25.0)
 
-        expansion_grid = topology.generate_markov()
+        before_names = self.debugger.snapshot_grid_element_names(self.grid)
 
-        topology.add_loads()
+        topology.generate_markov()
+
+        added_names = self.debugger.get_added_element_names(
+            grid=self.grid,
+            previous_names=before_names,
+        )
+
+        print("Added elements:")
+        for name in added_names:
+            print(name)
 
         print("Passed add_loads().")
 
@@ -312,7 +343,7 @@ class Topology:
             next_bus = input_bus
 
             if next_bus.name not in bus_name_log:
-                expansion_grid.add_bus(obj=next_bus)
+                self.grid.add_bus(obj=next_bus)
                 # Add the bus in bus_name_log
                 bus_name_log.append(next_bus.name)
 
@@ -340,7 +371,7 @@ class Topology:
                     else:
 
                         if next_bus.name not in bus_name_log:
-                            expansion_grid.add_bus(obj=next_bus)
+                            self.grid.add_bus(obj=next_bus)
                             # Add the bus in bus_name_log
                             bus_name_log.append(next_bus.name)
 
@@ -367,7 +398,7 @@ class Topology:
                     )
                     next_bus.Vm_cost = next_bus.Vnom * 1000.0
 
-                    expansion_grid.add_bus(obj=next_bus)
+                    self.grid.add_bus(obj=next_bus)
                     intermediate_bus_counter += 1
 
                 v1 = float(current_bus.Vnom)
@@ -467,11 +498,11 @@ class Topology:
         Add a branch object to the correct container of the expansion grid.
         """
         if isinstance(branch, dev.Line):
-            expansion_grid.add_line(obj=branch)
+            self.grid.add_line(obj=branch)
             return
 
         if isinstance(branch, dev.Transformer2W):
-            expansion_grid.add_transformer2w(obj=branch)
+            self.grid.add_transformer2w(obj=branch)
             return
 
         # Extend later for VSC, HVDC, switches, etc.
