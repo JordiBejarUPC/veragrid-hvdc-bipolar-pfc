@@ -8,7 +8,7 @@ from matplotlib import pyplot as plt
 from typing import List, Dict
 
 from VeraGridEngine.Simulations.results_template import ResultsTemplate
-from VeraGridEngine.basic_structures import Vec, StrVec,  DateVec
+from VeraGridEngine.basic_structures import Vec, StrVec,  DateVec, Mat
 from VeraGridEngine.enumerations import StudyResultsType,  DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES

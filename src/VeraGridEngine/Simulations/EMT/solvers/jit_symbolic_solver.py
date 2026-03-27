@@ -367,12 +367,6 @@ class JitSymbolicSolver:
         residual_debug_info: List[dict] = list()
         synthetic_diff_terms: List[Var] = [Var(name=f"d_{sv.name}", base_var=sv) for sv in self.state_vars]
 
-        # for i, rhs in enumerate(self.state_eqs):
-        #     # sv = self.state_vars[i]
-        #     # d_term = Var(name=f"d_{sv.name}", base_var=sv)
-        #     d_term = self.diff_vars[i]  # real associated diff_var
-        #     equations.append(d_term - rhs)
-
         for i, rhs in enumerate(self.state_eqs):
             sv = self.state_vars[i]
             d_term = synthetic_diff_terms[i]
@@ -581,17 +575,6 @@ class JitSymbolicSolver:
         self._build_jit_symbolic_hybrid(method, use_sparse=is_sparse)
         jac_key_main = f"{method}_{is_sparse}"
 
-        # Prepare BackEuler fallback kernels for initial step or events
-        if method == DynamicIntegrationMethod.DaeTrapezoidal:
-            if DynamicIntegrationMethod.DaeBackEuler not in self.jit_kernels:
-                self.build_jit_kernel(DynamicIntegrationMethod.DaeBackEuler)
-            else:
-                pass
-            self._build_jit_symbolic_hybrid(DynamicIntegrationMethod.DaeBackEuler, use_sparse=is_sparse)
-        else:
-            pass
-        jac_key_be = f"{DynamicIntegrationMethod.DaeBackEuler}_{is_sparse}"
-
         if self.verbose:
             mode_str = "DENSE" if use_dense_solver else "SPARSE"
             print(f"   [Config] System N={n_eqs}. Using {mode_str} linear solver (Threshold={self.dense_threshold}).")
@@ -624,7 +607,7 @@ class JitSymbolicSolver:
         n_event_params = self.problem.get_variable_parameter_number()
 
         if params0 is not None:
-            ev_params = params0.copy()
+            ev_params =  np.array(params0, dtype=np.float64, copy=True)
         else:
             ev_params = self.problem.event_params_values.copy()
 
@@ -706,15 +689,8 @@ class JitSymbolicSolver:
                 else:
                     pass
 
-                method_eff = method
-                if i == 0 and is_first_local_step and method == DynamicIntegrationMethod.DaeTrapezoidal:
-                    method_eff = DynamicIntegrationMethod.DaeBackEuler
-                else:
-                    pass
-
-                kernel_list_eff = self.jit_kernels[method_eff]
-                jac_key_eff = jac_key_main if method_eff == method else jac_key_be
-                current_jacobian_eff = self.jit_jacobian_symbolic[jac_key_eff]
+                kernel_list_eff = self.jit_kernels[method]
+                current_jacobian_eff = self.jit_jacobian_symbolic[jac_key_main]
 
                 ev_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
                 full_params = np.concatenate((ev_params, static_vals))

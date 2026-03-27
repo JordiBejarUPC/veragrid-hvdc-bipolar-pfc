@@ -608,7 +608,7 @@ class JitAdSolver:
         n_event_params = self.problem.get_variable_parameter_number()
 
         if params0 is not None:
-            ev_params = params0.copy()
+            ev_params = np.array(params0, dtype=np.float64, copy=True)
         else:
             ev_params = self.problem.event_params_values.copy()
 
