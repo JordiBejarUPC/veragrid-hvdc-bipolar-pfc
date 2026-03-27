@@ -153,7 +153,7 @@ trafo_mdl = get_transformer_emt_template(grid=circuit, trafo=transformer, name=t
 
 # VSC model (standard converter: DC -> AC with power balance)
 vsc_mdl = StandardConverterEmtBuild(
-    vfactory=circuit.emt_var_factory,
+    vf=circuit.emt_var_factory,
     name=vsc.name,
     P_ref0=p_transfer_mw / circuit.Sbase,
 ).block

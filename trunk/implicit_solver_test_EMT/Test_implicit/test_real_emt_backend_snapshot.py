@@ -4,7 +4,6 @@ from typing import Any, Dict, Tuple
 import numpy as np
 
 import VeraGridEngine.api as gce
-from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph

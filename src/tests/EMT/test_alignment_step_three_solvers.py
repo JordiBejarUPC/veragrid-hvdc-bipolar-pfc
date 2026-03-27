@@ -1,3 +1,8 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can see it at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+
 from __future__ import annotations
 
 import math
@@ -6,7 +11,6 @@ from typing import Any, List, Sequence, Tuple, cast
 import numpy as np
 import pytest
 from scipy.sparse import csc_matrix
-
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import (
@@ -23,6 +27,8 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import (
 )
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
+from VeraGridEngine.enumerations import EmtSolverTypes
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 
 
 class DummyProblem(EmtProblemTemplate):
@@ -34,11 +40,12 @@ class DummyProblem(EmtProblemTemplate):
     """
 
     def __init__(self) -> None:
+        vf: VarFactory = VarFactory()
         sys_block: Block = Block(children=[], in_vars=[])
         glob_time: Var = Var(self.TIME_NAME)
 
-        x: Var = Var("x")
-        dx: Var = Var("dx", base_var=x)
+        x: Var = vf.add_var("x")
+        dx: Var = vf.add_diff_var("dx", base_var=x)
 
         sys_block.state_vars = [x]
         sys_block.algebraic_vars = []
@@ -185,14 +192,14 @@ def _dummy_fused_residual(
 @pytest.mark.parametrize(
     ("solver_kind", "expected_updates"),
     [
-        ("symbolic", [0.00, 0.05, 0.10, 0.15, 0.20]),
-        ("ad", [0.05, 0.10, 0.15, 0.20]),
-        ("structural", [0.00, 0.05, 0.10, 0.15, 0.20]),
+        (EmtSolverTypes.Symbolic, [0.00, 0.05, 0.10, 0.15, 0.20]),
+        (EmtSolverTypes.Automatic, [0.05, 0.10, 0.15, 0.20]),
+        (EmtSolverTypes.StructuralAD, [0.00, 0.05, 0.10, 0.15, 0.20]),
     ],
 )
 def test_force_step_alignment_is_used_by_all_three_solvers(
     monkeypatch: pytest.MonkeyPatch,
-    solver_kind: str,
+    solver_kind: EmtSolverTypes,
     expected_updates: Sequence[float],
 ) -> None:
     """
@@ -212,7 +219,7 @@ def test_force_step_alignment_is_used_by_all_three_solvers(
     updater: BoundaryUpdaterInterface = ForcedEventTracker(forced_times=[0.05, 0.15])
     integration_method = DynamicIntegrationMethod.DaeBackEuler
 
-    if solver_kind == "symbolic":
+    if solver_kind == EmtSolverTypes.Symbolic:
         solver = JitSymbolicSolver(
             problem=problem,
             t0=0.0,
@@ -237,7 +244,7 @@ def test_force_step_alignment_is_used_by_all_three_solvers(
             boundary_updater=cast(SymbolicBoundaryUpdateWrapper, cast(object, updater))
         )
 
-    elif solver_kind == "ad":
+    elif solver_kind == EmtSolverTypes.Automatic:
         solver = JitAdSolver(
             problem=problem,
             t0=0.0,
@@ -253,7 +260,7 @@ def test_force_step_alignment_is_used_by_all_three_solvers(
 
         t, y, dy = solver.simulate(boundary_updater=updater)
 
-    elif solver_kind == "structural":
+    elif solver_kind == EmtSolverTypes.StructuralAD:
         solver = StructuralVectorizedSolver(
             problem=problem,
             t0=0.0,

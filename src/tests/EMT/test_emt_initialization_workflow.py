@@ -1,7 +1,11 @@
-import unittest
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can see it at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+
+from typing import Tuple
 
 import numpy as np
-from typing import Tuple
 
 import VeraGridEngine.api as gce
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -27,19 +31,22 @@ from VeraGridEngine.Simulations.EMT.initialization_emt import (
     run_emt_native_initialization,
 )
 
+
 class GenericEmtProblem(EmtProblemTemplate):
     """
     Minimal EMT problem implementation used by initialization workflow tests.
     """
-
     __slots__ = []
 
 
 class SimpleInitializationContext:
     """
     Typed container for the tiny EMT initialization test problems.
-    """
 
+    :ivar _x_var: State variable.
+    :ivar _y_var: Algebraic variable.
+    :ivar _dx_var: Differential variable.
+    """
     __slots__ = ["_x_var", "_y_var", "_dx_var"]
 
     def __init__(self, x_var: Var, y_var: Var, dx_var: Var) -> None:
@@ -49,42 +56,39 @@ class SimpleInitializationContext:
         :param x_var: State variable.
         :param y_var: Algebraic variable.
         :param dx_var: Differential variable.
-        :return: None
         """
         self._x_var: Var = x_var
         self._y_var: Var = y_var
         self._dx_var: Var = dx_var
 
     def get_x_var(self) -> Var:
-        """
-        Return the state variable.
-
-        :return: State variable.
-        """
+        """Return the state variable."""
         return self._x_var
 
     def get_y_var(self) -> Var:
-        """
-        Return the algebraic variable.
-
-        :return: Algebraic variable.
-        """
+        """Return the algebraic variable."""
         return self._y_var
 
     def get_dx_var(self) -> Var:
-        """
-        Return the differential variable.
-
-        :return: Differential variable.
-        """
+        """Return the differential variable."""
         return self._dx_var
 
 
 class TwoBusRealEmtContext:
     """
     Typed container for the real two-bus EMT benchmark case.
-    """
 
+    :ivar _grid: Multi-circuit container.
+    :ivar _bus0: Slack bus.
+    :ivar _bus1: Load bus.
+    :ivar _line0: EMT line.
+    :ivar _load: EMT load.
+    :ivar _gen0: EMT generator.
+    :ivar _gen_mdl: Generator EMT block.
+    :ivar _line_mdl: Line EMT block.
+    :ivar _load_mdl: Load EMT block.
+    :ivar _pf_results: Power-flow results object.
+    """
     __slots__ = ["_grid", "_bus0", "_bus1", "_line0", "_load", "_gen0", "_gen_mdl", "_line_mdl", "_load_mdl", "_pf_results"]
 
     def __init__(
@@ -113,7 +117,6 @@ class TwoBusRealEmtContext:
         :param line_mdl: Line EMT block.
         :param load_mdl: Load EMT block.
         :param pf_results: Power-flow results object.
-        :return: None
         """
         self._grid: gce.MultiCircuit = grid
         self._bus0: gce.Bus = bus0
@@ -127,20 +130,66 @@ class TwoBusRealEmtContext:
         self._pf_results: object = pf_results
 
     def get_grid(self) -> gce.MultiCircuit:
-        """
-        Return the grid object.
-
-        :return: Grid object.
-        """
+        """Return the grid object."""
         return self._grid
 
     def get_pf_results(self) -> object:
-        """
-        Return the power-flow results object.
-
-        :return: Power-flow results.
-        """
+        """Return the power-flow results object."""
         return self._pf_results
+
+
+class InitializationBenchmarkRecord:
+    """
+    Record of initialization benchmark results.
+
+    :ivar _case_name: Name identifier for the test case.
+    :ivar _method_name: Name of the initialization method used.
+    :ivar _status_name: Final status of the initialization.
+    :ivar _residual_inf: Infinity-norm of algebraic residual after initialization.
+    :ivar _dx0_inf: Infinity-norm of derivative vector at initialization.
+    :ivar _elapsed_s: Wall-clock time elapsed during initialization.
+    """
+    __slots__ = ["_case_name", "_method_name", "_status_name", "_residual_inf", "_dx0_inf", "_elapsed_s"]
+
+    def __init__(
+            self,
+            case_name: str,
+            method_name: str,
+            status_name: str,
+            residual_inf: float,
+            dx0_inf: float,
+            elapsed_s: float,
+    ) -> None:
+        self._case_name: str = case_name
+        self._method_name: str = method_name
+        self._status_name: str = status_name
+        self._residual_inf: float = float(residual_inf)
+        self._dx0_inf: float = float(dx0_inf)
+        self._elapsed_s: float = float(elapsed_s)
+
+    def get_case_name(self) -> str:
+        """Return the case name."""
+        return self._case_name
+
+    def get_method_name(self) -> str:
+        """Return the method name."""
+        return self._method_name
+
+    def get_status_name(self) -> str:
+        """Return the status name."""
+        return self._status_name
+
+    def get_residual_inf(self) -> float:
+        """Return the residual infinity-norm."""
+        return self._residual_inf
+
+    def get_dx0_inf(self) -> float:
+        """Return the dx0 infinity-norm."""
+        return self._dx0_inf
+
+    def get_elapsed_s(self) -> float:
+        """Return the elapsed time in seconds."""
+        return self._elapsed_s
 
 
 def build_single_state_single_algebraic_problem() -> Tuple[GenericEmtProblem, SimpleInitializationContext]:
@@ -148,7 +197,14 @@ def build_single_state_single_algebraic_problem() -> Tuple[GenericEmtProblem, Si
     Build a tiny EMT problem where explicit initialization resolves the state and
     consistent initialization resolves one algebraic variable.
 
-    :return: Problem instance and variable lookup.
+    The problem consists of:
+    - State variable x with differential dx
+    - Algebraic variable y linked by equation y = x
+    - Algebraic equation y = 2.0
+    - Initial condition x = 2.0
+
+    :returns: Tuple of (problem, context) where problem is the EMT problem
+              and context contains variable references.
     """
     var_factory: VarFactory = VarFactory()
     x_var: Var = var_factory.add_var("x")
@@ -174,7 +230,11 @@ def build_unresolved_state_problem() -> Tuple[GenericEmtProblem, SimpleInitializ
     Build a tiny EMT problem where one state is left unresolved and must be solved
     from the steady-state condition.
 
-    :return: Problem instance and variable lookup.
+    The problem has no explicit initial conditions, requiring the
+    initialization algorithm to find a consistent equilibrium.
+
+    :returns: Tuple of (problem, context) where problem is the EMT problem
+              and context contains variable references.
     """
     var_factory: VarFactory = VarFactory()
     x_var: Var = var_factory.add_var("x_eq")
@@ -196,11 +256,11 @@ def build_unresolved_state_problem() -> Tuple[GenericEmtProblem, SimpleInitializ
 
 def evaluate_algebraic_residual_inf(problem: EmtProblemTemplate) -> float:
     """
-    Evaluate the infinity norm of the algebraic residual at the current stored
+    Evaluate the infinity-norm of the algebraic residual at the current stored
     initialization point.
 
     :param problem: EMT problem to evaluate.
-    :return: Algebraic residual infinity norm.
+    :returns: Maximum absolute residual value, or 0.0 if no algebraic equations.
     """
     algebraic_eqs: list[Expr] = problem.get_algebraic_eqs()
     if len(algebraic_eqs) == 0:
@@ -232,9 +292,13 @@ def build_two_bus_real_emt_case(
     Build the standard real EMT two-bus benchmark case used by snapshot and
     initialization tests.
 
-    :param zip_load: Whether to use the ZIP load model instead of the resistive load.
-    :param initialization_method: EMT initialization workflow to request.
-    :return: EMT problem and contextual objects.
+    Creates a grid with a slack generator at bus0 and a load at bus1,
+    connected by a transmission line. Power flow is run to obtain
+    initial operating point.
+
+    :param zip_load: If True, use ZIP load model; otherwise use RLC shunt.
+    :param initialization_method: EMT initialization method to use.
+    :returns: Tuple of (problem, context) with EMT problem and grid context.
     """
     grid = gce.MultiCircuit(Sbase=2.0, fbase=50.0)
 
@@ -245,7 +309,6 @@ def build_two_bus_real_emt_case(
     grid.add_bus(bus1)
 
     line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
-
 
     tower = gce.OverheadLineType(name="Tower", Vnom=vnom)
     wire = gce.Wire(
@@ -285,9 +348,7 @@ def build_two_bus_real_emt_case(
         load_mdl = get_shunt_r_3ph_emt_template(vf=grid.emt_var_factory).block
 
     set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.emt_var_factory)
-
     set_emt_model(device=line0, model=line_mdl, var_factory=grid.emt_var_factory)
-
     set_emt_model(device=load, model=load_mdl, var_factory=grid.emt_var_factory)
 
     pf_options = PowerFlowOptions(
@@ -342,83 +403,105 @@ def build_two_bus_real_emt_case(
     return problem, context
 
 
+def test_consistent_newton_initializes_missing_algebraic_and_dx0() -> None:
+    """
+    Test that Consistent Newton initializes missing algebraic variable and dx0.
 
-class TestEmtInitializationWorkflow(unittest.TestCase):
+    Verifies that the Consistent Newton method correctly resolves
+    a simple problem with one state and one algebraic variable,
+    producing x = 2.0, y = 2.0, and dx = 0.0.
+    """
+    problem, context = build_single_state_single_algebraic_problem()
+    options = EmtOptions(initialization_method=EmtInitializationMethod.ConsistentNewton)
 
-    def test_consistent_newton_initializes_missing_algebraic_and_dx0(self) -> None:
-        problem, context = build_single_state_single_algebraic_problem()
-        options = EmtOptions(initialization_method=EmtInitializationMethod.ConsistentNewton)
+    run_emt_explicit_initialization(problem)
+    report = run_emt_native_initialization(problem, options)
 
-        run_emt_explicit_initialization(problem)
-        report = run_emt_native_initialization(problem, options)
+    idx_x = problem.get_var_idx(context.get_x_var())
+    idx_y = problem.get_var_idx(context.get_y_var())
+    idx_dx = problem.get_diff_var_idx(context.get_dx_var())
 
-        idx_x = problem.get_var_idx(context.get_x_var())
-        idx_y = problem.get_var_idx(context.get_y_var())
-        idx_dx = problem.get_diff_var_idx(context.get_dx_var())
+    x0 = problem.get_x0()
+    dx0 = problem.get_dx0()
 
-        x0 = problem.get_x0()
-        dx0 = problem.get_dx0()
+    assert report.status == InitializationStatus.RESOLVED
+    assert abs(x0[idx_x] - 2.0) < 1e-9
+    assert abs(x0[idx_y] - 2.0) < 1e-9
+    assert abs(dx0[idx_dx] - 0.0) < 1e-9
 
-        self.assertEqual(report.status, InitializationStatus.RESOLVED)
-        self.assertAlmostEqual(x0[idx_x], 2.0, places=9)
-        self.assertAlmostEqual(x0[idx_y], 2.0, places=9)
-        self.assertAlmostEqual(dx0[idx_dx], 0.0, places=9)
 
-    def test_consistent_newton_uses_state_equilibrium_for_unresolved_states(self) -> None:
-        problem, context = build_unresolved_state_problem()
-        options = EmtOptions(initialization_method=EmtInitializationMethod.ConsistentNewton)
+def test_consistent_newton_uses_state_equilibrium_for_unresolved_states() -> None:
+    """
+    Test that Consistent Newton uses state equilibrium for unresolved states.
 
-        report = run_emt_native_initialization(problem, options)
+    Verifies that when no explicit initial conditions are provided,
+    the method finds the steady-state equilibrium with x = 3.0, y = 3.0.
+    """
+    problem, context = build_unresolved_state_problem()
+    options = EmtOptions(initialization_method=EmtInitializationMethod.ConsistentNewton)
 
-        idx_x = problem.get_var_idx(context.get_x_var())
-        idx_y = problem.get_var_idx(context.get_y_var())
-        idx_dx = problem.get_diff_var_idx(context.get_dx_var())
+    report = run_emt_native_initialization(problem, options)
 
-        x0 = problem.get_x0()
-        dx0 = problem.get_dx0()
+    idx_x = problem.get_var_idx(context.get_x_var())
+    idx_y = problem.get_var_idx(context.get_y_var())
+    idx_dx = problem.get_diff_var_idx(context.get_dx_var())
 
-        self.assertEqual(report.status, InitializationStatus.RESOLVED)
-        self.assertAlmostEqual(x0[idx_x], 3.0, places=9)
-        self.assertAlmostEqual(x0[idx_y], 3.0, places=9)
-        self.assertAlmostEqual(dx0[idx_dx], 0.0, places=9)
+    x0 = problem.get_x0()
+    dx0 = problem.get_dx0()
 
-    def test_pseudo_transient_method_converges_on_simple_problem(self) -> None:
-        problem, _ = build_unresolved_state_problem()
-        options = EmtOptions(
-            initialization_method=EmtInitializationMethod.PseudoTransient,
-            init_newton_tol=1e-8,
-            init_ptc_max_iter=80,
-        )
+    assert report.status == InitializationStatus.RESOLVED
+    assert abs(x0[idx_x] - 3.0) < 1e-9
+    assert abs(x0[idx_y] - 3.0) < 1e-9
+    assert abs(dx0[idx_dx] - 0.0) < 1e-9
 
-        report = run_emt_native_initialization(problem, options)
 
-        self.assertEqual(report.status, InitializationStatus.RESOLVED)
-        self.assertEqual(report.method_used, EmtInitializationMethod.PseudoTransient)
-        self.assertLessEqual(report.final_residual_inf, options.init_newton_tol)
+def test_pseudo_transient_method_converges_on_simple_problem() -> None:
+    """
+    Test that Pseudo Transient method converges on simple problem.
 
-    def test_auto_initialization_is_not_worse_than_explicit_on_real_case(self) -> None:
-        explicit_problem, _ = build_two_bus_real_emt_case(
-            zip_load=True,
-            initialization_method=EmtInitializationMethod.Explicit,
-        )
-        auto_problem, _ = build_two_bus_real_emt_case(
-            zip_load=True,
-            initialization_method=EmtInitializationMethod.Auto,
-        )
+    Verifies that the Pseudo Transient initialization method
+    successfully resolves the same problem with residual below tolerance.
+    """
+    problem, _ = build_unresolved_state_problem()
+    options = EmtOptions(
+        initialization_method=EmtInitializationMethod.PseudoTransient,
+        init_newton_tol=1e-8,
+        init_ptc_max_iter=80,
+    )
 
-        explicit_res = evaluate_algebraic_residual_inf(explicit_problem)
-        auto_res = evaluate_algebraic_residual_inf(auto_problem)
+    report = run_emt_native_initialization(problem, options)
 
-        self.assertTrue(np.isfinite(explicit_res))
-        self.assertTrue(np.isfinite(auto_res))
-        self.assertLessEqual(auto_res, explicit_res + 1.0e-8)
-        self.assertIsNotNone(auto_problem.initialization_report)
-        assert auto_problem.initialization_report is not None
-        self.assertIn(
-            auto_problem.initialization_report.status,
-            {InitializationStatus.RESOLVED, InitializationStatus.FAILED},
-        )
+    assert report.status == InitializationStatus.RESOLVED
+    assert report.method_used == EmtInitializationMethod.PseudoTransient
+    assert report.final_residual_inf <= options.init_newton_tol
+
+
+def test_auto_initialization_is_not_worse_than_explicit_on_real_case() -> None:
+    """
+    Test that Auto initialization is comparable to Explicit on real case.
+
+    Verifies that the Auto initialization method produces results
+    comparable to Explicit initialization on a realistic two-bus grid.
+    """
+    explicit_problem, _ = build_two_bus_real_emt_case(
+        zip_load=True,
+        initialization_method=EmtInitializationMethod.Explicit,
+    )
+    auto_problem, _ = build_two_bus_real_emt_case(
+        zip_load=True,
+        initialization_method=EmtInitializationMethod.Auto,
+    )
+
+    explicit_res = evaluate_algebraic_residual_inf(explicit_problem)
+    auto_res = evaluate_algebraic_residual_inf(auto_problem)
+
+    assert np.isfinite(explicit_res)
+    assert np.isfinite(auto_res)
+    assert auto_res <= explicit_res + 1.0e-8
+    assert auto_problem.initialization_report is not None
+    assert auto_problem.initialization_report.status in {InitializationStatus.RESOLVED, InitializationStatus.FAILED}
 
 
 if __name__ == "__main__":
-    unittest.main()
+    import pytest
+    pytest.main([__file__, "-v"])

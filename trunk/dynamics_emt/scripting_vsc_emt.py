@@ -112,6 +112,7 @@ circuit.add_transformer2w(transformer)
 # VSC: Bus 3 (DC) -> Bus 2 (AC)
 p_transfer_mw = 30.0 # MW
 q_transfer_mvar = 0.0 # MVAr
+# converter controls
 emt_control1 = ConverterControlType.Pdc
 emt_control2 = ConverterControlType.Qac
 vsc = gce.VSC(
@@ -182,7 +183,7 @@ trafo_mdl = get_transformer_emt_template(grid=circuit, trafo=transformer, name=t
 
 # VSC model (standard converter: DC -> AC with power balance)
 vsc_mdl = StandardConverterEmtBuild(
-    vfactory=circuit.emt_var_factory,
+    vf=circuit.emt_var_factory,
     name=vsc.name,
     sbase=circuit.Sbase,
     fbase=circuit.fBase,
