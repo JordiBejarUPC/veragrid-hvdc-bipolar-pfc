@@ -18,14 +18,13 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
 )
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
-from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
+from VeraGridEngine.Utils.Symbolic.jit_compiler import EagerEquationCompiler, EquationCompiler
 from VeraGridEngine.Utils.Symbolic.diagnostic import (with_newton_diagnostics, NewtonDiagnosticsConfig,
                                                        NewtonSolveContext, dense_lstsq_fallback,
-                                                       sparse_lsqr_fallback, maybe_check_index1,
-                                                       maybe_apply_backtracking)
+                                                        sparse_lsqr_fallback, maybe_check_index1,
+                                                        maybe_apply_backtracking)
 from VeraGridEngine.basic_structures import Vec, Mat
 from typing import Tuple, Callable, List, Any, Dict, Set, Union
-import uuid
 from scipy.sparse import csc_matrix
 
 def _safe_njit(py_func: Callable[..., Any], fastmath: bool = True, cache: bool = True, signature: Any = None) -> Callable[..., Any]:
@@ -55,9 +54,9 @@ def _safe_njit(py_func: Callable[..., Any], fastmath: bool = True, cache: bool =
 
 @nb.njit(cache=True, fastmath=True)
 def _scatter_color_jvp_to_csc_data(jvp: np.ndarray,
-                                  data: np.ndarray,
-                                  color_ptr: np.ndarray,
-                                  col_ptr: np.ndarray,
+                                   data: np.ndarray,
+                                   color_ptr: np.ndarray,
+                                   col_ptr: np.ndarray,
                                   row_idx: np.ndarray,
                                   data_idx: np.ndarray,
                                   color_id: int) -> None:
@@ -71,6 +70,43 @@ def _scatter_color_jvp_to_csc_data(jvp: np.ndarray,
         p1: int = int(col_ptr[k + 1])
         for p in range(p0, p1):
             data[data_idx[p]] = jvp[row_idx[p]]
+
+
+def _compile_master_jacobian_kernel(ad_kernel: Callable[..., Any], n_colors: int) -> Callable[..., Any]:
+    """
+    Build the eager sparse Jacobian dispatcher.
+
+    :param ad_kernel: Generic AD kernel reused across graph colors.
+    :type ad_kernel: Callable[..., Any]
+    :param n_colors: Number of graph colors.
+    :type n_colors: int
+    :return: Jacobian dispatcher.
+    :rtype: Callable[..., Any]
+    """
+    def master_jacobian(
+            states: Vec,
+            seed_matrix: Mat,
+            params: Vec,
+            history: Vec,
+            d_history: Vec,
+            h: float,
+            history2: Vec,
+            data: Vec,
+            color_ptr: np.ndarray,
+            col_ptr: np.ndarray,
+            row_idx: np.ndarray,
+            data_idx: np.ndarray,
+            work_jvp: Mat,
+    ) -> None:
+        color_index: int = 0
+
+        while color_index < n_colors:
+            local_jvp: Vec = work_jvp[color_index]
+            ad_kernel(states, seed_matrix[color_index], params, history, d_history, h, local_jvp, history2)
+            _scatter_color_jvp_to_csc_data(local_jvp, data, color_ptr, col_ptr, row_idx, data_idx, color_index)
+            color_index += 1
+
+    return master_jacobian
 
 
 def greedy_color_columns(col_rows: List[List[int]], n_rows: int) -> Tuple[np.ndarray, int]:
@@ -192,6 +228,161 @@ class Predictor:
         x_iter[:ns] = x_prev[:ns] + h * dx_prev[:ns]
         return x_iter
 
+
+def fill_full_parameter_buffer(runtime_params: Vec, static_params: Vec, full_params_out: Vec) -> None:
+    """
+    Write runtime and static parameters into one preallocated full buffer.
+
+    :param runtime_params: Runtime parameter slice.
+    :type runtime_params: Vec
+    :param static_params: Static parameter slice.
+    :type static_params: Vec
+    :param full_params_out: Destination full parameter vector.
+    :type full_params_out: Vec
+    :return: None.
+    :rtype: None
+    """
+    n_runtime: int = runtime_params.shape[0]
+    n_static: int = static_params.shape[0]
+
+    # The runtime portion must be refreshed every local substep because events
+    # and boundary updates can change it in place.
+    full_params_out[:n_runtime] = runtime_params
+
+    # The static portion is copied after the runtime slice so the solver sees a
+    # stable [runtime | static] layout in every backend call.
+    full_params_out[n_runtime:n_runtime + n_static] = static_params
+
+
+def evaluate_batched_residual(
+        kernel_list: List[Callable[..., Any]],
+        x_iter: Vec,
+        full_params: Vec,
+        x_prev: Vec,
+        dx_prev: Vec,
+        h_eff: float,
+        x_prev2: Vec,
+        residual_out: Vec,
+) -> float:
+    """
+    Evaluate all residual batches into a caller-owned buffer.
+
+    :param kernel_list: Batched residual kernels.
+    :type kernel_list: List[Callable[..., Any]]
+    :param x_iter: Current Newton iterate.
+    :type x_iter: Vec
+    :param full_params: Full parameter vector.
+    :type full_params: Vec
+    :param x_prev: Previous accepted state.
+    :type x_prev: Vec
+    :param dx_prev: Previous derivative vector.
+    :type dx_prev: Vec
+    :param h_eff: Effective local time step.
+    :type h_eff: float
+    :param x_prev2: Secondary state history.
+    :type x_prev2: Vec
+    :param residual_out: Destination residual buffer.
+    :type residual_out: Vec
+    :return: Residual infinity norm.
+    :rtype: float
+    """
+    residual_out[:] = 0.0
+
+    # The residual is assembled batch by batch because the symbolic compiler
+    # splits large systems to keep code generation robust.
+    for kernel in kernel_list:
+        kernel(x_iter, full_params, x_prev, dx_prev, h_eff, residual_out, x_prev2)
+
+    return float(np.linalg.norm(residual_out, np.inf))
+
+
+class AdBacktrackingResidualEvaluator:
+    """
+    Wrapper that evaluates AD residual batches for line-search backtracking.
+    """
+
+    __slots__ = ["_kernel_list", "_full_params", "_x_prev", "_dx_prev", "_h_eff", "_x_prev2"]
+
+    def __init__(self) -> None:
+        """
+        Build one empty backtracking evaluator.
+
+        :return: None.
+        :rtype: None
+        """
+        self._kernel_list: List[Callable[..., Any]] | None = None
+        self._full_params: Vec | None = None
+        self._x_prev: Vec | None = None
+        self._dx_prev: Vec | None = None
+        self._h_eff: float = 0.0
+        self._x_prev2: Vec | None = None
+
+    def set_context(
+            self,
+            kernel_list: List[Callable[..., Any]],
+            full_params: Vec,
+            x_prev: Vec,
+            dx_prev: Vec,
+            h_eff: float,
+            x_prev2: Vec,
+    ) -> None:
+        """
+        Store the residual-evaluation context of the current Newton step.
+
+        :param kernel_list: Batched residual kernels.
+        :type kernel_list: List[Callable[..., Any]]
+        :param full_params: Full parameter vector.
+        :type full_params: Vec
+        :param x_prev: Previous accepted state.
+        :type x_prev: Vec
+        :param dx_prev: Previous derivative vector.
+        :type dx_prev: Vec
+        :param h_eff: Effective local time step.
+        :type h_eff: float
+        :param x_prev2: Secondary state history.
+        :type x_prev2: Vec
+        :return: None.
+        :rtype: None
+        """
+        self._kernel_list = kernel_list
+        self._full_params = full_params
+        self._x_prev = x_prev
+        self._dx_prev = dx_prev
+        self._h_eff = float(h_eff)
+        self._x_prev2 = x_prev2
+
+    def evaluate(self, candidate_x: Vec, out_res: Vec) -> float:
+        """
+        Evaluate one trial Newton iterate during backtracking.
+
+        :param candidate_x: Trial iterate.
+        :type candidate_x: Vec
+        :param out_res: Destination residual buffer.
+        :type out_res: Vec
+        :return: Residual infinity norm.
+        :rtype: float
+        """
+        if self._kernel_list is None:
+            return np.inf
+        else:
+            pass
+
+        if self._full_params is None or self._x_prev is None or self._dx_prev is None or self._x_prev2 is None:
+            return np.inf
+        else:
+            pass
+
+        return evaluate_batched_residual(
+            kernel_list=self._kernel_list,
+            x_iter=candidate_x,
+            full_params=self._full_params,
+            x_prev=self._x_prev,
+            dx_prev=self._dx_prev,
+            h_eff=self._h_eff,
+            x_prev2=self._x_prev2,
+            residual_out=out_res,
+        )
+
 class SparseADJacobian:
     """
     Sparse Jacobian evaluator with DEBUG TIMING.
@@ -200,7 +391,8 @@ class SparseADJacobian:
         'equations', 'variables', 'parameters', 'method', 'use_cse', 'dtype',
         'n_rows', 'n_cols', 'var_map', 'param_map', 'col_rows', 'J',
         'colors', 'n_colors', 'color_groups', 'color_ptr', 'color_cols',
-        'col_ptr', 'row_idx', 'data_idx', '_compiler', 'ad_kernels', '_seeds'
+        'col_ptr', 'row_idx', 'data_idx', '_compiler', '_ad_kernel', '_master_dispatcher',
+        '_seed_matrix', '_jvp_work_buffer', '_data_buffer'
     ]
 
     def __init__(self,
@@ -352,34 +544,35 @@ class SparseADJacobian:
         if print_enabled:
             print(f"   [AD-Debug] Scatter Map built in {t_scatter - t_color:.4f}s")
 
-        # 5) Compile Optimization: Colored Kernels
-        self._compiler = EquationCompiler(variables=variables, parameters=parameters, method=method)
-        self.ad_kernels: List[Callable] = list()
+        # 5) Compile Optimization: one generic eager AD kernel reused across colors.
+        self._compiler = EagerEquationCompiler(variables=variables, parameters=parameters, method=method)
 
         if print_enabled:
-            print(f"   [AD-Opt] Compiling {self.n_colors} specialized color kernels...")
+            print(f"   [AD-Opt] Compiling one generic AD kernel for {self.n_colors} colors...")
         t_comp_start = time.perf_counter()
 
+        k_name = f"ad_step_generic_{self.method.name}_{self.n_rows}_{self.n_cols}"
+        py_ad, signature_tpe = self._compiler.compile_ad_kernel(
+            equations,
+            func_name=k_name,
+            use_cse=use_cse,
+            active_indices=None,
+        )
+
+        self._ad_kernel = _safe_njit(py_ad, cache=True, fastmath=True, signature=signature_tpe)
+        self._master_dispatcher = _compile_master_jacobian_kernel(self._ad_kernel, self.n_colors)
+
+        self._seed_matrix = np.zeros((self.n_colors, self.n_cols), dtype=self.dtype)
         for c in range(self.n_colors):
-            active_cols = set(self.color_groups[c])
-            k_name = f"ad_step_color_{c}_{uuid.uuid4().hex[:4]}"
+            self._seed_matrix[c, self.color_groups[c]] = 1.0
 
-            py_ad = self._compiler.compile_ad_kernel(
-                equations,
-                func_name=k_name,
-                use_cse=use_cse,
-                active_indices=active_cols
-            )
-
-            kernel = _safe_njit(py_ad, cache=False, fastmath=True)
-            self.ad_kernels.append(kernel)
+        self._jvp_work_buffer = np.zeros((self.n_colors, self.n_rows), dtype=self.dtype)
+        self._data_buffer = self.J.data
 
         t_comp_end = time.perf_counter()
         if print_enabled:
-            print(f"   [AD-Opt] Kernels compiled in {t_comp_end - t_comp_start:.4f}s")
+            print(f"   [AD-Opt] Generic kernel compiled in {t_comp_end - t_comp_start:.4f}s")
             print(f"   [AD-Debug] Total Init Time: {t_comp_end - t_start:.4f}s")
-
-        self._seeds = np.zeros(self.n_cols, dtype=self.dtype)
 
     def __call__(self,
                  states: np.ndarray,
@@ -407,24 +600,31 @@ class SparseADJacobian:
         :rtype: csc_matrix
         """
 
-        data = self.J.data
-        dummy_seeds = self._seeds
-
-        for c in range(self.n_colors):
-            kernel = self.ad_kernels[c]
-            jvp = kernel(states, dummy_seeds, params, history, d_history, h, history2)
-
-            _scatter_color_jvp_to_csc_data(jvp, data,
-                                           self.color_ptr,self.col_ptr,
-                                           self.row_idx, self.data_idx,
-                                           c)
+        self._master_dispatcher(
+            states,
+            self._seed_matrix,
+            params,
+            history,
+            d_history,
+            h,
+            history2,
+            self._data_buffer,
+            self.color_ptr,
+            self.col_ptr,
+            self.row_idx,
+            self.data_idx,
+            self._jvp_work_buffer,
+        )
         return self.J
 
 class JitAdSolver:
     __slots__ = [
         'problem', 't0', 't_end', 'h', 'method', 'pred_method', 'dense_threshold', 'verbose',
         'steps', 't', 'y', 'dy',  'jit_kernels_ad', 'jit_jacobian_ad',
-        'state_vars', 'algebraic_vars', 'state_eqs', 'algebraic_eqs', '_newton_diag_config'
+        'state_vars', 'algebraic_vars', 'state_eqs', 'algebraic_eqs', '_newton_diag_config',
+        '_predictor', '_runtime_param_count', '_static_parameter_buffer', '_full_parameter_buffer',
+        '_residual_buffer', '_trial_state_buffer', '_trial_residual_buffer',
+        '_backend_build_stats', '_last_runtime_stats', '_last_sim_loop_time'
     ]
     def __init__(self,
                  problem: EmtProblemTemplate,
@@ -486,6 +686,29 @@ class JitAdSolver:
         self.state_eqs = self.problem.get_state_eqs()
         self.algebraic_eqs = self.problem.get_algebraic_eqs()
 
+        self._predictor = Predictor(n_states=self.problem.get_states_number())
+        self._runtime_param_count: int = self.problem.get_variable_parameter_number()
+        self._static_parameter_buffer: Vec = np.asarray(
+            [float(constant.value) for constant in self.problem.get_parameters_values()],
+            dtype=np.float64,
+        )
+        self._full_parameter_buffer: Vec = np.zeros(
+            self._runtime_param_count + self._static_parameter_buffer.shape[0],
+            dtype=np.float64,
+        )
+        self._residual_buffer: Vec = np.zeros(self.problem.get_all_vars_number(), dtype=np.float64)
+        self._trial_state_buffer: Vec = np.zeros(self.problem.get_all_vars_number(), dtype=np.float64)
+        self._trial_residual_buffer: Vec = np.zeros(self.problem.get_all_vars_number(), dtype=np.float64)
+        self._backend_build_stats: Dict[str, float] = dict(
+            residual_compile_s=0.0,
+            residual_batches=0.0,
+            jacobian_compile_s=0.0,
+            jacobian_builds=0.0,
+            total_s=0.0,
+        )
+        self._last_runtime_stats: Dict[str, float] = dict()
+        self._last_sim_loop_time: float = 0.0
+
     def build_jit_ad(self, only_jacobian: bool = False)-> None:
         """
         Compiles the residual kernel using batching and prepares the Sparse AD Jacobian.
@@ -499,9 +722,13 @@ class JitAdSolver:
         else:
             pass
 
+        t_total_start: float = time.perf_counter()
+
         if self.verbose:
             print(
                 f"--- [JIT-AD] Compiling {'Jacobian ONLY' if only_jacobian else 'Implicit Kernel + AD Jacobian'} ({self.method}) ---")
+        else:
+            pass
 
         sorted_vars: List[Any] = list()
         sorted_vars.extend(self.state_vars)
@@ -527,7 +754,7 @@ class JitAdSolver:
 
             if self.verbose:
                 print(f"   [JIT-AD] Splitting {n_eqs} residual eqs into {int(np.ceil(n_eqs / BATCH_SIZE))} batches...")
-            t0 = time.time()
+            t0 = time.perf_counter()
 
             for i in range(0, n_eqs, BATCH_SIZE):
                 chunk = equations[i: i + BATCH_SIZE]
@@ -537,18 +764,32 @@ class JitAdSolver:
                 batched_kernels.append(jit_func)
 
             if self.verbose:
-                print(f"   [JIT-AD] Residual Batches compiled in {time.time() - t0:.4f}s")
+                print(f"   [JIT-AD] Residual Batches compiled in {time.perf_counter() - t0:.4f}s")
+            else:
+                pass
             self.jit_kernels_ad[self.method] = batched_kernels
+            residual_elapsed_s: float = time.perf_counter() - t0
+            self._backend_build_stats['residual_compile_s'] += residual_elapsed_s
+            self._backend_build_stats['residual_batches'] += float(len(batched_kernels))
+            self._backend_build_stats['total_s'] += residual_elapsed_s
         else:
             pass
 
         # --- PART 2: JACOBIAN (O(N) setup, needed for normal and Vectorized fallback) ---
         if self.method not in self.jit_jacobian_ad:
+            jacobian_t0: float = time.perf_counter()
             jac = SparseADJacobian(equations=equations, variables=sorted_vars, parameters=all_params,
                                    method=self.method, use_cse=True)
             self.jit_jacobian_ad[self.method] = jac
+            jacobian_elapsed_s: float = time.perf_counter() - jacobian_t0
+            self._backend_build_stats['jacobian_compile_s'] += jacobian_elapsed_s
+            self._backend_build_stats['jacobian_builds'] += 1.0
+            self._backend_build_stats['total_s'] += jacobian_elapsed_s
         else:
             pass
+
+        total_elapsed_s: float = time.perf_counter() - t_total_start
+        self._backend_build_stats['total_s'] = max(self._backend_build_stats['total_s'], total_elapsed_s)
 
     def simulate(self,
                  x0: Union[Vec | None] = None,
@@ -601,11 +842,13 @@ class JitAdSolver:
         dx_prev = dx0.copy()
         x_prev2 = x0.copy()
         x_iter = x0.copy()
-        trial_x = np.zeros_like(x_iter)
-        trial_res = np.zeros(n_eqs, dtype=np.float64)
+        trial_x = self._trial_state_buffer
+        trial_res = self._trial_residual_buffer
 
-        static_vals = np.array([c.value for c in self.problem.get_parameters_values()], dtype=np.float64)
-        n_event_params = self.problem.get_variable_parameter_number()
+        static_vals = self._static_parameter_buffer
+        n_event_params = self._runtime_param_count
+        full_params = self._full_parameter_buffer
+        residual_buffer = self._residual_buffer
 
         if params0 is not None:
             ev_params = params0.copy()
@@ -616,9 +859,11 @@ class JitAdSolver:
 
         if active_boundary_updater is not None and should_initialize_at_t0:
             runtime_params0 = self.problem.def_event_params_fn(ev_params, float(self.t0))
-            full_params0 = np.concatenate((runtime_params0, static_vals))
-            active_boundary_updater.update(float(self.t0), x_prev, full_params0)
-            ev_params[:] = full_params0[:n_event_params]
+            fill_full_parameter_buffer(runtime_params0, static_vals, full_params)
+            active_boundary_updater.update(float(self.t0), x_prev, full_params)
+            ev_params[:] = full_params[:n_event_params]
+        else:
+            pass
 
         trace_collector = self.problem.get_newton_trace_collector()
         diag_cfg = self._newton_diag_config
@@ -648,11 +893,20 @@ class JitAdSolver:
                 config=diag_cfg,
                 solver_name="sparse",
             )
+        else:
+            pass
+
+        backtracking_residual_evaluator = AdBacktrackingResidualEvaluator()
 
         if self.verbose:
             print(f"-> Starting JIT (AD) Simulation ({method}, {self.steps} steps)...")
         else:
             pass
+
+        loop_start: float = time.perf_counter()
+        total_newton_iterations: int = 0
+        jacobian_evaluation_count: int = 0
+        aligned_substep_count: int = 0
 
         for i in range(self.steps):
 
@@ -680,6 +934,11 @@ class JitAdSolver:
 
                 is_aligned_substep = t_curr < (t_step_target - 1e-15)
 
+                if is_aligned_substep:
+                    aligned_substep_count += 1
+                else:
+                    aligned_substep_count = aligned_substep_count
+
                 if method == DynamicIntegrationMethod.DaeBDF2 and is_aligned_substep:
                     raise NotImplementedError(
                         "force_step_alignment is not implemented for DaeBDF2 in JitAdSolver."
@@ -691,29 +950,31 @@ class JitAdSolver:
 
                 # Parameter update via Problem
                 runtime_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
-                full_params = np.concatenate((runtime_params, static_vals))
+                fill_full_parameter_buffer(runtime_params, static_vals, full_params)
 
                 if active_boundary_updater is not None:
                     active_boundary_updater.update(t_curr, x_prev, full_params)
                 else:
                     pass
 
-                ev_params[:] = full_params[:self.problem.get_variable_parameter_number()]
+                ev_params[:] = full_params[:n_event_params]
 
                 x_iter[:] = x_prev
 
                 # PREDICTOR
                 if i == 0 and is_first_local_step and method == DynamicIntegrationMethod.DaeTrapezoidal:
-                    predictor = Predictor(n_states=n_states)
-                    predictor.predict(
+                    self._predictor.predict(
                         x_iter=x_iter,
                         x_prev=x_prev,
                         dx_prev=dx_prev,
                         h=h_eff,
                         pred_method=self.pred_method,
                     )
+                else:
+                    pass
 
                 for k in range(15):
+                    total_newton_iterations += 1
                     ctx = NewtonSolveContext(
                         t=float(t_curr),
                         step_idx=int(i),
@@ -722,12 +983,21 @@ class JitAdSolver:
                         method=str(method),
                     )
 
-                    # Execute batched residuals
-                    res = np.zeros(n_eqs, dtype=np.float64)
-                    for kn in kernel_list:
-                        kn(x_iter, full_params, x_prev, dx_prev, h_eff, res, x_prev2)
+                    # The residual buffer is reused across Newton iterations so
+                    # the hot loop does not allocate one full residual vector.
+                    res = residual_buffer
+                    res_norm_inf = evaluate_batched_residual(
+                        kernel_list=kernel_list,
+                        x_iter=x_iter,
+                        full_params=full_params,
+                        x_prev=x_prev,
+                        dx_prev=dx_prev,
+                        h_eff=h_eff,
+                        x_prev2=x_prev2,
+                        residual_out=res,
+                    )
 
-                    if np.linalg.norm(res, np.inf) < 1e-5:
+                    if res_norm_inf < 1e-5:
                         break
                     else:
                         pass
@@ -741,6 +1011,7 @@ class JitAdSolver:
                         h=h_eff,
                         history2=x_prev2,
                     )
+                    jacobian_evaluation_count += 1
 
                     if diagnostics_enabled:
                         maybe_check_index1(J, n_states, ctx=ctx, config=diag_cfg)
@@ -758,19 +1029,22 @@ class JitAdSolver:
                             delta = sp.linalg.spsolve(J, -res)
 
                     if diag_cfg.enable_backtracking:
-                        def _evaluate_trial_residual(candidate_x: Vec, out_res: Vec) -> float:
-                            out_res[:] = 0.0
-                            for candidate_kernel in kernel_list:
-                                candidate_kernel(candidate_x, full_params, x_prev, dx_prev, h_eff, out_res, x_prev2)
-                            return float(np.linalg.norm(out_res, np.inf))
+                        backtracking_residual_evaluator.set_context(
+                            kernel_list=kernel_list,
+                            full_params=full_params,
+                            x_prev=x_prev,
+                            dx_prev=dx_prev,
+                            h_eff=h_eff,
+                            x_prev2=x_prev2,
+                        )
 
                         maybe_apply_backtracking(
                             x_iter,
                             delta,
-                            float(np.linalg.norm(res, np.inf)),
+                            res_norm_inf,
                             trial_x,
                             trial_res,
-                            evaluate_residual=_evaluate_trial_residual,
+                            evaluate_residual=backtracking_residual_evaluator.evaluate,
                             config=diag_cfg,
                         )
                     else:
@@ -799,9 +1073,45 @@ class JitAdSolver:
             self.y[i + 1, :] = x_prev
             self.dy[i + 1, :] = dx_prev
 
+        self._last_sim_loop_time = time.perf_counter() - loop_start
+        self._last_runtime_stats = dict(
+            sim_loop_s=self._last_sim_loop_time,
+            total_newton_iterations=float(total_newton_iterations),
+            jacobian_evaluations=float(jacobian_evaluation_count),
+            aligned_substeps=float(aligned_substep_count),
+            macro_steps=float(self.steps),
+        )
+
         if self.verbose:
             print(f"JIT (AD) Finished: {time.time() - t_start:.4f}s")
         else:
             pass
 
         return self.t, self.y, self.dy
+
+    def get_backend_build_stats(self) -> Dict[str, float]:
+        """
+        Return setup timings collected during backend compilation.
+
+        :return: Backend build statistics.
+        :rtype: Dict[str, float]
+        """
+        return dict(self._backend_build_stats)
+
+    def get_last_runtime_stats(self) -> Dict[str, float]:
+        """
+        Return runtime statistics collected during the latest simulation.
+
+        :return: Runtime statistics.
+        :rtype: Dict[str, float]
+        """
+        return dict(self._last_runtime_stats)
+
+    def get_last_sim_loop_time(self) -> float:
+        """
+        Return the latest integration-loop wall time.
+
+        :return: Latest loop time in seconds.
+        :rtype: float
+        """
+        return self._last_sim_loop_time

@@ -1,0 +1,144 @@
+[
+  {
+    "solver": "SYMBOLIC",
+    "problem_build_s": 1.715141600026982,
+    "solver_init_s": 0.00010990002192556858,
+    "solver_build_s": 0.17011420000926591,
+    "simulate_s": 0.09938980001606978,
+    "solver_total_s": 0.26961390004726127,
+    "loop_s": 0.09876730001997203,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0,
+    "final_residual_inf": 8.871967970073377e-10,
+    "maximum_residual_inf": 0.0,
+    "total_newton_iterations": 20,
+    "last_step_newton_iterations": 2,
+    "build_stats": {
+      "residual_compile_s": 0.024609900021459907,
+      "residual_batches": 2.0,
+      "jacobian_compile_s": 0.14501859998563305,
+      "jacobian_builds": 2.0,
+      "total_s": 0.16962850000709295
+    },
+    "steps": 10,
+    "y_shape": [
+      11,
+      60
+    ],
+    "dy_shape": [
+      11,
+      19
+    ]
+  },
+  {
+    "solver": "AD",
+    "problem_build_s": 1.606565900001442,
+    "solver_init_s": 0.00010000000474974513,
+    "solver_build_s": 0.03871310001704842,
+    "simulate_s": 0.0347378000151366,
+    "solver_total_s": 0.07355090003693476,
+    "loop_s": 0.034104299993487075,
+    "y_max_abs_diff": 0.07727917887864022,
+    "dy_max_abs_diff": 144.73326092713677,
+    "final_residual_inf": 1.5600668090698377e-08,
+    "maximum_residual_inf": 0.0,
+    "total_newton_iterations": 19,
+    "last_step_newton_iterations": 2,
+    "build_stats": {
+      "residual_compile_s": 0.006925499998033047,
+      "residual_batches": 1.0,
+      "jacobian_compile_s": 0.031523400015430525,
+      "jacobian_builds": 1.0,
+      "total_s": 0.0386941000178922
+    },
+    "steps": 10,
+    "y_shape": [
+      11,
+      60
+    ],
+    "dy_shape": [
+      11,
+      19
+    ]
+  },
+  {
+    "solver": "VECTORIZED",
+    "problem_build_s": 1.6910104999842588,
+    "solver_init_s": 0.00012929999502375722,
+    "solver_build_s": 0.06949620001250878,
+    "simulate_s": 0.007491600001230836,
+    "solver_total_s": 0.07711710000876337,
+    "loop_s": 0.0068020999897271395,
+    "y_max_abs_diff": 0.07730798365889968,
+    "dy_max_abs_diff": 144.75128035768336,
+    "final_residual_inf": 2.4359007788632425e-07,
+    "maximum_residual_inf": 964.4751930487731,
+    "total_newton_iterations": 20,
+    "last_step_newton_iterations": 2,
+    "build_stats": {
+      "grouping_s": 0.001214299991261214,
+      "residual_compile_s": 0.029394499986665323,
+      "jacobian_build_s": 0.03819379999185912,
+      "direct_residual_mode": 1.0,
+      "structural_groups": 29.0,
+      "total_s": 0.06942979997256771
+    },
+    "steps": 10,
+    "y_shape": [
+      11,
+      60
+    ],
+    "dy_shape": [
+      11,
+      19
+    ]
+  },
+  {
+    "solver": "COMPILED",
+    "problem_build_s": 1.7563104000000749,
+    "solver_init_s": 0.00013499998021870852,
+    "solver_build_s": 0.08306920001632534,
+    "simulate_s": 0.007872899994254112,
+    "solver_total_s": 0.09107709999079816,
+    "loop_s": 0.007122300012269989,
+    "y_max_abs_diff": 0.07730797621401364,
+    "dy_max_abs_diff": 144.7512816864649,
+    "final_residual_inf": 2.0896293137764477e-08,
+    "maximum_residual_inf": 964.4752269875395,
+    "total_newton_iterations": 35,
+    "last_step_newton_iterations": 4,
+    "build_stats": {
+      "grouping_s": 0.0013220999971963465,
+      "vec_kernel_compile_s": 0.03887610000674613,
+      "residual_assembler_s": 9.299983503296971e-06,
+      "residual_dispatcher_s": 0.0,
+      "residual_buffer_alloc_s": 0.0,
+      "jacobian_evaluator_s": 0.04193060001125559,
+      "warmup_s": 5.530001362785697e-05,
+      "helper_warmup_s": 5.530001362785697e-05,
+      "residual_warmup_s": 0.0,
+      "jacobian_warmup_s": 0.0,
+      "full_warmup_enabled": 0.0,
+      "eager_machine_code": 1.0,
+      "residual_use_cse": 1.0,
+      "jacobian_use_cse": 1.0,
+      "estimated_steps": 10.0,
+      "jac_column_rows_s": 0.0008433999901171774,
+      "jac_csc_shell_s": 0.00043929999810643494,
+      "jac_coloring_s": 0.0006110999966040254,
+      "jac_scatter_map_s": 0.00022250000620260835,
+      "jac_ad_kernels_s": 0.03967120000743307,
+      "jac_dispatcher_s": 4.3000036384910345e-06,
+      "total_s": 0.08299080000142567
+    },
+    "steps": 10,
+    "y_shape": [
+      11,
+      60
+    ],
+    "dy_shape": [
+      11,
+      19
+    ]
+  }
+]

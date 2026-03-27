@@ -1,0 +1,88 @@
+[
+  {
+    "solver": "SYMBOLIC",
+    "problem_build_s": 1.2246097000024747,
+    "solver_init_s": 4.539999645203352e-05,
+    "cold_build_s": 0.09325859998352826,
+    "cold_sim_s": 0.10978849997627549,
+    "warm_sim_s": 0.03454839999903925,
+    "speedup": 3.1778172065661097,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "residual_compile_s": 0.01256249999278225,
+      "residual_batches": 2.0,
+      "jacobian_compile_s": 0.08046789999934845,
+      "jacobian_builds": 2.0,
+      "total_s": 0.0930303999921307
+    }
+  },
+  {
+    "solver": "AD",
+    "problem_build_s": 1.1987237999856006,
+    "solver_init_s": 6.0999998822808266e-05,
+    "cold_build_s": 0.03384300001198426,
+    "cold_sim_s": 0.04817749999347143,
+    "warm_sim_s": 0.03562189999502152,
+    "speedup": 1.3524685656914612,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "residual_compile_s": 0.00702580000506714,
+      "residual_batches": 1.0,
+      "jacobian_compile_s": 0.02660069998819381,
+      "jacobian_builds": 1.0,
+      "total_s": 0.03382630000123754
+    }
+  },
+  {
+    "solver": "VECTORIZED",
+    "problem_build_s": 1.1917878999956883,
+    "solver_init_s": 6.900000153109431e-05,
+    "cold_build_s": 0.054436600010376424,
+    "cold_sim_s": 0.030021100013982505,
+    "warm_sim_s": 0.028286299988394603,
+    "speedup": 1.0613300440955395,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "grouping_s": 0.000840499997138977,
+      "residual_compile_s": 0.024754899990512058,
+      "jacobian_build_s": 0.028430899983504787,
+      "direct_residual_mode": 1.0,
+      "structural_groups": 20.0,
+      "total_s": 0.054392099991673604
+    }
+  },
+  {
+    "solver": "COMPILED",
+    "problem_build_s": 1.971900700009428,
+    "solver_init_s": 8.590001380071044e-05,
+    "cold_build_s": 0.0658048999903258,
+    "cold_sim_s": 0.018829199980245903,
+    "warm_sim_s": 0.015578099992126226,
+    "speedup": 1.208696823730937,
+    "max_abs_diff": 3.39651476141678e-06,
+    "build_stats": {
+      "grouping_s": 0.0006401000136975199,
+      "vec_kernel_compile_s": 0.03226840001298115,
+      "residual_assembler_s": 6.099988240748644e-06,
+      "residual_dispatcher_s": 0.0,
+      "residual_buffer_alloc_s": 0.0,
+      "jacobian_evaluator_s": 0.03221159998793155,
+      "warmup_s": 3.429999924264848e-05,
+      "helper_warmup_s": 3.429999924264848e-05,
+      "residual_warmup_s": 0.0,
+      "jacobian_warmup_s": 0.0,
+      "full_warmup_enabled": 0.0,
+      "eager_machine_code": 1.0,
+      "residual_use_cse": 1.0,
+      "jacobian_use_cse": 1.0,
+      "estimated_steps": 50.0,
+      "jac_column_rows_s": 0.0005723999929614365,
+      "jac_csc_shell_s": 0.0003243999963160604,
+      "jac_coloring_s": 0.00038949999725446105,
+      "jac_scatter_map_s": 0.00011850000009872019,
+      "jac_ad_kernels_s": 0.030711600003996864,
+      "jac_dispatcher_s": 1.800013706088066e-06,
+      "total_s": 0.06576220001443289
+    }
+  }
+]

@@ -37,9 +37,18 @@ def build_emt_solver(options: EmtOptions,
     else:
         raise ValueError(f"Unsupported EMT solver type: {options.solver_type}")
 
-    return solver_cls(problem=problem,
-                      t0=t0,
-                      t_end=t_end,
-                      h=h,
-                      method=method,
-                      newton_diag_config=newton_diag_config)
+    if options.solver_type == EmtSolverTypes.StructuralCompiled:
+        return solver_cls(problem=problem,
+                          t0=t0,
+                          t_end=t_end,
+                          h=h,
+                          method=method,
+                          warmup_policy=options.compiled_warmup_policy,
+                          newton_diag_config=newton_diag_config)
+    else:
+        return solver_cls(problem=problem,
+                          t0=t0,
+                          t_end=t_end,
+                          h=h,
+                          method=method,
+                          newton_diag_config=newton_diag_config)

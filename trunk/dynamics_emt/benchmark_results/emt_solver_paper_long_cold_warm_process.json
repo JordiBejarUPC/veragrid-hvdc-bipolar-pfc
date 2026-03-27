@@ -1,0 +1,122 @@
+[
+  {
+    "case": "ZIPload",
+    "solver": "SYMBOLIC",
+    "cold_build_s": 0.08206600000266917,
+    "cold_sim_s": 5.019132899993565,
+    "warm_sim_s": 4.998427899990929,
+    "speedup": 1.0041423024232625,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0
+  },
+  {
+    "case": "ZIPload",
+    "solver": "AD",
+    "cold_build_s": 0.03686419999576174,
+    "cold_sim_s": 4.975949099985883,
+    "warm_sim_s": 4.634796400001505,
+    "speedup": 1.073606836318477,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0
+  },
+  {
+    "case": "ZIPload",
+    "solver": "VECTORIZED",
+    "cold_build_s": 0.060927099984837696,
+    "cold_sim_s": 6.101133699994534,
+    "warm_sim_s": 6.372392999997828,
+    "speedup": 0.9574321138066365,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0
+  },
+  {
+    "case": "ZIPload",
+    "solver": "COMPILED",
+    "cold_build_s": 0.05464289998053573,
+    "cold_sim_s": 4.146906499983743,
+    "warm_sim_s": 5.014810099994065,
+    "speedup": 0.8269319111383002,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0
+  },
+  {
+    "case": "Rload",
+    "solver": "SYMBOLIC",
+    "cold_build_s": 0.10837810000521131,
+    "cold_sim_s": 1.0052595000015572,
+    "warm_sim_s": 0.8645485999877565,
+    "speedup": 1.1627564951418503,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0
+  },
+  {
+    "case": "Rload",
+    "solver": "AD",
+    "cold_build_s": 0.03741530000115745,
+    "cold_sim_s": 0.6010747000109404,
+    "warm_sim_s": 0.5074721000273712,
+    "speedup": 1.1844487607861016,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0
+  },
+  {
+    "case": "Rload",
+    "solver": "VECTORIZED",
+    "cold_build_s": 0.050610599981155246,
+    "cold_sim_s": 0.7209030000085477,
+    "warm_sim_s": 0.6217169000010472,
+    "speedup": 1.159535795162289,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0
+  },
+  {
+    "case": "Rload",
+    "solver": "COMPILED",
+    "cold_build_s": 0.04992690001381561,
+    "cold_sim_s": 0.29446350000216626,
+    "warm_sim_s": 0.23809989998699166,
+    "speedup": 1.2367224850504093,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0
+  },
+  {
+    "case": "Event",
+    "solver": "SYMBOLIC",
+    "cold_build_s": 0.09857080000801943,
+    "cold_sim_s": 8.949725900019985,
+    "warm_sim_s": 8.420227800001157,
+    "speedup": 1.0628840587921806,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0
+  },
+  {
+    "case": "Event",
+    "solver": "AD",
+    "cold_build_s": 0.03449899997212924,
+    "cold_sim_s": 5.527909199998248,
+    "warm_sim_s": 4.856111899978714,
+    "speedup": 1.1383405724284235,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0
+  },
+  {
+    "case": "Event",
+    "solver": "VECTORIZED",
+    "cold_build_s": 0.07554019999224693,
+    "cold_sim_s": 5.663113100017654,
+    "warm_sim_s": 5.332297699991614,
+    "speedup": 1.0620399344970106,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0
+  },
+  {
+    "case": "Event",
+    "solver": "COMPILED",
+    "cold_build_s": 0.05956369999330491,
+    "cold_sim_s": 3.6298777000047266,
+    "warm_sim_s": 2.9535102999943774,
+    "speedup": 1.2290045848195068,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0
+  }
+]

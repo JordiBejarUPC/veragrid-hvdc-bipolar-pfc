@@ -6,6 +6,7 @@
 from typing import Tuple
 
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
+from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledWarmupPolicy
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, EmtProblemTypes
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
@@ -48,6 +49,7 @@ class EmtOptions(OptionsTemplate):
         GCProp(key="newton_backtracking_beta", tpe=float),
         GCProp(key="newton_backtracking_min_alpha", tpe=float),
         GCProp(key="newton_backtracking_max_iter", tpe=int),
+        GCProp(key="compiled_warmup_policy", tpe=StructuralCompiledWarmupPolicy),
     )
 
     def __init__(self,
@@ -81,7 +83,8 @@ class EmtOptions(OptionsTemplate):
                  newton_index1_fail_pivot_ratio: float = 1e-14,
                  newton_backtracking_beta: float = 0.5,
                  newton_backtracking_min_alpha: float = 1e-4,
-                 newton_backtracking_max_iter: int = 6):
+                 newton_backtracking_max_iter: int = 6,
+                 compiled_warmup_policy: StructuralCompiledWarmupPolicy = StructuralCompiledWarmupPolicy.Adaptive):
         """
         EmtOptions
         :param time_step: time step of the simulations (s)
@@ -123,5 +126,6 @@ class EmtOptions(OptionsTemplate):
         self.newton_backtracking_beta = newton_backtracking_beta
         self.newton_backtracking_min_alpha = newton_backtracking_min_alpha
         self.newton_backtracking_max_iter = newton_backtracking_max_iter
+        self.compiled_warmup_policy: StructuralCompiledWarmupPolicy = compiled_warmup_policy
 
 

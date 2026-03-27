@@ -1,0 +1,124 @@
+[
+  {
+    "solver": "SYMBOLIC",
+    "problem_build_s": 1.7698018999944907,
+    "solver_init_s": 0.00010239999392069876,
+    "solver_build_s": 0.09908270000596531,
+    "simulate_s": 0.12575720000313595,
+    "solver_total_s": 0.22494230000302196,
+    "loop_s": 0.1250923000043258,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "residual_compile_s": 0.014435899996897206,
+      "residual_batches": 2.0,
+      "jacobian_compile_s": 0.08442920001107268,
+      "jacobian_builds": 2.0,
+      "total_s": 0.09886510000796989
+    },
+    "steps": 50,
+    "y_shape": [
+      51,
+      39
+    ],
+    "dy_shape": [
+      51,
+      13
+    ]
+  },
+  {
+    "solver": "AD",
+    "problem_build_s": 1.1814101999916602,
+    "solver_init_s": 9.060002048499882e-05,
+    "solver_build_s": 0.033842200005892664,
+    "simulate_s": 0.0651462999812793,
+    "solver_total_s": 0.09907910000765696,
+    "loop_s": 0.06442380000953563,
+    "max_abs_diff": 0.05921990569113822,
+    "build_stats": {
+      "residual_compile_s": 0.006659400009084493,
+      "residual_batches": 1.0,
+      "jacobian_compile_s": 0.026981800008798018,
+      "jacobian_builds": 1.0,
+      "total_s": 0.0338274999812711
+    },
+    "steps": 50,
+    "y_shape": [
+      51,
+      39
+    ],
+    "dy_shape": [
+      51,
+      13
+    ]
+  },
+  {
+    "solver": "VECTORIZED",
+    "problem_build_s": 1.2325245999963954,
+    "solver_init_s": 7.229999755509198e-05,
+    "solver_build_s": 0.05108989999280311,
+    "simulate_s": 0.01672420001705177,
+    "solver_total_s": 0.06788640000740997,
+    "loop_s": 0.016070099984062836,
+    "max_abs_diff": 0.05921990569113822,
+    "build_stats": {
+      "grouping_s": 0.0005017000075895339,
+      "residual_compile_s": 0.025159500015433878,
+      "jacobian_build_s": 0.02511750001576729,
+      "direct_residual_mode": 1.0,
+      "structural_groups": 20.0,
+      "total_s": 0.051038999983575195
+    },
+    "steps": 50,
+    "y_shape": [
+      51,
+      39
+    ],
+    "dy_shape": [
+      51,
+      13
+    ]
+  },
+  {
+    "solver": "COMPILED",
+    "problem_build_s": 1.4253318999835756,
+    "solver_init_s": 0.00012760001118294895,
+    "solver_build_s": 0.05589479999616742,
+    "simulate_s": 0.01743120001628995,
+    "solver_total_s": 0.07345360002364032,
+    "loop_s": 0.016936900006840006,
+    "max_abs_diff": 0.05921990569113822,
+    "build_stats": {
+      "grouping_s": 0.0007104999967850745,
+      "vec_kernel_compile_s": 0.024747899995418265,
+      "residual_assembler_s": 3.470000228844583e-05,
+      "residual_dispatcher_s": 0.0,
+      "residual_buffer_alloc_s": 0.0,
+      "jacobian_evaluator_s": 0.029862199997296557,
+      "warmup_s": 3.860000288113952e-05,
+      "helper_warmup_s": 3.860000288113952e-05,
+      "residual_warmup_s": 0.0,
+      "jacobian_warmup_s": 0.0,
+      "full_warmup_enabled": 0.0,
+      "eager_machine_code": 1.0,
+      "residual_use_cse": 1.0,
+      "jacobian_use_cse": 1.0,
+      "estimated_steps": 50.0,
+      "jac_column_rows_s": 0.0004959999932907522,
+      "jac_csc_shell_s": 0.0004234999942127615,
+      "jac_coloring_s": 0.000453799992101267,
+      "jac_scatter_map_s": 0.0001598999951966107,
+      "jac_ad_kernels_s": 0.02822619999642484,
+      "jac_dispatcher_s": 3.200024366378784e-06,
+      "total_s": 0.055852799996500835
+    },
+    "steps": 50,
+    "y_shape": [
+      51,
+      39
+    ],
+    "dy_shape": [
+      51,
+      13
+    ]
+  }
+]

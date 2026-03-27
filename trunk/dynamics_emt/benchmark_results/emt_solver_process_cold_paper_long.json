@@ -1,0 +1,712 @@
+[
+  {
+    "case": "zipload",
+    "mode": "standard",
+    "solver": "SYMBOLIC",
+    "problem_build_s": 1.482715999998618,
+    "solver_init_s": 0.00019920000340789557,
+    "solver_build_s": 0.15375420000054874,
+    "simulate_s": 8.606257400009781,
+    "solver_total_s": 8.760210800013738,
+    "loop_s": 8.605580999981612,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0,
+    "final_residual_inf": 6.85418416627923e-10,
+    "maximum_residual_inf": 0.0,
+    "total_newton_iterations": 12000,
+    "last_step_newton_iterations": 1,
+    "build_stats": {
+      "residual_compile_s": 0.01728589998674579,
+      "residual_batches": 2.0,
+      "jacobian_compile_s": 0.13612999999895692,
+      "jacobian_builds": 2.0,
+      "total_s": 0.1534158999857027
+    },
+    "steps": 12000,
+    "y_shape": [
+      12001,
+      60
+    ],
+    "dy_shape": [
+      12001,
+      19
+    ]
+  },
+  {
+    "case": "zipload",
+    "mode": "standard",
+    "solver": "AD",
+    "problem_build_s": 1.361429299984593,
+    "solver_init_s": 0.00018370000179857016,
+    "solver_build_s": 0.05027059998246841,
+    "simulate_s": 5.045655800000532,
+    "solver_total_s": 5.096110099984799,
+    "loop_s": 5.044937300001038,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0,
+    "final_residual_inf": 5.008152873298144e-06,
+    "maximum_residual_inf": 0.0,
+    "total_newton_iterations": 12000,
+    "last_step_newton_iterations": 1,
+    "build_stats": {
+      "residual_compile_s": 0.010808599996380508,
+      "residual_batches": 1.0,
+      "jacobian_compile_s": 0.03907569998409599,
+      "jacobian_builds": 1.0,
+      "total_s": 0.050241899996763095
+    },
+    "steps": 12000,
+    "y_shape": [
+      12001,
+      60
+    ],
+    "dy_shape": [
+      12001,
+      19
+    ]
+  },
+  {
+    "case": "zipload",
+    "mode": "standard",
+    "solver": "VECTORIZED",
+    "problem_build_s": 1.2229563999862876,
+    "solver_init_s": 7.000000914558768e-05,
+    "solver_build_s": 0.058743600005982444,
+    "simulate_s": 5.92670260000159,
+    "solver_total_s": 5.985516200016718,
+    "loop_s": 5.916781699983403,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0,
+    "final_residual_inf": 1.7854698902134028e-10,
+    "maximum_residual_inf": 990.5344099417629,
+    "total_newton_iterations": 23999,
+    "last_step_newton_iterations": 2,
+    "build_stats": {
+      "grouping_s": 0.001279199990676716,
+      "residual_compile_s": 0.029488999978639185,
+      "jacobian_build_s": 0.027303800015943125,
+      "direct_residual_mode": 1.0,
+      "structural_groups": 29.0,
+      "total_s": 0.058703399990918115
+    },
+    "steps": 12000,
+    "y_shape": [
+      12001,
+      60
+    ],
+    "dy_shape": [
+      12001,
+      19
+    ]
+  },
+  {
+    "case": "zipload",
+    "mode": "standard",
+    "solver": "COMPILED",
+    "problem_build_s": 1.4434697999968193,
+    "solver_init_s": 0.00017460001981817186,
+    "solver_build_s": 0.059248599980492145,
+    "simulate_s": 4.468809999991208,
+    "solver_total_s": 4.528233199991519,
+    "loop_s": 4.468380400008755,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0,
+    "final_residual_inf": 1.038846571678471e-08,
+    "maximum_residual_inf": 990.5369497435776,
+    "total_newton_iterations": 36789,
+    "last_step_newton_iterations": 3,
+    "build_stats": {
+      "grouping_s": 0.0011517000093590468,
+      "vec_kernel_compile_s": 0.02745690001756884,
+      "residual_assembler_s": 8.90000956133008e-06,
+      "residual_dispatcher_s": 0.0,
+      "residual_buffer_alloc_s": 0.0,
+      "jacobian_evaluator_s": 0.02985900000203401,
+      "warmup_s": 7.299997378140688e-05,
+      "helper_warmup_s": 4.049998824484646e-05,
+      "residual_warmup_s": 8.700008038431406e-06,
+      "jacobian_warmup_s": 2.379997749812901e-05,
+      "full_warmup_enabled": 1.0,
+      "estimated_steps": 12000.0,
+      "jac_column_rows_s": 0.0007381000032182783,
+      "jac_csc_shell_s": 0.0003291000030003488,
+      "jac_coloring_s": 0.000843899993924424,
+      "jac_scatter_map_s": 0.00017260000458918512,
+      "jac_ad_kernels_s": 0.027652099990518764,
+      "jac_dispatcher_s": 3.1999952625483274e-06,
+      "total_s": 0.05918690000544302
+    },
+    "steps": 12000,
+    "y_shape": [
+      12001,
+      60
+    ],
+    "dy_shape": [
+      12001,
+      19
+    ]
+  },
+  {
+    "case": "rload",
+    "mode": "standard",
+    "solver": "SYMBOLIC",
+    "problem_build_s": 1.2969470999960322,
+    "solver_init_s": 0.00018539998563937843,
+    "solver_build_s": 0.10336130001815036,
+    "simulate_s": 0.9430545000068378,
+    "solver_total_s": 1.0466012000106275,
+    "loop_s": 0.942577000008896,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "residual_compile_s": 0.013191900012316182,
+      "residual_batches": 2.0,
+      "jacobian_compile_s": 0.08997140001156367,
+      "jacobian_builds": 2.0,
+      "total_s": 0.10316330002387986
+    },
+    "steps": 2000,
+    "shape": [
+      2001,
+      39
+    ],
+    "dy_shape": [
+      2001,
+      13
+    ]
+  },
+  {
+    "case": "rload",
+    "mode": "standard",
+    "solver": "AD",
+    "problem_build_s": 1.7577642000105698,
+    "solver_init_s": 0.0001176999940071255,
+    "solver_build_s": 0.03689930000109598,
+    "simulate_s": 0.6765289999893866,
+    "solver_total_s": 0.7135459999844898,
+    "loop_s": 0.6761068000050727,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "residual_compile_s": 0.007601499994052574,
+      "residual_batches": 1.0,
+      "jacobian_compile_s": 0.029100699990522116,
+      "jacobian_builds": 1.0,
+      "total_s": 0.036884000001009554
+    },
+    "steps": 2000,
+    "shape": [
+      2001,
+      39
+    ],
+    "dy_shape": [
+      2001,
+      13
+    ]
+  },
+  {
+    "case": "rload",
+    "mode": "standard",
+    "solver": "VECTORIZED",
+    "problem_build_s": 1.2688844999938738,
+    "solver_init_s": 7.48000165913254e-05,
+    "solver_build_s": 0.050028699974063784,
+    "simulate_s": 0.6273078999947757,
+    "solver_total_s": 0.6774113999854308,
+    "loop_s": 0.6153320999874268,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "grouping_s": 0.0004978000069968402,
+      "residual_compile_s": 0.0214358999801334,
+      "jacobian_build_s": 0.02769570000236854,
+      "direct_residual_mode": 1.0,
+      "structural_groups": 20.0,
+      "total_s": 0.04998489998979494
+    },
+    "steps": 2000,
+    "shape": [
+      2001,
+      39
+    ],
+    "dy_shape": [
+      2001,
+      13
+    ]
+  },
+  {
+    "case": "rload",
+    "mode": "standard",
+    "solver": "COMPILED",
+    "problem_build_s": 1.4129327000118792,
+    "solver_init_s": 0.00014980000560171902,
+    "solver_build_s": 0.061702200007857755,
+    "simulate_s": 0.37665540000307374,
+    "solver_total_s": 0.4385074000165332,
+    "loop_s": 0.37596630002371967,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "grouping_s": 0.0009089000232052058,
+      "vec_kernel_compile_s": 0.030459599976893514,
+      "residual_assembler_s": 9.600014891475439e-06,
+      "residual_dispatcher_s": 0.0,
+      "residual_buffer_alloc_s": 0.0,
+      "jacobian_evaluator_s": 0.029502100020181388,
+      "warmup_s": 9.820004925131798e-05,
+      "helper_warmup_s": 4.7600013203918934e-05,
+      "residual_warmup_s": 8.800008799880743e-06,
+      "jacobian_warmup_s": 4.18000272475183e-05,
+      "full_warmup_enabled": 1.0,
+      "estimated_steps": 2000.0,
+      "jac_column_rows_s": 0.0006562000198755413,
+      "jac_csc_shell_s": 0.00033889999031089246,
+      "jac_coloring_s": 0.0006500000017695129,
+      "jac_scatter_map_s": 0.00015070001245476305,
+      "jac_ad_kernels_s": 0.027576699998462573,
+      "jac_dispatcher_s": 3.9000005926936865e-06,
+      "total_s": 0.061659400002099574
+    },
+    "steps": 2000,
+    "shape": [
+      2001,
+      39
+    ],
+    "dy_shape": [
+      2001,
+      13
+    ]
+  },
+  {
+    "case": "event",
+    "mode": "standard",
+    "solver": "SYMBOLIC",
+    "problem_build_s": 1.5066818000050262,
+    "solver_init_s": 0.00017399998614564538,
+    "solver_build_s": 0.12094719999004155,
+    "simulate_s": 7.405053399997996,
+    "solver_total_s": 7.526174599974183,
+    "loop_s": 7.404038500011666,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "residual_compile_s": 0.01606789999641478,
+      "residual_batches": 2.0,
+      "jacobian_compile_s": 0.10461370000848547,
+      "jacobian_builds": 2.0,
+      "total_s": 0.12068160000490025
+    },
+    "steps": 12000,
+    "shape": [
+      12001,
+      39
+    ],
+    "dy_shape": [
+      12001,
+      13
+    ]
+  },
+  {
+    "case": "event",
+    "mode": "standard",
+    "solver": "AD",
+    "problem_build_s": 1.1830913000158034,
+    "solver_init_s": 0.00015049998182803392,
+    "solver_build_s": 0.03695989999687299,
+    "simulate_s": 4.524751399992965,
+    "solver_total_s": 4.561861799971666,
+    "loop_s": 4.523829300014768,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "residual_compile_s": 0.006841800000984222,
+      "residual_batches": 1.0,
+      "jacobian_compile_s": 0.029915999999502674,
+      "jacobian_builds": 1.0,
+      "total_s": 0.03694239998003468
+    },
+    "steps": 12000,
+    "shape": [
+      12001,
+      39
+    ],
+    "dy_shape": [
+      12001,
+      13
+    ]
+  },
+  {
+    "case": "event",
+    "mode": "standard",
+    "solver": "VECTORIZED",
+    "problem_build_s": 1.229985799989663,
+    "solver_init_s": 0.00013470000703819096,
+    "solver_build_s": 0.05261650000466034,
+    "simulate_s": 4.66020009998465,
+    "solver_total_s": 4.712951299996348,
+    "loop_s": 4.648539200017694,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "grouping_s": 0.0007353000110015273,
+      "residual_compile_s": 0.022202599997399375,
+      "jacobian_build_s": 0.029179899982409552,
+      "direct_residual_mode": 1.0,
+      "structural_groups": 20.0,
+      "total_s": 0.05256419998477213
+    },
+    "steps": 12000,
+    "shape": [
+      12001,
+      39
+    ],
+    "dy_shape": [
+      12001,
+      13
+    ]
+  },
+  {
+    "case": "event",
+    "mode": "standard",
+    "solver": "COMPILED",
+    "problem_build_s": 1.2038343000167515,
+    "solver_init_s": 6.309998570941389e-05,
+    "solver_build_s": 0.05815029999939725,
+    "simulate_s": 2.267602000007173,
+    "solver_total_s": 2.3258153999922797,
+    "loop_s": 2.2666063000215217,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "grouping_s": 0.0004655999946407974,
+      "vec_kernel_compile_s": 0.02566720001050271,
+      "residual_assembler_s": 6.89999433234334e-06,
+      "residual_dispatcher_s": 0.0,
+      "residual_buffer_alloc_s": 0.0,
+      "jacobian_evaluator_s": 0.03136649998486973,
+      "warmup_s": 0.00011819999781437218,
+      "helper_warmup_s": 5.269999383017421e-05,
+      "residual_warmup_s": 1.069999416358769e-05,
+      "jacobian_warmup_s": 5.4800009820610285e-05,
+      "full_warmup_enabled": 1.0,
+      "estimated_steps": 12000.0,
+      "jac_column_rows_s": 0.0003281999961473048,
+      "jac_csc_shell_s": 0.00021139997988939285,
+      "jac_coloring_s": 0.00042100000428035855,
+      "jac_scatter_map_s": 9.630000567995012e-05,
+      "jac_ad_kernels_s": 0.03019489999860525,
+      "jac_dispatcher_s": 3.9000005926936865e-06,
+      "total_s": 0.058106300013605505
+    },
+    "steps": 12000,
+    "shape": [
+      12001,
+      39
+    ],
+    "dy_shape": [
+      12001,
+      13
+    ]
+  },
+  {
+    "case": "zipload",
+    "mode": "cold_warm",
+    "solver": "SYMBOLIC",
+    "problem_build_s": 0.9116449000139255,
+    "solver_init_s": 0.0001320999872405082,
+    "cold_build_s": 0.08206600000266917,
+    "cold_sim_s": 5.019132899993565,
+    "warm_sim_s": 4.998427899990929,
+    "speedup": 1.0041423024232625,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0,
+    "cold_final_residual_inf": 6.85418416627923e-10,
+    "warm_final_residual_inf": 6.85418416627923e-10,
+    "cold_maximum_residual_inf": 0.0,
+    "warm_maximum_residual_inf": 0.0,
+    "cold_total_newton_iterations": 12000,
+    "warm_total_newton_iterations": 12000,
+    "cold_last_step_newton_iterations": 1,
+    "warm_last_step_newton_iterations": 1,
+    "build_stats": {
+      "residual_compile_s": 0.014156399993225932,
+      "residual_batches": 2.0,
+      "jacobian_compile_s": 0.06765439998707734,
+      "jacobian_builds": 2.0,
+      "total_s": 0.08181079998030327
+    }
+  },
+  {
+    "case": "zipload",
+    "mode": "cold_warm",
+    "solver": "AD",
+    "problem_build_s": 1.2849672999873292,
+    "solver_init_s": 0.00011480000102892518,
+    "cold_build_s": 0.03686419999576174,
+    "cold_sim_s": 4.975949099985883,
+    "warm_sim_s": 4.634796400001505,
+    "speedup": 1.073606836318477,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0,
+    "cold_final_residual_inf": 5.008152873298144e-06,
+    "warm_final_residual_inf": 5.008152873298144e-06,
+    "cold_maximum_residual_inf": 0.0,
+    "warm_maximum_residual_inf": 0.0,
+    "cold_total_newton_iterations": 12000,
+    "warm_total_newton_iterations": 12000,
+    "cold_last_step_newton_iterations": 1,
+    "warm_last_step_newton_iterations": 1,
+    "build_stats": {
+      "residual_compile_s": 0.008415299991611391,
+      "residual_batches": 1.0,
+      "jacobian_compile_s": 0.02824529999634251,
+      "jacobian_builds": 1.0,
+      "total_s": 0.03684609997435473
+    }
+  },
+  {
+    "case": "zipload",
+    "mode": "cold_warm",
+    "solver": "VECTORIZED",
+    "problem_build_s": 1.238653999986127,
+    "solver_init_s": 9.580000187270343e-05,
+    "cold_build_s": 0.060927099984837696,
+    "cold_sim_s": 6.101133699994534,
+    "warm_sim_s": 6.372392999997828,
+    "speedup": 0.9574321138066365,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0,
+    "cold_final_residual_inf": 1.7854698902134028e-10,
+    "warm_final_residual_inf": 1.7854698902134028e-10,
+    "cold_maximum_residual_inf": 990.5344099417629,
+    "warm_maximum_residual_inf": 990.5344099417629,
+    "cold_total_newton_iterations": 23999,
+    "warm_total_newton_iterations": 23999,
+    "cold_last_step_newton_iterations": 2,
+    "warm_last_step_newton_iterations": 2,
+    "build_stats": {
+      "grouping_s": 0.0008036000072024763,
+      "residual_compile_s": 0.024318100011441857,
+      "jacobian_build_s": 0.035328099998878315,
+      "direct_residual_mode": 1.0,
+      "structural_groups": 29.0,
+      "total_s": 0.06086180001148023
+    }
+  },
+  {
+    "case": "zipload",
+    "mode": "cold_warm",
+    "solver": "COMPILED",
+    "problem_build_s": 1.163288800016744,
+    "solver_init_s": 7.229999755509198e-05,
+    "cold_build_s": 0.05464289998053573,
+    "cold_sim_s": 4.146906499983743,
+    "warm_sim_s": 5.014810099994065,
+    "speedup": 0.8269319111383002,
+    "y_max_abs_diff": 0.0,
+    "dy_max_abs_diff": 0.0,
+    "cold_final_residual_inf": 1.038846571678471e-08,
+    "warm_final_residual_inf": 1.038846571678471e-08,
+    "cold_maximum_residual_inf": 990.5369497435776,
+    "warm_maximum_residual_inf": 990.5369497435776,
+    "cold_total_newton_iterations": 36789,
+    "warm_total_newton_iterations": 36789,
+    "cold_last_step_newton_iterations": 3,
+    "warm_last_step_newton_iterations": 3,
+    "build_stats": {
+      "grouping_s": 0.0006074999982956797,
+      "vec_kernel_compile_s": 0.025144700019154698,
+      "residual_assembler_s": 9.100011084228754e-06,
+      "residual_dispatcher_s": 0.0,
+      "residual_buffer_alloc_s": 0.0,
+      "jacobian_evaluator_s": 0.028345700004138052,
+      "warmup_s": 6.989997928030789e-05,
+      "helper_warmup_s": 3.510000533424318e-05,
+      "residual_warmup_s": 6.499991286545992e-06,
+      "jacobian_warmup_s": 2.829998265951872e-05,
+      "full_warmup_enabled": 1.0,
+      "estimated_steps": 12000.0,
+      "jac_column_rows_s": 0.000912499992409721,
+      "jac_csc_shell_s": 0.00039760000072419643,
+      "jac_coloring_s": 0.0009485000045970082,
+      "jac_scatter_map_s": 0.000232299993513152,
+      "jac_ad_kernels_s": 0.02573860000120476,
+      "jac_dispatcher_s": 3.4999975468963385e-06,
+      "total_s": 0.054600699979346246
+    }
+  },
+  {
+    "case": "rload",
+    "mode": "cold_warm",
+    "solver": "SYMBOLIC",
+    "problem_build_s": 1.3737895999802276,
+    "solver_init_s": 0.00012280000373721123,
+    "cold_build_s": 0.10837810000521131,
+    "cold_sim_s": 1.0052595000015572,
+    "warm_sim_s": 0.8645485999877565,
+    "speedup": 1.1627564951418503,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "residual_compile_s": 0.018764100008411333,
+      "residual_batches": 2.0,
+      "jacobian_compile_s": 0.08938049999414943,
+      "jacobian_builds": 2.0,
+      "total_s": 0.10814460000256076
+    }
+  },
+  {
+    "case": "rload",
+    "mode": "cold_warm",
+    "solver": "AD",
+    "problem_build_s": 1.2393251000030432,
+    "solver_init_s": 0.00013000000035390258,
+    "cold_build_s": 0.03741530000115745,
+    "cold_sim_s": 0.6010747000109404,
+    "warm_sim_s": 0.5074721000273712,
+    "speedup": 1.1844487607861016,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "residual_compile_s": 0.006218599999556318,
+      "residual_batches": 1.0,
+      "jacobian_compile_s": 0.031001800001831725,
+      "jacobian_builds": 1.0,
+      "total_s": 0.03739839998888783
+    }
+  },
+  {
+    "case": "rload",
+    "mode": "cold_warm",
+    "solver": "VECTORIZED",
+    "problem_build_s": 1.2804753000091296,
+    "solver_init_s": 0.00012939999578520656,
+    "cold_build_s": 0.050610599981155246,
+    "cold_sim_s": 0.7209030000085477,
+    "warm_sim_s": 0.6217169000010472,
+    "speedup": 1.159535795162289,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "grouping_s": 0.0005531999922823161,
+      "residual_compile_s": 0.019632099982118234,
+      "jacobian_build_s": 0.029939899977762252,
+      "direct_residual_mode": 1.0,
+      "structural_groups": 20.0,
+      "total_s": 0.05057010002201423
+    }
+  },
+  {
+    "case": "rload",
+    "mode": "cold_warm",
+    "solver": "COMPILED",
+    "problem_build_s": 1.3824096999887843,
+    "solver_init_s": 5.9999991208314896e-05,
+    "cold_build_s": 0.04992690001381561,
+    "cold_sim_s": 0.29446350000216626,
+    "warm_sim_s": 0.23809989998699166,
+    "speedup": 1.2367224850504093,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "grouping_s": 0.0003437999985180795,
+      "vec_kernel_compile_s": 0.025060600019060075,
+      "residual_assembler_s": 8.300004992634058e-06,
+      "residual_dispatcher_s": 0.0,
+      "residual_buffer_alloc_s": 0.0,
+      "jacobian_evaluator_s": 0.02404469999601133,
+      "warmup_s": 9.469999349676073e-05,
+      "helper_warmup_s": 4.3800013372674584e-05,
+      "residual_warmup_s": 8.599978173151612e-06,
+      "jacobian_warmup_s": 4.230000195093453e-05,
+      "full_warmup_enabled": 1.0,
+      "estimated_steps": 2000.0,
+      "jac_column_rows_s": 0.0004177000082563609,
+      "jac_csc_shell_s": 0.0002027000009547919,
+      "jac_coloring_s": 0.0004358000005595386,
+      "jac_scatter_map_s": 8.730002446100116e-05,
+      "jac_ad_kernels_s": 0.022798700025305152,
+      "jac_dispatcher_s": 3.00002284348011e-06,
+      "total_s": 0.04987850002362393
+    }
+  },
+  {
+    "case": "event",
+    "mode": "cold_warm",
+    "solver": "SYMBOLIC",
+    "problem_build_s": 1.343586700008018,
+    "solver_init_s": 0.00015810001059435308,
+    "cold_build_s": 0.09857080000801943,
+    "cold_sim_s": 8.949725900019985,
+    "warm_sim_s": 8.420227800001157,
+    "speedup": 1.0628840587921806,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "residual_compile_s": 0.013760600006207824,
+      "residual_batches": 2.0,
+      "jacobian_compile_s": 0.0845854000071995,
+      "jacobian_builds": 2.0,
+      "total_s": 0.09834600001340732
+    }
+  },
+  {
+    "case": "event",
+    "mode": "cold_warm",
+    "solver": "AD",
+    "problem_build_s": 1.4816825999878347,
+    "solver_init_s": 0.00018870001076720655,
+    "cold_build_s": 0.03449899997212924,
+    "cold_sim_s": 5.527909199998248,
+    "warm_sim_s": 4.856111899978714,
+    "speedup": 1.1383405724284235,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "residual_compile_s": 0.007241400016937405,
+      "residual_batches": 1.0,
+      "jacobian_compile_s": 0.027028000011341646,
+      "jacobian_builds": 1.0,
+      "total_s": 0.034477599983802065
+    }
+  },
+  {
+    "case": "event",
+    "mode": "cold_warm",
+    "solver": "VECTORIZED",
+    "problem_build_s": 1.57110339999781,
+    "solver_init_s": 0.00013810000382363796,
+    "cold_build_s": 0.07554019999224693,
+    "cold_sim_s": 5.663113100017654,
+    "warm_sim_s": 5.332297699991614,
+    "speedup": 1.0620399344970106,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "grouping_s": 0.0009925000194925815,
+      "residual_compile_s": 0.033222799975192174,
+      "jacobian_build_s": 0.04070739998132922,
+      "direct_residual_mode": 1.0,
+      "structural_groups": 20.0,
+      "total_s": 0.07547760001034476
+    }
+  },
+  {
+    "case": "event",
+    "mode": "cold_warm",
+    "solver": "COMPILED",
+    "problem_build_s": 1.6340071000158787,
+    "solver_init_s": 8.340002386830747e-05,
+    "cold_build_s": 0.05956369999330491,
+    "cold_sim_s": 3.6298777000047266,
+    "warm_sim_s": 2.9535102999943774,
+    "speedup": 1.2290045848195068,
+    "max_abs_diff": 0.0,
+    "build_stats": {
+      "grouping_s": 0.0011229999945499003,
+      "vec_kernel_compile_s": 0.02845879999222234,
+      "residual_assembler_s": 8.000002708286047e-06,
+      "residual_dispatcher_s": 0.0,
+      "residual_buffer_alloc_s": 0.0,
+      "jacobian_evaluator_s": 0.029075300000840798,
+      "warmup_s": 0.00011509997420944273,
+      "helper_warmup_s": 5.949998740106821e-05,
+      "residual_warmup_s": 1.1900003300979733e-05,
+      "jacobian_warmup_s": 4.369998350739479e-05,
+      "full_warmup_enabled": 1.0,
+      "estimated_steps": 12000.0,
+      "jac_column_rows_s": 0.0005871000175829977,
+      "jac_csc_shell_s": 0.0003279000229667872,
+      "jac_coloring_s": 0.0006981000187806785,
+      "jac_scatter_map_s": 0.0001357999863103032,
+      "jac_ad_kernels_s": 0.0271667999913916,
+      "jac_dispatcher_s": 9.69998654909432e-06,
+      "total_s": 0.059506400022655725
+    }
+  }
+]

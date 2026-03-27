@@ -1,0 +1,110 @@
+[
+  {
+    "case": "ZIPload",
+    "solver": "SYMBOLIC",
+    "build_s": 0.15375420000054874,
+    "sim_s": 8.606257400009781,
+    "total_s": 8.760210800013738,
+    "loop_s": 8.605580999981612,
+    "max_abs_diff": 0.0
+  },
+  {
+    "case": "ZIPload",
+    "solver": "AD",
+    "build_s": 0.05027059998246841,
+    "sim_s": 5.045655800000532,
+    "total_s": 5.096110099984799,
+    "loop_s": 5.044937300001038,
+    "max_abs_diff": 0.0
+  },
+  {
+    "case": "ZIPload",
+    "solver": "VECTORIZED",
+    "build_s": 0.058743600005982444,
+    "sim_s": 5.92670260000159,
+    "total_s": 5.985516200016718,
+    "loop_s": 5.916781699983403,
+    "max_abs_diff": 0.0
+  },
+  {
+    "case": "ZIPload",
+    "solver": "COMPILED",
+    "build_s": 0.059248599980492145,
+    "sim_s": 4.468809999991208,
+    "total_s": 4.528233199991519,
+    "loop_s": 4.468380400008755,
+    "max_abs_diff": 0.0
+  },
+  {
+    "case": "Rload",
+    "solver": "SYMBOLIC",
+    "build_s": 0.10336130001815036,
+    "sim_s": 0.9430545000068378,
+    "total_s": 1.0466012000106275,
+    "loop_s": 0.942577000008896,
+    "max_abs_diff": 0.0
+  },
+  {
+    "case": "Rload",
+    "solver": "AD",
+    "build_s": 0.03689930000109598,
+    "sim_s": 0.6765289999893866,
+    "total_s": 0.7135459999844898,
+    "loop_s": 0.6761068000050727,
+    "max_abs_diff": 0.0
+  },
+  {
+    "case": "Rload",
+    "solver": "VECTORIZED",
+    "build_s": 0.050028699974063784,
+    "sim_s": 0.6273078999947757,
+    "total_s": 0.6774113999854308,
+    "loop_s": 0.6153320999874268,
+    "max_abs_diff": 0.0
+  },
+  {
+    "case": "Rload",
+    "solver": "COMPILED",
+    "build_s": 0.061702200007857755,
+    "sim_s": 0.37665540000307374,
+    "total_s": 0.4385074000165332,
+    "loop_s": 0.37596630002371967,
+    "max_abs_diff": 0.0
+  },
+  {
+    "case": "Event",
+    "solver": "SYMBOLIC",
+    "build_s": 0.12094719999004155,
+    "sim_s": 7.405053399997996,
+    "total_s": 7.526174599974183,
+    "loop_s": 7.404038500011666,
+    "max_abs_diff": 0.0
+  },
+  {
+    "case": "Event",
+    "solver": "AD",
+    "build_s": 0.03695989999687299,
+    "sim_s": 4.524751399992965,
+    "total_s": 4.561861799971666,
+    "loop_s": 4.523829300014768,
+    "max_abs_diff": 0.0
+  },
+  {
+    "case": "Event",
+    "solver": "VECTORIZED",
+    "build_s": 0.05261650000466034,
+    "sim_s": 4.66020009998465,
+    "total_s": 4.712951299996348,
+    "loop_s": 4.648539200017694,
+    "max_abs_diff": 0.0
+  },
+  {
+    "case": "Event",
+    "solver": "COMPILED",
+    "build_s": 0.05815029999939725,
+    "sim_s": 2.267602000007173,
+    "total_s": 2.3258153999922797,
+    "loop_s": 2.2666063000215217,
+    "max_abs_diff": 0.0
+  }
+]

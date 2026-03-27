@@ -3,11 +3,13 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Set, Tuple, Callable, List, Any, Union, Optional
+from typing import Set, Tuple, Callable, List, Any, Union, Optional, Dict
 import numpy as np
 import numba as nb
 import scipy.sparse as sp
 import time
+from scipy.linalg import lu_factor, lu_solve
+from scipy.sparse.linalg import SuperLU, splu
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     EmtBoundaryUpdateProtocol,
     EmtProblemTemplate,
@@ -24,6 +26,11 @@ from VeraGridEngine.Utils.Symbolic.diagnostic import (with_newton_diagnostics, N
                                                        sparse_lsqr_fallback, maybe_check_index1,
                                                        maybe_apply_backtracking)
 from VeraGridEngine.basic_structures import Vec, Mat, IntVec, CscMat
+
+
+DenseFactorization = Tuple[Any, Any]
+DenseSolveBundle = Tuple[DenseFactorization, np.ndarray]
+SparseSolveBundle = Tuple[SuperLU, CscMat]
 
 
 def get_vars_in_expr(expr: Expr) -> Set[int]:
@@ -137,6 +144,73 @@ class Predictor:
         return x_iter
 
 
+def fill_full_parameter_buffer(runtime_params: Vec, static_params: Vec, full_params_out: Vec) -> None:
+    """
+    Write runtime and static parameters into one preallocated full buffer.
+
+    :param runtime_params: Runtime parameter slice.
+    :type runtime_params: Vec
+    :param static_params: Static parameter slice.
+    :type static_params: Vec
+    :param full_params_out: Destination full parameter vector.
+    :type full_params_out: Vec
+    :return: None.
+    :rtype: None
+    """
+    n_runtime: int = runtime_params.shape[0]
+    n_static: int = static_params.shape[0]
+
+    # The runtime slice changes every local substep because events and boundary
+    # updates can alter the parameter values in place.
+    full_params_out[:n_runtime] = runtime_params
+
+    # The static slice remains immutable for the whole simulation, but keeping
+    # the explicit copy here preserves the stable [runtime | static] contract.
+    full_params_out[n_runtime:n_runtime + n_static] = static_params
+
+
+def evaluate_batched_residual(
+        kernel_list: List[Callable[..., Any]],
+        x_iter: Vec,
+        full_params: Vec,
+        x_prev: Vec,
+        dx_prev: Vec,
+        h_eff: float,
+        x_prev2: Vec,
+        residual_out: Vec,
+) -> float:
+    """
+    Evaluate all residual batches into a caller-owned buffer.
+
+    :param kernel_list: Batched residual kernels.
+    :type kernel_list: List[Callable[..., Any]]
+    :param x_iter: Current Newton iterate.
+    :type x_iter: Vec
+    :param full_params: Full parameter vector.
+    :type full_params: Vec
+    :param x_prev: Previous accepted state.
+    :type x_prev: Vec
+    :param dx_prev: Previous derivative vector.
+    :type dx_prev: Vec
+    :param h_eff: Effective local time step.
+    :type h_eff: float
+    :param x_prev2: Secondary state history.
+    :type x_prev2: Vec
+    :param residual_out: Destination residual buffer.
+    :type residual_out: Vec
+    :return: Residual infinity norm.
+    :rtype: float
+    """
+    residual_out[:] = 0.0
+
+    # The residual stays split in batches to keep code generation tractable for
+    # large symbolic systems while still avoiding per-iteration allocations.
+    for kernel in kernel_list:
+        kernel(x_iter, full_params, x_prev, dx_prev, h_eff, residual_out, x_prev2)
+
+    return float(np.linalg.norm(residual_out, np.inf))
+
+
 class BoundaryUpdateWrapper:
     """
     Interface for injecting boundary conditions and events before the Newton step.
@@ -174,13 +248,17 @@ class HybridJacobianEvaluator:
     Evaluates the JIT-compiled Jacobian and formats it as either Dense or Sparse.
     This class replaces nested functions to ensure memory determinism and strict type safety.
     """
-    __slots__ = ['kernel_jit', 'use_sparse', 'n_vars', 'alpha_mult', 'np_rows', 'np_cols']
+    __slots__ = [
+        'kernel_jit', 'use_sparse', 'n_vars', 'alpha_mult', 'np_rows', 'np_cols',
+        '_params_with_alpha_buffer', '_dense_data_buffer'
+    ]
 
     def __init__(self,
                  kernel_jit: Callable,
                  use_sparse: bool,
                  n_vars: int,
                  alpha_mult: float,
+                 parameter_count: int,
                  np_rows: Union[IntVec| None] = None,
                  np_cols: Union[IntVec| None] = None) -> None:
         """
@@ -206,6 +284,12 @@ class HybridJacobianEvaluator:
         self.alpha_mult = alpha_mult
         self.np_rows = np_rows
         self.np_cols = np_cols
+        self._params_with_alpha_buffer: Vec = np.empty(parameter_count + 1, dtype=np.float64)
+
+        if self.use_sparse:
+            self._dense_data_buffer = None
+        else:
+            self._dense_data_buffer = np.zeros(self.n_vars * self.n_vars, dtype=np.float64)
 
     def evaluate(self, states: Vec, params: Vec, history: Vec, d_history: Vec, h: float,
                  history2: Union[Vec| None] = None) -> Mat | CscMat:
@@ -227,8 +311,9 @@ class HybridJacobianEvaluator:
         :return: The assembled Jacobian matrix (Dense or Sparse CSC).
         :rtype: Mat | CscMat
         """
-        # Allocate a new array to append the alpha scaling factor required by the kernel
-        params_with_alpha: Vec = np.empty(len(params) + 1, dtype=np.float64)
+        # The Jacobian kernel expects the extra alpha scaling factor appended at
+        # the end of the parameter vector. The buffer is reused every call.
+        params_with_alpha: Vec = self._params_with_alpha_buffer
         params_with_alpha[:-1] = params
         params_with_alpha[-1] = self.alpha_mult / h
 
@@ -237,9 +322,16 @@ class HybridJacobianEvaluator:
 
         # Assemble the matrix based on the requested storage format
         if self.use_sparse:
+            # Sparse symbolic Jacobians may contain duplicate coordinates that
+            # SciPy canonicalizes during construction, so the matrix shell is
+            # rebuilt here to preserve the exact numerical semantics.
             return sp.csc_matrix((data, (self.np_rows, self.np_cols)), shape=(self.n_vars, self.n_vars))
         else:
-            return data.reshape((self.n_vars, self.n_vars))
+            if self._dense_data_buffer is None:
+                return data.reshape((self.n_vars, self.n_vars))
+            else:
+                self._dense_data_buffer[:] = data
+                return self._dense_data_buffer.reshape((self.n_vars, self.n_vars))
 
 class ResidualTrialEvaluator:
     """
@@ -247,13 +339,45 @@ class ResidualTrialEvaluator:
     """
     __slots__ = ['kernel_list', 'full_params', 'x_prev', 'dx_prev', 'h_eff', 'x_prev2']
 
-    def __init__(self,
-                 kernel_list: list[Callable],
-                 full_params: Vec,
-                 x_prev: Vec,
-                 dx_prev: Vec,
-                 h_eff: float,
-                 x_prev2: Vec) -> None:
+    def __init__(self) -> None:
+        """
+        Build one empty backtracking evaluator.
+
+        :return: None.
+        :rtype: None
+        """
+        self.kernel_list: List[Callable[..., Any]] | None = None
+        self.full_params: Vec | None = None
+        self.x_prev: Vec | None = None
+        self.dx_prev: Vec | None = None
+        self.h_eff: float = 0.0
+        self.x_prev2: Vec | None = None
+
+    def set_context(self,
+                    kernel_list: List[Callable[..., Any]],
+                    full_params: Vec,
+                    x_prev: Vec,
+                    dx_prev: Vec,
+                    h_eff: float,
+                    x_prev2: Vec) -> None:
+        """
+        Store the residual-evaluation context of the current Newton step.
+
+        :param kernel_list: Batched residual kernels.
+        :type kernel_list: List[Callable[..., Any]]
+        :param full_params: Full parameter vector.
+        :type full_params: Vec
+        :param x_prev: Previous accepted state.
+        :type x_prev: Vec
+        :param dx_prev: Previous derivative vector.
+        :type dx_prev: Vec
+        :param h_eff: Effective local time step.
+        :type h_eff: float
+        :param x_prev2: Secondary state history.
+        :type x_prev2: Vec
+        :return: None.
+        :rtype: None
+        """
         self.kernel_list = kernel_list
         self.full_params = full_params
         self.x_prev = x_prev
@@ -262,16 +386,36 @@ class ResidualTrialEvaluator:
         self.x_prev2 = x_prev2
 
     def __call__(self, candidate_x: Vec, out_res: Vec) -> float:
-        out_res[:] = 0.0
-        for candidate_kernel in self.kernel_list:
-            candidate_kernel(candidate_x,
-                             self.full_params,
-                             self.x_prev,
-                             self.dx_prev,
-                             self.h_eff,
-                             out_res,
-                             self.x_prev2)
-        return float(np.linalg.norm(out_res, np.inf))
+        """
+        Evaluate one trial Newton iterate during backtracking.
+
+        :param candidate_x: Trial iterate.
+        :type candidate_x: Vec
+        :param out_res: Destination residual buffer.
+        :type out_res: Vec
+        :return: Residual infinity norm.
+        :rtype: float
+        """
+        if self.kernel_list is None:
+            return np.inf
+        else:
+            pass
+
+        if self.full_params is None or self.x_prev is None or self.dx_prev is None or self.x_prev2 is None:
+            return np.inf
+        else:
+            pass
+
+        return evaluate_batched_residual(
+            kernel_list=self.kernel_list,
+            x_iter=candidate_x,
+            full_params=self.full_params,
+            x_prev=self.x_prev,
+            dx_prev=self.dx_prev,
+            h_eff=self.h_eff,
+            x_prev2=self.x_prev2,
+            residual_out=out_res,
+        )
 
 class JitSymbolicSolver:
 
@@ -279,7 +423,10 @@ class JitSymbolicSolver:
         'problem', 't0', 't_end', 'h', 'method', 'pred_method', 'dense_threshold', 'verbose',
         'steps', 't', 'y', 'dy', 'jit_kernels', 'jit_jacobian_symbolic',
         'state_vars', 'algebraic_vars', 'state_eqs', 'algebraic_eqs', 'diff_vars',
-        'jit_compiler', '_residual_debug_info', '_newton_diag_config'
+        'jit_compiler', '_residual_debug_info', '_newton_diag_config',
+        '_predictor', '_runtime_param_count', '_static_parameter_buffer', '_full_parameter_buffer',
+        '_residual_buffer', '_trial_state_buffer', '_trial_residual_buffer', '_trial_residual_evaluator',
+        '_backend_build_stats', '_last_runtime_stats', '_last_sim_loop_time'
     ]
 
     def __init__(self,
@@ -333,6 +480,29 @@ class JitSymbolicSolver:
         self.diff_vars  = self.problem.get_diff_vars()
 
         self._residual_debug_info = list()
+        self._predictor = Predictor(n_states=self.problem.get_states_number())
+        self._runtime_param_count: int = self.problem.get_variable_parameter_number()
+        self._static_parameter_buffer: Vec = np.asarray(
+            [float(constant.value) for constant in self.problem.get_parameters_values()],
+            dtype=np.float64,
+        )
+        self._full_parameter_buffer: Vec = np.zeros(
+            self._runtime_param_count + self._static_parameter_buffer.shape[0],
+            dtype=np.float64,
+        )
+        self._residual_buffer: Vec = np.zeros(self.problem.get_all_vars_number(), dtype=np.float64)
+        self._trial_state_buffer: Vec = np.zeros(self.problem.get_all_vars_number(), dtype=np.float64)
+        self._trial_residual_buffer: Vec = np.zeros(self.problem.get_all_vars_number(), dtype=np.float64)
+        self._trial_residual_evaluator = ResidualTrialEvaluator()
+        self._backend_build_stats: Dict[str, float] = dict(
+            residual_compile_s=0.0,
+            residual_batches=0.0,
+            jacobian_compile_s=0.0,
+            jacobian_builds=0.0,
+            total_s=0.0,
+        )
+        self._last_runtime_stats: Dict[str, float] = dict()
+        self._last_sim_loop_time: float = 0.0
 
     # ==============================================================================
     # 2. JIT IMPLICIT ENGINE (Optimized with Batching)
@@ -348,8 +518,12 @@ class JitSymbolicSolver:
         :type method: DynamicIntegrationMethod
         :rtype: None
         """
+        t_start_build: float = time.perf_counter()
+
         if self.verbose:
             print(f"--- [JIT] Compiling Implicit Kernel ({method}) ---")
+        else:
+            pass
 
         sorted_vars: List[Any] = list()
         sorted_vars.extend(self.state_vars)
@@ -427,6 +601,10 @@ class JitSymbolicSolver:
             batched_kernels.append(jit_func)
 
         self.jit_kernels[method] = batched_kernels
+        elapsed_s: float = time.perf_counter() - t_start_build
+        self._backend_build_stats['residual_compile_s'] += elapsed_s
+        self._backend_build_stats['residual_batches'] += float(len(batched_kernels))
+        self._backend_build_stats['total_s'] += elapsed_s
 
     def _build_jit_symbolic_hybrid(self, method: DynamicIntegrationMethod, use_sparse: bool)-> None:
         """
@@ -442,7 +620,9 @@ class JitSymbolicSolver:
 
         if self.verbose:
             print(f"--- [JIT-SD] Compiling Hybrid Symbolic Jacobian ({'SPARSE' if use_sparse else 'DENSE'}) ---")
-        t0 = time.time()
+        else:
+            pass
+        t0 = time.perf_counter()
 
         sorted_vars: List[Any] = list()
         sorted_vars.extend(self.state_vars)
@@ -524,9 +704,12 @@ class JitSymbolicSolver:
         compile_params.extend(all_params)
         compile_params.append(alpha_sym)
         compiler = EquationCompiler(variables=sorted_vars, parameters=compile_params, method=method)
-        func_name = f"jac_eval_{method}_{'sparse' if use_sparse else 'dense'}"
+        func_name = f"jac_eval_{method.name}_{N}_{'sparse' if use_sparse else 'dense'}"
         kernel_py = compiler.compile(jac_expression, func_name=func_name, use_cse=True)
-        kernel_jit = nb.njit(cache=False, fastmath=True)(kernel_py)
+
+        # The symbolic Jacobian structure is deterministic for a given method and
+        # sparsity mode, so persistent caching is safe and accelerates warm runs.
+        kernel_jit = nb.njit(cache=True, fastmath=True)(kernel_py)
 
         if method == DynamicIntegrationMethod.DaeTrapezoidal:
             alpha_mult = 2.0
@@ -543,13 +726,20 @@ class JitSymbolicSolver:
             use_sparse=use_sparse,
             n_vars=N,
             alpha_mult=alpha_mult,
+            parameter_count=len(all_params),
             np_rows=np_rows,
             np_cols=np_cols
         )
 
         self.jit_jacobian_symbolic[cache_key] = evaluator_obj
+        elapsed_s: float = time.perf_counter() - t0
+        self._backend_build_stats['jacobian_compile_s'] += elapsed_s
+        self._backend_build_stats['jacobian_builds'] += 1.0
+        self._backend_build_stats['total_s'] += elapsed_s
         if self.verbose:
-            print(f"   [JIT-SD] Compilation finished in {time.time() - t0:.4f}s")
+            print(f"   [JIT-SD] Compilation finished in {elapsed_s:.4f}s")
+        else:
+            pass
 
     def simulate(self,
                  x0: Union[Vec | None] = None,
@@ -617,11 +807,13 @@ class JitSymbolicSolver:
         dx_prev = dx0.copy()
         x_prev2 = x0.copy()
         x_iter = x0.copy()
-        trial_x = np.zeros_like(x_iter)
-        trial_res = np.zeros(n_eqs, dtype=np.float64)
+        trial_x = self._trial_state_buffer
+        trial_res = self._trial_residual_buffer
 
-        static_vals = np.array([c.value for c in self.problem.get_parameters_values()])
-        n_event_params = self.problem.get_variable_parameter_number()
+        static_vals = self._static_parameter_buffer
+        n_event_params = self._runtime_param_count
+        full_params = self._full_parameter_buffer
+        residual_buffer = self._residual_buffer
 
         if params0 is not None:
             ev_params = params0.copy()
@@ -630,9 +822,11 @@ class JitSymbolicSolver:
 
         if active_boundary_updater is not None:
             ev_params = self.problem.def_event_params_fn(ev_params, float(self.t0))
-            full_params0 = np.concatenate((ev_params, static_vals))
-            active_boundary_updater.update(float(self.t0), x_prev, full_params0)
-            ev_params[:] = full_params0[:len(ev_params)]
+            fill_full_parameter_buffer(ev_params, static_vals, full_params)
+            active_boundary_updater.update(float(self.t0), x_prev, full_params)
+            ev_params[:] = full_params[:len(ev_params)]
+        else:
+            pass
 
         trace_collector = self.problem.get_newton_trace_collector()
         diag_cfg = self._newton_diag_config
@@ -649,24 +843,33 @@ class JitSymbolicSolver:
 
         if diagnostics_enabled:
             dense_solve = with_newton_diagnostics(
-                np.linalg.solve,
-                fallback_solve=dense_lstsq_fallback,
+                lambda bundle, rhs: lu_solve(bundle[0], rhs),
+                fallback_solve=lambda bundle, rhs: dense_lstsq_fallback(bundle[1], rhs),
                 collector=trace_collector,
                 config=diag_cfg,
-                solver_name="dense",
+                solver_name="dense_lu",
+                matrix_getter=lambda bundle: bundle[1],
             )
             sparse_solve = with_newton_diagnostics(
-                sp.linalg.spsolve,
-                fallback_solve=sparse_lsqr_fallback,
+                lambda bundle, rhs: bundle[0].solve(rhs),
+                fallback_solve=lambda bundle, rhs: sparse_lsqr_fallback(bundle[1], rhs),
                 collector=trace_collector,
                 config=diag_cfg,
-                solver_name="sparse",
+                solver_name="superlu",
+                matrix_getter=lambda bundle: bundle[1],
             )
+        else:
+            pass
 
         if self.verbose:
             print(f"-> Starting JIT Simulation ({method}, {self.steps} steps)...")
         else:
             pass
+
+        loop_start: float = time.perf_counter()
+        total_newton_iterations: int = 0
+        jacobian_evaluation_count: int = 0
+        aligned_substep_count: int = 0
 
         for i in range(self.steps):
 
@@ -688,6 +891,11 @@ class JitSymbolicSolver:
                     t_curr: float = t_step_target
                 else:
                     t_curr = forced_event_time
+
+                if t_curr < (t_step_target - 1e-15):
+                    aligned_substep_count += 1
+                else:
+                    aligned_substep_count = aligned_substep_count
 
                 h_eff: float = t_curr - t_local_prev
 
@@ -717,7 +925,7 @@ class JitSymbolicSolver:
                 current_jacobian_eff = self.jit_jacobian_symbolic[jac_key_eff]
 
                 ev_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
-                full_params = np.concatenate((ev_params, static_vals))
+                fill_full_parameter_buffer(ev_params, static_vals, full_params)
 
                 if i == 0 and is_first_local_step and self.verbose:
                     _print_full_params_debug(full_params=full_params)
@@ -732,18 +940,26 @@ class JitSymbolicSolver:
 
                 x_iter[:] = x_prev
                 x_iter[:n_states] = x_prev[:n_states] + h_eff * dx_prev[:n_states]
+                last_res_norm: float = 1.0
+
+                # The factorization cache is local to the substep because the
+                # Jacobian depends on the current state, parameters and h_eff.
+                cached_lu_dense: DenseSolveBundle | None = None
+                cached_lu_sparse: SparseSolveBundle | None = None
 
                 if i == 0 and is_first_local_step and method == DynamicIntegrationMethod.DaeTrapezoidal:
-                    predictor = Predictor(n_states=n_states)
-                    predictor.predict(
+                    self._predictor.predict(
                         x_iter=x_iter,
                         x_prev=x_prev,
                         dx_prev=dx_prev,
                         h=h_eff,
                         pred_method=self.pred_method,
                     )
+                else:
+                    pass
 
                 for k in range(15):
+                    total_newton_iterations += 1
                     ctx = NewtonSolveContext(
                         t=float(t_curr),
                         step_idx=int(i),
@@ -752,10 +968,19 @@ class JitSymbolicSolver:
                         method=str(method)
                     )
 
-                    res = np.zeros(n_eqs, dtype=np.float64)
-
-                    for kn in kernel_list_eff:
-                        kn(x_iter, full_params, x_prev, dx_prev, h_eff, res, x_prev2)
+                    # The residual buffer is reused across Newton iterations to
+                    # remove one full-size allocation from the hot loop.
+                    res = residual_buffer
+                    res_norm_inf = evaluate_batched_residual(
+                        kernel_list=kernel_list_eff,
+                        x_iter=x_iter,
+                        full_params=full_params,
+                        x_prev=x_prev,
+                        dx_prev=dx_prev,
+                        h_eff=h_eff,
+                        x_prev2=x_prev2,
+                        residual_out=res,
+                    )
 
                     if i == 0 and self.verbose:
                         _print_residual_debug_table(
@@ -769,36 +994,63 @@ class JitSymbolicSolver:
                             iter_idx=k,
                         )
 
-                    if np.linalg.norm(res, np.inf) < 1e-6:
+                    if res_norm_inf < 1e-6:
                         break
                     else:
                         pass
 
-                    J_final = current_jacobian_eff.evaluate(
-                        states=x_iter,
-                        params=full_params,
-                        history=x_prev,
-                        d_history=dx_prev,
-                        h=h_eff,
-                        history2=x_prev2
-                    )
+                    recompute: bool = (cached_lu_dense is None and cached_lu_sparse is None) or \
+                                      (k > 0 and (res_norm_inf / (last_res_norm + 1e-16)) > 0.5)
 
-                    if diagnostics_enabled:
-                        maybe_check_index1(J_final, n_states, ctx=ctx, config=diag_cfg)
+                    if recompute:
+                        J_final = current_jacobian_eff.evaluate(
+                            states=x_iter,
+                            params=full_params,
+                            history=x_prev,
+                            d_history=dx_prev,
+                            h=h_eff,
+                            history2=x_prev2
+                        )
+                        jacobian_evaluation_count += 1
+
+                        if use_dense_solver:
+                            if diagnostics_enabled:
+                                maybe_check_index1(J_final, n_states, ctx=ctx, config=diag_cfg)
+                            else:
+                                pass
+
+                            cached_lu_dense = (lu_factor(J_final), J_final)
+                            cached_lu_sparse = None
+                        else:
+                            if diagnostics_enabled:
+                                maybe_check_index1(J_final, n_states, ctx=ctx, config=diag_cfg)
+                            else:
+                                pass
+
+                            cached_lu_sparse = (splu(J_final), J_final)
+                            cached_lu_dense = None
+                    else:
+                        pass
 
                     if use_dense_solver:
                         if diagnostics_enabled:
-                            delta = dense_solve(J_final, -res, ctx)
+                            assert dense_solve is not None
+                            assert cached_lu_dense is not None
+                            delta = dense_solve(cached_lu_dense, -res, ctx)
                         else:
-                            delta = np.linalg.solve(J_final, -res)
+                            assert cached_lu_dense is not None
+                            delta = lu_solve(cached_lu_dense[0], -res)
                     else:
                         if diagnostics_enabled:
-                            delta = sparse_solve(J_final, -res, ctx)
+                            assert sparse_solve is not None
+                            assert cached_lu_sparse is not None
+                            delta = sparse_solve(cached_lu_sparse, -res, ctx)
                         else:
-                            delta = sp.linalg.spsolve(J_final, -res)
+                            assert cached_lu_sparse is not None
+                            delta = cached_lu_sparse[0].solve(-res)
 
                     if diag_cfg.enable_backtracking:
-                        trial_residual_evaluator = ResidualTrialEvaluator(
+                        self._trial_residual_evaluator.set_context(
                             kernel_list=kernel_list_eff,
                             full_params=full_params,
                             x_prev=x_prev,
@@ -810,14 +1062,16 @@ class JitSymbolicSolver:
                         maybe_apply_backtracking(
                             x_iter,
                             delta,
-                            float(np.linalg.norm(res, np.inf)),
+                            res_norm_inf,
                             trial_x,
                             trial_res,
-                            evaluate_residual=trial_residual_evaluator,
+                            evaluate_residual=self._trial_residual_evaluator,
                             config=diag_cfg,
                         )
                     else:
                         x_iter += delta
+
+                    last_res_norm = res_norm_inf
 
                 if method == DynamicIntegrationMethod.DaeTrapezoidal:
                     dx_prev[:n_states] = (
@@ -857,7 +1111,43 @@ class JitSymbolicSolver:
         else:
             pass
 
+        self._last_sim_loop_time = time.perf_counter() - loop_start
+        self._last_runtime_stats = dict(
+            sim_loop_s=self._last_sim_loop_time,
+            total_newton_iterations=float(total_newton_iterations),
+            jacobian_evaluations=float(jacobian_evaluation_count),
+            aligned_substeps=float(aligned_substep_count),
+            macro_steps=float(self.steps),
+        )
+
         return self.t, self.y, self.dy
+
+    def get_backend_build_stats(self) -> Dict[str, float]:
+        """
+        Return setup timings collected during backend compilation.
+
+        :return: Backend build statistics.
+        :rtype: Dict[str, float]
+        """
+        return dict(self._backend_build_stats)
+
+    def get_last_runtime_stats(self) -> Dict[str, float]:
+        """
+        Return runtime statistics collected during the latest simulation.
+
+        :return: Runtime statistics.
+        :rtype: Dict[str, float]
+        """
+        return dict(self._last_runtime_stats)
+
+    def get_last_sim_loop_time(self) -> float:
+        """
+        Return the latest integration-loop wall time.
+
+        :return: Latest loop time in seconds.
+        :rtype: float
+        """
+        return self._last_sim_loop_time
 
 def _clip_debug_text(value: Any, width: int) -> str:
     """
