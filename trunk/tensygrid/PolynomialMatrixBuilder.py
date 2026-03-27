@@ -5,7 +5,7 @@ from scipy import sparse, linalg
 from sympy.parsing.sympy_parser import parse_expr
 from enum import Enum
 from typing import Optional, Any, List, Tuple
-
+import warnings
 
 # ------------------------------------------------------------------
 # Enums for Options
@@ -74,24 +74,6 @@ def _get_real_part(val: complex) -> float:
     return float(val.real)
 
 
-def _arr2str(a: np.ndarray) -> str:
-    """
-    Formats a numpy array into a structured string.
-
-    :param a: Input array.
-    :type a: np.ndarray
-    :return: Formatted string representation.
-    :rtype: str
-    """
-    return np.array2string(
-        np.asarray(a),
-        max_line_width=99999,
-        precision=6,
-        suppress_small=True,
-        threshold=99999,
-    )
-
-
 def _section(title: str, content: str) -> str:
     """
     Formats text into a standardized section for reporting.
@@ -134,6 +116,7 @@ class PolynomialMatrixBuilder:
             algebraic_vars: Optional[list] = None,
             verbose: bool = False
     ) -> None:
+
         self.verbose: bool = verbose
 
         self.eqs: list = list()
@@ -141,7 +124,6 @@ class PolynomialMatrixBuilder:
         self.state_vars: list = list()
         self.algebraic_vars: list = list()
 
-        # --- FIX: INITIALIZE LOCAL PROCESSING LISTS TO PREVENT UNBOUND ERRORS ---
         processed_eqs: list = list()
         processed_ineqs: list = list()
         processed_state_vars: list = list()
@@ -154,6 +136,7 @@ class PolynomialMatrixBuilder:
                 return item.to_string()
             return str(item)
 
+        # Checks whether the input is a VG problem or example eqs
         has_problem: bool = problem is not None
 
         if eqs is not None:
@@ -238,7 +221,11 @@ class PolynomialMatrixBuilder:
 
         # --- FIX: AUTOMATIC FLATTENING & GLOBAL SORTING ---
         self._argaux_map: dict = dict()
+
+        # LINEARIZATION: \propto x^n, n\in\mathbb{R}
         self._flatten_nonlinear_arguments()
+
+        # LINEARIZATION: \propto \cos(x), \propto \sin(x)
         self._apply_automatic_trig_lifting()
         self.all_symbols.sort(key=_sort_symbol)
 
@@ -654,7 +641,6 @@ class PolynomialMatrixBuilder:
         Transforms trigonometric non-linearities into extended polynomial states.
         Registers the new variables globally to ensure matrix column allocation.
         """
-        import sympy as sp
 
         new_eqs: list = list()
         subs_dict: dict = dict()
@@ -881,9 +867,11 @@ class PolynomialMatrixBuilder:
             self.eqs.append(c)
 
     # ------------------------------------------------------------------
-    # Linearisation – public entry point
+    # Linearization – public entry point
     # ------------------------------------------------------------------
+    # This may be deleted
     def linearize_with_problem(self, problem: Any, v_dict_override: Optional[dict] = None) -> np.ndarray:
+        warnings.warn("This will be deleted in a week from now if nobody complains.", DeprecationWarning)
         """
         Syncs the MTI_Problem's internal state (including dxOP) with the builder
         to ensure nonlinear terms are linearized at the correct operating point.
@@ -1303,14 +1291,6 @@ class PolynomialMatrixBuilder:
                     ("A Matrix", self.A),
                     ("B Matrix", self.B),
                 ]
-
-                for label_w, mat_w in matrix_write_refs:
-                    if mat_w is not None:
-                        formatted_mat: str = _arr2str(mat_w)
-                        section_str: str = _section(label_w, formatted_mat)
-                        f.write(section_str + "\n")
-                    else:
-                        pass
 
                 stability_txt: str = (
                     f"Is stable:     {is_stable}\n"
