@@ -8141,6 +8141,12 @@ QProgressBar::chunk{
                   </item>
                   <item row="6" column="0" colspan="2">
                    <widget class="QLabel" name="label_50">
+                    <property name="minimumSize">
+                     <size>
+                      <width>0</width>
+                      <height>26</height>
+                     </size>
+                    </property>
                     <property name="text">
                      <string/>
                     </property>
@@ -8319,7 +8325,7 @@ QProgressBar::chunk{
                   <string/>
                  </property>
                  <property name="pixmap">
-                  <pixmap resource="../Icons/icons.qrc">:/Icons/icons/dyn.png</pixmap>
+                  <pixmap resource="../Icons/icons.qrc">:/Icons/icons/dyn_emt.png</pixmap>
                  </property>
                  <property name="scaledContents">
                   <bool>true</bool>
@@ -8476,7 +8482,7 @@ QProgressBar::chunk{
                      <string/>
                     </property>
                     <property name="pixmap">
-                     <pixmap resource="../Icons/icons.qrc">:/Icons/icons/ss_icon.png</pixmap>
+                     <pixmap resource="../Icons/icons.qrc">:/Icons/icons/ss_emt_icon.png</pixmap>
                     </property>
                     <property name="scaledContents">
                      <bool>true</bool>
@@ -12696,7 +12702,7 @@ QProgressBar::chunk{
   <action name="actionRun_Dynamic_EMT_Simulation">
    <property name="icon">
     <iconset resource="../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/dyn.png</normaloff>:/Icons/icons/dyn.png</iconset>
+     <normaloff>:/Icons/icons/dyn_emt.png</normaloff>:/Icons/icons/dyn_emt.png</iconset>
    </property>
    <property name="text">
     <string>Dynamic EMT Simulation</string>
@@ -12711,7 +12717,7 @@ QProgressBar::chunk{
   <action name="actionRun_Small_Signal_EMT_Simulation">
    <property name="icon">
     <iconset resource="../Icons/icons.qrc">
-     <normaloff>:/Icons/icons/ss_icon.png</normaloff>:/Icons/icons/ss_icon.png</iconset>
+     <normaloff>:/Icons/icons/ss_emt_icon.png</normaloff>:/Icons/icons/ss_emt_icon.png</iconset>
    </property>
    <property name="text">
     <string>Small-Signal EMT Simulation</string>

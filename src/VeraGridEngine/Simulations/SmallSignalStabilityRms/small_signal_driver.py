@@ -499,7 +499,7 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
                  '__cancel__']
 
     name = 'Small Signal Stability Simulation'
-    tpe = SimulationTypes.SmallSignal_run
+    tpe = SimulationTypes.RmsSmallSignal_run
 
     def __init__(self,
                  grid: MultiCircuit,

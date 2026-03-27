@@ -2198,8 +2198,9 @@ class SimulationTypes(Enum):
     NodalCapacityTimeSeries_run = 'Nodal capacity time series'
     Reliability_run = "Reliability"
     RmsDynamic_run = "RMS Dynamic"
-    SmallSignal_run = "Small Signal stability"
+    RmsSmallSignal_run = "RMS Small Signal stability"
     EmtDynamic_run = "EMT Dynamic"
+    EmtSmallSignal_run = "EMT Small Signal stability"
 
     FileOpen = "file open"
     FileSave = "file save"
