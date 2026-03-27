@@ -888,8 +888,8 @@ class SimulationsMain(TimeEventsMain):
         :return: sim.RmsOptions
         """
         ops = sim.RmsOptions(
-            time_step=self.ui.h_spinBox.value(),
-            simulation_time=self.ui.sim_time_spinBox.value(),
+            time_step=self.ui.rms_h_spinBox.value(),
+            simulation_time=self.ui.rms_sim_time_spinBox.value(),
             tolerance=self.ui.tolerance_rms_spinBox.value(),
             integration_method=self.rms_integration_method_dict[self.ui.rms_integration_method_comboBox.currentText()],
             initialization_method=self.rms_initialization_method_dict[self.ui.rms_initialization_method_comboBox.currentText()],
@@ -898,14 +898,43 @@ class SimulationsMain(TimeEventsMain):
 
         return ops
 
-    def get_selected_small_signal_stability_options(self) -> sim.SmallSignalStabilityRmsOptions:
+    def get_selected_rms_small_signal_stability_options(self) -> sim.RmsSmallSignalStabilityOptions:
         """
-        Gather SmallSignal simulation run options
+        Gather RMS SmallSignal simulation run options
+        :return: RmsSmallSignalStabilityOptions
+        """
+        ops = sim.RmsSmallSignalStabilityOptions(
+            k=self.ui.rms_small_signal_modes_number_spinBox.value(),
+            ss_assessment_time=self.ui.rms_ss_assessment_time_spinBox.value(),
+        )
+
+        return ops
+
+
+    def get_selected_emt_simulation_options(self) -> sim.EmtOptions:
+        """
+        Gather EMT simulation run options
+        :return: sim.EmtOptions
+        """
+        ops = sim.EmtOptions(
+            time_step=self.ui.rms_h_spinBox.value(),
+            simulation_time=self.ui.rms_sim_time_spinBox.value(),
+            tolerance=self.ui.tolerance_rms_spinBox.value(),
+            integration_method=self.rms_integration_method_dict[self.ui.rms_integration_method_comboBox.currentText()],
+            initialization_method=self.rms_initialization_method_dict[self.ui.rms_initialization_method_comboBox.currentText()],
+
+        )
+
+        return ops
+
+    def get_selected_emt_small_signal_stability_options(self) -> sim.EmtSmallSignalStabilityOptions:
+        """
+        Gather EMT SmallSignal simulation run options
         :return: sim.SmallSignalOptions
         """
-        ops = sim.SmallSignalStabilityRmsOptions(
-            k=None,
-            ss_assessment_time=self.ui.ss_assessment_time_spinBox_2.value(),
+        ops = sim.EmtSmallSignalStabilityOptions(
+            k=self.ui.rms_small_signal_modes_number_spinBox.value(),
+            ss_assessment_time=self.ui.rms_ss_assessment_time_spinBox.value(),
         )
 
         return ops
@@ -3411,7 +3440,7 @@ class SimulationsMain(TimeEventsMain):
                     QtGui.QGuiApplication.processEvents()
 
                     # get the small signal stability analysis simulation options from the GUI
-                    options = self.get_selected_small_signal_stability_options()
+                    options = self.get_selected_rms_small_signal_stability_options()
                     rms_options = self.get_selected_rms_simulation_options()
 
                     self.ui.progress_label.setText('Performing Small Signal Stability analysis...')

@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 
 import VeraGridEngine.api as gce
 from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import SmallSignalStabilityRmsDriver
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityRmsOptions
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import RmsSmallSignalStabilityOptions
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor import RmsProblemPhasor
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Templates.Rms.bus_phasor_rms_template import initialize_bus_phasor_rms
@@ -123,7 +123,7 @@ def small_signal_analysis():
     # ===================================================================
     print("\n[4] Setting up small signal driver...")
     
-    ss_options = SmallSignalStabilityRmsOptions(ss_assessment_time=0)
+    ss_options = RmsSmallSignalStabilityOptions(ss_assessment_time=0)
     
     # Create driver with dummy grid (it will create RmsProblemDae internally)
     dummy_grid = gce.MultiCircuit(Sbase=Sbase)

@@ -3302,3 +3302,27 @@ class ProceduralLogicType(Enum):
             return ProceduralLogicType[s]
         except KeyError:
             return s
+
+
+class EmtInitializationStatus(Enum):
+    """Enumeration to track the progress of the initialization solver."""
+    PENDING = "PENDING"
+    RESOLVED = "RESOLVED"
+    FAILED = "FAILED"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return EmtInitializationStatus[s]
+        except KeyError:
+            return s

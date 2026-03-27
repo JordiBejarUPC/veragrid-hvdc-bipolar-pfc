@@ -11,7 +11,7 @@ from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
-class SmallSignalStabilityRmsOptions(OptionsTemplate):
+class RmsSmallSignalStabilityOptions(OptionsTemplate):
     """
     Small Signal Stability RMS simulation options.
     """
