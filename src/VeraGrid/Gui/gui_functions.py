@@ -1293,6 +1293,7 @@ def create_menu_button(parent,
                        position: QtGui.QAction,
                        actions: List[QtGui.QAction],
                        pixmap_name: str="",
+                       tooltip_text: str = "",
                        remove_actions: bool = True) -> QtWidgets.QToolButton:
     """
 
@@ -1301,6 +1302,7 @@ def create_menu_button(parent,
     :param position: Position at which to insert the button
     :param actions: List of actions to pack
     :param pixmap_name: optional button icon
+    :param tooltip_text: Tooltip text to show
     :param remove_actions: optional remove actions
     :return: QToolButton
     """
@@ -1312,6 +1314,11 @@ def create_menu_button(parent,
         button.setIcon(actions[0].icon())
 
     button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+
+    if tooltip_text != "":
+        button.setToolTip(tooltip_text)
+    else:
+        button.setToolTip(actions[0].toolTip())
 
     menu = QtWidgets.QMenu(button)
     for action in actions:

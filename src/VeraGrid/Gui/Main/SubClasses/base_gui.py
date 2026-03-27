@@ -182,12 +182,24 @@ class BaseMainGui(QMainWindow):
             remove_actions=True
         )
 
+        self.rms_menu_button = gf.create_menu_button(
+            parent=self,
+            toolbar=self.ui.toolBar,
+            actions=[self.ui.actionRun_Dynamic_RMS_Simulation,
+                     self.ui.actionRun_Dynamic_EMT_Simulation,
+                     self.ui.actionRun_Small_Signal_RMS_Simulation,
+                     self.ui.actionRun_Small_Signal_EMT_Simulation],
+            position=self.ui.actionRun_Dynamic_RMS_Simulation,
+            remove_actions=True
+        )
+
         self.opf_menu_button = gf.create_menu_button(
             parent=self,
             toolbar=self.ui.toolBar,
             actions=[self.ui.actionOPF,
                      self.ui.actionNodal_capacity,
-                     self.ui.actionOptimal_Net_Transfer_Capacity],
+                     self.ui.actionOptimal_Net_Transfer_Capacity,
+                     self.ui.actionATC],
             position=self.ui.actionNodal_capacity,
             remove_actions=True
         )
