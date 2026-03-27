@@ -160,6 +160,7 @@ class MultiCircuit(Assets):
         'Sbase',
         'fBase',
         'logger',
+        'parent'
     )
 
     def __init__(self,
@@ -360,6 +361,7 @@ class MultiCircuit(Assets):
                 'qf_measurements',
                 'if_measurements',
                 'modelling_authorities',
+                'diagrams',
                 ]
 
         for pr in ppts:
@@ -2298,6 +2300,7 @@ class MultiCircuit(Assets):
 
         dgrid = MultiCircuit(name=self.name + " increment")
         dgrid.comments = f"Incremental grid created from {self.name} using {base_grid.name} as base."
+        dgrid.time_profile = copy.deepcopy(self.time_profile)
 
         if self.get_time_number() != base_grid.get_time_number():
             nt = 0
@@ -2408,6 +2411,9 @@ class MultiCircuit(Assets):
                     pass
 
         # if any error in the logger, bad
+        if dgrid.time_profile is not None:
+            dgrid.ensure_profiles_exist()
+
         return logger.error_count() == 0, logger, dgrid
 
     def add_circuit(self, new_grid: "MultiCircuit", re_id_new_grid: bool = True) -> Logger:
@@ -2965,7 +2971,7 @@ class MultiCircuit(Assets):
             elm.P = results.load_power[i]
 
         for i, elm in enumerate(self.get_hvdc()):
-            elm.Pset.set(results.hvdc_Pf[i])
+            elm.Pset = results.hvdc_Pf[i]
 
     def get_reduction_sets(
             self,
@@ -3278,8 +3284,6 @@ class MultiCircuit(Assets):
                                  device_class=elm.device_type.value,
                                  device=elm.name)
         return logger
-
-
 
 
 

@@ -18,8 +18,10 @@ import pandas as pd
 # GUI imports
 from PySide6 import QtGui, QtWidgets, QtCore
 
+from VeraGrid.Gui.scenario_tree_model import ScenarioTreeModel
 # Engine imports
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.multiverse import MultiVerse
 import VeraGridEngine.Simulations as sim
 from VeraGridEngine.enumerations import EngineType, DeviceType, SimulationTypes
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
@@ -59,7 +61,6 @@ from VeraGrid.Gui.python_script_editor import PythonCodeEditor
 from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGrid.Gui.PsseDialogue.psse_import import PsseImportDialogue
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
-
 
 
 def terminate_thread(thread):
@@ -127,13 +128,15 @@ class BaseMainGui(QMainWindow):
 
         @param parent:
         """
-        # create main window
+        # create the main window
         QMainWindow.__init__(self, parent)
         self.ui = Ui_mainWindow()
         self.ui.setupUi(self)
 
         # Declare circuit
-        self.circuit: MultiCircuit = MultiCircuit()
+        # self.circuit: MultiCircuit = MultiCircuit()
+        self._multiverse: MultiVerse = MultiVerse(current_model=MultiCircuit())
+        self.scenario_tree_model: ScenarioTreeModel = ScenarioTreeModel(multiverse=self._multiverse)
 
         self.lock_ui = False
         self.ui.progress_frame.setVisible(self.lock_ui)
@@ -167,6 +170,39 @@ class BaseMainGui(QMainWindow):
         # simulation start end
         self.simulation_start_index: int = -1
         self.simulation_end_index: int = -1
+        # Menu buttons -------------------------------------------------------------------------------------------------
+
+        self.pf_menu_button = gf.create_menu_button(
+            parent=self,
+            toolbar=self.ui.toolBar,
+            actions=[self.ui.actionPower_flow,
+                     self.ui.actionLinearAnalysis,
+                     self.ui.actionSigma_analysis],
+            position=self.ui.actionPower_flow,
+            remove_actions=True
+        )
+
+        self.rms_menu_button = gf.create_menu_button(
+            parent=self,
+            toolbar=self.ui.toolBar,
+            actions=[self.ui.actionRun_Dynamic_RMS_Simulation,
+                     self.ui.actionRun_Dynamic_EMT_Simulation,
+                     self.ui.actionRun_Small_Signal_RMS_Simulation,
+                     self.ui.actionRun_Small_Signal_EMT_Simulation],
+            position=self.ui.actionRun_Dynamic_RMS_Simulation,
+            remove_actions=True
+        )
+
+        self.opf_menu_button = gf.create_menu_button(
+            parent=self,
+            toolbar=self.ui.toolBar,
+            actions=[self.ui.actionOPF,
+                     self.ui.actionNodal_capacity,
+                     self.ui.actionOptimal_Net_Transfer_Capacity,
+                     self.ui.actionATC],
+            position=self.ui.actionNodal_capacity,
+            remove_actions=True
+        )
 
         # Add console --------------------------------------------------------------------------------------------------
         self.console = PythonConsole(banner="VeraGrid Python Console!")
@@ -205,7 +241,7 @@ class BaseMainGui(QMainWindow):
         self.file_selector: FileTypeSelector | None = None
         self.cgmes_selector: CgmesOptionsSelector | None = None
         self.psse_import_dialogue: PsseImportDialogue | None = None
-        self.procedural_grid_window : ProceduralGridWindow | None = None
+        self.procedural_grid_window: ProceduralGridWindow | None = None
 
         # available engines --------------------------------------------------------------------------------------------
         engine_lst = [EngineType.VeraGrid]
@@ -280,6 +316,42 @@ class BaseMainGui(QMainWindow):
         """
         if not self.any_thread_running():
             self.LOCK(False)
+
+    @property
+    def multiverse(self) -> MultiVerse:
+        return self._multiverse
+
+    @multiverse.setter
+    def multiverse(self, val: MultiVerse):
+        self._multiverse = val
+        self.scenario_tree_model = ScenarioTreeModel(multiverse=val)
+        self.ui.multiverseTreeView.setModel(self.scenario_tree_model)
+        selection_model = self.ui.multiverseTreeView.selectionModel()
+
+        # A loaded multiverse should present the whole scenario tree immediately.
+        self.ui.multiverseTreeView.expandAll()
+
+        # Restore the saved active scenario visually so the tree selection matches the
+        # multiverse current_node/current_model pair as soon as the model is assigned.
+        current_index = self.scenario_tree_model.index_for_node(val.current_node)
+        if current_index.isValid():
+            self.ui.multiverseTreeView.setCurrentIndex(current_index)
+            if selection_model is not None:
+                selection_model.select(
+                    current_index,
+                    QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect
+                    | QtCore.QItemSelectionModel.SelectionFlag.Rows,
+                )
+            self.ui.multiverseTreeView.scrollTo(current_index)
+
+    @property
+    def circuit(self) -> MultiCircuit:
+        return self.multiverse.current_model
+
+    @circuit.setter
+    def circuit(self, val: MultiCircuit):
+        self.multiverse.current_model = val
+        self.multiverse.base_model = val
 
     @property
     def file_name(self) -> str:

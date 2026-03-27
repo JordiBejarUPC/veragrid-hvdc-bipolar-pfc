@@ -52,11 +52,11 @@ DEFAULT_BLOCK_FILL: QColor = QColor("#d9e7f5")
 PORT_LABEL_COLOR: QColor = QColor("#173042")
 WIRE_ELBOW_OFFSET: float = 36.0
 PORT_LABEL_MAX_CHARS: int = 12
-BLOCK_HEADER_HEIGHT: float = 32.0
-BLOCK_PORT_ROW_HEIGHT: float = 18.0
-BLOCK_PORT_SECTION_PADDING: float = 14.0
-BLOCK_MIN_WIDTH: float = 186.0
-BLOCK_MIN_HEIGHT: float = 60.0
+BLOCK_HEADER_HEIGHT: float = 24.0
+BLOCK_PORT_ROW_HEIGHT: float = 16.0
+BLOCK_PORT_SECTION_PADDING: float = 10.0
+BLOCK_MIN_WIDTH: float = 100.0
+BLOCK_MIN_HEIGHT: float = 50.0
 TEMPLATE_NODE_TYPE: str = "TEMPLATE"
 PARAMETER_VALUE_TYPE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 500
 PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
@@ -265,7 +265,7 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     target_block.in_vars = source_clone.in_vars
     target_block.out_vars = source_clone.out_vars
     target_block.parameters = source_clone.parameters
-    target_block.alter_params = source_clone.alter_params
+    # target_block.alter_params = source_clone.alter_params
     target_block.discrete_eqs = source_clone.discrete_eqs
     target_block.external_mapping = source_clone.external_mapping
     target_block.api_obj_mapping = source_clone.api_obj_mapping
@@ -2722,7 +2722,7 @@ class GenericBlockItem(QGraphicsRectItem):
         :param templates_catalogue:
         :param position_changed_callback:
         """
-        super().__init__(0, 0, 100, 60)
+        super().__init__(0, 0, 50, 30)
 
         # ------------------------
         # API
@@ -2747,14 +2747,20 @@ class GenericBlockItem(QGraphicsRectItem):
             mode=self.mode
         )
 
-        self.setBrush(QBrush(QColor("#C0C0C0")))
+        self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
+        self.setPen(QPen(Qt.GlobalColor.transparent, 0))
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
             QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
         )
         self.setAcceptHoverEvents(True)
-        self.name_item.setPos(10, 5)
+
+        self.name_item.setDefaultTextColor(BLOCK_TITLE)
+        name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 6)
+        name_font.setBold(True)
+        self.name_item.setFont(name_font)
+        self.name_item.setPos(6, 4)
 
         n_inputs = len(self.block.in_vars)
         n_outputs = len(self.block.out_vars)
@@ -2773,9 +2779,7 @@ class GenericBlockItem(QGraphicsRectItem):
 
         self.resize_handle = ResizeHandle(self)
 
-        super().setRect(0, 0, 100, 60)
-        self.update_ports()
-        self.update_handle_position()
+        self.resize_to_content()
 
     @property
     def subsys(self):
@@ -2810,6 +2814,42 @@ class GenericBlockItem(QGraphicsRectItem):
         self.resize_handle.setPos(rect.width(), rect.height())
         self.resizing_from_handle = True
 
+    def paint(self,
+              painter: QPainter,
+              option: QtWidgets.QStyleOptionGraphicsItem,
+              widget: Optional[QWidget] = None) -> None:
+        """
+        Paint the generic block with a rounded card style and a subtle shadow.
+
+        :param painter:
+        :param option:
+        :param widget:
+        :return:
+        """
+        rect: QtCore.QRectF = self.rect()
+        outer_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
+        shadow_rect: QtCore.QRectF = outer_rect.translated(2.5, 3.0)
+        body_rect: QtCore.QRectF = outer_rect
+        border_color: QColor = BLOCK_BORDER_SELECTED if self.isSelected() else BLOCK_BORDER
+        fill_color: QColor = self.brush().color()
+        body_path: QPainterPath = QPainterPath()
+        shadow_path: QPainterPath = QPainterPath()
+
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        shadow_path.addRoundedRect(shadow_rect, 12.0, 12.0)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(BLOCK_SHADOW))
+        painter.drawPath(shadow_path)
+
+        body_path.addRoundedRect(body_rect, 12.0, 12.0)
+        painter.setBrush(QBrush(fill_color))
+        painter.drawPath(body_path)
+
+        painter.setPen(QPen(border_color, 1.6))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRoundedRect(body_rect, 12.0, 12.0)
+
     def _set_rect_internal(self, w, h):
         QGraphicsRectItem.setRect(self, 0, 0, w, h)
         self.update_ports()
@@ -2821,16 +2861,38 @@ class GenericBlockItem(QGraphicsRectItem):
 
     def get_minimum_block_size(self) -> tuple[float, float]:
         """
-        Compute the minimum generic block size required by its ports.
+        Compute the minimum generic block size required by its ports and name.
 
         :return:
         """
         port_rows: int = max(len(self.inputs), len(self.outputs), 1)
-        min_height: float = max(
-            BLOCK_MIN_HEIGHT,
-            BLOCK_HEADER_HEIGHT + BLOCK_PORT_SECTION_PADDING + port_rows * BLOCK_PORT_ROW_HEIGHT
-        )
-        return BLOCK_MIN_WIDTH, min_height
+        min_height: float = 30 + port_rows * 14
+
+        name_width = len(self.block.name) * 5
+        max_label_length = 0
+        for var in self.block.in_vars:
+            max_label_length = max(max_label_length, len(var.name))
+        for var in self.block.out_vars:
+            max_label_length = max(max_label_length, len(var.name))
+
+        port_width = max_label_length * 5
+        min_width = max(50, name_width + 10, port_width + 20)
+
+        return min_width, min_height
+
+    def resize_to_content(self) -> None:
+        """
+        Resize the block to the minimum size required by its ports.
+
+        :return:
+        """
+        self.prepareGeometryChange()
+        min_width: float
+        min_height: float
+        min_width, min_height = self.get_minimum_block_size()
+        QGraphicsRectItem.setRect(self, 0, 0, min_width, min_height)
+        self.update_ports()
+        self.update_handle_position()
 
     def update_ports(self):
         for i, port in enumerate(self.inputs):
@@ -2917,10 +2979,10 @@ class BlockItem(QGraphicsRectItem):
         if self.subsys is not None:
             self.name_item = QGraphicsTextItem(self.name, self)
             self.name_item.setDefaultTextColor(BLOCK_TITLE)
-            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 10)
+            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 6)
             name_font.setBold(True)
             self.name_item.setFont(name_font)
-            self.name_item.setPos(12, 9)
+            self.name_item.setPos(6, 4)
 
             n_inputs: int = len(self.subsys.in_vars)
             n_outputs: int = len(self.subsys.out_vars)
@@ -2960,7 +3022,19 @@ class BlockItem(QGraphicsRectItem):
             BLOCK_MIN_HEIGHT,
             BLOCK_HEADER_HEIGHT + BLOCK_PORT_SECTION_PADDING + port_rows * BLOCK_PORT_ROW_HEIGHT
         )
-        return BLOCK_MIN_WIDTH, min_height
+
+        name_width = len(self.name) * 5
+        max_label_length = 0
+        if self.subsys:
+            for var in self.subsys.in_vars:
+                max_label_length = max(max_label_length, len(var.name))
+            for var in self.subsys.out_vars:
+                max_label_length = max(max_label_length, len(var.name))
+
+        port_width = max_label_length * 5
+        min_width = max(BLOCK_MIN_WIDTH, name_width + 14, port_width + 28)
+
+        return min_width, min_height
 
     def resize_to_content(self) -> None:
         """
@@ -2968,6 +3042,7 @@ class BlockItem(QGraphicsRectItem):
 
         :return:
         """
+        self.prepareGeometryChange()
         min_width: float
         min_height: float
         min_width, min_height = self.get_minimum_block_size()

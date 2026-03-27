@@ -181,6 +181,20 @@ class MTI_Problem(RmsProblemTemplate):
         custom_math: dict = dict()
         custom_math["sqrt"] = _convert_sqrt_to_pow
 
+        # ALGORITHM: Dynamically map native symbolic transcendental functions if supported.
+        # This prevents numpy's ufunc from crashing when applied to VeraGrid Var objects.
+        import VeraGridEngine.Utils.Symbolic.symbolic as vg_sym
+        if hasattr(vg_sym, 'sin'):
+            custom_math["sin"] = vg_sym.sin
+        if hasattr(vg_sym, 'cos'):
+            custom_math["cos"] = vg_sym.cos
+        if hasattr(vg_sym, 'tan'):
+            custom_math["tan"] = vg_sym.tan
+        if hasattr(vg_sym, 'exp'):
+            custom_math["exp"] = vg_sym.exp
+        if hasattr(vg_sym, 'log'):
+            custom_math["log"] = vg_sym.log
+
         eq_str: str
         for eq_str in eqs:
             # Convert string to SymPy expression using locals for variable mapping
@@ -194,7 +208,7 @@ class MTI_Problem(RmsProblemTemplate):
                 eq_vars.append(v_d[s.name])
 
             # ALGORITHM: Lambdify maps the SymPy tree to a callable Python function.
-            # By injecting custom_math, any 'sqrt' is intercepted and evaluated via __pow__.
+            # By injecting custom_math, transcendentals and 'sqrt' are intercepted safely.
             func: Any = sp.lambdify(
                 eq_symbols,
                 expr_sympy,

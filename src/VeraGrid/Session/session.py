@@ -76,7 +76,7 @@ class GcThread(QThread):
         QThread.__init__(self)
 
         # assign the driver and set the driver's reporting functions
-        self.driver = driver
+        self.driver: DriverTemplate = driver
         self.driver.progress_signal = self.progress_signal
         self.driver.progress_text = self.progress_text
         self.driver.done_signal = self.done_signal
@@ -138,8 +138,24 @@ class SimulationSession:
         self.name: str = name
 
         # dictionary of drivers
-        self.drivers: Dict[SimulationTypes, DRIVER_OBJECTS] = dict()
+        self._drivers: Dict[SimulationTypes, DRIVER_OBJECTS] = dict()
         self.threads: Dict[SimulationTypes, GcThread] = dict()
+
+    @property
+    def drivers(self) -> Dict[SimulationTypes, DRIVER_OBJECTS]:
+        """
+        get the drivers dictionary
+        :return: Dict[SimulationTypes, DRIVER_OBJECTS]
+        """
+        return self._drivers
+
+    @drivers.setter
+    def drivers(self, value: Dict[SimulationTypes, DRIVER_OBJECTS]):
+        """
+        set the drivers
+        :param value: Dict[SimulationTypes, DRIVER_OBJECTS]
+        """
+        self._drivers: Dict[SimulationTypes, DRIVER_OBJECTS] = value
 
     def __str__(self):
         return self.name
@@ -645,5 +661,5 @@ class SimulationSession:
 
         :return:
         """
-        drv, results = self.get_driver_results(SimulationTypes.SmallSignal_run)
+        drv, results = self.get_driver_results(SimulationTypes.RmsSmallSignal_run)
         return drv, results

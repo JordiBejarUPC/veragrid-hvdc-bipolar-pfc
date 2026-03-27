@@ -188,11 +188,12 @@ class RmsProblemDae(RmsProblemTemplate):
             # Todo: missing default initialization for the model
             bus_dict[elm] = bus_num
 
-            # flatten model
+            # default initialization
             if elm.rms_model.empty():
                 initialize_bus_rms(elm, self.grid.rms_var_factory)
                 # initialize_bus_rms, get_bus_rms_algebraic_vars
 
+            # flatten model
             elm.rms_model.unify_blocks()
 
             self.add_variables_to_compilation_dicts(elm, elm.rms_model)

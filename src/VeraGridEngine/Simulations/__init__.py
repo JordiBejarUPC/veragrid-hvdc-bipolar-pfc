@@ -26,6 +26,7 @@ from VeraGridEngine.Simulations.AI import *
 from VeraGridEngine.Simulations.Rms import *
 from VeraGridEngine.Simulations.EMT import *
 from VeraGridEngine.Simulations.SmallSignalStabilityRms import *
+from VeraGridEngine.Simulations.SmallSignalStabilityEmt import *
 from VeraGridEngine.Simulations.driver_template import DriverToSave
 from VeraGridEngine.Simulations.results_template import ResultsTemplate
 
