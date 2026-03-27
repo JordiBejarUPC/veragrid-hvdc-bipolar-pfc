@@ -594,9 +594,28 @@ class Block:
             variables.extend(blk.diff_vars)
         return variables
 
+    def update_variables(self, old, new):
+        """
+        this function changes the variable old for the variable new in the block variables
+        :param old:
+        :type old:
+        :param new:
+        :type new:
+        :return:
+        :rtype:
+        """
+
+        for lst in [self.state_vars, self.algebraic_vars, self.diff_vars]:
+            for i, var in enumerate(lst):
+                if var.uid == old.uid:
+                    lst[i]=new
+
+
+
+
     def update_equations(self, old, new):
         """
-        this function changes the variable old for the variable new in a block
+        this function changes the variable old for the variable new in the block equations
         :param old:
         :param new:
         :return:
@@ -665,6 +684,7 @@ class Block:
         :return:
         """
         self.update_equations(old, new)
+        self.update_variables(old, new)
         if self.children:
             for child in self.children:
                 child.update_model(old, new)

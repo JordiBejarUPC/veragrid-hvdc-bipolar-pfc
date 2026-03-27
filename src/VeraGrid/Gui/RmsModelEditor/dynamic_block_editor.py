@@ -3445,26 +3445,42 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.scene.removeItem(item)
 
-        if source_port.subsystem.subsys is not None and target_port.subsystem.subsys is not None:
+
+        if source_port.subsystem.subsys is not None:
             dst_var: Var = source_port.subsystem.subsys.out_vars[source_port.index]
-            target_var: Var
-            i: int
-            eq: Expr
 
-            if target_port.base_var is not None:
-                target_var = target_port.base_var
-            else:
-                target_var = target_port.subsystem.subsys.in_vars[target_port.index]
+            if dst_var.network_conn:
 
-            # The destination equations must be restored to the original local input variable.
-            for i, eq in enumerate(target_port.subsystem.subsys.algebraic_eqs):
-                target_port.subsystem.subsys.algebraic_eqs[i] = eq.subs({dst_var: target_var})
+                target_var: Var
+                i: int
+                eq: Expr
 
-            for i, eq in enumerate(target_port.subsystem.subsys.state_eqs):
-                target_port.subsystem.subsys.state_eqs[i] = eq.subs({dst_var: target_var})
+                if source_port.base_var is not None:
+                    target_var = source_port.base_var
+                else:
+                    target_var = source_port.subsystem.subsys.out_vars[source_port.index]
 
-            target_port.subsystem.subsys.in_vars[target_port.index] = target_var
-            target_port.subsystem.refresh_port_metadata()
+                # The destination equations and variables must be restored to the original local input variable.
+                source_port.subsystem.subsys.update_model(dst_var, target_var)
+
+                source_port.subsystem.subsys.out_vars[source_port.index] = target_var
+                source_port.subsystem.refresh_port_metadata()
+
+        if target_port.subsystem.subsys is not None:
+            dst_var: Var = source_port.subsystem.subsys.out_vars[source_port.index]
+
+            if not dst_var.network_conn:
+                if target_port.base_var is not None:
+                    target_var = target_port.base_var
+                else:
+                    target_var = target_port.subsystem.subsys.in_vars[target_port.index]
+
+                # The destination equations and variables must be restored to the original local input variable.
+                target_port.subsystem.subsys.update_model(dst_var, target_var)
+
+                target_port.subsystem.subsys.in_vars[target_port.index] = target_var
+                target_port.subsystem.refresh_port_metadata()
+
         else:
             pass
 
@@ -3480,6 +3496,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         connections_to_remove: List[ConnectionItem] = list()
         child_block: Block
 
+        # find connections to remove
         for port in item.inputs + item.outputs:
             if port.connections is not None:
                 for conn in port.connections:
@@ -3490,11 +3507,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
 
-        for conn in connections_to_remove:
-            self.remove_connection_item(conn)
-
+        # remove item from scene
         self.scene.removeItem(item)
 
+        # remove blocks and diagrams from main_block
         if item.subsys is not None:
             for child_block in list(self.main_block.children):
                 if child_block.uid == item.subsys.uid:
@@ -3508,6 +3524,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 pass
         else:
             pass
+
+        # remove connections
+        for conn in connections_to_remove:
+            self.remove_connection_item(conn)
 
     def remove_item(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
         """
