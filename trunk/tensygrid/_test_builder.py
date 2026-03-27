@@ -371,13 +371,15 @@ class TestPolynomialStability(unittest.TestCase):
         """
         Test: Evaluates the automatic Polynomial-Matrix conversion for the PLL.
         The user provides pure trigonometric non-linearities, and the engine
-        MUST perform the multilinear lifting automatically under the hood.
+        MUST perform the multilinear lifting automatically under the hood. This example can be found in
+        Small-Signal Stability Analysis of Power Systems
+        by Implicit Multilinear Models
+        by C. Kaufmann et all.
         """
         kp_val: float = 0.5
         ki_val: float = 9.0
 
-        # 1. Ecuaciones físicas originales (El usuario no sabe qué es el lifting)
-        # Usamos 'sin' y 'cos' directamente en el string.
+
         eqs: List[str] = [
             f"xp1 - x2 - {kp_val}*(-u1*sin(x1) + u2*cos(x1))",
             f"xp2 - {ki_val}*(-u1*sin(x1) + u2*cos(x1))"
@@ -386,7 +388,6 @@ class TestPolynomialStability(unittest.TestCase):
         import math
         theta_eq: float = 4.0 * math.pi / 180.0
 
-        # 2. El usuario SOLO inicializa los estados físicos reales
         v_dict: Dict[str, float] = {
             'x1': theta_eq,
             'x2': 0.0,
@@ -396,13 +397,10 @@ class TestPolynomialStability(unittest.TestCase):
             'u2': 22.7406,
         }
 
-        # 3. Al procesar el problema matemático, el parser debe detectar
-        # las funciones no polinomiales.
+
         math_problem: MTI_Problem = MTI_Problem(eqs_str=eqs, v_dict=v_dict)
 
-        # 4. INSTANTE CRÍTICO:
-        # Antes de que este Builder llame a self.matrix_creation(), las ecuaciones
-        # dentro de math_problem DEBEN haber sido transformadas automáticamente.
+
         builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=math_problem, verbose=False)
         builder.linearize(v_dict)
 
