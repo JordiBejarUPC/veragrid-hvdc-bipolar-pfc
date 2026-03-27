@@ -235,6 +235,91 @@ class MultiVerse:
 
         return composed
 
+    def _compose_node(self, node: ScenarioNode) -> MultiCircuit:
+        """
+        Return the full scenario represented by *node*.
+
+        This is the single semantic rule for node composition:
+        - roots expose their authoritative circuit directly
+        - non-roots are reconstructed from their delta chain
+        """
+        if node.parent is None:
+            node.circuit.diagrams = copy.deepcopy(node.diagrams)
+            return node.circuit
+        return self.checkout(node)
+
+    def _build_delta_from_composed(self, node: ScenarioNode, composed: MultiCircuit) -> MultiCircuit:
+        """
+        Convert a fully composed scenario back into the storage representation of *node*.
+
+        Root nodes store the full authoritative circuit, while non-root nodes store only
+        the delta against their parent. Diagrams remain full scenario-owned copies in both cases.
+        """
+        scenario_name: str = node.circuit.name
+        composed.name = scenario_name
+
+        if node.parent is None:
+            composed.diagrams = copy.deepcopy(composed.diagrams)
+            return composed
+
+        parent_circuit: MultiCircuit = self.checkout(node.parent)
+        _ok, _logger, delta = composed.differentiate_circuits(
+            base_grid=parent_circuit,
+            force_second_pass=True,
+        )
+        delta.name = scenario_name
+        delta.diagrams = copy.deepcopy(composed.diagrams)
+        return delta
+
+    def _store_node_circuit_and_diagrams(self, node: ScenarioNode, stored_circuit: MultiCircuit) -> None:
+        """
+        Persist a node's storage payload and keep node-owned diagrams in sync with it.
+        """
+        node.circuit = stored_circuit
+        node.diagrams = copy.deepcopy(stored_circuit.diagrams)
+
+    def _store_composed_node_data(self, node: ScenarioNode, composed: MultiCircuit) -> None:
+        """
+        Persist a fully composed circuit back into the node storage model.
+
+        Root nodes keep the full authoritative circuit.
+        Non-root nodes store only the delta against their parent.
+        """
+        stored_circuit = self._build_delta_from_composed(node=node, composed=composed)
+        self._store_node_circuit_and_diagrams(node=node, stored_circuit=stored_circuit)
+
+        if node.parent is None and node in self._root_nodes:
+            self._base_model = node.circuit
+
+    def _set_active_node(self, node: ScenarioNode) -> MultiCircuit:
+        """
+        Make *node* the active scenario and return the active circuit object.
+
+        The activation rule is centralized here so all code paths agree on:
+        - which object becomes ``current_model``
+        - when roots expose their authoritative circuit directly
+        - how scenario-owned diagrams are copied into the active circuit
+        """
+        composed = self._compose_node(node)
+        composed.diagrams = copy.deepcopy(node.diagrams)
+        self._current_node = node
+        self._current_model = composed
+        return composed
+
+    def _set_fallback_active_node(self, fallback_node: ScenarioNode | None) -> None:
+        """
+        Activate a fallback node or clear active state if the tree became empty.
+        """
+        if fallback_node is None:
+            self._current_node = None
+            self._current_model = None
+            self._base_model = None
+            return
+
+        self._set_active_node(fallback_node)
+        if self._root_nodes:
+            self._base_model = self._root_nodes[0].circuit
+
     def commit_current(self) -> None:
         """
         Persist edits made to the currently active scenario.
@@ -247,55 +332,7 @@ class MultiVerse:
         if self._current_node is None:
             return
 
-        if self._current_node.parent is None:
-            # Root: current_model IS root.data, already up to date
-            self._current_node.diagrams = copy.deepcopy(self._current_model.diagrams)
-            self._current_node.circuit.diagrams = copy.deepcopy(self._current_model.diagrams)
-            return
-
-        # Preserve the user-facing scenario name before we overwrite node.data
-        scenario_name: str = self._current_node.circuit.name
-
-        # Compose parent's full circuit to use as the diff base
-        parent_circuit: MultiCircuit = self.checkout(self._current_node.parent)
-
-        # Compute delta: what changed in current_model relative to parent
-        _ok, _logger, delta = self._current_model.differentiate_circuits(
-            base_grid=parent_circuit,
-            force_second_pass=True,  # always detect deletions
-        )
-
-        delta.name = scenario_name
-        delta.diagrams = copy.deepcopy(self._current_model.diagrams)
-        self._current_node.circuit = delta
-        self._current_node.diagrams = copy.deepcopy(self._current_model.diagrams)
-
-    def _store_composed_node_data(self, node: ScenarioNode, composed: MultiCircuit) -> None:
-        """
-        Persist a fully composed circuit back into the node storage model.
-
-        Root nodes keep the full authoritative circuit.
-        Non-root nodes store only the delta against their parent.
-        """
-        scenario_name: str = node.circuit.name
-        composed.name = scenario_name
-
-        if node.parent is None:
-            node.circuit = composed
-            node.diagrams = copy.deepcopy(composed.diagrams)
-            if self._base_model is not None and node in self._root_nodes:
-                self._base_model = node.circuit
-            return
-
-        parent_circuit: MultiCircuit = self.checkout(node.parent)
-        _ok, _logger, delta = composed.differentiate_circuits(
-            base_grid=parent_circuit,
-            force_second_pass=True,
-        )
-        delta.name = scenario_name
-        delta.diagrams = copy.deepcopy(composed.diagrams)
-        node.circuit = delta
-        node.diagrams = copy.deepcopy(composed.diagrams)
+        self._store_composed_node_data(node=self._current_node, composed=self._current_model)
 
     def merge_children_into_parent(self, parent_id: int) -> ScenarioNode:
         """
@@ -324,6 +361,7 @@ class MultiVerse:
 
         for child in direct_children:
             merged_parent_model.merge_circuit(new_grid=child.circuit)
+            merged_parent_model.diagrams = copy.deepcopy(child.diagrams)
 
         rebased_grandchildren: list[tuple[ScenarioNode, MultiCircuit]] = list()
         for child in direct_children:
@@ -334,22 +372,10 @@ class MultiVerse:
 
         reparented_children: list[ScenarioNode] = list()
         for grandchild, full_grid in rebased_grandchildren:
-            scenario_name: str = grandchild.circuit.name
-            _ok, _logger, delta = full_grid.differentiate_circuits(
-                base_grid=merged_parent_model,
-                force_second_pass=True,
-            )
-            delta.name = scenario_name
-            grandchild.circuit = delta
+            delta = self._build_delta_from_composed(node=grandchild, composed=full_grid)
+            self._store_node_circuit_and_diagrams(node=grandchild, stored_circuit=delta)
             grandchild.parent = None
             reparented_children.append(grandchild)
-
-        affected_current_node = self._current_node
-        current_node_was_removed = any(affected_current_node is child for child in direct_children)
-        current_node_was_rebased = any(
-            self._is_descendant(candidate_parent=child, candidate_child=affected_current_node)
-            for child in direct_children
-        ) if affected_current_node is not None else False
 
         parent.children = list()
 
@@ -362,11 +388,10 @@ class MultiVerse:
         for grandchild in reparented_children:
             parent.append_child(grandchild)
 
-        if current_node_was_removed or self._current_node is parent:
-            self._current_node = parent
-            self._current_model = parent.circuit if parent.parent is None else merged_parent_model
-        elif current_node_was_rebased and self._current_node is not None:
-            self._current_model = self.checkout(self._current_node)
+        # After a merge, the direct child scenarios cease to exist as standalone choices.
+        # Promote the merge target to the active scenario so both engine state and GUI state
+        # converge on the surviving node that now owns the merged result.
+        self._set_active_node(parent)
 
         return parent
 
@@ -387,17 +412,7 @@ class MultiVerse:
         target: ScenarioNode = self.get_node(node_id)
 
         self.commit_current()
-
-        if target.parent is None:
-            composed: MultiCircuit = target.circuit
-            composed.diagrams = copy.deepcopy(target.diagrams)
-        else:
-            composed = self.checkout(target)
-
-        self._current_model = composed
-        self._current_node = target
-
-        return composed
+        return self._set_active_node(target)
 
     def create_node(
             self,
@@ -491,18 +506,46 @@ class MultiVerse:
 
     def delete_node(self, node_id: int) -> ScenarioNode:
         """
+        Delete a node and its entire subtree from the multiverse.
+
+        The non-obvious part of this operation is active-state repair. The GUI and the save
+        path both assume that ``current_node`` and ``current_model`` always point to a valid
+        scenario still owned by this tree. If the deleted subtree contains the active node,
+        leaving those references untouched would keep them pointing at detached objects that are
+        no longer in ``_nodes_by_id`` nor reachable from any root.
+
+        The fallback policy is:
+        - if the deleted subtree had a parent, activate that parent
+        - otherwise, activate the first remaining root if one exists
+        - otherwise, clear current/base state because the multiverse became empty
 
         :param node_id:
         :return:
         """
         node: ScenarioNode = self.get_node(node_id)
+        parent_fallback: ScenarioNode | None = node.parent
+
+        if node.parent is None and len(self._root_nodes) == 1:
+            raise ValueError("The last root scenario cannot be deleted")
 
         if node.parent is None:
             self._root_nodes.remove(node)
         else:
             node.parent.remove_child(node)
 
+        deleted_active_subtree = self._is_descendant(candidate_parent=node, candidate_child=self._current_node)
         self._delete_from_registry_recursive(node)
+
+        # Deletion should always leave the multiverse focused on a surviving scenario.
+        # Prefer the deleted node's parent when it exists. If a root was deleted, fall back
+        # to the first remaining root.
+        fallback_node: ScenarioNode | None = parent_fallback
+        if fallback_node is None and self._root_nodes:
+            fallback_node = self._root_nodes[0]
+
+        if deleted_active_subtree:
+            self._set_fallback_active_node(fallback_node)
+
         return node
 
     def _delete_from_registry_recursive(self, node: ScenarioNode) -> None:
@@ -531,37 +574,7 @@ class MultiVerse:
         :param position:
         :return:
         """
-        node: ScenarioNode = self.get_node(node_id)
-
-        new_parent: ScenarioNode | None = None
-        if new_parent_id is not None:
-            new_parent = self.get_node(new_parent_id)
-
-        if new_parent is node:
-            raise ValueError("A node cannot be its own parent")
-
-        if self._is_descendant(candidate_parent=node, candidate_child=new_parent):
-            raise ValueError("Cannot move a node under one of its descendants")
-
-        if node.parent is None:
-            self._root_nodes.remove(node)
-        else:
-            node.parent.remove_child(node)
-
-        node.parent = new_parent
-
-        if new_parent is None:
-            if position is None:
-                self._root_nodes.append(node)
-            else:
-                self._root_nodes.insert(position, node)
-        else:
-            if position is None:
-                new_parent.append_child(node)
-            else:
-                new_parent.insert_child(position, node)
-
-        return node
+        raise NotImplementedError("Scenario reparenting is disabled until delta rebasing is implemented")
 
     def _is_descendant(self,
                        candidate_parent: ScenarioNode,
@@ -652,19 +665,18 @@ class MultiVerse:
 
         :return:
         """
-        multiverse_meta_data = dict()
+        multiverse_node_data = dict()
         multiverse_model_data = dict()
-
-        base_circuit: MultiCircuit = self._root_nodes[0].circuit
 
         for node in self.iter_nodes_depth_first():
             save_grid = node.circuit.copy()
             save_grid.diagrams = copy.deepcopy(node.diagrams)
 
-            multiverse_meta_data[node.node_id] = {
+            multiverse_node_data[node.node_id] = {
                 "node_id": node.node_id,
                 "circuit_idtag": node.circuit.idtag,
                 "parent_id": node.parent.node_id if node.parent is not None else None,
+                "position": self._root_nodes.index(node) if node.parent is None else node.row(),
                 "children": [chl.node_id for chl in node.children],
             }
 
@@ -672,11 +684,16 @@ class MultiVerse:
             # if node.data != base_circuit:
             multiverse_model_data[node.circuit.idtag] = save_grid
 
+        multiverse_meta_data = {
+            "active_node_id": None if self._current_node is None else self._current_node.node_id,
+            "nodes": multiverse_node_data,
+        }
+
         return multiverse_meta_data, multiverse_model_data
 
     def parse_json(self,
                    diffs_dict: Dict[str, MultiCircuit],
-                   metadata: Dict[str, Dict[str | int | float]]):
+                   metadata: Dict[str, Dict[str | int | float] | int | None]):
         """
          Parse the json metadata to fill this object
         :param diffs_dict:
@@ -692,8 +709,13 @@ class MultiVerse:
         max_id: int = 0
 
         # Build nodes from parent links; metadata may be serialized as a dict with string keys.
+        if "nodes" in metadata and isinstance(metadata["nodes"], dict):
+            node_metadata = metadata["nodes"]
+        else:
+            node_metadata = metadata
+
         pending: Dict[int, Dict[str | int | float]] = {
-            int(node_id): record for node_id, record in metadata.items()
+            int(node_id): record for node_id, record in node_metadata.items()
         }
 
         while pending:
@@ -711,6 +733,8 @@ class MultiVerse:
                     continue
 
                 parent: ScenarioNode | None = None if parent_id is None else built_nodes[parent_id]
+                position_raw = record.get("position", None)
+                position = None if position_raw is None else int(position_raw)
 
                 node = ScenarioNode(
                     node_id=node_id,
@@ -720,9 +744,15 @@ class MultiVerse:
                 )
 
                 if parent is None:
-                    self._root_nodes.append(node)
+                    if position is None:
+                        self._root_nodes.append(node)
+                    else:
+                        self._root_nodes.insert(position, node)
                 else:
-                    parent.append_child(node)
+                    if position is None:
+                        parent.append_child(node)
+                    else:
+                        parent.insert_child(position, node)
 
                 self.set_node(node_id, node)
                 built_nodes[node_id] = node
@@ -739,6 +769,11 @@ class MultiVerse:
         self._next_id = max_id + 1
 
         if self._root_nodes:
-            self._current_node = self._root_nodes[0]
-            self._current_model = self._current_node.circuit
+            active_node_id_raw = metadata.get("active_node_id", None) if isinstance(metadata, dict) else None
+            if active_node_id_raw is None:
+                active_node = self._root_nodes[0]
+            else:
+                active_node = self.get_node(int(active_node_id_raw))
+
+            self._set_active_node(active_node)
             self._base_model = self._root_nodes[0].circuit
