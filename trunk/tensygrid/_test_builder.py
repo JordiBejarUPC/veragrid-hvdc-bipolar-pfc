@@ -347,7 +347,7 @@ class TestPolynomialStability(unittest.TestCase):
 
         stable: bool = res[4]
         margin: Optional[float] = res[5]
-        print(res[0])
+        #print(res[0])
         # 6. ALGORITHM: Assertions based on the analytic Jacobian
         # The theoretical characteristic equation for this point is L^2 + 1.9L + 0.9 = 0
         # The true eigenvalues are exactly -0.9 and -1.0.
@@ -367,6 +367,60 @@ class TestPolynomialStability(unittest.TestCase):
         else:
             self.fail("Margin was None, eigenvalue computation failed.")
 
+    def test_PLL_example_5_2_automatic_lifting(self) -> None:
+        """
+        Test: Evaluates the automatic Polynomial-Matrix conversion for the PLL.
+        The user provides pure trigonometric non-linearities, and the engine
+        MUST perform the multilinear lifting automatically under the hood.
+        """
+        kp_val: float = 0.5
+        ki_val: float = 9.0
+
+        # 1. Ecuaciones físicas originales (El usuario no sabe qué es el lifting)
+        # Usamos 'sin' y 'cos' directamente en el string.
+        eqs: List[str] = [
+            f"xp1 - x2 - {kp_val}*(-u1*sin(x1) + u2*cos(x1))",
+            f"xp2 - {ki_val}*(-u1*sin(x1) + u2*cos(x1))"
+        ]
+
+        import math
+        theta_eq: float = 4.0 * math.pi / 180.0
+
+        # 2. El usuario SOLO inicializa los estados físicos reales
+        v_dict: Dict[str, float] = {
+            'x1': theta_eq,
+            'x2': 0.0,
+            'xp1': 0.0,
+            'xp2': 0.0,
+            'u1': 325.2059,
+            'u2': 22.7406,
+        }
+
+        # 3. Al procesar el problema matemático, el parser debe detectar
+        # las funciones no polinomiales.
+        math_problem: MTI_Problem = MTI_Problem(eqs_str=eqs, v_dict=v_dict)
+
+        # 4. INSTANTE CRÍTICO:
+        # Antes de que este Builder llame a self.matrix_creation(), las ecuaciones
+        # dentro de math_problem DEBEN haber sido transformadas automáticamente.
+        builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(problem=math_problem, verbose=False)
+        builder.linearize(v_dict)
+
+        # 5. Execute stability computation
+        res = builder.compute_stability()
+        eigenvalues: Any = res[0]
+
+        # Assertions
+        found_dominant: bool = False
+        found_secondary: bool = False
+        for ev in eigenvalues:
+            if abs(ev.real - (-20.6046)) < 0.01:
+                found_dominant = True
+            if abs(ev.real - (-142.3954)) < 0.01:
+                found_secondary = True
+
+        self.assertTrue(found_dominant, "Dominant pole at -20.6046 not found.")
+        self.assertTrue(found_secondary, "Secondary pole at -142.3954 not found.")
 
 if __name__ == "__main__":
     # Standard unittest execution

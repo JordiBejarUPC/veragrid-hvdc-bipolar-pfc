@@ -48,9 +48,7 @@ def _sort_symbol(sym: sp.Symbol) -> tuple:
     """
     name: str = sym.name
 
-    if name.startswith('dx'):
-        return 0, name
-    elif name.startswith('xp'):
+    if name.startswith('dx') or name.startswith('xp') or name.startswith('d_') or name.startswith('dt_'):
         return 0, name
     elif name.startswith('x') and not name.startswith('xp'):
         return 1, name
@@ -1004,16 +1002,17 @@ class PolynomialMatrixBuilder:
         s: sp.Symbol
         for s in self.all_symbols:
             s_name: str = s.name
-            if s_name.startswith('dx') or s_name.startswith('xp'):
+            if s_name.startswith('dx') or s_name.startswith('xp') or s_name.startswith('d_') or s_name.startswith(
+                'dt_'):
                 idx_dx.append(idx_counter)
-            elif s_name.startswith('u'):
+            elif s_name.startswith('u') and not s_name.startswith('u_'):
                 idx_u.append(idx_counter)
             else:
                 # All other variables (x, y, z, argaux, sqrtaux) belong to the state vector
                 idx_vars.append(idx_counter)
 
             idx_counter = idx_counter + 1
-
+        #print(f"\n[DEBUG] Derivadas detectadas en la lista: {[self.all_symbols[idx].name for idx in idx_dx]}")
         n_eqs: int = int(EABC.shape[0])
         E: np.ndarray = np.zeros((n_eqs, n_eqs))
         A: np.ndarray = np.zeros((n_eqs, n_eqs))
@@ -1034,29 +1033,35 @@ class PolynomialMatrixBuilder:
             state_sym: sp.Symbol = self.all_symbols[state_idx]
             state_name: str = state_sym.name
 
-            # Identify expected derivative names (e.g., x1 -> xp1 or dx1)
+            # Identify expected derivative names
             deriv_names: list = list()
             if state_name.startswith('x'):
                 deriv_names.append(str("xp" + state_name[1:]))
                 deriv_names.append(str("dx" + state_name[1:]))
-            else:
-                pass
 
-            # Find if the derivative actually exists in the system
+            deriv_names.append(str("dt_" + state_name))
+            deriv_names.append(str("d_" + state_name))
+
+            # 1. Búsqueda exacta (Ej: d_u_cos -> u_cos)
             deriv_idx: int = -1
             d_name: str
             for d_name in deriv_names:
                 if d_name in self.sym_to_idx:
                     deriv_idx = self.sym_to_idx[d_name]
                     break
-                else:
-                    pass
+
+            # 2. Búsqueda flexible para prefijos de componentes (Ej: dt_1_Vf -> Vf)
+            if deriv_idx == -1:
+                for dx_idx in idx_dx:
+                    dx_name = self.all_symbols[dx_idx].name
+                    # Si la derivada termina en "_Vf" y el estado es "Vf", es la suya
+                    if dx_name.endswith(f"_{state_name}") and (dx_name.startswith("dt_") or dx_name.startswith("d_")):
+                        deriv_idx = dx_idx
+                        break
 
             # If a derivative exists, place it in the EXACT SAME column as the state
             if deriv_idx != -1 and deriv_idx in idx_dx:
                 E[:, i] = -EABC[:, deriv_idx]
-            else:
-                pass
 
         B: np.ndarray = EABC[:, idx_u]
 
@@ -1066,7 +1071,8 @@ class PolynomialMatrixBuilder:
     # Stability analysis
     # ------------------------------------------------------------------
 
-    def compute_stability(self) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], bool, Optional[float]]:
+    def compute_stability(self) -> Tuple[
+        Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], bool, Optional[float]]:
         """
         Compute generalised eigenvalues for the descriptor pair (A, E).
 
@@ -1087,15 +1093,20 @@ class PolynomialMatrixBuilder:
             evecs_right_raw: np.ndarray
             evals, evecs_left_raw, evecs_right_raw = linalg.eig(current_a, current_e, left=True, right=True)
 
+            # --- ALGORITHM: INFINITE AND NAN FILTERING ---
+            # 1. Identify which indices correspond to valid finite values
+            valid_idx: np.ndarray = np.isfinite(evals)
+
+            # 2. Keep only the valid finite eigenvalues
+            evals = evals[valid_idx]
+
             # --- ALGORITHM: MEMORY SPACE PROTECTION ---
-            # Scipy might return float64 arrays if all eigenvalues happen to be purely real.
-            # We explicitly cast to complex to prevent TypeError during complex normalization.
-            evecs_left: np.ndarray = evecs_left_raw.astype(complex)
-            evecs_right: np.ndarray = evecs_right_raw.astype(complex)
+            # 3. Filter eigenvector columns to match valid eigenvalues, and cast to
+            #    complex to prevent TypeError during complex normalization.
+            evecs_left: np.ndarray = evecs_left_raw[:, valid_idx].astype(complex)
+            evecs_right: np.ndarray = evecs_right_raw[:, valid_idx].astype(complex)
 
-            finite_evs: np.ndarray = evals[np.isfinite(evals)]
-
-            if len(finite_evs) == 0:
+            if len(evals) == 0:
                 return evals, evecs_left, evecs_right, None, True, -np.inf
             else:
                 pass
@@ -1126,9 +1137,9 @@ class PolynomialMatrixBuilder:
                     evecs_left[:, i] = evecs_left[:, i] / scaling_val
 
             # 4. Element-wise matrix multiplication to compute participation factors
-            participation_matrix: np.ndarray = np.abs(evecs_right) * np.abs(evecs_left).T
+            participation_matrix: np.ndarray = np.abs(evecs_right) * np.abs(evecs_left)
 
-            max_real: float = float(np.max(np.real(finite_evs)))
+            max_real: float = float(np.max(np.real(evals)))
             is_stable: bool = False
 
             if max_real < 0.0:
