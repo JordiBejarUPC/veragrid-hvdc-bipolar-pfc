@@ -63,7 +63,6 @@ from VeraGrid.Gui.PsseDialogue.psse_import import PsseImportDialogue
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
 
 
-
 def terminate_thread(thread):
     """
     Terminates a python thread from another thread.
@@ -171,6 +170,27 @@ class BaseMainGui(QMainWindow):
         # simulation start end
         self.simulation_start_index: int = -1
         self.simulation_end_index: int = -1
+        # Menu buttons -------------------------------------------------------------------------------------------------
+
+        self.pf_menu_button = gf.create_menu_button(
+            parent=self,
+            toolbar=self.ui.toolBar,
+            actions=[self.ui.actionPower_flow,
+                     self.ui.actionLinearAnalysis,
+                     self.ui.actionSigma_analysis],
+            position=self.ui.actionPower_flow,
+            remove_actions=True
+        )
+
+        self.opf_menu_button = gf.create_menu_button(
+            parent=self,
+            toolbar=self.ui.toolBar,
+            actions=[self.ui.actionOPF,
+                     self.ui.actionNodal_capacity,
+                     self.ui.actionOptimal_Net_Transfer_Capacity],
+            position=self.ui.actionNodal_capacity,
+            remove_actions=True
+        )
 
         # Add console --------------------------------------------------------------------------------------------------
         self.console = PythonConsole(banner="VeraGrid Python Console!")
@@ -209,7 +229,7 @@ class BaseMainGui(QMainWindow):
         self.file_selector: FileTypeSelector | None = None
         self.cgmes_selector: CgmesOptionsSelector | None = None
         self.psse_import_dialogue: PsseImportDialogue | None = None
-        self.procedural_grid_window : ProceduralGridWindow | None = None
+        self.procedural_grid_window: ProceduralGridWindow | None = None
 
         # available engines --------------------------------------------------------------------------------------------
         engine_lst = [EngineType.VeraGrid]

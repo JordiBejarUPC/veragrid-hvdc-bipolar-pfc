@@ -1286,3 +1286,46 @@ class AsyncTask(QtCore.QRunnable):
     @QtCore.Slot()
     def run(self):
         self.task()
+
+
+def create_menu_button(parent,
+                       toolbar: QtWidgets.QToolBar,
+                       position: QtGui.QAction,
+                       actions: List[QtGui.QAction],
+                       pixmap_name: str="",
+                       remove_actions: bool = True) -> QtWidgets.QToolButton:
+    """
+
+    :param parent: parent widget
+    :param toolbar: Toolbar to insert the button
+    :param position: Position at which to insert the button
+    :param actions: List of actions to pack
+    :param pixmap_name: optional button icon
+    :param remove_actions: optional remove actions
+    :return: QToolButton
+    """
+    button = QtWidgets.QToolButton(parent)
+
+    if pixmap_name != "":
+        button.setIcon(QtGui.QPixmap(pixmap_name))
+    else:
+        button.setIcon(actions[0].icon())
+
+    button.setPopupMode(QtWidgets.QToolButton.ToolButtonPopupMode.MenuButtonPopup)
+
+    menu = QtWidgets.QMenu(button)
+    for action in actions:
+        menu.addAction(action)
+    button.setMenu(menu)
+
+    # Main click executes the first action
+    button.clicked.connect(actions[0].trigger)
+
+    toolbar.insertWidget(position, button)
+
+    # Remove the original actions from the toolbar so they are only available in the menu
+    if remove_actions:
+        for action in actions:
+            toolbar.removeAction(action)
+
+    return button
