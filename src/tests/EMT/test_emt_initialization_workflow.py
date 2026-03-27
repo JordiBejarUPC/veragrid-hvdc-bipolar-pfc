@@ -22,11 +22,10 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicVector
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType, EmtInitializationMethod
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType, EmtInitializationMethod, EmtInitializationStatus
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.initialization_emt import (
-    InitializationStatus,
     run_emt_explicit_initialization,
     run_emt_native_initialization,
 )
@@ -424,7 +423,7 @@ def test_consistent_newton_initializes_missing_algebraic_and_dx0() -> None:
     x0 = problem.get_x0()
     dx0 = problem.get_dx0()
 
-    assert report.status == InitializationStatus.RESOLVED
+    assert report.status == EmtInitializationStatus.RESOLVED
     assert abs(x0[idx_x] - 2.0) < 1e-9
     assert abs(x0[idx_y] - 2.0) < 1e-9
     assert abs(dx0[idx_dx] - 0.0) < 1e-9
@@ -449,7 +448,7 @@ def test_consistent_newton_uses_state_equilibrium_for_unresolved_states() -> Non
     x0 = problem.get_x0()
     dx0 = problem.get_dx0()
 
-    assert report.status == InitializationStatus.RESOLVED
+    assert report.status == EmtInitializationStatus.RESOLVED
     assert abs(x0[idx_x] - 3.0) < 1e-9
     assert abs(x0[idx_y] - 3.0) < 1e-9
     assert abs(dx0[idx_dx] - 0.0) < 1e-9
@@ -471,7 +470,7 @@ def test_pseudo_transient_method_converges_on_simple_problem() -> None:
 
     report = run_emt_native_initialization(problem, options)
 
-    assert report.status == InitializationStatus.RESOLVED
+    assert report.status == EmtInitializationStatus.RESOLVED
     assert report.method_used == EmtInitializationMethod.PseudoTransient
     assert report.final_residual_inf <= options.init_newton_tol
 
@@ -499,7 +498,7 @@ def test_auto_initialization_is_not_worse_than_explicit_on_real_case() -> None:
     assert np.isfinite(auto_res)
     assert auto_res <= explicit_res + 1.0e-8
     assert auto_problem.initialization_report is not None
-    assert auto_problem.initialization_report.status in {InitializationStatus.RESOLVED, InitializationStatus.FAILED}
+    assert auto_problem.initialization_report.status in {EmtInitializationStatus.RESOLVED, EmtInitializationStatus.FAILED}
 
 
 if __name__ == "__main__":

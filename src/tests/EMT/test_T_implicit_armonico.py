@@ -5,6 +5,20 @@
 
 from typing import Any, Tuple
 from unittest.mock import patch
+import pandas as pd
+from pandas.testing import assert_frame_equal
+
+import sys
+import os
+
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+SRC_ROOT = os.path.join(REPO_ROOT, 'src')
+
+if SRC_ROOT not in sys.path:
+    sys.path.insert(0, SRC_ROOT)
+
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 import numpy as np
 
@@ -14,30 +28,20 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProb
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-
-
 class GenericEmtProblem(EmtProblemTemplate):
-    """
-    Generic EMT problem template for harmonic oscillator tests.
-    """
     __slots__ = list()
 
 
 def integrator(initial_val: Any, vf: VarFactory, name: str) -> Tuple[Var, Block]:
     """
-    Create an integrator block for a variable.
-
-    :param initial_val: Initial value (unused in this simple implementation).
-    :param vf: Variable factory for creating variables.
-    :param name: Name for the variable.
-    :returns: Tuple of (variable, integrator block).
+    Creates a state variable and a container block with a placeholder equation.
     """
-    var = vf.add_var(name)
-    diff_var = vf.add_diff_var(name=f"d_{name}", base_var=var)
+    var= vf.add_var(name)
+    diff_var = vf.add_diff_var(name = f"d_{name}", base_var=var)
     blk: Block = Block(
         name=f"int_{name}",
         state_vars=list([var]),
-        diff_vars=list([diff_var]),
+        diff_vars = list([diff_var]),
         state_eqs=list([Const(0.0)])
     )
     return var, blk
@@ -45,18 +49,12 @@ def integrator(initial_val: Any, vf: VarFactory, name: str) -> Tuple[Var, Block]
 
 def build_oscillator_system(vf: VarFactory, omega: float = 1.0) -> Tuple[Block, Var, Var]:
     """
-    Build a harmonic oscillator system.
-
-    Creates a second-order harmonic oscillator with position x
-    and velocity v, governed by d^2x/dt^2 = -omega^2 * x.
-
-    :param vf: Variable factory for creating variables.
-    :param omega: Angular frequency of oscillation.
-    :returns: Tuple of (system_block, x_var, v_var).
+    Constructs the State-Space model for a harmonic oscillator.
     """
-    x, blk_x = integrator(None, name="x", vf=vf)
-    v, blk_v = integrator(None, name="v", vf=vf)
+    x, blk_x = integrator(None, name="x", vf= vf)
+    v, blk_v = integrator(None, name="v", vf= vf)
 
+    # Coupling: dx/dt = v, dv/dt = -omega^2 * x
     blk_x.state_eqs[0] = v
     blk_v.state_eqs[0] = Const(-(omega ** 2)) * x
 
@@ -67,42 +65,30 @@ def build_oscillator_system(vf: VarFactory, omega: float = 1.0) -> Tuple[Block, 
     return system, x, v
 
 
-class CustomInitialCondition:
+def test_implicit_armonic() -> None:
     """
-    Helper class to set custom initial conditions without using lambda.
-
-    Stores the custom initial condition array and provides a callable
-    interface to retrieve it.
+    Executes the validation routine comparing Trapezoidal and BDF2 methods.
     """
-    __slots__ = ["_x0"]
+    # retrieve reference results df
+    fname = os.path.join(os.path.dirname(__file__), '..', 'data', 'dynamics', "implicit_armonic.csv")
+    reference_df = pd.read_csv(fname)
 
-    def __init__(self, x0: np.ndarray) -> None:
-        self._x0 = x0.copy()
-
-    def __call__(self) -> np.ndarray:
-        """Return a copy of the stored initial condition."""
-        return self._x0.copy()
-
-
-def run_test() -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """
-    Run harmonic oscillator simulation with Trapezoidal and BDF2 methods.
-
-    Creates a harmonic oscillator system with initial conditions x(0)=1, v(0)=0,
-    and runs simulations using both integration methods.
-
-    :returns: Tuple of (t_trap, x_trap, v_trap, t_bdf, x_bdf, v_bdf, x_exact).
-    """
     t0: float = 0.0
     t_end: float = 20.0
     h: float = 0.01
     omega: float = 2.0
 
+    print(f"--- NUMERICAL VALIDATION START ---")
+    print(f"System: Harmonic Oscillator (omega={omega})")
+    print(f"Interval: [{t0}, {t_end}] s, step h={h} s")
+
+    # 1. Build Block and Unify
     vf = VarFactory()
-    sys_block, var_x, var_v = build_oscillator_system(vf=vf, omega=omega)
+    sys_block, var_x, var_v = build_oscillator_system(vf=vf, omega = omega)
     sys_block.unify_blocks()
     glob_time = vf.add_var("t_glob")
 
+    # 2. Setup Problem
     problem: GenericEmtProblem = GenericEmtProblem(sys_block, glob_time)
 
     idx_x: int = problem.get_var_idx(var_x)
@@ -112,145 +98,60 @@ def run_test() -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarr
     custom_x0[idx_x] = 1.0
     custom_x0[idx_v] = 0.0
 
-    problem.get_x0 = CustomInitialCondition(custom_x0)
+    problem.get_x0 = lambda: custom_x0.copy()
 
+    # --- CASE 1: Trapezoidal Method (A-Stable) ---
+    print("\n[1] Running Implicit Solver (Method: Trapezoidal)...")
     solver_trap = JitSymbolicSolver(
         problem=problem, t0=t0, t_end=t_end, h=h,
         method=DynamicIntegrationMethod.DaeTrapezoidal,
-        verbose=False
+        verbose=True
     )
     t_trap, y_trap_full, _ = solver_trap.simulate()
 
+    # --- CASE 2: BDF2 Method (L-Stable) ---
+    print("\n[2] Running Implicit Solver (Method: BDF2)...")
     solver_bdf = JitSymbolicSolver(
         problem=problem, t0=t0, t_end=t_end, h=h,
         method=DynamicIntegrationMethod.DaeBDF2,
-        verbose=False
+        verbose=True
     )
     t_bdf, y_bdf_full, _ = solver_bdf.simulate()
 
+    # --- Analysis ---
     x_trap: np.ndarray = y_trap_full[:, idx_x]
     v_trap: np.ndarray = y_trap_full[:, idx_v]
     x_bdf: np.ndarray = y_bdf_full[:, idx_x]
     v_bdf: np.ndarray = y_bdf_full[:, idx_v]
 
+    # Analytical solution: x(t) = x0 * cos(w*t)
     x_exact: np.ndarray = 1.0 * np.cos(omega * t_trap)
 
-    return t_trap, x_trap, v_trap, t_bdf, x_bdf, v_bdf, x_exact
-
-
-@patch("matplotlib.pyplot.show")
-def test_harmonic_oscillator_trapezoidal(mock_show) -> None:
-    """
-    Test harmonic oscillator with Trapezoidal integration.
-
-    Verifies that the Trapezoidal method produces finite, bounded
-    position and velocity trajectories for the harmonic oscillator.
-    """
-    t_trap, x_trap, v_trap, t_bdf, x_bdf, v_bdf, x_exact = run_test()
-
-    assert len(t_trap) == len(x_trap)
-    assert len(t_trap) == len(v_trap)
-
-    assert np.all(np.isfinite(x_trap))
-    assert np.all(np.isfinite(v_trap))
-
-    assert np.all(np.abs(x_trap) < 2.0)
-    assert np.all(np.abs(v_trap) < 5.0)
-
-
-@patch("matplotlib.pyplot.show")
-def test_harmonic_oscillator_bdf2(mock_show) -> None:
-    """
-    Test harmonic oscillator with BDF2 integration.
-
-    Verifies that the BDF2 method produces finite position and
-    velocity trajectories.
-    """
-    t_trap, x_trap, v_trap, t_bdf, x_bdf, v_bdf, x_exact = run_test()
-
-    assert len(t_bdf) == len(x_bdf)
-    assert len(t_bdf) == len(v_bdf)
-
-    assert np.all(np.isfinite(x_bdf))
-    assert np.all(np.isfinite(v_bdf))
-
-
-@patch("matplotlib.pyplot.show")
-def test_trapezoidal_error_small(mock_show) -> None:
-    """
-    Test that Trapezoidal method has small error vs exact solution.
-
-    Verifies that the Trapezoidal integration error remains bounded
-    and reasonable for the harmonic oscillator.
-    """
-    t_trap, x_trap, v_trap, t_bdf, x_bdf, v_bdf, x_exact = run_test()
-
     err_trap: float = float(np.linalg.norm(x_trap - x_exact) / np.sqrt(len(t_trap)))
-
-    assert err_trap < 1.0, f"Trapezoidal error should be small, got {err_trap}"
-
-
-@patch("matplotlib.pyplot.show")
-def test_bdf2_error_small(mock_show) -> None:
-    """
-    Test that BDF2 method error is bounded.
-
-    Verifies that the BDF2 method produces a bounded solution
-    even if the error is larger than Trapezoidal.
-    """
-    t_trap, x_trap, v_trap, t_bdf, x_bdf, v_bdf, x_exact = run_test()
-
     err_bdf: float = float(np.linalg.norm(x_bdf - x_exact) / np.sqrt(len(t_bdf)))
 
-    assert err_bdf < 5.0, f"BDF2 error should be bounded, got {err_bdf}"
+    print("\n--- ERROR REPORT (RMS) ---")
+    print(f"Trapezoidal: {err_trap:.6e} (A-Stable, Conservation of Energy)")
+    print(f"BDF2       : {err_bdf:.6e} (L-Stable, Numerical Damping)")
+    print("-" * 30)
+
+    res = np.column_stack((x_trap, v_trap, x_bdf, v_bdf))
+
+    cols = ["x_trap", "v_trap", "x_bdf", "v_bdf"]
+    results_df = pd.DataFrame(res, columns=cols)
+    results_df.index.name = "time_s"
+
+    assert_frame_equal(
+        results_df.reset_index(drop=True),
+        reference_df.reset_index(drop=True),
+        check_dtype=False,
+        check_index_type=False,
+        atol=1e-6
+    )
 
 
-@patch("matplotlib.pyplot.show")
-def test_initial_conditions_correct(mock_show) -> None:
-    """
-    Test that initial conditions are correctly set.
 
-    Verifies that x(0)=1.0 and v(0)=0.0 as specified
-    for the harmonic oscillator.
-    """
-    t_trap, x_trap, v_trap, t_bdf, x_bdf, v_bdf, x_exact = run_test()
-
-    assert abs(x_trap[0] - 1.0) < 1e-5
-    assert abs(v_trap[0] - 0.0) < 1e-5
-
-
-@patch("matplotlib.pyplot.show")
-def test_energy_conserved_trapezoidal(mock_show) -> None:
-    """
-    Test that energy remains finite in Trapezoidal simulation.
-
-    Verifies numerical stability by checking that the mechanical
-    energy (kinetic + potential) remains finite throughout.
-    """
-    t_trap, x_trap, v_trap, t_bdf, x_bdf, v_bdf, x_exact = run_test()
-
-    omega = 2.0
-    energy_initial = 0.5 * v_trap[0]**2 + 0.5 * omega**2 * x_trap[0]**2
-    energy_final = 0.5 * v_trap[-1]**2 + 0.5 * omega**2 * x_trap[-1]**2
-
-    assert np.isfinite(energy_initial)
-    assert np.isfinite(energy_final)
-
-
-@patch("matplotlib.pyplot.show")
-def test_both_methods_produce_physical_results(mock_show) -> None:
-    """
-    Test that both methods agree on initial conditions.
-
-    Verifies that Trapezoidal and BDF2 produce consistent
-    initial values despite different algorithmic behavior.
-    """
-    t_trap, x_trap, v_trap, t_bdf, x_bdf, v_bdf, x_exact = run_test()
-
-    assert np.allclose(x_trap[0], x_bdf[0], atol=1e-3)
-    assert np.allclose(v_trap[0], v_bdf[0], atol=1e-3)
 
 
 if __name__ == "__main__":
-    import pytest
-    pytest.main([__file__, "-v"])
+    test_implicit_armonic()

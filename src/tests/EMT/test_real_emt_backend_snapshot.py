@@ -3,13 +3,12 @@
 # file, You can see it at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-import unittest
 from typing import Any, Dict, Tuple
 
 import numpy as np
+import pytest
 
 import VeraGridEngine.api as gce
-from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
@@ -29,7 +28,6 @@ from VeraGridEngine.enumerations import (
     EmtInitializationMethod,
     EmtSolverTypes,
     ShuntConnectionType,
-    VarPowerFlowRefferenceType,
 )
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
 
@@ -165,7 +163,7 @@ def build_two_bus_real_emt_case(
     }
 
 
-def build_solver(problem: EmtProblemDae, solver_key: str):
+def build_solver(problem: EmtProblemDae, solver_key: EmtSolverTypes):
     common = dict(
         problem=problem,
         t0=0.0,
@@ -177,7 +175,7 @@ def build_solver(problem: EmtProblemDae, solver_key: str):
         verbose=False,
     )
 
-    if solver_key == "SYMBOLIC":
+    if solver_key == EmtSolverTypes.Symbolic:
         solver = JitSymbolicSolver(**common)
         solver.build_jit_kernel(problem.options.integration_method)
         solver._build_jit_symbolic_hybrid(problem.options.integration_method, use_sparse=True)
@@ -186,17 +184,17 @@ def build_solver(problem: EmtProblemDae, solver_key: str):
             solver._build_jit_symbolic_hybrid(DynamicIntegrationMethod.DaeBackEuler, use_sparse=True)
         return solver
 
-    if solver_key == "AD":
+    if solver_key == EmtSolverTypes.Automatic:
         solver = JitAdSolver(**common)
         solver.build_jit_ad()
         return solver
 
-    if solver_key == "VECTORIZED":
+    if solver_key == EmtSolverTypes.StructuralAD:
         solver = StructuralVectorizedSolver(auto_vectorization=False, **common)
         solver.auto_detect_vectorization(problem.options.integration_method)
         return solver
 
-    if solver_key == "COMPILED":
+    if solver_key == EmtSolverTypes.StructuralCompiled:
         solver = StructuralCompiledSolver(auto_build=False, **common)
         solver._build_vectorized_backend(problem.options.integration_method)
         return solver
@@ -204,7 +202,7 @@ def build_solver(problem: EmtProblemDae, solver_key: str):
     raise ValueError(solver_key)
 
 
-def evaluate_residual_snapshot(problem: EmtProblemDae, solver_key: str, solver) -> np.ndarray:
+def evaluate_residual_snapshot(problem: EmtProblemDae, solver_key: EmtSolverTypes, solver) -> np.ndarray:
     x = problem.get_x0().copy()
     dx = problem.get_dx0().copy()
     x_prev = x.copy()
@@ -214,28 +212,28 @@ def evaluate_residual_snapshot(problem: EmtProblemDae, solver_key: str, solver) 
     n = problem.get_all_vars_number()
     res = np.zeros(n, dtype=np.float64)
 
-    if solver_key == "SYMBOLIC":
+    if solver_key == EmtSolverTypes.Symbolic:
         for kernel in solver.jit_kernels[solver.method]:
             kernel(x, full_params, x_prev, dx_prev, problem.options.time_step, res, x_prev2)
         return res
 
-    if solver_key == "AD":
+    if solver_key == EmtSolverTypes.Automatic:
         for kernel in solver.jit_kernels_ad[solver.method]:
             kernel(x, full_params, x_prev, dx_prev, problem.options.time_step, res, x_prev2)
         return res
 
-    if solver_key == "VECTORIZED":
+    if solver_key == EmtSolverTypes.StructuralAD:
         solver.fused_residual(x, full_params, x_prev, dx_prev, problem.options.time_step, solver.vec_flat_args, res, x_prev2)
         return res
 
-    if solver_key == "COMPILED":
+    if solver_key == EmtSolverTypes.StructuralCompiled:
         solver._residual_assembler.evaluate(x, full_params, x_prev, dx_prev, problem.options.time_step, x_prev2, res)
         return res
 
     raise ValueError(solver_key)
 
 
-def evaluate_jacobian_snapshot(problem: EmtProblemDae, solver_key: str, solver) -> np.ndarray:
+def evaluate_jacobian_snapshot(problem: EmtProblemDae, solver_key: EmtSolverTypes, solver) -> np.ndarray:
     x = problem.get_x0().copy()
     dx = problem.get_dx0().copy()
     x_prev = x.copy()
@@ -243,112 +241,196 @@ def evaluate_jacobian_snapshot(problem: EmtProblemDae, solver_key: str, solver) 
     x_prev2 = x.copy()
     full_params = build_full_params(problem, 0.0)
 
-    if solver_key == "SYMBOLIC":
+    if solver_key == EmtSolverTypes.Symbolic:
         evaluator = solver.jit_jacobian_symbolic[f"{solver.method}_True"]
         return evaluator.evaluate(x, full_params, x_prev, dx_prev, problem.options.time_step, x_prev2).toarray()
 
-    if solver_key == "AD":
+    if solver_key == EmtSolverTypes.Automatic:
         return solver.jit_jacobian_ad[solver.method](x, full_params, x_prev, dx_prev, problem.options.time_step, x_prev2).toarray()
 
-    if solver_key == "VECTORIZED":
+    if solver_key == EmtSolverTypes.StructuralAD:
         return solver.vec_jacobian(x, full_params, x_prev, dx_prev, problem.options.time_step, x_prev2).toarray()
 
-    if solver_key == "COMPILED":
+    if solver_key == EmtSolverTypes.StructuralCompiled:
         return solver._jacobian_evaluator.evaluate(x, full_params, x_prev, dx_prev, problem.options.time_step, x_prev2).toarray()
 
     raise ValueError(solver_key)
 
 
-class TestRealEmtBackendSnapshot(unittest.TestCase):
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.problem, cls.ctx = build_two_bus_real_emt_case()
-        cls.solvers = {key: build_solver(cls.problem, key) for key in ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")}
-
-    def test_residual_snapshot_matches_across_all_backends(self) -> None:
-        reference = evaluate_residual_snapshot(self.problem, "SYMBOLIC", self.solvers["SYMBOLIC"])
-        for key in ("AD", "VECTORIZED", "COMPILED"):
-            with self.subTest(backend=key):
-                candidate = evaluate_residual_snapshot(self.problem, key, self.solvers[key])
-                np.testing.assert_allclose(candidate, reference, rtol=1e-10, atol=1e-10)
-
-    def test_jacobian_snapshot_matches_across_all_backends(self) -> None:
-        reference = evaluate_jacobian_snapshot(self.problem, "SYMBOLIC", self.solvers["SYMBOLIC"])
-        for key in ("AD", "VECTORIZED", "COMPILED"):
-            with self.subTest(backend=key):
-                candidate = evaluate_jacobian_snapshot(self.problem, key, self.solvers[key])
-                np.testing.assert_allclose(candidate, reference, rtol=1e-10, atol=1e-10)
-
-    def test_short_trajectory_matches_between_all_backends(self) -> None:
-        x0 = self.problem.get_x0().copy()
-        dx0 = self.problem.get_dx0().copy()
-        params0 = self.problem.event_params_values.copy()
-
-        sym_t, sym_y, sym_dy = self.solvers["SYMBOLIC"].simulate(x0=x0.copy(), dx0=dx0.copy(), params0=params0.copy(), boundary_updater=self.problem)
-        ref_t, ref_y, ref_dy = self.solvers["AD"].simulate(x0=x0.copy(), dx0=dx0.copy(), params0=params0.copy(), boundary_updater=self.problem)
-
-        np.testing.assert_allclose(sym_t, ref_t, rtol=0.0, atol=0.0)
-        self.assertTrue(np.all(np.isfinite(sym_y)))
-        self.assertTrue(np.all(np.isfinite(sym_dy)))
-
-        for key in ("VECTORIZED", "COMPILED"):
-            with self.subTest(backend=key):
-                t_arr, y_arr, dy_arr = self.solvers[key].simulate(x0=x0.copy(), dx0=dx0.copy(), params0=params0.copy(), boundary_updater=self.problem)
-                np.testing.assert_allclose(t_arr, ref_t, rtol=0.0, atol=0.0)
-                np.testing.assert_allclose(y_arr, ref_y, rtol=5e-5, atol=1.5e-5)
-                np.testing.assert_allclose(dy_arr, ref_dy, rtol=1e-5, atol=5e-4)
+@pytest.fixture(scope="module")
+def problem_and_context_shunt():
+    """
+    Fixture that builds the two-bus real EMT case with shunt load.
+    """
+    return build_two_bus_real_emt_case(zip_load=False)
 
 
-if __name__ == "__main__":
-    unittest.main()
+@pytest.fixture(scope="module")
+def solvers_shunt(problem_and_context_shunt):
+    """
+    Fixture that builds all solvers for the shunt load case.
+    """
+    problem = problem_and_context_shunt[0]
+    return {key: build_solver(problem, key) for key in (
+        EmtSolverTypes.Symbolic,
+        EmtSolverTypes.Automatic,
+        EmtSolverTypes.StructuralAD,
+        EmtSolverTypes.StructuralCompiled
+    )}
 
 
-class TestZipRealEmtBackendSnapshot(unittest.TestCase):
+@pytest.fixture(scope="module")
+def problem_and_context_zip():
+    """
+    Fixture that builds the two-bus real EMT case with ZIP load.
+    """
+    return build_two_bus_real_emt_case(zip_load=True)
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.problem, cls.ctx = build_two_bus_real_emt_case(zip_load=True)
-        cls.solvers = {key: build_solver(cls.problem, key) for key in ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")}
 
-    def test_zip_residual_snapshot_matches_across_all_backends(self) -> None:
-        reference = evaluate_residual_snapshot(self.problem, "SYMBOLIC", self.solvers["SYMBOLIC"])
-        for key in ("AD", "VECTORIZED", "COMPILED"):
-            with self.subTest(backend=key):
-                candidate = evaluate_residual_snapshot(self.problem, key, self.solvers[key])
-                np.testing.assert_allclose(candidate, reference, rtol=1e-10, atol=1e-10)
+@pytest.fixture(scope="module")
+def solvers_zip(problem_and_context_zip):
+    """
+    Fixture that builds all solvers for the ZIP load case.
+    """
+    problem = problem_and_context_zip[0]
+    return {key: build_solver(problem, key) for key in (
+        EmtSolverTypes.Symbolic,
+        EmtSolverTypes.Automatic,
+        EmtSolverTypes.StructuralAD,
+        EmtSolverTypes.StructuralCompiled
+    )}
 
-    def test_zip_jacobian_snapshot_matches_across_all_backends(self) -> None:
-        reference = evaluate_jacobian_snapshot(self.problem, "SYMBOLIC", self.solvers["SYMBOLIC"])
-        for key in ("AD", "COMPILED"):
-            with self.subTest(backend=key):
-                candidate = evaluate_jacobian_snapshot(self.problem, key, self.solvers[key])
-                np.testing.assert_allclose(candidate, reference, rtol=1e-10, atol=1e-10)
 
-    def test_zip_short_trajectory_matches_between_all_backends(self) -> None:
-        x0 = self.problem.get_x0().copy()
-        dx0 = self.problem.get_dx0().copy()
-        params0 = self.problem.event_params_values.copy()
+def test_residual_snapshot_matches_across_all_backends(
+        problem_and_context_shunt: Tuple[EmtProblemDae, Dict[str, Any]],
+        solvers_shunt: Dict[EmtSolverTypes, Any]
+) -> None:
+    """
+    Test that residual snapshots match across all backends for shunt load case.
+    """
+    problem = problem_and_context_shunt[0]
+    reference = evaluate_residual_snapshot(
+        problem, EmtSolverTypes.Symbolic, solvers_shunt[EmtSolverTypes.Symbolic]
+    )
+    for key in (EmtSolverTypes.Automatic, EmtSolverTypes.StructuralAD, EmtSolverTypes.StructuralCompiled):
+        candidate = evaluate_residual_snapshot(problem, key, solvers_shunt[key])
+        np.testing.assert_allclose(candidate, reference, rtol=1e-10, atol=1e-10)
 
-        ref_t, ref_y, ref_dy = self.solvers["AD"].simulate(x0=x0.copy(), dx0=dx0.copy(), params0=params0.copy(), boundary_updater=self.problem)
 
-        sym_t, sym_y, sym_dy = self.solvers["SYMBOLIC"].simulate(
-            x0=x0.copy(),
-            dx0=dx0.copy(),
-            params0=params0.copy(),
-            boundary_updater=self.problem,
+def test_jacobian_snapshot_matches_across_all_backends(
+        problem_and_context_shunt: Tuple[EmtProblemDae, Dict[str, Any]],
+        solvers_shunt: Dict[EmtSolverTypes, Any]
+) -> None:
+    """
+    Test that Jacobian snapshots match across all backends for shunt load case.
+    """
+    problem = problem_and_context_shunt[0]
+    reference = evaluate_jacobian_snapshot(
+        problem, EmtSolverTypes.Symbolic, solvers_shunt[EmtSolverTypes.Symbolic]
+    )
+    for key in (EmtSolverTypes.Automatic, EmtSolverTypes.StructuralAD, EmtSolverTypes.StructuralCompiled):
+        candidate = evaluate_jacobian_snapshot(problem, key, solvers_shunt[key])
+        np.testing.assert_allclose(candidate, reference, rtol=1e-10, atol=1e-10)
+
+
+def test_short_trajectory_matches_between_all_backends(
+        problem_and_context_shunt: Tuple[EmtProblemDae, Dict[str, Any]],
+        solvers_shunt: Dict[EmtSolverTypes, Any]
+) -> None:
+    """
+    Test that short trajectory simulations match across all backends for shunt load case.
+    """
+    problem = problem_and_context_shunt[0]
+    x0 = problem.get_x0().copy()
+    dx0 = problem.get_dx0().copy()
+    params0 = problem.event_params_values.copy()
+
+    sym_t, sym_y, sym_dy = solvers_shunt[EmtSolverTypes.Symbolic].simulate(
+        x0=x0.copy(), dx0=dx0.copy(), params0=params0.copy(), boundary_updater=problem
+    )
+    ref_t, ref_y, ref_dy = solvers_shunt[EmtSolverTypes.Automatic].simulate(
+        x0=x0.copy(), dx0=dx0.copy(), params0=params0.copy(), boundary_updater=problem
+    )
+
+    np.testing.assert_allclose(sym_t, ref_t, rtol=0.0, atol=0.0)
+    assert np.all(np.isfinite(sym_y))
+    assert np.all(np.isfinite(sym_dy))
+
+    for key in (EmtSolverTypes.StructuralAD, EmtSolverTypes.StructuralCompiled):
+        t_arr, y_arr, dy_arr = solvers_shunt[key].simulate(
+            x0=x0.copy(), dx0=dx0.copy(), params0=params0.copy(), boundary_updater=problem
         )
+        np.testing.assert_allclose(t_arr, ref_t, rtol=0.0, atol=0.0)
+        np.testing.assert_allclose(y_arr, ref_y, rtol=5e-5, atol=1.5e-5)
+        np.testing.assert_allclose(dy_arr, ref_dy, rtol=1e-5, atol=5e-4)
 
-        np.testing.assert_allclose(sym_t, ref_t, rtol=0.0, atol=0.0)
-        self.assertTrue(np.all(np.isfinite(sym_y)))
-        self.assertTrue(np.all(np.isfinite(sym_dy)))
 
-        for key in ("VECTORIZED", "COMPILED"):
-            with self.subTest(backend=key):
-                t_arr, y_arr, dy_arr = self.solvers[key].simulate(x0=x0.copy(), dx0=dx0.copy(), params0=params0.copy(), boundary_updater=self.problem)
-                np.testing.assert_allclose(t_arr, ref_t, rtol=0.0, atol=0.0)
-                np.testing.assert_allclose(y_arr, ref_y, rtol=5e-5, atol=1.5e-5)
-                if key == "COMPILED":
-                    np.testing.assert_allclose(dy_arr, ref_dy, rtol=5e-5, atol=2e-2)
-                else:
-                    np.testing.assert_allclose(dy_arr, ref_dy, rtol=1e-5, atol=5e-4)
+def test_zip_residual_snapshot_matches_across_all_backends(
+        problem_and_context_zip: Tuple[EmtProblemDae, Dict[str, Any]],
+        solvers_zip: Dict[EmtSolverTypes, Any]
+) -> None:
+    """
+    Test that residual snapshots match across all backends for ZIP load case.
+    """
+    problem = problem_and_context_zip[0]
+    reference = evaluate_residual_snapshot(
+        problem, EmtSolverTypes.Symbolic, solvers_zip[EmtSolverTypes.Symbolic]
+    )
+    for key in (EmtSolverTypes.Automatic, EmtSolverTypes.StructuralAD, EmtSolverTypes.StructuralCompiled):
+        candidate = evaluate_residual_snapshot(problem, key, solvers_zip[key])
+        np.testing.assert_allclose(candidate, reference, rtol=1e-10, atol=1e-10)
+
+
+def test_zip_jacobian_snapshot_matches_across_all_backends(
+        problem_and_context_zip: Tuple[EmtProblemDae, Dict[str, Any]],
+        solvers_zip: Dict[EmtSolverTypes, Any]
+) -> None:
+    """
+    Test that Jacobian snapshots match across all backends for ZIP load case.
+    """
+    problem = problem_and_context_zip[0]
+    reference = evaluate_jacobian_snapshot(
+        problem, EmtSolverTypes.Symbolic, solvers_zip[EmtSolverTypes.Symbolic]
+    )
+    for key in (EmtSolverTypes.Automatic, EmtSolverTypes.StructuralCompiled):
+        candidate = evaluate_jacobian_snapshot(problem, key, solvers_zip[key])
+        np.testing.assert_allclose(candidate, reference, rtol=1e-10, atol=1e-10)
+
+
+def test_zip_short_trajectory_matches_between_all_backends(
+        problem_and_context_zip: Tuple[EmtProblemDae, Dict[str, Any]],
+        solvers_zip: Dict[EmtSolverTypes, Any]
+) -> None:
+    """
+    Test that short trajectory simulations match across all backends for ZIP load case.
+    """
+    problem = problem_and_context_zip[0]
+    x0 = problem.get_x0().copy()
+    dx0 = problem.get_dx0().copy()
+    params0 = problem.event_params_values.copy()
+
+    ref_t, ref_y, ref_dy = solvers_zip[EmtSolverTypes.Automatic].simulate(
+        x0=x0.copy(), dx0=dx0.copy(), params0=params0.copy(), boundary_updater=problem
+    )
+
+    sym_t, sym_y, sym_dy = solvers_zip[EmtSolverTypes.Symbolic].simulate(
+        x0=x0.copy(),
+        dx0=dx0.copy(),
+        params0=params0.copy(),
+        boundary_updater=problem,
+    )
+
+    np.testing.assert_allclose(sym_t, ref_t, rtol=0.0, atol=0.0)
+    assert np.all(np.isfinite(sym_y))
+    assert np.all(np.isfinite(sym_dy))
+
+    for key in (EmtSolverTypes.StructuralAD, EmtSolverTypes.StructuralCompiled):
+        t_arr, y_arr, dy_arr = solvers_zip[key].simulate(
+            x0=x0.copy(), dx0=dx0.copy(), params0=params0.copy(), boundary_updater=problem
+        )
+        np.testing.assert_allclose(t_arr, ref_t, rtol=0.0, atol=0.0)
+        np.testing.assert_allclose(y_arr, ref_y, rtol=5e-5, atol=1.5e-5)
+        if key == EmtSolverTypes.StructuralCompiled:
+            np.testing.assert_allclose(dy_arr, ref_dy, rtol=5e-5, atol=2e-2)
+        else:
+            np.testing.assert_allclose(dy_arr, ref_dy, rtol=1e-5, atol=5e-4)
