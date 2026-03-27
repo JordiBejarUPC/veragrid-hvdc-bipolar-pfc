@@ -173,7 +173,7 @@ def run_power_flow(circuit, grid_name):
         retry_with_other_methods=True,
         max_iter=100,
         tolerance=1e-6,
-        control_q=True,
+        control_q=False,
         control_taps_modules=False,
         control_taps_phase=False,
         orthogonalize_controls=False,
@@ -361,8 +361,8 @@ def run_rms_simulation(grid2, pf_results):
     
     # Set up RMS simulation options
     rms_options = vge.RmsOptions(
-        simulation_time=2,       # 0.5 seconds simulation
-        time_step=0.005,           # 1 ms time step
+        simulation_time=0.2,       # 0.5 seconds simulation
+        time_step=0.001,           # 1 ms time step
         max_iter=20,               # Max Newton-Raphson iterations
         integration_method=DynamicIntegrationMethod.DaeBackEuler
     )

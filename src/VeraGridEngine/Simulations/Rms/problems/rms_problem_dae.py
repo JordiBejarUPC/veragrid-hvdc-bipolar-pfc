@@ -508,9 +508,8 @@ class RmsProblemDae(RmsProblemTemplate):
                 else:
                     if elm.is_dc:
                         self._algebraic_eqs.append(P[i])
-                    elif (elm.idtag not in ac_virtual_buses):
-                        #Do nothing
-                        _ = 0
+                    elif (elm.idtag in ac_virtual_buses):
+                        self._algebraic_eqs.append(P[i])
                     else:
                         self._algebraic_eqs.append(Q[i])
                         self._algebraic_eqs.append(P[i])
@@ -811,7 +810,7 @@ class RmsProblemDae(RmsProblemTemplate):
         if reference_powerflow in mdl.external_mapping:
             var = mdl.external_mapping[reference_powerflow]
             self.init_guess[var.uid] = val
-            #print(f"DEBUG: set_init_guess {reference_powerflow.value} = {val} for var {var.name} (uid={var.uid})")
+            print(f"DEBUG: set_init_guess {reference_powerflow.value} = {val} for var {var.name} (uid={var.uid})")
         else:
             print(
                 f"DEBUG: set_init_guess {reference_powerflow.value} NOT FOUND in external_mapping. Available: {[k.value for k in mdl.external_mapping.keys()]}")
