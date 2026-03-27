@@ -952,7 +952,7 @@ class SimulationsMain(TimeEventsMain):
             integration_method=self.emt_integration_method_dict[self.ui.emt_integration_method_comboBox.currentText()],
             initialization_method=self.emt_initialization_method_dict[
                 self.ui.emt_initialization_method_comboBox.currentText()],
-            solver=self.emt_solver_type_dict[self.ui.emt_solver_type_comboBox.currentText()],
+            solver_type=self.emt_solver_type_dict[self.ui.emt_solver_type_comboBox.currentText()],
         )
 
         return ops
