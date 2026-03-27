@@ -233,12 +233,13 @@ class PolynomialMatrixBuilder:
         for parsed_i in self.ineqs:
             combined_exprs.append(parsed_i)
 
+
         self.extract_symbols(combined_exprs, predefined=parsed_predefined)
 
         # --- FIX: AUTOMATIC FLATTENING & GLOBAL SORTING ---
         self._argaux_map: dict = dict()
         self._flatten_nonlinear_arguments()
-
+        self._apply_automatic_trig_lifting()
         self.all_symbols.sort(key=_sort_symbol)
 
         self.sym_to_idx.clear()
@@ -647,6 +648,61 @@ class PolynomialMatrixBuilder:
 
             return current_eq_coeffs
 
+    def _apply_automatic_trig_lifting(self) -> None:
+        """
+        ALGORITHM: Automatic Multilinear Lifting via Lie-Bäcklund Isomorphism.
+        Transforms trigonometric non-linearities into extended polynomial states.
+        Registers the new variables globally to ensure matrix column allocation.
+        """
+        import sympy as sp
+
+        new_eqs: list = list()
+        subs_dict: dict = dict()
+        processed_args: set = set()
+
+        for eq in self.eqs:
+            trig_terms = eq.atoms(sp.sin, sp.cos)
+
+            for term in trig_terms:
+                arg = term.args[0]
+
+                if arg not in processed_args:
+                    # 1. Define extended state and derivative variables using native prefixes
+                    s_var = sp.Symbol(f"x_sin_{arg.name}")
+                    c_var = sp.Symbol(f"x_cos_{arg.name}")
+
+                    sp_var = sp.Symbol(f"xp_sin_{arg.name}")
+                    cp_var = sp.Symbol(f"xp_cos_{arg.name}")
+
+                    # Assume the derivative of the argument replaces 'x' with 'xp'
+                    arg_p = sp.Symbol(arg.name.replace('x', 'xp'))
+
+                    # 2. Formulate the differential equations for the tangent space
+                    eq_ds = sp_var - (c_var * arg_p)
+                    eq_dc = cp_var + (s_var * arg_p)
+
+                    new_eqs.extend([eq_ds, eq_dc])
+
+                    # 3. Store the substitution mapping
+                    subs_dict[sp.sin(arg)] = s_var
+                    subs_dict[sp.cos(arg)] = c_var
+
+                    # --- ARCHITECTURE FIX: REGISTER IN GLOBAL STATE ---
+                    # We must tell the Builder that these new variables exist
+                    # before it calls self.all_symbols.sort() in __init__
+                    for new_sym in [s_var, c_var, sp_var, cp_var]:
+                        if new_sym not in self.all_symbols:
+                            self.all_symbols.append(new_sym)
+
+                    processed_args.add(arg)
+
+        # 4. Apply substitutions and append the new differential equations
+        lifted_original_eqs: list = [eq.subs(subs_dict) for eq in self.eqs]
+        self.eqs = lifted_original_eqs + new_eqs
+
+        if self.verbose:
+            print(f"[LIFTING] Applied Lie-Bäcklund isomorphism to {len(processed_args)} angular variables.")
+
     def _generate_lifting_equations(self) -> None:
         """
         Automatically generates and appends the algebraic constraint equations
@@ -842,25 +898,39 @@ class PolynomialMatrixBuilder:
         # Call the standard linearization
         return self.linearize(full_v)
 
-    def linearize(self, v_dict: dict, c_type: ConstraintType = ConstraintType.EQUALITY):
+    def linearize(self, v_dict: dict, c_type: ConstraintType = ConstraintType.EQUALITY) -> np.ndarray:
         """
         Analytic linearization for iMTI models (CPN representation).
-
-        :param v_dict: Variable name mapped to value at the operating point.
-        :type v_dict: dict
-        :param c_type: Enum indicating whether to use equality or inequality matrices.
-        :type c_type: ConstraintType
-        :return: Full EABC Jacobian matrix.
-        :rtype: np.ndarray
+        Automatically computes the operating points for lifted trigonometric variables
+        before evaluating the Jacobian matrix.
         """
+        import math
+
+        keys_to_check: list = list(v_dict.keys())
+        key: str
+        for key in keys_to_check:
+            if key.startswith('x') and 'p' not in key:
+                val: float = float(v_dict[key])
+
+                # --- ARCHITECTURE FIX: EXACT PREFIX MATCHING ---
+                # These keys MUST match the sp.Symbol names generated in the lifting method
+                v_dict[f"x_sin_{key}"] = math.sin(val)
+                v_dict[f"x_cos_{key}"] = math.cos(val)
+
+                v_dict[f"xp_sin_{key}"] = 0.0
+                v_dict[f"xp_cos_{key}"] = 0.0
+
         S: np.ndarray
         Phi: np.ndarray
         S, Phi = self._get_matrices(c_type)
 
         v: np.ndarray = self._build_v_vector(v_dict)
         F: np.ndarray = self._compute_jacobian(S, v)
-        self.EABC: np.ndarray = Phi @ F.T
+
+        self.EABC = Phi @ F.T
         self.E, self.A, self.B = self._split_EABC(self.EABC)
+
+        return self.EABC
 
     # ------------------------------------------------------------------
     # Linearisation – private helpers
