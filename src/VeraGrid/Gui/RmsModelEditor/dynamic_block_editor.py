@@ -17,7 +17,7 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
                                QColorDialog, QPlainTextEdit)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter,
                            QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
-from PySide6.QtCore import QAbstractItemModel
+from PySide6.QtCore import QAbstractItemModel, QLineF
 from PySide6.QtCore import Qt, QPointF, QModelIndex, Signal, QAbstractTableModel
 
 
@@ -563,6 +563,96 @@ class PortItem(QGraphicsEllipseItem):
         else:
             return False
 
+class BranchingItem(QGraphicsEllipseItem):
+    """
+    Graphical branching point attached to a connection item.
+    """
+
+    def __init__(self,
+                 connection: ConnectionItem,
+                 radius: int = 6):
+        """
+        Build a connection branching point.
+
+        :param connection:
+        :param radius:
+        """
+        super().__init__(-radius, -radius, 2 * radius, 2 * radius, connection)
+        fill_color: QColor =  OUTPUT_PORT_FILL
+        self.setBrush(QBrush(fill_color))
+        self.setPen(QPen(PORT_BORDER, 1.5))
+        self.setZValue(3)
+        self.setAcceptHoverEvents(True)
+        self.connection: ConnectionItem = connection
+        self.subsystem: BlockItem = connection.source_port.subsystem
+        self.connections: List["ConnectionItem"] | None = None
+        self.index: int =  len(connection.branching_points)
+        self.base_var: Var | None = None
+
+        total_branching_points: int = len(connection.branching_points) + 1
+        self.path_ratio: float = (self.index + 1) / (total_branching_points + 1)
+
+        self.update_position()
+
+    def update_position(self) -> None:
+        """
+        Recalculate position along the connection path based on stored ratio.
+        """
+        path_points: List[QPointF] = self.connection._get_path_points()
+        total_length: float = 0.0
+        segment_lengths: List[float] = []
+        for i in range(len(path_points) - 1):
+            segment_length: float = QLineF(path_points[i], path_points[i + 1]).length()
+            segment_lengths.append(segment_length)
+            total_length += segment_length
+
+        target_distance: float = total_length * self.path_ratio
+
+        accumulated: float = 0.0
+        x_pos: float = 0.0
+        y_pos: float = 0.0
+        for seg_idx, segment_length in enumerate(segment_lengths):
+            if accumulated + segment_length >= target_distance:
+                ratio: float = (target_distance - accumulated) / segment_length if segment_length > 0 else 0.0
+                p1: QPointF = path_points[seg_idx]
+                p2: QPointF = path_points[seg_idx + 1]
+                x_pos = p1.x() + (p2.x() - p1.x()) * ratio
+                y_pos = p1.y() + (p2.y() - p1.y()) * ratio
+                break
+            accumulated += segment_length
+
+        connection_pos: QPointF = self.connection.scenePos()
+        self.setPos(x_pos - connection_pos.x(), y_pos - connection_pos.y())
+
+    def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
+        """
+        Show a pointer cursor over the port.
+
+        :param event:
+        :return:
+        """
+        QApplication.setOverrideCursor(Qt.CursorShape.PointingHandCursor)
+
+    def hoverLeaveEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
+        """
+        Restore the cursor when the pointer leaves the port.
+
+        :param event:
+        :return:
+        """
+        QApplication.restoreOverrideCursor()
+
+    def is_connected(self) -> bool:
+        """
+        Check whether the port already owns a connection list.
+
+        :return:
+        """
+        if self.connections is not None:
+            return True
+        else:
+            return False
+
 
 class ConnectionItem(QGraphicsPathItem):
     """
@@ -584,11 +674,12 @@ class ConnectionItem(QGraphicsPathItem):
         super().__init__()
         self.uid: int = uid if uid is not None else _new_uid()
         self.setZValue(-1)
-        self.source_port: PortItem = source_port
+        self.source_port: PortItem | BranchingItem = source_port
         self.target_port: PortItem = target_port
         self.diagram = diagram
         self.con_uid = con_uid if con_uid is not None else self.uid
         self.custom_elbow_points: List[QPointF] = []
+        self.branching_points: List[BranchingItem] = list()
         self._dragging: bool = False
         self._drag_type: str = None  # 'horizontal' or 'vertical'
         self._drag_segment_idx: int = -1
@@ -627,6 +718,9 @@ class ConnectionItem(QGraphicsPathItem):
         else:
             path = build_orthogonal_connection_path(start, end)
         self.setPath(path)
+
+        for branching_point in self.branching_points:
+            branching_point.update_position()
 
     def _build_path_with_elbows(self, start: QPointF, end: QPointF, elbows: List[QPointF]) -> QPainterPath:
         """
@@ -783,6 +877,17 @@ class ConnectionItem(QGraphicsPathItem):
         self._drag_type = None
         self._original_elbows = []
         super().mouseReleaseEvent(event)
+
+    def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """
+        Doubleclick in a connection to create a branching point.
+
+        :param event:
+        :return:
+        """
+        self.branching_points.append(BranchingItem(self))
+
+        super().mouseDoubleClickEvent(event)
 
     def _update_diagram(self) -> None:
         """
@@ -2673,7 +2778,7 @@ class DiagramScene(QGraphicsScene):
         super().__init__()
         self.editor: DynamicBlockEditorGUI = editor
         self.temp_line: QGraphicsPathItem | None = None
-        self.source_port: PortItem | None = None
+        self.source_port: PortItem | BranchingItem | None = None
         self.context_item: BlockItem | ConnectionItem | None = None
 
     def change_item_fill_color(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
@@ -2784,6 +2889,14 @@ class DiagramScene(QGraphicsScene):
                     return
                 else:
                     pass
+
+            if isinstance(item, BranchingItem):
+
+                self.source_port = item
+                path: QPainterPath = QPainterPath(item.scenePos())
+                self.temp_line = self.addPath(path, QPen(Qt.PenStyle.DashLine))
+                return
+
             else:
                 pass
 
