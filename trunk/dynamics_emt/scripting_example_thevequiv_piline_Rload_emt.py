@@ -17,6 +17,10 @@ from VeraGrid.trunk.dynamics_emt.emt_plot_exports import (
     save_scalar_plot,
     save_two_panel_three_phase_plot,
 )
+from VeraGrid.trunk.dynamics_emt.emt_build_report_exports import (
+    normalize_initialization_report,
+    normalize_problem_build_report,
+)
 
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
@@ -573,6 +577,8 @@ def export_benchmark_results(results: List[Dict[str, object]], file_stem: str) -
                 loop_s=float(row["loop_s"]),
                 max_abs_diff=float(row["max_abs_diff"]),
                 build_stats=build_stats,
+                problem_build_report=dict(row["problem_build_report"]),
+                initialization_report=dict(row["initialization_report"]),
                 steps=int(row["steps"]),
                 y_shape=list(y_shape),
                 dy_shape=list(dy_shape),
@@ -635,6 +641,8 @@ def export_all_solvers_cold_warm_results(results: List[Dict[str, object]], file_
                 speedup=float(row["speedup"]),
                 max_abs_diff=float(row["max_abs_diff"]),
                 build_stats=build_stats,
+                problem_build_report=dict(row["problem_build_report"]),
+                initialization_report=dict(row["initialization_report"]),
             )
         )
         result_index += 1
@@ -698,6 +706,8 @@ def run_single_solver_cold_warm_benchmark(solver_key: str) -> Dict[str, object]:
         speedup=speedup,
         max_abs_diff=float(np.max(np.abs(cold_y - warm_y))),
         build_stats=get_solver_build_stats(solver),
+        problem_build_report=normalize_problem_build_report(local_problem),
+        initialization_report=normalize_initialization_report(local_problem),
     )
 
 
@@ -747,6 +757,8 @@ def run_single_solver_benchmark(solver_key: str, reference_y: np.ndarray | None)
         loop_s=get_solver_loop_time(solver),
         max_abs_diff=max_abs_diff,
         build_stats=get_solver_build_stats(solver),
+        problem_build_report=normalize_problem_build_report(local_problem),
+        initialization_report=normalize_initialization_report(local_problem),
         steps=len(t_arr) - 1,
         shape=y_arr.shape,
         dy_shape=dy_arr.shape,

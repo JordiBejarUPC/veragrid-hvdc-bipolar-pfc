@@ -7,6 +7,7 @@ import numpy as np
 import numba as nb
 import scipy.sparse as sp
 import time
+import hashlib
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, BinOp, UnOp, Func
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
@@ -43,10 +44,35 @@ def _safe_njit(py_func: Callable[..., Any], fastmath: bool = True, cache: bool =
     :return: The Numba JIT compiled function.
     :rtype: Callable[..., Any]
     """
-    if signature is not None:
-        return nb.njit(signature, fastmath=fastmath, cache=cache)(py_func)
+    signature_repr: str
+
+    if signature is None:
+        signature_repr = "none"
     else:
-        return nb.njit(fastmath=fastmath, cache=cache)(py_func)
+        signature_repr = str(signature)
+
+    cache_payload: str = "|".join([py_func.__module__, py_func.__name__, signature_repr, str(fastmath), str(cache)])
+    cache_key: str = hashlib.md5(cache_payload.encode("utf-8")).hexdigest()
+
+    if not hasattr(_safe_njit, "_compiled_cache"):
+        setattr(_safe_njit, "_compiled_cache", dict())
+    else:
+        pass
+
+    compiled_cache: Dict[str, Callable[..., Any]] = getattr(_safe_njit, "_compiled_cache")
+
+    if cache_key in compiled_cache:
+        return compiled_cache[cache_key]
+    else:
+        pass
+
+    if signature is not None:
+        compiled_kernel: Callable[..., Any] = nb.njit(signature, fastmath=fastmath, cache=cache)(py_func)
+    else:
+        compiled_kernel = nb.njit(fastmath=fastmath, cache=cache)(py_func)
+
+    compiled_cache[cache_key] = compiled_kernel
+    return compiled_kernel
 
 # ==============================================================================
 # Sparse Forward-Mode AD Jacobian with Graph Coloring (JVP-based)

@@ -8,6 +8,7 @@ import numpy as np
 import numba as nb
 import scipy.sparse as sp
 import time
+import hashlib
 from scipy.linalg import lu_factor, lu_solve
 from scipy.sparse.linalg import SuperLU, splu
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
@@ -31,6 +32,77 @@ from VeraGridEngine.basic_structures import Vec, Mat, IntVec, CscMat
 DenseFactorization = Tuple[Any, Any]
 DenseSolveBundle = Tuple[DenseFactorization, np.ndarray]
 SparseSolveBundle = Tuple[SuperLU, CscMat]
+
+
+class SymbolicCompiledNumbaKernelCache:
+    """
+    In-process cache of Numba-compiled symbolic kernels.
+    """
+
+    __slots__ = ["_cache"]
+
+    def __init__(self) -> None:
+        """
+        Build the symbolic compiled-kernel cache.
+
+        :return: None.
+        :rtype: None
+        """
+        self._cache: Dict[str, Callable[..., Any]] = dict()
+
+    def get(self, cache_key: str) -> Callable[..., Any] | None:
+        """
+        Return one cached compiled kernel.
+
+        :param cache_key: Deterministic cache key.
+        :type cache_key: str
+        :return: Cached compiled kernel or ``None``.
+        :rtype: Callable[..., Any] | None
+        """
+        return self._cache.get(cache_key, None)
+
+    def set(self, cache_key: str, kernel: Callable[..., Any]) -> None:
+        """
+        Store one compiled kernel.
+
+        :param cache_key: Deterministic cache key.
+        :type cache_key: str
+        :param kernel: Compiled kernel.
+        :type kernel: Callable[..., Any]
+        :return: None.
+        :rtype: None
+        """
+        self._cache[cache_key] = kernel
+
+
+SYMBOLIC_NUMBA_KERNEL_CACHE = SymbolicCompiledNumbaKernelCache()
+
+
+def _safe_njit(py_func: Callable[..., Any], fastmath: bool = True, cache: bool = True) -> Callable[..., Any]:
+    """
+    Compile one symbolic kernel with an in-process Numba cache.
+
+    :param py_func: Python function to compile.
+    :type py_func: Callable[..., Any]
+    :param fastmath: Whether fastmath is enabled.
+    :type fastmath: bool
+    :param cache: Whether Numba persistent cache is enabled.
+    :type cache: bool
+    :return: Compiled kernel.
+    :rtype: Callable[..., Any]
+    """
+    cache_payload: str = "|".join([py_func.__module__, py_func.__name__, str(fastmath), str(cache)])
+    cache_key: str = hashlib.md5(cache_payload.encode("utf-8")).hexdigest()
+    cached_kernel: Callable[..., Any] | None = SYMBOLIC_NUMBA_KERNEL_CACHE.get(cache_key)
+
+    if cached_kernel is None:
+        pass
+    else:
+        return cached_kernel
+
+    compiled_kernel: Callable[..., Any] = nb.njit(cache=cache, fastmath=fastmath)(py_func)
+    SYMBOLIC_NUMBA_KERNEL_CACHE.set(cache_key, compiled_kernel)
+    return compiled_kernel
 
 
 def get_vars_in_expr(expr: Expr) -> Set[int]:
@@ -597,7 +669,7 @@ class JitSymbolicSolver:
 
             # Compile inplace: the function writes directly to the 'residuals' array
             py_func = self.jit_compiler.compile(chunk, func_name=f_name, use_cse=True, offset=i, inplace=True)
-            jit_func = nb.njit(cache=True, fastmath=True)(py_func)
+            jit_func = _safe_njit(py_func, cache=True, fastmath=True)
             batched_kernels.append(jit_func)
 
         self.jit_kernels[method] = batched_kernels
@@ -709,7 +781,7 @@ class JitSymbolicSolver:
 
         # The symbolic Jacobian structure is deterministic for a given method and
         # sparsity mode, so persistent caching is safe and accelerates warm runs.
-        kernel_jit = nb.njit(cache=True, fastmath=True)(kernel_py)
+        kernel_jit = _safe_njit(kernel_py, cache=True, fastmath=True)
 
         if method == DynamicIntegrationMethod.DaeTrapezoidal:
             alpha_mult = 2.0

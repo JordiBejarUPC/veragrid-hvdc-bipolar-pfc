@@ -18,6 +18,10 @@ from VeraGrid.trunk.dynamics_emt.emt_plot_exports import (
     save_scalar_plot,
     save_two_panel_three_phase_plot,
 )
+from VeraGrid.trunk.dynamics_emt.emt_build_report_exports import (
+    normalize_initialization_report,
+    normalize_problem_build_report,
+)
 
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
@@ -378,6 +382,8 @@ class SolverBenchmarkResult:
         '_steps',
         '_y_shape',
         '_dy_shape',
+        '_problem_build_report',
+        '_initialization_report',
     )
 
     def __init__(self,
@@ -394,7 +400,9 @@ class SolverBenchmarkResult:
                  build_stats: Dict[str, float],
                  steps: int,
                  y_shape: tuple[int, ...],
-                 dy_shape: tuple[int, ...]) -> None:
+                 dy_shape: tuple[int, ...],
+                 problem_build_report: Dict[str, float],
+                 initialization_report: Dict[str, object]) -> None:
         """
         Build one benchmark result.
 
@@ -428,6 +436,8 @@ class SolverBenchmarkResult:
         self._steps: int = int(steps)
         self._y_shape: tuple[int, ...] = tuple(y_shape)
         self._dy_shape: tuple[int, ...] = tuple(dy_shape)
+        self._problem_build_report: Dict[str, float] = dict(problem_build_report)
+        self._initialization_report: Dict[str, object] = dict(initialization_report)
 
     def get_solver_key(self) -> str:
         """
@@ -544,6 +554,24 @@ class SolverBenchmarkResult:
         """
         return tuple(self._dy_shape)
 
+    def get_problem_build_report(self) -> Dict[str, float]:
+        """
+        Return the EMT problem build report.
+
+        :return: EMT problem build report.
+        :rtype: Dict[str, float]
+        """
+        return dict(self._problem_build_report)
+
+    def get_initialization_report(self) -> Dict[str, object]:
+        """
+        Return the EMT initialization report.
+
+        :return: EMT initialization report.
+        :rtype: Dict[str, object]
+        """
+        return dict(self._initialization_report)
+
 
 class SolverColdWarmBenchmarkResult:
     """
@@ -563,6 +591,8 @@ class SolverColdWarmBenchmarkResult:
         '_cold_trace_summary',
         '_warm_trace_summary',
         '_build_stats',
+        '_problem_build_report',
+        '_initialization_report',
     )
 
     def __init__(self,
@@ -577,7 +607,9 @@ class SolverColdWarmBenchmarkResult:
                  dy_max_abs_diff: float,
                  cold_trace_summary: SolverTraceSummary,
                  warm_trace_summary: SolverTraceSummary,
-                 build_stats: Dict[str, float]) -> None:
+                 build_stats: Dict[str, float],
+                 problem_build_report: Dict[str, float],
+                 initialization_report: Dict[str, object]) -> None:
         """
         Build one cold/warm benchmark result.
 
@@ -608,6 +640,8 @@ class SolverColdWarmBenchmarkResult:
         self._cold_trace_summary: SolverTraceSummary = cold_trace_summary
         self._warm_trace_summary: SolverTraceSummary = warm_trace_summary
         self._build_stats: Dict[str, float] = dict(build_stats)
+        self._problem_build_report: Dict[str, float] = dict(problem_build_report)
+        self._initialization_report: Dict[str, object] = dict(initialization_report)
 
     def get_solver_key(self) -> str:
         """
@@ -716,6 +750,24 @@ class SolverColdWarmBenchmarkResult:
         :rtype: Dict[str, float]
         """
         return dict(self._build_stats)
+
+    def get_problem_build_report(self) -> Dict[str, float]:
+        """
+        Return the EMT problem build report.
+
+        :return: EMT problem build report.
+        :rtype: Dict[str, float]
+        """
+        return dict(self._problem_build_report)
+
+    def get_initialization_report(self) -> Dict[str, object]:
+        """
+        Return the EMT initialization report.
+
+        :return: EMT initialization report.
+        :rtype: Dict[str, object]
+        """
+        return dict(self._initialization_report)
 
 
 def create_problem(enable_trace: bool = False) -> EmtProblemDae:
@@ -1179,6 +1231,8 @@ def run_single_solver_benchmark(solver_key: str,
         last_step_newton_iterations=trace_summary.get_last_step_newton_iterations(),
     )
     build_stats: Dict[str, float] = get_solver_build_stats(solver)
+    problem_build_report: Dict[str, float] = normalize_problem_build_report(local_problem)
+    initialization_report: Dict[str, object] = normalize_initialization_report(local_problem)
     result: SolverBenchmarkResult = SolverBenchmarkResult(
         solver_key=solver_key,
         problem_build_s=problem_build_s,
@@ -1194,6 +1248,8 @@ def run_single_solver_benchmark(solver_key: str,
         steps=len(t_arr) - 1,
         y_shape=y_arr.shape,
         dy_shape=dy_arr.shape,
+        problem_build_report=problem_build_report,
+        initialization_report=initialization_report,
     )
 
     return result, y_arr, dy_arr
@@ -1275,6 +1331,8 @@ def run_single_solver_cold_warm_benchmark(solver_key: str) -> SolverColdWarmBenc
         cold_trace_summary=cold_trace_summary,
         warm_trace_summary=warm_trace_summary,
         build_stats=get_solver_build_stats(solver),
+        problem_build_report=normalize_problem_build_report(local_problem),
+        initialization_report=normalize_initialization_report(local_problem),
     )
 
 
@@ -1438,6 +1496,8 @@ def export_benchmark_results(results: List[SolverBenchmarkResult], file_stem: st
                 total_newton_iterations=trace_summary.get_total_newton_iterations(),
                 last_step_newton_iterations=trace_summary.get_last_step_newton_iterations(),
                 build_stats=item.get_build_stats(),
+                problem_build_report=item.get_problem_build_report(),
+                initialization_report=item.get_initialization_report(),
                 steps=item.get_steps(),
                 y_shape=list(y_shape),
                 dy_shape=list(dy_shape),
@@ -1526,6 +1586,8 @@ def export_all_solvers_cold_warm_results(results: List[SolverColdWarmBenchmarkRe
                 cold_last_step_newton_iterations=cold_summary.get_last_step_newton_iterations(),
                 warm_last_step_newton_iterations=warm_summary.get_last_step_newton_iterations(),
                 build_stats=item.get_build_stats(),
+                problem_build_report=item.get_problem_build_report(),
+                initialization_report=item.get_initialization_report(),
             )
         )
         result_index += 1

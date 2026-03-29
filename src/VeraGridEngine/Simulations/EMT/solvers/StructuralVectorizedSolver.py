@@ -32,6 +32,8 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     resolve_solver_boundary_updater,
 )
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EagerEquationCompiler, EquationCompiler, MatrixVectorizedCompiler, _compile_to_file
+from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSparseFactorizationManager
+from VeraGridEngine.Utils.NumericalMethods.external_sparse_solver_interface import SparseLinearSolverBackendProvider
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.basic_structures import Vec, Mat
 
@@ -934,6 +936,24 @@ class SparseADJacobian:
         )
         return self.J
 
+    def get_matrix(self) -> csc_matrix:
+        """
+        Return the reusable CSC Jacobian shell.
+
+        :return: CSC Jacobian shell.
+        :rtype: csc_matrix
+        """
+        return self.J
+
+    def get_data_buffer(self) -> Vec:
+        """
+        Return the reusable CSC numeric buffer.
+
+        :return: CSC numeric buffer.
+        :rtype: Vec
+        """
+        return self._data_buffer
+
 # ==============================================================================
 # StructuralVectorizedSolver
 # ==============================================================================
@@ -947,7 +967,7 @@ class StructuralVectorizedSolver:
         'jit_jacobians_ad', 'vectorized_ready', '_last_sim_loop_time', '_newton_diag_config', '_vectorized_warmup_done',
         '_predictor', '_runtime_param_count', '_static_parameter_buffer', '_full_parameter_buffer', '_residual_buffer',
         '_trial_state_buffer', '_trial_residual_buffer', '_trial_residual_evaluator',
-        '_backend_build_stats', '_last_runtime_stats'
+        '_backend_build_stats', '_last_runtime_stats', '_sparse_solver_backend_provider', '_sparse_factorization_manager'
     ]
 
     def __init__(self,
@@ -960,6 +980,7 @@ class StructuralVectorizedSolver:
                  dense_threshold: int = 100,
                  verbose: bool = False,
                  auto_vectorization: bool = True,
+                 sparse_solver_backend_provider: SparseLinearSolverBackendProvider | None = None,
                  newton_diag_config: NewtonDiagnosticsConfig | None = None)-> None:
         """
         :param problem: The DAE problem definition.
@@ -970,6 +991,8 @@ class StructuralVectorizedSolver:
         :param pred_method: DynamicIntegrationMethod used in the predictor step if method is explicit.
         :param dense_threshold: Threshold to switch between dense and sparse linear solvers.
         :param verbose: Print compilation and simulation timings.
+        :param sparse_solver_backend_provider: Sparse linear solver backend provider.
+        :type sparse_solver_backend_provider: SparseLinearSolverBackendProvider | None
         """
         self.problem = problem
         self.t0 = t0
@@ -1031,6 +1054,8 @@ class StructuralVectorizedSolver:
         self._trial_residual_evaluator = VectorizedResidualTrialEvaluator()
         self._backend_build_stats: Dict[str, float] = dict()
         self._last_runtime_stats: Dict[str, float] = dict()
+        self._sparse_solver_backend_provider = sparse_solver_backend_provider
+        self._sparse_factorization_manager = None
 
         if auto_vectorization:
             self.auto_detect_vectorization(method)
@@ -1210,6 +1235,11 @@ class StructuralVectorizedSolver:
             )
 
         self.vec_jacobian = self.jit_jacobians_ad[method]
+        self._sparse_factorization_manager = StructuralCompiledSparseFactorizationManager(
+            self.vec_jacobian.get_matrix(),
+            self.vec_jacobian.get_data_buffer(),
+            self._sparse_solver_backend_provider,
+        )
         self.vectorized_ready = True
         jacobian_build_s: float = time.perf_counter() - jacobian_build_t0
 
@@ -1331,12 +1361,12 @@ class StructuralVectorizedSolver:
                 matrix_getter=lambda bundle: bundle[1],
             )
             sparse_solve = with_newton_diagnostics(
-                lambda bundle, rhs: bundle[0].solve(rhs),
-                fallback_solve=lambda bundle, rhs: sparse_lsqr_fallback(bundle[1], rhs),
+                lambda manager, rhs: manager.solve(rhs),
+                fallback_solve=lambda manager, rhs: sparse_lsqr_fallback(manager.get_active_matrix(), rhs),
                 collector=trace_collector,
                 config=diag_cfg,
-                solver_name="superlu",
-                matrix_getter=lambda bundle: bundle[1],
+                solver_name="emt_sparse_backend",
+                matrix_getter=lambda manager: manager.get_active_matrix(),
             )
         else:
             pass
@@ -1360,6 +1390,7 @@ class StructuralVectorizedSolver:
         total_newton_iterations: int = 0
         jacobian_evaluation_count: int = 0
         aligned_substep_count: int = 0
+        sparse_factor_manager = self._sparse_factorization_manager
 
         if verbose:
             print(f"-> Starting VECTORIZED Simulation (Integration loop)...")
@@ -1425,7 +1456,13 @@ class StructuralVectorizedSolver:
                 # IMPORTANT:
                 # LU factors must be local to each substep, because x_prev, params and h_eff may change.
                 cached_lu_dense: DenseSolveBundle | None = None
-                cached_lu_sparse: SparseSolveBundle | None = None
+                if sparse_factor_manager is None:
+                    pass
+                else:
+                    if sparse_factor_manager.has_factorization():
+                        sparse_factor_manager.invalidate()
+                    else:
+                        pass
 
                 # PREDICTOR
                 if i == 0 and is_first_local_step and method == DynamicIntegrationMethod.DaeTrapezoidal:
@@ -1470,7 +1507,7 @@ class StructuralVectorizedSolver:
                     else:
                         pass
 
-                    recompute: bool = (cached_lu_dense is None and cached_lu_sparse is None) or \
+                    recompute: bool = (cached_lu_dense is None and (sparse_factor_manager is None or not sparse_factor_manager.has_factorization())) or \
                                       (k > 0 and (res_norm / (last_res_norm + 1e-16)) > 0.5)
 
                     if recompute:
@@ -1493,14 +1530,16 @@ class StructuralVectorizedSolver:
                                 pass
 
                             cached_lu_dense = (lu_factor(dense_jacobian), dense_jacobian)
-                            cached_lu_sparse = None
                         else:
                             if diagnostics_enabled and ctx is not None:
                                 maybe_check_index1(cached_J, self._n_state, ctx=ctx, config=diag_cfg)
                             else:
                                 pass
 
-                            cached_lu_sparse = (splu(cached_J), cached_J)
+                            if sparse_factor_manager is None:
+                                raise RuntimeError("StructuralVectorizedSolver sparse factorization manager is not initialized")
+                            else:
+                                sparse_factor_manager.factorize()
                             cached_lu_dense = None
                     else:
                         pass
@@ -1516,11 +1555,11 @@ class StructuralVectorizedSolver:
                     else:
                         if diagnostics_enabled and ctx is not None:
                             assert sparse_solve is not None
-                            assert cached_lu_sparse is not None
-                            delta = sparse_solve(cached_lu_sparse, -res_global, ctx)
+                            assert sparse_factor_manager is not None
+                            delta = sparse_solve(sparse_factor_manager, -res_global, ctx)
                         else:
-                            assert cached_lu_sparse is not None
-                            delta = cached_lu_sparse[0].solve(-res_global)
+                            assert sparse_factor_manager is not None
+                            delta = sparse_factor_manager.solve(-res_global)
 
                     if diag_cfg.enable_backtracking:
                         self._trial_residual_evaluator.set_context(

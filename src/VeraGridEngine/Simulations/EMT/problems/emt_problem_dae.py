@@ -33,6 +33,7 @@ from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHist
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt, run_emt_native_initialization
+from VeraGridEngine.Utils.Symbolic.compiled_functions import get_compiled_functions_cache_stats
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_algebraic_vars
 # from trunk.veragrid_fmu_import import finalize_emt_fmu_cs_devices, finalize_emt_fmu_me_devices, queue_emt_fmu_cs_device, queue_emt_fmu_me_device #TODO: importing from trunk!
 
@@ -257,6 +258,7 @@ class EmtProblemDae(EmtProblemTemplate):
         self._temp_init_guess: Dict[int, float] = dict()
         self._temp_diff_init_guess: Dict[int, float] = dict()
         self.initialization_report: EmtInitializationReport | None = None
+        self.build_report: Dict[str, float] = dict()
 
         self._scheduled_mode_events: Dict[int, List[Tuple[float, float, bool]]] = dict()
         self._mode_event_cursor: Dict[int, int] = dict()
@@ -279,20 +281,32 @@ class EmtProblemDae(EmtProblemTemplate):
         self.step_counter: int = 0
 
         t_build = _tic()
+        t_phase_start: float = t_build
+        cache_stats_before: Dict[str, float] = get_compiled_functions_cache_stats()
 
         self._validate_emt_models_exist()
+        validate_models_s: float = _toc(t_phase_start)
+        t_phase_start = _tic()
 
         # build on local sys_block
         self._build_structure_and_collect(sys_block, grid, glob_time)
+        structure_collect_s: float = _toc(t_phase_start)
+        t_phase_start = _tic()
 
         sys_block.unify_blocks()
         _deduplicate_block_entities(sys_block)
+        unify_blocks_s: float = _toc(t_phase_start)
+        t_phase_start = _tic()
 
         self._validate_connections()
+        validate_connections_s: float = _toc(t_phase_start)
+        t_phase_start = _tic()
 
         # initialize template with the complete block
         super().__init__(sys_block=sys_block, glob_time=glob_time, progress_signal=progress_signal,
                          progress_text=progress_text)
+        template_init_s: float = _toc(t_phase_start)
+        t_phase_start = _tic()
 
         # Mark retained runtime parameters:
         #   - scheduled mode parameters
@@ -320,6 +334,8 @@ class EmtProblemDae(EmtProblemTemplate):
             self._initialize_mode_event_state()
         else:
             pass
+        runtime_partition_s: float = _toc(t_phase_start)
+        t_phase_start = _tic()
 
         # 1) PF guesses
         self.init_guess.update(self._temp_init_guess)
@@ -329,7 +345,11 @@ class EmtProblemDae(EmtProblemTemplate):
 
         # 2) explicit init guesses initialization
         self._run_explicit_initialization()
+        explicit_init_s: float = _toc(t_phase_start)
+        t_phase_start = _tic()
         self.initialization_report = run_emt_native_initialization(problem=self, options=self.options)
+        native_init_s: float = _toc(t_phase_start)
+        t_phase_start = _tic()
 
         if self.progress_signal is not None:
             self.progress_signal.emit(20)
@@ -340,8 +360,28 @@ class EmtProblemDae(EmtProblemTemplate):
         # piecewise expressions before that would preserve the undefined default
         # and break the initial runtime-parameter evaluation.
         self.set_events_group(None)
+        events_group_finalize_s: float = _toc(t_phase_start)
 
         t_done = _toc(t_build)
+        cache_stats_after: Dict[str, float] = get_compiled_functions_cache_stats()
+        compiled_function_cache_delta: float = cache_stats_after.get("entry_count", 0.0) - cache_stats_before.get("entry_count", 0.0)
+
+        self.build_report = dict(
+            validate_models_s=validate_models_s,
+            structure_collect_s=structure_collect_s,
+            unify_blocks_s=unify_blocks_s,
+            validate_connections_s=validate_connections_s,
+            template_init_s=template_init_s,
+            runtime_partition_s=runtime_partition_s,
+            explicit_init_s=explicit_init_s,
+            native_init_s=native_init_s,
+            events_group_finalize_s=events_group_finalize_s,
+            compiled_function_cache_delta=compiled_function_cache_delta,
+            persistent_init_cache_hit=1.0 if (self.initialization_report is not None and self.initialization_report.persistent_cache_hit) else 0.0,
+            persistent_init_cache_load_s=0.0 if self.initialization_report is None else float(self.initialization_report.persistent_cache_load_s),
+            persistent_init_cache_store_s=0.0 if self.initialization_report is None else float(self.initialization_report.persistent_cache_store_s),
+            total_s=t_done,
+        )
 
         if options.verbose > 0:
             self.logger.add_debug(f"init guess = {self.init_guess}")
@@ -386,6 +426,15 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 self._models_with_init_eqs_seen.add(mid)
                 self._models_with_init_eqs.append(mdl)
+
+    def get_build_report(self) -> Dict[str, float]:
+        """
+        Return the EMT problem build timing report.
+
+        :return: Build timing report.
+        :rtype: Dict[str, float]
+        """
+        return dict(self.build_report)
 
     def _register_diff_init_model(self, mdl: Block) -> None:
         """
@@ -1201,6 +1250,20 @@ class EmtProblemDae(EmtProblemTemplate):
         :param emt_events_group: EMT events group to activate. ``None`` keeps all EMT events active.
         :return: None
         """
+        same_group_requested: bool
+
+        if self._active_events_group is None:
+            same_group_requested = emt_events_group is None and len(self._scheduled_mode_events) > 0
+        elif emt_events_group is None:
+            same_group_requested = False
+        else:
+            same_group_requested = self._active_events_group.idtag == emt_events_group.idtag
+
+        if same_group_requested:
+            return
+        else:
+            pass
+
         active_runtime_eqs: List[Any] = list(self._runtime_parameter_eqs0)
         scheduled_mode_events: Dict[int, List[Tuple[float, float, bool]]] = dict()
         continuous_events: Dict[int, Dict[str, List[float]]] = {
@@ -1256,9 +1319,43 @@ class EmtProblemDae(EmtProblemTemplate):
         self._active_events_group = emt_events_group
         self._runtime_all_eqs_source = active_runtime_eqs
         self._scheduled_mode_events = scheduled_mode_events
-        self._rebuild_runtime_parameter_partition()
-        self.rebuild_runtime_param_vectors()
-        self.reset_boundary_update_state(0.0)
+
+        # Event-group activation only changes the runtime equations and scheduled
+        # updates; it does not change the parameter ordering. Reusing the existing
+        # partition avoids rebuilding constant parameter buffers and repeated list
+        # reconstruction during every event-group switch.
+        self._runtime_continuous_eqs = list()
+        self._runtime_mode_eqs = list()
+
+        n_source: int = len(self._runtime_all_parameters_source)
+        i: int = 0
+        while i < n_source:
+            parameter: Var = self._runtime_all_parameters_source[i]
+            equation: Any = active_runtime_eqs[i]
+
+            if parameter.uid in self._runtime_mode_uids:
+                self._runtime_mode_eqs.append(equation)
+            else:
+                self._runtime_continuous_eqs.append(equation)
+
+            i += 1
+
+        self._event_parameters_eqs = list()
+
+        for equation in self._runtime_continuous_eqs:
+            self._event_parameters_eqs.append(equation)
+
+        for equation in self._runtime_mode_eqs:
+            self._event_parameters_eqs.append(equation)
+
+        self._mode_event_cursor = dict()
+        self._initialize_mode_event_state()
+
+        if self.get_variable_parameter_number() > 0:
+            self._event_params_values = self._initialize_runtime_parameter_values(0.0)
+            self._event_params_values = self.def_event_params_fn(self._event_params_values, 0.0)
+        else:
+            self._event_params_values = np.zeros(0, dtype=np.float64)
 
     # ---------------------------------------------------------------------
     # MAPPINGS

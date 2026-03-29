@@ -13,6 +13,7 @@ from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
+from VeraGridEngine.Utils.NumericalMethods.emt_sparse_solver_registry import resolve_emt_sparse_solver_backend_provider
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
 
 
@@ -38,12 +39,33 @@ def build_emt_solver(options: EmtOptions,
         raise ValueError(f"Unsupported EMT solver type: {options.solver_type}")
 
     if options.solver_type == EmtSolverTypes.StructuralCompiled:
+        sparse_backend_provider = resolve_emt_sparse_solver_backend_provider(
+            solver_type=options.sparse_solver,
+            external_plugin_name=options.external_sparse_solver_plugin_name,
+            external_plugin_directory=options.external_sparse_solver_directory,
+            allow_internal_fallback=options.allow_internal_sparse_fallback,
+        )
         return solver_cls(problem=problem,
                           t0=t0,
                           t_end=t_end,
                           h=h,
                           method=method,
                           warmup_policy=options.compiled_warmup_policy,
+                          sparse_solver_backend_provider=sparse_backend_provider,
+                          newton_diag_config=newton_diag_config)
+    elif options.solver_type == EmtSolverTypes.StructuralAD:
+        sparse_backend_provider = resolve_emt_sparse_solver_backend_provider(
+            solver_type=options.sparse_solver,
+            external_plugin_name=options.external_sparse_solver_plugin_name,
+            external_plugin_directory=options.external_sparse_solver_directory,
+            allow_internal_fallback=options.allow_internal_sparse_fallback,
+        )
+        return solver_cls(problem=problem,
+                          t0=t0,
+                          t_end=t_end,
+                          h=h,
+                          method=method,
+                          sparse_solver_backend_provider=sparse_backend_provider,
                           newton_diag_config=newton_diag_config)
     else:
         return solver_cls(problem=problem,
