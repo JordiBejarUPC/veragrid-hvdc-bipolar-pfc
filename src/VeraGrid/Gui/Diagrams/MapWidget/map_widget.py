@@ -176,6 +176,8 @@ class MapView(QGraphicsView):
         self.scale(initial_zoom_factor, initial_zoom_factor)
 
         self.setRubberBandSelectionMode(Qt.ItemSelectionMode.IntersectsItemShape)
+        self.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.BoundingRectViewportUpdate)
+        self.setOptimizationFlag(QGraphicsView.OptimizationFlag.DontSavePainterState, True)
 
         self.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.SmoothPixmapTransform)
 
@@ -438,7 +440,7 @@ class MapWidget(QWidget):
                  start_level: int,
                  editor: GridMapWidget,
                  zoom_callback: Callable[[int], None],
-                 position_callback: Callable[[float, float, int, int], None]):
+                 position_callback: Callable[[float, float, float, float], None]):
         """
         Initialize the widget.
         :param parent: the GUI parent widget
@@ -479,7 +481,7 @@ class MapWidget(QWidget):
 
         # callbacks
         self.zoom_callback: Callable[[int], None] = zoom_callback
-        self.position_callback: Callable[[float, float, int, int], None] = position_callback
+        self.position_callback: Callable[[float, float, float, float], None] = position_callback
 
         # define position and tile coords of the "key" tile
         self.key_tile_left = 0  # tile coordinates of key tile
@@ -488,8 +490,8 @@ class MapWidget(QWidget):
         self.key_tile_y_offset = 0
 
         # we keep track of the cursor coordinates if cursor on map
-        self.mouse_x: int = 0
-        self.mouse_y: int = 0
+        self.mouse_x: float | None = 0
+        self.mouse_y: float | None = 0
 
         # state variables holding mouse buttons state
         self.left_button_down: bool = False
@@ -502,8 +504,8 @@ class MapWidget(QWidget):
         self.zoom_factor = 2
 
         # when dragging, remember the initial start point
-        self.start_drag_x: int | None = None
-        self.start_drag_y: int | None = None
+        self.start_drag_x: float | None = None
+        self.start_drag_y: float | None = None
 
         self.view_llon = 0
         self.view_rlon = 0
@@ -775,7 +777,8 @@ class MapWidget(QWidget):
             mouse_geo = self.view_to_geo(x, y)
 
             # update remembered mouse position in case of zoom
-            self.mouse_x = self.mouse_y = None
+            self.mouse_x = None
+            self.mouse_y = None
             if mouse_geo:
                 self.mouse_x = x
                 self.mouse_y = y
