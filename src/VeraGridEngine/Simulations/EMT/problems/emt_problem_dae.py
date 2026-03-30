@@ -36,6 +36,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowRes
 from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt, \
     run_emt_native_initialization
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_algebraic_vars
+from VeraGridEngine.Devices.Branches.line import Line
 # from trunk.veragrid_fmu_import import finalize_emt_fmu_cs_devices, finalize_emt_fmu_me_devices, queue_emt_fmu_cs_device, queue_emt_fmu_me_device #TODO: importing from trunk!
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
@@ -860,6 +861,11 @@ class EmtProblemDae(EmtProblemTemplate):
             f: int = bus_dict[br.bus_from]
             t: int = bus_dict[br.bus_to]
             mdl: Block = self._process_device_model(br, sys_block, grid, glob_time)
+
+            if isinstance(br, Line):
+                self._assign_api_obj_mapping_branch(br)
+            else:
+                pass
 
             is_bergeron: bool = False
             if br.emt_model.name == EmtLineTypes.Bergeron:
@@ -2893,131 +2899,188 @@ class EmtProblemDae(EmtProblemTemplate):
 
         return df
 
-    def _assign_api_obj_mapping_branch(self,
-                                       br):  # TODO: still not working: branches need their phase number before creating the template not after!
+    def _assign_api_obj_mapping_branch(self, br: Any) -> None:
+        """
+        Assign branch EMT pi-line parameters into the API object mapping.
+
+        The routine keeps the historical contract used by the EMT pi-line
+        template: the symbolic block exposes a full 4x4 NABC parameter map,
+        while the physical line data only fills the active-phase subspace and
+        all inactive entries remain zero.
+
+        :param br: Branch device whose EMT model receives the mapped values.
+        :return: None.
+        :raises ValueError: If the reduced physical matrices are inconsistent.
+        """
         # -----------------------------
-        # 1. Assign phase flags USING ENUMS
+        # 1. Resolve the physical phase layout from the line connection.
+        # This selects the reduced subspace that exists in the physical line,
+        # which is the basis for placing values into the global 4x4 NABC map.
         # -----------------------------
-        ph_mappings = [
-            (ParamPowerFlowRefferenceType.phN, br.ys.phN),
-            (ParamPowerFlowRefferenceType.phA, br.ys.phA),
-            (ParamPowerFlowRefferenceType.phB, br.ys.phB),
-            (ParamPowerFlowRefferenceType.phC, br.ys.phC),
-        ]
-
-        # Create a boolean mask and extract active global indices
-        ph_mask = [bool(br.ys.phN), bool(br.ys.phA), bool(br.ys.phB), bool(br.ys.phC)]
-        idx_global = [i for i, active in enumerate(ph_mask) if active]
-        m = len(idx_global)
-
-        for enum_key, ph_val in ph_mappings:
-            self._assign_api_obj_param_if_present(br.emt_model, enum_key, Const(ph_val))
-
-        # -----------------------------
-        # 2. Compute continuous parameters in PU
-        # -----------------------------
-        fbase = self.grid.fBase
-        w0 = 2.0 * np.pi * fbase
-        Vbase = br.bus_from.Vnom * 1e3
-        sbase = self.grid.Sbase
-        S = sbase * 1e6
-        Zbase = (Vbase * Vbase) / S
-        Ybase = 1.0 / Zbase
-
-        # Z_phys i Y_phys ara seran matrius de mida m x m
-        Z_phys = br.template.z_nabc * br.length
-        Y_phys = br.template.y_nabc * br.length
-
-        Z_pu = Z_phys / Zbase
-        Y_pu = Y_phys / Ybase
-
-        R_full = np.real(Z_pu)
-        X_full = np.imag(Z_pu)
-        L_full = X_full / (w0 + 1e-20)
-
-        Bsh_full = np.imag(Y_pu)
-        C_full = Bsh_full / (w0 + 1e-20)
-        C_full = C_full / 2.0
+        ph_mask: list[bool] = list([
+            bool(br.ys.phN),
+            bool(br.ys.phA),
+            bool(br.ys.phB),
+            bool(br.ys.phC),
+        ])
+        idx_global: list[int] = list(i for i, is_active in enumerate(ph_mask) if is_active)
+        n_active: int = len(idx_global)
 
         # -----------------------------
-        # 3. Validations
+        # 2. Convert the physical line matrices into the EMT per-unit form.
+        # The EMT template is parameterized in per-unit R, L^-1 and C values,
+        # so this stage preserves the existing numerical pipeline exactly.
         # -----------------------------
-        # Ara validem contra la mida m x m real de les fases actives
-        if R_full.shape != (m, m):
+        fbase: float = self.grid.fBase
+        w0: float = 2.0 * np.pi * fbase
+        v_base: float = br.bus_from.Vnom * 1e3
+        s_base_mva: float = self.grid.Sbase
+        s_base_va: float = s_base_mva * 1e6
+        z_base: float = (v_base * v_base) / s_base_va
+        y_base: float = 1.0 / z_base
+
+        z_phys: np.ndarray = br.template.z_nabc * br.length
+        y_phys: np.ndarray = br.template.y_nabc * br.length
+
+        z_pu: np.ndarray = z_phys / z_base
+        y_pu: np.ndarray = y_phys / y_base
+
+        r_full: np.ndarray = np.real(z_pu)
+        x_full: np.ndarray = np.imag(z_pu)
+        l_full: np.ndarray = x_full / (w0 + 1e-20)
+        bsh_full: np.ndarray = np.imag(y_pu)
+        c_full: np.ndarray = (bsh_full / (w0 + 1e-20)) / 2.0
+
+        # -----------------------------
+        # 3. Validate the reduced matrices before mapping them.
+        # These checks keep bad topology or singular data from silently
+        # corrupting the full API mapping used by the EMT assembly.
+        # -----------------------------
+        expected_shape: tuple[int, int] = (n_active, n_active)
+
+        if r_full.shape != expected_shape:
             raise ValueError(
-                f"Line '{br.name}' must have a {m}x{m} Z matrix based on active phases. Got {R_full.shape}.")
+                f"Line '{br.name}' must have a {n_active}x{n_active} Z matrix based on active phases. "
+                f"Got {r_full.shape}."
+            )
 
-        if L_full.shape != R_full.shape or C_full.shape != R_full.shape:
+        if l_full.shape != expected_shape or c_full.shape != expected_shape:
             raise ValueError(
                 f"Line '{br.name}' has inconsistent matrix shapes: "
-                f"R={R_full.shape}, L={L_full.shape}, C={C_full.shape}."
+                f"R={r_full.shape}, L={l_full.shape}, C={c_full.shape}."
             )
 
         try:
-            L_inv = np.linalg.inv(L_full)
-        except np.linalg.LinAlgError:
-            raise ValueError(f"Inductance matrix L for line '{br.name}' is singular and cannot be inverted.")
+            l_inv_full: np.ndarray = np.linalg.inv(l_full)
+        except np.linalg.LinAlgError as exc:
+            raise ValueError(
+                f"Inductance matrix L for line '{br.name}' is singular and cannot be inverted."
+            ) from exc
 
         # -----------------------------
-        # 4. Assign Matrix values (R, Linv, C) USING ENUM MATRICES
+        # 4. Define the fixed global NABC mapping contract.
+        # Both the EMT initializer and the EMT template rely on the same enum
+        # layout so that active reduced matrices land in deterministic slots.
         # -----------------------------
-        r_enums = [
-            [ParamPowerFlowRefferenceType.Rnn, ParamPowerFlowRefferenceType.Rna, ParamPowerFlowRefferenceType.Rnb,
-             ParamPowerFlowRefferenceType.Rnc],
-            [ParamPowerFlowRefferenceType.Ran, ParamPowerFlowRefferenceType.Raa, ParamPowerFlowRefferenceType.Rab,
-             ParamPowerFlowRefferenceType.Rac],
-            [ParamPowerFlowRefferenceType.Rbn, ParamPowerFlowRefferenceType.Rba, ParamPowerFlowRefferenceType.Rbb,
-             ParamPowerFlowRefferenceType.Rbc],
-            [ParamPowerFlowRefferenceType.Rcn, ParamPowerFlowRefferenceType.Rca, ParamPowerFlowRefferenceType.Rcb,
-             ParamPowerFlowRefferenceType.Rcc]
-        ]
-        linv_enums = [
-            [ParamPowerFlowRefferenceType.Linv_nn, ParamPowerFlowRefferenceType.Linv_na,
-             ParamPowerFlowRefferenceType.Linv_nb, ParamPowerFlowRefferenceType.Linv_nc],
-            [ParamPowerFlowRefferenceType.Linv_an, ParamPowerFlowRefferenceType.Linv_aa,
-             ParamPowerFlowRefferenceType.Linv_ab, ParamPowerFlowRefferenceType.Linv_ac],
-            [ParamPowerFlowRefferenceType.Linv_bn, ParamPowerFlowRefferenceType.Linv_ba,
-             ParamPowerFlowRefferenceType.Linv_bb, ParamPowerFlowRefferenceType.Linv_bc],
-            [ParamPowerFlowRefferenceType.Linv_cn, ParamPowerFlowRefferenceType.Linv_ca,
-             ParamPowerFlowRefferenceType.Linv_cb, ParamPowerFlowRefferenceType.Linv_cc]
-        ]
-        c_enums = [
-            [ParamPowerFlowRefferenceType.Cnn, ParamPowerFlowRefferenceType.Cna, ParamPowerFlowRefferenceType.Cnb,
-             ParamPowerFlowRefferenceType.Cnc],
-            [ParamPowerFlowRefferenceType.Can, ParamPowerFlowRefferenceType.Caa, ParamPowerFlowRefferenceType.Cab,
-             ParamPowerFlowRefferenceType.Cac],
-            [ParamPowerFlowRefferenceType.Cbn, ParamPowerFlowRefferenceType.Cba, ParamPowerFlowRefferenceType.Cbb,
-             ParamPowerFlowRefferenceType.Cbc],
-            [ParamPowerFlowRefferenceType.Ccn, ParamPowerFlowRefferenceType.Cca, ParamPowerFlowRefferenceType.Ccb,
-             ParamPowerFlowRefferenceType.Ccc]
-        ]
+        r_enums: list[list[ParamPowerFlowRefferenceType]] = list([
+            list([
+                ParamPowerFlowRefferenceType.Rnn,
+                ParamPowerFlowRefferenceType.Rna,
+                ParamPowerFlowRefferenceType.Rnb,
+                ParamPowerFlowRefferenceType.Rnc,
+            ]),
+            list([
+                ParamPowerFlowRefferenceType.Ran,
+                ParamPowerFlowRefferenceType.Raa,
+                ParamPowerFlowRefferenceType.Rab,
+                ParamPowerFlowRefferenceType.Rac,
+            ]),
+            list([
+                ParamPowerFlowRefferenceType.Rbn,
+                ParamPowerFlowRefferenceType.Rba,
+                ParamPowerFlowRefferenceType.Rbb,
+                ParamPowerFlowRefferenceType.Rbc,
+            ]),
+            list([
+                ParamPowerFlowRefferenceType.Rcn,
+                ParamPowerFlowRefferenceType.Rca,
+                ParamPowerFlowRefferenceType.Rcb,
+                ParamPowerFlowRefferenceType.Rcc,
+            ]),
+        ])
+        linv_enums: list[list[ParamPowerFlowRefferenceType]] = list([
+            list([
+                ParamPowerFlowRefferenceType.Linv_nn,
+                ParamPowerFlowRefferenceType.Linv_na,
+                ParamPowerFlowRefferenceType.Linv_nb,
+                ParamPowerFlowRefferenceType.Linv_nc,
+            ]),
+            list([
+                ParamPowerFlowRefferenceType.Linv_an,
+                ParamPowerFlowRefferenceType.Linv_aa,
+                ParamPowerFlowRefferenceType.Linv_ab,
+                ParamPowerFlowRefferenceType.Linv_ac,
+            ]),
+            list([
+                ParamPowerFlowRefferenceType.Linv_bn,
+                ParamPowerFlowRefferenceType.Linv_ba,
+                ParamPowerFlowRefferenceType.Linv_bb,
+                ParamPowerFlowRefferenceType.Linv_bc,
+            ]),
+            list([
+                ParamPowerFlowRefferenceType.Linv_cn,
+                ParamPowerFlowRefferenceType.Linv_ca,
+                ParamPowerFlowRefferenceType.Linv_cb,
+                ParamPowerFlowRefferenceType.Linv_cc,
+            ]),
+        ])
+        c_enums: list[list[ParamPowerFlowRefferenceType]] = list([
+            list([
+                ParamPowerFlowRefferenceType.Cnn,
+                ParamPowerFlowRefferenceType.Cna,
+                ParamPowerFlowRefferenceType.Cnb,
+                ParamPowerFlowRefferenceType.Cnc,
+            ]),
+            list([
+                ParamPowerFlowRefferenceType.Can,
+                ParamPowerFlowRefferenceType.Caa,
+                ParamPowerFlowRefferenceType.Cab,
+                ParamPowerFlowRefferenceType.Cac,
+            ]),
+            list([
+                ParamPowerFlowRefferenceType.Cbn,
+                ParamPowerFlowRefferenceType.Cba,
+                ParamPowerFlowRefferenceType.Cbb,
+                ParamPowerFlowRefferenceType.Cbc,
+            ]),
+            list([
+                ParamPowerFlowRefferenceType.Ccn,
+                ParamPowerFlowRefferenceType.Cca,
+                ParamPowerFlowRefferenceType.Ccb,
+                ParamPowerFlowRefferenceType.Ccc,
+            ]),
+        ])
 
-        # Initialize all 16 vars at zero to after assign nonzero values to active phases
-        for i in range(4):
-            for j in range(4):
-                self._assign_api_obj_param_if_present(br.emt_model, r_enums[i][j], 0.0)
-                self._assign_api_obj_param_if_present(br.emt_model, linv_enums[i][j], 0.0)
-                self._assign_api_obj_param_if_present(br.emt_model, c_enums[i][j], 0.0)
+        # -----------------------------
+        # 5. Reset the full 4x4 map and then write the active reduced values.
+        # Zeroing all entries preserves the previous semantics for inactive
+        # rows and columns, which the template later reduces with line.ys.
+        # -----------------------------
+        for i_glob in range(4):
+            for j_glob in range(4):
+                self._assign_api_obj_param_if_present(br.emt_model, r_enums[i_glob][j_glob], 0.0)
+                self._assign_api_obj_param_if_present(br.emt_model, linv_enums[i_glob][j_glob], 0.0)
+                self._assign_api_obj_param_if_present(br.emt_model, c_enums[i_glob][j_glob], 0.0)
 
-        # 'i_red' i 'j_red' from 0 to m-1 (physical matrix inidices R_full, L_inv, etc.)
-        # 'i_glob' i 'j_glob' from 0 to 3 (global indices associated to enums)
         for i_red, i_glob in enumerate(idx_global):
             for j_red, j_glob in enumerate(idx_global):
-                self._assign_api_obj_param_if_present(
-                    br.emt_model,
-                    r_enums[i_glob][j_glob],
-                    float(R_full[i_red, j_red])
-                )
+                self._assign_api_obj_param_if_present(br.emt_model, r_enums[i_glob][j_glob], float(r_full[i_red, j_red]))
                 self._assign_api_obj_param_if_present(
                     br.emt_model,
                     linv_enums[i_glob][j_glob],
-                    float(L_inv[i_red, j_red])
+                    float(l_inv_full[i_red, j_red])
                 )
-                self._assign_api_obj_param_if_present(
-                    br.emt_model,
-                    c_enums[i_glob][j_glob],
-                    float(C_full[i_red, j_red])
-                )
+                self._assign_api_obj_param_if_present(br.emt_model, c_enums[i_glob][j_glob], float(c_full[i_red, j_red]))
 
     def _assign_api_obj_mapping_load(self, load) -> None:
         """

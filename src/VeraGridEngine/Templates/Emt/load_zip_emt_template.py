@@ -8,23 +8,17 @@ from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType, 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 
-def get_load_ZIP_3ph_emt_template(vf: VarFactory,   name: str = "ZIP_Load_EMT_3ph") -> EmtModelTemplate:
+def get_load_ZIP_3ph_emt_template(vf: VarFactory, name: str = "ZIP_Load_EMT_3ph") -> EmtModelTemplate:
     """
     ZIP load model template in the abc domain
-    :param grid: MultiCircuit
-    :param load: Load object to apply the template
+    :param vf: grid.emt_var_factory
     :param name: string to identify the load and model
     :return: EmtModelTemplate
     """
-
-
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
     templ.block.name = name
-
-    # fbase: float = grid.fBase
-    # sbase: float = grid.Sbase
 
     # Symbolic constants for math operations
     c0 = vf.add_const(0.0)
