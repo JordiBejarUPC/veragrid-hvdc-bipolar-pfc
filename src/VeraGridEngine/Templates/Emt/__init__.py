@@ -4,8 +4,24 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from VeraGridEngine.Templates.Emt.bus_emt_template import BusEmtTemplate
-from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import get_bergeron_line_emt_template
+
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import (get_shunt_c_3ph_emt_template,
                                                                 get_shunt_l_3ph_emt_template,
                                                                 get_shunt_r_1ph_emt_template,
                                                                 get_shunt_r_3ph_emt_template,)
+from VeraGridEngine.Templates.Emt.generator_emt_type_template import (get_simple_generator_emt_template,
+                                                                      get_generator_sauer_pai_type_emt_template,
+                                                                      get_exciter_emt,
+                                                                      get_governor_emt,
+                                                                      get_stabilizer_emt,
+                                                                      get_complete_generator_template_emt)
+from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_exponential_load_3ph_emt
+from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_3ph_emt_template
+from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
+# the following are functions that generate templates depending on the specific object
+# from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_converter
+# from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import get_bergeron_line_emt_template
+# from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
+# from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
+# from VeraGridEngine.Templates.Emt.xfmr_emt_template import get_xfmr_emt_template
+

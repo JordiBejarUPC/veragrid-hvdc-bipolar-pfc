@@ -33,7 +33,7 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_e
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
-from VeraGridEngine.Templates.Emt.standard_emt_converter import StandardConverterEmtBuild
+from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_converter
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
 import VeraGridEngine.api as gce
@@ -245,7 +245,7 @@ def test_vsc_emt_passes_validation():
 
     gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
     trafo_mdl = get_transformer_emt_template(grid=grid, trafo=transformer, name=transformer.name).block
-    vsc_mdl = StandardConverterEmtBuild(
+    vsc_mdl = get_emt_converter(
         vf=grid.emt_var_factory,
         name=vsc.name,
         sbase=grid.Sbase,

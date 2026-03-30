@@ -36,7 +36,7 @@ For KCL connection:
 - AC currents i_A, i_B, i_C are added to the AC bus KCL
 """
 
-def StandardConverterEmtBuild(
+def get_emt_converter(
     vf: VarFactory,
     name: str = "standard_converter_emt",
     sbase: float = 1.0,

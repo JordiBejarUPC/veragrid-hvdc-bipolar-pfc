@@ -104,19 +104,41 @@ def get_bus_emt_template(grid: MultiCircuit,
     vf = grid.emt_var_factory
     mask = [False, False, False, False]  # [N, A, B, C]
     if not bus.is_dc:
+        ys_phase_device_types = {
+            DeviceType.LineDevice,
+        }
+        transformer_phase_device_types = {
+            DeviceType.Transformer2WDevice,
+            DeviceType.WindingDevice,
+        }
+        abc_phase_device_types = {
+            DeviceType.VscDevice,
+            DeviceType.SeriesReactanceDevice,
+            DeviceType.UpfcDevice,
+            DeviceType.SwitchDevice,
+            DeviceType.HVDCLineDevice,
+            DeviceType.DCLineDevice,
+        }
+
         for branch in grid.get_branches_iter(add_vsc=True, add_switch=True, add_hvdc=True):
             if bus == branch.bus_from or bus == branch.bus_to:
-                # Check if branch has ys attribute (Line, VSC, etc.)
-                if branch.ys is not None:
+                if branch.device_type in ys_phase_device_types and branch.ys is not None:
                     mask[0] |= bool(branch.ys.phN)
                     mask[1] |= bool(branch.ys.phA)
                     mask[2] |= bool(branch.ys.phB)
                     mask[3] |= bool(branch.ys.phC)
-                # Transformers are always 3-phase ABC
-                # TODO: not all branches have R, perform a filter based on device_type
-                mask[1] = True  # Phase A
-                mask[2] = True  # Phase B
-                mask[3] = True  # Phase C
+                elif branch.device_type in transformer_phase_device_types:
+                    mask[1] = True
+                    mask[2] = True
+                    mask[3] = True
+                elif branch.device_type in abc_phase_device_types:
+                    mask[1] = True
+                    mask[2] = True
+                    mask[3] = True
+                else:
+                    mask[1] = True
+                    mask[2] = True
+                    mask[3] = True
 
     # choose template depending on the number of phases
     bus.emt_model = BusEmtTemplate(vf=vf, mask=mask, is_dc=bus.is_dc, name=f"{bus.name}_emt_template").block

@@ -27,7 +27,7 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.line_phasor_rms_template import get_line_phasor_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.load_phasor_current_rms_template import get_load_phasor_current_rms_template
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template, get_genqec
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms, get_genqec_rms
 from VeraGridEngine.Templates.Rms.genqec_phasor_rms_template import get_genqec_phasor, get_complete_generator_template_phasor
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 from VeraGridEngine.Devices.Aggregation import RmsEvent
@@ -86,7 +86,7 @@ def test_phasor_validation():
     grid_polar.add_generator(bus=bus0_polar, api_obj=gen_polar)
     
     # Build RMS models for polar grid
-    genqec_polar = get_complete_generator_template(grid_polar.rms_var_factory).block
+    genqec_polar = get_complete_generator_template_rms(grid_polar.rms_var_factory).block
     line_mdl_polar = get_line_rms_template(grid_polar.rms_var_factory).block
     load_mdl_polar = get_load_rms_template(grid_polar.rms_var_factory).block
     

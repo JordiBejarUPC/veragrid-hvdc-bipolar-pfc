@@ -16,10 +16,10 @@ from VeraGridEngine.Templates.predefined_blocks import (
 from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import (get_genqec,
-                                                                      get_governor,
-                                                                      get_stabilizer,
-                                                                      get_exciter)
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import (get_genqec_rms,
+                                                                      get_governor_rms,
+                                                                      get_stabilizer_rms,
+                                                                      get_exciter_rms)
 
 
 def create_block_of_type(var_factory: VarFactory,
@@ -78,25 +78,25 @@ def create_block_of_type(var_factory: VarFactory,
 
     # GENQEC (generator with saturation)
     if block_type == BlockType.GENQEC:
-        blk = get_genqec(var_factory, item_name).block
+        blk = get_genqec_rms(var_factory, item_name).block
         blk.name = item_name
         return blk
 
     # GOVERNOR (governor with control)
     if block_type == BlockType.GOV:
-        blk = get_governor(var_factory, item_name).block
+        blk = get_governor_rms(var_factory, item_name).block
         blk.name = item_name
         return blk
 
     # STABILIZER (stabilizer)
     if block_type == BlockType.STAB:
-        blk = get_stabilizer(var_factory, item_name).block
+        blk = get_stabilizer_rms(var_factory, item_name).block
         blk.name = item_name
         return blk
 
     # EXCITER (exciter)
     if block_type == BlockType.EXCITER:
-        blk = get_exciter(var_factory, item_name).block
+        blk = get_exciter_rms(var_factory, item_name).block
         blk.name = item_name
         return blk
 

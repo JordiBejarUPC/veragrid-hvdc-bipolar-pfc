@@ -183,12 +183,8 @@ def _get_grid_runtime_events(grid: MultiCircuit) -> List[Any]:
     :param grid: MultiCircuit instance.
     :return: List of scheduled runtime events.
     """
-    emt_events = getattr(grid, "emt_events", None)
 
-    if emt_events is not None:
-        return list(emt_events)
-    else:
-        return list()
+    return grid.emt_events
 
 
 def _get_bus_v_list(
@@ -512,10 +508,14 @@ class EmtProblemDae(EmtProblemTemplate):
         }
 
         branch_phase_refs = {
-            VarPowerFlowRefferenceType.vf_N, VarPowerFlowRefferenceType.vf_A,
-            VarPowerFlowRefferenceType.vf_B, VarPowerFlowRefferenceType.vf_C,
-            VarPowerFlowRefferenceType.vt_N, VarPowerFlowRefferenceType.vt_A,
-            VarPowerFlowRefferenceType.vt_B, VarPowerFlowRefferenceType.vt_C,
+            VarPowerFlowRefferenceType.vf_N,
+            VarPowerFlowRefferenceType.vf_A,
+            VarPowerFlowRefferenceType.vf_B,
+            VarPowerFlowRefferenceType.vf_C,
+            VarPowerFlowRefferenceType.vt_N,
+            VarPowerFlowRefferenceType.vt_A,
+            VarPowerFlowRefferenceType.vt_B,
+            VarPowerFlowRefferenceType.vt_C,
         }
 
         ac_phases = [
@@ -525,7 +525,7 @@ class EmtProblemDae(EmtProblemTemplate):
             VarPowerFlowRefferenceType.v_C,
         ]
 
-        bus_phase_connections: Dict[Tuple[Any, VarPowerFlowRefferenceType], Set[str]] = {}
+        bus_phase_connections: Dict[Tuple[Any, VarPowerFlowRefferenceType], Set[str]] = dict()
         for bus in self.grid.buses:
             for phase in ac_phases:
                 bus_phase_connections[(bus, phase)] = set()
@@ -537,76 +537,122 @@ class EmtProblemDae(EmtProblemTemplate):
         }
 
         for br in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-            if not br.emt_template or br.emt_model is None:
-                continue  # TODO: reformulate
-            if not br.bus_from or not br.bus_to:
-                continue  # TODO: reformulate
+            if br.emt_model is not None:
+                is_bergeron = br.emt_model.name == EmtLineTypes.Bergeron
 
-            is_bergeron = (br.emt_model.name == EmtLineTypes.Bergeron)
+                if is_bergeron:
+                    if br.ys is not None:
+                        if br.ys.phN:
+                            bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_N)].add(
+                                f"branch_from:{br.name}"
+                            )
+                            bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_N)].add(
+                                f"branch_to:{br.name}"
+                            )
+                        else:
+                            pass
 
-            if is_bergeron:
-                if br.ys and br.ys is not None:
-                    if br.ys.phN:
-                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_N)].add(
-                            f"branch_from:{br.name}")
-                        bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_N)].add(f"branch_to:{br.name}")
-                    if br.ys.phA:
-                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_A)].add(
-                            f"branch_from:{br.name}")
-                        bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_A)].add(f"branch_to:{br.name}")
-                    if br.ys.phB:
-                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_B)].add(
-                            f"branch_from:{br.name}")
-                        bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_B)].add(f"branch_to:{br.name}")
-                    if br.ys.phC:
-                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_C)].add(
-                            f"branch_from:{br.name}")
-                        bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_C)].add(f"branch_to:{br.name}")
-                continue
+                        if br.ys.phA:
+                            bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_A)].add(
+                                f"branch_from:{br.name}"
+                            )
+                            bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_A)].add(
+                                f"branch_to:{br.name}"
+                            )
+                        else:
+                            pass
 
-            for in_var in br.emt_model.in_vars:
-                if in_var.ref in branch_phase_refs:
-                    bus_phase = phase_ref_to_bus_phase[in_var.ref]
-                    if in_var.ref in {VarPowerFlowRefferenceType.vf_N, VarPowerFlowRefferenceType.vf_A,
-                                      VarPowerFlowRefferenceType.vf_B, VarPowerFlowRefferenceType.vf_C}:
-                        bus_phase_connections[(br.bus_from, bus_phase)].add(f"branch_from:{br.name}")
-                    elif in_var.ref in {VarPowerFlowRefferenceType.vt_N, VarPowerFlowRefferenceType.vt_A,
-                                        VarPowerFlowRefferenceType.vt_B, VarPowerFlowRefferenceType.vt_C}:
-                        bus_phase_connections[(br.bus_to, bus_phase)].add(f"branch_to:{br.name}")
-                elif in_var.ref in vsc_ac_phase_refs:
-                    if br.bus_to.is_dc:
-                        bus_phase_connections[(br.bus_from, in_var.ref)].add(f"branch_from:{br.name}")
+                        if br.ys.phB:
+                            bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_B)].add(
+                                f"branch_from:{br.name}"
+                            )
+                            bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_B)].add(
+                                f"branch_to:{br.name}"
+                            )
+                        else:
+                            pass
+
+                        if br.ys.phC:
+                            bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_C)].add(
+                                f"branch_from:{br.name}"
+                            )
+                            bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_C)].add(
+                                f"branch_to:{br.name}"
+                            )
+                        else:
+                            pass
                     else:
-                        bus_phase_connections[(br.bus_to, in_var.ref)].add(f"branch_to:{br.name}")
+                        pass
+                else:
+                    for in_var in br.emt_model.in_vars:
+                        if in_var.ref in branch_phase_refs:
+                            bus_phase = phase_ref_to_bus_phase[in_var.ref]
+
+                            if in_var.ref in {
+                                VarPowerFlowRefferenceType.vf_N,
+                                VarPowerFlowRefferenceType.vf_A,
+                                VarPowerFlowRefferenceType.vf_B,
+                                VarPowerFlowRefferenceType.vf_C,
+                            }:
+                                bus_phase_connections[(br.bus_from, bus_phase)].add(f"branch_from:{br.name}")
+                            else:
+                                if in_var.ref in {
+                                    VarPowerFlowRefferenceType.vt_N,
+                                    VarPowerFlowRefferenceType.vt_A,
+                                    VarPowerFlowRefferenceType.vt_B,
+                                    VarPowerFlowRefferenceType.vt_C,
+                                }:
+                                    bus_phase_connections[(br.bus_to, bus_phase)].add(f"branch_to:{br.name}")
+                                else:
+                                    pass
+
+                        else:
+                            if in_var.ref in vsc_ac_phase_refs:
+                                if br.bus_to.is_dc:
+                                    bus_phase_connections[(br.bus_from, in_var.ref)].add(f"branch_from:{br.name}")
+                                else:
+                                    bus_phase_connections[(br.bus_to, in_var.ref)].add(f"branch_to:{br.name}")
+                            else:
+                                pass
+            else:
+                pass
 
         for inj in self.grid.get_injection_devices_iter():
-            if not inj.emt_model or inj.emt_model is None:
-                continue  # TODO: reformulate
-            if not inj.bus:
-                continue  # TODO: reformulate
+            if inj.emt_model is not None:
+                inj_bus = inj.bus
+                for in_var in inj.emt_model.in_vars:
+                    if in_var.ref in ac_phases:
+                        bus_phase_connections[(inj_bus, in_var.ref)].add(f"injection:{inj.name}")
+                    else:
+                        pass
+            else:
+                pass
 
-            inj_bus = inj.bus
-            for in_var in inj.emt_model.in_vars:
-                if in_var.ref in ac_phases:
-                    bus_phase_connections[(inj_bus, in_var.ref)].add(f"injection:{inj.name}")
-
-        floating_phases: List[str] = []
+        floating_phases: List[str] = list()
         for bus in self.grid.buses:
             if bus.is_dc:
-                continue  # TODO: reformulate
-            bus_out_refs = {v.ref for v in bus.emt_model.out_vars}
-            for phase in ac_phases:
-                connections = bus_phase_connections.get((bus, phase), set())
-                if phase in bus_out_refs and len(connections) < 2:
-                    floating_phases.append(
-                        f"  - Bus '{bus.name}' phase '{phase.value}' is floating "
-                        f"(connected to {len(connections)} element(s): {connections})"
-                    )
+                pass
+            else:
+                bus_out_refs = {v.ref for v in bus.emt_model.out_vars}
+                for phase in ac_phases:
+                    connections = bus_phase_connections.get((bus, phase), set())
+                    if phase in bus_out_refs and len(connections) < 2:
+                        floating_phases.append(
+                            f"  - Bus '{bus.name}' phase '{phase.value}' is floating "
+                            f"(connected to {len(connections)} element(s): {connections})"
+                        )
+                    else:
+                        pass
 
         if floating_phases:
-            error_msg = "TopologyError: Floating bus phases detected (each phase must be connected to at least 2 elements):\n"
+            error_msg = (
+                "TopologyError: Floating bus phases detected "
+                "(each phase must be connected to at least 2 elements):\n"
+            )
             error_msg += "\n".join(floating_phases)
             raise EmtTopologyError(error_msg)
+        else:
+            pass
 
     def _process_device_model(self, dev: Any, sys_block: Block, grid: MultiCircuit, glob_time: Var) -> Block:
         """
@@ -1152,17 +1198,31 @@ class EmtProblemDae(EmtProblemTemplate):
         if emt_events_group is None:
             return emt_events
 
-        return [
-            evt for evt in emt_events
-            if getattr(getattr(evt, "group", None), "idtag", None) == emt_events_group.idtag
-        ]
+        filtered_events: List[Any] = list()
+
+        for evt in emt_events:
+            try:
+                group_idtag = evt.group.idtag
+            except AttributeError:
+                group_idtag = None
+
+            if group_idtag == emt_events_group.idtag:
+                filtered_events.append(evt)
+            else:
+                pass
+
+        return filtered_events
 
     def _event_targets_registered_parameter(self, evt: Any, parameter_uid: int) -> bool:
         """
         Return whether the EMT event targets a runtime parameter registered in the problem.
         """
         registered_device_idtag: str | None = self._event_parameter_device_idtags.get(parameter_uid, None)
-        event_device_idtag: str = str(getattr(evt, "device_idtag", ""))
+
+        try:
+            event_device_idtag: str = str(evt.device_idtag)
+        except AttributeError:
+            event_device_idtag = ""
 
         if registered_device_idtag is None:
             return False
@@ -1194,46 +1254,54 @@ class EmtProblemDae(EmtProblemTemplate):
         emt_events: List[Any] = self._get_emt_events_for_group(emt_events_group)
 
         for evt in emt_events:
-            parameter: Any = getattr(evt, "parameter", None)
+            if isinstance(evt.parameter, Var):
+                parameter_uid: int = evt.parameter.uid
 
-            if not isinstance(parameter, Var):
-                continue
+                if self._event_targets_registered_parameter(evt, parameter_uid):
+                    if parameter_uid in self._discrete_event_parameter_uids:
+                        event_list: List[Tuple[float, float, bool]] = scheduled_mode_events.setdefault(
+                            parameter_uid,
+                            list(),
+                        )
 
-            parameter_uid: int = parameter.uid
+                        try:
+                            force_step_alignment = bool(evt.force_step_alignment)
+                        except AttributeError:
+                            force_step_alignment = False
 
-            if not self._event_targets_registered_parameter(evt, parameter_uid):
-                continue
-
-            if parameter_uid in self._discrete_event_parameter_uids:
-                event_list: List[Tuple[float, float, bool]] = scheduled_mode_events.setdefault(parameter_uid, list())
-                event_list.append(
-                    (
-                        float(evt.time),
-                        float(evt.value),
-                        bool(getattr(evt, "force_step_alignment", False)),
-                    )
-                )
-            elif parameter_uid in continuous_events:
-                continuous_events[parameter_uid]["times"].append(float(evt.time))
-                continuous_events[parameter_uid]["values"].append(float(evt.value))
+                        event_list.append(
+                            (
+                                float(evt.time),
+                                float(evt.value),
+                                force_step_alignment,
+                            )
+                        )
+                    else:
+                        if parameter_uid in continuous_events:
+                            continuous_events[parameter_uid]["times"].append(float(evt.time))
+                            continuous_events[parameter_uid]["values"].append(float(evt.value))
+                        else:
+                            pass
+                else:
+                    pass
             else:
                 pass
 
         for parameter_uid, info in continuous_events.items():
-            if len(info["times"]) == 0:
-                continue
+            if len(info["times"]) != 0:
+                runtime_idx: int = self.uid2idx_event_params[parameter_uid]
+                sort_idx: np.ndarray = np.argsort(np.asarray(info["times"], dtype=np.float64), kind="stable")
+                t_events: np.ndarray = np.asarray(info["times"], dtype=np.float64)[sort_idx]
+                new_values: np.ndarray = np.asarray(info["values"], dtype=np.float64)[sort_idx]
 
-            runtime_idx: int = self.uid2idx_event_params[parameter_uid]
-            sort_idx: np.ndarray = np.argsort(np.asarray(info["times"], dtype=np.float64), kind="stable")
-            t_events: np.ndarray = np.asarray(info["times"], dtype=np.float64)[sort_idx]
-            new_values: np.ndarray = np.asarray(info["values"], dtype=np.float64)[sort_idx]
-
-            active_runtime_eqs[runtime_idx] = piecewise(
-                time_var=self._glob_time,
-                t_events=t_events,
-                new_values=new_values,
-                default_value=active_runtime_eqs[runtime_idx],
-            )
+                active_runtime_eqs[runtime_idx] = piecewise(
+                    time_var=self._glob_time,
+                    t_events=t_events,
+                    new_values=new_values,
+                    default_value=active_runtime_eqs[runtime_idx],
+                )
+            else:
+                pass
 
         self._active_events_group = emt_events_group
         self._runtime_all_eqs_source = active_runtime_eqs

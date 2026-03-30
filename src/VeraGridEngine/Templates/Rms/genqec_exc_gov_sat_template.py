@@ -20,7 +20,7 @@ from VeraGridEngine.Templates.templates_common_functions import (tf_to_block, tf
 
 
 
-def get_genqec(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def get_genqec_rms(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     """
      generator with quadratic saturation
     """
@@ -319,7 +319,7 @@ def get_genqec(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def get_governor(vfactory: VarFactory, name: str = "Governor") -> RmsModelTemplate:
+def get_governor_rms(vfactory: VarFactory, name: str = "Governor") -> RmsModelTemplate:
     templ = RmsModelTemplate(name=name)
 
     parameters = {
@@ -510,7 +510,7 @@ def get_governor(vfactory: VarFactory, name: str = "Governor") -> RmsModelTempla
     return templ
 
 
-def get_stabilizer(vfactory: VarFactory, name: str = "stabilizer") -> RmsModelTemplate:
+def get_stabilizer_rms(vfactory: VarFactory, name: str = "stabilizer") -> RmsModelTemplate:
     templ = RmsModelTemplate(name=name)
 
     parameters = {
@@ -618,7 +618,7 @@ def get_stabilizer(vfactory: VarFactory, name: str = "stabilizer") -> RmsModelTe
     return templ
 
 
-def get_exciter(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemplate:
+def get_exciter_rms(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemplate:
     """
 
     :param vfactory:
@@ -1085,7 +1085,7 @@ def OELBuild(vfactory: VarFactory, name: str = "OEL") -> RmsModelTemplate:
     return oel_block, V_oel_sat
 
 
-def get_complete_generator_template(vfactory: VarFactory, name="complete generator rms template") -> RmsModelTemplate:
+def get_complete_generator_template_rms(vfactory: VarFactory, name="complete generator rms template") -> RmsModelTemplate:
     """
     
     :return: 
@@ -1095,10 +1095,10 @@ def get_complete_generator_template(vfactory: VarFactory, name="complete generat
     templ.name = name
 
     # generate models
-    genqec_mdl = get_genqec(vfactory=vfactory).block
-    exciter_mdl = get_exciter(vfactory=vfactory).block
-    governor_mdl = get_governor(vfactory=vfactory).block
-    stabilizer_mdl = get_stabilizer(vfactory=vfactory).block
+    genqec_mdl = get_genqec_rms(vfactory=vfactory).block
+    exciter_mdl = get_exciter_rms(vfactory=vfactory).block
+    governor_mdl = get_governor_rms(vfactory=vfactory).block
+    stabilizer_mdl = get_stabilizer_rms(vfactory=vfactory).block
 
     # connect models
     genqec_mdl.connect([genqec_mdl.in_vars[3]], [exciter_mdl.out_vars[0]])

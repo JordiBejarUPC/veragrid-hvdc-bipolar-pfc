@@ -3,18 +3,19 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Dict, Any
+from typing import Dict
 import numpy as np
 
 from VeraGridEngine import EmtLineTypes
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Var, Expr
 
-def get_pi_line_emt_template(grid: MultiCircuit,
+def get_pi_line_emt_template(
+        grid: MultiCircuit,
                              line: Line,
                              name: str = EmtLineTypes.PI) -> EmtModelTemplate:
     """
