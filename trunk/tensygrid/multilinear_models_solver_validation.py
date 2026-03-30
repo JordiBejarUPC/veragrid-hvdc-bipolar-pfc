@@ -100,7 +100,7 @@ line0_mdl = get_line_rms_template(grid.rms_var_factory).block
 load_mdl = get_load_rms_template(grid.rms_var_factory).block
 
 # generator
-genqec1_mdl = get_complete_generator_template(grid.rms_var_factory).block
+genqec1_mdl = get_complete_generator_template(grid.rms_var_factory, implicit=True).block
 
 # connection with buses
 

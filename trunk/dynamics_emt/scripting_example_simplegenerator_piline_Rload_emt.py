@@ -247,7 +247,7 @@ if CHOSEN_SOLVER not in SOLVER_TYPE_MAP:
     raise ValueError(f"Solver '{CHOSEN_SOLVER}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
 
 options = EmtOptions(time_step = 5e-6, # 5e-7,
-                     simulation_time =  0.02,  #5e-6*10, # s
+                     simulation_time =  0.04,  #5e-6*10, # s
                      tolerance = 1e-6,
                      solver_type = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,

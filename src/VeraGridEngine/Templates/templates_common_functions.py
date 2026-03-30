@@ -346,7 +346,7 @@ def to_implicit(block: Block, vfactory: VarFactory) -> Block:
         
         # Create a new algebraic variable for the derivative
         if state_var.diff_var == None:
-            dt_var = vfactory.add_diff_var(f"dt_{state_var.name}")
+            dt_var = vfactory.add_diff_var(f"dt_{state_var.name}", base_var=state_var)
             block.diff_vars.append(dt_var)
         else:
             dt_var = state_var.diff_var
@@ -355,7 +355,7 @@ def to_implicit(block: Block, vfactory: VarFactory) -> Block:
         block.algebraic_vars.append(state_var)
         block.algebraic_eqs.append(implicit_eq)
         
-        block.init_eqs[dt_var] = block.init_eqs[state_eq]
+        #block.init_eqs[dt_var] = block.init_eqs[state_var]
 
     
     # The state_vars become algebraic_vars since they now appear in algebraic equations

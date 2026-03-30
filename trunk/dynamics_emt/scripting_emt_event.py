@@ -911,6 +911,5 @@ def main() -> None:
     else:
         print("Plotting disabled; stopping after solver/profiler report.")
 
-
 if __name__ == "__main__":
     main()

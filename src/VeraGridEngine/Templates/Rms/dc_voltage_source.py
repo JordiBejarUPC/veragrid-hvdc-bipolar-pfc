@@ -119,6 +119,7 @@ def DCCurrentSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTempla
         C: vfactory.add_const(0.01),
         Rpv: vfactory.add_const(0.001),
         Vpv0: vfactory.add_const(None),
+        Idc_src0: vfactory.add_const(None),
     }
     dc_block = Block(
         algebraic_eqs=[
@@ -133,7 +134,96 @@ def DCCurrentSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTempla
         init_eqs={
             Idc: Pdc / Vdc,
             Idc_src0: Pdc / Vdc,
+            Idc_src: Pdc / Vdc,
             Vpv0: Vdc + Rpv * (Pdc / Vdc),
+        },
+        external_mapping={
+            VarPowerFlowRefferenceType.P: Pdc,
+            VarPowerFlowRefferenceType.Idc: Idc,
+            VarPowerFlowRefferenceType.Vdc: Vdc,
+        },
+    )
+    templ.block = dc_block
+
+    return templ
+
+
+def DCPVSourceAveraged(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTemplate:
+    """
+    Averaged PV source with MPPT-like voltage reference and DC-link capacitor.
+
+    Model structure:
+    - Irradiance/temperature dependent available PV current (Ipv_av)
+    - MPPT voltage reference set to estimated Vmp
+    - Averaged boost relation to inject DC current into the link
+    - DC-link capacitor dynamics: Cdc * dVdc/dt + Idc - Idc_src = 0
+    """
+    templ = RmsModelTemplate()
+
+    # Variables
+    Idc = vfactory.add_var('Idc')
+    Idc_src = vfactory.add_var('Idc_src')
+    Pdc = vfactory.add_var('Pdc')
+    Ipv_av = vfactory.add_var('Ipv_av')
+    Vmp_est = vfactory.add_var('Vmp_est')
+    Vpv_ref = vfactory.add_var('Vpv_ref')
+    duty = vfactory.add_var('duty')
+    dVdcdt = vfactory.add_diff_var('dVdcdt', base_var=Vdc)
+
+    # Parameters
+    Cdc = vfactory.add_var('Cdc')
+    eta_boost = vfactory.add_var('eta_boost')
+    Isc_stc = vfactory.add_var('Isc_stc')
+    Vmp_stc = vfactory.add_var('Vmp_stc')
+    G = vfactory.add_var('G')
+    T = vfactory.add_var('T')
+    G_stc = vfactory.add_var('G_stc')
+    T_stc = vfactory.add_var('T_stc')
+    alpha_isc = vfactory.add_var('alpha_isc')
+    beta_vmp = vfactory.add_var('beta_vmp')
+    duty_min = vfactory.add_var('duty_min')
+    duty_max = vfactory.add_var('duty_max')
+    eps_v = vfactory.add_var('eps_v')
+
+    event_dict = {
+        Cdc: vfactory.add_const(0.01),
+        eta_boost: vfactory.add_const(1.0),
+        Isc_stc: vfactory.add_const(1.0),
+        Vmp_stc: vfactory.add_const(0.01),
+        G: vfactory.add_const(1000.0),
+        T: vfactory.add_const(25.0),
+        G_stc: vfactory.add_const(1000.0),
+        T_stc: vfactory.add_const(25.0),
+        alpha_isc: vfactory.add_const(0.0005),
+        beta_vmp: vfactory.add_const(-0.0025),
+        duty_min: vfactory.add_const(0.0),
+        duty_max: vfactory.add_const(0.999),
+        eps_v: vfactory.add_const(0.0),
+    }
+
+    duty_unsat = 1.0 - Vpv_ref / (Vdc + eps_v)
+
+    dc_block = Block(
+        algebraic_eqs=[
+            Pdc - Idc * Vdc,
+            Ipv_av - Isc_stc * (G / G_stc) * (1.0 + alpha_isc * (T - T_stc)),
+            Vmp_est - Vmp_stc * (1.0 + beta_vmp * (T - T_stc)),
+            Vpv_ref - Vmp_est,
+            duty - duty_unsat,
+            Idc_src - eta_boost * (1.0 - duty) * Ipv_av,
+            dVdcdt * Cdc + Idc - Idc_src,
+        ],
+        algebraic_vars=[Idc, Pdc, Ipv_av, Vmp_est, Vpv_ref, duty, Idc_src],
+        diff_vars=[dVdcdt],
+        event_dict=event_dict,
+        out_vars=[Pdc, Idc],
+        init_eqs={
+            Idc: Pdc / Vdc,
+            Idc_src: Pdc / Vdc,
+            Ipv_av: Isc_stc * (G / G_stc) * (1.0 + alpha_isc * (T - T_stc)),
+            Vmp_est: Vmp_stc * (1.0 + beta_vmp * (T - T_stc)),
+            Vpv_ref: Vmp_est,
+            duty: 1.0 - Vpv_ref / (Vdc + eps_v),
         },
         external_mapping={
             VarPowerFlowRefferenceType.P: Pdc,

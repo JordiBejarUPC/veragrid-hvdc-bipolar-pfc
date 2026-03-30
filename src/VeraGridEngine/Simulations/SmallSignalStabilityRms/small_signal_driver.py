@@ -245,19 +245,27 @@ def run_dense_small_signal_stability(problem: RmsProblemTemplate,
     """
 
     # We obtain the balanced matrix
-    A_bal, A_orig = compute_state_matrix(problem=problem, x=x, dx=dx)
 
     differential_vars = problem.get_diff_var_number()
     if differential_vars == 0:
     # Scipy returns w such that w^TA = lambda w^H. We must conjugate it to W^TA = lambda W^T.
+        A_bal, A_orig = compute_state_matrix(problem=problem, x=x, dx=dx)
         eig_results = list(la.eig(A_bal, left=True, right=True))
     else:
         h = problem.get_dt_value()
         h = 1e9
         E_matrix = problem.get_E_matrix(x, dx)
-        fx = problem.get_j11(x, dx, h)
-        fy = problem.get_j12(x, dx, h)
-        gx = problem.get_j21(x, dx, h)
+
+        nx = problem.get_states_number()
+        ny = problem.get_algebraic_var_number()
+        if nx == 0:
+            fx = sp.csr_matrix((0, 0))
+            fy = sp.csr_matrix((0, ny))
+            gx = sp.csr_matrix((ny, 0))
+        else:
+            fx = problem.get_j11(x, dx, h)
+            fy = problem.get_j12(x, dx, h)
+            gx = problem.get_j21(x, dx, h)
         gy = problem.get_j22(x, dx, h)
     
         # 1. BUILD THE ENHANCED JACOBIAN (Sparse)
@@ -267,7 +275,7 @@ def run_dense_small_signal_stability(problem: RmsProblemTemplate,
         
         # Debug: Check A_matrix row 70 for large values
         A_dense = A_matrix.toarray()
-        
+        A_orig = A_dense.copy()
         # Convert to dense for eig
         eig_results = list(la.eig(A_dense, -E_matrix, left=True, right=True))
 

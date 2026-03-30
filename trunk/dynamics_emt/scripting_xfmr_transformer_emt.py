@@ -33,7 +33,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 
 from VeraGridEngine.Templates.Emt.xfmr_emt_template import get_xfmr_emt_template
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
-from VeraGridEngine.Templates.Emt.standard_emt_converter import StandardConverterEmtBuild
+from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_converter
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template

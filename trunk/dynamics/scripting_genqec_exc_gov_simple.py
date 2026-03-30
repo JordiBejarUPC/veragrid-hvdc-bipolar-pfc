@@ -20,7 +20,7 @@ from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
@@ -93,7 +93,7 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 
 
 # generator
-genqec_mdl = get_complete_generator_template(grid.rms_var_factory).block
+genqec_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
 
 # line
 line_mdl = get_line_rms_template(grid.rms_var_factory).block
@@ -137,11 +137,6 @@ rms_events_group_names = np.array(0)
 # uid_save = [var.uid for var in vars_to_save]
 
 
-
-load_mdl_uid = grid.loads[0].rms_model.uid
-gce.save_file(grid=grid, filename="2bus_gen_load_evt.veragrid")
-grid2 = gce.open_file(filename="2bus_gen_load_evt.veragrid")
-load_mdl_uid2 = grid2.loads[0].rms_model.uid
 
 ######################################################################################################
 # Power flow

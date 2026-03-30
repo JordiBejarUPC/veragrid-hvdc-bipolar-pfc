@@ -13,7 +13,7 @@ from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod, \
@@ -87,7 +87,7 @@ def test_simulation_with_event():
     ######################################################################################################
 
     # generator
-    genqec_mdl = get_complete_generator_template(grid.rms_var_factory).block
+    genqec_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
 
     # line
     line_mdl = get_line_rms_template(grid.rms_var_factory).block

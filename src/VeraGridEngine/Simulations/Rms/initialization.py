@@ -261,8 +261,7 @@ def init_explicit(mdl: Block,
             event_params_array[uid2idx_event_params[var.uid]] = result
             index = variable_parameters.index(var)
             event_parameters_eqs[index] = Const(result)
-
-        else:
+        elif var.base_var is None:
             # check if implicit equation
             is_self_implicit = var in dependencies[var]
 

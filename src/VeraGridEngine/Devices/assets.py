@@ -8283,11 +8283,11 @@ class Assets:
         :return:
         """
         self.rms_models += [
-            tem.get_genqec(vfactory=self._rms_var_factory),
-            tem.get_governor(vfactory=self._rms_var_factory),
-            tem.get_stabilizer(vfactory=self._rms_var_factory),
-            tem.get_exciter(vfactory=self._rms_var_factory),
-            tem.get_complete_generator_template(vfactory=self._rms_var_factory),
+            tem.get_genqec_rms(vfactory=self._rms_var_factory),
+            tem.get_governor_rms(vfactory=self._rms_var_factory),
+            tem.get_stabilizer_rms(vfactory=self._rms_var_factory),
+            tem.get_exciter_rms(vfactory=self._rms_var_factory),
+            tem.get_complete_generator_template_rms(vfactory=self._rms_var_factory),
             tem.get_genrow_rms_template(vfactory=self._rms_var_factory),
             tem.get_line_rms_template(vfactory=self._rms_var_factory),
             tem.get_load_rms_template(vfactory=self._rms_var_factory)
@@ -8303,4 +8303,19 @@ class Assets:
             tem.get_shunt_l_3ph_emt_template(vf=self.emt_var_factory),
             tem.get_shunt_r_1ph_emt_template(vf=self.emt_var_factory),
             tem.get_shunt_r_3ph_emt_template(vf=self.emt_var_factory),
+            tem.get_simple_generator_emt_template(vf=self.emt_var_factory),
+            tem.get_generator_sauer_pai_type_emt_template(vf=self.emt_var_factory),
+            tem.get_governor_emt(vf=self.emt_var_factory),
+            tem.get_stabilizer_emt(vf=self.emt_var_factory),
+            tem.get_exciter_emt(vf=self.emt_var_factory),
+            tem.get_complete_generator_template_emt(vf=self.emt_var_factory),
+            tem.get_exponential_load_3ph_emt(vf=self.emt_var_factory),
+            tem.get_load_ZIP_3ph_emt_template(vf=self.emt_var_factory),
+            tem.get_generator_thevenin_rl_emt_template(vf=self.emt_var_factory),
+            # the following are functions that generate templates depending on the specific object
+            # tem.get_pi_line_emt_template(vf=self.emt_var_factory),
+            # tem.get_bergeron_line_emt_template(vf=self.emt_var_factory),
+            # tem.get_emt_converter(vf=self.emt_var_factory),
+            # tem.get_transformer_emt_template(vf=self.emt_var_factory),
+            # tem.get_xfmr_emt_template(vf=self.emt_var_factory)
         ]
