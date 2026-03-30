@@ -378,7 +378,7 @@ def get_governor(vfactory: VarFactory, name: str = "Governor") -> RmsModelTempla
 
     events_dict = {
         # control parameters
-        Pm_ref: vfactory.add_const(None),
+        Pm_ref: inputs[1],
         Kp: vfactory.add_const(-0.01),
         Ki: vfactory.add_const(-0.01),
         p0: vfactory.add_const(1.0),
@@ -477,7 +477,6 @@ def get_governor(vfactory: VarFactory, name: str = "Governor") -> RmsModelTempla
         name="governor",
 
         init_eqs={
-            Pm_ref: inputs[1],
             y1: vfactory.add_const(0.0),
             x1: inputs[0] - omega_ref,
             u_gov1: vfactory.add_const(0),
@@ -699,7 +698,7 @@ def get_exciter(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemplate
 
     events_dict = {
         # Exciter (AVR) parameters
-        UsRefPu: vfactory.add_const(None),  # reference voltage (pu)
+        UsRefPu: Efe / parameters['Ka'].value + inputs[1],  # reference voltage (pu)
         AEz: vfactory.add_const(0.02),  # saturation gain
         BEz: vfactory.add_const(1.5),  # saturation exponential coefficient
         Se_threshold: vfactory.add_const(1.0),  # saturation threshold
@@ -836,7 +835,7 @@ def get_exciter(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemplate
                 Ve - Se_threshold)),
             u_aux: aux_expr,
             Efe: inputs[0] * parameters["Kd"].value + u_aux,
-            UsRefPu: Efe / parameters['Ka'].value + inputs[1],
+            # UsRefPu: Efe / parameters['Ka'].value + inputs[1],
             y1: inputs[1],
             y2: vfactory.add_const(0.0),
             y3: -y1 + UsRefPu,

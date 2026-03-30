@@ -32,7 +32,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 
 
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
-from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
+from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template,get_dc_load_from_device
 from VeraGridEngine.Templates.Emt.standard_emt_converter import StandardConverterEmtBuild
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
@@ -146,25 +146,26 @@ for bus in circuit.buses:
 # =====================================================================
 
 # Generator model (Thevenin equivalent)
-gen_mdl = get_generator_thevenin_rl_emt_template(grid=circuit, gen=gen1).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf = circuit.emt_var_factory).block
 
 # Transformer model (series RL with ideal transformer)
 trafo_mdl = get_transformer_emt_template(grid=circuit, trafo=transformer, name=transformer.name).block
 
 # VSC model (standard converter: DC -> AC with power balance)
 vsc_mdl = StandardConverterEmtBuild(
-    vfactory=circuit.emt_var_factory,
+    vf=circuit.emt_var_factory,
     name=vsc.name,
     P_ref0=p_transfer_mw / circuit.Sbase,
 ).block
 
 # DC Load model (constant power load)
-dc_load_mdl = get_dc_load_emt_template(
-    grid=circuit,
-    load_name=dc_load.name,
-    P_dc=dc_load.P,
-    name="dc_load_emt"
-).block
+# dc_load_mdl = get_dc_load_emt_template(
+#     grid=circuit,
+#     P_dc=dc_load.P,
+#     name="dc_load_emt"
+# ).block
+
+dc_load_mdl = get_dc_load_from_device(grid = circuit, load = dc_load).block
 
 # =====================================================================
 # ASSIGN MODELS TO DEVICES

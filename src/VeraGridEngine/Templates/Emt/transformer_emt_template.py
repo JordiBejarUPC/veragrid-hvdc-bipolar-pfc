@@ -75,13 +75,13 @@ def get_transformer_emt_template(
     # ============================================================
     # Terminal voltage inputs (from bus and to bus)
     # ============================================================
-    v_A_f = vf.add_var(name=f"vf_A_{name}", ref=VarPowerFlowRefferenceType.vf_A)
-    v_B_f = vf.add_var(name=f"vf_B_{name}", ref=VarPowerFlowRefferenceType.vf_B)
-    v_C_f = vf.add_var(name=f"vf_C_{name}", ref=VarPowerFlowRefferenceType.vf_C)
+    v_A_f = vf.add_var(name=f"vf_A_{name}", reference=VarPowerFlowRefferenceType.vf_A)
+    v_B_f = vf.add_var(name=f"vf_B_{name}", reference=VarPowerFlowRefferenceType.vf_B)
+    v_C_f = vf.add_var(name=f"vf_C_{name}", reference=VarPowerFlowRefferenceType.vf_C)
 
-    v_A_t = vf.add_var(name=f"vt_A_{name}", ref=VarPowerFlowRefferenceType.vt_A)
-    v_B_t = vf.add_var(name=f"vt_B_{name}", ref=VarPowerFlowRefferenceType.vt_B)
-    v_C_t = vf.add_var(name=f"vt_C_{name}", ref=VarPowerFlowRefferenceType.vt_C)
+    v_A_t = vf.add_var(name=f"vt_A_{name}", reference=VarPowerFlowRefferenceType.vt_A)
+    v_B_t = vf.add_var(name=f"vt_B_{name}", reference=VarPowerFlowRefferenceType.vt_B)
+    v_C_t = vf.add_var(name=f"vt_C_{name}", reference=VarPowerFlowRefferenceType.vt_C)
 
     vf_vars = [v_A_f, v_B_f, v_C_f]
     vt_vars = [v_A_t, v_B_t, v_C_t]

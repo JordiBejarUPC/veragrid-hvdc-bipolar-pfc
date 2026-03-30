@@ -13,6 +13,7 @@ from VeraGridEngine.IO.veragrid.zip_interface import get_session_tree, load_sess
 from VeraGridEngine.IO.file_open import FileOpen, FileOpenOptions
 from VeraGridEngine.IO.file_save import FileSavingOptions, FileSave
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Devices.multiverse import MultiVerse
 from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit
 from VeraGridEngine.data_logger import DataLogger
 
@@ -44,6 +45,7 @@ class FileOpenThread(QThread):
         self.logger = Logger()
 
         self.circuit: Union[MultiCircuit, None] = None
+        self.multiverse: Union[MultiVerse, None] = None
 
         self.options = options if options is not None else FileOpenOptions()
 
@@ -121,6 +123,10 @@ class FileOpenThread(QThread):
                 return
 
         self.json_files = file_handler.json_files
+        self.multiverse = file_handler.multiverse
+
+        if self.circuit is None and self.multiverse is not None:
+            self.circuit = self.multiverse.current_model
 
         self.cgmes_circuit = file_handler.cgmes_circuit
         self.cgmes_logger = file_handler.cgmes_logger

@@ -2,9 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from typing import List
-from VeraGridEngine import MultiCircuit
-from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
@@ -31,9 +28,9 @@ def get_shunt_r_3ph_emt_template(vf: VarFactory, name: str = "Shunt_R_3ph") -> E
     templ.block.name = name
 
     # Inputs (abc instantaneous voltages)
-    v_A = vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
+    v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowRefferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowRefferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowRefferenceType.v_C)
     templ.block.in_vars = [v_A, v_B, v_C]
 
     # Parameters
@@ -55,9 +52,9 @@ def get_shunt_r_3ph_emt_template(vf: VarFactory, name: str = "Shunt_R_3ph") -> E
     templ.block.event_dict[Vnom] = vf.add_const(1.0)
 
     # Algebraic injected currents
-    i_A = vf.add_var(name=f"i_A_{name}", ref=VarPowerFlowRefferenceType.i_A)
-    i_B = vf.add_var(name=f"i_B_{name}", ref=VarPowerFlowRefferenceType.i_B)
-    i_C = vf.add_var(name=f"i_C_{name}", ref=VarPowerFlowRefferenceType.i_C)
+    i_A = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowRefferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B_{name}", reference=VarPowerFlowRefferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowRefferenceType.i_C)
 
     templ.block.algebraic_vars = [i_A, i_B, i_C]
     templ.block.algebraic_eqs = [
@@ -126,7 +123,7 @@ def get_shunt_r_1ph_emt_template(vf: VarFactory, name: str = "Shunt_R_1ph") -> E
     templ.block.name = name
 
     # Inputs (abc instantaneous voltages)
-    v_A = vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
+    v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowRefferenceType.v_A)
     templ.block.in_vars = [v_A]
 
     # Parameters
@@ -140,7 +137,7 @@ def get_shunt_r_1ph_emt_template(vf: VarFactory, name: str = "Shunt_R_1ph") -> E
     templ.block.event_dict[Vnom] = vf.add_const(1.0)
 
     # Algebraic injected currents
-    i_A = vf.add_var(name=f"i_A_{name}", ref=VarPowerFlowRefferenceType.i_A)
+    i_A = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowRefferenceType.i_A)
 
     templ.block.algebraic_vars = [i_A]
     templ.block.algebraic_eqs = [
@@ -200,9 +197,9 @@ def get_shunt_l_3ph_emt_template(vf: VarFactory, name: str = "Shunt_L_3ph") -> E
     templ.block.name = name
 
     # Inputs and Parameters
-    v_A = vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
+    v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowRefferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowRefferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowRefferenceType.v_C)
     templ.block.in_vars = [v_A, v_B, v_C]
 
     L_A, L_B, L_C = [vf.add_var(f"L_{p}_{name}") for p in ["A", "B", "C"]]
@@ -265,9 +262,9 @@ def get_shunt_c_3ph_emt_template(vf: VarFactory, name: str = "Shunt_C_3ph") -> E
     templ.name = name
     templ.block.name = name
 
-    v_A = vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
+    v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowRefferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowRefferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowRefferenceType.v_C)
     templ.block.in_vars = [v_A, v_B, v_C]
 
     C_A, C_B, C_C = [vf.add_var(f"C_{p}_{name}") for p in ["A", "B", "C"]]

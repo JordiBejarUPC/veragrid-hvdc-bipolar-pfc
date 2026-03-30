@@ -19,7 +19,7 @@ from VeraGridEngine.Topology import *
 from VeraGridEngine.Compilers import *
 from VeraGridEngine.Templates import *
 from VeraGridEngine.IO.file_open import FileOpen, FileOpenOptions
-from VeraGridEngine.IO.file_save import FileSave, FileSavingOptions
+from VeraGridEngine.IO.file_save import FileSave, FileSavingOptions, save_veragrid
 from VeraGridEngine.IO.veragrid.remote import (gather_model_as_jsons_for_communication, RemoteInstruction,
                                                SimulationTypes, send_json_data, get_certificate_path, get_certificate)
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at, NumericalCircuit
@@ -50,6 +50,21 @@ def save_file(grid: MultiCircuit, filename: str, drivers_to_save: List[DriverToS
             sessions_data=list() if drivers_to_save is None else drivers_to_save,
         ),
     ).save()
+
+
+def save_multiverse(mv: MultiVerse, filename: str):
+    """
+    Save file
+    :param mv: MultiVerse instance
+    :param filename: name of the file (.veragrid)
+    """
+    save_veragrid(
+        circuit=mv.current_node.circuit,
+        file_name=filename,
+        options=FileSavingOptions(
+            multiverse=mv
+        )
+    )
 
 
 def save_cgmes_file(grid: MultiCircuit,

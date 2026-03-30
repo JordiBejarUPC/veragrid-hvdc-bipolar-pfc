@@ -20,7 +20,7 @@ from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializ
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Simulations.Rms.initialization import init_explicit, init_pseudo_transient
+from VeraGridEngine.Simulations.Rms.initialization import init_explicit, init_pseudo_transient, init_custom
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -395,6 +395,7 @@ class RmsProblemDae(RmsProblemTemplate):
                                   DIFF_NAME=self.DIFF_NAME,
                                   CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
                                   )
+
                 else:
                     raise ValueError("Not implemented initialization method")
                 # add model to system block
@@ -448,6 +449,11 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
 
+                    #Todo: add check to see if all the initialization equations are there, otherwise raise error
+                    # if not elm.rms_model.check_valid_init_method():
+                    #     init_custom(elm.rms_model, self.init_guess)
+
+                    # else:
                     init_explicit(
                         mdl=elm.rms_model,
                         sys_vars=self.sys_vars,
@@ -468,27 +474,36 @@ class RmsProblemDae(RmsProblemTemplate):
                     )
 
                 elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
-                    init_pseudo_transient(
-                        mdl=elm.rms_model,
-                        sys_vars=self.sys_vars,
-                        variable_parameters=self._variable_parameters,
-                        event_parameters_eqs=self._event_parameters_eqs0,
-                        constant_parameters=self._constant_parameters,
-                        init_guess=self.init_guess,
-                        uid2idx_vars=self._uid2idx_vars,
-                        uid2idx_params=self._uid2idx_params,
-                        uid2idx_event_params=self._uid2idx_event_params,
-                        compiler_names_dict=self._compiler_names_dict,
-                        alias_names_dict=self._alias_names_dict,
-                        VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                        TIME_NAME=self.TIME_NAME,
-                        VARS_NAME=self.VARS_NAME,
-                        DIFF_NAME=self.DIFF_NAME,
-                        CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-                        dtau0=1e0,
-                        max_iter=1000,
-                        tol=1e-6
-                    )
+                    raise ValueError("Not implemented initialization method")
+
+                # elif self.options.initialization_method == RmsInitializationMethod.CustomValues:
+                #
+                #     # Todo: add check to see if all the init values are there, otherwise raise error
+                #     init_custom(mdl=elm.rms_model, init_guess=self.init_guess)
+
+                # not implemented yet
+                # elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
+                #     init_pseudo_transient(
+                #         mdl=elm.rms_model,
+                #         sys_vars=self.sys_vars,
+                #         variable_parameters=self._variable_parameters,
+                #         event_parameters_eqs=self._event_parameters_eqs0,
+                #         constant_parameters=self._constant_parameters,
+                #         init_guess=self.init_guess,
+                #         uid2idx_vars=self._uid2idx_vars,
+                #         uid2idx_params=self._uid2idx_params,
+                #         uid2idx_event_params=self._uid2idx_event_params,
+                #         compiler_names_dict=self._compiler_names_dict,
+                #         alias_names_dict=self._alias_names_dict,
+                #         VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                #         TIME_NAME=self.TIME_NAME,
+                #         VARS_NAME=self.VARS_NAME,
+                #         DIFF_NAME=self.DIFF_NAME,
+                #         CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+                #         dtau0=1e0,
+                #         max_iter=1000,
+                #         tol=1e-6
+                #     )
                 else:
                     raise ValueError("Not implemented initialization method")
 

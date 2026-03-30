@@ -160,6 +160,7 @@ class MultiCircuit(Assets):
         'Sbase',
         'fBase',
         'logger',
+        'parent'
     )
 
     def __init__(self,
@@ -360,6 +361,7 @@ class MultiCircuit(Assets):
                 'qf_measurements',
                 'if_measurements',
                 'modelling_authorities',
+                'diagrams',
                 ]
 
         for pr in ppts:
@@ -384,6 +386,8 @@ class MultiCircuit(Assets):
             for branch in branch_list:
                 f = bus_dictionary[branch.bus_from.idtag]
                 t = bus_dictionary[branch.bus_to.idtag]
+
+                # TODO: Refactor to not use hasattr
                 if branch.device_type in [DeviceType.LineDevice,
                                           DeviceType.DCLineDevice,
                                           DeviceType.HVDCLineDevice]:
@@ -2298,6 +2302,7 @@ class MultiCircuit(Assets):
 
         dgrid = MultiCircuit(name=self.name + " increment")
         dgrid.comments = f"Incremental grid created from {self.name} using {base_grid.name} as base."
+        dgrid.time_profile = copy.deepcopy(self.time_profile)
 
         if self.get_time_number() != base_grid.get_time_number():
             nt = 0
@@ -2408,6 +2413,9 @@ class MultiCircuit(Assets):
                     pass
 
         # if any error in the logger, bad
+        if dgrid.time_profile is not None:
+            dgrid.ensure_profiles_exist()
+
         return logger.error_count() == 0, logger, dgrid
 
     def add_circuit(self, new_grid: "MultiCircuit", re_id_new_grid: bool = True) -> Logger:
@@ -2924,12 +2932,20 @@ class MultiCircuit(Assets):
         :param data:
         :return:
         """
-        self.transformer_types += data.transformer_types
-        self.underground_cable_types += data.underground_cable_types
-        self.wire_types += data.wire_types
-        self.sequence_line_types += data.sequence_line_types
+        for tpe in data.transformer_types:
+            self.add_transformer_type(tpe)
+
+        for tpe in data.underground_cable_types:
+            self.add_underground_line(tpe)
+
+        for tpe in data.wire_types:
+            self.add_wire(tpe)
+
+        for tpe in data.sequence_line_types:
+            self.add_sequence_line(tpe)
+
         self.rms_models += data.rms_models
-        print("done 2")
+        self.emt_models += data.emt_models
 
     def set_opf_ts_results(self, results: OptimalPowerFlowTimeSeriesResults):
         """
@@ -2965,7 +2981,7 @@ class MultiCircuit(Assets):
             elm.P = results.load_power[i]
 
         for i, elm in enumerate(self.get_hvdc()):
-            elm.Pset.set(results.hvdc_Pf[i])
+            elm.Pset = results.hvdc_Pf[i]
 
     def get_reduction_sets(
             self,
@@ -3260,7 +3276,24 @@ class MultiCircuit(Assets):
                                  device=elm.name)
         return logger
 
+    def check_emt_models(self) -> Logger:
+        """
+        This function checks that a device has a valid emt model
+        :return:
+        """
+        logger = Logger()
 
+        for elm in self.get_branches_iter():
+            if elm.emt_model.empty():
+                logger.add_error("Missing EMT model",
+                                 device_class=elm.device_type.value,
+                                 device=elm.name)
+        for elm in self.get_injection_devices_iter():
+            if elm.emt_model.empty():
+                logger.add_error("Missing EMT model",
+                                 device_class=elm.device_type.value,
+                                 device=elm.name)
+        return logger
 
 
 

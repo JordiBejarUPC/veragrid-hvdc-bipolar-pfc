@@ -18,7 +18,7 @@ def get_plot_results_directory(case_name: str, solver_key: str, output_root_name
     :return: Plot-output directory.
     :rtype: Path
     """
-    output_dir: Path = Path(__file__).resolve().parent / output_root_name / case_name / solver_key.lower()
+    output_dir: Path = Path(__file__).resolve().parents[1] / output_root_name / case_name / solver_key.lower()
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
 

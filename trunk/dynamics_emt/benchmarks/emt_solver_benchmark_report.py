@@ -438,7 +438,7 @@ def get_benchmark_results_directory() -> Path:
     :return: Benchmark-results directory.
     :rtype: Path
     """
-    return Path(__file__).resolve().parent / "benchmark_results"
+    return Path(__file__).resolve().parents[1] / "benchmark_results"
 
 
 def read_json_records(file_path: Path) -> List[Dict[str, object]]:

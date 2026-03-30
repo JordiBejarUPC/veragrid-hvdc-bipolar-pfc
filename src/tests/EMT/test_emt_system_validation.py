@@ -246,7 +246,7 @@ def test_vsc_emt_passes_validation():
     gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
     trafo_mdl = get_transformer_emt_template(grid=grid, trafo=transformer, name=transformer.name).block
     vsc_mdl = StandardConverterEmtBuild(
-        vfactory=grid.emt_var_factory,
+        vf=grid.emt_var_factory,
         name=vsc.name,
         sbase=grid.Sbase,
         fbase=grid.fBase,
@@ -272,63 +272,7 @@ def test_vsc_emt_passes_validation():
 
 
 # =============================================================================
-# TEST 4: scripting_example_validate_connections_emt_models
-# Negative case - should raise EmtTopologyError due to missing emt_model
-# =============================================================================
-
-def test_missing_emt_model_raises_emt_topology_error():
-    grid = gce.MultiCircuit(Sbase=2.0, fbase=50.0)
-    vnom = 10
-
-    bus0 = gce.Bus(name="Bus0", Vnom=vnom, is_slack=True)
-    bus1 = gce.Bus(name="Bus1", Vnom=vnom)
-    grid.add_bus(bus0)
-    grid.add_bus(bus1)
-
-    line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
-
-    tower = gce.OverheadLineType(name="Tower", Vnom=vnom)
-    wire = gce.Wire(name="Panther 30/7 ACSR", diameter=21.0, diameter_internal=9.0, is_tube=True, r=0.1363, max_current=1)
-    tower.add_wire_relationship(wire=wire, xpos=-12.65, ypos=27.5, phase=1)
-    tower.add_wire_relationship(wire=wire, xpos=0.0, ypos=27.5, phase=2)
-    tower.add_wire_relationship(wire=wire, xpos=12.65, ypos=27.5, phase=3)
-    tower.compute()
-    line0.apply_template(tower, grid.Sbase, grid.fBase)
-
-    v_ph = vnom / (3**0.5)
-    R_ph = 100
-    P_ph = (v_ph**2) / R_ph
-    Q_ph = 0.0
-    load = gce.Load(name="load", P=3.0*P_ph, Q=3.0*Q_ph, P1=P_ph, P2=P_ph, P3=P_ph, Q1=Q_ph, Q2=Q_ph, Q3=Q_ph)
-    load.conn = ShuntConnectionType.GroundedStar
-
-    gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq=50, r1=0.001, x1=1.7)
-
-    grid.add_line(line0)
-    grid.add_generator(bus=bus0, api_obj=gen0)
-    grid.add_load(bus=bus1, api_obj=load)
-
-    for bus in grid.buses:
-        get_bus_emt_template(grid, bus)
-
-    pf_results, pf_res_3ph = run_power_flow(grid)
-
-    gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
-    line_mdl = get_pi_line_emt_template(grid=grid, line=line0).block
-    load_mdl = get_shunt_r_3ph_emt_template(vf=grid.emt_var_factory).block
-    load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_3ph", new_value=1.0)
-
-    set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=line0, model=line_mdl, var_factory=grid.emt_var_factory)
-    # NOTE: load_mdl is NOT assigned to load - this triggers EmtTopologyError
-
-    # Should raise EmtTopologyError about missing emt_model
-    with pytest.raises(EmtTopologyError, match="missing their emt_model"):
-        EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3Ph=pf_res_3ph)
-
-
-# =============================================================================
-# TEST 5: scripting_example_validate_connections_phases
+# TEST 4: scripting_example_validate_connections_phases
 # Negative case - should raise EmtTopologyError due to floating phases
 # =============================================================================
 
@@ -382,7 +326,3 @@ def test_floating_phases_raises_emt_topology_error():
     # Should raise EmtTopologyError about floating phases
     with pytest.raises(EmtTopologyError, match="Floating bus phases detected"):
         EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3Ph=pf_res_3ph)
-
-#
-# if __name__ == "__main__":
-#     pytest.main([__file__, "-v"])

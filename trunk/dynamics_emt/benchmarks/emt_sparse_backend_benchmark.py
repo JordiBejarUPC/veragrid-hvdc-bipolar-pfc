@@ -75,7 +75,7 @@ def get_results_directory() -> Path:
     :return: Benchmark-results directory.
     :rtype: Path
     """
-    output_dir: Path = Path(__file__).resolve().parent / "benchmark_results"
+    output_dir: Path = Path(__file__).resolve().parents[1] / "benchmark_results"
     output_dir.mkdir(parents=True, exist_ok=True)
     return output_dir
 

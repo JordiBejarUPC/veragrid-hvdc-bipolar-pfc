@@ -235,5 +235,5 @@ def test_simulation_with_event_emt():
     )
 
 
-
-test_simulation_with_event_emt()
+if __name__ == "__main__":
+    test_simulation_with_event_emt()

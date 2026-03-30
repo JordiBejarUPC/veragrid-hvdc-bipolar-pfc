@@ -74,7 +74,7 @@ def get_results_directory() -> Path:
     :return: Benchmark-results directory.
     :rtype: Path
     """
-    return Path(__file__).resolve().parent / "benchmark_results"
+    return Path(__file__).resolve().parents[1] / "benchmark_results"
 
 
 def load_process_rows(file_stem: str) -> List[ProcessReportRow]:

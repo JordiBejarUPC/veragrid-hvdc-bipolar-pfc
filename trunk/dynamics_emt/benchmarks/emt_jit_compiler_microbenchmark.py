@@ -65,7 +65,7 @@ def get_repo_root() -> Path:
     :return: Repository root directory.
     :rtype: Path
     """
-    return Path(__file__).resolve().parents[2]
+    return Path(__file__).resolve().parents[3]
 
 
 def get_results_directory() -> Path:
@@ -75,7 +75,7 @@ def get_results_directory() -> Path:
     :return: Benchmark-results directory.
     :rtype: Path
     """
-    return Path(__file__).resolve().parent / "benchmark_results"
+    return Path(__file__).resolve().parents[1] / "benchmark_results"
 
 
 def build_worker_environment() -> Dict[str, str]:

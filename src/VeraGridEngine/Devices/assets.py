@@ -816,6 +816,9 @@ class Assets:
                 obj.ensure_profiles_exist(self.time_profile)
             self._lines.append(obj)
 
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
+
         return obj
 
     def delete_line(self, obj: dev.Line):
@@ -920,7 +923,11 @@ class Assets:
 
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
+
         self._transformers2w.append(obj)
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
+
         return obj
 
     def delete_transformer2w(self, obj: dev.Transformer2W):
@@ -989,6 +996,9 @@ class Assets:
 
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
+
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
         self._hvdc_lines.append(obj)
 
     def delete_hvdc_line(self, obj: dev.HvdcLine):
@@ -1070,7 +1080,10 @@ class Assets:
 
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
+
         self._vsc_devices.append(obj)
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
 
     def delete_vsc_converter(self, obj: dev.VSC):
         """
@@ -1128,6 +1141,9 @@ class Assets:
 
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
+
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
         self._upfc_devices.append(obj)
 
     def delete_upfc_converter(self, obj: dev.UPFC):
@@ -1180,6 +1196,8 @@ class Assets:
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
         self._switch_devices.append(obj)
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
 
         return obj
 
@@ -1307,6 +1325,10 @@ class Assets:
 
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
+
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
+
         self._windings.append(obj)
 
     def delete_winding(self, obj: dev.Winding):
@@ -1384,6 +1406,9 @@ class Assets:
 
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
+
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
         self._series_reactances.append(obj)
 
     def delete_series_reactance(self, obj: dev.SeriesReactance) -> None:
@@ -1490,6 +1515,9 @@ class Assets:
             obj.ensure_profiles_exist(self.time_profile)
 
         self._buses.append(obj)
+
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
 
         return obj
 
@@ -1886,6 +1914,9 @@ class Assets:
 
         self._loads.append(api_obj)
 
+        api_obj.set_rms_var_factory(self._rms_var_factory)
+        api_obj.set_emt_var_factory(self._emt_var_factory)
+
         return api_obj
 
     def delete_load(self, obj: dev.Load):
@@ -1956,6 +1987,9 @@ class Assets:
                 api_obj.name += '@' + bus.name
 
         self._generators.append(api_obj)
+
+        api_obj.set_rms_var_factory(self._rms_var_factory)
+        api_obj.set_emt_var_factory(self._emt_var_factory)
 
         return api_obj
 
@@ -2057,6 +2091,8 @@ class Assets:
                 api_obj.name += '@' + bus.name
 
         self._external_grids.append(api_obj)
+        api_obj.set_rms_var_factory(self._rms_var_factory)
+        api_obj.set_emt_var_factory(self._emt_var_factory)
 
         return api_obj
 
@@ -2129,6 +2165,8 @@ class Assets:
                 api_obj.name += '@' + bus.name
 
         self._shunts.append(api_obj)
+        api_obj.set_rms_var_factory(self._rms_var_factory)
+        api_obj.set_emt_var_factory(self._emt_var_factory)
 
         return api_obj
 
@@ -2204,6 +2242,9 @@ class Assets:
                 api_obj.name += '@' + bus.name
 
         self._batteries.append(api_obj)
+
+        api_obj.set_rms_var_factory(self._rms_var_factory)
+        api_obj.set_emt_var_factory(self._emt_var_factory)
 
         return api_obj
 
@@ -2286,6 +2327,9 @@ class Assets:
 
         self._static_generators.append(api_obj)
 
+        api_obj.set_rms_var_factory(self._rms_var_factory)
+        api_obj.set_emt_var_factory(self._emt_var_factory)
+
         return api_obj
 
     def delete_static_generator(self, obj: dev.StaticGenerator):
@@ -2365,6 +2409,8 @@ class Assets:
             api_obj.name += '@' + bus.name
 
         self._current_injections.append(api_obj)
+        api_obj.set_rms_var_factory(self._rms_var_factory)
+        api_obj.set_emt_var_factory(self._emt_var_factory)
 
         return api_obj
 
@@ -2445,6 +2491,8 @@ class Assets:
                 api_obj.name += '@' + bus.name
 
         self._controllable_shunts.append(api_obj)
+        api_obj.set_rms_var_factory(self._rms_var_factory)
+        api_obj.set_emt_var_factory(self._emt_var_factory)
 
         return api_obj
 
@@ -3259,6 +3307,8 @@ class Assets:
         if obj is not None:
             if isinstance(obj, dev.OverheadLineType):
                 self._overhead_line_types.append(obj)
+                obj.set_rms_var_factory(self._rms_var_factory)
+                obj.set_emt_var_factory(self._emt_var_factory)
             else:
                 print('The template is not an overhead line!')
 
@@ -3350,6 +3400,8 @@ class Assets:
         if obj is not None:
             if isinstance(obj, dev.UndergroundLineType):
                 self._underground_cable_types.append(obj)
+                obj.set_rms_var_factory(self._rms_var_factory)
+                obj.set_emt_var_factory(self._emt_var_factory)
             else:
                 print('The template is not an underground line!')
 
@@ -3389,6 +3441,8 @@ class Assets:
         if obj is not None:
             if isinstance(obj, dev.SequenceLineType):
                 self._sequence_line_types.append(obj)
+                obj.set_rms_var_factory(self._rms_var_factory)
+                obj.set_emt_var_factory(self._emt_var_factory)
             else:
                 print('The template is not a sequence line!')
 
@@ -3428,6 +3482,8 @@ class Assets:
         if obj is not None:
             if isinstance(obj, dev.TransformerType):
                 self._transformer_types.append(obj)
+                obj.set_rms_var_factory(self._rms_var_factory)
+                obj.set_emt_var_factory(self._emt_var_factory)
             else:
                 print('The template is not a transformer!')
 
@@ -7530,7 +7586,10 @@ class Assets:
         if api_obj.selected_to_merge:
 
             if api_obj.action == ActionType.Add:
-                self.add_element(obj=api_obj)
+                new_obj = api_obj.copy(forced_new_idtag=False)
+                new_obj.rebind_device_references(objects_by_idtag=all_elms_base_dict)
+                self.add_element(obj=new_obj)
+                all_elms_base_dict[new_obj.idtag] = new_obj
 
             elif api_obj.action == ActionType.Delete:
 
@@ -7540,18 +7599,24 @@ class Assets:
                         self.delete_bus(obj=elm_from_base, delete_associated=False)
                     else:
                         self.delete_element(obj=elm_from_base)
+                    all_elms_base_dict.pop(api_obj.idtag, None)
 
             elif api_obj.action == ActionType.Modify:
 
                 elm_from_base = all_elms_base_dict.get(api_obj.idtag, None)
 
                 if elm_from_base is not None:
+                    changed_props = list(api_obj.iter_properties_selected_to_merge())
+                    api_obj.rebind_device_references(objects_by_idtag=all_elms_base_dict, props=changed_props)
 
-                    for prop in api_obj.iter_properties_selected_to_merge():
+                    for prop in changed_props:
                         val = api_obj.get_property_value(prop=prop, t_idx=None)
                         elm_from_base.set_property_value(prop=prop, value=val, t_idx=None)
                 else:
-                    self.add_element(obj=api_obj)
+                    new_obj = api_obj.copy(forced_new_idtag=False)
+                    new_obj.rebind_device_references(objects_by_idtag=all_elms_base_dict)
+                    self.add_element(obj=new_obj)
+                    all_elms_base_dict[new_obj.idtag] = new_obj
 
             elif api_obj.action == ActionType.NoAction:
                 pass
@@ -7572,6 +7637,17 @@ class Assets:
 
             for elm in elements:
                 yield elm
+
+    def get_all_elements_number(self) -> int:
+        """
+        Get all elements number
+        :return: int
+        """
+        a = 0
+        for key, tpe in self.device_type_name_dict.items():
+            a += len(self.get_elements_by_type(device_type=tpe))
+
+        return a
 
     def get_all_elements_dict(self,
                               use_secondary_key: bool = False,
@@ -7996,15 +8072,31 @@ class Assets:
 
         elif elm_type == DeviceType.OverheadLineTypeDevice:
             elm = dev.OverheadLineType()
+            dictionary_of_lists = {
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(DeviceType.LineDevice),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(DeviceType.LineDevice),
+            }
 
         elif elm_type == DeviceType.SequenceLineDevice:
             elm = dev.SequenceLineType()
+            dictionary_of_lists = {
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(DeviceType.LineDevice),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(DeviceType.LineDevice),
+            }
 
         elif elm_type == DeviceType.UnderGroundLineDevice:
             elm = dev.UndergroundLineType()
+            dictionary_of_lists = {
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(DeviceType.LineDevice),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(DeviceType.LineDevice),
+            }
 
         elif elm_type == DeviceType.TransformerTypeDevice:
             elm = dev.TransformerType()
+            dictionary_of_lists = {
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(DeviceType.Transformer2WDevice),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(DeviceType.Transformer2WDevice),
+            }
 
         elif elm_type == DeviceType.FluidNodeDevice:
             elm = dev.FluidNode()
@@ -8190,7 +8282,7 @@ class Assets:
         Here the list of all rms templates must be returned in a list
         :return:
         """
-        self.rms_models = [
+        self.rms_models += [
             tem.get_genqec(vfactory=self._rms_var_factory),
             tem.get_governor(vfactory=self._rms_var_factory),
             tem.get_stabilizer(vfactory=self._rms_var_factory),
@@ -8199,4 +8291,16 @@ class Assets:
             tem.get_genrow_rms_template(vfactory=self._rms_var_factory),
             tem.get_line_rms_template(vfactory=self._rms_var_factory),
             tem.get_load_rms_template(vfactory=self._rms_var_factory)
+        ]
+
+    def add_emt_model_catalogue(self):
+        """
+        Create default catalogue of EMT values
+        :return:
+        """
+        self.emt_models += [
+            tem.get_shunt_c_3ph_emt_template(vf=self.emt_var_factory),
+            tem.get_shunt_l_3ph_emt_template(vf=self.emt_var_factory),
+            tem.get_shunt_r_1ph_emt_template(vf=self.emt_var_factory),
+            tem.get_shunt_r_3ph_emt_template(vf=self.emt_var_factory),
         ]

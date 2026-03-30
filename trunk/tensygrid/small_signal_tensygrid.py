@@ -114,8 +114,23 @@ def solve_problem(phasor_problem):
     # The __init__ will trigger the lifting and register auxiliary symbols.
     builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(
         problem=phasor_problem,
-        verbose=True
+        verbose=False
     )
+
+    # --- ESCÁNER DE DEBUG ---
+    print("\n[DEBUG] Buscando el escondite de los parámetros...")
+    atributos = [a for a in dir(phasor_problem) if not a.startswith('_')]
+    print(f"Atributos disponibles en phasor_problem: {atributos}")
+
+    # Vamos a probar los escondites más comunes de las librerías DAE/Phasor
+    for candidato in ['p', 'params', 'parameters', 'sys_params', 'p_val', 'constants']:
+        if hasattr(phasor_problem, candidato):
+            valor = getattr(phasor_problem, candidato)
+            if isinstance(valor, dict) and len(valor) > 0:
+                print(f"¡BINGO! Los parámetros están en el atributo: '{candidato}' (Contiene {len(valor)} elementos)")
+            elif hasattr(valor, '__dict__'):
+                print(f"¡OJO! '{candidato}' es un objeto. Sus atributos son: {list(vars(valor).keys())[:10]}...")
+    print("--------------------------\n")
 
     # 2. Construct the v_dict (operating point)
     # Rules: Initialize dict with dict()
@@ -127,15 +142,26 @@ def solve_problem(phasor_problem):
     base_guesses: dict = getattr(phasor_problem, "init_guess", dict())
     sys_vars: dict = getattr(phasor_problem, "sys_vars", dict())
 
-    # Map original variables to their values using string keys
+    # NUEVO: Intentar extraer los parámetros del sistema
+    sys_params: dict = getattr(phasor_problem, "sys_params", dict())
+    if not sys_params:
+        # El nombre exacto depende de la API de VeraGrid. Cubrimos las opciones más comunes:
+        sys_params = getattr(phasor_problem, "parameters", getattr(phasor_problem, "params", dict()))
+
+    # 1. Map original variables (states/algebraics) to their values using string keys
     for var_id, value in base_guesses.items():
         var_obj: any = sys_vars.get(var_id, None)
         if var_obj is not None:
-            # Conversion to string to match builder.sym_to_idx keys
-            var_name: str = str(var_obj)
-            v_dict[var_name] = float(value)
+            v_dict[str(var_obj)] = float(value)
+
+    # 2. NUEVO: Map parameters to their values
+    for param_id, param_val in sys_params.items():
+        param_obj: any = sys_vars.get(param_id, None)
+        if param_obj is not None:
+            v_dict[str(param_obj)] = float(param_val)
         else:
-            pass
+            # Si el diccionario de parámetros usa directamente los nombres de las variables como keys
+            v_dict[str(param_id)] = float(param_val)
 
     # 3. Handle Auxiliary Variables (The "Lifting" variables)
     # We iterate over all symbols registered in the builder
@@ -169,11 +195,22 @@ def solve_problem(phasor_problem):
         else:
             # Already mapped
             pass
+    print("\n[DEBUG] Cazando variables perdidas (en 0.0):")
+    ceros_count = 0
+    for sym in builder.all_symbols:
+        s_name = sym.name
+        # Si la variable no está en v_dict, o está pero vale 0.0
+        val = v_dict.get(s_name, 0.0)
+        if abs(val) <= 1e-6:
+            print(f"  Falta o es cero -> {s_name}")
+            ceros_count += 1
 
+    print(f"Total de variables en cero: {ceros_count} de {len(builder.all_symbols)}")
     builder.linearize(v_dict=v_dict)
     res: Tuple[Any, Any, Any, Any, bool, float] = builder.compute_stability()
     stable: bool = res[4]
     margin: float = res[5]
+    print(margin)
     pass
 
 

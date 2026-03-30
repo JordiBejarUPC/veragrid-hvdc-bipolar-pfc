@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from typing import Dict, List, Optional, Tuple
 
@@ -1117,6 +1118,30 @@ def main() -> None:
         t_end=2.0e-2,
         dt=dt,
     )
+
+    df1 = pd.DataFrame(
+        np.concatenate((y1, dy1), axis=1),
+        index=t1,
+        columns=[f"y1{i}" for i in range(y1.shape[1])] + [f"dy1{i}" for i in range(dy1.shape[1])]
+    )
+    df2 = pd.DataFrame(
+        np.concatenate((y2, dy2), axis=1),
+        index=t2,
+        columns=[f"y2{i}" for i in range(y2.shape[1])] + [f"dy2{i}" for i in range(dy2.shape[1])]
+    )
+    df3 = pd.DataFrame(
+        y3,
+        index=t3,
+        columns=[f"y3{i}" for i in range(y3.shape[1])]
+    )
+    df4 = pd.DataFrame(
+        y4,
+        index=t4,
+        columns=[f"y4{i}" for i in range(y4.shape[1])]
+    )
+
+    results_df = pd.concat((df1, df2, df3, df4), axis=1)
+    results_df.to_csv("modes_procedural_logic.csv", index=False)
 
     print_case_summary(name="Demo 1: Integrator freeze", protection=prot1)
     print_case_summary(name="Demo 2: Anti-windup disable", protection=prot2)

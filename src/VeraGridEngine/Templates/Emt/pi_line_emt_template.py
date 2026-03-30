@@ -60,15 +60,15 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     # vf_vars = [vf.add_var(f"vf_{ph}_{name}") for ph in active_ph]
     # vt_vars = [vf.add_var(f"vt_{ph}_{name}") for ph in active_ph]
 
-    v_N_f = vf.add_var(name=f"vf_N_{name}", ref=VarPowerFlowRefferenceType.vf_N) if ph_mask[0] else None
-    v_A_f = vf.add_var(name=f"vf_A_{name}", ref=VarPowerFlowRefferenceType.vf_A) if ph_mask[1] else None
-    v_B_f = vf.add_var(name=f"vf_B_{name}", ref=VarPowerFlowRefferenceType.vf_B) if ph_mask[2] else None
-    v_C_f = vf.add_var(name=f"vf_C_{name}", ref=VarPowerFlowRefferenceType.vf_C) if ph_mask[3] else None
+    v_N_f = vf.add_var(name=f"vf_N_{name}", reference=VarPowerFlowRefferenceType.vf_N) if ph_mask[0] else None
+    v_A_f = vf.add_var(name=f"vf_A_{name}", reference=VarPowerFlowRefferenceType.vf_A) if ph_mask[1] else None
+    v_B_f = vf.add_var(name=f"vf_B_{name}", reference=VarPowerFlowRefferenceType.vf_B) if ph_mask[2] else None
+    v_C_f = vf.add_var(name=f"vf_C_{name}", reference=VarPowerFlowRefferenceType.vf_C) if ph_mask[3] else None
 
-    v_N_t = vf.add_var(name=f"vt_N_{name}", ref=VarPowerFlowRefferenceType.vt_N) if ph_mask[0] else None
-    v_A_t = vf.add_var(name=f"vt_A_{name}", ref=VarPowerFlowRefferenceType.vt_A) if ph_mask[1] else None
-    v_B_t = vf.add_var(name=f"vt_B_{name}", ref=VarPowerFlowRefferenceType.vt_B) if ph_mask[2] else None
-    v_C_t = vf.add_var(name=f"vt_C_{name}", ref=VarPowerFlowRefferenceType.vt_C) if ph_mask[3] else None
+    v_N_t = vf.add_var(name=f"vt_N_{name}", reference=VarPowerFlowRefferenceType.vt_N) if ph_mask[0] else None
+    v_A_t = vf.add_var(name=f"vt_A_{name}", reference=VarPowerFlowRefferenceType.vt_A) if ph_mask[1] else None
+    v_B_t = vf.add_var(name=f"vt_B_{name}", reference=VarPowerFlowRefferenceType.vt_B) if ph_mask[2] else None
+    v_C_t = vf.add_var(name=f"vt_C_{name}", reference=VarPowerFlowRefferenceType.vt_C) if ph_mask[3] else None
 
     vf_vars = [v for v in (v_N_f, v_A_f, v_B_f, v_C_f) if v is not None]
     vt_vars = [v for v in (v_N_t, v_A_t, v_B_t, v_C_t) if v is not None]

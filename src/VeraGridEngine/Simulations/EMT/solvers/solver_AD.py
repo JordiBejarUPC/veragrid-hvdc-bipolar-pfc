@@ -877,7 +877,7 @@ class JitAdSolver:
         residual_buffer = self._residual_buffer
 
         if params0 is not None:
-            ev_params = params0.copy()
+            ev_params = np.array(params0, dtype=np.float64, copy=True)
         else:
             ev_params = self.problem.event_params_values.copy()
 

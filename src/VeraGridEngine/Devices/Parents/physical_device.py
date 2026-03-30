@@ -3,7 +3,6 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
-from __future__ import annotations
 from typing import TYPE_CHECKING, List, Tuple
 import datetime
 from typing import Union

@@ -231,7 +231,7 @@ print(res.get_branch_df())
 # ==============================================================================
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")
 # ==============================================================================
-CHOSEN_SOLVER = "VECTORIZED"
+CHOSEN_SOLVER = "SYMBOLIC"
 RUN_ALL_SOLVERS = False
 BENCHMARK_ALL_SOLVERS_COLD_WARM = False
 ENABLE_PLOTS = True

@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
+import copy
 import json
 import math
 from typing import Dict, Union, List, Tuple, Any, Callable
@@ -142,6 +143,70 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
         'qg_measurement': dev.QgMeasurement(),
 
     }
+
+
+def get_multiverse_node_metadata(metadata: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    """
+    Extract the per-node metadata dictionary from a multiverse metadata payload.
+
+    Newer files wrap node records under ``nodes`` and may include top-level metadata such as
+    ``active_node_id``. Older files store the node records directly at the top level.
+    """
+    # New-format multiverse metadata is a small envelope:
+    # {
+    #     "active_node_id": ...,
+    #     "nodes": {
+    #         <node_id>: {...},
+    #         ...
+    #     }
+    # }
+    # In that case, only the nested ``nodes`` mapping contains per-node records.
+    nodes = metadata.get("nodes", None)
+
+    # Accept the new wrapped format only if the value really is the node dictionary.
+    # This avoids accidentally treating malformed metadata as valid node content.
+    if isinstance(nodes, dict):
+        return nodes
+
+    # Older files predate the metadata envelope and store the node records directly at
+    # the top level. Returning ``metadata`` as-is keeps the loader backward compatible.
+    return metadata
+
+
+def order_multiverse_records(metadata: Dict[str, Dict[str | int | float]] | Dict[str, Any]) -> List[Dict[str, Any]]:
+    """
+    Return multiverse metadata records in a parent-before-child order.
+
+    The multiverse payloads must be parsed in dependency order because child delta payloads
+    may reference objects inherited from their parent composed scenario.
+    """
+    node_metadata = get_multiverse_node_metadata(metadata)
+
+    pending_records: Dict[int, Dict[str, Any]] = {
+        int(node_id): dict(record) for node_id, record in node_metadata.items()
+    }
+    ordered_records: List[Dict[str, Any]] = list()
+
+    while pending_records:
+        progressed = False
+
+        for pending_node_id in list(pending_records.keys()):
+            record = pending_records[pending_node_id]
+            parent_id_raw = record["parent_id"]
+            parent_id = None if parent_id_raw is None else int(parent_id_raw)
+
+            if parent_id is not None and parent_id in pending_records:
+                continue
+
+            ordered_records.append(record)
+            del pending_records[pending_node_id]
+            progressed = True
+
+        if not progressed:
+            unresolved = ", ".join(str(node_id) for node_id in pending_records.keys())
+            raise ValueError(f"Could not resolve multiverse metadata dependency order for nodes: {unresolved}")
+
+    return ordered_records
 
 
 def gather_model_as_data_frames(circuit: MultiCircuit,
@@ -1703,3 +1768,115 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
         elm.enable_auto_updates()
 
     return circuit
+
+
+def parse_multiverse_data(data: dict[str, VERAGRID_FILE_TYPE],
+                          metadata: Dict[str, Dict[str | int | float] | int | None],
+                          text_func: Union[Callable, None] = None,
+                          progress_func: Union[Callable, None] = None,
+                          logger: Logger = Logger()) -> dev.MultiVerse:
+    """
+
+    :param data:
+    :param metadata:
+    :param text_func:
+    :param progress_func:
+    :param logger:
+    :return:
+    """
+    mv = dev.MultiVerse(current_model=None)
+
+    diffs_dict: Dict[str, MultiCircuit] = dict()
+    diagrams_dict: Dict[str, List[Dict[str, Any]]] = dict()
+    composed_by_node_id: Dict[int, MultiCircuit] = dict()
+
+    # IMPORTANT:
+    # Multiverse node payloads are not all full circuits.
+    #
+    # - Root nodes store a full authoritative MultiCircuit.
+    # - Non-root nodes store only the electrical delta against their parent.
+    #
+    # This has two non-obvious consequences during load:
+    #
+    # 1. Electrical references in child payloads may legitimately point to objects that are
+    #    not present in the child's delta payload, because those objects live in the parent /
+    #    ancestor composed circuit. Example: a child adds a new line whose bus_to points to a
+    #    bus inherited from the parent scenario. If the child payload were parsed in isolation,
+    #    that reference would fail with "Could not locate reference".
+    #
+    # 2. Node-owned diagrams are full scenario diagrams, not diagram deltas. A child diagram may
+    #    therefore reference both child-owned and inherited parent-owned API objects. Parsing such
+    #    diagrams against the raw child delta payload would also fail.
+    #
+    # Because of that, multiverse loading must happen in two phases:
+    # - First parse the electrical payloads in parent-before-child order, passing the fully composed
+    #   parent circuit as previous_circuit so child references to inherited objects can be resolved.
+    # - Then, after the tree exists, parse each node's diagrams against that node's full composed
+    #   scenario, never against the raw delta payload.
+    node_metadata = get_multiverse_node_metadata(metadata)
+    ordered_records = order_multiverse_records(metadata)
+
+    for record in ordered_records:
+        node_id = int(record["node_id"])
+        circuit_idtag = str(record["circuit_idtag"])
+        parent_id_raw = record["parent_id"]
+        parent_id = None if parent_id_raw is None else int(parent_id_raw)
+
+        model_data = data["multiverse"][circuit_idtag]
+        diagrams_dict[circuit_idtag] = model_data.get("diagrams", list())
+
+        model_without_diagrams = dict(model_data)
+        model_without_diagrams["diagrams"] = list()
+
+        previous_circuit = None if parent_id is None else composed_by_node_id[parent_id]
+
+        grid = parse_veragrid_data(data=model_without_diagrams,
+                                   previous_circuit=previous_circuit,
+                                   text_func=text_func,
+                                   progress_func=progress_func,
+                                   logger=logger)
+        grid.idtag = circuit_idtag
+        diffs_dict[circuit_idtag] = grid
+
+        if parent_id is None:
+            composed_by_node_id[node_id] = grid.copy()
+        else:
+            composed = composed_by_node_id[parent_id].copy()
+            composed.merge_circuit(grid)
+            composed.name = grid.name
+            composed_by_node_id[node_id] = composed
+
+    mv.parse_json(diffs_dict, metadata)
+
+    # Parse diagrams only after the multiverse tree exists, so each node can resolve them
+    # against its full composed scenario instead of its raw delta payload.
+    for record in node_metadata.values():
+        node_id = int(record["node_id"])
+        circuit_idtag = str(record["circuit_idtag"])
+        node = mv.get_node(node_id)
+        full_circuit = mv.checkout(node)
+        obj_dict = full_circuit.get_all_elements_dict_by_type(add_locations=True)
+        parsed_diagrams: List[Any] = list()
+
+        for diagram_dict in diagrams_dict.get(circuit_idtag, list()):
+            if diagram_dict['type'] in [DiagramType.Schematic.value, "bus-branch"]:
+                diagram = dev.SchematicDiagram()
+                diagram.parse_data(data=diagram_dict, obj_dict=obj_dict, logger=logger)
+                parsed_diagrams.append(diagram)
+
+            elif diagram_dict['type'] == DiagramType.SubstationLineMap.value:
+                diagram = dev.MapDiagram()
+                diagram.parse_data(data=diagram_dict, obj_dict=obj_dict, logger=logger)
+                parsed_diagrams.append(diagram)
+
+        node.diagrams = parsed_diagrams
+
+    active_node_id_raw = metadata.get("active_node_id", None) if isinstance(metadata, dict) else None
+    if mv.current_node is not None and mv.current_model is not None:
+        mv.current_model.diagrams = copy.deepcopy(mv.current_node.diagrams)
+
+    if active_node_id_raw is not None and (
+            mv.current_node is None or mv.current_node.node_id != int(active_node_id_raw)):
+        mv.activate_scenario(int(active_node_id_raw))
+
+    return mv
