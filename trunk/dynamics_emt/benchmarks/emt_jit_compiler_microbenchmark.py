@@ -112,7 +112,7 @@ def run_worker_subprocess(case_name: CompilerBenchmarkCase) -> CompilerMicrobenc
     command: List[str] = [
         sys.executable,
         "-m",
-        "VeraGrid.trunk.dynamics_emt.emt_jit_compiler_microbenchmark_worker",
+        "VeraGrid.trunk.dynamics_emt.benchmarks.emt_jit_compiler_microbenchmark_worker",
         "--case",
         case_name.value,
     ]

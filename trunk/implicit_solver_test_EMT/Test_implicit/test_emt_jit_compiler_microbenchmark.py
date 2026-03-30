@@ -4,8 +4,8 @@ import unittest
 from pathlib import Path
 from typing import Dict, List
 
-import VeraGrid.trunk.dynamics_emt.emt_jit_compiler_microbenchmark as compiler_microbenchmark
-import VeraGrid.trunk.dynamics_emt.emt_jit_compiler_microbenchmark_statistics as compiler_microbenchmark_statistics
+import VeraGrid.trunk.dynamics_emt.benchmarks.emt_jit_compiler_microbenchmark as compiler_microbenchmark
+import VeraGrid.trunk.dynamics_emt.benchmarks.emt_jit_compiler_microbenchmark_statistics as compiler_microbenchmark_statistics
 
 
 class TestEmtJitCompilerMicrobenchmark(unittest.TestCase):

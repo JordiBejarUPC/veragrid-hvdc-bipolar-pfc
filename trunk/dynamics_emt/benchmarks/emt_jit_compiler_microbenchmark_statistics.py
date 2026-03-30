@@ -3,7 +3,7 @@ import statistics
 from pathlib import Path
 from typing import Dict, List
 
-from VeraGrid.trunk.dynamics_emt.emt_jit_compiler_microbenchmark import (
+from VeraGrid.trunk.dynamics_emt.benchmarks.emt_jit_compiler_microbenchmark import (
     CompilerBenchmarkCase,
     CompilerMicrobenchmarkRow,
     build_case_label,

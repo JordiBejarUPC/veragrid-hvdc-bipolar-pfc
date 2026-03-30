@@ -11,7 +11,7 @@ def get_repository_plugin_templates_root() -> Path:
     :return: Repository plugin-template directory.
     :rtype: Path
     """
-    return Path(__file__).resolve().parent / "external_sparse_solver_plugins"
+    return Path(__file__).resolve().parent / "plugin_templates"
 
 
 def get_default_plugin_destination_root() -> Path:

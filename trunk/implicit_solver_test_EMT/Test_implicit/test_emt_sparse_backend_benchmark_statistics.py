@@ -3,11 +3,11 @@ import unittest
 from pathlib import Path
 from typing import Dict, List
 
-from VeraGrid.trunk.dynamics_emt.benchmark_dependency_stubs import install_optional_dependency_stubs
+from VeraGrid.trunk.dynamics_emt.support.benchmark_dependency_stubs import install_optional_dependency_stubs
 
 install_optional_dependency_stubs()
 
-import VeraGrid.trunk.dynamics_emt.emt_sparse_backend_benchmark_statistics as sparse_backend_stats
+import VeraGrid.trunk.dynamics_emt.benchmarks.emt_sparse_backend_benchmark_statistics as sparse_backend_stats
 from VeraGridEngine.Utils.NumericalMethods.emt_sparse_solver_loader import load_sparse_solver_backend_provider
 
 

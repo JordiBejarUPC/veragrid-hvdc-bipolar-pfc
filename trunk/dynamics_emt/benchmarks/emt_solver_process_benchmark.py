@@ -6,7 +6,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Sequence
 
-from VeraGrid.trunk.dynamics_emt.emt_solver_process_report import export_regression_short_mode_reports
+from VeraGrid.trunk.dynamics_emt.benchmarks.emt_solver_process_report import export_regression_short_mode_reports
 
 
 class BenchmarkCase(Enum):
@@ -149,7 +149,7 @@ def run_worker_subprocess(case_name: BenchmarkCase, profile: BenchmarkProfile, m
     command: List[str] = [
         sys.executable,
         "-m",
-        "VeraGrid.trunk.dynamics_emt.emt_solver_process_benchmark_worker",
+        "VeraGrid.trunk.dynamics_emt.benchmarks.emt_solver_process_benchmark_worker",
         "--case",
         case_name.value,
         "--profile",

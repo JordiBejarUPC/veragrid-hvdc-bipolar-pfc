@@ -23,6 +23,12 @@ Build the native plugin with:
 build_native_plugin.cmd
 ```
 
+Install the plugin template into the VeraGrid plugin folder with:
+
+```bash
+python -m VeraGridEngine.IO.external_sparse_solvers.install_external_sparse_solver_plugin klu_vcpkg_native
+```
+
 The built extension is written to:
 
 ```text

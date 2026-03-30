@@ -24,13 +24,13 @@ From the VeraGrid repository root, install the plugin template into the default
 VeraGrid plugin directory with:
 
 ```bash
-python -m VeraGrid.trunk.dynamics_emt.install_external_sparse_solver_plugin pardiso_pypardiso
+python -m VeraGridEngine.IO.external_sparse_solvers.install_external_sparse_solver_plugin pardiso_pypardiso
 ```
 
 You can override the destination root with:
 
 ```bash
-python -m VeraGrid.trunk.dynamics_emt.install_external_sparse_solver_plugin pardiso_pypardiso --destination-root "C:\path\to\plugins"
+python -m VeraGridEngine.IO.external_sparse_solvers.install_external_sparse_solver_plugin pardiso_pypardiso --destination-root "C:\path\to\plugins"
 ```
 
 ## Expected plugin layout after installation

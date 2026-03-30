@@ -7,6 +7,10 @@ license-restricted libraries into VeraGrid. The first integration target is the
 `StructuralCompiledSolver` because it already contains the strongest sparse reuse
 policy and therefore offers the highest leverage.
 
+This integration documentation lives under `src/VeraGridEngine/IO/external_sparse_solvers`
+because the external solver connection is an installation, discovery, and runtime
+integration concern rather than an EMT benchmark or demo concern.
+
 ## Existing Infrastructure We Reuse
 
 - Sparse solver enum:

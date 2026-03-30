@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import List
 
-from VeraGrid.trunk.dynamics_emt.emt_solver_process_benchmark import (
+from VeraGrid.trunk.dynamics_emt.benchmarks.emt_solver_process_benchmark import (
     BenchmarkCase,
     BenchmarkMode,
     BenchmarkProfile,
@@ -9,8 +9,8 @@ from VeraGrid.trunk.dynamics_emt.emt_solver_process_benchmark import (
     export_process_cold_suite,
     run_process_cold_suite,
 )
-from VeraGrid.trunk.dynamics_emt.emt_solver_process_report import export_paper_long_mode_reports
-from VeraGrid.trunk.dynamics_emt.emt_solver_process_statistics import (
+from VeraGrid.trunk.dynamics_emt.benchmarks.emt_solver_process_report import export_paper_long_mode_reports
+from VeraGrid.trunk.dynamics_emt.benchmarks.emt_solver_process_statistics import (
     export_repeated_raw_samples,
     export_repeated_statistics,
     run_repeated_process_suite,

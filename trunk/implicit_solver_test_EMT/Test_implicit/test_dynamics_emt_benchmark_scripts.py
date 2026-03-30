@@ -339,8 +339,8 @@ install_optional_dependency_stubs()
 matplotlib.use("Agg")
 
 import VeraGrid.trunk.dynamics_emt.scripting_emt_event as emt_event_script
-import VeraGrid.trunk.dynamics_emt.emt_solver_benchmark_report as benchmark_report
-import VeraGrid.trunk.dynamics_emt.emt_solver_process_benchmark as process_benchmark
+import VeraGrid.trunk.dynamics_emt.benchmarks.emt_solver_benchmark_report as benchmark_report
+import VeraGrid.trunk.dynamics_emt.benchmarks.emt_solver_process_benchmark as process_benchmark
 import VeraGrid.trunk.dynamics_emt.scripting_example_thevequiv_piline_Rload_emt as rload_script
 import VeraGrid.trunk.dynamics_emt.scripting_example_thevequiv_piline_ZIPload_emt as zipload_script
 import VeraGrid.trunk.dynamics_emt.scripting_example_validate_connections_emt_models as validate_connections_script

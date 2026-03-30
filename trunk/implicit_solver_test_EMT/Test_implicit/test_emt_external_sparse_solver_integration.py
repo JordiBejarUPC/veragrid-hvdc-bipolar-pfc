@@ -5,12 +5,12 @@ from pathlib import Path
 
 import numpy as np
 
-from VeraGrid.trunk.dynamics_emt.benchmark_dependency_stubs import install_optional_dependency_stubs
+from VeraGrid.trunk.dynamics_emt.support.benchmark_dependency_stubs import install_optional_dependency_stubs
 
 install_optional_dependency_stubs()
 
 import VeraGrid.trunk.dynamics_emt.scripting_example_thevequiv_piline_Rload_emt as rload_script
-from VeraGrid.trunk.dynamics_emt.install_external_sparse_solver_plugin import install_sparse_solver_plugin
+from VeraGridEngine.IO.external_sparse_solvers.install_external_sparse_solver_plugin import install_sparse_solver_plugin
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.emt_solver_factory import build_emt_solver
 from VeraGridEngine.Utils.NumericalMethods.emt_sparse_solver_loader import load_sparse_solver_backend_provider

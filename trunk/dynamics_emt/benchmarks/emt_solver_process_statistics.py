@@ -3,7 +3,7 @@ import statistics
 from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
 
-from VeraGrid.trunk.dynamics_emt.emt_solver_process_benchmark import (
+from VeraGrid.trunk.dynamics_emt.benchmarks.emt_solver_process_benchmark import (
     BenchmarkCase,
     BenchmarkMode,
     BenchmarkProfile,

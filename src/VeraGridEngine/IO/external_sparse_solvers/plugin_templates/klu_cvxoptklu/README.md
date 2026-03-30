@@ -23,13 +23,13 @@ KLU backend.
 Install the plugin template into the VeraGrid plugin directory with:
 
 ```bash
-python -m VeraGrid.trunk.dynamics_emt.install_external_sparse_solver_plugin klu_cvxoptklu
+python -m VeraGridEngine.IO.external_sparse_solvers.install_external_sparse_solver_plugin klu_cvxoptklu
 ```
 
 Install the external Python runtime into a separate directory with:
 
 ```bash
-python -m VeraGrid.trunk.dynamics_emt.install_external_sparse_solver_runtime klu_cvxoptklu cvxopt
+python -m VeraGridEngine.IO.external_sparse_solvers.install_external_sparse_solver_runtime klu_cvxoptklu cvxopt
 ```
 
 Then install `cvxoptklu` manually into the same runtime directory if needed.

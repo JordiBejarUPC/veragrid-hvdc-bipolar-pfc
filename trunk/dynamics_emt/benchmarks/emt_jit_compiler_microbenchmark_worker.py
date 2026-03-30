@@ -6,7 +6,7 @@ import time
 from enum import Enum
 from typing import Any, List, Sequence, Tuple
 
-from VeraGrid.trunk.dynamics_emt.benchmark_dependency_stubs import install_optional_dependency_stubs
+from VeraGrid.trunk.dynamics_emt.support.benchmark_dependency_stubs import install_optional_dependency_stubs
 
 install_optional_dependency_stubs()
 

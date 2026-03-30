@@ -30,7 +30,7 @@ The following DLLs are expected in `<root>\bin`:
 Install the plugin template into the VeraGrid plugin folder with:
 
 ```bash
-python -m VeraGrid.trunk.dynamics_emt.install_external_sparse_solver_plugin klu_vcpkg
+python -m VeraGridEngine.IO.external_sparse_solvers.install_external_sparse_solver_plugin klu_vcpkg
 ```
 
 The native SuiteSparse KLU libraries can then be installed with `vcpkg` into the

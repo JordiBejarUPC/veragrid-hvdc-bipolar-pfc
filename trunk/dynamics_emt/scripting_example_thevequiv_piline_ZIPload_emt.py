@@ -12,13 +12,13 @@ from typing import Any, cast, Dict, List, Optional, Tuple
 
 import os
 import matplotlib.pyplot as plt
-from VeraGrid.trunk.dynamics_emt.emt_plot_exports import (
+from VeraGrid.trunk.dynamics_emt.support.emt_plot_exports import (
     extract_three_phase_matrix,
     get_plot_results_directory,
     save_scalar_plot,
     save_two_panel_three_phase_plot,
 )
-from VeraGrid.trunk.dynamics_emt.emt_build_report_exports import (
+from VeraGrid.trunk.dynamics_emt.support.emt_build_report_exports import (
     normalize_initialization_report,
     normalize_problem_build_report,
 )
