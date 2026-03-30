@@ -5,7 +5,9 @@
 
 from typing import Dict, List, Tuple, Union, Optional
 import numpy as np
+import numba as nb
 from enum import Enum, auto
+import math
 import time
 import hashlib
 import os
@@ -54,6 +56,14 @@ class EmtInitializationReport:
         "newton_elapsed_s",
         "pseudo_transient_elapsed_s",
         "dx0_completion_s",
+        "x0_rebuild_s",
+        "dx0_seed_build_s",
+        "state_rhs_vector_build_s",
+        "state_rhs_vector_cache_hit",
+        "solution_apply_s",
+        "missing_dx_problem_collect_s",
+        "state_rhs_eval_s",
+        "missing_dx_scatter_s",
         "persistent_cache_hit",
         "persistent_cache_load_s",
         "persistent_cache_store_s",
@@ -85,6 +95,14 @@ class EmtInitializationReport:
         self.newton_elapsed_s: float = 0.0
         self.pseudo_transient_elapsed_s: float = 0.0
         self.dx0_completion_s: float = 0.0
+        self.x0_rebuild_s: float = 0.0
+        self.dx0_seed_build_s: float = 0.0
+        self.state_rhs_vector_build_s: float = 0.0
+        self.state_rhs_vector_cache_hit: bool = False
+        self.solution_apply_s: float = 0.0
+        self.missing_dx_problem_collect_s: float = 0.0
+        self.state_rhs_eval_s: float = 0.0
+        self.missing_dx_scatter_s: float = 0.0
         self.persistent_cache_hit: bool = False
         self.persistent_cache_load_s: float = 0.0
         self.persistent_cache_store_s: float = 0.0
@@ -248,6 +266,211 @@ class InitializationVectorCache:
 INITIALIZATION_VECTOR_CACHE = InitializationVectorCache()
 
 
+class InitializationStateRhsVector:
+    """
+    Lightweight state-RHS evaluator used by ``dx0`` completion.
+    """
+
+    __slots__ = ["_func", "_data"]
+
+    def __init__(self, source_code: str, use_jit: bool, output_size: int) -> None:
+        """
+        Build the state-RHS evaluator from source code.
+
+        :param source_code: Generated Python source code.
+        :type source_code: str
+        :param use_jit: Whether the evaluator should be JIT-compiled.
+        :type use_jit: bool
+        :param output_size: Output vector length.
+        :type output_size: int
+        :return: None.
+        :rtype: None
+        """
+        namespace: Dict[str, object] = dict(math=__import__("math"), np=np)
+        exec(source_code, namespace)
+
+        if use_jit:
+            self._func = nb.njit(
+                nb.void(nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:], nb.float64[:]),
+                fastmath=True,
+                cache=False,
+            )(namespace["func"])
+        else:
+            self._func = namespace["func"]
+
+        self._data = np.zeros(output_size, dtype=np.float64)
+
+    def __call__(self, values: np.ndarray, diff_values: np.ndarray, event_params: np.ndarray, params: np.ndarray) -> np.ndarray:
+        """
+        Evaluate the state-RHS vector.
+
+        :param values: State/algebraic vector.
+        :type values: np.ndarray
+        :param diff_values: Differential vector.
+        :type diff_values: np.ndarray
+        :param event_params: Runtime parameter vector.
+        :type event_params: np.ndarray
+        :param params: Constant parameter vector.
+        :type params: np.ndarray
+        :return: Evaluated state-RHS vector.
+        :rtype: np.ndarray
+        """
+        self._func(values, diff_values, event_params, params, self._data)
+        return self._data
+
+
+def _get_state_rhs_persistent_cache_directory() -> Path:
+    """
+    Return the persistent cache directory used by ``dx0`` state-RHS evaluators.
+
+    :return: Persistent cache directory.
+    :rtype: Path
+    """
+    cache_directory: Path = _get_reduced_initialization_persistent_cache_directory() / "state_rhs_vectors"
+    cache_directory.mkdir(parents=True, exist_ok=True)
+    return cache_directory
+
+
+def _build_state_rhs_source(
+        missing_state_eqs: List[Expr],
+        compiler_names_dict: Dict[int, str],
+        alias_names_dict: Dict[int, str],
+        vars_name: str,
+        diff_name: str,
+        event_params_name: str,
+        params_name: str,
+) -> str:
+    """
+    Build the Python source code of the ``dx0`` state-RHS evaluator.
+
+    :param missing_state_eqs: State equations whose differential values are missing.
+    :type missing_state_eqs: List[Expr]
+    :param compiler_names_dict: Compiler variable-name map.
+    :type compiler_names_dict: Dict[int, str]
+    :param alias_names_dict: Alias variable-name map.
+    :type alias_names_dict: Dict[int, str]
+    :param vars_name: Full-variable argument name.
+    :type vars_name: str
+    :param diff_name: Differential-vector argument name.
+    :type diff_name: str
+    :param event_params_name: Runtime-parameter argument name.
+    :type event_params_name: str
+    :param params_name: Constant-parameter argument name.
+    :type params_name: str
+    :return: Generated Python source code.
+    :rtype: str
+    """
+    used_vars_count: Dict[int, int] = dict()
+    final_names_dict: Dict[int, str] = compiler_names_dict.copy()
+    lines: List[str] = list()
+
+    for eq in missing_state_eqs:
+        for var in get_expression_vars(eq):
+            if var.uid in used_vars_count:
+                used_vars_count[var.uid] += 1
+            else:
+                used_vars_count[var.uid] = 1
+
+    lines.append(f"def func({vars_name}, {diff_name}, {event_params_name}, {params_name}, out):")
+
+    for uid, count in used_vars_count.items():
+        if count > 1:
+            final_names_dict[uid] = alias_names_dict[uid]
+            lines.append(f"    {alias_names_dict[uid]} = {compiler_names_dict[uid]}")
+        else:
+            pass
+
+    for eq_index, equation in enumerate(missing_state_eqs):
+        lines.append(f"    out[{eq_index}] = {expression2numba(equation.simplify(), final_names_dict)}")
+
+    return "\n".join(lines) + "\n"
+
+
+def _load_or_build_state_rhs_vector(
+        problem: EmtProblemTemplate,
+        missing_state_eqs: List[Expr],
+        cache_key: str,
+        report: EmtInitializationReport,
+) -> InitializationStateRhsVector | SymbolicVector:
+    """
+    Load or build the ``dx0`` state-RHS evaluator.
+
+    :param problem: EMT problem being initialized.
+    :type problem: EmtProblemTemplate
+    :param missing_state_eqs: State equations whose differential values are missing.
+    :type missing_state_eqs: List[Expr]
+    :param cache_key: Deterministic cache key.
+    :type cache_key: str
+    :param report: Initialization report updated in place.
+    :type report: EmtInitializationReport
+    :return: State-RHS evaluator.
+    :rtype: InitializationStateRhsVector | SymbolicVector
+    """
+    cache_entry: InitializationVectorCacheEntry | None = INITIALIZATION_VECTOR_CACHE.get_entry(cache_key)
+    cache_path: Path = _get_state_rhs_persistent_cache_directory() / f"{cache_key}.pkl"
+
+    if cache_entry is None:
+        pass
+    else:
+        report.state_rhs_vector_build_s = 0.0
+        report.state_rhs_vector_cache_hit = True
+        return cache_entry.get_vector()
+
+    phase_t0: float = time.perf_counter()
+
+    if cache_path.exists():
+        with open(cache_path, "rb") as cache_file:
+            payload: Dict[str, object] = dict(pickle.load(cache_file))
+
+        state_rhs_fn = InitializationStateRhsVector(
+            source_code=str(payload["source_code"]),
+            use_jit=bool(payload["use_jit"]),
+            output_size=int(payload["output_size"]),
+        )
+        INITIALIZATION_VECTOR_CACHE.set_entry(cache_key, InitializationVectorCacheEntry(state_rhs_fn))
+        report.state_rhs_vector_build_s = float(time.perf_counter() - phase_t0)
+        report.state_rhs_vector_cache_hit = True
+        return state_rhs_fn
+    else:
+        pass
+
+    if len(missing_state_eqs) <= 16:
+        use_jit_for_state_rhs: bool = False
+    else:
+        use_jit_for_state_rhs = True
+
+    source_code: str = _build_state_rhs_source(
+        missing_state_eqs,
+        problem.get_compiler_names_dict(),
+        problem.get_alias_names_dict(),
+        problem.VARS_NAME,
+        problem.DIFF_NAME,
+        problem.VARIABLE_PARAMS_NAME,
+        problem.CONSTANT_PARAMS_NAME,
+    )
+    state_rhs_fn = InitializationStateRhsVector(
+        source_code=source_code,
+        use_jit=use_jit_for_state_rhs,
+        output_size=len(missing_state_eqs),
+    )
+    INITIALIZATION_VECTOR_CACHE.set_entry(cache_key, InitializationVectorCacheEntry(state_rhs_fn))
+
+    with open(cache_path, "wb") as cache_file:
+        pickle.dump(
+            dict(
+                source_code=source_code,
+                use_jit=use_jit_for_state_rhs,
+                output_size=len(missing_state_eqs),
+            ),
+            cache_file,
+            protocol=pickle.HIGHEST_PROTOCOL,
+        )
+
+    report.state_rhs_vector_build_s = float(time.perf_counter() - phase_t0)
+    report.state_rhs_vector_cache_hit = False
+    return state_rhs_fn
+
+
 def _get_reduced_initialization_persistent_cache_directory() -> Path:
     """
     Return the persistent cache directory used by reduced EMT initialization.
@@ -293,6 +516,14 @@ def _serialize_initialization_report(report: EmtInitializationReport) -> Dict[st
         newton_elapsed_s=float(report.newton_elapsed_s),
         pseudo_transient_elapsed_s=float(report.pseudo_transient_elapsed_s),
         dx0_completion_s=float(report.dx0_completion_s),
+        x0_rebuild_s=float(report.x0_rebuild_s),
+        dx0_seed_build_s=float(report.dx0_seed_build_s),
+        state_rhs_vector_build_s=float(report.state_rhs_vector_build_s),
+        state_rhs_vector_cache_hit=bool(report.state_rhs_vector_cache_hit),
+        solution_apply_s=float(report.solution_apply_s),
+        missing_dx_problem_collect_s=float(report.missing_dx_problem_collect_s),
+        state_rhs_eval_s=float(report.state_rhs_eval_s),
+        missing_dx_scatter_s=float(report.missing_dx_scatter_s),
         persistent_cache_hit=bool(report.persistent_cache_hit),
         persistent_cache_load_s=float(report.persistent_cache_load_s),
         persistent_cache_store_s=float(report.persistent_cache_store_s),
@@ -316,15 +547,16 @@ def _serialize_problem_guess_map(problem: EmtProblemTemplate, guess_map: Dict[in
     """
     uid_to_name: Dict[int, str] = dict()
     serialized: Dict[str, float] = dict()
+    alias_name_map: Dict[int, str] = problem.get_alias_names_dict()
 
     if diff_guess:
         for diff_var in problem.get_diff_vars():
-            uid_to_name[diff_var.uid] = diff_var.name
+            uid_to_name[diff_var.uid] = alias_name_map[diff_var.uid]
     else:
         for var in problem.get_state_vars():
-            uid_to_name[var.uid] = var.name
+            uid_to_name[var.uid] = alias_name_map[var.uid]
         for var in problem.get_algebraic_vars():
-            uid_to_name[var.uid] = var.name
+            uid_to_name[var.uid] = alias_name_map[var.uid]
 
     for uid, value in guess_map.items():
         if uid in uid_to_name:
@@ -351,14 +583,16 @@ def _restore_problem_guess_map(problem: EmtProblemTemplate, name_map: Dict[str, 
     name_to_uid: Dict[str, int] = dict()
     restored: Dict[int, float] = dict()
 
+    alias_name_map: Dict[int, str] = problem.get_alias_names_dict()
+
     if diff_guess:
         for diff_var in problem.get_diff_vars():
-            name_to_uid[diff_var.name] = diff_var.uid
+            name_to_uid[alias_name_map[diff_var.uid]] = diff_var.uid
     else:
         for var in problem.get_state_vars():
-            name_to_uid[var.name] = var.uid
+            name_to_uid[alias_name_map[var.uid]] = var.uid
         for var in problem.get_algebraic_vars():
-            name_to_uid[var.name] = var.uid
+            name_to_uid[alias_name_map[var.uid]] = var.uid
 
     for name, value in name_map.items():
         if name in name_to_uid:
@@ -400,6 +634,14 @@ def _restore_initialization_report_from_payload(
     report.newton_elapsed_s = float(payload["newton_elapsed_s"])
     report.pseudo_transient_elapsed_s = float(payload["pseudo_transient_elapsed_s"])
     report.dx0_completion_s = float(payload["dx0_completion_s"])
+    report.x0_rebuild_s = float(payload.get("x0_rebuild_s", 0.0))
+    report.dx0_seed_build_s = float(payload.get("dx0_seed_build_s", 0.0))
+    report.state_rhs_vector_build_s = float(payload.get("state_rhs_vector_build_s", 0.0))
+    report.state_rhs_vector_cache_hit = bool(payload.get("state_rhs_vector_cache_hit", False))
+    report.solution_apply_s = float(payload.get("solution_apply_s", 0.0))
+    report.missing_dx_problem_collect_s = float(payload.get("missing_dx_problem_collect_s", 0.0))
+    report.state_rhs_eval_s = float(payload.get("state_rhs_eval_s", 0.0))
+    report.missing_dx_scatter_s = float(payload.get("missing_dx_scatter_s", 0.0))
     report.persistent_cache_hit = bool(payload.get("persistent_cache_hit", False))
     report.persistent_cache_load_s = float(payload.get("persistent_cache_load_s", 0.0))
     report.persistent_cache_store_s = float(payload.get("persistent_cache_store_s", 0.0))
@@ -433,7 +675,7 @@ def _build_persistent_initialization_cache_key(
     reduced_key: str = _build_reduced_initialization_cache_key(problem, unknown_vars, residual_eqs, state_unknown_mask)
 
     payload: str = "|".join([
-        "persistent-reduced-emt-init-v1",
+        "persistent-reduced-emt-init-v4",
         reduced_key,
         options.initialization_method.name,
         f"{float(options.init_newton_tol):.12g}",
@@ -628,6 +870,35 @@ def _build_state_rhs_cache_key(problem: EmtProblemTemplate, state_eqs: List[Expr
         "::".join(expr_tokens),
     ])
     return hashlib.md5(payload.encode("utf-8")).hexdigest()
+
+
+def _collect_missing_dx_problem(problem: EmtProblemTemplate) -> Tuple[List[Var], List[Expr]]:
+    """
+    Return the differential variables that still need ``dx0`` and their state equations.
+
+    :param problem: EMT problem being initialized.
+    :type problem: EmtProblemTemplate
+    :return: Pair ``(missing_diff_vars, missing_state_eqs)``.
+    :rtype: Tuple[List[Var], List[Expr]]
+    """
+    diff_vars: List[Var] = problem.get_diff_vars()
+    state_eqs: List[Expr] = problem.get_state_eqs()
+    missing_diff_vars: List[Var] = list()
+    missing_state_eqs: List[Expr] = list()
+    idx: int = 0
+
+    while idx < len(diff_vars):
+        diff_var: Var = diff_vars[idx]
+
+        if diff_var.uid in problem.diff_init_guess:
+            diff_var = diff_var
+        else:
+            missing_diff_vars.append(diff_var)
+            missing_state_eqs.append(state_eqs[idx])
+
+        idx += 1
+
+    return missing_diff_vars, missing_state_eqs
 
 
 def build_uid_bindings(
@@ -1525,6 +1796,8 @@ def _apply_solution_to_problem(problem: EmtProblemTemplate, x: np.ndarray) -> No
 
 def _compute_missing_dx0(problem: EmtProblemTemplate,
                          report: EmtInitializationReport,
+                         x_full: np.ndarray | None = None,
+                         dx_full: np.ndarray | None = None,
                          runtime_params: np.ndarray | None = None,
                          constant_params: np.ndarray | None = None) -> None:
     """
@@ -1540,8 +1813,31 @@ def _compute_missing_dx0(problem: EmtProblemTemplate,
     else:
         state_eqs = state_eqs
 
-    x0: np.ndarray = problem.get_x0()
-    dx0_seed: np.ndarray = problem.get_dx0()
+    phase_t0: float = time.perf_counter()
+    missing_diff_vars: List[Var]
+    missing_state_eqs: List[Expr]
+    missing_diff_vars, missing_state_eqs = _collect_missing_dx_problem(problem)
+    report.missing_dx_problem_collect_s = float(time.perf_counter() - phase_t0)
+
+    if len(missing_diff_vars) == 0:
+        return
+    else:
+        pass
+
+    phase_t0 = time.perf_counter()
+    if x_full is None:
+        x0: np.ndarray = problem.get_x0()
+    else:
+        x0 = x_full
+    report.x0_rebuild_s = float(time.perf_counter() - phase_t0)
+
+    phase_t0 = time.perf_counter()
+    if dx_full is None:
+        dx0_seed: np.ndarray = problem.get_dx0()
+    else:
+        dx0_seed = dx_full
+    report.dx0_seed_build_s = float(time.perf_counter() - phase_t0)
+
     if runtime_params is None:
         runtime_params = _build_runtime_param_array(problem)
     else:
@@ -1551,34 +1847,22 @@ def _compute_missing_dx0(problem: EmtProblemTemplate,
         constant_params = _build_constant_param_array(problem)
     else:
         constant_params = constant_params
-    cache_key: str = _build_state_rhs_cache_key(problem, state_eqs)
-    cache_entry: InitializationVectorCacheEntry | None = INITIALIZATION_VECTOR_CACHE.get_entry(cache_key)
+    cache_key: str = _build_state_rhs_cache_key(problem, missing_state_eqs)
+    state_rhs_fn = _load_or_build_state_rhs_vector(problem, missing_state_eqs, cache_key, report)
 
-    if cache_entry is None:
-        state_rhs_fn = SymbolicVector(
-            eqs=state_eqs,
-            compiler_names_dict=problem.get_compiler_names_dict(),
-            alias_names_dict=problem.get_alias_names_dict(),
-            VARS_NAME=problem.VARS_NAME,
-            DIFF_NAME=problem.DIFF_NAME,
-            EVENT_PARAMS_NAME=problem.VARIABLE_PARAMS_NAME,
-            PARAMS_NAME=problem.CONSTANT_PARAMS_NAME,
-        )
-        INITIALIZATION_VECTOR_CACHE.set_entry(cache_key, InitializationVectorCacheEntry(state_rhs_fn))
-    else:
-        state_rhs_fn = cache_entry.get_vector()
-
+    phase_t0 = time.perf_counter()
     computed_dx: np.ndarray = state_rhs_fn(x0, dx0_seed, runtime_params, constant_params).copy()
+    report.state_rhs_eval_s = float(time.perf_counter() - phase_t0)
 
     idx: int = 0
-    while idx < len(problem.get_diff_vars()):
-        diff_var: Var = problem.get_diff_vars()[idx]
-        if diff_var.uid in problem.diff_init_guess:
-            report.automatic_dx0_count = report.automatic_dx0_count
-        else:
-            problem.diff_init_guess[diff_var.uid] = float(computed_dx[idx])
-            report.automatic_dx0_count += 1
+    phase_t0 = time.perf_counter()
+    while idx < len(missing_diff_vars):
+        diff_var: Var = missing_diff_vars[idx]
+        problem.diff_init_guess[diff_var.uid] = float(computed_dx[idx])
+        report.automatic_dx0_count += 1
         idx += 1
+    report.missing_dx_scatter_s = float(time.perf_counter() - phase_t0)
+
 
 
 def _build_initialization_system_if_needed(
@@ -1806,8 +2090,16 @@ def run_emt_native_initialization(problem: EmtProblemTemplate, options: EmtOptio
     phase_t0 = time.perf_counter()
     _apply_solution_to_problem(problem, x)
     solution_apply_s: float = float(time.perf_counter() - phase_t0)
+    report.solution_apply_s = solution_apply_s
     phase_t0 = time.perf_counter()
-    _compute_missing_dx0(problem, report, runtime_params=runtime_params, constant_params=constant_params)
+    _compute_missing_dx0(
+        problem,
+        report,
+        x_full=x,
+        dx_full=dx,
+        runtime_params=runtime_params,
+        constant_params=constant_params,
+    )
     report.dx0_completion_s = float(time.perf_counter() - phase_t0)
     report.elapsed_s = float(time.perf_counter() - start_time)
     report.dx0_completion_s += solution_apply_s

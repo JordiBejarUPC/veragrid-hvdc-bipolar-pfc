@@ -365,6 +365,34 @@ class EmtProblemDae(EmtProblemTemplate):
         t_done = _toc(t_build)
         cache_stats_after: Dict[str, float] = get_compiled_functions_cache_stats()
         compiled_function_cache_delta: float = cache_stats_after.get("entry_count", 0.0) - cache_stats_before.get("entry_count", 0.0)
+        native_structural_cold_s: float = 0.0
+        native_numeric_refresh_s: float = 0.0
+
+        if self.initialization_report is None:
+            native_structural_cold_s = 0.0
+            native_numeric_refresh_s = 0.0
+        else:
+            native_structural_cold_s = float(self.initialization_report.reduced_system_build_s)
+            native_numeric_refresh_s = (
+                float(self.initialization_report.runtime_param_build_s)
+                + float(self.initialization_report.constant_param_build_s)
+                + float(self.initialization_report.initial_residual_eval_s)
+                + float(self.initialization_report.newton_elapsed_s)
+                + float(self.initialization_report.pseudo_transient_elapsed_s)
+                + float(self.initialization_report.dx0_completion_s)
+            )
+
+        structural_cold_s: float = (
+            validate_models_s
+            + structure_collect_s
+            + unify_blocks_s
+            + validate_connections_s
+            + template_init_s
+            + runtime_partition_s
+            + explicit_init_s
+            + native_structural_cold_s
+        )
+        numeric_refresh_s: float = native_numeric_refresh_s + events_group_finalize_s
 
         self.build_report = dict(
             validate_models_s=validate_models_s,
@@ -376,6 +404,10 @@ class EmtProblemDae(EmtProblemTemplate):
             explicit_init_s=explicit_init_s,
             native_init_s=native_init_s,
             events_group_finalize_s=events_group_finalize_s,
+            structural_cold_s=structural_cold_s,
+            numeric_refresh_s=numeric_refresh_s,
+            native_structural_cold_s=native_structural_cold_s,
+            native_numeric_refresh_s=native_numeric_refresh_s,
             compiled_function_cache_delta=compiled_function_cache_delta,
             persistent_init_cache_hit=1.0 if (self.initialization_report is not None and self.initialization_report.persistent_cache_hit) else 0.0,
             persistent_init_cache_load_s=0.0 if self.initialization_report is None else float(self.initialization_report.persistent_cache_load_s),
