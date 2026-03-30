@@ -810,9 +810,10 @@ class StructuralVectorizedSolver:
 
         active_boundary_updater = resolve_solver_boundary_updater(self.problem, boundary_updater, float(self.t0))
 
-        if params0 is None:
+        if params0 is not None:
+            params0 =  np.array(params0, dtype=np.float64, copy=True)
+        else:
             params0 = self.problem.event_params_values.copy()
-        else: pass
 
         return self._simulate_vectorized(self.t0, self.t_end, self.h, x0, dx0, params0, self.method,
                                          active_boundary_updater, self.verbose, self.dense_threshold)

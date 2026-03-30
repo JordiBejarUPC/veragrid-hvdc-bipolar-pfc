@@ -510,11 +510,12 @@ class DataBaseTableMain(DiagramsMain):
                                               buses=selected_buses,
                                               name=selected_objects[0].name + " diagram")
 
-            diagram_widget = SchematicWidget(gui=self,
-                                             circuit=self.circuit,
-                                             diagram=diagram,
-                                             default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
-                                             time_index=self.get_diagram_slider_index())
+            diagram_widget = SchematicWidget(
+                gui=self,
+                diagram=diagram,
+                default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
+                time_index=self.get_diagram_slider_index()
+            )
 
             self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
                                                 diagram=diagram)
@@ -603,7 +604,6 @@ class DataBaseTableMain(DiagramsMain):
                 longitude=diagram.longitude,
                 latitude=diagram.latitude,
                 name=diagram.name,
-                circuit=self.circuit,
                 diagram=diagram,
             )
 
@@ -712,8 +712,10 @@ class DataBaseTableMain(DiagramsMain):
                         )
 
             self.show_info_toast("Done!")
+            return None
         else:
             self.show_warning_toast("No selected buses :/")
+            return None
 
     def add_objects(self):
         """

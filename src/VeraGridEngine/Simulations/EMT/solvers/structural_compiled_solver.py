@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Set, Tuple
+from typing import Any, Callable, Dict, List, Set, Tuple, Optional
 import hashlib
 import time
 
@@ -2114,9 +2114,9 @@ class StructuralCompiledSolver:
 
     def simulate(
             self,
-            x0: Vec | None = None,
-            dx0: Vec | None = None,
-            params0: Vec | None = None,
+            x0: Optional[Vec] = None,
+            dx0: Optional[Vec] = None,
+            params0: Optional[Vec] = None,
             boundary_updater: EmtBoundaryUpdateProtocol | None = None,
     ) -> Tuple[Vec, Mat, Mat]:
         """

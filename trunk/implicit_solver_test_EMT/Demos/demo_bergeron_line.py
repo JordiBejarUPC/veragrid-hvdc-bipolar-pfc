@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from abc import ABC, abstractmethod
 from typing import List, Dict, Tuple
+import pandas as pd
 
 # VeraGridEngine Imports
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr
@@ -217,10 +218,6 @@ def run_test(case_name: str, R_load: float) -> Tuple[np.ndarray, np.ndarray, np.
         verbose=False
     )
 
-    # x0 = problem.get_x0()
-    # dx0 = np.zeros(problem.get_all_vars_number(), dtype=np.float64)
-    # params0 = problem.event_params_values
-
     t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=line_updater)
 
     idx_vf: int = problem.get_var_idx(v_f_var)
@@ -235,6 +232,25 @@ def run_test(case_name: str, R_load: float) -> Tuple[np.ndarray, np.ndarray, np.
 def main() -> None:
     t1, vf1, vt1, tau = run_test("Open Circuit", R_load=1e9)
     t2, vf2, vt2, _ = run_test("Matched Load", R_load=350.0)
+
+    vf1 = np.atleast_2d(vf1).T if vf1.ndim == 1 else vf1
+    vt1 = np.atleast_2d(vt1).T if vt1.ndim == 1 else vt1
+    vf2 = np.atleast_2d(vf2).T if vf2.ndim == 1 else vf2
+    vt2 = np.atleast_2d(vt2).T if vt2.ndim == 1 else vt2
+
+    res = np.concatenate((vf1, vt1, vf2, vt2), axis=1)
+
+    cols_vf1 = [f"vf1{i}" for i in range(vf1.shape[1])]
+    cols_vt1 = [f"vt1{i}" for i in range(vt1.shape[1])]
+    cols_vf2 = [f"vf2{i}" for i in range(vf2.shape[1])]
+    cols_vt2 = [f"vt2{i}" for i in range(vt2.shape[1])]
+    cols = cols_vf1 + cols_vt1 + cols_vf2 + cols_vt2
+
+    results_df = pd.DataFrame(res, index=t1, columns=cols)
+    results_df.index.name = "time_s"
+
+    name = "demo_bergeron_line.csv"
+    results_df.to_csv(name, index=False)
 
     plt.figure(figsize=(11, 6))
     plt.plot(t1 * 1000, vf1, 'k--', alpha=0.7, label="V_From (Ideal Source: 100V)")

@@ -7530,7 +7530,10 @@ class Assets:
         if api_obj.selected_to_merge:
 
             if api_obj.action == ActionType.Add:
-                self.add_element(obj=api_obj)
+                new_obj = api_obj.copy(forced_new_idtag=False)
+                new_obj.rebind_device_references(objects_by_idtag=all_elms_base_dict)
+                self.add_element(obj=new_obj)
+                all_elms_base_dict[new_obj.idtag] = new_obj
 
             elif api_obj.action == ActionType.Delete:
 
@@ -7540,18 +7543,24 @@ class Assets:
                         self.delete_bus(obj=elm_from_base, delete_associated=False)
                     else:
                         self.delete_element(obj=elm_from_base)
+                    all_elms_base_dict.pop(api_obj.idtag, None)
 
             elif api_obj.action == ActionType.Modify:
 
                 elm_from_base = all_elms_base_dict.get(api_obj.idtag, None)
 
                 if elm_from_base is not None:
+                    changed_props = list(api_obj.iter_properties_selected_to_merge())
+                    api_obj.rebind_device_references(objects_by_idtag=all_elms_base_dict, props=changed_props)
 
-                    for prop in api_obj.iter_properties_selected_to_merge():
+                    for prop in changed_props:
                         val = api_obj.get_property_value(prop=prop, t_idx=None)
                         elm_from_base.set_property_value(prop=prop, value=val, t_idx=None)
                 else:
-                    self.add_element(obj=api_obj)
+                    new_obj = api_obj.copy(forced_new_idtag=False)
+                    new_obj.rebind_device_references(objects_by_idtag=all_elms_base_dict)
+                    self.add_element(obj=new_obj)
+                    all_elms_base_dict[new_obj.idtag] = new_obj
 
             elif api_obj.action == ActionType.NoAction:
                 pass
@@ -7572,6 +7581,17 @@ class Assets:
 
             for elm in elements:
                 yield elm
+
+    def get_all_elements_number(self) -> int:
+        """
+        Get all elements number
+        :return: int
+        """
+        a = 0
+        for key, tpe in self.device_type_name_dict.items():
+            a += len(self.get_elements_by_type(device_type=tpe))
+
+        return a
 
     def get_all_elements_dict(self,
                               use_secondary_key: bool = False,

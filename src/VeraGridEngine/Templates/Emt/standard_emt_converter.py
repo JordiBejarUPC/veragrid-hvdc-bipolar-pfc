@@ -3,14 +3,10 @@
 # file, You can see it at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-
-
-from typing import List
 import numpy as np
-
 from VeraGridEngine.enumerations import DeviceType, ConverterControlType
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, VarPowerFlowRefferenceType
+from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
@@ -41,7 +37,7 @@ For KCL connection:
 """
 
 def StandardConverterEmtBuild(
-    vfactory: VarFactory,
+    vf: VarFactory,
     name: str = "standard_converter_emt",
     sbase: float = 1.0,
     fbase: float = 50.0,
@@ -67,7 +63,7 @@ def StandardConverterEmtBuild(
     initialization layer when it maps power-flow values into external references.
 
     Args:
-        vfactory: Variable factory for creating symbolic variables
+        vf: Variable factory for creating symbolic variables
         name: Name for the converter model
         sbase: System base power used to convert external power references to pu
         fbase: System base frequency for the synchronized current references
@@ -84,37 +80,37 @@ def StandardConverterEmtBuild(
     # INPUT VARIABLES (from buses)
     # =================================================================
     # AC side voltages from the AC bus
-    v_A = vfactory.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
-    v_B = vfactory.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B)
-    v_C = vfactory.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
+    v_A = vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
 
     # DC side voltage from the DC bus
-    v_dc = vfactory.add_var(name=f"v_dc_{name}", ref=VarPowerFlowRefferenceType.Vdc)
+    v_dc = vf.add_var(name=f"v_dc_{name}", ref=VarPowerFlowRefferenceType.Vdc)
 
     inputs = [v_A, v_B, v_C, v_dc]
 
     # =================================================================
     # OUTPUT VARIABLES (to buses)
     # =================================================================
-    i_A = vfactory.add_var(name=f"i_A_{name}", ref=VarPowerFlowRefferenceType.i_A)
-    i_B = vfactory.add_var(name=f"i_B_{name}", ref=VarPowerFlowRefferenceType.i_B)
-    i_C = vfactory.add_var(name=f"i_C_{name}", ref=VarPowerFlowRefferenceType.i_C)
-    theta = vfactory.add_var(name=f"theta_{name}")
+    i_A = vf.add_var(name=f"i_A_{name}", ref=VarPowerFlowRefferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B_{name}", ref=VarPowerFlowRefferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C_{name}", ref=VarPowerFlowRefferenceType.i_C)
+    theta = vf.add_var(name=f"theta_{name}")
 
-    d_theta = vfactory.add_diff_var(name=f"d_theta_{name}", base_var=theta)
+    d_theta = vf.add_diff_var(name=f"d_theta_{name}", base_var=theta)
 
-    i_dc = vfactory.add_var(name=f"i_dc_{name}", ref=VarPowerFlowRefferenceType.Idc)
+    i_dc = vf.add_var(name=f"i_dc_{name}", ref=VarPowerFlowRefferenceType.Idc)
 
     # =================================================================
     # INTERNAL VARIABLES
     # =================================================================
-    P_ref = vfactory.add_var(name=f"P_ref_{name}")
-    Q_ref = vfactory.add_var(name=f"Q_ref_{name}")
-    Vdc_ref = vfactory.add_var(name=f"Vdc_ref_{name}")
-    P_loss = vfactory.add_var(name=f"P_loss_{name}")
-    omega_base = vfactory.add_var(name=f"omega_base_{name}")
-    phi_v = vfactory.add_var(name=f"phi_v_{name}")
-    Vpk = vfactory.add_var(name=f"Vpk_{name}")
+    P_ref = vf.add_var(name=f"P_ref_{name}")
+    Q_ref = vf.add_var(name=f"Q_ref_{name}")
+    Vdc_ref = vf.add_var(name=f"Vdc_ref_{name}")
+    P_loss = vf.add_var(name=f"P_loss_{name}")
+    omega_base = vf.add_var(name=f"omega_base_{name}")
+    phi_v = vf.add_var(name=f"phi_v_{name}")
+    Vpk = vf.add_var(name=f"Vpk_{name}")
 
     # =================================================================
     # PARAMETERS
@@ -133,26 +129,26 @@ def StandardConverterEmtBuild(
     elif control2 == ConverterControlType.Vm_dc and control2_val is not None:
         vdc_ref0 = float(control2_val)
 
-    eps = vfactory.add_const(1e-10)
-    c_two_over_three = vfactory.add_const(2.0 / 3.0)
-    c_sqrt3_over_two = vfactory.add_const(np.sqrt(3.0) / 2.0)
-    c_half = vfactory.add_const(0.5)
-    c_sbase = vfactory.add_const(max(float(sbase), 1e-12))
+    eps = vf.add_const(1e-10)
+    c_two_over_three = vf.add_const(2.0 / 3.0)
+    c_sqrt3_over_two = vf.add_const(np.sqrt(3.0) / 2.0)
+    c_half = vf.add_const(0.5)
+    c_sbase = vf.add_const(max(float(sbase), 1e-12))
     event_dict = {
-        P_ref: vfactory.add_const(P_ref0),
-        Q_ref: vfactory.add_const(Q_ref0),
-        Vdc_ref: vfactory.add_const(vdc_ref0),
-        P_loss: vfactory.add_const(P_loss0),
-        omega_base: vfactory.add_const(2.0 * np.pi * float(fbase)),
-        phi_v: vfactory.add_const(0.0),
-        Vpk: vfactory.add_const(np.sqrt(2.0)),
+        P_ref: vf.add_const(P_ref0),
+        Q_ref: vf.add_const(Q_ref0),
+        Vdc_ref: vf.add_const(vdc_ref0),
+        P_loss: vf.add_const(P_loss0),
+        omega_base: vf.add_const(2.0 * np.pi * float(fbase)),
+        phi_v: vf.add_const(0.0),
+        Vpk: vf.add_const(np.sqrt(2.0)),
     }
 
     # =================================================================
     # CURRENT REFERENCE EQUATIONS
     # =================================================================
-    P_dc_cmd = P_ref + vfactory.add_const(vdc_kp) * (v_dc - Vdc_ref) if regulate_vdc else P_ref
-    Q_cmd = Q_ref if regulate_q else vfactory.add_const(0.0)
+    P_dc_cmd = P_ref + vf.add_const(vdc_kp) * (v_dc - Vdc_ref) if regulate_vdc else P_ref
+    Q_cmd = Q_ref if regulate_q else vf.add_const(0.0)
     P_dc_cmd_pu = P_dc_cmd / c_sbase
     Q_cmd_pu = Q_cmd / c_sbase
     P_ac_cmd_pu = P_dc_cmd_pu + P_loss / c_sbase
@@ -262,151 +258,151 @@ def StandardConverterEmtBuild(
 
     return templ
 
-
-def StandardConverterEmtBuildWithControl(
-    vfactory: VarFactory,
-    name: str = "standard_converter_ctrl",
-    control_mode: str = "P"  # "P" for active power control
-) -> EmtModelTemplate:
-    """
-    Build a standard converter model with basic current control.
-
-    This version adds a simple current control loop that regulates
-    the AC currents to achieve the desired power flow.
-
-    Args:
-        vfactory: Variable factory
-        name: Name for the model
-        control_mode: Control mode ("P" for active power)
-
-    Returns:
-        EmtModelTemplate with controlled converter
-    """
-    templ = EmtModelTemplate()
-    templ.tpe = DeviceType.VscDevice
-
-    # =================================================================
-    # INPUTS (from buses)
-    # =================================================================
-    v_A = vfactory.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
-    v_B = vfactory.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B)
-    v_C = vfactory.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
-    v_dc = vfactory.add_var(name=f"V_dc_{name}", ref=VarPowerFlowRefferenceType.Vdc)
-
-    inputs = [v_A, v_B, v_C, v_dc]
-
-    # =================================================================
-    # OUTPUTS (to buses)
-    # =================================================================
-    i_A = vfactory.add_var(name=f"i_A_{name}", ref=VarPowerFlowRefferenceType.i_A)
-    i_B = vfactory.add_var(name=f"i_B_{name}", ref=VarPowerFlowRefferenceType.i_B)
-    i_C = vfactory.add_var(name=f"i_C_{name}", ref=VarPowerFlowRefferenceType.i_C)
-    i_dc = vfactory.add_var(name=f"Idc_{name}", ref=VarPowerFlowRefferenceType.Idc)
-
-    # =================================================================
-    # INTERNAL VARIABLES
-    # =================================================================
-    P_ref = vfactory.add_var(name=f"P_ref_{name}")
-    P_measured = vfactory.add_var(name=f"P_meas_{name}")
-
-    # Current magnitude reference
-    I_mag_ref = vfactory.add_var(name=f"I_mag_ref_{name}")
-    I_mag = vfactory.add_var(name=f"I_mag_{name}")
-
-    # =================================================================
-    # PARAMETERS
-    # =================================================================
-    event_dict = {
-        P_ref: vfactory.add_const(None),
-    }
-
-    # =================================================================
-    # ALGEBRAIC EQUATIONS
-    # =================================================================
-    algebraic_eqs = []
-
-    # Instantaneous AC power
-    P_ac = v_A * i_A + v_B * i_B + v_C * i_C
-
-    # Power measurement
-    algebraic_eqs.append(P_measured - P_ac)
-
-    # DC power balance
-    algebraic_eqs.append(v_dc * i_dc - P_ref)
-
-    # Current magnitude from instantaneous currents
-    algebraic_eqs.append(I_mag - sym.sqrt(i_A * i_A + i_B * i_B + i_C * i_C + vfactory.add_const(1e-10)))
-
-    # Current magnitude reference from power (simplified: I = P / |V|)
-    V_mag = sym.sqrt(v_A * v_A + v_B * v_B + v_C * v_C + vfactory.add_const(1e-10))
-    algebraic_eqs.append(I_mag_ref - P_ref / (V_mag + vfactory.add_const(1e-10)))
-
-    # Proportional current injection (simplified control)
-    # i_phase = I_mag * v_phase / |V|
-    sqrt3_inv = vfactory.add_const(1.0 / np.sqrt(3))
-    algebraic_eqs.append(i_A - I_mag_ref * v_A / (V_mag + vfactory.add_const(1e-10)))
-    algebraic_eqs.append(i_B - I_mag_ref * v_B / (V_mag + vfactory.add_const(1e-10)))
-    algebraic_eqs.append(i_C - I_mag_ref * v_C / (V_mag + vfactory.add_const(1e-10)))
-
-    # =================================================================
-    # ALGEBRAIC VARIABLES
-    # =================================================================
-    algebraic_vars = [P_measured, i_A, i_B, i_C, i_dc, I_mag, I_mag_ref]
-
-    # =================================================================
-    # INITIALIZATION
-    # =================================================================
-    init_eqs = {
-        P_measured: P_ref,
-        i_A: vfactory.add_const(0.0),
-        i_B: vfactory.add_const(0.0),
-        i_C: vfactory.add_const(0.0),
-        i_dc: vfactory.add_const(0.0),
-        I_mag: vfactory.add_const(0.0),
-        I_mag_ref: vfactory.add_const(0.0),
-    }
-
-    # =================================================================
-    # BUILD BLOCK
-    # =================================================================
-    converter_block = Block(
-        algebraic_eqs=algebraic_eqs,
-        algebraic_vars=algebraic_vars,
-        event_dict=event_dict,
-        init_eqs=init_eqs,
-        in_vars=inputs,
-        out_vars=[i_A, i_B, i_C, i_dc],
-    )
-
-    converter_block.external_mapping = {
-        VarPowerFlowRefferenceType.v_A: v_A,
-        VarPowerFlowRefferenceType.v_B: v_B,
-        VarPowerFlowRefferenceType.v_C: v_C,
-
-        VarPowerFlowRefferenceType.Vdc: v_dc,
-
-        VarPowerFlowRefferenceType.i_A: i_A,
-        VarPowerFlowRefferenceType.i_B: i_B,
-        VarPowerFlowRefferenceType.i_C: i_C,
-
-        # For KCL at AC bus (bus_to), map i_A/B/C to it_A/B/C
-        VarPowerFlowRefferenceType.it_A: i_A,
-        VarPowerFlowRefferenceType.it_B: i_B,
-        VarPowerFlowRefferenceType.it_C: i_C,
-
-        # For KCL at DC bus (bus_from)
-        VarPowerFlowRefferenceType.Idc: i_dc,
-
-        VarPowerFlowRefferenceType.if_N: None,
-        VarPowerFlowRefferenceType.it_N: None,
-        VarPowerFlowRefferenceType.if_A: None,
-        VarPowerFlowRefferenceType.if_B: None,
-        VarPowerFlowRefferenceType.if_C: None,
-
-        VarPowerFlowRefferenceType.P: P_ref,
-    }
-
-    converter_block.name = name
-    templ.block = converter_block
-
-    return templ
+# 
+# def StandardConverterEmtBuildWithControl(
+#     vf: VarFactory,
+#     name: str = "standard_converter_ctrl",
+#     control_mode: str = "P"  # "P" for active power control
+# ) -> EmtModelTemplate:
+#     """
+#     Build a standard converter model with basic current control.
+# 
+#     This version adds a simple current control loop that regulates
+#     the AC currents to achieve the desired power flow.
+# 
+#     Args:
+#         vf: Variable factory
+#         name: Name for the model
+#         control_mode: Control mode ("P" for active power)
+# 
+#     Returns:
+#         EmtModelTemplate with controlled converter
+#     """
+#     templ = EmtModelTemplate()
+#     templ.tpe = DeviceType.VscDevice
+# 
+#     # =================================================================
+#     # INPUTS (from buses)
+#     # =================================================================
+#     v_A = vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
+#     v_B = vf.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B)
+#     v_C = vf.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
+#     v_dc = vf.add_var(name=f"V_dc_{name}", ref=VarPowerFlowRefferenceType.Vdc)
+# 
+#     inputs = [v_A, v_B, v_C, v_dc]
+# 
+#     # =================================================================
+#     # OUTPUTS (to buses)
+#     # =================================================================
+#     i_A = vf.add_var(name=f"i_A_{name}", ref=VarPowerFlowRefferenceType.i_A)
+#     i_B = vf.add_var(name=f"i_B_{name}", ref=VarPowerFlowRefferenceType.i_B)
+#     i_C = vf.add_var(name=f"i_C_{name}", ref=VarPowerFlowRefferenceType.i_C)
+#     i_dc = vf.add_var(name=f"Idc_{name}", ref=VarPowerFlowRefferenceType.Idc)
+# 
+#     # =================================================================
+#     # INTERNAL VARIABLES
+#     # =================================================================
+#     P_ref = vf.add_var(name=f"P_ref_{name}")
+#     P_measured = vf.add_var(name=f"P_meas_{name}")
+# 
+#     # Current magnitude reference
+#     I_mag_ref = vf.add_var(name=f"I_mag_ref_{name}")
+#     I_mag = vf.add_var(name=f"I_mag_{name}")
+# 
+#     # =================================================================
+#     # PARAMETERS
+#     # =================================================================
+#     event_dict = {
+#         P_ref: vf.add_const(None),
+#     }
+# 
+#     # =================================================================
+#     # ALGEBRAIC EQUATIONS
+#     # =================================================================
+#     algebraic_eqs = []
+# 
+#     # Instantaneous AC power
+#     P_ac = v_A * i_A + v_B * i_B + v_C * i_C
+# 
+#     # Power measurement
+#     algebraic_eqs.append(P_measured - P_ac)
+# 
+#     # DC power balance
+#     algebraic_eqs.append(v_dc * i_dc - P_ref)
+# 
+#     # Current magnitude from instantaneous currents
+#     algebraic_eqs.append(I_mag - sym.sqrt(i_A * i_A + i_B * i_B + i_C * i_C + vf.add_const(1e-10)))
+# 
+#     # Current magnitude reference from power (simplified: I = P / |V|)
+#     V_mag = sym.sqrt(v_A * v_A + v_B * v_B + v_C * v_C + vf.add_const(1e-10))
+#     algebraic_eqs.append(I_mag_ref - P_ref / (V_mag + vf.add_const(1e-10)))
+# 
+#     # Proportional current injection (simplified control)
+#     # i_phase = I_mag * v_phase / |V|
+#     sqrt3_inv = vf.add_const(1.0 / np.sqrt(3))
+#     algebraic_eqs.append(i_A - I_mag_ref * v_A / (V_mag + vf.add_const(1e-10)))
+#     algebraic_eqs.append(i_B - I_mag_ref * v_B / (V_mag + vf.add_const(1e-10)))
+#     algebraic_eqs.append(i_C - I_mag_ref * v_C / (V_mag + vf.add_const(1e-10)))
+# 
+#     # =================================================================
+#     # ALGEBRAIC VARIABLES
+#     # =================================================================
+#     algebraic_vars = [P_measured, i_A, i_B, i_C, i_dc, I_mag, I_mag_ref]
+# 
+#     # =================================================================
+#     # INITIALIZATION
+#     # =================================================================
+#     init_eqs = {
+#         P_measured: P_ref,
+#         i_A: vf.add_const(0.0),
+#         i_B: vf.add_const(0.0),
+#         i_C: vf.add_const(0.0),
+#         i_dc: vf.add_const(0.0),
+#         I_mag: vf.add_const(0.0),
+#         I_mag_ref: vf.add_const(0.0),
+#     }
+# 
+#     # =================================================================
+#     # BUILD BLOCK
+#     # =================================================================
+#     converter_block = Block(
+#         algebraic_eqs=algebraic_eqs,
+#         algebraic_vars=algebraic_vars,
+#         event_dict=event_dict,
+#         init_eqs=init_eqs,
+#         in_vars=inputs,
+#         out_vars=[i_A, i_B, i_C, i_dc],
+#     )
+# 
+#     converter_block.external_mapping = {
+#         VarPowerFlowRefferenceType.v_A: v_A,
+#         VarPowerFlowRefferenceType.v_B: v_B,
+#         VarPowerFlowRefferenceType.v_C: v_C,
+# 
+#         VarPowerFlowRefferenceType.Vdc: v_dc,
+# 
+#         VarPowerFlowRefferenceType.i_A: i_A,
+#         VarPowerFlowRefferenceType.i_B: i_B,
+#         VarPowerFlowRefferenceType.i_C: i_C,
+# 
+#         # For KCL at AC bus (bus_to), map i_A/B/C to it_A/B/C
+#         VarPowerFlowRefferenceType.it_A: i_A,
+#         VarPowerFlowRefferenceType.it_B: i_B,
+#         VarPowerFlowRefferenceType.it_C: i_C,
+# 
+#         # For KCL at DC bus (bus_from)
+#         VarPowerFlowRefferenceType.Idc: i_dc,
+# 
+#         VarPowerFlowRefferenceType.if_N: None,
+#         VarPowerFlowRefferenceType.it_N: None,
+#         VarPowerFlowRefferenceType.if_A: None,
+#         VarPowerFlowRefferenceType.if_B: None,
+#         VarPowerFlowRefferenceType.if_C: None,
+# 
+#         VarPowerFlowRefferenceType.P: P_ref,
+#     }
+# 
+#     converter_block.name = name
+#     templ.block = converter_block
+# 
+#     return templ

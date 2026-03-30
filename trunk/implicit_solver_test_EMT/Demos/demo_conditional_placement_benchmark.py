@@ -1,6 +1,7 @@
 import statistics
 import time
 from typing import Dict, List, Optional, Tuple
+import pandas as pd
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -405,6 +406,10 @@ def main() -> None:
         benchmark_case("select inside state_eq", create_internal_select_switch_system),
         benchmark_case("procedural mode in state_eq", create_procedural_mode_switch_system),
     ]
+
+    results_df = pd.DataFrame(cases, )
+    name = "demo_conditional_placement_benchmark.csv"
+    results_df.to_csv(name, index=False)
 
     print_benchmark_summary(cases)
     plot_benchmark_comparison(cases)

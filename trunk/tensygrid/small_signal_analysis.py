@@ -158,7 +158,7 @@ def small_signal_analysis(show_plt: bool = False, test_mti=False):
     # ===================================================================
     print("\n[4] Setting up small signal driver...")
 
-    ss_options = vge.SmallSignalStabilityRmsOptions(ss_assessment_time=0)
+    ss_options = vge.RmsSmallSignalStabilityOptions(ss_assessment_time=0)
 
     # Create driver with dummy grid (it will create RmsProblemDae internally)
     dummy_grid = vge.MultiCircuit(Sbase=Sbase)

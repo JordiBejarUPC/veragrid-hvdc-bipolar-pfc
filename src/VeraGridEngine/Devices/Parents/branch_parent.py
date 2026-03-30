@@ -295,7 +295,7 @@ class BranchParent(PhysicalDevice):
         return self._emt_template
 
     @emt_template.setter
-    def emt_template(self, val: EmtModelTemplate):
+    def emt_template(self, val: EmtModelTemplate|None):
         if isinstance(val, EmtModelTemplate):
             self._emt_template = val
 

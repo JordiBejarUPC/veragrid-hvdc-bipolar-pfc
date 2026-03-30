@@ -5,6 +5,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Tuple, Any
+import pandas as pd
 
 # VeraGridEngine Imports
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
@@ -117,6 +118,15 @@ def run_test() -> None:
     print(f"Trapezoidal: {err_trap:.6e} (A-Stable, Conservation of Energy)")
     print(f"BDF2       : {err_bdf:.6e} (L-Stable, Numerical Damping)")
     print("-" * 30)
+
+    res = np.column_stack((x_trap, v_trap, x_bdf, v_bdf))
+
+    cols = ["x_trap", "v_trap", "x_bdf", "v_bdf"]
+    results_df = pd.DataFrame(res, columns=cols)
+    results_df.index.name = "time_s"
+
+    name = "implicit_armonic.csv"
+    results_df.to_csv(name, index=False)
 
     plot_results(t_trap, x_trap, v_trap, x_bdf, v_bdf, x_exact)
 

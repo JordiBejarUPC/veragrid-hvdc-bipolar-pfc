@@ -18,7 +18,7 @@ from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import SmallSignalStabilityRmsOptions
+from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_options import RmsSmallSignalStabilityOptions
 from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_results import SmallSignalStabilityRmsResults
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
@@ -499,12 +499,12 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
                  '__cancel__']
 
     name = 'Small Signal Stability Simulation'
-    tpe = SimulationTypes.SmallSignal_run
+    tpe = SimulationTypes.RmsSmallSignal_run
 
     def __init__(self,
                  grid: MultiCircuit,
                  rms_options: Union[RmsOptions, None] = None,
-                 sss_options: Union[SmallSignalStabilityRmsOptions, None] = None,
+                 sss_options: Union[RmsSmallSignalStabilityOptions, None] = None,
                  pf_results: Union[PowerFlowResults, None] = None,
                  engine: EngineType = EngineType.VeraGrid):
 
@@ -527,7 +527,7 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
 
         self.problem.set_events_group(events_group)
 
-        self.sss_options: SmallSignalStabilityRmsOptions = SmallSignalStabilityRmsOptions() if sss_options is None else sss_options
+        self.sss_options: RmsSmallSignalStabilityOptions = RmsSmallSignalStabilityOptions() if sss_options is None else sss_options
         self.assessment_time = self.sss_options.ss_assessment_time
 
         self.k = self.sss_options.k if self.sss_options.k is not None else self.problem.get_states_number()
