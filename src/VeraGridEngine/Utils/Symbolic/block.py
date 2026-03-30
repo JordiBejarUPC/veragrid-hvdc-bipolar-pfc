@@ -304,13 +304,6 @@ class Block:
         d = self.to_dict()
         return Block.parse(d)
 
-    def deep_copy(self)-> "Block":
-        """
-        Deep copy using var factory
-        :return:
-        :rtype:
-        """
-
 
     def _procedural_logic_to_dict(self) -> List[Dict[str, Any]]:
         """

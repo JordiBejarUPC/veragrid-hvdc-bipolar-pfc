@@ -10,7 +10,6 @@ from VeraGridEngine import VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
-# from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
 
 class VarFactory(EditableDevice):
@@ -73,13 +72,17 @@ class VarFactory(EditableDevice):
                 name: str,
                 ref: VarPowerFlowRefferenceType | None = None,
                 network_conn: bool = False,
-                uid: int | None = None) -> Var:
+                uid: int | None = None,
+                diff_var: Var | None = None,
+                base_var: Var | None = None) -> Var:
         """
         Adds a ver to the class
         :param name:
         :param ref:
         :param network_conn:
         :param uid:
+        :param diff_var:
+        :param base_var:
         :return:
         """
         v = Var(name=name, reference=ref, network_conn=network_conn, uid=uid, diff_var=None, base_var=None)
