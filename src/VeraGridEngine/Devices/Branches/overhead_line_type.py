@@ -11,9 +11,11 @@ from numpy import pi, log, sqrt
 from matplotlib import pyplot as plt
 import math
 
+from VeraGridEngine import BuildStatus
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
 from VeraGridEngine.basic_structures import Logger, Mat, IntVec, Vec, CxMat
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
+from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
+from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.Devices.Branches.wire import Wire
 from VeraGridEngine.enumerations import SubObjectType
 
@@ -253,7 +255,7 @@ class ListOfWires:
         return new_list
 
 
-class OverheadLineType(EditableDevice):
+class OverheadLineType(DynamicDevice):
     __slots__ = (
         'wires_in_tower',
         '_Vnom',

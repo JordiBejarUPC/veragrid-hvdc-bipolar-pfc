@@ -570,6 +570,8 @@ class Line(BranchParent):
             self.ysh = obj.get_ysh(circuit_idx=self.circuit_idx, Sbase=Sbase, length=self.length, Vnom=vn)
 
             self.template = obj
+            self.rms_template = obj.rms_template
+            self.emt_template = obj.emt_template
 
         elif isinstance(obj, UndergroundLineType):
             (self.R, self.X, self.B,
@@ -577,6 +579,8 @@ class Line(BranchParent):
              self.rate) = obj.get_values(Sbase=Sbase, length=self.length)
 
             self.template = obj
+            self.rms_template = obj.rms_template
+            self.emt_template = obj.emt_template
 
         elif isinstance(obj, SequenceLineType):
             (self.R, self.X, self.B,
@@ -591,6 +595,8 @@ class Line(BranchParent):
             self.ysh = obj.get_ysh_nabc()
 
             self.template = obj
+            self.rms_template = obj.rms_template
+            self.emt_template = obj.emt_template
 
         else:
             logger.add_error('Template not recognised', self.name)

@@ -3307,6 +3307,8 @@ class Assets:
         if obj is not None:
             if isinstance(obj, dev.OverheadLineType):
                 self._overhead_line_types.append(obj)
+                obj.set_rms_var_factory(self._rms_var_factory)
+                obj.set_emt_var_factory(self._emt_var_factory)
             else:
                 print('The template is not an overhead line!')
 
@@ -3398,6 +3400,8 @@ class Assets:
         if obj is not None:
             if isinstance(obj, dev.UndergroundLineType):
                 self._underground_cable_types.append(obj)
+                obj.set_rms_var_factory(self._rms_var_factory)
+                obj.set_emt_var_factory(self._emt_var_factory)
             else:
                 print('The template is not an underground line!')
 
@@ -3437,6 +3441,8 @@ class Assets:
         if obj is not None:
             if isinstance(obj, dev.SequenceLineType):
                 self._sequence_line_types.append(obj)
+                obj.set_rms_var_factory(self._rms_var_factory)
+                obj.set_emt_var_factory(self._emt_var_factory)
             else:
                 print('The template is not a sequence line!')
 
@@ -3476,6 +3482,8 @@ class Assets:
         if obj is not None:
             if isinstance(obj, dev.TransformerType):
                 self._transformer_types.append(obj)
+                obj.set_rms_var_factory(self._rms_var_factory)
+                obj.set_emt_var_factory(self._emt_var_factory)
             else:
                 print('The template is not a transformer!')
 
@@ -8064,15 +8072,31 @@ class Assets:
 
         elif elm_type == DeviceType.OverheadLineTypeDevice:
             elm = dev.OverheadLineType()
+            dictionary_of_lists = {
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(DeviceType.LineDevice),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(DeviceType.LineDevice),
+            }
 
         elif elm_type == DeviceType.SequenceLineDevice:
             elm = dev.SequenceLineType()
+            dictionary_of_lists = {
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(DeviceType.LineDevice),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(DeviceType.LineDevice),
+            }
 
         elif elm_type == DeviceType.UnderGroundLineDevice:
             elm = dev.UndergroundLineType()
+            dictionary_of_lists = {
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(DeviceType.LineDevice),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(DeviceType.LineDevice),
+            }
 
         elif elm_type == DeviceType.TransformerTypeDevice:
             elm = dev.TransformerType()
+            dictionary_of_lists = {
+                DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(DeviceType.Transformer2WDevice),
+                DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(DeviceType.Transformer2WDevice),
+            }
 
         elif elm_type == DeviceType.FluidNodeDevice:
             elm = dev.FluidNode()

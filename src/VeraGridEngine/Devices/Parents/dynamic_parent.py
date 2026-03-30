@@ -43,7 +43,7 @@ class DynamicDevice(PhysicalDevice):
                  idtag: str | None,
                  code: str,
                  device_type: DeviceType,
-                 build_status: BuildStatus):
+                 build_status: BuildStatus = BuildStatus.Commissioned):
         """
 
         :param name:

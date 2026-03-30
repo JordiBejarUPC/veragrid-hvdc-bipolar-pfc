@@ -2932,10 +2932,18 @@ class MultiCircuit(Assets):
         :param data:
         :return:
         """
-        self.transformer_types += data.transformer_types
-        self.underground_cable_types += data.underground_cable_types
-        self.wire_types += data.wire_types
-        self.sequence_line_types += data.sequence_line_types
+        for tpe in data.transformer_types:
+            self.add_transformer_type(tpe)
+
+        for tpe in data.underground_cable_types:
+            self.add_underground_line(tpe)
+
+        for tpe in data.wire_types:
+            self.add_wire(tpe)
+
+        for tpe in data.sequence_line_types:
+            self.add_sequence_line(tpe)
+
         self.rms_models += data.rms_models
         self.emt_models += data.emt_models
 
