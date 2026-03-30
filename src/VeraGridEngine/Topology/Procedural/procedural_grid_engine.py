@@ -15,6 +15,7 @@ from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy.special import gammaincinv
 import random
 from .procedural_grid_debugger import ProceduralGridDebugger
+from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import haversine_distance
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -144,20 +145,31 @@ class ProceduralGridComputationEngine:
         self.target_buses: List[dev.Bus] = list()
         self.candidate_buses: List[dev.Bus] = list()
         self.steiner_buses: List[dev.Bus] = list()  # this is a result
+        self.intermediate_buses: List[dev.Bus] = list()  # buses generated in the markov process
 
         self.debugger = ProceduralGridDebugger(enabled=True)
 
+        candidate_counter = 0
         for sg in self.candidates_substations:
-            for i, bus in enumerate(self.grid.get_substation_buses(sg)):
-                bus.name = f"Candidate_{i}"
+            for bus in self.grid.get_substation_buses(sg):
+                lon, lat = bus.try_to_find_coordinates()
+                bus.longitude = lon
+                bus.latitude = lat
+                bus.name = f"Candidate_{candidate_counter}"
                 bus.Vm_cost = bus.Vnom * bus.Vm_cost
                 self.candidate_buses.append(bus)
+                candidate_counter += 1
 
+        target_counter = 0
         for sg in self.targets_substations:
-            for i, bus in enumerate(self.grid.get_substation_buses(sg)):
-                bus.name = f"Target_{i}"
+            for bus in self.grid.get_substation_buses(sg):
+                lon, lat = bus.try_to_find_coordinates()
+                bus.longitude = lon
+                bus.latitude = lat
+                bus.name = f"Target_{target_counter}"
                 bus.Vm_cost = bus.Vnom * bus.Vm_cost
                 self.target_buses.append(bus)
+                target_counter += 1
 
         # TRANSITION_MATRIX = {
         #     132: {132: 0.7, 220: 0.15, 380: 0.15, 500: 0},
@@ -256,7 +268,7 @@ class ProceduralGridComputationEngine:
 
         before_names = self.debugger.snapshot_grid_element_names(self.grid)
 
-        topology.generate_markov()
+        self.intermediate_buses = topology.generate_markov()
 
         added_names = self.debugger.get_added_element_names(
             grid=self.grid,
@@ -267,12 +279,12 @@ class ProceduralGridComputationEngine:
         for name in added_names:
             print(name)
 
-        print("Passed add_loads().")
+        print("Finished run_steiner_alone().")
 
         # 4. Display in the diagram
         # TODO: Display diagram in the GUI
 
-        return None
+        return self.grid
 
     def run_optimization(self):
         """
@@ -302,6 +314,8 @@ class Topology:
         self.grid = grid
         self.transition_matrix = transition_matrix
         self.discretization = discretization  # km between buses
+
+        self.intermediate_buses: List[dev.Bus] = list()  # buses generated in the markov process
 
     def generate_markov(self):
         """
@@ -349,7 +363,18 @@ class Topology:
 
             voltage_options = self.transition_matrix.voltages_sorted
 
+            iteration_counter = 0
+            max_iterations = 10000
+
             while accumulated_length < distance:
+
+                iteration_counter += 1
+                if iteration_counter > max_iterations:
+                    raise RuntimeError(
+                        f"generate_markov() got stuck for edge {edge}, "
+                        f"accumulated_length={accumulated_length}, distance={distance}, "
+                        f"conn_counter={conn_counter}"
+                    )
 
                 # Update next bus to current bus
                 current_bus = next_bus
@@ -362,10 +387,23 @@ class Topology:
                     next_bus = output_bus
 
                     # If statement to discard transitions that are not allowed by the transition matrix
-                    if self.transition_matrix.at(current_bus.Vnom,next_bus.Vnom) == 0:
+                    if next_bus.Vnom not in self.transition_matrix.voltages_sorted:
+                        print(
+                            f"The voltage level from the end substation {next_bus.Vnom}kV does not appear in the existing grid.\n"
+                            f"Modifying the end substation level to {current_bus.Vnom}kV.")
+
+                        next_bus.Vnom = current_bus.Vnom
+                        next_bus.name = f"Modified_{next_bus.name}"
+
+                        if next_bus.name not in bus_name_log:
+                            self.grid.add_bus(obj=next_bus)
+                            # Add the bus in bus_name_log
+                            bus_name_log.append(next_bus.name)
+                    elif self.transition_matrix.at(current_bus.Vnom,next_bus.Vnom) == 0:
                         print(
                             f"Added an intermediate bus to allow transition from {current_bus.Vnom}kV to {next_bus.Vnom}kV.")
-                        # next_bus_volts = self.last_bus_fix(self.transition_matrix, current_bus_volt, next_bus_volt,
+                        #TODO: Implement last_bus_fix() function
+                        #next_bus_volts = self.last_bus_fix(self.transition_matrix, current_bus_volt, next_bus_volt,
                         #                                    expansion_grid)
                         break
                     else:
@@ -399,6 +437,7 @@ class Topology:
                     next_bus.Vm_cost = next_bus.Vnom * 1000.0
 
                     self.grid.add_bus(obj=next_bus)
+                    self.intermediate_buses.append(next_bus)
                     intermediate_bus_counter += 1
 
                 v1 = float(current_bus.Vnom)
@@ -422,6 +461,12 @@ class Topology:
                     length=lengths[conn_counter],
                 )
 
+                print(
+                    f"edge={edge}, type={type(new_branch).__name__}, "
+                    f"accumulated_length={accumulated_length}, distance={distance}, "
+                    f"conn_counter={conn_counter}"
+                )
+
                 if new_branch is None:
                     print(f"Could not instantiate branch for transition {transition_key}.")
                     break
@@ -435,7 +480,9 @@ class Topology:
             # TODO: Add the merge_lines function outside generate_markov and inside Topology
             # combination, length_elements_ = merge_lines(combination, length_elements_)
 
-            return expansion_grid
+
+
+        return self.intermediate_buses
 
     def coord_calc(self, current_bus_lon: float, current_bus_lat: float, length: float, coord_out: np.array):
         """
@@ -570,26 +617,24 @@ class ProceduralGridGraph:
         self.max_lat = 0
 
         for i, bus in enumerate(self.target_buses):
-            lon, lat = bus.try_to_find_coordinates()
-            self.coord_target[i, 0] = lon
-            self.coord_target[i, 1] = lat
+            self.coord_target[i, 0] = bus.longitude
+            self.coord_target[i, 1] = bus.latitude
             Vnom_kV_target[i] = bus.Vnom
 
-            self.min_lon = min(self.min_lon, lon)
-            self.min_lat = min(self.min_lat, lat)
-            self.max_lon = max(self.max_lon, lon)
-            self.max_lat = max(self.max_lat, lat)
+            self.min_lon = min(self.min_lon, bus.longitude)
+            self.min_lat = min(self.min_lat, bus.latitude)
+            self.max_lon = max(self.max_lon, bus.longitude)
+            self.max_lat = max(self.max_lat, bus.latitude)
 
         for i, bus in enumerate(self.candidate_buses):
-            lon, lat = bus.try_to_find_coordinates()
-            self.coord_candidate[i, 0] = lon
-            self.coord_candidate[i, 1] = lat
+            self.coord_candidate[i, 0] = bus.longitude
+            self.coord_candidate[i, 1] = bus.latitude
             Vnom_kV_candidate[i] = bus.Vnom
 
-            self.min_lon = min(self.min_lon, lon)
-            self.min_lat = min(self.min_lat, lat)
-            self.max_lon = max(self.max_lon, lon)
-            self.max_lat = max(self.max_lat, lat)
+            self.min_lon = min(self.min_lon, bus.longitude)
+            self.min_lat = min(self.min_lat, bus.latitude)
+            self.max_lon = max(self.max_lon, bus.longitude)
+            self.max_lat = max(self.max_lat, bus.latitude)
 
         self.base_coords = np.r_[self.coord_candidate, self.coord_target]
         self.base_voltages = np.r_[Vnom_kV_candidate, Vnom_kV_target]

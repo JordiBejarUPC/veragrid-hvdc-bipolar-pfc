@@ -14,6 +14,7 @@ from VeraGrid.Gui.ProceduralGrid.procedural_grid_ui import Ui_Dialog
 from VeraGrid.Gui.gui_functions import get_list_model, enums_to_model
 from VeraGridEngine.enumerations import ProceduralGridMethods
 from VeraGridEngine.Topology.Procedural.procedural_grid_engine import ProceduralGridComputationEngine
+from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import make_diagram_from_buses, SchematicWidget
 
 
 if TYPE_CHECKING:
@@ -123,7 +124,24 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         )
 
         if method == ProceduralGridMethods.SteinerAlone:
-            engine.run_steiner_alone()
+            expanded_grid = engine.run_steiner_alone()
+
+            expanded_grid_schematic = make_diagram_from_buses(circuit = expanded_grid,
+                                        buses= engine.target_buses + engine.candidate_buses + engine.steiner_buses + engine.intermediate_buses,
+                                        name='Diagram from selection')
+
+            diagram_widget = SchematicWidget(
+                gui=self.app,
+                diagram=expanded_grid_schematic,
+                default_bus_voltage=self.app.ui.defaultBusVoltageSpinBox.value(),
+                time_index=self.app.get_diagram_slider_index()
+            )
+
+            self.app.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
+                                                diagram=expanded_grid_schematic)
+            self.app.set_diagrams_list_view()
 
         elif method == ProceduralGridMethods.SteinerAndOptimization:
             engine.run_optimization()
+
+
