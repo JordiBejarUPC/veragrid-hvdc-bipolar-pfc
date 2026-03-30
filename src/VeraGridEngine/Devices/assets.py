@@ -816,6 +816,9 @@ class Assets:
                 obj.ensure_profiles_exist(self.time_profile)
             self._lines.append(obj)
 
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
+
         return obj
 
     def delete_line(self, obj: dev.Line):
@@ -920,7 +923,11 @@ class Assets:
 
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
+
         self._transformers2w.append(obj)
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
+
         return obj
 
     def delete_transformer2w(self, obj: dev.Transformer2W):
@@ -989,6 +996,9 @@ class Assets:
 
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
+
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
         self._hvdc_lines.append(obj)
 
     def delete_hvdc_line(self, obj: dev.HvdcLine):
@@ -1070,7 +1080,10 @@ class Assets:
 
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
+
         self._vsc_devices.append(obj)
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
 
     def delete_vsc_converter(self, obj: dev.VSC):
         """
@@ -1128,6 +1141,9 @@ class Assets:
 
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
+
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
         self._upfc_devices.append(obj)
 
     def delete_upfc_converter(self, obj: dev.UPFC):
@@ -1180,6 +1196,8 @@ class Assets:
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
         self._switch_devices.append(obj)
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
 
         return obj
 
@@ -1307,6 +1325,10 @@ class Assets:
 
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
+
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
+
         self._windings.append(obj)
 
     def delete_winding(self, obj: dev.Winding):
@@ -1384,6 +1406,9 @@ class Assets:
 
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
+
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
         self._series_reactances.append(obj)
 
     def delete_series_reactance(self, obj: dev.SeriesReactance) -> None:
@@ -1490,6 +1515,9 @@ class Assets:
             obj.ensure_profiles_exist(self.time_profile)
 
         self._buses.append(obj)
+
+        obj.set_rms_var_factory(self._rms_var_factory)
+        obj.set_emt_var_factory(self._emt_var_factory)
 
         return obj
 
@@ -1886,6 +1914,9 @@ class Assets:
 
         self._loads.append(api_obj)
 
+        api_obj.set_rms_var_factory(self._rms_var_factory)
+        api_obj.set_emt_var_factory(self._emt_var_factory)
+
         return api_obj
 
     def delete_load(self, obj: dev.Load):
@@ -1956,6 +1987,9 @@ class Assets:
                 api_obj.name += '@' + bus.name
 
         self._generators.append(api_obj)
+
+        api_obj.set_rms_var_factory(self._rms_var_factory)
+        api_obj.set_emt_var_factory(self._emt_var_factory)
 
         return api_obj
 
@@ -2057,6 +2091,8 @@ class Assets:
                 api_obj.name += '@' + bus.name
 
         self._external_grids.append(api_obj)
+        api_obj.set_rms_var_factory(self._rms_var_factory)
+        api_obj.set_emt_var_factory(self._emt_var_factory)
 
         return api_obj
 
@@ -2129,6 +2165,8 @@ class Assets:
                 api_obj.name += '@' + bus.name
 
         self._shunts.append(api_obj)
+        api_obj.set_rms_var_factory(self._rms_var_factory)
+        api_obj.set_emt_var_factory(self._emt_var_factory)
 
         return api_obj
 
@@ -2204,6 +2242,9 @@ class Assets:
                 api_obj.name += '@' + bus.name
 
         self._batteries.append(api_obj)
+
+        api_obj.set_rms_var_factory(self._rms_var_factory)
+        api_obj.set_emt_var_factory(self._emt_var_factory)
 
         return api_obj
 
@@ -2286,6 +2327,9 @@ class Assets:
 
         self._static_generators.append(api_obj)
 
+        api_obj.set_rms_var_factory(self._rms_var_factory)
+        api_obj.set_emt_var_factory(self._emt_var_factory)
+
         return api_obj
 
     def delete_static_generator(self, obj: dev.StaticGenerator):
@@ -2365,6 +2409,8 @@ class Assets:
             api_obj.name += '@' + bus.name
 
         self._current_injections.append(api_obj)
+        api_obj.set_rms_var_factory(self._rms_var_factory)
+        api_obj.set_emt_var_factory(self._emt_var_factory)
 
         return api_obj
 
@@ -2445,6 +2491,8 @@ class Assets:
                 api_obj.name += '@' + bus.name
 
         self._controllable_shunts.append(api_obj)
+        api_obj.set_rms_var_factory(self._rms_var_factory)
+        api_obj.set_emt_var_factory(self._emt_var_factory)
 
         return api_obj
 

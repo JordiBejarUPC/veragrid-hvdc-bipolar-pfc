@@ -8,20 +8,17 @@ from typing import Tuple, Union
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from VeraGridEngine.enumerations import BusMode, DeviceType, BusGraphicType, SubObjectType, BuildStatus
-from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
+from VeraGridEngine.enumerations import BusMode, DeviceType, BusGraphicType, BuildStatus
+from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.Devices.Aggregation import Area, Zone, Country
 from VeraGridEngine.Devices.Substation.substation import Substation
 from VeraGridEngine.Devices.Substation.busbar import BusBar
 from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 
-class Bus(PhysicalDevice):
+class Bus(DynamicDevice):
     __slots__ = (
         '_active',
         '_active_prof',
@@ -57,70 +54,58 @@ class Bus(PhysicalDevice):
         '_latitude',
         '_is_grounded',
         'graphic_type',
-        '_bus_bar',
-        '_rms_model',
-        '_emt_model',
-        '_rms_template',
-        '_emt_template',
+        '_bus_bar'
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key='active', units='', tpe=bool, definition='Is the bus active? used to disable the bus.',
-                      profile_name='active_prof'),
+               profile_name='active_prof'),
         GCProp(key='is_slack', units='', tpe=bool, definition='Force the bus to be of slack type.',
-                      profile_name=''),
+               profile_name=''),
         GCProp(key='is_dc', units='', tpe=bool, definition='Is this bus of DC type?.', profile_name=''),
         GCProp(key='graphic_type', units='', tpe=BusGraphicType, definition='Graphic to use in the schematic.'),
         GCProp(key='Vnom', units='kV', tpe=float, definition='Nominal line voltage of the bus.', profile_name=''),
         GCProp(key='Vm0', units='p.u.', tpe=float, definition='Voltage module guess.', profile_name=''),
         GCProp(key='Va0', units='rad.', tpe=float, definition='Voltage angle guess.', profile_name=''),
         GCProp(key='Vmin', units='p.u.', tpe=float, definition='Lower range of allowed voltage module.',
-                      profile_name='Vmin_prof'),
+               profile_name='Vmin_prof'),
         GCProp(key='Vmax', units='p.u.', tpe=float, definition='Higher range of allowed voltage module.',
-                      profile_name='Vmax_prof'),
+               profile_name='Vmax_prof'),
         GCProp(key='Vm_cost', units='e/unit', tpe=float, definition='Cost of over and under voltages',
-                      old_names=['voltage_module_cost']),
+               old_names=['voltage_module_cost']),
         GCProp(key='angle_min', units='rad.', tpe=float, definition='Lower range of allowed voltage angle.',
-                      profile_name=''),
+               profile_name=''),
         GCProp(key='angle_max', units='rad.', tpe=float, definition='Higher range of allowed voltage angle.',
-                      profile_name=''),
+               profile_name=''),
         GCProp(key='angle_cost', units='e/unit', tpe=float, definition='Cost of over and under angles',
-                      old_names=['voltage_angle_cost']),
+               old_names=['voltage_angle_cost']),
         GCProp(key='r_fault', units='p.u.', tpe=float,
-                      definition='Resistance of the fault.This is used for short circuit studies.', profile_name=''),
+               definition='Resistance of the fault.This is used for short circuit studies.', profile_name=''),
         GCProp(key='x_fault', units='p.u.', tpe=float,
-                      definition='Reactance of the fault.This is used for short circuit studies.', profile_name=''),
+               definition='Reactance of the fault.This is used for short circuit studies.', profile_name=''),
         GCProp(key='x', units='px', tpe=float, definition='x position in pixels.', profile_name='',
-                      editable=False),
+               editable=False),
         GCProp(key='y', units='px', tpe=float, definition='y position in pixels.', profile_name='',
-                      editable=False),
+               editable=False),
         GCProp(key='h', units='px', tpe=float, definition='height of the bus in pixels.', profile_name='',
-                      editable=False),
+               editable=False),
         GCProp(key='w', units='px', tpe=float, definition='Width of the bus in pixels.', profile_name='',
-                      editable=False),
+               editable=False),
         GCProp(key='country', units='', tpe=DeviceType.CountryDevice, definition='Country of the bus',
-                      profile_name=''),
+               profile_name=''),
         GCProp(key='area', units='', tpe=DeviceType.AreaDevice, definition='Area of the bus', profile_name=''),
         GCProp(key='zone', units='', tpe=DeviceType.ZoneDevice, definition='Zone of the bus', profile_name=''),
         GCProp(key='substation', units='', tpe=DeviceType.SubstationDevice,
-                      definition='Substation of the bus.'),
+               definition='Substation of the bus.'),
         GCProp(key='voltage_level', units='', tpe=DeviceType.VoltageLevelDevice,
-                      definition='Voltage level of the bus.'),
+               definition='Voltage level of the bus.'),
         GCProp(key='bus_bar', units='', tpe=DeviceType.BusBarDevice,
-                      definition='Busbar associated to the bus.'),
+               definition='Busbar associated to the bus.'),
         GCProp(key='longitude', units='deg', tpe=float, definition='longitude of the bus.', profile_name=''),
         GCProp(key='latitude', units='deg', tpe=float, definition='latitude of the bus.', profile_name=''),
         GCProp(key='is_grounded', units='', tpe=bool, definition='Is this bus neutral grounded?.'),
-        GCProp(key='rms_model', units='', tpe=SubObjectType.DaeBlockType,
-                      definition='RMS dynamic model', display=False),
-        GCProp(key='emt_model', units='', tpe=SubObjectType.DaeBlockType,
-                      definition='EMT dynamic model', display=False),
-        GCProp(key='rms_template', units='', tpe=DeviceType.RmsModelTemplateDevice,
-               definition='RMS template used', display=True),
-        GCProp(key='emt_template', units='', tpe=DeviceType.EmtModelTemplateDevice,
-               definition='Emt template used', display=True),
         GCProp(key='color', units='', tpe=str, definition='Color to paint the element in the diagram',
-                      is_color=True),
+               is_color=True),
     )
 
     def __init__(self, name="Bus",
@@ -191,12 +176,12 @@ class Bus(PhysicalDevice):
         :param color: Bus color mark
         """
 
-        PhysicalDevice.__init__(self,
-                                name=name,
-                                idtag=idtag,
-                                code=code,
-                                device_type=DeviceType.BusDevice,
-                                build_status=build_status)
+        DynamicDevice.__init__(self,
+                               name=name,
+                               idtag=idtag,
+                               code=code,
+                               device_type=DeviceType.BusDevice,
+                               build_status=build_status)
 
         self.active = bool(active)
         self._active_prof = Profile(default_value=self.active, data_type=bool)
@@ -289,79 +274,6 @@ class Bus(PhysicalDevice):
         self.is_grounded: bool = True
 
         self.color = color if color is not None else "#000000"
-
-        # The model of the bus is fixed, then it can already be defined here
-        self._rms_model: Block = Block()
-        self._rms_template: RmsModelTemplate | None = None
-
-        self._emt_model: Block = Block()
-        self._emt_template: EmtModelTemplate | None = None
-
-    @property
-    def rms_model(self) -> Block:
-        """
-        Get the RMS model
-        """
-        return self._rms_model
-
-    @rms_model.setter
-    def rms_model(self, val: Block):
-        if isinstance(val, Block):
-            self._rms_model = val
-        else:
-            raise ValueError(f"RMS model cannot accept {val}")
-
-    @property
-    def emt_model(self) -> Block:
-        """
-        Get the EMT model
-        """
-        return self._emt_model
-
-    @emt_model.setter
-    def emt_model(self, val: Block):
-        if isinstance(val, Block):
-            self._emt_model = val
-        else:
-            raise ValueError(f"EMT model cannot accept {val}")
-
-    @property
-    def rms_template(self) -> RmsModelTemplate | None:
-        """
-        Get the RMS model
-        """
-        return self._rms_template
-
-    @rms_template.setter
-    def rms_template(self, val: RmsModelTemplate):
-        if isinstance(val, RmsModelTemplate):
-            self._rms_template = val
-
-            if self.auto_update_enabled:
-                self.rms_model = val.block.copy()
-        elif val is None:
-            self._rms_template = None
-        else:
-            raise ValueError(f"RMS template cannot accept {val}")
-
-    @property
-    def emt_template(self) -> EmtModelTemplate | None:
-        """
-        Get the EMT template
-        """
-        return self._emt_template
-
-    @emt_template.setter
-    def emt_template(self, val: EmtModelTemplate):
-        if isinstance(val, EmtModelTemplate):
-            self._emt_template = val
-
-            if self.auto_update_enabled:
-                self.emt_model = val.block.copy()
-        elif val is None:
-            self._emt_template = None
-        else:
-            raise ValueError(f"EMT template cannot accept {val}")
 
     @property
     def active_prof(self) -> Profile:

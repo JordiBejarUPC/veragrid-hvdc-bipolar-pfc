@@ -689,22 +689,22 @@ def duplicate_expr(var_factory: VarFactory,
         return duplicate_const(var_factory, old_to_new_const, expr)
     if isinstance(expr, BinOp):
         return BinOp(
-            duplicate_expr(var_factory, old_to_new_const, old_to_new_var,expr.left),
+            duplicate_expr(var_factory, old_to_new_const, old_to_new_var, expr.left),
             expr.op,
-            duplicate_expr(var_factory, old_to_new_const, old_to_new_var,expr.right)
+            duplicate_expr(var_factory, old_to_new_const, old_to_new_var, expr.right)
         )
     if isinstance(expr, UnOp):
-        return UnOp(expr.op, duplicate_expr(var_factory, old_to_new_const, old_to_new_var,expr.operand))
+        return UnOp(expr.op, duplicate_expr(var_factory, old_to_new_const, old_to_new_var, expr.operand))
     if isinstance(expr, Func):
-        return Func(duplicate_expr(var_factory, old_to_new_const, old_to_new_var,expr.arg), expr.op)
+        return Func(duplicate_expr(var_factory, old_to_new_const, old_to_new_var, expr.arg), expr.op)
     if isinstance(expr, Func2):
         return Func2(expr.name,
-                     duplicate_expr(var_factory, old_to_new_const, old_to_new_var,expr.arg1),
-                     duplicate_expr(var_factory, old_to_new_const, old_to_new_var,expr.arg2))
+                     duplicate_expr(var_factory, old_to_new_const, old_to_new_var, expr.arg1),
+                     duplicate_expr(var_factory, old_to_new_const, old_to_new_var, expr.arg2))
     return expr
 
 
-def duplicate_block(block: Block, var_factory: VarFactory) -> "Block":
+def duplicate_block(block: Block, var_factory: VarFactory) -> Block:
     """
     Create a duplicate of this block with new variable UIDs.
     The new block contains variables with the same names but different UIDs,
@@ -712,6 +712,9 @@ def duplicate_block(block: Block, var_factory: VarFactory) -> "Block":
     :return: A new Block with duplicated variables and equations
     :rtype: Block
     """
+    if var_factory is None:
+        raise TypeError("duplicate_block: var_factory cannot be None")
+
     old_to_new_var: Dict[int, Var] = dict()
     old_to_new_const: Dict[int, Const] = dict()
 
@@ -732,32 +735,33 @@ def duplicate_block(block: Block, var_factory: VarFactory) -> "Block":
     new_in_vars = [duplicate_var(var_factory, old_to_new_var, v) for v in block.in_vars]
     new_out_vars = [duplicate_var(var_factory, old_to_new_var, v) for v in block.out_vars]
 
-    new_state_eqs = [duplicate_expr(var_factory, old_to_new_const, old_to_new_var,e) for e in block.state_eqs]
-    new_algebraic_eqs = [duplicate_expr(var_factory, old_to_new_const, old_to_new_var,e) for e in block.algebraic_eqs]
-    new_differential_eqs = [duplicate_expr(var_factory, old_to_new_const, old_to_new_var,e) for e in block.differential_eqs]
+    new_state_eqs = [duplicate_expr(var_factory, old_to_new_const, old_to_new_var, e) for e in block.state_eqs]
+    new_algebraic_eqs = [duplicate_expr(var_factory, old_to_new_const, old_to_new_var, e) for e in block.algebraic_eqs]
+    new_differential_eqs = [duplicate_expr(var_factory, old_to_new_const, old_to_new_var, e) for e in
+                            block.differential_eqs]
 
     new_init_eqs = {
-        duplicate_var(var_factory, old_to_new_var, k): duplicate_expr(var_factory, old_to_new_const, old_to_new_var,v)
+        duplicate_var(var_factory, old_to_new_var, k): duplicate_expr(var_factory, old_to_new_const, old_to_new_var, v)
         for k, v in block.init_eqs.items()
     }
 
     new_diff_init_eqs = {
-        duplicate_var(var_factory, old_to_new_var, k): duplicate_expr(var_factory, old_to_new_const, old_to_new_var,v)
+        duplicate_var(var_factory, old_to_new_var, k): duplicate_expr(var_factory, old_to_new_const, old_to_new_var, v)
         for k, v in block.diff_init_eqs.items()
     }
 
     new_discrete_eqs = {
-        duplicate_var(var_factory, old_to_new_var, k): duplicate_expr(var_factory, old_to_new_const, old_to_new_var,v)
+        duplicate_var(var_factory, old_to_new_var, k): duplicate_expr(var_factory, old_to_new_const, old_to_new_var, v)
         for k, v in block.discrete_eqs.items()
     }
 
     new_event_dict = {
-        duplicate_var(var_factory, old_to_new_var, k): duplicate_expr(var_factory, old_to_new_const, old_to_new_var,v)
+        duplicate_var(var_factory, old_to_new_var, k): duplicate_expr(var_factory, old_to_new_const, old_to_new_var, v)
         for k, v in block.event_dict.items()
     }
 
     new_mode_dict = {
-        duplicate_var(var_factory, old_to_new_var, k): duplicate_expr(var_factory, old_to_new_const, old_to_new_var,v)
+        duplicate_var(var_factory, old_to_new_var, k): duplicate_expr(var_factory, old_to_new_const, old_to_new_var, v)
         for k, v in block.mode_dict.items()
     }
 
@@ -813,7 +817,7 @@ def compare_blocks(block1: Block, block2: Block, var_factory1: VarFactory, var_f
     :param testing:
     :return:
     """
-
+    # TODO: do not use dictionaries and compare directly using the block information
     saver1 = BlockSaver(var_factory1)
     d1 = saver1.save_block(block1, main=False)
     const_save1 = saver1.get_const_to_save()
@@ -828,7 +832,4 @@ def compare_blocks(block1: Block, block2: Block, var_factory1: VarFactory, var_f
     diff_vars_save2 = saver2.get_diff_vars_to_save()
     blocks2 = saver2.get_blocks()
 
-    return (
-            (blocks1, const_save1, vars_save1, diff_vars_save1)
-            == (blocks2, const_save2, vars_save2, diff_vars_save2)
-    )
+    return (blocks1, const_save1, vars_save1, diff_vars_save1) == (blocks2, const_save2, vars_save2, diff_vars_save2)
