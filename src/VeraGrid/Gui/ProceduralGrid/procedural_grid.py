@@ -16,7 +16,6 @@ from VeraGridEngine.enumerations import ProceduralGridMethods
 from VeraGridEngine.Topology.Procedural.procedural_grid_engine import ProceduralGridComputationEngine
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import make_diagram_from_buses, SchematicWidget
 
-
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.simulations import SimulationsMain
 
@@ -79,7 +78,6 @@ class ProceduralGridWindow(QtWidgets.QDialog):
 
         for j, se_graphic_target in enumerate(self.connection_substations_graphics_list):
             for i, se_graphic_candidate in enumerate(self.all_substations_graphics_in_diagram_list):
-
                 distances[i, j] = haversine_distance(
                     lat1=se_graphic_candidate.lat,
                     lon1=se_graphic_candidate.lon,
@@ -117,7 +115,7 @@ class ProceduralGridWindow(QtWidgets.QDialog):
 
         # 3. Instantiate your engine with the required inputs
         engine = ProceduralGridComputationEngine(
-            grid= self.app.circuit,
+            grid=self.app.circuit,
             method=method,
             targets=target_objects,
             candidates=candidate_objects
@@ -126,22 +124,29 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         if method == ProceduralGridMethods.SteinerAlone:
             expanded_grid = engine.run_steiner_alone()
 
-            expanded_grid_schematic = make_diagram_from_buses(circuit = expanded_grid,
-                                        buses= engine.target_buses + engine.candidate_buses + engine.steiner_buses + engine.intermediate_buses,
-                                        name='Diagram from selection')
-
-            diagram_widget = SchematicWidget(
-                gui=self.app,
-                diagram=expanded_grid_schematic,
-                default_bus_voltage=self.app.ui.defaultBusVoltageSpinBox.value(),
-                time_index=self.app.get_diagram_slider_index()
-            )
-
-            self.app.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
-                                                diagram=expanded_grid_schematic)
-            self.app.set_diagrams_list_view()
-
         elif method == ProceduralGridMethods.SteinerAndOptimization:
-            engine.run_optimization()
+            expanded_grid = engine.run_optimization()
 
+        else:
+            raise NotImplementedError(f"Method {method} not implemented")
 
+        # create the diagram
+        expanded_grid_schematic = make_diagram_from_buses(circuit=expanded_grid,
+                                                          buses=engine.get_buses(),
+                                                          name=f'Diagram {method.value}')
+
+        # create the schematic widget
+        diagram_widget = SchematicWidget(
+            gui=self.app,
+            diagram=expanded_grid_schematic,
+            default_bus_voltage=self.app.ui.defaultBusVoltageSpinBox.value(),
+            time_index=self.app.get_diagram_slider_index()
+        )
+
+        # add the widget on the main GUI
+        self.app.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
+                                                diagram=expanded_grid_schematic)
+        self.app.set_diagrams_list_view()
+
+        # Exit
+        self.close()
