@@ -1,0 +1,524 @@
+[
+  {
+    "case": "event",
+    "solver_family": "COMPILED",
+    "sparse_solver": "KLU",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.0029897000058554113,
+      "median": 0.0029897000058554113,
+      "stdev": 0.0002921000123023987
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 2.167697400000179,
+      "median": 2.167697400000179,
+      "stdev": 0.19513159999041818
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 2.1811273000203073,
+      "median": 2.1811273000203073,
+      "stdev": 0.19578979996731505
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 2.1673635500192177,
+      "median": 2.1673635500192177,
+      "stdev": 0.19509924997691996
+    }
+  },
+  {
+    "case": "event",
+    "solver_family": "COMPILED",
+    "sparse_solver": "Pardiso",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.0015851000207476318,
+      "median": 0.0015851000207476318,
+      "stdev": 0.0001210999907925725
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 2.2074205999961123,
+      "median": 2.2074205999961123,
+      "stdev": 0.1899262000224553
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 2.2206596999894828,
+      "median": 2.2206596999894828,
+      "stdev": 0.19132740003988147
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 2.207108100032201,
+      "median": 2.207108100032201,
+      "stdev": 0.18990530000883155
+    }
+  },
+  {
+    "case": "event",
+    "solver_family": "COMPILED",
+    "sparse_solver": "SuperLU",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.0023850500001572073,
+      "median": 0.0023850500001572073,
+      "stdev": 0.0008162499871104956
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 2.384420049987966,
+      "median": 2.384420049987966,
+      "stdev": 0.08641754995915107
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 2.4320613999734633,
+      "median": 2.4320613999734633,
+      "stdev": 0.11919769993983209
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 2.383928299997933,
+      "median": 2.383928299997933,
+      "stdev": 0.08622180001111701
+    }
+  },
+  {
+    "case": "event",
+    "solver_family": "VECTORIZED",
+    "sparse_solver": "KLU",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.02652595000108704,
+      "median": 0.02652595000108704,
+      "stdev": 4.534999607130885e-05
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 2.5147578499745578,
+      "median": 2.5147578499745578,
+      "stdev": 0.2110217500012368
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 2.5526010999747086,
+      "median": 2.5526010999747086,
+      "stdev": 0.21072100001038052
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 2.5142976499919314,
+      "median": 2.5142976499919314,
+      "stdev": 0.21094784999149852
+    }
+  },
+  {
+    "case": "event",
+    "solver_family": "VECTORIZED",
+    "sparse_solver": "Pardiso",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.025077300000702962,
+      "median": 0.025077300000702962,
+      "stdev": 0.00016580001101829112
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 2.44861259998288,
+      "median": 2.44861259998288,
+      "stdev": 0.1810082999872975
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 2.4843327999697067,
+      "median": 2.4843327999697067,
+      "stdev": 0.1808657000074163
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 2.448180350009352,
+      "median": 2.448180350009352,
+      "stdev": 0.1809691499802284
+    }
+  },
+  {
+    "case": "event",
+    "solver_family": "VECTORIZED",
+    "sparse_solver": "SuperLU",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.027193349989829585,
+      "median": 0.027193349989829585,
+      "stdev": 0.0014487500011455268
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 2.4417699000041466,
+      "median": 2.4417699000041466,
+      "stdev": 0.21346349999657832
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 2.479405499994755,
+      "median": 2.479405499994755,
+      "stdev": 0.21560719999251887
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 2.4413364499923773,
+      "median": 2.4413364499923773,
+      "stdev": 0.21350564999738708
+    }
+  },
+  {
+    "case": "rload",
+    "solver_family": "COMPILED",
+    "sparse_solver": "KLU",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.005013200017856434,
+      "median": 0.005013200017856434,
+      "stdev": 0.00020639997092075646
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 0.5311739000026137,
+      "median": 0.5311739000026137,
+      "stdev": 0.12730749999172986
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 0.5534462000068743,
+      "median": 0.5534462000068743,
+      "stdev": 0.12893569996231236
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 0.530459699977655,
+      "median": 0.530459699977655,
+      "stdev": 0.1269730000058189
+    }
+  },
+  {
+    "case": "rload",
+    "solver_family": "COMPILED",
+    "sparse_solver": "Pardiso",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.0031280500115826726,
+      "median": 0.0031280500115826726,
+      "stdev": 0.00026414997410029173
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 0.5166501000057906,
+      "median": 0.5166501000057906,
+      "stdev": 0.10566619999008253
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 0.5376036000088789,
+      "median": 0.5376036000088789,
+      "stdev": 0.10421750001842156
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 0.5156314000196289,
+      "median": 0.5156314000196289,
+      "stdev": 0.10518310000770725
+    }
+  },
+  {
+    "case": "rload",
+    "solver_family": "COMPILED",
+    "sparse_solver": "SuperLU",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.026991949998773634,
+      "median": 0.026991949998773634,
+      "stdev": 0.025088449998293072
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 0.5070827000017744,
+      "median": 0.5070827000017744,
+      "stdev": 0.08334749998175539
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 0.8563602000067476,
+      "median": 0.8563602000067476,
+      "stdev": 0.41261269999085926
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 0.5065557500056457,
+      "median": 0.5065557500056457,
+      "stdev": 0.08309065000503324
+    }
+  },
+  {
+    "case": "rload",
+    "solver_family": "VECTORIZED",
+    "sparse_solver": "KLU",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.03216045000590384,
+      "median": 0.03216045000590384,
+      "stdev": 0.0009575500153005123
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 0.4081862500170246,
+      "median": 0.4081862500170246,
+      "stdev": 0.03791484999237582
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 0.4555017000238877,
+      "median": 0.4555017000238877,
+      "stdev": 0.04145519997109659
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 0.40778059998410754,
+      "median": 0.40778059998410754,
+      "stdev": 0.03795120000722818
+    }
+  },
+  {
+    "case": "rload",
+    "solver_family": "VECTORIZED",
+    "sparse_solver": "Pardiso",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.0293414999905508,
+      "median": 0.0293414999905508,
+      "stdev": 0.0005148999916855246
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 0.3959067500254605,
+      "median": 0.3959067500254605,
+      "stdev": 0.014804050006205216
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 0.4385024000366684,
+      "median": 0.4385024000366684,
+      "stdev": 0.01329290002468042
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 0.3955440000281669,
+      "median": 0.3955440000281669,
+      "stdev": 0.014808200008701533
+    }
+  },
+  {
+    "case": "rload",
+    "solver_family": "VECTORIZED",
+    "sparse_solver": "SuperLU",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.03817475002142601,
+      "median": 0.03817475002142601,
+      "stdev": 0.006576649990165606
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 0.4286928499932401,
+      "median": 0.4286928499932401,
+      "stdev": 0.052662150003015995
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 0.483356749988161,
+      "median": 0.483356749988161,
+      "stdev": 0.0661715500173159
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 0.4280399500275962,
+      "median": 0.4280399500275962,
+      "stdev": 0.05230674997437745
+    }
+  },
+  {
+    "case": "zipload",
+    "solver_family": "COMPILED",
+    "sparse_solver": "KLU",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.008822699979646131,
+      "median": 0.008822699979646131,
+      "stdev": 0.0016173000039998442
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 4.334342049987754,
+      "median": 4.334342049987754,
+      "stdev": 0.03509704998577945
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 4.3632458000211045,
+      "median": 4.3632458000211045,
+      "stdev": 0.033870199986267835
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 4.333285100001376,
+      "median": 4.333285100001376,
+      "stdev": 0.03446180000901222
+    }
+  },
+  {
+    "case": "zipload",
+    "solver_family": "COMPILED",
+    "sparse_solver": "Pardiso",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.0036533499660436064,
+      "median": 0.0036533499660436064,
+      "stdev": 0.0007230500050354749
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 3.826645449968055,
+      "median": 3.826645449968055,
+      "stdev": 0.5156610499834642
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 3.8455064999870956,
+      "median": 3.8455064999870956,
+      "stdev": 0.5203544999822043
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 3.826212399988435,
+      "median": 3.826212399988435,
+      "stdev": 0.5156384999863803
+    }
+  },
+  {
+    "case": "zipload",
+    "solver_family": "COMPILED",
+    "sparse_solver": "SuperLU",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.03096720000030473,
+      "median": 0.03096720000030473,
+      "stdev": 0.027336599945556372
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 3.036351000017021,
+      "median": 3.036351000017021,
+      "stdev": 0.7555849000345916
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 3.080190400010906,
+      "median": 3.080190400010906,
+      "stdev": 0.7825398000422865
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 3.035937050037319,
+      "median": 3.035937050037319,
+      "stdev": 0.755513649986824
+    }
+  },
+  {
+    "case": "zipload",
+    "solver_family": "VECTORIZED",
+    "sparse_solver": "KLU",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.043496750004123896,
+      "median": 0.043496750004123896,
+      "stdev": 0.001274749985896051
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 3.6468710999761242,
+      "median": 3.6468710999761242,
+      "stdev": 0.057008500007214025
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 3.7063831499544904,
+      "median": 3.7063831499544904,
+      "stdev": 0.0584637499996461
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 3.6463417499908246,
+      "median": 3.6463417499908246,
+      "stdev": 0.05681244999868795
+    }
+  },
+  {
+    "case": "zipload",
+    "solver_family": "VECTORIZED",
+    "sparse_solver": "Pardiso",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.04442009999183938,
+      "median": 0.04442009999183938,
+      "stdev": 0.0022552000009454787
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 3.714721099997405,
+      "median": 3.714721099997405,
+      "stdev": 0.2615607000188902
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 3.7777107000001706,
+      "median": 3.7777107000001706,
+      "stdev": 0.26713849999941885
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 3.7140943499980494,
+      "median": 3.7140943499980494,
+      "stdev": 0.261604150000494
+    }
+  },
+  {
+    "case": "zipload",
+    "solver_family": "VECTORIZED",
+    "sparse_solver": "SuperLU",
+    "solver_build_s": {
+      "count": 2.0,
+      "mean": 0.05024409998441115,
+      "median": 0.05024409998441115,
+      "stdev": 0.0024261000216938555
+    },
+    "simulate_s": {
+      "count": 2.0,
+      "mean": 4.803559649997624,
+      "median": 4.803559649997624,
+      "stdev": 0.1892129500338342
+    },
+    "solver_total_s": {
+      "count": 2.0,
+      "mean": 4.8733280500164255,
+      "median": 4.8733280500164255,
+      "stdev": 0.19469975004903972
+    },
+    "loop_s": {
+      "count": 2.0,
+      "mean": 4.7963915999862365,
+      "median": 4.7963915999862365,
+      "stdev": 0.19596069998806342
+    }
+  }
+]

@@ -674,6 +674,8 @@ class EmtProblemTemplate(ABC):
             idx = self._uid2idx_vars.get(uid, None)
             if idx is not None:
                 x[idx] = float(val)
+            else:
+                pass
 
         return x
 
@@ -688,6 +690,8 @@ class EmtProblemTemplate(ABC):
             idx = self._uid2idx_diff.get(uid, None)
             if idx is not None:
                 dx[idx] = float(val)
+            else:
+                pass
         return dx
 
     def def_event_params_fn(self, ev_param: Vec, tm: float) -> Vec:

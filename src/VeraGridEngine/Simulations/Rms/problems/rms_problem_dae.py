@@ -522,9 +522,13 @@ class RmsProblemDae(RmsProblemTemplate):
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)
                 else:
-                    if not elm.is_dc and (elm.idtag not in ac_virtual_buses):
+                    if elm.is_dc:
+                        self._algebraic_eqs.append(P[i])
+                    elif (elm.idtag in ac_virtual_buses):
+                        self._algebraic_eqs.append(P[i])
+                    else:
                         self._algebraic_eqs.append(Q[i])
-                    self._algebraic_eqs.append(P[i])
+                        self._algebraic_eqs.append(P[i])
 
         # We define the parameter dt and delta
         self._dt = Var(name='dt')

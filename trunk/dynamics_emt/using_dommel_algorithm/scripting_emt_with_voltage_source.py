@@ -11,7 +11,7 @@ from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Simulations.EMT.initialization_emt import initialize_emt
-from plot_emt_results import plot_results_by_time
+from VeraGrid.trunk.dynamics_emt.support.plot_emt_results import plot_results_by_time
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
