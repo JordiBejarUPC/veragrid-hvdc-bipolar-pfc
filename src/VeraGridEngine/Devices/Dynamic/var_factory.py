@@ -72,15 +72,17 @@ class VarFactory(EditableDevice):
     def add_var(self,
                 name: str,
                 ref: VarPowerFlowRefferenceType | None = None,
+                network_conn: bool = False,
                 uid: int | None = None) -> Var:
         """
         Adds a ver to the class
         :param name:
         :param ref:
+        :param network_conn:
         :param uid:
         :return:
         """
-        v = Var(name=name, reference=ref, uid=uid, diff_var=None, base_var=None)
+        v = Var(name=name, reference=ref, network_conn=network_conn, uid=uid, diff_var=None, base_var=None)
         self._var_dict[v.uid] = v
         return v
 

@@ -2667,6 +2667,7 @@ class EraSvdSolverType(Enum):
 class RmsInitializationMethod(Enum):
     Explicit = "Explicit"
     PseudoTransient = "PseudoTransient"
+    CustomValues = "CustomValues"
 
     def __str__(self) -> str:
         return str(self.value)

@@ -333,19 +333,22 @@ class Var(Expr):
     Any variable
     """
 
-    __slots__ = ("name", "_ref", "uid", "diff_var", "base_var", "_origin_var")
+    __slots__ = ("name", "_ref", "_network_conn", "uid", "diff_var", "base_var", "_origin_var")
 
-    def __init__(self, name: str, reference: VarPowerFlowRefferenceType | None = None, uid: int | None = None, diff_var: Var | None = None, base_var: Var | None = None):
+    def __init__(self, name: str, reference: VarPowerFlowRefferenceType | None = None, network_conn: bool = False, uid: int | None = None, diff_var: Var | None = None, base_var: Var | None = None):
 
         """
 
         :param name:
+        :param reference:
+        :param network_conn:
         :param uid:
         :param diff_var:
         """
         super().__init__(uid=uid)
         self.name: str = name
         self._ref: VarPowerFlowRefferenceType | None = reference
+        self._network_conn: bool = network_conn
         self.diff_var = diff_var
         self.base_var: Var = base_var  # assign reference to base var
         self._origin_var: Var | None = None
@@ -424,6 +427,10 @@ class Var(Expr):
         obj = Var(name=data["name"], base_var=base_var)
         obj.uid = data["uid"]
         return obj
+
+    @property
+    def network_conn(self) -> bool:
+       return self._network_conn
 
     @property
     def diff_order(self) -> int:
