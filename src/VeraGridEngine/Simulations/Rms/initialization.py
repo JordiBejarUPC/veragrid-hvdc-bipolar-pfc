@@ -564,5 +564,4 @@ def init_pseudo_transient(mdl: Block,
     
     # Update init_guess with solution
     for var, value in init_guess_result.items():
-        if hasattr(var, 'uid'):
-            init_guess[var.uid] = value
+        init_guess[var.uid] = value

@@ -335,7 +335,12 @@ class Var(Expr):
 
     __slots__ = ("name", "_ref", "_network_conn", "uid", "diff_var", "base_var", "_origin_var")
 
-    def __init__(self, name: str, reference: VarPowerFlowRefferenceType | None = None, network_conn: bool = False, uid: int | None = None, diff_var: Var | None = None, base_var: Var | None = None):
+    def __init__(self, name: str,
+                 reference: VarPowerFlowRefferenceType | None = None,
+                 network_conn: bool = False,
+                 uid: int | None = None,
+                 diff_var: Var | None = None,
+                 base_var: Var | None = None):
 
         """
 

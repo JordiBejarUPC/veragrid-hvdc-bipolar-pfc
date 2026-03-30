@@ -34,9 +34,9 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory,   name: str = "ZIP_Load_EMT_3p
     c05 = vf.add_const(0.5)
 
     # Inputs: Instantaneous phase voltages from the grid
-    v_A = vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
+    v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowRefferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowRefferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowRefferenceType.v_C)
     templ.block.in_vars = [v_A, v_B, v_C]
 
     # Used for initialization:

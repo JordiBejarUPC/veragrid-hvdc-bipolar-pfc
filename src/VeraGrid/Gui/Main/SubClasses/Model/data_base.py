@@ -1011,7 +1011,7 @@ class DataBaseTableMain(DiagramsMain):
                             main_editor=True,
                         )
                         if self.rms_model_Editor_window.show():
-                            elm.block = self.rms_model_Editor_window.block
+                            elm.block = self.rms_model_Editor_window.main_block
 
                     elif elm_type == DeviceType.EmtModelTemplateDevice.value:
                         self.rms_model_Editor_window = DynamicBlockEditorGUI(
@@ -1024,7 +1024,7 @@ class DataBaseTableMain(DiagramsMain):
                         )
 
                         if self.rms_model_Editor_window.show():
-                            elm.block = self.rms_model_Editor_window.block
+                            elm.block = self.rms_model_Editor_window.main_block
 
                     else:
 

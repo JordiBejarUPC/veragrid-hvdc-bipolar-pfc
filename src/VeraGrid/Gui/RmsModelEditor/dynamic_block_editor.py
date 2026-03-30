@@ -34,6 +34,7 @@ from VeraGrid.Gui.RmsModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
                                                     get_symbolic_parser_function_names,
                                                     Expr, Var, Const, Comparison)
+from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block
@@ -111,20 +112,6 @@ def build_orthogonal_connection_path(start: QPointF, end: QPointF) -> QPainterPa
     path.lineTo(end)
     return path
 
-
-def clone_template_block(template_block: Block) -> Block:
-    """
-    Build a structural copy of a template block for editor insertion.
-
-    :param template_block:
-    :return:
-    """
-    uid_map: Dict[int, int] = dict()
-    block_data: Dict[str, Any] = template_block.to_dict()
-    cloned_data: Dict[str, Any] = remap_serialized_uids(block_data, uid_map)
-    cloned_block: Block = Block.parse(cloned_data)
-    cloned_block.diagram = clone_template_diagram(template_block.diagram, uid_map)
-    return cloned_block
 
 
 def remap_serialized_uids(data: Any, uid_map: Dict[int, int]) -> Any:
@@ -3492,7 +3479,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         item_name: str = template.name
-        block_model: Block = clone_template_block(template.block)
+        block_model: Block = duplicate_block(template.block, var_factory=self.var_factory)
         block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
 
         if item_name:
@@ -3503,7 +3490,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = lambda x, y: self.on_block_position_changed(block_model.uid, x, y)
         block_item.build_item()
-        self.block.add(block_model)
+        self.main_block.add(block_model)
         self.scene.addItem(block_item)
         block_item.setPos(QtCore.QPointF(x_pos, y_pos))
         self.diagram.add_node(

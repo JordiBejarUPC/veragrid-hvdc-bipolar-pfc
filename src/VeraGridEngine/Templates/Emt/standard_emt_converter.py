@@ -80,26 +80,26 @@ def StandardConverterEmtBuild(
     # INPUT VARIABLES (from buses)
     # =================================================================
     # AC side voltages from the AC bus
-    v_A = vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
+    v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowRefferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowRefferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowRefferenceType.v_C)
 
     # DC side voltage from the DC bus
-    v_dc = vf.add_var(name=f"v_dc_{name}", ref=VarPowerFlowRefferenceType.Vdc)
+    v_dc = vf.add_var(name=f"v_dc_{name}", reference=VarPowerFlowRefferenceType.Vdc)
 
     inputs = [v_A, v_B, v_C, v_dc]
 
     # =================================================================
     # OUTPUT VARIABLES (to buses)
     # =================================================================
-    i_A = vf.add_var(name=f"i_A_{name}", ref=VarPowerFlowRefferenceType.i_A)
-    i_B = vf.add_var(name=f"i_B_{name}", ref=VarPowerFlowRefferenceType.i_B)
-    i_C = vf.add_var(name=f"i_C_{name}", ref=VarPowerFlowRefferenceType.i_C)
+    i_A = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowRefferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B_{name}", reference=VarPowerFlowRefferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowRefferenceType.i_C)
     theta = vf.add_var(name=f"theta_{name}")
 
     d_theta = vf.add_diff_var(name=f"d_theta_{name}", base_var=theta)
 
-    i_dc = vf.add_var(name=f"i_dc_{name}", ref=VarPowerFlowRefferenceType.Idc)
+    i_dc = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowRefferenceType.Idc)
 
     # =================================================================
     # INTERNAL VARIABLES

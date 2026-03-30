@@ -386,6 +386,8 @@ class MultiCircuit(Assets):
             for branch in branch_list:
                 f = bus_dictionary[branch.bus_from.idtag]
                 t = bus_dictionary[branch.bus_to.idtag]
+
+                # TODO: Refactor to not use hasattr
                 if branch.device_type in [DeviceType.LineDevice,
                                           DeviceType.DCLineDevice,
                                           DeviceType.HVDCLineDevice]:

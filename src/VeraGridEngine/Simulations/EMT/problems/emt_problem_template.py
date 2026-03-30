@@ -169,11 +169,10 @@ class EmtProblemTemplate(ABC):
             self._variable_parameters.extend(list(self.sys_block.event_dict.keys()))
             self._event_parameters_eqs.extend(list(self.sys_block.event_dict.values()))
 
-        if hasattr(self.sys_block, 'mode_dict') and self.sys_block.mode_dict:
-            self._variable_parameters.extend(list(self.sys_block.mode_dict.keys()))
-            self._event_parameters_eqs.extend(list(self.sys_block.mode_dict.values()))
-            for v in self.sys_block.mode_dict.keys():
-                self._runtime_mode_uids.add(v.uid)
+        self._variable_parameters.extend(list(self.sys_block.mode_dict.keys()))
+        self._event_parameters_eqs.extend(list(self.sys_block.mode_dict.values()))
+        for v in self.sys_block.mode_dict.keys():
+            self._runtime_mode_uids.add(v.uid)
 
         self._runtime_all_parameters_source: List[Var] = list(self._variable_parameters)
         self._runtime_all_eqs_source: List[Any] = list(self._event_parameters_eqs)

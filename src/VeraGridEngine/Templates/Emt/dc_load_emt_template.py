@@ -60,10 +60,10 @@ def get_dc_load_emt_template(
     # Convert power from MW to p.u.
     P_dc_pu = -P_dc / sbase  # p.u. # in the correct sign convention
 
-    v_dc = vf.add_var(name=f"v_dc_{name}", ref=VarPowerFlowRefferenceType.Vdc)
+    v_dc = vf.add_var(name=f"v_dc_{name}", reference=VarPowerFlowRefferenceType.Vdc)
 
-    i_dc = vf.add_var(name=f"i_dc_{name}", ref=VarPowerFlowRefferenceType.Idc)
-    p_dc = vf.add_var(name=f"p_dc_{name}", ref=VarPowerFlowRefferenceType.P)
+    i_dc = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowRefferenceType.Idc)
+    p_dc = vf.add_var(name=f"p_dc_{name}", reference=VarPowerFlowRefferenceType.P)
 
     templ.block.in_vars = [v_dc]
     templ.block.algebraic_vars = [i_dc, p_dc]

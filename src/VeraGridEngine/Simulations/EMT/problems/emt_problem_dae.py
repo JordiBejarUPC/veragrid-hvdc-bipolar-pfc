@@ -26,13 +26,15 @@ from VeraGridEngine.Devices.Aggregation.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, DeviceType, EmtLineTypes
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, DeviceType, \
+    EmtLineTypes
 from VeraGridEngine.basic_structures import Logger, CxVec
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt, run_emt_native_initialization
+from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt, \
+    run_emt_native_initialization
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_algebraic_vars
 # from trunk.veragrid_fmu_import import finalize_emt_fmu_cs_devices, finalize_emt_fmu_me_devices, queue_emt_fmu_cs_device, queue_emt_fmu_me_device #TODO: importing from trunk!
 
@@ -89,16 +91,17 @@ def _unique_keep_order(seq: List[Var]) -> List[Var]:
 
     return out
 
-def _deduplicate_block_entities(block: Block)->None:
+
+def _deduplicate_block_entities(block: Block) -> None:
     """
     Removes duplicated symbolic objects within the block by UID
     while preserving their first appearance order.
     """
 
-
     block.state_vars = _unique_keep_order(block.state_vars)
     block.algebraic_vars = _unique_keep_order(block.algebraic_vars)
     block.diff_vars = _unique_keep_order(block.diff_vars)
+
 
 def _get_mode_event_sort_key(event: Tuple[float, float, bool]) -> float:
     """
@@ -108,6 +111,7 @@ def _get_mode_event_sort_key(event: Tuple[float, float, bool]) -> float:
     :return: Event time.
     """
     return event[0]
+
 
 def _is_time_aligned(t_curr: float, event_time: float) -> bool:
     """
@@ -119,6 +123,7 @@ def _is_time_aligned(t_curr: float, event_time: float) -> bool:
     """
     time_tol = 10.0 * np.finfo(np.float64).eps * max(1.0, abs(event_time))
     return bool(abs(t_curr - event_time) <= time_tol)
+
 
 def _get_next_forced_mode_event_time(
         scheduled_mode_events: Dict[int, List[Tuple[float, float, bool]]],
@@ -157,6 +162,7 @@ def _get_next_forced_mode_event_time(
 
     return next_time
 
+
 def _get_block_name(mdl: Block) -> str:
     """
     Return the block name used for logging.
@@ -184,6 +190,7 @@ def _get_grid_runtime_events(grid: MultiCircuit) -> List[Any]:
     else:
         return list()
 
+
 def _get_bus_v_list(
         grid: MultiCircuit,
         bus_block: Block,
@@ -208,6 +215,7 @@ def _get_bus_v_list(
             out.append(vk)
 
     return out
+
 
 def _get_external_mapping(mdl: Block) -> Optional[Dict[Any, Var]]:
     external_mapping: Optional[Dict[Any, Var]] = mdl.external_mapping
@@ -236,7 +244,7 @@ class EmtProblemDae(EmtProblemTemplate):
                  pf_results_3Ph: PowerFlowResults3Ph | None = None,
                  pf_results: PowerFlowResults | None = None,
                  progress_signal: DummySignal | None = None,
-                 progress_text: DummySignal | None = None, )-> None:
+                 progress_text: DummySignal | None = None, ) -> None:
         """
         Initializes the EMT Problem by parsing the grid and passing the
         resulting mathematical block to the BaseProblem constructor.
@@ -405,7 +413,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 self._models_with_diff_init_eqs_seen.add(mid)
                 self._models_with_diff_init_eqs.append(mdl)
 
-    def _run_explicit_initialization(self)-> None:
+    def _run_explicit_initialization(self) -> None:
         """
         Run explicit initialization for every block that defines initialization equations.
 
@@ -475,7 +483,6 @@ class EmtProblemDae(EmtProblemTemplate):
                             f"Error detail: {error_detail}"
                         )
 
-
         self._build_runtime_param_vectors()
 
     def _validate_connections(self) -> None:
@@ -530,26 +537,30 @@ class EmtProblemDae(EmtProblemTemplate):
         }
 
         for br in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-            if not hasattr(br, 'emt_model') or br.emt_model is None:
-                continue
-            if not hasattr(br, 'bus_from') or not hasattr(br, 'bus_to'):
-                continue
+            if not br.emt_template or br.emt_model is None:
+                continue  # TODO: reformulate
+            if not br.bus_from or not br.bus_to:
+                continue  # TODO: reformulate
 
             is_bergeron = (br.emt_model.name == EmtLineTypes.Bergeron)
 
             if is_bergeron:
-                if hasattr(br, 'ys') and br.ys is not None:
+                if br.ys and br.ys is not None:
                     if br.ys.phN:
-                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_N)].add(f"branch_from:{br.name}")
+                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_N)].add(
+                            f"branch_from:{br.name}")
                         bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_N)].add(f"branch_to:{br.name}")
                     if br.ys.phA:
-                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_A)].add(f"branch_from:{br.name}")
+                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_A)].add(
+                            f"branch_from:{br.name}")
                         bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_A)].add(f"branch_to:{br.name}")
                     if br.ys.phB:
-                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_B)].add(f"branch_from:{br.name}")
+                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_B)].add(
+                            f"branch_from:{br.name}")
                         bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_B)].add(f"branch_to:{br.name}")
                     if br.ys.phC:
-                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_C)].add(f"branch_from:{br.name}")
+                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_C)].add(
+                            f"branch_from:{br.name}")
                         bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_C)].add(f"branch_to:{br.name}")
                 continue
 
@@ -569,10 +580,10 @@ class EmtProblemDae(EmtProblemTemplate):
                         bus_phase_connections[(br.bus_to, in_var.ref)].add(f"branch_to:{br.name}")
 
         for inj in self.grid.get_injection_devices_iter():
-            if not hasattr(inj, 'emt_model') or inj.emt_model is None:
-                continue
-            if not hasattr(inj, 'bus'):
-                continue
+            if not inj.emt_model or inj.emt_model is None:
+                continue  # TODO: reformulate
+            if not inj.bus:
+                continue  # TODO: reformulate
 
             inj_bus = inj.bus
             for in_var in inj.emt_model.in_vars:
@@ -582,7 +593,7 @@ class EmtProblemDae(EmtProblemTemplate):
         floating_phases: List[str] = []
         for bus in self.grid.buses:
             if bus.is_dc:
-                continue
+                continue  # TODO: reformulate
             bus_out_refs = {v.ref for v in bus.emt_model.out_vars}
             for phase in ac_phases:
                 connections = bus_phase_connections.get((bus, phase), set())
@@ -713,6 +724,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 pass
         else:
             pass
+
     # ---------------------------------------------------------------------
     # BUILD STRUCTURE
     # ---------------------------------------------------------------------
@@ -1233,7 +1245,7 @@ class EmtProblemDae(EmtProblemTemplate):
     # ---------------------------------------------------------------------
     # MAPPINGS
     # ---------------------------------------------------------------------
-    def _add_model_to_system_mappings(self, elm: ALL_DEV_TYPES, mdl: Block)->None:
+    def _add_model_to_system_mappings(self, elm: ALL_DEV_TYPES, mdl: Block) -> None:
         """
         Populates tracking dictionaries to maintain the relationship between
         electrical devices and their corresponding symbolic variables.
@@ -1279,7 +1291,8 @@ class EmtProblemDae(EmtProblemTemplate):
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.Vdc,
                                     float(np.abs(self.power_flow_results.voltage[bus_index])))
             else:
-                raise ValueError(f"EMT simulation with DC branches requires the non unbalanced PowerFlow to be calculated.")
+                raise ValueError(
+                    f"EMT simulation with DC branches requires the non unbalanced PowerFlow to be calculated.")
 
         else:
 
@@ -1521,7 +1534,6 @@ class EmtProblemDae(EmtProblemTemplate):
                 "C": self.power_flow_results_3ph.St_C,
             }
 
-
         sf_sum: complex = 0.0 + 0.0j
         st_sum: complex = 0.0 + 0.0j
 
@@ -1624,10 +1636,10 @@ class EmtProblemDae(EmtProblemTemplate):
         if is_vsc and vsc_index >= 0:
             pf_dc = complex(self.power_flow_results_3ph.Pfp_vsc[vsc_index] / sbase, 0.0)
             pt_ac = (
-                self.power_flow_results_3ph.St_vsc_A[vsc_index]
-                + self.power_flow_results_3ph.St_vsc_B[vsc_index]
-                + self.power_flow_results_3ph.St_vsc_C[vsc_index]
-            ) / sbase
+                            self.power_flow_results_3ph.St_vsc_A[vsc_index]
+                            + self.power_flow_results_3ph.St_vsc_B[vsc_index]
+                            + self.power_flow_results_3ph.St_vsc_C[vsc_index]
+                    ) / sbase
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pf, value=float(np.real(pf_dc)))
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qf, value=float(np.imag(pf_dc)))
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pt, value=float(np.real(pt_ac)))
@@ -1640,10 +1652,10 @@ class EmtProblemDae(EmtProblemTemplate):
 
         if is_vsc and vsc_index >= 0:
             pt_ac = (
-                self.power_flow_results_3ph.St_vsc_A[vsc_index]
-                + self.power_flow_results_3ph.St_vsc_B[vsc_index]
-                + self.power_flow_results_3ph.St_vsc_C[vsc_index]
-            ) / sbase
+                            self.power_flow_results_3ph.St_vsc_A[vsc_index]
+                            + self.power_flow_results_3ph.St_vsc_B[vsc_index]
+                            + self.power_flow_results_3ph.St_vsc_C[vsc_index]
+                    ) / sbase
             P_vsc = -float(np.real(pt_ac))
             self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.P, value=P_vsc)
 
@@ -1735,13 +1747,7 @@ class EmtProblemDae(EmtProblemTemplate):
         v_t_bus: CxVec = pf_results.voltage[t_bus_idx]
 
         if is_vsc and vsc_index >= 0:
-            sf_total = complex(
-                (
-                    pf_results.Pfp_vsc[vsc_index]
-                    + (pf_results.Pfn_vsc[vsc_index] if hasattr(pf_results, "Pfn_vsc") else 0.0)
-                ) / sbase,
-                0.0,
-            )
+            sf_total = complex((pf_results.Pfp_vsc[vsc_index] + pf_results.Pfn_vsc[vsc_index]) / sbase, 0.0)
             st_total = pf_results.St_vsc[vsc_index] / sbase
 
             voltage_dict: Dict[str, complex] = {
@@ -2402,7 +2408,6 @@ class EmtProblemDae(EmtProblemTemplate):
             i_t0_red=i_t0_red,
         )
 
-
     # ---------------------------------------------------------------------
     # UTILS
     # ---------------------------------------------------------------------
@@ -2514,7 +2519,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
         return mode_parameters
 
-    def add_device_var(self, dev: ALL_DEV_TYPES, var: Var)->None:
+    def add_device_var(self, dev: ALL_DEV_TYPES, var: Var) -> None:
         """
         Registers a variable belonging to a specific device.
         """
@@ -2820,8 +2825,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         return df
 
-
-    def _assign_api_obj_mapping_branch(self, br): # TODO: still not working: branches need their phase number before creating the template not after!
+    def _assign_api_obj_mapping_branch(self,
+                                       br):  # TODO: still not working: branches need their phase number before creating the template not after!
         # -----------------------------
         # 1. Assign phase flags USING ENUMS
         # -----------------------------
@@ -2864,7 +2869,7 @@ class EmtProblemDae(EmtProblemTemplate):
 
         Bsh_full = np.imag(Y_pu)
         C_full = Bsh_full / (w0 + 1e-20)
-        C_full = C_full/2.0
+        C_full = C_full / 2.0
 
         # -----------------------------
         # 3. Validations
@@ -3001,5 +3006,3 @@ class EmtProblemDae(EmtProblemTemplate):
         self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.R1, gen.R1)
         self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.X1, gen.X1)
         self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.X0, gen.X0)
-
-
