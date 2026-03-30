@@ -469,15 +469,15 @@ if not ENABLE_PLOTS:
 # ==============================================================================
 # SAVE RESULTS
 # ==============================================================================
-# res = np.concatenate((y, dy), axis=1)
-#
-# cols_y = [f"y{i}" for i in range(y.shape[1])]
-# cols_dy = [f"dy{i}" for i in range(dy.shape[1])]
-# cols = cols_y + cols_dy
-# results_df = pd.DataFrame(res, index=t, columns=cols)
-# results_df.index.name = "time_s"
-# name = "simulation_with_event_emt.csv"
-# results_df.to_csv(name, index=False)
+res = np.concatenate((y, dy), axis=1)
+
+cols_y = [f"y{i}" for i in range(y.shape[1])]
+cols_dy = [f"dy{i}" for i in range(dy.shape[1])]
+cols = cols_y + cols_dy
+results_df = pd.DataFrame(res, index=t, columns=cols)
+results_df.index.name = "time_s"
+name = "simulation_with_event_emt.csv"
+results_df.to_csv(name, index=False)
 
 # ==============================================================================
 # PLOTTING

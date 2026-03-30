@@ -309,6 +309,60 @@ def benchmark_case(label: str, builder, measured_runs: int = 3) -> Dict[str, obj
     })
     return plot_run
 
+def _build_export_dataframe(cases: List[Dict[str, object]]) -> pd.DataFrame:
+    export_frames: List[pd.DataFrame] = list()
+
+    for case in cases:
+        label = str(case["label"])
+        t = np.asarray(case["t"], dtype=float)
+        x_hist = np.asarray(case["y_hist"], dtype=float)[:, int(case["x_idx"])]
+        step_t = np.asarray(case["step_t"], dtype=float)
+        step_iters = np.asarray(case["step_iters"], dtype=float)
+        worst_iter_axis = np.asarray(case["worst_iter_axis"], dtype=float)
+        worst_residual = np.asarray(case["worst_residual"], dtype=float)
+        worst_metric_label = str(case["worst_metric_label"])
+        worst_time = float(case["worst_time"])
+
+        mode_t = case["mode_t"]
+        mode_v = case["mode_v"]
+        if mode_t is None or mode_v is None:
+            branch_t = t
+            branch_signal = (x_hist > 0.5).astype(float)
+        else:
+            branch_t = np.asarray(mode_t, dtype=float)
+            branch_signal = np.asarray(mode_v, dtype=float)
+
+        export_frames.append(pd.DataFrame({
+            "case_label": label,
+            "plot_title": "State trajectory near the discontinuity",
+            "time_s": t,
+            "state_x": x_hist,
+        }))
+
+        export_frames.append(pd.DataFrame({
+            "case_label": label,
+            "plot_title": "Active branch / procedural mode",
+            "time_s": branch_t,
+            "active_branch": branch_signal,
+        }))
+
+        export_frames.append(pd.DataFrame({
+            "case_label": label,
+            "plot_title": "Newton iterations per local step",
+            "time_s": step_t,
+            "newton_iterations": step_iters,
+        }))
+
+        export_frames.append(pd.DataFrame({
+            "case_label": label,
+            "plot_title": worst_metric_label,
+            "worst_step_time_s": worst_time,
+            "newton_iteration": worst_iter_axis,
+            "worst_step_metric_value": worst_residual,
+        }))
+
+    return pd.concat(export_frames, ignore_index=True, sort=False)
+
 def test_conditional_placement_benchmark() -> None:
 
     # retrieve reference results df
@@ -323,25 +377,34 @@ def test_conditional_placement_benchmark() -> None:
         benchmark_case("procedural mode in state_eq", create_procedural_mode_switch_system),
     ]
 
-    results_df = pd.DataFrame(cases, )
-
-    results_df = results_df[reference_df.columns]
+    results_df = _build_export_dataframe(cases)
 
     name = "demo_conditional_placement_benchmark_FROM_TEST.csv"
     results_df.to_csv(name, index=False)
 
+    id_cols = ["case_label", "plot_title"]
     numeric_cols = [
-        "x_idx",
-        "worst_time",
-        "mean_newton_iterations",
-        "max_newton_iterations",
+        "time_s",
+        "state_x",
+        "active_branch",
+        "newton_iterations",
+        "worst_step_time_s",
+        "newton_iteration",
+        "worst_step_metric_value",
     ]
+
+    sort_cols = id_cols + numeric_cols
+    results_df = results_df.sort_values(sort_cols, na_position="last").reset_index(drop=True)
+    reference_df = reference_df.sort_values(sort_cols, na_position="last").reset_index(drop=True)
+
+    assert_frame_equal(results_df[id_cols], reference_df[id_cols], check_dtype=False)
 
     assert np.allclose(
         results_df[numeric_cols].to_numpy(dtype=float),
         reference_df[numeric_cols].to_numpy(dtype=float),
-        atol=1e-6,
-        equal_nan=True
+        atol=1e-12,
+        rtol=0.0,
+        equal_nan=True,
     ), f"Numeric mismatch in columns: {numeric_cols}"
 
 if __name__ == "__main__":
