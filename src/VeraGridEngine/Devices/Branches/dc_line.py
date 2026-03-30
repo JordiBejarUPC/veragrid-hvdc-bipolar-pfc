@@ -263,29 +263,29 @@ class DcLine(BranchParent):
 
         return b
 
-    def get_save_data(self):
-        """
-        Return the data that matches the edit_headers
-        :return:
-        """
-        data = list()
-        for name, properties in self.registered_properties.items():
-            obj = getattr(self, name)
-
-            if obj is None:
-                data.append("")
-            else:
-
-                if hasattr(obj, 'idtag'):
-                    obj = obj.idtag
-                else:
-                    if properties.tpe not in [str, float, int, bool]:
-                        obj = str(obj)
-                    else:
-                        obj = str(obj)
-
-                data.append(obj)
-        return data
+    # def get_save_data(self):
+    #     """
+    #     Return the data that matches the edit_headers
+    #     :return:
+    #     """
+    #     data = list()
+    #     for name, properties in self.registered_properties.items():
+    #         obj = getattr(self, name)
+    #
+    #         if obj is None:
+    #             data.append("")
+    #         else:
+    #
+    #             if hasattr(obj, 'idtag'):
+    #                 obj = obj.idtag
+    #             else:
+    #                 if properties.tpe not in [str, float, int, bool]:
+    #                     obj = str(obj)
+    #                 else:
+    #                     obj = str(obj)
+    #
+    #             data.append(obj)
+    #     return data
 
     def plot_profiles(self, time_series=None, my_index=0, show_fig=True):
         """

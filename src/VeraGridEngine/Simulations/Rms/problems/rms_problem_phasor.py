@@ -338,33 +338,15 @@ class RmsProblemPhasor(RmsProblemTemplate):
             else:
                 mdl = elm.rms_model
 
-                # Get HVDC power flow results from generalized formulation
-                if hasattr(self.power_flow_results, 'Sf_hvdc') and self.power_flow_results.Sf_hvdc is not None:
-                    # Use values from generalized formulation (complex power)
-                    Sf_hvdc = self.power_flow_results.Sf_hvdc[i] / self.grid.Sbase
-                    St_hvdc = self.power_flow_results.St_hvdc[i] / self.grid.Sbase
-                elif hasattr(self.power_flow_results, 'Pf_hvdc') and self.power_flow_results.Pf_hvdc is not None:
-                    # Use real power values only (standard power flow)
-                    Sf_hvdc = self.power_flow_results.Pf_hvdc[i] / self.grid.Sbase
-                    St_hvdc = self.power_flow_results.Pt_hvdc[i] / self.grid.Sbase
-                else:
-                    # Use Pset as fallback
-                    Sf_hvdc = elm.Pset / self.grid.Sbase
-                    St_hvdc = -elm.Pset / self.grid.Sbase
+                Sf_hvdc = self.power_flow_results.Pf_hvdc[i] / self.grid.Sbase
+                St_hvdc = self.power_flow_results.Pt_hvdc[i] / self.grid.Sbase
 
                 self.add_variables_to_compilation_dicts(elm, mdl)
 
                 # Set initialization values for HVDC
-                if hasattr(Sf_hvdc, 'real'):
-                    # Complex number from generalized formulation
-                    self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pf, Sf_hvdc.real)
-                    self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qf, Sf_hvdc.imag)
-                    self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pt, St_hvdc.real)
-                    self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qt, St_hvdc.imag)
-                else:
-                    # Real number only (no Q values)
-                    self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pf, Sf_hvdc)
-                    self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pt, St_hvdc)
+                # Real number only (no Q values)
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pf, Pf_hvdc)
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pt, Pt_hvdc)
 
                 f = bus_dict[elm.bus_from]
                 t = bus_dict[elm.bus_to]

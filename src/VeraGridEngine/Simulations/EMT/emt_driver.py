@@ -22,7 +22,7 @@ from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
-from trunk.veragrid_fmu_import import build_emt_boundary_updater
+# from trunk.veragrid_fmu_import import build_emt_boundary_updater # TODO: not from trunk!
 from VeraGridEngine.basic_structures import Vec, StrVec
 
 from VeraGridEngine.enumerations import EngineType, SimulationTypes

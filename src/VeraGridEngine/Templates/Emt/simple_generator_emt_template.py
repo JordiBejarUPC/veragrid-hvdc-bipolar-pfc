@@ -318,17 +318,17 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
     # --------------------------------------------------------------------------------------
     # Inputs: instantaneous abc terminal voltages in pu (at bus)
     # --------------------------------------------------------------------------------------
-    v_A = vf.add_var(name=f"v_A_{name}", ref = VarPowerFlowRefferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", ref = VarPowerFlowRefferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", ref = VarPowerFlowRefferenceType.v_C)
+    v_A = vf.add_var(name=f"v_A_{name}", reference= VarPowerFlowRefferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", reference= VarPowerFlowRefferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", reference= VarPowerFlowRefferenceType.v_C)
     Tm = vf.add_var(name=f"Tm_{name}")
     v_f = vf.add_var(name=f"v_f_{name}")
 
     # to connect complete block with gen block
-    Ipk = vf.add_var(name="Ipk", ref = VarPowerFlowRefferenceType.Ipk)
-    Vpk = vf.add_var(name="Vpk", ref = VarPowerFlowRefferenceType.Vpk)
-    phi = vf.add_var(name="phi", ref = VarPowerFlowRefferenceType.phi)
-    phi_v = vf.add_var(name="phi_v", ref = VarPowerFlowRefferenceType.phi_v)
+    Ipk = vf.add_var(name="Ipk", reference= VarPowerFlowRefferenceType.Ipk)
+    Vpk = vf.add_var(name="Vpk", reference= VarPowerFlowRefferenceType.Vpk)
+    phi = vf.add_var(name="phi", reference= VarPowerFlowRefferenceType.phi)
+    phi_v = vf.add_var(name="phi_v", reference= VarPowerFlowRefferenceType.phi_v)
     inputs = [v_A, v_B, v_C]
     # --------------------------------------------------------------------------------------
     # States (pu, except theta [rad])
@@ -355,9 +355,9 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
     # --------------------------------------------------------------------------------------
     # Algebraic eqs
     # --------------------------------------------------------------------------------------
-    i_A = vf.add_var(name=f"i_A_{name}", ref = VarPowerFlowRefferenceType.i_A)
-    i_B = vf.add_var(name=f"i_B_{name}", ref = VarPowerFlowRefferenceType.i_B)
-    i_C = vf.add_var(name=f"i_C_{name}", ref = VarPowerFlowRefferenceType.i_C)
+    i_A = vf.add_var(name=f"i_A_{name}", reference= VarPowerFlowRefferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B_{name}", reference= VarPowerFlowRefferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C_{name}", reference= VarPowerFlowRefferenceType.i_C)
 
     # dq0 voltages
     v_d = vf.add_var("v_d_" + name)

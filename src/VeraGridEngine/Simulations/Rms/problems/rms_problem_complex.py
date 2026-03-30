@@ -14,7 +14,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise)
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector, SymbolicDerivative
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializationMethod
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializationMethod, DeviceType
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
@@ -207,10 +207,8 @@ class RmsProblemComplex(RmsProblemTemplate):
         # Initialize branches with complex multilinear line models
         line_idx = 0
         for elm in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-            # Check if this is a line (has R, X, B attributes)
-            is_line = hasattr(elm, 'R') and hasattr(elm, 'X') and hasattr(elm, 'B')
             
-            if is_line:
+            if elm.device_type == DeviceType.LineDevice:
                 # Create complex multilinear line model
                 from VeraGridEngine.Devices.Dynamic.dynamic_model_host import DynamicModelHost
                 if elm.rms_model is None:

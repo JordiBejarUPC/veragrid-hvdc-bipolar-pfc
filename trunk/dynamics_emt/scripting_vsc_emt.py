@@ -5,20 +5,19 @@
 import cProfile
 import pstats
 import numpy as np
-from time import perf_counter
 from typing import Any, cast
 
-import sys
-import os
+# import sys
+# import os
 
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-SRC_ROOT = os.path.join(REPO_ROOT, 'src')
-
-if SRC_ROOT not in sys.path:
-    sys.path.insert(0, SRC_ROOT)
-
-if REPO_ROOT not in sys.path:
-    sys.path.insert(0, REPO_ROOT)
+# REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+# SRC_ROOT = os.path.join(REPO_ROOT, 'src')
+#
+# if SRC_ROOT not in sys.path:
+#     sys.path.insert(0, SRC_ROOT)
+#
+# if REPO_ROOT not in sys.path:
+#     sys.path.insert(0, REPO_ROOT)
 
 import matplotlib.pyplot as plt
 
@@ -33,7 +32,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
-from VeraGridEngine.Templates.Emt.standard_emt_converter import StandardConverterEmtBuild
+from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_converter
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
@@ -44,7 +43,7 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
-from VeraGridEngine.enumerations import EmtInitializationMethod, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType, ConverterControlType, SolverType
+from VeraGridEngine.enumerations import EmtInitializationMethod, DynamicIntegrationMethod, EmtSolverTypes, ConverterControlType, SolverType
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -112,6 +111,7 @@ circuit.add_transformer2w(transformer)
 # VSC: Bus 3 (DC) -> Bus 2 (AC)
 p_transfer_mw = 30.0 # MW
 q_transfer_mvar = 0.0 # MVAr
+# converter controls
 emt_control1 = ConverterControlType.Pdc
 emt_control2 = ConverterControlType.Qac
 vsc = gce.VSC(
@@ -175,14 +175,14 @@ for bus in circuit.buses:
 # =====================================================================
 
 # Generator model (Thevenin equivalent)
-gen_mdl = get_generator_thevenin_rl_emt_template(grid=circuit, gen=gen1).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf = circuit.emt_var_factory).block
 
 # Transformer model (series RL with ideal transformer)
 trafo_mdl = get_transformer_emt_template(grid=circuit, trafo=transformer, name=transformer.name).block
 
 # VSC model (standard converter: DC -> AC with power balance)
-vsc_mdl = StandardConverterEmtBuild(
-    vfactory=circuit.emt_var_factory,
+vsc_mdl = get_emt_converter(
+    vf=circuit.emt_var_factory,
     name=vsc.name,
     sbase=circuit.Sbase,
     fbase=circuit.fBase,
@@ -199,7 +199,6 @@ vsc_mdl = StandardConverterEmtBuild(
 dc_load_r_pu = circuit.Sbase / p_transfer_mw
 dc_load_mdl = get_dc_load_emt_template(
     grid=circuit,
-    load_name=dc_load.name,
     P_dc=dc_load.P,
     R_dc=dc_load_r_pu,
     name="dc_load_emt"

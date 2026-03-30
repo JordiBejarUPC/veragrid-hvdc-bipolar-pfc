@@ -18,7 +18,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block as fin
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
-
+from VeraGridEngine.Templates.templates_common_functions import set_emt_model
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_3ph_emt_template
@@ -115,36 +115,48 @@ line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 # load
 load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.emt_var_factory).block
 
-# connection with buses
-gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
-gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # v_B
-gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # v_C
+######################################################################################################
+# Add models to devices
+######################################################################################################
 
 
-line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # line vf_A
-line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # line vf_B
-line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # line vf_C
+set_emt_model(device=gen0, model=gen_mdl, var_factory= grid.emt_var_factory)
 
-line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.out_vars[0]]) # line vt_A
-line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.out_vars[1]]) # line vt_B
-line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.out_vars[2]]) # line vt_C
+set_emt_model(device=line0, model=line_mdl, var_factory= grid.emt_var_factory)
 
-# u_gov = find_name_in_block("u_gov1", gov1_mdl)
+set_emt_model(device=load, model=load_mdl, var_factory= grid.emt_var_factory)
 
-load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]]) # v_A
-load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]]) # v_B
-load_mdl.connect([load_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]]) # v_C
-
-# external mapping
-big_gen1 = Block(children=[gen_mdl])
-
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: gen_mdl.out_vars[0]})
-big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: gen_mdl.out_vars[1]})
-
-# attach emt models to Veragrid objects
-line0.emt_model= line_mdl
-load.emt_model= load_mdl
-gen0.emt_model= big_gen1
+#
+# # connection with buses
+# gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
+# gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # v_B
+# gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # v_C
+#
+#
+# line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # line vf_A
+# line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # line vf_B
+# line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # line vf_C
+#
+# line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.out_vars[0]]) # line vt_A
+# line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.out_vars[1]]) # line vt_B
+# line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.out_vars[2]]) # line vt_C
+#
+# # u_gov = find_name_in_block("u_gov1", gov1_mdl)
+#
+# load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]]) # v_A
+# load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]]) # v_B
+# load_mdl.connect([load_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]]) # v_C
+#
+# # external mapping
+# big_gen1 = Block(children=[gen_mdl])
+#
+# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: gen_mdl.out_vars[0]})
+# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: gen_mdl.out_vars[1]})
+#
+# # attach emt models to Veragrid objects
+# line0.emt_model= line_mdl
+# load.emt_model= load_mdl
+# gen0.emt_model= big_gen1
 
 # gce.save_file(grid=grid, filename="grid_save_event.veragrid")
 
@@ -1314,16 +1326,16 @@ print("Generating plots...")
 plt.show()
 
 
-i_f_A_line = find_name_in_block("if_pi_line_emt_template_0", line0.emt_model)
-i_f_B_line = find_name_in_block("if_pi_line_emt_template_1", line0.emt_model)
-i_f_C_line = find_name_in_block("if_pi_line_emt_template_2", line0.emt_model)
+i_f_A_line = find_name_in_block("if_Pi_0", line0.emt_model)
+i_f_B_line = find_name_in_block("if_Pi_1", line0.emt_model)
+i_f_C_line = find_name_in_block("if_Pi_2", line0.emt_model)
 i_f_A_line_plt = y[:, problem.get_var_idx(i_f_A_line)]
 i_f_B_line_plt = y[:, problem.get_var_idx(i_f_B_line)]
 i_f_C_line_plt = y[:, problem.get_var_idx(i_f_C_line)]
 
-i_t_A_line = find_name_in_block("it_pi_line_emt_template_0", line0.emt_model)
-i_t_B_line = find_name_in_block("it_pi_line_emt_template_1", line0.emt_model)
-i_t_C_line = find_name_in_block("it_pi_line_emt_template_2", line0.emt_model)
+i_t_A_line = find_name_in_block("it_Pi_0", line0.emt_model)
+i_t_B_line = find_name_in_block("it_Pi_1", line0.emt_model)
+i_t_C_line = find_name_in_block("it_Pi_2", line0.emt_model)
 i_t_A_line_plt = y[:, problem.get_var_idx(i_t_A_line)]
 i_t_B_line_plt = y[:, problem.get_var_idx(i_t_B_line)]
 i_t_C_line_plt = y[:, problem.get_var_idx(i_t_C_line)]
@@ -1382,23 +1394,23 @@ plt.tight_layout()
 print("Generating plots...")
 plt.show()
 
-i_ser_A = find_name_in_block("i_ser_pi_line_emt_template_0", line0.emt_model)
-i_ser_B = find_name_in_block("i_ser_pi_line_emt_template_1", line0.emt_model)
-i_ser_C = find_name_in_block("i_ser_pi_line_emt_template_2", line0.emt_model)
+i_ser_A = find_name_in_block("i_ser_Pi_0", line0.emt_model)
+i_ser_B = find_name_in_block("i_ser_Pi_1", line0.emt_model)
+i_ser_C = find_name_in_block("i_ser_Pi_2", line0.emt_model)
 i_ser_A_plt = y[:, problem.get_var_idx(i_ser_A)]
 i_ser_B_plt = y[:, problem.get_var_idx(i_ser_B)]
 i_ser_C_plt = y[:, problem.get_var_idx(i_ser_C)]
 
-i_f_cap_A = find_name_in_block("i_cap_f_pi_line_emt_template_0", line0.emt_model)
-i_f_cap_B = find_name_in_block("i_cap_f_pi_line_emt_template_1", line0.emt_model)
-i_f_cap_C = find_name_in_block("i_cap_f_pi_line_emt_template_2", line0.emt_model)
+i_f_cap_A = find_name_in_block("i_cap_f_Pi_0", line0.emt_model)
+i_f_cap_B = find_name_in_block("i_cap_f_Pi_1", line0.emt_model)
+i_f_cap_C = find_name_in_block("i_cap_f_Pi_2", line0.emt_model)
 i_f_cap_A_plt = y[:, problem.get_var_idx(i_f_cap_A)]
 i_f_cap_B_plt = y[:, problem.get_var_idx(i_f_cap_B)]
 i_f_cap_C_plt = y[:, problem.get_var_idx(i_f_cap_C)]
 
-i_t_cap_A = find_name_in_block("i_cap_t_pi_line_emt_template_0", line0.emt_model)
-i_t_cap_B = find_name_in_block("i_cap_t_pi_line_emt_template_1", line0.emt_model)
-i_t_cap_C = find_name_in_block("i_cap_t_pi_line_emt_template_2", line0.emt_model)
+i_t_cap_A = find_name_in_block("i_cap_t_Pi_0", line0.emt_model)
+i_t_cap_B = find_name_in_block("i_cap_t_Pi_1", line0.emt_model)
+i_t_cap_C = find_name_in_block("i_cap_t_Pi_2", line0.emt_model)
 i_t_cap_A_plt = y[:, problem.get_var_idx(i_t_cap_A)]
 i_t_cap_B_plt = y[:, problem.get_var_idx(i_t_cap_B)]
 i_t_cap_C_plt = y[:, problem.get_var_idx(i_t_cap_C)]

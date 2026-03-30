@@ -6,25 +6,21 @@ from __future__ import annotations
 import numpy as np
 from typing import Tuple, Union, TYPE_CHECKING
 
-from VeraGridEngine.enumerations import SubObjectType
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Substation.substation import Substation
 from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import BuildStatus, DeviceType
-from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
+from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.Devices.Aggregation.branch_group import BranchGroup
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
-from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
-from VeraGridEngine.Utils.Symbolic.block import Block
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.types import CONNECTION_TYPE
 
 
-class BranchParent(PhysicalDevice):
+class BranchParent(DynamicDevice):
     """
     This class serves to represent the basic branch
     All other branches inherit from this one
@@ -59,10 +55,6 @@ class BranchParent(PhysicalDevice):
         '_bus_from_pos',
         '_bus_to_pos',
         'group',
-        '_rms_model',
-        '_emt_model',
-        '_rms_template',
-        '_emt_template',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -92,14 +84,6 @@ class BranchParent(PhysicalDevice):
                definition="Group where this branch belongs"),
         GCProp(key='color', units='', tpe=str, definition='Color to paint the element in the map diagram',
                is_color=True),
-        GCProp(key='rms_model', units='', tpe=SubObjectType.DaeBlockType,
-               definition='RMS dynamic model', display=False),
-        GCProp(key='emt_model', units='', tpe=SubObjectType.DaeBlockType,
-               definition='EMT dynamic model', display=False),
-        GCProp(key='rms_template', units='', tpe=DeviceType.RmsModelTemplateDevice,
-               definition='RMS template used', display=True),
-        GCProp(key='emt_template', units='', tpe=DeviceType.EmtModelTemplateDevice,
-               definition='Emt template used', display=True),
         GCProp(key='bus_from_pos', units='', tpe=int, definition='Aid to locate devices on a busbar',
                display=False),
         GCProp(key='bus_to_pos', units='', tpe=int, definition='Aid to locate devices on a busbar',
@@ -159,7 +143,7 @@ class BranchParent(PhysicalDevice):
         :param color: Color of the branch
         """
 
-        PhysicalDevice.__init__(self,
+        DynamicDevice.__init__(self,
                                 name=name,
                                 idtag=idtag,
                                 code=code,
@@ -233,79 +217,6 @@ class BranchParent(PhysicalDevice):
 
         # group of this branch
         self.group: Union[BranchGroup, None] = None
-
-        self._rms_model: Block = Block()
-        self._rms_template: RmsModelTemplate | None = None
-
-        self._emt_model: Block = Block()
-        self._emt_template: EmtModelTemplate | None = None
-
-    @property
-    def rms_model(self) -> Block:
-        """
-        Get the RMS model
-        """
-        return self._rms_model
-
-    @rms_model.setter
-    def rms_model(self, val: Block):
-        if isinstance(val, Block):
-            self._rms_model = val
-        else:
-            raise ValueError(f"RMS model cannot accept {val}")
-
-    @property
-    def emt_model(self) -> Block:
-        """
-        Get the EMT model
-        """
-        return self._emt_model
-
-    @emt_model.setter
-    def emt_model(self, val: Block):
-        if isinstance(val, Block):
-            self._emt_model = val
-        else:
-            raise ValueError(f"EMT model cannot accept {val}")
-
-    @property
-    def rms_template(self) -> RmsModelTemplate | None:
-        """
-        Get the RMS model
-        """
-        return self._rms_template
-
-    @rms_template.setter
-    def rms_template(self, val: RmsModelTemplate):
-        if isinstance(val, RmsModelTemplate):
-            self._rms_template = val
-
-            if self.auto_update_enabled:
-                self.rms_model = val.block.copy() # TODO: var factory needed to copy the vars!
-        elif val is None:
-            self._rms_template = None
-        else:
-            raise ValueError(f"RMS template cannot accept {val}")
-
-    @property
-    def emt_template(self) -> EmtModelTemplate | None:
-        """
-        Get the EMT template
-        """
-        return self._emt_template
-
-    @emt_template.setter
-    def emt_template(self, val: EmtModelTemplate):
-        if isinstance(val, EmtModelTemplate):
-            self._emt_template = val
-
-            if self.auto_update_enabled:
-                self.emt_model = val.block.copy() # TODO: var factory needed to copy the vars!
-        elif val is None:
-            self._emt_template = None
-        else:
-            raise ValueError(f"EMT template cannot accept {val}")
-
 
     @property
     def bus_from(self) -> Bus:

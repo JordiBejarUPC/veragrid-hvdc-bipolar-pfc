@@ -241,6 +241,38 @@ class HybridJacobianEvaluator:
         else:
             return data.reshape((self.n_vars, self.n_vars))
 
+class ResidualTrialEvaluator:
+    """
+    Callable helper to evaluate residual norms during Newton backtracking.
+    """
+    __slots__ = ['kernel_list', 'full_params', 'x_prev', 'dx_prev', 'h_eff', 'x_prev2']
+
+    def __init__(self,
+                 kernel_list: list[Callable],
+                 full_params: Vec,
+                 x_prev: Vec,
+                 dx_prev: Vec,
+                 h_eff: float,
+                 x_prev2: Vec) -> None:
+        self.kernel_list = kernel_list
+        self.full_params = full_params
+        self.x_prev = x_prev
+        self.dx_prev = dx_prev
+        self.h_eff = h_eff
+        self.x_prev2 = x_prev2
+
+    def __call__(self, candidate_x: Vec, out_res: Vec) -> float:
+        out_res[:] = 0.0
+        for candidate_kernel in self.kernel_list:
+            candidate_kernel(candidate_x,
+                             self.full_params,
+                             self.x_prev,
+                             self.dx_prev,
+                             self.h_eff,
+                             out_res,
+                             self.x_prev2)
+        return float(np.linalg.norm(out_res, np.inf))
+
 class JitSymbolicSolver:
 
     __slots__ = [
@@ -335,12 +367,6 @@ class JitSymbolicSolver:
         residual_debug_info: List[dict] = list()
         synthetic_diff_terms: List[Var] = [Var(name=f"d_{sv.name}", base_var=sv) for sv in self.state_vars]
 
-        # for i, rhs in enumerate(self.state_eqs):
-        #     # sv = self.state_vars[i]
-        #     # d_term = Var(name=f"d_{sv.name}", base_var=sv)
-        #     d_term = self.diff_vars[i]  # real associated diff_var
-        #     equations.append(d_term - rhs)
-
         for i, rhs in enumerate(self.state_eqs):
             sv = self.state_vars[i]
             d_term = synthetic_diff_terms[i]
@@ -393,16 +419,6 @@ class JitSymbolicSolver:
             py_func = self.jit_compiler.compile(chunk, func_name=f_name, use_cse=True, offset=i, inplace=True)
             jit_func = nb.njit(cache=True, fastmath=True)(py_func)
             batched_kernels.append(jit_func)
-
-        if self.verbose:
-            print("\n[DBG] Residual debug info order")
-            for r, info in enumerate(self._residual_debug_info[:80]):
-                print(
-                    f"{r:>4} | "
-                    f"{info['kind']:<5} | "
-                    f"{(info['state_idx'] if info['state_idx'] is not None else 'None'):>4} | "
-                    f"{info['var_name']}"
-                )
 
         self.jit_kernels[method] = batched_kernels
 
@@ -559,17 +575,6 @@ class JitSymbolicSolver:
         self._build_jit_symbolic_hybrid(method, use_sparse=is_sparse)
         jac_key_main = f"{method}_{is_sparse}"
 
-        # Prepare BackEuler fallback kernels for initial step or events
-        if method == DynamicIntegrationMethod.DaeTrapezoidal:
-            if DynamicIntegrationMethod.DaeBackEuler not in self.jit_kernels:
-                self.build_jit_kernel(DynamicIntegrationMethod.DaeBackEuler)
-            else:
-                pass
-            self._build_jit_symbolic_hybrid(DynamicIntegrationMethod.DaeBackEuler, use_sparse=is_sparse)
-        else:
-            pass
-        jac_key_be = f"{DynamicIntegrationMethod.DaeBackEuler}_{is_sparse}"
-
         if self.verbose:
             mode_str = "DENSE" if use_dense_solver else "SPARSE"
             print(f"   [Config] System N={n_eqs}. Using {mode_str} linear solver (Threshold={self.dense_threshold}).")
@@ -602,7 +607,7 @@ class JitSymbolicSolver:
         n_event_params = self.problem.get_variable_parameter_number()
 
         if params0 is not None:
-            ev_params = params0.copy()
+            ev_params =  np.array(params0, dtype=np.float64, copy=True)
         else:
             ev_params = self.problem.event_params_values.copy()
 
@@ -647,10 +652,6 @@ class JitSymbolicSolver:
             pass
 
         for i in range(self.steps):
-            if self.verbose:
-                print(f"Simulating at step {i}")
-            else:
-                pass
 
             t_step_start: float = self.t0 + i * self.h
             t_step_target: float = self.t0 + (i + 1) * self.h
@@ -688,26 +689,14 @@ class JitSymbolicSolver:
                 else:
                     pass
 
-                method_eff = method
-                if i == 0 and is_first_local_step and method == DynamicIntegrationMethod.DaeTrapezoidal:
-                    method_eff = DynamicIntegrationMethod.DaeBackEuler
-                else:
-                    pass
-
-                kernel_list_eff = self.jit_kernels[method_eff]
-                jac_key_eff = jac_key_main if method_eff == method else jac_key_be
-                current_jacobian_eff = self.jit_jacobian_symbolic[jac_key_eff]
+                kernel_list_eff = self.jit_kernels[method]
+                current_jacobian_eff = self.jit_jacobian_symbolic[jac_key_main]
 
                 ev_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
                 full_params = np.concatenate((ev_params, static_vals))
 
                 if i == 0 and is_first_local_step and self.verbose:
-                    print("\nFULL params[] ORDER (objects + values):")
-                    for idx, pobj in enumerate(full_params):
-                        val = full_params[idx] if idx < len(full_params) else None
-                        name = getattr(pobj, "name", str(pobj))
-                        uid = getattr(pobj, "uid", None)
-                        print(f"{idx:3d}  {name:40s}  uid={uid}  val={val}")
+                    _print_full_params_debug(full_params=full_params)
                 else:
                     pass
 
@@ -745,110 +734,16 @@ class JitSymbolicSolver:
                         kn(x_iter, full_params, x_prev, dx_prev, h_eff, res, x_prev2)
 
                     if i == 0 and self.verbose:
-                        dbg = getattr(self, "_residual_debug_info", None)
-
-                        print("\n[Residual Debug] Sizes:")
-                        print(f"  n_eqs(res)       = {n_eqs}")
-                        print(f"  len(debug_info)  = {len(dbg) if dbg is not None else 'None'}")
-                        print(f"  n_states(vec)    = {len(x_iter)}")
-
-                        if dbg is None:
-                            print("  [WARNING] self._residual_debug_info is missing.")
-                        elif len(dbg) != n_eqs:
-                            print("  [WARNING] len(self._residual_debug_info) != n_eqs")
-                            print("            residual table labels may be wrong.\n")
-
-                        abs_res = np.abs(res)
-                        top_indices = np.argsort(abs_res)[:][::-1]
-
-                        W_IDX = 4
-                        W_KIND = 6
-                        W_STATEIDX = 8
-                        W_VARNAME = 40
-                        W_LABEL = 62
-                        W_RES = 13
-                        W_ABS = 13
-                        W_XIT = 13
-                        W_XPR = 13
-                        W_DXPR = 13
-
-                        def _clip(s: str, width: int) -> str:
-                            s = str(s)
-                            if len(s) <= width:
-                                return s.ljust(width)
-                            if width <= 3:
-                                return s[:width]
-                            return s[:width - 3] + "..."
-
-                        def _fmt_num(x, width: int = 13) -> str:
-                            if x is None:
-                                return " " * width
-                            try:
-                                xf = float(x)
-                            except Exception:
-                                return str(x).rjust(width)
-                            if np.isnan(xf):
-                                return "nan".rjust(width)
-                            return f"{xf: .6e}".rjust(width)
-
-                        title = f">>> TOP 20 LARGEST RESIDUALS (Step {i}, Iter {k}) <<<"
-                        print("\n" + title)
-                        header = (
-                            f"{'idx':>{W_IDX}} | "
-                            f"{'kind':<{W_KIND}} | "
-                            f"{'state_i':>{W_STATEIDX}} | "
-                            f"{'var_name':<{W_VARNAME}} | "
-                            f"{'label':<{W_LABEL}} | "
-                            f"{'res':>{W_RES}} | "
-                            f"{'|res|':>{W_ABS}} | "
-                            f"{'x_iter':>{W_XIT}} | "
-                            f"{'x_prev':>{W_XPR}} | "
-                            f"{'dx_prev':>{W_DXPR}}"
+                        _print_residual_debug_table(
+                            res=res,
+                            n_eqs=n_eqs,
+                            x_iter=x_iter,
+                            x_prev=x_prev,
+                            dx_prev=dx_prev,
+                            debug_info=self._residual_debug_info,
+                            step_idx=i,
+                            iter_idx=k,
                         )
-                        print(header)
-                        print("-" * len(header))
-
-                        for idx in top_indices:
-                            if dbg is not None and idx < len(dbg):
-                                info = dbg[idx]
-                                kind = info.get("kind", "UNK")
-                                var_name = info.get("var_name", "<?>")
-                                label = info.get("label", f"residual_{idx}")
-                                state_idx = info.get("state_idx", None)
-                            else:
-                                kind = "UNK"
-                                var_name = "<?>"
-                                label = f"residual_{idx}"
-                                state_idx = None
-
-                            if state_idx is not None and 0 <= state_idx < len(x_iter):
-                                x_it = x_iter[state_idx]
-                                x_pr = x_prev[state_idx]
-                            else:
-                                x_it = np.nan
-                                x_pr = np.nan
-
-                            if kind == "STATE" and state_idx is not None and 0 <= state_idx < len(dx_prev):
-                                dx_pr = dx_prev[state_idx]
-                            else:
-                                dx_pr = np.nan
-
-                            row = (
-                                f"{idx:>{W_IDX}d} | "
-                                f"{kind:<{W_KIND}} | "
-                                f"{state_idx if state_idx is not None else -1:>{W_STATEIDX}d} | "
-                                f"{_clip(var_name, W_VARNAME)} | "
-                                f"{_clip(label, W_LABEL)} | "
-                                f"{_fmt_num(res[idx], W_RES)} | "
-                                f"{_fmt_num(abs_res[idx], W_ABS)} | "
-                                f"{_fmt_num(x_it, W_XIT)} | "
-                                f"{_fmt_num(x_pr, W_XPR)} | "
-                                f"{_fmt_num(dx_pr, W_DXPR)}"
-                            )
-                            print(row)
-
-                        print("-" * len(header))
-                        print("=" * len(header) + "\n")
 
                     if np.linalg.norm(res, np.inf) < 1e-6:
                         break
@@ -879,11 +774,14 @@ class JitSymbolicSolver:
                             delta = sp.linalg.spsolve(J_final, -res)
 
                     if diag_cfg.enable_backtracking:
-                        def _evaluate_trial_residual(candidate_x: Vec, out_res: Vec) -> float:
-                            out_res[:] = 0.0
-                            for candidate_kernel in kernel_list_eff:
-                                candidate_kernel(candidate_x, full_params, x_prev, dx_prev, h_eff, out_res, x_prev2)
-                            return float(np.linalg.norm(out_res, np.inf))
+                        trial_residual_evaluator = ResidualTrialEvaluator(
+                            kernel_list=kernel_list_eff,
+                            full_params=full_params,
+                            x_prev=x_prev,
+                            dx_prev=dx_prev,
+                            h_eff=h_eff,
+                            x_prev2=x_prev2,
+                        )
 
                         maybe_apply_backtracking(
                             x_iter,
@@ -891,7 +789,7 @@ class JitSymbolicSolver:
                             float(np.linalg.norm(res, np.inf)),
                             trial_x,
                             trial_res,
-                            evaluate_residual=_evaluate_trial_residual,
+                            evaluate_residual=trial_residual_evaluator,
                             config=diag_cfg,
                         )
                     else:
@@ -936,3 +834,175 @@ class JitSymbolicSolver:
             pass
 
         return self.t, self.y, self.dy
+
+def _clip_debug_text(value: Any, width: int) -> str:
+    """
+    Format text for residual debug tables with width clipping.
+
+    :param value: Value to be converted to string.
+    :type value: Any
+    :param width: Target column width.
+    :type width: int
+    :return: Left-justified clipped text.
+    :rtype: str
+    """
+    text = str(value)
+    if len(text) <= width:
+        return text.ljust(width)
+    if width <= 3:
+        return text[:width]
+    return text[:width - 3] + "..."
+
+
+def _format_debug_number(value: Any, width: int = 13) -> str:
+    """
+    Format numeric values for debug output tables.
+
+    :param value: Value to format.
+    :type value: Any
+    :param width: Target column width.
+    :type width: int
+    :return: Right-justified formatted value.
+    :rtype: str
+    """
+    if value is None:
+        return " " * width
+
+    try:
+        float_value = float(value)
+    except Exception:
+        return str(value).rjust(width)
+
+    if np.isnan(float_value):
+        return "nan".rjust(width)
+
+    return f"{float_value: .6e}".rjust(width)
+
+
+def _print_full_params_debug(full_params: Vec) -> None:
+    """
+    Print the order and values of the assembled solver parameter vector.
+
+    :param full_params: Full parameter vector passed to the residual kernels.
+    :type full_params: Vec
+    :rtype: None
+    """
+    print("\nFULL params[] ORDER (objects + values):")
+    for idx, param_value in enumerate(full_params):
+        name = getattr(param_value, "name", str(param_value))
+        uid = getattr(param_value, "uid", None)
+        print(f"{idx:3d}  {name:40s}  uid={uid}  val={param_value}")
+
+
+def _print_residual_debug_table(res: Vec,
+                                n_eqs: int,
+                                x_iter: Vec,
+                                x_prev: Vec,
+                                dx_prev: Vec,
+                                debug_info: list | None,
+                                step_idx: int,
+                                iter_idx: int) -> None:
+    """
+    Print a formatted table with the largest residuals and relevant state values.
+
+    :param res: Current residual vector.
+    :type res: Vec
+    :param n_eqs: Number of equations in the nonlinear system.
+    :type n_eqs: int
+    :param x_iter: Current Newton iterate.
+    :type x_iter: Vec
+    :param x_prev: Previous converged solution vector.
+    :type x_prev: Vec
+    :param dx_prev: Previous derivative vector.
+    :type dx_prev: Vec
+    :param debug_info: Residual metadata collected during kernel build.
+    :type debug_info: list | None
+    :param step_idx: Macro time-step index.
+    :type step_idx: int
+    :param iter_idx: Newton iteration index.
+    :type iter_idx: int
+    :rtype: None
+    """
+    print("\n[Residual Debug] Sizes:")
+    print(f"  n_eqs(res)       = {n_eqs}")
+    print(f"  len(debug_info)  = {len(debug_info) if debug_info is not None else 'None'}")
+    print(f"  n_states(vec)    = {len(x_iter)}")
+
+    if debug_info is None:
+        print("  [WARNING] self._residual_debug_info is missing.")
+    elif len(debug_info) != n_eqs:
+        print("  [WARNING] len(self._residual_debug_info) != n_eqs")
+        print("            residual table labels may be wrong.\n")
+
+    abs_res = np.abs(res)
+    top_indices = np.argsort(abs_res)[::-1]
+
+    width_idx = 4
+    width_kind = 6
+    width_state_idx = 8
+    width_var_name = 40
+    width_label = 62
+    width_res = 13
+    width_abs = 13
+    width_xit = 13
+    width_xpr = 13
+    width_dxpr = 13
+
+    title = f">>> TOP 20 LARGEST RESIDUALS (Step {step_idx}, Iter {iter_idx}) <<<"
+    print("\n" + title)
+    header = (
+        f"{'idx':>{width_idx}} | "
+        f"{'kind':<{width_kind}} | "
+        f"{'state_i':>{width_state_idx}} | "
+        f"{'var_name':<{width_var_name}} | "
+        f"{'label':<{width_label}} | "
+        f"{'res':>{width_res}} | "
+        f"{'|res|':>{width_abs}} | "
+        f"{'x_iter':>{width_xit}} | "
+        f"{'x_prev':>{width_xpr}} | "
+        f"{'dx_prev':>{width_dxpr}}"
+    )
+    print(header)
+    print("-" * len(header))
+
+    for idx in top_indices[:20]:
+        if debug_info is not None and idx < len(debug_info):
+            info = debug_info[idx]
+            kind = info.get("kind", "UNK")
+            var_name = info.get("var_name", "<?>")
+            label = info.get("label", f"residual_{idx}")
+            state_idx = info.get("state_idx", None)
+        else:
+            kind = "UNK"
+            var_name = "<?>"
+            label = f"residual_{idx}"
+            state_idx = None
+
+        if state_idx is not None and 0 <= state_idx < len(x_iter):
+            x_it = x_iter[state_idx]
+            x_pr = x_prev[state_idx]
+        else:
+            x_it = np.nan
+            x_pr = np.nan
+
+        if kind == "STATE" and state_idx is not None and 0 <= state_idx < len(dx_prev):
+            dx_pr = dx_prev[state_idx]
+        else:
+            dx_pr = np.nan
+
+        row = (
+            f"{idx:>{width_idx}d} | "
+            f"{kind:<{width_kind}} | "
+            f"{state_idx if state_idx is not None else -1:>{width_state_idx}d} | "
+            f"{_clip_debug_text(var_name, width_var_name)} | "
+            f"{_clip_debug_text(label, width_label)} | "
+            f"{_format_debug_number(res[idx], width_res)} | "
+            f"{_format_debug_number(abs_res[idx], width_abs)} | "
+            f"{_format_debug_number(x_it, width_xit)} | "
+            f"{_format_debug_number(x_pr, width_xpr)} | "
+            f"{_format_debug_number(dx_pr, width_dxpr)}"
+        )
+        print(row)
+
+    print("-" * len(header))
+    print("=" * len(header) + "\n")

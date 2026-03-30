@@ -5,27 +5,18 @@
 
 from typing import Dict, List, Tuple, Union, Optional
 import numpy as np
-from enum import Enum, auto
 import time
 import warnings
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
-from VeraGridEngine.enumerations import EmtInitializationMethod
+from VeraGridEngine.enumerations import EmtInitializationMethod, EmtInitializationStatus
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian, SymbolicVector
 from VeraGridEngine.Utils.Symbolic.symbolic import get_expression_vars
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, find_vars_order
-
-
-class InitializationStatus(Enum):
-    """Enumeration to track the progress of the initialization solver."""
-    PENDING = auto()
-    RESOLVED = auto()
-    FAILED = auto()
-
 
 class EmtInitializationReport:
     """
@@ -54,7 +45,7 @@ class EmtInitializationReport:
         :param method_requested: Requested initialization workflow.
         :return: None
         """
-        self.status: InitializationStatus = InitializationStatus.PENDING
+        self.status: EmtInitializationStatus = EmtInitializationStatus.PENDING
         self.method_requested: EmtInitializationMethod = method_requested
         self.method_used: EmtInitializationMethod = EmtInitializationMethod.Explicit
         self.initial_residual_inf: float = 0.0
@@ -207,216 +198,281 @@ def init_explicit_emt(
         DIFF_NAME: str,
         CONSTANT_PARAMS_NAME: str,
         verbose: bool = False) -> Optional[Tuple[Dict[int, float], Dict[int, float]]]:
-# ) -> Union[None, Tuple[Dict[int, float], Block]]:
     """
-    Initializes the EMT model by solving initialization and differential equations.
+    Initialize EMT algebraic/state variables and differential variables explicitly.
 
-    This function performs a topological-like resolution of model variables.
-    It uses fixed-point iteration for self-referencing equations and handles
-    dependencies between algebraic and differential states.
+    The routine resolves initialization equations in a dependency-driven loop.
+    Directly-computable expressions are evaluated once their dependencies are
+    available. Self-referential equations are resolved through fixed-point
+    iteration. Event parameters are synchronized both in the working event array
+    and in the externally provided ``event_parameters_eqs`` list.
 
     :param mdl: Symbolic model block.
-    :param sys_vars: Registry of system variables.
-    :param sys_diff_vars: Registry of system differential variables.
-    :param variable_parameters: List of parameters that change on events.
-    :param event_parameters_eqs: Initial equations for event parameters.
-    :param constant_parameters: List of constant parameters.
-    :param init_guess: Initial guesses for variables.
-    :param diff_init_guess: Initial guesses for derivatives.
-    :param uid2idx_vars: Index map for variables.
-    :param uid2idx_diff: Index map for derivatives.
-    :param uid2idx_params: Index map for parameters.
-    :param uid2idx_event_params: Index map for event parameters.
-    :param compiler_names_dict: Map for variable naming in compilation.
-    :param alias_names_dict: Map for variable aliases.
-    :param VARIABLE_PARAMS_NAME: Name for variable parameter array.
-    :param VARS_NAME: Name for state variable array.
-    :param DIFF_NAME: Name for derivative array.
-    :param CONSTANT_PARAMS_NAME: Name for constant parameter array.
-    :param verbose: Whether to print explicit initialization diagnostics.
-    :return: Updated initial guesses and modified model block.
+    :param sys_vars: Registry of system algebraic/state variables by UID.
+    :param sys_diff_vars: Registry of system differential variables by UID.
+    :param variable_parameters: Event-dependent parameter variables.
+    :param event_parameters_eqs: External storage of event parameter equations/values.
+    :param constant_parameters: Constant parameter variables.
+    :param init_guess: Initial guesses for algebraic/state variables by UID.
+    :param diff_init_guess: Initial guesses for differential variables by UID.
+    :param uid2idx_vars: Mapping from variable UID to index in the state buffer.
+    :param uid2idx_diff: Mapping from differential variable UID to index in the derivative buffer.
+    :param uid2idx_params: Mapping from constant parameter UID to parameter buffer index.
+    :param uid2idx_event_params: Mapping from event parameter UID to event buffer index.
+    :param compiler_names_dict: Compiler symbol names.
+    :param alias_names_dict: Compiler alias names.
+    :param VARIABLE_PARAMS_NAME: Name of the variable-parameter array.
+    :param VARS_NAME: Name of the state variable array.
+    :param DIFF_NAME: Name of the differential variable array.
+    :param CONSTANT_PARAMS_NAME: Name of the constant parameter array.
+    :param verbose: Whether to print initialization diagnostics.
+    :return: Updated ``init_guess`` and ``diff_init_guess`` if successful, otherwise ``None``.
     """
 
-    # Initialize memory buffers for numerical evaluation
-    # EMT solvers require flat arrays for efficient computation
-    x: np.ndarray = np.ones(len(sys_vars))
-    dx: np.ndarray = np.zeros(len(sys_diff_vars))
+    x: np.ndarray = np.ones(len(sys_vars), dtype=float)
+    dx: np.ndarray = np.zeros(len(sys_diff_vars), dtype=float)
 
-    # Hydrate buffers with existing user-provided guesses
     for uid, val in init_guess.items():
         if verbose:
             print(f"Var {sys_vars[uid].name} with uid= {uid} initialized with val: {val} ")
-        x[uid2idx_vars[uid]] = val
+        else:
+            pass
+        x[uid2idx_vars[uid]] = float(val)
 
     for uid, val in diff_init_guess.items():
         if verbose:
             print(f"Diff var {sys_diff_vars[uid].name} with uid= {uid} initialized with val: {val} ")
-        dx[uid2idx_diff[uid]] = val
+        else:
+            pass
+        dx[uid2idx_diff[uid]] = float(val)
 
-    # Setup constant parameter array
-    params_array: np.ndarray = np.zeros(len(constant_parameters))
+    params_array: np.ndarray = np.zeros(len(constant_parameters), dtype=float)
     for param, const in mdl.parameters.items():
-        params_array[uid2idx_params[param.uid]] = const.value
+        params_array[uid2idx_params[param.uid]] = float(const.value)
 
-    # Primary pass: resolve basic event parameters that are constant or immediate
-    event_params_array: np.ndarray = np.ones(len(variable_parameters))
-    for event_param in mdl.event_dict.keys():
-        eq: Union[Expr, Const] = mdl.event_dict[event_param]
+    event_params_array: np.ndarray = np.ones(len(variable_parameters), dtype=float)
 
-        # Determine if the expression is concrete enough to evaluate
+    event_uid_to_variable_param_idx: Dict[int, int] = dict()
+    for idx, var in enumerate(variable_parameters):
+        event_uid_to_variable_param_idx[var.uid] = idx
+
+    for event_param, eq in mdl.event_dict.items():
         is_concrete_const: bool = isinstance(eq, Const) and eq.value is not None
         is_expression: bool = not isinstance(eq, Const)
 
-        if is_concrete_const or is_expression:
-            vars_list: List[Var] = find_vars_order(eq)
-            # Bind current values for calculation
-            uid_bindings: Dict[int, float] = dict()
-            for var in vars_list:
-                uid_bindings[var.uid] = float(event_params_array[uid2idx_event_params[var.uid]])
-
-            result: float = eq.eval_uid(uid_bindings)
+        if is_concrete_const:
+            result: float = float(eq.value)
             event_params_array[uid2idx_event_params[event_param.uid]] = result
             if verbose:
                 print(f"event_param:{event_param.name} initialized from events_dict with: {result}")
+            else:
+                pass
         else:
-            event_param = event_param
+            if is_expression:
+                bindings: Dict[int, float] = build_uid_bindings(
+                    eq=eq,
+                    event_params_array=event_params_array,
+                    x=x,
+                    params_array=params_array,
+                    dx=dx,
+                    uid2idx_event_params=uid2idx_event_params,
+                    uid2idx_vars=uid2idx_vars,
+                    uid2idx_params=uid2idx_params,
+                    uid2idx_diff=uid2idx_diff,
+                )
+                result = float(eq.eval_uid(bindings))
+                event_params_array[uid2idx_event_params[event_param.uid]] = result
+                if verbose:
+                    print(f"event_param:{event_param.name} initialized from events_dict with: {result}")
+                else:
+                    pass
+            else:
+                pass
 
-    # Track pending equations that require dependency resolution
     init_pending: Dict[int, Tuple[Var, Union[Expr, Const]]] = dict()
-    for v, e in mdl.init_eqs.items():
-        init_pending[v.uid] = (v, e)
+    for var, eq in mdl.init_eqs.items():
+        init_pending[var.uid] = (var, eq)
 
     diff_pending: Dict[int, Tuple[Var, Union[Expr, Const]]] = dict()
-    for v, e in mdl.diff_init_eqs.items():
-        diff_pending[v.uid] = (v, e)
+    for var, eq in mdl.diff_init_eqs.items():
+        diff_pending[var.uid] = (var, eq)
 
-    # Iterative solver loop
     while len(init_pending) > 0 or len(diff_pending) > 0:
         progress_made: bool = False
 
-        # Solve for Algebraic/State variables
         for uid in list(init_pending.keys()):
             var, eq = init_pending[uid]
-            if can_compute_init(var, eq, mdl, init_guess, diff_init_guess, uid2idx_diff, uid2idx_vars):
 
-                # Logic for variables that are registered as event parameters
+            can_compute: bool = can_compute_init(
+                var,
+                eq,
+                mdl,
+                init_guess,
+                diff_init_guess,
+                uid2idx_diff,
+                uid2idx_vars,
+            )
+
+            if can_compute:
                 if var in mdl.event_dict:
                     if isinstance(eq, Const) and eq.value is not None:
-                        event_params_array[uid2idx_event_params[var.uid]] = float(eq.value)
+                        res: float = float(eq.value)
+                        event_params_array[uid2idx_event_params[var.uid]] = res
                     else:
                         bindings: Dict[int, float] = build_uid_bindings(
-                            eq, event_params_array, x, params_array, dx,
-                            uid2idx_event_params, uid2idx_vars, uid2idx_params, uid2idx_diff
+                            eq=eq,
+                            event_params_array=event_params_array,
+                            x=x,
+                            params_array=params_array,
+                            dx=dx,
+                            uid2idx_event_params=uid2idx_event_params,
+                            uid2idx_vars=uid2idx_vars,
+                            uid2idx_params=uid2idx_params,
+                            uid2idx_diff=uid2idx_diff,
                         )
-                        res: float = eq.eval_uid(bindings)
+                        res = float(eq.eval_uid(bindings))
                         mdl.event_dict[var] = Const(res)
-                        event_params_array[uid2idx_event_params[var.uid]] = res
                         print(f"event_param:{var.name} initialized from init_eqs with: {res}")
 
+                    param_idx: int = event_uid_to_variable_param_idx[var.uid]
+                    event_parameters_eqs[param_idx].value = float(res)
+                    event_params_array[param_idx] = float(res)
 
-
-                        param_idx: int = variable_parameters.index(var)
-                        event_parameters_eqs[param_idx].value = float(res)
-                        event_params_array[param_idx] = float(res)
-
-                # Logic for standard algebraic variables
                 else:
                     vars_in_eqs: List[Var] = get_expression_vars(eq)
+
                     if var not in vars_in_eqs:
-                        # Direct assignment
-                        bindings = build_uid_bindings(
-                            eq, event_params_array, x, params_array, dx,
-                            uid2idx_event_params, uid2idx_vars, uid2idx_params, uid2idx_diff
+                        bindings: Dict[int, float] = build_uid_bindings(
+                            eq=eq,
+                            event_params_array=event_params_array,
+                            x=x,
+                            params_array=params_array,
+                            dx=dx,
+                            uid2idx_event_params=uid2idx_event_params,
+                            uid2idx_vars=uid2idx_vars,
+                            uid2idx_params=uid2idx_params,
+                            uid2idx_diff=uid2idx_diff,
                         )
-                        res = eq.eval_uid(bindings)
+                        res = float(eq.eval_uid(bindings))
                         init_guess[var.uid] = res
                         x[uid2idx_vars[var.uid]] = res
                     else:
-                        # Implicit resolution using a damped fixed-point iteration
                         eq_fn: SymbolicVector = SymbolicVector(
-                            [eq], compiler_names_dict, alias_names_dict,
-                            VARS_NAME, DIFF_NAME, VARIABLE_PARAMS_NAME, CONSTANT_PARAMS_NAME
+                            [eq],
+                            compiler_names_dict,
+                            alias_names_dict,
+                            VARS_NAME,
+                            DIFF_NAME,
+                            VARIABLE_PARAMS_NAME,
+                            CONSTANT_PARAMS_NAME,
                         )
 
-                        # Fixed-point parameters
                         tol: float = 1e-8
                         error: float = 1.0
                         alpha: float = 1.3
                         curr_x: float = 1.2
+                        max_iter: int = 100
+                        iter_count: int = 0
 
                         x[uid2idx_vars[var.uid]] = curr_x
                         while error > tol:
-                            try:
-                                # Evaluate expression with current state
-                                eval_res: float = float(eq_fn(x, dx, event_params_array, params_array)[0])
-                            except Exception:
-                                # Fallback/Reset on numerical instability
-                                x[uid2idx_vars[var.uid]] = -0.1
-                                eval_res = float(eq_fn(x, dx, event_params_array, params_array)[0])
+                            if iter_count < max_iter:
+                                try:
+                                    eval_res: float = float(eq_fn(x, dx, event_params_array, params_array)[0])
+                                except Exception:
+                                    x[uid2idx_vars[var.uid]] = -0.1
+                                    eval_res = float(eq_fn(x, dx, event_params_array, params_array)[0])
 
-                            # Update with damping (Successive Over-Relaxation style)
-                            x[uid2idx_vars[var.uid]] = (1 - alpha) * curr_x + alpha * eval_res
-                            error = float(abs(eval_res - curr_x))
-                            curr_x = float(x[uid2idx_vars[var.uid]])
+                                x[uid2idx_vars[var.uid]] = (1.0 - alpha) * curr_x + alpha * eval_res
+                                error = float(abs(eval_res - curr_x))
+                                curr_x = float(x[uid2idx_vars[var.uid]])
+                                iter_count += 1
+                            else:
+                                return None
 
                         init_guess[var.uid] = curr_x
 
                 del init_pending[uid]
                 progress_made = True
             else:
-                uid = uid
+                pass
 
-        # Solve for Differential variables
         for uid in list(diff_pending.keys()):
             d_var, eq = diff_pending[uid]
-            # Use separate check for diff equations to ensure variables are ready
-            if can_compute_init(d_var, eq, mdl, init_guess, diff_init_guess, uid2idx_diff, uid2idx_vars):
-                vars_in_eqs = get_expression_vars(eq)
+
+            can_compute: bool = can_compute_init(
+                d_var,
+                eq,
+                mdl,
+                init_guess,
+                diff_init_guess,
+                uid2idx_diff,
+                uid2idx_vars,
+            )
+
+            if can_compute:
+                vars_in_eqs: List[Var] = get_expression_vars(eq)
 
                 if d_var not in vars_in_eqs:
-                    bindings = build_uid_bindings(
-                        eq, event_params_array, x, params_array, dx,
-                        uid2idx_event_params, uid2idx_vars, uid2idx_params, uid2idx_diff
+                    bindings: Dict[int, float] = build_uid_bindings(
+                        eq=eq,
+                        event_params_array=event_params_array,
+                        x=x,
+                        params_array=params_array,
+                        dx=dx,
+                        uid2idx_event_params=uid2idx_event_params,
+                        uid2idx_vars=uid2idx_vars,
+                        uid2idx_params=uid2idx_params,
+                        uid2idx_diff=uid2idx_diff,
                     )
-                    res = eq.eval_uid(bindings)
+                    res: float = float(eq.eval_uid(bindings))
                     diff_init_guess[d_var.uid] = res
                     dx[uid2idx_diff[d_var.uid]] = res
                 else:
-                    # Fixed-point iteration for derivatives
-                    eq_fn = SymbolicVector(
-                        [eq], compiler_names_dict, alias_names_dict,
-                        VARS_NAME, DIFF_NAME, VARIABLE_PARAMS_NAME, CONSTANT_PARAMS_NAME
+                    eq_fn: SymbolicVector = SymbolicVector(
+                        [eq],
+                        compiler_names_dict,
+                        alias_names_dict,
+                        VARS_NAME,
+                        DIFF_NAME,
+                        VARIABLE_PARAMS_NAME,
+                        CONSTANT_PARAMS_NAME,
                     )
-                    tol = 1e-8
-                    error = 1.0
-                    alpha = 1.3
+
+                    tol: float = 1e-8
+                    error: float = 1.0
+                    alpha: float = 1.3
                     curr_dx: float = 1.2
+                    max_iter: int = 100
+                    iter_count: int = 0
 
                     dx[uid2idx_diff[d_var.uid]] = curr_dx
                     while error > tol:
-                        try:
-                            eval_res = float(eq_fn(x, dx, event_params_array, params_array)[0])
-                        except Exception:
-                            dx[uid2idx_diff[d_var.uid]] = -0.1
-                            eval_res = float(eq_fn(x, dx, event_params_array, params_array)[0])
+                        if iter_count < max_iter:
+                            try:
+                                eval_res: float = float(eq_fn(x, dx, event_params_array, params_array)[0])
+                            except Exception:
+                                dx[uid2idx_diff[d_var.uid]] = -0.1
+                                eval_res = float(eq_fn(x, dx, event_params_array, params_array)[0])
 
-                        dx[uid2idx_diff[d_var.uid]] = (1 - alpha) * curr_dx + alpha * eval_res
-                        error = float(abs(eval_res - curr_dx))
-                        curr_dx = float(dx[uid2idx_diff[d_var.uid]])
+                            dx[uid2idx_diff[d_var.uid]] = (1.0 - alpha) * curr_dx + alpha * eval_res
+                            error = float(abs(eval_res - curr_dx))
+                            curr_dx = float(dx[uid2idx_diff[d_var.uid]])
+                            iter_count += 1
+                        else:
+                            return None
 
                     diff_init_guess[d_var.uid] = curr_dx
 
                 del diff_pending[uid]
                 progress_made = True
             else:
-                uid = uid
+                pass
 
-        # If no variables were resolved in this pass, the system is unsolvable
         if not progress_made:
-            # We return None to signify failure rather than raising, per directive
             return None
         else:
-            progress_made = progress_made
+            pass
 
     return init_guess, diff_init_guess
 
@@ -994,7 +1050,7 @@ def run_emt_native_initialization(problem: EmtProblemTemplate, options: EmtOptio
     method_requested: EmtInitializationMethod = options.initialization_method
 
     if method_requested == EmtInitializationMethod.Explicit:
-        report.status = InitializationStatus.RESOLVED
+        report.status = EmtInitializationStatus.RESOLVED
         report.method_used = EmtInitializationMethod.Explicit
     else:
         reduced_system: ReducedInitializationSystem | None
@@ -1009,15 +1065,15 @@ def run_emt_native_initialization(problem: EmtProblemTemplate, options: EmtOptio
             reduced_system = None
             runtime_params = np.zeros(0, dtype=np.float64)
             constant_params = np.zeros(0, dtype=np.float64)
-            report.status = InitializationStatus.FAILED
+            report.status = EmtInitializationStatus.FAILED
             report.method_used = EmtInitializationMethod.Explicit
             report.message = "Reduced initialization system construction failed; keeping explicit initialization."
 
         if reduced_system is None:
-            if report.status == InitializationStatus.FAILED:
+            if report.status == EmtInitializationStatus.FAILED:
                 x[:] = x_seed
             else:
-                report.status = InitializationStatus.RESOLVED
+                report.status = EmtInitializationStatus.RESOLVED
                 report.method_used = EmtInitializationMethod.Explicit
         else:
             try:
@@ -1025,7 +1081,7 @@ def run_emt_native_initialization(problem: EmtProblemTemplate, options: EmtOptio
                 report.initial_residual_inf = _max_abs_value(residual0)
             except (FloatingPointError, ZeroDivisionError, ValueError, RuntimeError):
                 x[:] = x_seed
-                report.status = InitializationStatus.FAILED
+                report.status = EmtInitializationStatus.FAILED
                 report.method_used = EmtInitializationMethod.Explicit
                 report.message = "Reduced initialization residual evaluation failed; keeping explicit initialization."
                 reduced_system = None
@@ -1056,7 +1112,7 @@ def run_emt_native_initialization(problem: EmtProblemTemplate, options: EmtOptio
                 converged = False
 
             if converged:
-                report.status = InitializationStatus.RESOLVED
+                report.status = EmtInitializationStatus.RESOLVED
             elif use_ptc:
                 converged = _run_reduced_pseudo_transient_initialization(
                     reduced_system=reduced_system,
@@ -1082,16 +1138,16 @@ def run_emt_native_initialization(problem: EmtProblemTemplate, options: EmtOptio
                         report=report,
                     )
                 if converged:
-                    report.status = InitializationStatus.RESOLVED
+                    report.status = EmtInitializationStatus.RESOLVED
                     report.method_used = EmtInitializationMethod.PseudoTransient
                 else:
                     x[:] = x_seed
-                    report.status = InitializationStatus.FAILED
+                    report.status = EmtInitializationStatus.FAILED
                     report.method_used = EmtInitializationMethod.Explicit
                     report.message = "Consistent initialization failed after pseudo-transient fallback; keeping explicit initialization."
             else:
                 x[:] = x_seed
-                report.status = InitializationStatus.FAILED
+                report.status = EmtInitializationStatus.FAILED
                 report.method_used = EmtInitializationMethod.Explicit
                 report.message = "Consistent initialization failed and pseudo-transient fallback was disabled."
 

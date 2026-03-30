@@ -5,7 +5,7 @@ from scipy import sparse, linalg
 from sympy.parsing.sympy_parser import parse_expr
 from enum import Enum
 from typing import Optional, Any, List, Tuple
-
+import warnings
 
 # ------------------------------------------------------------------
 # Enums for Options
@@ -48,9 +48,7 @@ def _sort_symbol(sym: sp.Symbol) -> tuple:
     """
     name: str = sym.name
 
-    if name.startswith('dx'):
-        return 0, name
-    elif name.startswith('xp'):
+    if name.startswith('dx') or name.startswith('xp') or name.startswith('d_') or name.startswith('dt_'):
         return 0, name
     elif name.startswith('x') and not name.startswith('xp'):
         return 1, name
@@ -74,24 +72,6 @@ def _get_real_part(val: complex) -> float:
     :rtype: float
     """
     return float(val.real)
-
-
-def _arr2str(a: np.ndarray) -> str:
-    """
-    Formats a numpy array into a structured string.
-
-    :param a: Input array.
-    :type a: np.ndarray
-    :return: Formatted string representation.
-    :rtype: str
-    """
-    return np.array2string(
-        np.asarray(a),
-        max_line_width=99999,
-        precision=6,
-        suppress_small=True,
-        threshold=99999,
-    )
 
 
 def _section(title: str, content: str) -> str:
@@ -136,6 +116,7 @@ class PolynomialMatrixBuilder:
             algebraic_vars: Optional[list] = None,
             verbose: bool = False
     ) -> None:
+
         self.verbose: bool = verbose
 
         self.eqs: list = list()
@@ -143,7 +124,6 @@ class PolynomialMatrixBuilder:
         self.state_vars: list = list()
         self.algebraic_vars: list = list()
 
-        # --- FIX: INITIALIZE LOCAL PROCESSING LISTS TO PREVENT UNBOUND ERRORS ---
         processed_eqs: list = list()
         processed_ineqs: list = list()
         processed_state_vars: list = list()
@@ -156,6 +136,7 @@ class PolynomialMatrixBuilder:
                 return item.to_string()
             return str(item)
 
+        # Checks whether the input is a VG problem or example eqs
         has_problem: bool = problem is not None
 
         if eqs is not None:
@@ -235,12 +216,17 @@ class PolynomialMatrixBuilder:
         for parsed_i in self.ineqs:
             combined_exprs.append(parsed_i)
 
+
         self.extract_symbols(combined_exprs, predefined=parsed_predefined)
 
         # --- FIX: AUTOMATIC FLATTENING & GLOBAL SORTING ---
         self._argaux_map: dict = dict()
+
+        # LINEARIZATION: \propto x^n, n\in\mathbb{R}
         self._flatten_nonlinear_arguments()
 
+        # LINEARIZATION: \propto \cos(x), \propto \sin(x)
+        self._apply_automatic_trig_lifting()
         self.all_symbols.sort(key=_sort_symbol)
 
         self.sym_to_idx.clear()
@@ -649,6 +635,60 @@ class PolynomialMatrixBuilder:
 
             return current_eq_coeffs
 
+    def _apply_automatic_trig_lifting(self) -> None:
+        """
+        ALGORITHM: Automatic Multilinear Lifting via Lie-Bäcklund Isomorphism.
+        Transforms trigonometric non-linearities into extended polynomial states.
+        Registers the new variables globally to ensure matrix column allocation.
+        """
+
+        new_eqs: list = list()
+        subs_dict: dict = dict()
+        processed_args: set = set()
+
+        for eq in self.eqs:
+            trig_terms = eq.atoms(sp.sin, sp.cos)
+
+            for term in trig_terms:
+                arg = term.args[0]
+
+                if arg not in processed_args:
+                    # 1. Define extended state and derivative variables using native prefixes
+                    s_var = sp.Symbol(f"x_sin_{arg.name}")
+                    c_var = sp.Symbol(f"x_cos_{arg.name}")
+
+                    sp_var = sp.Symbol(f"xp_sin_{arg.name}")
+                    cp_var = sp.Symbol(f"xp_cos_{arg.name}")
+
+                    # Assume the derivative of the argument replaces 'x' with 'xp'
+                    arg_p = sp.Symbol(arg.name.replace('x', 'xp'))
+
+                    # 2. Formulate the differential equations for the tangent space
+                    eq_ds = sp_var - (c_var * arg_p)
+                    eq_dc = cp_var + (s_var * arg_p)
+
+                    new_eqs.extend([eq_ds, eq_dc])
+
+                    # 3. Store the substitution mapping
+                    subs_dict[sp.sin(arg)] = s_var
+                    subs_dict[sp.cos(arg)] = c_var
+
+                    # --- ARCHITECTURE FIX: REGISTER IN GLOBAL STATE ---
+                    # We must tell the Builder that these new variables exist
+                    # before it calls self.all_symbols.sort() in __init__
+                    for new_sym in [s_var, c_var, sp_var, cp_var]:
+                        if new_sym not in self.all_symbols:
+                            self.all_symbols.append(new_sym)
+
+                    processed_args.add(arg)
+
+        # 4. Apply substitutions and append the new differential equations
+        lifted_original_eqs: list = [eq.subs(subs_dict) for eq in self.eqs]
+        self.eqs = lifted_original_eqs + new_eqs
+
+        if self.verbose:
+            print(f"[LIFTING] Applied Lie-Bäcklund isomorphism to {len(processed_args)} angular variables.")
+
     def _generate_lifting_equations(self) -> None:
         """
         Automatically generates and appends the algebraic constraint equations
@@ -827,9 +867,11 @@ class PolynomialMatrixBuilder:
             self.eqs.append(c)
 
     # ------------------------------------------------------------------
-    # Linearisation – public entry point
+    # Linearization – public entry point
     # ------------------------------------------------------------------
+    # This may be deleted
     def linearize_with_problem(self, problem: Any, v_dict_override: Optional[dict] = None) -> np.ndarray:
+        warnings.warn("This will be deleted in a week from now if nobody complains.", DeprecationWarning)
         """
         Syncs the MTI_Problem's internal state (including dxOP) with the builder
         to ensure nonlinear terms are linearized at the correct operating point.
@@ -844,25 +886,39 @@ class PolynomialMatrixBuilder:
         # Call the standard linearization
         return self.linearize(full_v)
 
-    def linearize(self, v_dict: dict, c_type: ConstraintType = ConstraintType.EQUALITY):
+    def linearize(self, v_dict: dict, c_type: ConstraintType = ConstraintType.EQUALITY) -> np.ndarray:
         """
         Analytic linearization for iMTI models (CPN representation).
-
-        :param v_dict: Variable name mapped to value at the operating point.
-        :type v_dict: dict
-        :param c_type: Enum indicating whether to use equality or inequality matrices.
-        :type c_type: ConstraintType
-        :return: Full EABC Jacobian matrix.
-        :rtype: np.ndarray
+        Automatically computes the operating points for lifted trigonometric variables
+        before evaluating the Jacobian matrix.
         """
+        import math
+
+        keys_to_check: list = list(v_dict.keys())
+        key: str
+        for key in keys_to_check:
+            if key.startswith('x') and 'p' not in key:
+                val: float = float(v_dict[key])
+
+                # --- ARCHITECTURE FIX: EXACT PREFIX MATCHING ---
+                # These keys MUST match the sp.Symbol names generated in the lifting method
+                v_dict[f"x_sin_{key}"] = math.sin(val)
+                v_dict[f"x_cos_{key}"] = math.cos(val)
+
+                v_dict[f"xp_sin_{key}"] = 0.0
+                v_dict[f"xp_cos_{key}"] = 0.0
+
         S: np.ndarray
         Phi: np.ndarray
         S, Phi = self._get_matrices(c_type)
 
         v: np.ndarray = self._build_v_vector(v_dict)
         F: np.ndarray = self._compute_jacobian(S, v)
-        self.EABC: np.ndarray = Phi @ F.T
+
+        self.EABC = Phi @ F.T
         self.E, self.A, self.B = self._split_EABC(self.EABC)
+
+        return self.EABC
 
     # ------------------------------------------------------------------
     # Linearisation – private helpers
@@ -1004,16 +1060,17 @@ class PolynomialMatrixBuilder:
         s: sp.Symbol
         for s in self.all_symbols:
             s_name: str = s.name
-            if s_name.startswith('dx') or s_name.startswith('xp'):
+            if s_name.startswith('dx') or s_name.startswith('xp') or s_name.startswith('d_') or s_name.startswith(
+                'dt_'):
                 idx_dx.append(idx_counter)
-            elif s_name.startswith('u'):
+            elif s_name.startswith('u') and not s_name.startswith('u_'):
                 idx_u.append(idx_counter)
             else:
                 # All other variables (x, y, z, argaux, sqrtaux) belong to the state vector
                 idx_vars.append(idx_counter)
 
             idx_counter = idx_counter + 1
-
+        #print(f"\n[DEBUG] Derivadas detectadas en la lista: {[self.all_symbols[idx].name for idx in idx_dx]}")
         n_eqs: int = int(EABC.shape[0])
         E: np.ndarray = np.zeros((n_eqs, n_eqs))
         A: np.ndarray = np.zeros((n_eqs, n_eqs))
@@ -1034,29 +1091,35 @@ class PolynomialMatrixBuilder:
             state_sym: sp.Symbol = self.all_symbols[state_idx]
             state_name: str = state_sym.name
 
-            # Identify expected derivative names (e.g., x1 -> xp1 or dx1)
+            # Identify expected derivative names
             deriv_names: list = list()
             if state_name.startswith('x'):
                 deriv_names.append(str("xp" + state_name[1:]))
                 deriv_names.append(str("dx" + state_name[1:]))
-            else:
-                pass
 
-            # Find if the derivative actually exists in the system
+            deriv_names.append(str("dt_" + state_name))
+            deriv_names.append(str("d_" + state_name))
+
+            # 1. Búsqueda exacta (Ej: d_u_cos -> u_cos)
             deriv_idx: int = -1
             d_name: str
             for d_name in deriv_names:
                 if d_name in self.sym_to_idx:
                     deriv_idx = self.sym_to_idx[d_name]
                     break
-                else:
-                    pass
+
+            # 2. Búsqueda flexible para prefijos de componentes (Ej: dt_1_Vf -> Vf)
+            if deriv_idx == -1:
+                for dx_idx in idx_dx:
+                    dx_name = self.all_symbols[dx_idx].name
+                    # Si la derivada termina en "_Vf" y el estado es "Vf", es la suya
+                    if dx_name.endswith(f"_{state_name}") and (dx_name.startswith("dt_") or dx_name.startswith("d_")):
+                        deriv_idx = dx_idx
+                        break
 
             # If a derivative exists, place it in the EXACT SAME column as the state
             if deriv_idx != -1 and deriv_idx in idx_dx:
                 E[:, i] = -EABC[:, deriv_idx]
-            else:
-                pass
 
         B: np.ndarray = EABC[:, idx_u]
 
@@ -1066,7 +1129,8 @@ class PolynomialMatrixBuilder:
     # Stability analysis
     # ------------------------------------------------------------------
 
-    def compute_stability(self) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], bool, Optional[float]]:
+    def compute_stability(self) -> Tuple[
+        Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], bool, Optional[float]]:
         """
         Compute generalised eigenvalues for the descriptor pair (A, E).
 
@@ -1087,15 +1151,20 @@ class PolynomialMatrixBuilder:
             evecs_right_raw: np.ndarray
             evals, evecs_left_raw, evecs_right_raw = linalg.eig(current_a, current_e, left=True, right=True)
 
+            # --- ALGORITHM: INFINITE AND NAN FILTERING ---
+            # 1. Identify which indices correspond to valid finite values
+            valid_idx: np.ndarray = np.isfinite(evals)
+
+            # 2. Keep only the valid finite eigenvalues
+            evals = evals[valid_idx]
+
             # --- ALGORITHM: MEMORY SPACE PROTECTION ---
-            # Scipy might return float64 arrays if all eigenvalues happen to be purely real.
-            # We explicitly cast to complex to prevent TypeError during complex normalization.
-            evecs_left: np.ndarray = evecs_left_raw.astype(complex)
-            evecs_right: np.ndarray = evecs_right_raw.astype(complex)
+            # 3. Filter eigenvector columns to match valid eigenvalues, and cast to
+            #    complex to prevent TypeError during complex normalization.
+            evecs_left: np.ndarray = evecs_left_raw[:, valid_idx].astype(complex)
+            evecs_right: np.ndarray = evecs_right_raw[:, valid_idx].astype(complex)
 
-            finite_evs: np.ndarray = evals[np.isfinite(evals)]
-
-            if len(finite_evs) == 0:
+            if len(evals) == 0:
                 return evals, evecs_left, evecs_right, None, True, -np.inf
             else:
                 pass
@@ -1126,9 +1195,9 @@ class PolynomialMatrixBuilder:
                     evecs_left[:, i] = evecs_left[:, i] / scaling_val
 
             # 4. Element-wise matrix multiplication to compute participation factors
-            participation_matrix: np.ndarray = np.abs(evecs_right) * np.abs(evecs_left).T
+            participation_matrix: np.ndarray = np.abs(evecs_right) * np.abs(evecs_left)
 
-            max_real: float = float(np.max(np.real(finite_evs)))
+            max_real: float = float(np.max(np.real(evals)))
             is_stable: bool = False
 
             if max_real < 0.0:
@@ -1222,14 +1291,6 @@ class PolynomialMatrixBuilder:
                     ("A Matrix", self.A),
                     ("B Matrix", self.B),
                 ]
-
-                for label_w, mat_w in matrix_write_refs:
-                    if mat_w is not None:
-                        formatted_mat: str = _arr2str(mat_w)
-                        section_str: str = _section(label_w, formatted_mat)
-                        f.write(section_str + "\n")
-                    else:
-                        pass
 
                 stability_txt: str = (
                     f"Is stable:     {is_stable}\n"

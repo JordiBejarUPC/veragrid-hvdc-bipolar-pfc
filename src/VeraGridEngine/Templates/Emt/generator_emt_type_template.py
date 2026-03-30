@@ -31,17 +31,17 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
     # --------------------------------------------------------------------------------------
     # Inputs: instantaneous abc terminal voltages in pu (at bus)
     # --------------------------------------------------------------------------------------
-    v_A = vf.add_var(name=f"v_A_{name}", ref = VarPowerFlowRefferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", ref = VarPowerFlowRefferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", ref = VarPowerFlowRefferenceType.v_C)
+    v_A = vf.add_var(name=f"v_A_{name}", reference= VarPowerFlowRefferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", reference= VarPowerFlowRefferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", reference= VarPowerFlowRefferenceType.v_C)
     Tm = vf.add_var(name=f"Tm_{name}")
     v_f = vf.add_var(name=f"v_f_{name}")
 
     # to connect complete block with gen block
-    Ipk = vf.add_var(name="Ipk", ref = VarPowerFlowRefferenceType.Ipk)
-    Vpk = vf.add_var(name="Vpk", ref = VarPowerFlowRefferenceType.Vpk)
-    phi = vf.add_var(name="phi", ref = VarPowerFlowRefferenceType.phi)
-    phi_v = vf.add_var(name="phi_v", ref = VarPowerFlowRefferenceType.phi_v)
+    Ipk = vf.add_var(name="Ipk", reference= VarPowerFlowRefferenceType.Ipk)
+    Vpk = vf.add_var(name="Vpk", reference= VarPowerFlowRefferenceType.Vpk)
+    phi = vf.add_var(name="phi", reference= VarPowerFlowRefferenceType.phi)
+    phi_v = vf.add_var(name="phi_v", reference= VarPowerFlowRefferenceType.phi_v)
     inputs = [v_A, v_B, v_C, Tm, v_f, phi_v, phi, Vpk, Ipk]
     # --------------------------------------------------------------------------------------
     # States (pu, except theta [rad])
@@ -66,9 +66,9 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
     # --------------------------------------------------------------------------------------
     # Algebraic eqs
     # --------------------------------------------------------------------------------------
-    i_A = vf.add_var(name=f"i_A_{name}", ref = VarPowerFlowRefferenceType.i_A)
-    i_B = vf.add_var(name=f"i_B_{name}", ref = VarPowerFlowRefferenceType.i_B)
-    i_C = vf.add_var(name=f"i_C_{name}", ref = VarPowerFlowRefferenceType.i_C)
+    i_A = vf.add_var(name=f"i_A_{name}", reference= VarPowerFlowRefferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B_{name}", reference= VarPowerFlowRefferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C_{name}", reference= VarPowerFlowRefferenceType.i_C)
 
     # dq0 voltages
     v_d = vf.add_var("v_d_" + name)
@@ -703,8 +703,8 @@ def get_generator_emt_type_template(vf: VarFactory, name: str = "emt_type_genera
     return templ
 
 
-def get_generator_sauer_pai_type_template(vf: VarFactory, name: str = "sauer_pai_generator_emt_template"
-) -> EmtModelTemplate:
+def get_generator_sauer_pai_type_emt_template(vf: VarFactory, name: str = "sauer_pai_generator_emt_template"
+                                              ) -> EmtModelTemplate:
     """
     Sauer-Pai synchronous generator model embedded in the EMT architecture,
     including explicit zero-sequence dynamics.
@@ -1186,7 +1186,7 @@ def get_generator_sauer_pai_type_template(vf: VarFactory, name: str = "sauer_pai
 
 
 
-def get_governor(vf: VarFactory, name: str = "Governor") -> EmtModelTemplate:
+def get_governor_emt(vf: VarFactory, name: str = "Governor") -> EmtModelTemplate:
     templ = EmtModelTemplate(name=name)
 
     parameters = {
@@ -1386,7 +1386,7 @@ def get_governor(vf: VarFactory, name: str = "Governor") -> EmtModelTemplate:
     return templ
 
 
-def get_stabilizer(vf: VarFactory, name: str = "stabilizer") -> EmtModelTemplate:
+def get_stabilizer_emt(vf: VarFactory, name: str = "stabilizer") -> EmtModelTemplate:
     templ = EmtModelTemplate(name=name)
 
     parameters = {
@@ -1494,7 +1494,7 @@ def get_stabilizer(vf: VarFactory, name: str = "stabilizer") -> EmtModelTemplate
     return templ
 
 
-def get_exciter(vf: VarFactory, name: str = "exciter") -> EmtModelTemplate:
+def get_exciter_emt(vf: VarFactory, name: str = "exciter") -> EmtModelTemplate:
     """
 
     :param vf:
@@ -1748,7 +1748,7 @@ def get_exciter(vf: VarFactory, name: str = "exciter") -> EmtModelTemplate:
     return templ
 
 
-def get_complete_generator_template(vf: VarFactory, name="complete_generator_emt_template") -> EmtModelTemplate:
+def get_complete_generator_template_emt(vf: VarFactory, name="complete_generator_emt_template") -> EmtModelTemplate:
     """
 
     :return:
@@ -1761,11 +1761,11 @@ def get_complete_generator_template(vf: VarFactory, name="complete_generator_emt
     # generate models
     gen_mdl = get_simple_generator_emt_template(vf = vf).block
     # gen_mdl = get_generator_emt_type_template(vf = vf).block
-    # gen_mdl = get_generator_sauer_pai_type_template(vf = vf).block
+    # gen_mdl = get_generator_sauer_pai_type_emt_template(vf = vf).block
 
-    exciter_mdl = get_exciter(vf=vf).block
-    governor_mdl = get_governor(vf=vf).block
-    stabilizer_mdl = get_stabilizer(vf=vf).block
+    exciter_mdl = get_exciter_emt(vf=vf).block
+    governor_mdl = get_governor_emt(vf=vf).block
+    stabilizer_mdl = get_stabilizer_emt(vf=vf).block
 
     # connect models
     gen_mdl.connect([gen_mdl.in_vars[4]], [exciter_mdl.out_vars[0]]) # v_f

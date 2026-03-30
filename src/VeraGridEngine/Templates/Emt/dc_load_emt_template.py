@@ -57,15 +57,13 @@ def get_dc_load_emt_template(
     vf: VarFactory = grid.emt_var_factory
     sbase: float = grid.Sbase
 
-    c0 = vf.add_const(0.0)
-
     # Convert power from MW to p.u.
     P_dc_pu = -P_dc / sbase  # p.u. # in the correct sign convention
 
-    v_dc = vf.add_var(name=f"v_dc_{name}", ref=VarPowerFlowRefferenceType.Vdc)
+    v_dc = vf.add_var(name=f"v_dc_{name}", reference=VarPowerFlowRefferenceType.Vdc)
 
-    i_dc = vf.add_var(name=f"i_dc_{name}", ref=VarPowerFlowRefferenceType.Idc)
-    p_dc = vf.add_var(name=f"p_dc_{name}", ref=VarPowerFlowRefferenceType.P)
+    i_dc = vf.add_var(name=f"i_dc_{name}", reference=VarPowerFlowRefferenceType.Idc)
+    p_dc = vf.add_var(name=f"p_dc_{name}", reference=VarPowerFlowRefferenceType.P)
 
     templ.block.in_vars = [v_dc]
     templ.block.algebraic_vars = [i_dc, p_dc]
@@ -110,7 +108,7 @@ def get_dc_load_emt_template(
 
 def get_dc_load_from_device(
     grid: MultiCircuit,
-    load_device,
+    load,
     name: str = "dc_load_emt_template"
 ) -> EmtModelTemplate:
     """
@@ -118,16 +116,16 @@ def get_dc_load_from_device(
 
     Args:
         grid: Multicircuit
-        load_device: Load device (Generator used as DC load)
+        load: Load device (Generator used as DC load)
         name: Name for the model
 
     Returns:
         EmtModelTemplate with the DC load block
     """
-    P_dc = getattr(load_device, 'P', 0.0)
+    P_dc = getattr(load, 'P', 0.0)
     return get_dc_load_emt_template(
         grid=grid,
-        load_name=load_device.name,
+        load_name=load.name,
         P_dc=P_dc,
-        name=f"{load_device.name}_{name}"
+        name=f"{load.name}_{name}"
     )

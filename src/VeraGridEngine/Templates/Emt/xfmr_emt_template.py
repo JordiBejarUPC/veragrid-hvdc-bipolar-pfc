@@ -169,24 +169,24 @@ def get_xfmr_emt_template(
         five_legged = False
 
     v_f = [
-        vf.add_var(name=f"vf_A_{name}", ref=VarPowerFlowRefferenceType.vf_A),
-        vf.add_var(name=f"vf_B_{name}", ref=VarPowerFlowRefferenceType.vf_B),
-        vf.add_var(name=f"vf_C_{name}", ref=VarPowerFlowRefferenceType.vf_C),
+        vf.add_var(name=f"vf_A_{name}", reference=VarPowerFlowRefferenceType.vf_A),
+        vf.add_var(name=f"vf_B_{name}", reference=VarPowerFlowRefferenceType.vf_B),
+        vf.add_var(name=f"vf_C_{name}", reference=VarPowerFlowRefferenceType.vf_C),
     ]
     v_t = [
-        vf.add_var(name=f"vt_A_{name}", ref=VarPowerFlowRefferenceType.vt_A),
-        vf.add_var(name=f"vt_B_{name}", ref=VarPowerFlowRefferenceType.vt_B),
-        vf.add_var(name=f"vt_C_{name}", ref=VarPowerFlowRefferenceType.vt_C),
+        vf.add_var(name=f"vt_A_{name}", reference=VarPowerFlowRefferenceType.vt_A),
+        vf.add_var(name=f"vt_B_{name}", reference=VarPowerFlowRefferenceType.vt_B),
+        vf.add_var(name=f"vt_C_{name}", reference=VarPowerFlowRefferenceType.vt_C),
     ]
     d_v_f = [
-        vf.add_var(name=f"d_vf_A_{name}", ref=VarPowerFlowRefferenceType.d_v_A_f),
-        vf.add_var(name=f"d_vf_B_{name}", ref=VarPowerFlowRefferenceType.d_v_B_f),
-        vf.add_var(name=f"d_vf_C_{name}", ref=VarPowerFlowRefferenceType.d_v_C_f),
+        vf.add_var(name=f"d_vf_A_{name}", reference=VarPowerFlowRefferenceType.d_v_A_f),
+        vf.add_var(name=f"d_vf_B_{name}", reference=VarPowerFlowRefferenceType.d_v_B_f),
+        vf.add_var(name=f"d_vf_C_{name}", reference=VarPowerFlowRefferenceType.d_v_C_f),
     ]
     d_v_t = [
-        vf.add_var(name=f"d_vt_A_{name}", ref=VarPowerFlowRefferenceType.d_v_A_t),
-        vf.add_var(name=f"d_vt_B_{name}", ref=VarPowerFlowRefferenceType.d_v_B_t),
-        vf.add_var(name=f"d_vt_C_{name}", ref=VarPowerFlowRefferenceType.d_v_C_t),
+        vf.add_var(name=f"d_vt_A_{name}", reference=VarPowerFlowRefferenceType.d_v_A_t),
+        vf.add_var(name=f"d_vt_B_{name}", reference=VarPowerFlowRefferenceType.d_v_B_t),
+        vf.add_var(name=f"d_vt_C_{name}", reference=VarPowerFlowRefferenceType.d_v_C_t),
     ]
 
     for d_var in d_v_f:

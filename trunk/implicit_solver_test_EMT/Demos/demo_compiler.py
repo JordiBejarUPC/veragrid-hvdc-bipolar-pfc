@@ -10,6 +10,8 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
+import pandas as pd
+
 
 def solve_step_newton(step_fn: Callable, current_x: np.ndarray, history: np.ndarray,
                       d_history: np.ndarray, params: np.ndarray, h: float,
@@ -84,7 +86,7 @@ def run_demo() -> None:
     t_end: float = 100.0
     h: float = 0.05
     steps: int = int(t_end / h)
-    time: np.ndarray = np.linspace(0, t_end, steps)
+    tme: np.ndarray = np.linspace(0, t_end, steps)
 
     results: np.ndarray = np.zeros((steps, 2), dtype=np.float64)
     energy: np.ndarray = np.zeros(steps, dtype=np.float64)
@@ -116,12 +118,22 @@ def run_demo() -> None:
         d_history = d_next
         current_x = next_x
 
+    # ==============================================================================
+    # SAVE RESULTS
+    # ==============================================================================
+
+
+    results_df = pd.DataFrame(results, index=tme)
+    results_df.index.name = "time_s"
+    name = "demo_compiler.csv"
+    results_df.to_csv(name, index=False)
+
     # 4. Plot results
     plt.figure(figsize=(12, 8))
 
     plt.subplot(2, 2, 1)
-    plt.plot(time, results[:, 0], label='Position (m)', color='blue')
-    plt.plot(time, results[:, 1], label='Velocity (m/s)', color='orange', linestyle='--')
+    plt.plot(tme, results[:, 0], label='Position (m)', color='blue')
+    plt.plot(tme, results[:, 1], label='Velocity (m/s)', color='orange', linestyle='--')
     plt.title("Time Response")
     plt.grid(True)
     plt.legend()
@@ -134,7 +146,7 @@ def run_demo() -> None:
     plt.grid(True)
 
     plt.subplot(2, 1, 2)
-    plt.plot(time, energy, color='green', linewidth=2)
+    plt.plot(tme, energy, color='green', linewidth=2)
     plt.title("Total System Energy (Damped)")
     plt.xlabel("Time (s)")
     plt.ylabel("Energy")

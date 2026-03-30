@@ -432,6 +432,9 @@ class Transformer2W(ControllableBranchParent):
             else:
                 self.template = obj
 
+            self.rms_template = obj.rms_template
+            self.emt_template = obj.emt_template
+
     def delete_virtual_taps(self):
         """
         Set the HV and LV parameters such that any virtual tap is null

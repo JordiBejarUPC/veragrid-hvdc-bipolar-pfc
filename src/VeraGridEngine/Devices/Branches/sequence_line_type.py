@@ -5,7 +5,8 @@
 from typing import Tuple
 import numpy as np
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
+from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
+from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.basic_structures import Logger
 
 
@@ -89,7 +90,7 @@ def get_line_impedances_with_b(r_ohm: float, x_ohm: float, b_us: float, length: 
         return 1e-20, 1e-20, 0, 1e-20
 
 
-class SequenceLineType(EditableDevice):
+class SequenceLineType(DynamicDevice):
     __slots__ = (
         '_Imax',
         '_Vnom',
@@ -145,7 +146,7 @@ class SequenceLineType(EditableDevice):
         :param opex: Operating expenditures
         """
 
-        EditableDevice.__init__(self,
+        DynamicDevice.__init__(self,
                                 name=name,
                                 idtag=idtag,
                                 code="",

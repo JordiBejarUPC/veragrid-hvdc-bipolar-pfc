@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import uuid
 import re
+import copy
 from enum import Enum
 from typing import List, Dict, Optional, Any, Set
 from PySide6 import QtWidgets, QtGui, QtCore
@@ -17,7 +18,7 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
                                QColorDialog, QPlainTextEdit)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter,
                            QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
-from PySide6.QtCore import QAbstractItemModel
+from PySide6.QtCore import QAbstractItemModel, QLineF
 from PySide6.QtCore import Qt, QPointF, QModelIndex, Signal, QAbstractTableModel
 
 
@@ -34,6 +35,7 @@ from VeraGrid.Gui.RmsModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
                                                     get_symbolic_parser_function_names,
                                                     Expr, Var, Const, Comparison)
+from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block
@@ -52,11 +54,11 @@ DEFAULT_BLOCK_FILL: QColor = QColor("#d9e7f5")
 PORT_LABEL_COLOR: QColor = QColor("#173042")
 WIRE_ELBOW_OFFSET: float = 36.0
 PORT_LABEL_MAX_CHARS: int = 12
-BLOCK_HEADER_HEIGHT: float = 32.0
-BLOCK_PORT_ROW_HEIGHT: float = 18.0
-BLOCK_PORT_SECTION_PADDING: float = 14.0
-BLOCK_MIN_WIDTH: float = 186.0
-BLOCK_MIN_HEIGHT: float = 60.0
+BLOCK_HEADER_HEIGHT: float = 24.0
+BLOCK_PORT_ROW_HEIGHT: float = 16.0
+BLOCK_PORT_SECTION_PADDING: float = 10.0
+BLOCK_MIN_WIDTH: float = 100.0
+BLOCK_MIN_HEIGHT: float = 50.0
 TEMPLATE_NODE_TYPE: str = "TEMPLATE"
 PARAMETER_VALUE_TYPE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 500
 PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
@@ -111,20 +113,6 @@ def build_orthogonal_connection_path(start: QPointF, end: QPointF) -> QPainterPa
     path.lineTo(end)
     return path
 
-
-def clone_template_block(template_block: Block) -> Block:
-    """
-    Build a structural copy of a template block for editor insertion.
-
-    :param template_block:
-    :return:
-    """
-    uid_map: Dict[int, int] = dict()
-    block_data: Dict[str, Any] = template_block.to_dict()
-    cloned_data: Dict[str, Any] = remap_serialized_uids(block_data, uid_map)
-    cloned_block: Block = Block.parse(cloned_data)
-    cloned_block.diagram = clone_template_diagram(template_block.diagram, uid_map)
-    return cloned_block
 
 
 def remap_serialized_uids(data: Any, uid_map: Dict[int, int]) -> Any:
@@ -233,9 +221,7 @@ def clone_block_for_editing(block: Block) -> Block:
     :param block:
     :return:
     """
-    editable_block: Block = block.copy()
-    # editable_block.diagram = block.diagram.copy()
-    return editable_block
+    return copy.deepcopy(block)
 
 
 def copy_block_state(source_block: Block, target_block: Block) -> None:
@@ -265,7 +251,7 @@ def copy_block_state(source_block: Block, target_block: Block) -> None:
     target_block.in_vars = source_clone.in_vars
     target_block.out_vars = source_clone.out_vars
     target_block.parameters = source_clone.parameters
-    target_block.alter_params = source_clone.alter_params
+    # target_block.alter_params = source_clone.alter_params
     target_block.discrete_eqs = source_clone.discrete_eqs
     target_block.external_mapping = source_clone.external_mapping
     target_block.api_obj_mapping = source_clone.api_obj_mapping
@@ -407,7 +393,7 @@ class ResizeHandle(QGraphicsRectItem):
     Interactive resize handle attached to a block item.
     """
 
-    def __init__(self, block_item: "BlockItem", size: int = 10):
+    def __init__(self, block_item: BlockItem | GenericBlockItem , size: int = 10):
         """
         Build the resize handle.
 
@@ -502,7 +488,7 @@ class PortItem(QGraphicsEllipseItem):
     """
 
     def __init__(self,
-                 subsystem: "BlockItem",
+                 subsystem: BlockItem | GenericBlockItem,
                  is_input: bool,
                  index: int,
                  total: int,
@@ -563,50 +549,353 @@ class PortItem(QGraphicsEllipseItem):
         else:
             return False
 
+class BranchingItem(QGraphicsEllipseItem):
+    """
+    Graphical branching point attached to a connection item.
+    """
+
+    def __init__(self,
+                 connection: ConnectionItem,
+                 radius: int = 6):
+        """
+        Build a connection branching point.
+
+        :param connection:
+        :param radius:
+        """
+        super().__init__(-radius, -radius, 2 * radius, 2 * radius, connection)
+        fill_color: QColor =  OUTPUT_PORT_FILL
+        self.setBrush(QBrush(fill_color))
+        self.setPen(QPen(PORT_BORDER, 1.5))
+        self.setZValue(3)
+        self.setAcceptHoverEvents(True)
+        self.connection: ConnectionItem = connection
+        self.subsystem: BlockItem = connection.source_port.subsystem
+        self.connections: List["ConnectionItem"] | None = None
+        self.index: int =  len(connection.branching_points)
+        self.base_var: Var | None = None
+
+        total_branching_points: int = len(connection.branching_points) + 1
+        self.path_ratio: float = (self.index + 1) / (total_branching_points + 1)
+
+        self.update_position()
+
+    def update_position(self) -> None:
+        """
+        Recalculate position along the connection path based on stored ratio.
+        """
+        path_points: List[QPointF] = self.connection._get_path_points()
+        total_length: float = 0.0
+        segment_lengths: List[float] = []
+        for i in range(len(path_points) - 1):
+            segment_length: float = QLineF(path_points[i], path_points[i + 1]).length()
+            segment_lengths.append(segment_length)
+            total_length += segment_length
+
+        target_distance: float = total_length * self.path_ratio
+
+        accumulated: float = 0.0
+        x_pos: float = 0.0
+        y_pos: float = 0.0
+        for seg_idx, segment_length in enumerate(segment_lengths):
+            if accumulated + segment_length >= target_distance:
+                ratio: float = (target_distance - accumulated) / segment_length if segment_length > 0 else 0.0
+                p1: QPointF = path_points[seg_idx]
+                p2: QPointF = path_points[seg_idx + 1]
+                x_pos = p1.x() + (p2.x() - p1.x()) * ratio
+                y_pos = p1.y() + (p2.y() - p1.y()) * ratio
+                break
+            accumulated += segment_length
+
+        connection_pos: QPointF = self.connection.scenePos()
+        self.setPos(x_pos - connection_pos.x(), y_pos - connection_pos.y())
+
+    def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
+        """
+        Show a pointer cursor over the port.
+
+        :param event:
+        :return:
+        """
+        QApplication.setOverrideCursor(Qt.CursorShape.PointingHandCursor)
+
+    def hoverLeaveEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
+        """
+        Restore the cursor when the pointer leaves the port.
+
+        :param event:
+        :return:
+        """
+        QApplication.restoreOverrideCursor()
+
+    def is_connected(self) -> bool:
+        """
+        Check whether the port already owns a connection list.
+
+        :return:
+        """
+        if self.connections is not None:
+            return True
+        else:
+            return False
+
 
 class ConnectionItem(QGraphicsPathItem):
     """
     Orthogonal graphical connection between two ports.
     """
 
-    def __init__(self, source_port: PortItem, target_port: PortItem):
+    def __init__(self, source_port: PortItem, target_port: PortItem,
+                 diagram=None, con_uid=None, elbow_points=None, uid=None):
         """
         Build the connection item.
 
         :param source_port:
         :param target_port:
+        :param diagram: BlockDiagram reference to update on elbow change
+        :param con_uid: Connection uid in the diagram
+        :param elbow_points: Custom elbow points (list of QPointF)
+        :param uid: Optional specific uid to use
         """
         super().__init__()
-        self.uid: int = _new_uid()
+        self.uid: int = uid if uid is not None else _new_uid()
         self.setZValue(-1)
-        self.source_port: PortItem = source_port
+        self.source_port: PortItem | BranchingItem = source_port
         self.target_port: PortItem = target_port
+        self.diagram = diagram
+        self.con_uid = con_uid if con_uid is not None else self.uid
+        self.custom_elbow_points: List[QPointF] = []
+        self.branching_points: List[BranchingItem] = list()
+        self._dragging: bool = False
+        self._drag_type: str = None  # 'horizontal' or 'vertical'
+        self._drag_segment_idx: int = -1
+        self._original_elbows: List[QPointF] = []
+
+        if elbow_points:
+            self.custom_elbow_points = [QPointF(x, y) for x, y in elbow_points]
+
         if self.source_port.connections is None:
             self.source_port.connections = list()
-        else:
-            pass
         self.source_port.connections.append(self)
 
         if self.target_port.connections is None:
             self.target_port.connections = list()
-        else:
-            pass
         self.target_port.connections.append(self)
+
         self.setPen(QPen(WIRE_COLOR, 2.5, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
         self.setAcceptHoverEvents(True)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
 
         self.update_path()
 
     def update_path(self) -> None:
         """
         Recompute the orthogonal path from current port positions.
+        Uses custom elbow points if available, otherwise builds default path.
 
         :return:
         """
         start: QPointF = self.source_port.scenePos()
         end: QPointF = self.target_port.scenePos()
-        path: QPainterPath = build_orthogonal_connection_path(start, end)
+
+        if self.custom_elbow_points:
+            path: QPainterPath = self._build_path_with_elbows(start, end, self.custom_elbow_points)
+        else:
+            path = build_orthogonal_connection_path(start, end)
         self.setPath(path)
+
+        for branching_point in self.branching_points:
+            branching_point.update_position()
+
+    def _build_path_with_elbows(self, start: QPointF, end: QPointF, elbows: List[QPointF]) -> QPainterPath:
+        """
+        Build a path through the given elbow points.
+
+        :param start:
+        :param end:
+        :param elbows:
+        :return:
+        """
+        path: QPainterPath = QPainterPath(start)
+        for elbow in elbows:
+            path.lineTo(elbow)
+        path.lineTo(end)
+        return path
+
+    def _get_path_points(self) -> List[QPointF]:
+        """
+        Get all points that define the path (start, elbows, end).
+
+        :return: List of QPointF
+        """
+        start: QPointF = self.source_port.scenePos()
+        end: QPointF = self.target_port.scenePos()
+
+        if self.custom_elbow_points:
+            points = [start] + list(self.custom_elbow_points) + [end]
+        else:
+            points = self._get_default_elbows(start, end)
+        return points
+
+    def _get_default_elbows(self, start: QPointF, end: QPointF) -> List[QPointF]:
+        """
+        Get default elbow points for the path.
+
+        :param start:
+        :param end:
+        :return:
+        """
+        delta_x: float = end.x() - start.x()
+        offset: float = min(WIRE_ELBOW_OFFSET, abs(delta_x) / 2.0) if delta_x != 0 else WIRE_ELBOW_OFFSET
+        start_elbow_x: float = start.x() + offset
+        end_elbow_x: float = end.x() - offset
+
+        if end.x() >= start.x():
+            mid1 = QPointF(start_elbow_x, start.y())
+            mid2 = QPointF(start_elbow_x, end.y())
+        else:
+            middle_x: float = start.x() + max(WIRE_ELBOW_OFFSET, abs(delta_x) / 2.0)
+            mid1 = QPointF(middle_x, start.y())
+            mid2 = QPointF(middle_x, end.y())
+
+        return [start, mid1, mid2, end]
+
+    def _find_segment_at_point(self, pos: QPointF) -> tuple[int, str, QPointF, QPointF] | None:
+        """
+        Find which segment contains the given point.
+
+        :param pos: Point to check
+        :return: (segment_index, segment_direction, segment_start, segment_end) or None
+        """
+        points = self._get_path_points()
+        threshold = 15.0
+
+        for i in range(len(points) - 1):
+            p1 = points[i]
+            p2 = points[i + 1]
+
+            if abs(p1.y() - p2.y()) < 1:
+                min_x, max_x = min(p1.x(), p2.x()), max(p1.x(), p2.x())
+                if min_x - threshold <= pos.x() <= max_x + threshold and abs(pos.y() - p1.y()) <= threshold:
+                    return (i, 'horizontal', p1, p2)
+            elif abs(p1.x() - p2.x()) < 1:
+                min_y, max_y = min(p1.y(), p2.y()), max(p1.y(), p2.y())
+                if min_y - threshold <= pos.y() <= max_y + threshold and abs(pos.x() - p1.x()) <= threshold:
+                    return (i, 'vertical', p1, p2)
+
+        return None
+
+    def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """
+        Handle mouse press to start dragging a segment.
+
+        :param event:
+        :return:
+        """
+        pos = event.scenePos()
+        segment_info = self._find_segment_at_point(pos)
+
+        if segment_info is not None:
+            self._drag_segment_idx, self._drag_type, p1, p2 = segment_info
+
+            if not self.custom_elbow_points:
+                self.custom_elbow_points = [QPointF(p) for p in self._get_default_elbows(
+                    self.source_port.scenePos(), self.target_port.scenePos()
+                )][1:-1]
+
+            elbow_idx = self._drag_segment_idx - 1
+            if elbow_idx < 0 or elbow_idx >= len(self.custom_elbow_points):
+                super().mousePressEvent(event)
+                return
+
+            self._dragging = True
+            self._original_elbows = [QPointF(p) for p in self.custom_elbow_points]
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """
+        Handle mouse move to drag a segment.
+
+        :param event:
+        :return:
+        """
+        if self._dragging:
+            pos = event.scenePos()
+            elbow_idx = self._drag_segment_idx - 1
+
+            if self._drag_type == 'horizontal':
+                new_y = pos.y()
+                self.custom_elbow_points[elbow_idx] = QPointF(
+                    self.custom_elbow_points[elbow_idx].x(), new_y
+                )
+                if elbow_idx + 1 < len(self.custom_elbow_points):
+                    self.custom_elbow_points[elbow_idx + 1] = QPointF(
+                        self.custom_elbow_points[elbow_idx + 1].x(), new_y
+                    )
+            else:
+                new_x = pos.x()
+                self.custom_elbow_points[elbow_idx] = QPointF(
+                    new_x, self.custom_elbow_points[elbow_idx].y()
+                )
+                if elbow_idx + 1 < len(self.custom_elbow_points):
+                    self.custom_elbow_points[elbow_idx + 1] = QPointF(
+                        new_x, self.custom_elbow_points[elbow_idx + 1].y()
+                    )
+
+            self.update_path()
+            self._update_diagram()
+            event.accept()
+        else:
+            super().mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """
+        Handle mouse release to stop dragging.
+
+        :param event:
+        :return:
+        """
+        self._dragging = False
+        self._drag_segment_idx = -1
+        self._drag_type = None
+        self._original_elbows = []
+        super().mouseReleaseEvent(event)
+
+    def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """
+        Doubleclick in a connection to create a branching point.
+
+        :param event:
+        :return:
+        """
+        self.branching_points.append(BranchingItem(self))
+
+        super().mouseDoubleClickEvent(event)
+
+    def _update_diagram(self) -> None:
+        """
+        Update the diagram's connection data with new elbow points.
+
+        :return:
+        """
+        if self.diagram is not None and self.con_uid is not None:
+            if self.con_uid in self.diagram.con_data:
+                self.diagram.con_data[self.con_uid].elbow_points = [
+                    (p.x(), p.y()) for p in self.custom_elbow_points
+                ]
+
+    def set_elbow_points(self, elbows: List[QPointF]) -> None:
+        """
+        Set custom elbow points and update the path.
+
+        :param elbows:
+        :return:
+        """
+        self.custom_elbow_points = [QPointF(x, y) for x, y in elbows]
+        self.update_path()
 
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         """
@@ -634,323 +923,6 @@ class ConnectionItem(QGraphicsPathItem):
         pen.setWidthF(2.5)
         self.setPen(pen)
 
-class ParametersTableModel(QAbstractTableModel):
-    """
-    Table model to display event parameters (editable) and fixed parameters (read-only).
-    """
-
-    dataChangedSignal = Signal(dict)  # emit updated event_dict
-
-    def __init__(self, var_factory, block: Block):
-        super().__init__()
-
-        self.var_factory = var_factory
-
-
-        # Store two lists of tuples (var, expr)
-        self.event_params = list(block.event_dict.items())      # editable
-        self.fixed_params = list(block.parameters.items()) # read-only
-
-        # Combine for easy row indexing
-        self.all_params = self.event_params + self.fixed_params
-
-    def rowCount(self, parent=QModelIndex()) -> int:
-        return len(self.all_params)
-
-    def columnCount(self, parent=QModelIndex()) -> int:
-        return 2  # Parameter name, Value
-
-    def data(self, index: QModelIndex, role=Qt.ItemDataRole.DisplayRole):
-        if not index.isValid():
-            return None
-
-        var, expr = self.all_params[index.row()]
-
-        if role in (Qt.DisplayRole, Qt.EditRole):
-            if index.column() == 0:  # Parameter name
-                return var.name
-            elif index.column() == 1:  # Value
-                if hasattr(expr, "value"):
-                    return str(expr.value)
-                return str(expr)
-
-        # Optional: different background for fixed params
-        if role == Qt.BackgroundRole and index.row() >= len(self.event_params):
-            return QColor("#f0f0f0")  # gray for read-only
-
-        return None
-
-    def headerData(self, section, orientation, role=Qt.DisplayRole):
-        if role != Qt.DisplayRole:
-            return None
-        if orientation == Qt.Horizontal:
-            return ["Parameter", "Value"][section]
-        return str(section + 1)
-
-    def flags(self, index: QModelIndex):
-        if not index.isValid():
-            return Qt.ItemFlag.ItemIsEnabled
-
-        flags = Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled
-
-        # Only editable if it's an event parameter and the Value column
-        if index.row() < len(self.event_params) and index.column() == 1:
-            flags |= Qt.ItemFlag.ItemIsEditable
-
-        return flags
-
-    def setData(self, index: QModelIndex, value, role=Qt.EditRole):
-        if (
-            not index.isValid()
-            or role != Qt.EditRole
-            or index.column() != 1
-            or index.row() >= len(self.event_params)
-        ):
-            return False
-
-        var, expr = self.event_params[index.row()]
-
-        try:
-            value_float = float(value)
-        except ValueError:
-            value_float = value
-
-        # Update the event_dict copy
-        self.event_params[index.row()] = (var, self.var_factory.add_const(value=value_float, name=var.name))
-
-        # Also update the combined list
-        self.all_params[index.row()] = self.event_params[index.row()]
-
-        self.dataChanged.emit(index, index, [Qt.DisplayRole, Qt.EditRole])
-        self.dataChangedSignal.emit(dict(self.event_params))  # emit updated event_dict
-        return True
-#
-
-
-# class ParamTreeItem:
-#     """
-#     class to represent a node in the params tree
-#     """
-#     def __init__(self, name, parent=None, block=None, var=None, expr=None,
-#                  is_param=False, editable=False):
-#         self.name = name
-#         self.parent = parent
-#         self.children = []
-#
-#         self.block = block
-#         self.var = var
-#         self.expr = expr
-#
-#         self.is_param = is_param
-#         self.editable = editable
-#
-#     def append_child(self, child):
-#         self.children.append(child)
-#
-#     def child(self, row):
-#         if 0 <= row < len(self.children):
-#             return self.children[row]
-#         return None
-#
-#     def child_count(self):
-#         return len(self.children)
-#
-#     def row(self):
-#         if self.parent:
-#             return self.parent.children.index(self)
-#         return 0
-#
-#
-# class ParametersTreeModel(QAbstractItemModel):
-#     """
-#     Tree model for the parameters
-#     """
-#
-#     dataChangedSignal = Signal()
-#
-#     def __init__(self, var_factory, main_block):
-#         super().__init__()
-#         self.var_factory = var_factory
-#         self.blocks: List[Block] = [blk for blk in main_block.get_all_blocks()]
-#         self.root_item = ParamTreeItem("root")
-#         self.build_tree_from_block(main_block, self.root_item)
-#
-#
-#     def add_block(self, block: Block):
-#         """
-#         add a node to the tree and refresh
-#         :param block:
-#         :type block:
-#         :return:
-#         :rtype:
-#         """
-#         if block not in self.blocks:
-#             self.beginResetModel()
-#             self.blocks.append(block)
-#             self.build_tree_from_block(block, self.root_item)
-#             self.endResetModel()
-#
-#     def build_tree_from_block(self, block, parent_item):
-#         """
-#         create nodes and build tree
-#         :param block:
-#         :type block:
-#         :param parent_item:
-#         :type parent_item:
-#         :return:
-#         :rtype:
-#         """
-#         block_item = ParamTreeItem(
-#             name=block.name if block.name else f"Block_{block.uid}",
-#             parent=parent_item,
-#             block=block
-#         )
-#         parent_item.append_child(block_item)
-#
-#         if block.event_dict:
-#             event_group = ParamTreeItem("Editable Parameters", parent=block_item)
-#             block_item.append_child(event_group)
-#
-#             for var, expr in block.event_dict.items():
-#                 param_item = ParamTreeItem(
-#                     name=var.name,
-#                     parent=event_group,
-#                     block=block,
-#                     var=var,
-#                     expr=expr,
-#                     is_param=True,
-#                     editable=True
-#                 )
-#                 event_group.append_child(param_item)
-#
-#         if block.parameters:
-#             param_group = ParamTreeItem("Non Editable Parameters", parent=block_item)
-#             block_item.append_child(param_group)
-#
-#             for var, expr in block.parameters.items():
-#                 param_item = ParamTreeItem(
-#                     name=var.name,
-#                     parent=param_group,
-#                     block=block,
-#                     var=var,
-#                     expr=expr,
-#                     is_param=True,
-#                     editable=False
-#                 )
-#                 param_group.append_child(param_item)
-#
-#         for child in block.children:
-#             self.build_tree_from_block(child, block_item)
-#
-#     def columnCount(self, parent=QModelIndex()):
-#         return 2
-#
-#     def rowCount(self, parent=QModelIndex()):
-#         parent_item = parent.internalPointer() if parent.isValid() else self.root_item
-#         return parent_item.child_count()
-#
-#     def index(self, row, column, parent=QModelIndex()):
-#         if not self.hasIndex(row, column, parent):
-#             return QModelIndex()
-#
-#         parent_item = parent.internalPointer() if parent.isValid() else self.root_item
-#         child_item = parent_item.child(row)
-#
-#         if child_item:
-#             return self.createIndex(row, column, child_item)
-#
-#         return QModelIndex()
-#
-#     def parent(self, index):
-#         if not index.isValid():
-#             return QModelIndex()
-#
-#         item = index.internalPointer()
-#         parent_item = item.parent
-#
-#         if parent_item is None or parent_item == self.root_item:
-#             return QModelIndex()
-#
-#         return self.createIndex(parent_item.row(), 0, parent_item)
-#
-#     def data(self, index, role=Qt.DisplayRole):
-#         if not index.isValid():
-#             return None
-#
-#         item = index.internalPointer()
-#
-#         if role in (Qt.DisplayRole, Qt.EditRole):
-#
-#             if index.column() == 0:
-#                 return item.name
-#
-#             elif index.column() == 1:
-#                 if item.is_param:
-#                     if hasattr(item.expr, "value"):
-#                         return str(item.expr.value)
-#                     return str(item.expr)
-#                 return ""
-#
-#         if role == Qt.BackgroundRole:
-#             if item.is_param and not item.editable:
-#                 return QColor("#f0f0f0")
-#
-#         return None
-#
-#     def headerData(self, section, orientation, role=Qt.DisplayRole):
-#         if role != Qt.DisplayRole:
-#             return None
-#
-#         if orientation == Qt.Horizontal:
-#             return ["Name", "Value"][section]
-#
-#         return str(section + 1)
-#
-#     # -----------------------------
-#     # EDITING
-#     # -----------------------------
-#     def flags(self, index):
-#         if not index.isValid():
-#             return Qt.ItemIsEnabled
-#
-#         item = index.internalPointer()
-#
-#         flags = Qt.ItemIsEnabled | Qt.ItemIsSelectable
-#
-#         if item.is_param and item.editable and index.column() == 1:
-#             flags |= Qt.ItemIsEditable
-#
-#         return flags
-#
-#     def setData(self, index, value, role=Qt.EditRole):
-#         if role != Qt.EditRole:
-#             return False
-#
-#         item = index.internalPointer()
-#
-#         if not item.is_param or not item.editable:
-#             return False
-#
-#         try:
-#             value_float = float(value)
-#         except ValueError:
-#             value_float = value
-#
-#         new_expr = self.var_factory.add_const(
-#             value=value_float,
-#             name=item.var.name
-#         )
-#
-#         # 🔥 ACTUALIZA EL BLOCK REAL
-#         item.block.event_dict[item.var] = new_expr
-#
-#         # actualizar nodo
-#         item.expr = new_expr
-#
-#         self.dataChanged.emit(index, index, [Qt.DisplayRole, Qt.EditRole])
-#         self.dataChangedSignal.emit()
-#
-#         return True
 
 
 class ExpressionTextEditorDialog(QDialog):
@@ -1133,6 +1105,84 @@ class AddBlockVariableDialog(QDialog):
             self.ok_button.setEnabled(True)
 
 
+class AddEquationDialog(QDialog):
+    """
+    Dialog used to create a new equation (state or algebraic) in the selected block.
+    """
+
+    CATEGORY_OPTIONS: List[tuple[str, str]] = [
+        ("State", "state"),
+        ("Algebraic", "algebraic"),
+    ]
+
+    def __init__(self, symbol_namespace: Dict[str, Expr], parent: Optional[QtWidgets.QWidget] = None):
+        super().__init__(parent)
+        self.setWindowTitle("Add Equation")
+        self.resize(500, 200)
+        self.symbol_namespace = symbol_namespace
+
+        layout: QVBoxLayout = QVBoxLayout(self)
+        form_layout: QFormLayout = QFormLayout()
+        layout.addLayout(form_layout)
+
+        self.equation_edit: QPlainTextEdit = QPlainTextEdit(self)
+        editor_font: QtGui.QFont = QtGui.QFont("DejaVu Sans Mono", 10)
+        self.equation_edit.setFont(editor_font)
+        self.equation_edit.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
+
+        self.type_combo: QtWidgets.QComboBox = QtWidgets.QComboBox(self)
+
+        for label, value in self.CATEGORY_OPTIONS:
+            self.type_combo.addItem(label, value)
+
+        form_layout.addRow("Equation", self.equation_edit)
+        form_layout.addRow("Type", self.type_combo)
+
+        self.validation_label: QLabel = QLabel("", self)
+        layout.addWidget(self.validation_label)
+
+        self.button_box: QDialogButtonBox = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel,
+            self
+        )
+        self.ok_button: QtWidgets.QPushButton = self.button_box.button(QDialogButtonBox.StandardButton.Ok)
+        self.button_box.accepted.connect(self.accept)
+        self.button_box.rejected.connect(self.reject)
+        layout.addWidget(self.button_box)
+
+        self.equation_edit.textChanged.connect(self.update_validation_state)
+        self.update_validation_state()
+
+    def get_equation_text(self) -> str:
+        return self.equation_edit.toPlainText().strip()
+
+    def get_category(self) -> str:
+        return str(self.type_combo.currentData())
+
+    def update_validation_state(self) -> None:
+        """
+        Validate the equation text before allowing acceptance.
+
+        :return:
+        """
+        equation_text: str = self.get_equation_text()
+
+        if len(equation_text) == 0:
+            self.validation_label.setText("Enter an equation.")
+            self.validation_label.setStyleSheet("color: #b42318;")
+            self.ok_button.setEnabled(False)
+            return
+
+        try:
+            parsed = string_to_symbolic(equation_text, self.symbol_namespace)
+            self.validation_label.setText("Equation is valid.")
+            self.validation_label.setStyleSheet("color: #027a48;")
+            self.ok_button.setEnabled(True)
+        except Exception as exc:
+            self.validation_label.setText(str(exc))
+            self.validation_label.setStyleSheet("color: #b42318;")
+            self.ok_button.setEnabled(False)
+
 class ExpressionValidationHighlighter(QtGui.QSyntaxHighlighter):
     """
     Syntax highlighter that validates symbolic identifiers against the selected block namespace.
@@ -1275,7 +1325,7 @@ class BlockParameterRow:
     Row description for the selected block editor table.
     """
 
-    __slots__ = ("name", "kind", "key_var", "value", "editable_name", "editable_value", "value_type", "item_index")
+    __slots__ = ("name", "kind", "key_var", "value", "editable_name", "editable_value", "value_type", "item_index", "init_eq", "source_dict_name")
 
     def __init__(self,
                  name: str,
@@ -1285,7 +1335,9 @@ class BlockParameterRow:
                  editable_name: bool,
                  editable_value: bool,
                  value_type: type,
-                 item_index: int | None = None):
+                 item_index: int | None = None,
+                 init_eq: Expr | None = None,
+                 source_dict_name: str | None = None):
         """
          Build a parameter row descriptor.
 
@@ -1297,6 +1349,8 @@ class BlockParameterRow:
         :param editable_value:
         :param value_type:
         :param item_index:
+        :param init_eq: Initial equation from block.init_eqs for this variable
+        :param source_dict_name: Name of the source dict ('event_dict' or 'parameters')
         """
         self.name: str = name
         self.kind: BlockParameterKind = kind
@@ -1306,6 +1360,8 @@ class BlockParameterRow:
         self.editable_value: bool = editable_value
         self.value_type: type = value_type
         self.item_index: int | None = item_index
+        self.init_eq: Expr | None = init_eq
+        self.source_dict_name: str | None = source_dict_name
 
     @property
     def is_section(self) -> bool:
@@ -1397,519 +1453,456 @@ class BlockParameterValueDelegate(QtWidgets.QStyledItemDelegate):
         else:
             pass
 
-class BlockParametersTableModel(QtCore.QAbstractTableModel):
+
+class VariablesTableModel(QtCore.QAbstractTableModel):
     """
-    Table model that exposes the selected block variables, equations, and parameters.
+    Table model for block variables (state and algebraic only).
+    Columns: Type, Name, Init Equation
     """
 
     block_updated = Signal(object)
 
-    def __init__(self,
-                 var_factory: VarFactory,
-                 parent: Optional[QtCore.QObject] = None):
-        """
-        Build the side-panel parameter table model.
-
-        :param var_factory:
-        :param parent:
-        """
+    def __init__(self, var_factory: VarFactory, parent: Optional[QtCore.QObject] = None):
         super().__init__(parent)
-        self.var_factory: VarFactory = var_factory
-        self.block: Block | None = None
-        self.rows: List[BlockParameterRow] = list()
-        self.headers: List[str] = ["Name", "Value", "Kind"]
+        self.var_factory = var_factory
+        self.block = None
+        self.rows = []
+        self.headers = ["Type", "Name", "Init Equation"]
 
     def set_block(self, block: Block | None) -> None:
-        """
-        Set the block whose parameters are shown in the table.
-
-        :param block:
-        :return:
-        """
         self.beginResetModel()
         self.block = block
-        self.rows = self.build_rows()
+        self.rows = self._build_rows()
         self.endResetModel()
 
-    def build_rows(self) -> List[BlockParameterRow]:
-        """
-        Build the visible rows for the current block.
+    def _build_rows(self) -> List[BlockParameterRow]:
+        rows = []
+        if self.block is None:
+            return rows
 
-        :return:
-        """
-        rows: List[BlockParameterRow] = list()
-        var: Var
-        expr: Expr | Const
-        const: Const
-        equation: Expr
-        index: int
+        for var in self.block.state_vars:
+            init_eq = self.block.init_eqs.get(var)
+            rows.append(BlockParameterRow(
+                name=var.name,
+                kind=BlockParameterKind.STATE_VAR,
+                key_var=var,
+                value=self.block.init_values.get(var, ""),
+                editable_name=True,
+                editable_value=True,
+                value_type=float,
+                init_eq=init_eq
+            ))
 
-        if self.block is not None:
-            rows.append(self.build_section_row("State Vars"))
-            for var in self.block.state_vars:
-                rows.append(BlockParameterRow(
-                    name=var.name,
-                    kind=BlockParameterKind.STATE_VAR,
-                    key_var=var,
-                    value="",
-                    editable_name=True,
-                    editable_value=False,
-                    value_type=str
-                ))
-
-            rows.append(self.build_section_row("Algebraic Vars"))
-            for var in self.block.algebraic_vars:
-                rows.append(BlockParameterRow(
-                    name=var.name,
-                    kind=BlockParameterKind.ALGEBRAIC_VAR,
-                    key_var=var,
-                    value="",
-                    editable_name=True,
-                    editable_value=False,
-                    value_type=str
-                ))
-
-            rows.append(self.build_section_row("Input Vars"))
-            for var in self.block.in_vars:
-                rows.append(BlockParameterRow(
-                    name=var.name,
-                    kind=BlockParameterKind.INPUT_VAR,
-                    key_var=var,
-                    value="",
-                    editable_name=True,
-                    editable_value=False,
-                    value_type=str
-                ))
-
-            rows.append(self.build_section_row("Output Vars"))
-            for var in self.block.out_vars:
-                rows.append(BlockParameterRow(
-                    name=var.name,
-                    kind=BlockParameterKind.OUTPUT_VAR,
-                    key_var=var,
-                    value="",
-                    editable_name=True,
-                    editable_value=False,
-                    value_type=str
-                ))
-
-            rows.append(self.build_section_row("State Equations"))
-            for index, equation in enumerate(self.block.state_eqs):
-                rows.append(BlockParameterRow(
-                    name=f"State Eq {index + 1}",
-                    kind=BlockParameterKind.STATE_EQUATION,
-                    key_var=None,
-                    value=equation,
-                    editable_name=False,
-                    editable_value=False,
-                    value_type=str,
-                    item_index=index
-                ))
-
-            rows.append(self.build_section_row("Algebraic Equations"))
-            for index, equation in enumerate(self.block.algebraic_eqs):
-                rows.append(BlockParameterRow(
-                    name=f"Algebraic Eq {index + 1}",
-                    kind=BlockParameterKind.ALGEBRAIC_EQUATION,
-                    key_var=None,
-                    value=equation,
-                    editable_name=False,
-                    editable_value=False,
-                    value_type=str,
-                    item_index=index
-                ))
-
-            rows.append(self.build_section_row("Parameters"))
-            for var, expr in self.block.event_dict.items():
-                if isinstance(expr, Const):
-                    rows.append(BlockParameterRow(
-                        name=var.name,
-                        kind=BlockParameterKind.EVENT_PARAMETER,
-                        key_var=var,
-                        value=expr.value,
-                        editable_name=True,
-                        editable_value=True,
-                        value_type=self.get_python_value_type(expr.value)
-                    ))
-                else:
-                    rows.append(BlockParameterRow(
-                        name=var.name,
-                        kind=BlockParameterKind.EVENT_PARAMETER,
-                        key_var=var,
-                        value=expr,
-                        editable_name=True,
-                        editable_value=False,
-                        value_type=str
-                    ))
-
-            for var, const in self.block.parameters.items():
-                rows.append(BlockParameterRow(
-                    name=var.name,
-                    kind=BlockParameterKind.FIXED_PARAMETER,
-                    key_var=var,
-                    value=const.value,
-                    editable_name=True,
-                    editable_value=True,
-                    value_type=self.get_python_value_type(const.value)
-                ))
-        else:
-            pass
+        for var in self.block.algebraic_vars:
+            init_eq = self.block.init_eqs.get(var)
+            rows.append(BlockParameterRow(
+                name=var.name,
+                kind=BlockParameterKind.ALGEBRAIC_VAR,
+                key_var=var,
+                value="",
+                editable_name=True,
+                editable_value=False,
+                value_type=str,
+                init_eq=init_eq
+            ))
 
         return rows
 
-    def build_section_row(self, title: str) -> BlockParameterRow:
-        """
-        Build a non-editable section row.
+    def rowCount(self, parent=QtCore.QModelIndex()) -> int:
+        return len(self.rows)
 
-        :param title:
-        :return:
-        """
-        return BlockParameterRow(
-            name=title,
-            kind=BlockParameterKind.SECTION,
-            key_var=None,
-            value="",
-            editable_name=False,
-            editable_value=False,
-            value_type=str
-        )
+    def columnCount(self, parent=QtCore.QModelIndex()) -> int:
+        return 3
+
+    def data(self, index, role=QtCore.Qt.ItemDataRole.DisplayRole):
+        if not index.isValid() or self.block is None:
+            return None
+        row = self.rows[index.row()]
+        if role == QtCore.Qt.ItemDataRole.DisplayRole or role == QtCore.Qt.ItemDataRole.EditRole:
+            if index.column() == 0:
+                if row.kind == BlockParameterKind.STATE_VAR:
+                    return "State"
+                elif row.kind == BlockParameterKind.ALGEBRAIC_VAR:
+                    return "Algebraic"
+            elif index.column() == 1:
+                return row.name
+            elif index.column() == 2:
+                if row.init_eq is not None:
+                    if isinstance(row.init_eq, Expr):
+                        return symbolic_to_string(row.init_eq)
+                    return row.init_eq
+                if isinstance(row.value, Expr):
+                    return symbolic_to_string(row.value)
+                return row.value
+        elif role == PARAMETER_VALUE_TYPE_ROLE and index.column() == 2:
+            return "float" if row.value_type == float else "text"
+        elif role == PARAMETER_EDITABLE_ROLE and index.column() == 2:
+            return row.editable_value
+        elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
+            return QColor("#f7fafc")
+        elif role == QtCore.Qt.ItemDataRole.ForegroundRole:
+            return QColor("#333333")
+        return None
+
+    def setData(self, index, value, role=QtCore.Qt.ItemDataRole.EditRole):
+        if not index.isValid():
+            return False
+        row = self.rows[index.row()]
+        if role == QtCore.Qt.ItemDataRole.EditRole:
+            if index.column() == 1:
+                row.name = value
+                row.key_var.name = value
+            elif index.column() == 2 and row.editable_value:
+                row.value = value
+            else:
+                return False
+            self.dataChanged.emit(index, index, [role])
+            return True
+        return False
+
+    def set_init_eq(self, row_index: int, init_eq: Expr) -> None:
+        if 0 <= row_index < len(self.rows):
+            row = self.rows[row_index]
+            row.init_eq = init_eq
+            if self.block is not None and row.key_var is not None:
+                self.block.init_eqs[row.key_var] = init_eq
+            index = self.index(row_index, 2)
+            self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
+
+    def flags(self, index):
+        if not index.isValid():
+            return QtCore.Qt.ItemFlag.NoItemFlags
+        flags = QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
+        if index.column() == 1:
+            flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+        elif index.column() == 2:
+            flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+        return flags
+
+    def headerData(self, section, orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
+        if role == QtCore.Qt.ItemDataRole.DisplayRole and orientation == QtCore.Qt.Orientation.Horizontal:
+            return self.headers[section]
+        return None
 
     def get_row(self, row_index: int) -> BlockParameterRow | None:
-        """
-        Return the row descriptor for a given table row.
-
-        :param row_index:
-        :return:
-        """
         if 0 <= row_index < len(self.rows):
             return self.rows[row_index]
-        else:
-            return None
+        return None
 
-    def update_expression_row(self, row_index: int, expression: Expr) -> None:
+    def get_last_index_of_type(self, var_type: str) -> int:
         """
-        Replace an expression row value and propagate it into the selected block.
+        Return the last row index for a given variable type.
+        State vars come first, then algebraic vars.
 
-        :param row_index:
-        :param expression:
-        :return:
+        :param var_type: "state" or "algebraic"
+        :return: Last row index for that type, or -1 if none found
         """
-        row_data: BlockParameterRow | None = self.get_row(row_index)
-        top_left: QtCore.QModelIndex
-        bottom_right: QtCore.QModelIndex
+        if var_type == "state":
+            return len(self.block.state_vars) - 1 if self.block and self.block.state_vars else -1
+        elif var_type == "algebraic":
+            return len(self.rows) - 1 if self.block and self.block.algebraic_vars else -1
+        return -1
 
-        if row_data is not None and self.block is not None:
-            if row_data.kind == BlockParameterKind.STATE_EQUATION and row_data.item_index is not None:
-                self.block.state_eqs[row_data.item_index] = expression
-                row_data.value = expression
-            elif row_data.kind == BlockParameterKind.ALGEBRAIC_EQUATION and row_data.item_index is not None:
-                self.block.algebraic_eqs[row_data.item_index] = expression
-                row_data.value = expression
-            elif row_data.kind in {BlockParameterKind.EVENT_PARAMETER, BlockParameterKind.FIXED_PARAMETER} and row_data.key_var is not None:
-                if row_data.kind == BlockParameterKind.EVENT_PARAMETER:
-                    self.block.event_dict[row_data.key_var] = expression
-                else:
-                    if isinstance(expression, Const):
-                        self.block.parameters[row_data.key_var] = expression
-                    else:
-                        raise ValueError("Fixed parameters only support constant values.")
-
-                row_data.value = expression
-            else:
-                return
-
-            top_left = self.index(row_index, 1)
-            bottom_right = self.index(row_index, 1)
-            self.dataChanged.emit(top_left, bottom_right, [QtCore.Qt.ItemDataRole.DisplayRole, QtCore.Qt.ItemDataRole.EditRole])
-            self.block_updated.emit(self.block.uid)
-        else:
-            pass
-
-    def add_new_variable(self, name: str, category: str, parameter_value: float = 0.0) -> None:
+    def add_variable_at_end_of_type(self, name: str, category: str, parameter_value: float = 0.0) -> None:
         """
-        Add a new symbol into the selected block and refresh the table.
+        Add a new variable to the block, inserting it after the last variable of the same type.
+        State vars are added after the last state var, algebraic vars after the last algebraic var.
 
-        :param name:
-        :param category:
-        :param parameter_value:
-        :return:
+        :param name: Variable name
+        :param category: "state" or "algebraic"
+        :param parameter_value: Initial value for state variables
         """
-        new_var: Var
-
         if self.block is None:
             raise ValueError("No block is currently selected.")
-        elif len(name.strip()) == 0:
-            raise ValueError("The symbol name cannot be empty.")
-        elif not is_valid_symbol_name(name):
-            raise ValueError("The symbol name must be a valid identifier.")
-        elif block_namespace_contains_name(self.block, name):
-            raise ValueError(f"The symbol '{name}' already exists in this block.")
+
+        new_var = self.var_factory.add_var(name=name)
+
+        if category == "state":
+            self.block.state_vars.append(new_var)
+            if parameter_value != 0.0:
+                self.block.init_values[new_var] = self.var_factory.add_const(parameter_value, name=name)
+        elif category == "algebraic":
+            self.block.algebraic_vars.append(new_var)
         else:
-            new_var = self.var_factory.add_var(name=name)
-            add_variable_to_block(
-                block=self.block,
-                var=new_var,
-                var_type=category,
-                parameter_value=parameter_value
-            )
-            self.set_block(self.block)
-            self.block_updated.emit(self.block.uid)
+            raise ValueError(f"Unsupported category for VariablesTableModel: {category}")
 
-    def rename_variable(self, row_data: BlockParameterRow, new_name: str) -> None:
-        """
-        Rename a block variable or parameter symbol.
+        self.set_block(self.block)
+        self.block_updated.emit(self.block.uid)
 
-        :param row_data:
-        :param new_name:
-        :return:
-        """
-        if self.block is None or row_data.key_var is None:
-            raise ValueError("No symbol is available to rename.")
 
-        normalized_name: str = new_name.strip()
+class ParametersTableModel(QtCore.QAbstractTableModel):
+    """
+    Table model for block parameters (fixed and event).
+    Columns: , Name, Kind, Value
+    """
 
-        if len(normalized_name) == 0:
-            raise ValueError("The symbol name cannot be empty.")
-        elif not is_valid_symbol_name(normalized_name):
-            raise ValueError("The symbol name must be a valid identifier.")
-        elif block_namespace_contains_name(self.block, normalized_name, exclude_var=row_data.key_var):
-            raise ValueError(f"The symbol '{normalized_name}' already exists in this block.")
-        else:
-            row_data.key_var.name = normalized_name
-            row_data.name = normalized_name
+    block_updated = Signal(object)
 
-            if row_data.kind == BlockParameterKind.FIXED_PARAMETER:
-                const_value: Const | None = self.block.parameters.get(row_data.key_var, None)
-                if const_value is not None:
-                    const_value.name = normalized_name
-            elif row_data.kind == BlockParameterKind.EVENT_PARAMETER:
-                event_value: Expr | None = self.block.event_dict.get(row_data.key_var, None)
-                if isinstance(event_value, Const):
-                    event_value.name = normalized_name
+    def __init__(self, var_factory: VarFactory, parent: Optional[QtCore.QObject] = None):
+        super().__init__(parent)
+        self.var_factory = var_factory
+        self.block = None
+        self.rows = []
+        self.headers = ["Type", "Name", "Value"]
 
-    def set_numeric_parameter_value(self, row_data: BlockParameterRow, value: Any) -> Any:
-        """
-        Update the value of a parameter row backed by a constant.
+    def set_block(self, block: Block | None) -> None:
+        self.beginResetModel()
+        self.block = block
+        self.rows = self._build_rows()
+        self.endResetModel()
 
-        :param row_data:
-        :param value:
-        :return:
-        """
-        if row_data.key_var is None:
-            raise ValueError("The selected parameter row has no symbol.")
+    def _build_rows(self) -> List[BlockParameterRow]:
+        rows = []
+        if self.block is None:
+            return rows
 
-        if row_data.value_type is float:
-            new_value: Any = float(value)
-        elif row_data.value_type is int:
-            new_value = int(value)
-        else:
-            new_value = str(value)
-
-        new_const: Const = self.var_factory.add_const(
-            value=new_value,
-            name=row_data.key_var.name
-        )
-
-        if self.block is not None:
-            if row_data.kind == BlockParameterKind.EVENT_PARAMETER:
-                self.block.event_dict[row_data.key_var] = new_const
-            elif row_data.kind == BlockParameterKind.FIXED_PARAMETER:
-                self.block.parameters[row_data.key_var] = new_const
+        for var, expr in self.block.event_dict.items():
+            if isinstance(expr, Const):
+                rows.append(BlockParameterRow(
+                    name=var.name,
+                    kind=BlockParameterKind.EVENT_PARAMETER,
+                    key_var=var,
+                    value=expr.value,
+                    editable_name=True,
+                    editable_value=True,
+                    value_type=self.get_python_value_type(expr.value),
+                    source_dict_name="event_dict"
+                ))
             else:
-                raise ValueError("The selected row is not a parameter row.")
+                rows.append(BlockParameterRow(
+                    name=var.name,
+                    kind=BlockParameterKind.EVENT_PARAMETER,
+                    key_var=var,
+                    value=expr,
+                    editable_name=True,
+                    editable_value=True,
+                    value_type=str,
+                    source_dict_name="event_dict"
+                ))
 
-        row_data.value = new_value
+        for var, const in self.block.parameters.items():
+            rows.append(BlockParameterRow(
+                name=var.name,
+                kind=BlockParameterKind.FIXED_PARAMETER,
+                key_var=var,
+                value=const.value,
+                editable_name=True,
+                editable_value=True,
+                value_type=self.get_python_value_type(const.value),
+                source_dict_name="parameters"
+            ))
 
-    def get_python_value_type(self, value: Any) -> type:
-        """
-        Normalize the editor type used for a parameter value.
+        return rows
 
-        :param value:
-        :return:
-        """
-        if isinstance(value, bool):
-            return str
-        elif isinstance(value, int):
+    def rowCount(self, parent=QtCore.QModelIndex()) -> int:
+        return len(self.rows)
+
+    def columnCount(self, parent=QtCore.QModelIndex()) -> int:
+        return 3
+
+    def data(self, index, role=QtCore.Qt.ItemDataRole.DisplayRole):
+        if not index.isValid() or self.block is None:
+            return None
+        row = self.rows[index.row()]
+        if role == QtCore.Qt.ItemDataRole.DisplayRole or role == QtCore.Qt.ItemDataRole.EditRole:
+            if index.column() == 0:
+                return row.kind.value
+            elif index.column() == 1:
+                return row.name
+            elif index.column() == 2:
+                if isinstance(row.value, Expr):
+                    return symbolic_to_string(row.value)
+                return row.value
+        elif role == PARAMETER_EDITABLE_ROLE and index.column() == 2:
+            return row.editable_value
+        elif role == PARAMETER_VALUE_TYPE_ROLE and index.column() == 2:
+            return self.get_python_value_type(row.value)
+        elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
+            return QColor("#f7fafc")
+        elif role == QtCore.Qt.ItemDataRole.ForegroundRole:
+            return QColor("#333333")
+        return None
+
+    def setData(self, index, value, role=QtCore.Qt.ItemDataRole.EditRole):
+        if not index.isValid():
+            return False
+        row = self.rows[index.row()]
+        if role == QtCore.Qt.ItemDataRole.EditRole:
+            if index.column() == 1:
+                row.name = value
+                row.key_var.name = value
+            elif index.column() == 2 and row.editable_value:
+                row.value = value
+                self._update_source_dict(row, value)
+            else:
+                return False
+            self.dataChanged.emit(index, index, [role])
+            return True
+        return False
+
+    def _update_source_dict(self, row: BlockParameterRow, value: Any) -> None:
+        if self.block is None or row.key_var is None or row.source_dict_name is None:
+            return
+        if row.source_dict_name == "event_dict":
+            self.block.event_dict[row.key_var] = value
+        elif row.source_dict_name == "parameters":
+            self.block.parameters[row.key_var] = value
+
+    def set_value_from_expression(self, row_index: int, expr: Expr) -> None:
+        if 0 <= row_index < len(self.rows):
+            row = self.rows[row_index]
+            row.value = expr
+            self._update_source_dict(row, expr)
+            index = self.index(row_index, 2)
+            self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
+
+    def flags(self, index):
+        if not index.isValid():
+            return QtCore.Qt.ItemFlag.NoItemFlags
+        flags = QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
+        if index.column() == 1:
+            flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+        elif index.column() == 2 and self.rows[index.row()].editable_value:
+            flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+        return flags
+
+    def headerData(self, section, orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
+        if role == QtCore.Qt.ItemDataRole.DisplayRole and orientation == QtCore.Qt.Orientation.Horizontal:
+            return self.headers[section]
+        return None
+
+    @staticmethod
+    def get_python_value_type(value) -> type:
+        if isinstance(value, int):
             return int
         elif isinstance(value, float):
             return float
-        else:
-            return str
+        return str
 
-    def rowCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """
-        Return the visible row count.
+    def get_row(self, row_index: int) -> BlockParameterRow | None:
+        if 0 <= row_index < len(self.rows):
+            return self.rows[row_index]
+        return None
 
-        :param parent:
-        :return:
-        """
-        if parent.isValid():
-            return 0
-        else:
-            return len(self.rows)
 
-    def columnCount(self, parent: QtCore.QModelIndex = QtCore.QModelIndex()) -> int:
-        """
-        Return the visible column count.
+class EquationsTableModel(QtCore.QAbstractTableModel):
+    """
+    Table model for block equations (state and algebraic).
+    Columns: Type, Equation
+    """
 
-        :param parent:
-        :return:
-        """
-        if parent.isValid():
-            return 0
-        else:
-            return len(self.headers)
+    block_updated = Signal(object)
+    equation_edited = Signal(int, object)
 
-    def data(self,
-             index: QtCore.QModelIndex,
-             role: int = QtCore.Qt.ItemDataRole.DisplayRole) -> Any:
-        """
-        Return the data requested by the Qt view.
+    def __init__(self, var_factory: VarFactory, parent: Optional[QtCore.QObject] = None):
+        super().__init__(parent)
+        self.var_factory = var_factory
+        self.block = None
+        self.rows = []
+        self.headers = ["Type", "Equation"]
 
-        :param index:
-        :param role:
-        :return:
-        """
-        row_data: BlockParameterRow
+    def set_block(self, block: Block | None) -> None:
+        self.beginResetModel()
+        self.block = block
+        self.rows = self._build_rows()
+        self.endResetModel()
 
-        if index.isValid():
-            row_data = self.rows[index.row()]
+    def _build_rows(self) -> List[BlockParameterRow]:
+        rows = []
+        if self.block is None:
+            return rows
 
-            if role == QtCore.Qt.ItemDataRole.DisplayRole or role == QtCore.Qt.ItemDataRole.EditRole:
-                if index.column() == 0:
-                    return row_data.name
-                elif index.column() == 1:
-                    if row_data.value is None:
-                        return ""
-                    elif isinstance(row_data.value, Expr):
-                        return symbolic_to_string(row_data.value)
-                    else:
-                        return row_data.value
-                elif index.column() == 2:
-                    if row_data.is_section:
-                        return ""
-                    else:
-                        return row_data.kind.value
-                else:
-                    return None
-            elif role == PARAMETER_VALUE_TYPE_ROLE and index.column() == 1:
-                if row_data.value_type is float:
-                    return "float"
-                elif row_data.value_type is int:
-                    return "int"
-                else:
-                    return "text"
-            elif role == PARAMETER_EDITABLE_ROLE and index.column() == 1:
-                return row_data.editable_value
-            elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
-                if row_data.is_section:
-                    return QColor("#dce6f2")
-                elif row_data.kind == BlockParameterKind.FIXED_PARAMETER:
-                    return QColor("#f7fafc")
-                else:
-                    return None
-            elif role == QtCore.Qt.ItemDataRole.FontRole and row_data.is_section:
-                font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
-                font.setBold(True)
-                return font
-            else:
-                return None
-        else:
+        for idx, eq in enumerate(self.block.state_eqs):
+            rows.append(BlockParameterRow(
+                name=f"State Eq {idx + 1}",
+                kind=BlockParameterKind.STATE_EQUATION,
+                key_var=None,
+                value=eq,
+                editable_name=False,
+                editable_value=True,
+                value_type=str,
+                item_index=idx
+            ))
+
+        for idx, eq in enumerate(self.block.algebraic_eqs):
+            rows.append(BlockParameterRow(
+                name=f"Algebraic Eq {idx + 1}",
+                kind=BlockParameterKind.ALGEBRAIC_EQUATION,
+                key_var=None,
+                value=eq,
+                editable_name=False,
+                editable_value=True,
+                value_type=str,
+                item_index=idx
+            ))
+
+        return rows
+
+    def rowCount(self, parent=QtCore.QModelIndex()) -> int:
+        return len(self.rows)
+
+    def columnCount(self, parent=QtCore.QModelIndex()) -> int:
+        return 2
+
+    def data(self, index, role=QtCore.Qt.ItemDataRole.DisplayRole):
+        if not index.isValid() or self.block is None:
             return None
+        row = self.rows[index.row()]
+        if role == QtCore.Qt.ItemDataRole.DisplayRole or role == QtCore.Qt.ItemDataRole.EditRole:
+            if index.column() == 0:
+                if row.kind == BlockParameterKind.STATE_EQUATION:
+                    return "State"
+                elif row.kind == BlockParameterKind.ALGEBRAIC_EQUATION:
+                    return "Algebraic"
+            elif index.column() == 1:
+                if isinstance(row.value, Expr):
+                    return symbolic_to_string(row.value)
+                return row.value
+        elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
+            return QColor("#f7fafc")
+        elif role == QtCore.Qt.ItemDataRole.ForegroundRole:
+            return QColor("#333333")
+        return None
 
-    def headerData(self,
-                   section: int,
-                   orientation: QtCore.Qt.Orientation,
-                   role: int = QtCore.Qt.ItemDataRole.DisplayRole) -> Any:
-        """
-        Return table header data.
-
-        :param section:
-        :param orientation:
-        :param role:
-        :return:
-        """
-        if role == QtCore.Qt.ItemDataRole.DisplayRole:
-            if orientation == QtCore.Qt.Orientation.Horizontal:
-                return self.headers[section]
-            else:
-                return str(section + 1)
-        else:
-            return None
-
-    def flags(self, index: QtCore.QModelIndex) -> QtCore.Qt.ItemFlag:
-        """
-        Return the Qt flags for a parameter cell.
-
-        :param index:
-        :return:
-        """
-        if index.isValid():
-            row_data: BlockParameterRow = self.rows[index.row()]
-
-            flags: QtCore.Qt.ItemFlag = QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
-
-            if index.column() == 0 and row_data.editable_name:
-                flags |= QtCore.Qt.ItemFlag.ItemIsEditable
-            elif index.column() == 1 and row_data.editable_value:
-                flags |= QtCore.Qt.ItemFlag.ItemIsEditable
-            else:
-                pass
-
-            return flags
-        else:
-            return QtCore.Qt.ItemFlag.NoItemFlags
-
-    def setData(self,
-                index: QtCore.QModelIndex,
-                value: Any,
-                role: int = QtCore.Qt.ItemDataRole.EditRole) -> bool:
-        """
-        Update an editable parameter value in the selected block.
-
-        :param index:
-        :param value:
-        :param role:
-        :return:
-        """
-        row_data: BlockParameterRow
-        new_value: Any
-
-        if index.isValid() and role == QtCore.Qt.ItemDataRole.EditRole:
-            row_data = self.rows[index.row()]
-
-            try:
-                if self.block is None or row_data.is_section:
-                    return False
-                elif index.column() == 0 and row_data.editable_name:
-                    self.rename_variable(row_data, str(value))
-                elif index.column() == 1 and row_data.editable_value:
-                    new_value = self.set_numeric_parameter_value(row_data, value)
-                    row_data.value = new_value
-                elif index.column() == 1 and row_data.kind in {
-                    BlockParameterKind.STATE_EQUATION,
-                    BlockParameterKind.ALGEBRAIC_EQUATION,
-                    BlockParameterKind.EVENT_PARAMETER,
-                    BlockParameterKind.FIXED_PARAMETER,
-                }:
-                    parsed_expression: Expr | Comparison = string_to_symbolic(str(value), build_block_symbol_namespace(self.block))
-                    if isinstance(parsed_expression, Comparison):
-                        self.update_expression_row(index.row(), parsed_expression.to_expression())
-                    else:
-                        self.update_expression_row(index.row(), parsed_expression)
-                    return True
-                else:
-                    return False
-
-                self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.DisplayRole, QtCore.Qt.ItemDataRole.EditRole])
-                self.block_updated.emit(self.block.uid)
-                return True
-            except Exception:
-                return False
-        else:
+    def setData(self, index, value, role=QtCore.Qt.ItemDataRole.EditRole):
+        if not index.isValid():
             return False
+        row = self.rows[index.row()]
+        if role == QtCore.Qt.ItemDataRole.EditRole:
+            if index.column() == 1:
+                try:
+                    new_expr = string_to_symbolic(value)
+                    row.value = new_expr
+                    if row.kind == BlockParameterKind.STATE_EQUATION and row.item_index is not None:
+                        self.block.state_eqs[row.item_index] = new_expr
+                    elif row.kind == BlockParameterKind.ALGEBRAIC_EQUATION and row.item_index is not None:
+                        self.block.algebraic_eqs[row.item_index] = new_expr
+                    else:
+                        return False
+                    self.dataChanged.emit(index, index, [role])
+                    self.block_updated.emit(self.block.uid)
+                    return True
+                except:
+                    return False
+        return False
 
+    def headerData(self, section, orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
+        if role == QtCore.Qt.ItemDataRole.DisplayRole and orientation == QtCore.Qt.Orientation.Horizontal:
+            return self.headers[section]
+        return None
 
+    def flags(self, index):
+        if not index.isValid():
+            return QtCore.Qt.ItemFlag.NoItemFlags
+        flags = QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
+        if index.column() == 1:
+            flags |= QtCore.Qt.ItemFlag.ItemIsEditable
+        return flags
+
+    def get_row(self, row_index: int) -> BlockParameterRow | None:
+        if 0 <= row_index < len(self.rows):
+            return self.rows[row_index]
+        return None
 
 class InspectModel(QWidget):
     """
@@ -2014,7 +2007,7 @@ class GenericBlockItem(QGraphicsRectItem):
 
     def __init__(self,
                  var_factory: VarFactory,
-                 block: Block,
+                 subsys: Block,
                  api_object,
                  mode: DynamicEditorMode,
                  position_changed_callback=None
@@ -2022,20 +2015,17 @@ class GenericBlockItem(QGraphicsRectItem):
         """
 
         :param var_factory:
-        :param block_sys:
-        :param api_object_name:
+        :param subsys:
         :param api_object:
-        :param templates_list:
-        :param templates_catalogue:
         :param position_changed_callback:
         """
-        super().__init__(0, 0, 100, 60)
+        super().__init__(0, 0, 50, 30)
 
         # ------------------------
         # API
         # ------------------------
         self.var_factory = var_factory
-        self.block = block
+        self.subsys = subsys
         self.mode = mode
         self.api_object = api_object
         self.position_changed_callback = position_changed_callback
@@ -2043,50 +2033,47 @@ class GenericBlockItem(QGraphicsRectItem):
         self.resize_handle: ResizeHandle | None = None
         self.resizing_from_handle = False
 
-        self.name_item = QGraphicsTextItem(self.block.name, self)
+        self.name_item = QGraphicsTextItem(self.subsys.name, self)
         self.inputs: List[PortItem] = list()
         self.outputs: List[PortItem] = list()
+        self.input_labels: List[QGraphicsTextItem] = list()
+        self.output_labels: List[QGraphicsTextItem] = list()
 
         self.editor_window = DynamicBlockEditorGUI(
             var_factory=self.var_factory,
-            block=self.block,
+            block=self.subsys,
             api_object=self.api_object,
             mode=self.mode
         )
 
-        self.setBrush(QBrush(QColor("#C0C0C0")))
+        self.setBrush(QBrush(DEFAULT_BLOCK_FILL))
+        self.setPen(QPen(Qt.GlobalColor.transparent, 0))
         self.setFlags(
             QGraphicsItem.GraphicsItemFlag.ItemIsMovable |
             QGraphicsItem.GraphicsItemFlag.ItemIsSelectable |
             QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges
         )
         self.setAcceptHoverEvents(True)
-        self.name_item.setPos(10, 5)
 
-        n_inputs = len(self.block.in_vars)
-        n_outputs = len(self.block.out_vars)
+        self.name_item.setDefaultTextColor(BLOCK_TITLE)
+        name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 6)
+        name_font.setBold(True)
+        self.name_item.setFont(name_font)
+        self.name_item.setPos(6, 4)
+
+        n_inputs = len(self.subsys.in_vars)
+        n_outputs = len(self.subsys.out_vars)
 
         self.inputs = [PortItem(self, True, i, n_inputs) for i in range(n_inputs)]
         self.outputs = [PortItem(self, False, i, n_outputs) for i in range(n_outputs)]
+        self.input_labels = [self.create_port_label_item() for _ in range(n_inputs)]
+        self.output_labels = [self.create_port_label_item() for _ in range(n_outputs)]
 
-        # --- assign tooltips to portItems with the assigned variable name ---
-        for i, port in enumerate(self.inputs):
-            var_name = self.block.in_vars[i].name
-            port.setToolTip(f"Input {i}: {var_name}")
-
-        for i, port in enumerate(self.outputs):
-            var_name = self.block.out_vars[i].name
-            port.setToolTip(f"Output {i}: {var_name}")
+        self.refresh_port_metadata()
 
         self.resize_handle = ResizeHandle(self)
 
-        super().setRect(0, 0, 100, 60)
-        self.update_ports()
-        self.update_handle_position()
-
-    @property
-    def subsys(self):
-        return self.block
+        self.resize_to_content()
 
     def mouseDoubleClickEvent(self, event):
         """
@@ -2117,6 +2104,42 @@ class GenericBlockItem(QGraphicsRectItem):
         self.resize_handle.setPos(rect.width(), rect.height())
         self.resizing_from_handle = True
 
+    def paint(self,
+              painter: QPainter,
+              option: QtWidgets.QStyleOptionGraphicsItem,
+              widget: Optional[QWidget] = None) -> None:
+        """
+        Paint the generic block with a rounded card style and a subtle shadow.
+
+        :param painter:
+        :param option:
+        :param widget:
+        :return:
+        """
+        rect: QtCore.QRectF = self.rect()
+        outer_rect: QtCore.QRectF = rect.adjusted(2, 2, -2, -2)
+        shadow_rect: QtCore.QRectF = outer_rect.translated(2.5, 3.0)
+        body_rect: QtCore.QRectF = outer_rect
+        border_color: QColor = BLOCK_BORDER_SELECTED if self.isSelected() else BLOCK_BORDER
+        fill_color: QColor = self.brush().color()
+        body_path: QPainterPath = QPainterPath()
+        shadow_path: QPainterPath = QPainterPath()
+
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        shadow_path.addRoundedRect(shadow_rect, 12.0, 12.0)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QBrush(BLOCK_SHADOW))
+        painter.drawPath(shadow_path)
+
+        body_path.addRoundedRect(body_rect, 12.0, 12.0)
+        painter.setBrush(QBrush(fill_color))
+        painter.drawPath(body_path)
+
+        painter.setPen(QPen(border_color, 1.6))
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRoundedRect(body_rect, 12.0, 12.0)
+
     def _set_rect_internal(self, w, h):
         QGraphicsRectItem.setRect(self, 0, 0, w, h)
         self.update_ports()
@@ -2128,16 +2151,87 @@ class GenericBlockItem(QGraphicsRectItem):
 
     def get_minimum_block_size(self) -> tuple[float, float]:
         """
-        Compute the minimum generic block size required by its ports.
+        Compute the minimum generic block size required by its ports and name.
 
         :return:
         """
         port_rows: int = max(len(self.inputs), len(self.outputs), 1)
-        min_height: float = max(
-            BLOCK_MIN_HEIGHT,
-            BLOCK_HEADER_HEIGHT + BLOCK_PORT_SECTION_PADDING + port_rows * BLOCK_PORT_ROW_HEIGHT
-        )
-        return BLOCK_MIN_WIDTH, min_height
+        min_height: float = 30 + port_rows * 14
+
+        name_width = len(self.subsys.name) * 5
+        max_label_length = 0
+        for var in self.subsys.in_vars:
+            max_label_length = max(max_label_length, len(var.name))
+        for var in self.subsys.out_vars:
+            max_label_length = max(max_label_length, len(var.name))
+
+        port_width = max_label_length * 5
+        min_width = max(50, name_width + 10, port_width + 20)
+
+        return min_width, min_height
+
+    def resize_to_content(self) -> None:
+        """
+        Resize the block to the minimum size required by its ports.
+
+        :return:
+        """
+        self.prepareGeometryChange()
+        min_width: float
+        min_height: float
+        min_width, min_height = self.get_minimum_block_size()
+        QGraphicsRectItem.setRect(self, 0, 0, min_width, min_height)
+        self.update_ports()
+        self.update_handle_position()
+
+    def create_port_label_item(self) -> QGraphicsTextItem:
+        """
+        Create a compact label item used beside a port.
+
+        :return:
+        """
+        label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
+        label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
+        label_item.setFont(label_font)
+        label_item.setDefaultTextColor(PORT_LABEL_COLOR)
+        label_item.setZValue(4)
+        return label_item
+
+    def refresh_port_metadata(self) -> None:
+        """
+        Refresh tooltips and visible labels for all ports.
+
+        :return:
+        """
+        i: int
+        port: PortItem
+        label_item: QGraphicsTextItem
+        variable_name: str
+
+        if self.subsys is not None:
+            for i, port in enumerate(self.inputs):
+                if port.base_var is None:
+                    port.base_var = self.subsys.in_vars[i]
+                else:
+                    pass
+
+                variable_name = self.subsys.in_vars[i].name
+                port.setToolTip(f"Input {i}: {variable_name}")
+                label_item = self.input_labels[i]
+                label_item.setPlainText(truncate_port_label(variable_name))
+
+            for i, port in enumerate(self.outputs):
+                if port.base_var is None:
+                    port.base_var = self.subsys.out_vars[i]
+                else:
+                    pass
+
+                variable_name = self.subsys.out_vars[i].name
+                port.setToolTip(f"Output {i}: {variable_name}")
+                label_item = self.output_labels[i]
+                label_item.setPlainText(truncate_port_label(variable_name))
+        else:
+            pass
 
     def update_ports(self):
         for i, port in enumerate(self.inputs):
@@ -2146,6 +2240,16 @@ class GenericBlockItem(QGraphicsRectItem):
         for i, port in enumerate(self.outputs):
             spacing = self.rect().height() / (len(self.outputs) + 1)
             port.setPos(self.rect().width(), spacing * (i + 1))
+
+        for i, label_item in enumerate(self.input_labels):
+            port = self.inputs[i]
+            label_item.setPos(14.0, port.pos().y() - 8.0)
+
+        for i, label_item in enumerate(self.output_labels):
+            port = self.outputs[i]
+            label_width: float = label_item.boundingRect().width()
+            label_item.setPos(self.rect().width() - label_width - 14.0, port.pos().y() - 8.0)
+
         self.update_handle_position()
         # Also update connections
         for port in self.inputs + self.outputs:
@@ -2224,10 +2328,10 @@ class BlockItem(QGraphicsRectItem):
         if self.subsys is not None:
             self.name_item = QGraphicsTextItem(self.name, self)
             self.name_item.setDefaultTextColor(BLOCK_TITLE)
-            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 10)
+            name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 6)
             name_font.setBold(True)
             self.name_item.setFont(name_font)
-            self.name_item.setPos(12, 9)
+            self.name_item.setPos(6, 4)
 
             n_inputs: int = len(self.subsys.in_vars)
             n_outputs: int = len(self.subsys.out_vars)
@@ -2267,7 +2371,19 @@ class BlockItem(QGraphicsRectItem):
             BLOCK_MIN_HEIGHT,
             BLOCK_HEADER_HEIGHT + BLOCK_PORT_SECTION_PADDING + port_rows * BLOCK_PORT_ROW_HEIGHT
         )
-        return BLOCK_MIN_WIDTH, min_height
+
+        name_width = len(self.name) * 5
+        max_label_length = 0
+        if self.subsys:
+            for var in self.subsys.in_vars:
+                max_label_length = max(max_label_length, len(var.name))
+            for var in self.subsys.out_vars:
+                max_label_length = max(max_label_length, len(var.name))
+
+        port_width = max_label_length * 5
+        min_width = max(BLOCK_MIN_WIDTH, name_width + 14, port_width + 28)
+
+        return min_width, min_height
 
     def resize_to_content(self) -> None:
         """
@@ -2275,6 +2391,7 @@ class BlockItem(QGraphicsRectItem):
 
         :return:
         """
+        self.prepareGeometryChange()
         min_width: float
         min_height: float
         min_width, min_height = self.get_minimum_block_size()
@@ -2362,32 +2479,7 @@ class BlockItem(QGraphicsRectItem):
         :return:
         """
         super().mouseDoubleClickEvent(event)
-    # def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
-    #     """
-    #     Open the parameter editor for the current block.
-    #
-    #     :param event:
-    #     :return:
-    #     """
-    #     if self.subsys is not None:
-    #         dialog: ParameterEditorDialog = ParameterEditorDialog(
-    #             var_factory=self.var_factory,
-    #             event_dict=self.subsys.event_dict,
-    #             parameters_dict=self.subsys.parameters,
-    #             parent=None
-    #         )
-    #
-    #         if dialog.exec() == QDialog.DialogCode.Accepted:
-    #             self.subsys.event_dict = dialog.event_dict
-    #             self.subsys.parameters = dialog.parameters
-    #         else:
-    #             pass
-    #
-    #         event.accept()
-    #     else:
-    #         pass
-    #
-    #     super().mouseDoubleClickEvent(event)
+
 
     def resize_block(self, width: float, height: float) -> None:
         """
@@ -2672,10 +2764,10 @@ class DiagramScene(QGraphicsScene):
         super().__init__()
         self.editor: DynamicBlockEditorGUI = editor
         self.temp_line: QGraphicsPathItem | None = None
-        self.source_port: PortItem | None = None
+        self.source_port: PortItem | BranchingItem | None = None
         self.context_item: BlockItem | ConnectionItem | None = None
 
-    def change_item_fill_color(self, item: BlockItem | ConnectionItem) -> None:
+    def change_item_fill_color(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
         """
         Change the color of a block or connection and persist it in the diagram.
 
@@ -2685,7 +2777,7 @@ class DiagramScene(QGraphicsScene):
         new_color: QColor = QColorDialog.getColor()
 
         if new_color.isValid():
-            if isinstance(item, BlockItem):
+            if isinstance(item, (BlockItem, GenericBlockItem)):
                 if item.subsys is not None:
                     brush: QBrush = item.brush()
                     brush.setColor(new_color)
@@ -2745,7 +2837,7 @@ class DiagramScene(QGraphicsScene):
         item: QGraphicsItem
 
         for item in self.items(event.scenePos()):
-            if isinstance(item, (BlockItem, ConnectionItem)):
+            if isinstance(item, (BlockItem, GenericBlockItem, ConnectionItem)):
                 menu: QMenu = QMenu()
                 self.context_item = item
 
@@ -2783,6 +2875,14 @@ class DiagramScene(QGraphicsScene):
                     return
                 else:
                     pass
+
+            if isinstance(item, BranchingItem):
+
+                self.source_port = item
+                path: QPainterPath = QPainterPath(item.scenePos())
+                self.temp_line = self.addPath(path, QPen(Qt.PenStyle.DashLine))
+                return
+
             else:
                 pass
 
@@ -2847,23 +2947,42 @@ class DiagramScene(QGraphicsScene):
         target_block: BlockItem = target_port.subsystem
 
         if source_block.subsys is not None and target_block.subsys is not None:
-            connection: ConnectionItem = ConnectionItem(source_port, target_port)
+            connection: ConnectionItem = ConnectionItem(
+                source_port, target_port,
+                diagram=self.editor.diagram
+            )
+
             dst_var: Var = source_block.subsys.out_vars[source_port.index]
             target_input_var: Var = target_block.subsys.in_vars[target_port.index]
             # key: VarPowerFlowRefferenceType
             # value: Var | None
+            #
+            if target_input_var.network_conn:
+                source_block.subsys.update_model(dst_var, target_input_var)
 
+                for key, value in self.editor.main_block.external_mapping.items():
+                    if value is dst_var:
+                        self.editor.main_block.external_mapping[key] = target_input_var
+                    else:
+                        pass
+
+                    source_block.subsys.out_vars[source_port.index] = target_input_var
+                    source_block.refresh_port_metadata()
+
+
+
+            else:
             # The destination model must substitute its local input placeholder with the source variable.
-            target_block.subsys.update_model(target_input_var, dst_var)
+                target_block.subsys.update_model(target_input_var, dst_var)
 
-            for key, value in self.editor.main_block.external_mapping.items():
-                if value is target_input_var:
-                    self.editor.main_block.external_mapping[key] = dst_var
-                else:
-                    pass
+                for key, value in self.editor.main_block.external_mapping.items():
+                    if value is target_input_var:
+                        self.editor.main_block.external_mapping[key] = dst_var
+                    else:
+                        pass
 
-            target_block.subsys.in_vars[target_port.index] = dst_var
-            target_block.refresh_port_metadata()
+                target_block.subsys.in_vars[target_port.index] = dst_var
+                target_block.refresh_port_metadata()
             self.addItem(connection)
 
             self.editor.diagram.add_branch(
@@ -3066,17 +3185,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.block_counters: Dict[BlockType, int] = dict()
         self.scene: DiagramScene = DiagramScene(self)
         self.changes_applied: bool = False
-        self.parameters_table_model: BlockParametersTableModel = BlockParametersTableModel(
-            var_factory=self.var_factory,
-            parent=self.ui.parametersTableView
-        )
         self.parameters_toolbar_widget: QWidget = QWidget(self.ui.tab_2)
         self.parameters_toolbar_layout: QHBoxLayout = QHBoxLayout(self.parameters_toolbar_widget)
         self.parameters_toolbar_layout.setContentsMargins(0, 0, 0, 0)
         self.add_symbol_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Add Variable", self.parameters_toolbar_widget)
-        self.parameters_hint_label: QLabel = QLabel("Select one block to edit its symbols and equations.", self.parameters_toolbar_widget)
+        self.add_equation_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Add Equation", self.parameters_toolbar_widget)
+        self.remove_selected_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Remove Selected", self.parameters_toolbar_widget)
         self.parameters_toolbar_layout.addWidget(self.add_symbol_button)
-        self.parameters_toolbar_layout.addWidget(self.parameters_hint_label)
+        self.parameters_toolbar_layout.addWidget(self.add_equation_button)
+        self.parameters_toolbar_layout.addWidget(self.remove_selected_button)
         self.parameters_toolbar_layout.addStretch(1)
 
         self.templates_list: List[RmsModelTemplate | EmtModelTemplate] = templates_list if templates_list is not None else list()
@@ -3126,24 +3243,48 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
 
         self.ui.verticalLayout_2.insertWidget(0, self.parameters_toolbar_widget)
-        self.ui.parametersTableView.setModel(self.parameters_table_model)
-        self.ui.parametersTableView.setItemDelegateForColumn(
-            1,
-            BlockParameterValueDelegate(self.ui.parametersTableView)
+
+        self.variables_table_model = VariablesTableModel(
+            var_factory=self.var_factory,
+            parent=self.ui.variablesTableView
         )
-        self.ui.parametersTableView.horizontalHeader().setStretchLastSection(True)
+        self.ui.variablesTableView.setModel(self.variables_table_model)
+        self.ui.variablesTableView.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        self.ui.variablesTableView.verticalHeader().setVisible(False)
+        self.ui.variablesTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self.ui.variablesTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.ui.variablesTableView.doubleClicked.connect(self.on_variables_table_double_clicked)
+
+        self.parameters_table_model = ParametersTableModel(
+            var_factory=self.var_factory,
+            parent=self.ui.parametersTableView
+        )
+        self.ui.parametersTableView.setModel(self.parameters_table_model)
+        self.ui.parametersTableView.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
         self.ui.parametersTableView.verticalHeader().setVisible(False)
         self.ui.parametersTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
-        self.ui.parametersTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.SingleSelection)
+        self.ui.parametersTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self.ui.parametersTableView.doubleClicked.connect(self.on_parameters_table_double_clicked)
+
+        self.equations_table_model = EquationsTableModel(
+            var_factory=self.var_factory,
+            parent=self.ui.equationsTableView
+        )
+        self.ui.equationsTableView.setModel(self.equations_table_model)
+        self.ui.equationsTableView.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        self.ui.equationsTableView.verticalHeader().setVisible(False)
+        self.ui.equationsTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self.ui.equationsTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.ui.equationsTableView.doubleClicked.connect(self.on_parameters_table_double_clicked)
+
         self.add_symbol_button.clicked.connect(self.open_add_variable_dialog)
+        self.add_equation_button.clicked.connect(self.open_add_equation_dialog)
+        self.remove_selected_button.clicked.connect(self.remove_selected_items)
         self.parameters_table_model.block_updated.connect(self.on_parameters_model_block_updated)
+        self.variables_table_model.block_updated.connect(self.on_parameters_model_block_updated)
         self.add_symbol_button.setEnabled(False)
-
-
-
-        self.ui.parametersTableView.horizontalHeader().setStretchLastSection(True)
-        self.ui.parametersTableView.verticalHeader().setVisible(False)
+        self.add_equation_button.setEnabled(False)
+        self.remove_selected_button.setEnabled(False)
 
         self.view: GraphicsView = GraphicsView(self.scene)
         self.ui.verticalLayout_3.removeWidget(self.ui.graphicsView)
@@ -3160,10 +3301,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.ui.doItButton.clicked.connect(self.apply_changes)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
-        # if not self.main_block.diagram.node_data and self.main_editor:
-        #     self.add_connection_vars()
-        #     self.add_external_mapping_block()
-        #     self.add_api_obj_mapping()
+        if not self.main_block.diagram.node_data and self.main_editor:
+            self.add_connection_vars()
+            self.add_external_mapping_block()
+            self.add_api_obj_mapping()
         self.rebuild_scene_from_diagram()
 
         # self.parameters_model = ParametersTreeModel(var_factory=self.var_factory, main_block=self.main_block)
@@ -3252,7 +3393,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block.add(model)
             item = GenericBlockItem(
                 var_factory=self.var_factory,
-                block=model,
+                subsys=model,
                 api_object=self.api_object,
                 mode=self.mode,
                 position_changed_callback=lambda x, y: self.on_block_position_changed(model.uid, x, y)
@@ -3274,7 +3415,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 subdiagram=model.diagram
             )
 
-            # self.block_added.emit(item.subsys)
 
             return item
         else:
@@ -3338,7 +3478,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         item_name: str = template.name
-        block_model: Block = clone_template_block(template.block)
+        block_model: Block = duplicate_block(template.block, var_factory=self.var_factory)
         block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
 
         if item_name:
@@ -3349,7 +3489,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         block_item.set_subsystem(block_model)
         block_item.position_changed_callback = lambda x, y: self.on_block_position_changed(block_model.uid, x, y)
         block_item.build_item()
-        self.block.add(block_model)
+        self.main_block.add(block_model)
         self.scene.addItem(block_item)
         block_item.setPos(QtCore.QPointF(x_pos, y_pos))
         self.diagram.add_node(
@@ -3404,30 +3544,46 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.scene.removeItem(item)
 
-        if source_port.subsystem.subsys is not None and target_port.subsystem.subsys is not None:
+
+        if source_port.subsystem.subsys is not None:
             dst_var: Var = source_port.subsystem.subsys.out_vars[source_port.index]
-            target_var: Var
-            i: int
-            eq: Expr
 
-            if target_port.base_var is not None:
-                target_var = target_port.base_var
-            else:
-                target_var = target_port.subsystem.subsys.in_vars[target_port.index]
+            if dst_var.network_conn:
 
-            # The destination equations must be restored to the original local input variable.
-            for i, eq in enumerate(target_port.subsystem.subsys.algebraic_eqs):
-                target_port.subsystem.subsys.algebraic_eqs[i] = eq.subs({dst_var: target_var})
+                target_var: Var
+                i: int
+                eq: Expr
 
-            for i, eq in enumerate(target_port.subsystem.subsys.state_eqs):
-                target_port.subsystem.subsys.state_eqs[i] = eq.subs({dst_var: target_var})
+                if source_port.base_var is not None:
+                    target_var = source_port.base_var
+                else:
+                    target_var = source_port.subsystem.subsys.out_vars[source_port.index]
 
-            target_port.subsystem.subsys.in_vars[target_port.index] = target_var
-            target_port.subsystem.refresh_port_metadata()
+                # The destination equations and variables must be restored to the original local input variable.
+                source_port.subsystem.subsys.update_model(dst_var, target_var)
+
+                source_port.subsystem.subsys.out_vars[source_port.index] = target_var
+                source_port.subsystem.refresh_port_metadata()
+
+        if target_port.subsystem.subsys is not None:
+            dst_var: Var = source_port.subsystem.subsys.out_vars[source_port.index]
+
+            if not dst_var.network_conn:
+                if target_port.base_var is not None:
+                    target_var = target_port.base_var
+                else:
+                    target_var = target_port.subsystem.subsys.in_vars[target_port.index]
+
+                # The destination equations and variables must be restored to the original local input variable.
+                target_port.subsystem.subsys.update_model(dst_var, target_var)
+
+                target_port.subsystem.subsys.in_vars[target_port.index] = target_var
+                target_port.subsystem.refresh_port_metadata()
+
         else:
             pass
 
-    def remove_block_item(self, item: BlockItem) -> None:
+    def remove_block_item(self, item: BlockItem | GenericBlockItem) -> None:
         """
         Remove a block and all of its attached connections.
 
@@ -3439,6 +3595,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         connections_to_remove: List[ConnectionItem] = list()
         child_block: Block
 
+        # find connections to remove
         for port in item.inputs + item.outputs:
             if port.connections is not None:
                 for conn in port.connections:
@@ -3449,11 +3606,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
 
-        for conn in connections_to_remove:
-            self.remove_connection_item(conn)
-
+        # remove item from scene
         self.scene.removeItem(item)
 
+        # remove blocks and diagrams from main_block
         if item.subsys is not None:
             for child_block in list(self.main_block.children):
                 if child_block.uid == item.subsys.uid:
@@ -3468,7 +3624,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-    def remove_item(self, item: BlockItem | ConnectionItem) -> None:
+        # remove connections
+        for conn in connections_to_remove:
+            self.remove_connection_item(conn)
+
+    def remove_item(self, item: BlockItem | GenericBlockItem | ConnectionItem) -> None:
         """
         Remove a block or connection from scene and model state.
 
@@ -3477,7 +3637,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         if isinstance(item, ConnectionItem):
             self.remove_connection_item(item)
-        elif isinstance(item, BlockItem):
+        elif isinstance(item, (BlockItem, GenericBlockItem)):
             self.remove_block_item(item)
         else:
             pass
@@ -3626,8 +3786,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             name = "mapping From"
             bus_from_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
 
-            Pf = self.var_factory.add_var('Pf_placeholder')
-            Qf = self.var_factory.add_var('Qf_placeholder')
+            Pf = self.var_factory.add_var('network_conn_Pf', VarPowerFlowRefferenceType.Pf, True)
+            Qf = self.var_factory.add_var('network_conn_Qf', VarPowerFlowRefferenceType.Qf, True)
 
             bus_from_mapping_blk = Block(
                 in_vars=[Pf, Qf],
@@ -3661,8 +3821,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             bus_to_mapping_blk = Block(
                 in_vars=[
-                    self.var_factory.add_var('Pt_placeholder'),  # Pt
-                    self.var_factory.add_var('Qt_placeholder')  # Qt
+                    self.var_factory.add_var('network_conn_Pt', VarPowerFlowRefferenceType.Pt, True),  # Pt
+                    self.var_factory.add_var('network_conn_Qt', VarPowerFlowRefferenceType.Qt, True)  # Qt
                 ],
                 name=name
             )
@@ -3692,8 +3852,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             name = "mapping Bus"
 
             bus_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
-            P = self.var_factory.add_var('P_placeholder')
-            Q = self.var_factory.add_var('Q_placeholder')
+            P = self.var_factory.add_var('network_conn_P', VarPowerFlowRefferenceType.P, True)
+            Q = self.var_factory.add_var('network_conn_Q', VarPowerFlowRefferenceType.Q, True)
 
             bus_mapping_blk = Block(
                 in_vars=[P, Q],
@@ -3701,6 +3861,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             )
 
             self.main_block.add(bus_mapping_blk)
+
 
             bus_mapping_item.set_subsystem(bus_mapping_blk)
             bus_mapping_item.build_item()
@@ -3805,44 +3966,23 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def on_parameters_table_double_clicked(self, index: QtCore.QModelIndex) -> None:
         """
-        Open the expression text editor when the user double-clicks an expression row.
+        Open the expression text editor when the user double-clicks an expression row
+        in either the equations table or the parameters table.
 
         :param index:
         :return:
         """
-        row_data: BlockParameterRow | None = self.parameters_table_model.get_row(index.row())
+        if index.model() == self.parameters_table_model and index.column() == 2:
+            self.open_expression_editor_for_parameters(index.row())
+        elif index.model() == self.equations_table_model:
+            row_data: BlockParameterRow | None = self.equations_table_model.get_row(index.row())
+            if row_data is not None:
+                if row_data.opens_expression_editor and index.column() == 1:
+                    self.open_expression_row_editor(index.row())
 
-        if row_data is not None:
-            if row_data.opens_expression_editor and index.column() == 1:
-                self.open_expression_row_editor(index.row())
-            else:
-                pass
-        else:
-            pass
-
-    def open_add_variable_dialog(self) -> None:
+    def open_expression_editor_for_parameters(self, row_index: int) -> None:
         """
-        Open the dialog used to add a new block symbol.
-
-        :return:
-        """
-        dialog: AddBlockVariableDialog = AddBlockVariableDialog(self)
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            try:
-                self.parameters_table_model.add_new_variable(
-                    name=dialog.get_name(),
-                    category=dialog.get_category(),
-                    parameter_value=dialog.get_parameter_value()
-                )
-            except Exception as exc:
-                QtWidgets.QMessageBox.warning(self, "Add Variable Error", str(exc))
-        else:
-            pass
-
-    def open_expression_row_editor(self, row_index: int) -> None:
-        """
-        Open the expression text editor for a parameter-table row.
+        Open the expression text editor for a parameters-table row.
 
         :param row_index:
         :return:
@@ -3855,11 +3995,256 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         expression_value: Expr
 
         if row_data is not None and self.parameters_table_model.block is not None:
-            if isinstance(row_data.value, Expr):
-                # converts symbolic expression to text
+            if row_data.value is not None and isinstance(row_data.value, Expr):
                 expression_text = symbolic_to_string(row_data.value)
-                # save a dictionary [var.name, var]
-                symbol_namespace = build_block_symbol_namespace(self.parameters_table_model.block)
+            else:
+                expression_text = str(row_data.value) if row_data.value is not None else ""
+            symbol_namespace = build_block_symbol_namespace(self.parameters_table_model.block)
+            dialog = ExpressionTextEditorDialog(
+                expression_text=expression_text,
+                symbol_namespace=symbol_namespace,
+                parent=self
+            )
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                try:
+                    parsed_expression = string_to_symbolic(dialog.get_expression_text(), symbol_namespace)
+
+                    if isinstance(parsed_expression, Comparison):
+                        expression_value = parsed_expression.to_expression()
+                    else:
+                        expression_value = parsed_expression
+
+                    self.parameters_table_model.set_value_from_expression(row_index, expression_value)
+                except Exception as exc:
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Expression Error",
+                        str(exc)
+                    )
+
+    def on_variables_table_double_clicked(self, index: QtCore.QModelIndex) -> None:
+        """
+        Open the expression text editor when the user double-clicks an init_eq cell.
+
+        :param index:
+        :return:
+        """
+        if index.column() == 2:
+            self.open_expression_row_editor_for_variables(index.row())
+
+    def open_expression_row_editor_for_variables(self, row_index: int) -> None:
+        """
+        Open the expression text editor for a variables-table row.
+
+        :param row_index:
+        :return:
+        """
+        row_data: BlockParameterRow | None = self.variables_table_model.get_row(row_index)
+        expression_text: str
+        dialog: ExpressionTextEditorDialog
+        symbol_namespace: Dict[str, Expr]
+        parsed_expression: Expr | Comparison
+        expression_value: Expr
+
+        if row_data is not None and self.variables_table_model.block is not None:
+            if row_data.init_eq is not None and isinstance(row_data.init_eq, Expr):
+                expression_text = symbolic_to_string(row_data.init_eq)
+            else:
+                expression_text = ""
+            symbol_namespace = build_block_symbol_namespace(self.variables_table_model.block)
+            dialog = ExpressionTextEditorDialog(
+                expression_text=expression_text,
+                symbol_namespace=symbol_namespace,
+                parent=self
+            )
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                try:
+                    parsed_expression = string_to_symbolic(dialog.get_expression_text(), symbol_namespace)
+
+                    if isinstance(parsed_expression, Comparison):
+                        expression_value = parsed_expression.to_expression()
+                    else:
+                        expression_value = parsed_expression
+
+                    self.variables_table_model.set_init_eq(row_index, expression_value)
+                except Exception as exc:
+                    QtWidgets.QMessageBox.warning(
+                        self,
+                        "Expression Error",
+                        str(exc)
+                    )
+
+    def open_add_variable_dialog(self) -> None:
+        """
+        Open the dialog used to add a new block symbol.
+
+        :return:
+        """
+        dialog: AddBlockVariableDialog = AddBlockVariableDialog(self)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            try:
+                block = self.get_selected_scene_block()
+                if block is None:
+                    raise ValueError("No block is selected in the editor.")
+
+                name = dialog.get_name()
+                category = dialog.get_category()
+                parameter_value = dialog.get_parameter_value()
+
+                if not is_valid_symbol_name(name):
+                    raise ValueError("The symbol name must be a valid identifier.")
+                elif block_namespace_contains_name(block, name):
+                    raise ValueError(f"The symbol '{name}' already exists in this block.")
+
+                new_var = self.var_factory.add_var(name=name)
+                add_variable_to_block(
+                    block=block,
+                    var=new_var,
+                    var_type=category,
+                    parameter_value=parameter_value
+                )
+
+                self.variables_table_model.set_block(block)
+                self.parameters_table_model.set_block(block)
+                self.equations_table_model.set_block(block)
+                self.variables_table_model.block_updated.emit(block.uid)
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "Add Variable Error", str(exc))
+        else:
+            pass
+
+    def open_add_equation_dialog(self) -> None:
+        """
+        Open the dialog used to add a new equation.
+
+        :return:
+        """
+        block = self.get_selected_scene_block()
+        if block is None:
+            QtWidgets.QMessageBox.warning(self, "Add Equation Error", "No block is selected in the editor.")
+            return
+
+        symbol_namespace = build_block_symbol_namespace(block)
+        dialog = AddEquationDialog(symbol_namespace=symbol_namespace, parent=self)
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            try:
+                equation_text = dialog.get_equation_text()
+                category = dialog.get_category()
+
+                parsed_expr = string_to_symbolic(equation_text, symbol_namespace)
+
+                if category == "state":
+                    block.state_eqs.append(parsed_expr)
+                elif category == "algebraic":
+                    block.algebraic_eqs.append(parsed_expr)
+                else:
+                    raise ValueError(f"Unknown equation type: {category}")
+
+                self.equations_table_model.set_block(block)
+                self.equations_table_model.block_updated.emit(block.uid)
+            except Exception as exc:
+                QtWidgets.QMessageBox.warning(self, "Add Equation Error", str(exc))
+        else:
+            pass
+
+    def remove_selected_items(self) -> None:
+        """
+        Remove selected items from the active table (Variables, Parameters, or Equations).
+        Uses the table's selection model to get selected rows.
+
+        :return:
+        """
+        block = self.get_selected_scene_block()
+        if block is None:
+            return
+
+        vars_model = self.variables_table_model
+        params_model = self.parameters_table_model
+        equations_model = self.equations_table_model
+
+        vars_selected = [idx.row() for idx in self.ui.variablesTableView.selectionModel().selectedRows()]
+        params_selected = [idx.row() for idx in self.ui.parametersTableView.selectionModel().selectedRows()]
+        equations_selected = [idx.row() for idx in self.ui.equationsTableView.selectionModel().selectedRows()]
+
+        if vars_selected:
+            vars_to_remove_from_state = []
+            vars_to_remove_from_algebraic = []
+            init_keys_to_remove = []
+            for row_idx in vars_selected:
+                row_data = vars_model.rows[row_idx]
+                var = row_data.key_var
+                if row_data.kind == BlockParameterKind.STATE_VAR:
+                    if var in block.state_vars:
+                        vars_to_remove_from_state.append(var)
+                        if var in block.init_values:
+                            init_keys_to_remove.append(var)
+                elif row_data.kind == BlockParameterKind.ALGEBRAIC_VAR:
+                    if var in block.algebraic_vars:
+                        vars_to_remove_from_algebraic.append(var)
+
+            block.state_vars = [v for v in block.state_vars if v not in set(vars_to_remove_from_state)]
+            block.algebraic_vars = [v for v in block.algebraic_vars if v not in set(vars_to_remove_from_algebraic)]
+            for key in init_keys_to_remove:
+                if key in block.init_values:
+                    del block.init_values[key]
+
+            vars_model.set_block(block)
+            vars_model.block_updated.emit(block.uid)
+
+        elif params_selected:
+            for row_idx in params_selected:
+                row_data = params_model.rows[row_idx]
+                var = row_data.key_var
+                if row_data.kind == BlockParameterKind.EVENT_PARAMETER:
+                    if var in block.event_dict:
+                        del block.event_dict[var]
+                elif row_data.kind == BlockParameterKind.FIXED_PARAMETER:
+                    if var in block.parameters:
+                        del block.parameters[var]
+            params_model.set_block(block)
+            params_model.block_updated.emit(block.uid)
+
+        elif equations_selected:
+            state_indices_to_remove = set()
+            alg_indices_to_remove = set()
+            for row_idx in equations_selected:
+                row_data = equations_model.rows[row_idx]
+                if row_data.item_index is not None:
+                    if row_data.kind == BlockParameterKind.STATE_EQUATION:
+                        state_indices_to_remove.add(row_data.item_index)
+                    elif row_data.kind == BlockParameterKind.ALGEBRAIC_EQUATION:
+                        alg_indices_to_remove.add(row_data.item_index)
+
+            new_state_eqs = [eq for idx, eq in enumerate(block.state_eqs) if idx not in state_indices_to_remove]
+            new_algebraic_eqs = [eq for idx, eq in enumerate(block.algebraic_eqs) if idx not in alg_indices_to_remove]
+            block.state_eqs = new_state_eqs
+            block.algebraic_eqs = new_algebraic_eqs
+
+            equations_model.set_block(block)
+            equations_model.block_updated.emit(block.uid)
+
+    def open_expression_row_editor(self, row_index: int) -> None:
+        """
+        Open the expression text editor for a parameter-table row.
+
+        :param row_index:
+        :return:
+        """
+        row_data: BlockParameterRow | None = self.equations_table_model.get_row(row_index)
+        expression_text: str
+        dialog: ExpressionTextEditorDialog
+        symbol_namespace: Dict[str, Expr]
+        parsed_expression: Expr | Comparison
+        expression_value: Expr
+
+        if row_data is not None and self.equations_table_model.block is not None:
+            if isinstance(row_data.value, Expr):
+                expression_text = symbolic_to_string(row_data.value)
+                symbol_namespace = build_block_symbol_namespace(self.equations_table_model.block)
                 dialog = ExpressionTextEditorDialog(
                     expression_text=expression_text,
                     symbol_namespace=symbol_namespace,
@@ -3875,7 +4260,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         else:
                             expression_value = parsed_expression
 
-                        self.parameters_table_model.update_expression_row(row_index, expression_value)
+                        index = self.equations_table_model.index(row_index, 1)
+                        self.equations_table_model.setData(index, symbolic_to_string(expression_value), QtCore.Qt.ItemDataRole.EditRole)
                     except Exception as exc:
                         QtWidgets.QMessageBox.warning(
                             self,
@@ -3920,8 +4306,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         selected_block: Block | None = self.get_selected_scene_block()
+        self.variables_table_model.set_block(selected_block)
         self.parameters_table_model.set_block(selected_block)
+        self.equations_table_model.set_block(selected_block)
         self.add_symbol_button.setEnabled(selected_block is not None)
+        self.add_equation_button.setEnabled(selected_block is not None)
+        self.remove_selected_button.setEnabled(selected_block is not None)
 
     def get_scene_item_by_block_uid(self, block_uid: int) -> BlockItem | GenericBlockItem | None:
         """
@@ -4081,8 +4471,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 except IndexError:
                     continue
 
-                connection: ConnectionItem = ConnectionItem(src_port, dst_port)
-                connection.uid = uid
+                elbow_points: List[QPointF] = [QPointF(x, y) for x, y in con.elbow_points] if con.elbow_points else []
+                connection: ConnectionItem = ConnectionItem(
+                    src_port, dst_port,
+                    diagram=self.diagram,
+                    con_uid=uid,
+                    elbow_points=elbow_points
+                )
 
                 pen: QPen = connection.pen()
                 pen.setColor(QColor(con.color))

@@ -51,7 +51,7 @@ def inspect_gy(gy: sp.spmatrix, tol: float = 1e-12) -> None:
             print(ns[:, 0])
 
 from matplotlib import pyplot as plt
-from VeraGridEngine.Simulations import SmallSignalStabilityRmsDriver, SmallSignalStabilityRmsOptions
+from VeraGridEngine.Simulations import SmallSignalStabilityRmsDriver, RmsSmallSignalStabilityOptions
 
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
@@ -59,7 +59,7 @@ from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 
@@ -131,7 +131,7 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 
 
 # generator
-genqec_mdl = get_complete_generator_template(grid.rms_var_factory).block
+genqec_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
 
 # line
 line_mdl = get_line_rms_template(grid.rms_var_factory).block
@@ -211,7 +211,7 @@ options = RmsOptions(time_step=0.001,
 ######################################################################################################
 
 
-ss_options = SmallSignalStabilityRmsOptions(ss_assessment_time=0)
+ss_options = RmsSmallSignalStabilityOptions(ss_assessment_time=0)
 
 # Create driver with dummy grid (it will create RmsProblemDae internally)
 driver = SmallSignalStabilityRmsDriver(
