@@ -2,14 +2,10 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can see it at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-
-# ==============================================================================
-# SVS Jacobian Backends Verification Suite
-# ==============================================================================
-
 import unittest
 import numpy as np
 from typing import List, Dict, Any
+
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -17,6 +13,10 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProb
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+
+# ==============================================================================
+# SVS Jacobian Backends Verification Suite
+# ==============================================================================
 
 
 class GenericEmtProblem(EmtProblemTemplate):

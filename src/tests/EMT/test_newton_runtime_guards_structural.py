@@ -3,10 +3,10 @@
 # file, You can see it at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-import unittest
 from typing import Any, cast
 
 import numpy as np
+import pytest
 from scipy.sparse import csc_matrix
 
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -238,359 +238,365 @@ class SingularVectorizedJacobian:
         return csc_matrix(np.array([[1.0, 0.0], [0.0, 1.0e-16]], dtype=np.float64))
 
 
-class TestStructuralNewtonRuntimeGuards(unittest.TestCase):
+@pytest.mark.parametrize(
+    "solver_class",
+    [StructuralVectorizedSolver, StructuralCompiledSolver],
+    ids=["StructuralVectorizedSolver", "StructuralCompiledSolver"],
+)
+def test_structural_solver_defaults_keep_expensive_diagnostics_disabled(solver_class: type) -> None:
+    block = build_scalar_state_block()
+    problem = GenericEmtProblem(block, Var(f"t_{solver_class.__name__}"))
 
-    def test_structural_solver_defaults_keep_expensive_diagnostics_disabled(self) -> None:
-        block = build_scalar_state_block()
-
-        for solver_class in (StructuralVectorizedSolver, StructuralCompiledSolver):
-            with self.subTest(solver=solver_class.__name__):
-                problem = GenericEmtProblem(block, Var(f"t_{solver_class.__name__}"))
-
-                if solver_class is StructuralVectorizedSolver:
-                    solver = solver_class(
-                        problem=problem,
-                        t0=0.0,
-                        t_end=1e-3,
-                        h=1e-4,
-                        method=DynamicIntegrationMethod.DaeBackEuler,
-                        dense_threshold=100,
-                        verbose=False,
-                        auto_vectorization=False,
-                    )
-                else:
-                    solver = solver_class(
-                        problem=problem,
-                        t0=0.0,
-                        t_end=1e-3,
-                        h=1e-4,
-                        method=DynamicIntegrationMethod.DaeBackEuler,
-                        dense_threshold=100,
-                        verbose=False,
-                        auto_build=False,
-                    )
-
-                cfg = solver._newton_diag_config
-                self.assertFalse(cfg.compute_dense_cond)
-                self.assertFalse(cfg.enable_fallback)
-                self.assertFalse(cfg.enable_index1_check)
-                self.assertFalse(cfg.enable_backtracking)
-
-    def test_dense_index1_helper_raises_on_singular_gy(self) -> None:
-        jacobian = np.array([[1.0, 0.0], [0.0, 0.0]], dtype=np.float64)
-        config = NewtonDiagnosticsConfig(
-            enable_index1_check=True,
-            index1_max_block_n=8,
-            compute_dense_cond=False,
-            enable_fallback=False,
+    if solver_class is StructuralVectorizedSolver:
+        solver = solver_class(
+            problem=problem,
+            t0=0.0,
+            t_end=1e-3,
+            h=1e-4,
+            method=DynamicIntegrationMethod.DaeBackEuler,
+            dense_threshold=100,
+            verbose=False,
+            auto_vectorization=False,
+        )
+    else:
+        solver = solver_class(
+            problem=problem,
+            t0=0.0,
+            t_end=1e-3,
+            h=1e-4,
+            method=DynamicIntegrationMethod.DaeBackEuler,
+            dense_threshold=100,
+            verbose=False,
+            auto_build=False,
         )
 
-        with self.assertRaises(RuntimeError):
-            maybe_check_index1(jacobian, n_state=1, config=config)
+    cfg = solver._newton_diag_config
+    assert not cfg.compute_dense_cond
+    assert not cfg.enable_fallback
+    assert not cfg.enable_index1_check
+    assert not cfg.enable_backtracking
 
-    def test_sparse_index1_helper_raises_on_singular_gy(self) -> None:
-        jacobian = csc_matrix(np.array([[1.0, 0.0], [0.0, 0.0]], dtype=np.float64))
-        config = NewtonDiagnosticsConfig(
-            enable_index1_check=True,
-            index1_max_block_n=8,
-            compute_dense_cond=False,
-            enable_fallback=False,
+
+def test_dense_index1_helper_raises_on_singular_gy() -> None:
+    jacobian = np.array([[1.0, 0.0], [0.0, 0.0]], dtype=np.float64)
+    config = NewtonDiagnosticsConfig(
+        enable_index1_check=True,
+        index1_max_block_n=8,
+        compute_dense_cond=False,
+        enable_fallback=False,
+    )
+
+    with pytest.raises(RuntimeError):
+        maybe_check_index1(jacobian, n_state=1, config=config)
+
+
+def test_sparse_index1_helper_raises_on_singular_gy() -> None:
+    jacobian = csc_matrix(np.array([[1.0, 0.0], [0.0, 0.0]], dtype=np.float64))
+    config = NewtonDiagnosticsConfig(
+        enable_index1_check=True,
+        index1_max_block_n=8,
+        compute_dense_cond=False,
+        enable_fallback=False,
+    )
+
+    with pytest.raises(RuntimeError):
+        maybe_check_index1(jacobian, n_state=1, config=config)
+
+
+def test_backtracking_helper_accepts_reduced_step() -> None:
+    x_iter = np.array([0.0], dtype=np.float64)
+    delta = np.array([10.0], dtype=np.float64)
+    trial_x = np.zeros(1, dtype=np.float64)
+    trial_res = np.zeros(1, dtype=np.float64)
+    config = NewtonDiagnosticsConfig(
+        enable_backtracking=True,
+        backtracking_beta=0.5,
+        backtracking_min_alpha=1e-3,
+        backtracking_max_iter=8,
+        compute_dense_cond=False,
+        enable_fallback=False,
+    )
+
+    def evaluate(candidate_x: np.ndarray, out_res: np.ndarray) -> float:
+        out_res[0] = (candidate_x[0] - 1.0) ** 2
+        return float(abs(out_res[0]))
+
+    maybe_apply_backtracking(
+        x_iter,
+        delta,
+        res_norm=1.0,
+        trial_x=trial_x,
+        trial_res=trial_res,
+        evaluate_residual=evaluate,
+        config=config,
+    )
+
+    assert (x_iter[0] - 1.0) ** 2 < 1.0
+    assert float(x_iter[0]) != pytest.approx(10.0)
+
+
+def test_backtracking_helper_keeps_full_step_when_disabled() -> None:
+    x_iter = np.array([0.0], dtype=np.float64)
+    delta = np.array([10.0], dtype=np.float64)
+    trial_x = np.zeros(1, dtype=np.float64)
+    trial_res = np.zeros(1, dtype=np.float64)
+    config = NewtonDiagnosticsConfig(enable_backtracking=False)
+
+    def evaluate(candidate_x: np.ndarray, out_res: np.ndarray) -> float:
+        out_res[0] = (candidate_x[0] - 1.0) ** 2
+        return float(abs(out_res[0]))
+
+    maybe_apply_backtracking(
+        x_iter,
+        delta,
+        res_norm=1.0,
+        trial_x=trial_x,
+        trial_res=trial_res,
+        evaluate_residual=evaluate,
+        config=config,
+    )
+
+    assert float(x_iter[0]) == pytest.approx(10.0)
+
+
+def test_structural_vectorized_records_newton_trace() -> None:
+    block = build_decay_block(n_states=2)
+    problem = GenericEmtProblem(block, Var("t_trace_vec"))
+    collector = NewtonTraceCollector()
+    problem.set_newton_trace_collector(collector)
+
+    solver = StructuralVectorizedSolver(
+        problem=problem,
+        t0=0.0,
+        t_end=0.05,
+        h=0.01,
+        method=DynamicIntegrationMethod.DaeTrapezoidal,
+        pred_method=DynamicIntegrationMethod.OdeEuler,
+        dense_threshold=100,
+        verbose=False,
+    )
+
+    x0 = np.array([1.0, -0.5], dtype=np.float64)
+    dx0 = -1.5 * x0
+    solver.simulate(x0=x0, dx0=dx0, params0=np.zeros(0, dtype=np.float64))
+
+    assert len(collector.records) > 0
+    assert "res_norm_inf" in collector.records[0]
+    assert not collector.records[0]["used_fallback"]
+    assert collector.records[0]["cond_J"] is None
+
+
+def test_structural_compiled_records_newton_trace() -> None:
+    block = build_decay_block(n_states=2)
+    problem = GenericEmtProblem(block, Var("t_trace_compiled"))
+    collector = NewtonTraceCollector()
+    problem.set_newton_trace_collector(collector)
+
+    solver = StructuralCompiledSolver(
+        problem=problem,
+        t0=0.0,
+        t_end=0.05,
+        h=0.01,
+        method=DynamicIntegrationMethod.DaeTrapezoidal,
+        pred_method=DynamicIntegrationMethod.OdeEuler,
+        dense_threshold=100,
+        verbose=False,
+    )
+
+    x0 = np.array([1.0, -0.5], dtype=np.float64)
+    dx0 = -1.5 * x0
+    solver.simulate(x0=x0, dx0=dx0, params0=np.zeros(0, dtype=np.float64))
+
+    assert len(collector.records) > 0
+    assert "res_norm_inf" in collector.records[0]
+    assert not collector.records[0]["used_fallback"]
+    assert collector.records[0]["cond_J"] is None
+
+
+def test_structural_vectorized_runtime_index1_guard_raises() -> None:
+    block = build_singular_dae_block()
+    problem = GenericEmtProblem(block, Var("t_idx_vec"))
+    cfg = NewtonDiagnosticsConfig(
+        enable_index1_check=True,
+        index1_max_block_n=8,
+        compute_dense_cond=False,
+        enable_fallback=False,
+    )
+
+    solver = StructuralVectorizedSolver(
+        problem=problem,
+        t0=0.0,
+        t_end=0.1,
+        h=0.1,
+        method=DynamicIntegrationMethod.DaeBackEuler,
+        dense_threshold=0,
+        verbose=False,
+        auto_vectorization=False,
+        newton_diag_config=cfg,
+    )
+    solver.vectorized_ready = True
+    solver.vec_flat_args = np.zeros(0, dtype=np.float64)
+    solver.fused_residual = singular_vectorized_residual
+    solver.vec_jacobian = SingularVectorizedJacobian()
+
+    with pytest.raises(RuntimeError):
+        solver.simulate(
+            x0=np.array([0.0, 0.0], dtype=np.float64),
+            dx0=np.array([0.0], dtype=np.float64),
+            params0=np.zeros(0, dtype=np.float64),
         )
 
-        with self.assertRaises(RuntimeError):
-            maybe_check_index1(jacobian, n_state=1, config=config)
 
-    def test_backtracking_helper_accepts_reduced_step(self) -> None:
-        x_iter = np.array([0.0], dtype=np.float64)
-        delta = np.array([10.0], dtype=np.float64)
-        trial_x = np.zeros(1, dtype=np.float64)
-        trial_res = np.zeros(1, dtype=np.float64)
-        config = NewtonDiagnosticsConfig(
+def test_structural_compiled_runtime_index1_guard_raises() -> None:
+    block = build_singular_dae_block()
+    problem = GenericEmtProblem(block, Var("t_idx_compiled"))
+    cfg = NewtonDiagnosticsConfig(
+        enable_index1_check=True,
+        index1_max_block_n=8,
+        compute_dense_cond=False,
+        enable_fallback=False,
+    )
+
+    solver = StructuralCompiledSolver(
+        problem=problem,
+        t0=0.0,
+        t_end=0.1,
+        h=0.1,
+        method=DynamicIntegrationMethod.DaeBackEuler,
+        dense_threshold=0,
+        verbose=False,
+        auto_build=False,
+        newton_diag_config=cfg,
+    )
+    solver._vectorized_ready = True
+    solver._residual_assembler = cast(Any, SingularCompiledResidualAssembler())
+    solver._jacobian_evaluator = cast(Any, SingularCompiledJacobian())
+
+    with pytest.raises(RuntimeError):
+        solver.simulate(
+            x0=np.array([0.0, 0.0], dtype=np.float64),
+            dx0=np.array([0.0], dtype=np.float64),
+            params0=np.zeros(0, dtype=np.float64),
+        )
+
+
+def test_structural_vectorized_backtracking_improves_inexact_newton_residual() -> None:
+    block = build_scalar_state_block()
+    problem = GenericEmtProblem(block, Var("t_bt_vec"))
+
+    solver_plain = StructuralVectorizedSolver(
+        problem=problem,
+        t0=0.0,
+        t_end=0.1,
+        h=0.1,
+        method=DynamicIntegrationMethod.DaeBackEuler,
+        dense_threshold=100,
+        verbose=False,
+        auto_vectorization=False,
+        newton_diag_config=NewtonDiagnosticsConfig(enable_backtracking=False),
+    )
+    solver_plain.vectorized_ready = True
+    solver_plain.vec_flat_args = np.zeros(0, dtype=np.float64)
+    solver_plain.fused_residual = inexact_vectorized_residual
+    solver_plain.vec_jacobian = InexactVectorizedJacobian()
+
+    solver_bt = StructuralVectorizedSolver(
+        problem=problem,
+        t0=0.0,
+        t_end=0.1,
+        h=0.1,
+        method=DynamicIntegrationMethod.DaeBackEuler,
+        dense_threshold=100,
+        verbose=False,
+        auto_vectorization=False,
+        newton_diag_config=NewtonDiagnosticsConfig(
             enable_backtracking=True,
             backtracking_beta=0.5,
             backtracking_min_alpha=1e-3,
             backtracking_max_iter=8,
             compute_dense_cond=False,
             enable_fallback=False,
-        )
+        ),
+    )
+    solver_bt.vectorized_ready = True
+    solver_bt.vec_flat_args = np.zeros(0, dtype=np.float64)
+    solver_bt.fused_residual = inexact_vectorized_residual
+    solver_bt.vec_jacobian = InexactVectorizedJacobian()
 
-        def evaluate(candidate_x: np.ndarray, out_res: np.ndarray) -> float:
-            out_res[0] = (candidate_x[0] - 1.0) ** 2
-            return float(abs(out_res[0]))
+    _, y_plain, _ = solver_plain.simulate(
+        x0=np.array([0.1], dtype=np.float64),
+        dx0=np.array([0.0], dtype=np.float64),
+        params0=np.zeros(0, dtype=np.float64),
+    )
+    _, y_bt, _ = solver_bt.simulate(
+        x0=np.array([0.1], dtype=np.float64),
+        dx0=np.array([0.0], dtype=np.float64),
+        params0=np.zeros(0, dtype=np.float64),
+    )
 
-        maybe_apply_backtracking(
-            x_iter,
-            delta,
-            res_norm=1.0,
-            trial_x=trial_x,
-            trial_res=trial_res,
-            evaluate_residual=evaluate,
-            config=config,
-        )
+    res_plain = abs(float(y_plain[-1, 0] ** 2 - 1.0))
+    res_bt = abs(float(y_bt[-1, 0] ** 2 - 1.0))
 
-        self.assertLess((x_iter[0] - 1.0) ** 2, 1.0)
-        self.assertNotAlmostEqual(float(x_iter[0]), 10.0)
+    assert res_plain > 1e-1
+    assert res_bt < 1e-3
+    assert res_bt < res_plain
 
-    def test_backtracking_helper_keeps_full_step_when_disabled(self) -> None:
-        x_iter = np.array([0.0], dtype=np.float64)
-        delta = np.array([10.0], dtype=np.float64)
-        trial_x = np.zeros(1, dtype=np.float64)
-        trial_res = np.zeros(1, dtype=np.float64)
-        config = NewtonDiagnosticsConfig(enable_backtracking=False)
 
-        def evaluate(candidate_x: np.ndarray, out_res: np.ndarray) -> float:
-            out_res[0] = (candidate_x[0] - 1.0) ** 2
-            return float(abs(out_res[0]))
+def test_structural_compiled_backtracking_improves_inexact_newton_residual() -> None:
+    block = build_scalar_state_block()
+    problem = GenericEmtProblem(block, Var("t_bt_compiled"))
 
-        maybe_apply_backtracking(
-            x_iter,
-            delta,
-            res_norm=1.0,
-            trial_x=trial_x,
-            trial_res=trial_res,
-            evaluate_residual=evaluate,
-            config=config,
-        )
+    solver_plain = StructuralCompiledSolver(
+        problem=problem,
+        t0=0.0,
+        t_end=0.1,
+        h=0.1,
+        method=DynamicIntegrationMethod.DaeBackEuler,
+        dense_threshold=100,
+        verbose=False,
+        auto_build=False,
+        newton_diag_config=NewtonDiagnosticsConfig(enable_backtracking=False),
+    )
+    solver_plain._vectorized_ready = True
+    solver_plain._residual_assembler = cast(Any, InexactCompiledResidualAssembler())
+    solver_plain._jacobian_evaluator = cast(Any, InexactCompiledJacobian())
 
-        self.assertAlmostEqual(float(x_iter[0]), 10.0)
-
-    def test_structural_vectorized_records_newton_trace(self) -> None:
-        block = build_decay_block(n_states=2)
-        problem = GenericEmtProblem(block, Var("t_trace_vec"))
-        collector = NewtonTraceCollector()
-        problem.set_newton_trace_collector(collector)
-
-        solver = StructuralVectorizedSolver(
-            problem=problem,
-            t0=0.0,
-            t_end=0.05,
-            h=0.01,
-            method=DynamicIntegrationMethod.DaeTrapezoidal,
-            pred_method=DynamicIntegrationMethod.OdeEuler,
-            dense_threshold=100,
-            verbose=False,
-        )
-
-        x0 = np.array([1.0, -0.5], dtype=np.float64)
-        dx0 = -1.5 * x0
-        solver.simulate(x0=x0, dx0=dx0, params0=np.zeros(0, dtype=np.float64))
-
-        self.assertGreater(len(collector.records), 0)
-        self.assertIn("res_norm_inf", collector.records[0])
-        self.assertFalse(collector.records[0]["used_fallback"])
-        self.assertIsNone(collector.records[0]["cond_J"])
-
-    def test_structural_compiled_records_newton_trace(self) -> None:
-        block = build_decay_block(n_states=2)
-        problem = GenericEmtProblem(block, Var("t_trace_compiled"))
-        collector = NewtonTraceCollector()
-        problem.set_newton_trace_collector(collector)
-
-        solver = StructuralCompiledSolver(
-            problem=problem,
-            t0=0.0,
-            t_end=0.05,
-            h=0.01,
-            method=DynamicIntegrationMethod.DaeTrapezoidal,
-            pred_method=DynamicIntegrationMethod.OdeEuler,
-            dense_threshold=100,
-            verbose=False,
-        )
-
-        x0 = np.array([1.0, -0.5], dtype=np.float64)
-        dx0 = -1.5 * x0
-        solver.simulate(x0=x0, dx0=dx0, params0=np.zeros(0, dtype=np.float64))
-
-        self.assertGreater(len(collector.records), 0)
-        self.assertIn("res_norm_inf", collector.records[0])
-        self.assertFalse(collector.records[0]["used_fallback"])
-        self.assertIsNone(collector.records[0]["cond_J"])
-
-    def test_structural_vectorized_runtime_index1_guard_raises(self) -> None:
-        block = build_singular_dae_block()
-        problem = GenericEmtProblem(block, Var("t_idx_vec"))
-        cfg = NewtonDiagnosticsConfig(
-            enable_index1_check=True,
-            index1_max_block_n=8,
+    solver_bt = StructuralCompiledSolver(
+        problem=problem,
+        t0=0.0,
+        t_end=0.1,
+        h=0.1,
+        method=DynamicIntegrationMethod.DaeBackEuler,
+        dense_threshold=100,
+        verbose=False,
+        auto_build=False,
+        newton_diag_config=NewtonDiagnosticsConfig(
+            enable_backtracking=True,
+            backtracking_beta=0.5,
+            backtracking_min_alpha=1e-3,
+            backtracking_max_iter=8,
             compute_dense_cond=False,
             enable_fallback=False,
-        )
+        ),
+    )
+    solver_bt._vectorized_ready = True
+    solver_bt._residual_assembler = cast(Any, InexactCompiledResidualAssembler())
+    solver_bt._jacobian_evaluator = cast(Any, InexactCompiledJacobian())
 
-        solver = StructuralVectorizedSolver(
-            problem=problem,
-            t0=0.0,
-            t_end=0.1,
-            h=0.1,
-            method=DynamicIntegrationMethod.DaeBackEuler,
-            dense_threshold=0,
-            verbose=False,
-            auto_vectorization=False,
-            newton_diag_config=cfg,
-        )
-        solver.vectorized_ready = True
-        solver.vec_flat_args = np.zeros(0, dtype=np.float64)
-        solver.fused_residual = singular_vectorized_residual
-        solver.vec_jacobian = SingularVectorizedJacobian()
+    _, y_plain, _ = solver_plain.simulate(
+        x0=np.array([0.1], dtype=np.float64),
+        dx0=np.array([0.0], dtype=np.float64),
+        params0=np.zeros(0, dtype=np.float64),
+    )
+    _, y_bt, _ = solver_bt.simulate(
+        x0=np.array([0.1], dtype=np.float64),
+        dx0=np.array([0.0], dtype=np.float64),
+        params0=np.zeros(0, dtype=np.float64),
+    )
 
-        with self.assertRaises(RuntimeError):
-            solver.simulate(
-                x0=np.array([0.0, 0.0], dtype=np.float64),
-                dx0=np.array([0.0], dtype=np.float64),
-                params0=np.zeros(0, dtype=np.float64),
-            )
+    res_plain = abs(float(y_plain[-1, 0] ** 2 - 1.0))
+    res_bt = abs(float(y_bt[-1, 0] ** 2 - 1.0))
 
-    def test_structural_compiled_runtime_index1_guard_raises(self) -> None:
-        block = build_singular_dae_block()
-        problem = GenericEmtProblem(block, Var("t_idx_compiled"))
-        cfg = NewtonDiagnosticsConfig(
-            enable_index1_check=True,
-            index1_max_block_n=8,
-            compute_dense_cond=False,
-            enable_fallback=False,
-        )
-
-        solver = StructuralCompiledSolver(
-            problem=problem,
-            t0=0.0,
-            t_end=0.1,
-            h=0.1,
-            method=DynamicIntegrationMethod.DaeBackEuler,
-            dense_threshold=0,
-            verbose=False,
-            auto_build=False,
-            newton_diag_config=cfg,
-        )
-        solver._vectorized_ready = True
-        solver._residual_assembler = cast(Any, SingularCompiledResidualAssembler())
-        solver._jacobian_evaluator = cast(Any, SingularCompiledJacobian())
-
-        with self.assertRaises(RuntimeError):
-            solver.simulate(
-                x0=np.array([0.0, 0.0], dtype=np.float64),
-                dx0=np.array([0.0], dtype=np.float64),
-                params0=np.zeros(0, dtype=np.float64),
-            )
-
-    def test_structural_vectorized_backtracking_improves_inexact_newton_residual(self) -> None:
-        block = build_scalar_state_block()
-        problem = GenericEmtProblem(block, Var("t_bt_vec"))
-
-        solver_plain = StructuralVectorizedSolver(
-            problem=problem,
-            t0=0.0,
-            t_end=0.1,
-            h=0.1,
-            method=DynamicIntegrationMethod.DaeBackEuler,
-            dense_threshold=100,
-            verbose=False,
-            auto_vectorization=False,
-            newton_diag_config=NewtonDiagnosticsConfig(enable_backtracking=False),
-        )
-        solver_plain.vectorized_ready = True
-        solver_plain.vec_flat_args = np.zeros(0, dtype=np.float64)
-        solver_plain.fused_residual = inexact_vectorized_residual
-        solver_plain.vec_jacobian = InexactVectorizedJacobian()
-
-        solver_bt = StructuralVectorizedSolver(
-            problem=problem,
-            t0=0.0,
-            t_end=0.1,
-            h=0.1,
-            method=DynamicIntegrationMethod.DaeBackEuler,
-            dense_threshold=100,
-            verbose=False,
-            auto_vectorization=False,
-            newton_diag_config=NewtonDiagnosticsConfig(
-                enable_backtracking=True,
-                backtracking_beta=0.5,
-                backtracking_min_alpha=1e-3,
-                backtracking_max_iter=8,
-                compute_dense_cond=False,
-                enable_fallback=False,
-            ),
-        )
-        solver_bt.vectorized_ready = True
-        solver_bt.vec_flat_args = np.zeros(0, dtype=np.float64)
-        solver_bt.fused_residual = inexact_vectorized_residual
-        solver_bt.vec_jacobian = InexactVectorizedJacobian()
-
-        _, y_plain, _ = solver_plain.simulate(
-            x0=np.array([0.1], dtype=np.float64),
-            dx0=np.array([0.0], dtype=np.float64),
-            params0=np.zeros(0, dtype=np.float64),
-        )
-        _, y_bt, _ = solver_bt.simulate(
-            x0=np.array([0.1], dtype=np.float64),
-            dx0=np.array([0.0], dtype=np.float64),
-            params0=np.zeros(0, dtype=np.float64),
-        )
-
-        res_plain = abs(float(y_plain[-1, 0] ** 2 - 1.0))
-        res_bt = abs(float(y_bt[-1, 0] ** 2 - 1.0))
-
-        self.assertGreater(res_plain, 1e-1)
-        self.assertLess(res_bt, 1e-3)
-        self.assertLess(res_bt, res_plain)
-
-    def test_structural_compiled_backtracking_improves_inexact_newton_residual(self) -> None:
-        block = build_scalar_state_block()
-        problem = GenericEmtProblem(block, Var("t_bt_compiled"))
-
-        solver_plain = StructuralCompiledSolver(
-            problem=problem,
-            t0=0.0,
-            t_end=0.1,
-            h=0.1,
-            method=DynamicIntegrationMethod.DaeBackEuler,
-            dense_threshold=100,
-            verbose=False,
-            auto_build=False,
-            newton_diag_config=NewtonDiagnosticsConfig(enable_backtracking=False),
-        )
-        solver_plain._vectorized_ready = True
-        solver_plain._residual_assembler = cast(Any, InexactCompiledResidualAssembler())
-        solver_plain._jacobian_evaluator = cast(Any, InexactCompiledJacobian())
-
-        solver_bt = StructuralCompiledSolver(
-            problem=problem,
-            t0=0.0,
-            t_end=0.1,
-            h=0.1,
-            method=DynamicIntegrationMethod.DaeBackEuler,
-            dense_threshold=100,
-            verbose=False,
-            auto_build=False,
-            newton_diag_config=NewtonDiagnosticsConfig(
-                enable_backtracking=True,
-                backtracking_beta=0.5,
-                backtracking_min_alpha=1e-3,
-                backtracking_max_iter=8,
-                compute_dense_cond=False,
-                enable_fallback=False,
-            ),
-        )
-        solver_bt._vectorized_ready = True
-        solver_bt._residual_assembler = cast(Any, InexactCompiledResidualAssembler())
-        solver_bt._jacobian_evaluator = cast(Any, InexactCompiledJacobian())
-
-        _, y_plain, _ = solver_plain.simulate(
-            x0=np.array([0.1], dtype=np.float64),
-            dx0=np.array([0.0], dtype=np.float64),
-            params0=np.zeros(0, dtype=np.float64),
-        )
-        _, y_bt, _ = solver_bt.simulate(
-            x0=np.array([0.1], dtype=np.float64),
-            dx0=np.array([0.0], dtype=np.float64),
-            params0=np.zeros(0, dtype=np.float64),
-        )
-
-        res_plain = abs(float(y_plain[-1, 0] ** 2 - 1.0))
-        res_bt = abs(float(y_bt[-1, 0] ** 2 - 1.0))
-
-        self.assertGreater(res_plain, 1e-1)
-        self.assertLess(res_bt, 1e-3)
-        self.assertLess(res_bt, res_plain)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    assert res_plain > 1e-1
+    assert res_bt < 1e-3
+    assert res_bt < res_plain

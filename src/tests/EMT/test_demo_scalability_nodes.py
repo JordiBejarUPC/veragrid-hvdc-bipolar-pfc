@@ -3,340 +3,330 @@
 # file, You can see it at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-import time
-from typing import Any, Dict, List
-from unittest.mock import patch
+import importlib.util
+from pathlib import Path
+from typing import Any
 
 import numpy as np
-
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr
-from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
-from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
-from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
-from VeraGridEngine.enumerations import DynamicIntegrationMethod
+import pytest
 
 
-class GenericEmtProblem(EmtProblemTemplate):
-    __slots__ = list()
+def _load_demo_module() -> Any:
+    repo_root = Path(__file__).resolve().parents[3]
+    demo_path = repo_root / "trunk" / "implicit_solver_test_EMT" / "Demos" / "demo_scalability_nodes.py"
+    spec = importlib.util.spec_from_file_location("demo_scalability_nodes_demo", demo_path)
+    assert spec is not None
+    assert spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
-def create_linear_chain(n_masses: int, vf: VarFactory) -> Block:
+def _eval_expr(expr: Any, **values: float) -> float:
+    return float(expr.eval(**values))
+
+
+@pytest.fixture(scope="module")
+def demo_module() -> Any:
+    """Load the real demo module under test from `trunk/`."""
+    return _load_demo_module()
+
+
+def test_create_linear_chain_builds_the_exact_mass_spring_damper_system(demo_module: Any) -> None:
     """
-    Create a linear chain of masses connected by springs.
+    The demo benchmark is scientifically about one specific repeated linear model.
 
-    Builds a 1D chain of n_masses connected by springs and dampers,
-    representing a simple mechanical system for scalability testing.
-
-    :param n_masses: Number of masses in the chain.
-    :param vf: Variable factory for creating system variables.
-    :returns: Block representing the linear chain system.
+    This test checks the exact state ordering and the exact force law that the
+    benchmark compiles and simulates. If the model equations change, the demo's
+    numerical meaning changes and this test must fail.
     """
-    pos_vars: List[Var] = list()
-    d_pos_vars: List[Var] = list()
-    vel_vars: List[Var] = list()
-    d_vel_vars: List[Var] = list()
-    for i in range(n_masses):
-        pos_vars.append(vf.add_var(f"x_{i}"))
-        d_pos_vars.append(vf.add_diff_var(name=f"d_x_{i}", base_var=pos_vars[i]))
-        vel_vars.append(vf.add_var(f"v_{i}"))
-        d_vel_vars.append(vf.add_diff_var(name=f"d_v_{i}", base_var=vel_vars[i]))
+    vf = demo_module.VarFactory()
+    block = demo_module.create_linear_chain(n_masses=3, vf=vf)
 
-    k: Const = Const(5000.0)
-    c: Const = Const(0.5)
+    assert block.name == "Linear_N3"
+    assert [var.name for var in block.state_vars] == ["x_0", "v_0", "x_1", "v_1", "x_2", "v_2"]
+    assert [var.name for var in block.diff_vars] == ["d_x_0", "d_v_0", "d_x_1", "d_v_1", "d_x_2", "d_v_2"]
+    assert len(block.state_eqs) == 6
 
-    state_vars: List[Var] = list()
-    state_eqs: List[Expr] = list()
-    diff_vars: List[Var] = list()
+    sample = {
+        "x_0": 0.30,
+        "v_0": -0.70,
+        "x_1": -0.10,
+        "v_1": 0.20,
+        "x_2": 0.40,
+        "v_2": -0.50,
+    }
 
-    for i in range(n_masses):
-        x_i, d_x_i, v_i, d_v_i = pos_vars[i], d_pos_vars[i], vel_vars[i], d_vel_vars[i]
-        if i > 0:
-            x_L: Expr = pos_vars[i - 1]
-        else:
-            x_L = Const(0.0)
+    expected = [
+        sample["v_0"],
+        5000.0 * (0.0 - sample["x_0"]) + 5000.0 * (sample["x_1"] - sample["x_0"]) - 0.5 * sample["v_0"],
+        sample["v_1"],
+        5000.0 * (sample["x_0"] - sample["x_1"]) + 5000.0 * (sample["x_2"] - sample["x_1"]) - 0.5 * sample["v_1"],
+        sample["v_2"],
+        5000.0 * (sample["x_1"] - sample["x_2"]) + 5000.0 * (0.0 - sample["x_2"]) - 0.5 * sample["v_2"],
+    ]
 
-        if i < n_masses - 1:
-            x_R: Expr = pos_vars[i + 1]
-        else:
-            x_R = Const(0.0)
-
-        force: Expr = k * (x_L - x_i) + k * (x_R - x_i) - c * v_i
-
-        state_vars.append(x_i)
-        diff_vars.append(d_x_i)
-        state_vars.append(v_i)
-        diff_vars.append(d_v_i)
-        state_eqs.append(v_i)
-        state_eqs.append(force)
-
-    return Block(
-        name=f"Linear_N{n_masses}",
-        state_vars=state_vars,
-        state_eqs=state_eqs,
-        diff_vars=diff_vars,
-        parameters=dict()
-    )
+    actual = [_eval_expr(expr, **sample) for expr in block.state_eqs]
+    np.testing.assert_allclose(actual, expected, rtol=0.0, atol=1e-12)
 
 
-def compute_steps(t0: float, t_end: float, h: float) -> int:
+def test_compute_steps_and_break_even_runs_follow_the_demo_formula(demo_module: Any) -> None:
     """
-    Compute the number of simulation steps.
+    The benchmark summary is defined by these utility formulas.
 
-    :param t0: Start time.
-    :param t_end: End time.
-    :param h: Time step size.
-    :returns: Number of steps as integer.
+    The test checks the exact branch logic used by the demo, not just that the
+    functions return something finite.
     """
-    return int(np.ceil((t_end - t0) / h))
+    assert demo_module.compute_steps(0.0, 1.0e-3, 3.0e-4) == 4
+    assert demo_module.compute_steps(0.0, 1.0e-3, 2.5e-4) == 4
+
+    assert demo_module.break_even_runs(1.0, 2.0, 3.0, 4.0) == 0.0
+    assert demo_module.break_even_runs(3.0, 4.0, 1.0, 2.0) == np.inf
+    assert demo_module.break_even_runs(5.0, 1.0, 1.0, 3.0) == pytest.approx(2.0)
+    assert demo_module.break_even_runs(5.0, 2.0, 1.0, 2.0) == np.inf
+    assert demo_module.break_even_runs(1.0, 4.0, 3.0, 2.0) == pytest.approx(1.0)
 
 
-class InitialConditionSetter:
+def test_setup_initial_condition_installs_the_exact_sinusoidal_displacement_profile(demo_module: Any) -> None:
     """
-    Helper class to set custom initial conditions on a problem.
+    The only non-zero initial data in the demo are the sinusoidal node positions.
 
-    Avoids using lambda functions by storing the initial condition
-    array directly and providing a callable interface.
+    This test checks the exact amplitude, phase convention, state placement and
+    copy semantics of the overridden `get_x0` callable.
     """
-    __slots__ = ["_x0"]
-
-    def __init__(self, x0: np.ndarray) -> None:
-        self._x0 = x0.copy()
-
-    def __call__(self) -> np.ndarray:
-        """Return a copy of the stored initial condition."""
-        return self._x0.copy()
-
-
-def setup_initial_condition(problem: GenericEmtProblem, block: Block, n_nodes: int) -> None:
-    """
-    Setup sinusoidal initial conditions for the linear chain.
-
-    :param problem: EMT problem to set initial conditions on.
-    :param block: System block containing state variables.
-    :param n_nodes: Number of nodes in the chain.
-    """
-    x0: np.ndarray = problem.get_x0()
-
-    for i in range(n_nodes):
-        idx_state: int = 2 * i
-        if idx_state < len(block.state_vars):
-            var_xi: Var = block.state_vars[idx_state]
-            if var_xi.uid in problem.uid2idx_vars:
-                x0[problem.get_var_idx(var_xi)] = 0.5 * np.sin(2.0 * np.pi * i / max(n_nodes, 1))
-
-    initial_condition_setter = InitialConditionSetter(x0)
-    problem.get_x0 = initial_condition_setter
-
-
-def run_backend(
-        label: str,
-        n_nodes: int,
-        vectorized: bool,
-        t_end: float,
-        h: float,
-        verbose: bool = False
-) -> Dict[str, Any]:
-    """
-    Run scalability benchmark for a given backend.
-
-    Creates a linear chain system, runs EMT simulation, and measures
-    timing and activity metrics for the specified solver backend.
-
-    :param label: Label identifier for the test case.
-    :param n_nodes: Number of masses in the linear chain.
-    :param vectorized: If True, use vectorized solver; otherwise use AD solver.
-    :param t_end: Simulation end time.
-    :param h: Simulation time step.
-    :param verbose: Enable verbose output.
-    :returns: Dictionary with timing and activity metrics.
-    """
-    vf: VarFactory = VarFactory()
-    block: Block = create_linear_chain(n_masses=n_nodes, vf=vf)
+    n_nodes = 4
+    vf = demo_module.VarFactory()
+    block = demo_module.create_linear_chain(n_masses=n_nodes, vf=vf)
     block.unify_blocks()
-    t_sym: Var = Var("t_glob")
+    problem = demo_module.GenericEmtProblem(sys_block=block, glob_time=demo_module.Var("t_glob"))
 
-    mode: str = "VEC" if vectorized else "AD"
+    demo_module.setup_initial_condition(problem, block, n_nodes)
 
-    t_setup_start: float = time.perf_counter()
+    expected = np.zeros(2 * n_nodes, dtype=np.float64)
+    expected[0::2] = 0.5 * np.sin(2.0 * np.pi * np.arange(n_nodes) / n_nodes)
 
-    problem: GenericEmtProblem = GenericEmtProblem(sys_block=block, glob_time=t_sym)
-    setup_initial_condition(problem, block, n_nodes)
+    first = problem.get_x0()
+    second = problem.get_x0()
 
-    x0: np.ndarray = problem.get_x0()
-    dx0: np.ndarray = np.zeros_like(x0, dtype=np.float64)
-    params0: np.ndarray = np.zeros(problem.get_variable_parameter_number(), dtype=np.float64)
+    np.testing.assert_allclose(first, expected, rtol=0.0, atol=1e-12)
+    np.testing.assert_allclose(second, expected, rtol=0.0, atol=1e-12)
 
-    target_method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal
-
-    if vectorized:
-        solver_vec = StructuralVectorizedSolver(
-            problem, t0=0.0, t_end=t_end, h=h,
-            method=target_method, verbose=verbose
-        )
-        solver_vec.auto_detect_vectorization(method=target_method)
-        solver = solver_vec
-    else:
-        solver_ad = JitAdSolver(
-            problem, t0=0.0, t_end=t_end, h=h,
-            method=target_method, verbose=verbose
-        )
-        solver_ad.build_jit_ad()
-        solver = solver_ad
-
-    solver.simulate()
-
-    setup_s: float = time.perf_counter() - t_setup_start
-
-    n_steps: int = compute_steps(0.0, t_end, h)
-
-    t_sim_start: float = time.perf_counter()
-    _, y_arr, _ = solver.simulate()
-
-    sim_s: float
-    if hasattr(solver, 'last_pure_sim_time'):
-        sim_s = solver.last_pure_sim_time
-    else:
-        sim_s = time.perf_counter() - t_sim_start
-
-    total_s: float = setup_s + sim_s
-    ms_step: float = (sim_s / max(n_steps, 1)) * 1000.0
-    activity: float = float(np.mean(np.abs(y_arr)))
-
-    return dict({
-        "mode": mode,
-        "setup_s": setup_s,
-        "sim_s": sim_s,
-        "total_s": total_s,
-        "ms_step": ms_step,
-        "n_steps": n_steps,
-        "activity": activity,
-    })
+    # The demo intentionally replaces `get_x0` with a copy-returning callable.
+    # Mutating one returned array must not mutate later calls.
+    first[0] = 123.0
+    np.testing.assert_allclose(problem.get_x0(), expected, rtol=0.0, atol=1e-12)
 
 
-def test_linear_chain_creation() -> None:
+def test_run_backend_ad_uses_the_measured_simulation_output_for_metrics(
+    demo_module: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """
-    Test that linear chain block creation produces correct structure.
-
-    Verifies that a chain of 10 masses creates 20 state variables
-    (position and velocity for each mass) and 20 differential variables.
+    The AD benchmark contract is:
+    - build the AD kernel,
+    - do one warm-up simulation inside setup time,
+    - do one measured simulation,
+    - derive activity from the measured trajectory,
+    - derive `sim_s` from wall-clock time when no solver-specific pure-loop timer exists.
     """
-    vf = VarFactory()
-    block = create_linear_chain(n_masses=10, vf=vf)
-    block.unify_blocks()
 
-    assert len(block.state_vars) == 20
-    assert len(block.diff_vars) == 20
+    class FakeAdSolver:
+        instances = []
 
+        def __init__(self, problem: Any, t0: float, t_end: float, h: float, method: Any, verbose: bool) -> None:
+            self.problem = problem
+            self.t0 = t0
+            self.t_end = t_end
+            self.h = h
+            self.method = method
+            self.verbose = verbose
+            self.build_calls = 0
+            self.simulate_calls = 0
+            type(self).instances.append(self)
 
-@patch("matplotlib.pyplot.show")
-def test_ad_backend_runs_successfully(mock_show) -> None:
-    """
-    Test that AD backend runs successfully on linear chain.
+        def build_jit_ad(self) -> None:
+            self.build_calls += 1
 
-    Verifies that the automatic differentiation solver produces
-    finite timing results and activity for a moderate-sized chain.
-    """
-    result = run_backend(
+        def simulate(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+            self.simulate_calls += 1
+            if self.simulate_calls == 1:
+                y_arr = np.array([[9.0, -9.0]], dtype=np.float64)
+            else:
+                y_arr = np.array([[1.0, -2.0], [3.0, -4.0]], dtype=np.float64)
+            return np.array([0.0], dtype=np.float64), y_arr, np.zeros_like(y_arr)
+
+    perf_values = iter([10.0, 13.0, 20.0, 24.0])
+
+    monkeypatch.setattr(demo_module, "JitAdSolver", FakeAdSolver)
+    monkeypatch.setattr(demo_module.time, "perf_counter", lambda: next(perf_values))
+
+    result = demo_module.run_backend(
         label="LIN",
-        n_nodes=50,
+        n_nodes=5,
         vectorized=False,
-        t_end=1e-4,
-        h=1e-7,
-        verbose=False
+        t_end=1.1e-3,
+        h=2.0e-4,
+        verbose=False,
     )
 
-    assert result["mode"] == "AD"
-    assert np.isfinite(result["setup_s"])
-    assert np.isfinite(result["sim_s"])
-    assert np.isfinite(result["total_s"])
-    assert result["n_steps"] > 0
-    assert np.isfinite(result["activity"])
+    solver = FakeAdSolver.instances[-1]
+    measured_y = np.array([[1.0, -2.0], [3.0, -4.0]], dtype=np.float64)
+    expected_steps = demo_module.compute_steps(0.0, 1.1e-3, 2.0e-4)
+    expected_activity = float(np.mean(np.abs(measured_y)))
+
+    assert solver.build_calls == 1
+    assert solver.simulate_calls == 2
+    assert result == {
+        "mode": "AD",
+        "setup_s": 3.0,
+        "sim_s": 4.0,
+        "total_s": 7.0,
+        "ms_step": (4.0 / expected_steps) * 1000.0,
+        "n_steps": expected_steps,
+        "activity": expected_activity,
+    }
 
 
-@patch("matplotlib.pyplot.show")
-def test_vectorized_backend_runs_successfully(mock_show) -> None:
+def test_run_backend_vectorized_uses_solver_pure_loop_time_and_configures_vectorization(
+    demo_module: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """
-    Test that vectorized backend runs successfully on linear chain.
-
-    Verifies that the structural vectorized solver produces
-    finite timing results for a moderate-sized chain.
+    The vectorized benchmark contract differs from AD in two crucial ways:
+    - it must call `auto_detect_vectorization` for the target integration method,
+    - if the solver exposes `last_pure_sim_time`, that exact value defines `sim_s`.
     """
-    result = run_backend(
+
+    class FakeVectorizedSolver:
+        instances = []
+
+        def __init__(self, problem: Any, t0: float, t_end: float, h: float, method: Any, verbose: bool) -> None:
+            self.problem = problem
+            self.t0 = t0
+            self.t_end = t_end
+            self.h = h
+            self.method = method
+            self.verbose = verbose
+            self.auto_detect_calls = []
+            self.simulate_calls = 0
+            self.last_pure_sim_time = 0.125
+            type(self).instances.append(self)
+
+        def auto_detect_vectorization(self, method: Any) -> None:
+            self.auto_detect_calls.append(method)
+
+        def simulate(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+            self.simulate_calls += 1
+            if self.simulate_calls == 1:
+                y_arr = np.array([[100.0]], dtype=np.float64)
+            else:
+                y_arr = np.array([[-2.0, 6.0], [4.0, -8.0]], dtype=np.float64)
+            return np.array([0.0], dtype=np.float64), y_arr, np.zeros_like(y_arr)
+
+    perf_values = iter([100.0, 106.0, 200.0])
+
+    monkeypatch.setattr(demo_module, "StructuralVectorizedSolver", FakeVectorizedSolver)
+    monkeypatch.setattr(demo_module.time, "perf_counter", lambda: next(perf_values))
+
+    result = demo_module.run_backend(
         label="LIN",
-        n_nodes=50,
+        n_nodes=8,
         vectorized=True,
-        t_end=1e-4,
-        h=1e-7,
-        verbose=False
+        t_end=9.0e-4,
+        h=2.0e-4,
+        verbose=False,
     )
 
-    assert result["mode"] == "VEC"
-    assert np.isfinite(result["setup_s"])
-    assert np.isfinite(result["sim_s"])
-    assert result["n_steps"] > 0
+    solver = FakeVectorizedSolver.instances[-1]
+    measured_y = np.array([[-2.0, 6.0], [4.0, -8.0]], dtype=np.float64)
+    expected_steps = demo_module.compute_steps(0.0, 9.0e-4, 2.0e-4)
+    expected_activity = float(np.mean(np.abs(measured_y)))
+
+    assert solver.auto_detect_calls == [demo_module.DynamicIntegrationMethod.DaeTrapezoidal]
+    assert solver.simulate_calls == 2
+    assert result == {
+        "mode": "VEC",
+        "setup_s": 6.0,
+        "sim_s": 0.125,
+        "total_s": 6.125,
+        "ms_step": (0.125 / expected_steps) * 1000.0,
+        "n_steps": expected_steps,
+        "activity": expected_activity,
+    }
 
 
-@patch("matplotlib.pyplot.show")
-def test_both_backends_produce_similar_activity(mock_show) -> None:
+def test_main_executes_the_exact_experiment_matrix(demo_module: Any, monkeypatch: pytest.MonkeyPatch) -> None:
     """
-    Test that AD and vectorized backends produce similar activity.
+    The demo's public experiment plan is fixed in `main()`.
 
-    Both solvers should produce similar mean absolute state values
-    for the same system, indicating correct simulation.
+    This test verifies the exact five `(h, t_end)` cases, the fixed node count
+    `N_LIN = 500`, the AD-then-VEC execution order, and the summary labels that
+    describe each benchmark case.
     """
-    result_ad = run_backend(
-        label="LIN",
-        n_nodes=50,
-        vectorized=False,
-        t_end=1e-4,
-        h=1e-7,
-        verbose=False
-    )
+    run_calls: list[dict[str, Any]] = []
+    summaries: list[dict[str, Any]] = []
 
-    result_vec = run_backend(
-        label="LIN",
-        n_nodes=50,
-        vectorized=True,
-        t_end=1e-4,
-        h=1e-7,
-        verbose=False
-    )
+    def fake_run_backend(label: str, n_nodes: int, vectorized: bool, t_end: float, h: float, verbose: bool) -> dict[str, Any]:
+        result = {
+            "mode": "VEC" if vectorized else "AD",
+            "setup_s": 1.0 if vectorized else 2.0,
+            "sim_s": 3.0 if vectorized else 4.0,
+            "total_s": 4.0 if vectorized else 6.0,
+            "ms_step": 5.0 if vectorized else 7.0,
+            "n_steps": demo_module.compute_steps(0.0, t_end, h),
+            "activity": 9.0 if vectorized else 8.0,
+        }
+        run_calls.append(
+            {
+                "label": label,
+                "n_nodes": n_nodes,
+                "vectorized": vectorized,
+                "t_end": t_end,
+                "h": h,
+                "verbose": verbose,
+                "result": result,
+            }
+        )
+        return result
 
-    assert np.isfinite(result_ad["activity"]), "AD activity should be finite"
-    assert np.isfinite(result_vec["activity"]), "VEC activity should be finite"
+    def fake_print_case_summary(case_name: str, ad: dict[str, Any], vec: dict[str, Any]) -> None:
+        summaries.append({"case_name": case_name, "ad": ad, "vec": vec})
 
+    monkeypatch.setattr(demo_module, "run_backend", fake_run_backend)
+    monkeypatch.setattr(demo_module, "print_case_summary", fake_print_case_summary)
 
-@patch("matplotlib.pyplot.show")
-def test_scalability_with_more_nodes(mock_show) -> None:
-    """
-    Test that larger systems require more computation time.
+    demo_module.main()
 
-    Verifies that the simulation time increases with the number
-    of nodes, demonstrating proper algorithmic complexity.
-    """
-    result_small = run_backend(
-        label="LIN",
-        n_nodes=20,
-        vectorized=False,
-        t_end=1e-4,
-        h=1e-7,
-        verbose=False
-    )
+    expected_experiments = [
+        {"h": 1e-7, "t_end": 1e-4, "name": "1k steps"},
+        {"h": 1e-7, "t_end": 1e-3, "name": "10k steps"},
+        {"h": 1e-7, "t_end": 5e-3, "name": "50k steps"},
+        {"h": 1e-8, "t_end": 1e-3, "name": "100k steps"},
+        {"h": 1e-8, "t_end": 2e-3, "name": "200k steps"},
+    ]
 
-    result_large = run_backend(
-        label="LIN",
-        n_nodes=100,
-        vectorized=False,
-        t_end=1e-4,
-        h=1e-7,
-        verbose=False
-    )
+    assert len(run_calls) == 10
+    assert len(summaries) == 5
 
-    assert result_large["total_s"] > result_small["total_s"], "Larger system should take more time"
+    for index, cfg in enumerate(expected_experiments):
+        ad_call = run_calls[2 * index]
+        vec_call = run_calls[2 * index + 1]
 
+        # The demo benchmark always uses the fixed repeated linear system with 500 nodes.
+        assert ad_call["label"] == "LIN"
+        assert ad_call["n_nodes"] == 500
+        assert ad_call["vectorized"] is False
+        assert ad_call["t_end"] == cfg["t_end"]
+        assert ad_call["h"] == cfg["h"]
+        assert ad_call["verbose"] is False
 
-if __name__ == "__main__":
-    import pytest
-    pytest.main([__file__, "-v"])
+        assert vec_call["label"] == "LIN"
+        assert vec_call["n_nodes"] == 500
+        assert vec_call["vectorized"] is True
+        assert vec_call["t_end"] == cfg["t_end"]
+        assert vec_call["h"] == cfg["h"]
+        assert vec_call["verbose"] is False
+
+        assert summaries[index]["case_name"] == f"Linear N=500, h={cfg['h']:.1e}, t_end={cfg['t_end']:.1e}"
+        assert summaries[index]["ad"] is ad_call["result"]
+        assert summaries[index]["vec"] is vec_call["result"]

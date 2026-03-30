@@ -147,6 +147,18 @@ def run_method_benchmark() -> None:
 
         results[method_name] = dict({'t': t_arr, 'i': i_L, 'v': v_C})
 
+    flat_results = dict()
+
+    for method_name, method_data in results.items():
+        flat_results[f"{method_name}_t"] = method_data["t"]
+        flat_results[f"{method_name}_i"] = method_data["i"]
+        flat_results[f"{method_name}_v"] = method_data["v"]
+
+    results_df = pd.DataFrame(flat_results)
+    results_df.index.name = "step"
+    name = "tradeoff_stability_accuracy.csv"
+    results_df.to_csv(name, index=False)
+
     print("\n=== BENCHMARK RESULTS ===")
     df: pd.DataFrame = pd.DataFrame(kpis)
     print(df.to_string(index=False))
