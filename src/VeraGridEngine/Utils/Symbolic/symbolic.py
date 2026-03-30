@@ -1886,7 +1886,7 @@ def symbolic_to_string(expr: Expr) -> str:
 # -----------------------------------------------------------------------------
 
 __all__ = [
-    "Expr", "Const", "Var", "BinOp", "UnOp", "Func", "CmpOp", "Comparison",
+    "Expr", "Const", "Var", "BinOp", "UnOp", "Func", "CmpOp", "Comparison", "Func2",
     "sin", "cos", "tan", "exp", "log", "sqrt",
     "asin", "acos", "atan", "sinh", "cosh",
     "diff", "eval_uid",
