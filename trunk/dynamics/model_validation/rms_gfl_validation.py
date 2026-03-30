@@ -16,10 +16,9 @@ import VeraGridEngine.api as vge
 from VeraGridEngine.enumerations import ConverterControlType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
-from VeraGridEngine.Templates.Rms.vsc_gfl import TrafoGflBuild
-from VeraGridEngine.Templates.Rms.transformer_rms_template import initialize_trafo_rms
+from VeraGridEngine.Templates.Rms.vsc_gfl import TrafoGflBuild, VscGflBuild
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCCurrentSource
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
@@ -58,8 +57,8 @@ def create_grid_2():
 
     transformer = vge.Transformer2W(
         name='Transformer',
-        bus_from=bus1_ac,
-        bus_to=bus3_ac,
+        bus_from=bus3_ac,
+        bus_to=bus1_ac,
         rate=100.0,
         r=0.01,
         x=0.05,
@@ -105,41 +104,35 @@ def initialize_grid2_rms_models(grid2):
     vf = grid2.rms_var_factory
 
     for trafo in grid2.transformers2w:
-        print(f"  Initializing Transformer '{trafo.name}' with initialize_trafo_rms...")
-        if trafo.bus_from.rms_model.empty():
-            initialize_bus_rms(trafo.bus_from, vf)
-        if trafo.bus_to.rms_model.empty():
-            initialize_bus_rms(trafo.bus_to, vf)
-        initialize_trafo_rms(trafo=trafo, vf=vf, Sbase=grid2.Sbase)
+        print(f"  Initializing Transformer '{trafo.name}' with TrafoGflBuild...")
+        trafo.rms_model = TrafoGflBuild(
+            vfactory=vf,
+            name=trafo.name,
+            control1=ConverterControlType.Vm_dc,
+            control2=ConverterControlType.Qac,
+        ).block
+        trafo.rms_model.unify_blocks()
 
-        # Compatibility with RMSProblemDae branch initialization path.
-        g = vf.add_var(f"g_{trafo.name}")
-        b = vf.add_var(f"b_{trafo.name}")
-        bsh = vf.add_var(f"bsh_{trafo.name}")
-        trafo.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g] = g
-        trafo.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b] = b
-        trafo.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh] = bsh
-        ys = 1.0 / complex(trafo.R, trafo.X)
-        trafo.rms_model.parameters[g] = vf.add_const(float(ys.real))
-        trafo.rms_model.parameters[b] = vf.add_const(float(ys.imag))
-        trafo.rms_model.parameters[bsh] = vf.add_const(float(trafo.B))
 
-        vmf = trafo.bus_from.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
-        vaf = trafo.bus_from.rms_model.external_mapping[VarPowerFlowRefferenceType.Va]
-        vmt = trafo.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
-        vat = trafo.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Va]
-        trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf] = vmf
-        trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Vaf] = vaf
-        trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt] = vmt
-        trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat] = vat
+        # Wire TrafoGflBuild DC input from the DC bus of the VSC connected
+        # to the same AC internal bus.
+        for vsc in grid2.vsc_devices:
+            if (vsc.bus_from.is_dc and
+                    (vsc.bus_to.idtag == trafo.bus_from.idtag or vsc.bus_to.idtag == trafo.bus_to.idtag)):
+                if vsc.bus_from.rms_model.empty():
+                    initialize_bus_rms(vsc.bus_from, vf)
+                vdc_bus = vsc.bus_from.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
+                vdc_trafo = trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
+                trafo.rms_model.connect([vdc_trafo], [vdc_bus])
+                break
 
-        # Compatibility for VSC auto-connect path (value is ignored by dummy input).
+        # Compatibility for automatic VSC path (dummy value).
         trafo.rms_model.out_vars = [trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Pf]]
         print("    ✓ Transformer RMS model assigned")
 
     for vsc in grid2.vsc_devices:
-        print(f"  Initializing VSC '{vsc.name}' with TrafoGflBuild...")
-        vsc.rms_model = TrafoGflBuild(
+        print(f"  Initializing VSC '{vsc.name}' with VscGflBuild...")
+        vsc.rms_model = VscGflBuild(
             vfactory=vf,
             name=vsc.name,
             control1=ConverterControlType.Vm_dc,
@@ -172,17 +165,13 @@ def initialize_grid2_rms_models(grid2):
             initialize_bus_rms(vsc.bus_to, vf)
 
         vdc_bus = vsc.bus_from.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
-        vm_f_bus = vsc.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf]
-        va_f_bus = vsc.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Vaf]
-        vm_t_bus = vsc.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt]
-        va_t_bus = vsc.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat]
+        vm_bus = vsc.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
+        va_bus = vsc.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Va]
 
         vdc_vsc = vsc.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
-        vm_t_vsc = vsc.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt]
-        va_t_vsc = vsc.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat]
-        vm_f_vsc = vsc.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf]
-        va_f_vsc = vsc.rms_model.external_mapping[VarPowerFlowRefferenceType.Vaf]
-        vsc.rms_model.connect([vdc_vsc, vm_t_vsc, va_t_vsc, vm_f_vsc, va_f_vsc], [vdc_bus, vm_f_bus, va_f_bus, vm_t_bus, va_t_bus])
+        vm_vsc = vsc.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt]
+        va_vsc = vsc.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat]
+        vsc.rms_model.connect([vdc_vsc, vm_vsc, va_vsc], [vdc_bus, vm_bus, va_bus])
 
         print("    ✓ VSC GFL RMS model assigned")
 
@@ -199,14 +188,20 @@ def initialize_grid2_rms_models(grid2):
             print(f"  Initializing AC Generator '{gen.name}' at AC bus '{bus.name}'...")
             if bus.rms_model.empty():
                 initialize_bus_rms(bus, vf)
-            gen_model = get_complete_generator_template(vfactory=vf, name=gen.name).block
+            gen_model = get_complete_generator_template_rms(vfactory=vf, name=gen.name).block
             set_rms_model(device=gen, model=gen_model, var_factory=vf)
 
-    # Close the missing reactive balance at the AC virtual bus used by VSC models.
+    # Close missing reactive balance for VSC AC-side virtual bus.
     if len(grid2.transformers2w) > 0 and len(grid2.vsc_devices) > 0:
-        trafo_qt = grid2.transformers2w[0].rms_model.external_mapping[VarPowerFlowRefferenceType.Qt]
+        trafo = grid2.transformers2w[0]
+        vsc = grid2.vsc_devices[0]
+        if trafo.bus_from.idtag == vsc.bus_to.idtag:
+            trafo_qt = trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Qf]
+        else:
+            trafo_qt = trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Qt]
         vsc_qt = grid2.vsc_devices[0].rms_model.external_mapping[VarPowerFlowRefferenceType.Qt]
         grid2.vsc_devices[0].rms_model.algebraic_eqs.append(trafo_qt + vsc_qt)
+        print( f"    Added algebraic equation for reactive power balance: {trafo_qt} + {vsc_qt} = 0")
 
     print("  ✓ All RMS models initialized successfully")
 

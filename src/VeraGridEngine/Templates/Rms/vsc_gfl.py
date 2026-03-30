@@ -6,7 +6,7 @@
 import numpy as np
 import math
 
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import (Block, Var)
 from VeraGridEngine.Templates.templates_common_functions import tf_to_block
@@ -446,6 +446,8 @@ def build_gfl_converter_model(vfactory: VarFactory, inputs,
         "v_q_c": v_q_c,
         "vd_hat": vd_hat,
         "vq_hat": vq_hat,
+        "R": R,
+        "L": L,
     }
     return gfl_block, i_d, i_q, P, Q, internals
 
@@ -499,11 +501,11 @@ def trafo_gfl_converter_model(vfactory: VarFactory,
 
         gfl_block.algebraic_eqs.append(v_d_c - Vm_f * sym.sin(Va_f - theta))
         gfl_block.algebraic_eqs.append(v_q_c - Vm_f * sym.cos(Va_f - theta))
-        gfl_block.init_eqs[v_d_c] = Vm_f * sym.sin(Va_f - theta)
-        gfl_block.init_eqs[v_q_c] = Vm_f * sym.cos(Va_f - theta)
+        #gfl_block.init_eqs[v_d_c] = Vm_f * sym.sin(Va_f - theta)
+        #gfl_block.init_eqs[v_q_c] = Vm_f * sym.cos(Va_f - theta)
 
     gfl_block.unify_blocks()
-    return gfl_block, i_d, i_q, P, Q
+    return gfl_block, i_d, i_q, P, Q, internals
 
 def VscGflBuild(vfactory: VarFactory, name: str = "",
                 control1: ConverterControlType = ConverterControlType.Pac,
@@ -547,7 +549,7 @@ def VscGflBuild(vfactory: VarFactory, name: str = "",
     a2 = vfactory.add_var('a2')
     
     # Build the converter model with specified control modes
-    gfl_block, i_d, i_q, P, Q, _ = build_gfl_converter_model(
+    gfl_block, i_d, i_q, P, Q, internals = build_gfl_converter_model(
         vfactory = vfactory,
         inputs=[Vm, Va, v_dc, Pt_vsc, Qt_vsc],
         control1=control1,
@@ -592,6 +594,13 @@ def VscGflBuild(vfactory: VarFactory, name: str = "",
         VarPowerFlowRefferenceType.Pf: Pf_vsc,
         VarPowerFlowRefferenceType.Qf: Qf,
     }
+    vsc_block.api_obj_mapping = {
+        ParamPowerFlowRefferenceType.R1: internals["R"],
+        ParamPowerFlowRefferenceType.X1: internals["L"],
+        ParamPowerFlowRefferenceType.alpha1: a0,
+        ParamPowerFlowRefferenceType.alpha2: a1,
+        ParamPowerFlowRefferenceType.alpha3: a2,
+    }
 
     vsc_block.add(gfl_block)
     vsc_block.name = 'gfl_block'
@@ -617,32 +626,43 @@ def TrafoGflBuild(vfactory: VarFactory, name: str = "",
     Vdc = vfactory.add_var("Vdc_")
     inputs = [Vm_f, Va_f, Vm_t, Va_t, Vdc]
 
-    Pt_vsc = vfactory.add_var('Pt_vsc')
-    Qt_vsc = vfactory.add_var('Qt_vsc')
+    Pt_vsc = vfactory.add_var('Pt_vsc_control')
+    Qt_vsc = vfactory.add_var('Qt_vsc_control')
+    Pf_vsc = vfactory.add_var('Pf_vsc_control')
 
     Qf = vfactory.add_var('Qf')
+    a0 = vfactory.add_var('a0')
+    a1 = vfactory.add_var('a1')
+    a2 = vfactory.add_var('a2')
 
-    gfl_block, i_d, i_q, P, Q = trafo_gfl_converter_model(
+    gfl_block, i_d, i_q, P, Q, internals = trafo_gfl_converter_model(
         vfactory=vfactory,
         inputs=[Vm_f, Va_f, Vm_t, Va_t, Vdc, Pt_vsc, Qt_vsc],
         control1=control1,
         control2=control2,
     )
-    gfl_block.init_eqs[P] = Pt_vsc
+    gfl_block.init_eqs[P] = -Pt_vsc
+    gfl_block.init_eqs[Q] = -Qt_vsc
 
     event_dict = {
         Qf: vfactory.add_const(0.0),
+        a0: vfactory.add_const(0.0),
+        a1: vfactory.add_const(0.0),
+        a2: vfactory.add_const(0.0),
     }
+
+    Im = sym.sqrt(i_d**2 + i_q**2 + vfactory.add_const(1e-5))
 
     vsc_block = Block(
         algebraic_eqs=[
+            Pf_vsc + Pt_vsc - (a0 + a1 * Im + a2 * Im ** 2),
             Pt_vsc + P,
             Qt_vsc + Q,
         ],
-        algebraic_vars=[Pt_vsc, Qt_vsc],
+        algebraic_vars=[Pf_vsc, Pt_vsc, Qt_vsc],
         event_dict=event_dict,
         in_vars=inputs,
-        out_vars=[Pt_vsc, Qt_vsc],
+        out_vars=[Pf_vsc, Pt_vsc, Qt_vsc],
     )
 
     vsc_block.external_mapping = {
@@ -653,8 +673,15 @@ def TrafoGflBuild(vfactory: VarFactory, name: str = "",
         VarPowerFlowRefferenceType.Vdc: Vdc,
         VarPowerFlowRefferenceType.Pt: Pt_vsc,
         VarPowerFlowRefferenceType.Qt: Qt_vsc,
-        VarPowerFlowRefferenceType.Pf: Pt_vsc,
-        VarPowerFlowRefferenceType.Qf: Qf,
+        VarPowerFlowRefferenceType.Pf: Pf_vsc,
+        VarPowerFlowRefferenceType.Qf: Qt_vsc,
+    }
+    vsc_block.api_obj_mapping = {
+        ParamPowerFlowRefferenceType.R1: internals["R"],
+        ParamPowerFlowRefferenceType.X1: internals["L"],
+        ParamPowerFlowRefferenceType.alpha1: a0,
+        ParamPowerFlowRefferenceType.alpha2: a1,
+        ParamPowerFlowRefferenceType.alpha3: a2,
     }
 
     vsc_block.add(gfl_block)

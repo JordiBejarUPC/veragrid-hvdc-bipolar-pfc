@@ -23,7 +23,7 @@ from VeraGridEngine.Templates.Rms.vsc_gfl import VscGflBuild
 from VeraGridEngine.Templates.Rms.transformer_rms_template import initialize_trafo_rms
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCPVSourceAveraged
 from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
@@ -361,7 +361,7 @@ def initialize_grid2_rms_models(grid2, pf_results):
             print(f"  Initializing AC Generator '{gen.name}' at AC bus '{bus.name}'...")
             if bus.rms_model.empty():
                 initialize_bus_rms(bus, grid2.rms_var_factory)
-            gen_model = get_complete_generator_template(vfactory=vf, name=gen.name).block
+            gen_model = get_complete_generator_template_rms(vfactory=vf, name=gen.name).block
             set_rms_model(device = gen, model=gen_model, var_factory=grid2.rms_var_factory)
 
     
@@ -370,6 +370,8 @@ def initialize_grid2_rms_models(grid2, pf_results):
         trafo_qt = grid2.transformers2w[0].rms_model.external_mapping[VarPowerFlowRefferenceType.Qt]
         vsc_qt = grid2.vsc_devices[0].rms_model.external_mapping[VarPowerFlowRefferenceType.Qt]
         grid2.vsc_devices[0].rms_model.algebraic_eqs.append(trafo_qt + vsc_qt)
+        print( f"Added algebraic equation for reactive power balance: {trafo_qt} + {vsc_qt} = 0")
+
     
 
     

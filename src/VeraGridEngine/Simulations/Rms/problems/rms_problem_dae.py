@@ -225,14 +225,19 @@ class RmsProblemDae(RmsProblemTemplate):
                 elm.rms_model.unify_blocks()
 
                 # get parameters from api object
-                elm.rms_model.parameters[
-                    elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
-                    float(elm.R / (elm.R ** 2 + elm.X ** 2)))
-                elm.rms_model.parameters[
-                    elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
-                    float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
-                elm.rms_model.parameters[
-                    elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
+                if (ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping
+                        and hasattr(elm, 'R') and hasattr(elm, 'X')):
+                    elm.rms_model.parameters[
+                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
+                        float(elm.R / (elm.R ** 2 + elm.X ** 2)))
+                if (ParamPowerFlowRefferenceType.b in elm.rms_model.api_obj_mapping
+                        and hasattr(elm, 'R') and hasattr(elm, 'X')):
+                    elm.rms_model.parameters[
+                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
+                        float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
+                if ParamPowerFlowRefferenceType.bsh in elm.rms_model.api_obj_mapping and hasattr(elm, 'B'):
+                    elm.rms_model.parameters[
+                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
 
                 # get variables from bus
                 if elm.bus_from.rms_model.empty():
@@ -309,9 +314,28 @@ class RmsProblemDae(RmsProblemTemplate):
                 mdl.unify_blocks()
 
                 # get parameters from api object
-                elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha1]] = Const(elm.alpha1)
-                elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha2]] = Const(elm.alpha2)
-                elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha3]] = Const(elm.alpha3)
+                if ParamPowerFlowRefferenceType.alpha1 in elm.rms_model.api_obj_mapping and hasattr(elm, 'alpha1'):
+                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha1]] = Const(elm.alpha1)
+                if ParamPowerFlowRefferenceType.alpha2 in elm.rms_model.api_obj_mapping and hasattr(elm, 'alpha2'):
+                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha2]] = Const(elm.alpha2)
+                if ParamPowerFlowRefferenceType.alpha3 in elm.rms_model.api_obj_mapping and hasattr(elm, 'alpha3'):
+                    elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha3]] = Const(elm.alpha3)
+
+                if ParamPowerFlowRefferenceType.R1 in elm.rms_model.api_obj_mapping:
+                    r1 = getattr(elm, 'R1', None)
+                    if r1 is None:
+                        r1 = getattr(elm, 'R', None)
+                    if r1 is not None:
+                        elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.R1]] = Const(float(r1))
+
+                if ParamPowerFlowRefferenceType.X1 in elm.rms_model.api_obj_mapping:
+                    x1 = getattr(elm, 'X1', None)
+                    if x1 is None:
+                        x1 = getattr(elm, 'X', None)
+                    if x1 is None:
+                        x1 = getattr(elm, 'L', None)
+                    if x1 is not None:
+                        elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.X1]] = Const(float(x1))
                 
                 #We connect the vsc to its transformer
                 if elm.bus_from.is_dc:
