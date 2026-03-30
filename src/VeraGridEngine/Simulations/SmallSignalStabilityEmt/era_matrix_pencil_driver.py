@@ -219,7 +219,7 @@ class EraMatrixPencilDriver(DriverTemplate):
     )
 
     name = 'ERA Matrix Pencil EMT Simulation'
-    tpe = SimulationTypes.SmallSignal_run
+    tpe = SimulationTypes.RmsSmallSignal_run
 
     def __init__(self,
                  grid: MultiCircuit,

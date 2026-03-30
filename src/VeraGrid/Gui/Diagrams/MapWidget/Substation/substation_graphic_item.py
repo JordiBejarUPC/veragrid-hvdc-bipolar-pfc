@@ -277,10 +277,10 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
             vl_graphics.setZValue(i)
 
     def get_xc(self) -> float:
-        return self.rect().x() + self.size/2
+        return self.rect().x() + self.size / 2
 
     def get_yc(self) -> float:
-        return self.rect().y() + self.size/2
+        return self.rect().y() + self.size / 2
 
     def update_position_at_the_diagram(self) -> None:
         """
@@ -744,11 +744,12 @@ class SubstationGraphicItem(NodeTemplate, QGraphicsRectItem):
                                                                            buses=selected_buses,
                                                                            name=self.api_object.name + " diagram")
 
-                        diagram_widget = schematic_widget.SchematicWidget(gui=self.editor.gui,
-                                                                          circuit=self.editor.circuit,
-                                                                          diagram=diagram,
-                                                                          default_bus_voltage=self.editor.gui.ui.defaultBusVoltageSpinBox.value(),
-                                                                          time_index=self.editor.gui.get_diagram_slider_index())
+                        diagram_widget = schematic_widget.SchematicWidget(
+                            gui=self.editor.gui,
+                            diagram=diagram,
+                            default_bus_voltage=self.editor.gui.ui.defaultBusVoltageSpinBox.value(),
+                            time_index=self.editor.gui.get_diagram_slider_index()
+                        )
 
                         self.editor.gui.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
                                                                        diagram=diagram)

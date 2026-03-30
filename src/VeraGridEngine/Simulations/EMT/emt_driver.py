@@ -58,7 +58,7 @@ class EmtSimulationDriver(DriverTemplate):
 
         self.options = options
 
-        self.results = EmtResults | None = None
+        self.results: EmtResults | None = None
 
         self.line_states = {}
 

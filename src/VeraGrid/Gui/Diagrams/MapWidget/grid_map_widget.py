@@ -235,7 +235,6 @@ class GridMapWidget(BaseDiagramWidget):
                  longitude: float,
                  latitude: float,
                  name: str,
-                 circuit: MultiCircuit,
                  diagram: Union[None, MapDiagram] = None):
         """
         GridMapWidget
@@ -250,7 +249,6 @@ class GridMapWidget(BaseDiagramWidget):
 
         super().__init__(
             gui=gui,
-            circuit=circuit,
             diagram=MapDiagram(name=name,
                                tile_source=tile_src.tile_set_name,
                                start_level=start_level,
@@ -1627,7 +1625,6 @@ class GridMapWidget(BaseDiagramWidget):
             longitude=d_copy.longitude,
             latitude=d_copy.latitude,
             name=d_copy.name,
-            circuit=self.circuit,
             diagram=d_copy,
         )
 

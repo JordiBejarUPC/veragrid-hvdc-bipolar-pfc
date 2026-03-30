@@ -11,7 +11,7 @@ import warnings
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
-from VeraGridEngine.enumerations import EmtInitializationMethod
+from VeraGridEngine.enumerations import EmtInitializationMethod, EmtInitializationStatus
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian, SymbolicVector
@@ -20,11 +20,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, find_vars_order
 
 
-class InitializationStatus(Enum):
-    """Enumeration to track the progress of the initialization solver."""
-    PENDING = auto()
-    RESOLVED = auto()
-    FAILED = auto()
+
 
 
 class EmtInitializationReport:
@@ -54,7 +50,7 @@ class EmtInitializationReport:
         :param method_requested: Requested initialization workflow.
         :return: None
         """
-        self.status: InitializationStatus = InitializationStatus.PENDING
+        self.status: EmtInitializationStatus = EmtInitializationStatus.PENDING
         self.method_requested: EmtInitializationMethod = method_requested
         self.method_used: EmtInitializationMethod = EmtInitializationMethod.Explicit
         self.initial_residual_inf: float = 0.0
@@ -994,7 +990,7 @@ def run_emt_native_initialization(problem: EmtProblemTemplate, options: EmtOptio
     method_requested: EmtInitializationMethod = options.initialization_method
 
     if method_requested == EmtInitializationMethod.Explicit:
-        report.status = InitializationStatus.RESOLVED
+        report.status = EmtInitializationStatus.RESOLVED
         report.method_used = EmtInitializationMethod.Explicit
     else:
         reduced_system: ReducedInitializationSystem | None
@@ -1009,15 +1005,15 @@ def run_emt_native_initialization(problem: EmtProblemTemplate, options: EmtOptio
             reduced_system = None
             runtime_params = np.zeros(0, dtype=np.float64)
             constant_params = np.zeros(0, dtype=np.float64)
-            report.status = InitializationStatus.FAILED
+            report.status = EmtInitializationStatus.FAILED
             report.method_used = EmtInitializationMethod.Explicit
             report.message = "Reduced initialization system construction failed; keeping explicit initialization."
 
         if reduced_system is None:
-            if report.status == InitializationStatus.FAILED:
+            if report.status == EmtInitializationStatus.FAILED:
                 x[:] = x_seed
             else:
-                report.status = InitializationStatus.RESOLVED
+                report.status = EmtInitializationStatus.RESOLVED
                 report.method_used = EmtInitializationMethod.Explicit
         else:
             try:
@@ -1025,7 +1021,7 @@ def run_emt_native_initialization(problem: EmtProblemTemplate, options: EmtOptio
                 report.initial_residual_inf = _max_abs_value(residual0)
             except (FloatingPointError, ZeroDivisionError, ValueError, RuntimeError):
                 x[:] = x_seed
-                report.status = InitializationStatus.FAILED
+                report.status = EmtInitializationStatus.FAILED
                 report.method_used = EmtInitializationMethod.Explicit
                 report.message = "Reduced initialization residual evaluation failed; keeping explicit initialization."
                 reduced_system = None
@@ -1056,7 +1052,7 @@ def run_emt_native_initialization(problem: EmtProblemTemplate, options: EmtOptio
                 converged = False
 
             if converged:
-                report.status = InitializationStatus.RESOLVED
+                report.status = EmtInitializationStatus.RESOLVED
             elif use_ptc:
                 converged = _run_reduced_pseudo_transient_initialization(
                     reduced_system=reduced_system,
@@ -1082,16 +1078,16 @@ def run_emt_native_initialization(problem: EmtProblemTemplate, options: EmtOptio
                         report=report,
                     )
                 if converged:
-                    report.status = InitializationStatus.RESOLVED
+                    report.status = EmtInitializationStatus.RESOLVED
                     report.method_used = EmtInitializationMethod.PseudoTransient
                 else:
                     x[:] = x_seed
-                    report.status = InitializationStatus.FAILED
+                    report.status = EmtInitializationStatus.FAILED
                     report.method_used = EmtInitializationMethod.Explicit
                     report.message = "Consistent initialization failed after pseudo-transient fallback; keeping explicit initialization."
             else:
                 x[:] = x_seed
-                report.status = InitializationStatus.FAILED
+                report.status = EmtInitializationStatus.FAILED
                 report.method_used = EmtInitializationMethod.Explicit
                 report.message = "Consistent initialization failed and pseudo-transient fallback was disabled."
 

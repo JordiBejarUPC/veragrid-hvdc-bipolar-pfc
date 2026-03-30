@@ -2198,8 +2198,9 @@ class SimulationTypes(Enum):
     NodalCapacityTimeSeries_run = 'Nodal capacity time series'
     Reliability_run = "Reliability"
     RmsDynamic_run = "RMS Dynamic"
-    SmallSignal_run = "Small Signal stability"
+    RmsSmallSignal_run = "RMS Small Signal stability"
     EmtDynamic_run = "EMT Dynamic"
+    EmtSmallSignal_run = "EMT Small Signal stability"
 
     FileOpen = "file open"
     FileSave = "file save"
@@ -3300,5 +3301,29 @@ class ProceduralLogicType(Enum):
         """
         try:
             return ProceduralLogicType[s]
+        except KeyError:
+            return s
+
+
+class EmtInitializationStatus(Enum):
+    """Enumeration to track the progress of the initialization solver."""
+    PENDING = "PENDING"
+    RESOLVED = "RESOLVED"
+    FAILED = "FAILED"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return EmtInitializationStatus[s]
         except KeyError:
             return s

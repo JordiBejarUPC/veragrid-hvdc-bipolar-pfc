@@ -362,7 +362,6 @@ class SchematicWidget(BaseDiagramWidget):
 
     def __init__(self,
                  gui: VeraGridMainGUI | DiagramsMain,
-                 circuit: MultiCircuit,
                  diagram: Union[SchematicDiagram, None],
                  default_bus_voltage: float = 10.0,
                  time_index: Union[None, int] = None):
@@ -376,7 +375,6 @@ class SchematicWidget(BaseDiagramWidget):
 
         BaseDiagramWidget.__init__(self,
                                    gui=gui,
-                                   circuit=circuit,
                                    diagram=diagram,
                                    library_model=SchematicLibraryModel(),
                                    time_index=time_index)
@@ -4638,7 +4636,6 @@ class SchematicWidget(BaseDiagramWidget):
 
         return SchematicWidget(
             gui=self.gui,
-            circuit=self.circuit,
             diagram=d_copy,
             default_bus_voltage=self.default_bus_voltage,
             time_index=self.get_time_index(),
