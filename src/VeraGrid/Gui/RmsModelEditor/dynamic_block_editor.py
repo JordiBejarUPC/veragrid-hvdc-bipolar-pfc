@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import uuid
 import re
+import copy
 from enum import Enum
 from typing import List, Dict, Optional, Any, Set
 from PySide6 import QtWidgets, QtGui, QtCore
@@ -220,9 +221,7 @@ def clone_block_for_editing(block: Block) -> Block:
     :param block:
     :return:
     """
-    editable_block: Block = block.copy()
-    # editable_block.diagram = block.diagram.copy()
-    return editable_block
+    return copy.deepcopy(block)
 
 
 def copy_block_state(source_block: Block, target_block: Block) -> None:

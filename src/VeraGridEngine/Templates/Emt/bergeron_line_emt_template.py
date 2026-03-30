@@ -6,7 +6,6 @@ import numpy as np
 import scipy.linalg as spla
 from typing import Dict, List, Tuple, Any
 
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block import Block, Var
 from VeraGridEngine.enumerations import DeviceType, EmtLineTypes
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory

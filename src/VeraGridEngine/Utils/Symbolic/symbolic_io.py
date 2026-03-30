@@ -610,6 +610,7 @@ def block_deep_copy(block: Block, var_factory: VarFactory):
     :param var_factory:
     :return:
     """
+    # TODO: avoid passing to json
     saver = BlockSaver(var_factory)
     d = saver.save_block(block, main=True)
     const_save = saver.get_const_to_save()

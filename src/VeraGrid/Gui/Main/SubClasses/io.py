@@ -1005,6 +1005,11 @@ class IoMain(ScenariosMain):
         if not self.circuit.rms_models:
             self.circuit.add_rms_model_catalogue()
 
+        if not self.circuit.emt_models:
+            self.circuit.add_emt_model_catalogue()
+
+        self.show_info_toast("Catalogue added!")
+
     def load_custom_catalogue(self):
         """
         Load a catalogue file and add it to the current one
@@ -1031,6 +1036,8 @@ class IoMain(ScenariosMain):
                     dlg.exec()
 
                 self.circuit.add_catalogue(data)
+                self.show_info_toast("Catalogue loaded!")
+            return None
         else:
             return None
 
@@ -1052,6 +1059,7 @@ class IoMain(ScenariosMain):
                 filename += ".xlsx"
 
             save_catalogue(fname=filename, grid=self.circuit)
+            self.show_info_toast("Catalogue saved!")
 
     def set_circuit(self, grid: MultiCircuit, create_diagram: bool = True):
         """

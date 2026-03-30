@@ -8258,7 +8258,7 @@ class Assets:
         Here the list of all rms templates must be returned in a list
         :return:
         """
-        self.rms_models = [
+        self.rms_models += [
             tem.get_genqec(vfactory=self._rms_var_factory),
             tem.get_governor(vfactory=self._rms_var_factory),
             tem.get_stabilizer(vfactory=self._rms_var_factory),
@@ -8267,4 +8267,16 @@ class Assets:
             tem.get_genrow_rms_template(vfactory=self._rms_var_factory),
             tem.get_line_rms_template(vfactory=self._rms_var_factory),
             tem.get_load_rms_template(vfactory=self._rms_var_factory)
+        ]
+
+    def add_emt_model_catalogue(self):
+        """
+        Create default catalogue of EMT values
+        :return:
+        """
+        self.emt_models += [
+            tem.get_shunt_c_3ph_emt_template(vf=self.emt_var_factory),
+            tem.get_shunt_l_3ph_emt_template(vf=self.emt_var_factory),
+            tem.get_shunt_r_1ph_emt_template(vf=self.emt_var_factory),
+            tem.get_shunt_r_3ph_emt_template(vf=self.emt_var_factory),
         ]
