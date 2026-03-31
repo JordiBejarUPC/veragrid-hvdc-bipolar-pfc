@@ -4,12 +4,16 @@
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.procedural_logic import picdro, sampled_value
 from VeraGridEngine.enumerations import DeviceType
 
-def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model') -> EmtModelTemplate:
-    templ = EmtModelTemplate()
+def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model', emt = True) -> EmtModelTemplate|RmsModelTemplate:
+    if emt:
+        templ = EmtModelTemplate()
+    else:
+        templ = RmsModelTemplate()
     templ.tpe = DeviceType.NoDevice
     templ.name = name
 
@@ -402,5 +406,6 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
 
     return templ
 
-def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
-    return get_slavepwm_model_emt_template(vf=vf, name='SlavePWM_Model' if name is None else name)
+def get_template(vf: VarFactory, name: str | None = None, emt: bool = True) -> EmtModelTemplate|RmsModelTemplate:
+    return get_slavepwm_model_emt_template(vf=vf, name='SlavePWM_Model' if name is None else name, emt=emt)
+    

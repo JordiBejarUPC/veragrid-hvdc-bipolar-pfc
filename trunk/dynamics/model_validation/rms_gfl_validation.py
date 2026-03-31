@@ -29,7 +29,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 
 def find_name_in_block(name: str, block: Block):
     for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
-        if name == var.name or name in var.name:
+        if name == var.name:
             return var
 
     for mdl in block.children:
@@ -91,14 +91,19 @@ def print_gfl_init_consistency(grid2, pf_results):
     if L is None:
         L = 0.05
 
+    k_pq = 1.0
+    R = 0.01
+    L = 0.05
+
     P = -pt_vsc
     Q = -qt_vsc
-    theta = va_t
+    theta = va_t 
     omega = 1.0
+    k = 1.0
     v_d_g = 0.0
     v_q_g = vm_t
-    i_q = (1.0 / k_pq) * P / v_q_g
-    i_d = (1.0 / k_pq) * Q / v_q_g
+    i_q = -(1.0 / k_pq) * P / v_q_g
+    i_d = -(1.0 / k_pq) * Q / v_q_g
 
     v_d_c_from_pq = v_d_g + (R * i_d - omega * L * i_q)
     v_q_c_from_pq = v_q_g + (R * i_q - omega * L * i_d)
@@ -113,10 +118,10 @@ def print_gfl_init_consistency(grid2, pf_results):
     print(f"  Pt_vsc={pt_vsc:.6f}, Qt_vsc={qt_vsc:.6f} -> P={P:.6f}, Q={Q:.6f}")
     print(f"  k_pq={k_pq:.6f}, R={R:.6f}, L={L:.6f}, omega={omega:.6f}")
     print(f"  i_d={i_d:.6f}, i_q={i_q:.6f}")
-    print(f"  v_d_c from P/Q init = {v_d_c_from_pq:.6f}")
-    print(f"  v_q_c from P/Q init = {v_q_c_from_pq:.6f}")
-    print(f"  v_d_c from internal bus = {v_d_c_from_internal_bus:.6f}")
-    print(f"  v_q_c from internal bus = {v_q_c_from_internal_bus:.6f}")
+    print(f"  v_d_c from P/Q init = {v_d_c_from_pq:.9f}")
+    print(f"  v_q_c from P/Q init = {v_q_c_from_pq:.9f}")
+    print(f"  v_d_c from internal bus = {v_d_c_from_internal_bus:.9f}")
+    print(f"  v_q_c from internal bus = {v_q_c_from_internal_bus:.9f}")
     print(f"  mismatch dv_d = {v_d_c_from_pq - v_d_c_from_internal_bus:.6f}")
     print(f"  mismatch dv_q = {v_q_c_from_pq - v_q_c_from_internal_bus:.6f}")
 
