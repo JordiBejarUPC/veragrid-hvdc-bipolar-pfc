@@ -246,6 +246,8 @@ class GridMapWidget(BaseDiagramWidget):
         :param circuit: MultiCircuit instance
         :param diagram: Diagram instance (optional)
         """
+        is_new_diagram = diagram is None
+        render_level = 6 if tile_src.level_in_range(6) else max(tile_src.min_level, min(start_level, tile_src.max_level))
 
         super().__init__(
             gui=gui,
@@ -261,21 +263,32 @@ class GridMapWidget(BaseDiagramWidget):
         # declare the map
         self.map = MapWidget(parent=self,
                              tile_src=tile_src,
-                             start_level=start_level,
+                             start_level=render_level,
                              editor=self,
                              zoom_callback=self.zoom_callback,
                              position_callback=self.position_callback)
 
-        # Any representation on the map must be done after this Goto Function
-        self.map.go_to_level_and_position(level=6, longitude=longitude, latitude=latitude)
+        # Draw the overlay at a stable base zoom, then move to the persisted
+        # viewport using the synchronized zoom path.
+        self.map.go_to_level_and_position(level=render_level,
+                                          longitude=self.diagram.longitude,
+                                          latitude=self.diagram.latitude)
 
         # pool of runnable tasks that work best done asynch with a runnable
         self.thread_pool = QThreadPool()
         self.wheel_move_task: QRunnable | None = None
 
-        # draw & center
+        # Draw the diagram. New diagrams are auto-centered from their graphics;
+        # loaded diagrams must preserve their persisted viewport.
         self.draw()
-        self.center()
+        if is_new_diagram:
+            self.center()
+
+        if self.diagram.start_level != self.map.level:
+            self.map.apply_zoom_level(level=self.diagram.start_level)
+
+        self.map.go_to_position(longitude=self.diagram.longitude,
+                                latitude=self.diagram.latitude)
 
     def set_diagram(self, diagram: MapDiagram):
         """
@@ -468,14 +481,14 @@ class GridMapWidget(BaseDiagramWidget):
         Zoom in
         """
         if self.map.level + 1 <= self.map.max_level:
-            self.map.set_zoom_level(level=self.map.level + 1)
+            self.map.apply_zoom_level(level=self.map.level + 1)
 
     def zoom_out(self):
         """
         Zoom out
         """
         if self.map.level - 1 >= self.map.min_level:
-            self.map.set_zoom_level(level=self.map.level - 1)
+            self.map.apply_zoom_level(level=self.map.level - 1)
 
     def to_lat_lon(self, x: float, y: float) -> Tuple[float, float]:
         """
@@ -1281,13 +1294,12 @@ class GridMapWidget(BaseDiagramWidget):
             lat /= n
             lon /= n
 
+            level = self.map.best_zoom_from_bbox(min_lat=lat_min,
+                                                 max_lat=lat_max,
+                                                 min_lon=lon_min,
+                                                 max_lon=lon_max)
+            self.map.apply_zoom_level(level=level)
             self.map.go_to_position(latitude=lat, longitude=lon)
-            # self.map.set_zoom_level(level=10)
-            # level = self.map.best_zoom_from_bbox(min_lat=lat_min,
-            #                                      max_lat=lat_max,
-            #                                      min_lon=lon_min,
-            #                                      max_lon=lon_max)
-            # self.map.set_zoom_level(level=level)
 
         else:
             self.gui.show_warning_toast("No points to center :/")
@@ -1339,7 +1351,7 @@ class GridMapWidget(BaseDiagramWidget):
                                                  min_lon=min_lon,
                                                  max_lon=max_lon)
 
-            self.map.set_zoom_level(level=level)
+            self.map.apply_zoom_level(level=level)
             # self.map.go_to_position(latitude=lat, longitude=lon)
 
     def colour_results(self,
