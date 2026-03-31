@@ -26,7 +26,7 @@ from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_a
 
 
 def open_file(filename: Union[str, List[str]],
-              options: FileOpenOptions | None = None) -> MultiCircuit:
+              options: FileOpenOptions | None = None) -> MultiCircuit | None:
     """
     Open file
     :param filename: name of the file (.veragrid, .ejson, .m, .xml, .zip, etc.) or list of files (.xml, .zip)
@@ -65,6 +65,22 @@ def save_multiverse(mv: MultiVerse, filename: str):
             multiverse=mv
         )
     )
+
+
+def open_cgmes(filenames: Union[str, List[str]], cgmes_version=CGMESVersions.v2_4_15) -> MultiCircuit | None:
+    """
+    Open CGMES files
+    :param filenames: name of the file (.xml, .zip) or list of files (.xml, .zip)
+    :param cgmes_version: CGMES version
+    :return: MultiCircuit instance
+    """
+    return FileOpen(
+        file_name=filenames,
+        options=FileOpenOptions(
+            cgmes_version=cgmes_version,
+            file_type=FileType.CGMES
+        )
+    ).open()
 
 
 def save_cgmes_file(grid: MultiCircuit,
@@ -286,31 +302,35 @@ def continuation_power_flow(grid: MultiCircuit,
     :return: Short circuit results
     """
     if pf_results is None:
-        pf_results = power_flow(grid=grid,
-                                options=pf_options)
+        pf_results2 = power_flow(grid=grid,
+                                 options=pf_options)
+    else:
+        pf_results2 = pf_results
 
     # declare the CPF options
     if options is None:
-        options = ContinuationPowerFlowOptions(step=0.001,
-                                               approximation_order=CpfParametrization.ArcLength,
-                                               adapt_step=True,
-                                               step_min=0.00001,
-                                               step_max=0.2,
-                                               error_tol=1e-3,
-                                               tol=1e-6,
-                                               max_it=20,
-                                               stop_at=stop_at,
-                                               verbose=False)
+        options2 = ContinuationPowerFlowOptions(step=0.001,
+                                                approximation_order=CpfParametrization.ArcLength,
+                                                adapt_step=True,
+                                                step_min=0.00001,
+                                                step_max=0.2,
+                                                error_tol=1e-3,
+                                                tol=1e-6,
+                                                max_it=20,
+                                                stop_at=stop_at,
+                                                verbose=False)
+    else:
+        options2 = options
 
     # We compose the target direction
-    base_power = pf_results.Sbus / grid.Sbase
+    base_power = pf_results2.Sbus / grid.Sbase
     vc_inputs = ContinuationPowerFlowInput(Sbase=base_power,
-                                           Vbase=pf_results.voltage,
+                                           Vbase=pf_results2.voltage,
                                            Starget=base_power * factor)
 
     # declare the CPF driver and run
     vc = ContinuationPowerFlowDriver(grid=grid,
-                                     options=options,
+                                     options=options2,
                                      inputs=vc_inputs,
                                      pf_options=pf_options)
     vc.run()

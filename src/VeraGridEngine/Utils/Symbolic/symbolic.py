@@ -8,13 +8,12 @@ import json
 import math
 import ast
 import uuid
+import builtins
 import numpy as np
 from enum import Enum
 import numba as nb
-from dataclasses import dataclass, field
-from types import MappingProxyType
 
-from typing import Any, Callable, ClassVar, Dict, Mapping, Union, List, Sequence, Tuple, Set, Optional
+from typing import Any, Dict, Mapping, Union, List, Sequence, Tuple, Set, Optional
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
@@ -61,7 +60,7 @@ def _to_expr(val: Any) -> "Expr":
 
 class CmpOp(Enum):
     """
-    comparisions
+    comparisons
     """
     LE = "≤"  # ≤
     GE = "≥"  # ≥
@@ -70,22 +69,47 @@ class CmpOp(Enum):
     EQ = "="  # =
 
 
-@dataclass(frozen=True, slots=True)
 class Comparison:
-    lhs: "Expr"
-    op: CmpOp  # "<=", ">=", "=="
-    rhs: Union["Expr", NUMBER]
+    """
+    Symbolic comparison wrapper.
 
-    def to_expression(self) -> Expr:
+    :param lhs: Left-hand side symbolic expression.
+    :param op: Comparison operator.
+    :param rhs: Right-hand side symbolic expression or numeric value.
+    """
+
+    __slots__ = ("lhs", "op", "rhs")
+
+    def __init__(self, lhs: "Expr", op: CmpOp, rhs: "Expr | NUMBER"):
+        """
+        Comparison constructor
+        :param lhs: Left-hand side
+        :param op: operator
+        :param rhs: Right-hand side
+        """
+        self.lhs: Expr = lhs
+        self.op: CmpOp = op
+        self.rhs: Expr | NUMBER = rhs
+
+    def to_expression(self) -> "Expr":
+        """
+        Convert the comparison into a heaviside-based symbolic expression.
+
+        :return: Equivalent symbolic expression.
+        """
+        rhs_expr: Expr = _to_expr(self.rhs)
         if self.op == CmpOp.LE or self.op == CmpOp.LT:
-            return heaviside(self.rhs - self.lhs)
+            return heaviside(rhs_expr - self.lhs)
         elif self.op == CmpOp.GE or self.op == CmpOp.GT:
-            return heaviside(self.lhs - self.rhs)
+            return heaviside(self.lhs - rhs_expr)
         elif self.op == CmpOp.EQ:
-            eps = Const(1e-6)
-            return heaviside(self.lhs - self.rhs + eps) * heaviside(self.rhs - self.lhs + eps)
+            eps: Const = Const(1e-6)
+            return heaviside(self.lhs - rhs_expr + eps) * heaviside(rhs_expr - self.lhs + eps)
         else:
             raise ValueError(f"operator not supported {self.op}")
+
+    def __repr__(self) -> str:
+        return f"Comparison(lhs={self.lhs!r}, op={self.op!r}, rhs={self.rhs!r})"
 
 
 class Expr:
@@ -100,7 +124,7 @@ class Expr:
 
         :param uid: (optional UID)
         """
-        self.uid: int = _new_uid() if uid is None else uid  # real dataclass field lives in subclasses
+        self.uid: int = _new_uid() if uid is None else uid
 
     def eval(self, **bindings: float | int) -> float | int:  # pragma: no cover – abstract
         """
@@ -233,7 +257,7 @@ class Expr:
         """
         raise NotImplementedError
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
 
     def __hash__(self) -> int:
@@ -263,7 +287,7 @@ class Const(Expr):
         self.value: NUMBER | None = value
         self.name: str = name
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo) -> "Const":
         return Const(self.value, self.uid, self.name)
 
     def eval(self, **bindings: NUMBER) -> NUMBER | None:
@@ -362,7 +386,7 @@ class Var(Expr):
         if base_var is not None:
             self.base_var.diff_var = self  # assign reference to me in the base var
 
-    def __deepcopy__(self, memo):
+    def __deepcopy__(self, memo) -> "Var":
         return Var(
             name=self.name,
             reference=self._ref,
@@ -412,7 +436,7 @@ class Var(Expr):
     def __repr__(self) -> str:
         return self.name
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool | Comparison:
         # Var comparison using the uid
         if isinstance(other, Var):
             return self.uid == other.uid
@@ -468,7 +492,7 @@ class Var(Expr):
     def ref(self) -> VarPowerFlowRefferenceType | None:
         return self._ref
 
-    def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr :
+    def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
         """
         differentiation
         :param var:
@@ -478,39 +502,68 @@ class Var(Expr):
         :return:
         :rtype: Union[VeraGridEngine.Utils.Symbolic.symbolic.Const, None, VeraGridEngine.Utils.Symbolic.symbolic.BinOp]
         """
+        target_uid: int | None = None
+        target_name: str | None = None
+        if isinstance(var, Var):
+            target_uid = var.uid
+            target_name = var.name
+        else:
+            target_name = var
+
         if dt is None or self.base_var is None:
-            return Const(1 if self.uid == var.uid else 0)
+            if target_uid is not None:
+                return Const(1 if self.uid == target_uid else 0)
+            else:
+                return Const(1 if self.name == target_name else 0)
         elif self.base_var is not None:
             # ∂(dx/dt)/∂x = 1/h
-            if var.uid == self.uid:
+            if target_uid is not None and target_uid == self.uid:
                 return Const(1)
-            elif var.uid == self.base_var.uid:
+            elif target_uid is not None and target_uid == self.base_var.uid:
                 # Differentiating by immediate base: return 1/dt
                 return Const(1) / dt
-            elif var.uid == self.origin_var.uid:
+            elif target_uid is not None and target_uid == self.origin_var.uid:
                 # Differentiating by origin (root) variable: apply chain rule
                 # This happens for nested diff vars like d2x when diff'ing by x
+                result = (Const(1) / dt) * self.base_var.diff(var, dt=dt)
+                return result
+            elif target_uid is None and target_name == self.name:
+                return Const(1)
+            elif target_uid is None and target_name == self.base_var.name:
+                return Const(1) / dt
+            elif target_uid is None and target_name == self.origin_var.name:
                 result = (Const(1) / dt) * self.base_var.diff(var, dt=dt)
                 return result
             else:
                 return Const(0)
         return Const(0)
 
-    def populate_initial_lag(self, x0: float, dx0: np.ndarray, lag_x: float, dt: Optional[Const]):
+    def populate_initial_lag(self, x0: float, dx0: np.ndarray, lag_x: float, dt: Optional[Const]) -> float:
         """
 
+        Populate the numeric lag state for the current derivative order.
+
+        :param x0: Initial state value.
         :param dx0:
+        :param lag_x: Current lag value used as accumulation base.
         :param dt:
-        :return:
+        :return: Numeric lag initialization value.
         """
-        # function that initializes the lag of the same order for the same original_var
-        diff_order = self.diff_order
-        res = Expr()
-        for i in range(diff_order):
-            res += (dt ** (i + 1)) * (-1) ** (i + 1) * dx0[i]
-        return res.eval()
+        # Initialize the lag from the supplied state and derivative samples.
+        diff_order: int = self.diff_order
+        result: float = x0 if lag_x == 0.0 else lag_x
+        if dt is None or dt.value is None:
+            dt_value: float = 1.0
+        else:
+            dt_value = float(dt.value)
 
-    def approximation_expr(self, dt: Optional[Var | None], central=False) -> Tuple:
+        index: int
+        for index in range(diff_order):
+            result += (dt_value ** (index + 1)) * ((-1.0) ** (index + 1)) * float(dx0[index])
+
+        return result
+
+    def approximation_expr(self, dt: Optional[Var | None], central: bool = False) -> Tuple[Expr, int]:
         """
         Computes the n-th backward finite difference approximation of the derivative
         using the closed-form backward difference formula.
@@ -526,8 +579,8 @@ class Var(Expr):
             return (lag_var_0 - lag_var_2) / (2 * dt), lag_total
 
         # Compute the sum: ∑_{i=0}^{n} (-1)^i * C(n, i) * f(x - i*dt)
-        terms = []
-        minus1 = Const(-1)
+        terms: List[Expr] = list()
+        minus1: Const = Const(-1)
 
         for i in range(lag_total + 1):
             if i == 0:
@@ -544,7 +597,7 @@ class Var(Expr):
         return result.simplify(), lag_total
 
     def __hash__(self) -> int:
-        return hash(repr(self))
+        return hash(self.uid)
 
 
 def get_expr_factors(expr: Expr) -> List[Expr]:
@@ -624,7 +677,7 @@ class BinOp(Expr):
         elif self.op == "**":
             return self.left.eval(**bindings) ** self.right.eval(**bindings)
         else:
-            raise Exception(f"operation {self.op} not implemented")
+            raise ValueError(f"operation {self.op} not implemented")
 
     def eval_uid(self, uid_bindings: Dict[int, float]) -> NUMBER:
         """
@@ -644,7 +697,7 @@ class BinOp(Expr):
         elif self.op == "**":
             return self.left.eval_uid(uid_bindings) ** self.right.eval_uid(uid_bindings)
         else:
-            raise Exception(f"operation {self.op} not implemented")
+            raise ValueError(f"operation {self.op} not implemented")
 
     def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
         """
@@ -663,10 +716,9 @@ class BinOp(Expr):
         if self.op == "/":
             return (du * v - u * dv) / (v ** Const(2))
         if self.op == "**":
-            if isinstance(v, Const):
+            if isinstance(v, Const) and v.value is not None:
                 # numeric exponent
-                n = v.value
-                return Const(n) * (u ** Const(n - 1)) * du
+                return Const(v.value) * (u ** Const(v.value - 1)) * du
             else:
                 # general exponent: u**v = exp(v*log u)
                 return self * (dv * log(u) + du * v / u)
@@ -689,11 +741,11 @@ class BinOp(Expr):
                 if r.value != 0:
                     return Const(l.value / r.value)
                 else:
-                    raise Exception("Division by zero :/")
+                    raise ZeroDivisionError("Division by zero")
             elif self.op == "**":
                 return Const(l.value ** r.value)
             else:
-                raise Exception(f"operation {self.op} not implemented")
+                raise ValueError(f"operation {self.op} not implemented")
 
         if self.op == "+":
             if isinstance(l, Const) and l.value == 0:
@@ -734,7 +786,7 @@ class BinOp(Expr):
                 num_factors = get_expr_factors(l)
                 den_factors = get_expr_factors(r)
 
-                new_num = []
+                new_num: List[Expr] = list()
                 new_den = den_factors.copy()
 
                 for f in num_factors:
@@ -819,7 +871,7 @@ class UnOp(Expr):
         val = self.operand.eval(**bindings)
         return -val if self.op == "-" else math.nan
 
-    def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER:
+    def eval_uid(self, uid_bindings: Dict[int, NUMBER]) -> NUMBER:
         """
 
         :param uid_bindings:
@@ -829,7 +881,7 @@ class UnOp(Expr):
         if self.op == "-":
             return -val
         else:
-            raise Exception(f"Unknown operand {self.op}")
+            raise ValueError(f"Unknown operand {self.op}")
 
     def _diff1(self, var: Var | str, dt: Var | None = None) -> "Expr":
         """
@@ -840,7 +892,7 @@ class UnOp(Expr):
         if self.op == "-":
             return -self.operand._diff1(var, dt)
         else:
-            raise Exception(f"Unknown operand {self.op}")
+            raise ValueError(f"Unknown operand {self.op}")
 
     def simplify(self) -> Expr:
         """
@@ -890,43 +942,130 @@ class UnOp(Expr):
 # Functional nodes
 # ----------------------------------------------------------------------------------------------------------------------
 @nb.njit
-def heaviside_num(x):
+def heaviside_num(x: float) -> float:
     return 0.0 if x <= 0 else 1.0
 
 
 def get_namespace() -> Dict[str, Any]:
-    namespace = {
-        "math": math,
-        "np": np,
-        "nb": nb,
-        "_heaviside": heaviside_num,
-    }
+    """
+    Build the evaluation namespace used by generated expressions.
+
+    :return: Namespace dictionary for generated expressions.
+    """
+    namespace: Dict[str, Any] = dict()
+    namespace["math"] = math
+    namespace["np"] = np
+    namespace["nb"] = nb
+    namespace["_heaviside"] = heaviside_num
     return namespace
 
 
-functions_dict: Mapping[str, Callable[[NUMBER], NUMBER]] = {
-    "sin": math.sin,
-    "cos": math.cos,
-    "tan": math.tan,
-    "exp": np.exp,
-    "log": math.log,
-    "sqrt": math.sqrt,
-    "asin": math.asin,
-    "acos": math.acos,
-    "atan": math.atan,
-    "sinh": math.sinh,
-    "cosh": math.cosh,
-    "real": np.real,
-    "imag": np.imag,
-    "conj": np.conj,
-    "angle": np.angle,
-    "abs": np.abs,
-    "heaviside": heaviside_num
-}
+def _evaluate_unary_function(op: str, value: NUMBER) -> NUMBER:
+    """
+    Evaluate a unary symbolic function explicitly by operator name.
+
+    :param op: Function operator name.
+    :param value: Numeric argument.
+    :return: Numeric function result.
+    """
+    if op == "sin":
+        return math.sin(value)
+    elif op == "cos":
+        return math.cos(value)
+    elif op == "tan":
+        return math.tan(value)
+    elif op == "exp":
+        return np.exp(value)
+    elif op == "log":
+        return math.log(value)
+    elif op == "sqrt":
+        return math.sqrt(value)
+    elif op == "asin":
+        return math.asin(value)
+    elif op == "acos":
+        return math.acos(value)
+    elif op == "atan":
+        return math.atan(value)
+    elif op == "sinh":
+        return math.sinh(value)
+    elif op == "cosh":
+        return math.cosh(value)
+    elif op == "real":
+        return np.real(value)
+    elif op == "imag":
+        return np.imag(value)
+    elif op == "conj":
+        return np.conj(value)
+    elif op == "angle":
+        return np.angle(value)
+    elif op == "abs":
+        return builtins.abs(value)
+    elif op == "heaviside":
+        return heaviside_num(float(value))
+    else:
+        raise ValueError(f"Unknown unary function '{op}'")
+
+
+def _differentiate_unary_function(op: str, u: Expr, du: Expr) -> Expr:
+    """
+    Differentiate a unary symbolic function explicitly by operator name.
+
+    :param op: Function operator name.
+    :param u: Original symbolic argument.
+    :param du: Derivative of the symbolic argument.
+    :return: Symbolic derivative.
+    """
+    if op == "sin":
+        return sin_diff(u, du)
+    elif op == "cos":
+        return cos_diff(u, du)
+    elif op == "tan":
+        return tan_diff(u, du)
+    elif op == "exp":
+        return exp_diff(u, du)
+    elif op == "log":
+        return log_diff(u, du)
+    elif op == "sqrt":
+        return sqrt_diff(u, du)
+    elif op == "asin":
+        return asin_diff(u, du)
+    elif op == "acos":
+        return acos_diff(u, du)
+    elif op == "atan":
+        return atan_diff(u, du)
+    elif op == "sinh":
+        return sinh_diff(u, du)
+    elif op == "cosh":
+        return cosh_diff(u, du)
+    elif op == "abs":
+        return abs_diff(u, du)
+    elif op == "heaviside":
+        return heaviside_diff(u, du)
+    else:
+        raise ValueError(f"No derivative defined for {op}")
+
+
+def _evaluate_binary_function(name: str, arg1: NUMBER, arg2: NUMBER) -> NUMBER:
+    """
+    Evaluate a binary symbolic function explicitly by function name.
+
+    :param name: Function name.
+    :param arg1: First numeric argument.
+    :param arg2: Second numeric argument.
+    :return: Numeric function result.
+    """
+    if name == "atan2":
+        return np.arctan2(arg2, arg1)
+    elif name == "min":
+        return np.minimum(arg1, arg2)
+    elif name == "max":
+        return np.maximum(arg1, arg2)
+    else:
+        raise ValueError(f"Unknown binary function '{name}'")
 
 
 class Func(Expr):
-    __slots__ = ("op", "arg", "fn", "fnd")
+    __slots__ = ("op", "arg")
 
     def __init__(self, arg: Expr, op: str = "", uid: int | None = None):
         """
@@ -938,15 +1077,12 @@ class Func(Expr):
         self.op: str = op
         self.arg: Expr = arg
 
-        self.fn: Callable[[NUMBER], NUMBER] = functions_dict[self.op]
-        self.fnd: Callable[[Expr, Expr], Expr] = functions_diff_dict.get(self.op, None)
-
     # --- evaluation ----------------------------------------------------------
     def eval(self, **bindings: NUMBER) -> NUMBER:
-        return self.fn(self.arg.eval(**bindings))
+        return _evaluate_unary_function(self.op, self.arg.eval(**bindings))
 
-    def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER:
-        return self.fn(self.arg.eval_uid(uid_bindings))
+    def eval_uid(self, uid_bindings: Dict[int, NUMBER]) -> NUMBER:
+        return _evaluate_unary_function(self.op, self.arg.eval_uid(uid_bindings))
 
     @staticmethod
     def parse(data: Dict[str, Any]) -> Expr:
@@ -975,10 +1111,7 @@ class Func(Expr):
         if isinstance(du, Const) and du.value == 0:
             return Const(0)
         else:
-            if self.fnd is not None:
-                return self.fnd(u, du)
-            else:
-                raise Exception(f"No derivative defined for {self.op}")
+            return _differentiate_unary_function(self.op, u, du)
 
     def subs(self, mapping: Dict[Any, "Expr"]) -> "Expr":
         if self in mapping:
@@ -992,7 +1125,13 @@ class Func(Expr):
         return self.__str__()
 
 
-def abs(x: Expr):  # TODO: Rename to not shadow
+def _symbolic_abs(x: Expr) -> Expr:
+    """
+    Create a symbolic absolute-value expression.
+
+    :param x: Symbolic argument.
+    :return: Symbolic absolute-value node.
+    """
     return Func(_to_expr(x), "abs")
 
 
@@ -1000,23 +1139,23 @@ def abs_diff(u: Expr, du: Expr) -> Expr:
     return heaviside(u) * du
 
 
-def real(x: Expr):
+def real(x: Expr) -> Expr:
     return Func(_to_expr(x), "real")
 
 
-def imag(x: Expr):
+def imag(x: Expr) -> Expr:
     return Func(_to_expr(x), "imag")
 
 
-def conj(x: Expr):
+def conj(x: Expr) -> Expr:
     return Func(_to_expr(x), "conj")
 
 
-def angle(x: Expr):
+def angle(x: Expr) -> Expr:
     return Func(_to_expr(x), "angle")
 
 
-def sin(x: Expr):
+def sin(x: Expr) -> Expr:
     return Func(_to_expr(x), "sin")
 
 
@@ -1024,7 +1163,7 @@ def sin_diff(u: Expr, du: Expr) -> Expr:
     return cos(u) * du
 
 
-def cos(x: Expr):
+def cos(x: Expr) -> Expr:
     return Func(_to_expr(x), "cos")
 
 
@@ -1032,43 +1171,43 @@ def cos_diff(u: Expr, du: Expr) -> Expr:
     return -sin(u) * du
 
 
-def sec(x: Any) -> Expr:
+def sec(x: Expr | NUMBER) -> Expr:
     return Const(1) / cos(x)
 
 
-def tan(x: Expr):
+def tan(x: Expr) -> Expr:
     return Func(_to_expr(x), "tan")
 
 
-def tan_diff(u: Expr, du: Expr):
+def tan_diff(u: Expr, du: Expr) -> Expr:
     return (sec(u) ** Const(2)) * du
 
 
-def exp(x: Expr):
+def exp(x: Expr) -> Expr:
     return Func(_to_expr(x), "exp")
 
 
-def exp_diff(u: Expr, du: Expr):
+def exp_diff(u: Expr, du: Expr) -> Expr:
     return exp(u) * du
 
 
-def log(x: Expr):
+def log(x: Expr) -> Expr:
     return Func(_to_expr(x), "log")
 
 
-def log_diff(u: Expr, du: Expr):
+def log_diff(u: Expr, du: Expr) -> Expr:
     return du / u
 
 
-def sqrt(x: Expr):
+def sqrt(x: Expr) -> Expr:
     return Func(_to_expr(x), "sqrt")
 
 
-def sqrt_diff(u: Expr, du: Expr):
+def sqrt_diff(u: Expr, du: Expr) -> Expr:
     return du / (Const(2) * sqrt(u))
 
 
-def asin(x: Expr):
+def asin(x: Expr) -> Expr:
     return Func(_to_expr(x), "asin")
 
 
@@ -1076,7 +1215,7 @@ def asin_diff(u: Expr, du: Expr) -> Expr:
     return du / sqrt(Const(1) - u ** Const(2))
 
 
-def acos(x: Expr):
+def acos(x: Expr) -> Expr:
     return Func(_to_expr(x), "acos")
 
 
@@ -1084,7 +1223,7 @@ def acos_diff(u: Expr, du: Expr) -> Expr:
     return -du / sqrt(Const(1) - u ** Const(2))
 
 
-def atan(x: Expr):
+def atan(x: Expr) -> Expr:
     return Func(_to_expr(x), "atan")
 
 
@@ -1092,11 +1231,11 @@ def atan_diff(u: Expr, du: Expr) -> Expr:
     return du / (Const(1) + u ** Const(2))
 
 
-def sinh(x: Expr):
+def sinh(x: Expr) -> Expr:
     return Func(_to_expr(x), "sinh")
 
 
-def cosh(x: Expr):
+def cosh(x: Expr) -> Expr:
     return Func(_to_expr(x), "cosh")
 
 
@@ -1108,7 +1247,7 @@ def cosh_diff(u: Expr, du: Expr) -> Expr:
     return sinh(u) * du
 
 
-def heaviside(x: Expr):
+def heaviside(x: Expr) -> Expr:
     return Func(_to_expr(x), "heaviside")
 
 
@@ -1121,20 +1260,80 @@ def heaviside_diff(u: Expr, du: Expr) -> Expr:
     return du * heaviside(u)
 
 
-def max(x: Expr, y: Expr) -> Expr:
-    return x * heaviside((x - y)) + y * (Const(1) - heaviside((x - y)))
+def _symbolic_max(x: Expr | NUMBER, y: Expr | NUMBER) -> Expr:
+    """
+    Build a symbolic maximum expression.
+
+    :param x: First operand.
+    :param y: Second operand.
+    :return: Symbolic maximum expression.
+    """
+    x_expr: Expr = _to_expr(x)
+    y_expr: Expr = _to_expr(y)
+    return x_expr * heaviside((x_expr - y_expr)) + y_expr * (Const(1) - heaviside((x_expr - y_expr)))
 
 
-def min(x: Expr, y: Expr) -> Expr:
-    return x * heaviside(y - x) + y * (Const(1) - heaviside(y - x))
+def _symbolic_min(x: Expr | NUMBER, y: Expr | NUMBER) -> Expr:
+    """
+    Build a symbolic minimum expression.
+
+    :param x: First operand.
+    :param y: Second operand.
+    :return: Symbolic minimum expression.
+    """
+    x_expr: Expr = _to_expr(x)
+    y_expr: Expr = _to_expr(y)
+    return x_expr * heaviside(y_expr - x_expr) + y_expr * (Const(1) - heaviside(y_expr - x_expr))
+
+
+def abs(x: Expr) -> Expr:
+    """
+    Public symbolic absolute-value helper kept for API compatibility.
+
+    :param x: Symbolic argument.
+    :return: Symbolic absolute-value node.
+    """
+    return _symbolic_abs(x)
+
+
+def max(x: Expr | NUMBER, y: Expr | NUMBER) -> Expr:
+    """
+    Public symbolic maximum helper kept for API compatibility.
+
+    :param x: First operand.
+    :param y: Second operand.
+    :return: Symbolic maximum expression.
+    """
+    return _symbolic_max(x, y)
+
+
+def min(x: Expr | NUMBER, y: Expr | NUMBER) -> Expr:
+    """
+    Public symbolic minimum helper kept for API compatibility.
+
+    :param x: First operand.
+    :param y: Second operand.
+    :return: Symbolic minimum expression.
+    """
+    return _symbolic_min(x, y)
 
 
 def atan2(x: Expr, y: Expr) -> Expr:
     return Func2("atan2", _to_expr(x), _to_expr(y))
 
 
-def hard_sat(x: Expr, x_min: Expr | float, x_max: Expr | float) -> Expr:
-    return x_min + (x - x_min) * heaviside(x - x_min) - (x - x_max) * heaviside(x - x_max)
+def hard_sat(x: Expr, x_min: Expr | NUMBER, x_max: Expr | NUMBER) -> Expr:
+    """
+    Apply a symbolic hard saturation to an expression.
+
+    :param x: Input expression.
+    :param x_min: Lower saturation limit.
+    :param x_max: Upper saturation limit.
+    :return: Symbolic saturation expression.
+    """
+    x_min_expr: Expr = _to_expr(x_min)
+    x_max_expr: Expr = _to_expr(x_max)
+    return x_min_expr + (x - x_min_expr) * heaviside(x - x_min_expr) - (x - x_max_expr) * heaviside(x - x_max_expr)
 
 
 def f_exc(In: Expr) -> Expr:
@@ -1173,48 +1372,29 @@ def piecewise(time_var: Expr, t_events: np.ndarray, new_values: np.ndarray, defa
 
     return result
 
-
-functions_diff_dict: Mapping[str, Callable[[Expr, Expr], Expr]] = {
-    "sin": sin_diff,
-    "cos": cos_diff,
-    "tan": tan_diff,
-    "exp": exp_diff,
-    "log": log_diff,
-    "sqrt": sqrt_diff,
-    "asin": asin_diff,
-    "acos": acos_diff,
-    "atan": atan_diff,
-    "sinh": sinh_diff,
-    "cosh": cosh_diff,
-    "abs": abs_diff,
-    "heaviside": heaviside_diff
-}
-
-
-@dataclass(frozen=True)
 class Func2(Expr):
-    name: str
-    arg1: Expr
-    arg2: Expr
-    uid: int = field(default_factory=_new_uid, init=False)
+    """
+    Symbolic binary function node.
 
-    _impl: ClassVar[Mapping[str, Callable[[NUMBER, NUMBER], NUMBER]]] = MappingProxyType({
-        "atan2": lambda x, y: np.arctan2(y, x),
-        "min": np.minimum,
-        "max": np.maximum,
-    })
+    :param name: Binary function name.
+    :param arg1: First symbolic argument.
+    :param arg2: Second symbolic argument.
+    :param uid: Optional node uid.
+    """
+
+    __slots__ = ("name", "arg1", "arg2")
+
+    def __init__(self, name: str, arg1: Expr, arg2: Expr, uid: int | None = None):
+        super().__init__(uid=uid)
+        self.name: str = name
+        self.arg1: Expr = arg1
+        self.arg2: Expr = arg2
 
     def eval(self, **bindings: NUMBER) -> NUMBER:
-        return self._impl[self.name](
-            self.arg1.eval(**bindings),
-            self.arg2.eval(**bindings),
-        )
+        return _evaluate_binary_function(self.name, self.arg1.eval(**bindings), self.arg2.eval(**bindings))
 
-    def eval_uid(self, uid_bindings: Dict[int, float]) -> NUMBER:
-        return self._impl[self.name](
-            self.arg1.eval_uid(uid_bindings),
-            self.arg2.eval_uid(uid_bindings),
-        )
+    def eval_uid(self, uid_bindings: Dict[int, NUMBER]) -> NUMBER:
+        return _evaluate_binary_function(self.name, self.arg1.eval_uid(uid_bindings), self.arg2.eval_uid(uid_bindings))
 
     def _diff1(self, var: Var | str, dt: Var | None) -> Expr:
         """
@@ -1244,9 +1424,9 @@ class Func2(Expr):
         if self.name == "atan2":
             return (x * dy - y * dx) / (x ** Const(2) + y ** Const(2))
         if self.name == "min":
-            return heaviside(x - y) * dx + heaviside(x - y) * dy
-        if self.name == "max":
             return heaviside(y - x) * dx + heaviside(x - y) * dy
+        if self.name == "max":
+            return heaviside(x - y) * dx + heaviside(y - x) * dy
 
         raise ValueError(f"Unknown binary function '{self.name}'")
 
@@ -1265,7 +1445,7 @@ class Func2(Expr):
         # constant folding
         if isinstance(a_s, Const) and isinstance(b_s, Const):
             try:
-                return Const(Func2._impl[self.name](a_s.value, b_s.value))
+                return Const(_evaluate_binary_function(self.name, a_s.value, b_s.value))
             except ValueError:
                 pass  # domain error – keep symbolic
 
@@ -1433,7 +1613,7 @@ def _dict_to_expr(data: Dict[str, Any]) -> Expr | Var | Const:
     else:
         raise ValueError(f"Unknown type '{t}' in deserialisation")
 
-    object.__setattr__(obj, "uid", data["uid"])
+    obj.uid = data["uid"]
     return obj
 
 
@@ -1452,7 +1632,7 @@ def diff(expr: Expr, var: Var | str, order: int = 1) -> Expr:  # noqa: D401 – 
     return expr.diff(var, order)
 
 
-def eval_uid(expr: Expr, uid_bindings: Dict[str, NUMBER]) -> NUMBER:  # noqa: D401 – simple
+def eval_uid(expr: Expr, uid_bindings: Dict[int, NUMBER]) -> NUMBER:  # noqa: D401 – simple
     """
     Evaluate *expr* with a mapping from node UID → numeric value.
     :param expr:
@@ -1497,25 +1677,32 @@ def _all_vars(expressions: Sequence[Expr]) -> List[Var]:
     return list(res)
 
 
-_OP_PRECEDENCE = {
-    '+': 10,
-    '-': 10,
-    '*': 20,
-    '/': 20,
-    '**': 30,
-}
+def _precedence(expr: Expr) -> int:
+    """
+    Return operator precedence for expression emission.
 
-
-def _precedence(expr):
+    :param expr: Symbolic expression.
+    :return: Precedence value.
+    """
     if isinstance(expr, BinOp):
-        return _OP_PRECEDENCE[expr.op]
-    if isinstance(expr, UnOp):
+        if expr.op == "+" or expr.op == "-":
+            return 10
+        elif expr.op == "*" or expr.op == "/":
+            return 20
+        elif expr.op == "**":
+            return 30
+        else:
+            return 0
+    elif isinstance(expr, UnOp):
         return 40
-    if isinstance(expr, (Const, Var)):
+    elif isinstance(expr, (Const, Var)):
         return 100
-    if isinstance(expr, Func):
+    elif isinstance(expr, Func):
         return 50
-    return 0
+    elif isinstance(expr, Func2):
+        return 50
+    else:
+        return 0
 
 
 def expression2numba(expr: Expr,
@@ -1584,23 +1771,27 @@ def expression2numba(expr: Expr,
         return s
 
 
-def _emit_event_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None) -> str:
+def _emit_event_params_eq(expr: Expr, uid_map_t: Dict[int, str] | None = None) -> str:
     """
-    TODO: proper docstring
-    Emit a pure-Python (Numba-friendly) expression string
-    :param expr: Expr (expression)
-    :param uid_map_t:
-    :return:
+    Emit an event-parameter expression as pure Python source.
+
+    :param expr: Symbolic expression to emit.
+    :param uid_map_t: Optional uid-to-name mapping for event parameters.
+    :return: Numba-friendly Python expression string.
     """
+    if uid_map_t is None:
+        uid_map_t = dict()
 
     if isinstance(expr, Const):
         return repr(expr.value)
 
     if isinstance(expr, Var):
-        if expr.uid in uid_map_t.keys():
+        if expr.uid in uid_map_t:
             return uid_map_t[expr.uid]
-        if expr.name in {"time", "glob_time"}:
+        elif expr.name in {"time", "glob_time"}:
             return "glob_time"
+        else:
+            raise KeyError(expr.uid)
 
     if isinstance(expr, UnOp):
         return f"-({_emit_event_params_eq(expr.operand, uid_map_t)})"
@@ -1619,9 +1810,10 @@ def _emit_event_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None) -> str:
         arg2 = _emit_event_params_eq(expr.arg2, uid_map_t)
         if expr.name == "atan2":
             return f"np.arctan2({arg2}, {arg1})"
-        return f"np.{expr.name}({arg1}, {arg2})"
+        else:
+            return f"np.{expr.name}({arg1}, {arg2})"
     else:
-        raise ValueError(f"Unknown function '{expr.name}' in _emit_params_eq")
+        raise ValueError(f"Unsupported expression '{type(expr).__name__}' in _emit_params_eq")
 
 
 def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_event_params: Dict[int, str],
@@ -1636,9 +1828,9 @@ def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_event_params: Di
         return repr(expr.value)
 
     if isinstance(expr, Var):
-        if expr.uid in uid_map_vars.keys():
+        if expr.uid in uid_map_vars:
             return uid_map_vars[expr.uid]  # positional variable
-        elif expr.uid in uid_map_event_params.keys():
+        elif expr.uid in uid_map_event_params:
             return uid_map_event_params[expr.uid]  # positional variable
         elif expr.name in {"time", "glob_time"}:
             return "glob_time"
@@ -1664,7 +1856,8 @@ def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_event_params: Di
         arg2 = _emit_one(expr.arg2, uid_map_vars, uid_map_event_params, uid_map_params)
         if expr.name == "atan2":
             return f"np.arctan2({arg2}, {arg1})"
-        return f"np.{expr.name}({arg1}, {arg2})"
+        else:
+            return f"np.{expr.name}({arg1}, {arg2})"
 
     raise TypeError(expr)
 
@@ -1728,43 +1921,111 @@ def get_expression_vars(expr: Expr, vars_found: Optional[List[Var]] = None) -> L
     return vars_found
 
 
-# mapping of Python operator nodes → our BinOp symbols
-# TODO: eliminate with all its consequences -> Marina
-_BINOP_MAP = {
-    ast.Add: "+",
-    ast.Sub: "-",
-    ast.Mult: "*",
-    ast.Div: "/",
-    ast.Pow: "**",
-}
+def _get_binop_symbol(op_node: ast.operator) -> str | None:
+    """
+    Translate a Python AST binary operator into a symbolic operator token.
 
-# TODO: eliminate with all its consequences -> Marina
-_UNOP_MAP = {
-    ast.USub: "-",
-}
+    :param op_node: Python AST operator node.
+    :return: Symbolic operator token or ``None``.
+    """
+    if isinstance(op_node, ast.Add):
+        return "+"
+    elif isinstance(op_node, ast.Sub):
+        return "-"
+    elif isinstance(op_node, ast.Mult):
+        return "*"
+    elif isinstance(op_node, ast.Div):
+        return "/"
+    elif isinstance(op_node, ast.Pow):
+        return "**"
+    else:
+        return None
 
-# mapping of allowed function names → our constructor functions
-# TODO: eliminate with all its consequences -> Marina
-_FUNC_MAP = {
-    "sin": sin,
-    "cos": cos,
-    "tan": tan,
-    "exp": exp,
-    "log": log,
-    "sqrt": sqrt,
-    "asin": asin,
-    "acos": acos,
-    "atan": atan,
-    "sinh": sinh,
-    "cosh": cosh,
-    "abs": abs,
-    "real": real,
-    "imag": imag,
-    "conj": conj,
-    "angle": angle,
-    "heaviside": heaviside,
-    "_dict_to_expression": _dict_to_expr
-}
+
+def _get_unop_symbol(op_node: ast.unaryop) -> str | None:
+    """
+    Translate a Python AST unary operator into a symbolic operator token.
+
+    :param op_node: Python AST unary operator node.
+    :return: Symbolic operator token or ``None``.
+    """
+    if isinstance(op_node, ast.USub):
+        return "-"
+    else:
+        return None
+
+
+def _call_symbolic_parser_function(function_name: str, arg_expr: Expr) -> Expr:
+    """
+    Invoke a supported unary symbolic parser function by name.
+
+    :param function_name: Public parser function name.
+    :param arg_expr: Symbolic argument.
+    :return: Parsed symbolic expression.
+    """
+    if function_name == "sin":
+        return sin(arg_expr)
+    elif function_name == "cos":
+        return cos(arg_expr)
+    elif function_name == "tan":
+        return tan(arg_expr)
+    elif function_name == "exp":
+        return exp(arg_expr)
+    elif function_name == "log":
+        return log(arg_expr)
+    elif function_name == "sqrt":
+        return sqrt(arg_expr)
+    elif function_name == "asin":
+        return asin(arg_expr)
+    elif function_name == "acos":
+        return acos(arg_expr)
+    elif function_name == "atan":
+        return atan(arg_expr)
+    elif function_name == "sinh":
+        return sinh(arg_expr)
+    elif function_name == "cosh":
+        return cosh(arg_expr)
+    elif function_name == "abs":
+        return abs(arg_expr)
+    elif function_name == "real":
+        return real(arg_expr)
+    elif function_name == "imag":
+        return imag(arg_expr)
+    elif function_name == "conj":
+        return conj(arg_expr)
+    elif function_name == "angle":
+        return angle(arg_expr)
+    elif function_name == "heaviside":
+        return heaviside(arg_expr)
+    else:
+        raise ValueError(f"Unknown function '{function_name}'")
+
+
+def _get_symbolic_parser_function_names_internal() -> List[str]:
+    """
+    Return the list of public unary functions accepted by the parser.
+
+    :return: Supported unary parser function names.
+    """
+    return [
+        "sin",
+        "cos",
+        "tan",
+        "exp",
+        "log",
+        "sqrt",
+        "asin",
+        "acos",
+        "atan",
+        "sinh",
+        "cosh",
+        "abs",
+        "real",
+        "imag",
+        "conj",
+        "angle",
+        "heaviside",
+    ]
 
 
 def _ast_to_symbolic(node: ast.AST, symbol_namespace: Mapping[str, Expr | NUMBER]) -> Expr | Comparison:
@@ -1778,7 +2039,6 @@ def _ast_to_symbolic(node: ast.AST, symbol_namespace: Mapping[str, Expr | NUMBER
     left_expr: Expr | Comparison
     right_expr: Expr | Comparison
     function_name: str
-    function_ptr: Callable[[Any], Any] | None
     op_symbol: str | None
 
     if isinstance(node, ast.Expression):
@@ -1796,7 +2056,7 @@ def _ast_to_symbolic(node: ast.AST, symbol_namespace: Mapping[str, Expr | NUMBER
     elif isinstance(node, ast.BinOp):
         left_expr = _ast_to_symbolic(node.left, symbol_namespace)
         right_expr = _ast_to_symbolic(node.right, symbol_namespace)
-        op_symbol = _BINOP_MAP.get(type(node.op), None)
+        op_symbol = _get_binop_symbol(node.op)
 
         if isinstance(left_expr, Expr) and isinstance(right_expr, Expr):
             if op_symbol is not None:
@@ -1806,7 +2066,7 @@ def _ast_to_symbolic(node: ast.AST, symbol_namespace: Mapping[str, Expr | NUMBER
         else:
             raise ValueError("Binary expressions require symbolic operands")
     elif isinstance(node, ast.UnaryOp):
-        op_symbol = _UNOP_MAP.get(type(node.op), None)
+        op_symbol = _get_unop_symbol(node.op)
         right_expr = _ast_to_symbolic(node.operand, symbol_namespace)
 
         if isinstance(right_expr, Expr):
@@ -1820,14 +2080,10 @@ def _ast_to_symbolic(node: ast.AST, symbol_namespace: Mapping[str, Expr | NUMBER
         if isinstance(node.func, ast.Name):
             if len(node.args) == 1 and len(node.keywords) == 0:
                 function_name = node.func.id
-                function_ptr = _FUNC_MAP.get(function_name, None)
                 right_expr = _ast_to_symbolic(node.args[0], symbol_namespace)
 
                 if isinstance(right_expr, Expr):
-                    if function_ptr is not None:
-                        return function_ptr(right_expr)
-                    else:
-                        raise ValueError(f"Unknown function '{function_name}'")
+                    return _call_symbolic_parser_function(function_name, right_expr)
                 else:
                     raise ValueError("Function calls require a symbolic argument")
             else:
@@ -1878,15 +2134,7 @@ def get_symbolic_parser_function_names() -> List[str]:
 
     :return:
     """
-    function_name: str
-    function_names: List[str] = list()
-
-    for function_name in _FUNC_MAP.keys():
-        if function_name.startswith("_"):
-            pass
-        else:
-            function_names.append(function_name)
-
+    function_names: List[str] = _get_symbolic_parser_function_names_internal()
     return function_names
 
 
