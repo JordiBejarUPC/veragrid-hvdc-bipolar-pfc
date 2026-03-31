@@ -23,6 +23,20 @@ def get_exponential_load_3ph_emt(vf: VarFactory, name: str = "exp_Load_EMT_3ph")
     positive ``Pl0`` and ``Ql0`` values in the API object represent power
     consumption, while the injected bus powers and currents are negative.
 
+    P(V) = P0 * (V / V0)^a
+    Q(V) = Q0 * (V / V0)^b
+
+    Typical interpretation:
+    constant power load: a = 0, b = 0
+    constant current-like load: a = 1, b = 1
+    constant impedance-like load: a = 2, b = 2
+    Physical Interpretation
+
+    If voltage drops and a > 0, active power decreases.
+    If voltage drops and b > 0, reactive power decreases.
+    If a = b = 2, the load behaves like an impedance.
+    If a = b = 0, the load tries to keep power constant, which requires higher current during voltage dips.
+
     :param vf: EMT variable factory.
     :param name: Symbolic block name.
     :return: Configured EMT model template.

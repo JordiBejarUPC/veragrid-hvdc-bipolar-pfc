@@ -11,14 +11,13 @@ from time import perf_counter
 from typing import Any, Dict, List, Tuple, cast
 import pandas as pd
 
-import matplotlib.pyplot as plt
-from VeraGrid.trunk.dynamics_emt.support.emt_plot_exports import (
+from trunk.dynamics_emt.support.emt_plot_exports import (
     extract_three_phase_matrix,
     get_plot_results_directory,
     save_scalar_step_plot,
     save_two_panel_three_phase_plot,
 )
-from VeraGrid.trunk.dynamics_emt.support.emt_build_report_exports import (
+from trunk.dynamics_emt.support.emt_build_report_exports import (
     normalize_initialization_report,
     normalize_problem_build_report,
 )

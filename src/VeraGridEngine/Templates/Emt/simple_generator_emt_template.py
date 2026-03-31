@@ -537,7 +537,7 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
         omega: omega_ref,
         delta: sym.atan(
             ( Ra * Ipk * sym.sin(phi) - omega * (Lmq + La) * Ipk * sym.cos(phi)) /
-            (Vpk + Ra * Ipk * sym.cos(phi) + omega * (Lmq + La) * Ipk * sym.sin(phi))
+            (Vpk + Ra * Ipk * sym.cos(phi) - omega * (Lmq + La) * Ipk * sym.sin(phi))
         ),
         theta: phi_v + delta,
 
@@ -552,14 +552,16 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
         i_d: 2 / 3 * (sym.sin(theta) * i_A +
                       sym.sin(theta - 2 * np.pi / 3) * i_B +
                       sym.sin(theta + 2 * np.pi / 3) * i_C),
-        i_q: 2 / 3 * (sym.cos(theta) * i_A +
-                      sym.cos(theta - 2 * np.pi / 3) * i_B +
-                      sym.cos(theta + 2 * np.pi / 3) * i_C),
         i_0: (1 / 3) * (i_A + i_B + i_C),
 
         psi_q: (v_d + Ra * i_d),
+        i_q: -psi_q / (Lmq + La),
         psi_d: -(v_q + Ra * i_q),
         psi_0: -L0 * i_0,
+
+        i_A: i_d * sym.sin(theta) + i_q * sym.cos(theta) + i_0,
+        i_B: i_d * sym.sin(theta - 2 * np.pi / 3) + i_q * sym.cos(theta - 2 * np.pi / 3) + i_0,
+        i_C: i_d * sym.sin(theta + 2 * np.pi / 3) + i_q * sym.cos(theta + 2 * np.pi / 3) + i_0,
 
         i_f: (psi_d + (Lmd + La) * i_d) / Lmd,
         v_f: i_f * Rf,
