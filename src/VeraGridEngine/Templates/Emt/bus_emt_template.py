@@ -25,7 +25,7 @@ class BusEmtTemplate(EmtModelTemplate):
                  name: str = "emt_bus_template"):
         """
         Created the EMT Template of a Bus
-        :param vf: VarFactory
+        :param vf: EMT VarFactory
         :param mask: list[bool] with true if the phase exist and false if it doesn't in the order [N,A,B,C]
         :param name: Name of the EMT Model
         """
@@ -96,7 +96,7 @@ def get_bus_emt_template(grid: MultiCircuit,
     A bus will have the phases of the branches connected to it
     :param grid: Multicircuit
     :param bus: Bus
-    :param vf: VarFactory
+    :param vf: EMT VarFactory
     :param is_dc: Whether this is a DC bus
     :return:
     """

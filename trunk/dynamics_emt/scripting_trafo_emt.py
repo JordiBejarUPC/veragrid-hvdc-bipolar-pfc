@@ -33,7 +33,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template,get_dc_load_from_device
-from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_converter
+from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_ideal_converter
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
@@ -152,7 +152,7 @@ gen_mdl = get_generator_thevenin_rl_emt_template(vf = circuit.emt_var_factory).b
 trafo_mdl = get_transformer_emt_template(grid=circuit, trafo=transformer, name=transformer.name).block
 
 # VSC model (standard converter: DC -> AC with power balance)
-vsc_mdl = get_emt_converter(
+vsc_mdl = get_emt_ideal_converter(
     vf=circuit.emt_var_factory,
     name=vsc.name,
     P_ref0=p_transfer_mw / circuit.Sbase,
