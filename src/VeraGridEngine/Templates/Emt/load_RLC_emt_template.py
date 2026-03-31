@@ -20,9 +20,6 @@ def get_shunt_r_3ph_emt_template(vf: VarFactory, name: str = "Shunt_R_3ph") -> E
     3-phase shunt resistor (wye to ground), phase-decoupled.
     Inputs:  vA, vB, vC  (instantaneous phase-to-ground voltages)
     Outputs: i_A, i_B, i_C (injected currents into the bus; negative for consumption)
-    :param vf: grid.emt_var_factory
-    :param name: string to identify the load and model
-    :return: EmtModelTemplate
     """
 
     templ = EmtModelTemplate()
@@ -118,9 +115,6 @@ def get_shunt_r_1ph_emt_template(vf: VarFactory, name: str = "Shunt_R_1ph") -> E
     mono-phase shunt resistor
     Inputs:  vA, (instantaneous phase-to-ground voltages)
     Outputs: i_A(injected currents into the bus; negative for consumption)
-    :param vf: grid.emt_var_factory
-    :param name: string to identify the load and model
-    :return: EmtModelTemplate
     """
 
     templ = EmtModelTemplate()
@@ -196,14 +190,6 @@ def get_shunt_r_1ph_emt_template(vf: VarFactory, name: str = "Shunt_R_1ph") -> E
     return templ
 
 def get_shunt_l_3ph_emt_template(vf: VarFactory, name: str = "Shunt_L_3ph") -> EmtModelTemplate:
-    """
-    3-phase shunt inductance (wye to ground), phase-decoupled.
-    Inputs:  vA, vB, vC  (instantaneous phase-to-ground voltages)
-    Outputs: i_A, i_B, i_C (injected currents into the bus; negative for consumption)
-    :param vf: grid.emt_var_factory
-    :param name: string to identify the load and model
-    :return: EmtModelTemplate
-    """
 
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LoadDevice
@@ -271,14 +257,6 @@ def get_shunt_l_3ph_emt_template(vf: VarFactory, name: str = "Shunt_L_3ph") -> E
 
 
 def get_shunt_c_3ph_emt_template(vf: VarFactory, name: str = "Shunt_C_3ph") -> EmtModelTemplate:
-    """
-    3-phase shunt capacitance (wye to ground), phase-decoupled.
-    Inputs:  vA, vB, vC  (instantaneous phase-to-ground voltages)
-    Outputs: i_A, i_B, i_C (injected currents into the bus; negative for consumption)
-    :param vf: grid.emt_var_factory
-    :param name: string to identify the load and model
-    :return: EmtModelTemplate
-    """
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LoadDevice
     templ.name = name

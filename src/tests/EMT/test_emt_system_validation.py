@@ -10,17 +10,7 @@ _validate_connections) correctly detect topology issues in 5 different scenarios
 """
 
 import pytest
-import sys
 import os
-
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-SRC_ROOT = os.path.join(REPO_ROOT, 'src')
-
-if SRC_ROOT not in sys.path:
-    sys.path.insert(0, SRC_ROOT)
-
-if REPO_ROOT not in sys.path:
-    sys.path.insert(0, REPO_ROOT)
 
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae, EmtTopologyError
@@ -33,7 +23,7 @@ from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_e
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
-from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_ideal_converter
+from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_converter
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
 import VeraGridEngine.api as gce
@@ -139,7 +129,7 @@ def test_pi_line_rload_emt_passes_validation():
     pf_results, pf_res_3ph = run_power_flow(grid)
 
     gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
-    line_mdl = get_pi_line_emt_template(vf=grid.emt_var_factory, line=line0).block
+    line_mdl = get_pi_line_emt_template(grid=grid, line=line0).block
     load_mdl = get_shunt_r_3ph_emt_template(vf=grid.emt_var_factory).block
     load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_3ph", new_value=1.0)
 
@@ -244,8 +234,8 @@ def test_vsc_emt_passes_validation():
     pf_results, pf_res_3ph = run_power_flow(grid)
 
     gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
-    trafo_mdl = get_transformer_emt_template(vf=grid.emt_var_factory, grid=grid, trafo=transformer, name=transformer.name).block
-    vsc_mdl = get_emt_ideal_converter(
+    trafo_mdl = get_transformer_emt_template(grid=grid, trafo=transformer, name=transformer.name).block
+    vsc_mdl = get_emt_converter(
         vf=grid.emt_var_factory,
         name=vsc.name,
         sbase=grid.Sbase,
@@ -314,7 +304,7 @@ def test_floating_phases_raises_emt_topology_error():
     pf_results, pf_res_3ph = run_power_flow(grid)
 
     gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
-    line_mdl = get_pi_line_emt_template(vf=grid.emt_var_factory, line=line0).block
+    line_mdl = get_pi_line_emt_template(grid=grid, line=line0).block
     # Using 1-phase template on 3-phase bus causes floating phases
     load_mdl = get_shunt_r_1ph_emt_template(vf=grid.emt_var_factory).block
     load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_1ph", new_value=1.0)

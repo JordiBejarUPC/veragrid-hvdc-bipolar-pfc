@@ -93,7 +93,7 @@ def fill_full_parameter_buffer(runtime_params: Vec, static_params: Vec, full_par
 
 
 def evaluate_vectorized_residual(
-        residual_dispatcher: Callable[..., Any],
+        residual_evaluator: Callable[..., Any],
         states: Vec,
         params: Vec,
         history: Vec,
@@ -105,8 +105,8 @@ def evaluate_vectorized_residual(
     """
     Evaluate the fused vectorized residual into a caller-owned buffer.
 
-    :param residual_dispatcher: Fused residual dispatcher.
-    :type residual_dispatcher: Callable[..., Any]
+    :param residual_evaluator: Fixed-signature residual evaluator.
+    :type residual_evaluator: Callable[..., Any]
     :param states: Current Newton iterate.
     :type states: Vec
     :param params: Full parameter vector.
@@ -124,8 +124,57 @@ def evaluate_vectorized_residual(
     :return: Residual infinity norm.
     :rtype: float
     """
-    residual_dispatcher(states, params, history, d_history, h, history2, residual_out)
+    residual_evaluator(states, params, history, d_history, h, history2, residual_out)
     return float(np.max(np.abs(residual_out)))
+
+
+def build_residual_evaluator(
+        residual_dispatcher: Callable[..., Any],
+        vec_flat_args: Any | None,
+) -> Callable[[Vec, Vec, Vec, Vec, float, Vec, Vec], None]:
+    """
+    Build one fixed-signature residual evaluator for the current dispatcher.
+
+    This resolves the dispatcher signature once per simulation so the Newton hot
+    path does not pay per-call tuple unpacking or compatibility branching.
+
+    :param residual_dispatcher: Residual dispatcher or test double.
+    :type residual_dispatcher: Callable[..., Any]
+    :param vec_flat_args: Flat runtime args used by some test doubles.
+    :type vec_flat_args: Any | None
+    :return: Residual evaluator with signature ``(states, params, history,
+        d_history, h, history2, out)``.
+    :rtype: Callable[[Vec, Vec, Vec, Vec, float, Vec, Vec], None]
+    """
+    direct_evaluator = getattr(residual_dispatcher, "evaluate", None)
+
+    if callable(direct_evaluator):
+        return direct_evaluator
+
+    if vec_flat_args is None:
+        def residual_evaluator(
+                states: Vec,
+                params: Vec,
+                history: Vec,
+                d_history: Vec,
+                h: float,
+                history2: Vec,
+                out: Vec,
+        ) -> None:
+            residual_dispatcher(states, params, history, d_history, h, history2, out)
+    else:
+        def residual_evaluator(
+                states: Vec,
+                params: Vec,
+                history: Vec,
+                d_history: Vec,
+                h: float,
+                history2: Vec,
+                out: Vec,
+        ) -> None:
+            residual_dispatcher(states, params, history, d_history, h, vec_flat_args, out, history2)
+
+    return residual_evaluator
 
 
 # ==============================================================================
@@ -360,7 +409,7 @@ class FusedResidualDispatcher:
         # for the largest group output.
         self._work_buffer: Mat = np.zeros((len(kernel_specs), max_kernel_size), dtype=np.float64)
 
-    def __call__(
+    def evaluate(
             self,
             states: Vec,
             params: Vec,
@@ -412,13 +461,43 @@ class FusedResidualDispatcher:
             out[kernel_spec.get_target_rows()] = local_out[:row_count]
             kernel_index += 1
 
+    def __call__(self, *args: Any) -> None:
+        """
+        Evaluate the grouped residual system in place.
+
+        :param states: Current Newton iterate.
+        :type states: Vec
+        :param params: Full parameter vector.
+        :type params: Vec
+        :param history: Previous accepted state.
+        :type history: Vec
+        :param d_history: Previous derivative vector.
+        :type d_history: Vec
+        :param h: Effective local time step.
+        :type h: float
+        :param history2: Secondary state history.
+        :type history2: Vec
+        :param out: Residual output buffer.
+        :type out: Vec
+        :return: None.
+        :rtype: None
+        """
+        if len(args) == 7:
+            states, params, history, d_history, h, history2, out = args
+        elif len(args) == 8:
+            states, params, history, d_history, h, _vec_flat_args, out, history2 = args
+        else:
+            raise TypeError(f"Unsupported fused residual signature with {len(args)} arguments")
+
+        self.evaluate(states, params, history, d_history, h, history2, out)
+
 
 class VectorizedResidualTrialEvaluator:
     """
     Callable helper that evaluates vectorized residuals during backtracking.
     """
 
-    __slots__ = ["_dispatcher", "_full_params", "_x_prev", "_dx_prev", "_h_eff", "_x_prev2"]
+    __slots__ = ["_residual_evaluator", "_full_params", "_x_prev", "_dx_prev", "_h_eff", "_x_prev2"]
 
     def __init__(self) -> None:
         """
@@ -427,7 +506,7 @@ class VectorizedResidualTrialEvaluator:
         :return: None.
         :rtype: None
         """
-        self._dispatcher: Callable[..., Any] | None = None
+        self._residual_evaluator: Callable[..., Any] | None = None
         self._full_params: Vec | None = None
         self._x_prev: Vec | None = None
         self._dx_prev: Vec | None = None
@@ -436,7 +515,7 @@ class VectorizedResidualTrialEvaluator:
 
     def set_context(
             self,
-            dispatcher: Callable[..., Any],
+            residual_evaluator: Callable[..., Any],
             full_params: Vec,
             x_prev: Vec,
             dx_prev: Vec,
@@ -446,8 +525,8 @@ class VectorizedResidualTrialEvaluator:
         """
         Store the residual-evaluation context of the current Newton step.
 
-        :param dispatcher: Fused residual dispatcher.
-        :type dispatcher: Callable[..., Any]
+        :param residual_evaluator: Fixed-signature residual evaluator.
+        :type residual_evaluator: Callable[..., Any]
         :param full_params: Full parameter vector.
         :type full_params: Vec
         :param x_prev: Previous accepted state.
@@ -461,7 +540,7 @@ class VectorizedResidualTrialEvaluator:
         :return: None.
         :rtype: None
         """
-        self._dispatcher = dispatcher
+        self._residual_evaluator = residual_evaluator
         self._full_params = full_params
         self._x_prev = x_prev
         self._dx_prev = dx_prev
@@ -479,7 +558,7 @@ class VectorizedResidualTrialEvaluator:
         :return: Residual infinity norm.
         :rtype: float
         """
-        if self._dispatcher is None:
+        if self._residual_evaluator is None:
             return np.inf
         else:
             pass
@@ -490,7 +569,7 @@ class VectorizedResidualTrialEvaluator:
             pass
 
         return evaluate_vectorized_residual(
-            residual_dispatcher=self._dispatcher,
+            residual_evaluator=self._residual_evaluator,
             states=trial_x,
             params=self._full_params,
             history=self._x_prev,
@@ -519,7 +598,7 @@ class DirectResidualDispatcher:
         """
         self._kernel = kernel
 
-    def __call__(
+    def evaluate(
             self,
             states: Vec,
             params: Vec,
@@ -550,6 +629,36 @@ class DirectResidualDispatcher:
         :rtype: None
         """
         self._kernel(states, params, history, d_history, h, out, history2)
+
+    def __call__(self, *args: Any) -> None:
+        """
+        Evaluate the full residual system in place.
+
+        :param states: Current Newton iterate.
+        :type states: Vec
+        :param params: Full parameter vector.
+        :type params: Vec
+        :param history: Previous accepted state.
+        :type history: Vec
+        :param d_history: Previous derivative vector.
+        :type d_history: Vec
+        :param h: Effective local time step.
+        :type h: float
+        :param history2: Secondary state history.
+        :type history2: Vec
+        :param out: Residual output buffer.
+        :type out: Vec
+        :return: None.
+        :rtype: None
+        """
+        if len(args) == 7:
+            states, params, history, d_history, h, history2, out = args
+        elif len(args) == 8:
+            states, params, history, d_history, h, _vec_flat_args, out, history2 = args
+        else:
+            raise TypeError(f"Unsupported direct residual signature with {len(args)} arguments")
+
+        self.evaluate(states, params, history, d_history, h, history2, out)
 
 @nb.njit(cache=True, fastmath=True)
 def _scatter_color_jvp_to_csc_data(
@@ -919,6 +1028,9 @@ class SparseADJacobian:
         return colors, int(max_color + 1)
 
     def __call__(self, states, params, history, d_history, h, history2=None) -> csc_matrix:
+        if history2 is None:
+            history2 = history
+
         self._master_dispatcher(
             states,
             self._seed_matrix,
@@ -1351,6 +1463,7 @@ class StructuralVectorizedSolver:
 
         dense_solve: Callable[..., Vec] | None = None
         sparse_solve: Callable[..., Vec] | None = None
+        residual_evaluator = build_residual_evaluator(self.fused_residual, self.vec_flat_args)
 
         if diagnostics_enabled:
             dense_solve = with_newton_diagnostics(
@@ -1377,7 +1490,16 @@ class StructuralVectorizedSolver:
         else:
             pass
 
-        self.fused_residual(x_prev, full_params, x_prev, dx_prev, h, x_prev2, res_global)
+        _ = evaluate_vectorized_residual(
+            residual_evaluator=residual_evaluator,
+            states=x_prev,
+            params=full_params,
+            history=x_prev,
+            d_history=dx_prev,
+            h=h,
+            history2=x_prev2,
+            residual_out=res_global,
+        )
         _ = self.vec_jacobian(
             states=x_prev,
             params=full_params,
@@ -1481,7 +1603,7 @@ class StructuralVectorizedSolver:
                     total_newton_iterations += 1
                     ctx: NewtonSolveContext | None = None
                     res_norm: float = evaluate_vectorized_residual(
-                        residual_dispatcher=self.fused_residual,
+                        residual_evaluator=residual_evaluator,
                         states=x_iter,
                         params=full_params,
                         history=x_prev,
@@ -1564,7 +1686,7 @@ class StructuralVectorizedSolver:
 
                     if diag_cfg.enable_backtracking:
                         self._trial_residual_evaluator.set_context(
-                            dispatcher=self.fused_residual,
+                            residual_evaluator=residual_evaluator,
                             full_params=full_params,
                             x_prev=x_prev,
                             dx_prev=dx_prev,
