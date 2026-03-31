@@ -223,7 +223,6 @@ class RmsProblemDae(RmsProblemTemplate):
                                       device=elm.name)
             else:
                 elm.rms_model.unify_blocks()
-
                 # get parameters from api object
                 if (ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping
                         and hasattr(elm, 'R') and hasattr(elm, 'X')):
@@ -238,6 +237,14 @@ class RmsProblemDae(RmsProblemTemplate):
                 if ParamPowerFlowRefferenceType.bsh in elm.rms_model.api_obj_mapping and hasattr(elm, 'B'):
                     elm.rms_model.parameters[
                         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
+                if ParamPowerFlowRefferenceType.r in elm.rms_model.api_obj_mapping and hasattr(elm, 'R'):
+                    elm.rms_model.parameters[
+                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.r]] = Const(elm.R)
+                    print(f"Branch {elm.name}: setting parameter r with value {elm.R}")
+                if ParamPowerFlowRefferenceType.l in elm.rms_model.api_obj_mapping and hasattr(elm, 'X'):
+                    elm.rms_model.parameters[
+                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.l]] = Const(elm.X)
+                    print(f"Branch {elm.name}: setting parameter l with value {elm.X}")
 
                 # get variables from bus
                 if elm.bus_from.rms_model.empty():
