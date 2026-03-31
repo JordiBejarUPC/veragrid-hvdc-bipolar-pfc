@@ -5,7 +5,7 @@ import statistics
 from pathlib import Path
 from typing import Dict, List, Tuple
 
-from VeraGrid.trunk.dynamics_emt.benchmarks.emt_sparse_backend_benchmark import (
+from trunk.dynamics_emt.benchmarks.emt_sparse_backend_benchmark import (
     SparseBackendBenchmarkResult,
     SparseBenchmarkProfile,
     benchmark_sparse_backends,

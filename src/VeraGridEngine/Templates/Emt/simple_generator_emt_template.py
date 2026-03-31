@@ -437,11 +437,11 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
                     inputs[2] * sym.cos(theta + 2 * np.pi / 3)),
             v_0 - (1 / 3) * (inputs[0] + inputs[1] + inputs[2]),
 
-            i_A + (i_d * sym.sin(theta) + i_q * sym.cos(theta) + i_0),
-            i_B + (i_d * sym.sin(theta - 2 * np.pi / 3) + i_q * sym.cos(theta - 2 * np.pi / 3) + i_0),
-            i_C + (i_d * sym.sin(theta + 2 * np.pi / 3) + i_q * sym.cos(theta + 2 * np.pi / 3) + i_0),
+            i_A - (i_d * sym.sin(theta) + i_q * sym.cos(theta) + i_0),
+            i_B - (i_d * sym.sin(theta - 2 * np.pi / 3) + i_q * sym.cos(theta - 2 * np.pi / 3) + i_0),
+            i_C - (i_d * sym.sin(theta + 2 * np.pi / 3) + i_q * sym.cos(theta + 2 * np.pi / 3) + i_0),
 
-            Te - (3 / 2) * (psi_d * i_q - psi_q * i_d),
+            Te - (3 / 2) * (psi_q * i_d - psi_d * i_q),
             Pe - (i_A * inputs[0] + i_B * inputs[1] + i_C * inputs[2]),
             Qe - (1 / np.sqrt(3)) * ((inputs[0] - inputs[1]) * i_C +
                                      (inputs[1] - inputs[2]) * i_A +
@@ -509,7 +509,7 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
         omega_ref:  vf.add_const(1.0),
         Kp:         vf.add_const(2.0),
         Ki:         vf.add_const(2.0),
-        v_f0:       vf.add_const(None),
+        v_f0:       vf.add_const(-0.000006702),
         # init-only value that depends on other values.
         Lmd:        vf.add_const(None),
         # init-only external auxiliary values
@@ -536,30 +536,33 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
         Lmd: Ld - La,
         omega: omega_ref,
         delta: sym.atan(
-            ((Lmq + La) * Ipk * sym.cos(phi) - Ra * Ipk * sym.sin(phi)) /
-            (Vpk - Ra * Ipk * sym.cos(phi) - (Lmq + La) * Ipk * sym.sin(phi))
+            ( Ra * Ipk * sym.sin(phi) - omega * (Lmq + La) * Ipk * sym.cos(phi)) /
+            (Vpk + Ra * Ipk * sym.cos(phi) + omega * (Lmq + La) * Ipk * sym.sin(phi))
         ),
-        theta: phi_v + delta + np.pi / 2,
+        theta: phi_v + delta,
 
-        v_d: -Vpk * sym.sin(delta),
-        v_q: -Vpk * sym.cos(delta),
+        v_d: 2 / 3 * (sym.sin(theta) * inputs[0] +
+                      sym.sin(theta - 2 * np.pi / 3) * inputs[1] +
+                      sym.sin(theta + 2 * np.pi / 3) * inputs[2]),
+        v_q: 2 / 3 * (sym.cos(theta) * inputs[0] +
+                      sym.cos(theta - 2 * np.pi / 3) * inputs[1] +
+                      sym.cos(theta + 2 * np.pi / 3) * inputs[2]),
         v_0: (1 / 3) * (inputs[0] + inputs[1] + inputs[2]),
 
-        i_d: Ipk * sym.sin(delta - phi),
-        i_q: Ipk * sym.cos(delta - phi),
-        i_0: vf.add_const(0.0),
+        i_d: 2 / 3 * (sym.sin(theta) * i_A +
+                      sym.sin(theta - 2 * np.pi / 3) * i_B +
+                      sym.sin(theta + 2 * np.pi / 3) * i_C),
+        i_q: 2 / 3 * (sym.cos(theta) * i_A +
+                      sym.cos(theta - 2 * np.pi / 3) * i_B +
+                      sym.cos(theta + 2 * np.pi / 3) * i_C),
+        i_0: (1 / 3) * (i_A + i_B + i_C),
 
         psi_q: (v_d + Ra * i_d),
         psi_d: -(v_q + Ra * i_q),
         psi_0: -L0 * i_0,
 
-        i_A: -(i_d * sym.sin(theta) + i_q * sym.cos(theta) + i_0),
-        i_B: -(i_d * sym.sin(theta - 2 * np.pi / 3) + i_q * sym.cos(theta - 2 * np.pi / 3) + i_0),
-        i_C: -(i_d * sym.sin(theta + 2 * np.pi / 3) + i_q * sym.cos(theta + 2 * np.pi / 3) + i_0),
-
         i_f: (psi_d + (Lmd + La) * i_d) / Lmd,
-        v_f0: i_f * Rf,
-        v_f: v_f0,
+        v_f: i_f * Rf,
         psi_f: (Lmd + Lf) * i_f - Lmd * i_d,
 
         Pe: (i_A * inputs[0] + i_B * inputs[1] + i_C * inputs[2]),
@@ -567,7 +570,7 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
                                      (inputs[1] - inputs[2]) * i_A +
                                      (inputs[2] - inputs[0]) * i_B),
 
-        Te: (3 / 2) * (psi_d * i_q - psi_q * i_d),
+        Te: (3 / 2) * (psi_q * i_d - psi_d * i_q),
         Pm: Pe,
 
 

@@ -1,0 +1,4 @@
+case,residual_source_cse_on_median_s,residual_source_cse_on_stdev_s,residual_cached_source_cse_on_median_s,residual_njit_cse_on_median_s,residual_cached_njit_cse_on_median_s,ad_source_cse_on_median_s,ad_cached_source_cse_on_median_s,ad_njit_cse_on_median_s,ad_cached_njit_cse_on_median_s,matrix_source_total_median_s,matrix_cached_source_total_median_s,matrix_njit_total_median_s,matrix_cached_njit_total_median_s
+Event,0.004659650,0.000295750,0.000351150,0.017738900,0.000026150,0.005661300,0.000351000,0.018946300,0.000039300,0.034863050,0.001686450,0.651351600,0.000586650
+Rload,0.007109050,0.001980350,0.000422650,0.019979550,0.000032400,0.005871700,0.000565550,0.017848450,0.000048050,0.043684950,0.002071950,0.740633750,0.000711450
+ZIPload,0.005943300,0.000171700,0.000609550,0.018264300,0.000042850,0.006737300,0.000624000,0.019632600,0.000043250,0.053388200,0.002747250,0.945558250,0.001007800

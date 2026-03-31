@@ -18,7 +18,7 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
     """
     EMT type machine model without damping effects.
     :param vf: grid.emt_var_factory
-    :param name: string to identigy the device model
+    :param name: string to identify the generator and model
     :return: EmtModelTemplate
     """
 
@@ -231,26 +231,30 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
         Lmd: Ld - La,
         omega: omega_ref,
         delta: sym.atan(
-            ((Lmq + La) * Ipk * sym.cos(phi) - Ra * Ipk * sym.sin(phi)) /
-            (Vpk - Ra * Ipk * sym.cos(phi) - (Lmq + La) * Ipk * sym.sin(phi))
+            ( Ra * Ipk * sym.sin(phi) - omega * (Lmq + La) * Ipk * sym.cos(phi)) /
+            (Vpk + Ra * Ipk * sym.cos(phi) + omega * (Lmq + La) * Ipk * sym.sin(phi))
         ),
-        theta: phi_v + delta + np.pi / 2,
+        theta: phi_v + delta,
 
-        v_d: -Vpk * sym.sin(delta),
-        v_q: -Vpk * sym.cos(delta),
+        v_d: 2 / 3 * (sym.sin(theta) * inputs[0] +
+                      sym.sin(theta - 2 * np.pi / 3) * inputs[1] +
+                      sym.sin(theta + 2 * np.pi / 3) * inputs[2]),
+        v_q: 2 / 3 * (sym.cos(theta) * inputs[0] +
+                      sym.cos(theta - 2 * np.pi / 3) * inputs[1] +
+                      sym.cos(theta + 2 * np.pi / 3) * inputs[2]),
         v_0: (1 / 3) * (inputs[0] + inputs[1] + inputs[2]),
 
-        i_d: Ipk * sym.sin(delta - phi),
-        i_q: Ipk * sym.cos(delta - phi),
-        i_0: vf.add_const(0.0),
+        i_d: 2 / 3 * (sym.sin(theta) * i_A +
+                      sym.sin(theta - 2 * np.pi / 3) * i_B +
+                      sym.sin(theta + 2 * np.pi / 3) * i_C),
+        i_q: 2 / 3 * (sym.cos(theta) * i_A +
+                      sym.cos(theta - 2 * np.pi / 3) * i_B +
+                      sym.cos(theta + 2 * np.pi / 3) * i_C),
+        i_0: (1 / 3) * (i_A + i_B + i_C),
 
         psi_q: (v_d + Ra * i_d),
         psi_d: -(v_q + Ra * i_q),
         psi_0: -L0 * i_0,
-
-        i_A: -(i_d * sym.sin(theta) + i_q * sym.cos(theta) + i_0),
-        i_B: -(i_d * sym.sin(theta - 2 * np.pi / 3) + i_q * sym.cos(theta - 2 * np.pi / 3) + i_0),
-        i_C: -(i_d * sym.sin(theta + 2 * np.pi / 3) + i_q * sym.cos(theta + 2 * np.pi / 3) + i_0),
 
         i_f: (psi_d + (Lmd + La) * i_d) / Lmd,
         psi_f: (Lmd + Lf) * i_f - Lmd * i_d,
@@ -260,7 +264,7 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
                                      (inputs[1] - inputs[2]) * i_A +
                                      (inputs[2] - inputs[0]) * i_B),
 
-        Te: (3 / 2) * (psi_d * i_q - psi_q * i_d),
+        Te: (3 / 2) * (psi_q * i_d - psi_d * i_q),
         Pm: Pe,
 
 
@@ -287,9 +291,6 @@ def get_generator_emt_type_template(vf: VarFactory, name: str = "emt_type_genera
     9-winding Synchronous Machine EMT model. The synchronous machine used by EMTP with 1 mass.
     Sign Convention: Generator (i_A, i_B, i_C are positive when injecting power into the grid).
     Park Transform: Amplitude invariant (2/3 factor), d-axis leads q-axis (d=sin, q=cos).
-    :param vf: grid.emt_var_factory
-    :param name: string to identigy the device model
-    :return: EmtModelTemplate
     """
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.GeneratorDevice
@@ -808,10 +809,6 @@ def get_generator_sauer_pai_type_emt_template(vf: VarFactory, name: str = "sauer
     3. Zero-sequence path has no rotor coupling and is represented by x0 only.
     4. Tm and v_f are external controller inputs and are initialized at equilibrium.
     5. Initialization is pragmatic and closed-form, not a full nonlinear equilibrium solve.
-
-    :param vf: grid.emt_var_factory
-    :param name: string to identigy the device model
-    :return: EmtModelTemplate
     """
 
     templ = EmtModelTemplate()
@@ -1190,12 +1187,6 @@ def get_generator_sauer_pai_type_emt_template(vf: VarFactory, name: str = "sauer
 
 
 def get_governor_emt(vf: VarFactory, name: str = "Governor") -> EmtModelTemplate:
-    """
-
-    :param vf: grid.emt_var_factory
-    :param name: string to identify the device model
-    :return: EmtModelTemplate
-    """
     templ = EmtModelTemplate(name=name)
 
     parameters = {
@@ -1396,12 +1387,6 @@ def get_governor_emt(vf: VarFactory, name: str = "Governor") -> EmtModelTemplate
 
 
 def get_stabilizer_emt(vf: VarFactory, name: str = "stabilizer") -> EmtModelTemplate:
-    """
-
-    :param vf: grid.emt_var_factory
-    :param name: string to identify the device model
-    :return: EmtModelTemplate
-    """
     templ = EmtModelTemplate(name=name)
 
     parameters = {
@@ -1512,9 +1497,9 @@ def get_stabilizer_emt(vf: VarFactory, name: str = "stabilizer") -> EmtModelTemp
 def get_exciter_emt(vf: VarFactory, name: str = "exciter") -> EmtModelTemplate:
     """
 
-    :param vf: grid.emt_var_factory
-    :param name: string to identify the device model
-    :return: EmtModelTemplate
+    :param vf:
+    :param name:
+    :return:
     """
     templ = EmtModelTemplate(name=name)
 
@@ -1766,9 +1751,7 @@ def get_exciter_emt(vf: VarFactory, name: str = "exciter") -> EmtModelTemplate:
 def get_complete_generator_template_emt(vf: VarFactory, name="complete_generator_emt_template") -> EmtModelTemplate:
     """
 
-    :param vf: grid.emt_var_factory
-    :param name: string to identigy the device model
-    :return: EmtModelTemplate
+    :return:
     """
     templ = EmtModelTemplate(name=name)
     templ.tpe = DeviceType.GeneratorDevice

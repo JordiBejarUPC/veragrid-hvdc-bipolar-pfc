@@ -1,0 +1,30 @@
+[
+  {
+    "case": "Rload",
+    "equation_count": 39,
+    "variable_count": 39,
+    "parameter_count": 22,
+    "structural_group_count": 20,
+    "average_group_rows": 1.95,
+    "residual_source_cse_on_s": 0.004036600003018975,
+    "residual_njit_cse_on_s": 0.014732399955391884,
+    "residual_cached_source_cse_on_s": 0.00038490002043545246,
+    "residual_cached_njit_cse_on_s": 3.4100026823580265e-05,
+    "residual_source_cse_off_s": 0.002777199959382415,
+    "residual_njit_cse_off_s": 0.016387299983762205,
+    "residual_cached_source_cse_off_s": 0.00031839997973293066,
+    "residual_cached_njit_cse_off_s": 2.95999925583601e-05,
+    "ad_source_cse_on_s": 0.0056801000609993935,
+    "ad_njit_cse_on_s": 0.015274700010195374,
+    "ad_cached_source_cse_on_s": 0.0004452998982742429,
+    "ad_cached_njit_cse_on_s": 3.8800062611699104e-05,
+    "ad_source_cse_off_s": 0.003369599930010736,
+    "ad_njit_cse_off_s": 0.015271499985828996,
+    "ad_cached_source_cse_off_s": 0.00033379998058080673,
+    "ad_cached_njit_cse_off_s": 5.700008478015661e-05,
+    "matrix_source_total_s": 0.035700200125575066,
+    "matrix_njit_total_s": 0.5565715994453058,
+    "matrix_cached_source_total_s": 0.0015860002022236586,
+    "matrix_cached_njit_total_s": 0.0006564999930560589
+  }
+]

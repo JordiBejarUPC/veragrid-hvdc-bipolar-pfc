@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 import numpy as np
 import scipy.linalg as spla
-from typing import List, Tuple, Any
+from typing import Dict, List, Tuple, Any
 
 from VeraGridEngine.Utils.Symbolic.block import Block, Var
 from VeraGridEngine.enumerations import DeviceType, EmtLineTypes
@@ -23,12 +23,7 @@ def get_bergeron_line_emt_template(
 
     Only active phases in NABC are represented.
     The history terms are modelled as runtime-updated event parameters.
-    :param vf: grid.emt_var_factory
-    :param line:
-    :param name: string to identify the device model
-    :return:
     """
-
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LineDevice
     templ.name = name
