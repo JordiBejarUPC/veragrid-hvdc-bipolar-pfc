@@ -125,6 +125,7 @@ class Expr:
         Differentiation (higher‑order)
         :param var:
         :param order:
+        :param dt:
         :return:
         """
         if order < 0:
@@ -268,7 +269,7 @@ class Const(Expr):
     def eval(self, **bindings: NUMBER) -> NUMBER | None:
         return self.value
 
-    def eval_uid(self, uid_bindings: Dict[int, float]) -> float | None:
+    def eval_uid(self, uid_bindings: Dict[int, float]) -> NUMBER | None:
         return self.value
 
     def _diff1(self, var: Var | str, dt: Var | None = None) -> "Expr":
@@ -355,15 +356,21 @@ class Var(Expr):
         self._ref: VarPowerFlowRefferenceType | None = reference
         self._network_conn: bool = network_conn
         self.diff_var = diff_var
-        self.base_var: Var = base_var  # assign reference to base var
+        self.base_var: Var | None = base_var  # assign reference to base var
         self._origin_var: Var | None = None
-
 
         if base_var is not None:
             self.base_var.diff_var = self  # assign reference to me in the base var
 
     def __deepcopy__(self, memo):
-        return Var(self.name, self.uid, self.diff_var)
+        return Var(
+            name=self.name,
+            reference=self._ref,
+            network_conn=self._network_conn,
+            uid=self.uid,
+            diff_var=self.diff_var,
+            base_var=self.base_var,
+        )
 
     def eval(self, **bindings: float) -> float:
         """
@@ -435,7 +442,7 @@ class Var(Expr):
 
     @property
     def network_conn(self) -> bool:
-       return self._network_conn
+        return self._network_conn
 
     @property
     def diff_order(self) -> int:
@@ -458,10 +465,10 @@ class Var(Expr):
         return self._origin_var
 
     @property
-    def ref(self) -> VarPowerFlowRefferenceType:
+    def ref(self) -> VarPowerFlowRefferenceType | None:
         return self._ref
 
-    def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr:
+    def _diff1(self, var: Var | str, dt: Var | None = None) -> Expr :
         """
         differentiation
         :param var:
@@ -487,7 +494,7 @@ class Var(Expr):
                 return result
             else:
                 return Const(0)
-
+        return Const(0)
 
     def populate_initial_lag(self, x0: float, dx0: np.ndarray, lag_x: float, dt: Optional[Const]):
         """
@@ -619,7 +626,7 @@ class BinOp(Expr):
         else:
             raise Exception(f"operation {self.op} not implemented")
 
-    def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER:
+    def eval_uid(self, uid_bindings: Dict[int, float]) -> NUMBER:
         """
         Evaluate using uuid's
         :param uid_bindings:
@@ -659,8 +666,6 @@ class BinOp(Expr):
             if isinstance(v, Const):
                 # numeric exponent
                 n = v.value
-                return Const(n) * (u ** Const(n - 1)) * du
-            elif isinstance(v, Var) and v.tpe == VarType.Parameter:
                 return Const(n) * (u ** Const(n - 1)) * du
             else:
                 # general exponent: u**v = exp(v*log u)
@@ -1194,6 +1199,7 @@ class Func2(Expr):
     uid: int = field(default_factory=_new_uid, init=False)
 
     _impl: ClassVar[Mapping[str, Callable[[NUMBER, NUMBER], NUMBER]]] = MappingProxyType({
+        "atan2": lambda x, y: np.arctan2(y, x),
         "min": np.minimum,
         "max": np.maximum,
     })
@@ -1204,7 +1210,7 @@ class Func2(Expr):
             self.arg2.eval(**bindings),
         )
 
-    def eval_uid(self, uid_bindings: Dict[str, NUMBER]) -> NUMBER:
+    def eval_uid(self, uid_bindings: Dict[int, float]) -> NUMBER:
         return self._impl[self.name](
             self.arg1.eval_uid(uid_bindings),
             self.arg2.eval_uid(uid_bindings),
@@ -1560,6 +1566,14 @@ def expression2numba(expr: Expr,
         else:
             s = f"np.{expr.op}({arg})"
 
+    elif isinstance(expr, Func2):
+        arg1 = expression2numba(expr.arg1, compiler_names_dict, 0)
+        arg2 = expression2numba(expr.arg2, compiler_names_dict, 0)
+        if expr.name == "atan2":
+            s = f"np.arctan2({arg2}, {arg1})"
+        else:
+            s = f"np.{expr.name}({arg1}, {arg2})"
+
     else:
         raise TypeError(type(expr))
 
@@ -1600,6 +1614,12 @@ def _emit_event_params_eq(expr: Expr, uid_map_t: Dict[int, str] = None) -> str:
             return f"_heaviside({_emit_event_params_eq(expr.arg, uid_map_t)})"
         else:
             return f"np.{expr.op}({_emit_event_params_eq(expr.arg, uid_map_t)})"
+    if isinstance(expr, Func2):
+        arg1 = _emit_event_params_eq(expr.arg1, uid_map_t)
+        arg2 = _emit_event_params_eq(expr.arg2, uid_map_t)
+        if expr.name == "atan2":
+            return f"np.arctan2({arg2}, {arg1})"
+        return f"np.{expr.name}({arg1}, {arg2})"
     else:
         raise ValueError(f"Unknown function '{expr.name}' in _emit_params_eq")
 
@@ -1638,6 +1658,13 @@ def _emit_one(expr: Expr, uid_map_vars: Dict[int, str], uid_map_event_params: Di
             return f"_heaviside({_emit_one(expr.arg, uid_map_vars, uid_map_event_params, uid_map_params)})"
         else:
             return f"np.{expr.op}({_emit_one(expr.arg, uid_map_vars, uid_map_event_params, uid_map_params)})"
+
+    if isinstance(expr, Func2):
+        arg1 = _emit_one(expr.arg1, uid_map_vars, uid_map_event_params, uid_map_params)
+        arg2 = _emit_one(expr.arg2, uid_map_vars, uid_map_event_params, uid_map_params)
+        if expr.name == "atan2":
+            return f"np.arctan2({arg2}, {arg1})"
+        return f"np.{expr.name}({arg1}, {arg2})"
 
     raise TypeError(expr)
 
@@ -1692,6 +1719,9 @@ def get_expression_vars(expr: Expr, vars_found: Optional[List[Var]] = None) -> L
 
     elif isinstance(expr, Func):
         get_expression_vars(expr.arg, vars_found)
+    elif isinstance(expr, Func2):
+        get_expression_vars(expr.arg1, vars_found)
+        get_expression_vars(expr.arg2, vars_found)
 
     # Todo: add comparisions
 
@@ -1878,6 +1908,8 @@ def symbolic_to_string(expr: Expr) -> str:
         return f"({left} {expr.op} {right})"
     elif isinstance(expr, Func):
         return f"{expr.op}({symbolic_to_string(expr.arg)})"
+    elif isinstance(expr, Func2):
+        return f"{expr.name}({symbolic_to_string(expr.arg1)}, {symbolic_to_string(expr.arg2)})"
     elif isinstance(expr, Comparison):
         left = symbolic_to_string(expr.lhs)
         right = symbolic_to_string(expr.rhs)
@@ -1897,6 +1929,7 @@ __all__ = [
     "diff", "eval_uid",
     "find_vars_order",
     "heaviside",
+    "atan2",
     "piecewise",
     "symbolic_to_string",
     "string_to_symbolic",

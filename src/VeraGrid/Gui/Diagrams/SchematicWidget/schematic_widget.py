@@ -964,7 +964,7 @@ class SchematicWidget(BaseDiagramWidget):
         lst: List[Tuple[int, Bus, Union[BusGraphicItem, None]]] = list()
         bus_graphic_dict = self.graphics_manager.get_device_type_dict(DeviceType.BusDevice)
 
-        bus_dict: Dict[str: Tuple[int, Bus]] = {b.idtag: (i, b) for i, b in enumerate(self.circuit.get_buses())}
+        bus_dict: Dict[str, Tuple[int, Bus]] = {b.idtag: (i, b) for i, b in enumerate(self.circuit.get_buses())}
 
         for idtag, graphic_object in bus_graphic_dict.items():
             if isinstance(graphic_object, BusGraphicItem):
@@ -980,7 +980,7 @@ class SchematicWidget(BaseDiagramWidget):
         """
         lst: List[Tuple[int, Bus, Union[BusGraphicItem, None]]] = list()
         bus_graphics_dict = self.graphics_manager.get_device_type_dict(DeviceType.BusDevice)
-        bus_dict: Dict[str: Tuple[int, Bus]] = {b.idtag: (i, b) for i, b in enumerate(self.circuit.get_buses())}
+        bus_dict: Dict[str, Tuple[int, Bus]] = {b.idtag: (i, b) for i, b in enumerate(self.circuit.get_buses())}
 
         for bus_idtag, graphic_object in bus_graphics_dict.items():
             idx, bus = bus_dict[bus_idtag]
@@ -3673,7 +3673,7 @@ class SchematicWidget(BaseDiagramWidget):
                                                       tpe=bus_types[int(types[i])])
 
                         vals = [VmA[i], VmB[i], VmC[i]]
-                        vals_nz = [v for v in vals if v != 0.0] # ignore exact zeros
+                        vals_nz = [v for v in vals if v != 0.0]  # ignore exact zeros
 
                         if vals_nz:  # at least one phase is not zero
                             worst_Umax = max(vals_nz)
@@ -5229,7 +5229,7 @@ List[FluidPath]]:
             has_winding = True
 
     # create a pool of buses
-    bus_pool: List[Tuple[bus, int]] = list()  # store the bus objects and their level from the root
+    bus_pool: List[Tuple[Bus, int]] = list()  # store the bus objects and their level from the root
 
     for b in buses:
         bus_pool.append((b, 0))
@@ -5357,7 +5357,7 @@ List[FluidPath]]:
     for b in buses_tr3:
         buses.add(b)
 
-    return (list(buses ), lines, dc_lines, transformers2w, list(transformers3w),
+    return (list(buses), lines, dc_lines, transformers2w, list(transformers3w),
             windings, hvdc_lines, vsc_converters, upfc_devices, series_reactances, switches,
             list(fluid_nodes), fluid_paths)
 

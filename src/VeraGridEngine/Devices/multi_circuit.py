@@ -362,6 +362,8 @@ class MultiCircuit(Assets):
                 'if_measurements',
                 'modelling_authorities',
                 'diagrams',
+                'rms_var_factory',
+                'emt_var_factory',
                 ]
 
         for pr in ppts:
