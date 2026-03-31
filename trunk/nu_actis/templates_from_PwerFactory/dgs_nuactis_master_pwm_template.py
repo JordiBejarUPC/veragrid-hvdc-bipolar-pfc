@@ -16,6 +16,8 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
     # --- Parameters ---
     Current_Limiter_C = vf.add_var('Current_Limiter__C_' + name)
     Current_Limiter_V_fault = vf.add_var('Current_Limiter__V_fault_' + name)
+    Current_Limiter_i_max_1 = vf.add_var('Current_Limiter__i_max_1_' + name)
+    Current_Limiter_i_max_3 = vf.add_var('Current_Limiter__i_max_3_' + name)
     Inner_Control_Ki_d = vf.add_var('Inner_Control__Ki_d_' + name)
     Inner_Control_Ki_q = vf.add_var('Inner_Control__Ki_q_' + name)
     Inner_Control_Kp_d = vf.add_var('Inner_Control__Kp_d_' + name)
@@ -31,6 +33,8 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
     Outer_Ctrl_Q_Kp = vf.add_var('Outer_Ctrl_Q__Kp_' + name)
     Outer_Ctrl_Q_Q_ctrl_mode = vf.add_var('Outer_Ctrl_Q__Q_ctrl_mode_' + name)
     Outer_Ctrl_Q_U_fault = vf.add_var('Outer_Ctrl_Q__U_fault_' + name)
+    Outer_Ctrl_Q_iq_lim_max = vf.add_var('Outer_Ctrl_Q__iq_lim_max_' + name)
+    Outer_Ctrl_Q_iq_lim_min = vf.add_var('Outer_Ctrl_Q__iq_lim_min_' + name)
 
     # --- State Variables ---
     Inner_Control_xd = vf.add_var('Inner_Control__xd_' + name)
@@ -137,7 +141,7 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
         vq: (((-ur) * sinphi) + (ui * cosphi)),
     }
 
-    Outer_ctrl_P_1 = Block(
+    Outer_Ctrl_P_1 = Block(
         state_eqs=[
             (Outer_Ctrl_P_Ki * yi),
         ],
@@ -154,21 +158,21 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
         algebraic_vars=[o3, id_ref, min_lim, C_id, o5, o4, yi],
         in_vars=[id_limit, P_act, Pdc_ref, uDC, uDC_ref, id],
         out_vars=[id_ref],
-        name='Outer_ctrl_P'
+        name='Outer_Ctrl_P'
     )
-    Outer_ctrl_P_1.diff_vars = [d_Outer_Ctrl_P_dx]
+    Outer_Ctrl_P_1.diff_vars = [d_Outer_Ctrl_P_dx]
     # --- Parameter Values ---
-    Outer_ctrl_P_1.event_dict = {
-        Outer_Ctrl_P_P_ctrl_mode: vf.add_const(None, name='P_ctrl_mode'),
-        Outer_Ctrl_P_Kp: vf.add_const(None, name='Kp'),
-        Outer_Ctrl_P_Ki: vf.add_const(None, name='Ki'),
+    Outer_Ctrl_P_1.event_dict = {
+        Outer_Ctrl_P_P_ctrl_mode: vf.add_const(0.0, name='P_ctrl_mode'),
+        Outer_Ctrl_P_Kp: vf.add_const(1.3, name='Kp'),
+        Outer_Ctrl_P_Ki: vf.add_const(70.0, name='Ki'),
     }
     # --- Retained Runtime Modes ---
-    Outer_ctrl_P_1.mode_dict = {
+    Outer_Ctrl_P_1.mode_dict = {
         Outer_Ctrl_P_proc_select_0: vf.add_const(0.0, name=''),
     }
     # --- Initial Equations and Guesses ---
-    Outer_ctrl_P_1.init_eqs = {
+    Outer_Ctrl_P_1.init_eqs = {
         Outer_Ctrl_P_C: id,
         Outer_Ctrl_P_dx: C_id,
         id_ref: C_id,
@@ -177,11 +181,11 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
         Pdc_ref: P_act,
         uDC_ref: uDC,
     }
-    Outer_ctrl_P_1.procedural_logic = [
+    Outer_Ctrl_P_1.procedural_logic = [
         sampled_value(output=Outer_Ctrl_P_proc_select_0, source=o3),
     ]
 
-    Outer_ctrl_Q_2 = Block(
+    Outer_Ctrl_Q_2 = Block(
         state_eqs=[
             (Outer_Ctrl_Q_Ki * yi),
         ],
@@ -196,35 +200,38 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
             (iq_ref_nonlimited - ((Outer_Ctrl_Q_proc_select_2 * o5q) + ((sym.Const(1.0) - Outer_Ctrl_Q_proc_select_2) * iq_ref_PI))),
             (iq_ref_PI - ((min_lim + ((((Outer_Ctrl_Q_Kp * yi) + (((min_lim - (Outer_Ctrl_Q_Kp * yi)) + ((Outer_Ctrl_Q_dx - (min_lim - (Outer_Ctrl_Q_Kp * yi))) * sym.heaviside((Outer_Ctrl_Q_dx - (min_lim - (Outer_Ctrl_Q_Kp * yi)))))) - ((Outer_Ctrl_Q_dx - (iq_limit - (Outer_Ctrl_Q_Kp * yi))) * sym.heaviside((Outer_Ctrl_Q_dx - (iq_limit - (Outer_Ctrl_Q_Kp * yi))))))) - min_lim) * sym.heaviside((((Outer_Ctrl_Q_Kp * yi) + (((min_lim - (Outer_Ctrl_Q_Kp * yi)) + ((Outer_Ctrl_Q_dx - (min_lim - (Outer_Ctrl_Q_Kp * yi))) * sym.heaviside((Outer_Ctrl_Q_dx - (min_lim - (Outer_Ctrl_Q_Kp * yi)))))) - ((Outer_Ctrl_Q_dx - (iq_limit - (Outer_Ctrl_Q_Kp * yi))) * sym.heaviside((Outer_Ctrl_Q_dx - (iq_limit - (Outer_Ctrl_Q_Kp * yi))))))) - min_lim)))) - ((((Outer_Ctrl_Q_Kp * yi) + (((min_lim - (Outer_Ctrl_Q_Kp * yi)) + ((Outer_Ctrl_Q_dx - (min_lim - (Outer_Ctrl_Q_Kp * yi))) * sym.heaviside((Outer_Ctrl_Q_dx - (min_lim - (Outer_Ctrl_Q_Kp * yi)))))) - ((Outer_Ctrl_Q_dx - (iq_limit - (Outer_Ctrl_Q_Kp * yi))) * sym.heaviside((Outer_Ctrl_Q_dx - (iq_limit - (Outer_Ctrl_Q_Kp * yi))))))) - iq_limit) * sym.heaviside((((Outer_Ctrl_Q_Kp * yi) + (((min_lim - (Outer_Ctrl_Q_Kp * yi)) + ((Outer_Ctrl_Q_dx - (min_lim - (Outer_Ctrl_Q_Kp * yi))) * sym.heaviside((Outer_Ctrl_Q_dx - (min_lim - (Outer_Ctrl_Q_Kp * yi)))))) - ((Outer_Ctrl_Q_dx - (iq_limit - (Outer_Ctrl_Q_Kp * yi))) * sym.heaviside((Outer_Ctrl_Q_dx - (iq_limit - (Outer_Ctrl_Q_Kp * yi))))))) - iq_limit))))),
             (min_lim - (-iq_limit)),
+            (iq_ref - ((Outer_Ctrl_Q_iq_lim_min + ((iq_ref_nonlimited - Outer_Ctrl_Q_iq_lim_min) * sym.heaviside((iq_ref_nonlimited - Outer_Ctrl_Q_iq_lim_min)))) - ((iq_ref_nonlimited - Outer_Ctrl_Q_iq_lim_max) * sym.heaviside((iq_ref_nonlimited - Outer_Ctrl_Q_iq_lim_max))))),
             (o3 - Outer_Ctrl_Q_Q_ctrl_mode),
             (C_iq - iq),
             (o2 - (u - Vac_ref)),
             (o5 - (Q_act - Q_ref)),
             (yi - ((Outer_Ctrl_Q_proc_select_3 * o5) + ((sym.Const(1.0) - Outer_Ctrl_Q_proc_select_3) * o2))),
         ],
-        algebraic_vars=[u_fault, o1q, o3q, o4q, yiq, o5q, iq_ref_nonlimited, iq_ref_PI, min_lim, o3, C_iq, o2, o5, yi],
+        algebraic_vars=[u_fault, o1q, o3q, o4q, yiq, o5q, iq_ref_nonlimited, iq_ref_PI, min_lim, iq_ref, o3, C_iq, o2, o5, yi],
         in_vars=[iq, Q_ref, Q_act, u, Vac_ref, iq_limit],
         out_vars=[iq_ref],
-        name='Outer_ctrl_Q'
+        name='Outer_Ctrl_Q'
     )
-    Outer_ctrl_Q_2.diff_vars = [d_Outer_Ctrl_Q_dx]
+    Outer_Ctrl_Q_2.diff_vars = [d_Outer_Ctrl_Q_dx]
     # --- Parameter Values ---
-    Outer_ctrl_Q_2.event_dict = {
-        Outer_Ctrl_Q_U_fault: vf.add_const(None, name='U_fault'),
-        Outer_Ctrl_Q_K: vf.add_const(None, name='K'),
-        Outer_Ctrl_Q_Q_ctrl_mode: vf.add_const(None, name='Q_ctrl_mode'),
-        Outer_Ctrl_Q_Kp: vf.add_const(None, name='Kp'),
-        Outer_Ctrl_Q_Ki: vf.add_const(None, name='Ki'),
+    Outer_Ctrl_Q_2.event_dict = {
+        Outer_Ctrl_Q_U_fault: vf.add_const(0.0, name='U_fault'),
+        Outer_Ctrl_Q_K: vf.add_const(0.0, name='K'),
+        Outer_Ctrl_Q_Q_ctrl_mode: vf.add_const(0.0, name='Q_ctrl_mode'),
+        Outer_Ctrl_Q_Kp: vf.add_const(0.1, name='Kp'),
+        Outer_Ctrl_Q_Ki: vf.add_const(10.0, name='Ki'),
+        Outer_Ctrl_Q_iq_lim_max: vf.add_const(1.0, name='iq_lim_max'),
+        Outer_Ctrl_Q_iq_lim_min: vf.add_const(-1.0, name='iq_lim_min'),
     }
     # --- Retained Runtime Modes ---
-    Outer_ctrl_Q_2.mode_dict = {
+    Outer_Ctrl_Q_2.mode_dict = {
         Outer_Ctrl_Q_proc_picdro_0: vf.add_const(0.0, name=''),
         Outer_Ctrl_Q_proc_select_1: vf.add_const(0.0, name=''),
         Outer_Ctrl_Q_proc_select_2: vf.add_const(0.0, name=''),
         Outer_Ctrl_Q_proc_select_3: vf.add_const(0.0, name=''),
     }
     # --- Initial Equations and Guesses ---
-    Outer_ctrl_Q_2.init_eqs = {
+    Outer_Ctrl_Q_2.init_eqs = {
         o1q: ((Outer_Ctrl_Q_proc_select_1 * sym.Const(1.0)) + ((sym.Const(1.0) - Outer_Ctrl_Q_proc_select_1) * sym.Const(0.0))),
         Outer_Ctrl_Q_C: iq,
         Outer_Ctrl_Q_dx: C_iq,
@@ -234,7 +241,7 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
         Q_ref: Q_act,
         Vac_ref: u,
     }
-    Outer_ctrl_Q_2.procedural_logic = [
+    Outer_Ctrl_Q_2.procedural_logic = [
         picdro((u < u_fault), 0.0, 0.0, output=Outer_Ctrl_Q_proc_picdro_0),
         sampled_value(output=Outer_Ctrl_Q_proc_select_1, source=(u < u_fault)),
         sampled_value(output=Outer_Ctrl_Q_proc_select_2, source=o1q),
@@ -243,8 +250,12 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
 
     Current_Limiter_3 = Block(
         algebraic_eqs=[
+            (i_mag_1 - Current_Limiter_i_max_1),
+            (o2 - (((-Current_Limiter_i_max_1) + ((id_ref - (-Current_Limiter_i_max_1)) * sym.heaviside((id_ref - (-Current_Limiter_i_max_1))))) - ((id_ref - Current_Limiter_i_max_1) * sym.heaviside((id_ref - Current_Limiter_i_max_1))))),
             (o10 - ((sym.sqrt(((((i_mag_1 * i_mag_1) - (o2 * o2)) * sym.heaviside((((i_mag_1 * i_mag_1) - (o2 * o2)) - sym.Const(0.0)))) + (sym.Const(0.0) * (sym.Const(1) - sym.heaviside((((i_mag_1 * i_mag_1) - (o2 * o2)) - sym.Const(0.0))))))) * sym.heaviside((sym.Const(0.3) - sym.sqrt(((((i_mag_1 * i_mag_1) - (o2 * o2)) * sym.heaviside((((i_mag_1 * i_mag_1) - (o2 * o2)) - sym.Const(0.0)))) + (sym.Const(0.0) * (sym.Const(1) - sym.heaviside((((i_mag_1 * i_mag_1) - (o2 * o2)) - sym.Const(0.0)))))))))) + (sym.Const(0.3) * (sym.Const(1) - sym.heaviside((sym.Const(0.3) - sym.sqrt(((((i_mag_1 * i_mag_1) - (o2 * o2)) * sym.heaviside((((i_mag_1 * i_mag_1) - (o2 * o2)) - sym.Const(0.0)))) + (sym.Const(0.0) * (sym.Const(1) - sym.heaviside((((i_mag_1 * i_mag_1) - (o2 * o2)) - sym.Const(0.0))))))))))))),
             (o4 - iq_ref),
+            (i_mag_3 - Current_Limiter_i_max_3),
+            (o5 - (((-Current_Limiter_i_max_3) + ((iq_ref - (-Current_Limiter_i_max_3)) * sym.heaviside((iq_ref - (-Current_Limiter_i_max_3))))) - ((iq_ref - Current_Limiter_i_max_3) * sym.heaviside((iq_ref - Current_Limiter_i_max_3))))),
             (o11 - sym.sqrt(((((i_mag_3 * i_mag_3) - (o5 * o5)) * sym.heaviside((((i_mag_3 * i_mag_3) - (o5 * o5)) - sym.Const(0.0)))) + (sym.Const(0.0) * (sym.Const(1) - sym.heaviside((((i_mag_3 * i_mag_3) - (o5 * o5)) - sym.Const(0.0)))))))),
             (o3 - id_ref),
             (o1 - Current_Limiter_proc_picdro_0),
@@ -264,15 +275,17 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
             (iq_lim_cal - o10),
             (o15 - iq_lim_cal),
         ],
-        algebraic_vars=[o10, o4, o11, o3, o1, o13, o14, id_lim_cal, id_ref_lmtd, iq_ref_lmtd, id_limit, iq_limit, Current_Limiter_U_sgnl, o6, o7, o8, o9, o12, iq_lim_cal, o15],
+        algebraic_vars=[i_mag_1, o2, o10, o4, i_mag_3, o5, o11, o3, o1, o13, o14, id_lim_cal, id_ref_lmtd, iq_ref_lmtd, id_limit, iq_limit, Current_Limiter_U_sgnl, o6, o7, o8, o9, o12, iq_lim_cal, o15],
         in_vars=[id_ref, u, iq_ref],
         out_vars=[id_limit, id_ref_lmtd, iq_ref_lmtd, iq_limit],
         name='Current_Limiter'
     )
     # --- Parameter Values ---
     Current_Limiter_3.event_dict = {
-        Current_Limiter_V_fault: vf.add_const(None, name='V_fault'),
-        Current_Limiter_C: vf.add_const(None, name='C'),
+        Current_Limiter_V_fault: vf.add_const(0.0, name='V_fault'),
+        Current_Limiter_C: vf.add_const(1.0, name='C'),
+        Current_Limiter_i_max_1: vf.add_const(1.0, name='i_max_1'),
+        Current_Limiter_i_max_3: vf.add_const(1.0, name='i_max_3'),
     }
     # --- Retained Runtime Modes ---
     Current_Limiter_3.mode_dict = {
@@ -300,7 +313,7 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
         sampled_value(output=Current_Limiter_proc_select_5, source=o9),
     ]
 
-    Inner_ctrl_Current_4 = Block(
+    Inner_Control_4 = Block(
         state_eqs=[
             (Inner_Control_Ki_d * yi1),
             (Inner_Control_Ki_q * yi),
@@ -323,21 +336,21 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
         algebraic_vars=[o5, o6, Pmd, Pmq, o10, o9, yi2, yi3, yi1, yi, vmd, vmq],
         in_vars=[vd, id_ref_lmtd, id, iq, iq_ref_lmtd, vq, uDC],
         out_vars=[Pmd, Pmq],
-        name='Inner_ctrl_Current'
+        name='Inner_Control'
     )
-    Inner_ctrl_Current_4.diff_vars = [d_Inner_Control_xd, d_Inner_Control_xq]
+    Inner_Control_4.diff_vars = [d_Inner_Control_xd, d_Inner_Control_xq]
     # --- Parameter Values ---
-    Inner_ctrl_Current_4.event_dict = {
-        Inner_Control_Kp_d: vf.add_const(None, name='Kp_d'),
-        Inner_Control_Ki_d: vf.add_const(None, name='Ki_d'),
-        Inner_Control_wL: vf.add_const(None, name='wL'),
-        Inner_Control_Kp_q: vf.add_const(None, name='Kp_q'),
-        Inner_Control_Ki_q: vf.add_const(None, name='Ki_q'),
-        Inner_Control_V_ac_base: vf.add_const(None, name='V_ac_base'),
-        Inner_Control_U_dc_base: vf.add_const(None, name='U_dc_base'),
+    Inner_Control_4.event_dict = {
+        Inner_Control_Kp_d: vf.add_const(1.43, name='Kp_d'),
+        Inner_Control_Ki_d: vf.add_const(30.0, name='Ki_d'),
+        Inner_Control_wL: vf.add_const(0.2, name='wL'),
+        Inner_Control_Kp_q: vf.add_const(1.43, name='Kp_q'),
+        Inner_Control_Ki_q: vf.add_const(30.0, name='Ki_q'),
+        Inner_Control_V_ac_base: vf.add_const(525.0, name='V_ac_base'),
+        Inner_Control_U_dc_base: vf.add_const(1050.0, name='U_dc_base'),
     }
     # --- Initial Equations and Guesses ---
-    Inner_ctrl_Current_4.init_eqs = {
+    Inner_Control_4.init_eqs = {
         Inner_Control_xd: (((-vd) + vmd) + (Inner_Control_wL * iq)),
         Inner_Control_xq: (((-vq) + vmq) - (Inner_Control_wL * id)),
         vmd: ((((Pmd * uDC) * Inner_Control_U_dc_base) * sym.sqrt(sym.Const(3.0))) / ((sym.Const(2.0) * sym.sqrt(sym.Const(2.0))) * Inner_Control_V_ac_base)),
@@ -347,9 +360,7 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
     }
 
     templ.block = Block(
-        children=[Vxy_To_dqFrame_0, Outer_ctrl_P_1, Outer_ctrl_Q_2, Current_Limiter_3, Inner_ctrl_Current_4],
-        in_vars=[ur, ui, cosphi, sinphi, P_act, Pdc_ref, uDC, uDC_ref, id, iq, Q_ref, Q_act, u, Vac_ref],
-        out_vars=[Pmd, Pmq],
+        children=[Vxy_To_dqFrame_0, Outer_Ctrl_P_1, Outer_Ctrl_Q_2, Current_Limiter_3, Inner_Control_4],
         name='MasterPWM_Model'
     )
     templ.block.name = name
