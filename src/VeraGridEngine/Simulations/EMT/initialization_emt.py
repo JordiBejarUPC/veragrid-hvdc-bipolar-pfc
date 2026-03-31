@@ -1040,7 +1040,6 @@ def init_explicit_emt(
         DIFF_NAME: str,
         CONSTANT_PARAMS_NAME: str,
         verbose: bool = False) -> Optional[Tuple[Dict[int, float], Dict[int, float]]]:
-# ) -> Union[None, Tuple[Dict[int, float], Block]]:
     """
     Initializes the EMT model by solving initialization and differential equations.
 
@@ -1148,8 +1147,6 @@ def init_explicit_emt(
                             print(f"event_param:{var.name} initialized from init_eqs with: {res}")
                         else:
                             pass
-
-
 
                         param_idx: int = variable_parameters.index(var)
                         event_parameters_eqs[param_idx].value = float(res)

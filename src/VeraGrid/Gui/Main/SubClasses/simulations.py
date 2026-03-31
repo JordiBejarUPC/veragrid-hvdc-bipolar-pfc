@@ -21,6 +21,7 @@ from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg, info_
 from VeraGrid.Gui.Main.SubClasses.Model.time_events import TimeEventsMain
 from VeraGrid.Gui.SigmaAnalysis.sigma_analysis_dialogue import SigmaAnalysisGUI
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
+from VeraGrid.Gui.ProceduralGrid.map_warning import MapWarningDialog
 from VeraGrid.Session.server_driver import RemoteJobDriver
 
 # Engine imports
@@ -3688,5 +3689,14 @@ class SimulationsMain(TimeEventsMain):
 
         :return:
         """
+        # Fetch the active diagram using the inherited method
+        current_diagram = self.get_selected_diagram_widget()
+
+        # Check if the active diagram is NOT a MapWidget
+        if current_diagram is None: # Before it was "if not isinstance(current_diagram, MapWidget):" but it did not work
+            self.map_warning = MapWarningDialog(parent=self)
+            self.map_warning.exec()
+            return
+
         self.procedural_grid_window = ProceduralGridWindow(app=self)
         self.procedural_grid_window.exec()
