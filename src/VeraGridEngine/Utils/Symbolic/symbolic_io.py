@@ -642,13 +642,22 @@ def duplicate_var(var_factory: VarFactory, old_to_new_var: Dict[int, Var], var: 
     if var.base_var is not None:
         base_var_new = duplicate_var(var_factory, old_to_new_var, var.base_var)
 
-    new_var = var_factory.add_var(
+        new_var = var_factory.add_diff_var(
+            name=var.name,
+            reference=var.ref,
+            network_conn=var.network_conn,
+            diff_var=var.diff_var,
+            base_var=base_var_new
+        )
+
+    else:
+        new_var = var_factory.add_var(
         name=var.name,
         reference=var.ref,
         network_conn=var.network_conn,
         diff_var=var.diff_var,
         base_var=base_var_new
-    )
+        )
 
     old_to_new_var[var.uid] = new_var
     return new_var
@@ -720,8 +729,8 @@ def duplicate_block(block: Block, var_factory: VarFactory) -> Block:
     old_to_new_const: Dict[int, Const] = dict()
 
     all_vars = block.get_all_vars()
-    for v in all_vars:
-        duplicate_var(var_factory, old_to_new_var, v)
+    # for v in all_vars:
+    #     duplicate_var(var_factory, old_to_new_var, v)
 
     for const in block.parameters.values():
         duplicate_const(var_factory, old_to_new_const, const)

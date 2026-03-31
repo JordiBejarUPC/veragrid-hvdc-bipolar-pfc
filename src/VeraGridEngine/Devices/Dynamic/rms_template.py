@@ -18,7 +18,7 @@ class RmsModelTemplate(PointerDeviceParent):
 
     __slots__ = (
         '_block',
-        '_device_type'
+        '_device_type',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -50,6 +50,7 @@ class RmsModelTemplate(PointerDeviceParent):
 
         # deepcopy block safely
         result._block = self._block.copy()
+        result._name = self._name
 
         return result
 
