@@ -550,6 +550,8 @@ def get_pi_line_emt_template(vf: VarFactory,
 
     d_vf_vars = [vf.add_diff_var(name=f"d_vf_{ph_label}_{name}", base_var=v_base) for ph_label, v_base in zip(active_ph, vf_vars)]
     d_vt_vars = [vf.add_diff_var(name=f"d_vt_{ph_label}_{name}", base_var=v_base) for ph_label, v_base in zip(active_ph, vt_vars)]
+    d_vf_init = [vf.add_var(f"d_vf_init_{ph_label}_{name}") for ph_label in active_ph]
+    d_vt_init = [vf.add_var(f"d_vt_init_{ph_label}_{name}") for ph_label in active_ph]
 
 
     # -----------------------------
@@ -652,10 +654,14 @@ def get_pi_line_emt_template(vf: VarFactory,
         mapping[vt_keys[phase_label]] = vt_vars[k]
         mapping[if_keys[phase_label]] = if_act[k]
         mapping[it_keys[phase_label]] = it_act[k]
-        mapping[d_vf_keys[phase_label]] = d_vf_vars[k]
-        mapping[d_vt_keys[phase_label]] = d_vt_vars[k]
+        mapping[d_vf_keys[phase_label]] = d_vf_init[k]
+        mapping[d_vt_keys[phase_label]] = d_vt_init[k]
 
     templ.block.external_mapping = mapping
+    for d_var in d_vf_init:
+        templ.block.event_dict[d_var] = vf.add_const(None)
+    for d_var in d_vt_init:
+        templ.block.event_dict[d_var] = vf.add_const(None)
 
     # -----------------------------
     # Init equations
@@ -698,18 +704,14 @@ def get_pi_line_emt_template(vf: VarFactory,
         diff_init_eqs[dq_t[a]] = i_cap_t[a]
 
     for a in range(m):
-        # -----------------------------
-        # Initialize capacitor currents without terminal voltage derivatives.
-        # The helper d_vf/d_vt symbols are not bound by the EMT assembler during
-        # explicit initialization, so referencing them here leaves the explicit
-        # initializer without values for those UIDs.
-        #
-        # Using zero capacitor current preserves the previous startup state used
-        # by the fallback initialization path and keeps the template self-contained
-        # for explicit initialization.
-        # -----------------------------
-        init_eqs[i_cap_f[a]] = c0
-        init_eqs[i_cap_t[a]] = c0
+        rhs_icap_f = c0
+        rhs_icap_t = c0
+        for b in range(m):
+            C_ab = C_red[a][b]
+            rhs_icap_f += C_ab * d_vf_init[b]
+            rhs_icap_t += C_ab * d_vt_init[b]
+        init_eqs[i_cap_f[a]] = rhs_icap_f
+        init_eqs[i_cap_t[a]] = rhs_icap_t
 
     templ.block.diff_init_eqs = diff_init_eqs
 
