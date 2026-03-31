@@ -6,7 +6,6 @@
 from typing import Dict, List, Tuple, Union, Optional
 import numpy as np
 import numba as nb
-from enum import Enum, auto
 import math
 import time
 import hashlib
@@ -17,7 +16,7 @@ import warnings
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
-from VeraGridEngine.enumerations import EmtInitializationMethod
+from VeraGridEngine.enumerations import EmtInitializationMethod, EmtInitializationStatus
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian, SymbolicVector
@@ -26,11 +25,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, find_vars_order
 
 
-class InitializationStatus(Enum):
-    """Enumeration to track the progress of the initialization solver."""
-    PENDING = auto()
-    RESOLVED = auto()
-    FAILED = auto()
+InitializationStatus = EmtInitializationStatus
 
 
 class EmtInitializationReport:
@@ -1040,6 +1035,7 @@ def init_explicit_emt(
         DIFF_NAME: str,
         CONSTANT_PARAMS_NAME: str,
         verbose: bool = False) -> Optional[Tuple[Dict[int, float], Dict[int, float]]]:
+# ) -> Union[None, Tuple[Dict[int, float], Block]]:
     """
     Initializes the EMT model by solving initialization and differential equations.
 
@@ -1147,6 +1143,8 @@ def init_explicit_emt(
                             print(f"event_param:{var.name} initialized from init_eqs with: {res}")
                         else:
                             pass
+
+
 
                         param_idx: int = variable_parameters.index(var)
                         event_parameters_eqs[param_idx].value = float(res)
@@ -1835,12 +1833,12 @@ def _compute_missing_dx0(problem: EmtProblemTemplate,
         dx0_seed = dx_full
     report.dx0_seed_build_s = float(time.perf_counter() - phase_t0)
 
-    if runtime_params is None:
+    if runtime_params is None or len(runtime_params) != problem.get_variable_parameter_number():
         runtime_params = _build_runtime_param_array(problem)
     else:
         runtime_params = runtime_params
 
-    if constant_params is None:
+    if constant_params is None or len(constant_params) != len(problem.get_parameters_values()):
         constant_params = _build_constant_param_array(problem)
     else:
         constant_params = constant_params

@@ -19,7 +19,7 @@ from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_expon
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_3ph_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 # the following are functions that generate templates depending on the specific object
-# from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_ideal_converter
+# from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_converter
 # from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import get_bergeron_line_emt_template
 # from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 # from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template

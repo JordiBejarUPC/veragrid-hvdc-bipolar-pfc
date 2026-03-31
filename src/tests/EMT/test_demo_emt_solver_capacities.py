@@ -9,17 +9,7 @@ import time
 import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
-import sys
 import os
-
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-SRC_ROOT = os.path.join(REPO_ROOT, 'src')
-
-if SRC_ROOT not in sys.path:
-    sys.path.insert(0, SRC_ROOT)
-
-if REPO_ROOT not in sys.path:
-    sys.path.insert(0, REPO_ROOT)
 
 from abc import ABC, abstractmethod
 from typing import List, Dict, Tuple
@@ -648,10 +638,9 @@ def run_case_buck_converter(backend_str: EmtSolverTypes) -> Tuple[np.ndarray, np
 # Buck converter: check procedural against all 4 solvers
 # -----------------------------------------------------------------------------
 def test_demo_bergeron_line():
-    folder = os.path.join('data', 'dynamics')
     name = "demo_bergeron_line.csv"
 
-    fname = os.path.join(folder, name)
+    fname = os.path.join(os.path.dirname(__file__), '..', 'data', 'dynamics', name)
     reference_df = pd.read_csv(fname)
 
     t1, vf1, vt1, tau = run_test_bergeron("Open Circuit", R_load=1e9)
@@ -683,9 +672,8 @@ def test_demo_bergeron_line():
 
 def test_demo_mechanical_system() -> None:
     # retrieve reference results df
-    folder = os.path.join('data', 'dynamics')
     name = "demo_check_derivatives.csv"
-    fname = os.path.join(folder, name)
+    fname = os.path.join(os.path.dirname(__file__), '..', 'data', 'dynamics', name)
     reference_df = pd.read_csv(fname)
 
     h = 1e-6

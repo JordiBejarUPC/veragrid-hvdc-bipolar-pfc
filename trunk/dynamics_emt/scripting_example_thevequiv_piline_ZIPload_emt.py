@@ -12,13 +12,13 @@ from typing import Any, cast, Dict, List, Optional, Tuple
 
 import os
 import matplotlib.pyplot as plt
-from VeraGrid.trunk.dynamics_emt.support.emt_plot_exports import (
+from trunk.dynamics_emt.support.emt_plot_exports import (
     extract_three_phase_matrix,
     get_plot_results_directory,
     save_scalar_plot,
     save_two_panel_three_phase_plot,
 )
-from VeraGrid.trunk.dynamics_emt.support.emt_build_report_exports import (
+from trunk.dynamics_emt.support.emt_build_report_exports import (
     normalize_initialization_report,
     normalize_problem_build_report,
 )
@@ -129,7 +129,7 @@ for bus in grid.buses:
 gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
 
 # line
-line_mdl = get_pi_line_emt_template(vf=grid.emt_var_factory, line = line0).block
+line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 
 # load
 load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.emt_var_factory).block

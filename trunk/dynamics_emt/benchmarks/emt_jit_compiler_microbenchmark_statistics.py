@@ -3,7 +3,7 @@ import statistics
 from pathlib import Path
 from typing import Dict, List
 
-from VeraGrid.trunk.dynamics_emt.benchmarks.emt_jit_compiler_microbenchmark import (
+from trunk.dynamics_emt.benchmarks.emt_jit_compiler_microbenchmark import (
     CompilerBenchmarkCase,
     CompilerMicrobenchmarkRow,
     build_case_label,
@@ -52,7 +52,6 @@ def run_repeated_compiler_microbenchmark(repetitions: int) -> List[Dict[str, obj
         CompilerBenchmarkCase.ZIPLOAD,
         CompilerBenchmarkCase.RLOAD,
         CompilerBenchmarkCase.EVENT,
-        CompilerBenchmarkCase.VALIDATE,
     ]
     grouped_metrics: Dict[str, Dict[str, List[float]]] = dict()
     repeat_index: int = 0

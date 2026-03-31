@@ -5,7 +5,7 @@ import json
 from enum import Enum
 from typing import Any, Dict, List
 
-from VeraGrid.trunk.dynamics_emt.support.benchmark_dependency_stubs import install_optional_dependency_stubs
+from trunk.dynamics_emt.support.benchmark_dependency_stubs import install_optional_dependency_stubs
 
 install_optional_dependency_stubs()
 
@@ -64,15 +64,15 @@ def resolve_case_module(case_name: BenchmarkCase) -> Any:
     :rtype: Any
     """
     if case_name == BenchmarkCase.ZIPLOAD:
-        import VeraGrid.trunk.dynamics_emt.scripting_example_thevequiv_piline_ZIPload_emt as scripting_example_thevequiv_piline_ZIPload_emt
+        import trunk.dynamics_emt.scripting_example_thevequiv_piline_ZIPload_emt as scripting_example_thevequiv_piline_ZIPload_emt
 
         return scripting_example_thevequiv_piline_ZIPload_emt
     elif case_name == BenchmarkCase.RLOAD:
-        import VeraGrid.trunk.dynamics_emt.scripting_example_thevequiv_piline_Rload_emt as scripting_example_thevequiv_piline_Rload_emt
+        import trunk.dynamics_emt.scripting_example_thevequiv_piline_Rload_emt as scripting_example_thevequiv_piline_Rload_emt
 
         return scripting_example_thevequiv_piline_Rload_emt
     elif case_name == BenchmarkCase.EVENT:
-        import VeraGrid.trunk.dynamics_emt.scripting_emt_event as scripting_emt_event
+        import trunk.dynamics_emt.scripting_emt_event as scripting_emt_event
 
         return scripting_emt_event
     else:
