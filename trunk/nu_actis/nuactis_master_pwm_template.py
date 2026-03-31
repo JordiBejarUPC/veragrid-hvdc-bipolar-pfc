@@ -6,20 +6,20 @@
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
-from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.procedural_logic import picdro, sampled_value
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 
-def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Model') -> EmtModelTemplate:
-    templ = EmtModelTemplate()
+def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Model') -> RmsModelTemplate:
+    templ = RmsModelTemplate()
     templ.tpe = DeviceType.VscDevice
     templ.name = name
 
     # --- In vars ---
-    Vm = vf.add_var("Vm_" + name)
-    Va = vf.add_var("Va_" + name)
-    uDC = vf.add_var("Vdc_" + name)
+    Vm = vf.add_var("Vm_" + name) # from the AC bus
+    Va = vf.add_var("Va_" + name) # from the AC bus
+    uDC = vf.add_var("Vdc_" + name) # from the DC bus
 
     # --- Parameters ---
     Current_Limiter_C = vf.add_var('Current_Limiter__C_' + name)
@@ -166,9 +166,9 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
     Outer_ctrl_P_1.diff_vars = [d_Outer_Ctrl_P_dx]
     # --- Parameter Values ---
     Outer_ctrl_P_1.event_dict = {
-        Outer_Ctrl_P_P_ctrl_mode: vf.add_const(None, name='P_ctrl_mode'),
-        Outer_Ctrl_P_Kp: vf.add_const(None, name='Kp'),
-        Outer_Ctrl_P_Ki: vf.add_const(None, name='Ki'),
+        Outer_Ctrl_P_P_ctrl_mode: vf.add_const(value = 0.0, name='P_ctrl_mode'),
+        Outer_Ctrl_P_Kp: vf.add_const(value = 1.3, name='Kp'),
+        Outer_Ctrl_P_Ki: vf.add_const(value = 70.0, name='Ki'),
         uDC_ref: uDC, # references are parameters of the controller
         Pdc_ref: P_act, # references are parameters of the controller
     }
@@ -282,8 +282,8 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
     )
     # --- Parameter Values ---
     Current_Limiter_3.event_dict = {
-        Current_Limiter_V_fault: vf.add_const(None, name='V_fault'),
-        Current_Limiter_C: vf.add_const(None, name='C'),
+        Current_Limiter_V_fault: vf.add_const(value = 0.0, name='V_fault'),
+        Current_Limiter_C: vf.add_const(value = 1.0, name='C'),
     }
     # --- Retained Runtime Modes ---
     Current_Limiter_3.mode_dict = {
@@ -339,13 +339,13 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
     Inner_ctrl_Current_4.diff_vars = [d_Inner_Control_xd, d_Inner_Control_xq]
     # --- Parameter Values ---
     Inner_ctrl_Current_4.event_dict = {
-        Inner_Control_Kp_d: vf.add_const(None, name='Kp_d'),
-        Inner_Control_Ki_d: vf.add_const(None, name='Ki_d'),
-        Inner_Control_wL: vf.add_const(None, name='wL'),
-        Inner_Control_Kp_q: vf.add_const(None, name='Kp_q'),
-        Inner_Control_Ki_q: vf.add_const(None, name='Ki_q'),
-        Inner_Control_V_ac_base: vf.add_const(None, name='V_ac_base'),
-        Inner_Control_U_dc_base: vf.add_const(None, name='U_dc_base'),
+        Inner_Control_Kp_d: vf.add_const(value = 1.43, name='Kp_d'),
+        Inner_Control_Ki_d: vf.add_const(value = 30.0, name='Ki_d'),
+        Inner_Control_wL: vf.add_const(value = 0.2, name='wL'),
+        Inner_Control_Kp_q: vf.add_const(value = 1.43, name='Kp_q'),
+        Inner_Control_Ki_q: vf.add_const(value = 30.0, name='Ki_q'),
+        Inner_Control_V_ac_base: vf.add_const(value = 525.0, name='V_ac_base'),
+        Inner_Control_U_dc_base: vf.add_const(value = 1050.0, name='U_dc_base'),
     }
     # --- Initial Equations and Guesses ---
     Inner_ctrl_Current_4.init_eqs = {
@@ -360,10 +360,12 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
     # --------------------------------------
     # MAIN BLOCK
     # --------------------------------------
-
+    # all the algebraic vars in the general template are defined as inputs in the PowerFactory model. However,
+    # VeraGrid hasn't got those variables that way. The algebraic equations in the template serve as conversion
+    # between the inputs from the VeraGrid devices and inputs (measurements) from the PowerFactory model
     templ.block = Block(
         children=[Vxy_To_dqFrame_0, Outer_ctrl_P_1, Outer_ctrl_Q_2, Current_Limiter_3, Inner_ctrl_Current_4],
-        algebraic_vars=[u, ur, ui, cosphi, sinphi, id, iq],
+        algebraic_vars=[u, ur, ui, cosphi, sinphi, P_act, Q_act, id, iq],
         algebraic_eqs=[
             # Voltage -> u: phasor, ur: real part, ui: imaginary part
             u - Vm * sym.exp(1j * Va),
@@ -372,20 +374,23 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
             # PLL -> cosphi : cos(Va), sinphi: sin(Va)
             cosphi - sym.cos(Va),
             sinphi - sym.sin(Va),
-            # Actual power of the grid -> P_act: , Q_act:
+            # TODO: Actual power of the grid -> P_act: , Q_act:
             # P_act - ,
             # Q_act - ,
+            # TODO: dq frame currents
+            # id - ,
+            # iq - ,
 
         ],
         in_vars = [Vm, Va, uDC, # from the buses variables
-                   ],
-        # in_vars=[ P_act, uDC, id, iq, Q_act, u],
+                   ], # TODO: what else? what from the VSC?
         out_vars=[Pmd, Pmq],
         name='MasterPWM_Model'
     )
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Vm: Vm,
         VarPowerFlowRefferenceType.Va: Va,
+        VarPowerFlowRefferenceType.Vdc: uDC,
     }
 
     # delta: sym.imag(
@@ -397,10 +402,13 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
     # v_d: sym.real((inputs[0] * sym.exp(1j * inputs[1])) * sym.exp(-1j * (delta - np.pi / 2))),
     # v_q: sym.imag((inputs[0] * sym.exp(1j * inputs[1])) * sym.exp(-1j * (delta - np.pi / 2))),
 
+    # (vd - ((ur * cosphi) + (ui * sinphi))),
+    # (vq - ((ui * cosphi) - (ur * sinphi))),
+
 
     templ.block.name = name
 
     return templ
 
-def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
+def get_template(vf: VarFactory, name: str | None = None) -> RmsModelTemplate:
     return get_masterpwm_model_emt_template(vf=vf, name='MasterPWM_Model' if name is None else name)
