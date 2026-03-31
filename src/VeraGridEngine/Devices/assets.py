@@ -764,6 +764,11 @@ class Assets:
         """
         return self._rms_var_factory
 
+    @rms_var_factory.setter
+    def rms_var_factory(self, value: dev.VarFactory):
+        self._rms_var_factory = value
+
+
     @property
     def emt_var_factory(self) -> dev.VarFactory:
         """
@@ -771,6 +776,10 @@ class Assets:
         :return: VarFactory
         """
         return self._emt_var_factory
+
+    @emt_var_factory.setter
+    def emt_var_factory(self, value: dev.VarFactory):
+        self._emt_var_factory = value
 
     # ------------------------------------------------------------------------------------------------------------------
     # AC line
