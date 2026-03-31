@@ -129,7 +129,9 @@ class DynamicDevice(PhysicalDevice):
             self._rms_template = val
 
             if self.auto_update_enabled:
-                self.rms_model = duplicate_block(val.block, self._rms_var_factory)
+                val.block.unify_blocks()
+                # self.rms_model = duplicate_block(val.block, self._rms_var_factory)
+                self.rms_model = val.block
         elif val is None:
             self._rms_template = None
         else:
