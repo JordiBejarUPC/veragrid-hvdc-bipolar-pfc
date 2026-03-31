@@ -190,3 +190,16 @@ class ProceduralGridDebugger:
         current_names = self.snapshot_grid_element_names(grid=grid)
         added_names = current_names - previous_names
         return sorted(added_names)
+
+    def print_template_dictionary(self, template_dict: dict) -> None:
+        """
+        Print the contents of a template dictionary.
+
+        :param template_dict: Dictionary containing template information
+        """
+        if not self.enabled:
+            return
+
+        print("Template Dictionary:")
+        for key, value in template_dict.items():
+            print(f"  {key}: {value}")
