@@ -5,7 +5,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Dict, List, Set, Tuple, Optional
+from enum import Enum
+from typing import Any, Callable, Dict, List, Set, Tuple
 import hashlib
 import time
 
@@ -28,6 +29,12 @@ from VeraGridEngine.Utils.Symbolic.diagnostic import (
 )
 from VeraGridEngine.Utils.Symbolic.symbolic import BinOp, Const, Expr, Func, UnOp, Var
 from VeraGridEngine.Utils.Symbolic.jit_compiler import EagerEquationCompiler, _compile_to_file
+from VeraGridEngine.Utils.NumericalMethods.emt_sparse_superlu_backend import SuperLUSparseBackendProvider
+from VeraGridEngine.Utils.NumericalMethods.external_sparse_solver_interface import (
+    SparseLinearFactorizationHandle,
+    SparseLinearSolverBackend,
+    SparseLinearSolverBackendProvider,
+)
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     EmtBoundaryUpdateProtocol,
     EmtProblemTemplate,
@@ -45,6 +52,60 @@ Int32Matrix = npt.NDArray[np.int32]
 DenseFactorization = Tuple[Any, Any]
 DenseSolveBundle = Tuple[DenseFactorization, np.ndarray]
 SparseSolveBundle = Tuple[SuperLU, csc_matrix]
+
+
+class StructuralCompiledWarmupPolicy(Enum):
+    """
+    Warmup policy used by the structural compiled backend.
+    """
+
+    Off = "off"
+    Adaptive = "adaptive"
+    Full = "full"
+
+
+class CompiledNumbaKernelCache:
+    """
+    In-process cache of Numba-compiled eager kernels.
+    """
+
+    __slots__ = ["_cache"]
+
+    def __init__(self) -> None:
+        """
+        Build the compiled-kernel cache.
+
+        :return: None.
+        :rtype: None
+        """
+        self._cache: Dict[str, Callable[..., Any]] = dict()
+
+    def get(self, cache_key: str) -> Callable[..., Any] | None:
+        """
+        Return one cached compiled kernel.
+
+        :param cache_key: Deterministic cache key.
+        :type cache_key: str
+        :return: Cached compiled kernel or ``None``.
+        :rtype: Callable[..., Any] | None
+        """
+        return self._cache.get(cache_key, None)
+
+    def set(self, cache_key: str, kernel: Callable[..., Any]) -> None:
+        """
+        Store one compiled kernel.
+
+        :param cache_key: Deterministic cache key.
+        :type cache_key: str
+        :param kernel: Compiled kernel.
+        :type kernel: Callable[..., Any]
+        :return: None.
+        :rtype: None
+        """
+        self._cache[cache_key] = kernel
+
+
+COMPILED_NUMBA_KERNEL_CACHE = CompiledNumbaKernelCache()
 
 
 def _safe_njit(
@@ -68,12 +129,37 @@ def _safe_njit(
     :rtype: Callable[..., Any]
     """
     compiled_func: Callable[..., Any]
+    signature_repr: str
+    cache_payload: str
+    cache_key: str
+    cached_kernel: Callable[..., Any] | None
+
+    if signature_tpe is None:
+        signature_repr = "none"
+    else:
+        signature_repr = str(signature_tpe)
+
+    cache_payload = "|".join([
+        py_func.__module__,
+        py_func.__name__,
+        signature_repr,
+        str(fastmath),
+        str(cache),
+    ])
+    cache_key = hashlib.md5(cache_payload.encode("utf-8")).hexdigest()
+    cached_kernel = COMPILED_NUMBA_KERNEL_CACHE.get(cache_key)
+
+    if cached_kernel is None:
+        pass
+    else:
+        return cached_kernel
 
     if signature_tpe is None:
         compiled_func = nb.njit(fastmath=fastmath, cache=cache)(py_func)
     else:
         compiled_func = nb.njit(signature_tpe, fastmath=fastmath, cache=cache)(py_func)
 
+    COMPILED_NUMBA_KERNEL_CACHE.set(cache_key, compiled_func)
     return compiled_func
 
 
@@ -125,6 +211,84 @@ def _build_master_jacobian_signature() -> Any:
         int32_vector_tpe,
         float64_matrix_tpe,
     )
+
+
+def _build_scatter_color_signature() -> Any:
+    """
+    Return the eager signature of the CSC scatter helper.
+
+    :return: Eager helper signature.
+    :rtype: Any
+    """
+    float64_vector_tpe: Any = types.Array(types.float64, 1, "C")
+    int32_vector_tpe: Any = types.Array(types.int32, 1, "C")
+
+    return types.void(
+        float64_vector_tpe,
+        float64_vector_tpe,
+        int32_vector_tpe,
+        int32_vector_tpe,
+        int32_vector_tpe,
+        int32_vector_tpe,
+        types.int64,
+    )
+
+
+def _build_max_abs_signature() -> Any:
+    """
+    Return the eager signature of the infinity-norm helper.
+
+    :return: Eager helper signature.
+    :rtype: Any
+    """
+    float64_vector_tpe: Any = types.Array(types.float64, 1, "C")
+    return types.float64(float64_vector_tpe)
+
+
+def _build_copy_negated_signature() -> Any:
+    """
+    Return the eager signature of the negated-copy helper.
+
+    :return: Eager helper signature.
+    :rtype: Any
+    """
+    float64_vector_tpe: Any = types.Array(types.float64, 1, "C")
+    return types.void(float64_vector_tpe, float64_vector_tpe)
+
+
+def _build_fill_full_parameter_signature() -> Any:
+    """
+    Return the eager signature of the full-parameter fill helper.
+
+    :return: Eager helper signature.
+    :rtype: Any
+    """
+    float64_vector_tpe: Any = types.Array(types.float64, 1, "C")
+    return types.void(float64_vector_tpe, float64_vector_tpe, float64_vector_tpe)
+
+
+def _build_permute_csc_signature() -> Any:
+    """
+    Return the eager signature of the CSC permutation helper.
+
+    :return: Eager helper signature.
+    :rtype: Any
+    """
+    float64_vector_tpe: Any = types.Array(types.float64, 1, "C")
+    int32_vector_tpe: Any = types.Array(types.int32, 1, "C")
+    return types.void(float64_vector_tpe, int32_vector_tpe, int32_vector_tpe, int32_vector_tpe, float64_vector_tpe)
+
+
+def _build_scatter_permuted_solution_signature() -> Any:
+    """
+    Return the eager signature of the solution scatter helper.
+
+    :return: Eager helper signature.
+    :rtype: Any
+    """
+    float64_vector_tpe: Any = types.Array(types.float64, 1, "C")
+    int32_vector_tpe: Any = types.Array(types.int32, 1, "C")
+    return types.void(float64_vector_tpe, int32_vector_tpe, float64_vector_tpe)
 
 
 def _get_runtime_uid(var_obj: Var) -> int:
@@ -491,7 +655,7 @@ def _greedy_color_columns(col_rows: List[List[int]], n_rows: int) -> Tuple[Int32
     return colors, int(max_color + 1), color_groups
 
 
-@nb.njit(cache=True, fastmath=True)
+@nb.njit(_build_scatter_color_signature(), cache=True, fastmath=True)
 def _scatter_color_jvp_to_csc_data(
         jvp: Float64Vector,
         data: Float64Vector,
@@ -537,7 +701,7 @@ def _scatter_color_jvp_to_csc_data(
         k += 1
 
 
-@nb.njit(cache=True, fastmath=True)
+@nb.njit(_build_max_abs_signature(), cache=True, fastmath=True)
 def _max_abs_value(values: Float64Vector) -> float:
     """
     Compute the infinity norm without allocating temporary arrays.
@@ -569,7 +733,7 @@ def _max_abs_value(values: Float64Vector) -> float:
     return max_value
 
 
-@nb.njit(cache=True, fastmath=True)
+@nb.njit(_build_copy_negated_signature(), cache=True, fastmath=True)
 def _copy_negated_vector(values: Float64Vector, out: Float64Vector) -> None:
     """
     Write the negated vector into a preallocated buffer.
@@ -588,7 +752,74 @@ def _copy_negated_vector(values: Float64Vector, out: Float64Vector) -> None:
         index += 1
 
 
+@nb.njit(_build_fill_full_parameter_signature(), cache=True, fastmath=True)
+def _fill_full_parameter_buffer(
+        runtime_params: Float64Vector,
+        static_params: Float64Vector,
+        full_params_out: Float64Vector,
+) -> None:
+    """
+    Write runtime and static parameters into one preallocated full buffer.
+
+    :param runtime_params: Runtime parameter slice.
+    :type runtime_params: Float64Vector
+    :param static_params: Static parameter slice.
+    :type static_params: Float64Vector
+    :param full_params_out: Destination full parameter vector.
+    :type full_params_out: Float64Vector
+    :return: None
+    :rtype: None
+    """
+    runtime_count: int = int(runtime_params.shape[0])
+    static_count: int = int(static_params.shape[0])
+    index: int = 0
+
+    while index < runtime_count:
+        full_params_out[index] = runtime_params[index]
+        index += 1
+
+    index = 0
+    while index < static_count:
+        full_params_out[runtime_count + index] = static_params[index]
+        index += 1
+
+
 @nb.njit(cache=True, fastmath=True)
+def _max_abs_diff_vectors(left_values: Float64Vector, right_values: Float64Vector) -> float:
+    """
+    Return the maximum absolute difference between two vectors.
+
+    :param left_values: Left vector.
+    :type left_values: Float64Vector
+    :param right_values: Right vector.
+    :type right_values: Float64Vector
+    :return: Maximum absolute difference.
+    :rtype: float
+    """
+    max_value: float = 0.0
+    index: int = 0
+
+    while index < left_values.shape[0]:
+        diff_value: float = left_values[index] - right_values[index]
+
+        if diff_value < 0.0:
+            diff_value = -diff_value
+        else:
+            diff_value = diff_value
+
+        if diff_value > max_value:
+            max_value = diff_value
+        else:
+            max_value = max_value
+
+        index += 1
+
+    return max_value
+
+
+
+
+@nb.njit(_build_permute_csc_signature(), cache=True, fastmath=True)
 def _permute_csc_data_by_columns(
         source_data: Float64Vector,
         source_indptr: Int32Vector,
@@ -628,7 +859,7 @@ def _permute_csc_data_by_columns(
         dst_col += 1
 
 
-@nb.njit(cache=True, fastmath=True)
+@nb.njit(_build_scatter_permuted_solution_signature(), cache=True, fastmath=True)
 def _scatter_permuted_solution_to_original_order(
         permuted_solution: Float64Vector,
         inverse_column_perm: Int32Vector,
@@ -651,6 +882,84 @@ def _scatter_permuted_solution_to_original_order(
     while var_index < out_solution.shape[0]:
         out_solution[var_index] = permuted_solution[int(inverse_column_perm[var_index])]
         var_index += 1
+
+
+def _warmup_compiled_numba_helpers() -> None:
+    """
+    Trigger one eager call to the small Numba helper kernels.
+
+    :return: None
+    :rtype: None
+    """
+    sample_vector: Vec = np.zeros(2, dtype=np.float64)
+    sample_out_vector: Vec = np.zeros(2, dtype=np.float64)
+    sample_runtime_params: Vec = np.zeros(1, dtype=np.float64)
+    sample_static_params: Vec = np.zeros(1, dtype=np.float64)
+    sample_full_params: Vec = np.zeros(2, dtype=np.float64)
+    sample_source_data: Vec = np.zeros(2, dtype=np.float64)
+    sample_target_data: Vec = np.zeros(2, dtype=np.float64)
+    sample_indptr: Int32Vector = np.array([0, 1, 2], dtype=np.int32)
+    sample_perm: Int32Vector = np.array([0, 1], dtype=np.int32)
+    sample_inverse_perm: Int32Vector = np.array([0, 1], dtype=np.int32)
+    sample_color_ptr: Int32Vector = np.array([0, 2], dtype=np.int32)
+    sample_col_ptr: Int32Vector = np.array([0, 1, 2], dtype=np.int32)
+    sample_row_idx: Int32Vector = np.array([0, 1], dtype=np.int32)
+    sample_data_idx: Int32Vector = np.array([0, 1], dtype=np.int32)
+
+    _max_abs_value(sample_vector)
+    _copy_negated_vector(sample_vector, sample_out_vector)
+    _fill_full_parameter_buffer(sample_runtime_params, sample_static_params, sample_full_params)
+    _permute_csc_data_by_columns(sample_source_data, sample_indptr, sample_perm, sample_indptr, sample_target_data)
+    _scatter_permuted_solution_to_original_order(sample_vector, sample_inverse_perm, sample_out_vector)
+    _scatter_color_jvp_to_csc_data(
+        sample_vector,
+        sample_target_data,
+        sample_color_ptr,
+        sample_col_ptr,
+        sample_row_idx,
+        sample_data_idx,
+        0,
+    )
+
+
+def _should_run_full_backend_warmup(
+        warmup_policy: StructuralCompiledWarmupPolicy,
+        n_vars: int,
+        estimated_steps: int,
+        use_direct_residual: bool,
+) -> bool:
+    """
+    Decide whether the backend should perform a full residual/Jacobian warmup.
+
+    :param warmup_policy: Configured warmup policy.
+    :type warmup_policy: StructuralCompiledWarmupPolicy
+    :param n_vars: Number of runtime variables.
+    :type n_vars: int
+    :param estimated_steps: Estimated macro time steps.
+    :type estimated_steps: int
+    :param use_direct_residual: Whether the backend uses the direct residual path.
+    :type use_direct_residual: bool
+    :return: ``True`` when a full warmup should run.
+    :rtype: bool
+    """
+    if warmup_policy == StructuralCompiledWarmupPolicy.Full:
+        return True
+    elif warmup_policy == StructuralCompiledWarmupPolicy.Off:
+        return False
+    else:
+        pass
+
+    # Adaptive mode only pays the full warmup when the run is large enough for
+    # the saved runtime to amortize the up-front cost. The direct residual path
+    # especially benefits on long trajectories because it is called every Newton step.
+    if estimated_steps >= 1000:
+        return True
+    elif estimated_steps >= 200 and n_vars >= 48:
+        return True
+    elif use_direct_residual and estimated_steps >= 100:
+        return True
+    else:
+        return False
 
 
 class StructuralCompiledBoundaryUpdateWrapper:
@@ -747,6 +1056,94 @@ class StructuralCompiledPredictor:
             pass
 
         return x_iter
+
+
+class StructuralCompiledResidualTrialEvaluator:
+    """
+    Callable helper that evaluates residuals during Newton backtracking.
+    """
+
+    __slots__ = ["_residual_assembler", "_full_params", "_x_prev", "_dx_prev", "_h_eff", "_x_prev2"]
+
+    def __init__(self) -> None:
+        """
+        Build one empty trial-residual evaluator.
+
+        :return: None
+        :rtype: None
+        """
+        self._residual_assembler: StructuralCompiledResidualAssembler | StructuralCompiledDirectResidualAssembler | None = None
+        self._full_params: Vec | None = None
+        self._x_prev: Vec | None = None
+        self._dx_prev: Vec | None = None
+        self._h_eff: float = 0.0
+        self._x_prev2: Vec | None = None
+
+    def set_context(
+            self,
+            residual_assembler: StructuralCompiledResidualAssembler | StructuralCompiledDirectResidualAssembler,
+            full_params: Vec,
+            x_prev: Vec,
+            dx_prev: Vec,
+            h_eff: float,
+            x_prev2: Vec,
+    ) -> None:
+        """
+        Store the residual-evaluation context of the current Newton step.
+
+        :param residual_assembler: Residual assembler.
+        :type residual_assembler: StructuralCompiledResidualAssembler | StructuralCompiledDirectResidualAssembler
+        :param full_params: Full parameter vector.
+        :type full_params: Vec
+        :param x_prev: Previous accepted state.
+        :type x_prev: Vec
+        :param dx_prev: Previous derivative vector.
+        :type dx_prev: Vec
+        :param h_eff: Effective local time step.
+        :type h_eff: float
+        :param x_prev2: Secondary state history.
+        :type x_prev2: Vec
+        :return: None
+        :rtype: None
+        """
+        self._residual_assembler = residual_assembler
+        self._full_params = full_params
+        self._x_prev = x_prev
+        self._dx_prev = dx_prev
+        self._h_eff = float(h_eff)
+        self._x_prev2 = x_prev2
+
+    def evaluate(self, trial_x: Vec, out_res: Vec) -> float:
+        """
+        Evaluate one trial Newton iterate during backtracking.
+
+        :param trial_x: Trial iterate.
+        :type trial_x: Vec
+        :param out_res: Destination residual buffer.
+        :type out_res: Vec
+        :return: Residual infinity norm.
+        :rtype: float
+        """
+        if self._residual_assembler is None:
+            return np.inf
+        else:
+            pass
+
+        if self._full_params is None or self._x_prev is None or self._dx_prev is None or self._x_prev2 is None:
+            return np.inf
+        else:
+            pass
+
+        self._residual_assembler.evaluate(
+            trial_x,
+            self._full_params,
+            self._x_prev,
+            self._dx_prev,
+            self._h_eff,
+            self._x_prev2,
+            out_res,
+        )
+        return _max_abs_value(out_res)
 
 
 class StructuralCompiledEquationGroup:
@@ -1155,6 +1552,7 @@ class StructuralCompiledSparseADJacobian:
             method: DynamicIntegrationMethod,
             dtype: Any = np.float64,
             use_cse: bool = True,
+            eager_machine_code: bool = True,
             cache_token: str = "default",
     ) -> None:
         """
@@ -1206,7 +1604,7 @@ class StructuralCompiledSparseADJacobian:
         self._compiler = EagerEquationCompiler(variables=variables, parameters=parameters, method=method)
 
         t_ad_kernels_start: float = time.perf_counter()
-        self._ad_kernel = self._build_ad_kernel(use_cse)
+        self._ad_kernel = self._build_ad_kernel(use_cse, eager_machine_code)
         ad_kernels_s: float = time.perf_counter() - t_ad_kernels_start
 
         t_dispatcher_start: float = time.perf_counter()
@@ -1392,7 +1790,7 @@ class StructuralCompiledSparseADJacobian:
 
         return color_ptr, col_ptr, row_idx, data_idx
 
-    def _build_ad_kernel(self, use_cse: bool) -> Callable[..., Any]:
+    def _build_ad_kernel(self, use_cse: bool, eager_machine_code: bool) -> Callable[..., Any]:
         """
         Compile one generic eager AD kernel reused for every graph color.
 
@@ -1405,10 +1803,13 @@ class StructuralCompiledSparseADJacobian:
         py_func, signature_tpe = self._compiler.compile_ad_kernel(
             equations=self._equations,
             func_name=kernel_name,
-            use_cse=False,
+            use_cse=use_cse,
             active_indices=None,
         )
-        return _safe_njit(py_func, signature_tpe=signature_tpe, fastmath=True, cache=True)
+        if eager_machine_code:
+            return _safe_njit(py_func, signature_tpe=signature_tpe, fastmath=True, cache=True)
+        else:
+            return _safe_njit(py_func, signature_tpe=None, fastmath=True, cache=True)
 
     def evaluate(
             self,
@@ -1492,23 +1893,12 @@ class StructuralCompiledSparseFactorizationManager:
     matrix shells.
     """
 
-    __slots__ = [
-        "_base_matrix",
-        "_base_data",
-        "_base_indptr_i32",
-        "_ordered_matrix",
-        "_ordered_data",
-        "_ordered_indptr_i32",
-        "_column_perm",
-        "_inverse_column_perm",
-        "_has_persistent_ordering",
-        "_cached_bundle",
-        "_ordered_bundle_active",
-        "_solution_buffer",
-        "_stats",
-    ]
+    __slots__ = ["_base_matrix", "_backend", "_analysis_handle", "_cached_handle", "_solution_buffer", "_stats"]
 
-    def __init__(self, base_matrix: csc_matrix, base_data: Vec) -> None:
+    def __init__(self,
+                 base_matrix: csc_matrix,
+                 base_data: Vec,
+                 backend_provider: SparseLinearSolverBackendProvider | None = None) -> None:
         """
         Create the sparse factorization manager.
 
@@ -1520,74 +1910,29 @@ class StructuralCompiledSparseFactorizationManager:
         :rtype: None
         """
         n_cols: int = int(base_matrix.shape[1])
-        identity_perm: Int32Vector = np.arange(n_cols, dtype=np.int32)
+        resolved_provider: SparseLinearSolverBackendProvider
+
+        if backend_provider is None:
+            resolved_provider = SuperLUSparseBackendProvider()
+        else:
+            resolved_provider = backend_provider
 
         self._base_matrix: csc_matrix = base_matrix
-        self._base_data: Vec = base_data
-        self._base_indptr_i32: Int32Vector = np.asarray(base_matrix.indptr, dtype=np.int32)
-        self._ordered_matrix: csc_matrix | None = None
-        self._ordered_data: Vec | None = None
-        self._ordered_indptr_i32: Int32Vector | None = None
-        self._column_perm: Int32Vector = identity_perm.copy()
-        self._inverse_column_perm: Int32Vector = identity_perm.copy()
-        self._has_persistent_ordering: bool = False
-        self._cached_bundle: SparseSolveBundle | None = None
-        self._ordered_bundle_active: bool = False
+        self._backend: SparseLinearSolverBackend = resolved_provider.create_backend(base_matrix, base_data)
+        self._analysis_handle: Any | None = None
+        self._cached_handle: SparseLinearFactorizationHandle | None = None
         self._solution_buffer: Vec = np.zeros(n_cols, dtype=np.float64)
         self._stats: Dict[str, float] = {
             "numeric_factorizations": 0.0,
-            "ordering_builds": 0.0,
-            "ordering_reuses": 0.0,
             "invalidations": 0.0,
             "solve_calls": 0.0,
             "fallback_solves": 0.0,
         }
 
-    def _try_build_persistent_ordering(self, lu_obj: SuperLU) -> None:
-        """
-        Store one persistent column ordering discovered by SuperLU.
-
-        :param lu_obj: SuperLU factorization object.
-        :type lu_obj: SuperLU
-        :return: None
-        :rtype: None
-        """
-        if self._has_persistent_ordering:
-            return
+        if self._backend.supports_symbolic_analysis_reuse():
+            self._analysis_handle = self._backend.analyze(base_matrix)
         else:
-            pass
-
-        raw_perm: Int32Vector = np.asarray(lu_obj.perm_c, dtype=np.int32)
-        n_cols: int = int(self._base_matrix.shape[1])
-
-        if raw_perm.shape[0] != n_cols:
-            return
-        else:
-            pass
-
-        sorted_perm: Int32Vector = np.sort(raw_perm)
-
-        if np.array_equal(sorted_perm, np.arange(n_cols, dtype=np.int32)):
-            if np.array_equal(raw_perm, np.arange(n_cols, dtype=np.int32)):
-                return
-            else:
-                self._column_perm = raw_perm.copy()
-                inverse_perm: Int32Vector = np.zeros(n_cols, dtype=np.int32)
-                perm_index: int = 0
-
-                while perm_index < n_cols:
-                    inverse_perm[int(self._column_perm[perm_index])] = perm_index
-                    perm_index += 1
-
-                ordered_matrix: csc_matrix = self._base_matrix[:, self._column_perm].copy()
-                self._ordered_matrix = ordered_matrix
-                self._ordered_data = ordered_matrix.data
-                self._ordered_indptr_i32 = np.asarray(ordered_matrix.indptr, dtype=np.int32)
-                self._inverse_column_perm = inverse_perm
-                self._has_persistent_ordering = True
-                self._stats["ordering_builds"] += 1.0
-        else:
-            return
+            self._analysis_handle = None
 
     def invalidate(self) -> None:
         """
@@ -1596,8 +1941,7 @@ class StructuralCompiledSparseFactorizationManager:
         :return: None
         :rtype: None
         """
-        self._cached_bundle = None
-        self._ordered_bundle_active = False
+        self._cached_handle = None
         self._stats["invalidations"] += 1.0
 
     def has_factorization(self) -> bool:
@@ -1607,37 +1951,18 @@ class StructuralCompiledSparseFactorizationManager:
         :return: ``True`` when a factorization is available.
         :rtype: bool
         """
-        return self._cached_bundle is not None
+        return self._cached_handle is not None
 
-    def factorize(self) -> SparseSolveBundle:
+    def factorize(self) -> SparseLinearFactorizationHandle:
         """
         Factorize the current Jacobian numeric values.
 
-        :return: Active sparse solve bundle.
-        :rtype: SparseSolveBundle
+        :return: Active sparse factorization handle.
+        :rtype: SparseLinearFactorizationHandle
         """
-        lu_obj: SuperLU
-
-        if self._has_persistent_ordering and self._ordered_matrix is not None and self._ordered_data is not None and self._ordered_indptr_i32 is not None:
-            _permute_csc_data_by_columns(
-                self._base_data,
-                self._base_indptr_i32,
-                self._column_perm,
-                self._ordered_indptr_i32,
-                self._ordered_data,
-            )
-            lu_obj = splu(self._ordered_matrix, permc_spec="NATURAL")
-            self._cached_bundle = (lu_obj, self._ordered_matrix)
-            self._ordered_bundle_active = True
-            self._stats["ordering_reuses"] += 1.0
-        else:
-            lu_obj = splu(self._base_matrix, permc_spec="COLAMD")
-            self._cached_bundle = (lu_obj, self._base_matrix)
-            self._ordered_bundle_active = False
-            self._try_build_persistent_ordering(lu_obj)
-
+        self._cached_handle = self._backend.factorize(self._base_matrix, self._analysis_handle)
         self._stats["numeric_factorizations"] += 1.0
-        return self._cached_bundle
+        return self._cached_handle
 
     def solve(self, rhs: Vec) -> Vec:
         """
@@ -1648,22 +1973,12 @@ class StructuralCompiledSparseFactorizationManager:
         :return: Solution buffer in original solver order.
         :rtype: Vec
         """
-        raw_solution: Vec
         self._stats["solve_calls"] += 1.0
 
-        if self._cached_bundle is None:
+        if self._cached_handle is None:
             self._solution_buffer[:] = 0.0
         else:
-            raw_solution = np.asarray(self._cached_bundle[0].solve(rhs), dtype=np.float64)
-
-            if self._ordered_bundle_active and self._has_persistent_ordering:
-                _scatter_permuted_solution_to_original_order(
-                    raw_solution,
-                    self._inverse_column_perm,
-                    self._solution_buffer,
-                )
-            else:
-                self._solution_buffer[:] = raw_solution
+            self._cached_handle.solve_into(rhs, self._solution_buffer)
 
         return self._solution_buffer
 
@@ -1680,14 +1995,7 @@ class StructuralCompiledSparseFactorizationManager:
         raw_solution: Vec = np.asarray(sparse_lsqr_fallback(active_matrix, rhs), dtype=np.float64)
         self._stats["fallback_solves"] += 1.0
 
-        if self._ordered_bundle_active and self._has_persistent_ordering:
-            _scatter_permuted_solution_to_original_order(
-                raw_solution,
-                self._inverse_column_perm,
-                self._solution_buffer,
-            )
-        else:
-            self._solution_buffer[:] = raw_solution
+        self._solution_buffer[:] = raw_solution
 
         return self._solution_buffer
 
@@ -1698,10 +2006,10 @@ class StructuralCompiledSparseFactorizationManager:
         :return: Active sparse matrix.
         :rtype: csc_matrix
         """
-        if self._ordered_bundle_active and self._ordered_matrix is not None:
-            return self._ordered_matrix
-        else:
+        if self._cached_handle is None:
             return self._base_matrix
+        else:
+            return self._cached_handle.get_active_matrix()
 
     def get_stats(self) -> Dict[str, float]:
         """
@@ -1710,7 +2018,13 @@ class StructuralCompiledSparseFactorizationManager:
         :return: Cumulative statistics dictionary.
         :rtype: Dict[str, float]
         """
-        return dict(self._stats)
+        merged_stats: Dict[str, float] = dict(self._stats)
+        backend_stats: Dict[str, float] = self._backend.get_backend_stats()
+
+        for key, value in backend_stats.items():
+            merged_stats[key] = float(value)
+
+        return merged_stats
 
 
 class StructuralCompiledSolver:
@@ -1730,6 +2044,7 @@ class StructuralCompiledSolver:
         "_pred_method",
         "_dense_threshold",
         "_verbose",
+        "_warmup_policy",
         "_state_vars",
         "_algebraic_vars",
         "_diff_vars",
@@ -1752,14 +2067,22 @@ class StructuralCompiledSolver:
         "_jacobian_data_buffer",
         "_static_parameter_buffer",
         "_full_parameter_buffer",
+        "_last_factorization_parameter_snapshot",
+        "_has_factorization_parameter_snapshot",
         "_delta_buffer",
+        "_trial_state_buffer",
+        "_trial_residual_buffer",
+        "_trial_residual_evaluator",
         "_vectorized_ready",
+        "_backend_warmup_done",
+        "_last_macro_newton_iterations",
         "_last_sim_loop_time",
         "_last_runtime_stats",
         "_predictor",
         "_backend_build_stats",
         "_newton_diag_config",
         "_sparse_factorization_manager",
+        "_sparse_solver_backend_provider",
     ]
 
     def __init__(
@@ -1773,6 +2096,8 @@ class StructuralCompiledSolver:
             dense_threshold: int = 100,
             verbose: bool = False,
             auto_build: bool = True,
+            warmup_policy: StructuralCompiledWarmupPolicy = StructuralCompiledWarmupPolicy.Adaptive,
+            sparse_solver_backend_provider: SparseLinearSolverBackendProvider | None = None,
             newton_diag_config: NewtonDiagnosticsConfig | None = None,
     ) -> None:
         """
@@ -1796,6 +2121,10 @@ class StructuralCompiledSolver:
         :type verbose: bool
         :param auto_build: Whether to build the vectorized backend during construction.
         :type auto_build: bool
+        :param warmup_policy: Warmup policy used during backend build.
+        :type warmup_policy: StructuralCompiledWarmupPolicy
+        :param sparse_solver_backend_provider: Sparse linear solver backend provider.
+        :type sparse_solver_backend_provider: SparseLinearSolverBackendProvider | None
         :return: None
         :rtype: None
         """
@@ -1807,6 +2136,8 @@ class StructuralCompiledSolver:
         self._pred_method = pred_method
         self._dense_threshold = dense_threshold
         self._verbose = verbose
+        self._warmup_policy = warmup_policy
+        self._sparse_solver_backend_provider = sparse_solver_backend_provider
         self._newton_diag_config = newton_diag_config or NewtonDiagnosticsConfig(
             compute_dense_cond=False,
             enable_fallback=False,
@@ -1858,12 +2189,22 @@ class StructuralCompiledSolver:
             self._n_event_parameters + self._n_constant_parameters,
             dtype=np.float64,
         )
+        self._last_factorization_parameter_snapshot = np.zeros(
+            self._n_event_parameters + self._n_constant_parameters,
+            dtype=np.float64,
+        )
+        self._has_factorization_parameter_snapshot = False
         self._delta_buffer = np.zeros(self._n_vars, dtype=np.float64)
+        self._trial_state_buffer = np.zeros(self._n_vars, dtype=np.float64)
+        self._trial_residual_buffer = np.zeros(self._n_vars, dtype=np.float64)
+        self._trial_residual_evaluator = StructuralCompiledResidualTrialEvaluator()
 
         self._residual_assembler: StructuralCompiledResidualAssembler | None = None
         self._jacobian_evaluator: StructuralCompiledSparseADJacobian | None = None
         self._sparse_factorization_manager: StructuralCompiledSparseFactorizationManager | None = None
         self._vectorized_ready = False
+        self._backend_warmup_done = False
+        self._last_macro_newton_iterations = 0
         self._last_sim_loop_time = 0.0
         self._last_runtime_stats: Dict[str, float] = dict()
         self._predictor = StructuralCompiledPredictor(self._n_state)
@@ -1961,6 +2302,16 @@ class StructuralCompiledSolver:
         backend_cache_token: str = _build_backend_cache_token(method, len(full_eqs), self._n_vars, group_keys)
         avg_group_size: float = float(len(full_eqs) / max(len(group_keys), 1))
         use_direct_residual: bool = len(group_keys) >= 20 and avg_group_size <= 3.0
+        estimated_steps: int = int(max(1.0, round((self._t_end - self._t0) / self._h)))
+        full_warmup_enabled: bool = _should_run_full_backend_warmup(
+            self._warmup_policy,
+            self._n_vars,
+            estimated_steps,
+            use_direct_residual,
+        )
+        residual_use_cse: bool = True
+        jacobian_use_cse: bool = True
+        eager_machine_code: bool = True
         kernel_specs: List[StructuralCompiledVectorKernel] = list()
         group_key_index: int = 0
 
@@ -1971,11 +2322,14 @@ class StructuralCompiledSolver:
             py_func, signature_tpe = eager_compiler.compile(
                 equations=full_eqs,
                 func_name=direct_name,
-                use_cse=False,
+                use_cse=residual_use_cse,
                 offset=0,
                 inplace=True,
             )
-            compiled_residual = _safe_njit(py_func, signature_tpe=signature_tpe, fastmath=True, cache=True)
+            if eager_machine_code:
+                compiled_residual = _safe_njit(py_func, signature_tpe=signature_tpe, fastmath=True, cache=True)
+            else:
+                compiled_residual = _safe_njit(py_func, signature_tpe=None, fastmath=True, cache=True)
         else:
             while group_key_index < len(group_keys):
                 group_key: str = group_keys[group_key_index]
@@ -2000,7 +2354,10 @@ class StructuralCompiledSolver:
                     func_name=kernel_name,
                     template_vars=template_vars,
                 )
-                compiled_kernel = _safe_njit(py_func, signature_tpe=signature_tpe, fastmath=True, cache=True)
+                if eager_machine_code:
+                    compiled_kernel = _safe_njit(py_func, signature_tpe=signature_tpe, fastmath=True, cache=True)
+                else:
+                    compiled_kernel = _safe_njit(py_func, signature_tpe=None, fastmath=True, cache=True)
                 kernel_specs.append(StructuralCompiledVectorKernel(compiled_kernel, indices, target_rows))
 
                 group_key_index += 1
@@ -2023,7 +2380,8 @@ class StructuralCompiledSolver:
             parameters=all_parameters,
             method=method,
             dtype=np.float64,
-            use_cse=True,
+            use_cse=jacobian_use_cse,
+            eager_machine_code=eager_machine_code,
             cache_token=backend_cache_token,
         )
         jacobian_evaluator_s: float = time.perf_counter() - t_jacobian_evaluator_start
@@ -2031,8 +2389,44 @@ class StructuralCompiledSolver:
         self._sparse_factorization_manager = StructuralCompiledSparseFactorizationManager(
             self._jacobian_evaluator.get_matrix(),
             self._jacobian_data_buffer,
+            self._sparse_solver_backend_provider,
         )
+
+        # The helper kernels are always warmed because they are tiny and their
+        # first-use compilation would otherwise show up as jitter inside the loop.
+        helper_warmup_t0: float = time.perf_counter()
+        _warmup_compiled_numba_helpers()
+        helper_warmup_s: float = time.perf_counter() - helper_warmup_t0
+
+        residual_warmup_s: float = 0.0
+        jacobian_warmup_s: float = 0.0
+
+        if full_warmup_enabled:
+            warmup_x: Vec = self._problem.get_x0().copy()
+            warmup_dx: Vec = self._problem.get_dx0().copy()
+            warmup_x2: Vec = warmup_x.copy()
+            warmup_runtime_params: Vec = self._problem.event_params_values.copy()
+            warmup_full_params: Vec = self._full_parameter_buffer
+
+            # The warmup only needs stable shapes and valid memory layouts, so the
+            # raw event parameter vector is enough here and avoids one extra Python
+            # parameter-refresh pass during backend build.
+            _fill_full_parameter_buffer(warmup_runtime_params, self._static_parameter_buffer, warmup_full_params)
+
+            residual_warmup_t0: float = time.perf_counter()
+            self._residual_assembler.evaluate(warmup_x, warmup_full_params, warmup_x, warmup_dx, self._h, warmup_x2, self._residual_buffer)
+            residual_warmup_s = time.perf_counter() - residual_warmup_t0
+
+            jacobian_warmup_t0: float = time.perf_counter()
+            self._jacobian_evaluator.evaluate(warmup_x, warmup_full_params, warmup_x, warmup_dx, self._h, warmup_x2)
+            jacobian_warmup_s = time.perf_counter() - jacobian_warmup_t0
+        else:
+            pass
+
+        warmup_s: float = helper_warmup_s + residual_warmup_s + jacobian_warmup_s
+
         self._vectorized_ready = True
+        self._backend_warmup_done = full_warmup_enabled
 
         residual_stats: Dict[str, float] = self._residual_assembler.get_build_stats()
         jacobian_stats: Dict[str, float] = self._jacobian_evaluator.get_build_stats()
@@ -2043,6 +2437,15 @@ class StructuralCompiledSolver:
             "residual_dispatcher_s": residual_stats.get("dispatcher_build_s", 0.0),
             "residual_buffer_alloc_s": residual_stats.get("buffer_alloc_s", 0.0),
             "jacobian_evaluator_s": jacobian_evaluator_s,
+            "warmup_s": warmup_s,
+            "helper_warmup_s": helper_warmup_s,
+            "residual_warmup_s": residual_warmup_s,
+            "jacobian_warmup_s": jacobian_warmup_s,
+            "full_warmup_enabled": 1.0 if full_warmup_enabled else 0.0,
+            "eager_machine_code": 1.0 if eager_machine_code else 0.0,
+            "residual_use_cse": 1.0 if residual_use_cse else 0.0,
+            "jacobian_use_cse": 1.0 if jacobian_use_cse else 0.0,
+            "estimated_steps": float(estimated_steps),
             "jac_column_rows_s": jacobian_stats.get("column_rows_s", 0.0),
             "jac_csc_shell_s": jacobian_stats.get("csc_shell_s", 0.0),
             "jac_coloring_s": jacobian_stats.get("coloring_s", 0.0),
@@ -2114,9 +2517,9 @@ class StructuralCompiledSolver:
 
     def simulate(
             self,
-            x0: Optional[Vec] = None,
-            dx0: Optional[Vec] = None,
-            params0: Optional[Vec] = None,
+            x0: Vec | None = None,
+            dx0: Vec | None = None,
+            params0: Vec | None = None,
             boundary_updater: EmtBoundaryUpdateProtocol | None = None,
     ) -> Tuple[Vec, Mat, Mat]:
         """
@@ -2162,8 +2565,8 @@ class StructuralCompiledSolver:
 
         x_prev2: Vec = x_prev.copy()
         x_iter: Vec = x_prev.copy()
-        trial_state: Vec = np.zeros(self._n_vars, dtype=np.float64)
-        trial_residual: Vec = np.zeros(self._n_vars, dtype=np.float64)
+        trial_state: Vec = self._trial_state_buffer
+        trial_residual: Vec = self._trial_residual_buffer
 
         if params0 is None:
             runtime_params = self._problem.event_params_values.copy()
@@ -2174,17 +2577,12 @@ class StructuralCompiledSolver:
         dy[0, :] = dx_prev
 
         full_params: Vec = self._full_parameter_buffer
-        full_params[:] = 0.0
-
         if self._n_event_parameters > 0:
-            full_params[:self._n_event_parameters] = self._problem.def_event_params_fn(runtime_params, float(self._t0))
+            runtime_params[:] = self._problem.def_event_params_fn(runtime_params, float(self._t0))
         else:
-            pass
+            runtime_params = runtime_params
 
-        if self._n_constant_parameters > 0:
-            full_params[self._n_event_parameters:] = self._static_parameter_buffer
-        else:
-            pass
+        _fill_full_parameter_buffer(runtime_params, self._static_parameter_buffer, full_params)
 
         if active_boundary_updater is None:
             pass
@@ -2247,9 +2645,14 @@ class StructuralCompiledSolver:
         else:
             pass
 
-        # Warm up the eager kernels once so the integration loop sees only machine-code execution.
-        self._residual_assembler.evaluate(x_prev, full_params, x_prev, dx_prev, self._h, x_prev2, self._residual_buffer)
-        self._jacobian_evaluator.evaluate(x_prev, full_params, x_prev, dx_prev, self._h, x_prev2)
+        # The eager kernels only need one warmup per solver lifetime. Skipping
+        # repeated warmups removes avoidable overhead from successive benchmark runs.
+        if self._backend_warmup_done:
+            pass
+        else:
+            self._residual_assembler.evaluate(x_prev, full_params, x_prev, dx_prev, self._h, x_prev2, self._residual_buffer)
+            self._jacobian_evaluator.evaluate(x_prev, full_params, x_prev, dx_prev, self._h, x_prev2)
+            self._backend_warmup_done = True
 
         loop_start: float = time.perf_counter()
 
@@ -2297,9 +2700,11 @@ class StructuralCompiledSolver:
 
                 # Runtime parameters are refreshed before every Newton solve because events may move them.
                 if self._n_event_parameters > 0:
-                    full_params[:self._n_event_parameters] = self._problem.def_event_params_fn(runtime_params, float(t_curr))
+                    runtime_params[:] = self._problem.def_event_params_fn(runtime_params, float(t_curr))
                 else:
-                    pass
+                    runtime_params = runtime_params
+
+                _fill_full_parameter_buffer(runtime_params, self._static_parameter_buffer, full_params)
 
                 if active_boundary_updater is None:
                     pass
@@ -2318,9 +2723,22 @@ class StructuralCompiledSolver:
                 if sparse_factor_manager is None:
                     pass
                 else:
-                    if is_aligned_substep:
-                        sparse_factor_manager.invalidate()
-                        forced_factorization_invalidations += 1
+                    if is_aligned_substep and sparse_factor_manager.has_factorization():
+                        params_changed: bool = True
+
+                        if self._has_factorization_parameter_snapshot:
+                            params_changed = _max_abs_diff_vectors(
+                                full_params,
+                                self._last_factorization_parameter_snapshot,
+                            ) > 1.0e-14
+                        else:
+                            params_changed = True
+
+                        if params_changed:
+                            sparse_factor_manager.invalidate()
+                            forced_factorization_invalidations += 1
+                        else:
+                            forced_factorization_invalidations = forced_factorization_invalidations
                     else:
                         pass
 
@@ -2362,9 +2780,16 @@ class StructuralCompiledSolver:
                     else:
                         pass
 
+                    if self._last_macro_newton_iterations <= 2:
+                        adaptive_recompute_threshold: float = 0.8
+                    elif self._last_macro_newton_iterations <= 4:
+                        adaptive_recompute_threshold = 0.6
+                    else:
+                        adaptive_recompute_threshold = 0.5
+
                     recompute_factorization: bool = (
                         (cached_lu_dense is None and (sparse_factor_manager is None or not sparse_factor_manager.has_factorization()))
-                        or (newton_index > 0 and (res_norm / (last_res_norm + 1e-16)) > 0.5)
+                        or (newton_index > 0 and (res_norm / (last_res_norm + 1e-16)) > adaptive_recompute_threshold)
                     )
 
                     if recompute_factorization:
@@ -2399,6 +2824,8 @@ class StructuralCompiledSolver:
                                 raise RuntimeError("Missing sparse factorization manager in sparse StructuralCompiled path")
                             else:
                                 sparse_factor_manager.factorize()
+                                self._last_factorization_parameter_snapshot[:] = full_params
+                                self._has_factorization_parameter_snapshot = True
 
                             cached_lu_dense = None
                     else:
@@ -2431,17 +2858,14 @@ class StructuralCompiledSolver:
                                 delta = sparse_factor_manager.solve(self._linear_rhs_buffer)
 
                     if diag_cfg.enable_backtracking:
-                        def _evaluate_trial_residual(trial_x: Vec, out_res: Vec) -> float:
-                            self._residual_assembler.evaluate(
-                                trial_x,
-                                full_params,
-                                x_prev,
-                                dx_prev,
-                                h_eff,
-                                x_prev2,
-                                out_res,
-                            )
-                            return _max_abs_value(out_res)
+                        self._trial_residual_evaluator.set_context(
+                            self._residual_assembler,
+                            full_params,
+                            x_prev,
+                            dx_prev,
+                            h_eff,
+                            x_prev2,
+                        )
 
                         maybe_apply_backtracking(
                             x_iter,
@@ -2449,7 +2873,7 @@ class StructuralCompiledSolver:
                             res_norm,
                             trial_state,
                             trial_residual,
-                            evaluate_residual=_evaluate_trial_residual,
+                            evaluate_residual=self._trial_residual_evaluator.evaluate,
                             config=diag_cfg,
                         )
                     else:
@@ -2459,6 +2883,8 @@ class StructuralCompiledSolver:
                     newton_index += 1
 
                 # Differential history is updated according to the selected integration rule.
+                self._last_macro_newton_iterations = int(newton_index)
+
                 if self._method == DynamicIntegrationMethod.DaeTrapezoidal:
                     dx_prev[:self._n_state] = (
                         (2.0 / h_eff) * (x_iter[:self._n_state] - x_prev[:self._n_state])

@@ -3,14 +3,33 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 import cProfile
+import json
 import pstats
 import numpy as np
+from pathlib import Path
 from time import perf_counter
-from typing import Any, cast, Dict, List, Optional
+from typing import Any, cast, Dict, List, Optional, Tuple
 
 import os
 import matplotlib.pyplot as plt
+from VeraGrid.trunk.dynamics_emt.support.emt_plot_exports import (
+    extract_three_phase_matrix,
+    get_plot_results_directory,
+    save_scalar_plot,
+    save_two_panel_three_phase_plot,
+)
+from VeraGrid.trunk.dynamics_emt.support.emt_build_report_exports import (
+    normalize_initialization_report,
+    normalize_problem_build_report,
+)
 
+from VeraGridEngine.Devices.Branches.line import Line
+from VeraGridEngine.Devices.Branches.overhead_line_type import OverheadLineType
+from VeraGridEngine.Devices.Branches.wire import Wire
+from VeraGridEngine.Devices.Injections.generator import Generator
+from VeraGridEngine.Devices.Injections.load import Load
+from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 
 from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block as find_name_in_symbolic_block
@@ -18,7 +37,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block as fin
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
-from VeraGridEngine.Templates.templates_common_functions import set_emt_model
+
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_3ph_emt_template
@@ -31,15 +50,15 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
-from VeraGridEngine.enumerations import EmtInitializationMethod, VarPowerFlowRefferenceType, DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType
-import VeraGridEngine.api as gce
+from VeraGridEngine.enumerations import (BranchImpedanceMode, DynamicIntegrationMethod, EmtInitializationMethod,
+                                         EmtSolverTypes, ShuntConnectionType, SolverType,
+                                         VarPowerFlowRefferenceType)
 
 ###########################################################################################################################
 # Build VeraGrid object
 ###########################################################################################################################
 
 profiler = cProfile.Profile()
-profiler.enable()
 
 def find_name_in_block(name: str, block: Block):
     """
@@ -51,22 +70,22 @@ def find_name_in_block(name: str, block: Block):
     """
     return find_name_in_symbolic_block(name, block)
 
-grid = gce.MultiCircuit(Sbase=2.0, fbase=50.0)
+grid = MultiCircuit(Sbase=2.0, fbase=50.0)
 
 # Buses
 vnom = 10 #kV
-bus0 = gce.Bus(name="Bus0", Vnom=vnom, is_slack=True)
-bus1 = gce.Bus(name="Bus1", Vnom=vnom)
+bus0 = Bus(name="Bus0", Vnom=vnom, is_slack=True)
+bus1 = Bus(name="Bus1", Vnom=vnom)
 
 grid.add_bus(bus0)
 grid.add_bus(bus1)
 
 # Lines
-line0 = gce.Line(name="line0", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
+line0 = Line(name="line0", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
 
 # physical configuration (Overhead line tower)
-tower = gce.OverheadLineType(name="Tower", Vnom=vnom)
-wire = gce.Wire(name="Panther 30/7 ACSR",
+tower = OverheadLineType(name="Tower", Vnom=vnom)
+wire = Wire(name="Panther 30/7 ACSR",
                 diameter=21.0,
                 diameter_internal=9.0,
                 is_tube=True,
@@ -89,11 +108,11 @@ R_ph =100 #ohm
 v_ph = vnom / (3**0.5)
 P_ph = (v_ph**2) / R_ph # kv*kv/ohm = MW
 Q_ph = 0.0
-load = gce.Load(name="load",P1= P_ph, P2= P_ph, P3= P_ph, Q1= Q_ph, Q2= Q_ph, Q3= Q_ph)
+load = Load(name="load",P1= P_ph, P2= P_ph, P3= P_ph, Q1= Q_ph, Q2= Q_ph, Q3= Q_ph)
 load.conn = ShuntConnectionType.GroundedStar
 
 # Generators
-gen0 = gce.Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq = 50, r1=0.001, x1=1.7)
+gen0 = Generator(name="Gen0", vset=1.0, Snom=grid.Sbase, freq = 50, r1=0.001, x1=1.7)
 # r1=Ra, x1=xd'
 
 grid.add_line(line0)
@@ -107,61 +126,43 @@ for bus in grid.buses:
 # Build EMT models
 ######################################################################################################
 # generator
-gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.emt_var_factory).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
 
 # line
-line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
+line_mdl = get_pi_line_emt_template(vf=grid.emt_var_factory, line = line0).block
 
 # load
 load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.emt_var_factory).block
 
-######################################################################################################
-# Add models to devices
-######################################################################################################
+# connection with buses
+gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
+gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # v_B
+gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # v_C
 
 
-set_emt_model(device=gen0, model=gen_mdl, var_factory= grid.emt_var_factory)
+line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # line vf_A
+line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # line vf_B
+line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # line vf_C
 
-set_emt_model(device=line0, model=line_mdl, var_factory= grid.emt_var_factory)
+line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.out_vars[0]]) # line vt_A
+line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.out_vars[1]]) # line vt_B
+line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.out_vars[2]]) # line vt_C
 
-set_emt_model(device=load, model=load_mdl, var_factory= grid.emt_var_factory)
+# u_gov = find_name_in_block("u_gov1", gov1_mdl)
 
-#
-# # connection with buses
-# gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
-# gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # v_B
-# gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # v_C
-#
-#
-# line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # line vf_A
-# line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # line vf_B
-# line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # line vf_C
-#
-# line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.out_vars[0]]) # line vt_A
-# line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.out_vars[1]]) # line vt_B
-# line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.out_vars[2]]) # line vt_C
-#
-# # u_gov = find_name_in_block("u_gov1", gov1_mdl)
-#
-# load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]]) # v_A
-# load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]]) # v_B
-# load_mdl.connect([load_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]]) # v_C
-#
-# # external mapping
-# big_gen1 = Block(children=[gen_mdl])
-#
-# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: gen_mdl.out_vars[0]})
-# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: gen_mdl.out_vars[1]})
-#
-# # attach emt models to Veragrid objects
-# line0.emt_model= line_mdl
-# load.emt_model= load_mdl
-# gen0.emt_model= big_gen1
+load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]]) # v_A
+load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]]) # v_B
+load_mdl.connect([load_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]]) # v_C
 
-# gce.save_file(grid=grid, filename="grid_save_event.veragrid")
+# attach emt models to VeraGrid objects.
+# The generator must stay attached as an injection model so the topology
+# validator counts its voltage inputs at the slack bus.
+line0.emt_model = line_mdl
+load.emt_model = load_mdl
+gen0.emt_model = gen_mdl
 
 pf_options = PowerFlowOptions(
-    solver_type=gce.SolverType.NR,
+    solver_type=SolverType.NR,
     retry_with_other_methods=False,
     verbose=0,
     initialize_with_existing_solution=True,
@@ -173,7 +174,7 @@ pf_options = PowerFlowOptions(
     control_remote_voltage=True,
     orthogonalize_controls=True,
     apply_temperature_correction=True,
-    branch_impedance_tolerance_mode=gce.BranchImpedanceMode.Specified,
+    branch_impedance_tolerance_mode=BranchImpedanceMode.Specified,
     distributed_slack=False,
     ignore_single_node_islands=False,
     trust_radius=1.0,
@@ -242,9 +243,11 @@ ENABLE_PLOTS = read_env_flag("VERAGRID_EMT_ENABLE_PLOTS", True)
 ENABLE_NEWTON_TRACE = read_env_flag("VERAGRID_EMT_ENABLE_NEWTON_TRACE", False)
 SHOW_INIT_GUESS_TABLE = read_env_flag("VERAGRID_EMT_SHOW_INIT_GUESS_TABLE", False)
 BENCHMARK_COMPILED_COLD_WARM = read_env_flag("VERAGRID_EMT_BENCHMARK_COMPILED_COLD_WARM", False)
+BENCHMARK_ALL_SOLVERS_COLD_WARM = read_env_flag("VERAGRID_EMT_BENCHMARK_ALL_SOLVERS_COLD_WARM", False)
 DENSE_THRESHOLD = 0
 SOLVER_VERBOSE = read_env_flag("VERAGRID_EMT_SOLVER_VERBOSE", False)
 CHOSEN_INIT_METHOD = os.environ.get("VERAGRID_EMT_INIT_METHOD", "AUTO").strip().upper()
+PLOT_CASE_NAME = "thevequiv_piline_zipload"
 
 SOLVER_TYPE_MAP = {
     "SYMBOLIC": EmtSolverTypes.Symbolic,
@@ -379,6 +382,8 @@ class SolverBenchmarkResult:
         '_steps',
         '_y_shape',
         '_dy_shape',
+        '_problem_build_report',
+        '_initialization_report',
     )
 
     def __init__(self,
@@ -395,7 +400,9 @@ class SolverBenchmarkResult:
                  build_stats: Dict[str, float],
                  steps: int,
                  y_shape: tuple[int, ...],
-                 dy_shape: tuple[int, ...]) -> None:
+                 dy_shape: tuple[int, ...],
+                 problem_build_report: Dict[str, float],
+                 initialization_report: Dict[str, object]) -> None:
         """
         Build one benchmark result.
 
@@ -429,6 +436,8 @@ class SolverBenchmarkResult:
         self._steps: int = int(steps)
         self._y_shape: tuple[int, ...] = tuple(y_shape)
         self._dy_shape: tuple[int, ...] = tuple(dy_shape)
+        self._problem_build_report: Dict[str, float] = dict(problem_build_report)
+        self._initialization_report: Dict[str, object] = dict(initialization_report)
 
     def get_solver_key(self) -> str:
         """
@@ -517,6 +526,248 @@ class SolverBenchmarkResult:
         :return: Backend build statistics.
         """
         return dict(self._build_stats)
+
+    def get_steps(self) -> int:
+        """
+        Return the number of accepted time steps.
+
+        :return: Number of accepted time steps.
+        :rtype: int
+        """
+        return self._steps
+
+    def get_y_shape(self) -> tuple[int, ...]:
+        """
+        Return the state-trajectory shape.
+
+        :return: State-trajectory shape.
+        :rtype: tuple[int, ...]
+        """
+        return tuple(self._y_shape)
+
+    def get_dy_shape(self) -> tuple[int, ...]:
+        """
+        Return the differential-trajectory shape.
+
+        :return: Differential-trajectory shape.
+        :rtype: tuple[int, ...]
+        """
+        return tuple(self._dy_shape)
+
+    def get_problem_build_report(self) -> Dict[str, float]:
+        """
+        Return the EMT problem build report.
+
+        :return: EMT problem build report.
+        :rtype: Dict[str, float]
+        """
+        return dict(self._problem_build_report)
+
+    def get_initialization_report(self) -> Dict[str, object]:
+        """
+        Return the EMT initialization report.
+
+        :return: EMT initialization report.
+        :rtype: Dict[str, object]
+        """
+        return dict(self._initialization_report)
+
+
+class SolverColdWarmBenchmarkResult:
+    """
+    Cold/warm timing summary for one EMT backend.
+    """
+
+    __slots__ = (
+        '_solver_key',
+        '_problem_build_s',
+        '_solver_init_s',
+        '_cold_build_s',
+        '_cold_sim_s',
+        '_warm_sim_s',
+        '_speedup',
+        '_y_max_abs_diff',
+        '_dy_max_abs_diff',
+        '_cold_trace_summary',
+        '_warm_trace_summary',
+        '_build_stats',
+        '_problem_build_report',
+        '_initialization_report',
+    )
+
+    def __init__(self,
+                 solver_key: str,
+                 problem_build_s: float,
+                 solver_init_s: float,
+                 cold_build_s: float,
+                 cold_sim_s: float,
+                 warm_sim_s: float,
+                 speedup: float,
+                 y_max_abs_diff: float,
+                 dy_max_abs_diff: float,
+                 cold_trace_summary: SolverTraceSummary,
+                 warm_trace_summary: SolverTraceSummary,
+                 build_stats: Dict[str, float],
+                 problem_build_report: Dict[str, float],
+                 initialization_report: Dict[str, object]) -> None:
+        """
+        Build one cold/warm benchmark result.
+
+        :param solver_key: Solver identifier.
+        :param problem_build_s: Problem build time in seconds.
+        :param solver_init_s: Solver initialization time in seconds.
+        :param cold_build_s: First backend build time in seconds.
+        :param cold_sim_s: First simulation time in seconds.
+        :param warm_sim_s: Second simulation time in seconds.
+        :param speedup: Cold-to-warm speedup factor.
+        :param y_max_abs_diff: Maximum y difference between cold and warm runs.
+        :param dy_max_abs_diff: Maximum dy difference between cold and warm runs.
+        :param cold_trace_summary: Cold-run Newton summary.
+        :param warm_trace_summary: Warm-run Newton summary.
+        :param build_stats: Backend build statistics.
+        :return: None.
+        :rtype: None
+        """
+        self._solver_key: str = solver_key
+        self._problem_build_s: float = float(problem_build_s)
+        self._solver_init_s: float = float(solver_init_s)
+        self._cold_build_s: float = float(cold_build_s)
+        self._cold_sim_s: float = float(cold_sim_s)
+        self._warm_sim_s: float = float(warm_sim_s)
+        self._speedup: float = float(speedup)
+        self._y_max_abs_diff: float = float(y_max_abs_diff)
+        self._dy_max_abs_diff: float = float(dy_max_abs_diff)
+        self._cold_trace_summary: SolverTraceSummary = cold_trace_summary
+        self._warm_trace_summary: SolverTraceSummary = warm_trace_summary
+        self._build_stats: Dict[str, float] = dict(build_stats)
+        self._problem_build_report: Dict[str, float] = dict(problem_build_report)
+        self._initialization_report: Dict[str, object] = dict(initialization_report)
+
+    def get_solver_key(self) -> str:
+        """
+        Return the solver identifier.
+
+        :return: Solver identifier.
+        :rtype: str
+        """
+        return self._solver_key
+
+    def get_problem_build_s(self) -> float:
+        """
+        Return the problem-build time.
+
+        :return: Problem-build time.
+        :rtype: float
+        """
+        return self._problem_build_s
+
+    def get_solver_init_s(self) -> float:
+        """
+        Return the solver initialization time.
+
+        :return: Solver initialization time.
+        :rtype: float
+        """
+        return self._solver_init_s
+
+    def get_cold_build_s(self) -> float:
+        """
+        Return the first backend-build time.
+
+        :return: First backend-build time.
+        :rtype: float
+        """
+        return self._cold_build_s
+
+    def get_cold_sim_s(self) -> float:
+        """
+        Return the first simulation time.
+
+        :return: First simulation time.
+        :rtype: float
+        """
+        return self._cold_sim_s
+
+    def get_warm_sim_s(self) -> float:
+        """
+        Return the second simulation time.
+
+        :return: Second simulation time.
+        :rtype: float
+        """
+        return self._warm_sim_s
+
+    def get_speedup(self) -> float:
+        """
+        Return the cold-to-warm speedup factor.
+
+        :return: Speedup factor.
+        :rtype: float
+        """
+        return self._speedup
+
+    def get_y_max_abs_diff(self) -> float:
+        """
+        Return the maximum y difference between cold and warm runs.
+
+        :return: Maximum y difference.
+        :rtype: float
+        """
+        return self._y_max_abs_diff
+
+    def get_dy_max_abs_diff(self) -> float:
+        """
+        Return the maximum dy difference between cold and warm runs.
+
+        :return: Maximum dy difference.
+        :rtype: float
+        """
+        return self._dy_max_abs_diff
+
+    def get_cold_trace_summary(self) -> SolverTraceSummary:
+        """
+        Return the cold-run Newton summary.
+
+        :return: Cold-run Newton summary.
+        :rtype: SolverTraceSummary
+        """
+        return self._cold_trace_summary
+
+    def get_warm_trace_summary(self) -> SolverTraceSummary:
+        """
+        Return the warm-run Newton summary.
+
+        :return: Warm-run Newton summary.
+        :rtype: SolverTraceSummary
+        """
+        return self._warm_trace_summary
+
+    def get_build_stats(self) -> Dict[str, float]:
+        """
+        Return the backend build statistics.
+
+        :return: Backend build statistics.
+        :rtype: Dict[str, float]
+        """
+        return dict(self._build_stats)
+
+    def get_problem_build_report(self) -> Dict[str, float]:
+        """
+        Return the EMT problem build report.
+
+        :return: EMT problem build report.
+        :rtype: Dict[str, float]
+        """
+        return dict(self._problem_build_report)
+
+    def get_initialization_report(self) -> Dict[str, object]:
+        """
+        Return the EMT initialization report.
+
+        :return: EMT initialization report.
+        :rtype: Dict[str, object]
+        """
+        return dict(self._initialization_report)
 
 
 def create_problem(enable_trace: bool = False) -> EmtProblemDae:
@@ -662,9 +913,7 @@ def get_solver_loop_time(solver: Any) -> float:
     :param solver: Solver instance.
     :return: Loop time in seconds or NaN.
     """
-    if isinstance(solver, StructuralCompiledSolver):
-        return float(solver.get_last_sim_loop_time())
-    elif isinstance(solver, StructuralVectorizedSolver):
+    if isinstance(solver, (JitSymbolicSolver, JitAdSolver, StructuralVectorizedSolver, StructuralCompiledSolver)):
         return float(solver.get_last_sim_loop_time())
     else:
         return np.nan
@@ -677,7 +926,7 @@ def get_solver_build_stats(solver: Any) -> Dict[str, float]:
     :param solver: Solver instance.
     :return: Build statistics dictionary.
     """
-    if isinstance(solver, StructuralCompiledSolver):
+    if isinstance(solver, (JitSymbolicSolver, JitAdSolver, StructuralVectorizedSolver, StructuralCompiledSolver)):
         raw_stats_any: Any = solver.get_backend_build_stats()
         out_stats: Dict[str, float] = dict()
 
@@ -699,7 +948,7 @@ def get_solver_runtime_stats(solver: Any) -> Dict[str, float]:
     :param solver: Solver instance.
     :return: Runtime statistics dictionary.
     """
-    if isinstance(solver, StructuralCompiledSolver):
+    if isinstance(solver, (JitSymbolicSolver, JitAdSolver, StructuralVectorizedSolver, StructuralCompiledSolver)):
         raw_stats_any: Any = solver.get_last_runtime_stats()
         out_stats: Dict[str, float] = dict()
 
@@ -731,6 +980,113 @@ def print_solver_runtime_stats(solver: Any, label: str) -> None:
             print(f"  {key}: {value:.0f}" if abs(value - round(value)) < 1e-12 else f"  {key}: {value:.6f}")
     else:
         runtime_stats = runtime_stats
+
+
+def run_single_solver_trajectory(
+        solver_key: str,
+        enable_trace: bool,
+) -> Tuple[EmtProblemDae, Any, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Build one solver, execute one simulation and return the raw trajectories.
+
+    :param solver_key: Solver identifier.
+    :type solver_key: str
+    :param enable_trace: Whether to enable Newton trace collection.
+    :type enable_trace: bool
+    :return: Tuple ``(problem, solver, t, y, dy)``.
+    :rtype: Tuple[EmtProblemDae, Any, np.ndarray, np.ndarray, np.ndarray]
+    """
+    local_problem: EmtProblemDae = create_problem(enable_trace=enable_trace)
+    solver: Any = create_solver(solver_key, local_problem)
+    build_solver_backend(solver_key, solver, local_problem)
+    boundary_updater: Any = cast(Any, local_problem)
+    t_arr: np.ndarray
+    y_arr: np.ndarray
+    dy_arr: np.ndarray
+    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=boundary_updater)
+    return local_problem, solver, t_arr, y_arr, dy_arr
+
+
+def export_demo_plots(
+        problem: EmtProblemDae,
+        time_values: np.ndarray,
+        y_values: np.ndarray,
+        solver_key: str,
+        output_root_name: str = "plot_results",
+) -> List[Path]:
+    """
+    Export diagnostic plots for the interactive ZIP-load demo.
+
+    :param problem: EMT problem instance.
+    :type problem: EmtProblemDae
+    :param time_values: Time vector.
+    :type time_values: np.ndarray
+    :param y_values: State trajectory.
+    :type y_values: np.ndarray
+    :param solver_key: Solver identifier.
+    :type solver_key: str
+    :param output_root_name: Root folder name used for the plot exports.
+    :type output_root_name: str
+    :return: Generated plot paths.
+    :rtype: List[Path]
+    """
+    output_dir: Path = get_plot_results_directory(PLOT_CASE_NAME, solver_key, output_root_name)
+    generated_paths: List[Path] = list()
+
+    bus0_voltages: np.ndarray = extract_three_phase_matrix(problem, y_values, bus0.emt_model.out_vars)
+    bus1_voltages: np.ndarray = extract_three_phase_matrix(problem, y_values, bus1.emt_model.out_vars)
+    generator_currents: np.ndarray = extract_three_phase_matrix(problem, y_values, gen_mdl.out_vars)
+    load_current_triplet: Tuple[Any, Any, Any] = (
+        find_name_in_block("i_A_ZIP_Load_EMT_3ph", load_mdl),
+        find_name_in_block("i_B_ZIP_Load_EMT_3ph", load_mdl),
+        find_name_in_block("i_C_ZIP_Load_EMT_3ph", load_mdl),
+    )
+    load_currents: np.ndarray = -extract_three_phase_matrix(problem, y_values, load_current_triplet)
+    theta_var: Any = find_name_in_block("theta_emt_thevenin_eq_generator_template", gen_mdl)
+    theta_values: np.ndarray = y_values[:, problem.get_var_idx(theta_var)]
+
+    voltage_path: Path = output_dir / "bus_voltages.png"
+    current_path: Path = output_dir / "source_load_currents.png"
+    theta_path: Path = output_dir / "generator_theta.png"
+
+    save_two_panel_three_phase_plot(
+        file_path=voltage_path,
+        time_values=time_values,
+        top_triplet=(bus0_voltages[:, 0], bus0_voltages[:, 1], bus0_voltages[:, 2]),
+        top_title="Bus 0 Voltages",
+        top_ylabel="Voltage [pu]",
+        top_legend_prefix="Bus0",
+        bottom_triplet=(bus1_voltages[:, 0], bus1_voltages[:, 1], bus1_voltages[:, 2]),
+        bottom_title="Bus 1 Voltages",
+        bottom_ylabel="Voltage [pu]",
+        bottom_legend_prefix="Bus1",
+    )
+    generated_paths.append(voltage_path)
+
+    save_two_panel_three_phase_plot(
+        file_path=current_path,
+        time_values=time_values,
+        top_triplet=(generator_currents[:, 0], generator_currents[:, 1], generator_currents[:, 2]),
+        top_title="Generator Currents",
+        top_ylabel="Current [pu]",
+        top_legend_prefix="Gen",
+        bottom_triplet=(load_currents[:, 0], load_currents[:, 1], load_currents[:, 2]),
+        bottom_title="ZIP Load Currents",
+        bottom_ylabel="Current [pu]",
+        bottom_legend_prefix="Load",
+    )
+    generated_paths.append(current_path)
+
+    save_scalar_plot(
+        file_path=theta_path,
+        time_values=time_values,
+        values=theta_values,
+        title="Generator Electrical Angle",
+        y_label="Theta [rad]",
+    )
+    generated_paths.append(theta_path)
+
+    return generated_paths
 
 
 def build_full_parameter_vector(problem: EmtProblemDae,
@@ -822,7 +1178,7 @@ def evaluate_final_residual_inf(solver_key: str,
             for kernel in kernel_list:
                 kernel(x_curr, full_params, x_prev, dx_prev, h_eff, residual_vector, x_prev2)
         elif solver_key == "VECTORIZED":
-            solver.fused_residual(x_curr, full_params, x_prev, dx_prev, h_eff, solver.vec_flat_args, residual_vector, x_prev2)
+            solver.fused_residual(x_curr, full_params, x_prev, dx_prev, h_eff, x_prev2, residual_vector)
         elif solver_key == "COMPILED":
             solver._residual_assembler.evaluate(x_curr, full_params, x_prev, dx_prev, h_eff, x_prev2, residual_vector)
         else:
@@ -875,6 +1231,8 @@ def run_single_solver_benchmark(solver_key: str,
         last_step_newton_iterations=trace_summary.get_last_step_newton_iterations(),
     )
     build_stats: Dict[str, float] = get_solver_build_stats(solver)
+    problem_build_report: Dict[str, float] = normalize_problem_build_report(local_problem)
+    initialization_report: Dict[str, object] = normalize_initialization_report(local_problem)
     result: SolverBenchmarkResult = SolverBenchmarkResult(
         solver_key=solver_key,
         problem_build_s=problem_build_s,
@@ -890,9 +1248,92 @@ def run_single_solver_benchmark(solver_key: str,
         steps=len(t_arr) - 1,
         y_shape=y_arr.shape,
         dy_shape=dy_arr.shape,
+        problem_build_report=problem_build_report,
+        initialization_report=initialization_report,
     )
 
     return result, y_arr, dy_arr
+
+
+def run_single_solver_cold_warm_benchmark(solver_key: str) -> SolverColdWarmBenchmarkResult:
+    """
+    Run one backend twice to compare cold and warm execution.
+
+    :param solver_key: Solver identifier.
+    :type solver_key: str
+    :return: Cold/warm benchmark summary.
+    :rtype: SolverColdWarmBenchmarkResult
+    """
+    t_problem_0: float = perf_counter()
+    local_problem: EmtProblemDae = create_problem(enable_trace=False)
+    problem_build_s: float = perf_counter() - t_problem_0
+
+    t_solver_0: float = perf_counter()
+    solver = create_solver(solver_key, local_problem)
+    solver_init_s: float = perf_counter() - t_solver_0
+
+    t_build_0: float = perf_counter()
+    build_solver_backend(solver_key, solver, local_problem)
+    cold_build_s: float = perf_counter() - t_build_0
+
+    boundary_updater = cast(Any, local_problem)
+
+    # The first simulation captures the post-build cold execution path of the solver.
+    local_problem.set_newton_trace_collector(NewtonTraceCollector())
+    cold_sim_t0: float = perf_counter()
+    cold_t: np.ndarray
+    cold_y: np.ndarray
+    cold_dy: np.ndarray
+    cold_t, cold_y, cold_dy = solver.simulate(boundary_updater=boundary_updater)
+    cold_sim_s: float = perf_counter() - cold_sim_t0
+    cold_final_residual_inf: float = evaluate_final_residual_inf(solver_key, solver, local_problem, cold_t, cold_y, cold_dy)
+    cold_trace_summary_raw: SolverTraceSummary = summarize_newton_trace(local_problem)
+    cold_trace_summary: SolverTraceSummary = SolverTraceSummary(
+        final_residual_inf=cold_final_residual_inf,
+        maximum_residual_inf=cold_trace_summary_raw.get_maximum_residual_inf(),
+        total_newton_iterations=cold_trace_summary_raw.get_total_newton_iterations(),
+        last_step_newton_iterations=cold_trace_summary_raw.get_last_step_newton_iterations(),
+    )
+
+    # The second simulation reuses the same solver instance so cached kernels and
+    # factorization-related warm state remain available.
+    local_problem.set_newton_trace_collector(NewtonTraceCollector())
+    warm_sim_t0: float = perf_counter()
+    warm_t: np.ndarray
+    warm_y: np.ndarray
+    warm_dy: np.ndarray
+    warm_t, warm_y, warm_dy = solver.simulate(boundary_updater=boundary_updater)
+    warm_sim_s: float = perf_counter() - warm_sim_t0
+    warm_final_residual_inf: float = evaluate_final_residual_inf(solver_key, solver, local_problem, warm_t, warm_y, warm_dy)
+    warm_trace_summary_raw: SolverTraceSummary = summarize_newton_trace(local_problem)
+    warm_trace_summary: SolverTraceSummary = SolverTraceSummary(
+        final_residual_inf=warm_final_residual_inf,
+        maximum_residual_inf=warm_trace_summary_raw.get_maximum_residual_inf(),
+        total_newton_iterations=warm_trace_summary_raw.get_total_newton_iterations(),
+        last_step_newton_iterations=warm_trace_summary_raw.get_last_step_newton_iterations(),
+    )
+
+    if warm_sim_s > 0.0:
+        speedup: float = cold_sim_s / warm_sim_s
+    else:
+        speedup = np.inf
+
+    return SolverColdWarmBenchmarkResult(
+        solver_key=solver_key,
+        problem_build_s=problem_build_s,
+        solver_init_s=solver_init_s,
+        cold_build_s=cold_build_s,
+        cold_sim_s=cold_sim_s,
+        warm_sim_s=warm_sim_s,
+        speedup=speedup,
+        y_max_abs_diff=compute_max_abs_diff(cold_y, warm_y),
+        dy_max_abs_diff=compute_max_abs_diff(cold_dy, warm_dy),
+        cold_trace_summary=cold_trace_summary,
+        warm_trace_summary=warm_trace_summary,
+        build_stats=get_solver_build_stats(solver),
+        problem_build_report=normalize_problem_build_report(local_problem),
+        initialization_report=normalize_initialization_report(local_problem),
+    )
 
 
 def get_fastest_total_result(results: List[SolverBenchmarkResult]) -> SolverBenchmarkResult:
@@ -1000,6 +1441,164 @@ def print_compiled_backend_build_stats(results: List[SolverBenchmarkResult]) -> 
         result_index += 1
 
 
+def export_benchmark_results(results: List[SolverBenchmarkResult], file_stem: str) -> None:
+    """
+    Export benchmark results to structured CSV and JSON files.
+
+    :param results: Benchmark results.
+    :type results: List[SolverBenchmarkResult]
+    :param file_stem: Output file stem without extension.
+    :type file_stem: str
+    :return: None.
+    :rtype: None
+    """
+    csv_lines: List[str] = list()
+    json_rows: List[Dict[str, object]] = list()
+    result_index: int = 0
+    output_dir: Path = Path(__file__).resolve().parent / "benchmark_results"
+
+    # The benchmark exports live next to the EMT demos so the research corpus
+    # stays grouped inside trunk/dynamics_emt.
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    csv_lines.append(
+        "solver,problem_build_s,solver_init_s,solver_build_s,simulate_s,solver_total_s,loop_s,y_max_abs_diff,dy_max_abs_diff,final_residual_inf,maximum_residual_inf,total_newton_iterations,last_step_newton_iterations,steps,y_shape,dy_shape"
+    )
+
+    while result_index < len(results):
+        item: SolverBenchmarkResult = results[result_index]
+        trace_summary: SolverTraceSummary = item.get_trace_summary()
+        y_shape: Tuple[int, ...] = item.get_y_shape()
+        dy_shape: Tuple[int, ...] = item.get_dy_shape()
+
+        csv_lines.append(
+            f"{item.get_solver_key()},{item.get_problem_build_s():.9f},{item.get_solver_init_s():.9f},"
+            f"{item.get_solver_build_s():.9f},{item.get_simulate_s():.9f},{item.get_solver_total_s():.9f},"
+            f"{item.get_loop_s():.9f},{item.get_y_max_abs_diff():.9e},{item.get_dy_max_abs_diff():.9e},"
+            f"{trace_summary.get_final_residual_inf():.9e},{trace_summary.get_maximum_residual_inf():.9e},"
+            f"{trace_summary.get_total_newton_iterations()},{trace_summary.get_last_step_newton_iterations()},"
+            f"{item.get_steps()},{y_shape[0]}x{y_shape[1]},{dy_shape[0]}x{dy_shape[1]}"
+        )
+
+        json_rows.append(
+            dict(
+                solver=item.get_solver_key(),
+                problem_build_s=item.get_problem_build_s(),
+                solver_init_s=item.get_solver_init_s(),
+                solver_build_s=item.get_solver_build_s(),
+                simulate_s=item.get_simulate_s(),
+                solver_total_s=item.get_solver_total_s(),
+                loop_s=item.get_loop_s(),
+                y_max_abs_diff=item.get_y_max_abs_diff(),
+                dy_max_abs_diff=item.get_dy_max_abs_diff(),
+                final_residual_inf=trace_summary.get_final_residual_inf(),
+                maximum_residual_inf=trace_summary.get_maximum_residual_inf(),
+                total_newton_iterations=trace_summary.get_total_newton_iterations(),
+                last_step_newton_iterations=trace_summary.get_last_step_newton_iterations(),
+                build_stats=item.get_build_stats(),
+                problem_build_report=item.get_problem_build_report(),
+                initialization_report=item.get_initialization_report(),
+                steps=item.get_steps(),
+                y_shape=list(y_shape),
+                dy_shape=list(dy_shape),
+            )
+        )
+        result_index += 1
+
+    with open(output_dir / f"{file_stem}.csv", "w", encoding="utf-8") as csv_file:
+        csv_file.write("\n".join(csv_lines) + "\n")
+
+    with open(output_dir / f"{file_stem}.json", "w", encoding="utf-8") as json_file:
+        json.dump(json_rows, json_file, indent=2)
+
+
+def export_cold_warm_results(results: Dict[str, float], file_stem: str) -> None:
+    """
+    Export one cold/warm benchmark summary to JSON.
+
+    :param results: Cold/warm benchmark summary.
+    :type results: Dict[str, float]
+    :param file_stem: Output file stem without extension.
+    :type file_stem: str
+    :return: None.
+    :rtype: None
+    """
+    output_dir: Path = Path(__file__).resolve().parent / "benchmark_results"
+
+    # The cold/warm summary belongs to the same benchmark corpus directory.
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    with open(output_dir / f"{file_stem}.json", "w", encoding="utf-8") as json_file:
+        json.dump(results, json_file, indent=2)
+
+
+def export_all_solvers_cold_warm_results(results: List[SolverColdWarmBenchmarkResult], file_stem: str) -> None:
+    """
+    Export the four-solver cold/warm benchmark summary to CSV and JSON.
+
+    :param results: Cold/warm benchmark results.
+    :type results: List[SolverColdWarmBenchmarkResult]
+    :param file_stem: Output file stem without extension.
+    :type file_stem: str
+    :return: None.
+    :rtype: None
+    """
+    output_dir: Path = Path(__file__).resolve().parent / "benchmark_results"
+    csv_lines: List[str] = list()
+    json_rows: List[Dict[str, object]] = list()
+    result_index: int = 0
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    csv_lines.append(
+        "solver,problem_build_s,solver_init_s,cold_build_s,cold_sim_s,warm_sim_s,speedup,y_max_abs_diff,dy_max_abs_diff,cold_final_residual_inf,warm_final_residual_inf,cold_newton_iterations,warm_newton_iterations"
+    )
+
+    while result_index < len(results):
+        item: SolverColdWarmBenchmarkResult = results[result_index]
+        cold_summary: SolverTraceSummary = item.get_cold_trace_summary()
+        warm_summary: SolverTraceSummary = item.get_warm_trace_summary()
+
+        csv_lines.append(
+            f"{item.get_solver_key()},{item.get_problem_build_s():.9f},{item.get_solver_init_s():.9f},"
+            f"{item.get_cold_build_s():.9f},{item.get_cold_sim_s():.9f},{item.get_warm_sim_s():.9f},"
+            f"{item.get_speedup():.9f},{item.get_y_max_abs_diff():.9e},{item.get_dy_max_abs_diff():.9e},"
+            f"{cold_summary.get_final_residual_inf():.9e},{warm_summary.get_final_residual_inf():.9e},"
+            f"{cold_summary.get_total_newton_iterations()},{warm_summary.get_total_newton_iterations()}"
+        )
+
+        json_rows.append(
+            dict(
+                solver=item.get_solver_key(),
+                problem_build_s=item.get_problem_build_s(),
+                solver_init_s=item.get_solver_init_s(),
+                cold_build_s=item.get_cold_build_s(),
+                cold_sim_s=item.get_cold_sim_s(),
+                warm_sim_s=item.get_warm_sim_s(),
+                speedup=item.get_speedup(),
+                y_max_abs_diff=item.get_y_max_abs_diff(),
+                dy_max_abs_diff=item.get_dy_max_abs_diff(),
+                cold_final_residual_inf=cold_summary.get_final_residual_inf(),
+                warm_final_residual_inf=warm_summary.get_final_residual_inf(),
+                cold_maximum_residual_inf=cold_summary.get_maximum_residual_inf(),
+                warm_maximum_residual_inf=warm_summary.get_maximum_residual_inf(),
+                cold_total_newton_iterations=cold_summary.get_total_newton_iterations(),
+                warm_total_newton_iterations=warm_summary.get_total_newton_iterations(),
+                cold_last_step_newton_iterations=cold_summary.get_last_step_newton_iterations(),
+                warm_last_step_newton_iterations=warm_summary.get_last_step_newton_iterations(),
+                build_stats=item.get_build_stats(),
+                problem_build_report=item.get_problem_build_report(),
+                initialization_report=item.get_initialization_report(),
+            )
+        )
+        result_index += 1
+
+    with open(output_dir / f"{file_stem}.csv", "w", encoding="utf-8") as csv_file:
+        csv_file.write("\n".join(csv_lines) + "\n")
+
+    with open(output_dir / f"{file_stem}.json", "w", encoding="utf-8") as json_file:
+        json.dump(json_rows, json_file, indent=2)
+
+
 def build_solver_backend(solver_key: str, solver, local_problem: EmtProblemDae) -> None:
     use_dense_solver = local_problem.get_all_vars_number() <= DENSE_THRESHOLD
     use_sparse = not use_dense_solver
@@ -1028,7 +1627,7 @@ def build_solver_backend(solver_key: str, solver, local_problem: EmtProblemDae) 
     raise ValueError(f"Solver '{solver_key}' no reconocido. Usa SYMBOLIC, AD, VECTORIZED o COMPILED.")
 
 
-def benchmark_all_solvers() -> None:
+def benchmark_all_solvers() -> List[SolverBenchmarkResult]:
     print("\n" + "=" * 110)
     print("EMT SOLVER BENCHMARK (REAL DEMO)")
     print("=" * 110)
@@ -1070,7 +1669,8 @@ def benchmark_all_solvers() -> None:
     print("Fastest by simulate only:", fastest_sim.get_solver_key(), f"({fastest_sim.get_simulate_s():.6f}s)")
     print_compiled_backend_build_stats(results)
 
-    raise SystemExit(0)
+    export_benchmark_results(results, "thevequiv_piline_zipload")
+    return results
 
 
 def benchmark_structural_compiled_cold_and_warm() -> None:
@@ -1123,6 +1723,18 @@ def benchmark_structural_compiled_cold_and_warm() -> None:
     print(f"cold_final_res  = {cold_residual_inf:.3e}")
     print(f"warm_final_res  = {warm_residual_inf:.3e}")
 
+    summary: Dict[str, float] = dict(
+        solver_init_s=solver_init_s,
+        cold_build_s=cold_build_s,
+        cold_sim_s=cold_sim_s,
+        warm_sim_s=warm_sim_s,
+        speedup=(cold_sim_s / warm_sim_s) if warm_sim_s > 0.0 else np.inf,
+        y_max_abs_diff=compute_max_abs_diff(cold_y, warm_y),
+        dy_max_abs_diff=compute_max_abs_diff(cold_dy, warm_dy),
+        cold_final_residual_inf=cold_residual_inf,
+        warm_final_residual_inf=warm_residual_inf,
+    )
+
     if len(cold_runtime_stats) > 0:
         print("Cold runtime stats")
         for key, value in cold_runtime_stats.items():
@@ -1137,319 +1749,163 @@ def benchmark_structural_compiled_cold_and_warm() -> None:
     else:
         warm_runtime_stats = warm_runtime_stats
 
+    export_cold_warm_results(summary, "thevequiv_piline_zipload_compiled_cold_warm")
     raise SystemExit(0)
 
 
-if RUN_ALL_SOLVERS:
-    benchmark_all_solvers()
+def benchmark_all_solvers_cold_and_warm() -> List[SolverColdWarmBenchmarkResult]:
+    """
+    Run cold/warm comparisons for the four EMT backends on the ZIP-load case.
 
-if BENCHMARK_COMPILED_COLD_WARM:
-    benchmark_structural_compiled_cold_and_warm()
+    :return: Cold/warm benchmark results in solver execution order.
+    :rtype: List[SolverColdWarmBenchmarkResult]
+    """
+    print("\n" + "=" * 120)
+    print("EMT SOLVER COLD/WARM BENCHMARK (ZIP LOAD CASE)")
+    print("=" * 120)
+    print(f"time_step={options.time_step}, simulation_time={options.simulation_time}, dense_threshold={DENSE_THRESHOLD}")
+    print(f"newton_trace={True}, solver_verbose={SOLVER_VERBOSE}")
 
+    results: List[SolverColdWarmBenchmarkResult] = list()
+    solver_index: int = 0
 
-problem = create_problem()
+    while solver_index < len(ALL_SOLVER_KEYS):
+        solver_key: str = ALL_SOLVER_KEYS[solver_index]
+        print(f"\n--- Cold/Warm {solver_key} ---")
+        result: SolverColdWarmBenchmarkResult = run_single_solver_cold_warm_benchmark(solver_key)
+        results.append(result)
+        solver_index += 1
 
+    print("\n" + "-" * 190)
+    print(
+        f"{'Solver':<12}{'Problem[s]':>12}{'Init[s]':>12}{'Build[s]':>12}{'ColdSim[s]':>14}{'WarmSim[s]':>14}"
+        f"{'Speedup':>12}{'y MaxDiff':>16}{'dy MaxDiff':>16}{'ColdRes':>14}{'WarmRes':>14}{'ColdNewt':>12}{'WarmNewt':>12}"
+    )
+    print("-" * 190)
 
-if SHOW_INIT_GUESS_TABLE:
-    df = problem.get_init_guess_table()
-    print(f"init_guess_table\n{df}")
+    solver_index = 0
+    while solver_index < len(results):
+        result = results[solver_index]
+        cold_summary: SolverTraceSummary = result.get_cold_trace_summary()
+        warm_summary: SolverTraceSummary = result.get_warm_trace_summary()
+        print(
+            f"{result.get_solver_key():<12}"
+            f"{result.get_problem_build_s():>12.6f}"
+            f"{result.get_solver_init_s():>12.6f}"
+            f"{result.get_cold_build_s():>12.6f}"
+            f"{result.get_cold_sim_s():>14.6f}"
+            f"{result.get_warm_sim_s():>14.6f}"
+            f"{result.get_speedup():>12.3f}"
+            f"{result.get_y_max_abs_diff():>16.3e}"
+            f"{result.get_dy_max_abs_diff():>16.3e}"
+            f"{cold_summary.get_final_residual_inf():>14.3e}"
+            f"{warm_summary.get_final_residual_inf():>14.3e}"
+            f"{cold_summary.get_total_newton_iterations():>12d}"
+            f"{warm_summary.get_total_newton_iterations():>12d}"
+        )
+        solver_index += 1
 
-print(f"\n======================================")
-print(f"Initializing Solver: {CHOSEN_SOLVER}")
-print(f"======================================\n")
+    print("-" * 190)
 
-solver_init_t0 = perf_counter()
-solver = create_solver(CHOSEN_SOLVER, problem)
-solver_init_s = perf_counter() - solver_init_t0
-
-build_t0 = perf_counter()
-build_solver_backend(CHOSEN_SOLVER, solver, problem)
-solver_build_s = perf_counter() - build_t0
-
-# ==============================================================================
-# RUN SIMULATION
-# ==============================================================================
-boundary_updater = cast(Any, problem)
-sim_t0 = perf_counter()
-t, y, dy = solver.simulate(boundary_updater=boundary_updater)
-solver_sim_s = perf_counter() - sim_t0
-
-print("Single-solver benchmark")
-print(f"  init  = {solver_init_s:.6f}s")
-print(f"  build = {solver_build_s:.6f}s")
-print(f"  sim   = {solver_sim_s:.6f}s")
-print(f"  total = {solver_init_s + solver_build_s + solver_sim_s:.6f}s")
-
-if isinstance(solver, StructuralCompiledSolver):
-    print("StructuralCompiled backend build stats")
-    for key, value in solver.get_backend_build_stats().items():
-        print(f"  {key}: {value:.6f}s")
-
-print_solver_runtime_stats(solver, "StructuralCompiled runtime stats")
-
-
-collector = problem.get_newton_trace_collector()
-if collector:
-    print(f"Newton iters : {len(collector.records)}")
-    df = collector.to_dataframe()
-    df.to_csv("newton_diagnostics_demo.csv", index=False)
-    print("Diagnostics written to newton_diagnostics_demo.csv")
-
-# ==============================================================================
-# PROFILING REPORT
-# ==============================================================================
-profiler.disable()
-stats = pstats.Stats(profiler).sort_stats('cumtime')
-print("\n" + "="*50)
-print("--- PROFILER REPORT (Top 15 slowest functions) ---")
-print("="*50)
-stats.print_stats(15)
-print("="*50 + "\n")
-
-if not ENABLE_PLOTS:
-    print("Plotting disabled; stopping after solver/profiler report.")
-    raise SystemExit(0)
-
-# ==============================================================================
-# PLOTTING
-# ==============================================================================
-xlim = options.simulation_time
-
-t_end = options.simulation_time
-h = options.time_step
-steps: int = int(t_end / h)
-tme: np.ndarray = np.linspace(0, t_end, steps)
-
-#
-v_A_0 = find_name_in_block("v_A_Bus0_emt_template", bus0.emt_model)
-v_B_0 = find_name_in_block("v_B_Bus0_emt_template", bus0.emt_model)
-v_C_0 = find_name_in_block("v_C_Bus0_emt_template", bus0.emt_model)
-v_A_0_plt = y[:, problem.get_var_idx(v_A_0)]
-v_B_0_plt = y[:, problem.get_var_idx(v_B_0)]
-v_C_0_plt = y[:, problem.get_var_idx(v_C_0)]
-
-v_A_1 = find_name_in_block("v_A_Bus1_emt_template", bus1.emt_model)
-v_B_1 = find_name_in_block("v_B_Bus1_emt_template", bus1.emt_model)
-v_C_1 = find_name_in_block("v_C_Bus1_emt_template", bus1.emt_model)
-v_A_1_plt = y[:, problem.get_var_idx(v_A_1)]
-v_B_1_plt = y[:, problem.get_var_idx(v_B_1)]
-v_C_1_plt = y[:, problem.get_var_idx(v_C_1)]
-
-plt.figure(figsize=(12, 8))
-
-plt.subplot(2, 1, 1)
-plt.plot(tme, v_A_0_plt[:len(tme)], label='Voltage phase A bus 0', color='blue')
-plt.plot(tme, v_B_0_plt[:len(tme)], label='Voltage phase B bus 0', color='red')
-plt.plot(tme, v_C_0_plt[:len(tme)], label='Voltage phase C bus 0', color='green')
-plt.title("Voltage bus 0")
-plt.xlabel("Time")
-plt.ylabel("Voltage [p.u.]")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
-
-plt.subplot(2, 1, 2)
-plt.plot(tme, v_A_1_plt[:len(tme)], label='Voltage phase A bus 1', color='blue')
-plt.plot(tme, v_B_1_plt[:len(tme)], label='Voltage phase B bus 1', color='red')
-plt.plot(tme, v_C_1_plt[:len(tme)], label='Voltage phase C bus 1', color='green')
-plt.title("Voltage bus 1")
-plt.xlabel("Time")
-plt.ylabel("Voltage [p.u.]")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
-
-plt.tight_layout()
-print("Generating plots...")
-plt.show()
-
-theta = find_name_in_block("theta_emt_thevenin_eq_generator_template", gen_mdl)
-theta_plt = y[:, problem.get_var_idx(theta)]
-
-plt.figure(figsize=(12, 8))
-
-plt.subplot(2, 1, 1)
-plt.plot(tme, theta_plt[:len(tme)], label='Theta generator [rad]', color='blue')
-plt.title("Theta generator")
-plt.xlabel("Time")
-plt.ylabel("Theta generator")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
-
-plt.tight_layout()
-print("Generating plots...")
-plt.show()
-
-i_A_gen = find_name_in_block("i_A_emt_thevenin_eq_generator_template", gen_mdl)
-i_B_gen = find_name_in_block("i_B_emt_thevenin_eq_generator_template", gen_mdl)
-i_C_gen = find_name_in_block("i_C_emt_thevenin_eq_generator_template", gen_mdl)
-i_A_gen_plt = y[:, problem.get_var_idx(i_A_gen)]
-i_B_gen_plt = y[:, problem.get_var_idx(i_B_gen)]
-i_C_gen_plt = y[:, problem.get_var_idx(i_C_gen)]
-
-i_A_load = find_name_in_block("i_A_ZIP_Load_EMT_3ph", load_mdl)
-i_B_load = find_name_in_block("i_B_ZIP_Load_EMT_3ph", load_mdl)
-i_C_load = find_name_in_block("i_C_ZIP_Load_EMT_3ph", load_mdl)
-i_A_load_plt = y[:, problem.get_var_idx(i_A_load)]
-i_B_load_plt = y[:, problem.get_var_idx(i_B_load)]
-i_C_load_plt = y[:, problem.get_var_idx(i_C_load)]
-
-plt.figure(figsize=(12, 8))
-
-plt.subplot(2, 2, 1)
-plt.plot(tme, i_A_gen_plt[:len(tme)], label='Current phase A from generator', color='blue')
-plt.plot(tme, i_B_gen_plt[:len(tme)], label='Current phase B from generator', color='red')
-plt.plot(tme, i_C_gen_plt[:len(tme)], label='Current phase C from generator', color='green')
-plt.title("Current generator")
-plt.xlabel("Time")
-plt.ylabel("Current generator")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
-
-plt.subplot(2, 2, 2)
-# SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
-# THAT MEANS THE CURRENTS ARE NEGATIVE
-plt.plot(tme, -i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
-plt.plot(tme, -i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
-plt.plot(tme, -i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
-plt.title("Current load")
-plt.xlabel("Time")
-plt.ylabel("Current load")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
-
-plt.tight_layout()
-print("Generating plots...")
-plt.show()
+    export_all_solvers_cold_warm_results(results, "thevequiv_piline_zipload_all_solvers_cold_warm")
+    return results
 
 
-i_f_A_line = find_name_in_block("if_Pi_0", line0.emt_model)
-i_f_B_line = find_name_in_block("if_Pi_1", line0.emt_model)
-i_f_C_line = find_name_in_block("if_Pi_2", line0.emt_model)
-i_f_A_line_plt = y[:, problem.get_var_idx(i_f_A_line)]
-i_f_B_line_plt = y[:, problem.get_var_idx(i_f_B_line)]
-i_f_C_line_plt = y[:, problem.get_var_idx(i_f_C_line)]
+def main() -> None:
+    """
+    Execute the interactive demo entry point.
 
-i_t_A_line = find_name_in_block("it_Pi_0", line0.emt_model)
-i_t_B_line = find_name_in_block("it_Pi_1", line0.emt_model)
-i_t_C_line = find_name_in_block("it_Pi_2", line0.emt_model)
-i_t_A_line_plt = y[:, problem.get_var_idx(i_t_A_line)]
-i_t_B_line_plt = y[:, problem.get_var_idx(i_t_B_line)]
-i_t_C_line_plt = y[:, problem.get_var_idx(i_t_C_line)]
+    :return: None.
+    :rtype: None
+    """
+    if RUN_ALL_SOLVERS:
+        benchmark_all_solvers()
+        return
+    else:
+        pass
 
-plt.figure(figsize=(12, 8))
+    if BENCHMARK_COMPILED_COLD_WARM:
+        benchmark_structural_compiled_cold_and_warm()
+        return
+    else:
+        pass
 
-plt.subplot(2, 2, 1)
-plt.plot(tme, i_A_gen_plt[:len(tme)], label='Current phase A from generator', color='blue')
-plt.plot(tme, i_B_gen_plt[:len(tme)], label='Current phase B from generator', color='red')
-plt.plot(tme, i_C_gen_plt[:len(tme)], label='Current phase C from generator', color='green')
-plt.title("Current generator")
-plt.xlabel("Time")
-plt.ylabel("Current generator")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
+    if BENCHMARK_ALL_SOLVERS_COLD_WARM:
+        benchmark_all_solvers_cold_and_warm()
+        return
+    else:
+        pass
 
-plt.subplot(2, 2, 2)
-# SIGNS IN LOAD ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE INJECTIONS SO IN THE CASE OF THE LOAD
-# THAT MEANS THE CURRENTS ARE NEGATIVE
-plt.plot(tme, -i_A_load_plt[:len(tme)], label='Current phase A from load', color='blue')
-plt.plot(tme, -i_B_load_plt[:len(tme)], label='Current phase B from load', color='red')
-plt.plot(tme, -i_C_load_plt[:len(tme)], label='Current phase C from load', color='green')
-plt.title("Current load")
-plt.xlabel("Time")
-plt.ylabel("Current load")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
+    problem = create_problem()
 
-plt.subplot(2, 2, 3)
-plt.plot(tme, i_f_A_line_plt[:len(tme)], label='Current FROM phase A from line', color='blue')
-plt.plot(tme, i_f_B_line_plt[:len(tme)], label='Current FROM phase B from line', color='red')
-plt.plot(tme, i_f_C_line_plt[:len(tme)], label='Current FROM phase C from line', color='green')
-plt.title("Current from line")
-plt.xlabel("Time")
-plt.ylabel("Current from")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
+    if SHOW_INIT_GUESS_TABLE:
+        df = problem.get_init_guess_table()
+        print(f"init_guess_table\n{df}")
+    else:
+        pass
 
-plt.subplot(2, 2, 4)
-# SIGNS IN THE TO SIDE ARE FLIPPED. FOR SIGN CONVENTION CURRENTS LEAVE BUSES SO IN THE CASE OF THE FROM SIDE
-    # THAT MEANS THE CURRENTS ARE NEGATIVE
-plt.plot(tme, -i_t_A_line_plt[:len(tme)], label='Current TO phase A from line', color='blue')
-plt.plot(tme, -i_t_B_line_plt[:len(tme)], label='Current TO phase B from line', color='red')
-plt.plot(tme, -i_t_C_line_plt[:len(tme)], label='Current TO phase C from line', color='green')
-plt.title("Current to line")
-plt.xlabel("Time")
-plt.ylabel("Current to")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
+    print(f"\n======================================")
+    print(f"Initializing Solver: {CHOSEN_SOLVER}")
+    print(f"======================================\n")
 
-plt.tight_layout()
-print("Generating plots...")
-plt.show()
+    solver_init_t0 = perf_counter()
+    solver = create_solver(CHOSEN_SOLVER, problem)
+    solver_init_s = perf_counter() - solver_init_t0
 
-i_ser_A = find_name_in_block("i_ser_Pi_0", line0.emt_model)
-i_ser_B = find_name_in_block("i_ser_Pi_1", line0.emt_model)
-i_ser_C = find_name_in_block("i_ser_Pi_2", line0.emt_model)
-i_ser_A_plt = y[:, problem.get_var_idx(i_ser_A)]
-i_ser_B_plt = y[:, problem.get_var_idx(i_ser_B)]
-i_ser_C_plt = y[:, problem.get_var_idx(i_ser_C)]
+    build_t0 = perf_counter()
+    build_solver_backend(CHOSEN_SOLVER, solver, problem)
+    solver_build_s = perf_counter() - build_t0
 
-i_f_cap_A = find_name_in_block("i_cap_f_Pi_0", line0.emt_model)
-i_f_cap_B = find_name_in_block("i_cap_f_Pi_1", line0.emt_model)
-i_f_cap_C = find_name_in_block("i_cap_f_Pi_2", line0.emt_model)
-i_f_cap_A_plt = y[:, problem.get_var_idx(i_f_cap_A)]
-i_f_cap_B_plt = y[:, problem.get_var_idx(i_f_cap_B)]
-i_f_cap_C_plt = y[:, problem.get_var_idx(i_f_cap_C)]
+    # ==============================================================================
+    # RUN SIMULATION
+    # ==============================================================================
+    boundary_updater = cast(Any, problem)
+    profiler.enable()
+    sim_t0 = perf_counter()
+    t_arr, y_arr, _dy = solver.simulate(boundary_updater=boundary_updater)
+    solver_sim_s = perf_counter() - sim_t0
 
-i_t_cap_A = find_name_in_block("i_cap_t_Pi_0", line0.emt_model)
-i_t_cap_B = find_name_in_block("i_cap_t_Pi_1", line0.emt_model)
-i_t_cap_C = find_name_in_block("i_cap_t_Pi_2", line0.emt_model)
-i_t_cap_A_plt = y[:, problem.get_var_idx(i_t_cap_A)]
-i_t_cap_B_plt = y[:, problem.get_var_idx(i_t_cap_B)]
-i_t_cap_C_plt = y[:, problem.get_var_idx(i_t_cap_C)]
+    print("Single-solver benchmark")
+    print(f"  init  = {solver_init_s:.6f}s")
+    print(f"  build = {solver_build_s:.6f}s")
+    print(f"  sim   = {solver_sim_s:.6f}s")
+    print(f"  total = {solver_init_s + solver_build_s + solver_sim_s:.6f}s")
 
-plt.figure(figsize=(12, 8))
+    if isinstance(solver, StructuralCompiledSolver):
+        print("StructuralCompiled backend build stats")
+        for key, value in solver.get_backend_build_stats().items():
+            print(f"  {key}: {value:.6f}s")
+    else:
+        pass
 
-plt.subplot(2, 2, 1)
-plt.plot(tme, i_ser_A_plt[:len(tme)], label='Phase A series current line', color='blue')
-plt.plot(tme, i_ser_B_plt[:len(tme)], label='Phase B series current line', color='red')
-plt.plot(tme, i_ser_C_plt[:len(tme)], label='Phase C series current line', color='green')
-plt.title("Series current in line")
-plt.xlabel("Time")
-plt.ylabel("Current")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
+    print_solver_runtime_stats(solver, "StructuralCompiled runtime stats")
 
-plt.subplot(2, 2, 3)
-plt.plot(tme, i_f_cap_A_plt[:len(tme)], label='Shunt current at from line phase A', color='blue')
-plt.plot(tme, i_f_cap_B_plt[:len(tme)], label='Shunt current at from line phase B', color='red')
-plt.plot(tme, i_f_cap_C_plt[:len(tme)], label='Shunt current at from line phase C', color='green')
-plt.title("From shunt currents in line")
-plt.xlabel("Time")
-plt.ylabel("Current")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
+    collector = problem.get_newton_trace_collector()
+    if collector:
+        print(f"Newton iters : {len(collector.records)}")
+        df = collector.to_dataframe()
+        df.to_csv("newton_diagnostics_demo.csv", index=False)
+        print("Diagnostics written to newton_diagnostics_demo.csv")
+    else:
+        pass
 
-plt.subplot(2, 2, 4)
-plt.plot(tme, i_t_cap_A_plt[:len(tme)], label='Shunt current at to line phase A', color='blue')
-plt.plot(tme, i_t_cap_B_plt[:len(tme)], label='Shunt current at to line phase B', color='red')
-plt.plot(tme, i_t_cap_C_plt[:len(tme)], label='Shunt current at to line phase C', color='green')
-plt.title("To shunt currents in line")
-plt.xlabel("Time")
-plt.ylabel("Current")
-plt.legend(loc='upper left')
-plt.grid(True)
-plt.legend()
+    # ==============================================================================
+    # PROFILING REPORT
+    # ==============================================================================
+    profiler.disable()
+    stats = pstats.Stats(profiler).sort_stats('cumtime')
+    print("\n" + "=" * 50)
+    print("--- PROFILER REPORT (Top 15 slowest functions) ---")
+    print("=" * 50)
+    stats.print_stats(15)
+    print("=" * 50 + "\n")
 
-plt.tight_layout()
-print("Generating plots...")
-plt.show()
+    if ENABLE_PLOTS:
+        plot_paths: List[Path] = export_demo_plots(problem, t_arr, y_arr, CHOSEN_SOLVER)
+        print(f"Plots written to {plot_paths[0].parent}")
+    else:
+        print("Plotting disabled; stopping after solver/profiler report.")
+
+
+if __name__ == "__main__":
+    main()

@@ -29,10 +29,10 @@ For a simple transformer model, we use:
 - Magnetizing branch neglected (Gm = Bm = 0) for simplicity
 """
 
-def get_transformer_emt_template(
-    grid: MultiCircuit,
-    trafo: Transformer2W,
-    name: str = "transformer_emt_template"
+def get_transformer_emt_template(vf: VarFactory,
+                                 grid: MultiCircuit,
+                                 trafo: Transformer2W,
+                                 name: str = "transformer_emt_template"
 ) -> EmtModelTemplate:
     """
     Build an EMT transformer model.
@@ -42,20 +42,18 @@ def get_transformer_emt_template(
     - Magnetizing branch (Gm, Bm) at the from terminal
     - Ideal transformer ratio n
 
-    Args:
-        grid: Multicircuit
-        trafo: Transformer2W device
-        name: Name for the model
-
-    Returns:
-        EmtModelTemplate with the transformer block
+    :param vf: EMT VarFactory
+    :param grid: MultiCircuit
+    :param trafo: Transformer2W device
+    :param name: Name for the model
+    :return: EmtModelTemplate
     """
+
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.TransformerTypeDevice
     templ.name = name
     templ.block.name = name
 
-    vf: VarFactory = grid.emt_var_factory
     fbase: float = grid.fBase
 
     c0 = vf.add_const(0.0)
