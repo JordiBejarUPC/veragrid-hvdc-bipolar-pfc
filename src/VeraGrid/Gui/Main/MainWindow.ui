@@ -4496,6 +4496,9 @@ QProgressBar::chunk{
                  <property name="toolTip">
                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Maximum numberof iterations to use.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Tipical values: &lt;/p&gt;&lt;p&gt;Newton Raphson: 5&lt;/p&gt;&lt;p&gt;Levenberg-Marquards: 20&lt;/p&gt;&lt;p&gt;Fast decoupled: 10&lt;/p&gt;&lt;p&gt;Others: 20&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                  </property>
+                 <property name="suffix">
+                  <string> iterations</string>
+                 </property>
                  <property name="minimum">
                   <number>1</number>
                  </property>
@@ -4710,6 +4713,9 @@ QProgressBar::chunk{
                  <property name="toolTip">
                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Error tolerance of the method&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                  </property>
+                 <property name="suffix">
+                  <string> p.u.</string>
+                 </property>
                  <property name="prefix">
                   <string>1e-</string>
                  </property>
@@ -4728,6 +4734,9 @@ QProgressBar::chunk{
                 <widget class="QDoubleSpinBox" name="muSpinBox">
                  <property name="toolTip">
                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Factor that multiplies each increment solution. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                 <property name="suffix">
+                  <string> p.u.</string>
                  </property>
                  <property name="decimals">
                   <number>4</number>
