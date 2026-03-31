@@ -7,16 +7,7 @@ import numba as nb
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
-import sys
 import os
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-SRC_ROOT = os.path.join(REPO_ROOT, 'src')
-
-if SRC_ROOT not in sys.path:
-    sys.path.insert(0, SRC_ROOT)
-
-if REPO_ROOT not in sys.path:
-    sys.path.insert(0, REPO_ROOT)
 from typing import Callable, List
 
 
@@ -72,10 +63,9 @@ def test_demo_compiler():
     #########
     # retrieve reference results df
 
-    folder = os.path.join('data', 'dynamics')
     name = "demo_compiler.csv"
 
-    fname = os.path.join(folder, name)
+    fname = os.path.join(os.path.dirname(__file__), '..', 'data', 'dynamics', name)
 
     # fname = "simulation_with_event_emt.csv"
 

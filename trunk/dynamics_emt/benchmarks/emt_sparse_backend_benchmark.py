@@ -8,13 +8,13 @@ from typing import Any, Dict, List, Tuple
 
 import numpy as np
 
-from VeraGrid.trunk.dynamics_emt.support.benchmark_dependency_stubs import install_optional_dependency_stubs
+from trunk.dynamics_emt.support.benchmark_dependency_stubs import install_optional_dependency_stubs
 
 install_optional_dependency_stubs()
 
-import VeraGrid.trunk.dynamics_emt.scripting_emt_event as event_script
-import VeraGrid.trunk.dynamics_emt.scripting_example_thevequiv_piline_Rload_emt as rload_script
-import VeraGrid.trunk.dynamics_emt.scripting_example_thevequiv_piline_ZIPload_emt as zipload_script
+import trunk.dynamics_emt.scripting_emt_event as event_script
+import trunk.dynamics_emt.scripting_example_thevequiv_piline_Rload_emt as rload_script
+import trunk.dynamics_emt.scripting_example_thevequiv_piline_ZIPload_emt as zipload_script
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.emt_solver_factory import build_emt_solver
 from VeraGridEngine.Utils.NumericalMethods.emt_sparse_solver_registry import resolve_emt_sparse_solver_backend_provider

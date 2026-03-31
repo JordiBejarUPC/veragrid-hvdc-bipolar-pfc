@@ -8,17 +8,7 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 import matplotlib.pyplot as plt
 from typing import Dict, List, Optional, Tuple
-import sys
 import os
-
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-SRC_ROOT = os.path.join(REPO_ROOT, 'src')
-
-if SRC_ROOT not in sys.path:
-    sys.path.insert(0, SRC_ROOT)
-
-if REPO_ROOT not in sys.path:
-    sys.path.insert(0, REPO_ROOT)
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
@@ -1107,9 +1097,8 @@ def test_modes_procedural_logic() -> None:
     in one of the calls below.
     """
     # retrieve reference results df
-    folder = os.path.join('data', 'dynamics')
     name = "modes_procedural_logic.csv"
-    fname = os.path.join(folder, name)
+    fname = os.path.join(os.path.dirname(__file__), '..', 'data', 'dynamics', name)
     reference_df = pd.read_csv(fname)
 
     dt: float = 1.0e-3

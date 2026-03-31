@@ -990,6 +990,8 @@ class IoMain(ScenariosMain):
         """
         Add default catalogue to circuit
         """
+
+
         for tpe in get_transformer_catalogue():
             self.circuit.add_transformer_type(tpe)
 

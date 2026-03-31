@@ -11,6 +11,7 @@ from time import perf_counter
 from typing import Any, Dict, List, Tuple, cast
 import pandas as pd
 
+import matplotlib.pyplot as plt
 from trunk.dynamics_emt.support.emt_plot_exports import (
     extract_three_phase_matrix,
     get_plot_results_directory,
@@ -133,7 +134,7 @@ for bus in grid.buses:
 gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.emt_var_factory).block
 
 # line
-line_mdl = get_pi_line_emt_template(vf=grid.emt_var_factory, line = line0).block
+line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 # line_mdl = get_pi_line_emt_template(vf= grid.emt_var_factory).block
 
 # load

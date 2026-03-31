@@ -924,7 +924,6 @@ class SimulationsMain(TimeEventsMain):
             integration_method=self.rms_integration_method_dict[self.ui.rms_integration_method_comboBox.currentText()],
             initialization_method=self.rms_initialization_method_dict[
                 self.ui.rms_initialization_method_comboBox.currentText()],
-            use_init_values=self.ui.rms_use_init_values_checkBox.isChecked()
         )
 
         return ops

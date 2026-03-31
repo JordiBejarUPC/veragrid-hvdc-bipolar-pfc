@@ -12,8 +12,8 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType, ParamPowerFlowRefferenceType
 
 def get_generator_thevenin_rl_emt_template(vf: VarFactory,
-                                           name: str = "emt_thevenin_eq_generator_template"
-                                           ) -> EmtModelTemplate:
+        name: str = "emt_thevenin_eq_generator_template"
+) -> EmtModelTemplate:
     """
     Simple EMT three-phase Thevenin generator behind series R-X.
 
@@ -53,7 +53,7 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
         using the Thevenin steady-state relation:
             E = V + (R + jX) I
 
-    :param vf: EMT  VarFactory
+    :param vf: EMT  aVarFactory
     :param name: Model name
     :return: EmtModelTemplate
     """
@@ -65,6 +65,7 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
     # ----------------------------------------------------------------------------------
     # Constants for symbolic expressions
     # ----------------------------------------------------------------------------------
+    c0 = vf.add_const(0.0)
     c05 = vf.add_const(0.5)
 
     # ----------------------------------------------------------------------------------
@@ -195,6 +196,10 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
     }
 
     templ.block.event_dict = {
+        # omega_base: vf.add_const(None),
+        # R_s: vf.add_const(None),
+        # X_s: vf.add_const(None),
+
         # PF-derived init-only values
         phi_v: vf.add_const(None),
         phi: vf.add_const(None),
@@ -202,7 +207,9 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
         Ipk: vf.add_const(None),
 
         # Internal init-only auxiliary values
+        # delta: vf.add_const(None),
         delta: sym.atan(E_im / E_re),
+        # Epk: vf.add_const(None),
         Epk: ((E_re ** 2 + E_im ** 2) ** c05),
     }
 

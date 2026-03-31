@@ -5,17 +5,8 @@
 import pandas as pd
 from pandas.testing import assert_frame_equal
 
-import sys
 import os
-
-REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-SRC_ROOT = os.path.join(REPO_ROOT, 'src')
-
-if SRC_ROOT not in sys.path:
-    sys.path.insert(0, SRC_ROOT)
-
-if REPO_ROOT not in sys.path:
-    sys.path.insert(0, REPO_ROOT)
+from pathlib import Path
 
 import statistics
 import time
@@ -366,9 +357,8 @@ def _build_export_dataframe(cases: List[Dict[str, object]]) -> pd.DataFrame:
 def test_conditional_placement_benchmark() -> None:
 
     # retrieve reference results df
-    folder = os.path.join('data', 'dynamics')
     name = "demo_conditional_placement_benchmark.csv"
-    fname = os.path.join(folder, name)
+    fname = os.path.join(os.path.dirname(__file__), '..', 'data', 'dynamics', name)
     reference_df = pd.read_csv(fname)
 
     cases = [
@@ -379,8 +369,9 @@ def test_conditional_placement_benchmark() -> None:
 
     results_df = _build_export_dataframe(cases)
 
-    name = "demo_conditional_placement_benchmark_FROM_TEST.csv"
-    results_df.to_csv(name, index=False)
+    benchmark_results_dir = Path(__file__).resolve().parents[3] / "trunk" / "dynamics_emt" / "benchmark_results"
+    benchmark_results_dir.mkdir(parents=True, exist_ok=True)
+    results_df.to_csv(benchmark_results_dir / "demo_conditional_placement_benchmark_FROM_TEST.csv", index=False)
 
     id_cols = ["case_label", "plot_title"]
     numeric_cols = [
