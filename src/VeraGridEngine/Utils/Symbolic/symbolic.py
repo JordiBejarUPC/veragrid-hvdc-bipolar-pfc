@@ -358,7 +358,6 @@ class Var(Expr):
         self.base_var: Var = base_var  # assign reference to base var
         self._origin_var: Var | None = None
 
-
         if base_var is not None:
             self.base_var.diff_var = self  # assign reference to me in the base var
 
@@ -435,7 +434,7 @@ class Var(Expr):
 
     @property
     def network_conn(self) -> bool:
-       return self._network_conn
+        return self._network_conn
 
     @property
     def diff_order(self) -> int:
@@ -487,7 +486,6 @@ class Var(Expr):
                 return result
             else:
                 return Const(0)
-
 
     def populate_initial_lag(self, x0: float, dx0: np.ndarray, lag_x: float, dt: Optional[Const]):
         """
