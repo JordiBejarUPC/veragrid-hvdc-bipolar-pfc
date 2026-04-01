@@ -177,9 +177,9 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
     Outer_ctrl_P_1.diff_vars = [d_Outer_Ctrl_P_wEPC_PI_V2_dx]
     # --- Parameter Values ---
     Outer_ctrl_P_1.event_dict = {
-        Outer_Ctrl_P_P_ctrl_mode: vf.add_const(value=0.0, name='P_ctrl_mode'),
-        Outer_Ctrl_P_Kp: vf.add_const(value=1.3, name='Kp'),
-        Outer_Ctrl_P_Ki: vf.add_const(value=70.0, name='Ki'),
+        Outer_Ctrl_P_wEPC_PI_V2_P_ctrl_mode: vf.add_const(value=0.0, name='P_ctrl_mode'),
+        Outer_Ctrl_P_wEPC_PI_V2_Kp: vf.add_const(value=1.3, name='Kp'),
+        Outer_Ctrl_P_wEPC_PI_V2_Ki: vf.add_const(value=70.0, name='Ki'),
         uDC_ref: uDC,  # references are parameters of the controller
         Pdc_ref: P_act,  # references are parameters of the controller
     }
@@ -377,7 +377,7 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
             (P_epc - (((-EPC_Control_Droop_VSC_MainFrame_dP_max_epc) + ((dPepc - (-EPC_Control_Droop_VSC_MainFrame_dP_max_epc)) * sym.heaviside((dPepc - (-EPC_Control_Droop_VSC_MainFrame_dP_max_epc))))) - ((dPepc - EPC_Control_Droop_VSC_MainFrame_dP_max_epc) * sym.heaviside((dPepc - EPC_Control_Droop_VSC_MainFrame_dP_max_epc))))),
         ],
         algebraic_vars=[df, dfa, gain, dPepc, P_epc],
-        in_vars=[fe],
+        # in_vars=[fe], # defined as a parameter
         out_vars=[P_epc],
         name='EPC Block'
     )
@@ -387,6 +387,7 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
         EPC_Control_Droop_VSC_MainFrame_G_dc: vf.add_const(None, name='G_dc'),
         EPC_Control_Droop_VSC_MainFrame_df_trig: vf.add_const(None, name='df_trig'),
         EPC_Control_Droop_VSC_MainFrame_dP_max_epc: vf.add_const(None, name='dP_max_epc'),
+        fe: vf.add_const(value = 50)
     }
     # --- Retained Runtime Modes ---
     EPC_Block_5.mode_dict = {
@@ -413,10 +414,10 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
         algebraic_vars = [u, ur, ui, cosphi, sinphi, P_act, Q_act, id, iq],
         algebraic_eqs = [
             # Voltage -> u: phasor, ur: real part, ui: imaginary part
-            u - Vm * sym.exp(1j * Va),
+            u - Vm,
             ur - sym.real(u),
             ui - sym.imag(u),
-            # PLL -> cosphi : cos(Va), sinphi: sin(Va)
+            # PLL -> cosphi : cos(Va), sinphi: sin(Va) TODO: maybe replicate the PLL behavior?
             cosphi - sym.cos(Va),
             sinphi - sym.sin(Va),
             # TODO: Actual power of the grid -> P_act: , Q_act:
@@ -425,11 +426,10 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
             # TODO: dq frame currents
             # id - ,
             # iq - ,
+
         ],
         in_vars=[Vm, Va, uDC,  # from the buses variables
                  ],  # TODO: what else? what from the VSC?
-
-        # in_vars=[ fe], # TODO: what is fe?
         out_vars=[Pmd, Pmq],
         name='SlavePWM_Model'
     )

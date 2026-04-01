@@ -371,7 +371,7 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
             u - Vm * sym.exp(1j * Va),
             ur - sym.real(u),
             ui - sym.imag(u),
-            # PLL -> cosphi : cos(Va), sinphi: sin(Va)
+            # PLL -> cosphi : cos(Va), sinphi: sin(Va) TODO: maybe replicate the PLL behavior?
             cosphi - sym.cos(Va),
             sinphi - sym.sin(Va),
             # TODO: Actual power of the grid -> P_act: , Q_act:
