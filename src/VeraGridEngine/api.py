@@ -26,7 +26,7 @@ from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_a
 
 
 def open_file(filename: Union[str, List[str]],
-              options: FileOpenOptions | None = None) -> MultiCircuit:
+              options: FileOpenOptions | None = None) -> MultiCircuit | None:
     """
     Open file
     :param filename: name of the file (.veragrid, .ejson, .m, .xml, .zip, etc.) or list of files (.xml, .zip)
@@ -65,6 +65,22 @@ def save_multiverse(mv: MultiVerse, filename: str):
             multiverse=mv
         )
     )
+
+
+def open_cgmes(filenames: Union[str, List[str]], cgmes_version=CGMESVersions.v2_4_15) -> MultiCircuit | None:
+    """
+    Open CGMES files
+    :param filenames: name of the file (.xml, .zip) or list of files (.xml, .zip)
+    :param cgmes_version: CGMES version
+    :return: MultiCircuit instance
+    """
+    return FileOpen(
+        file_name=filenames,
+        options=FileOpenOptions(
+            cgmes_version=cgmes_version,
+            file_type=FileType.CGMES
+        )
+    ).open()
 
 
 def save_cgmes_file(grid: MultiCircuit,
