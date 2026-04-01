@@ -85,7 +85,10 @@ class TapChanger:
         self.recalc()
 
     def copy(self) -> "TapChanger":
+        """
 
+        :return:
+        """
         elm = TapChanger(
             total_positions=self._total_positions,
             neutral_position=self._neutral_position,

@@ -70,7 +70,6 @@ class Wire(EditableDevice):
         self._R = float(r)
         self._max_current = float(max_current)
 
-
     @property
     def stranding(self) -> str:
         """

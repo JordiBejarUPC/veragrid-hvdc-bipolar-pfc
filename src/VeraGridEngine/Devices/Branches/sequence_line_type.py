@@ -44,7 +44,8 @@ def get_line_impedances_with_c(r_ohm: float,
         R: float = np.round(r_ohm_total / Zbase, decimals_rounding)
         X: float = np.round(x_ohm_total / Zbase, decimals_rounding)
         B: float = np.round(b_siemens_total / Ybase, decimals_rounding)
-        rate: float = np.round(Imax * Vnom * 1.73205080757, decimals_rounding)  # nominal power in MVA = kA * kV * sqrt(3)
+        rate: float = np.round(Imax * Vnom * 1.73205080757,
+                               decimals_rounding)  # nominal power in MVA = kA * kV * sqrt(3)
 
         return R, X, B, rate
     else:
@@ -80,7 +81,8 @@ def get_line_impedances_with_b(r_ohm: float, x_ohm: float, b_us: float, length: 
         R: float = np.round(r_ohm_total / Zbase, decimals_rounding)
         X: float = np.round(x_ohm_total / Zbase, decimals_rounding)
         B: float = np.round(b_siemens_total / Ybase, decimals_rounding)
-        rate: float = np.round(Imax * Vnom * 1.73205080757, decimals_rounding)  # nominal power in MVA = kA * kV * sqrt(3)
+        rate: float = np.round(Imax * Vnom * 1.73205080757,
+                               decimals_rounding)  # nominal power in MVA = kA * kV * sqrt(3)
 
         return R, X, B, rate
     else:
@@ -125,10 +127,15 @@ class SequenceLineType(EditableDevice):
         GCProp(key='opex', units='currency/MWh', tpe=float, definition='Operational expenditure'),
     )
 
-    def __init__(self, name='SequenceLine', idtag=None, Imax=1, Vnom=1,
-                 R=1e-20, X=1e-20, B=1e-20, R0=1e-20, X0=1e-20, B0=1e-20, CnF=1e-20, CnF0=1e-20,
+    def __init__(self, name='SequenceLine',
+                 idtag: str | None = None,
+                 Imax: float = 1, Vnom: float = 1,
+                 R=1e-20, X=1e-20, B=1e-20,
+                 R0=1e-20, X0=1e-20, B0=1e-20,
+                 CnF=1e-20, CnF0=1e-20,
                  use_conductance: bool = False,
-                 capex: float = 0.0, opex: float = 0.0):
+                 capex: float = 0.0, opex: float = 0.0,
+                 n_circuits: int = 1):
         """
         Constructor
         :param name: name of the model
@@ -143,6 +150,7 @@ class SequenceLineType(EditableDevice):
         :param CnF0: Conductivity of zero sequence in uS/km
         :param capex: Capital expenditures
         :param opex: Operating expenditures
+        :param n_circuits: Number of circuits
         """
 
         EditableDevice.__init__(self,
@@ -167,7 +175,7 @@ class SequenceLineType(EditableDevice):
 
         self.use_conductance = use_conductance
 
-        self.n_circuits = 1
+        self.n_circuits = n_circuits
 
         self.capex = float(capex)
         self.opex = float(opex)
@@ -282,8 +290,6 @@ class SequenceLineType(EditableDevice):
         adm.phC = 1
 
         return adm
-
-    # Scalar property accessors coerce assignments to the declared schema types.
 
     @property
     def Imax(self) -> float:

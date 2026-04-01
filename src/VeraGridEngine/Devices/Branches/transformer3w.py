@@ -224,7 +224,8 @@ class Transformer3W(PhysicalDevice):
                                 build_status=build_status)
 
         if bus0 is None:
-            self.bus0 = Bus(name=name + '_bus', Vnom=1.0, xpos=x, ypos=y, is_internal=True)
+            self.bus0 = Bus(name=name + '_bus', Vnom=1.0,
+                            xpos=x, ypos=y, is_internal=True)
         else:
             bus0.internal = True
             bus0.Vnom = 1.0
