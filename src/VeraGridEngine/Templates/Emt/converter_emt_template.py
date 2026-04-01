@@ -290,32 +290,6 @@ def get_emt_ideal_converter(
 def get_pseudo_emt_converter(
     vf: VarFactory,
     name: str = "pseudo_converter_emt",
-    sbase: float = 1.0,
-    fbase: float = 50.0,
-    P_ref0: float = 0.0,
-    Q_ref0: float = 0.0,
-    Vdc_ref0: float = 1.0,
-    R_eq: float = 0.02,
-    L_eq: float = 0.08,
-    C_dc: float = 0.05,
-    R_dc: float = 1e6,
-    R_dc_term: float = 1e-4,
-    pll_kp: float = 40.0,
-    pll_ki: float = 400.0,
-    i_kp: float = 0.5,
-    i_ki: float = 40.0,
-    vdc_kp: float = 1.5,
-    vdc_ki: float = 30.0,
-    q_kp: float = 0.6,
-    q_ki: float = 25.0,
-    i_max: float = 1.2,
-    m_max: float = 0.95,
-    P_loss0: float = 0.0,
-    P_loss_i1: float = 0.01,
-    P_loss_i2: float = 0.01,
-    tau_meas: float = 0.01,
-    aw_gain: float = 1.0,
-    vdc_floor: float = 0.05,
     control1: ConverterControlType | None = ConverterControlType.Vm_dc,
     control2: ConverterControlType | None = ConverterControlType.Qac,
     control1_val: float | None = None,
@@ -545,6 +519,8 @@ def get_pseudo_emt_converter(
     v_cmd_d = vf.add_var(name=f"v_cmd_d_{name}")
     v_cmd_q = vf.add_var(name=f"v_cmd_q_{name}")
 
+    sbase = vf.add_var(name=f"sbase_{name}")
+
     # =================================================================
     # PARAMETERS / EVENTS
     # =================================================================
@@ -563,45 +539,46 @@ def get_pseudo_emt_converter(
     c_sqrt3_over_two = vf.add_const(np.sqrt(3.0) / 2.0)
     c_three = vf.add_const(3.0)
     c_three_over_two = vf.add_const(1.5)
-    c_sbase = vf.add_const(max(float(sbase), 1e-12))
+
 
     event_dict = {
-        P_ref: vf.add_const(P_ref0),
-        Q_ref: vf.add_const(Q_ref0),
-        Vdc_ref: vf.add_const(Vdc_ref0),
-        omega_base: vf.add_const(2.0 * np.pi * float(fbase)),
+        sbase: vf.add_const(1.0),
+        P_ref: vf.add_const(0.0),
+        Q_ref: vf.add_const(0.0),
+        Vdc_ref: vf.add_const(1.0),
+        omega_base: vf.add_const(2.0 * np.pi * 50.0),
         phi_v: vf.add_const(0.0),
         Vpk: vf.add_const(np.sqrt(2.0)),
-        R_eq_p: vf.add_const(max(float(R_eq), 1e-9)),
-        L_eq_p: vf.add_const(max(float(L_eq), 1e-9)),
-        C_dc_p: vf.add_const(max(float(C_dc), 1e-9)),
-        R_dc_p: vf.add_const(max(float(R_dc), 1e-9)),
-        R_dc_term_p: vf.add_const(max(float(R_dc_term), 1e-9)),
-        pll_kp_p: vf.add_const(float(pll_kp)),
-        pll_ki_p: vf.add_const(float(pll_ki)),
-        i_kp_p: vf.add_const(float(i_kp)),
-        i_ki_p: vf.add_const(float(i_ki)),
-        vdc_kp_p: vf.add_const(float(vdc_kp)),
-        vdc_ki_p: vf.add_const(float(vdc_ki)),
-        q_kp_p: vf.add_const(float(q_kp)),
-        q_ki_p: vf.add_const(float(q_ki)),
-        i_max_p: vf.add_const(max(float(i_max), 1e-6)),
-        m_max_p: vf.add_const(max(float(m_max), 1e-6)),
-        P_loss0_p: vf.add_const(float(P_loss0)),
-        P_loss_i1_p: vf.add_const(float(P_loss_i1)),
-        P_loss_i2_p: vf.add_const(float(P_loss_i2)),
-        tau_meas_p: vf.add_const(max(float(tau_meas), 1e-6)),
-        aw_gain_p: vf.add_const(float(aw_gain)),
-        vdc_floor_p: vf.add_const(max(float(vdc_floor), 1e-6)),
+        R_eq_p: vf.add_const(max(0.02, 1e-9)),
+        L_eq_p: vf.add_const(max(0.08, 1e-9)),
+        C_dc_p: vf.add_const(max(0.05, 1e-9)),
+        R_dc_p: vf.add_const(max(1e6, 1e-9)),
+        R_dc_term_p: vf.add_const(max(0.0001, 1e-9)),
+        pll_kp_p: vf.add_const(40.0),
+        pll_ki_p: vf.add_const(400.0),
+        i_kp_p: vf.add_const(0.5),
+        i_ki_p: vf.add_const(40.0),
+        vdc_kp_p: vf.add_const(1.5),
+        vdc_ki_p: vf.add_const(30.0),
+        q_kp_p: vf.add_const(0.6),
+        q_ki_p: vf.add_const(25.0),
+        i_max_p: vf.add_const(max(1.2, 1e-6)),
+        m_max_p: vf.add_const(max(0.95, 1e-6)),
+        P_loss0_p: vf.add_const(0.0),
+        P_loss_i1_p: vf.add_const(0.01),
+        P_loss_i2_p: vf.add_const(0.01),
+        tau_meas_p: vf.add_const(max(0.01, 1e-6)),
+        aw_gain_p: vf.add_const(1.0),
+        vdc_floor_p: vf.add_const(max(0.05, 1e-6)),
     }
 
     # Per-unit normalization and shared auxiliary quantities used by the power,
     # current-control, and DC-side equations.
-    P_ref_pu = P_ref / c_sbase
-    Q_ref_pu = Q_ref / c_sbase
-    P_loss0_pu = P_loss0_p / c_sbase
-    P_loss_i1_pu = P_loss_i1_p / c_sbase
-    P_loss_i2_pu = P_loss_i2_p / c_sbase
+    P_ref_pu = P_ref / sbase
+    Q_ref_pu = Q_ref / sbase
+    P_loss0_pu = P_loss0_p / sbase
+    P_loss_i1_pu = P_loss_i1_p / sbase
+    P_loss_i2_pu = P_loss_i2_p / sbase
     i_leak = v_dc / R_dc_p
     v_dc_eff = sym.max(v_dc, vdc_floor_p)
     theta_b = theta_pll - vf.add_const(2.0 * np.pi / 3.0)

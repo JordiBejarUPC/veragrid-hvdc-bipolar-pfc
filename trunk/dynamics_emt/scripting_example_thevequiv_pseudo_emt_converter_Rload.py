@@ -84,7 +84,7 @@ def build_grid() -> Tuple[gce.MultiCircuit, gce.Bus, gce.Bus, gce.Generator, gce
     p_transfer_mw: float = 30.0
     q_transfer_mvar: float = 0.0
     converter: gce.VSC = gce.VSC(
-        name="PseudoVSC",
+        name="pseudo_converter_emt",
         bus_from=bus_dc,
         bus_to=bus_ac,
         rate=grid.Sbase,
@@ -139,38 +139,42 @@ def attach_emt_models(
 
     vsc_mdl: Block = get_pseudo_emt_converter(
         vf=grid.emt_var_factory,
-        name=converter.name,
-        sbase=grid.Sbase,
-        fbase=grid.fBase,
-        P_ref0=float(dc_load.P),
-        Q_ref0=float(converter.control1_val),
-        Vdc_ref0=1.0,
-        R_eq=0.03,
-        L_eq=0.12,
-        C_dc=0.08,
-        R_dc=1e6,
-        R_dc_term=1e-4,
-        pll_kp=40.0,
-        pll_ki=400.0,
-        i_kp=0.6,
-        i_ki=50.0,
-        vdc_kp=2.0,
-        vdc_ki=30.0,
-        q_kp=0.8,
-        q_ki=20.0,
-        i_max=1.3,
-        m_max=0.95,
-        P_loss0=p_loss0,
-        P_loss_i1=0.01,
-        P_loss_i2=0.01,
-        tau_meas=0.01,
-        aw_gain=1.0,
-        vdc_floor=0.05,
         control1=ConverterControlType.Vm_dc,
         control2=ConverterControlType.Qac,
         control1_val=1.0,
         control2_val=0.0,
     ).block
+
+    omega_base = 2 * np.pi * grid.fBase
+    vsc_mdl.set_parameter_in_model(var_name="sbase_pseudo_converter_emt", new_value=grid.Sbase)
+    vsc_mdl.set_parameter_in_model(var_name="omega_base_pseudo_converter_emt", new_value= omega_base)
+    vsc_mdl.set_parameter_in_model(var_name="P_ref_pseudo_converter_emt", new_value=float(dc_load.P))
+    vsc_mdl.set_parameter_in_model(var_name="Q_ref_pseudo_converter_emt", new_value=float(converter.control1_val))
+    vsc_mdl.set_parameter_in_model(var_name="Vdc_ref_pseudo_converter_emt", new_value=1.0)
+    vsc_mdl.set_parameter_in_model(var_name="R_eq_pseudo_converter_emt", new_value=0.03)
+    vsc_mdl.set_parameter_in_model(var_name="L_eq_pseudo_converter_emt", new_value=0.12)
+    vsc_mdl.set_parameter_in_model(var_name="C_dc_pseudo_converter_emt", new_value=0.08)
+    vsc_mdl.set_parameter_in_model(var_name="R_dc_pseudo_converter_emt", new_value=1e6)
+    vsc_mdl.set_parameter_in_model(var_name="R_dc_term_pseudo_converter_emt", new_value=0.0001)
+    vsc_mdl.set_parameter_in_model(var_name="pll_kp_pseudo_converter_emt", new_value=40.0)
+    vsc_mdl.set_parameter_in_model(var_name="pll_ki_pseudo_converter_emt", new_value=400.0)
+    vsc_mdl.set_parameter_in_model(var_name="i_kp_pseudo_converter_emt", new_value=0.6)
+    vsc_mdl.set_parameter_in_model(var_name="i_ki_pseudo_converter_emt", new_value=50.0)
+    vsc_mdl.set_parameter_in_model(var_name="vdc_kp_pseudo_converter_emt", new_value=2.0)
+    vsc_mdl.set_parameter_in_model(var_name="vdc_ki_pseudo_converter_emt", new_value=30.0)
+    vsc_mdl.set_parameter_in_model(var_name="q_kp_pseudo_converter_emt", new_value=0.8)
+    vsc_mdl.set_parameter_in_model(var_name="q_ki_pseudo_converter_emt", new_value=20.0)
+    vsc_mdl.set_parameter_in_model(var_name="i_max_pseudo_converter_emt", new_value=1.3)
+    vsc_mdl.set_parameter_in_model(var_name="m_max_pseudo_converter_emt", new_value=0.95)
+    vsc_mdl.set_parameter_in_model(var_name="P_loss0_pseudo_converter_emt", new_value=p_loss0)
+    vsc_mdl.set_parameter_in_model(var_name="P_loss_i1_pseudo_converter_emt", new_value=0.01)
+    vsc_mdl.set_parameter_in_model(var_name="P_loss_i2_pseudo_converter_emt", new_value=0.01)
+    vsc_mdl.set_parameter_in_model(var_name="tau_meas_pseudo_converter_emt", new_value=0.01)
+    vsc_mdl.set_parameter_in_model(var_name="aw_gain_pseudo_converter_emt", new_value=0.1)
+    vsc_mdl.set_parameter_in_model(var_name="vdc_floor_pseudo_converter_emt", new_value=0.05)
+    #control vals
+    # vsc_mdl.set_parameter_in_model(var_name="control1_val_pseudo_converter_emt", new_value=1.0)
+    # vsc_mdl.set_parameter_in_model(var_name="control1_val_pseudo_converter_emt", new_value=0.0)
 
     dc_load_r_pu: float = grid.Sbase / float(dc_load.P)
     dc_load_mdl: Block = get_dc_load_emt_template(
@@ -349,18 +353,18 @@ def build_plot_data(
     data["v_dc_bus"] = get_signal(problem, bus_dc.emt_model, "v_DC_Bus_DC_emt_template", y)
 
     data["i_gen_a"] = get_signal(problem, gen_mdl, "i_A_emt_thevenin_eq_generator_template", y)
-    data["i_conv_a"] = get_signal(problem, vsc_mdl, "i_A_PseudoVSC", y)
-    data["i_conv_b"] = get_signal(problem, vsc_mdl, "i_B_PseudoVSC", y)
-    data["i_conv_c"] = get_signal(problem, vsc_mdl, "i_C_PseudoVSC", y)
-    data["i_dc_conv"] = get_signal(problem, vsc_mdl, "i_dc_PseudoVSC", y)
+    data["i_conv_a"] = get_signal(problem, vsc_mdl, "i_A_pseudo_converter_emt", y)
+    data["i_conv_b"] = get_signal(problem, vsc_mdl, "i_B_pseudo_converter_emt", y)
+    data["i_conv_c"] = get_signal(problem, vsc_mdl, "i_C_pseudo_converter_emt", y)
+    data["i_dc_conv"] = get_signal(problem, vsc_mdl, "i_dc_pseudo_converter_emt", y)
     data["i_dc_load"] = -get_signal(problem, dc_load_mdl, "i_dc_dc_r_load_emt", y)
 
-    data["v_dc_internal"] = get_signal(problem, vsc_mdl, "v_dc_PseudoVSC", y)
-    data["theta_pll"] = get_signal(problem, vsc_mdl, "theta_pll_PseudoVSC", y)
-    data["i_d"] = get_signal(problem, vsc_mdl, "i_d_PseudoVSC", y)
-    data["i_q"] = get_signal(problem, vsc_mdl, "i_q_PseudoVSC", y)
-    data["P"] = get_signal(problem, vsc_mdl, "P_PseudoVSC", y)
-    data["Q"] = get_signal(problem, vsc_mdl, "Q_PseudoVSC", y)
+    data["v_dc_internal"] = get_signal(problem, vsc_mdl, "v_dc_pseudo_converter_emt", y)
+    data["theta_pll"] = get_signal(problem, vsc_mdl, "theta_pll_pseudo_converter_emt", y)
+    data["i_d"] = get_signal(problem, vsc_mdl, "i_d_pseudo_converter_emt", y)
+    data["i_q"] = get_signal(problem, vsc_mdl, "i_q_pseudo_converter_emt", y)
+    data["P"] = get_signal(problem, vsc_mdl, "P_pseudo_converter_emt", y)
+    data["Q"] = get_signal(problem, vsc_mdl, "Q_pseudo_converter_emt", y)
 
     return data
 
