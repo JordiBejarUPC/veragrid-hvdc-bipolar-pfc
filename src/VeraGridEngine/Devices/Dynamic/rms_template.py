@@ -42,15 +42,26 @@ class RmsModelTemplate(PointerDeviceParent):
 
     def __deepcopy__(self, memo):
         cls = self.__class__
-        result = cls.__new__(cls)  # bypass __init__
+        result = cls.__new__(cls)
         memo[id(self)] = result
 
-        # copy simple attributes
-        result._tpe = self._tpe
-
-        # deepcopy block safely
-        result._block = self._block.copy()
+        result._idtag = self._idtag
         result._name = self._name
+        result._code = self._code
+        result._rdfid = self._rdfid
+        result.device_type = self.device_type
+        result.comment = self.comment
+        result.action = self.action
+        result.selected_to_merge = self.selected_to_merge
+        result.diff_changes = self.diff_changes
+        result._EditableDevice__auto_update_enabled = self._EditableDevice__auto_update_enabled
+
+        result._device_idtag = self._device_idtag
+        result._tpe = self._tpe
+        result._device_name = self._device_name
+        result._device = self._device
+
+        result._block = self._block
 
         return result
 

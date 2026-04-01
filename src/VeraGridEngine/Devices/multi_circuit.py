@@ -364,6 +364,12 @@ class MultiCircuit(Assets):
                 'diagrams',
                 'rms_var_factory',
                 'emt_var_factory',
+                'rms_models',
+                'emt_models',
+                'rms_events',
+                'emt_events',
+                'rms_events_groups',
+                'emt_events_groups',
                 ]
 
         for pr in ppts:
