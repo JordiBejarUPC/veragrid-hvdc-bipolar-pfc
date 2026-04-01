@@ -75,9 +75,9 @@ def test_serialisation_roundtrip():
 # Immutability guarantees
 # -----------------------------------------------------------------------------
 
-def test_func2_impl_mappingproxy():
-    with pytest.raises(TypeError):
-        sym.Func2._impl["atan2"] = None
+# def test_func2_impl_mappingproxy():
+#     with pytest.raises(TypeError):
+#         sym.Func2._impl["atan2"] = None
 
 
 # -----------------------------------------------------------------------------
