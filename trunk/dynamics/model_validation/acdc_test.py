@@ -99,7 +99,7 @@ grid.add_bus(bus2)
 grid.add_bus(bus3)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.rms_var_factory)
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 grid.add_line(line12)
 grid.add_vsc(vsc1)
@@ -115,17 +115,17 @@ print('Voltage magnitudes (p.u.): ', abs(pf_driver.results.voltage))
 print('Voltage angles (deg): ', np.angle(pf_driver.results.voltage, deg=True))
 
 #Initialise the RMS
-line12_mdl = block_deep_copy(get_line_rms_template(grid.rms_var_factory).block, grid.rms_var_factory)
+line12_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block, grid.var_factory)
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = block_deep_copy(ZIPLoadBuild(Pl0 =-0.0999999, Ql0 =-0.00999999).block, grid.rms_var_factory)
+    load_mdl = block_deep_copy(ZIPLoadBuild(Pl0 =-0.0999999, Ql0 =-0.00999999).block, grid.var_factory)
 
-genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.rms_var_factory).block, grid.rms_var_factory)
+genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.var_factory).block, grid.var_factory)
 #vsc_mdl   = block_deep_copy(VSCShuntBuild2().block)
 #injection_mdl = block_deep_copy(get_load_rms_template().block)
-vsc_mdl        =  block_deep_copy(VSCShuntBuild2().block, grid.rms_var_factory)
-pv_control_block       =  block_deep_copy(PVControlBuild2().block, grid.rms_var_factory)
-pv_cell_block  =  block_deep_copy(PVCellBuild().block, grid.rms_var_factory)
+vsc_mdl        =  block_deep_copy(VSCShuntBuild2().block, grid.var_factory)
+pv_control_block       =  block_deep_copy(PVControlBuild2().block, grid.var_factory)
+pv_cell_block  =  block_deep_copy(PVCellBuild().block, grid.var_factory)
 
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
 genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])

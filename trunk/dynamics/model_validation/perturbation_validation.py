@@ -45,7 +45,7 @@ def perturbation_validation():
     grid.add_bus(bus1)
     
     for bus in grid.buses:
-        initialize_bus_phasor_rms(bus, vf=grid.rms_var_factory)
+        initialize_bus_phasor_rms(bus, vf=grid.var_factory)
     
     line = gce.Line(name="Line", bus_from=bus0, bus_to=bus1,
                     r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=900.0)
@@ -58,25 +58,25 @@ def perturbation_validation():
     grid.add_generator(bus=bus0, api_obj=gen)
     
     # Build models
-    genqec = get_complete_generator_template_phasor(grid.rms_var_factory, name="Gen0").block
+    genqec = get_complete_generator_template_phasor(grid.var_factory, name="Gen0").block
     
-    line_mdl = get_line_phasor_rms_template(grid.rms_var_factory).block
+    line_mdl = get_line_phasor_rms_template(grid.var_factory).block
     line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
     line_mdl.connect([line_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
     line_mdl.connect([line_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
     line_mdl.connect([line_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
-    set_rms_model(device=line, model=line_mdl, var_factory=grid.rms_var_factory)
+    set_rms_model(device=line, model=line_mdl, var_factory=grid.var_factory)
     
     genqec.connect([genqec.in_vars[0]], [bus0.rms_model.out_vars[0]])
     genqec.connect([genqec.in_vars[1]], [bus0.rms_model.out_vars[1]])
-    set_rms_model(device=gen, model=genqec, var_factory=grid.rms_var_factory)
+    set_rms_model(device=gen, model=genqec, var_factory=grid.var_factory)
     
-    load_mdl = get_load_phasor_current_rms_template(grid.rms_var_factory).block
+    load_mdl = get_load_phasor_current_rms_template(grid.var_factory).block
     load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
     load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
     load_mdl.set_parameter_in_model(var_name="Ir0", new_value=-0.10018943102)
     load_mdl.set_parameter_in_model(var_name="Ii0", new_value=+0.01075467015332)
-    set_rms_model(device=load, model=load_mdl, var_factory=grid.rms_var_factory)
+    set_rms_model(device=load, model=load_mdl, var_factory=grid.var_factory)
     
     # Power flow
     pf_options = gce.PowerFlowOptions()

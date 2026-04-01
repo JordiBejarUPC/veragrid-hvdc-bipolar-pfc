@@ -501,7 +501,7 @@ class RmsProblemPhasor(RmsProblemTemplate):
 
         # add the nodal balance equations (current balance for phasor formulation)
         for i, elm in enumerate(self.grid.buses):
-            mdl = block_deep_copy(elm.rms_model, grid.rms_var_factory)
+            mdl = block_deep_copy(elm.rms_model, grid.var_factory)
             if len(mdl.algebraic_eqs) == 0:
                 if not Ir_used[i] and not Ii_used[i]:
                     self.logger.add_error("Isolated bus", value=i)
@@ -564,7 +564,7 @@ class RmsProblemPhasor(RmsProblemTemplate):
         for i, var in enumerate(diff_vars_from_states):
             state_var = self._state_vars[i]
             if var is None:
-                diff_vars_from_states[i] = self.grid.rms_var_factory.add_diff_var(name = 'aux', base_var=state_var)
+                diff_vars_from_states[i] = self.grid.var_factory.add_diff_var(name = 'aux', base_var=state_var)
         diff_vars_from_algebraic = [var.diff_var for var in self._algebraic_vars if var.diff_var is not None]
         self._diff_vars = diff_vars_from_states + diff_vars_from_algebraic
 
@@ -826,7 +826,7 @@ class RmsProblemPhasor(RmsProblemTemplate):
         xdot = list() 
         # for var in self._state_vars:
         #     if var.diff_var is None:
-        #         diff_var = self.grid.rms_var_factory.add_diff_var(name = '', base_var=var)
+        #         diff_var = self.grid.var_factory.add_diff_var(name = '', base_var=var)
         #         xdot.append(diff_var)
         #     else:
         #         xdot.append(var.diff_var)

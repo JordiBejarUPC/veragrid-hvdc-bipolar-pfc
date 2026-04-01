@@ -73,7 +73,7 @@ grid.add_bus(bus2)
 grid.add_bus(bus3)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.rms_var_factory)
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 grid.add_line(line12)
 grid.add_vsc(vsc1)
@@ -90,11 +90,11 @@ print('PF Voltage magnitudes (p.u.): ', abs(res.voltage))
 
 
 # Initialize the RMS
-line12_mdl = block_deep_copy(get_line_rms_template(grid.rms_var_factory).block)
-load_mdl = block_deep_copy(ZIPLoadBuild(grid.rms_var_factory, Pl0 =-0.005, Ql0 =-0.001).block)
-genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.rms_var_factory).block)
-vsc_mdl = block_deep_copy(VscGfmBuild(grid.rms_var_factory).block)
-dc_source = block_deep_copy(DCVoltageSource(grid.rms_var_factory, bus3.rms_model.out_vars[0]).block)
+line12_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+load_mdl = block_deep_copy(ZIPLoadBuild(grid.var_factory, Pl0 =-0.005, Ql0 =-0.001).block)
+genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.var_factory).block)
+vsc_mdl = block_deep_copy(VscGfmBuild(grid.var_factory).block)
+dc_source = block_deep_copy(DCVoltageSource(grid.var_factory, bus3.rms_model.out_vars[0]).block)
 
 # Connections
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])

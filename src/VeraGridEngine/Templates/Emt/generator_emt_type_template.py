@@ -17,7 +17,7 @@ from VeraGridEngine.Templates.templates_common_functions import (tf_to_block, tf
 def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_type_generator_template") -> EmtModelTemplate:
     """
     EMT type machine model without damping effects.
-    :param vf: grid.emt_var_factory
+    :param vf: grid.var_factory
     :param name: string to identify the generator and model
     :return: EmtModelTemplate
     """

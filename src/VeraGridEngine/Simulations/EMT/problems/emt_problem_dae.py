@@ -926,7 +926,7 @@ class EmtProblemDae(EmtProblemTemplate):
             VarPowerFlowRefferenceType.vt_C,
         ])
 
-        c0: Any = grid.emt_var_factory.add_const(0.0)
+        c0: Any = grid.var_factory.add_const(0.0)
 
         I_kcl: Dict[int, List[Any]] = dict()
         for bus_idx, bus in enumerate(grid.buses):
@@ -2931,8 +2931,8 @@ class EmtProblemDae(EmtProblemTemplate):
         Ih_t0_red = i_t0_red - rt.Gc_red @ v_t0_red
 
         for k in range(rt.m):
-            mdl.event_dict[rt.Ih_f[k]] = self.grid.emt_var_factory.add_const(float(Ih_f0_red[k]))
-            mdl.event_dict[rt.Ih_t[k]] = self.grid.emt_var_factory.add_const(float(Ih_t0_red[k]))
+            mdl.event_dict[rt.Ih_f[k]] = self.grid.var_factory.add_const(float(Ih_f0_red[k]))
+            mdl.event_dict[rt.Ih_t[k]] = self.grid.var_factory.add_const(float(Ih_t0_red[k]))
 
         rt.initialize_buffers_from_initial_point(
             v_f0_red=v_f0_red,
@@ -3054,8 +3054,8 @@ class EmtProblemDae(EmtProblemTemplate):
         Ih_t0_red = i_t0_red - rt.Gc_red @ v_t0_red
 
         for k in range(rt.m):
-            mdl.event_dict[rt.Ih_f[k]] = self.grid.emt_var_factory.add_const(float(Ih_f0_red[k]))
-            mdl.event_dict[rt.Ih_t[k]] = self.grid.emt_var_factory.add_const(float(Ih_t0_red[k]))
+            mdl.event_dict[rt.Ih_f[k]] = self.grid.var_factory.add_const(float(Ih_f0_red[k]))
+            mdl.event_dict[rt.Ih_t[k]] = self.grid.var_factory.add_const(float(Ih_t0_red[k]))
 
         rt.initialize_buffers_from_initial_point(
             v_f0_red=v_f0_red,
@@ -3091,7 +3091,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 pass
             else:
                 if mapped_var in mdl.event_dict:
-                    mdl.event_dict[mapped_var] = self.grid.emt_var_factory.add_const(float(value))
+                    mdl.event_dict[mapped_var] = self.grid.var_factory.add_const(float(value))
                 else:
                     self._temp_init_guess[mapped_var.uid] = float(value)
 
@@ -3238,7 +3238,7 @@ class EmtProblemDae(EmtProblemTemplate):
             return
 
         if var in mdl.event_dict:
-            mdl.event_dict[var] = self.grid.emt_var_factory.add_const(float(value))
+            mdl.event_dict[var] = self.grid.var_factory.add_const(float(value))
         else:
             pass
 

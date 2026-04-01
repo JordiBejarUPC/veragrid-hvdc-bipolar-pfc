@@ -101,7 +101,7 @@ def get_bus_emt_template(grid: MultiCircuit,
     :return:
     """
 
-    vf = grid.emt_var_factory
+    vf = grid.var_factory
     mask = [False, False, False, False]  # [N, A, B, C]
     if not bus.is_dc:
         ys_phase_device_types = {

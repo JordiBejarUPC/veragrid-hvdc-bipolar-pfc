@@ -51,7 +51,7 @@ def get_dc_load_emt_template(
 
     templ.block.name = name
 
-    vf: VarFactory = grid.emt_var_factory
+    vf: VarFactory = grid.var_factory
     sbase: float = grid.Sbase
 
     # Positive ``P_dc`` means consumed DC power. The injected bus power is the

@@ -70,7 +70,7 @@ for bus in [bus1, bus2, bus2_1, bus3, bus4, bus5_1, bus5, bus6]:
     grid.add_bus(bus)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.rms_var_factory)
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 # External grids
 generatorA = gce.Generator(
@@ -211,17 +211,17 @@ grid.add_dc_line(DCline)
 # Build Rms models
 ######################################################################################################
 # generator
-genA_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
-genB_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
+genA_mdl = get_complete_generator_template_rms(grid.var_factory).block
+genB_mdl = get_complete_generator_template_rms(grid.var_factory).block
 #
 # # line
-lineA_mdl = get_line_rms_template(grid.rms_var_factory).block
-lineB_mdl = get_line_rms_template(grid.rms_var_factory).block
-# trafoA_mdl = get_line_rms_template(grid.rms_var_factory).block
-# trafoB_mdl = get_line_rms_template(grid.rms_var_factory).block
+lineA_mdl = get_line_rms_template(grid.var_factory).block
+lineB_mdl = get_line_rms_template(grid.var_factory).block
+# trafoA_mdl = get_line_rms_template(grid.var_factory).block
+# trafoB_mdl = get_line_rms_template(grid.var_factory).block
 
 # DC line
-# DCline_mdl = get_line_rms_template(grid.rms_var_factory).block
+# DCline_mdl = get_line_rms_template(grid.var_factory).block
 
 # VSC
 # vsc_master_mdl =
@@ -232,23 +232,23 @@ lineB_mdl = get_line_rms_template(grid.rms_var_factory).block
 # Add models to devices
 ######################################################################################################
 #grids
-# set_rms_model(device=generatorA, model=genA_mdl, var_factory= grid.rms_var_factory)
-# set_rms_model(device=generatorB, model=genB_mdl, var_factory= grid.rms_var_factory)
+# set_rms_model(device=generatorA, model=genA_mdl, var_factory= grid.var_factory)
+# set_rms_model(device=generatorB, model=genB_mdl, var_factory= grid.var_factory)
 #
 # # lines
-# set_rms_model(device=lineA, model=lineA_mdl, var_factory= grid.rms_var_factory)
-# set_rms_model(device=lineB, model=lineB_mdl, var_factory= grid.rms_var_factory)
+# set_rms_model(device=lineA, model=lineA_mdl, var_factory= grid.var_factory)
+# set_rms_model(device=lineB, model=lineB_mdl, var_factory= grid.var_factory)
 #
 # #transformers
-# set_rms_model(device=trafoA, model=trafoA_mdl, var_factory= grid.rms_var_factory)
-# set_rms_model(device=trafoB, model=trafoB_mdl, var_factory= grid.rms_var_factory)
+# set_rms_model(device=trafoA, model=trafoA_mdl, var_factory= grid.var_factory)
+# set_rms_model(device=trafoB, model=trafoB_mdl, var_factory= grid.var_factory)
 
 # DC line
-# set_rms_model(device=DCline, model=DCline_mdl, var_factory= grid.rms_var_factory)
+# set_rms_model(device=DCline, model=DCline_mdl, var_factory= grid.var_factory)
 
 # VSC
-# set_rms_model(device=vsc_master, model=vsc_master_mdl, var_factory= grid.rms_var_factory)
-# set_rms_model(device=vsc_slave, model=vsc_slave_mdl, var_factory= grid.rms_var_factory)
+# set_rms_model(device=vsc_master, model=vsc_master_mdl, var_factory= grid.var_factory)
+# set_rms_model(device=vsc_slave, model=vsc_slave_mdl, var_factory= grid.var_factory)
 
 
 #####################################################################################

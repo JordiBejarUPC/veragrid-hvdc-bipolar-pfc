@@ -362,8 +362,7 @@ class MultiCircuit(Assets):
                 'if_measurements',
                 'modelling_authorities',
                 'diagrams',
-                'rms_var_factory',
-                'emt_var_factory',
+                'var_factory',
                 'rms_models',
                 'emt_models',
                 'rms_events',
@@ -2233,7 +2232,7 @@ class MultiCircuit(Assets):
                                             expected_value=v1)
 
                             elif prop.tpe == SubObjectType.DaeBlockType:
-                                if not compare_blocks(v1, v2, self.rms_var_factory, grid2.rms_var_factory):
+                                if not compare_blocks(v1, v2, self.var_factory, grid2.var_factory):
                                     logger.add_error(msg="Different snapshot values",
                                                      device_class=template_elm.device_type.value,
                                                      device_property=prop.name,

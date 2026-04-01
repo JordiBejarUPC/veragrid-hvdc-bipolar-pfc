@@ -106,7 +106,7 @@ grid.add_bus(bus2)
 grid.add_bus(bus3)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.rms_var_factory)
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 grid.add_line(line12)
 grid.add_vsc(vsc1)
@@ -259,21 +259,21 @@ print('Voltage angles (deg): ', np.angle(res.voltage, deg=True))
 
 
 #Initialise the RMS
-line12_mdl = get_line_rms_template(grid.rms_var_factory).block
+line12_mdl = get_line_rms_template(grid.var_factory).block
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = ZIPLoadBuild(grid.rms_var_factory, Pl0 =-0.1, Ql0 =-0.01).block
+    load_mdl = ZIPLoadBuild(grid.var_factory, Pl0 =-0.1, Ql0 =-0.01).block
 else:
     raise ValueError(f"Unknown load type: {load_type}")
     
-genrow_mdl1 = get_genrow1_rms_template(grid.rms_var_factory).block
-genrow_mdl1 = get_complete_generator_template_rms(grid.rms_var_factory).block
+genrow_mdl1 = get_genrow1_rms_template(grid.var_factory).block
+genrow_mdl1 = get_complete_generator_template_rms(grid.var_factory).block
 
 # Build VSC model with the same control modes used in the VSC device
-vsc_mdl = VscGflBuild(grid.rms_var_factory, control1=CONTROL1_MODE, control2=CONTROL2_MODE).block
+vsc_mdl = VscGflBuild(grid.var_factory, control1=CONTROL1_MODE, control2=CONTROL2_MODE).block
 
-pv_cell_block  =  PVCellBuild(grid.rms_var_factory).block
-dc_source = DCVoltageSource(grid.rms_var_factory, bus3.rms_model.out_vars[0]).block
+pv_cell_block  =  PVCellBuild(grid.var_factory).block
+dc_source = DCVoltageSource(grid.var_factory, bus3.rms_model.out_vars[0]).block
 
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
 genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])

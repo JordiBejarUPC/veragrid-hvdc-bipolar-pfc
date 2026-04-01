@@ -62,7 +62,7 @@ grid.add_bus(bus2)
 grid.add_bus(bus3)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.rms_var_factory)
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 # Lines
 line0 = gce.Line(name="line 0-1", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
@@ -107,16 +107,16 @@ load1_dynhost = DynamicModelHost()
 gen1_dynhost = DynamicModelHost()
 
 # generator
-genqec0_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
-genqec1_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
+genqec0_mdl = get_complete_generator_template_rms(grid.var_factory).block
+genqec1_mdl = get_complete_generator_template_rms(grid.var_factory).block
 
 # line
-line0_mdl = get_line_rms_template(grid.rms_var_factory).block
-line1_mdl = get_line_rms_template(grid.rms_var_factory).block
+line0_mdl = get_line_rms_template(grid.var_factory).block
+line1_mdl = get_line_rms_template(grid.var_factory).block
 
 # load
-load0_mdl = get_load_rms_template(grid.rms_var_factory).block
-load1_mdl = get_load_rms_template(grid.rms_var_factory).block
+load0_mdl = get_load_rms_template(grid.var_factory).block
+load1_mdl = get_load_rms_template(grid.var_factory).block
 # load1_mdl = get_load1_rms_template(grid.var_factory).block
 
 

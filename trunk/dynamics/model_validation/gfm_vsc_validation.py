@@ -108,7 +108,7 @@ grid.add_bus(bus2)
 grid.add_bus(bus3)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.rms_var_factory)
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 grid.add_line(line12)
 grid.add_vsc(vsc1)
@@ -261,20 +261,20 @@ print('Voltage angles (deg): ', np.angle(res.voltage, deg=True))
 
 
 #Initialise the RMS
-line12_mdl = get_line_rms_template(grid.rms_var_factory).block
+line12_mdl = get_line_rms_template(grid.var_factory).block
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = ZIPLoadBuild(grid.rms_var_factory, Pl0 =-0.1, Ql0 =-0.01).block
+    load_mdl = ZIPLoadBuild(grid.var_factory, Pl0 =-0.1, Ql0 =-0.01).block
 else:
     raise ValueError(f"Unknown load type: {load_type}")
     
-genrow_mdl1 = get_genrow1_rms_template(grid.rms_var_factory).block
-genrow_mdl1 = get_complete_generator_template_rms(grid.rms_var_factory).block
+genrow_mdl1 = get_genrow1_rms_template(grid.var_factory).block
+genrow_mdl1 = get_complete_generator_template_rms(grid.var_factory).block
 
 # Initialize the RMS
-line12_mdl = (get_line_rms_template(grid.rms_var_factory).block)
-load_mdl = (ZIPLoadBuild(grid.rms_var_factory, Pl0 =-0.1, Ql0 =-0.01).block)
-vsc_mdl = (VscGfmBuild(grid.rms_var_factory).block)
+line12_mdl = (get_line_rms_template(grid.var_factory).block)
+load_mdl = (ZIPLoadBuild(grid.var_factory, Pl0 =-0.1, Ql0 =-0.01).block)
+vsc_mdl = (VscGfmBuild(grid.var_factory).block)
 
 # DEBUG: Check all blocks and their init_eqs
 print("\n=== VSC MODEL STRUCTURE ===")
@@ -285,7 +285,7 @@ for i, b in enumerate(vsc_mdl.get_all_blocks()):
     print(f"  diff_vars: {[v.name for v in b.diff_vars]}")
     print(f"  init_eqs keys: {[v.name for v in b.init_eqs.keys()]}")
 
-dc_source = (DCVoltageSource(grid.rms_var_factory, bus3.rms_model.out_vars[0]).block)
+dc_source = (DCVoltageSource(grid.var_factory, bus3.rms_model.out_vars[0]).block)
 
 
 

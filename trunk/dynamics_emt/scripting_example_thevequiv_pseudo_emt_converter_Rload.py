@@ -131,14 +131,14 @@ def attach_emt_models(
     for bus in grid.buses:
         get_bus_emt_template(grid, bus)
 
-    gen_mdl: Block = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
+    gen_mdl: Block = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
 
     vsc_index: int = grid.get_vsc().index(converter)
     losses_vsc = getattr(pf_results, "losses_vsc", None)
     p_loss0: float = float(losses_vsc[vsc_index]) if losses_vsc is not None else 0.0
 
     vsc_mdl: Block = get_pseudo_emt_converter(
-        vf=grid.emt_var_factory,
+        vf=grid.var_factory,
         name=converter.name,
         sbase=grid.Sbase,
         fbase=grid.fBase,
@@ -180,9 +180,9 @@ def attach_emt_models(
         name="dc_r_load_emt",
     ).block
 
-    set_emt_model(device=generator, model=gen_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=converter, model=vsc_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=dc_load, model=dc_load_mdl, var_factory=grid.emt_var_factory)
+    set_emt_model(device=generator, model=gen_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=converter, model=vsc_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=dc_load, model=dc_load_mdl, var_factory=grid.var_factory)
 
     return gen_mdl, vsc_mdl, dc_load_mdl
 

@@ -133,9 +133,9 @@ def attach_emt_models(
     for bus in grid.buses:
         get_bus_emt_template(grid, bus)
 
-    gen_mdl: Block = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
-    line_mdl: Block = get_pi_line_emt_template(vf=grid.emt_var_factory, line=line0).block
-    load_mdl: Block = get_exponential_load_3ph_emt(vf=grid.emt_var_factory).block
+    gen_mdl: Block = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    line_mdl: Block = get_pi_line_emt_template(vf=grid.var_factory, line=line0).block
+    load_mdl: Block = get_exponential_load_3ph_emt(vf=grid.var_factory).block
 
     # ``a = 2`` reproduces an impedance-like active-power dependence. This keeps the
     # example aligned with the original resistive load while exercising the new EMT
@@ -144,9 +144,9 @@ def attach_emt_models(
     load_mdl.set_parameter_in_model(var_name="b_exp_Load_EMT_3ph", new_value=2.0)
     load_mdl.set_parameter_in_model(var_name="V0_exp_Load_EMT_3ph", new_value=float(np.sqrt(2.0)))
 
-    set_emt_model(device=generator, model=gen_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=line0, model=line_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=load, model=load_mdl, var_factory=grid.emt_var_factory)
+    set_emt_model(device=generator, model=gen_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
     return gen_mdl, line_mdl, load_mdl
 

@@ -30,7 +30,7 @@ def get_pi_line_emt_template(
 
     templ.block.name = EmtLineTypes.PI
 
-    vf: VarFactory = grid.emt_var_factory
+    vf: VarFactory = grid.var_factory
     fbase: float = grid.fBase
     sbase: float = grid.Sbase
 
