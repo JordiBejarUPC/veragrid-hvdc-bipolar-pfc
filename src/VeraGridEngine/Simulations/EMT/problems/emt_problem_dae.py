@@ -1622,6 +1622,431 @@ class EmtProblemDae(EmtProblemTemplate):
                 self.set_init_guess(mdl, VarPowerFlowRefferenceType.v_C, v_C)
                 self.set_diff_init_guess(mdl, VarPowerFlowRefferenceType.d_v_C, d_v_C)
 
+    def _get_vsc_terminal_indices(self,
+                                  f_bus_idx: int,
+                                  t_bus_idx: int) -> Tuple[int, int, bool]:
+        """
+        Return ``(ac_bus_idx, dc_bus_idx, ac_is_from)`` for a VSC branch.
+
+        The preferred detection rule is based on bus types. If the branch does
+        not present the expected AC/DC split, fall back to the legacy VSC
+        orientation assumption used by the PF results: from side is DC and to
+        side is AC.
+        """
+        f_bus = self.grid.buses[f_bus_idx]
+        t_bus = self.grid.buses[t_bus_idx]
+
+        if not f_bus.is_dc and t_bus.is_dc:
+            return f_bus_idx, t_bus_idx, True
+
+        if f_bus.is_dc and not t_bus.is_dc:
+            return t_bus_idx, f_bus_idx, False
+
+        return t_bus_idx, f_bus_idx, False
+
+    def _set_vsc_pf_positive_sequence(self,
+                                      mdl: Block,
+                                      VA: complex,
+                                      VB: complex,
+                                      VC: complex,
+                                      IA: complex,
+                                      IB: complex,
+                                      IC: complex) -> None:
+        """
+        Populate positive-sequence PF-derived quantities used by VSC templates
+        when they expose them in the external mapping.
+        """
+        a = np.exp(1j * 2.0 * np.pi / 3.0)
+
+        V1 = (VA + a * VB + (a * a) * VC) / 3.0
+        I1 = (IA + a * IB + (a * a) * IC) / 3.0
+
+        phi_V = float(np.angle(V1))
+        phi_I = float(np.angle(I1))
+        ang = phi_I - phi_V
+        phi = float(np.arctan2(np.sin(ang), np.cos(ang)))
+
+        external_mapping: Optional[Dict[Any, Var]] = _get_external_mapping(mdl)
+        if external_mapping is None:
+            return
+
+        if VarPowerFlowRefferenceType.phi_v in external_mapping:
+            self.set_external_param(mdl, VarPowerFlowRefferenceType.phi_v, phi_V)
+
+        if VarPowerFlowRefferenceType.phi in external_mapping:
+            self.set_external_param(mdl, VarPowerFlowRefferenceType.phi, phi)
+
+        if VarPowerFlowRefferenceType.Vpk in external_mapping:
+            self.set_external_param(mdl, VarPowerFlowRefferenceType.Vpk, float(np.sqrt(2.0) * np.abs(V1)))
+
+        if VarPowerFlowRefferenceType.Ipk in external_mapping:
+            self.set_external_param(mdl, VarPowerFlowRefferenceType.Ipk, float(np.sqrt(2.0) * np.abs(I1)))
+
+    def _try_set_vsc_branch_pf_init(self,
+                                    mdl: Block,
+                                    f_bus_idx: int,
+                                    t_bus_idx: int,
+                                    sbase: float,
+                                    vsc_index: int) -> None:
+        """
+        Initialize a VSC branch from three-phase PF results using the converter
+        external mapping as the source of truth.
+        """
+        pf_results_3ph = self.power_flow_results_3ph
+        if pf_results_3ph is None:
+            return
+
+        ac_bus_idx, dc_bus_idx, ac_is_from = self._get_vsc_terminal_indices(
+            f_bus_idx=f_bus_idx,
+            t_bus_idx=t_bus_idx,
+        )
+
+        VA = pf_results_3ph.voltage_A[ac_bus_idx]
+        VB = pf_results_3ph.voltage_B[ac_bus_idx]
+        VC = pf_results_3ph.voltage_C[ac_bus_idx]
+        VN = 0.0 + 0.0j
+
+        SA = pf_results_3ph.St_vsc_A[vsc_index] / sbase
+        SB = pf_results_3ph.St_vsc_B[vsc_index] / sbase
+        SC = pf_results_3ph.St_vsc_C[vsc_index] / sbase
+
+        IA = 0.0 + 0.0j if abs(VA) <= 1e-12 else np.conj(SA / VA)
+        IB = 0.0 + 0.0j if abs(VB) <= 1e-12 else np.conj(SB / VB)
+        IC = 0.0 + 0.0j if abs(VC) <= 1e-12 else np.conj(SC / VC)
+
+        S_ac_total = SA + SB + SC
+        S_dc_total = complex(
+            (
+                pf_results_3ph.Pfp_vsc[vsc_index]
+                + (pf_results_3ph.Pfn_vsc[vsc_index] if hasattr(pf_results_3ph, "Pfn_vsc") else 0.0)
+            ) / sbase,
+            0.0,
+        )
+
+        phase_voltage_dict: Dict[str, complex] = {
+            "N": VN,
+            "A": VA,
+            "B": VB,
+            "C": VC,
+        }
+        phase_current_dict: Dict[str, complex] = {
+            "N": 0.0 + 0.0j,
+            "A": IA,
+            "B": IB,
+            "C": IC,
+        }
+        phase_power_dict: Dict[str, complex] = {
+            "N": 0.0 + 0.0j,
+            "A": SA,
+            "B": SB,
+            "C": SC,
+        }
+
+        ac_voltage_keys: Dict[str, VarPowerFlowRefferenceType] = {
+            "N": VarPowerFlowRefferenceType.v_N,
+            "A": VarPowerFlowRefferenceType.v_A,
+            "B": VarPowerFlowRefferenceType.v_B,
+            "C": VarPowerFlowRefferenceType.v_C,
+        }
+        ac_current_keys: Dict[str, VarPowerFlowRefferenceType] = {
+            "N": VarPowerFlowRefferenceType.i_N,
+            "A": VarPowerFlowRefferenceType.i_A,
+            "B": VarPowerFlowRefferenceType.i_B,
+            "C": VarPowerFlowRefferenceType.i_C,
+        }
+        if_keys: Dict[str, VarPowerFlowRefferenceType] = {
+            "N": VarPowerFlowRefferenceType.if_N,
+            "A": VarPowerFlowRefferenceType.if_A,
+            "B": VarPowerFlowRefferenceType.if_B,
+            "C": VarPowerFlowRefferenceType.if_C,
+        }
+        it_keys: Dict[str, VarPowerFlowRefferenceType] = {
+            "N": VarPowerFlowRefferenceType.it_N,
+            "A": VarPowerFlowRefferenceType.it_A,
+            "B": VarPowerFlowRefferenceType.it_B,
+            "C": VarPowerFlowRefferenceType.it_C,
+        }
+        sf_keys: Dict[str, Optional[VarPowerFlowRefferenceType]] = {
+            "N": None,
+            "A": VarPowerFlowRefferenceType.Sf_A,
+            "B": VarPowerFlowRefferenceType.Sf_B,
+            "C": VarPowerFlowRefferenceType.Sf_C,
+        }
+        st_keys: Dict[str, Optional[VarPowerFlowRefferenceType]] = {
+            "N": None,
+            "A": VarPowerFlowRefferenceType.St_A,
+            "B": VarPowerFlowRefferenceType.St_B,
+            "C": VarPowerFlowRefferenceType.St_C,
+        }
+        d_vf_keys: Dict[str, VarPowerFlowRefferenceType] = {
+            "N": VarPowerFlowRefferenceType.d_v_N_f,
+            "A": VarPowerFlowRefferenceType.d_v_A_f,
+            "B": VarPowerFlowRefferenceType.d_v_B_f,
+            "C": VarPowerFlowRefferenceType.d_v_C_f,
+        }
+        d_vt_keys: Dict[str, VarPowerFlowRefferenceType] = {
+            "N": VarPowerFlowRefferenceType.d_v_N_t,
+            "A": VarPowerFlowRefferenceType.d_v_A_t,
+            "B": VarPowerFlowRefferenceType.d_v_B_t,
+            "C": VarPowerFlowRefferenceType.d_v_C_t,
+        }
+
+        omega_base: float = 2.0 * np.pi * self.grid.fBase
+        for ph in ["N", "A", "B", "C"]:
+            V_ph = phase_voltage_dict[ph]
+            I_ph = phase_current_dict[ph]
+            S_ph = phase_power_dict[ph]
+
+            self.set_if_exists(mdl=mdl,
+                               key=ac_voltage_keys[ph],
+                               value=float(np.sqrt(2.0) * np.imag(V_ph)))
+            self.set_if_exists(mdl=mdl,
+                               key=ac_current_keys[ph],
+                               value=float(np.sqrt(2.0) * np.imag(I_ph)))
+
+            if ac_is_from:
+                self.set_if_exists(mdl=mdl,
+                                   key=if_keys[ph],
+                                   value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                self.set_if_exists(mdl=mdl,
+                                   key=it_keys[ph],
+                                   value=0.0)
+                self.set_external_param(mdl, d_vf_keys[ph], omega_base * np.sqrt(2.0) * np.real(V_ph))
+                self.set_external_param(mdl, d_vt_keys[ph], 0.0)
+            else:
+                self.set_if_exists(mdl=mdl,
+                                   key=if_keys[ph],
+                                   value=0.0)
+                self.set_if_exists(mdl=mdl,
+                                   key=it_keys[ph],
+                                   value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                self.set_external_param(mdl, d_vf_keys[ph], 0.0)
+                self.set_external_param(mdl, d_vt_keys[ph], omega_base * np.sqrt(2.0) * np.real(V_ph))
+
+            sf_key = sf_keys[ph]
+            st_key = st_keys[ph]
+            if sf_key is not None:
+                self.set_if_exists(mdl=mdl,
+                                   key=sf_key,
+                                   value=float(np.real(S_ph if ac_is_from else 0.0 + 0.0j)))
+            if st_key is not None:
+                self.set_if_exists(mdl=mdl,
+                                   key=st_key,
+                                   value=float(np.real(0.0 + 0.0j if ac_is_from else S_ph)))
+
+        self._set_vsc_pf_positive_sequence(
+            mdl=mdl,
+            VA=VA,
+            VB=VB,
+            VC=VC,
+            IA=IA,
+            IB=IB,
+            IC=IC,
+        )
+
+        if self.power_flow_results is not None:
+            v_dc = float(np.abs(self.power_flow_results.voltage[dc_bus_idx]))
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Vdc, value=v_dc)
+            if abs(v_dc) > 1e-12:
+                self.set_if_exists(mdl=mdl,
+                                   key=VarPowerFlowRefferenceType.Idc,
+                                   value=float(np.real(S_dc_total) / v_dc))
+            else:
+                self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Idc, value=0.0)
+
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.P, value=float(np.real(S_ac_total)))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Q, value=float(np.imag(S_ac_total)))
+
+        S_from = S_ac_total if ac_is_from else S_dc_total
+        S_to = S_dc_total if ac_is_from else S_ac_total
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pf, value=float(np.real(S_from)))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qf, value=float(np.imag(S_from)))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pt, value=float(np.real(S_to)))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qt, value=float(np.imag(S_to)))
+
+    def _try_set_vsc_branch_pf_init_balanced(self,
+                                             mdl: Block,
+                                             f_bus_idx: int,
+                                             t_bus_idx: int,
+                                             sbase: float,
+                                             vsc_index: int) -> None:
+        """
+        Initialize a VSC branch from balanced PF results using the converter
+        external mapping as the source of truth.
+        """
+        pf_results = self.power_flow_results
+        if pf_results is None:
+            return
+
+        ac_bus_idx, dc_bus_idx, ac_is_from = self._get_vsc_terminal_indices(
+            f_bus_idx=f_bus_idx,
+            t_bus_idx=t_bus_idx,
+        )
+
+        alpha = 2.0 * np.pi / 3.0
+        V_bus = pf_results.voltage[ac_bus_idx]
+        VA = V_bus
+        VB = V_bus * np.exp(-1j * alpha)
+        VC = V_bus * np.exp(+1j * alpha)
+        VN = 0.0 + 0.0j
+
+        S_ac_total = pf_results.St_vsc[vsc_index] / sbase
+        S_dc_total = complex(
+            (
+                pf_results.Pfp_vsc[vsc_index]
+                + (pf_results.Pfn_vsc[vsc_index] if hasattr(pf_results, "Pfn_vsc") else 0.0)
+            ) / sbase,
+            0.0,
+        )
+
+        SA = S_ac_total / 3.0
+        SB = S_ac_total / 3.0
+        SC = S_ac_total / 3.0
+
+        IA = 0.0 + 0.0j if abs(VA) <= 1e-12 else np.conj(SA / VA)
+        IB = 0.0 + 0.0j if abs(VB) <= 1e-12 else np.conj(SB / VB)
+        IC = 0.0 + 0.0j if abs(VC) <= 1e-12 else np.conj(SC / VC)
+
+        phase_voltage_dict: Dict[str, complex] = {
+            "N": VN,
+            "A": VA,
+            "B": VB,
+            "C": VC,
+        }
+        phase_current_dict: Dict[str, complex] = {
+            "N": 0.0 + 0.0j,
+            "A": IA,
+            "B": IB,
+            "C": IC,
+        }
+        phase_power_dict: Dict[str, complex] = {
+            "N": 0.0 + 0.0j,
+            "A": SA,
+            "B": SB,
+            "C": SC,
+        }
+
+        ac_voltage_keys: Dict[str, VarPowerFlowRefferenceType] = {
+            "N": VarPowerFlowRefferenceType.v_N,
+            "A": VarPowerFlowRefferenceType.v_A,
+            "B": VarPowerFlowRefferenceType.v_B,
+            "C": VarPowerFlowRefferenceType.v_C,
+        }
+        ac_current_keys: Dict[str, VarPowerFlowRefferenceType] = {
+            "N": VarPowerFlowRefferenceType.i_N,
+            "A": VarPowerFlowRefferenceType.i_A,
+            "B": VarPowerFlowRefferenceType.i_B,
+            "C": VarPowerFlowRefferenceType.i_C,
+        }
+        if_keys: Dict[str, VarPowerFlowRefferenceType] = {
+            "N": VarPowerFlowRefferenceType.if_N,
+            "A": VarPowerFlowRefferenceType.if_A,
+            "B": VarPowerFlowRefferenceType.if_B,
+            "C": VarPowerFlowRefferenceType.if_C,
+        }
+        it_keys: Dict[str, VarPowerFlowRefferenceType] = {
+            "N": VarPowerFlowRefferenceType.it_N,
+            "A": VarPowerFlowRefferenceType.it_A,
+            "B": VarPowerFlowRefferenceType.it_B,
+            "C": VarPowerFlowRefferenceType.it_C,
+        }
+        sf_keys: Dict[str, Optional[VarPowerFlowRefferenceType]] = {
+            "N": None,
+            "A": VarPowerFlowRefferenceType.Sf_A,
+            "B": VarPowerFlowRefferenceType.Sf_B,
+            "C": VarPowerFlowRefferenceType.Sf_C,
+        }
+        st_keys: Dict[str, Optional[VarPowerFlowRefferenceType]] = {
+            "N": None,
+            "A": VarPowerFlowRefferenceType.St_A,
+            "B": VarPowerFlowRefferenceType.St_B,
+            "C": VarPowerFlowRefferenceType.St_C,
+        }
+        d_vf_keys: Dict[str, VarPowerFlowRefferenceType] = {
+            "N": VarPowerFlowRefferenceType.d_v_N_f,
+            "A": VarPowerFlowRefferenceType.d_v_A_f,
+            "B": VarPowerFlowRefferenceType.d_v_B_f,
+            "C": VarPowerFlowRefferenceType.d_v_C_f,
+        }
+        d_vt_keys: Dict[str, VarPowerFlowRefferenceType] = {
+            "N": VarPowerFlowRefferenceType.d_v_N_t,
+            "A": VarPowerFlowRefferenceType.d_v_A_t,
+            "B": VarPowerFlowRefferenceType.d_v_B_t,
+            "C": VarPowerFlowRefferenceType.d_v_C_t,
+        }
+
+        omega_base: float = 2.0 * np.pi * self.grid.fBase
+        for ph in ["N", "A", "B", "C"]:
+            V_ph = phase_voltage_dict[ph]
+            I_ph = phase_current_dict[ph]
+            S_ph = phase_power_dict[ph]
+
+            self.set_if_exists(mdl=mdl,
+                               key=ac_voltage_keys[ph],
+                               value=float(np.sqrt(2.0) * np.imag(V_ph)))
+            self.set_if_exists(mdl=mdl,
+                               key=ac_current_keys[ph],
+                               value=float(np.sqrt(2.0) * np.imag(I_ph)))
+
+            if ac_is_from:
+                self.set_if_exists(mdl=mdl,
+                                   key=if_keys[ph],
+                                   value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                self.set_if_exists(mdl=mdl,
+                                   key=it_keys[ph],
+                                   value=0.0)
+                self.set_external_param(mdl, d_vf_keys[ph], omega_base * np.sqrt(2.0) * np.real(V_ph))
+                self.set_external_param(mdl, d_vt_keys[ph], 0.0)
+            else:
+                self.set_if_exists(mdl=mdl,
+                                   key=if_keys[ph],
+                                   value=0.0)
+                self.set_if_exists(mdl=mdl,
+                                   key=it_keys[ph],
+                                   value=float(np.sqrt(2.0) * np.imag(I_ph)))
+                self.set_external_param(mdl, d_vf_keys[ph], 0.0)
+                self.set_external_param(mdl, d_vt_keys[ph], omega_base * np.sqrt(2.0) * np.real(V_ph))
+
+            sf_key = sf_keys[ph]
+            st_key = st_keys[ph]
+            if sf_key is not None:
+                self.set_if_exists(mdl=mdl,
+                                   key=sf_key,
+                                   value=float(np.real(S_ph if ac_is_from else 0.0 + 0.0j)))
+            if st_key is not None:
+                self.set_if_exists(mdl=mdl,
+                                   key=st_key,
+                                   value=float(np.real(0.0 + 0.0j if ac_is_from else S_ph)))
+
+        self._set_vsc_pf_positive_sequence(
+            mdl=mdl,
+            VA=VA,
+            VB=VB,
+            VC=VC,
+            IA=IA,
+            IB=IB,
+            IC=IC,
+        )
+
+        v_dc = float(np.abs(pf_results.voltage[dc_bus_idx]))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Vdc, value=v_dc)
+        if abs(v_dc) > 1e-12:
+            self.set_if_exists(mdl=mdl,
+                               key=VarPowerFlowRefferenceType.Idc,
+                               value=float(np.real(S_dc_total) / v_dc))
+        else:
+            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Idc, value=0.0)
+
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.P, value=float(np.real(S_ac_total)))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Q, value=float(np.imag(S_ac_total)))
+
+        S_from = S_ac_total if ac_is_from else S_dc_total
+        S_to = S_dc_total if ac_is_from else S_ac_total
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pf, value=float(np.real(S_from)))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qf, value=float(np.imag(S_from)))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pt, value=float(np.real(S_to)))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qt, value=float(np.imag(S_to)))
+
     def _try_set_branch_pf_init(
             self,
             mdl: Block,
@@ -1650,6 +2075,16 @@ class EmtProblemDae(EmtProblemTemplate):
         :param sbase: Base power of the grid.
         :return: None
         """
+        if is_vsc and vsc_index >= 0:
+            self._try_set_vsc_branch_pf_init(
+                mdl=mdl,
+                f_bus_idx=f_bus_idx,
+                t_bus_idx=t_bus_idx,
+                sbase=sbase,
+                vsc_index=vsc_index,
+            )
+            return
+
         phases: List[str] = ["N", "A", "B", "C"]
 
         sf_key_dict: Dict[str, Optional[VarPowerFlowRefferenceType]] = {
@@ -1902,6 +2337,16 @@ class EmtProblemDae(EmtProblemTemplate):
 
         Neutral phase is initialized to zero.
         """
+        if is_vsc and vsc_index >= 0:
+            self._try_set_vsc_branch_pf_init_balanced(
+                mdl=mdl,
+                f_bus_idx=f_bus_idx,
+                t_bus_idx=t_bus_idx,
+                sbase=sbase,
+                vsc_index=vsc_index,
+            )
+            return
+
         phases: List[str] = ["N", "A", "B", "C"]
 
         sf_key_dict: Dict[str, Optional[VarPowerFlowRefferenceType]] = {

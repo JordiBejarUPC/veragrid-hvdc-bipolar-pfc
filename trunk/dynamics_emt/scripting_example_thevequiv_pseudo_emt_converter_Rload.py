@@ -232,10 +232,10 @@ def build_problem(grid: gce.MultiCircuit, pf_results: PowerFlowResults) -> EmtPr
     """
     options: EmtOptions = EmtOptions(
         time_step=2.0e-5,
-        simulation_time=0.04,
+        simulation_time=0.1,
         tolerance=1e-6,
         solver_type=EmtSolverTypes.StructuralCompiled,
-        initialization_method=EmtInitializationMethod.Auto,
+        initialization_method=EmtInitializationMethod.Explicit,
         integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
         verbose=1,
     )

@@ -15,6 +15,7 @@ from VeraGridEngine.IO.dgs.dgs_to_blocks import (
     extract_named_block_subgraph,
     export_named_block_subgraph_to_python,
     export_named_block_subgraph_tree_to_python,
+    export_root_elmcomp_template_to_python,
     export_root_slot_block_graphical_template_to_python,
     extract_elmcomp_direct_instances,
     extract_root_slot_block_graphical_tree,
@@ -538,6 +539,71 @@ class TestDgsToBlocks(unittest.TestCase):
 
         self.assertEqual(graph_tree.selected_block.blkdef.loc_name, "Smart_Admittance")
         self.assertEqual(len(graph_tree.view_block.children), 0)
+
+
+@unittest.skipUnless(os.path.exists(r"C:\Users\andre\Documents\NUACTIS_models.dgs"), "External NUACTIS DGS test file not available")
+class TestNuactisDgsToBlocks(unittest.TestCase):
+
+    def test_elmdsl_rows_expose_parameter_values(self) -> None:
+        dgs_path: str = r"C:\Users\andre\Documents\NUACTIS_models.dgs"
+        circuit = DgsCircuit()
+        circuit.parse_dgs(dgs_path)
+
+        outer_ctrl_p_instance = None
+        for elm_dsl in circuit.elmdsls:
+            if elm_dsl.loc_name == "Outer_control_P" and elm_dsl.typ_id == "7" and elm_dsl.outserv == 0:
+                outer_ctrl_p_instance = elm_dsl
+            else:
+                pass
+
+        self.assertIsNotNone(outer_ctrl_p_instance)
+        assert outer_ctrl_p_instance is not None
+        parameter_map = outer_ctrl_p_instance.get_parameter_map()
+        self.assertEqual(parameter_map.get("P_ctrl_mode", None), 0.0)
+        self.assertEqual(parameter_map.get("Kp", None), 1.3)
+        self.assertEqual(parameter_map.get("Ki", None), 70.0)
+
+    def test_exported_root_template_uses_instance_parameter_values(self) -> None:
+        dgs_path: str = r"C:\Users\andre\Documents\NUACTIS_models.dgs"
+        with tempfile.TemporaryDirectory() as tmp:
+            template_target: str = os.path.join(tmp, "dgs_nuactis_master_pwm_template.py")
+
+            written_template = export_root_elmcomp_template_to_python(
+                dgs_path=dgs_path,
+                output_path=template_target,
+                root_name="MasterPWM_Model",
+            )
+
+            self.assertTrue(os.path.exists(written_template))
+
+            spec = importlib.util.spec_from_file_location("dgs_nuactis_master_pwm_template", written_template)
+            assert spec is not None and spec.loader is not None
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            vf = VarFactory()
+            templ = module.get_template(vf)
+            child_by_name = {child.name: child for child in templ.block.children}
+            self.assertIn("Outer_Ctrl_P", child_by_name)
+            self.assertIn("Outer_Ctrl_Q", child_by_name)
+            self.assertIn("Current_Limiter", child_by_name)
+            self.assertNotIn("EPC_Control_Droop_VSC_MainFrame", child_by_name)
+
+            outer_ctrl_p_block = child_by_name["Outer_Ctrl_P"]
+            parameter_values_by_name = {const.name: const.value for const in outer_ctrl_p_block.event_dict.values()}
+            self.assertEqual(parameter_values_by_name.get("P_ctrl_mode", None), 0.0)
+            self.assertEqual(parameter_values_by_name.get("Kp", None), 1.3)
+            self.assertEqual(parameter_values_by_name.get("Ki", None), 70.0)
+
+            outer_ctrl_q_block = child_by_name["Outer_Ctrl_Q"]
+            q_parameter_values_by_name = {const.name: const.value for const in outer_ctrl_q_block.event_dict.values()}
+            self.assertEqual(q_parameter_values_by_name.get("iq_lim_min", None), -1.0)
+            self.assertEqual(q_parameter_values_by_name.get("iq_lim_max", None), 1.0)
+
+            current_limiter_block = child_by_name["Current_Limiter"]
+            limiter_parameter_values_by_name = {const.name: const.value for const in current_limiter_block.event_dict.values()}
+            self.assertEqual(limiter_parameter_values_by_name.get("i_max_1", None), 1.0)
+            self.assertEqual(limiter_parameter_values_by_name.get("i_max_3", None), 1.0)
 
 
 if __name__ == "__main__":

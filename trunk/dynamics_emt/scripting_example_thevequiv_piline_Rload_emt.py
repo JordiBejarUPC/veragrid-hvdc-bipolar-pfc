@@ -915,6 +915,70 @@ def main() -> None:
     else:
         print("Plotting disabled; stopping after solver/profiler report.")
 
+    # ==============================================================================
+    # PROFILING REPORT
+    # ==============================================================================
+
+    i_ser_A = find_name_in_block("i_ser_Pi_0", line0.emt_model)
+    i_ser_B = find_name_in_block("i_ser_Pi_1", line0.emt_model)
+    i_ser_C = find_name_in_block("i_ser_Pi_2", line0.emt_model)
+    i_ser_A_plt = y_arr[:, problem.get_var_idx(i_ser_A)]
+    i_ser_B_plt = y_arr[:, problem.get_var_idx(i_ser_B)]
+    i_ser_C_plt = y_arr[:, problem.get_var_idx(i_ser_C)]
+
+    i_f_cap_A = find_name_in_block("i_cap_f_Pi_0", line0.emt_model)
+    i_f_cap_B = find_name_in_block("i_cap_f_Pi_1", line0.emt_model)
+    i_f_cap_C = find_name_in_block("i_cap_f_Pi_2", line0.emt_model)
+    i_f_cap_A_plt = y_arr[:, problem.get_var_idx(i_f_cap_A)]
+    i_f_cap_B_plt = y_arr[:, problem.get_var_idx(i_f_cap_B)]
+    i_f_cap_C_plt = y_arr[:, problem.get_var_idx(i_f_cap_C)]
+
+    i_t_cap_A = find_name_in_block("i_cap_t_Pi_0", line0.emt_model)
+    i_t_cap_B = find_name_in_block("i_cap_t_Pi_1", line0.emt_model)
+    i_t_cap_C = find_name_in_block("i_cap_t_Pi_2", line0.emt_model)
+    i_t_cap_A_plt = y_arr[:, problem.get_var_idx(i_t_cap_A)]
+    i_t_cap_B_plt = y_arr[:, problem.get_var_idx(i_t_cap_B)]
+    i_t_cap_C_plt = y_arr[:, problem.get_var_idx(i_t_cap_C)]
+
+    plt.figure(figsize=(12, 8))
+
+    plt.subplot(2, 2, 1)
+    plt.plot(t_arr, i_ser_A_plt[:len(t_arr)], label='Phase A series current line', color='blue')
+    plt.plot(t_arr, i_ser_B_plt[:len(t_arr)], label='Phase B series current line', color='red')
+    plt.plot(t_arr, i_ser_C_plt[:len(t_arr)], label='Phase C series current line', color='green')
+    plt.title("Series current in line")
+    plt.xlabel("Time")
+    plt.ylabel("Current")
+    plt.legend(loc='upper left')
+    plt.grid(True)
+    plt.legend()
+
+    plt.subplot(2, 2, 3)
+    plt.plot(t_arr, i_f_cap_A_plt[:len(t_arr)], label='Shunt current at from line phase A', color='blue')
+    plt.plot(t_arr, i_f_cap_B_plt[:len(t_arr)], label='Shunt current at from line phase B', color='red')
+    plt.plot(t_arr, i_f_cap_C_plt[:len(t_arr)], label='Shunt current at from line phase C', color='green')
+    plt.title("From shunt currents in line")
+    plt.xlabel("Time")
+    plt.ylabel("Current")
+    plt.legend(loc='upper left')
+    plt.grid(True)
+    plt.legend()
+
+    plt.subplot(2, 2, 4)
+    plt.plot(t_arr, i_t_cap_A_plt[:len(t_arr)], label='Shunt current at to line phase A', color='blue')
+    plt.plot(t_arr, i_t_cap_B_plt[:len(t_arr)], label='Shunt current at to line phase B', color='red')
+    plt.plot(t_arr, i_t_cap_C_plt[:len(t_arr)], label='Shunt current at to line phase C', color='green')
+    plt.title("To shunt currents in line")
+    plt.xlabel("Time")
+    plt.ylabel("Current")
+    plt.legend(loc='upper left')
+    plt.grid(True)
+    plt.legend()
+
+    plt.tight_layout()
+    print("Generating plots...")
+    plt.show()
+
 
 if __name__ == "__main__":
     main()
