@@ -252,21 +252,21 @@ def build_gfl_converter_model(vfactory: VarFactory, inputs,
         Ki_icl: vfactory.add_const(1.0),
         Kp_pol: vfactory.add_const(0.05),
         Ki_pol: vfactory.add_const(1.0),
-        Kp_vdc: vfactory.add_const(0.1),
-        Ki_vdc: vfactory.add_const(2.0),
+        Kp_vdc: vfactory.add_const(0.01),
+        Ki_vdc: vfactory.add_const(0.1),
         Kp_vac: vfactory.add_const(0.1),
-        Ki_vac: vfactory.add_const(2.0),
-        R: vfactory.add_const(0.1),
-        L: vfactory.add_const(0.1),
-        P_ref: vfactory.add_const(0.0),
-        Q_ref: vfactory.add_const(0.0),
-        Vdc_ref: vfactory.add_const(),
+        Ki_vac: vfactory.add_const(1.0),
+        R: vfactory.add_const(0.01),
+        L: vfactory.add_const(0.05),
+        P_ref: vfactory.add_const(None),
+        Q_ref: vfactory.add_const(None),
+        Vdc_ref: vfactory.add_const(None),
         Vm_ac_ref: vfactory.add_const(None),
     }
 
     # P and Q at the point of common coupling
-    algebraic_eqs.append(P - vfactory.add_const(3/2)*(v_q_g*i_q + v_d_g*i_d))
-    algebraic_eqs.append(Q - vfactory.add_const(3/2)*(v_q_g*i_d - v_d_g*i_q))
+    algebraic_eqs.append(P - (v_q_g * i_q + v_d_g * i_d))
+    algebraic_eqs.append(Q - (v_q_g * i_d - v_d_g * i_q))
     algebraic_vars.append(P)
     algebraic_vars.append(Q)
 
@@ -305,7 +305,7 @@ def build_gfl_converter_model(vfactory: VarFactory, inputs,
         control_block_1, _ = tf_to_block(vfactory,
             num=[Ki_vdc, Kp_vdc],
             den=[0, 1],
-            x= Vdc_ref - v_dc,
+            x= (Vdc_ref - v_dc),
             y = i_q_ref,
             name='Vdc_ctrl'
         )
@@ -353,17 +353,23 @@ def build_gfl_converter_model(vfactory: VarFactory, inputs,
         i_d_ref_sat = sym.hard_sat(i_d_ref, -id_max, id_max)
         i_q_ref_sat = sym.hard_sat(i_q_ref, -I_max, I_max)
 
+    i_d_ref_sat_var = vfactory.add_var('i_d_ref_sat')
+    i_q_ref_sat_var = vfactory.add_var('i_q_ref_sat')
+    algebraic_eqs.append(i_d_ref_sat_var - i_d_ref_sat)
+    algebraic_eqs.append(i_q_ref_sat_var - i_q_ref_sat)
+    algebraic_vars.extend([i_d_ref_sat_var, i_q_ref_sat_var])
+
     # Voltage Control Loop (Inner Current Loop)
     control_block_iq , vq_hat = tf_to_block(vfactory,
         num=[Ki_icl, Kp_icl],
         den=[0, 1],
-        x= i_q_ref_sat - i_q,
+        x= i_q - i_q_ref_sat,
         name='vq_hat'
     )
     control_block_id , vd_hat = tf_to_block(vfactory,
         num=[Ki_icl, Kp_icl],
         den=[0, 1],
-        x= i_d_ref_sat - i_d,
+        x= i_d - i_d_ref_sat,
         name='vd_hat'
     )
 
@@ -372,14 +378,14 @@ def build_gfl_converter_model(vfactory: VarFactory, inputs,
     dt_iq = vfactory.add_diff_var('dt_iq', base_var= i_q)
     EMT_block=Block(
         algebraic_eqs = [
-            v_d_c - v_d_g - (R*i_d + L*dt_id - omega*L*i_q),
-            v_q_c - v_q_g - (R*i_q + L*dt_iq - omega*L*i_d),
+            v_d_c - v_d_g + ( R*i_d + L*dt_id - omega*L*i_q),
+            v_q_c - v_q_g + (-R*i_q + L*dt_iq - omega*L*i_d),
         ],
         diff_vars= [dt_id, dt_iq]
     )
 
-    algebraic_eqs.append(v_d_c - (vd_hat + v_d_g + L*(omega)*i_q))
-    algebraic_eqs.append(v_q_c - (vq_hat + v_q_g - L*(omega)*i_d))
+    algebraic_eqs.append(v_d_c - (vd_hat + v_d_g - L*(omega)*i_q))
+    algebraic_eqs.append(v_q_c - (vq_hat + v_q_g + L*(omega)*i_d))
     algebraic_vars.extend([v_q_c, v_d_c, i_d, i_q])
 
     # Build initialization equations based on control modes
@@ -391,16 +397,20 @@ def build_gfl_converter_model(vfactory: VarFactory, inputs,
         omega: vfactory.add_const(1),
         v_d_g: vfactory.add_const(0),
         v_q_g: Vm,
-        i_q: (2 / 3) * P / v_q_g,
-        i_d: (2 / 3) * Q / v_q_g,
+        i_q: P / v_q_g,
+        i_d: Q / v_q_g,
         i_q_ref: i_q,
         i_d_ref: i_d,
-        v_d_c: v_d_g + (R*i_d - omega*L*i_q),
-        v_q_c: v_q_g + (R*i_q - omega*L*i_d),
-        vd_hat: v_d_c - (v_d_g + L*(omega)*i_q),
-        vq_hat: v_q_c - (v_q_g - L*(omega)*i_d),
+        i_d_ref_sat_var: i_d_ref_sat,
+        i_q_ref_sat_var: i_q_ref_sat,
+        v_d_c: v_d_g - (R * i_d - omega * L * i_q),
+        v_q_c: v_q_g - (-R * i_q - omega * L * i_d),
+        vd_hat: v_d_c - (v_d_g - L * omega * i_q),
+        vq_hat: v_q_c - (v_q_g + L * omega * i_d),
         Vdc_ref: v_dc,
         Vm_ac_ref: Vm,
+        Q_ref: Q,
+        P_ref: P,
     }
     
     # Add control-specific initialization
@@ -409,14 +419,14 @@ def build_gfl_converter_model(vfactory: VarFactory, inputs,
     elif control1 == ConverterControlType.Vm_dc:
         init_eqs[Vdc_ref] = v_dc
         # For DC voltage control, initialize i_q_ref based on initial power flow
-        init_eqs[i_q_ref] = (2 / 3) * P / v_q_g
+        init_eqs[i_q_ref] = P / v_q_g
     
     if control2 == ConverterControlType.Qac:
         init_eqs[Q_ref] = Q
     elif control2 == ConverterControlType.Vm_ac:
         init_eqs[Vm_ac_ref] = Vm
         # For AC voltage control, initialize i_d_ref based on initial reactive power
-        init_eqs[i_d_ref] = (2 / 3) * Q / v_q_g
+        init_eqs[i_d_ref] = Q / v_q_g
 
     gfl_block_aux = Block(
         algebraic_eqs=algebraic_eqs,
@@ -486,23 +496,11 @@ def trafo_gfl_converter_model(vfactory: VarFactory,
     v_q_c = internals["v_q_c"]
     vd_hat = internals["vd_hat"]
     vq_hat = internals["vq_hat"]
-    if theta is not None and v_d_c is not None and v_q_c is not None:
-        # Replace the two converter-voltage command equations with direct dq coupling
-        # to the internal AC bus voltage.
-        filtered_eqs = []
-        for eq in gfl_block.algebraic_eqs:
-            vars_in_eq = eq.get_vars()
-            is_vd_cmd = (v_d_c in vars_in_eq) and (vd_hat in vars_in_eq)
-            is_vq_cmd = (v_q_c in vars_in_eq) and (vq_hat in vars_in_eq)
-            if is_vd_cmd or is_vq_cmd:
-                continue
-            filtered_eqs.append(eq)
-        gfl_block.algebraic_eqs = filtered_eqs
 
-        gfl_block.algebraic_eqs.append(v_d_c - Vm_f * sym.sin(Va_f - theta))
-        gfl_block.algebraic_eqs.append(v_q_c - Vm_f * sym.cos(Va_f - theta))
-        #gfl_block.init_eqs[v_d_c] = Vm_f * sym.sin(Va_f - theta)
-        #gfl_block.init_eqs[v_q_c] = Vm_f * sym.cos(Va_f - theta)
+    gfl_block.algebraic_eqs.append(v_d_c - Vm_f * sym.sin(Va_f - theta))
+    gfl_block.algebraic_eqs.append(v_q_c - Vm_f * sym.cos(Va_f - theta))
+    #gfl_block.init_eqs[v_d_c] = Vm_f * sym.sin(Va_f - theta)
+    #gfl_block.init_eqs[v_q_c] = Vm_f * sym.cos(Va_f - theta)
 
     gfl_block.unify_blocks()
     return gfl_block, i_d, i_q, P, Q, internals
@@ -565,7 +563,7 @@ def VscGflBuild(vfactory: VarFactory, name: str = "",
         a2: vfactory.add_const(0.0),
     }
     
-    Im = sym.sqrt(i_d**2 + i_q**2 + vfactory.add_const(1e-5))
+    Im = sym.sqrt(i_d**2 + i_q**2 + vfactory.add_const(1e-7))
     vsc_block = Block(
         algebraic_eqs=[
             Pf_vsc + P - (a0 + a1*Im + a2*Im**2),
@@ -629,6 +627,7 @@ def TrafoGflBuild(vfactory: VarFactory, name: str = "",
     Pt_vsc = vfactory.add_var('Pt_vsc_control')
     Qt_vsc = vfactory.add_var('Qt_vsc_control')
     Pf_vsc = vfactory.add_var('Pf_vsc_control')
+    Qf_vsc = vfactory.add_var('Qf_vsc_control')
 
     Qf = vfactory.add_var('Qf')
     a0 = vfactory.add_var('a0')
@@ -651,18 +650,25 @@ def TrafoGflBuild(vfactory: VarFactory, name: str = "",
         a2: vfactory.add_const(0.0),
     }
 
-    Im = sym.sqrt(i_d**2 + i_q**2 + vfactory.add_const(1e-5))
+    Im = sym.sqrt(i_d**2 + i_q**2 + vfactory.add_const(1e-7))
+    Im_out = vfactory.add_var('Im_vsc_control')
 
     vsc_block = Block(
         algebraic_eqs=[
-            Pf_vsc + Pt_vsc - (a0 + a1 * Im + a2 * Im ** 2),
+            Pf_vsc + Pt_vsc - internals["R"]*(Im ** 2),
             Pt_vsc + P,
             Qt_vsc + Q,
+            Qf_vsc - Qf,
+            Im_out - Im,
         ],
-        algebraic_vars=[Pf_vsc, Pt_vsc, Qt_vsc],
+        algebraic_vars=[Pf_vsc, Pt_vsc, Qt_vsc, Qf_vsc,Im_out],
+        init_eqs={
+            Im_out: Im,
+            Qf_vsc: Qf,
+        },
         event_dict=event_dict,
         in_vars=inputs,
-        out_vars=[Pf_vsc, Pt_vsc, Qt_vsc],
+        out_vars=[Pf_vsc, Pt_vsc, Qt_vsc, Im_out],
     )
 
     vsc_block.external_mapping = {
@@ -674,7 +680,7 @@ def TrafoGflBuild(vfactory: VarFactory, name: str = "",
         VarPowerFlowRefferenceType.Pt: Pt_vsc,
         VarPowerFlowRefferenceType.Qt: Qt_vsc,
         VarPowerFlowRefferenceType.Pf: Pf_vsc,
-        VarPowerFlowRefferenceType.Qf: Qt_vsc,
+        VarPowerFlowRefferenceType.Qf: Qf_vsc,
     }
     vsc_block.api_obj_mapping = {
         ParamPowerFlowRefferenceType.R1: internals["R"],

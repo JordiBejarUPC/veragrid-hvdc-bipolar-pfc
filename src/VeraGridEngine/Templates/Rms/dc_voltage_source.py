@@ -116,8 +116,8 @@ def DCCurrentSource(vfactory: VarFactory, Vdc, name: str = "") -> RmsModelTempla
     Vpv0 = vfactory.add_var('Vpv0')
 
     event_dict = {
-        C: vfactory.add_const(0.01),
-        Rpv: vfactory.add_const(0.001),
+        C: vfactory.add_const(0.05),
+        Rpv: vfactory.add_const(0.005),
         Vpv0: vfactory.add_const(None),
         Idc_src0: vfactory.add_const(None),
     }

@@ -12,6 +12,7 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
 import numpy as np
+import matplotlib.pyplot as plt
 import VeraGridEngine.api as vge
 from VeraGridEngine.enumerations import ConverterControlType, VarPowerFlowRefferenceType
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
@@ -77,8 +78,12 @@ def print_gfl_init_consistency(grid2, pf_results):
     vm_t = np.abs(pf_results.voltage[idx_t])
     va_t = np.angle(pf_results.voltage[idx_t])
 
-    pt_vsc = float(np.real(pf_results.St_vsc[0]) / grid2.Sbase)
-    qt_vsc = float(np.imag(pf_results.St_vsc[0]) / grid2.Sbase)
+    # For TrafoGflBuild initialization, P/Q are tied to transformer "to" side
+    # (VarPowerFlowRefferenceType.Pt/Qt on the transformer model), not St_vsc.
+    branch_list = list(grid2.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True))
+    branch_idx = branch_list.index(trafo)
+    pt_vsc = float(np.real(pf_results.St[branch_idx]) / grid2.Sbase)
+    qt_vsc = float(np.imag(pf_results.St[branch_idx]) / grid2.Sbase)
 
     # Parameters used by build_gfl_converter_model defaults
     k_pq = get_event_value_by_name(trafo.rms_model, 'k_pq')
@@ -102,11 +107,28 @@ def print_gfl_init_consistency(grid2, pf_results):
     k = 1.0
     v_d_g = 0.0
     v_q_g = vm_t
-    i_q = -(1.0 / k_pq) * P / v_q_g
-    i_d = -(1.0 / k_pq) * Q / v_q_g
+    i_q = (1.0 / k_pq) * P / v_q_g
+    i_d = (1.0 / k_pq) * Q / v_q_g
 
-    v_d_c_from_pq = v_d_g + (R * i_d - omega * L * i_q)
-    v_q_c_from_pq = v_q_g + (R * i_q - omega * L * i_d)
+    # Estimate dq currents from transformer branch current phasor
+    # using the same dq frame angle (theta = Va_t).
+    i_d_from_if = None
+    i_q_from_if = None
+    i_d_from_it = None
+    i_q_from_it = None
+    if trafo in branch_list:
+        branch_idx = branch_list.index(trafo)
+        if branch_idx < len(pf_results.If):
+            i_f = pf_results.If[branch_idx]
+            i_d_from_if = np.abs(i_f) * np.sin(np.angle(i_f) - theta)
+            i_q_from_if = np.abs(i_f) * np.cos(np.angle(i_f) - theta)
+        if branch_idx < len(pf_results.It):
+            i_t = pf_results.It[branch_idx]
+            i_d_from_it = np.abs(i_t) * np.sin(np.angle(i_t) - theta)
+            i_q_from_it = np.abs(i_t) * np.cos(np.angle(i_t) - theta)
+
+    v_d_c_from_pq = v_d_g - ( R * i_d - omega * L * i_q)
+    v_q_c_from_pq = v_q_g - (-R * i_q - omega * L * i_d)
 
     v_d_c_from_internal_bus = vm_f * np.sin(va_f - theta)
     v_q_c_from_internal_bus = vm_f * np.cos(va_f - theta)
@@ -118,6 +140,10 @@ def print_gfl_init_consistency(grid2, pf_results):
     print(f"  Pt_vsc={pt_vsc:.6f}, Qt_vsc={qt_vsc:.6f} -> P={P:.6f}, Q={Q:.6f}")
     print(f"  k_pq={k_pq:.6f}, R={R:.6f}, L={L:.6f}, omega={omega:.6f}")
     print(f"  i_d={i_d:.6f}, i_q={i_q:.6f}")
+    if i_d_from_if is not None and i_q_from_if is not None:
+        print(f"  i_d/i_q from If phasor = {i_d_from_if:.6f}, {i_q_from_if:.6f}")
+    if i_d_from_it is not None and i_q_from_it is not None:
+        print(f"  i_d/i_q from It phasor = {i_d_from_it:.6f}, {i_q_from_it:.6f}")
     print(f"  v_d_c from P/Q init = {v_d_c_from_pq:.9f}")
     print(f"  v_q_c from P/Q init = {v_q_c_from_pq:.9f}")
     print(f"  v_d_c from internal bus = {v_d_c_from_internal_bus:.9f}")
@@ -254,8 +280,6 @@ def initialize_grid2_rms_models(grid2, pf_results):
                 initialize_bus_rms(bus, vf)
             gen_model = get_complete_generator_template_rms(vfactory=vf, name=gen.name).block
             set_rms_model(device=gen, model=gen_model, var_factory=vf)
-            qg_var = gen.rms_model.external_mapping[VarPowerFlowRefferenceType.Q]
-            gen.rms_model.init_eqs[qg_var] = vf.add_const(0.0)
 
     if len(grid2.vsc_devices) > 0 and len(grid2.transformers2w) > 0:
         vsc = grid2.vsc_devices[0]
@@ -277,7 +301,6 @@ def initialize_grid2_rms_models(grid2, pf_results):
 
                 trafo_qt = trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Qt]
                 #trafo.rms_model.algebraic_eqs.append(trafo_qt)
-                trafo.rms_model.init_eqs[trafo_qt] = vf.add_const(0.0)
                 print("  ✓ Connected transformer to DC bus")
 
     print("  ✓ All RMS models initialized successfully")
@@ -304,14 +327,14 @@ def run_rms_simulation(grid2, pf_results):
                 device=dc_gen,
                 parameter=idc_src0_var,
                 time=0.1,
-                value=0.011,
+                value=0.015,
                 group=events_group,
             )
             grid2.add_rms_event(event)
             print("  Added event: Idc_src0 step at t=0.1s")
 
     rms_options = vge.RmsOptions(
-        simulation_time=1,
+        simulation_time=3,
         time_step=0.005,
         max_iter=20,
         integration_method=DynamicIntegrationMethod.DaeBackEuler,
@@ -327,6 +350,109 @@ def run_rms_simulation(grid2, pf_results):
     rms_driver.run()
     results = rms_driver.results
     print(f"  ✓ RMS simulation complete (converged={results.converged})")
+
+    plot_rms_results(grid2, results)
+
+
+def plot_rms_results(grid2, results):
+    print("\n" + "-" * 70)
+    print("Plotting RMS Results")
+    print("-" * 70)
+
+    if results is None or results.values is None or len(results.time_array) == 0:
+        print("  ⚠ No results to plot")
+        return
+
+    t = np.array(results.time_array)
+    y = results.values[:, :, 0]
+
+    # Skip the final sample to keep plots available even if
+    # the last integration step fails to converge.
+    n_samples = min(len(t), y.shape[0])
+    if n_samples == 0:
+        print("  ⚠ No samples available to plot")
+        return
+    n_plot = n_samples - 200 if n_samples > 1 else n_samples
+    t_plot = t[:n_plot]
+    y_plot = y[:n_plot, :]
+    uid2idx = results.uid2idx
+
+    fig, axes = plt.subplots(3, 1, figsize=(12, 10))
+    ax1, ax2, ax3 = axes
+
+    trafo = grid2.transformers2w[0] if len(grid2.transformers2w) > 0 else None
+    vsc = grid2.vsc_devices[0] if len(grid2.vsc_devices) > 0 else None
+    dc_gen = next((g for g in grid2.generators if g.bus.is_dc), None)
+
+    def plot_var(ax, block, var_name, label):
+        var = find_name_in_block(var_name, block)
+        if var is None:
+            return False
+        idx = uid2idx.get(var.uid)
+        if idx is None:
+            return False
+        ax.plot(t_plot, y_plot[:, idx], label=label, linewidth=1.5)
+        return True
+
+    plotted1 = False
+    plotted2 = False
+    plotted3 = False
+
+    if trafo is not None and trafo.rms_model is not None:
+        plotted1 |= plot_var(ax1, trafo.rms_model, 'v_d_c', 'v_d_c')
+        plotted1 |= plot_var(ax1, trafo.rms_model, 'v_q_c', 'v_q_c')
+        plotted1 |= plot_var(ax1, trafo.rms_model, 'i_d', 'i_d')
+        plotted1 |= plot_var(ax1, trafo.rms_model, 'i_q', 'i_q')
+        plotted1 |= plot_var(ax1, trafo.rms_model, 'i_d_ref', 'i_d_ref')
+        plotted1 |= plot_var(ax1, trafo.rms_model, 'i_q_ref', 'i_q_ref')
+        plotted1 |= plot_var(ax1, trafo.rms_model, 'i_d_ref_sat', 'i_d_ref_sat')
+        plotted1 |= plot_var(ax1, trafo.rms_model, 'i_q_ref_sat', 'i_q_ref_sat')
+        plotted1 |= plot_var(ax1, trafo.rms_model, 'y_vd_hat', 'vd_hat')
+        plotted1 |= plot_var(ax1, trafo.rms_model, 'y_vq_hat', 'vq_hat')
+
+        plotted2 |= plot_var(ax2, trafo.rms_model, 'Pf_vsc_control', 'Pf_vsc_control')
+        plotted2 |= plot_var(ax2, trafo.rms_model, 'Pt_vsc_control', 'Pt_vsc_control')
+        plotted2 |= plot_var(ax2, trafo.rms_model, 'Qt_vsc_control', 'Qt_vsc_control')
+
+    if vsc is not None and vsc.rms_model is not None:
+        plotted2 |= plot_var(ax2, vsc.rms_model, 'Pf_vsc', 'Pf_vsc')
+        plotted2 |= plot_var(ax2, vsc.rms_model, 'Pt', 'Pt')
+
+    if dc_gen is not None and dc_gen.rms_model is not None:
+        plotted3 |= plot_var(ax3, dc_gen.rms_model, 'Idc', 'Idc')
+        plotted3 |= plot_var(ax3, dc_gen.rms_model, 'Idc_src', 'Idc_src')
+        plotted3 |= plot_var(ax3, dc_gen.rms_model, 'Pdc', 'Pdc')
+        if dc_gen.bus.rms_model is not None:
+            plotted3 |= plot_var(ax3, dc_gen.bus.rms_model, 'Vdc', 'Vdc_bus')
+
+    if plotted1:
+        ax1.set_title('TrafoGFL dq Variables')
+        ax1.set_ylabel('pu')
+        ax1.grid(True)
+        ax1.legend(loc='upper right')
+
+    if plotted2:
+        ax2.set_title('Power Variables')
+        ax2.set_ylabel('pu')
+        ax2.grid(True)
+        ax2.legend(loc='upper right')
+
+    if plotted3:
+        ax3.set_title('DC Variables')
+        ax3.set_xlabel('Time (s)')
+        ax3.set_ylabel('pu')
+        ax3.grid(True)
+        ax3.legend(loc='upper right')
+        ax3.axvline(x=0.1, color='red', linestyle=':', alpha=0.7)
+
+    for ax in axes:
+        ax.set_xlim([0, t_plot[-1]])
+
+    plt.tight_layout()
+    plt.show()
+    plt.savefig('rms_gfl_validation_results.png', dpi=150)
+    plt.close(fig)
+    print("  ✓ Plot saved to rms_gfl_validation_results.png")
 
 
 if __name__ == "__main__":
