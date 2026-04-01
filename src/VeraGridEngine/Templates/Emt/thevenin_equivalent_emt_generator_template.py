@@ -12,8 +12,8 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType, ParamPowerFlowRefferenceType
 
 def get_generator_thevenin_rl_emt_template(vf: VarFactory,
-        name: str = "emt_thevenin_eq_generator_template"
-) -> EmtModelTemplate:
+                                           name: str = "emt_thevenin_eq_generator_template"
+                                           ) -> EmtModelTemplate:
     """
     Simple EMT three-phase Thevenin generator behind series R-X.
 
@@ -53,7 +53,7 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
         using the Thevenin steady-state relation:
             E = V + (R + jX) I
 
-    :param vf: EMT  aVarFactory
+    :param vf: EMT  VarFactory
     :param name: Model name
     :return: EmtModelTemplate
     """
@@ -65,7 +65,6 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
     # ----------------------------------------------------------------------------------
     # Constants for symbolic expressions
     # ----------------------------------------------------------------------------------
-    c0 = vf.add_const(0.0)
     c05 = vf.add_const(0.5)
 
     # ----------------------------------------------------------------------------------
@@ -112,10 +111,10 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
     phi = vf.add_var("phi_" + name)
     Vpk = vf.add_var("Vpk_" + name)
     Ipk = vf.add_var("Ipk_" + name)
-
-    # Init-only internal auxiliary quantities
-    delta = vf.add_var("delta_" + name)
-    Epk = vf.add_var("Epk_" + name)
+    E_re = Vpk + R_s * Ipk * sym.cos(phi) - X_s * Ipk * sym.sin(phi)
+    E_im = R_s * Ipk * sym.sin(phi) + X_s * Ipk * sym.cos(phi)
+    delta_expr = sym.atan(E_im / E_re)
+    Epk_expr = ((E_re ** 2 + E_im ** 2) ** c05)
 
     # ----------------------------------------------------------------------------------
     # Block
@@ -130,9 +129,9 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
         state_vars=[i_A, i_B, i_C, theta],
 
         algebraic_eqs=[
-            e_A - Epk * sym.sin(theta),
-            e_B - Epk * sym.sin(theta - 2 * np.pi / 3),
-            e_C - Epk * sym.sin(theta + 2 * np.pi / 3),
+            e_A - Epk_expr * sym.sin(theta),
+            e_B - Epk_expr * sym.sin(theta - 2 * np.pi / 3),
+            e_C - Epk_expr * sym.sin(theta + 2 * np.pi / 3),
 
             Pe - (i_A * v_A + i_B * v_B + i_C * v_C),
             Qe - (1 / np.sqrt(3)) * (
@@ -185,9 +184,6 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
     # Event dict
     # ----------------------------------------------------------------------------------
 
-    E_re = Vpk + R_s * Ipk * sym.cos(phi) - X_s * Ipk * sym.sin(phi)
-    E_im = R_s * Ipk * sym.sin(phi) + X_s * Ipk * sym.cos(phi)
-
     templ.block.api_obj_mapping = {
         ParamPowerFlowRefferenceType.omega_base: omega_base,
         ParamPowerFlowRefferenceType.R1: R_s,
@@ -196,21 +192,12 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
     }
 
     templ.block.event_dict = {
-        # omega_base: vf.add_const(None),
-        # R_s: vf.add_const(None),
-        # X_s: vf.add_const(None),
-
         # PF-derived init-only values
         phi_v: vf.add_const(None),
         phi: vf.add_const(None),
         Vpk: vf.add_const(None),
         Ipk: vf.add_const(None),
 
-        # Internal init-only auxiliary values
-        # delta: vf.add_const(None),
-        delta: sym.atan(E_im / E_re),
-        # Epk: vf.add_const(None),
-        Epk: ((E_re ** 2 + E_im ** 2) ** c05),
     }
 
     # ----------------------------------------------------------------------------------
@@ -243,15 +230,11 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
 
 
     templ.block.init_eqs = {
-        # delta: sym.atan(E_im / E_re),
+        theta: phi_v + delta_expr,
 
-        # Epk: ((E_re ** 2 + E_im ** 2) ** c05),
-
-        theta: phi_v + delta,
-
-        e_A: Epk * sym.sin(theta),
-        e_B: Epk * sym.sin(theta - 2 * np.pi / 3),
-        e_C: Epk * sym.sin(theta + 2 * np.pi / 3),
+        e_A: Epk_expr * sym.sin(theta),
+        e_B: Epk_expr * sym.sin(theta - 2 * np.pi / 3),
+        e_C: Epk_expr * sym.sin(theta + 2 * np.pi / 3),
 
         Pe: (i_A * v_A + i_B * v_B + i_C * v_C),
         Qe: (1 / np.sqrt(3)) * (

@@ -178,7 +178,7 @@ for bus in circuit.buses:
 gen_mdl = get_generator_thevenin_rl_emt_template(vf = circuit.emt_var_factory).block
 
 # Transformer model (series RL with ideal transformer)
-trafo_mdl = get_transformer_emt_template(grid=circuit, trafo=transformer, name=transformer.name).block
+trafo_mdl = get_transformer_emt_template(vf = circuit.emt_var_factory, grid=circuit, trafo=transformer, name=transformer.name).block
 
 # VSC model (standard converter: DC -> AC with power balance)
 vsc_mdl = get_emt_ideal_converter(

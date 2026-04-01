@@ -211,17 +211,17 @@ grid.add_dc_line(DCline)
 # Build Rms models
 ######################################################################################################
 # generator
-# genA_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
-# genB_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
+genA_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
+genB_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
 #
 # # line
-# lineA_mdl = get_line_rms_template(grid.rms_var_factory).block
-# lineB_mdl = get_line_rms_template(grid.rms_var_factory).block
+lineA_mdl = get_line_rms_template(grid.rms_var_factory).block
+lineB_mdl = get_line_rms_template(grid.rms_var_factory).block
 # trafoA_mdl = get_line_rms_template(grid.rms_var_factory).block
 # trafoB_mdl = get_line_rms_template(grid.rms_var_factory).block
 
 # DC line
-# DCline_mdl =
+# DCline_mdl = get_line_rms_template(grid.rms_var_factory).block
 
 # VSC
 # vsc_master_mdl =
