@@ -50,73 +50,129 @@ grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
 #                    Devices
 #####################################################################################
 
+grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
+
+#####################################################################################
+#                    Devices
+#####################################################################################
+
 # Buses
 bus1 = gce.Bus(name="Bus1", Vnom=400, is_slack=True)
 bus2 = gce.Bus(name="Bus2", Vnom=400)
-bus2_1 = gce.Bus(name="Bus2_1", Vnom=520) # between trafo and vsc
-bus3 = gce.Bus(name="Bus3", Vnom=1013.5, is_dc = True)
-bus4 = gce.Bus(name="Bus4", Vnom=1013.5, is_dc = True)
-bus5_1 = gce.Bus(name="Bus5_1", Vnom=520) # between trafo and vsc
+bus2_1 = gce.Bus(name="Bus2_1", Vnom=520)   # AC side near VSC after trafo
+bus3 = gce.Bus(name="Bus3", Vnom=1013.5, is_dc=True)
+bus4 = gce.Bus(name="Bus4", Vnom=1013.5, is_dc=True)
+bus5_1 = gce.Bus(name="Bus5_1", Vnom=520)   # AC side near VSC after trafo
 bus5 = gce.Bus(name="Bus5", Vnom=400)
-bus6 = gce.Bus(name="Bus6", Vnom=400)
+bus6 = gce.Bus(name="Bus6", Vnom=400, is_slack=True)
 
-grid.add_bus(bus1)
-grid.add_bus(bus2)
-grid.add_bus(bus2_1)
-grid.add_bus(bus3)
-grid.add_bus(bus4)
-grid.add_bus(bus5_1)
-grid.add_bus(bus5)
-grid.add_bus(bus6)
+for bus in [bus1, bus2, bus2_1, bus3, bus4, bus5_1, bus5, bus6]:
+    grid.add_bus(bus)
 
 for bus in grid.buses:
     initialize_bus_rms(bus, vf=grid.rms_var_factory)
 
-# external grid
-generatorA: gce.Generator = gce.Generator(
-        name="Gen_Thev",
-        vset=1.0,
-        Snom=grid.Sbase,
-        freq=50.0,
-        r1=0.001,
-        x1=0.3,
-    )
+# External grids
+generatorA = gce.Generator(
+    name="Gen_Thev_A",
+    vset=1.0,
+    Snom=grid.Sbase,
+    freq=50.0,
+    r1=0.001,
+    x1=0.3,
+)
 grid.add_generator(bus1, generatorA)
-generatorB: gce.Generator = gce.Generator(
-        name="Gen_Thev",
-        vset=1.0,
-        Snom=grid.Sbase,
-        freq=50.0,
-        r1=0.001,
-        x1=0.3,
-    )
+
+generatorB = gce.Generator(
+    name="Gen_Thev_B",
+    vset=1.0,
+    Snom=grid.Sbase,
+    freq=50.0,
+    r1=0.001,
+    x1=0.3,
+)
 grid.add_generator(bus6, generatorB)
 
-# Lines
-lineA = gce.Line(name="line 1-2", bus_from=bus1, bus_to=bus2, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
-                 rate=900.0)
+# AC lines
+lineA = gce.Line(
+    name="L12",
+    bus_from=bus1,
+    bus_to=bus2,
+    r=0.029585798816568046,
+    x=0.07100591715976332,
+    b=0.03,
+    rate=900.0,
+)
 grid.add_line(lineA)
-lineB = gce.Line(name="line 1-2", bus_from=bus5, bus_to=bus6, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
-                 rate=900.0)
+
+lineB = gce.Line(
+    name="L56",
+    bus_from=bus5,
+    bus_to=bus6,
+    r=0.029585798816568046,
+    x=0.07100591715976332,
+    b=0.03,
+    rate=900.0,
+)
 grid.add_line(lineB)
 
-# transformers
-trafoA = gce.Line(name="line 1-2", bus_from=bus2, bus_to=bus2_1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
-                 rate=900.0)
-grid.add_line(trafoA)
-trafoB = gce.Line(name="line 1-2", bus_from=bus5_1, bus_to=bus5, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
-                 rate=900.0)
-grid.add_line(trafoB)
+#####################################################################################
+#                    Transformers
+#####################################################################################
+# IMPORTANT:
+# These values are placeholders but physically reasonable for a test case.
+# Adjust r/x according to the transformer you want to represent.
+#
+# I assume the API supports a 2-winding transformer class called Transformer2W.
+# If your local gce build uses a slightly different class/argument name, keep
+# exactly the same data and only adapt the constructor name/signature.
 
-# VSC
-p_transfer_mw = 30.0 # MW
-q_transfer_mvar = 0.0 # MVAr
-emt_control1 = ConverterControlType.Pdc
-emt_control2 = ConverterControlType.Qac
+trafoA = gce.Transformer2W(
+    name="Trafo_2_2_1",
+    bus_from=bus2,       # 400 kV side
+    bus_to=bus2_1,       # 520 kV side
+    HV=520.0,
+    LV=400.0,
+    nominal_power=900.0,   # MVA
+    r=0.005,
+    x=0.12,
+    g=0.0,
+    b=0.0,
+    rate=900.0,
+    tap_module=1.0,
+    tap_phase=0.0,
+)
+grid.add_transformer2w(trafoA)
+
+trafoB = gce.Transformer2W(
+    name="Trafo_5_1_5",
+    bus_from=bus5_1,     # 520 kV side
+    bus_to=bus5,         # 400 kV side
+    HV=520.0,
+    LV=400.0,
+    nominal_power=900.0,   # MVA
+    r=0.005,
+    x=0.12,
+    g=0.0,
+    b=0.0,
+    rate=900.0,
+    tap_module=1.0,
+    tap_phase=0.0,
+)
+grid.add_transformer2w(trafoB)
+
+#####################################################################################
+#                    VSC
+#####################################################################################
+
+p_transfer_mw = 30.0
+q_transfer_mvar = 0.0
+
+# Master VSC: fixes DC voltage
 vsc_master = gce.VSC(
-    name='VSC',
-    bus_from=bus3,  # DC side
-    bus_to=bus2_1,    # AC side
+    name='VSC_master',
+    bus_from=bus3,      # DC side
+    bus_to=bus2_1,      # AC side
     rate=100.0,
     control1=ConverterControlType.Qac,
     control2=ConverterControlType.Vm_dc,
@@ -125,32 +181,35 @@ vsc_master = gce.VSC(
 )
 grid.add_vsc(vsc_master)
 
+# Slave VSC: fixes active power on AC side
 vsc_slave = gce.VSC(
-    name='VSC',
-    bus_from=bus4,  # DC side
-    bus_to=bus5_1,    # AC side
+    name='VSC_slave',
+    bus_from=bus4,      # DC side
+    bus_to=bus5_1,      # AC side
     rate=100.0,
     control1=ConverterControlType.Qac,
-    control2=ConverterControlType.Vm_dc,
+    control2=ConverterControlType.Pac,
     control1_val=q_transfer_mvar,
-    control2_val=1.0,
+    control2_val=p_transfer_mw,   # if sign is reversed, try -p_transfer_mw
 )
 grid.add_vsc(vsc_slave)
 
+#####################################################################################
+#                    DC line
+#####################################################################################
+
 DCline = gce.DcLine(
-    name= 'DC line',
-    bus_from = bus3,
-    bus_to = bus4,
-    rate = 900,
-    r=2.05
+    name='DC_line',
+    bus_from=bus3,
+    bus_to=bus4,
+    rate=900.0,
+    r=0.001,
 )
 grid.add_dc_line(DCline)
 
 ######################################################################################################
 # Build Rms models
 ######################################################################################################
-
-
 # generator
 # genA_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
 # genB_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
@@ -192,9 +251,9 @@ grid.add_dc_line(DCline)
 # set_rms_model(device=vsc_slave, model=vsc_slave_mdl, var_factory= grid.rms_var_factory)
 
 
-######################################################################################################
-# Power flow
-######################################################################################################
+#####################################################################################
+#                    Power flow
+#####################################################################################
 
 options = gce.PowerFlowOptions(
     solver_type=gce.SolverType.NR,
@@ -218,13 +277,13 @@ options = gce.PowerFlowOptions(
     initialize_angles=False,
     generate_report=False,
 )
+
 res = gce.power_flow(grid, options=options)
 
-print(f"Converged: {res.converged}")
+print(f"Converged? {res.converged}")
 print(res.get_bus_df())
 print(res.get_branch_df())
 
-params_mapping = dict()
 
 options = RmsOptions(time_step=0.001,
                      simulation_time=5,
