@@ -703,17 +703,17 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
                                         logger=self.logger)
 
                 self.results.voltage[ti, :] = gslv_res.voltage
-                self.results.Sbus[ti, :] = gslv_res.Sbus
+                self.results.Sbus[ti, :] = gslv_res.Sbus.real
                 self.results.bus_shadow_prices[ti, :] = gslv_res.bus_shadow_prices
 
                 self.results.load_shedding[ti, :] = gslv_res.load_shedding
                 self.results.battery_power[ti, :] = gslv_res.battery_power
                 self.results.battery_energy[ti, :] = gslv_res.battery_energy
                 self.results.generator_power[ti, :] = gslv_res.generator_power
-                self.results.Sf[ti, :] = gslv_res.Sf
-                self.results.St[ti, :] = -gslv_res.St
-                self.results.overloads[ti, :] = gslv_res.overloads
-                self.results.loading[ti, :] = gslv_res.loading
+                self.results.Sf[ti, :] = gslv_res.Sf.real
+                self.results.St[ti, :] = gslv_res.St.real
+                self.results.overloads[ti, :] = gslv_res.overloads.real
+                self.results.loading[ti, :] = gslv_res.loading.real
                 self.results.tap_angle[ti, :] = gslv_res.tap_angle
 
                 self.results.hvdc_Pf[ti, :] = gslv_res.hvdc_Pf
