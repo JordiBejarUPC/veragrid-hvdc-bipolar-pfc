@@ -15,14 +15,11 @@ from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Var, Expr
 
 """
-EMT DC Load template.
+EMT DC load template.
 
-Models a DC load as a constant power load or constant resistance load
-connected to a DC bus.
-
-The model provides:
-- Idc: current flowing into the DC bus (for KCL)
-- Pdc: power consumption (optional, for monitoring)
+The load follows the EMT injection convention used by the rest of the
+framework: current and power are positive when entering the bus. A consuming DC
+load therefore has negative ``i_dc`` and negative ``p_dc``.
 """
 
 def get_dc_load_emt_template(
@@ -34,9 +31,9 @@ def get_dc_load_emt_template(
     """
     Build an EMT DC load model.
 
-    Two modes:
-    1. Constant power: Idc = P_dc / V_dc
-    2. Constant resistance: Idc = V_dc / R_dc
+    Two modes are supported:
+    1. constant power: ``i_dc = -P_cons / v_dc``
+    2. constant resistance: ``i_dc = -v_dc / R_dc``
 
     Args:
         grid: Multicircuit
@@ -57,8 +54,9 @@ def get_dc_load_emt_template(
     vf: VarFactory = grid.emt_var_factory
     sbase: float = grid.Sbase
 
-    # Convert power from MW to p.u.
-    P_dc_pu = -P_dc / sbase  # p.u. # in the correct sign convention
+    # Positive ``P_dc`` means consumed DC power. The injected bus power is the
+    # opposite quantity because loads withdraw power from the bus.
+    P_cons_pu = float(P_dc) / sbase
 
     v_dc = vf.add_var(name=f"v_dc_{name}", reference=VarPowerFlowRefferenceType.Vdc)
 
@@ -69,17 +67,16 @@ def get_dc_load_emt_template(
     templ.block.algebraic_vars = [i_dc, p_dc]
 
     alg_eqs = []
+    eps = vf.add_const(1e-10)
 
     if R_dc is not None and R_dc > 0:
-        # Constant resistance mode: I = V / R
+        # Constant-resistance load consuming power from the DC bus.
         alg_eqs.append(i_dc + v_dc / R_dc)
         alg_eqs.append(p_dc - v_dc * i_dc)
     else:
-        # Constant power mode: I = P / V
-        # Add small epsilon to avoid division by zero
-        eps = vf.add_const(1e-10)
-        alg_eqs.append(i_dc - P_dc_pu / (v_dc + eps))
-        alg_eqs.append(p_dc - P_dc_pu)
+        # Constant-power load consuming power from the DC bus.
+        alg_eqs.append(i_dc + P_cons_pu / (v_dc + eps))
+        alg_eqs.append(p_dc + P_cons_pu)
 
     templ.block.algebraic_eqs = alg_eqs
 
@@ -88,19 +85,18 @@ def get_dc_load_emt_template(
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Vdc: v_dc,
         VarPowerFlowRefferenceType.Idc: i_dc,
-        VarPowerFlowRefferenceType.P: None,
+        VarPowerFlowRefferenceType.P: p_dc,
     }
 
-    eps = vf.add_const(1e-10)
     if R_dc is not None and R_dc > 0:
         templ.block.init_eqs = {
-            i_dc: (-v_dc / R_dc),
-            p_dc: (v_dc * i_dc),
+            i_dc: -v_dc / R_dc,
+            p_dc: -(v_dc * v_dc) / R_dc,
         }
     else:
         templ.block.init_eqs = {
-            i_dc: (P_dc_pu / (v_dc + eps)),
-            p_dc: vf.add_const(P_dc_pu),
+            i_dc: -P_cons_pu / (v_dc + eps),
+            p_dc: vf.add_const(-P_cons_pu),
         }
 
     return templ
@@ -122,10 +118,9 @@ def get_dc_load_from_device(
     Returns:
         EmtModelTemplate with the DC load block
     """
-    P_dc = getattr(load, 'P', 0.0)
+    P_dc = load.P
     return get_dc_load_emt_template(
         grid=grid,
-        load_name=load.name,
         P_dc=P_dc,
-        name=f"{load.name}_{name}"
+        name=name
     )

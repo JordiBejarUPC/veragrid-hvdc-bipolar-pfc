@@ -99,18 +99,22 @@ class VarFactory(EditableDevice):
 
     def add_diff_var(self,
                      name: str,
+                     reference: VarPowerFlowRefferenceType | None = None,
+                     network_conn: bool = False,
                      uid: int | None = None,
                      diff_var: Var | None = None,
                      base_var: Var | None = None) -> Var:
         """
         Adds a Diff ver to the class
         :param name:
+        :param reference:
+        :param network_conn:
         :param uid:
         :param diff_var:
         :param base_var:
         :return:
         """
-        v = Var(name=name, uid=uid, diff_var=diff_var, base_var=base_var)
+        v = Var(name=name, reference=reference, network_conn=network_conn, uid=uid, diff_var=diff_var, base_var=base_var)
         self._diff_var_dict[v.uid] = v
         return v
 
