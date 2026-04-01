@@ -5,40 +5,32 @@
 
 from __future__ import annotations
 
+import contextlib
+import io
+import json
 import math
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Sequence, Tuple
+from unittest.mock import patch
 
 import matplotlib
-import pytest
-
-
-pytestmark = pytest.mark.slow
-
-if os.environ.get("VERAGRID_RUN_EMT_SLOW_BENCHMARKS") != "1":
-    pytest.skip(
-        "Set VERAGRID_RUN_EMT_SLOW_BENCHMARKS=1 to run slow EMT benchmark contract tests.",
-        allow_module_level=True,
-    )
 
 
 matplotlib.use("Agg")
-
-REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 from trunk.dynamics_emt.support.benchmark_dependency_stubs import install_optional_dependency_stubs
 
 install_optional_dependency_stubs()
 
-import trunk.dynamics_emt.scripting_emt_event as emt_event_script
-import trunk.dynamics_emt.scripting_example_thevequiv_piline_Rload_emt as rload_script
-import trunk.dynamics_emt.scripting_example_thevequiv_piline_ZIPload_emt as zipload_script
+from trunk.dynamics_emt import scripting_emt_event as emt_event_script
+from trunk.dynamics_emt import scripting_example_thevequiv_piline_Rload_emt as rload_script
+from trunk.dynamics_emt import scripting_example_thevequiv_piline_ZIPload_emt as zipload_script
 
 
 EXPECTED_SOLVER_ORDER: Tuple[str, ...] = ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")
+OUTPUT_DIR: Path = Path(__file__).resolve().parent / "Benchmark_waveform_degradation"
 
 
 @dataclass(frozen=True)
@@ -74,6 +66,7 @@ def _configure_scripts_for_short_regression() -> None:
     emt_event_script.options.simulation_time = 5e-2
     emt_event_script.SOLVER_VERBOSE = False
     emt_event_script.ENABLE_NEWTON_TRACE = False
+
 
 def _normalize_build_stats(build_stats_any: object) -> Dict[str, float]:
     if isinstance(build_stats_any, dict):
@@ -133,24 +126,110 @@ def _normalize_rows(raw_rows: Sequence[object]) -> List[NormalizedBenchmarkRow]:
     return normalized_rows
 
 
-@pytest.fixture(scope="module")
-def real_demo_standard_benchmark_rows() -> Dict[str, List[NormalizedBenchmarkRow]]:
+def _collect_real_demo_standard_benchmark_rows_with_log() -> Tuple[Dict[str, List[NormalizedBenchmarkRow]], str]:
     _configure_scripts_for_short_regression()
+    captured_io: io.StringIO = io.StringIO()
 
-    with pytest.MonkeyPatch.context() as monkeypatch:
-        monkeypatch.setattr(rload_script, "export_benchmark_results", lambda results, file_stem: None)
-        monkeypatch.setattr(zipload_script, "export_benchmark_results", lambda results, file_stem: None)
-        monkeypatch.setattr(emt_event_script, "export_benchmark_results", lambda results, file_stem: None)
-        return {
-            "thevenin_pi_rload": _normalize_rows(rload_script.benchmark_all_solvers()),
-            "thevenin_pi_zipload": _normalize_rows(zipload_script.benchmark_all_solvers()),
-            "emt_event": _normalize_rows(emt_event_script.benchmark_all_solvers()),
-        }
+    with contextlib.redirect_stdout(captured_io), contextlib.redirect_stderr(captured_io):
+        with (
+            patch.object(rload_script, "export_benchmark_results", lambda results, file_stem: None),
+            patch.object(zipload_script, "export_benchmark_results", lambda results, file_stem: None),
+            patch.object(emt_event_script, "export_benchmark_results", lambda results, file_stem: None),
+        ):
+            rows = {
+                "thevenin_pi_rload": _normalize_rows(rload_script.benchmark_all_solvers()),
+                "thevenin_pi_zipload": _normalize_rows(zipload_script.benchmark_all_solvers()),
+                "emt_event": _normalize_rows(emt_event_script.benchmark_all_solvers()),
+            }
+
+    return rows, captured_io.getvalue()
 
 
-def test_real_demo_benchmarks_expose_the_common_contract(
+def collect_real_demo_standard_benchmark_rows() -> Dict[str, List[NormalizedBenchmarkRow]]:
+    rows, _ = _collect_real_demo_standard_benchmark_rows_with_log()
+    return rows
+
+
+def _serialize_rows(real_demo_standard_benchmark_rows: Dict[str, List[NormalizedBenchmarkRow]]) -> List[Dict[str, object]]:
+    serialized_rows: List[Dict[str, object]] = list()
+
+    for case_name, rows in real_demo_standard_benchmark_rows.items():
+        for row in rows:
+            serialized_rows.append(
+                {
+                    "case": case_name,
+                    "solver": row.solver_key,
+                    "problem_build_s": row.problem_build_s,
+                    "solver_init_s": row.solver_init_s,
+                    "solver_build_s": row.solver_build_s,
+                    "simulate_s": row.simulate_s,
+                    "solver_total_s": row.solver_total_s,
+                    "loop_s": row.loop_s,
+                    "y_max_abs_diff": row.y_max_abs_diff,
+                    "dy_max_abs_diff": row.dy_max_abs_diff,
+                    "steps": row.steps,
+                    "y_shape": list(row.y_shape),
+                    "dy_shape": list(row.dy_shape),
+                    "build_stats": dict(row.build_stats),
+                    "final_residual_inf": row.final_residual_inf,
+                }
+            )
+
+    return serialized_rows
+
+
+def export_waveform_degradation_contract_results(
     real_demo_standard_benchmark_rows: Dict[str, List[NormalizedBenchmarkRow]],
-) -> None:
+    captured_log: str,
+) -> List[Path]:
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    serialized_rows = _serialize_rows(real_demo_standard_benchmark_rows)
+    json_path = OUTPUT_DIR / "benchmark_waveform_degradation_contracts.json"
+    csv_path = OUTPUT_DIR / "benchmark_waveform_degradation_contracts.csv"
+    md_path = OUTPUT_DIR / "benchmark_waveform_degradation_contracts.md"
+    log_path = OUTPUT_DIR / "benchmark_waveform_degradation_contracts.log"
+
+    with open(json_path, "w", encoding="utf-8") as json_file:
+        json.dump(serialized_rows, json_file, indent=2)
+
+    csv_lines: List[str] = [
+        "case,solver,problem_build_s,solver_init_s,solver_build_s,simulate_s,solver_total_s,loop_s,y_max_abs_diff,dy_max_abs_diff,steps,final_residual_inf"
+    ]
+    markdown_lines: List[str] = [
+        "| Case | Solver | Build [s] | Init [s] | Solver Build [s] | Sim [s] | Total [s] | Loop [s] | Y diff | dY diff | Steps | Final residual |",
+        "| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
+
+    for row in serialized_rows:
+        csv_lines.append(
+            f"{row['case']},{row['solver']},{row['problem_build_s']:.12e},{row['solver_init_s']:.12e},"
+            f"{row['solver_build_s']:.12e},{row['simulate_s']:.12e},{row['solver_total_s']:.12e},"
+            f"{float(row['loop_s']):.12e},{row['y_max_abs_diff']:.12e},{row['dy_max_abs_diff']:.12e},"
+            f"{int(row['steps'])},{float(row['final_residual_inf']):.12e}"
+        )
+        markdown_lines.append(
+            f"| {row['case']} | {row['solver']} | {row['problem_build_s']:.6f} | {row['solver_init_s']:.6f} | "
+            f"{row['solver_build_s']:.6f} | {row['simulate_s']:.6f} | {row['solver_total_s']:.6f} | "
+            f"{float(row['loop_s']):.6f} | {row['y_max_abs_diff']:.3e} | {row['dy_max_abs_diff']:.3e} | "
+            f"{int(row['steps'])} | {float(row['final_residual_inf']):.3e} |"
+        )
+
+    with open(csv_path, "w", encoding="utf-8", newline="") as csv_file:
+        csv_file.write("\n".join(csv_lines) + "\n")
+    with open(md_path, "w", encoding="utf-8") as md_file:
+        md_file.write("\n".join(markdown_lines) + "\n")
+    with open(log_path, "w", encoding="utf-8") as log_file:
+        log_file.write(captured_log)
+
+    return [json_path, csv_path, md_path, log_path]
+
+
+def run_real_demo_benchmark_contract_demo(
+    real_demo_standard_benchmark_rows: Dict[str, List[NormalizedBenchmarkRow]] | None = None,
+) -> Dict[str, List[NormalizedBenchmarkRow]]:
+    if real_demo_standard_benchmark_rows is None:
+        real_demo_standard_benchmark_rows = collect_real_demo_standard_benchmark_rows()
+
     for case_name, rows in real_demo_standard_benchmark_rows.items():
         assert len(rows) == len(EXPECTED_SOLVER_ORDER), case_name
         assert tuple(row.solver_key for row in rows) == EXPECTED_SOLVER_ORDER, case_name
@@ -179,10 +258,15 @@ def test_real_demo_benchmarks_expose_the_common_contract(
 
             assert len(row.build_stats) > 0
 
+    return real_demo_standard_benchmark_rows
 
-def test_real_demo_benchmarks_keep_cross_backend_differences_bounded(
-    real_demo_standard_benchmark_rows: Dict[str, List[NormalizedBenchmarkRow]],
-) -> None:
+
+def run_real_demo_benchmark_tolerance_demo(
+    real_demo_standard_benchmark_rows: Dict[str, List[NormalizedBenchmarkRow]] | None = None,
+) -> Dict[str, List[NormalizedBenchmarkRow]]:
+    if real_demo_standard_benchmark_rows is None:
+        real_demo_standard_benchmark_rows = collect_real_demo_standard_benchmark_rows()
+
     case_tolerances: Dict[str, Tuple[float, float]] = {
         "thevenin_pi_rload": (3.5e-2, 1.0e-1),
         "emt_event": (6.5e-2, 1.0e-1),
@@ -202,3 +286,20 @@ def test_real_demo_benchmarks_keep_cross_backend_differences_bounded(
         assert math.isfinite(row.dy_max_abs_diff)
         assert row.dy_max_abs_diff < zip_case_tolerances[1]
         assert math.isfinite(row.final_residual_inf) or math.isnan(row.final_residual_inf)
+
+    return real_demo_standard_benchmark_rows
+
+
+def run_waveform_degradation_contract_demos() -> Dict[str, List[NormalizedBenchmarkRow]]:
+    rows, captured_log = _collect_real_demo_standard_benchmark_rows_with_log()
+    run_real_demo_benchmark_contract_demo(rows)
+    run_real_demo_benchmark_tolerance_demo(rows)
+    exported_paths = export_waveform_degradation_contract_results(rows, captured_log)
+    print("Exported contract demo artifacts:")
+    for export_path in exported_paths:
+        print(f"- {export_path}")
+    return rows
+
+
+if __name__ == "__main__":
+    run_waveform_degradation_contract_demos()
