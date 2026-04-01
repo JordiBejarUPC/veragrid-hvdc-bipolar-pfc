@@ -210,9 +210,8 @@ def get_shunt_l_3ph_emt_template(vf: VarFactory, name: str = "Shunt_L_3ph") -> E
 
     # State vars (injected currents)
     i_A, i_B, i_C = [vf.add_var(f"i_{p}_{name}") for p in ["A", "B", "C"]]
-    d_i_A = vf.add_diff_var(f"d_i_A_{name}", base_var=i_A)
-    d_i_B = vf.add_diff_var(f"d_i_B_{name}", base_var=i_B)
-    d_i_C = vf.add_diff_var(f"d_i_C_{name}", base_var=i_C)
+    d_i_A, d_i_B, d_i_C = [vf.add_diff_var(name =f"d_i_{p}_{name}", base_var=v)
+                              for p, v in zip(["A", "B", "C"], [i_A, i_B, i_C])]
 
     templ.block.state_vars = [i_A, i_B, i_C]
     templ.block.diff_vars = [d_i_A, d_i_B, d_i_C]
@@ -240,6 +239,13 @@ def get_shunt_l_3ph_emt_template(vf: VarFactory, name: str = "Shunt_L_3ph") -> E
         L_B: Vnom ** 2 / (Ql0_B * w_base),
         L_C: Vnom ** 2 / (Ql0_C * w_base),
     }
+
+    templ.block.diff_init_eqs = {
+        d_i_A: vf.add_const(0.0),
+        d_i_B: vf.add_const(0.0),
+        d_i_C: vf.add_const(0.0),
+    }
+
 
     # Map injected currents to the bus
     templ.block.external_mapping = {
@@ -308,6 +314,12 @@ def get_shunt_c_3ph_emt_template(vf: VarFactory, name: str = "Shunt_C_3ph") -> E
         C_A: Ql0_A / (Vnom ** 2 * w_base),
         C_B: Ql0_B / (Vnom ** 2 * w_base),
         C_C: Ql0_C / (Vnom ** 2 * w_base),
+    }
+
+    templ.block.diff_init_eqs = {
+        dvCapA: vf.add_const(0.0),
+        dvCapB: vf.add_const(0.0),
+        dvCapC: vf.add_const(0.0),
     }
 
     templ.block.external_mapping = {

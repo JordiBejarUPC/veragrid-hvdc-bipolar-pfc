@@ -320,16 +320,44 @@ class BlockSaver:
         )
 
         init_eq_list = list()
+        diff_init_eq_list = list()
         for var, expr in blk.init_eqs.items():
 
-            found_var = self.var_factory.get_var(var.uid)
+            try:
+                found_var = self.var_factory.get_var(var.uid)
+            except:
+                found_var = None
 
             if found_var is None:
-                raise ValueError(f"variable {var.name} not added to vars factory")
+            #     raise ValueError(f"variable {var.name} not added to vars factory")
+                self.var_factory._var_dict[var.uid] = var
 
             init_eq_list.append(
                 {
                     "var": var.uid,
+                    "expr": expr_to_dict(
+                        expr=expr,
+                        const_dict=self.var_factory.get_const_dict(),
+                        var_dict=self.var_factory.get_vars_dict(),
+                        diff_var_dict=self.var_factory.get_diff_var_dict()
+                    )
+                }
+            )
+
+        for diff_var, expr in blk.diff_init_eqs.items():
+
+            try:
+                found_var = self.var_factory.get_diff_var(diff_var.uid)
+            except:
+                found_var = None
+
+            if found_var is None:
+            #     raise ValueError(f"variable {diff_var.name} not added to vars factory")
+                self.var_factory._diff_var_dict[diff_var.uid] = diff_var
+
+            diff_init_eq_list.append(
+                {
+                    "var": diff_var.uid,
                     "expr": expr_to_dict(
                         expr=expr,
                         const_dict=self.var_factory.get_const_dict(),
@@ -436,6 +464,8 @@ class BlockSaver:
             "reformulated_vars": [v.uid for v in blk.reformulated_vars],
 
             "init_eqs": init_eq_list,
+
+            "diff_init_eqs": diff_init_eq_list,
 
             "init_values": init_values,
 
