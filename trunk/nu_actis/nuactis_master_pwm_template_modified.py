@@ -170,8 +170,8 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
         Outer_Ctrl_P_P_ctrl_mode: vf.add_const(0.0, name='P_ctrl_mode'),
         Outer_Ctrl_P_Kp: vf.add_const(1.3, name='Kp'),
         Outer_Ctrl_P_Ki: vf.add_const(70.0, name='Ki'),
-        uDC_ref: uDC,  # references are parameters of the controller
-        Pdc_ref: P_act,  # references are parameters of the controller
+        uDC_ref: uDC,
+        Pdc_ref: P_act,
     }
     # --- Retained Runtime Modes ---
     Outer_Ctrl_P_1.mode_dict = {
@@ -184,8 +184,6 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
         id_ref: C_id,
         id_limit: vf.add_const(1.0, name=''),
         min_lim: (-id_limit),
-        # Pdc_ref: P_act,
-        # uDC_ref: uDC,
     }
     Outer_Ctrl_P_1.procedural_logic = [
         sampled_value(output=Outer_Ctrl_P_proc_select_0, source=o3),
@@ -397,6 +395,7 @@ def get_masterpwm_model_emt_template(vf: VarFactory, name: str = 'MasterPWM_Mode
         VarPowerFlowRefferenceType.Vm: Vm,
         VarPowerFlowRefferenceType.Va: Va,
         VarPowerFlowRefferenceType.Vdc: uDC,
+    }
 
     return templ
 
