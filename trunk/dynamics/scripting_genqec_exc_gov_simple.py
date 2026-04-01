@@ -126,6 +126,16 @@ grid.add_rms_events_group(events_group)
 event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group)
 grid.add_rms_event(event)
 
+gce.save_file(grid=grid, filename="saved_grid_1.veragrid")
+grid_opened = gce.open_file("saved_grid_1.veragrid")
+
+# equal, logger = grid.compare_circuits(grid_opened, detailed_profile_comparison=True)
+# if not equal:
+#     logger.print()
+# # asset for failing
+# assert equal
+
+
 rms_events_group_names = np.array(0)
 
 # choose variables to save values
@@ -164,7 +174,7 @@ options = gce.PowerFlowOptions(
     initialize_angles=False,
     generate_report=False,
 )
-res = gce.power_flow(grid, options=options)
+res = gce.power_flow(grid_opened, options=options)
 
 print(f"Converged: {res.converged}")
 print(res.get_bus_df())
@@ -186,7 +196,7 @@ options = RmsOptions(time_step=0.001,
 ######################################################################################################
 
 
-problem = RmsProblemDae(grid=grid,
+problem = RmsProblemDae(grid=grid_opened,
                         options=options,
                         pf_results=res)
 

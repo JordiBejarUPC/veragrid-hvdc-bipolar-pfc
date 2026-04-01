@@ -405,8 +405,9 @@ class BlockSaver:
                 raise ValueError(f"variable {diff_var.name} not added to vars factory")
 
         for dyn_var_type, var in blk.external_mapping.items():
-            if var.uid not in self.var_factory.get_vars_dict():
-                raise ValueError(f"variable {var.name} not added to vars factory")
+            if var is not None:
+                if var.uid not in self.var_factory.get_vars_dict():
+                    raise ValueError(f"variable {var.name} not added to vars factory")
 
         # save diagram
         diagram = blk.diagram.to_dict()
@@ -440,10 +441,10 @@ class BlockSaver:
 
             "parameters": parameters,
 
-            "external_mapping": {dyn_var_type.value: var.uid
+            "external_mapping": {dyn_var_type.value: var.uid if var is not None else None
                                  for dyn_var_type, var in blk.external_mapping.items()},
 
-            "api_obj_mapping": {dyn_param_type.value: param.uid
+            "api_obj_mapping": {dyn_param_type.value: param.uid if param is not None else None
                                 for dyn_param_type, param in blk.api_obj_mapping.items()},
 
             "event_dict": events_list,
