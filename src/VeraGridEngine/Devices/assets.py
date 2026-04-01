@@ -8299,6 +8299,7 @@ class Assets:
             tem.get_complete_generator_template_rms(vfactory=self._rms_var_factory),
             tem.get_genrow_rms_template(vfactory=self._rms_var_factory),
             tem.get_line_rms_template(vfactory=self._rms_var_factory),
+            tem.get_dc_line_rms_template(vfactory=self._rms_var_factory),
             tem.get_load_rms_template(vfactory=self._rms_var_factory)
         ]
 

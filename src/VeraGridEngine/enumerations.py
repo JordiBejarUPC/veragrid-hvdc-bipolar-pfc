@@ -2805,6 +2805,7 @@ class VarPowerFlowRefferenceType(Enum):
     Qf = "Qf"  # Branch reactive power from in p.u.
     Pt = "Pt"  # Branch active power to in p.u.
     Qt = "Qt"  # Branch reactive power to in p.u.
+    Im = "Im"  # Converter current magnitude in p.u.
 
     # HVDC
     Pf_hvdc = "Pf_hvdc"

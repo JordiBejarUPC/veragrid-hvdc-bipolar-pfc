@@ -3,66 +3,51 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+import os
+import sys
 
-import sys, os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
-
-
-from VeraGridEngine.Utils.Symbolic.block import Block
+repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+src_root = os.path.join(repo_root, "src")
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
+if src_root not in sys.path:
+    sys.path.insert(0, src_root)
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
-from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
-from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Templates.Rms.line_rms_template import get_dc_line_rms_template, get_line_rms_template
+from VeraGridEngine.Templates.Rms.voltage_source_template import VoltageSourceBuild
+from VeraGridEngine.Templates.Rms.vsc_gfl_dclinked import build_vsc_rms
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
-
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod, ConverterControlType
-from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, ConverterControlType, VarPowerFlowRefferenceType
 import VeraGridEngine.api as gce
 
-###########################################################################################################################
-# Build VeraGrid object
-###########################################################################################################################
+from trunk.nu_actis.nuactis_master_pwm_template import build_trafo_master_block
+from trunk.nu_actis.nuactis_slave_pwm_template import build_trafo_slave_block, connect_rms_vsc_to_buses
 
 
-def find_name_in_block(name: str, block: Block):
-    for var in block.algebraic_vars + block.state_vars + list(block.event_dict.keys()):
-        if name == var.name:
-            return var
+def dump_grid_topology(grid, label: str):
+    print(f"\n[DEBUG] {label}")
+    print(f"transformers2w order ({len(grid.get_transformers2w())}):")
+    for i, t in enumerate(grid.get_transformers2w()):
+        print(f"  [{i}] {t.name}: {t.idtag[:8]} {t.bus_from.name}->{t.bus_to.name}")
 
-    for mdl in block.children:
-        res = find_name_in_block(name, mdl)
-        if res is not None:
-            return res
+    print("branch iterator order add_vsc=False/add_hvdc=False/add_switch=True:")
+    for i, br in enumerate(grid.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True)):
+        print(f"  [{i}] {type(br).__name__} | {br.name} | {br.idtag[:8]}")
 
-
-#####################################################################################
-#                    Grid
-#####################################################################################
 
 grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
-
-#####################################################################################
-#                    Devices
-#####################################################################################
-
-grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
-
-#####################################################################################
-#                    Devices
-#####################################################################################
 
 # Buses
 bus1 = gce.Bus(name="Bus1", Vnom=400, is_slack=True)
 bus2 = gce.Bus(name="Bus2", Vnom=400)
-bus2_1 = gce.Bus(name="Bus2_1", Vnom=520)   # AC side near VSC after trafo
+bus2_1 = gce.Bus(name="Bus2_1", Vnom=520)
 bus3 = gce.Bus(name="Bus3", Vnom=1013.5, is_dc=True)
 bus4 = gce.Bus(name="Bus4", Vnom=1013.5, is_dc=True)
-bus5_1 = gce.Bus(name="Bus5_1", Vnom=520)   # AC side near VSC after trafo
+bus5_1 = gce.Bus(name="Bus5_1", Vnom=520)
 bus5 = gce.Bus(name="Bus5", Vnom=400)
 bus6 = gce.Bus(name="Bus6", Vnom=400, is_slack=True)
 
@@ -73,106 +58,69 @@ for bus in grid.buses:
     initialize_bus_rms(bus, vf=grid.rms_var_factory)
 
 # External grids
-generatorA = gce.Generator(
-    name="Gen_Thev_A",
-    vset=1.0,
-    Snom=grid.Sbase,
-    freq=50.0,
-    r1=0.001,
-    x1=0.3,
-)
+generatorA = gce.Generator(name="Gen_Thev_A", vset=1.0, Snom=grid.Sbase, freq=50.0, r1=0.001, x1=0.3)
+generatorB = gce.Generator(name="Gen_Thev_B", vset=1.0, Snom=grid.Sbase, freq=50.0, r1=0.001, x1=0.3)
 grid.add_generator(bus1, generatorA)
-
-generatorB = gce.Generator(
-    name="Gen_Thev_B",
-    vset=1.0,
-    Snom=grid.Sbase,
-    freq=50.0,
-    r1=0.001,
-    x1=0.3,
-)
 grid.add_generator(bus6, generatorB)
 
 # AC lines
-lineA = gce.Line(
-    name="L12",
-    bus_from=bus1,
-    bus_to=bus2,
-    r=0.029585798816568046,
-    x=0.07100591715976332,
-    b=0.03,
-    rate=900.0,
-)
+lineA = gce.Line(name="L12", bus_from=bus1, bus_to=bus2, r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=900.0)
+lineB = gce.Line(name="L56", bus_from=bus5, bus_to=bus6, r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=900.0)
 grid.add_line(lineA)
-
-lineB = gce.Line(
-    name="L56",
-    bus_from=bus5,
-    bus_to=bus6,
-    r=0.029585798816568046,
-    x=0.07100591715976332,
-    b=0.03,
-    rate=900.0,
-)
 grid.add_line(lineB)
 
-#####################################################################################
-#                    Transformers
-#####################################################################################
-# IMPORTANT:
-# These values are placeholders but physically reasonable for a test case.
-# Adjust r/x according to the transformer you want to represent.
-#
-# I assume the API supports a 2-winding transformer class called Transformer2W.
-# If your local gce build uses a slightly different class/argument name, keep
-# exactly the same data and only adapt the constructor name/signature.
-
+# Transformers
 trafoA = gce.Transformer2W(
     name="Trafo_2_2_1",
-    bus_from=bus2,       # 400 kV side
-    bus_to=bus2_1,       # 520 kV side
+    bus_from=bus2,
+    bus_to=bus2_1,
     HV=520.0,
     LV=400.0,
-    nominal_power=900.0,   # MVA
+    nominal_power=900.0,
     r=0.005,
     x=0.12,
-    g=0.0,
-    b=0.0,
     rate=900.0,
     tap_module=1.0,
     tap_phase=0.0,
 )
-grid.add_transformer2w(trafoA)
-
 trafoB = gce.Transformer2W(
     name="Trafo_5_1_5",
-    bus_from=bus5_1,     # 520 kV side
-    bus_to=bus5,         # 400 kV side
+    bus_from=bus5_1,
+    bus_to=bus5,
     HV=520.0,
     LV=400.0,
-    nominal_power=900.0,   # MVA
+    nominal_power=900.0,
     r=0.005,
     x=0.12,
-    g=0.0,
-    b=0.0,
     rate=900.0,
     tap_module=1.0,
     tap_phase=0.0,
 )
 grid.add_transformer2w(trafoB)
 
-#####################################################################################
-#                    VSC
-#####################################################################################
+grid.add_transformer2w(trafoA)
+dump_grid_topology(grid, "after adding trafoA and trafoB")
 
+# VSCs
 p_transfer_mw = 30.0
 q_transfer_mvar = 0.0
 
-# Master VSC: fixes DC voltage
+
+vsc_slave = gce.VSC(
+    name="VSC_slave",
+    bus_from=bus4,
+    bus_to=bus5_1,
+    rate=100.0,
+    control1=ConverterControlType.Qac,
+    control2=ConverterControlType.Pac,
+    control1_val=q_transfer_mvar,
+    control2_val=p_transfer_mw,
+)
+
 vsc_master = gce.VSC(
-    name='VSC_master',
-    bus_from=bus3,      # DC side
-    bus_to=bus2_1,      # AC side
+    name="VSC_master",
+    bus_from=bus3,
+    bus_to=bus2_1,
     rate=100.0,
     control1=ConverterControlType.Qac,
     control2=ConverterControlType.Vm_dc,
@@ -180,80 +128,69 @@ vsc_master = gce.VSC(
     control2_val=1.0,
 )
 grid.add_vsc(vsc_master)
-
-# Slave VSC: fixes active power on AC side
-vsc_slave = gce.VSC(
-    name='VSC_slave',
-    bus_from=bus4,      # DC side
-    bus_to=bus5_1,      # AC side
-    rate=100.0,
-    control1=ConverterControlType.Qac,
-    control2=ConverterControlType.Pac,
-    control1_val=q_transfer_mvar,
-    control2_val=p_transfer_mw,   # if sign is reversed, try -p_transfer_mw
-)
 grid.add_vsc(vsc_slave)
 
-#####################################################################################
-#                    DC line
-#####################################################################################
+# DC line
+dc_line = gce.DcLine(name="DC_line", bus_from=bus3, bus_to=bus4, rate=900.0, r=0.001)
+grid.add_dc_line(dc_line)
 
-DCline = gce.DcLine(
-    name='DC_line',
-    bus_from=bus3,
-    bus_to=bus4,
-    rate=900.0,
-    r=0.001,
+# Build RMS models
+genA_mdl = VoltageSourceBuild(grid.rms_var_factory, name=generatorA.name).block
+genB_mdl = VoltageSourceBuild(grid.rms_var_factory, name=generatorB.name).block
+
+lineA_mdl = get_line_rms_template(grid.rms_var_factory, name=lineA.name).block
+lineB_mdl = get_line_rms_template(grid.rms_var_factory, name=lineB.name).block
+dc_line_mdl = get_dc_line_rms_template(grid.rms_var_factory, name=dc_line.name).block
+
+trafo_master_mdl = build_trafo_master_block(vfactory=grid.rms_var_factory, name=trafoA.name).block
+trafo_slave_mdl = build_trafo_slave_block(vfactory=grid.rms_var_factory, name=trafoB.name).block
+
+vsc_master_mdl = build_vsc_rms(vfactory=grid.rms_var_factory, name=vsc_master.name).block
+vsc_slave_mdl = build_vsc_rms(vfactory=grid.rms_var_factory, name=vsc_slave.name).block
+
+# Assign models
+set_rms_model(device=generatorA, model=genA_mdl, var_factory=grid.rms_var_factory)
+set_rms_model(device=generatorB, model=genB_mdl, var_factory=grid.rms_var_factory)
+set_rms_model(device=lineA, model=lineA_mdl, var_factory=grid.rms_var_factory)
+set_rms_model(device=lineB, model=lineB_mdl, var_factory=grid.rms_var_factory)
+
+dc_line.rms_model = dc_line_mdl
+trafoA.rms_model = trafo_master_mdl
+trafoB.rms_model = trafo_slave_mdl
+vsc_master.rms_model = vsc_master_mdl
+vsc_slave.rms_model = vsc_slave_mdl
+
+# Connect DC line to DC buses
+dc_vm_f = dc_line.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf]
+dc_vm_t = dc_line.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt]
+bus3_vdc = bus3.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
+bus4_vdc = bus4.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
+dc_line.rms_model.connect([dc_vm_f, dc_vm_t], [bus3_vdc, bus4_vdc])
+
+# Connect master/slave trafo-control models to buses
+connect_rms_vsc_to_buses(
+    vsc_model=trafoA.rms_model,
+    controlled_bus_model=bus2_1.rms_model,
+    grid_bus_model=bus2.rms_model,
+    dc_bus_model=bus3.rms_model,
 )
-grid.add_dc_line(DCline)
+connect_rms_vsc_to_buses(
+    vsc_model=trafoB.rms_model,
+    controlled_bus_model=bus5_1.rms_model,
+    grid_bus_model=bus5.rms_model,
+    dc_bus_model=bus4.rms_model,
+)
 
-######################################################################################################
-# Build Rms models
-######################################################################################################
-# generator
-genA_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
-genB_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
-#
-# # line
-lineA_mdl = get_line_rms_template(grid.rms_var_factory).block
-lineB_mdl = get_line_rms_template(grid.rms_var_factory).block
-# trafoA_mdl = get_line_rms_template(grid.rms_var_factory).block
-# trafoB_mdl = get_line_rms_template(grid.rms_var_factory).block
+# Connect standalone VSC DC/link model to trafo-control outputs
+for vsc_dev, trafo_model in [(vsc_master, trafoA.rms_model), (vsc_slave, trafoB.rms_model)]:
+    im_trafo = trafo_model.external_mapping[VarPowerFlowRefferenceType.Im]
+    pt_trafo = trafo_model.external_mapping[VarPowerFlowRefferenceType.Pt]
 
-# DC line
-# DCline_mdl = get_line_rms_template(grid.rms_var_factory).block
+    vsc_dev.rms_model.connect(
+        [vsc_dev.rms_model.in_vars[0], vsc_dev.rms_model.in_vars[1]],
+        [im_trafo, pt_trafo],
+    )
 
-# VSC
-# vsc_master_mdl =
-# vsc_slave_mdl
-
-
-######################################################################################################
-# Add models to devices
-######################################################################################################
-#grids
-# set_rms_model(device=generatorA, model=genA_mdl, var_factory= grid.rms_var_factory)
-# set_rms_model(device=generatorB, model=genB_mdl, var_factory= grid.rms_var_factory)
-#
-# # lines
-# set_rms_model(device=lineA, model=lineA_mdl, var_factory= grid.rms_var_factory)
-# set_rms_model(device=lineB, model=lineB_mdl, var_factory= grid.rms_var_factory)
-#
-# #transformers
-# set_rms_model(device=trafoA, model=trafoA_mdl, var_factory= grid.rms_var_factory)
-# set_rms_model(device=trafoB, model=trafoB_mdl, var_factory= grid.rms_var_factory)
-
-# DC line
-# set_rms_model(device=DCline, model=DCline_mdl, var_factory= grid.rms_var_factory)
-
-# VSC
-# set_rms_model(device=vsc_master, model=vsc_master_mdl, var_factory= grid.rms_var_factory)
-# set_rms_model(device=vsc_slave, model=vsc_slave_mdl, var_factory= grid.rms_var_factory)
-
-
-#####################################################################################
-#                    Power flow
-#####################################################################################
 
 options = gce.PowerFlowOptions(
     solver_type=gce.SolverType.NR,
@@ -279,41 +216,31 @@ options = gce.PowerFlowOptions(
 )
 
 res = gce.power_flow(grid, options=options)
-
 print(f"Converged? {res.converged}")
 print(res.get_bus_df())
 print(res.get_branch_df())
 
+rms_options = RmsOptions(
+    time_step=0.001,
+    simulation_time=5,
+    tolerance=1e-6,
+    integration_method=DynamicIntegrationMethod.DaeBackEuler,
+    initialization_method=RmsInitializationMethod.Explicit,
+    use_init_values=False,
+    max_iter=1000,
+    verbose=0,
+)
 
-options = RmsOptions(time_step=0.001,
-                     simulation_time=5,
-                     tolerance=1e-6,
-                     integration_method=DynamicIntegrationMethod.DaeBackEuler,
-                     initialization_method=RmsInitializationMethod.Explicit,
-                     use_init_values=False,
-                     max_iter=1000,
-                     verbose=0)
-
-
-######################################################################################################
-# Prepare and run simulation
-######################################################################################################
-
-
-problem = RmsProblemDae(grid=grid,
-                        options=options,
-                        pf_results=res)
-events_group = RmsEventsGroup("simulation1")
-problem.set_events_group(events_group)
-
+problem = RmsProblemDae(grid=grid, options=rms_options, pf_results=res)
+problem.set_events_group(RmsEventsGroup("simulation1"))
 
 solver = BackEulerImplicitIntegration(
     problem=problem,
     t0=0,
-    t_end=options.simulation_time,
-    h=options.time_step,
-    max_iter=options.max_iter,
+    t_end=rms_options.simulation_time,
+    h=rms_options.time_step,
+    max_iter=rms_options.max_iter,
 )
 
 t, y, well_initialized, converged = solver.simulate()
-
+print("RMS simulation finished", well_initialized, converged, len(t))

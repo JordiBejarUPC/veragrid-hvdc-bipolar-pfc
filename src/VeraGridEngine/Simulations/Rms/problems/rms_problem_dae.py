@@ -2,7 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from typing import Dict, List, Callable
+from typing import Dict, List, Callable, Tuple, Set, Optional
 import time
 import numpy as np
 import pandas as pd
@@ -36,6 +36,38 @@ def _tic():
 
 def _toc(t0):
     return time.perf_counter() - t0
+
+
+def _is_time_aligned(t_curr: float, event_time: float) -> bool:
+    """
+    Return whether ``t_curr`` is aligned with ``event_time`` within numeric tolerance.
+    """
+    time_tol = 10.0 * np.finfo(np.float64).eps * max(1.0, abs(event_time))
+    return bool(abs(t_curr - event_time) <= time_tol)
+
+
+def _get_next_forced_mode_event_time(
+    scheduled_mode_events: Dict[int, List[Tuple[float, float, bool]]],
+    t_prev: float,
+    t_target: float,
+) -> Optional[float]:
+    """
+    Return the earliest forced-alignment mode event time in ``(t_prev, t_target]``.
+
+    :param scheduled_mode_events: Mapping uid -> sorted list of (time, value, force_step_alignment).
+    :param t_prev: Previous local solver time.
+    :param t_target: Nominal macro target time.
+    :return: Earliest forced event time or ``None``.
+    """
+    next_time: Optional[float] = None
+
+    for _, event_list in scheduled_mode_events.items():
+        for event_time, _, force_step_alignment in event_list:
+            if force_step_alignment and (t_prev < event_time <= t_target):
+                if next_time is None or event_time < next_time:
+                    next_time = event_time
+
+    return next_time
 
 
 def setP(P: ObjVec, P_used: BoolVec, k: int, val: object):
@@ -224,26 +256,23 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
                 elm.rms_model.unify_blocks()
                 # get parameters from api object
-                if (ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping
-                        and hasattr(elm, 'R') and hasattr(elm, 'X')):
+                if (ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping):
                     elm.rms_model.parameters[
                         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
                         float(elm.R / (elm.R ** 2 + elm.X ** 2)))
-                if (ParamPowerFlowRefferenceType.b in elm.rms_model.api_obj_mapping
-                        and hasattr(elm, 'R') and hasattr(elm, 'X')):
+                if (ParamPowerFlowRefferenceType.b in elm.rms_model.api_obj_mapping):
                     elm.rms_model.parameters[
                         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
                         float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
-                if ParamPowerFlowRefferenceType.bsh in elm.rms_model.api_obj_mapping and hasattr(elm, 'B'):
+                if ParamPowerFlowRefferenceType.bsh in elm.rms_model.api_obj_mapping:
                     elm.rms_model.parameters[
                         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh]] = Const(elm.B)
-                if ParamPowerFlowRefferenceType.r in elm.rms_model.api_obj_mapping and hasattr(elm, 'R'):
+                if ParamPowerFlowRefferenceType.r in elm.rms_model.api_obj_mapping:
                     elm.rms_model.parameters[
                         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.r]] = Const(elm.R)
                     print(f"Branch {elm.name}: setting parameter r with value {elm.R}")
-                if ParamPowerFlowRefferenceType.l in elm.rms_model.api_obj_mapping and hasattr(elm, 'X'):
-                    elm.rms_model.parameters[
-                        elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.l]] = Const(elm.X)
+                if ParamPowerFlowRefferenceType.l in elm.rms_model.api_obj_mapping:
+                    elm.rms_model.parameters[ elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.l]] = Const(elm.X)
                     print(f"Branch {elm.name}: setting parameter l with value {elm.X}")
 
                 # get variables from bus
@@ -255,14 +284,18 @@ class RmsProblemDae(RmsProblemTemplate):
                 Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
                 Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
 
-                elm.rms_model.update_model(
-                    elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
-                elm.rms_model.update_model(
-                    elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vaf], Vaf)
-                elm.rms_model.update_model(
-                    elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt], Vmt)
-                elm.rms_model.update_model(
-                    elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
+                if Vmf is not None and VarPowerFlowRefferenceType.Vmf in elm.rms_model.external_mapping:
+                    elm.rms_model.update_model(
+                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf], Vmf)
+                if Vaf is not None and VarPowerFlowRefferenceType.Vaf in elm.rms_model.external_mapping:
+                    elm.rms_model.update_model(
+                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vaf], Vaf)
+                if Vmt is not None and VarPowerFlowRefferenceType.Vmt in elm.rms_model.external_mapping:
+                    elm.rms_model.update_model(
+                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt], Vmt)
+                if Vat is not None and VarPowerFlowRefferenceType.Vat in elm.rms_model.external_mapping:
+                    elm.rms_model.update_model(
+                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat], Vat)
 
 
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
@@ -303,10 +336,14 @@ class RmsProblemDae(RmsProblemTemplate):
                 f = bus_dict[elm.bus_from]
                 t = bus_dict[elm.bus_to]
 
-                setP(P, P_used, f, -elm.rms_model.E(VarPowerFlowRefferenceType.Pf))
-                setP(P, P_used, t, -elm.rms_model.E(VarPowerFlowRefferenceType.Pt))
-                setQ(Q, Q_used, f, -elm.rms_model.E(VarPowerFlowRefferenceType.Qf))
-                setQ(Q, Q_used, t, -elm.rms_model.E(VarPowerFlowRefferenceType.Qt))
+                if VarPowerFlowRefferenceType.Pf in elm.rms_model.external_mapping:
+                    setP(P, P_used, f, -elm.rms_model.E(VarPowerFlowRefferenceType.Pf))
+                if VarPowerFlowRefferenceType.Pt in elm.rms_model.external_mapping:
+                    setP(P, P_used, t, -elm.rms_model.E(VarPowerFlowRefferenceType.Pt))
+                if not elm.bus_from.is_dc and VarPowerFlowRefferenceType.Qf in elm.rms_model.external_mapping:
+                    setQ(Q, Q_used, f, -elm.rms_model.E(VarPowerFlowRefferenceType.Qf))
+                if not elm.bus_to.is_dc and VarPowerFlowRefferenceType.Qt in elm.rms_model.external_mapping:
+                    setQ(Q, Q_used, t, -elm.rms_model.E(VarPowerFlowRefferenceType.Qt))
 
         # Populating VSCs init guess
         for i, elm in enumerate(self.grid.get_vsc()):
@@ -321,29 +358,14 @@ class RmsProblemDae(RmsProblemTemplate):
                 mdl.unify_blocks()
 
                 # get parameters from api object
-                if ParamPowerFlowRefferenceType.alpha1 in elm.rms_model.api_obj_mapping and hasattr(elm, 'alpha1'):
+                if ParamPowerFlowRefferenceType.alpha1 in elm.rms_model.api_obj_mapping:
                     elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha1]] = Const(elm.alpha1)
-                if ParamPowerFlowRefferenceType.alpha2 in elm.rms_model.api_obj_mapping and hasattr(elm, 'alpha2'):
+                if ParamPowerFlowRefferenceType.alpha2 in elm.rms_model.api_obj_mapping:
                     elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha2]] = Const(elm.alpha2)
-                if ParamPowerFlowRefferenceType.alpha3 in elm.rms_model.api_obj_mapping and hasattr(elm, 'alpha3'):
+                if ParamPowerFlowRefferenceType.alpha3 in elm.rms_model.api_obj_mapping:
                     elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha3]] = Const(elm.alpha3)
 
-                if ParamPowerFlowRefferenceType.R1 in elm.rms_model.api_obj_mapping:
-                    r1 = getattr(elm, 'R1', None)
-                    if r1 is None:
-                        r1 = getattr(elm, 'R', None)
-                    if r1 is not None:
-                        elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.R1]] = Const(float(r1))
 
-                if ParamPowerFlowRefferenceType.X1 in elm.rms_model.api_obj_mapping:
-                    x1 = getattr(elm, 'X1', None)
-                    if x1 is None:
-                        x1 = getattr(elm, 'X', None)
-                    if x1 is None:
-                        x1 = getattr(elm, 'L', None)
-                    if x1 is not None:
-                        elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.X1]] = Const(float(x1))
-                
                 #We connect the vsc to its transformer
                 if elm.bus_from.is_dc:
                     for branch_num, other_elm in enumerate(self.grid.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True)):
