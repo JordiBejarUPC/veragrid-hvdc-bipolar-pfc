@@ -220,6 +220,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self.change_size(w=self.w)
 
         self.set_position(x, y)
+        self.apply_rotation_state(refresh_geometry=False)
 
     @property
     def api_object(self) -> Bus:
@@ -283,12 +284,8 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         (connection points for loads, shunts, generators, etc.)
         :return: QPointF
         """
-        if self.connectivity_graph:
-            return QPointF(self.x() + self.rect().width() / 2.0,
-                           self.y() + self.rect().height() - self._terminal.h)
-        else:
-            return QPointF(self.x() + self.rect().width() / 2.0,
-                           self.y() + self.rect().height() + self._terminal.h / 2.0)
+        return self.get_terminal_anchor_by_key(terminal_key=SchematicAttachmentSlot.BOTTOM.value,
+                                               alignment=0.5)
 
     def get_nexus_point_for_child(self, child_graphic: INJECTION_GRAPHICS) -> QPointF:
         """
@@ -296,17 +293,29 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         dock = self._editor.diagram.get_dock(child_graphic.api_object)
         side = str(dock.get("side", SchematicAttachmentSlot.BOTTOM.value))
-        child_center_x: float = child_graphic.x() + child_graphic.w * 0.5
-        child_center_y: float = child_graphic.y() + child_graphic.h * 0.5
+        alignment_value = dock.get("nexus_parent_alignment", dock.get("alignment", None))
 
-        if side == SchematicAttachmentSlot.TOP.value:
-            return QPointF(child_center_x, self.y())
-        elif side == SchematicAttachmentSlot.LEFT.value:
-            return QPointF(self.x(), child_center_y)
-        elif side == SchematicAttachmentSlot.RIGHT.value:
-            return QPointF(self.x() + self.rect().width(), child_center_y)
+        if alignment_value is None:
+            child_center_x: float = child_graphic.pos().x() + child_graphic.w * 0.5
+            child_center_y: float = child_graphic.pos().y() + child_graphic.h * 0.5
+
+            if side in (SchematicAttachmentSlot.TOP.value,
+                        SchematicAttachmentSlot.BOTTOM.value,
+                        SchematicAttachmentSlot.DEFAULT.value):
+                if self.rect().width() <= 0.0:
+                    alignment_value = 0.5
+                else:
+                    alignment_value = clamp_attachment_alignment(child_center_x / self.rect().width())
+            else:
+                if self.rect().height() <= 0.0:
+                    alignment_value = 0.5
+                else:
+                    alignment_value = clamp_attachment_alignment(child_center_y / self.rect().height())
         else:
-            return self.get_nexus_point()
+            alignment_value = clamp_attachment_alignment(alignment_value)
+
+        return self.get_terminal_anchor_by_key(terminal_key=side,
+                                               alignment=alignment_value)
 
     def recolour_mode(self) -> None:
         """
@@ -432,6 +441,12 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         if not self.connectivity_graph:
             self._terminal.setPos(x0, y0)
             self._terminal.setRect(0, 20, self.w, 10)
+        else:
+            pass
+
+        # Keep the rotation pivot aligned with the electrical connection bar.
+        self.setTransformOriginPoint(self.get_rotation_origin_local_point())
+        self.setRotation(self.r)
 
         # rearrange children
         self.arrange_children()
@@ -447,6 +462,83 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                                             graphic_object=self)
 
         return self.w, self.min_h
+
+    def get_rotation_origin_local_point(self) -> QPointF:
+        """
+        Return the local rotation origin used for saved/loadable bus orientation.
+
+        Bar-style buses rotate around the terminal bar centerline so branch anchors
+        and docked children keep following the electrical bar instead of the body
+        rectangle corners.
+
+        :return: Local rotation origin.
+        """
+        if self.connectivity_graph:
+            return self.rect().center()
+        else:
+            pass
+
+        terminal_y: float = self._terminal.pos().y() + self._terminal.rect().y()
+        terminal_h: float = self._terminal.rect().height()
+        return QPointF(self.rect().width() * 0.5,
+                       terminal_y + terminal_h * 0.5)
+
+    def apply_rotation_state(self, refresh_geometry: bool) -> None:
+        """
+        Apply the persisted rotation state to the live graphics item.
+
+        :param refresh_geometry: Refresh attached routes and docked children afterwards.
+        :return: ``None``.
+        """
+        self.setTransformOriginPoint(self.get_rotation_origin_local_point())
+        self.setRotation(self.r)
+
+        if refresh_geometry:
+            self.refresh_connected_geometry_after_rotation()
+        else:
+            pass
+
+    def refresh_connected_geometry_after_rotation(self) -> None:
+        """
+        Refresh docked children and attached branches after one rotation change.
+
+        :return: ``None``.
+        """
+        self.arrange_children()
+        self._terminal.update()
+        self._terminal.process_callbacks(self._terminal.scenePos())
+        self.auto_assign_branch_slots()
+
+        branch_graphic: GenericDiagramWidget
+
+        for branch_graphic in self.get_associated_branch_graphics():
+            branch_graphic.update_ports()
+            branch_graphic.load_route_points_from_diagram()
+            branch_graphic.redraw()
+
+    def set_rotation_angle(self, angle_degrees: float, persist: bool) -> None:
+        """
+        Set one persisted bus rotation angle.
+
+        :param angle_degrees: Rotation angle in degrees.
+        :param persist: Update the backing diagram location.
+        :return: ``None``.
+        """
+        normalized_angle: float = float(angle_degrees) % 360.0
+        self.r = normalized_angle
+        self.apply_rotation_state(refresh_geometry=True)
+
+        if persist:
+            self._editor.update_diagram_element(device=self._api_object,
+                                                x=self.pos().x(),
+                                                y=self.pos().y(),
+                                                w=self.w,
+                                                h=self.h,
+                                                r=self.r,
+                                                draw_labels=self.draw_labels,
+                                                graphic_object=self)
+        else:
+            pass
 
     def arrange_children(self) -> None:
         """
@@ -626,10 +718,10 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                        icon_path=":/Icons/icons/automatic_layout.png",
                        function_ptr=self.arrange_children)
 
-        # add_menu_entry(menu,
-        #                text='Rotate',
-        #                # icon_path=":/Icons/icons/automatic_layout.png",
-        #                function_ptr=self.rotate)
+        add_menu_entry(menu,
+                       text='Rotate 90',
+                       icon_path=":/Icons/icons/rotate.svg",
+                       function_ptr=self.rotate)
 
         add_menu_entry(menu,
                        text='Assign active state to profile',
@@ -825,16 +917,8 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         :return:
         """
-        self.r += 90
-        self.setRotation(self.r)
-        self._editor.update_diagram_element(device=self._api_object,
-                                            x=self.pos().x(),
-                                            y=self.pos().y(),
-                                            w=self.w,
-                                            h=self.h,
-                                            r=self.r,
-                                            draw_labels=self.draw_labels,
-                                            graphic_object=self)
+        self.set_rotation_angle(angle_degrees=self.r + 90.0,
+                                persist=True)
 
     def plot_profiles(self) -> None:
         """
@@ -1244,6 +1328,14 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         :param graphic:
         :return:
         """
+        location = self.editor.diagram.query_point(elm)
+
+        if location is None:
+            pass
+        else:
+            graphic.setTransformOriginPoint(float(graphic.w) * 0.5, float(graphic.h) * 0.5)
+            graphic.setRotation(float(location.r))
+
         self._child_graphics.append(graphic)
         self.arrange_children()
         self.editor.graphics_manager.add_device(elm=elm, graphic=graphic)

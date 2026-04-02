@@ -98,6 +98,26 @@ def get_rect_side_anchor(origin: QPointF,
         return QPointF(origin.x() + width, origin.y() + height * alignment_value)
 
 
+def get_local_rect_side_anchor(width: float,
+                               height: float,
+                               side: str,
+                               alignment: float | None) -> QPointF:
+    """
+    Get one side anchor in item-local coordinates.
+
+    :param width: Rectangle width.
+    :param height: Rectangle height.
+    :param side: Requested side.
+    :param alignment: Normalized alignment on that side.
+    :return: Local anchor point.
+    """
+    return get_rect_side_anchor(origin=QPointF(0.0, 0.0),
+                                width=width,
+                                height=height,
+                                side=side,
+                                alignment=alignment)
+
+
 class InjectionNexusPathItem(QGraphicsPathItem):
     """
     Selectable nexus path that drives nexus-only editing for injections.
@@ -409,6 +429,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         self._nexus_edit_locks_applied: bool = False
         self._owner_movable_before_nexus_edit: bool = True
         self._parent_movable_before_nexus_edit: bool = True
+        self.setTransformOriginPoint(float(self.w) * 0.5, float(self.h) * 0.5)
 
     def set_glyph(self, glyph: Square | Circle | Polygon | Condenser):
         """
@@ -716,11 +737,11 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         """
         child_side = self.get_child_nexus_side()
         child_alignment = self.get_child_nexus_alignment()
-        return get_rect_side_anchor(origin=self.scenePos(),
-                                    width=float(self.w),
-                                    height=float(self.h),
-                                    side=child_side,
-                                    alignment=child_alignment)
+        local_anchor = get_local_rect_side_anchor(width=float(self.w),
+                                                  height=float(self.h),
+                                                  side=child_side,
+                                                  alignment=child_alignment)
+        return self.mapToScene(local_anchor)
 
     def get_parent_nexus_anchor(self) -> QPointF:
         """
@@ -855,17 +876,14 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
             dock["nexus_parent_alignment"] = alignment
         else:
             side = self.get_child_nexus_side()
-            child_anchor = get_rect_side_anchor(origin=self.scenePos(),
-                                                width=float(self.w),
-                                                height=float(self.h),
-                                                side=side,
-                                                alignment=0.5)
+            local_point = self.mapFromScene(scene_pos)
+
             if side in (SchematicAttachmentSlot.TOP.value, SchematicAttachmentSlot.BOTTOM.value):
                 span = float(self.w)
-                coordinate = float(scene_pos.x() - self.scenePos().x())
+                coordinate = float(local_point.x())
             else:
                 span = float(self.h)
-                coordinate = float(scene_pos.y() - self.scenePos().y())
+                coordinate = float(local_point.y())
 
             if span <= 0.0:
                 alignment = 0.5
@@ -1120,6 +1138,24 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         """
         self.nudge_dock_offset(-20.0)
 
+    def rotate_90(self) -> None:
+        """
+        Rotate this injection graphic by 90 degrees and persist the new angle.
+
+        :return: ``None``.
+        """
+        new_angle: float = (float(self.rotation()) + 90.0) % 360.0
+        self.setRotation(new_angle)
+        self.update_nexus(self.scenePos())
+        self.editor.update_diagram_element(device=self.api_object,
+                                           x=self.scenePos().x(),
+                                           y=self.scenePos().y(),
+                                           w=float(self.w),
+                                           h=float(self.h),
+                                           r=new_angle,
+                                           draw_labels=self.draw_labels,
+                                           graphic_object=self)
+
     def get_base_context_menu(self) -> QMenu:
         """
         Generate the base menu for injections
@@ -1151,36 +1187,9 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         menu.addSeparator()
 
         add_menu_entry(menu=menu,
-                       text="Dock top",
-                       function_ptr=self.dock_top)
-
-        add_menu_entry(menu=menu,
-                       text="Dock bottom",
-                       function_ptr=self.dock_bottom)
-
-        add_menu_entry(menu=menu,
-                       text="Dock left",
-                       function_ptr=self.dock_left)
-
-        add_menu_entry(menu=menu,
-                       text="Dock right",
-                       function_ptr=self.dock_right)
-
-        add_menu_entry(menu=menu,
-                       text="Move earlier",
-                       function_ptr=self.move_dock_order_earlier)
-
-        add_menu_entry(menu=menu,
-                       text="Move later",
-                       function_ptr=self.move_dock_order_later)
-
-        add_menu_entry(menu=menu,
-                       text="Move outward",
-                       function_ptr=self.nudge_dock_outward)
-
-        add_menu_entry(menu=menu,
-                       text="Move inward",
-                       function_ptr=self.nudge_dock_inward)
+                       text="Rotate 90",
+                       function_ptr=self.rotate_90,
+                       icon_path=":/Icons/icons/rotate.svg")
 
         menu.addSeparator()
 

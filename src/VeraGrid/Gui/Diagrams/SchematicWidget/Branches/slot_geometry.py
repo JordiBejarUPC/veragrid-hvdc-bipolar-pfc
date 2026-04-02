@@ -109,9 +109,9 @@ def get_bar_slot_anchor(width: float,
     elif slot == SchematicAttachmentSlot.RIGHT:
         return width, center_y
     elif slot == SchematicAttachmentSlot.TOP:
-        return aligned_x, top_y
+        return aligned_x, center_y
     elif slot == SchematicAttachmentSlot.BOTTOM:
-        return aligned_x, bottom_y
+        return aligned_x, center_y
     else:
         return width * 0.5, center_y
 
@@ -292,8 +292,8 @@ def get_distributed_anchor(side: str,
     elif side == SchematicAttachmentSlot.RIGHT.value:
         return width, height * span_fraction
     elif side == SchematicAttachmentSlot.TOP.value:
-        return width * span_fraction, bar_top_y
+        return width * span_fraction, bar_center_y
     elif side == SchematicAttachmentSlot.BOTTOM.value:
-        return width * span_fraction, bar_bottom_y
+        return width * span_fraction, bar_center_y
     else:
         return width * 0.5, bar_center_y

@@ -36,11 +36,11 @@ def test_explicit_slot_key_roundtrip() -> None:
     assert parse_explicit_slot_key(slot_key) == ("bus", "bottom", 4)
 
 
-def test_get_bar_slot_anchor_uses_edge_positions():
+def test_get_bar_slot_anchor_uses_bar_centerline_positions():
     assert get_bar_slot_anchor(width=180.0, terminal_y=20.0, terminal_h=10.0, slot_key="left") == (0.0, 25.0)
     assert get_bar_slot_anchor(width=180.0, terminal_y=20.0, terminal_h=10.0, slot_key="right") == (180.0, 25.0)
-    assert get_bar_slot_anchor(width=180.0, terminal_y=20.0, terminal_h=10.0, slot_key="top") == (90.0, 20.0)
-    assert get_bar_slot_anchor(width=180.0, terminal_y=20.0, terminal_h=10.0, slot_key="bottom") == (90.0, 30.0)
+    assert get_bar_slot_anchor(width=180.0, terminal_y=20.0, terminal_h=10.0, slot_key="top") == (90.0, 25.0)
+    assert get_bar_slot_anchor(width=180.0, terminal_y=20.0, terminal_h=10.0, slot_key="bottom") == (90.0, 25.0)
     assert get_bar_slot_anchor(width=180.0, terminal_y=20.0, terminal_h=10.0, slot_key="default") == (90.0, 25.0)
 
 
@@ -56,7 +56,7 @@ def test_get_bar_slot_anchor_uses_manual_alignment_for_bar_feeders() -> None:
                                terminal_y=20.0,
                                terminal_h=10.0,
                                slot_key="bottom",
-                               alignment=0.25) == (45.0, 30.0)
+                               alignment=0.25) == (45.0, 25.0)
 
 
 def test_get_round_slot_anchor_uses_manual_alignment_for_side_feeders() -> None:
@@ -73,21 +73,21 @@ def test_get_distributed_anchor_spreads_slots_by_order():
                                   terminal_y=20.0,
                                   terminal_h=10.0,
                                   order_index=1,
-                                  slot_count=3) == (45.0, 30.0)
+                                  slot_count=3) == (45.0, 25.0)
     assert get_distributed_anchor(side="bottom",
                                   width=180.0,
                                   height=40.0,
                                   terminal_y=20.0,
                                   terminal_h=10.0,
                                   order_index=3,
-                                  slot_count=3) == (135.0, 30.0)
+                                  slot_count=3) == (135.0, 25.0)
     assert get_distributed_anchor(side="top",
                                   width=180.0,
                                   height=40.0,
                                   terminal_y=20.0,
                                   terminal_h=10.0,
                                   order_index=2,
-                                  slot_count=3) == (90.0, 20.0)
+                                  slot_count=3) == (90.0, 25.0)
 
 
 def test_infer_attachment_slot_from_route_uses_endpoint_direction():

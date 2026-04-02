@@ -8,6 +8,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template impor
 from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_node_graphics import FluidNodeGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.load_graphics import LoadGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Substation.bus_graphics import BusGraphicItem
+from VeraGridEngine.Devices.Diagrams.graphic_location import GraphicLocation
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 from VeraGridEngine.Devices.Injections.load import Load
@@ -16,7 +17,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 
 
 class _EditorStub:
-    __slots__ = ("attachments", "diagram")
+    __slots__ = ("attachments", "diagram", "diagram_updates", "graphics_manager")
 
     def __init__(self) -> None:
         """
@@ -26,6 +27,8 @@ class _EditorStub:
         """
         self.attachments: dict[tuple[int, str], dict[str, Any]] = dict()
         self.diagram: _DiagramStub = _DiagramStub()
+        self.diagram_updates: dict[int, dict[str, Any]] = dict()
+        self.graphics_manager: _GraphicsManagerStub = _GraphicsManagerStub()
 
     def update_diagram_element(self,
                                device: Any,
@@ -49,6 +52,22 @@ class _EditorStub:
         :param graphic_object: Unused.
         :return: ``None``.
         """
+        self.diagram_updates[id(device)] = {
+            "x": x,
+            "y": y,
+            "w": w,
+            "h": h,
+            "r": r,
+            "draw_labels": draw_labels,
+            "graphic_object": graphic_object,
+        }
+        self.diagram.update_graphic_location(api_object=device,
+                                             x=x,
+                                             y=y,
+                                             h=h,
+                                             w=w,
+                                             r=r,
+                                             draw_labels=draw_labels)
         return None
 
     def start_connection(self, terminal: Any) -> None:
@@ -140,8 +159,22 @@ class _BranchGraphicStub:
         return self._to_parent
 
 
+class _GraphicsManagerStub:
+    __slots__ = tuple()
+
+    def add_device(self, elm: Any, graphic: Any) -> None:
+        """
+        Accept graphics-manager registrations during lightweight graphics tests.
+
+        :param elm: Unused API object.
+        :param graphic: Unused graphic object.
+        :return: ``None``.
+        """
+        return None
+
+
 class _DiagramStub:
-    __slots__ = ("docks", "attachments")
+    __slots__ = ("docks", "attachments", "locations")
 
     def __init__(self) -> None:
         """
@@ -151,6 +184,7 @@ class _DiagramStub:
         """
         self.docks: dict[int, dict[str, Any]] = dict()
         self.attachments: dict[tuple[int, str], dict[str, Any]] = dict()
+        self.locations: dict[int, GraphicLocation] = dict()
 
     def get_dock(self, api_object: Any) -> dict[str, Any]:
         """
@@ -221,6 +255,43 @@ class _DiagramStub:
 
         self.set_dock(api_object, dock)
         return dock
+
+    def query_point(self, api_object: Any) -> GraphicLocation | None:
+        """
+        Return one stored graphic location.
+
+        :param api_object: API object.
+        :return: Graphic location or ``None``.
+        """
+        return self.locations.get(id(api_object), None)
+
+    def update_graphic_location(self,
+                                api_object: Any,
+                                x: float,
+                                y: float,
+                                h: float,
+                                w: float,
+                                r: float,
+                                draw_labels: bool = True) -> None:
+        """
+        Store one graphic location update.
+
+        :param api_object: API object.
+        :param x: Scene X coordinate.
+        :param y: Scene Y coordinate.
+        :param h: Height.
+        :param w: Width.
+        :param r: Rotation.
+        :param draw_labels: Label flag.
+        :return: ``None``.
+        """
+        self.locations[id(api_object)] = GraphicLocation(x=x,
+                                                         y=y,
+                                                         h=h,
+                                                         w=w,
+                                                         r=r,
+                                                         draw_labels=draw_labels,
+                                                         api_object=api_object)
 
 
 class _ChildApiStub:
@@ -422,7 +493,7 @@ def test_bus_graphic_slot_anchors_follow_named_edges() -> None:
     assert right_anchor.x() == 180.0
     assert right_anchor.y() == 45.0
     assert top_anchor.x() == 90.0
-    assert top_anchor.y() == 40.0
+    assert top_anchor.y() == 45.0
 
 
 def test_manual_branch_route_is_not_rewritten_during_graphic_redraw() -> None:
@@ -522,7 +593,7 @@ def test_move_endpoint_alignment_initializes_from_endpoint_terminal_key_on_busba
     assert from_attachment["alignment"] == 1.0 / 6.0
     assert original_anchor.x() != moved_anchor.x()
     assert moved_anchor.x() == 30.0
-    assert moved_anchor.y() == 50.0
+    assert moved_anchor.y() == 45.0
 
 
 def test_move_endpoint_alignment_replaces_explicit_slot_with_canonical_bar_side() -> None:
@@ -564,6 +635,28 @@ def test_move_endpoint_alignment_replaces_explicit_slot_with_canonical_bar_side(
     }
 
 
+def test_endpoint_alignment_handle_has_wide_hit_shape() -> None:
+    """
+    Endpoint handles should remain easy to drag even when they overlap the bus bar.
+    """
+    _get_app()
+    editor: _BranchEditorStub = _BranchEditorStub()
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    line: Line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=300.0, y=0.0)
+
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                                             to_port=graphic_to.get_terminal(),
+                                             editor=editor,
+                                             api_object=line)
+
+    handle = branch_graphic._endpoint_handles["from"]
+
+    assert handle.contains(QPointF(9.0, 0.0))
+
+
 def test_move_endpoint_alignment_prefers_terminal_key_over_stale_side() -> None:
     """
     Endpoint dragging should use the current terminal key instead of a stale saved side.
@@ -599,7 +692,46 @@ def test_move_endpoint_alignment_prefers_terminal_key_over_stale_side() -> None:
     assert from_attachment["alignment"] == 1.0 / 6.0
     assert from_attachment["auto_slot"] is False
     assert moved_anchor.x() == 30.0
-    assert moved_anchor.y() == 50.0
+    assert moved_anchor.y() == 45.0
+
+
+def test_move_route_vertex_keeps_manual_bus_endpoint_anchor_fixed() -> None:
+    """
+    Moving an interior branch vertex should not move a manually aligned bus endpoint.
+    """
+    _get_app()
+    editor: _BranchEditorStub = _BranchEditorStub()
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    line: Line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=300.0, y=0.0)
+
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                                             to_port=graphic_to.get_terminal(),
+                                             editor=editor,
+                                             api_object=line)
+
+    branch_graphic.move_endpoint_alignment(endpoint="from", scene_pos=QPointF(30.0, 50.0))
+    anchored_before = branch_graphic.get_endpoint_anchor(endpoint="from")
+
+    editor.diagram.set_branch_route_points(api_object=line,
+                                           points=[(30.0, 45.0), (110.0, 95.0), (220.0, 80.0), (390.0, 45.0)],
+                                           kind="manual-polyline",
+                                           locked=False)
+    branch_graphic.load_route_points_from_diagram()
+    branch_graphic.move_route_vertex(vertex_index=1, scene_pos=QPointF(140.0, 120.0))
+
+    anchored_after = branch_graphic.get_endpoint_anchor(endpoint="from")
+    from_attachment = editor.diagram.get_attachment(api_object=line, endpoint="from")
+
+    assert anchored_before == QPointF(30.0, 45.0)
+    assert anchored_after == QPointF(30.0, 45.0)
+    assert from_attachment["side"] == "bottom"
+    assert from_attachment["slot"] == "bottom"
+    assert from_attachment["terminal_key"] == "bottom"
+    assert from_attachment["alignment"] == 1.0 / 6.0
+    assert from_attachment["auto_slot"] is False
 
 
 def test_fluid_node_slot_anchors_follow_named_edges() -> None:
@@ -620,7 +752,7 @@ def test_fluid_node_slot_anchors_follow_named_edges() -> None:
     assert right_anchor.x() == 180.0
     assert right_anchor.y() == 45.0
     assert top_anchor.x() == 90.0
-    assert top_anchor.y() == 40.0
+    assert top_anchor.y() == 45.0
 
 
 def test_bus_graphic_terminal_slots_include_explicit_attached_slots() -> None:
@@ -802,6 +934,85 @@ def test_injection_graphic_sync_manual_dock_metadata_from_position() -> None:
     assert dock["nexus_parent_alignment"] == 1.0 / 6.0
 
 
+def test_injection_base_context_menu_only_exposes_rotate_not_dock_move() -> None:
+    """
+    Injection base menus should remove dock/move actions and expose only rotation.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    bus: Bus = Bus(name="B1")
+    load: Load = Load(name="LD1")
+    load.bus = bus
+    graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    load_graphic: LoadGraphicItem = LoadGraphicItem(parent=graphic, api_obj=load, editor=editor)
+
+    menu = load_graphic.get_base_context_menu()
+    action_texts = [action.text() for action in menu.actions()]
+
+    assert "Rotate 90" in action_texts
+    assert "Dock top" not in action_texts
+    assert "Dock bottom" not in action_texts
+    assert "Dock left" not in action_texts
+    assert "Dock right" not in action_texts
+    assert "Move earlier" not in action_texts
+    assert "Move later" not in action_texts
+    assert "Move outward" not in action_texts
+    assert "Move inward" not in action_texts
+
+
+def test_injection_rotate_90_persists_angle_and_child_load_restores_it() -> None:
+    """
+    Rotating one injection should persist its angle and restore it when the child graphic is recreated.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    bus: Bus = Bus(name="B1")
+    load: Load = Load(name="LD1")
+    load.bus = bus
+    bus_graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    load_graphic: LoadGraphicItem = LoadGraphicItem(parent=bus_graphic, api_obj=load, editor=editor)
+
+    load_graphic.rotate_90()
+
+    update_record = editor.diagram_updates[id(load)]
+
+    assert load_graphic.rotation() == 90.0
+    assert update_record["r"] == 90.0
+
+    editor.diagram.update_graphic_location(api_object=load,
+                                           x=0.0,
+                                           y=0.0,
+                                           h=float(load_graphic.h),
+                                           w=float(load_graphic.w),
+                                           r=90.0,
+                                           draw_labels=True)
+
+    recreated_bus_graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    recreated_load_graphic = recreated_bus_graphic.add_load(api_obj=load)
+
+    assert recreated_load_graphic.rotation() == 90.0
+
+
+def test_rotated_injection_child_nexus_anchor_uses_item_transform() -> None:
+    """
+    Rotated injection child anchors should follow the child transform instead of an axis-aligned box.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    bus: Bus = Bus(name="B1")
+    load: Load = Load(name="LD1")
+    load.bus = bus
+    bus_graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    load_graphic: LoadGraphicItem = LoadGraphicItem(parent=bus_graphic, api_obj=load, editor=editor)
+
+    load_graphic.setRotation(90.0)
+
+    child_anchor = load_graphic.get_child_nexus_anchor()
+    expected_anchor = load_graphic.mapToScene(QPointF(float(load_graphic.w) * 0.5, 0.0))
+
+    assert child_anchor == expected_anchor
+
+
 def test_bus_graphic_nexus_point_for_child_uses_dock_side() -> None:
     """
     Bus nexus anchors should follow the dock side of each child.
@@ -818,7 +1029,7 @@ def test_bus_graphic_nexus_point_for_child_uses_dock_side() -> None:
     nexus_point = graphic.get_nexus_point_for_child(left_child)
 
     assert nexus_point.x() == 0.0
-    assert nexus_point.y() == 40.0
+    assert nexus_point.y() == 45.0
 
 
 def test_bus_graphic_auto_assign_branch_slots_uses_geometry_order() -> None:
@@ -851,6 +1062,29 @@ def test_bus_graphic_auto_assign_branch_slots_uses_geometry_order() -> None:
     assert editor.diagram.get_attachment(branch_api_object_2, "from")["slot"] == "bus-bottom-2"
     assert editor.diagram.get_attachment(branch_api_object_1, "from")["auto_slot"] is True
     assert editor.diagram.get_attachment(branch_api_object_2, "from")["auto_slot"] is True
+
+
+def test_bus_graphic_applies_persisted_rotation_to_bar_and_nexus_anchors() -> None:
+    """
+    Bus graphics should apply the stored diagram rotation angle to branch and nexus anchors.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    bus: Bus = Bus(name="B1")
+    graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0, r=90.0)
+
+    bar_anchor = graphic.get_terminal_anchor_by_key("bottom", alignment=0.5)
+    nexus_anchor = graphic.get_nexus_point()
+    recovered_alignment = graphic.get_terminal_alignment_from_scene_point(side_key="bottom",
+                                                                          scene_point=bar_anchor)
+
+    assert graphic.rotation() == 90.0
+    assert graphic.r == 90.0
+    assert graphic.transformOriginPoint() == graphic.get_rotation_origin_local_point()
+    assert bar_anchor.x() == 90.0
+    assert bar_anchor.y() == 45.0
+    assert nexus_anchor == bar_anchor
+    assert recovered_alignment == 0.5
 
 
 def test_bus_graphic_auto_assign_branch_slots_prefers_vertical_feeders_for_bar_buses() -> None:

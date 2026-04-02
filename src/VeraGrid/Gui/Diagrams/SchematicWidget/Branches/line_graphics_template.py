@@ -683,12 +683,24 @@ class EndpointAlignmentHandleItem(QGraphicsEllipseItem):
 
         self.parent_branch: LineGraphicTemplateItem = parent_branch
         self.endpoint: str = endpoint
+        self._hit_radius: float = max(radius, 11.0)
 
         self.setBrush(QBrush(QColor(130, 255, 150, 255)))
         self.setPen(QPen(QColor(20, 20, 20, 255), 1.5))
         self.setCursor(QCursor(Qt.CursorShape.OpenHandCursor))
-        self.setZValue(12)
+        self.setAcceptedMouseButtons(Qt.MouseButton.LeftButton)
+        self.setZValue(40)
         self.setVisible(False)
+
+    def shape(self) -> QPainterPath:
+        """
+        Widen hit testing so endpoint dragging does not fail when the handle overlaps the bus bar.
+
+        :return: Hit-test path.
+        """
+        path = QPainterPath()
+        path.addEllipse(QPointF(0.0, 0.0), self._hit_radius, self._hit_radius)
+        return path
 
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """
@@ -707,7 +719,11 @@ class EndpointAlignmentHandleItem(QGraphicsEllipseItem):
         :param event: Mouse event.
         :return: ``None``.
         """
-        event.accept()
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.setCursor(QCursor(Qt.CursorShape.ClosedHandCursor))
+            event.accept()
+        else:
+            super().mousePressEvent(event)
 
     def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """
@@ -716,6 +732,7 @@ class EndpointAlignmentHandleItem(QGraphicsEllipseItem):
         :param event: Mouse event.
         :return: ``None``.
         """
+        self.setCursor(QCursor(Qt.CursorShape.OpenHandCursor))
         event.accept()
 
 
@@ -1070,7 +1087,6 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
                                                     points=self._route_points,
                                                     kind="manual-polyline",
                                                     locked=False)
-        self.sync_attachment_slots_to_diagram(render_points=self._route_points)
         self.redraw()
 
     def move_route_vertex(self, vertex_index: int, scene_pos: QPointF) -> None:
@@ -1096,7 +1112,6 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
                                                     points=self._route_points,
                                                     kind="manual-polyline",
                                                     locked=False)
-        self.sync_attachment_slots_to_diagram(render_points=self._route_points)
         self.redraw()
 
     def move_endpoint_alignment(self, endpoint: str, scene_pos: QPointF) -> None:
