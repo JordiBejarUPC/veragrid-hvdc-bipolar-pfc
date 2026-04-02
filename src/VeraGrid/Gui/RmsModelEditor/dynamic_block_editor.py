@@ -4364,6 +4364,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return:
         """
+        if self.api_object.rms_template is not None:
+            #Todo: Here are the changes
+            self.api_object.rms_template = None
+            self.original_block = Block()
         copy_block_state(source_block=self.main_block, target_block=self.original_block)
         self.changes_applied = True
         self.close()

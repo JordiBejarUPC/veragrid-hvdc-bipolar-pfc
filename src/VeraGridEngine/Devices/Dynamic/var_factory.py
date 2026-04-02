@@ -89,13 +89,16 @@ class VarFactory(EditableDevice):
         self._var_dict[v.uid] = v
         return v
 
-    def get_var(self, uid: int) -> Var:
+    def get_var(self, uid: int) -> Var | None:
         """
         Gets a Var from the class
         :param uid:
         :return:
         """
-        return self._var_dict[uid]
+        if uid is not None:
+            return self._var_dict[uid]
+        else:
+            return None
 
     def add_diff_var(self,
                      name: str,
