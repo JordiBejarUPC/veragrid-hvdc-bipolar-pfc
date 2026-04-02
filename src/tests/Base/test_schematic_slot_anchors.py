@@ -379,7 +379,7 @@ class _ChildGraphicStub:
 
 
 class _BranchEditorStub:
-    __slots__ = ("diagram", "_is_loading_diagram")
+    __slots__ = ("diagram", "_is_loading_diagram", "_is_batch_refreshing_branches")
 
     def __init__(self) -> None:
         """
@@ -389,6 +389,7 @@ class _BranchEditorStub:
         """
         self.diagram: SchematicDiagram = SchematicDiagram(name="branch-test")
         self._is_loading_diagram: bool = False
+        self._is_batch_refreshing_branches: bool = False
 
     def update_diagram_element(self,
                                device: Any,
@@ -449,6 +450,14 @@ class _BranchEditorStub:
         :return: Loading flag.
         """
         return self._is_loading_diagram
+
+    def is_batch_refreshing_branches(self) -> bool:
+        """
+        Return the simulated batched-branch-refresh flag.
+
+        :return: Batch-refresh flag.
+        """
+        return self._is_batch_refreshing_branches
 
 
 def _get_app() -> QtWidgets.QApplication:
@@ -1138,3 +1147,85 @@ def test_bus_graphic_auto_assign_branch_slots_preserves_manual_canonical_side() 
         "terminal_key": "bottom",
         "auto_slot": False,
     }
+
+
+def test_branch_scene_index_tracks_redraw_bounds_after_route_change() -> None:
+    """
+    Branch hit testing should follow the latest rendered route after redraw.
+
+    This exercises the scene-index invalidation path for the routed controller
+    item. If the item changes its path-based bounds without notifying the
+    scene, clicks at the new route location can miss and stale pixels can
+    remain after redraw.
+    """
+    _get_app()
+    editor: _BranchEditorStub = _BranchEditorStub()
+    scene: QtWidgets.QGraphicsScene = QtWidgets.QGraphicsScene()
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=220.0, y=0.0)
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                                             to_port=graphic_to.get_terminal(),
+                                             editor=editor,
+                                             api_object=None)
+
+    scene.addItem(graphic_from)
+    scene.addItem(graphic_to)
+    scene.addItem(branch_graphic)
+
+    initial_probe: QPointF = QPointF(120.0, 45.0)
+    moved_probe: QPointF = QPointF(480.0, 190.0)
+
+    initial_hit_items = scene.items(initial_probe)
+    moved_hit_items_before = scene.items(moved_probe)
+
+    branch_graphic.setBeginPos(QPointF(90.0, 45.0))
+    branch_graphic.setEndPos(QPointF(540.0, 210.0))
+
+    moved_hit_items_after = scene.items(moved_probe)
+
+    assert branch_graphic in initial_hit_items
+    assert branch_graphic not in moved_hit_items_before
+    assert branch_graphic in moved_hit_items_after
+
+
+def test_branch_endpoint_callback_skips_immediate_redraw_during_batched_refresh(monkeypatch) -> None:
+    """
+    Batched branch refresh should collect endpoint updates without redrawing on every callback.
+    """
+    _get_app()
+    editor: _BranchEditorStub = _BranchEditorStub()
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    line: Line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=220.0, y=0.0)
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                                             to_port=graphic_to.get_terminal(),
+                                             editor=editor,
+                                             api_object=line)
+    redraw_calls: list[int] = list()
+
+    def _fake_redraw() -> None:
+        """
+        Record redraw invocations.
+
+        :return: ``None``.
+        """
+        redraw_calls.append(1)
+
+    monkeypatch.setattr(branch_graphic, "redraw", _fake_redraw)
+
+    editor._is_batch_refreshing_branches = True
+    branch_graphic.setBeginPos(QPointF(100.0, 45.0))
+    branch_graphic.setEndPos(QPointF(320.0, 45.0))
+
+    assert branch_graphic.pos1 == QPointF(100.0, 45.0)
+    assert branch_graphic.pos2 == QPointF(320.0, 45.0)
+    assert redraw_calls == list()
+
+    editor._is_batch_refreshing_branches = False
+    branch_graphic.setBeginPos(QPointF(110.0, 45.0))
+
+    assert redraw_calls == [1]

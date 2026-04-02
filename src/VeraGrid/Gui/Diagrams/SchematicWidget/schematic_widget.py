@@ -423,7 +423,9 @@ class SchematicWidget(BaseDiagramWidget):
         # self.pos_label = QGraphicsTextItem()
         # self.add_to_scene(self.pos_label)
         self._needs_post_show_branch_refresh: bool = False
+        self._branch_refresh_scheduled: bool = False
         self._is_loading_diagram: bool = False
+        self._is_batch_refreshing_branches: bool = False
 
         if diagram is not None:
             self.draw()
@@ -911,35 +913,60 @@ class SchematicWidget(BaseDiagramWidget):
             for idtag, graphic in graphics_dict.items():
                 graphic.arrange_children()
 
-        QTimer.singleShot(0, self.refresh_branch_callbacks_after_draw)
+        self.schedule_branch_callbacks_after_draw()
+
+    def schedule_branch_callbacks_after_draw(self) -> None:
+        """
+        Coalesce expensive post-draw branch refresh work into a single pass.
+
+        During initial startup, ``draw()`` can run before the widget is shown.
+        In that case we must defer the refresh until ``showEvent()``. Once the
+        widget is visible, repeated draw/update paths should still collapse into
+        one queued refresh instead of replaying the full callback and redraw
+        sweep multiple times.
+
+        :return: ``None``.
+        """
+        if not self.isVisible():
+            self._needs_post_show_branch_refresh = True
+        elif self._branch_refresh_scheduled:
+            pass
+        else:
+            self._branch_refresh_scheduled = True
+            QTimer.singleShot(0, self.refresh_branch_callbacks_after_draw)
 
     def refresh_branch_callbacks_after_draw(self) -> None:
         """
         Refresh terminal-hosted branch callbacks after the scene graph has settled.
         """
+        self._branch_refresh_scheduled = False
         branch_graphics_to_refresh: set = set()
+        self._is_batch_refreshing_branches = True
 
-        for category in [DeviceType.BusDevice, DeviceType.BusBarDevice, DeviceType.FluidNodeDevice]:
-            graphics_dict = self.graphics_manager.get_device_type_dict(device_type=category)
+        try:
+            for category in [DeviceType.BusDevice, DeviceType.BusBarDevice, DeviceType.FluidNodeDevice]:
+                graphics_dict = self.graphics_manager.get_device_type_dict(device_type=category)
 
-            for idtag, graphic in graphics_dict.items():
-                terminal = graphic.get_terminal()
-                terminal.update()
-                terminal.process_callbacks(terminal.scenePos())
-                graphic.auto_assign_branch_slots()
+                for idtag, graphic in graphics_dict.items():
+                    terminal = graphic.get_terminal()
+                    terminal.update()
+                    terminal.process_callbacks(terminal.scenePos())
+                    graphic.auto_assign_branch_slots()
 
-                for branch_graphic in graphic.get_associated_branch_graphics():
-                    branch_graphics_to_refresh.add(branch_graphic)
+                    for branch_graphic in graphic.get_associated_branch_graphics():
+                        branch_graphics_to_refresh.add(branch_graphic)
 
-                graphic.arrange_children()
+                    graphic.arrange_children()
 
-        for branch_graphic in branch_graphics_to_refresh:
-            branch_graphic.update_ports()
-            branch_graphic.upgrade_legacy_layout_from_diagram()
-            branch_graphic.load_route_points_from_diagram()
-            branch_graphic.redraw()
+            self._is_batch_refreshing_branches = False
 
-        self._is_loading_diagram = False
+            for branch_graphic in branch_graphics_to_refresh:
+                branch_graphic.upgrade_legacy_layout_from_diagram()
+                branch_graphic.load_route_points_from_diagram()
+                branch_graphic.redraw()
+        finally:
+            self._is_batch_refreshing_branches = False
+            self._is_loading_diagram = False
 
     def is_loading_diagram(self) -> bool:
         """
@@ -949,11 +976,21 @@ class SchematicWidget(BaseDiagramWidget):
         """
         return self._is_loading_diagram
 
+    def is_batch_refreshing_branches(self) -> bool:
+        """
+        Determine whether branch endpoints are being updated in a batched refresh.
+
+        During this phase terminal callbacks should only update endpoint
+        positions. A single final redraw pass is executed afterwards.
+
+        :return: ``True`` while branch callbacks are being coalesced.
+        """
+        return self._is_batch_refreshing_branches
+
     def draw(self) -> None:
         """
         Draw the stored diagram
         """
-        self._needs_post_show_branch_refresh = True
         self.draw_additional_diagram(diagram=self.diagram, logger=self.logger)
 
     def showEvent(self, event) -> None:
@@ -964,7 +1001,7 @@ class SchematicWidget(BaseDiagramWidget):
 
         if self._needs_post_show_branch_refresh:
             self._needs_post_show_branch_refresh = False
-            QTimer.singleShot(0, self.refresh_branch_callbacks_after_draw)
+            self.schedule_branch_callbacks_after_draw()
         else:
             pass
 

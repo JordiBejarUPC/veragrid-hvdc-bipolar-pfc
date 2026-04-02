@@ -8,10 +8,10 @@ import numpy as np
 from typing import Union, TYPE_CHECKING
 from PySide6.QtCore import Qt, QLineF, QPointF, QRectF
 from PySide6.QtGui import (QPen, QCursor, QPixmap, QBrush, QColor, QTransform, QPolygonF, QFont,
-                           QPainterPath, QPainterPathStroker)
+                           QPainter, QPainterPath, QPainterPathStroker)
 from PySide6.QtWidgets import (QGraphicsLineItem, QGraphicsRectItem, QGraphicsPolygonItem,
                                QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsTextItem,
-                               QGraphicsPathItem)
+                               QGraphicsPathItem, QStyleOptionGraphicsItem, QWidget)
 from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, DEACTIVATED, OTHER, GenericDiagramWidget, TRANSPARENT, WHITE
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.route_geometry import (merge_route_with_endpoints,
                                                                            move_polyline_route_segment,
@@ -1473,6 +1473,26 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
 
         QGraphicsLineItem.mousePressEvent(self, event)
 
+    def paint(self,
+              painter: QPainter,
+              option: QStyleOptionGraphicsItem,
+              widget: QWidget | None = None) -> None:
+        """
+        Keep the controller item visually inert.
+
+        The visible branch stroke is rendered by ``self._route_item``. If the
+        ``QGraphicsLineItem`` base class also paints its straight controller
+        line, scene invalidation can leave faint shadows while selection and
+        redraw update the routed child path. The parent item therefore only
+        exists for selection, hit testing, and child ownership.
+
+        :param painter: Unused painter.
+        :param option: Unused style option.
+        :param widget: Unused target widget.
+        :return: ``None``.
+        """
+        return None
+
     def remove_widget(self):
         """
         Remove this object in the diagram
@@ -1602,7 +1622,10 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         @return:
         """
         self.pos2 = endpos
-        self.redraw()
+        if self.editor.is_batch_refreshing_branches():
+            pass
+        else:
+            self.redraw()
 
     def setBeginPos(self, pos1: QPointF):
         """
@@ -1611,7 +1634,10 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         @return:
         """
         self.pos1 = pos1
-        self.redraw()
+        if self.editor.is_batch_refreshing_branches():
+            pass
+        else:
+            self.redraw()
 
     def _build_render_path(self) -> QPainterPath:
         """
@@ -1658,6 +1684,11 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         @return:
         """
         if self.pos1 is not None and self.pos2 is not None:
+
+            # The controller item uses a path-based bounding rect. Notify the
+            # scene before replacing the rendered route so old pixels are
+            # invalidated correctly during selection and redraw updates.
+            self.prepareGeometryChange()
 
             # Set position
             self.setLine(QLineF(self.pos1, self.pos2))
