@@ -1,8 +1,8 @@
 | Case | Solver Family | Sparse Solver | Build [s] | Sim [s] | Total [s] | Loop [s] | y Max Diff | dy Max Diff |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
-| zipload | COMPILED | SuperLU | 0.012111 | 0.001577 | 0.020116 | 0.001387 | 0.000e+00 | 0.000e+00 |
-| zipload | VECTORIZED | SuperLU | 0.007781 | 0.001977 | 0.016256 | 0.001785 | 0.000e+00 | 0.000e+00 |
-| rload | COMPILED | SuperLU | 0.009739 | 0.001414 | 0.210768 | 0.001228 | 0.000e+00 | 0.000e+00 |
-| rload | VECTORIZED | SuperLU | 0.006828 | 0.001607 | 0.014547 | 0.001365 | 0.000e+00 | 0.000e+00 |
-| event | COMPILED | SuperLU | 0.001113 | 0.007956 | 0.016155 | 0.007722 | 0.000e+00 | 0.000e+00 |
-| event | VECTORIZED | SuperLU | 0.006124 | 0.008753 | 0.020724 | 0.008490 | 0.000e+00 | 0.000e+00 |
+| zipload | COMPILED | SuperLU | 0.011731 | 0.000781 | 0.018761 | 0.000697 | 0.000e+00 | 0.000e+00 |
+| zipload | VECTORIZED | SuperLU | 0.007044 | 0.000791 | 0.013817 | 0.000695 | 0.000e+00 | 0.000e+00 |
+| rload | COMPILED | SuperLU | 0.007883 | 0.000618 | 0.014394 | 0.000542 | 0.000e+00 | 0.000e+00 |
+| rload | VECTORIZED | SuperLU | 0.007113 | 0.000742 | 0.013756 | 0.000618 | 0.000e+00 | 0.000e+00 |
+| event | COMPILED | SuperLU | 0.001150 | 0.004598 | 0.012070 | 0.004432 | 0.000e+00 | 0.000e+00 |
+| event | VECTORIZED | SuperLU | 0.006647 | 0.005024 | 0.018245 | 0.004812 | 0.000e+00 | 0.000e+00 |
