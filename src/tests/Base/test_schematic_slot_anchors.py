@@ -4,8 +4,13 @@ from typing import Any
 from PySide6 import QtWidgets
 from PySide6.QtCore import QPointF
 
+from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_node_graphics import FluidNodeGraphicItem
+from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.load_graphics import LoadGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Substation.bus_graphics import BusGraphicItem
+from VeraGridEngine.Devices.Branches.line import Line
+from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
+from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Fluid.fluid_node import FluidNode
 from VeraGridEngine.Devices.Substation.bus import Bus
 
@@ -51,6 +56,23 @@ class _EditorStub:
         No-op compatibility stub for terminal interactions.
 
         :param terminal: Unused.
+        :return: ``None``.
+        """
+        return None
+
+    def is_loading_diagram(self) -> bool:
+        """
+        Return the fake loading flag used by child placement helpers.
+
+        :return: ``False``.
+        """
+        return False
+
+    def add_to_scene(self, graphic_object: Any) -> None:
+        """
+        No-op compatibility stub for scene insertion.
+
+        :param graphic_object: Unused.
         :return: ``None``.
         """
         return None
@@ -285,6 +307,79 @@ class _ChildGraphicStub:
         self.nexus_updates.append((float(pos.x()), float(pos.y())))
 
 
+class _BranchEditorStub:
+    __slots__ = ("diagram", "_is_loading_diagram")
+
+    def __init__(self) -> None:
+        """
+        Initialize the branch editor stub with a real schematic diagram.
+
+        :return: ``None``.
+        """
+        self.diagram: SchematicDiagram = SchematicDiagram(name="branch-test")
+        self._is_loading_diagram: bool = False
+
+    def update_diagram_element(self,
+                               device: Any,
+                               x: float,
+                               y: float,
+                               w: float,
+                               h: float,
+                               r: float,
+                               draw_labels: bool,
+                               graphic_object: Any) -> None:
+        """
+        No-op compatibility stub for graphics tests.
+
+        :param device: Unused.
+        :param x: Unused.
+        :param y: Unused.
+        :param w: Unused.
+        :param h: Unused.
+        :param r: Unused.
+        :param draw_labels: Unused.
+        :param graphic_object: Unused.
+        :return: ``None``.
+        """
+        return None
+
+    def start_connection(self, terminal: Any) -> None:
+        """
+        No-op compatibility stub for terminal interactions.
+
+        :param terminal: Unused.
+        :return: ``None``.
+        """
+        return None
+
+    def get_persisted_attachment(self, api_object: Any, endpoint: str) -> dict[str, Any]:
+        """
+        Return persisted attachment metadata for a branch endpoint.
+
+        :param api_object: Branch API object.
+        :param endpoint: Endpoint key.
+        :return: Attachment dictionary.
+        """
+        return self.diagram.get_attachment(api_object=api_object, endpoint=endpoint)
+
+    def set_editor_model(self, api_object: Any) -> None:
+        """
+        No-op compatibility stub for selection updates.
+
+        :param api_object: Unused.
+        :return: ``None``.
+        """
+        return None
+
+    def is_loading_diagram(self) -> bool:
+        """
+        Return the simulated diagram loading flag.
+
+        :return: Loading flag.
+        """
+        return self._is_loading_diagram
+
+
 def _get_app() -> QtWidgets.QApplication:
     """
     Get or create the Qt application used by graphics tests.
@@ -328,6 +423,183 @@ def test_bus_graphic_slot_anchors_follow_named_edges() -> None:
     assert right_anchor.y() == 45.0
     assert top_anchor.x() == 90.0
     assert top_anchor.y() == 40.0
+
+
+def test_manual_branch_route_is_not_rewritten_during_graphic_redraw() -> None:
+    """
+    Loading a manual branch polyline must not overwrite the saved route with live endpoint callbacks.
+    """
+    _get_app()
+    editor: _BranchEditorStub = _BranchEditorStub()
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    line: Line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=300.0, y=0.0)
+
+    editor.diagram.set_attachment(line, "from", {"side": "bottom", "slot": "bottom", "terminal_key": "bottom"})
+    editor.diagram.set_attachment(line, "to", {"side": "bottom", "slot": "bottom", "terminal_key": "bottom"})
+    editor.diagram.set_branch_route_points(api_object=line,
+                                           points=[(10.0, 20.0), (40.0, 85.0), (95.0, 65.0)],
+                                           kind="manual-polyline",
+                                           locked=False)
+
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                                             to_port=graphic_to.get_terminal(),
+                                             editor=editor,
+                                             api_object=line)
+
+    location = editor.diagram.query_point(line)
+
+    assert branch_graphic is not None
+    assert location is not None
+    assert location.poly_line == [(10.0, 20.0), (40.0, 85.0), (95.0, 65.0)]
+    assert location.layout_metadata["route"]["points"] == [(10.0, 20.0), (40.0, 85.0), (95.0, 65.0)]
+    assert location.layout_metadata["route"]["kind"] == "manual-polyline"
+
+
+def test_manual_endpoint_alignment_keeps_branch_side_fixed_on_busbar() -> None:
+    """
+    Manual endpoint alignment should freeze the endpoint side instead of re-inferring it from the route shape.
+    """
+    _get_app()
+    editor: _BranchEditorStub = _BranchEditorStub()
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    line: Line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=300.0, y=0.0)
+
+    editor.diagram.set_attachment(line,
+                                  "from",
+                                  {"side": "bottom", "slot": "bottom", "terminal_key": "bottom", "auto_slot": False})
+    editor.diagram.set_attachment(line,
+                                  "to",
+                                  {"side": "bottom", "slot": "bottom", "terminal_key": "bottom"})
+
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                                             to_port=graphic_to.get_terminal(),
+                                             editor=editor,
+                                             api_object=line)
+
+    branch_graphic.sync_attachment_slots_to_diagram(render_points=[(90.0, 50.0), (20.0, 45.0), (360.0, 50.0)])
+
+    from_attachment = editor.diagram.get_attachment(api_object=line, endpoint="from")
+
+    assert from_attachment["side"] == "bottom"
+    assert from_attachment["slot"] == "bottom"
+    assert from_attachment["terminal_key"] == "bottom"
+    assert from_attachment["auto_slot"] is False
+
+
+def test_move_endpoint_alignment_initializes_from_endpoint_terminal_key_on_busbar() -> None:
+    """
+    Moving the from-end alignment should freeze that endpoint onto the bar side being edited.
+    """
+    _get_app()
+    editor: _BranchEditorStub = _BranchEditorStub()
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    line: Line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=300.0, y=0.0)
+
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                                             to_port=graphic_to.get_terminal(),
+                                             editor=editor,
+                                             api_object=line)
+
+    original_anchor = branch_graphic.get_endpoint_anchor(endpoint="from")
+    branch_graphic.move_endpoint_alignment(endpoint="from", scene_pos=QPointF(30.0, 50.0))
+
+    from_attachment = editor.diagram.get_attachment(api_object=line, endpoint="from")
+    moved_anchor = branch_graphic.get_endpoint_anchor(endpoint="from")
+
+    assert from_attachment["side"] == "bottom"
+    assert from_attachment["slot"] == "bottom"
+    assert from_attachment["terminal_key"] == "bottom"
+    assert from_attachment["auto_slot"] is False
+    assert from_attachment["alignment"] == 1.0 / 6.0
+    assert original_anchor.x() != moved_anchor.x()
+    assert moved_anchor.x() == 30.0
+    assert moved_anchor.y() == 50.0
+
+
+def test_move_endpoint_alignment_replaces_explicit_slot_with_canonical_bar_side() -> None:
+    """
+    Dragging a branch endpoint along a bar should stop using explicit slot ids and use canonical side alignment.
+    """
+    _get_app()
+    editor: _BranchEditorStub = _BranchEditorStub()
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    line: Line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=300.0, y=0.0)
+
+    editor.diagram.set_attachment(api_object=line,
+                                  endpoint="from",
+                                  attachment={"side": "bottom",
+                                              "slot": "bus-bottom-1",
+                                              "terminal_key": "bus-bottom-1",
+                                              "order": 1})
+
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                                             to_port=graphic_to.get_terminal(),
+                                             editor=editor,
+                                             api_object=line)
+
+    branch_graphic.move_endpoint_alignment(endpoint="from", scene_pos=QPointF(60.0, 50.0))
+
+    from_attachment = editor.diagram.get_attachment(api_object=line, endpoint="from")
+
+    assert from_attachment == {
+        "side": "bottom",
+        "slot": "bottom",
+        "terminal_key": "bottom",
+        "alignment": 1.0 / 3.0,
+        "auto_slot": False,
+        "owner_device_id": bus_from.idtag,
+        "owner_device_type": bus_from.device_type.value,
+    }
+
+
+def test_move_endpoint_alignment_prefers_terminal_key_over_stale_side() -> None:
+    """
+    Endpoint dragging should use the current terminal key instead of a stale saved side.
+    """
+    _get_app()
+    editor: _BranchEditorStub = _BranchEditorStub()
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    line: Line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=300.0, y=0.0)
+
+    editor.diagram.set_attachment(api_object=line,
+                                  endpoint="from",
+                                  attachment={"side": "left",
+                                              "slot": "bottom",
+                                              "terminal_key": "bottom",
+                                              "auto_slot": False})
+
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                                             to_port=graphic_to.get_terminal(),
+                                             editor=editor,
+                                             api_object=line)
+
+    branch_graphic.move_endpoint_alignment(endpoint="from", scene_pos=QPointF(30.0, 50.0))
+
+    from_attachment = editor.diagram.get_attachment(api_object=line, endpoint="from")
+    moved_anchor = branch_graphic.get_endpoint_anchor(endpoint="from")
+
+    assert from_attachment["side"] == "bottom"
+    assert from_attachment["slot"] == "bottom"
+    assert from_attachment["terminal_key"] == "bottom"
+    assert from_attachment["alignment"] == 1.0 / 6.0
+    assert from_attachment["auto_slot"] is False
+    assert moved_anchor.x() == 30.0
+    assert moved_anchor.y() == 50.0
 
 
 def test_fluid_node_slot_anchors_follow_named_edges() -> None:
@@ -481,6 +753,55 @@ def test_bus_graphic_arrange_children_uses_persisted_dock_sides() -> None:
     assert len(right_child.nexus_updates) == 1
 
 
+def test_bus_graphic_arrange_children_uses_manual_dock_alignment() -> None:
+    """
+    Bus graphics should keep manually aligned child placement instead of recentering it.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    bus: Bus = Bus(name="B1")
+    graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+
+    manual_api = _ChildApiStub(bus_pos=1)
+    manual_child = _ChildGraphicStub(api_object=manual_api)
+    graphic._child_graphics = [manual_child]
+    editor.diagram.set_dock(manual_api,
+                            {"side": "bottom",
+                             "order": 1,
+                             "offset": 12.0,
+                             "alignment": 0.25,
+                             "auto_layout": False})
+
+    graphic.arrange_children()
+
+    assert manual_child.x() == 25.0
+    assert manual_child.y() == 92.0
+
+
+def test_injection_graphic_sync_manual_dock_metadata_from_position() -> None:
+    """
+    Dragged injection graphics should persist manual dock side, alignment, and offset.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    bus: Bus = Bus(name="B1")
+    load: Load = Load(name="LD1")
+    load.bus = bus
+    bus_graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    load_graphic: LoadGraphicItem = LoadGraphicItem(parent=bus_graphic, api_obj=load, editor=editor)
+
+    load_graphic.setPos(20.0, 96.0)
+    load_graphic.sync_manual_dock_metadata_from_position()
+
+    dock = editor.diagram.get_dock(load)
+
+    assert dock["side"] == "bottom"
+    assert dock["auto_layout"] is False
+    assert dock["alignment"] == 1.0 / 6.0
+    assert dock["offset"] == 16.0
+    assert dock["nexus_parent_alignment"] == 1.0 / 6.0
+
+
 def test_bus_graphic_nexus_point_for_child_uses_dock_side() -> None:
     """
     Bus nexus anchors should follow the dock side of each child.
@@ -553,3 +874,33 @@ def test_bus_graphic_auto_assign_branch_slots_prefers_vertical_feeders_for_bar_b
 
     assert editor.diagram.get_attachment(branch_api_object, "from")["side"] == "top"
     assert editor.diagram.get_attachment(branch_api_object, "from")["slot"] == "bus-top-1"
+
+
+def test_bus_graphic_auto_assign_branch_slots_preserves_manual_canonical_side() -> None:
+    """
+    Manual canonical endpoint placement should not be converted back to auto explicit slots.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    bus: Bus = Bus(name="B1")
+    other_bus: Bus = Bus(name="B2")
+    graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    branch_api_object: object = object()
+    branch_graphic: _BranchGraphicStub = _BranchGraphicStub(api_object=branch_api_object,
+                                                            from_parent=graphic,
+                                                            to_parent=other_bus,
+                                                            pos1=QPointF(90.0, 50.0),
+                                                            pos2=QPointF(40.0, 200.0))
+    graphic.terminal.add_hosting_connection(branch_graphic, _noop_callback)
+    editor.set_persisted_attachment(branch_api_object,
+                                    "from",
+                                    {"side": "bottom", "slot": "bottom", "terminal_key": "bottom", "auto_slot": False})
+
+    graphic.auto_assign_branch_slots()
+
+    assert editor.diagram.get_attachment(branch_api_object, "from") == {
+        "side": "bottom",
+        "slot": "bottom",
+        "terminal_key": "bottom",
+        "auto_slot": False,
+    }

@@ -111,6 +111,65 @@ def test_schematic_diagram_roundtrip_preserves_polyline_and_layout_metadata():
     assert parsed_line_location.draw_labels is True
 
 
+def test_schematic_diagram_roundtrip_preserves_manual_polyline_route_and_nexus_dock_metadata() -> None:
+    bus = Bus(name="B1")
+    load = Load(name="LD1")
+    load.bus = bus
+    line = Line(name="L1", bus_from=bus, bus_to=bus)
+
+    diagram = SchematicDiagram(name="polyline-roundtrip")
+    diagram.set_point(bus, GraphicLocation(x=5, y=10, w=80, h=20, r=0, api_object=bus))
+    diagram.set_branch_route_points(api_object=line,
+                                    points=[(15.0, 20.0), (40.0, 55.0), (75.0, 30.0)],
+                                    kind="manual-polyline",
+                                    locked=False)
+    diagram.set_point(
+        load,
+        GraphicLocation(
+            x=30,
+            y=120,
+            layout_metadata={
+                "schema_version": 1,
+                "dock": {
+                    "side": "bottom",
+                    "order": 3,
+                    "offset": 15.0,
+                    "nexus_route_kind": "manual-polyline",
+                    "nexus_route_points": [(55.0, 145.0), (80.0, 185.0), (110.0, 165.0)],
+                    "nexus_parent_alignment": 0.35,
+                    "nexus_child_alignment": 0.7,
+                },
+            },
+            api_object=load,
+        ),
+    )
+
+    parsed = SchematicDiagram()
+    parsed.parse_data(data=diagram.get_data_dict(),
+                      obj_dict=_build_obj_dict(bus, line, load),
+                      logger=Logger())
+
+    parsed_line_location = parsed.query_point(line)
+    parsed_load_location = parsed.query_point(load)
+
+    assert parsed_line_location is not None
+    assert parsed_line_location.layout_metadata["route"] == {
+        "points": [(15.0, 20.0), (40.0, 55.0), (75.0, 30.0)],
+        "kind": "manual-polyline",
+        "locked": False,
+    }
+    assert parsed_load_location is not None
+    assert parsed_load_location.layout_metadata["dock"] == {
+        "side": "bottom",
+        "order": 3,
+        "offset": 15.0,
+        "nexus_route_kind": "manual-polyline",
+        "nexus_route_points": [(55.0, 145.0), (80.0, 185.0), (110.0, 165.0)],
+        "nexus_parent_alignment": 0.35,
+        "nexus_child_alignment": 0.7,
+    }
+
+
 def test_schematic_diagram_legacy_parse_defaults_layout_metadata_and_polyline():
     bus = Bus(name="B1")
     legacy_data = {
@@ -212,7 +271,7 @@ def test_schematic_diagram_should_preserve_branch_route_shape_uses_kind_and_lock
 
     diagram.set_branch_route_points(api_object=line,
                                     points=[(15, 25), (15, 60), (80, 60)],
-                                    kind="manual-orthogonal",
+                                    kind="manual-polyline",
                                     locked=False)
     assert diagram.should_preserve_branch_route_shape(line) is True
 
@@ -349,7 +408,7 @@ def test_schematic_diagram_sync_branch_route_points_preserves_kind_and_locked():
     diagram.set_branch_route_points(
         api_object=line,
         points=[(10, 20), (10, 60), (80, 60)],
-        kind="manual-orthogonal",
+        kind="manual-polyline",
         locked=True,
     )
 
@@ -362,7 +421,7 @@ def test_schematic_diagram_sync_branch_route_points_preserves_kind_and_locked():
     assert location.poly_line == [(15.0, 25.0), (15.0, 70.0), (90.0, 70.0)]
     assert location.layout_metadata["route"] == {
         "points": [(15.0, 25.0), (15.0, 70.0), (90.0, 70.0)],
-        "kind": "manual-orthogonal",
+        "kind": "manual-polyline",
         "locked": True,
     }
 
@@ -551,7 +610,7 @@ def test_schematic_diagram_upgrade_legacy_branch_layout_synthesizes_orthogonal_r
     ]
     assert metadata["route"] == {
         "points": [(10.0, 20.0), (10.0, 132.0), (110.0, 132.0), (110.0, 80.0)],
-        "kind": "orthogonal",
+        "kind": "auto-polyline",
         "locked": False,
     }
     assert diagram.get_attachment(line, "from")["slot"] == "bus-bottom-2"
@@ -578,7 +637,7 @@ def test_schematic_diagram_upgrade_legacy_branch_layout_preserves_legacy_polylin
     assert diagram.get_branch_route_points(line) == [(10.0, 20.0), (10.0, 60.0), (90.0, 60.0)]
     assert metadata["route"] == {
         "points": [(10.0, 20.0), (10.0, 60.0), (90.0, 60.0)],
-        "kind": "orthogonal",
+        "kind": "manual-polyline",
         "locked": False,
     }
 
@@ -599,7 +658,7 @@ def test_build_default_branch_route_uses_lane_spacing_for_parallel_bus_feeders()
     ]
 
 
-def test_schematic_diagram_upgrade_legacy_branch_layout_replaces_legacy_straight_polyline() -> None:
+def test_schematic_diagram_upgrade_legacy_branch_layout_preserves_legacy_straight_polyline() -> None:
     bus_from = Bus(name="B1")
     bus_to = Bus(name="B2")
     line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
@@ -620,8 +679,6 @@ def test_schematic_diagram_upgrade_legacy_branch_layout_replaces_legacy_straight
 
     assert diagram.get_branch_route_points(line) == [
         (10.0, 20.0),
-        (10.0, 98.0),
-        (90.0, 98.0),
         (90.0, 60.0),
     ]
-    assert metadata["route"]["kind"] == "orthogonal"
+    assert metadata["route"]["kind"] == "manual-polyline"

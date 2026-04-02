@@ -19,6 +19,7 @@ from VeraGridEngine.Devices.types import FLUID_TYPES
 from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, FONT_SCALE, GenericDiagramWidget
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (SchematicAttachmentSlot,
                                                                           build_explicit_slot_key,
+                                                                          clamp_attachment_alignment,
                                                                           get_bar_slot_anchor,
                                                                           get_distributed_anchor,
                                                                           infer_attachment_side_from_points,
@@ -281,16 +282,70 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         Returns:
             Nothing
         """
-        y0 = self.h + 40
-        n = len(self._child_graphics)
-        inc_x = self.w / (n + 1)
-        x = inc_x
-        for elm in self._child_graphics:
-            elm.setPos(x - elm.w / 2, y0)
-            x += inc_x
+        dock_groups: Dict[str, List[Tuple[int, int, float, float | None, bool, GenericDiagramWidget]]] = {
+            SchematicAttachmentSlot.TOP.value: list(),
+            SchematicAttachmentSlot.BOTTOM.value: list(),
+            SchematicAttachmentSlot.LEFT.value: list(),
+            SchematicAttachmentSlot.RIGHT.value: list(),
+        }
+        child_index: int
+
+        for child_index, elm in enumerate(self._child_graphics):
+            dock = self.editor.diagram.sync_injection_dock(api_object=elm.api_object,
+                                                           owner_device=self.api_object,
+                                                           side=SchematicAttachmentSlot.BOTTOM.value)
+            side = str(dock.get("side", SchematicAttachmentSlot.BOTTOM.value))
+            order = int(dock.get("order", 0))
+            offset = float(dock.get("offset", 0.0))
+            alignment = dock.get("alignment", None)
+            auto_layout = bool(dock.get("auto_layout", True))
+
+            if side not in dock_groups:
+                side = SchematicAttachmentSlot.BOTTOM.value
+            else:
+                pass
+
+            dock_groups[side].append((order, child_index, offset, alignment, auto_layout, elm))
+
+        side_key: str
+
+        for side_key, dock_entries in dock_groups.items():
+            sorted_entries = sorted(dock_entries, key=lambda entry: (entry[0] == 0, entry[0], entry[1]))
+            slot_count = len(sorted_entries)
+            slot_index: int
+
+            for slot_index, (_, _, offset, alignment, auto_layout, elm) in enumerate(sorted_entries, start=1):
+                if auto_layout:
+                    span_fraction: float = float(slot_index) / float(slot_count + 1)
+                else:
+                    span_fraction = clamp_attachment_alignment(alignment)
+
+                if side_key == SchematicAttachmentSlot.TOP.value:
+                    x_pos = self.w * span_fraction - elm.w * 0.5
+                    y_pos = -elm.h - 40.0 - offset
+                elif side_key == SchematicAttachmentSlot.LEFT.value:
+                    x_pos = -elm.w - 40.0 - offset
+                    y_pos = self.rect().height() * span_fraction - elm.h * 0.5
+                elif side_key == SchematicAttachmentSlot.RIGHT.value:
+                    x_pos = self.w + 40.0 + offset
+                    y_pos = self.rect().height() * span_fraction - elm.h * 0.5
+                else:
+                    x_pos = self.w * span_fraction - elm.w * 0.5
+                    y_pos = self.get_bottom_dock_baseline() + offset
+
+                elm.setPos(x_pos, y_pos)
+                elm.update_nexus(elm.pos())
 
         # Arrange line positions
         self._terminal.process_callbacks(self.pos() + self._terminal.pos())
+
+    def get_bottom_dock_baseline(self) -> float:
+        """
+        Return the baseline local Y coordinate used for bottom-docked children.
+
+        :return: Bottom dock baseline.
+        """
+        return float(self.h + 40.0)
 
     def create_children_widgets(self, injections_by_tpe: Dict[DeviceType, List[FLUID_TYPES]]):
         """
@@ -627,7 +682,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             existing_slot = str(attachment.get("slot", ""))
             auto_slot = bool(attachment.get("auto_slot", existing_slot in ("", "default", "left", "right", "top", "bottom")))
 
-            if not auto_slot and parse_explicit_slot_key(existing_slot) is not None:
+            if not auto_slot:
                 continue
             else:
                 pass

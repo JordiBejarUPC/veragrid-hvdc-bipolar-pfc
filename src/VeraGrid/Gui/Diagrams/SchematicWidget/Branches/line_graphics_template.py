@@ -14,8 +14,8 @@ from PySide6.QtWidgets import (QGraphicsLineItem, QGraphicsRectItem, QGraphicsPo
                                QGraphicsPathItem)
 from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, DEACTIVATED, OTHER, GenericDiagramWidget, TRANSPARENT, WHITE
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.route_geometry import (merge_route_with_endpoints,
-                                                                           move_orthogonal_route_segment,
-                                                                           move_orthogonal_route_vertex,
+                                                                           move_polyline_route_segment,
+                                                                           move_polyline_route_vertex,
                                                                            normalize_route_points,
                                                                            sample_route_segment)
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (SchematicAttachmentSlot,
@@ -571,7 +571,7 @@ class RouteSegmentHandleItem(QGraphicsEllipseItem):
 
     def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """
-        Move the owning branch segment while preserving orthogonality.
+        Move the owning branch polyline segment.
 
         :param event: Mouse event.
         :return: ``None``.
@@ -929,7 +929,8 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
 
     def get_render_points(self) -> list[tuple[float, float]]:
         """
-        Replace persisted endpoints with the live terminal positions while keeping interior route elbows.
+        Replace persisted endpoints with the live endpoint positions and keep
+        the saved interior polyline points when the route is manual.
         """
         start_point: QPointF = self.get_endpoint_anchor(endpoint="from")
         end_point: QPointF = self.get_endpoint_anchor(endpoint="to")
@@ -1024,10 +1025,8 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
 
             if p1 == p2:
                 pass
-            elif p1[0] == p2[0] or p1[1] == p2[1]:
-                editable_indexes.append(segment_index)
             else:
-                pass
+                editable_indexes.append(segment_index)
 
         return editable_indexes
 
@@ -1049,7 +1048,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
                            delta_x: float,
                            delta_y: float) -> None:
         """
-        Move one interior route segment and persist the result as a manual route.
+        Move one interior route segment and persist the result as a manual polyline.
 
         :param segment_index: Editable segment index.
         :param original_points: Route points captured at drag start.
@@ -1062,21 +1061,21 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         else:
             pass
 
-        moved_points = move_orthogonal_route_segment(points=original_points,
-                                                     segment_index=segment_index,
-                                                     delta_x=delta_x,
-                                                     delta_y=delta_y)
+        moved_points = move_polyline_route_segment(points=original_points,
+                                                   segment_index=segment_index,
+                                                   delta_x=delta_x,
+                                                   delta_y=delta_y)
         self._route_points = normalize_route_points(moved_points)
         self.editor.diagram.set_branch_route_points(api_object=self.api_object,
                                                     points=self._route_points,
-                                                    kind="manual-orthogonal",
+                                                    kind="manual-polyline",
                                                     locked=False)
         self.sync_attachment_slots_to_diagram(render_points=self._route_points)
         self.redraw()
 
     def move_route_vertex(self, vertex_index: int, scene_pos: QPointF) -> None:
         """
-        Move one interior orthogonal route vertex and persist the manual route.
+        Move one interior route vertex and persist the manual polyline.
 
         :param vertex_index: Vertex index.
         :param scene_pos: New scene position.
@@ -1088,14 +1087,14 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
             pass
 
         current_points = self.get_route_points_for_editing()
-        moved_points = move_orthogonal_route_vertex(points=current_points,
-                                                    vertex_index=vertex_index,
-                                                    new_x=scene_pos.x(),
-                                                    new_y=scene_pos.y())
+        moved_points = move_polyline_route_vertex(points=current_points,
+                                                  vertex_index=vertex_index,
+                                                  new_x=scene_pos.x(),
+                                                  new_y=scene_pos.y())
         self._route_points = normalize_route_points(moved_points)
         self.editor.diagram.set_branch_route_points(api_object=self.api_object,
                                                     points=self._route_points,
-                                                    kind="manual-orthogonal",
+                                                    kind="manual-polyline",
                                                     locked=False)
         self.sync_attachment_slots_to_diagram(render_points=self._route_points)
         self.redraw()
@@ -1121,14 +1120,74 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
             pass
 
         attachment = self.get_persisted_endpoint_attachment(endpoint=endpoint)
-        side_key = str(attachment.get("side", SchematicAttachmentSlot.BOTTOM.value))
+        side_key = self.resolve_endpoint_alignment_side_key(endpoint=endpoint,
+                                                            attachment=attachment)
         alignment = owner_graphic.get_terminal_alignment_from_scene_point(side_key=side_key, scene_point=scene_pos)
+
+        attachment["side"] = side_key
+        attachment["slot"] = side_key
+        attachment["terminal_key"] = side_key
+
         attachment["alignment"] = alignment
         attachment["auto_slot"] = False
+        attachment.pop("order", None)
         self.editor.diagram.set_attachment(api_object=self.api_object,
                                            endpoint=endpoint,
                                            attachment=attachment)
         self.redraw()
+
+    def resolve_endpoint_alignment_side_key(self,
+                                            endpoint: str,
+                                            attachment: dict[str, object]) -> str:
+        """
+        Resolve the canonical node side used when dragging one endpoint alignment handle.
+
+        This path must not trust stale legacy ``side`` values blindly. Existing diagrams can
+        contain migrated attachments where the saved ``terminal_key`` already points to the
+        correct bar side but ``side`` still reflects an older heuristic. Endpoint dragging
+        should follow the side that the user is actually editing on screen.
+
+        :param endpoint: Endpoint key.
+        :param attachment: Persisted attachment metadata.
+        :return: Canonical side key.
+        """
+        terminal_key_value: object | None = attachment.get("terminal_key", None)
+        canonical_terminal_keys: tuple[str, ...] = (
+            SchematicAttachmentSlot.TOP.value,
+            SchematicAttachmentSlot.BOTTOM.value,
+            SchematicAttachmentSlot.LEFT.value,
+            SchematicAttachmentSlot.RIGHT.value,
+            SchematicAttachmentSlot.DEFAULT.value,
+        )
+
+        if terminal_key_value is None:
+            pass
+        else:
+            terminal_key: str = str(terminal_key_value)
+            explicit_slot = parse_explicit_slot_key(slot_key=terminal_key)
+
+            if explicit_slot is not None:
+                return explicit_slot[1]
+            elif terminal_key in canonical_terminal_keys:
+                return terminal_key
+            else:
+                pass
+
+        route_points: list[tuple[float, float]] = self.get_route_points_for_editing()
+        inferred_side_key: str = infer_attachment_slot_from_route(points=route_points,
+                                                                  endpoint=endpoint)
+
+        if inferred_side_key != SchematicAttachmentSlot.DEFAULT.value:
+            return inferred_side_key
+        else:
+            pass
+
+        side_value: object | None = attachment.get("side", None)
+
+        if side_value is None:
+            return SchematicAttachmentSlot.BOTTOM.value
+        else:
+            return str(side_value)
 
     def refresh_route_handles(self) -> None:
         """
@@ -1221,6 +1280,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
 
         attachment = self.get_persisted_endpoint_attachment(endpoint=endpoint)
         alignment = attachment.get("alignment", None)
+        auto_slot = bool(attachment.get("auto_slot", True))
 
         if "terminal_key" in attachment:
             terminal_key: str = str(attachment["terminal_key"])
@@ -1241,6 +1301,10 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
                     return owner_graphic.get_terminal_anchor_by_key(terminal_key,
                                                                    graphic_object=self,
                                                                    alignment=alignment)
+            elif not auto_slot or alignment is not None:
+                return owner_graphic.get_terminal_anchor_by_key(terminal_key,
+                                                               graphic_object=self,
+                                                               alignment=alignment)
             else:
                 return fallback_point
         else:
@@ -1252,14 +1316,24 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         """
         if self.api_object is None:
             return
+        elif self.editor.is_loading_diagram():
+            return
+        elif self.editor.diagram.should_preserve_branch_route_shape(self.api_object):
+            return
+        else:
+            pass
 
         location = self.editor.diagram.query_point(self.api_object)
         if location is None:
             return
+        else:
+            pass
 
         render_points = self.get_render_points()
         if len(render_points) < 2:
             return
+        else:
+            pass
 
         self._route_points = normalize_route_points(render_points)
         self.editor.diagram.sync_branch_route_points(api_object=self.api_object, points=self._route_points)
@@ -1281,6 +1355,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
 
         for endpoint_key in endpoints:
             attachment = self.editor.get_persisted_attachment(api_object=self.api_object, endpoint=endpoint_key)
+            auto_slot_enabled = bool(attachment.get("auto_slot", True))
             inferred_slot: str = infer_attachment_slot_from_route(points=render_points, endpoint=endpoint_key)
             existing_side = attachment.get("side", None)
             if endpoint_key == "from":
@@ -1288,7 +1363,9 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
             else:
                 owner_graphic = self.get_terminal_to_parent()
 
-            if existing_side is None or str(existing_side) in canonical_slot_keys:
+            if not auto_slot_enabled:
+                pass
+            elif existing_side is None or str(existing_side) in canonical_slot_keys:
                 attachment["side"] = inferred_slot
             else:
                 pass

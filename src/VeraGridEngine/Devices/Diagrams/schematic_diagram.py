@@ -11,7 +11,6 @@ from VeraGridEngine.Devices.Diagrams.schematic_layout import (build_default_bran
                                                               copy_layout_metadata, get_attachment,
                                                               get_branch_route_points, get_dock,
                                                               is_canonical_attachment_slot,
-                                                              is_orthogonal_route,
                                                               parse_explicit_attachment_slot_key,
                                                               set_attachment, set_branch_route_points,
                                                               set_dock, should_preserve_route_shape)
@@ -153,7 +152,7 @@ class SchematicDiagram(BaseDiagram):
     def set_branch_route_points(self,
                                 api_object: ALL_DEV_TYPES,
                                 points: Iterable[Tuple[float, float]],
-                                kind: str | None = "orthogonal",
+                                kind: str | None = "auto-polyline",
                                 locked: bool | None = False) -> Dict[str, Any]:
         """
         Persist route points through the compatibility layer while keeping legacy polyline storage in sync.
@@ -183,27 +182,10 @@ class SchematicDiagram(BaseDiagram):
         route_section = location.layout_metadata.get("route", None)
 
         if len(route_points) >= 2:
-            if route_section is None and len(route_points) >= 3 and is_orthogonal_route(route_points):
+            if route_section is None:
                 self.set_branch_route_points(api_object=api_object,
                                              points=route_points,
-                                             kind="orthogonal",
-                                             locked=False)
-            elif route_section is None:
-                from_attachment = attachments.get("from", dict())
-                to_attachment = attachments.get("to", dict())
-                from_side = str(from_attachment.get("side", "bottom"))
-                to_side = str(to_attachment.get("side", "bottom"))
-                from_order = from_attachment.get("order", None)
-                to_order = to_attachment.get("order", None)
-                synthesized_route = build_default_branch_route(start=start,
-                                                               end=end,
-                                                               start_side=from_side,
-                                                               end_side=to_side,
-                                                               start_order=from_order,
-                                                               end_order=to_order)
-                self.set_branch_route_points(api_object=api_object,
-                                             points=synthesized_route,
-                                             kind="orthogonal",
+                                             kind="manual-polyline",
                                              locked=False)
             else:
                 pass
@@ -222,7 +204,7 @@ class SchematicDiagram(BaseDiagram):
                                                            end_order=to_order)
             self.set_branch_route_points(api_object=api_object,
                                          points=synthesized_route,
-                                         kind="orthogonal",
+                                         kind="auto-polyline",
                                          locked=False)
 
         return self.get_layout_metadata(api_object=api_object)
@@ -308,6 +290,7 @@ class SchematicDiagram(BaseDiagram):
         side_key = str(attachment.get("side", default_side))
         slot_key = attachment.get("slot", None)
         terminal_key = attachment.get("terminal_key", None)
+        auto_slot_enabled = bool(attachment.get("auto_slot", True))
         explicit_slot = parse_explicit_attachment_slot_key(slot_key=str(slot_key)) if slot_key is not None else None
         explicit_terminal_key = (
             parse_explicit_attachment_slot_key(slot_key=str(terminal_key))
@@ -316,7 +299,39 @@ class SchematicDiagram(BaseDiagram):
         )
         order_value = attachment.get("order", None)
 
-        if owner_kind is not None and isinstance(order_value, int) and order_value > 0:
+        if not auto_slot_enabled:
+            if explicit_slot is not None:
+                side_key = explicit_slot[1]
+            elif explicit_terminal_key is not None:
+                side_key = explicit_terminal_key[1]
+            elif is_canonical_attachment_slot(slot_key=str(slot_key) if slot_key is not None else None):
+                side_key = str(slot_key)
+            elif is_canonical_attachment_slot(slot_key=str(terminal_key) if terminal_key is not None else None):
+                side_key = str(terminal_key)
+            else:
+                pass
+
+            attachment["side"] = side_key
+
+            if explicit_slot is None:
+                attachment["slot"] = side_key
+            else:
+                attachment["slot"] = slot_key
+
+            if explicit_terminal_key is None:
+                if explicit_slot is not None and slot_key is not None:
+                    attachment["terminal_key"] = slot_key
+                else:
+                    attachment["terminal_key"] = side_key
+            else:
+                attachment["terminal_key"] = terminal_key
+
+            self.set_attachment(api_object=api_object, endpoint=endpoint, attachment=attachment)
+            return self.get_attachment(api_object=api_object, endpoint=endpoint)
+        else:
+            pass
+
+        if owner_kind is not None and isinstance(order_value, int) and order_value > 0 and auto_slot_enabled:
             explicit_slot_key = build_explicit_attachment_slot_key(owner_kind=owner_kind,
                                                                    side=side_key,
                                                                    order=order_value)

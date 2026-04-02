@@ -27,7 +27,7 @@ def normalize_route_points(points: Iterable[RoutePoint]) -> List[RoutePoint]:
 
 def compress_route_points(points: Iterable[RoutePoint]) -> List[RoutePoint]:
     """
-    Remove duplicate and collinear route points.
+    Remove only duplicate consecutive route points.
 
     :param points: Route points.
     :return: Simplified route points.
@@ -44,28 +44,7 @@ def compress_route_points(points: Iterable[RoutePoint]) -> List[RoutePoint]:
         else:
             pass
 
-    if len(compressed_points) < 3:
-        return compressed_points
-    else:
-        pass
-
-    simplified_points: List[RoutePoint] = [compressed_points[0]]
-    point_index: int
-
-    for point_index in range(1, len(compressed_points) - 1):
-        previous_point = simplified_points[-1]
-        current_point = compressed_points[point_index]
-        next_point = compressed_points[point_index + 1]
-        is_vertical_chain = previous_point[0] == current_point[0] and current_point[0] == next_point[0]
-        is_horizontal_chain = previous_point[1] == current_point[1] and current_point[1] == next_point[1]
-
-        if is_vertical_chain or is_horizontal_chain:
-            pass
-        else:
-            simplified_points.append(current_point)
-
-    simplified_points.append(compressed_points[-1])
-    return simplified_points
+    return compressed_points
 
 
 def align_adjacent_point_to_endpoint(endpoint_point: RoutePoint,
@@ -101,31 +80,20 @@ def merge_route_with_endpoints(start: RoutePoint,
 
     if len(normalized_points) >= 2:
         merged_points = [start_point] + normalized_points[1:-1] + [end_point]
-
-        if len(merged_points) >= 3:
-            merged_points[1] = align_adjacent_point_to_endpoint(endpoint_point=start_point,
-                                                                adjacent_point=merged_points[1],
-                                                                side=start_side)
-            merged_points[-2] = align_adjacent_point_to_endpoint(endpoint_point=end_point,
-                                                                 adjacent_point=merged_points[-2],
-                                                                 side=end_side)
-        else:
-            pass
-
         return compress_route_points(merged_points)
+    else:
+        return [start_point, end_point]
 
-    return [start_point, end_point]
 
-
-def move_orthogonal_route_segment(points: Iterable[RoutePoint],
-                                  segment_index: int,
-                                  delta_x: float,
-                                  delta_y: float) -> List[RoutePoint]:
+def move_polyline_route_segment(points: Iterable[RoutePoint],
+                                segment_index: int,
+                                delta_x: float,
+                                delta_y: float) -> List[RoutePoint]:
     """
-    Move one interior orthogonal route segment while keeping the route orthogonal.
+    Move one interior polyline segment as a rigid segment.
 
-    The editable segment must not be the first or last segment because branch
-    endpoints remain attached to their owning nodes.
+    The editable segment must not be the first or last segment because the
+    start and end points remain attached to their owning nodes.
 
     :param points: Route points.
     :param segment_index: Zero-based segment index.
@@ -145,28 +113,24 @@ def move_orthogonal_route_segment(points: Iterable[RoutePoint],
     else:
         pass
 
+    moved_points = list(normalized_points)
     start_point = normalized_points[segment_index]
     end_point = normalized_points[segment_index + 1]
-    moved_points = list(normalized_points)
+    moved_delta_x = float(delta_x)
+    moved_delta_y = float(delta_y)
 
-    if start_point[0] == end_point[0]:
-        moved_x = start_point[0] + float(delta_x)
-        moved_points[segment_index] = (moved_x, start_point[1])
-        moved_points[segment_index + 1] = (moved_x, end_point[1])
-    else:
-        moved_y = start_point[1] + float(delta_y)
-        moved_points[segment_index] = (start_point[0], moved_y)
-        moved_points[segment_index + 1] = (end_point[0], moved_y)
+    moved_points[segment_index] = (start_point[0] + moved_delta_x, start_point[1] + moved_delta_y)
+    moved_points[segment_index + 1] = (end_point[0] + moved_delta_x, end_point[1] + moved_delta_y)
 
-    return moved_points
+    return compress_route_points(moved_points)
 
 
-def move_orthogonal_route_vertex(points: Iterable[RoutePoint],
-                                 vertex_index: int,
-                                 new_x: float,
-                                 new_y: float) -> List[RoutePoint]:
+def move_polyline_route_vertex(points: Iterable[RoutePoint],
+                               vertex_index: int,
+                               new_x: float,
+                               new_y: float) -> List[RoutePoint]:
     """
-    Move one interior orthogonal route vertex while preserving orthogonality.
+    Move one interior polyline vertex.
 
     :param points: Route points.
     :param vertex_index: Index of the vertex to move.
@@ -187,40 +151,34 @@ def move_orthogonal_route_vertex(points: Iterable[RoutePoint],
         pass
 
     moved_points = list(normalized_points)
-    previous_point = normalized_points[vertex_index - 1]
-    current_point = normalized_points[vertex_index]
-    next_point = normalized_points[vertex_index + 1]
-    target_x = float(new_x)
-    target_y = float(new_y)
+    moved_points[vertex_index] = (float(new_x), float(new_y))
+    return compress_route_points(moved_points)
 
-    if previous_point[0] == current_point[0]:
-        if vertex_index - 1 == 0:
-            target_x = previous_point[0]
-        else:
-            moved_points[vertex_index - 1] = (target_x, previous_point[1])
-    elif previous_point[1] == current_point[1]:
-        if vertex_index - 1 == 0:
-            target_y = previous_point[1]
-        else:
-            moved_points[vertex_index - 1] = (previous_point[0], target_y)
-    else:
-        return normalized_points
 
-    if current_point[0] == next_point[0]:
-        if vertex_index + 1 == point_count - 1:
-            target_x = next_point[0]
-        else:
-            moved_points[vertex_index + 1] = (target_x, next_point[1])
-    elif current_point[1] == next_point[1]:
-        if vertex_index + 1 == point_count - 1:
-            target_y = next_point[1]
-        else:
-            moved_points[vertex_index + 1] = (next_point[0], target_y)
-    else:
-        return normalized_points
+def move_orthogonal_route_segment(points: Iterable[RoutePoint],
+                                  segment_index: int,
+                                  delta_x: float,
+                                  delta_y: float) -> List[RoutePoint]:
+    """
+    Backward-compatible wrapper that now moves generic polyline segments.
+    """
+    return move_polyline_route_segment(points=points,
+                                      segment_index=segment_index,
+                                      delta_x=delta_x,
+                                      delta_y=delta_y)
 
-    moved_points[vertex_index] = (target_x, target_y)
-    return moved_points
+
+def move_orthogonal_route_vertex(points: Iterable[RoutePoint],
+                                 vertex_index: int,
+                                 new_x: float,
+                                 new_y: float) -> List[RoutePoint]:
+    """
+    Backward-compatible wrapper that now moves generic polyline vertices.
+    """
+    return move_polyline_route_vertex(points=points,
+                                     vertex_index=vertex_index,
+                                     new_x=new_x,
+                                     new_y=new_y)
 
 
 def sample_route_segment(points: Iterable[RoutePoint], position: float) -> Tuple[RoutePoint, RouteSegment]:

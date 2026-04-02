@@ -423,6 +423,7 @@ class SchematicWidget(BaseDiagramWidget):
         # self.pos_label = QGraphicsTextItem()
         # self.add_to_scene(self.pos_label)
         self._needs_post_show_branch_refresh: bool = False
+        self._is_loading_diagram: bool = False
 
         if diagram is not None:
             self.draw()
@@ -655,6 +656,7 @@ class SchematicWidget(BaseDiagramWidget):
         :param diagram: SchematicDiagram
         :param logger: Logger
         """
+        self._is_loading_diagram = True
         inj_dev_by_bus = self.circuit.get_injection_devices_grouped_by_bus()
         inj_dev_by_fluid_node = self.circuit.get_injection_devices_grouped_by_fluid_node()
         category_items = list(diagram.data.items())
@@ -936,6 +938,16 @@ class SchematicWidget(BaseDiagramWidget):
             branch_graphic.upgrade_legacy_layout_from_diagram()
             branch_graphic.load_route_points_from_diagram()
             branch_graphic.redraw()
+
+        self._is_loading_diagram = False
+
+    def is_loading_diagram(self) -> bool:
+        """
+        Determine whether the schematic is still reconstructing diagram geometry.
+
+        :return: ``True`` while diagram items are being loaded and callbacks are settling.
+        """
+        return self._is_loading_diagram
 
     def draw(self) -> None:
         """

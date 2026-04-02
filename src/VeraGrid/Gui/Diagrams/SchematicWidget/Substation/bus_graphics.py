@@ -34,6 +34,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.controllable_shunt_graphic
     ControllableShunt)
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (SchematicAttachmentSlot,
                                                                           build_explicit_slot_key,
+                                                                          clamp_attachment_alignment,
                                                                           get_distributed_anchor,
                                                                           get_bar_slot_anchor,
                                                                           get_round_slot_anchor,
@@ -59,7 +60,7 @@ INJECTION_GRAPHICS = Union[
 ]
 
 
-def get_dock_sort_key(entry: Tuple[int, int, float, INJECTION_GRAPHICS]) -> Tuple[bool, int, int]:
+def get_dock_sort_key(entry: Tuple[int, int, float, float | None, bool, INJECTION_GRAPHICS]) -> Tuple[bool, int, int]:
     """
     Build the ordering key for docked child graphics.
     """
@@ -453,7 +454,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         Returns:
             Nothing
         """
-        dock_groups: Dict[str, List[Tuple[int, int, float, INJECTION_GRAPHICS]]] = {
+        dock_groups: Dict[str, List[Tuple[int, int, float, float | None, bool, INJECTION_GRAPHICS]]] = {
             SchematicAttachmentSlot.TOP.value: list(),
             SchematicAttachmentSlot.BOTTOM.value: list(),
             SchematicAttachmentSlot.LEFT.value: list(),
@@ -468,13 +469,15 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             side = str(dock.get("side", SchematicAttachmentSlot.BOTTOM.value))
             order = int(dock.get("order", 0))
             offset = float(dock.get("offset", 0.0))
+            alignment = dock.get("alignment", None)
+            auto_layout = bool(dock.get("auto_layout", True))
 
             if side not in dock_groups:
                 side = SchematicAttachmentSlot.BOTTOM.value
             else:
                 pass
 
-            dock_groups[side].append((order, child_index, offset, elm))
+            dock_groups[side].append((order, child_index, offset, alignment, auto_layout, elm))
 
         self._arrange_child_group(side=SchematicAttachmentSlot.TOP.value,
                                   dock_entries=dock_groups[SchematicAttachmentSlot.TOP.value])
@@ -490,7 +493,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
     def _arrange_child_group(self,
                              side: str,
-                             dock_entries: List[Tuple[int, int, float, INJECTION_GRAPHICS]]) -> None:
+                             dock_entries: List[Tuple[int, int, float, float | None, bool, INJECTION_GRAPHICS]]) -> None:
         """
         Arrange one dock side of child graphics.
         """
@@ -503,8 +506,11 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         slot_count: int = len(sorted_entries)
         slot_index: int
 
-        for slot_index, (_, _, offset, elm) in enumerate(sorted_entries, start=1):
-            span_fraction: float = float(slot_index) / float(slot_count + 1)
+        for slot_index, (_, _, offset, alignment, auto_layout, elm) in enumerate(sorted_entries, start=1):
+            if auto_layout:
+                span_fraction: float = float(slot_index) / float(slot_count + 1)
+            else:
+                span_fraction = clamp_attachment_alignment(alignment)
 
             if side == SchematicAttachmentSlot.TOP.value:
                 x_pos = self.w * span_fraction - elm.w * 0.5
@@ -521,6 +527,14 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
             elm.setPos(x_pos, y_pos)
             elm.update_nexus(elm.pos())
+
+    def get_bottom_dock_baseline(self) -> float:
+        """
+        Return the baseline local Y coordinate used for bottom-docked children.
+
+        :return: Bottom dock baseline.
+        """
+        return float(self.y0)
 
     def create_children_widgets(self, injections_by_tpe: Dict[DeviceType, List[INJECTION_DEVICE_TYPES]]):
         """
@@ -1150,7 +1164,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             existing_slot = str(attachment.get("slot", ""))
             auto_slot = bool(attachment.get("auto_slot", existing_slot in ("", "default", "left", "right", "top", "bottom")))
 
-            if not auto_slot and parse_explicit_slot_key(existing_slot) is not None:
+            if not auto_slot:
                 continue
             else:
                 pass

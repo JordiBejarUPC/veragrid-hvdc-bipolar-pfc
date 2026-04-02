@@ -15,10 +15,11 @@ from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.generic_graphics import (GenericDiagramWidget, ACTIVE, DEACTIVATED, OTHER, Square, Circle,
                                                     Polygon, Condenser)
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.route_geometry import (merge_route_with_endpoints,
-                                                                           move_orthogonal_route_segment,
-                                                                           move_orthogonal_route_vertex,
+                                                                           move_polyline_route_segment,
+                                                                           move_polyline_route_vertex,
                                                                            normalize_route_points)
-from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import SchematicAttachmentSlot
+from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (SchematicAttachmentSlot,
+                                                                          infer_attachment_side_from_points)
 from VeraGridEngine.Devices.Diagrams.schematic_layout import build_default_branch_route
 
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
@@ -551,6 +552,22 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         else:
             return super().itemChange(change, value)
 
+    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Persist manual child placement after interactive dragging.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        QGraphicsItemGroup.mouseReleaseEvent(self, event)
+
+        if self.editor.is_loading_diagram():
+            return
+        elif self.nexus.isSelected():
+            return
+        else:
+            self.sync_manual_dock_metadata_from_position()
+
     def get_dock_metadata(self) -> dict[str, Any]:
         """
         Return persisted dock metadata for this injection.
@@ -569,6 +586,92 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         :return: ``None``.
         """
         self.editor.diagram.set_dock(self.api_object, dock)
+
+    def infer_dock_side_from_current_position(self) -> str:
+        """
+        Infer the dock side from the current child position relative to the parent node.
+
+        :return: Dock side key.
+        """
+        parent_width: float = float(self.parent.rect().width())
+        parent_height: float = float(self.parent.rect().height())
+        local_center_x: float = float(self.x()) + float(self.w) * 0.5
+        local_center_y: float = float(self.y()) + float(self.h) * 0.5
+
+        if local_center_y < 0.0:
+            return SchematicAttachmentSlot.TOP.value
+        elif local_center_y > parent_height:
+            return SchematicAttachmentSlot.BOTTOM.value
+        elif local_center_x < 0.0:
+            return SchematicAttachmentSlot.LEFT.value
+        elif local_center_x > parent_width:
+            return SchematicAttachmentSlot.RIGHT.value
+        else:
+            return infer_attachment_side_from_points(origin=(parent_width * 0.5, parent_height * 0.5),
+                                                     other=(local_center_x, local_center_y),
+                                                     vertical_bias=0.8)
+
+    def get_manual_dock_alignment(self, side: str) -> float:
+        """
+        Compute the normalized alignment along the chosen dock side.
+
+        :param side: Dock side key.
+        :return: Alignment factor.
+        """
+        if side in (SchematicAttachmentSlot.TOP.value, SchematicAttachmentSlot.BOTTOM.value):
+            span_value: float = float(self.parent.rect().width())
+            coordinate: float = float(self.x()) + float(self.w) * 0.5
+        else:
+            span_value = float(self.parent.rect().height())
+            coordinate = float(self.y()) + float(self.h) * 0.5
+
+        if span_value <= 0.0:
+            return 0.5
+        else:
+            return clamp_alignment(coordinate / span_value)
+
+    def get_manual_dock_offset(self, side: str) -> float:
+        """
+        Compute the signed outward dock offset from the current child position.
+
+        :param side: Dock side key.
+        :return: Dock offset.
+        """
+        if side == SchematicAttachmentSlot.TOP.value:
+            return -float(self.y()) - float(self.h) - 40.0
+        elif side == SchematicAttachmentSlot.LEFT.value:
+            return -float(self.x()) - float(self.w) - 40.0
+        elif side == SchematicAttachmentSlot.RIGHT.value:
+            return float(self.x()) - float(self.parent.rect().width()) - 40.0
+        else:
+            return float(self.y()) - float(self.parent.get_bottom_dock_baseline())
+
+    def sync_manual_dock_metadata_from_position(self) -> None:
+        """
+        Persist the current child position as manual dock metadata.
+
+        :return: ``None``.
+        """
+        dock = self.get_dock_metadata()
+        side: str = self.infer_dock_side_from_current_position()
+        alignment: float = self.get_manual_dock_alignment(side=side)
+        offset: float = self.get_manual_dock_offset(side=side)
+
+        dock["side"] = side
+        dock["alignment"] = alignment
+        dock["offset"] = offset
+        dock["auto_layout"] = False
+        dock["nexus_parent_alignment"] = alignment
+        self.set_dock_metadata(dock)
+
+        self.editor.update_diagram_element(device=self.api_object,
+                                           x=self.scenePos().x(),
+                                           y=self.scenePos().y(),
+                                           w=float(self.w),
+                                           h=float(self.h),
+                                           r=float(self.rotation()),
+                                           draw_labels=self.draw_labels,
+                                           graphic_object=self)
 
     def get_parent_nexus_side(self) -> str:
         """
@@ -645,7 +748,19 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         :return: ``True`` when the persisted nexus path is manual.
         """
         dock = self.get_dock_metadata()
-        return str(dock.get("nexus_route_kind", "")) == "manual-orthogonal"
+        route_kind = str(dock.get("nexus_route_kind", ""))
+        auto_route_kinds: set[str] = {
+            "",
+            "orthogonal",
+            "auto",
+            "auto-orthogonal",
+            "auto-polyline",
+        }
+
+        if route_kind in auto_route_kinds:
+            return False
+        else:
+            return True
 
     def get_nexus_render_points(self) -> list[tuple[float, float]]:
         """
@@ -675,14 +790,14 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
 
     def persist_manual_nexus_route(self, points: list[tuple[float, float]]) -> None:
         """
-        Persist one manual routed nexus path.
+        Persist one manual nexus polyline.
 
         :param points: Route points.
         :return: ``None``.
         """
         dock = self.get_dock_metadata()
         dock["nexus_route_points"] = normalize_route_points(points)
-        dock["nexus_route_kind"] = "manual-orthogonal"
+        dock["nexus_route_kind"] = "manual-polyline"
         self.set_dock_metadata(dock)
 
     def move_nexus_segment(self,
@@ -699,10 +814,10 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         :param delta_y: Vertical scene delta.
         :return: ``None``.
         """
-        moved_points = move_orthogonal_route_segment(points=original_points,
-                                                     segment_index=segment_index,
-                                                     delta_x=delta_x,
-                                                     delta_y=delta_y)
+        moved_points = move_polyline_route_segment(points=original_points,
+                                                   segment_index=segment_index,
+                                                   delta_x=delta_x,
+                                                   delta_y=delta_y)
         self._nexus_route_points = normalize_route_points(moved_points)
         self.persist_manual_nexus_route(self._nexus_route_points)
         self.update_nexus(self.scenePos())
@@ -716,10 +831,10 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         :return: ``None``.
         """
         current_points = self.get_nexus_route_points_for_editing()
-        moved_points = move_orthogonal_route_vertex(points=current_points,
-                                                    vertex_index=vertex_index,
-                                                    new_x=scene_pos.x(),
-                                                    new_y=scene_pos.y())
+        moved_points = move_polyline_route_vertex(points=current_points,
+                                                  vertex_index=vertex_index,
+                                                  new_x=scene_pos.x(),
+                                                  new_y=scene_pos.y())
         self._nexus_route_points = normalize_route_points(moved_points)
         self.persist_manual_nexus_route(self._nexus_route_points)
         self.update_nexus(self.scenePos())
@@ -931,6 +1046,8 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         """
         dock = self.editor.diagram.get_dock(self.api_object)
         dock["side"] = side
+        dock["auto_layout"] = True
+        dock.pop("alignment", None)
         self.editor.diagram.set_dock(self.api_object, dock)
         self.parent.arrange_children()
 
@@ -965,6 +1082,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         dock = self.editor.diagram.get_dock(self.api_object)
         current_order = int(dock.get("order", 1))
         dock["order"] = max(1, current_order + int(delta))
+        dock["auto_layout"] = True
         self.editor.diagram.set_dock(self.api_object, dock)
         self.parent.arrange_children()
 

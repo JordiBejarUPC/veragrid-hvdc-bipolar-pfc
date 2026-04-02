@@ -3,8 +3,8 @@ from PySide6.QtCore import QPointF
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import (get_opposite_attachment_side,
                                                                                            get_rect_side_anchor)
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.route_geometry import (merge_route_with_endpoints,
-                                                                           move_orthogonal_route_segment,
-                                                                           move_orthogonal_route_vertex,
+                                                                           move_polyline_route_segment,
+                                                                           move_polyline_route_vertex,
                                                                            normalize_route_points,
                                                                            sample_route_segment)
 
@@ -21,14 +21,14 @@ def test_merge_route_with_endpoints_preserves_interior_elbows():
     assert merged == [(0.0, 0.0), (10.0, 40.0), (70.0, 40.0), (100.0, 100.0)]
 
 
-def test_merge_route_with_endpoints_preserves_orthogonality_with_side_hints():
+def test_merge_route_with_endpoints_preserves_manual_polyline_shape():
     merged = merge_route_with_endpoints(start=(20, 0),
                                         end=(120, 120),
                                         persisted_points=[(0, 0), (0, 80), (120, 80), (120, 100)],
                                         start_side="bottom",
                                         end_side="top")
 
-    assert merged == [(20.0, 0.0), (20.0, 80.0), (120.0, 80.0), (120.0, 120.0)]
+    assert merged == [(20.0, 0.0), (0.0, 80.0), (120.0, 80.0), (120.0, 120.0)]
 
 
 def test_merge_route_with_endpoints_falls_back_to_straight_line():
@@ -51,40 +51,40 @@ def test_sample_route_segment_clamps_out_of_range_positions():
     assert segment == ((0.0, 10.0), (20.0, 10.0))
 
 
-def test_move_orthogonal_route_segment_moves_middle_horizontal_segment():
-    moved = move_orthogonal_route_segment(points=[(10.0, 20.0), (10.0, 80.0), (110.0, 80.0), (110.0, 40.0)],
-                                          segment_index=1,
-                                          delta_x=0.0,
-                                          delta_y=15.0)
+def test_move_polyline_route_segment_moves_middle_segment_as_rigid_segment():
+    moved = move_polyline_route_segment(points=[(10.0, 20.0), (10.0, 80.0), (110.0, 80.0), (110.0, 40.0)],
+                                        segment_index=1,
+                                        delta_x=0.0,
+                                        delta_y=15.0)
 
     assert moved == [(10.0, 20.0), (10.0, 95.0), (110.0, 95.0), (110.0, 40.0)]
 
 
-def test_move_orthogonal_route_segment_ignores_endpoint_segments():
-    moved = move_orthogonal_route_segment(points=[(10.0, 20.0), (10.0, 80.0), (110.0, 80.0), (110.0, 40.0)],
-                                          segment_index=0,
-                                          delta_x=25.0,
-                                          delta_y=0.0)
+def test_move_polyline_route_segment_ignores_endpoint_segments():
+    moved = move_polyline_route_segment(points=[(10.0, 20.0), (10.0, 80.0), (110.0, 80.0), (110.0, 40.0)],
+                                        segment_index=0,
+                                        delta_x=25.0,
+                                        delta_y=0.0)
 
     assert moved == [(10.0, 20.0), (10.0, 80.0), (110.0, 80.0), (110.0, 40.0)]
 
 
-def test_move_orthogonal_route_vertex_moves_adjacent_segments() -> None:
-    moved = move_orthogonal_route_vertex(points=[(10.0, 20.0), (10.0, 80.0), (110.0, 80.0), (110.0, 40.0)],
-                                         vertex_index=2,
-                                         new_x=140.0,
-                                         new_y=95.0)
+def test_move_polyline_route_vertex_moves_selected_vertex_only() -> None:
+    moved = move_polyline_route_vertex(points=[(10.0, 20.0), (10.0, 80.0), (110.0, 80.0), (110.0, 40.0)],
+                                       vertex_index=2,
+                                       new_x=140.0,
+                                       new_y=95.0)
 
-    assert moved == [(10.0, 20.0), (10.0, 95.0), (110.0, 95.0), (110.0, 40.0)]
+    assert moved == [(10.0, 20.0), (10.0, 80.0), (140.0, 95.0), (110.0, 40.0)]
 
 
-def test_move_orthogonal_route_vertex_keeps_endpoint_anchor_fixed() -> None:
-    moved = move_orthogonal_route_vertex(points=[(10.0, 20.0), (10.0, 80.0), (110.0, 80.0), (110.0, 40.0)],
-                                         vertex_index=1,
-                                         new_x=60.0,
-                                         new_y=95.0)
+def test_move_polyline_route_vertex_keeps_route_endpoints_fixed() -> None:
+    moved = move_polyline_route_vertex(points=[(10.0, 20.0), (10.0, 80.0), (110.0, 80.0), (110.0, 40.0)],
+                                       vertex_index=1,
+                                       new_x=60.0,
+                                       new_y=95.0)
 
-    assert moved == [(10.0, 20.0), (10.0, 95.0), (110.0, 95.0), (110.0, 40.0)]
+    assert moved == [(10.0, 20.0), (60.0, 95.0), (110.0, 80.0), (110.0, 40.0)]
 
 
 def test_get_opposite_attachment_side_matches_expected_pairs() -> None:
