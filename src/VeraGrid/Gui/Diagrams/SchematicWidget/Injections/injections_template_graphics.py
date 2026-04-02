@@ -4,15 +4,22 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Any
 from PySide6.QtCore import Qt, QPointF
-from PySide6.QtGui import QPen, QCursor
-from PySide6.QtWidgets import (QGraphicsLineItem, QGraphicsItemGroup, QMenu,
-                               QGraphicsSceneContextMenuEvent)
+from PySide6.QtGui import QPen, QCursor, QPainterPath, QColor, QBrush, QPainterPathStroker
+from PySide6.QtWidgets import (QGraphicsItem, QGraphicsItemGroup, QMenu,
+                               QGraphicsSceneContextMenuEvent, QGraphicsPathItem,
+                               QGraphicsEllipseItem, QGraphicsRectItem, QGraphicsSceneMouseEvent)
 from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.generic_graphics import (GenericDiagramWidget, ACTIVE, DEACTIVATED, OTHER, Square, Circle,
                                                     Polygon, Condenser)
+from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.route_geometry import (merge_route_with_endpoints,
+                                                                           move_orthogonal_route_segment,
+                                                                           move_orthogonal_route_vertex,
+                                                                           normalize_route_points)
+from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import SchematicAttachmentSlot
+from VeraGridEngine.Devices.Diagrams.schematic_layout import build_default_branch_route
 
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 
@@ -22,6 +29,333 @@ if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_node_graphics import FluidNodeGraphicItem
 
     NODE_GRAPHIC = BusGraphicItem | FluidNodeGraphicItem
+
+
+def get_opposite_attachment_side(side: str) -> str:
+    """
+    Get the opposite attachment side for a nexus endpoint.
+
+    :param side: Parent-side attachment key.
+    :return: Opposite child-side attachment key.
+    """
+    if side == SchematicAttachmentSlot.TOP.value:
+        return SchematicAttachmentSlot.BOTTOM.value
+    elif side == SchematicAttachmentSlot.BOTTOM.value:
+        return SchematicAttachmentSlot.TOP.value
+    elif side == SchematicAttachmentSlot.LEFT.value:
+        return SchematicAttachmentSlot.RIGHT.value
+    else:
+        return SchematicAttachmentSlot.LEFT.value
+
+
+def clamp_alignment(alignment: float | None) -> float:
+    """
+    Clamp one normalized alignment value.
+
+    :param alignment: Optional alignment.
+    :return: Clamped alignment.
+    """
+    if alignment is None:
+        return 0.5
+    else:
+        pass
+
+    alignment_value: float = float(alignment)
+
+    if alignment_value < 0.0:
+        return 0.0
+    elif alignment_value > 1.0:
+        return 1.0
+    else:
+        return alignment_value
+
+
+def get_rect_side_anchor(origin: QPointF,
+                         width: float,
+                         height: float,
+                         side: str,
+                         alignment: float | None) -> QPointF:
+    """
+    Get one side anchor on a rectangle in scene coordinates.
+
+    :param origin: Top-left scene point.
+    :param width: Rectangle width.
+    :param height: Rectangle height.
+    :param side: Requested side.
+    :param alignment: Normalized alignment on that side.
+    :return: Scene anchor point.
+    """
+    alignment_value: float = clamp_alignment(alignment)
+
+    if side == SchematicAttachmentSlot.TOP.value:
+        return QPointF(origin.x() + width * alignment_value, origin.y())
+    elif side == SchematicAttachmentSlot.BOTTOM.value:
+        return QPointF(origin.x() + width * alignment_value, origin.y() + height)
+    elif side == SchematicAttachmentSlot.LEFT.value:
+        return QPointF(origin.x(), origin.y() + height * alignment_value)
+    else:
+        return QPointF(origin.x() + width, origin.y() + height * alignment_value)
+
+
+class InjectionNexusPathItem(QGraphicsPathItem):
+    """
+    Selectable nexus path that drives nexus-only editing for injections.
+    """
+
+    def __init__(self, owner_item: "InjectionTemplateGraphicItem"):
+        """
+        Initialize the selectable nexus path.
+
+        :param owner_item: Owning injection item.
+        """
+        QGraphicsPathItem.__init__(self)
+
+        self.owner_item: InjectionTemplateGraphicItem = owner_item
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable, True)
+        self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+
+    def shape(self) -> QPainterPath:
+        """
+        Widen hit testing so the nexus can be selected easily.
+
+        :return: Hit-test path.
+        """
+        stroker = QPainterPathStroker()
+        stroker.setWidth(max(10.0, self.pen().widthF() + 6.0))
+        stroker.setCapStyle(Qt.PenCapStyle.RoundCap)
+        stroker.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        return stroker.createStroke(self.path())
+
+    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Select the nexus itself instead of the injection glyph.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        self.owner_item.setSelected(False)
+        self.owner_item.editor.set_editor_model(api_object=self.owner_item.api_object)
+        QGraphicsPathItem.mousePressEvent(self, event)
+
+    def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
+        """
+        Refresh nexus edit handles when nexus selection changes.
+
+        :param change: Graphics item change.
+        :param value: New value.
+        :return: Base implementation result.
+        """
+        result = QGraphicsPathItem.itemChange(self, change, value)
+
+        if change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
+            self.owner_item.refresh_nexus_z_order()
+            self.owner_item.refresh_nexus_handles()
+        else:
+            pass
+
+        return result
+
+
+class NexusSegmentHandleItem(QGraphicsEllipseItem):
+    """
+    Draggable handle for one interior nexus segment.
+    """
+
+    def __init__(self,
+                 parent_item: "InjectionTemplateGraphicItem",
+                 parent_graphic: QGraphicsItem,
+                 segment_index: int,
+                 radius: float = 6.0):
+        """
+        Initialize one nexus segment handle.
+
+        :param parent_item: Owning injection item.
+        :param segment_index: Editable segment index.
+        :param radius: Handle radius.
+        """
+        QGraphicsEllipseItem.__init__(self, -radius, -radius, radius * 2.0, radius * 2.0, parent_graphic)
+
+        self.parent_item: InjectionTemplateGraphicItem = parent_item
+        self.segment_index: int = segment_index
+        self._drag_origin_scene_pos: QPointF | None = None
+        self._drag_origin_route_points: list[tuple[float, float]] = list()
+
+        self.setBrush(QBrush(QColor(245, 195, 70, 255)))
+        self.setPen(QPen(QColor(32, 32, 32, 255), 1.5))
+        self.setCursor(QCursor(Qt.CursorShape.SizeAllCursor))
+        self.setZValue(40)
+        self.setVisible(False)
+
+    def set_segment_index(self, segment_index: int) -> None:
+        """
+        Set the controlled segment index.
+
+        :param segment_index: Segment index.
+        :return: ``None``.
+        """
+        self.segment_index = segment_index
+
+    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Capture route state for segment dragging.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        self._drag_origin_scene_pos = event.scenePos()
+        self._drag_origin_route_points = self.parent_item.get_nexus_route_points_for_editing()
+        event.accept()
+
+    def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Drag one interior nexus segment.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        if self._drag_origin_scene_pos is None:
+            event.accept()
+        else:
+            delta = event.scenePos() - self._drag_origin_scene_pos
+            self.parent_item.move_nexus_segment(segment_index=self.segment_index,
+                                                original_points=self._drag_origin_route_points,
+                                                delta_x=delta.x(),
+                                                delta_y=delta.y())
+            event.accept()
+
+    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Finish the current segment drag.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        self._drag_origin_scene_pos = None
+        self._drag_origin_route_points = list()
+        event.accept()
+
+
+class NexusVertexHandleItem(QGraphicsRectItem):
+    """
+    Draggable handle for one interior nexus vertex.
+    """
+
+    def __init__(self,
+                 parent_item: "InjectionTemplateGraphicItem",
+                 parent_graphic: QGraphicsItem,
+                 vertex_index: int,
+                 half_size: float = 5.0):
+        """
+        Initialize one nexus vertex handle.
+
+        :param parent_item: Owning injection item.
+        :param vertex_index: Editable vertex index.
+        :param half_size: Half handle size.
+        """
+        QGraphicsRectItem.__init__(self, -half_size, -half_size, half_size * 2.0, half_size * 2.0, parent_graphic)
+
+        self.parent_item: InjectionTemplateGraphicItem = parent_item
+        self.vertex_index: int = vertex_index
+
+        self.setBrush(QBrush(QColor(85, 180, 255, 255)))
+        self.setPen(QPen(QColor(20, 20, 20, 255), 1.5))
+        self.setCursor(QCursor(Qt.CursorShape.SizeAllCursor))
+        self.setZValue(41)
+        self.setVisible(False)
+
+    def set_vertex_index(self, vertex_index: int) -> None:
+        """
+        Set the controlled vertex index.
+
+        :param vertex_index: Vertex index.
+        :return: ``None``.
+        """
+        self.vertex_index = vertex_index
+
+    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Accept the drag start.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        event.accept()
+
+    def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Drag one nexus vertex.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        self.parent_item.move_nexus_vertex(vertex_index=self.vertex_index, scene_pos=event.scenePos())
+        event.accept()
+
+    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Accept the drag end.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        event.accept()
+
+
+class NexusEndpointHandleItem(QGraphicsEllipseItem):
+    """
+    Draggable handle for one nexus endpoint alignment.
+    """
+
+    def __init__(self,
+                 parent_item: "InjectionTemplateGraphicItem",
+                 parent_graphic: QGraphicsItem,
+                 endpoint: str,
+                 radius: float = 5.5):
+        """
+        Initialize one nexus endpoint handle.
+
+        :param parent_item: Owning injection item.
+        :param endpoint: ``"child"`` or ``"parent"``.
+        :param radius: Handle radius.
+        """
+        QGraphicsEllipseItem.__init__(self, -radius, -radius, radius * 2.0, radius * 2.0, parent_graphic)
+
+        self.parent_item: InjectionTemplateGraphicItem = parent_item
+        self.endpoint: str = endpoint
+
+        self.setBrush(QBrush(QColor(130, 255, 150, 255)))
+        self.setPen(QPen(QColor(20, 20, 20, 255), 1.5))
+        self.setCursor(QCursor(Qt.CursorShape.OpenHandCursor))
+        self.setZValue(42)
+        self.setVisible(False)
+
+    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Accept the drag start.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        event.accept()
+
+    def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Drag one nexus endpoint alignment.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        self.parent_item.move_nexus_endpoint_alignment(endpoint=self.endpoint, scene_pos=event.scenePos())
+        event.accept()
+
+    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Accept the drag end.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        event.accept()
 
 
 class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
@@ -55,13 +389,25 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
 
         # Properties of the container:
         self.setFlags(self.GraphicsItemFlag.ItemIsSelectable | self.GraphicsItemFlag.ItemIsMovable)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemSendsScenePositionChanges, True)
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
 
         self.width = 4
 
-        # line to tie this object with the original bus (the parent)
-        self.nexus = QGraphicsLineItem()
+        # Routed nexus path tying this object with the original bus or node.
+        self.nexus = InjectionNexusPathItem(owner_item=self)
         self.nexus.setPen(QPen(self.color, self.width, self.style))
+        self.nexus.setBrush(Qt.BrushStyle.NoBrush)
+        self._nexus_route_points: list[tuple[float, float]] = list()
+        self._nexus_segment_handles: list[NexusSegmentHandleItem] = list()
+        self._nexus_vertex_handles: list[NexusVertexHandleItem] = list()
+        self._nexus_endpoint_handles: dict[str, NexusEndpointHandleItem] = {
+            "child": NexusEndpointHandleItem(parent_item=self, parent_graphic=self.nexus, endpoint="child"),
+            "parent": NexusEndpointHandleItem(parent_item=self, parent_graphic=self.nexus, endpoint="parent"),
+        }
+        self._nexus_edit_locks_applied: bool = False
+        self._owner_movable_before_nexus_edit: bool = True
+        self._parent_movable_before_nexus_edit: bool = True
 
     def set_glyph(self, glyph: Square | Circle | Polygon | Condenser):
         """
@@ -74,8 +420,8 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         self.glyph.setPen(pen)
         self.addToGroup(self.glyph)
 
-        self.setPos(self.parent.x(), self.parent.y() + 100)
-        self.update_nexus(self.pos())
+        self.setPos(0.0, 100.0)
+        self.update_nexus(self.scenePos())
 
         self._editor.add_to_scene(self.nexus)
 
@@ -168,18 +514,367 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
 
     def update_nexus(self, pos: QPointF):
         """
-        Update the nexus line that joins the parent and this object
+        Update the routed nexus path that joins the parent and this object.
         :param pos: position of this object
         """
-        parent_pt = self.parent.get_nexus_point()
-        self.nexus.setLine(
-            pos.x() + self.w / 2,
-            pos.y(),
-            parent_pt.x(),
-            parent_pt.y(),
-        )
-        self.setZValue(-1)
-        self.nexus.setZValue(-1)
+        path = QPainterPath()
+        route_points = self.get_nexus_render_points()
+
+        if len(route_points) > 0:
+            path.moveTo(route_points[0][0], route_points[0][1])
+
+            route_point: tuple[float, float]
+            for route_point in route_points[1:]:
+                path.lineTo(route_point[0], route_point[1])
+        else:
+            pass
+
+        self.nexus.setPath(path)
+        self.refresh_nexus_z_order()
+        self.refresh_nexus_handles()
+
+    def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
+        """
+        Keep the nexus line synchronized with scene-position changes.
+        """
+        if change == QGraphicsItem.GraphicsItemChange.ItemScenePositionHasChanged:
+            self.update_nexus(self.scenePos())
+            return value
+        elif change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
+            if bool(value):
+                self.nexus.setSelected(False)
+            else:
+                pass
+            self.refresh_nexus_z_order()
+            self.refresh_nexus_handles()
+            return value
+        else:
+            return super().itemChange(change, value)
+
+    def get_dock_metadata(self) -> dict[str, Any]:
+        """
+        Return persisted dock metadata for this injection.
+
+        :return: Dock metadata.
+        """
+        return self.editor.diagram.sync_injection_dock(api_object=self.api_object,
+                                                       owner_device=self.parent.api_object,
+                                                       side="bottom")
+
+    def set_dock_metadata(self, dock: dict[str, Any]) -> None:
+        """
+        Persist dock metadata and keep the nexus refreshed.
+
+        :param dock: Dock metadata.
+        :return: ``None``.
+        """
+        self.editor.diagram.set_dock(self.api_object, dock)
+
+    def get_parent_nexus_side(self) -> str:
+        """
+        Get the parent-side nexus attachment side.
+
+        :return: Parent-side attachment key.
+        """
+        dock = self.get_dock_metadata()
+        return str(dock.get("side", SchematicAttachmentSlot.BOTTOM.value))
+
+    def get_child_nexus_side(self) -> str:
+        """
+        Get the child-side nexus attachment side.
+
+        :return: Child-side attachment key.
+        """
+        return get_opposite_attachment_side(self.get_parent_nexus_side())
+
+    def get_parent_nexus_alignment(self) -> float:
+        """
+        Get the normalized parent-side nexus alignment.
+
+        :return: Alignment value.
+        """
+        dock = self.get_dock_metadata()
+        return clamp_alignment(dock.get("nexus_parent_alignment", None))
+
+    def get_child_nexus_alignment(self) -> float:
+        """
+        Get the normalized child-side nexus alignment.
+
+        :return: Alignment value.
+        """
+        dock = self.get_dock_metadata()
+        return clamp_alignment(dock.get("nexus_child_alignment", 0.5))
+
+    def get_child_nexus_anchor(self) -> QPointF:
+        """
+        Get the current child-side nexus anchor.
+
+        :return: Child-side scene anchor.
+        """
+        child_side = self.get_child_nexus_side()
+        child_alignment = self.get_child_nexus_alignment()
+        return get_rect_side_anchor(origin=self.scenePos(),
+                                    width=float(self.w),
+                                    height=float(self.h),
+                                    side=child_side,
+                                    alignment=child_alignment)
+
+    def get_parent_nexus_anchor(self) -> QPointF:
+        """
+        Get the current parent-side nexus anchor.
+
+        :return: Parent-side scene anchor.
+        """
+        parent_side = self.get_parent_nexus_side()
+        parent_alignment = self.get_parent_nexus_alignment()
+        return self.parent.get_terminal_anchor_by_key(terminal_key=parent_side,
+                                                      alignment=parent_alignment)
+
+    def get_nexus_route_points_for_editing(self) -> list[tuple[float, float]]:
+        """
+        Return the currently rendered nexus route points.
+
+        :return: Route points.
+        """
+        return normalize_route_points(self.get_nexus_render_points())
+
+    def should_preserve_nexus_route_shape(self) -> bool:
+        """
+        Determine whether the persisted nexus route should keep its elbows.
+
+        :return: ``True`` when the persisted nexus path is manual.
+        """
+        dock = self.get_dock_metadata()
+        return str(dock.get("nexus_route_kind", "")) == "manual-orthogonal"
+
+    def get_nexus_render_points(self) -> list[tuple[float, float]]:
+        """
+        Get the currently rendered nexus route points.
+
+        :return: Route points.
+        """
+        child_anchor = self.get_child_nexus_anchor()
+        parent_anchor = self.get_parent_nexus_anchor()
+        start = (child_anchor.x(), child_anchor.y())
+        end = (parent_anchor.x(), parent_anchor.y())
+        dock = self.get_dock_metadata()
+        persisted_points_raw = dock.get("nexus_route_points", list())
+
+        if self.should_preserve_nexus_route_shape() and isinstance(persisted_points_raw, list) and len(persisted_points_raw) >= 2:
+            persisted_points = normalize_route_points(persisted_points_raw)
+            return merge_route_with_endpoints(start=start,
+                                              end=end,
+                                              persisted_points=persisted_points,
+                                              start_side=self.get_child_nexus_side(),
+                                              end_side=self.get_parent_nexus_side())
+        else:
+            return build_default_branch_route(start=start,
+                                              end=end,
+                                              start_side=self.get_child_nexus_side(),
+                                              end_side=self.get_parent_nexus_side())
+
+    def persist_manual_nexus_route(self, points: list[tuple[float, float]]) -> None:
+        """
+        Persist one manual routed nexus path.
+
+        :param points: Route points.
+        :return: ``None``.
+        """
+        dock = self.get_dock_metadata()
+        dock["nexus_route_points"] = normalize_route_points(points)
+        dock["nexus_route_kind"] = "manual-orthogonal"
+        self.set_dock_metadata(dock)
+
+    def move_nexus_segment(self,
+                           segment_index: int,
+                           original_points: list[tuple[float, float]],
+                           delta_x: float,
+                           delta_y: float) -> None:
+        """
+        Move one interior nexus segment.
+
+        :param segment_index: Segment index.
+        :param original_points: Route points captured at drag start.
+        :param delta_x: Horizontal scene delta.
+        :param delta_y: Vertical scene delta.
+        :return: ``None``.
+        """
+        moved_points = move_orthogonal_route_segment(points=original_points,
+                                                     segment_index=segment_index,
+                                                     delta_x=delta_x,
+                                                     delta_y=delta_y)
+        self._nexus_route_points = normalize_route_points(moved_points)
+        self.persist_manual_nexus_route(self._nexus_route_points)
+        self.update_nexus(self.scenePos())
+
+    def move_nexus_vertex(self, vertex_index: int, scene_pos: QPointF) -> None:
+        """
+        Move one interior nexus vertex.
+
+        :param vertex_index: Vertex index.
+        :param scene_pos: New scene position.
+        :return: ``None``.
+        """
+        current_points = self.get_nexus_route_points_for_editing()
+        moved_points = move_orthogonal_route_vertex(points=current_points,
+                                                    vertex_index=vertex_index,
+                                                    new_x=scene_pos.x(),
+                                                    new_y=scene_pos.y())
+        self._nexus_route_points = normalize_route_points(moved_points)
+        self.persist_manual_nexus_route(self._nexus_route_points)
+        self.update_nexus(self.scenePos())
+
+    def move_nexus_endpoint_alignment(self, endpoint: str, scene_pos: QPointF) -> None:
+        """
+        Move one nexus endpoint alignment along its host side.
+
+        :param endpoint: ``"child"`` or ``"parent"``.
+        :param scene_pos: Scene point chosen by the user.
+        :return: ``None``.
+        """
+        dock = self.get_dock_metadata()
+
+        if endpoint == "parent":
+            side = self.get_parent_nexus_side()
+            alignment = self.parent.get_terminal_alignment_from_scene_point(side_key=side, scene_point=scene_pos)
+            dock["nexus_parent_alignment"] = alignment
+        else:
+            side = self.get_child_nexus_side()
+            child_anchor = get_rect_side_anchor(origin=self.scenePos(),
+                                                width=float(self.w),
+                                                height=float(self.h),
+                                                side=side,
+                                                alignment=0.5)
+            if side in (SchematicAttachmentSlot.TOP.value, SchematicAttachmentSlot.BOTTOM.value):
+                span = float(self.w)
+                coordinate = float(scene_pos.x() - self.scenePos().x())
+            else:
+                span = float(self.h)
+                coordinate = float(scene_pos.y() - self.scenePos().y())
+
+            if span <= 0.0:
+                alignment = 0.5
+            else:
+                alignment = clamp_alignment(coordinate / span)
+
+            dock["nexus_child_alignment"] = alignment
+
+        self.set_dock_metadata(dock)
+        self.update_nexus(self.scenePos())
+
+    def refresh_nexus_z_order(self) -> None:
+        """
+        Keep the selected nexus editor above the parent node.
+
+        :return: ``None``.
+        """
+        if self.is_nexus_edit_active():
+            self.setZValue(6)
+            self.nexus.setZValue(4)
+            self.nexus.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+        else:
+            self.setZValue(0)
+            self.nexus.setZValue(-1)
+            self.nexus.setAcceptedMouseButtons(Qt.MouseButton.LeftButton | Qt.MouseButton.RightButton)
+
+        self.refresh_nexus_edit_locks()
+
+    def is_nexus_edit_active(self) -> bool:
+        """
+        Determine whether nexus editing is active either from the glyph or nexus path.
+
+        :return: ``True`` when nexus handles should be visible.
+        """
+        return self.isSelected() or self.nexus.isSelected()
+
+    def refresh_nexus_edit_locks(self) -> None:
+        """
+        Disable owner and parent dragging while nexus editing is active.
+
+        :return: ``None``.
+        """
+        nexus_selected = self.nexus.isSelected()
+
+        if nexus_selected and not self._nexus_edit_locks_applied:
+            self._owner_movable_before_nexus_edit = bool(self.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
+            self._parent_movable_before_nexus_edit = bool(self.parent.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
+            self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
+            self.parent.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, False)
+            self._nexus_edit_locks_applied = True
+        elif not nexus_selected and self._nexus_edit_locks_applied:
+            self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, bool(self._owner_movable_before_nexus_edit))
+            self.parent.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable, bool(self._parent_movable_before_nexus_edit))
+            self._nexus_edit_locks_applied = False
+        else:
+            pass
+
+    def refresh_nexus_handles(self) -> None:
+        """
+        Refresh all visible nexus editor handles.
+
+        :return: ``None``.
+        """
+        points = self.get_nexus_route_points_for_editing()
+        segment_indexes = list()
+        vertex_indexes = list()
+        handle_index: int
+
+        if len(points) >= 4:
+            segment_indexes = list(range(1, len(points) - 2))
+        else:
+            pass
+
+        if len(points) >= 3:
+            vertex_indexes = list(range(1, len(points) - 1))
+        else:
+            pass
+
+        while len(self._nexus_segment_handles) < len(segment_indexes):
+            self._nexus_segment_handles.append(NexusSegmentHandleItem(parent_item=self,
+                                                                      parent_graphic=self.nexus,
+                                                                      segment_index=0))
+
+        while len(self._nexus_segment_handles) > len(segment_indexes):
+            handle = self._nexus_segment_handles.pop()
+            if handle.scene() is not None:
+                handle.scene().removeItem(handle)
+            else:
+                pass
+
+        for handle_index, segment_index in enumerate(segment_indexes):
+            handle = self._nexus_segment_handles[handle_index]
+            segment_start = points[segment_index]
+            segment_end = points[segment_index + 1]
+            handle.set_segment_index(segment_index=segment_index)
+            handle.setPos((segment_start[0] + segment_end[0]) * 0.5,
+                          (segment_start[1] + segment_end[1]) * 0.5)
+            handle.setVisible(self.is_nexus_edit_active())
+
+        while len(self._nexus_vertex_handles) < len(vertex_indexes):
+            self._nexus_vertex_handles.append(NexusVertexHandleItem(parent_item=self,
+                                                                    parent_graphic=self.nexus,
+                                                                    vertex_index=0))
+
+        while len(self._nexus_vertex_handles) > len(vertex_indexes):
+            handle = self._nexus_vertex_handles.pop()
+            if handle.scene() is not None:
+                handle.scene().removeItem(handle)
+            else:
+                pass
+
+        for handle_index, vertex_index in enumerate(vertex_indexes):
+            handle = self._nexus_vertex_handles[handle_index]
+            vertex_point = points[vertex_index]
+            handle.set_vertex_index(vertex_index=vertex_index)
+            handle.setPos(vertex_point[0], vertex_point[1])
+            handle.setVisible(self.is_nexus_edit_active())
+
+        child_anchor = self.get_child_nexus_anchor()
+        parent_anchor = self.get_parent_nexus_anchor()
+        self._nexus_endpoint_handles["child"].setPos(child_anchor)
+        self._nexus_endpoint_handles["parent"].setPos(parent_anchor)
+        self._nexus_endpoint_handles["child"].setVisible(self.is_nexus_edit_active())
+        self._nexus_endpoint_handles["parent"].setVisible(self.is_nexus_edit_active())
 
     def delete(self):
         """
@@ -205,7 +900,9 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         :param QGraphicsSceneMouseEvent:
         :return:
         """
+        self.nexus.setSelected(False)
         self._editor.set_editor_model(api_object=self.api_object)
+        QGraphicsItemGroup.mousePressEvent(self, QGraphicsSceneMouseEvent)
 
     def change_bus(self):
         """
@@ -227,6 +924,83 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         :return:
         """
         self.scale = scale
+
+    def set_dock_side(self, side: str) -> None:
+        """
+        Set the dock side for this injection and rearrange the parent node.
+        """
+        dock = self.editor.diagram.get_dock(self.api_object)
+        dock["side"] = side
+        self.editor.diagram.set_dock(self.api_object, dock)
+        self.parent.arrange_children()
+
+    def dock_top(self) -> None:
+        """
+        Dock this injection on the top side of the parent node.
+        """
+        self.set_dock_side("top")
+
+    def dock_bottom(self) -> None:
+        """
+        Dock this injection on the bottom side of the parent node.
+        """
+        self.set_dock_side("bottom")
+
+    def dock_left(self) -> None:
+        """
+        Dock this injection on the left side of the parent node.
+        """
+        self.set_dock_side("left")
+
+    def dock_right(self) -> None:
+        """
+        Dock this injection on the right side of the parent node.
+        """
+        self.set_dock_side("right")
+
+    def move_dock_order(self, delta: int) -> None:
+        """
+        Move this injection earlier or later within its dock side ordering.
+        """
+        dock = self.editor.diagram.get_dock(self.api_object)
+        current_order = int(dock.get("order", 1))
+        dock["order"] = max(1, current_order + int(delta))
+        self.editor.diagram.set_dock(self.api_object, dock)
+        self.parent.arrange_children()
+
+    def move_dock_order_earlier(self) -> None:
+        """
+        Move this injection earlier within its dock side ordering.
+        """
+        self.move_dock_order(-1)
+
+    def move_dock_order_later(self) -> None:
+        """
+        Move this injection later within its dock side ordering.
+        """
+        self.move_dock_order(1)
+
+    def nudge_dock_offset(self, delta: float) -> None:
+        """
+        Move this injection farther from or closer to the parent node.
+        """
+        dock = self.editor.diagram.get_dock(self.api_object)
+        current_offset = float(dock.get("offset", 0.0))
+        dock["offset"] = max(0.0, current_offset + float(delta))
+        self.editor.diagram.set_dock(self.api_object, dock)
+        self.parent.arrange_children()
+
+    def nudge_dock_outward(self) -> None:
+        """
+        Move this injection farther away from the parent node.
+        """
+        self.nudge_dock_offset(20.0)
+
+    def nudge_dock_inward(self) -> None:
+        """
+        Move this injection closer to the parent node.
+        """
+        self.nudge_dock_offset(-20.0)
 
     def get_base_context_menu(self) -> QMenu:
         """
@@ -255,6 +1029,40 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
                        text="Plot profiles",
                        function_ptr=self.plot,
                        icon_path=":/Icons/icons/plot.png")
+
+        menu.addSeparator()
+
+        add_menu_entry(menu=menu,
+                       text="Dock top",
+                       function_ptr=self.dock_top)
+
+        add_menu_entry(menu=menu,
+                       text="Dock bottom",
+                       function_ptr=self.dock_bottom)
+
+        add_menu_entry(menu=menu,
+                       text="Dock left",
+                       function_ptr=self.dock_left)
+
+        add_menu_entry(menu=menu,
+                       text="Dock right",
+                       function_ptr=self.dock_right)
+
+        add_menu_entry(menu=menu,
+                       text="Move earlier",
+                       function_ptr=self.move_dock_order_earlier)
+
+        add_menu_entry(menu=menu,
+                       text="Move later",
+                       function_ptr=self.move_dock_order_later)
+
+        add_menu_entry(menu=menu,
+                       text="Move outward",
+                       function_ptr=self.nudge_dock_outward)
+
+        add_menu_entry(menu=menu,
+                       text="Move inward",
+                       function_ptr=self.nudge_dock_inward)
 
         menu.addSeparator()
 
