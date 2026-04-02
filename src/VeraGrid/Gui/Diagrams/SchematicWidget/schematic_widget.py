@@ -274,7 +274,7 @@ class CustomGraphicsView(QGraphicsView):
         """
         super().__init__(scene)
         self._parent = parent
-        self.drag_mode = QGraphicsView.DragMode.RubberBandDrag
+        self.drag_mode = QGraphicsView.DragMode.ScrollHandDrag
         self.setDragMode(self.drag_mode)
         self.setRubberBandSelectionMode(Qt.ItemSelectionMode.IntersectsItemShape)
         self.setMouseTracking(True)
@@ -282,17 +282,28 @@ class CustomGraphicsView(QGraphicsView):
         self.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.SmoothPixmapTransform)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+    @staticmethod
+    def get_drag_mode_for_modifiers(modifiers: Qt.KeyboardModifiers) -> QGraphicsView.DragMode:
+        """
+        Resolve the view drag mode for the current keyboard modifiers.
+
+        The default interaction should pan the schematic, while holding
+        ``Ctrl`` should temporarily switch to rubber-band selection.
+
+        :param modifiers: Active keyboard modifiers.
+        :return: Matching graphics-view drag mode.
+        """
+        if modifiers & Qt.KeyboardModifier.ControlModifier:
+            return QGraphicsView.DragMode.RubberBandDrag
+        else:
+            return QGraphicsView.DragMode.ScrollHandDrag
+
     def mousePressEvent(self, event: QMouseEvent) -> None:
         """
         Mouse press event
         :param event: QMouseEvent
         """
-
-        # By pressing ctrl while dragging, we can move the grid
-        if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
-            self.drag_mode = QGraphicsView.DragMode.ScrollHandDrag
-        else:
-            self.drag_mode = QGraphicsView.DragMode.RubberBandDrag
+        self.drag_mode = self.get_drag_mode_for_modifiers(event.modifiers())
 
         self.setDragMode(self.drag_mode)
 
@@ -1039,7 +1050,10 @@ class SchematicWidget(BaseDiagramWidget):
                                              r=r,
                                              draw_labels=draw_labels)
 
-        self.diagram.sync_branch_attachments(api_object=device)
+        if self.is_loading_diagram():
+            pass
+        else:
+            self.diagram.sync_branch_attachments(api_object=device)
 
         self.graphics_manager.add_device(elm=device, graphic=graphic_object)
 

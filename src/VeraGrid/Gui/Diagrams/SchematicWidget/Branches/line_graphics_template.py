@@ -958,7 +958,9 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         from_side = str(from_attachment.get("side", SchematicAttachmentSlot.BOTTOM.value))
         to_side = str(to_attachment.get("side", SchematicAttachmentSlot.BOTTOM.value))
 
-        if self.api_object is not None and self.editor.diagram.should_preserve_branch_route_shape(self.api_object) and len(self._route_points) >= 2:
+        if self.editor.is_loading_diagram() and len(self._route_points) >= 2:
+            return normalize_route_points(self._route_points)
+        elif self.api_object is not None and self.editor.diagram.should_preserve_branch_route_shape(self.api_object) and len(self._route_points) >= 2:
             return merge_route_with_endpoints(start=start,
                                               end=end,
                                               persisted_points=self._route_points,

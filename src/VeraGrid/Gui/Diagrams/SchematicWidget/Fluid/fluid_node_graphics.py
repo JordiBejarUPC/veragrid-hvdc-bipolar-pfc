@@ -679,6 +679,16 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                 pass
 
             attachment = self.editor.get_persisted_attachment(api_object=branch_graphic.api_object, endpoint=endpoint)
+            has_saved_endpoint_state = any(key in attachment for key in ("side", "slot", "terminal_key", "alignment", "order"))
+
+            if self.editor.is_loading_diagram():
+                if has_saved_endpoint_state:
+                    continue
+                else:
+                    pass
+            else:
+                pass
+
             existing_slot = str(attachment.get("slot", ""))
             auto_slot = bool(attachment.get("auto_slot", existing_slot in ("", "default", "left", "right", "top", "bottom")))
 

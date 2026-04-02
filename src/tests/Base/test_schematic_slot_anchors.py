@@ -17,7 +17,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 
 
 class _EditorStub:
-    __slots__ = ("attachments", "diagram", "diagram_updates", "graphics_manager")
+    __slots__ = ("attachments", "diagram", "diagram_updates", "graphics_manager", "_is_loading_diagram")
 
     def __init__(self) -> None:
         """
@@ -29,6 +29,7 @@ class _EditorStub:
         self.diagram: _DiagramStub = _DiagramStub()
         self.diagram_updates: dict[int, dict[str, Any]] = dict()
         self.graphics_manager: _GraphicsManagerStub = _GraphicsManagerStub()
+        self._is_loading_diagram: bool = False
 
     def update_diagram_element(self,
                                device: Any,
@@ -83,9 +84,9 @@ class _EditorStub:
         """
         Return the fake loading flag used by child placement helpers.
 
-        :return: ``False``.
+        :return: Loading flag.
         """
-        return False
+        return self._is_loading_diagram
 
     def add_to_scene(self, graphic_object: Any) -> None:
         """
@@ -292,6 +293,65 @@ class _DiagramStub:
                                                          r=r,
                                                          draw_labels=draw_labels,
                                                          api_object=api_object)
+
+    def set_branch_route_points(self,
+                                api_object: Any,
+                                points: list[tuple[float, float]],
+                                kind: str,
+                                locked: bool) -> None:
+        """
+        Store branch route metadata for lightweight graphics tests.
+
+        :param api_object: Branch API object.
+        :param points: Route points.
+        :param kind: Route kind.
+        :param locked: Lock flag.
+        :return: ``None``.
+        """
+        location = self.query_point(api_object)
+
+        if location is None:
+            location = GraphicLocation(api_object=api_object)
+            self.locations[id(api_object)] = location
+        else:
+            pass
+
+        location.poly_line = list(points)
+        location.layout_metadata = {
+            "route": {
+                "points": list(points),
+                "kind": kind,
+                "locked": locked,
+            }
+        }
+
+    def should_preserve_branch_route_shape(self, api_object: Any) -> bool:
+        """
+        Return whether one stored branch route should preserve its saved shape.
+
+        :param api_object: Branch API object.
+        :return: Preservation flag.
+        """
+        location = self.query_point(api_object)
+
+        if location is None:
+            return False
+        else:
+            pass
+
+        route = location.layout_metadata.get("route", None)
+
+        if not isinstance(route, dict):
+            return False
+        else:
+            pass
+
+        if bool(route.get("locked", False)):
+            return True
+        elif str(route.get("kind", "")) == "manual-polyline":
+            return True
+        else:
+            return False
 
 
 class _ChildApiStub:
@@ -536,6 +596,34 @@ def test_manual_branch_route_is_not_rewritten_during_graphic_redraw() -> None:
     assert location.poly_line == [(10.0, 20.0), (40.0, 85.0), (95.0, 65.0)]
     assert location.layout_metadata["route"]["points"] == [(10.0, 20.0), (40.0, 85.0), (95.0, 65.0)]
     assert location.layout_metadata["route"]["kind"] == "manual-polyline"
+
+
+def test_saved_auto_branch_route_is_rendered_during_load() -> None:
+    """
+    Loading should render saved branch route points even when the route kind is automatic.
+    """
+    _get_app()
+    editor: _BranchEditorStub = _BranchEditorStub()
+    editor._is_loading_diagram = True
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    line: Line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=300.0, y=0.0)
+
+    editor.diagram.set_attachment(line, "from", {"side": "bottom", "slot": "bottom", "terminal_key": "bottom"})
+    editor.diagram.set_attachment(line, "to", {"side": "bottom", "slot": "bottom", "terminal_key": "bottom"})
+    editor.diagram.set_branch_route_points(api_object=line,
+                                           points=[(90.0, 45.0), (90.0, 110.0), (330.0, 110.0), (330.0, 45.0)],
+                                           kind="auto-polyline",
+                                           locked=False)
+
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                                             to_port=graphic_to.get_terminal(),
+                                             editor=editor,
+                                             api_object=line)
+
+    assert branch_graphic.get_render_points() == [(90.0, 45.0), (90.0, 110.0), (330.0, 110.0), (330.0, 45.0)]
 
 
 def test_manual_endpoint_alignment_keeps_branch_side_fixed_on_busbar() -> None:
@@ -1022,6 +1110,118 @@ def test_rotated_injection_child_nexus_anchor_uses_item_transform() -> None:
     assert child_anchor == expected_anchor
 
 
+def test_rotated_injection_nexus_path_survives_recreation() -> None:
+    """
+    Recreated rotated injections should rebuild the nexus path from the restored rotation.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    bus: Bus = Bus(name="B1")
+    load: Load = Load(name="LD1")
+    load.bus = bus
+    bus_graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    load_graphic: LoadGraphicItem = LoadGraphicItem(parent=bus_graphic, api_obj=load, editor=editor)
+
+    load_graphic.rotate_90()
+
+    editor.diagram.update_graphic_location(api_object=load,
+                                           x=0.0,
+                                           y=0.0,
+                                           h=float(load_graphic.h),
+                                           w=float(load_graphic.w),
+                                           r=90.0,
+                                           draw_labels=True)
+
+    recreated_bus_graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    recreated_load_graphic: LoadGraphicItem = recreated_bus_graphic.add_load(api_obj=load)
+    child_anchor = recreated_load_graphic.get_child_nexus_anchor()
+    nexus_path = recreated_load_graphic.nexus.path()
+    nexus_start = nexus_path.elementAt(0)
+
+    assert recreated_load_graphic.rotation() == 90.0
+    assert child_anchor == recreated_load_graphic.mapToScene(QPointF(float(recreated_load_graphic.w) * 0.5, 0.0))
+    assert float(nexus_start.x) == child_anchor.x()
+    assert float(nexus_start.y) == child_anchor.y()
+
+
+def test_loading_rebuilds_auto_nexus_route_from_rotated_injection_anchors() -> None:
+    """
+    Loading should rebuild automatic nexus routes from the restored rotated child anchor.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    editor._is_loading_diagram = True
+    bus: Bus = Bus(name="B1")
+    load: Load = Load(name="LD1")
+    load.bus = bus
+    bus_graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    editor.diagram.set_dock(load,
+                            {
+                                "side": "bottom",
+                                "alignment": 0.5,
+                                "offset": 0.0,
+                                "nexus_parent_alignment": 0.5,
+                                "nexus_child_alignment": 0.5,
+                                "nexus_route_kind": "auto-polyline",
+                                "nexus_route_points": [(80.0, 120.0), (120.0, 120.0), (120.0, 45.0), (90.0, 45.0)],
+                            })
+    editor.diagram.update_graphic_location(api_object=load,
+                                           x=0.0,
+                                           y=100.0,
+                                           h=40.0,
+                                           w=40.0,
+                                           r=90.0,
+                                           draw_labels=True)
+
+    load_graphic: LoadGraphicItem = bus_graphic.add_load(api_obj=load)
+    expected_start = load_graphic.get_child_nexus_anchor()
+    render_points = load_graphic.get_nexus_render_points()
+
+    assert render_points != [(80.0, 120.0), (120.0, 120.0), (120.0, 45.0), (90.0, 45.0)]
+    assert render_points[0] == (expected_start.x(), expected_start.y())
+
+
+def test_loading_preserves_manual_nexus_route_shape_for_rotated_injection() -> None:
+    """
+    Loading should still preserve manual nexus paths for rotated injections.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    editor._is_loading_diagram = True
+    bus: Bus = Bus(name="B1")
+    load: Load = Load(name="LD1")
+    load.bus = bus
+    bus_graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    editor.diagram.set_dock(load,
+                            {
+                                "side": "bottom",
+                                "alignment": 0.5,
+                                "offset": 0.0,
+                                "nexus_parent_alignment": 0.5,
+                                "nexus_child_alignment": 0.5,
+                                "nexus_route_kind": "manual-polyline",
+                                "nexus_route_points": [(80.0, 120.0), (120.0, 120.0), (120.0, 45.0), (90.0, 45.0)],
+                            })
+    editor.diagram.update_graphic_location(api_object=load,
+                                           x=0.0,
+                                           y=100.0,
+                                           h=40.0,
+                                           w=40.0,
+                                           r=90.0,
+                                           draw_labels=True)
+
+    load_graphic: LoadGraphicItem = bus_graphic.add_load(api_obj=load)
+    render_points = load_graphic.get_nexus_render_points()
+    expected_start = load_graphic.get_child_nexus_anchor()
+    expected_end = load_graphic.get_parent_nexus_anchor()
+
+    assert render_points[0] == (expected_start.x(), expected_start.y())
+    assert render_points[-1] == (expected_end.x(), expected_end.y())
+    assert len(render_points) == 4
+    assert render_points[1] != (80.0, 120.0)
+    assert render_points[2] == (120.0, 45.0)
+
+
 def test_bus_graphic_nexus_point_for_child_uses_dock_side() -> None:
     """
     Bus nexus anchors should follow the dock side of each child.
@@ -1146,6 +1346,82 @@ def test_bus_graphic_auto_assign_branch_slots_preserves_manual_canonical_side() 
         "slot": "bottom",
         "terminal_key": "bottom",
         "auto_slot": False,
+    }
+
+
+def test_bus_graphic_auto_assign_branch_slots_preserves_saved_manual_route_endpoints_on_load() -> None:
+    """
+    Loading a saved manual branch route should not reassign its stored endpoint slot identity.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    editor._is_loading_diagram = True
+    bus: Bus = Bus(name="B1")
+    other_bus: Bus = Bus(name="B2")
+    line: Line = Line(name="L1", bus_from=bus, bus_to=other_bus)
+    graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    branch_graphic: _BranchGraphicStub = _BranchGraphicStub(api_object=line,
+                                                            from_parent=graphic,
+                                                            to_parent=other_bus,
+                                                            pos1=QPointF(90.0, 50.0),
+                                                            pos2=QPointF(40.0, 200.0))
+    graphic.terminal.add_hosting_connection(branch_graphic, _noop_callback)
+    editor.diagram.set_attachment(api_object=line,
+                                  endpoint="from",
+                                  attachment={"side": "bottom",
+                                              "slot": "bus-bottom-3",
+                                              "terminal_key": "bus-bottom-3",
+                                              "order": 3,
+                                              "auto_slot": True})
+    editor.diagram.set_branch_route_points(api_object=line,
+                                           points=[(90.0, 45.0), (90.0, 120.0), (40.0, 120.0), (40.0, 200.0)],
+                                           kind="manual-polyline",
+                                           locked=False)
+
+    graphic.auto_assign_branch_slots()
+
+    assert editor.diagram.get_attachment(line, "from") == {
+        "side": "bottom",
+        "slot": "bus-bottom-3",
+        "terminal_key": "bus-bottom-3",
+        "order": 3,
+        "auto_slot": True,
+    }
+
+
+def test_bus_graphic_auto_assign_branch_slots_preserves_saved_endpoints_on_load_even_for_auto_routes() -> None:
+    """
+    Loading a saved branch should not recalculate endpoint slots just because its route kind is automatic.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    editor._is_loading_diagram = True
+    bus: Bus = Bus(name="B1")
+    other_bus: Bus = Bus(name="B2")
+    line: Line = Line(name="L1", bus_from=bus, bus_to=other_bus)
+    graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    branch_graphic: _BranchGraphicStub = _BranchGraphicStub(api_object=line,
+                                                            from_parent=graphic,
+                                                            to_parent=other_bus,
+                                                            pos1=QPointF(90.0, 50.0),
+                                                            pos2=QPointF(40.0, 200.0))
+    graphic.terminal.add_hosting_connection(branch_graphic, _noop_callback)
+    editor.diagram.set_attachment(api_object=line,
+                                  endpoint="from",
+                                  attachment={"side": "bottom",
+                                              "slot": "bus-bottom-5",
+                                              "terminal_key": "bus-bottom-5",
+                                              "order": 5,
+                                              "auto_slot": True})
+
+    graphic.auto_assign_branch_slots()
+
+    assert editor.diagram.get_attachment(line, "from") == {
+        "side": "bottom",
+        "slot": "bus-bottom-5",
+        "terminal_key": "bus-bottom-5",
+        "order": 5,
+        "auto_slot": True,
     }
 
 
