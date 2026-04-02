@@ -18,7 +18,7 @@ def test_merge_route_with_endpoints_preserves_interior_elbows():
                                         end=(100, 100),
                                         persisted_points=[(10, 20), (10, 40), (70, 40), (90, 90)])
 
-    assert merged == [(0.0, 0.0), (10.0, 40.0), (70.0, 40.0), (100.0, 100.0)]
+    assert merged == [(0.0, 0.0), (0.0, 20.0), (80.0, 50.0), (100.0, 100.0)]
 
 
 def test_merge_route_with_endpoints_preserves_manual_polyline_shape():
@@ -28,7 +28,23 @@ def test_merge_route_with_endpoints_preserves_manual_polyline_shape():
                                         start_side="bottom",
                                         end_side="top")
 
-    assert merged == [(20.0, 0.0), (0.0, 80.0), (120.0, 80.0), (120.0, 120.0)]
+    assert merged == [(20.0, 0.0), (20.0, 80.0), (120.0, 100.0), (120.0, 120.0)]
+
+
+def test_merge_route_with_endpoints_translates_all_points_when_both_endpoints_move_together() -> None:
+    merged = merge_route_with_endpoints(start=(20, 30),
+                                        end=(110, 120),
+                                        persisted_points=[(10, 20), (10, 40), (70, 40), (100, 110)])
+
+    assert merged == [(20.0, 30.0), (20.0, 50.0), (80.0, 50.0), (110.0, 120.0)]
+
+
+def test_merge_route_with_endpoints_moves_closest_interior_point_with_start_endpoint() -> None:
+    merged = merge_route_with_endpoints(start=(20, 30),
+                                        end=(100, 110),
+                                        persisted_points=[(10, 20), (10, 40), (70, 40), (100, 110)])
+
+    assert merged == [(20.0, 30.0), (20.0, 50.0), (70.0, 40.0), (100.0, 110.0)]
 
 
 def test_merge_route_with_endpoints_falls_back_to_straight_line():

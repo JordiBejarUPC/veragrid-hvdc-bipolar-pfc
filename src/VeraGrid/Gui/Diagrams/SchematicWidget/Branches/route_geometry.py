@@ -66,6 +66,68 @@ def align_adjacent_point_to_endpoint(endpoint_point: RoutePoint,
         return float(adjacent_point[0]), float(adjacent_point[1])
 
 
+def is_zero_delta(delta: RoutePoint, tolerance: float = 1e-9) -> bool:
+    """
+    Determine whether one route delta is effectively zero.
+
+    :param delta: Delta vector.
+    :param tolerance: Absolute tolerance.
+    :return: ``True`` when the delta is negligible.
+    """
+    return abs(float(delta[0])) <= tolerance and abs(float(delta[1])) <= tolerance
+
+
+def deltas_are_equal(delta_1: RoutePoint,
+                     delta_2: RoutePoint,
+                     tolerance: float = 1e-9) -> bool:
+    """
+    Determine whether two route deltas are effectively equal.
+
+    :param delta_1: First delta vector.
+    :param delta_2: Second delta vector.
+    :param tolerance: Absolute tolerance.
+    :return: ``True`` when both deltas match.
+    """
+    return abs(float(delta_1[0]) - float(delta_2[0])) <= tolerance and abs(float(delta_1[1]) - float(delta_2[1])) <= tolerance
+
+
+def translate_route_points(points: Iterable[RoutePoint], delta: RoutePoint) -> List[RoutePoint]:
+    """
+    Translate all route points by one common delta.
+
+    :param points: Route points.
+    :param delta: Translation delta.
+    :return: Translated route points.
+    """
+    normalized_points = normalize_route_points(points)
+    translated_points: List[RoutePoint] = list()
+    point: RoutePoint
+
+    for point in normalized_points:
+        translated_points.append((point[0] + float(delta[0]), point[1] + float(delta[1])))
+
+    return translated_points
+
+
+def get_single_interior_delta(start_delta: RoutePoint, end_delta: RoutePoint) -> RoutePoint:
+    """
+    Choose the delta applied to the only interior point of a three-point route.
+
+    :param start_delta: Start-endpoint delta.
+    :param end_delta: End-endpoint delta.
+    :return: Delta for the single interior point.
+    """
+    if deltas_are_equal(start_delta, end_delta):
+        return start_delta
+    elif is_zero_delta(start_delta):
+        return end_delta
+    elif is_zero_delta(end_delta):
+        return start_delta
+    else:
+        return ((float(start_delta[0]) + float(end_delta[0])) * 0.5,
+                (float(start_delta[1]) + float(end_delta[1])) * 0.5)
+
+
 def merge_route_with_endpoints(start: RoutePoint,
                                end: RoutePoint,
                                persisted_points: Iterable[RoutePoint],
@@ -79,7 +141,38 @@ def merge_route_with_endpoints(start: RoutePoint,
     end_point = (float(end[0]), float(end[1]))
 
     if len(normalized_points) >= 2:
-        merged_points = [start_point] + normalized_points[1:-1] + [end_point]
+        start_delta: RoutePoint = (start_point[0] - normalized_points[0][0],
+                                   start_point[1] - normalized_points[0][1])
+        end_delta: RoutePoint = (end_point[0] - normalized_points[-1][0],
+                                 end_point[1] - normalized_points[-1][1])
+
+        if deltas_are_equal(start_delta, end_delta):
+            merged_points = translate_route_points(points=normalized_points, delta=start_delta)
+        else:
+            merged_points = list(normalized_points)
+            merged_points[0] = start_point
+            merged_points[-1] = end_point
+
+            if len(merged_points) == 3:
+                interior_delta = get_single_interior_delta(start_delta=start_delta,
+                                                           end_delta=end_delta)
+                merged_points[1] = (merged_points[1][0] + interior_delta[0],
+                                    merged_points[1][1] + interior_delta[1])
+            elif len(merged_points) > 3:
+                if is_zero_delta(start_delta):
+                    pass
+                else:
+                    merged_points[1] = (merged_points[1][0] + start_delta[0],
+                                        merged_points[1][1] + start_delta[1])
+
+                if is_zero_delta(end_delta):
+                    pass
+                else:
+                    merged_points[-2] = (merged_points[-2][0] + end_delta[0],
+                                         merged_points[-2][1] + end_delta[1])
+            else:
+                pass
+
         return compress_route_points(merged_points)
     else:
         return [start_point, end_point]
