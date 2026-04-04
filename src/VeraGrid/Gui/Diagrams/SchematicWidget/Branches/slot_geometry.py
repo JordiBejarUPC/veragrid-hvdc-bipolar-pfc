@@ -82,6 +82,84 @@ def clamp_attachment_alignment(alignment: float | None) -> float:
         return alignment_value
 
 
+def clamp_coordinate(value: float,
+                     minimum: float,
+                     maximum: float) -> float:
+    """
+    Clamp one scalar coordinate to a closed interval.
+
+    :param value: Input coordinate.
+    :param minimum: Lower bound.
+    :param maximum: Upper bound.
+    :return: Clamped coordinate.
+    """
+    if value < minimum:
+        return minimum
+    elif value > maximum:
+        return maximum
+    else:
+        return value
+
+
+def project_point_to_rectangle_perimeter(width: float,
+                                         height: float,
+                                         point_x: float,
+                                         point_y: float) -> Tuple[float, float]:
+    """
+    Project one local point to the rectangle perimeter along the center-to-point ray.
+
+    :param width: Rectangle width.
+    :param height: Rectangle height.
+    :param point_x: Local X coordinate.
+    :param point_y: Local Y coordinate.
+    :return: Projected perimeter point.
+    """
+    center_x: float = width * 0.5
+    center_y: float = height * 0.5
+    delta_x: float = float(point_x) - center_x
+    delta_y: float = float(point_y) - center_y
+
+    if width <= 0.0 or height <= 0.0:
+        return center_x, center_y
+    elif abs(delta_x) <= 1e-9 and abs(delta_y) <= 1e-9:
+        return center_x, height
+    else:
+        pass
+
+    if abs(delta_x) <= 1e-9:
+        scale_x: float = float("inf")
+    else:
+        scale_x = (width * 0.5) / abs(delta_x)
+
+    if abs(delta_y) <= 1e-9:
+        scale_y: float = float("inf")
+    else:
+        scale_y = (height * 0.5) / abs(delta_y)
+
+    scale: float = min(scale_x, scale_y)
+    projected_x: float = center_x + delta_x * scale
+    projected_y: float = center_y + delta_y * scale
+    return projected_x, projected_y
+
+
+def project_point_to_bar_terminal(width: float,
+                                  terminal_y: float,
+                                  terminal_h: float,
+                                  point_x: float) -> Tuple[float, float]:
+    """
+    Project one local point to the bus-bar attachment line.
+
+    :param width: Parent width.
+    :param terminal_y: Bar top Y coordinate.
+    :param terminal_h: Bar height.
+    :param point_x: Requested local X coordinate.
+    :return: Projected local anchor point.
+    """
+    center_y: float = terminal_y + terminal_h * 0.5
+    clamped_x: float = clamp_coordinate(value=float(point_x), minimum=0.0, maximum=width)
+    return clamped_x, center_y
+
+
 def get_bar_slot_anchor(width: float,
                         terminal_y: float,
                         terminal_h: float,

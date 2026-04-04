@@ -626,9 +626,55 @@ def test_saved_auto_branch_route_is_rendered_during_load() -> None:
     assert branch_graphic.get_render_points() == [(90.0, 45.0), (90.0, 110.0), (330.0, 110.0), (330.0, 45.0)]
 
 
-def test_manual_endpoint_alignment_keeps_branch_side_fixed_on_busbar() -> None:
+def test_loading_reattaches_saved_branch_route_to_live_endpoint_anchors() -> None:
     """
-    Manual endpoint alignment should freeze the endpoint side instead of re-inferring it from the route shape.
+    Loading should replace saved route endpoints with the live anchor coordinates.
+    """
+    _get_app()
+    editor: _BranchEditorStub = _BranchEditorStub()
+    editor._is_loading_diagram = True
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    line: Line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=300.0, y=0.0)
+
+    editor.diagram.set_attachment(line,
+                                  "from",
+                                  {
+                                      "anchor_x": 30.0,
+                                      "anchor_y": 45.0,
+                                      "anchor_auto": False,
+                                  })
+    editor.diagram.set_attachment(line,
+                                  "to",
+                                  {
+                                      "anchor_x": 150.0,
+                                      "anchor_y": 45.0,
+                                      "anchor_auto": False,
+                                  })
+    editor.diagram.set_branch_route_points(api_object=line,
+                                           points=[(90.0, 45.0), (90.0, 110.0), (330.0, 110.0), (330.0, 45.0)],
+                                           kind="auto-polyline",
+                                           locked=False)
+
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                                             to_port=graphic_to.get_terminal(),
+                                             editor=editor,
+                                             api_object=line)
+    render_points = branch_graphic.get_render_points()
+    from_anchor = branch_graphic.get_endpoint_anchor(endpoint="from")
+    to_anchor = branch_graphic.get_endpoint_anchor(endpoint="to")
+
+    assert render_points[0] == (from_anchor.x(), from_anchor.y())
+    assert render_points[-1] == (to_anchor.x(), to_anchor.y())
+    assert render_points[0] == (30.0, 45.0)
+    assert render_points[-1] == (450.0, 45.0)
+
+
+def test_sync_attachment_coordinates_keeps_manual_bus_anchor_coordinates() -> None:
+    """
+    Route synchronization should preserve coordinate-based branch anchors on buses.
     """
     _get_app()
     editor: _BranchEditorStub = _BranchEditorStub()
@@ -654,15 +700,13 @@ def test_manual_endpoint_alignment_keeps_branch_side_fixed_on_busbar() -> None:
 
     from_attachment = editor.diagram.get_attachment(api_object=line, endpoint="from")
 
-    assert from_attachment["side"] == "bottom"
-    assert from_attachment["slot"] == "bottom"
-    assert from_attachment["terminal_key"] == "bottom"
-    assert from_attachment["auto_slot"] is False
+    assert from_attachment["anchor_x"] == 90.0
+    assert from_attachment["anchor_y"] == 45.0
 
 
-def test_move_endpoint_alignment_initializes_from_endpoint_terminal_key_on_busbar() -> None:
+def test_move_endpoint_alignment_persists_local_bus_anchor_coordinates() -> None:
     """
-    Moving the from-end alignment should freeze that endpoint onto the bar side being edited.
+    Moving the from-end alignment should persist coordinate-based anchor metadata.
     """
     _get_app()
     editor: _BranchEditorStub = _BranchEditorStub()
@@ -683,19 +727,17 @@ def test_move_endpoint_alignment_initializes_from_endpoint_terminal_key_on_busba
     from_attachment = editor.diagram.get_attachment(api_object=line, endpoint="from")
     moved_anchor = branch_graphic.get_endpoint_anchor(endpoint="from")
 
-    assert from_attachment["side"] == "bottom"
-    assert from_attachment["slot"] == "bottom"
-    assert from_attachment["terminal_key"] == "bottom"
-    assert from_attachment["auto_slot"] is False
-    assert from_attachment["alignment"] == 1.0 / 6.0
+    assert from_attachment["anchor_x"] == 30.0
+    assert from_attachment["anchor_y"] == 45.0
+    assert from_attachment["anchor_auto"] is False
     assert original_anchor.x() != moved_anchor.x()
     assert moved_anchor.x() == 30.0
     assert moved_anchor.y() == 45.0
 
 
-def test_move_endpoint_alignment_replaces_explicit_slot_with_canonical_bar_side() -> None:
+def test_move_endpoint_alignment_replaces_legacy_slot_identity_with_anchor_coordinates() -> None:
     """
-    Dragging a branch endpoint along a bar should stop using explicit slot ids and use canonical side alignment.
+    Dragging a branch endpoint along a bar should persist coordinates even if legacy slot ids exist.
     """
     _get_app()
     editor: _BranchEditorStub = _BranchEditorStub()
@@ -721,15 +763,11 @@ def test_move_endpoint_alignment_replaces_explicit_slot_with_canonical_bar_side(
 
     from_attachment = editor.diagram.get_attachment(api_object=line, endpoint="from")
 
-    assert from_attachment == {
-        "side": "bottom",
-        "slot": "bottom",
-        "terminal_key": "bottom",
-        "alignment": 1.0 / 3.0,
-        "auto_slot": False,
-        "owner_device_id": bus_from.idtag,
-        "owner_device_type": bus_from.device_type.value,
-    }
+    assert from_attachment["anchor_x"] == 60.0
+    assert from_attachment["anchor_y"] == 45.0
+    assert from_attachment["anchor_auto"] is False
+    assert from_attachment["owner_device_id"] == bus_from.idtag
+    assert from_attachment["owner_device_type"] == bus_from.device_type.value
 
 
 def test_endpoint_alignment_handle_has_wide_hit_shape() -> None:
@@ -754,9 +792,9 @@ def test_endpoint_alignment_handle_has_wide_hit_shape() -> None:
     assert handle.contains(QPointF(9.0, 0.0))
 
 
-def test_move_endpoint_alignment_prefers_terminal_key_over_stale_side() -> None:
+def test_move_endpoint_alignment_ignores_stale_legacy_side_metadata() -> None:
     """
-    Endpoint dragging should use the current terminal key instead of a stale saved side.
+    Endpoint dragging should use projected coordinates instead of stale side metadata.
     """
     _get_app()
     editor: _BranchEditorStub = _BranchEditorStub()
@@ -783,11 +821,9 @@ def test_move_endpoint_alignment_prefers_terminal_key_over_stale_side() -> None:
     from_attachment = editor.diagram.get_attachment(api_object=line, endpoint="from")
     moved_anchor = branch_graphic.get_endpoint_anchor(endpoint="from")
 
-    assert from_attachment["side"] == "bottom"
-    assert from_attachment["slot"] == "bottom"
-    assert from_attachment["terminal_key"] == "bottom"
-    assert from_attachment["alignment"] == 1.0 / 6.0
-    assert from_attachment["auto_slot"] is False
+    assert from_attachment["anchor_x"] == 30.0
+    assert from_attachment["anchor_y"] == 45.0
+    assert from_attachment["anchor_auto"] is False
     assert moved_anchor.x() == 30.0
     assert moved_anchor.y() == 45.0
 
@@ -824,11 +860,9 @@ def test_move_route_vertex_keeps_manual_bus_endpoint_anchor_fixed() -> None:
 
     assert anchored_before == QPointF(30.0, 45.0)
     assert anchored_after == QPointF(30.0, 45.0)
-    assert from_attachment["side"] == "bottom"
-    assert from_attachment["slot"] == "bottom"
-    assert from_attachment["terminal_key"] == "bottom"
-    assert from_attachment["alignment"] == 1.0 / 6.0
-    assert from_attachment["auto_slot"] is False
+    assert from_attachment["anchor_x"] == 30.0
+    assert from_attachment["anchor_y"] == 45.0
+    assert from_attachment["anchor_auto"] is False
 
 
 def test_fluid_node_slot_anchors_follow_named_edges() -> None:
@@ -1029,6 +1063,33 @@ def test_injection_graphic_sync_manual_dock_metadata_from_position() -> None:
     assert dock["alignment"] == 1.0 / 6.0
     assert dock["offset"] == 16.0
     assert dock["nexus_parent_alignment"] == 1.0 / 6.0
+    assert dock["anchor_x"] == 20.0
+    assert dock["anchor_y"] == 45.0
+    assert dock["anchor_auto"] is False
+
+
+def test_injection_nexus_parent_endpoint_move_persists_parent_anchor_coordinates() -> None:
+    """
+    Moving the parent nexus endpoint should persist explicit parent anchor coordinates.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    bus: Bus = Bus(name="B1")
+    load: Load = Load(name="LD1")
+    load.bus = bus
+    bus_graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    load_graphic: LoadGraphicItem = LoadGraphicItem(parent=bus_graphic, api_obj=load, editor=editor)
+
+    load_graphic.move_nexus_endpoint_alignment(endpoint="parent", scene_pos=QPointF(30.0, 80.0))
+
+    dock = editor.diagram.get_dock(load)
+    parent_anchor = load_graphic.get_parent_nexus_anchor()
+
+    assert dock["anchor_x"] == 30.0
+    assert dock["anchor_y"] == 45.0
+    assert dock["anchor_auto"] is False
+    assert parent_anchor.x() == 30.0
+    assert parent_anchor.y() == 45.0
 
 
 def test_injection_base_context_menu_only_exposes_rotate_not_dock_move() -> None:
@@ -1271,6 +1332,10 @@ def test_bus_graphic_auto_assign_branch_slots_uses_geometry_order() -> None:
     assert editor.diagram.get_attachment(branch_api_object_2, "from")["slot"] == "bus-bottom-2"
     assert editor.diagram.get_attachment(branch_api_object_1, "from")["auto_slot"] is True
     assert editor.diagram.get_attachment(branch_api_object_2, "from")["auto_slot"] is True
+    assert editor.diagram.get_attachment(branch_api_object_1, "from")["anchor_x"] == 40.0
+    assert editor.diagram.get_attachment(branch_api_object_2, "from")["anchor_x"] == 140.0
+    assert editor.diagram.get_attachment(branch_api_object_1, "from")["anchor_y"] == 45.0
+    assert editor.diagram.get_attachment(branch_api_object_2, "from")["anchor_y"] == 45.0
 
 
 def test_bus_graphic_applies_persisted_rotation_to_bar_and_nexus_anchors() -> None:
@@ -1317,6 +1382,8 @@ def test_bus_graphic_auto_assign_branch_slots_prefers_vertical_feeders_for_bar_b
 
     assert editor.diagram.get_attachment(branch_api_object, "from")["side"] == "top"
     assert editor.diagram.get_attachment(branch_api_object, "from")["slot"] == "bus-top-1"
+    assert editor.diagram.get_attachment(branch_api_object, "from")["anchor_x"] == 180.0
+    assert editor.diagram.get_attachment(branch_api_object, "from")["anchor_y"] == 45.0
 
 
 def test_bus_graphic_auto_assign_branch_slots_preserves_manual_canonical_side() -> None:

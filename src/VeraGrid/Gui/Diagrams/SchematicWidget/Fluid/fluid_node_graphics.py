@@ -22,6 +22,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (Schema
                                                                           clamp_attachment_alignment,
                                                                           get_bar_slot_anchor,
                                                                           get_distributed_anchor,
+                                                                          project_point_to_bar_terminal,
                                                                           infer_attachment_side_from_points,
                                                                           parse_explicit_slot_key)
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, HandleItem
@@ -654,11 +655,58 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         local_point = QPointF(self.w * 0.5, terminal_y + terminal_h * 0.5)
         return self.mapToScene(local_point)
 
+    def get_default_connection_local_point(self) -> QPointF:
+        """
+        Return the default local anchor used for fluid-path attachments.
+
+        :return: Local attachment point.
+        """
+        terminal_y: float = self._terminal.pos().y() + self._terminal.rect().y()
+        terminal_h: float = self._terminal.rect().height()
+        local_x: float = self.w * 0.5
+        local_y: float = terminal_y + terminal_h * 0.5
+        return QPointF(local_x, local_y)
+
+    def get_connection_local_point_from_local_point(self, local_point: QPointF) -> QPointF:
+        """
+        Project one local point to the fluid-node connection line.
+
+        :param local_point: Requested local point.
+        :return: Projected local attachment point.
+        """
+        terminal_y: float = self._terminal.pos().y() + self._terminal.rect().y()
+        terminal_h: float = self._terminal.rect().height()
+        projected_x, projected_y = project_point_to_bar_terminal(width=float(self.w),
+                                                                 terminal_y=terminal_y,
+                                                                 terminal_h=terminal_h,
+                                                                 point_x=float(local_point.x()))
+        return QPointF(projected_x, projected_y)
+
+    def get_connection_local_point_from_scene_point(self, scene_point: QPointF) -> QPointF:
+        """
+        Project one scene point to the fluid-node connection line.
+
+        :param scene_point: Requested scene point.
+        :return: Projected local attachment point.
+        """
+        local_point: QPointF = self.mapFromScene(scene_point)
+        return self.get_connection_local_point_from_local_point(local_point)
+
+    def get_connection_scene_point_from_local_point(self, local_point: QPointF) -> QPointF:
+        """
+        Map one local connection point to the scene after clamping it to the host geometry.
+
+        :param local_point: Requested local point.
+        :return: Scene attachment point.
+        """
+        projected_local_point: QPointF = self.get_connection_local_point_from_local_point(local_point)
+        return self.mapToScene(projected_local_point)
+
     def auto_assign_branch_slots(self) -> None:
         """
-        Assign deterministic explicit slots to attached fluid paths from current geometry.
+        Assign coordinate-based branch anchors to attached fluid paths from current geometry.
         """
-        grouped_entries: Dict[str, List[Tuple[float, str, GenericDiagramWidget, str, Dict[str, str]]]] = {
+        grouped_entries: Dict[str, List[Tuple[float, str, GenericDiagramWidget, str, Dict[str, Any]]]] = {
             SchematicAttachmentSlot.LEFT.value: list(),
             SchematicAttachmentSlot.RIGHT.value: list(),
             SchematicAttachmentSlot.TOP.value: list(),
@@ -679,7 +727,13 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                 pass
 
             attachment = self.editor.get_persisted_attachment(api_object=branch_graphic.api_object, endpoint=endpoint)
-            has_saved_endpoint_state = any(key in attachment for key in ("side", "slot", "terminal_key", "alignment", "order"))
+            has_saved_endpoint_state = any(key in attachment for key in ("side",
+                                                                         "slot",
+                                                                         "terminal_key",
+                                                                         "alignment",
+                                                                         "order",
+                                                                         "anchor_x",
+                                                                         "anchor_y"))
 
             if self.editor.is_loading_diagram():
                 if has_saved_endpoint_state:
@@ -691,8 +745,9 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
             existing_slot = str(attachment.get("slot", ""))
             auto_slot = bool(attachment.get("auto_slot", existing_slot in ("", "default", "left", "right", "top", "bottom")))
+            anchor_auto = bool(attachment.get("anchor_auto", True))
 
-            if not auto_slot:
+            if not auto_slot or not anchor_auto:
                 continue
             else:
                 pass
@@ -706,6 +761,10 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             side_key = infer_attachment_side_from_points(origin=(local_center_x, local_center_y),
                                                          other=(local_other_point.x(), local_other_point.y()),
                                                          vertical_bias=1.0)
+            local_anchor: QPointF = self.get_connection_local_point_from_scene_point(other_point)
+            attachment["anchor_x"] = float(local_anchor.x())
+            attachment["anchor_y"] = float(local_anchor.y())
+            attachment["anchor_auto"] = True
 
             if side_key in (SchematicAttachmentSlot.TOP.value, SchematicAttachmentSlot.BOTTOM.value):
                 sort_value = float(local_other_point.x())

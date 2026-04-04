@@ -37,6 +37,8 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (Schema
                                                                           clamp_attachment_alignment,
                                                                           get_distributed_anchor,
                                                                           get_bar_slot_anchor,
+                                                                          project_point_to_bar_terminal,
+                                                                          project_point_to_rectangle_perimeter,
                                                                           get_round_slot_anchor,
                                                                           infer_attachment_side_from_points,
                                                                           parse_explicit_slot_key)
@@ -284,38 +286,26 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         (connection points for loads, shunts, generators, etc.)
         :return: QPointF
         """
-        return self.get_terminal_anchor_by_key(terminal_key=SchematicAttachmentSlot.BOTTOM.value,
-                                               alignment=0.5)
+        return self.get_connection_scene_point_from_local_point(self.get_default_connection_local_point())
 
     def get_nexus_point_for_child(self, child_graphic: INJECTION_GRAPHICS) -> QPointF:
         """
         Get the connection point for one docked child graphic.
         """
         dock = self._editor.diagram.get_dock(child_graphic.api_object)
-        side = str(dock.get("side", SchematicAttachmentSlot.BOTTOM.value))
-        alignment_value = dock.get("nexus_parent_alignment", dock.get("alignment", None))
+        anchor_x = dock.get("anchor_x", None)
+        anchor_y = dock.get("anchor_y", None)
 
-        if alignment_value is None:
-            child_center_x: float = child_graphic.pos().x() + child_graphic.w * 0.5
-            child_center_y: float = child_graphic.pos().y() + child_graphic.h * 0.5
-
-            if side in (SchematicAttachmentSlot.TOP.value,
-                        SchematicAttachmentSlot.BOTTOM.value,
-                        SchematicAttachmentSlot.DEFAULT.value):
-                if self.rect().width() <= 0.0:
-                    alignment_value = 0.5
-                else:
-                    alignment_value = clamp_attachment_alignment(child_center_x / self.rect().width())
-            else:
-                if self.rect().height() <= 0.0:
-                    alignment_value = 0.5
-                else:
-                    alignment_value = clamp_attachment_alignment(child_center_y / self.rect().height())
+        if anchor_x is None or anchor_y is None:
+            child_center_local_x: float = child_graphic.pos().x() + child_graphic.w * 0.5
+            child_center_local_y: float = child_graphic.pos().y() + child_graphic.h * 0.5
+            local_anchor: QPointF = self.get_connection_local_point_from_local_point(QPointF(child_center_local_x,
+                                                                                             child_center_local_y))
         else:
-            alignment_value = clamp_attachment_alignment(alignment_value)
+            local_anchor = self.get_connection_local_point_from_local_point(QPointF(float(anchor_x),
+                                                                                    float(anchor_y)))
 
-        return self.get_terminal_anchor_by_key(terminal_key=side,
-                                               alignment=alignment_value)
+        return self.get_connection_scene_point_from_local_point(local_anchor)
 
     def recolour_mode(self) -> None:
         """
@@ -483,6 +473,60 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         return QPointF(self.rect().width() * 0.5,
                        terminal_y + terminal_h * 0.5)
 
+    def get_default_connection_local_point(self) -> QPointF:
+        """
+        Return the default local anchor used for bar-style branch attachments.
+
+        :return: Local attachment point.
+        """
+        terminal_y: float = self._terminal.pos().y() + self._terminal.rect().y()
+        terminal_h: float = self._terminal.rect().height()
+        local_x: float = self.rect().width() * 0.5
+        local_y: float = terminal_y + terminal_h * 0.5
+        return QPointF(local_x, local_y)
+
+    def get_connection_local_point_from_local_point(self, local_point: QPointF) -> QPointF:
+        """
+        Project one local point to the valid electrical connection locus.
+
+        :param local_point: Requested local point.
+        :return: Projected local attachment point.
+        """
+        if self.connectivity_graph:
+            projected_x, projected_y = project_point_to_rectangle_perimeter(width=float(self.rect().width()),
+                                                                            height=float(self.rect().height()),
+                                                                            point_x=float(local_point.x()),
+                                                                            point_y=float(local_point.y()))
+        else:
+            terminal_y: float = self._terminal.pos().y() + self._terminal.rect().y()
+            terminal_h: float = self._terminal.rect().height()
+            projected_x, projected_y = project_point_to_bar_terminal(width=float(self.rect().width()),
+                                                                     terminal_y=terminal_y,
+                                                                     terminal_h=terminal_h,
+                                                                     point_x=float(local_point.x()))
+
+        return QPointF(projected_x, projected_y)
+
+    def get_connection_local_point_from_scene_point(self, scene_point: QPointF) -> QPointF:
+        """
+        Project one scene point to the valid electrical connection locus.
+
+        :param scene_point: Requested scene point.
+        :return: Projected local attachment point.
+        """
+        local_point: QPointF = self.mapFromScene(scene_point)
+        return self.get_connection_local_point_from_local_point(local_point)
+
+    def get_connection_scene_point_from_local_point(self, local_point: QPointF) -> QPointF:
+        """
+        Map one local connection point to the scene after clamping it to the host geometry.
+
+        :param local_point: Requested local point.
+        :return: Scene attachment point.
+        """
+        projected_local_point: QPointF = self.get_connection_local_point_from_local_point(local_point)
+        return self.mapToScene(projected_local_point)
+
     def apply_rotation_state(self, refresh_geometry: bool) -> None:
         """
         Apply the persisted rotation state to the live graphics item.
@@ -585,7 +629,8 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
     def _arrange_child_group(self,
                              side: str,
-                             dock_entries: List[Tuple[int, int, float, float | None, bool, INJECTION_GRAPHICS]]) -> None:
+                             dock_entries: List[
+                                 Tuple[int, int, float, float | None, bool, INJECTION_GRAPHICS]]) -> None:
         """
         Arrange one dock side of child graphics.
         """
@@ -989,10 +1034,10 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         side_key: str
 
         for side_key in (
-            SchematicAttachmentSlot.LEFT.value,
-            SchematicAttachmentSlot.RIGHT.value,
-            SchematicAttachmentSlot.TOP.value,
-            SchematicAttachmentSlot.BOTTOM.value,
+                SchematicAttachmentSlot.LEFT.value,
+                SchematicAttachmentSlot.RIGHT.value,
+                SchematicAttachmentSlot.TOP.value,
+                SchematicAttachmentSlot.BOTTOM.value,
         ):
             order: int
 
@@ -1042,7 +1087,8 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             slot_count: int = len(explicit_entries)
 
             if graphic_object is not None and slot_count > 0:
-                order_index = next(index + 1 for index, entry in enumerate(explicit_entries) if entry[2] is graphic_object)
+                order_index = next(
+                    index + 1 for index, entry in enumerate(explicit_entries) if entry[2] is graphic_object)
             else:
                 ordered_slots: List[int] = [entry[0] for entry in explicit_entries]
                 order_index = ordered_slots.index(order) + 1
@@ -1134,7 +1180,8 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             if endpoint == "":
                 pass
             else:
-                attachment = self.editor.get_persisted_attachment(api_object=graphic_object.api_object, endpoint=endpoint)
+                attachment = self.editor.get_persisted_attachment(api_object=graphic_object.api_object,
+                                                                  endpoint=endpoint)
                 terminal_key = str(attachment.get("terminal_key", ""))
                 explicit_slot = parse_explicit_slot_key(slot_key=terminal_key)
 
@@ -1226,9 +1273,9 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
     def auto_assign_branch_slots(self) -> None:
         """
-        Assign deterministic explicit slots to attached branches from current geometry.
+        Assign coordinate-based branch anchors from current geometry.
         """
-        grouped_entries: Dict[str, List[Tuple[float, str, GenericDiagramWidget, str, Dict[str, str]]]] = {
+        grouped_entries: Dict[str, List[Tuple[float, str, GenericDiagramWidget, str, Dict[str, Any]]]] = {
             SchematicAttachmentSlot.LEFT.value: list(),
             SchematicAttachmentSlot.RIGHT.value: list(),
             SchematicAttachmentSlot.TOP.value: list(),
@@ -1245,7 +1292,13 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                 pass
 
             attachment = self.editor.get_persisted_attachment(api_object=branch_graphic.api_object, endpoint=endpoint)
-            has_saved_endpoint_state = any(key in attachment for key in ("side", "slot", "terminal_key", "alignment", "order"))
+            has_saved_endpoint_state = any(key in attachment for key in ("side",
+                                                                         "slot",
+                                                                         "terminal_key",
+                                                                         "alignment",
+                                                                         "order",
+                                                                         "anchor_x",
+                                                                         "anchor_y"))
 
             if self.editor.is_loading_diagram():
                 if has_saved_endpoint_state:
@@ -1256,9 +1309,11 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                 pass
 
             existing_slot = str(attachment.get("slot", ""))
-            auto_slot = bool(attachment.get("auto_slot", existing_slot in ("", "default", "left", "right", "top", "bottom")))
+            auto_slot = bool(
+                attachment.get("auto_slot", existing_slot in ("", "default", "left", "right", "top", "bottom")))
+            anchor_auto = bool(attachment.get("anchor_auto", True))
 
-            if not auto_slot:
+            if not auto_slot or not anchor_auto:
                 continue
             else:
                 pass
@@ -1269,6 +1324,10 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                 other_point = branch_graphic.pos1
 
             side_key, sort_value = self.infer_branch_slot_side_and_sort_value(other_point=other_point)
+            local_anchor: QPointF = self.get_connection_local_point_from_scene_point(other_point)
+            attachment["anchor_x"] = float(local_anchor.x())
+            attachment["anchor_y"] = float(local_anchor.y())
+            attachment["anchor_auto"] = True
 
             grouped_entries[side_key].append((sort_value,
                                               str(id(branch_graphic.api_object)),

@@ -677,12 +677,16 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         side: str = self.infer_dock_side_from_current_position()
         alignment: float = self.get_manual_dock_alignment(side=side)
         offset: float = self.get_manual_dock_offset(side=side)
+        parent_anchor_local_point: QPointF = self.get_parent_anchor_local_point_from_child_position()
 
         dock["side"] = side
         dock["alignment"] = alignment
         dock["offset"] = offset
         dock["auto_layout"] = False
         dock["nexus_parent_alignment"] = alignment
+        dock["anchor_x"] = float(parent_anchor_local_point.x())
+        dock["anchor_y"] = float(parent_anchor_local_point.y())
+        dock["anchor_auto"] = False
         self.set_dock_metadata(dock)
 
         self.editor.update_diagram_element(device=self.api_object,
@@ -702,6 +706,36 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         """
         dock = self.get_dock_metadata()
         return str(dock.get("side", SchematicAttachmentSlot.BOTTOM.value))
+
+    def get_parent_anchor_local_point_from_child_position(self) -> QPointF:
+        """
+        Project the current child center to the parent electrical connection locus.
+
+        :return: Parent-local anchor point.
+        """
+        child_center_local_x: float = float(self.x()) + float(self.w) * 0.5
+        child_center_local_y: float = float(self.y()) + float(self.h) * 0.5
+        return self.parent.get_connection_local_point_from_local_point(QPointF(child_center_local_x,
+                                                                               child_center_local_y))
+
+    def get_parent_anchor_local_point_from_dock(self, dock: dict[str, Any]) -> QPointF:
+        """
+        Resolve the parent-local nexus anchor from dock metadata.
+
+        :param dock: Dock metadata.
+        :return: Parent-local anchor point.
+        """
+        anchor_x: Any = dock.get("anchor_x", None)
+        anchor_y: Any = dock.get("anchor_y", None)
+
+        if anchor_x is None or anchor_y is None:
+            child_center_local_x: float = float(self.x()) + float(self.w) * 0.5
+            child_center_local_y: float = float(self.y()) + float(self.h) * 0.5
+            return self.parent.get_connection_local_point_from_local_point(QPointF(child_center_local_x,
+                                                                                   child_center_local_y))
+        else:
+            return self.parent.get_connection_local_point_from_local_point(QPointF(float(anchor_x),
+                                                                                   float(anchor_y)))
 
     def get_child_nexus_side(self) -> str:
         """
@@ -749,10 +783,9 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
 
         :return: Parent-side scene anchor.
         """
-        parent_side = self.get_parent_nexus_side()
-        parent_alignment = self.get_parent_nexus_alignment()
-        return self.parent.get_terminal_anchor_by_key(terminal_key=parent_side,
-                                                      alignment=parent_alignment)
+        dock = self.get_dock_metadata()
+        parent_anchor_local_point: QPointF = self.get_parent_anchor_local_point_from_dock(dock=dock)
+        return self.parent.get_connection_scene_point_from_local_point(parent_anchor_local_point)
 
     def get_nexus_route_points_for_editing(self) -> list[tuple[float, float]]:
         """
@@ -805,9 +838,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
                                               end_side=self.get_parent_nexus_side())
         else:
             return build_default_branch_route(start=start,
-                                              end=end,
-                                              start_side=self.get_child_nexus_side(),
-                                              end_side=self.get_parent_nexus_side())
+                                              end=end)
 
     def persist_manual_nexus_route(self, points: list[tuple[float, float]]) -> None:
         """
@@ -871,9 +902,10 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         dock = self.get_dock_metadata()
 
         if endpoint == "parent":
-            side = self.get_parent_nexus_side()
-            alignment = self.parent.get_terminal_alignment_from_scene_point(side_key=side, scene_point=scene_pos)
-            dock["nexus_parent_alignment"] = alignment
+            parent_anchor_local_point: QPointF = self.parent.get_connection_local_point_from_scene_point(scene_pos)
+            dock["anchor_x"] = float(parent_anchor_local_point.x())
+            dock["anchor_y"] = float(parent_anchor_local_point.y())
+            dock["anchor_auto"] = False
         else:
             side = self.get_child_nexus_side()
             local_point = self.mapFromScene(scene_pos)

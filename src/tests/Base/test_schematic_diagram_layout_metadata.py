@@ -592,7 +592,7 @@ def test_schematic_diagram_sync_injection_dock_preserves_custom_fields() -> None
     assert dock["owner_device_id"] == bus.idtag
 
 
-def test_schematic_diagram_upgrade_legacy_branch_layout_synthesizes_orthogonal_route() -> None:
+def test_schematic_diagram_upgrade_legacy_branch_layout_synthesizes_coordinate_route() -> None:
     bus_from = Bus(name="B1")
     bus_to = Bus(name="B2")
     line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
@@ -604,12 +604,12 @@ def test_schematic_diagram_upgrade_legacy_branch_layout_synthesizes_orthogonal_r
 
     assert diagram.get_branch_route_points(line) == [
         (10.0, 20.0),
-        (10.0, 132.0),
-        (110.0, 132.0),
+        (60.0, 20.0),
+        (60.0, 80.0),
         (110.0, 80.0),
     ]
     assert metadata["route"] == {
-        "points": [(10.0, 20.0), (10.0, 132.0), (110.0, 132.0), (110.0, 80.0)],
+        "points": [(10.0, 20.0), (60.0, 20.0), (60.0, 80.0), (110.0, 80.0)],
         "kind": "auto-polyline",
         "locked": False,
     }
@@ -642,18 +642,16 @@ def test_schematic_diagram_upgrade_legacy_branch_layout_preserves_legacy_polylin
     }
 
 
-def test_build_default_branch_route_uses_lane_spacing_for_parallel_bus_feeders() -> None:
+def test_build_default_branch_route_uses_coordinate_midline_and_optional_lane_offset() -> None:
     route = build_default_branch_route(start=(20.0, 10.0),
                                        end=(120.0, 10.0),
-                                       start_side="bottom",
-                                       end_side="bottom",
                                        start_order=1,
                                        end_order=3)
 
     assert route == [
         (20.0, 10.0),
-        (20.0, 48.0),
-        (120.0, 48.0),
+        (20.0, 24.0),
+        (120.0, 24.0),
         (120.0, 10.0),
     ]
 

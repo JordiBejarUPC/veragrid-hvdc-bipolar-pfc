@@ -198,8 +198,6 @@ class SchematicDiagram(BaseDiagram):
             to_order = to_attachment.get("order", None)
             synthesized_route = build_default_branch_route(start=start,
                                                            end=end,
-                                                           start_side=from_side,
-                                                           end_side=to_side,
                                                            start_order=from_order,
                                                            end_order=to_order)
             self.set_branch_route_points(api_object=api_object,
@@ -256,6 +254,15 @@ class SchematicDiagram(BaseDiagram):
         else:
             attachment["owner_device_id"] = owner_device.idtag
             attachment["owner_device_type"] = owner_device.device_type.value
+
+        anchor_x = attachment.get("anchor_x", None)
+        anchor_y = attachment.get("anchor_y", None)
+
+        if anchor_x is None or anchor_y is None:
+            pass
+        else:
+            self.set_attachment(api_object=api_object, endpoint=endpoint, attachment=attachment)
+            return self.get_attachment(api_object=api_object, endpoint=endpoint)
 
         owner_kind = get_attachment_owner_kind(owner_device=owner_device)
 

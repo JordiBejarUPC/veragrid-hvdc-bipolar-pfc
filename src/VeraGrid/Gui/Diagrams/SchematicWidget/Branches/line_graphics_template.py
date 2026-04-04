@@ -953,28 +953,24 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         end_point: QPointF = self.get_endpoint_anchor(endpoint="to")
         start = (start_point.x(), start_point.y())
         end = (end_point.x(), end_point.y())
-        from_attachment = self.get_persisted_endpoint_attachment(endpoint="from")
-        to_attachment = self.get_persisted_endpoint_attachment(endpoint="to")
-        from_side = str(from_attachment.get("side", SchematicAttachmentSlot.BOTTOM.value))
-        to_side = str(to_attachment.get("side", SchematicAttachmentSlot.BOTTOM.value))
 
         if self.editor.is_loading_diagram() and len(self._route_points) >= 2:
-            return normalize_route_points(self._route_points)
+            return merge_route_with_endpoints(start=start,
+                                              end=end,
+                                              persisted_points=self._route_points)
         elif self.api_object is not None and self.editor.diagram.should_preserve_branch_route_shape(self.api_object) and len(self._route_points) >= 2:
             return merge_route_with_endpoints(start=start,
                                               end=end,
-                                              persisted_points=self._route_points,
-                                              start_side=from_side,
-                                              end_side=to_side)
+                                              persisted_points=self._route_points)
         elif self.api_object is None:
             return [start, end]
         else:
+            from_attachment = self.get_persisted_endpoint_attachment(endpoint="from")
+            to_attachment = self.get_persisted_endpoint_attachment(endpoint="to")
             from_order = from_attachment.get("order", None)
             to_order = to_attachment.get("order", None)
             return build_default_branch_route(start=start,
                                               end=end,
-                                              start_side=from_side,
-                                              end_side=to_side,
                                               start_order=from_order,
                                               end_order=to_order)
 
@@ -1137,21 +1133,56 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
             pass
 
         attachment = self.get_persisted_endpoint_attachment(endpoint=endpoint)
-        side_key = self.resolve_endpoint_alignment_side_key(endpoint=endpoint,
-                                                            attachment=attachment)
-        alignment = owner_graphic.get_terminal_alignment_from_scene_point(side_key=side_key, scene_point=scene_pos)
-
-        attachment["side"] = side_key
-        attachment["slot"] = side_key
-        attachment["terminal_key"] = side_key
-
-        attachment["alignment"] = alignment
-        attachment["auto_slot"] = False
-        attachment.pop("order", None)
+        local_anchor: QPointF = self.get_owner_local_anchor_from_scene_point(owner_graphic=owner_graphic,
+                                                                             scene_pos=scene_pos)
+        attachment["anchor_x"] = float(local_anchor.x())
+        attachment["anchor_y"] = float(local_anchor.y())
+        attachment["anchor_auto"] = False
         self.editor.diagram.set_attachment(api_object=self.api_object,
                                            endpoint=endpoint,
                                            attachment=attachment)
         self.redraw()
+
+    def get_owner_local_anchor_from_scene_point(self,
+                                                owner_graphic: NODE_GRAPHIC,
+                                                scene_pos: QPointF) -> QPointF:
+        """
+        Project one scene point to the owner-local attachment manifold.
+
+        :param owner_graphic: Endpoint owner graphic.
+        :param scene_pos: Requested scene point.
+        :return: Projected owner-local attachment point.
+        """
+        if isinstance(owner_graphic, BusGraphicItem):
+            return owner_graphic.get_connection_local_point_from_scene_point(scene_pos)
+        elif isinstance(owner_graphic, FluidNodeGraphicItem):
+            return owner_graphic.get_connection_local_point_from_scene_point(scene_pos)
+        else:
+            return QPointF(0.0, 0.0)
+
+    def get_owner_scene_anchor_from_attachment(self,
+                                               owner_graphic: NODE_GRAPHIC,
+                                               attachment: dict[str, object],
+                                               fallback_point: QPointF) -> QPointF:
+        """
+        Resolve one endpoint anchor from coordinate metadata before consulting legacy slot data.
+
+        :param owner_graphic: Endpoint owner graphic.
+        :param attachment: Persisted attachment metadata.
+        :param fallback_point: Fallback scene point.
+        :return: Scene attachment point.
+        """
+        anchor_x = attachment.get("anchor_x", None)
+        anchor_y = attachment.get("anchor_y", None)
+
+        if anchor_x is None or anchor_y is None:
+            return fallback_point
+        elif isinstance(owner_graphic, BusGraphicItem):
+            return owner_graphic.get_connection_scene_point_from_local_point(QPointF(float(anchor_x), float(anchor_y)))
+        elif isinstance(owner_graphic, FluidNodeGraphicItem):
+            return owner_graphic.get_connection_scene_point_from_local_point(QPointF(float(anchor_x), float(anchor_y)))
+        else:
+            return fallback_point
 
     def resolve_endpoint_alignment_side_key(self,
                                             endpoint: str,
@@ -1296,6 +1327,14 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
             pass
 
         attachment = self.get_persisted_endpoint_attachment(endpoint=endpoint)
+        coordinate_anchor: QPointF = self.get_owner_scene_anchor_from_attachment(owner_graphic=owner_graphic,
+                                                                                 attachment=attachment,
+                                                                                 fallback_point=fallback_point)
+        if coordinate_anchor != fallback_point:
+            return coordinate_anchor
+        else:
+            pass
+
         alignment = attachment.get("alignment", None)
         auto_slot = bool(attachment.get("auto_slot", True))
 
@@ -1358,38 +1397,31 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
 
     def sync_attachment_slots_to_diagram(self, render_points: list[tuple[float, float]]) -> None:
         """
-        Synchronize route-derived attachment sides and let the diagram model normalize slot identity.
+        Synchronize route endpoint coordinates back to the persisted attachment metadata.
         """
-        canonical_slot_keys: set[str] = {
-            SchematicAttachmentSlot.DEFAULT.value,
-            SchematicAttachmentSlot.LEFT.value,
-            SchematicAttachmentSlot.RIGHT.value,
-            SchematicAttachmentSlot.TOP.value,
-            SchematicAttachmentSlot.BOTTOM.value,
-        }
         endpoints: tuple[str, str] = ("from", "to")
         endpoint_key: str
 
         for endpoint_key in endpoints:
             attachment = self.editor.get_persisted_attachment(api_object=self.api_object, endpoint=endpoint_key)
-            auto_slot_enabled = bool(attachment.get("auto_slot", True))
-            inferred_slot: str = infer_attachment_slot_from_route(points=render_points, endpoint=endpoint_key)
-            existing_side = attachment.get("side", None)
             if endpoint_key == "from":
                 owner_graphic: NODE_GRAPHIC | None = self.get_terminal_from_parent()
+                scene_point = QPointF(render_points[0][0], render_points[0][1])
             else:
                 owner_graphic = self.get_terminal_to_parent()
-
-            if not auto_slot_enabled:
-                pass
-            elif existing_side is None or str(existing_side) in canonical_slot_keys:
-                attachment["side"] = inferred_slot
-            else:
-                pass
+                scene_point = QPointF(render_points[-1][0], render_points[-1][1])
 
             if owner_graphic is None:
                 owner_device = None
             else:
+                local_anchor = self.get_owner_local_anchor_from_scene_point(owner_graphic=owner_graphic,
+                                                                            scene_pos=scene_point)
+                attachment["anchor_x"] = float(local_anchor.x())
+                attachment["anchor_y"] = float(local_anchor.y())
+                if "anchor_auto" not in attachment:
+                    attachment["anchor_auto"] = True
+                else:
+                    pass
                 owner_device = owner_graphic.api_object
 
             self.editor.diagram.set_attachment(api_object=self.api_object,
