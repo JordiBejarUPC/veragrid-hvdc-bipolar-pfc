@@ -646,21 +646,40 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         for slot_index, (_, _, offset, alignment, auto_layout, elm) in enumerate(sorted_entries, start=1):
             if auto_layout:
                 span_fraction: float = float(slot_index) / float(slot_count + 1)
+                if side == SchematicAttachmentSlot.TOP.value:
+                    x_pos = self.w * span_fraction - elm.w * 0.5
+                    y_pos = -elm.h - 40.0 - offset
+                elif side == SchematicAttachmentSlot.LEFT.value:
+                    x_pos = -elm.w - 40.0 - offset
+                    y_pos = self.rect().height() * span_fraction - elm.h * 0.5
+                elif side == SchematicAttachmentSlot.RIGHT.value:
+                    x_pos = self.w + 40.0 + offset
+                    y_pos = self.rect().height() * span_fraction - elm.h * 0.5
+                else:
+                    x_pos = self.w * span_fraction - elm.w * 0.5
+                    y_pos = self.y0 + offset
             else:
-                span_fraction = clamp_attachment_alignment(alignment)
+                location = self.editor.diagram.query_point(elm.api_object)
 
-            if side == SchematicAttachmentSlot.TOP.value:
-                x_pos = self.w * span_fraction - elm.w * 0.5
-                y_pos = -elm.h - 40.0 - offset
-            elif side == SchematicAttachmentSlot.LEFT.value:
-                x_pos = -elm.w - 40.0 - offset
-                y_pos = self.rect().height() * span_fraction - elm.h * 0.5
-            elif side == SchematicAttachmentSlot.RIGHT.value:
-                x_pos = self.w + 40.0 + offset
-                y_pos = self.rect().height() * span_fraction - elm.h * 0.5
-            else:
-                x_pos = self.w * span_fraction - elm.w * 0.5
-                y_pos = self.y0 + offset
+                if location is None:
+                    span_fraction = clamp_attachment_alignment(alignment)
+
+                    if side == SchematicAttachmentSlot.TOP.value:
+                        x_pos = self.w * span_fraction - elm.w * 0.5
+                        y_pos = -elm.h - 40.0 - offset
+                    elif side == SchematicAttachmentSlot.LEFT.value:
+                        x_pos = -elm.w - 40.0 - offset
+                        y_pos = self.rect().height() * span_fraction - elm.h * 0.5
+                    elif side == SchematicAttachmentSlot.RIGHT.value:
+                        x_pos = self.w + 40.0 + offset
+                        y_pos = self.rect().height() * span_fraction - elm.h * 0.5
+                    else:
+                        x_pos = self.w * span_fraction - elm.w * 0.5
+                        y_pos = self.y0 + offset
+                else:
+                    local_position: QPointF = self.mapFromScene(QPointF(float(location.x), float(location.y)))
+                    x_pos = float(local_position.x())
+                    y_pos = float(local_position.y())
 
             elm.setPos(x_pos, y_pos)
             elm.update_nexus(elm.pos())

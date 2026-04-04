@@ -9,34 +9,80 @@ from VeraGridEngine.Devices.Diagrams.graphic_location import GraphicLocation
 from VeraGridEngine.Devices.Diagrams.schematic_layout import (build_default_branch_route,
                                                               build_explicit_attachment_slot_key,
                                                               copy_layout_metadata, get_attachment,
-                                                              get_branch_route_points, get_dock,
+                                                              get_attachment_record,
+                                                              get_branch_route_points,
+                                                              get_branch_route_record, get_dock,
+                                                              get_dock_record,
                                                               is_canonical_attachment_slot,
+                                                              SchematicAttachmentOwnerKind,
+                                                              SchematicAttachmentRecord,
+                                                              SchematicAttachmentSide,
+                                                              SchematicBranchEndpoint,
+                                                              SchematicDockRecord,
+                                                              SchematicRouteKind,
+                                                              SchematicRouteRecord,
+                                                              parse_schematic_attachment_side,
+                                                              parse_schematic_branch_endpoint,
                                                               parse_explicit_attachment_slot_key,
-                                                              set_attachment, set_branch_route_points,
-                                                              set_dock, should_preserve_route_shape)
+                                                              set_attachment, set_attachment_record,
+                                                              set_branch_route_points,
+                                                              set_dock, set_dock_record,
+                                                              should_preserve_route_shape)
 from VeraGridEngine.enumerations import DeviceType, DiagramType
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
 
-def get_attachment_owner_kind(owner_device: ALL_DEV_TYPES | None) -> str | None:
+def get_attachment_owner_kind(owner_device: ALL_DEV_TYPES | None) -> SchematicAttachmentOwnerKind | None:
     """
     Map node device types to persisted attachment slot prefixes.
 
     :param owner_device: Endpoint owner device.
-    :return: Slot prefix such as ``"bus"`` or ``"fluid"``.
+    :return: Typed slot prefix such as ``BUS`` or ``FLUID``.
     """
     if owner_device is None:
         return None
     elif owner_device.device_type == DeviceType.BusDevice:
-        return "bus"
+        return SchematicAttachmentOwnerKind.BUS
     elif owner_device.device_type == DeviceType.BusBarDevice:
-        return "bus"
+        return SchematicAttachmentOwnerKind.BUS
     elif owner_device.device_type == DeviceType.FluidNodeDevice:
-        return "fluid"
+        return SchematicAttachmentOwnerKind.FLUID
     else:
         return None
+
+
+def get_default_attachment_side(owner_kind: SchematicAttachmentOwnerKind | None,
+                                endpoint: SchematicBranchEndpoint) -> SchematicAttachmentSide:
+    """
+    Choose the compatibility default side for one endpoint.
+
+    :param owner_kind: Typed owner kind.
+    :param endpoint: Typed branch endpoint.
+    :return: Typed compatibility side.
+    """
+    if owner_kind == SchematicAttachmentOwnerKind.BUS:
+        return SchematicAttachmentSide.BOTTOM
+    elif endpoint == SchematicBranchEndpoint.FROM:
+        return SchematicAttachmentSide.RIGHT
+    elif endpoint == SchematicBranchEndpoint.TO:
+        return SchematicAttachmentSide.LEFT
+    else:
+        return SchematicAttachmentSide.DEFAULT
+
+
+def get_side_from_slot_tuple(slot_tuple: Tuple[str, str, int] | None) -> SchematicAttachmentSide | None:
+    """
+    Convert one explicit slot tuple into a typed compatibility side.
+
+    :param slot_tuple: Parsed explicit slot tuple.
+    :return: Typed side when the tuple is present and valid.
+    """
+    if slot_tuple is None:
+        return None
+    else:
+        return parse_schematic_attachment_side(slot_tuple[1])
 
 
 class SchematicDiagram(BaseDiagram):
@@ -143,16 +189,22 @@ class SchematicDiagram(BaseDiagram):
         :return: ``True`` when persisted route elbows should be preserved.
         """
         location = self._get_or_create_graphic_location(api_object)
-        route = location.layout_metadata.get("route", None)
-        if isinstance(route, dict):
-            return should_preserve_route_shape(route=route)
-        else:
+        route_record: SchematicRouteRecord | None = get_branch_route_record(location=location)
+
+        if route_record is None:
             return False
+        else:
+            route_payload: Dict[str, Any] = {
+                "points": list(route_record.points),
+                "kind": route_record.kind.value if route_record.kind is not None else "",
+                "locked": route_record.locked,
+            }
+            return should_preserve_route_shape(route=route_payload)
 
     def set_branch_route_points(self,
                                 api_object: ALL_DEV_TYPES,
                                 points: Iterable[Tuple[float, float]],
-                                kind: str | None = "auto-polyline",
+                                kind: SchematicRouteKind | str | None = SchematicRouteKind.AUTO_POLYLINE,
                                 locked: bool | None = False) -> Dict[str, Any]:
         """
         Persist route points through the compatibility layer while keeping legacy polyline storage in sync.
@@ -177,35 +229,72 @@ class SchematicDiagram(BaseDiagram):
         Fill missing structured branch layout metadata for legacy diagrams.
         """
         location = self._get_or_create_graphic_location(api_object)
-        attachments = self.sync_branch_attachments(api_object=api_object)
-        route_points = get_branch_route_points(location=location)
-        route_section = location.layout_metadata.get("route", None)
+        attachment_records: Dict[SchematicBranchEndpoint, SchematicAttachmentRecord] = (
+            self.sync_branch_attachment_records(api_object=api_object)
+        )
+        route_points: List[Tuple[float, float]] = get_branch_route_points(location=location)
+        route_record: SchematicRouteRecord | None = get_branch_route_record(location=location)
 
         if len(route_points) >= 2:
-            if route_section is None:
+            if route_record is None:
                 self.set_branch_route_points(api_object=api_object,
                                              points=route_points,
-                                             kind="manual-polyline",
+                                             kind=SchematicRouteKind.MANUAL_POLYLINE,
                                              locked=False)
             else:
                 pass
         else:
-            from_attachment = attachments.get("from", dict())
-            to_attachment = attachments.get("to", dict())
-            from_side = str(from_attachment.get("side", "bottom"))
-            to_side = str(to_attachment.get("side", "bottom"))
-            from_order = from_attachment.get("order", None)
-            to_order = to_attachment.get("order", None)
+            from_order: int | None = None
+            to_order: int | None = None
+
+            if SchematicBranchEndpoint.FROM in attachment_records:
+                from_order = attachment_records[SchematicBranchEndpoint.FROM].order
+            else:
+                pass
+
+            if SchematicBranchEndpoint.TO in attachment_records:
+                to_order = attachment_records[SchematicBranchEndpoint.TO].order
+            else:
+                pass
+
             synthesized_route = build_default_branch_route(start=start,
                                                            end=end,
                                                            start_order=from_order,
                                                            end_order=to_order)
             self.set_branch_route_points(api_object=api_object,
                                          points=synthesized_route,
-                                         kind="auto-polyline",
+                                         kind=SchematicRouteKind.AUTO_POLYLINE,
                                          locked=False)
 
         return self.get_layout_metadata(api_object=api_object)
+
+    def get_attachment_record(self,
+                              api_object: ALL_DEV_TYPES,
+                              endpoint: SchematicBranchEndpoint | str) -> SchematicAttachmentRecord:
+        """
+        Return one typed attachment record for runtime logic.
+
+        :param api_object: Branch API object.
+        :param endpoint: Runtime endpoint enum or persisted string.
+        :return: Typed attachment record.
+        """
+        location = self._get_or_create_graphic_location(api_object)
+        return get_attachment_record(location=location, endpoint=endpoint)
+
+    def set_attachment_record(self,
+                              api_object: ALL_DEV_TYPES,
+                              endpoint: SchematicBranchEndpoint | str,
+                              attachment_record: SchematicAttachmentRecord) -> Dict[str, Any]:
+        """
+        Persist one typed attachment record through the compatibility layer.
+
+        :param api_object: Branch API object.
+        :param endpoint: Runtime endpoint enum or persisted string.
+        :param attachment_record: Typed attachment record.
+        :return: Updated layout metadata.
+        """
+        location = self._get_or_create_graphic_location(api_object)
+        return set_attachment_record(location=location, endpoint=endpoint, attachment_record=attachment_record)
 
     def get_attachment(self, api_object: ALL_DEV_TYPES, endpoint: str) -> Dict[str, Any]:
         """
@@ -220,6 +309,27 @@ class SchematicDiagram(BaseDiagram):
         """
         location = self._get_or_create_graphic_location(api_object)
         return set_attachment(location=location, endpoint=endpoint, attachment=attachment)
+
+    def get_dock_record(self, api_object: ALL_DEV_TYPES) -> SchematicDockRecord:
+        """
+        Return one typed dock record for runtime logic.
+
+        :param api_object: Injection API object.
+        :return: Typed dock record.
+        """
+        location = self._get_or_create_graphic_location(api_object)
+        return get_dock_record(location=location)
+
+    def set_dock_record(self, api_object: ALL_DEV_TYPES, dock_record: SchematicDockRecord) -> Dict[str, Any]:
+        """
+        Persist one typed dock record through the compatibility layer.
+
+        :param api_object: Injection API object.
+        :param dock_record: Typed dock record.
+        :return: Updated layout metadata.
+        """
+        location = self._get_or_create_graphic_location(api_object)
+        return set_dock_record(location=location, dock_record=dock_record)
 
     def get_dock(self, api_object: ALL_DEV_TYPES) -> Dict[str, Any]:
         """
@@ -237,149 +347,202 @@ class SchematicDiagram(BaseDiagram):
 
     def sync_attachment(self,
                         api_object: ALL_DEV_TYPES,
-                        endpoint: str,
+                        endpoint: SchematicBranchEndpoint | str,
                         owner_device: ALL_DEV_TYPES | None) -> Dict[str, Any]:
         """
         Update endpoint ownership metadata while preserving any future slot-routing fields already stored.
+        """
+        endpoint_value: SchematicBranchEndpoint | None = parse_schematic_branch_endpoint(endpoint=endpoint)
+
+        if endpoint_value is None:
+            return dict()
+        else:
+            self.sync_attachment_record(api_object=api_object,
+                                        endpoint=endpoint_value,
+                                        owner_device=owner_device)
+
+        return self.get_attachment(api_object=api_object, endpoint=endpoint_value.value)
+
+    def sync_attachment_record(self,
+                               api_object: ALL_DEV_TYPES,
+                               endpoint: SchematicBranchEndpoint,
+                               owner_device: ALL_DEV_TYPES | None) -> SchematicAttachmentRecord:
+        """
+        Update one typed endpoint attachment record for runtime logic.
+
+        :param api_object: Branch API object.
+        :param endpoint: Typed branch endpoint.
+        :param owner_device: Endpoint owner device.
+        :return: Typed attachment record.
         """
         # Import branch base lazily to keep the diagram layer light and avoid circular imports
         # during module initialization. The check is only needed when attachment metadata is updated.
         from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 
-        attachment = self.get_attachment(api_object=api_object, endpoint=endpoint)
+        attachment_record: SchematicAttachmentRecord = self.get_attachment_record(api_object=api_object,
+                                                                                  endpoint=endpoint)
 
+        # Synchronize owner metadata first so the attachment always follows the connected device.
         if owner_device is None:
-            attachment["owner_device_id"] = ""
-            attachment["owner_device_type"] = ""
+            attachment_record.owner_device_id = ""
+            attachment_record.owner_device_type = ""
         else:
-            attachment["owner_device_id"] = owner_device.idtag
-            attachment["owner_device_type"] = owner_device.device_type.value
+            attachment_record.owner_device_id = owner_device.idtag
+            attachment_record.owner_device_type = owner_device.device_type.value
 
-        anchor_x = attachment.get("anchor_x", None)
-        anchor_y = attachment.get("anchor_y", None)
-
-        if anchor_x is None or anchor_y is None:
+        if attachment_record.anchor_x is None or attachment_record.anchor_y is None:
             pass
         else:
-            self.set_attachment(api_object=api_object, endpoint=endpoint, attachment=attachment)
-            return self.get_attachment(api_object=api_object, endpoint=endpoint)
+            self.set_attachment_record(api_object=api_object,
+                                       endpoint=endpoint,
+                                       attachment_record=attachment_record)
+            return self.get_attachment_record(api_object=api_object, endpoint=endpoint)
 
-        owner_kind = get_attachment_owner_kind(owner_device=owner_device)
+        # Choose the compatibility side only when no explicit coordinate anchor has been stored yet.
+        owner_kind: SchematicAttachmentOwnerKind | None = get_attachment_owner_kind(owner_device=owner_device)
+        default_side: SchematicAttachmentSide = get_default_attachment_side(owner_kind=owner_kind, endpoint=endpoint)
 
-        if owner_kind == "bus":
-            default_side = "bottom"
-        elif endpoint == "from":
-            default_side = "right"
-        elif endpoint == "to":
-            default_side = "left"
+        if attachment_record.side is None:
+            attachment_record.side = default_side
         else:
-            default_side = "default"
+            pass
 
-        attachment.setdefault("side", default_side)
-        attachment.setdefault("slot", default_side)
-        attachment.setdefault("terminal_key", default_side)
+        if attachment_record.slot_key is None:
+            attachment_record.slot_key = attachment_record.side.value
+        else:
+            pass
 
-        stored_order = attachment.get("order", None)
+        if attachment_record.terminal_key is None:
+            attachment_record.terminal_key = attachment_record.side.value
+        else:
+            pass
 
-        if stored_order is not None:
-            attachment["order"] = stored_order
+        if attachment_record.order is not None:
+            attachment_record.order = int(attachment_record.order)
         else:
             if isinstance(api_object, BranchParent) and owner_device is not None:
-                inferred_order = api_object.get_bus_pos(owner_device)
+                inferred_order: int = api_object.get_bus_pos(owner_device)
 
                 if inferred_order != 0:
-                    attachment["order"] = inferred_order
+                    attachment_record.order = inferred_order
                 else:
-                    attachment.pop("order", None)
+                    attachment_record.order = None
             else:
-                attachment.pop("order", None)
+                attachment_record.order = None
 
-        side_key = str(attachment.get("side", default_side))
-        slot_key = attachment.get("slot", None)
-        terminal_key = attachment.get("terminal_key", None)
-        auto_slot_enabled = bool(attachment.get("auto_slot", True))
-        explicit_slot = parse_explicit_attachment_slot_key(slot_key=str(slot_key)) if slot_key is not None else None
-        explicit_terminal_key = (
-            parse_explicit_attachment_slot_key(slot_key=str(terminal_key))
-            if terminal_key is not None
-            else None
+        explicit_slot: Tuple[str, str, int] | None = parse_explicit_attachment_slot_key(
+            slot_key=attachment_record.slot_key
         )
-        order_value = attachment.get("order", None)
+        explicit_terminal_key: Tuple[str, str, int] | None = parse_explicit_attachment_slot_key(
+            slot_key=attachment_record.terminal_key
+        )
+        explicit_slot_side: SchematicAttachmentSide | None = get_side_from_slot_tuple(slot_tuple=explicit_slot)
+        explicit_terminal_side: SchematicAttachmentSide | None = get_side_from_slot_tuple(
+            slot_tuple=explicit_terminal_key
+        )
 
-        if not auto_slot_enabled:
-            if explicit_slot is not None:
-                side_key = explicit_slot[1]
-            elif explicit_terminal_key is not None:
-                side_key = explicit_terminal_key[1]
-            elif is_canonical_attachment_slot(slot_key=str(slot_key) if slot_key is not None else None):
-                side_key = str(slot_key)
-            elif is_canonical_attachment_slot(slot_key=str(terminal_key) if terminal_key is not None else None):
-                side_key = str(terminal_key)
+        if not attachment_record.auto_slot:
+            if explicit_slot_side is not None:
+                attachment_record.side = explicit_slot_side
+            elif explicit_terminal_side is not None:
+                attachment_record.side = explicit_terminal_side
+            elif is_canonical_attachment_slot(slot_key=attachment_record.slot_key):
+                attachment_record.side = parse_schematic_attachment_side(attachment_record.slot_key)
+            elif is_canonical_attachment_slot(slot_key=attachment_record.terminal_key):
+                attachment_record.side = parse_schematic_attachment_side(attachment_record.terminal_key)
             else:
                 pass
 
-            attachment["side"] = side_key
+            if attachment_record.side is None:
+                attachment_record.side = default_side
+            else:
+                pass
 
             if explicit_slot is None:
-                attachment["slot"] = side_key
+                attachment_record.slot_key = attachment_record.side.value
             else:
-                attachment["slot"] = slot_key
+                attachment_record.slot_key = attachment_record.slot_key
 
             if explicit_terminal_key is None:
-                if explicit_slot is not None and slot_key is not None:
-                    attachment["terminal_key"] = slot_key
+                if explicit_slot is not None and attachment_record.slot_key is not None:
+                    attachment_record.terminal_key = attachment_record.slot_key
                 else:
-                    attachment["terminal_key"] = side_key
+                    attachment_record.terminal_key = attachment_record.side.value
             else:
-                attachment["terminal_key"] = terminal_key
+                attachment_record.terminal_key = attachment_record.terminal_key
 
-            self.set_attachment(api_object=api_object, endpoint=endpoint, attachment=attachment)
-            return self.get_attachment(api_object=api_object, endpoint=endpoint)
+            self.set_attachment_record(api_object=api_object,
+                                       endpoint=endpoint,
+                                       attachment_record=attachment_record)
+            return self.get_attachment_record(api_object=api_object, endpoint=endpoint)
         else:
             pass
 
-        if owner_kind is not None and isinstance(order_value, int) and order_value > 0 and auto_slot_enabled:
-            explicit_slot_key = build_explicit_attachment_slot_key(owner_kind=owner_kind,
-                                                                   side=side_key,
-                                                                   order=order_value)
+        if owner_kind is not None and isinstance(attachment_record.order, int) and attachment_record.order > 0:
+            explicit_slot_key: str = build_explicit_attachment_slot_key(owner_kind=owner_kind.value,
+                                                                        side=attachment_record.side.value,
+                                                                        order=attachment_record.order)
 
-            if is_canonical_attachment_slot(slot_key=str(slot_key) if slot_key is not None else None):
-                attachment["slot"] = explicit_slot_key
+            if is_canonical_attachment_slot(slot_key=attachment_record.slot_key):
+                attachment_record.slot_key = explicit_slot_key
             elif explicit_slot is not None:
-                attachment["slot"] = explicit_slot_key
+                attachment_record.slot_key = explicit_slot_key
             else:
                 pass
 
-            if is_canonical_attachment_slot(slot_key=str(terminal_key) if terminal_key is not None else None):
-                attachment["terminal_key"] = explicit_slot_key
+            if is_canonical_attachment_slot(slot_key=attachment_record.terminal_key):
+                attachment_record.terminal_key = explicit_slot_key
             elif explicit_terminal_key is not None:
-                attachment["terminal_key"] = explicit_slot_key
+                attachment_record.terminal_key = explicit_slot_key
             else:
                 pass
         else:
-            if is_canonical_attachment_slot(slot_key=str(slot_key) if slot_key is not None else None):
-                attachment["slot"] = side_key
+            if is_canonical_attachment_slot(slot_key=attachment_record.slot_key):
+                attachment_record.slot_key = attachment_record.side.value
             elif explicit_slot is not None:
-                attachment["slot"] = slot_key
+                attachment_record.slot_key = attachment_record.slot_key
             else:
                 pass
 
-            if is_canonical_attachment_slot(slot_key=str(terminal_key) if terminal_key is not None else None):
-                if explicit_slot is not None and slot_key is not None:
-                    attachment["terminal_key"] = slot_key
+            if is_canonical_attachment_slot(slot_key=attachment_record.terminal_key):
+                if explicit_slot is not None and attachment_record.slot_key is not None:
+                    attachment_record.terminal_key = attachment_record.slot_key
                 else:
-                    attachment["terminal_key"] = side_key
+                    attachment_record.terminal_key = attachment_record.side.value
             elif explicit_terminal_key is not None:
-                attachment["terminal_key"] = terminal_key
+                attachment_record.terminal_key = attachment_record.terminal_key
             else:
                 pass
 
-        self.set_attachment(api_object=api_object, endpoint=endpoint, attachment=attachment)
-        return self.get_attachment(api_object=api_object, endpoint=endpoint)
+        self.set_attachment_record(api_object=api_object,
+                                   endpoint=endpoint,
+                                   attachment_record=attachment_record)
+        return self.get_attachment_record(api_object=api_object, endpoint=endpoint)
 
     def sync_branch_attachments(self, api_object: ALL_DEV_TYPES) -> Dict[str, Dict[str, Any]]:
         """
         Synchronize the standard 'from' and 'to' attachment ownership records for branch-like devices.
+        """
+        attachment_records: Dict[SchematicBranchEndpoint, SchematicAttachmentRecord] = (
+            self.sync_branch_attachment_records(api_object=api_object)
+        )
+        attachments: Dict[str, Dict[str, Any]] = dict()
+        endpoint_value: SchematicBranchEndpoint
+
+        for endpoint_value in attachment_records:
+            attachments[endpoint_value.value] = self.get_attachment(api_object=api_object,
+                                                                    endpoint=endpoint_value.value)
+
+        return attachments
+
+    def sync_branch_attachment_records(self,
+                                       api_object: ALL_DEV_TYPES) -> Dict[SchematicBranchEndpoint,
+                                                                          SchematicAttachmentRecord]:
+        """
+        Synchronize the standard typed attachment records for branch-like devices.
+
+        :param api_object: Branch API object.
+        :return: Typed endpoint attachment records.
         """
         # Import concrete branch families lazily so diagram persistence does not force eager initialization
         # of the full engine graph while tests import isolated schematic modules.
@@ -395,37 +558,67 @@ class SchematicDiagram(BaseDiagram):
                 return dict()
             else:
                 return {
-                    "from": self.sync_attachment(api_object=api_object, endpoint="from", owner_device=obj_from),
-                    "to": self.sync_attachment(api_object=api_object, endpoint="to", owner_device=obj_to),
+                    SchematicBranchEndpoint.FROM: self.sync_attachment_record(api_object=api_object,
+                                                                             endpoint=SchematicBranchEndpoint.FROM,
+                                                                             owner_device=obj_from),
+                    SchematicBranchEndpoint.TO: self.sync_attachment_record(api_object=api_object,
+                                                                           endpoint=SchematicBranchEndpoint.TO,
+                                                                           owner_device=obj_to),
                 }
 
     def sync_injection_dock(self,
                             api_object: ALL_DEV_TYPES,
                             owner_device: ALL_DEV_TYPES | None,
-                            side: str = "bottom") -> Dict[str, Any]:
+                            side: SchematicAttachmentSide | str = SchematicAttachmentSide.BOTTOM) -> Dict[str, Any]:
         """
         Synchronize dock metadata for a bus-connected child while preserving future docking fields.
         """
-        dock = self.get_dock(api_object=api_object)
+        self.sync_injection_dock_record(api_object=api_object,
+                                        owner_device=owner_device,
+                                        side=side)
+        return self.get_dock(api_object=api_object)
+
+    def sync_injection_dock_record(self,
+                                   api_object: ALL_DEV_TYPES,
+                                   owner_device: ALL_DEV_TYPES | None,
+                                   side: SchematicAttachmentSide | str = SchematicAttachmentSide.BOTTOM
+                                   ) -> SchematicDockRecord:
+        """
+        Synchronize one typed dock record for runtime logic.
+
+        :param api_object: Injection API object.
+        :param owner_device: Owning bus or fluid node.
+        :param side: Typed default side.
+        :return: Typed dock record.
+        """
+        dock_record: SchematicDockRecord = self.get_dock_record(api_object=api_object)
+        default_side: SchematicAttachmentSide | None = parse_schematic_attachment_side(side=side)
+
+        if default_side is None:
+            default_side = SchematicAttachmentSide.BOTTOM
+        else:
+            pass
 
         if owner_device is None:
-            dock["owner_device_id"] = ""
-            dock["owner_device_type"] = ""
+            dock_record.owner_device_id = ""
+            dock_record.owner_device_type = ""
         else:
-            dock["owner_device_id"] = owner_device.idtag
-            dock["owner_device_type"] = owner_device.device_type.value
+            dock_record.owner_device_id = owner_device.idtag
+            dock_record.owner_device_type = owner_device.device_type.value
 
-        dock.setdefault("side", side)
-        dock.setdefault("offset", 0.0)
-
-        order = dock.get("order", None)
-
-        if order is None and owner_device is not None:
-            dock["order"] = api_object.get_bus_pos(owner_device)
-        elif order is None:
-            dock["order"] = 0
+        if dock_record.side is None:
+            dock_record.side = default_side
         else:
-            dock["order"] = order
+            pass
 
-        self.set_dock(api_object=api_object, dock=dock)
-        return self.get_dock(api_object=api_object)
+        dock_record.offset = float(dock_record.offset)
+
+        if dock_record.order is None and owner_device is not None:
+            dock_record.order = api_object.get_bus_pos(owner_device)
+        elif dock_record.order is None:
+            dock_record.order = 0
+        else:
+            dock_record.order = int(dock_record.order)
+
+        self.set_dock_record(api_object=api_object, dock_record=dock_record)
+        return self.get_dock_record(api_object=api_object)

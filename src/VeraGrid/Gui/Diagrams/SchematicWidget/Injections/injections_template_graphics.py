@@ -19,8 +19,10 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.route_geometry import (merge
                                                                            move_polyline_route_vertex,
                                                                            normalize_route_points)
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (SchematicAttachmentSlot,
-                                                                          infer_attachment_side_from_points)
-from VeraGridEngine.Devices.Diagrams.schematic_layout import build_default_branch_route
+                                                                          project_point_to_rectangle_perimeter)
+from VeraGridEngine.Devices.Diagrams.schematic_layout import (build_default_branch_route,
+                                                              parse_schematic_route_kind,
+                                                              SchematicRouteKind)
 
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 
@@ -608,64 +610,57 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         """
         self.editor.diagram.set_dock(self.api_object, dock)
 
-    def infer_dock_side_from_current_position(self) -> str:
+    def get_manual_dock_alignment(self) -> float:
         """
-        Infer the dock side from the current child position relative to the parent node.
+        Compute the normalized horizontal alignment of the child center.
 
-        :return: Dock side key.
-        """
-        parent_width: float = float(self.parent.rect().width())
-        parent_height: float = float(self.parent.rect().height())
-        local_center_x: float = float(self.x()) + float(self.w) * 0.5
-        local_center_y: float = float(self.y()) + float(self.h) * 0.5
-
-        if local_center_y < 0.0:
-            return SchematicAttachmentSlot.TOP.value
-        elif local_center_y > parent_height:
-            return SchematicAttachmentSlot.BOTTOM.value
-        elif local_center_x < 0.0:
-            return SchematicAttachmentSlot.LEFT.value
-        elif local_center_x > parent_width:
-            return SchematicAttachmentSlot.RIGHT.value
-        else:
-            return infer_attachment_side_from_points(origin=(parent_width * 0.5, parent_height * 0.5),
-                                                     other=(local_center_x, local_center_y),
-                                                     vertical_bias=0.8)
-
-    def get_manual_dock_alignment(self, side: str) -> float:
-        """
-        Compute the normalized alignment along the chosen dock side.
-
-        :param side: Dock side key.
         :return: Alignment factor.
         """
-        if side in (SchematicAttachmentSlot.TOP.value, SchematicAttachmentSlot.BOTTOM.value):
-            span_value: float = float(self.parent.rect().width())
-            coordinate: float = float(self.x()) + float(self.w) * 0.5
-        else:
-            span_value = float(self.parent.rect().height())
-            coordinate = float(self.y()) + float(self.h) * 0.5
+        parent_width: float = float(self.parent.rect().width())
+        local_center_x: float = float(self.x()) + float(self.w) * 0.5
 
-        if span_value <= 0.0:
+        if parent_width <= 0.0:
             return 0.5
         else:
-            return clamp_alignment(coordinate / span_value)
+            return clamp_alignment(local_center_x / parent_width)
 
-    def get_manual_dock_offset(self, side: str) -> float:
+    def get_manual_dock_offset(self) -> float:
         """
-        Compute the signed outward dock offset from the current child position.
+        Compute the vertical offset of the child origin from the parent bottom-dock baseline.
 
-        :param side: Dock side key.
         :return: Dock offset.
         """
-        if side == SchematicAttachmentSlot.TOP.value:
-            return -float(self.y()) - float(self.h) - 40.0
-        elif side == SchematicAttachmentSlot.LEFT.value:
-            return -float(self.x()) - float(self.w) - 40.0
-        elif side == SchematicAttachmentSlot.RIGHT.value:
-            return float(self.x()) - float(self.parent.rect().width()) - 40.0
+        return float(self.y()) - float(self.parent.get_bottom_dock_baseline())
+
+    def get_child_anchor_local_point_from_parent_scene_anchor(self, parent_scene_anchor: QPointF) -> QPointF:
+        """
+        Project one parent anchor scene point to the child perimeter.
+
+        :param parent_scene_anchor: Parent-side scene anchor.
+        :return: Child-local anchor point.
+        """
+        local_reference_point: QPointF = self.mapFromScene(parent_scene_anchor)
+        projected_x, projected_y = project_point_to_rectangle_perimeter(width=float(self.w),
+                                                                        height=float(self.h),
+                                                                        point_x=float(local_reference_point.x()),
+                                                                        point_y=float(local_reference_point.y()))
+        return QPointF(projected_x, projected_y)
+
+    def get_child_anchor_local_point_from_dock(self, dock: dict[str, Any]) -> QPointF:
+        """
+        Resolve the child-local nexus anchor from dock metadata.
+
+        :param dock: Dock metadata.
+        :return: Child-local anchor point.
+        """
+        child_anchor_x: Any = dock.get("child_anchor_x", None)
+        child_anchor_y: Any = dock.get("child_anchor_y", None)
+
+        if child_anchor_x is None or child_anchor_y is None:
+            parent_anchor_scene_point: QPointF = self.get_parent_nexus_anchor()
+            return self.get_child_anchor_local_point_from_parent_scene_anchor(parent_scene_anchor=parent_anchor_scene_point)
         else:
-            return float(self.y()) - float(self.parent.get_bottom_dock_baseline())
+            return QPointF(float(child_anchor_x), float(child_anchor_y))
 
     def sync_manual_dock_metadata_from_position(self) -> None:
         """
@@ -674,19 +669,21 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         :return: ``None``.
         """
         dock = self.get_dock_metadata()
-        side: str = self.infer_dock_side_from_current_position()
-        alignment: float = self.get_manual_dock_alignment(side=side)
-        offset: float = self.get_manual_dock_offset(side=side)
+        alignment: float = self.get_manual_dock_alignment()
+        offset: float = self.get_manual_dock_offset()
         parent_anchor_local_point: QPointF = self.get_parent_anchor_local_point_from_child_position()
+        child_anchor_local_point: QPointF = self.get_child_anchor_local_point_from_parent_scene_anchor(
+            parent_scene_anchor=self.parent.get_connection_scene_point_from_local_point(parent_anchor_local_point)
+        )
 
-        dock["side"] = side
         dock["alignment"] = alignment
         dock["offset"] = offset
         dock["auto_layout"] = False
-        dock["nexus_parent_alignment"] = alignment
         dock["anchor_x"] = float(parent_anchor_local_point.x())
         dock["anchor_y"] = float(parent_anchor_local_point.y())
         dock["anchor_auto"] = False
+        dock["child_anchor_x"] = float(child_anchor_local_point.x())
+        dock["child_anchor_y"] = float(child_anchor_local_point.y())
         self.set_dock_metadata(dock)
 
         self.editor.update_diagram_element(device=self.api_object,
@@ -697,15 +694,6 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
                                            r=float(self.rotation()),
                                            draw_labels=self.draw_labels,
                                            graphic_object=self)
-
-    def get_parent_nexus_side(self) -> str:
-        """
-        Get the parent-side nexus attachment side.
-
-        :return: Parent-side attachment key.
-        """
-        dock = self.get_dock_metadata()
-        return str(dock.get("side", SchematicAttachmentSlot.BOTTOM.value))
 
     def get_parent_anchor_local_point_from_child_position(self) -> QPointF:
         """
@@ -737,44 +725,14 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
             return self.parent.get_connection_local_point_from_local_point(QPointF(float(anchor_x),
                                                                                    float(anchor_y)))
 
-    def get_child_nexus_side(self) -> str:
-        """
-        Get the child-side nexus attachment side.
-
-        :return: Child-side attachment key.
-        """
-        return get_opposite_attachment_side(self.get_parent_nexus_side())
-
-    def get_parent_nexus_alignment(self) -> float:
-        """
-        Get the normalized parent-side nexus alignment.
-
-        :return: Alignment value.
-        """
-        dock = self.get_dock_metadata()
-        return clamp_alignment(dock.get("nexus_parent_alignment", None))
-
-    def get_child_nexus_alignment(self) -> float:
-        """
-        Get the normalized child-side nexus alignment.
-
-        :return: Alignment value.
-        """
-        dock = self.get_dock_metadata()
-        return clamp_alignment(dock.get("nexus_child_alignment", 0.5))
-
     def get_child_nexus_anchor(self) -> QPointF:
         """
         Get the current child-side nexus anchor.
 
         :return: Child-side scene anchor.
         """
-        child_side = self.get_child_nexus_side()
-        child_alignment = self.get_child_nexus_alignment()
-        local_anchor = get_local_rect_side_anchor(width=float(self.w),
-                                                  height=float(self.h),
-                                                  side=child_side,
-                                                  alignment=child_alignment)
+        dock = self.get_dock_metadata()
+        local_anchor = self.get_child_anchor_local_point_from_dock(dock=dock)
         return self.mapToScene(local_anchor)
 
     def get_parent_nexus_anchor(self) -> QPointF:
@@ -802,16 +760,17 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         :return: ``True`` when the persisted nexus path is manual.
         """
         dock = self.get_dock_metadata()
-        route_kind = str(dock.get("nexus_route_kind", ""))
-        auto_route_kinds: set[str] = {
-            "",
-            "orthogonal",
-            "auto",
-            "auto-orthogonal",
-            "auto-polyline",
+        route_kind: SchematicRouteKind | None = parse_schematic_route_kind(dock.get("nexus_route_kind", None))
+        auto_route_kinds: set[SchematicRouteKind] = {
+            SchematicRouteKind.ORTHOGONAL,
+            SchematicRouteKind.AUTO,
+            SchematicRouteKind.AUTO_ORTHOGONAL,
+            SchematicRouteKind.AUTO_POLYLINE,
         }
 
         if route_kind in auto_route_kinds:
+            return False
+        elif route_kind is None and str(dock.get("nexus_route_kind", "")) == "":
             return False
         else:
             return True
@@ -833,9 +792,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
             persisted_points = normalize_route_points(persisted_points_raw)
             return merge_route_with_endpoints(start=start,
                                               end=end,
-                                              persisted_points=persisted_points,
-                                              start_side=self.get_child_nexus_side(),
-                                              end_side=self.get_parent_nexus_side())
+                                              persisted_points=persisted_points)
         else:
             return build_default_branch_route(start=start,
                                               end=end)
@@ -849,7 +806,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         """
         dock = self.get_dock_metadata()
         dock["nexus_route_points"] = normalize_route_points(points)
-        dock["nexus_route_kind"] = "manual-polyline"
+        dock["nexus_route_kind"] = SchematicRouteKind.MANUAL_POLYLINE.value
         self.set_dock_metadata(dock)
 
     def move_nexus_segment(self,
@@ -907,22 +864,10 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
             dock["anchor_y"] = float(parent_anchor_local_point.y())
             dock["anchor_auto"] = False
         else:
-            side = self.get_child_nexus_side()
             local_point = self.mapFromScene(scene_pos)
-
-            if side in (SchematicAttachmentSlot.TOP.value, SchematicAttachmentSlot.BOTTOM.value):
-                span = float(self.w)
-                coordinate = float(local_point.x())
-            else:
-                span = float(self.h)
-                coordinate = float(local_point.y())
-
-            if span <= 0.0:
-                alignment = 0.5
-            else:
-                alignment = clamp_alignment(coordinate / span)
-
-            dock["nexus_child_alignment"] = alignment
+            child_anchor_local_point = self.get_child_anchor_local_point_from_parent_scene_anchor(parent_scene_anchor=scene_pos)
+            dock["child_anchor_x"] = float(child_anchor_local_point.x())
+            dock["child_anchor_y"] = float(child_anchor_local_point.y())
 
         self.set_dock_metadata(dock)
         self.update_nexus(self.scenePos())

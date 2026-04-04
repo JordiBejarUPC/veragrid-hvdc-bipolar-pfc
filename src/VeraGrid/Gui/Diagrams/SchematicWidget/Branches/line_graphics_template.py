@@ -28,6 +28,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_node_graphics import Flui
 from VeraGrid.Gui.messages import yes_no_question
 
 from VeraGridEngine.Devices.Diagrams.schematic_layout import build_default_branch_route
+from VeraGridEngine.Devices.Diagrams.schematic_layout import SchematicRouteKind
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Substation.busbar import BusBar
 from VeraGridEngine.Devices.Branches.line import Line
@@ -1083,7 +1084,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         self._route_points = normalize_route_points(moved_points)
         self.editor.diagram.set_branch_route_points(api_object=self.api_object,
                                                     points=self._route_points,
-                                                    kind="manual-polyline",
+                                                    kind=SchematicRouteKind.MANUAL_POLYLINE,
                                                     locked=False)
         self.redraw()
 
@@ -1108,7 +1109,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         self._route_points = normalize_route_points(moved_points)
         self.editor.diagram.set_branch_route_points(api_object=self.api_object,
                                                     points=self._route_points,
-                                                    kind="manual-polyline",
+                                                    kind=SchematicRouteKind.MANUAL_POLYLINE,
                                                     locked=False)
         self.redraw()
 
@@ -1165,7 +1166,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
                                                attachment: dict[str, object],
                                                fallback_point: QPointF) -> QPointF:
         """
-        Resolve one endpoint anchor from coordinate metadata before consulting legacy slot data.
+        Resolve one endpoint anchor from coordinate metadata.
 
         :param owner_graphic: Endpoint owner graphic.
         :param attachment: Persisted attachment metadata.
@@ -1176,7 +1177,12 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         anchor_y = attachment.get("anchor_y", None)
 
         if anchor_x is None or anchor_y is None:
-            return fallback_point
+            if isinstance(owner_graphic, BusGraphicItem):
+                return owner_graphic.get_connection_scene_point_from_local_point(owner_graphic.get_default_connection_local_point())
+            elif isinstance(owner_graphic, FluidNodeGraphicItem):
+                return owner_graphic.get_connection_scene_point_from_local_point(owner_graphic.get_default_connection_local_point())
+            else:
+                return fallback_point
         elif isinstance(owner_graphic, BusGraphicItem):
             return owner_graphic.get_connection_scene_point_from_local_point(QPointF(float(anchor_x), float(anchor_y)))
         elif isinstance(owner_graphic, FluidNodeGraphicItem):
@@ -1330,41 +1336,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         coordinate_anchor: QPointF = self.get_owner_scene_anchor_from_attachment(owner_graphic=owner_graphic,
                                                                                  attachment=attachment,
                                                                                  fallback_point=fallback_point)
-        if coordinate_anchor != fallback_point:
-            return coordinate_anchor
-        else:
-            pass
-
-        alignment = attachment.get("alignment", None)
-        auto_slot = bool(attachment.get("auto_slot", True))
-
-        if "terminal_key" in attachment:
-            terminal_key: str = str(attachment["terminal_key"])
-        elif isinstance(owner_graphic, (BusGraphicItem, FluidNodeGraphicItem)):
-            terminal_key = owner_graphic.get_default_terminal_key(endpoint)
-        else:
-            terminal_key = "default"
-
-        if isinstance(owner_graphic, (BusGraphicItem, FluidNodeGraphicItem)):
-            if requires_explicit_attachment_anchor(terminal_key):
-                explicit_slot = parse_explicit_slot_key(terminal_key)
-
-                if explicit_slot is None:
-                    return fallback_point
-                elif owner_graphic.has_duplicate_explicit_slot_order(side_key=explicit_slot[1], order=explicit_slot[2]):
-                    return fallback_point
-                else:
-                    return owner_graphic.get_terminal_anchor_by_key(terminal_key,
-                                                                   graphic_object=self,
-                                                                   alignment=alignment)
-            elif not auto_slot or alignment is not None:
-                return owner_graphic.get_terminal_anchor_by_key(terminal_key,
-                                                               graphic_object=self,
-                                                               alignment=alignment)
-            else:
-                return fallback_point
-        else:
-            return fallback_point
+        return coordinate_anchor
 
     def sync_route_points_to_diagram(self) -> None:
         """
