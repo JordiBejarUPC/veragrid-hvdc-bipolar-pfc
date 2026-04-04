@@ -5126,6 +5126,9 @@ class SchematicWidget(BaseDiagramWidget):
                 if branch_graphic is None:
                     print(f"Warning: No graphic found for element {element.name}")
                     continue
+                if not isinstance(branch_graphic, LineGraphicTemplateItem):
+                    print(f"Warning: Graphic for element {element.name} is not a branch graphic")
+                    continue
 
                 # At this point the API branch has been reassigned already
                 terminal = new_bus_graphic.get_terminal()
@@ -5134,12 +5137,12 @@ class SchematicWidget(BaseDiagramWidget):
                         graphic_obj=branch_graphic,
                         another_terminal=bus_graphics.terminal
                     )
-
-                if hasattr(branch_graphic, 'api_object') and branch_graphic.api_object is not None:
-                    branch_graphic.api_object.reassign_bus(
-                        old_bus=bus_graphics.api_object,
-                        new_bus=new_bus_graphic.api_object
-                    )
+                    branch_graphic.api_object.reassign_bus(old_bus=old_bus,
+                                                           new_bus=new_bus_graphic.api_object)
+                    branch_graphic.update_ports()
+                    branch_graphic.redraw()
+                else:
+                    pass
 
                 if terminal is not None:
                     terminal.update()

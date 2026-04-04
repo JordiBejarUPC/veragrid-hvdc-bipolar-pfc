@@ -95,20 +95,30 @@ class BaseTerminal:
         else:
             print(f'No such hosting connection {self.name} -> {graphic_obj}')
 
-    def reassign_terminal(self, graphic_obj: LineGraphicTemplateItem,
-                          another_terminal: "BarTerminalItem"):
+    def reassign_terminal(self,
+                          graphic_obj: LineGraphicTemplateItem,
+                          another_terminal: "BaseTerminal") -> None:
         """
-        Re-assign hosting connection from another terminal to this one
-        :param graphic_obj:
-        :param another_terminal:
-        :return:
-        """
-        self.add_hosting_connection(
-            graphic_obj=graphic_obj,
-            callback=another_terminal.get_callback(graphic_obj=graphic_obj)
-        )
+        Reassign one branch graphic from another terminal to this one.
 
-        another_terminal.delete_hosting_connection(graphic_obj)
+        The branch graphic must update its endpoint port reference as well as
+        the callback registration. Otherwise deleting the old host graphic
+        leaves the branch visually attached to a dead terminal object.
+
+        :param graphic_obj: Branch graphic being moved.
+        :param another_terminal: Previously attached terminal.
+        :return: ``None``.
+        """
+        if graphic_obj.get_terminal_from() is another_terminal:
+            graphic_obj.set_from_port(self)
+        elif graphic_obj.get_terminal_to() is another_terminal:
+            graphic_obj.set_to_port(self)
+        else:
+            self.add_hosting_connection(
+                graphic_obj=graphic_obj,
+                callback=another_terminal.get_callback(graphic_obj=graphic_obj)
+            )
+            another_terminal.delete_hosting_connection(graphic_obj)
 
     def get_hosted_graphics(self) -> List[LineGraphicTemplateItem]:
         """

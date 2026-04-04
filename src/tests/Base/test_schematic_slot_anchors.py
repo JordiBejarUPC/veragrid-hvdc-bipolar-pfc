@@ -14,6 +14,7 @@ from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Fluid.fluid_node import FluidNode
 from VeraGridEngine.Devices.Substation.bus import Bus
+from VeraGridEngine.enumerations import BusGraphicType
 
 
 class _EditorStub:
@@ -563,6 +564,41 @@ def test_bus_graphic_slot_anchors_follow_named_edges() -> None:
     assert right_anchor.y() == 45.0
     assert top_anchor.x() == 90.0
     assert top_anchor.y() == 45.0
+
+
+def test_connectivity_bus_anchors_collapse_to_center() -> None:
+    """
+    Connectivity-bus anchors should stay fixed at the dot center.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    bus: Bus = Bus(name="B1", graphic_type=BusGraphicType.Connectivity)
+    other_bus: Bus = Bus(name="B2")
+    graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=40.0, h=40.0, x=0.0, y=0.0)
+    other_graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=other_bus, w=180.0, h=40.0, x=220.0, y=0.0)
+    line: Line = Line(name="L1", bus_from=bus, bus_to=other_bus)
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic.get_terminal(),
+                                             to_port=other_graphic.get_terminal(),
+                                             editor=editor,
+                                             api_object=line)
+
+    left_anchor = graphic.get_terminal_anchor_by_key("left")
+    right_anchor = graphic.get_terminal_anchor_by_key("right")
+    top_anchor = graphic.get_terminal_anchor_by_key("top")
+
+    assert left_anchor.x() == 20.0
+    assert left_anchor.y() == 20.0
+    assert right_anchor.x() == 20.0
+    assert right_anchor.y() == 20.0
+    assert top_anchor.x() == 20.0
+    assert top_anchor.y() == 20.0
+
+    branch_graphic.move_endpoint_alignment(endpoint="from", scene_pos=QPointF(-100.0, -100.0))
+
+    moved_anchor = branch_graphic.get_endpoint_anchor(endpoint="from")
+
+    assert moved_anchor.x() == 20.0
+    assert moved_anchor.y() == 20.0
 
 
 def test_manual_branch_route_is_not_rewritten_during_graphic_redraw() -> None:
@@ -1653,3 +1689,29 @@ def test_bus_arrange_children_skips_intermediate_callback_churn_while_loading(mo
 
     assert nexus_calls == [1]
     assert callback_calls == [1]
+
+
+def test_terminal_reassignment_updates_branch_endpoint_port_reference() -> None:
+    """
+    Reassigning a branch terminal must update the branch endpoint port object.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    bus_new: Bus = Bus(name="B3")
+    line: Line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=220.0, y=0.0)
+    graphic_new: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_new, w=180.0, h=40.0, x=440.0, y=0.0)
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                                             to_port=graphic_to.get_terminal(),
+                                             editor=editor,
+                                             api_object=line)
+
+    graphic_new.get_terminal().reassign_terminal(graphic_obj=branch_graphic,
+                                                 another_terminal=graphic_from.get_terminal())
+
+    assert branch_graphic.get_terminal_from() is graphic_new.get_terminal()
+    assert branch_graphic in graphic_new.get_terminal().get_hosted_graphics()
+    assert branch_graphic not in graphic_from.get_terminal().get_hosted_graphics()

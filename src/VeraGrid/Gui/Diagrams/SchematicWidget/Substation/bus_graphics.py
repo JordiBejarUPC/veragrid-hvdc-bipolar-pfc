@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 import numpy as np
-from typing import Union, TYPE_CHECKING, List, Dict, Tuple
+from typing import Union, TYPE_CHECKING, List, Dict, Tuple, Any
 import webbrowser
 from PySide6 import QtWidgets
 from PySide6.QtCore import Qt, QRectF, QRect, QPointF
@@ -494,10 +494,9 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         :return: Projected local attachment point.
         """
         if self.connectivity_graph:
-            projected_x, projected_y = project_point_to_rectangle_perimeter(width=float(self.rect().width()),
-                                                                            height=float(self.rect().height()),
-                                                                            point_x=float(local_point.x()),
-                                                                            point_y=float(local_point.y()))
+            center_point: QPointF = self.rect().center()
+            projected_x = float(center_point.x())
+            projected_y = float(center_point.y())
         else:
             terminal_y: float = self._terminal.pos().y() + self._terminal.rect().y()
             terminal_h: float = self._terminal.rect().height()
@@ -1126,10 +1125,9 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             pass
 
         if self.connectivity_graph:
-            local_x, local_y = get_round_slot_anchor(width=self.rect().width(),
-                                                     height=self.rect().height(),
-                                                     slot_key=terminal_key,
-                                                     alignment=alignment)
+            center_point: QPointF = self.rect().center()
+            local_x = float(center_point.x())
+            local_y = float(center_point.y())
         else:
             local_x, local_y = get_bar_slot_anchor(width=self.w,
                                                    terminal_y=terminal_y,

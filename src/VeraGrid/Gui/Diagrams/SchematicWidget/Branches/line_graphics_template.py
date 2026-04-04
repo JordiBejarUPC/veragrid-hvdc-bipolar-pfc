@@ -1580,7 +1580,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         i = self._editor.circuit.get_branches().index(self.api_object)
         self._editor.plot_branch(i, self.api_object)
 
-    def set_from_port(self, from_port: BarTerminalItem):
+    def set_from_port(self, from_port: BarTerminalItem | RoundTerminalItem) -> None:
         """
         Set the From terminal in a connection
         @param from_port: TerminalItem
@@ -1596,7 +1596,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         self._from_port.update()
         self._from_port.get_parent().setZValue(0)
 
-    def set_to_port(self, to_port: BarTerminalItem):
+    def set_to_port(self, to_port: BarTerminalItem | RoundTerminalItem) -> None:
         """
         Set the To terminal in a connection
         @param to_port: TerminalItem
