@@ -268,17 +268,23 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self._terminal.setRect(0, 20, self.w, 10)
 
         # rearrange children
-        self.arrange_children()
+        if self.editor.is_loading_diagram():
+            pass
+        else:
+            self.arrange_children()
 
         # update editor diagram position
-        self.editor.update_diagram_element(device=self.api_object,
-                                            x=self.pos().x(),
-                                            y=self.pos().y(),
-                                            w=self.w,
-                                            h=int(self.min_h),
-                                            r=self.rotation(),
-                                            draw_labels=self.draw_labels,
-                                            graphic_object=self)
+        if self.editor.is_loading_diagram():
+            pass
+        else:
+            self.editor.update_diagram_element(device=self.api_object,
+                                               x=self.pos().x(),
+                                               y=self.pos().y(),
+                                               w=self.w,
+                                               h=int(self.min_h),
+                                               r=self.rotation(),
+                                               draw_labels=self.draw_labels,
+                                               graphic_object=self)
 
         return self.w, self.min_h
 
@@ -317,7 +323,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
             dock_groups[side].append((order, child_index, offset, alignment, auto_layout, elm))
 
-        side_key: str
+        side_key: SchematicAttachmentSlot
 
         for side_key, dock_entries in dock_groups.items():
             sorted_entries = sorted(dock_entries, key=lambda entry: (entry[0] == 0, entry[0], entry[1]))
@@ -327,13 +333,13 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             for slot_index, (_, _, offset, alignment, auto_layout, elm) in enumerate(sorted_entries, start=1):
                 if auto_layout:
                     span_fraction: float = float(slot_index) / float(slot_count + 1)
-                    if side_key == SchematicAttachmentSlot.TOP.value:
+                    if side_key == SchematicAttachmentSlot.TOP:
                         x_pos = self.w * span_fraction - elm.w * 0.5
                         y_pos = -elm.h - 40.0 - offset
-                    elif side_key == SchematicAttachmentSlot.LEFT.value:
+                    elif side_key == SchematicAttachmentSlot.LEFT:
                         x_pos = -elm.w - 40.0 - offset
                         y_pos = self.rect().height() * span_fraction - elm.h * 0.5
-                    elif side_key == SchematicAttachmentSlot.RIGHT.value:
+                    elif side_key == SchematicAttachmentSlot.RIGHT:
                         x_pos = self.w + 40.0 + offset
                         y_pos = self.rect().height() * span_fraction - elm.h * 0.5
                     else:
@@ -345,13 +351,13 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                     if location is None:
                         span_fraction = clamp_attachment_alignment(alignment)
 
-                        if side_key == SchematicAttachmentSlot.TOP.value:
+                        if side_key == SchematicAttachmentSlot.TOP:
                             x_pos = self.w * span_fraction - elm.w * 0.5
                             y_pos = -elm.h - 40.0 - offset
-                        elif side_key == SchematicAttachmentSlot.LEFT.value:
+                        elif side_key == SchematicAttachmentSlot.LEFT:
                             x_pos = -elm.w - 40.0 - offset
                             y_pos = self.rect().height() * span_fraction - elm.h * 0.5
-                        elif side_key == SchematicAttachmentSlot.RIGHT.value:
+                        elif side_key == SchematicAttachmentSlot.RIGHT:
                             x_pos = self.w + 40.0 + offset
                             y_pos = self.rect().height() * span_fraction - elm.h * 0.5
                         else:
@@ -363,10 +369,17 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                         y_pos = float(local_position.y())
 
                 elm.setPos(x_pos, y_pos)
-                elm.update_nexus(elm.pos())
+
+                if self.editor.is_loading_diagram():
+                    pass
+                else:
+                    elm.update_nexus(elm.pos())
 
         # Arrange line positions
-        self._terminal.process_callbacks(self.pos() + self._terminal.pos())
+        if self.editor.is_loading_diagram():
+            pass
+        else:
+            self._terminal.process_callbacks(self.pos() + self._terminal.pos())
 
     def get_bottom_dock_baseline(self) -> float:
         """
@@ -399,7 +412,10 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             else:
                 raise Exception("Unknown device type:" + str(tpe))
 
-        self.arrange_children()
+        if self.editor.is_loading_diagram():
+            pass
+        else:
+            self.arrange_children()
 
     def contextMenuEvent(self, event):
         """
@@ -864,7 +880,10 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         _grph = FluidTurbineGraphicItem(parent=self, api_obj=api_obj, editor=self.editor)
         self._child_graphics.append(_grph)
-        self.arrange_children()
+        if self.editor.is_loading_diagram():
+            pass
+        else:
+            self.arrange_children()
         return _grph
 
     def add_pump(self, api_obj: Union[None, FluidPump] = None):
@@ -880,7 +899,10 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         _grph = FluidPumpGraphicItem(parent=self, api_obj=api_obj, editor=self.editor)
         self._child_graphics.append(_grph)
-        self.arrange_children()
+        if self.editor.is_loading_diagram():
+            pass
+        else:
+            self.arrange_children()
         return _grph
 
     def add_p2x(self, api_obj: Union[None, FluidP2x] = None):
@@ -896,7 +918,10 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         _grph = FluidP2xGraphicItem(parent=self, api_obj=api_obj, editor=self.editor)
         self._child_graphics.append(_grph)
-        self.arrange_children()
+        if self.editor.is_loading_diagram():
+            pass
+        else:
+            self.arrange_children()
         return _grph
 
     def delete_all_connections(self, ask: bool, delete_from_db: bool) -> None:

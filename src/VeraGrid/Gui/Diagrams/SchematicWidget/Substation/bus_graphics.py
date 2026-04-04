@@ -442,17 +442,23 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self.setRotation(self.r)
 
         # rearrange children
-        self.arrange_children()
+        if self.editor.is_loading_diagram():
+            pass
+        else:
+            self.arrange_children()
 
         # update editor diagram position
-        self._editor.update_diagram_element(device=self.api_object,
-                                            x=self.pos().x(),
-                                            y=self.pos().y(),
-                                            w=self.w,
-                                            h=int(self.min_h),
-                                            r=self.rotation(),
-                                            draw_labels=self.draw_labels,
-                                            graphic_object=self)
+        if self.editor.is_loading_diagram():
+            pass
+        else:
+            self._editor.update_diagram_element(device=self.api_object,
+                                                x=self.pos().x(),
+                                                y=self.pos().y(),
+                                                w=self.w,
+                                                h=int(self.min_h),
+                                                r=self.rotation(),
+                                                draw_labels=self.draw_labels,
+                                                graphic_object=self)
 
         return self.w, self.min_h
 
@@ -621,7 +627,10 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                                   dock_entries=dock_groups[SchematicAttachmentSlot.RIGHT])
 
         # Arrange line positions
-        self._terminal.process_callbacks(self.pos() + self._terminal.pos())
+        if self.editor.is_loading_diagram():
+            pass
+        else:
+            self._terminal.process_callbacks(self.pos() + self._terminal.pos())
 
     def _arrange_child_group(self,
                              side: SchematicAttachmentSlot,
@@ -678,7 +687,11 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                     y_pos = float(local_position.y())
 
             elm.setPos(x_pos, y_pos)
-            elm.update_nexus(elm.pos())
+
+            if self.editor.is_loading_diagram():
+                pass
+            else:
+                elm.update_nexus(elm.pos())
 
     def get_bottom_dock_baseline(self) -> float:
         """
@@ -731,7 +744,10 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             else:
                 raise Exception("Unknown device type:" + str(tpe))
 
-        self.arrange_children()
+        if self.editor.is_loading_diagram():
+            pass
+        else:
+            self.arrange_children()
 
     def contextMenuEvent(self, event: QtWidgets.QGraphicsSceneContextMenuEvent):
         """
@@ -1412,10 +1428,16 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             pass
         else:
             graphic.apply_rotation_state(angle_degrees=float(location.r))
-            graphic.update_nexus(graphic.scenePos())
+            if self.editor.is_loading_diagram():
+                pass
+            else:
+                graphic.update_nexus(graphic.scenePos())
 
         self._child_graphics.append(graphic)
-        self.arrange_children()
+        if self.editor.is_loading_diagram():
+            pass
+        else:
+            self.arrange_children()
         self.editor.graphics_manager.add_device(elm=elm, graphic=graphic)
 
     def add_load(self, api_obj: Union[Load, None] = None):

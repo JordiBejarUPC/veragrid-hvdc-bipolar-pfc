@@ -833,7 +833,12 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         self.load_route_points_from_diagram()
 
         if from_port and to_port:
-            self.redraw()
+            if self.editor.is_loading_diagram():
+                pass
+            else:
+                self.redraw()
+        else:
+            pass
 
         self.set_colour(self.color, self.width, self.style)
 

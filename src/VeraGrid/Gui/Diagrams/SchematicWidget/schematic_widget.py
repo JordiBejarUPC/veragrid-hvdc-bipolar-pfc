@@ -437,6 +437,7 @@ class SchematicWidget(BaseDiagramWidget):
         self._branch_refresh_scheduled: bool = False
         self._is_loading_diagram: bool = False
         self._is_batch_refreshing_branches: bool = False
+        self._saved_viewport_update_mode: QGraphicsView.ViewportUpdateMode | None = None
 
         if diagram is not None:
             self.draw()
@@ -670,6 +671,7 @@ class SchematicWidget(BaseDiagramWidget):
         :param logger: Logger
         """
         self._is_loading_diagram = True
+        self.suspend_viewport_updates_for_loading()
         inj_dev_by_bus = self.circuit.get_injection_devices_grouped_by_bus()
         inj_dev_by_fluid_node = self.circuit.get_injection_devices_grouped_by_fluid_node()
         category_items = list(diagram.data.items())
@@ -887,7 +889,10 @@ class SchematicWidget(BaseDiagramWidget):
                     graphic_object = self.graphics_manager.query(elm=location.api_object)
 
                     if graphic_object is not None:
-                        graphic_object.redraw()
+                        if self.is_loading_diagram():
+                            pass
+                        else:
+                            graphic_object.redraw()
                         self.graphics_manager.add_device(elm=location.api_object, graphic=graphic_object)
 
             elif category == DeviceType.FluidPathDevice.value:
@@ -911,7 +916,10 @@ class SchematicWidget(BaseDiagramWidget):
                                                                   draw_labels=location.draw_labels)
                             self.add_to_scene(graphic_object=graphic_object)
 
-                            graphic_object.redraw()
+                            if self.is_loading_diagram():
+                                pass
+                            else:
+                                graphic_object.redraw()
                             self.graphics_manager.add_device(elm=location.api_object, graphic=graphic_object)
 
             else:
@@ -925,6 +933,34 @@ class SchematicWidget(BaseDiagramWidget):
                 graphic.arrange_children()
 
         self.schedule_branch_callbacks_after_draw()
+
+    def suspend_viewport_updates_for_loading(self) -> None:
+        """
+        Freeze viewport repaint work while the diagram scene is rebuilt.
+
+        Large diagram loads create many intermediate geometry states. Suppressing
+        incremental viewport updates during that batch avoids repainting those
+        transient states and leaves one final redraw for the post-load refresh.
+
+        :return: ``None``.
+        """
+        if self._saved_viewport_update_mode is None:
+            self._saved_viewport_update_mode = self.editor_graphics_view.viewportUpdateMode()
+            self.editor_graphics_view.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.NoViewportUpdate)
+        else:
+            pass
+
+    def restore_viewport_updates_after_loading(self) -> None:
+        """
+        Restore the viewport update mode captured at the start of loading.
+
+        :return: ``None``.
+        """
+        if self._saved_viewport_update_mode is None:
+            pass
+        else:
+            self.editor_graphics_view.setViewportUpdateMode(self._saved_viewport_update_mode)
+            self._saved_viewport_update_mode = None
 
     def schedule_branch_callbacks_after_draw(self) -> None:
         """
@@ -978,6 +1014,7 @@ class SchematicWidget(BaseDiagramWidget):
         finally:
             self._is_batch_refreshing_branches = False
             self._is_loading_diagram = False
+            self.restore_viewport_updates_after_loading()
 
     def is_loading_diagram(self) -> bool:
         """
@@ -2113,7 +2150,10 @@ class SchematicWidget(BaseDiagramWidget):
 
                 self.add_to_scene(graphic_object=graphic_object)
 
-                graphic_object.redraw()
+                if self.is_loading_diagram():
+                    pass
+                else:
+                    graphic_object.redraw()
                 self.update_diagram_element(device=branch, x=0, y=0, w=0, h=0, r=0,
                                             draw_labels=graphic_object.draw_labels,
                                             graphic_object=graphic_object)

@@ -1575,3 +1575,81 @@ def test_branch_endpoint_callback_skips_immediate_redraw_during_batched_refresh(
     branch_graphic.setBeginPos(QPointF(110.0, 45.0))
 
     assert redraw_calls == [1]
+
+
+def test_line_graphic_constructor_skips_redraw_while_loading(monkeypatch) -> None:
+    """
+    Branch construction during diagram loading should defer the first redraw.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    editor._is_loading_diagram = True
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=220.0, y=0.0)
+    redraw_calls: list[int] = list()
+
+    def _fake_redraw(self: LineGraphicTemplateItem) -> None:
+        """
+        Record constructor redraw attempts.
+
+        :param self: Branch graphic instance.
+        :return: ``None``.
+        """
+        redraw_calls.append(1)
+
+    monkeypatch.setattr(LineGraphicTemplateItem, "redraw", _fake_redraw)
+
+    LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                            to_port=graphic_to.get_terminal(),
+                            editor=editor)
+
+    assert redraw_calls == list()
+
+
+def test_bus_arrange_children_skips_intermediate_callback_churn_while_loading(monkeypatch) -> None:
+    """
+    Bus child arrangement should avoid nexus and terminal callback refreshes during loading.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    editor._is_loading_diagram = True
+    bus: Bus = Bus(name="B")
+    load: Load = Load(name="L")
+    graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    load_graphic: LoadGraphicItem = graphic.add_load(api_obj=load)
+    nexus_calls: list[int] = list()
+    callback_calls: list[int] = list()
+
+    def _fake_update_nexus(position: QPointF) -> None:
+        """
+        Record nexus refresh attempts.
+
+        :param position: Child position.
+        :return: ``None``.
+        """
+        nexus_calls.append(1)
+
+    def _fake_process_callbacks(position: QPointF) -> None:
+        """
+        Record terminal callback attempts.
+
+        :param position: Terminal scene position.
+        :return: ``None``.
+        """
+        callback_calls.append(1)
+
+    monkeypatch.setattr(load_graphic, "update_nexus", _fake_update_nexus)
+    monkeypatch.setattr(graphic.get_terminal(), "process_callbacks", _fake_process_callbacks)
+
+    graphic.arrange_children()
+
+    assert nexus_calls == list()
+    assert callback_calls == list()
+
+    editor._is_loading_diagram = False
+    graphic.arrange_children()
+
+    assert nexus_calls == [1]
+    assert callback_calls == [1]
