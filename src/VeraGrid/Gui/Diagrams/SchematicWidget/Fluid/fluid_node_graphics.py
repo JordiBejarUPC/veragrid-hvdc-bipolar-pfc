@@ -10,6 +10,7 @@ from PySide6.QtCore import Qt, QPoint, QPointF
 from PySide6.QtGui import QPen, QCursor, QBrush, QColor
 from PySide6.QtWidgets import QMenu, QGraphicsSceneMouseEvent
 
+from VeraGridEngine.Devices.Diagrams.schematic_layout import SchematicBranchEndpoint
 from VeraGridEngine.Devices.Fluid import FluidNode, FluidTurbine, FluidPump, FluidP2x
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import DeviceType, FaultType
@@ -24,6 +25,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (Schema
                                                                           get_distributed_anchor,
                                                                           project_point_to_bar_terminal,
                                                                           infer_attachment_side_from_points,
+                                                                          parse_attachment_slot,
                                                                           parse_explicit_slot_key)
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, HandleItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_turbine_graphics import FluidTurbineGraphicItem
@@ -498,17 +500,6 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         return slots
 
-    @staticmethod
-    def get_default_terminal_key(endpoint: str | None = None) -> str:
-        """
-        Return the compatibility slot key for a branch endpoint.
-        """
-        if endpoint == "from":
-            return SchematicAttachmentSlot.RIGHT.value
-        if endpoint == "to":
-            return SchematicAttachmentSlot.LEFT.value
-        return SchematicAttachmentSlot.DEFAULT.value
-
     def get_terminal_anchor_by_key(self,
                                    terminal_key: str = "default",
                                    graphic_object: GenericDiagramWidget | None = None,
@@ -596,7 +587,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         else:
             return float(alignment)
 
-    def get_explicit_slot_orders(self, side_key: str) -> List[int]:
+    def get_explicit_slot_orders(self, side_key: SchematicAttachmentSlot) -> List[int]:
         """
         Collect persisted explicit slot orders for this graphic on one side.
         """
@@ -609,7 +600,8 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         return orders
 
-    def get_explicit_slot_entries(self, side_key: str) -> List[Tuple[int, str, GenericDiagramWidget]]:
+    def get_explicit_slot_entries(self,
+                                  side_key: SchematicAttachmentSlot) -> List[Tuple[int, str, GenericDiagramWidget]]:
         """
         Collect persisted explicit slot entries for this graphic on one side.
         """
@@ -618,12 +610,13 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         graphic_object: GenericDiagramWidget
 
         for graphic_object in branch_graphics:
-            endpoint: str = self.get_branch_endpoint_for_graphic(graphic_object)
+            endpoint: SchematicBranchEndpoint | None = self.get_branch_endpoint_for_graphic(graphic_object)
 
-            if endpoint == "":
+            if endpoint is None:
                 pass
             else:
-                attachment = self.editor.get_persisted_attachment(api_object=graphic_object.api_object, endpoint=endpoint)
+                attachment = self.editor.get_persisted_attachment(api_object=graphic_object.api_object,
+                                                                  endpoint=endpoint.value)
                 terminal_key = str(attachment.get("terminal_key", ""))
                 explicit_slot = parse_explicit_slot_key(slot_key=terminal_key)
 
@@ -636,7 +629,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         return entries
 
-    def has_duplicate_explicit_slot_order(self, side_key: str, order: int) -> bool:
+    def has_duplicate_explicit_slot_order(self, side_key: SchematicAttachmentSlot, order: int) -> bool:
         """
         Check whether an explicit slot order is duplicated on one side.
         """
@@ -651,7 +644,8 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         return count > 1
 
-    def get_branch_endpoint_for_graphic(self, graphic_object: GenericDiagramWidget) -> str:
+    def get_branch_endpoint_for_graphic(self,
+                                        graphic_object: GenericDiagramWidget) -> SchematicBranchEndpoint | None:
         """
         Determine which endpoint of a branch graphic is attached to this node.
         """
@@ -659,11 +653,11 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         to_parent = graphic_object.get_terminal_to_parent()
 
         if from_parent is self:
-            return "from"
+            return SchematicBranchEndpoint.FROM
         elif to_parent is self:
-            return "to"
+            return SchematicBranchEndpoint.TO
         else:
-            return ""
+            return None
 
     def get_branch_attachment_center(self) -> QPointF:
         """
@@ -725,11 +719,13 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         Assign coordinate-based branch anchors to attached fluid paths from current geometry.
         """
-        grouped_entries: Dict[str, List[Tuple[float, str, GenericDiagramWidget, str, Dict[str, Any]]]] = {
-            SchematicAttachmentSlot.LEFT.value: list(),
-            SchematicAttachmentSlot.RIGHT.value: list(),
-            SchematicAttachmentSlot.TOP.value: list(),
-            SchematicAttachmentSlot.BOTTOM.value: list(),
+        grouped_entries: Dict[SchematicAttachmentSlot, List[
+            Tuple[float, str, GenericDiagramWidget, SchematicBranchEndpoint, Dict[str, Any]]
+        ]] = {
+            SchematicAttachmentSlot.LEFT: list(),
+            SchematicAttachmentSlot.RIGHT: list(),
+            SchematicAttachmentSlot.TOP: list(),
+            SchematicAttachmentSlot.BOTTOM: list(),
         }
         local_center_x: float = self.w * 0.5
         terminal_y: float = self._terminal.pos().y() + self._terminal.rect().y()
@@ -738,14 +734,15 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         branch_graphic: GenericDiagramWidget
 
         for branch_graphic in self.get_associated_branch_graphics():
-            endpoint: str = self.get_branch_endpoint_for_graphic(branch_graphic)
+            endpoint: SchematicBranchEndpoint | None = self.get_branch_endpoint_for_graphic(branch_graphic)
 
-            if endpoint == "":
+            if endpoint is None:
                 continue
             else:
                 pass
 
-            attachment = self.editor.get_persisted_attachment(api_object=branch_graphic.api_object, endpoint=endpoint)
+            attachment = self.editor.get_persisted_attachment(api_object=branch_graphic.api_object,
+                                                              endpoint=endpoint.value)
             has_saved_endpoint_state = any(key in attachment for key in ("side",
                                                                          "slot",
                                                                          "terminal_key",
@@ -771,21 +768,23 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             else:
                 pass
 
-            if endpoint == "from":
+            if endpoint == SchematicBranchEndpoint.FROM:
                 other_point = branch_graphic.pos2
             else:
                 other_point = branch_graphic.pos1
 
             local_other_point: QPointF = self.mapFromScene(other_point)
-            side_key = infer_attachment_side_from_points(origin=(local_center_x, local_center_y),
-                                                         other=(local_other_point.x(), local_other_point.y()),
-                                                         vertical_bias=1.0)
+            side_key: SchematicAttachmentSlot = infer_attachment_side_from_points(
+                origin=(local_center_x, local_center_y),
+                other=(local_other_point.x(), local_other_point.y()),
+                vertical_bias=1.0,
+            )
             local_anchor: QPointF = self.get_connection_local_point_from_scene_point(other_point)
             attachment["anchor_x"] = float(local_anchor.x())
             attachment["anchor_y"] = float(local_anchor.y())
             attachment["anchor_auto"] = True
 
-            if side_key in (SchematicAttachmentSlot.TOP.value, SchematicAttachmentSlot.BOTTOM.value):
+            if side_key in (SchematicAttachmentSlot.TOP, SchematicAttachmentSlot.BOTTOM):
                 sort_value = float(local_other_point.x())
             else:
                 sort_value = float(local_other_point.y())
@@ -796,27 +795,21 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                                               endpoint,
                                               attachment))
 
-        side_key: str
+        side_key: SchematicAttachmentSlot
 
         for side_key, entries in grouped_entries.items():
             entries.sort(key=lambda entry: (entry[0], entry[1]))
 
             for order_index, (_, _, branch_graphic, endpoint, attachment) in enumerate(entries, start=1):
                 slot_key = build_explicit_slot_key(owner_kind="fluid", side=side_key, order=order_index)
-                attachment["side"] = side_key
+                attachment["side"] = side_key.value
                 attachment["order"] = order_index
                 attachment["slot"] = slot_key
                 attachment["terminal_key"] = slot_key
                 attachment["auto_slot"] = True
                 self.editor.diagram.set_attachment(api_object=branch_graphic.api_object,
-                                                   endpoint=endpoint,
+                                                   endpoint=endpoint.value,
                                                    attachment=attachment)
-
-    def get_terminal_by_key(self, terminal_key: str = "default") -> BarTerminalItem:
-        """
-        Compatibility hook for future named attachment slots.
-        """
-        return self._terminal
 
     def add_object(self, api_obj: Union[None, EditableDevice] = None):
         """

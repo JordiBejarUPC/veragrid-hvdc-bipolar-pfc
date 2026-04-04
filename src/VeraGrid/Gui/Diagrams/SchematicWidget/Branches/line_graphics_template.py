@@ -20,6 +20,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.route_geometry import (merge
                                                                            sample_route_segment)
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (SchematicAttachmentSlot,
                                                                           infer_attachment_slot_from_route,
+                                                                          parse_attachment_slot,
                                                                           parse_explicit_slot_key,
                                                                           requires_explicit_attachment_anchor)
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
@@ -1192,7 +1193,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
 
     def resolve_endpoint_alignment_side_key(self,
                                             endpoint: str,
-                                            attachment: dict[str, object]) -> str:
+                                            attachment: dict[str, object]) -> SchematicAttachmentSlot:
         """
         Resolve the canonical node side used when dragging one endpoint alignment handle.
 
@@ -1206,12 +1207,12 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         :return: Canonical side key.
         """
         terminal_key_value: object | None = attachment.get("terminal_key", None)
-        canonical_terminal_keys: tuple[str, ...] = (
-            SchematicAttachmentSlot.TOP.value,
-            SchematicAttachmentSlot.BOTTOM.value,
-            SchematicAttachmentSlot.LEFT.value,
-            SchematicAttachmentSlot.RIGHT.value,
-            SchematicAttachmentSlot.DEFAULT.value,
+        canonical_terminal_keys: tuple[SchematicAttachmentSlot, ...] = (
+            SchematicAttachmentSlot.TOP,
+            SchematicAttachmentSlot.BOTTOM,
+            SchematicAttachmentSlot.LEFT,
+            SchematicAttachmentSlot.RIGHT,
+            SchematicAttachmentSlot.DEFAULT,
         )
 
         if terminal_key_value is None:
@@ -1222,16 +1223,16 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
 
             if explicit_slot is not None:
                 return explicit_slot[1]
-            elif terminal_key in canonical_terminal_keys:
-                return terminal_key
+            elif parse_attachment_slot(slot_key=terminal_key) in canonical_terminal_keys:
+                return parse_attachment_slot(slot_key=terminal_key)
             else:
                 pass
 
         route_points: list[tuple[float, float]] = self.get_route_points_for_editing()
-        inferred_side_key: str = infer_attachment_slot_from_route(points=route_points,
-                                                                  endpoint=endpoint)
+        inferred_side_key: SchematicAttachmentSlot = infer_attachment_slot_from_route(points=route_points,
+                                                                                     endpoint=endpoint)
 
-        if inferred_side_key != SchematicAttachmentSlot.DEFAULT.value:
+        if inferred_side_key != SchematicAttachmentSlot.DEFAULT:
             return inferred_side_key
         else:
             pass
@@ -1239,9 +1240,9 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         side_value: object | None = attachment.get("side", None)
 
         if side_value is None:
-            return SchematicAttachmentSlot.BOTTOM.value
+            return SchematicAttachmentSlot.BOTTOM
         else:
-            return str(side_value)
+            return parse_attachment_slot(slot_key=str(side_value))
 
     def refresh_route_handles(self) -> None:
         """

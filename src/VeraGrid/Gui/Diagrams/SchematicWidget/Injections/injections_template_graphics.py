@@ -34,21 +34,21 @@ if TYPE_CHECKING:  # Only imports the below statements during type checking
     NODE_GRAPHIC = BusGraphicItem | FluidNodeGraphicItem
 
 
-def get_opposite_attachment_side(side: str) -> str:
+def get_opposite_attachment_side(side: SchematicAttachmentSlot) -> SchematicAttachmentSlot:
     """
     Get the opposite attachment side for a nexus endpoint.
 
     :param side: Parent-side attachment key.
     :return: Opposite child-side attachment key.
     """
-    if side == SchematicAttachmentSlot.TOP.value:
-        return SchematicAttachmentSlot.BOTTOM.value
-    elif side == SchematicAttachmentSlot.BOTTOM.value:
-        return SchematicAttachmentSlot.TOP.value
-    elif side == SchematicAttachmentSlot.LEFT.value:
-        return SchematicAttachmentSlot.RIGHT.value
+    if side == SchematicAttachmentSlot.TOP:
+        return SchematicAttachmentSlot.BOTTOM
+    elif side == SchematicAttachmentSlot.BOTTOM:
+        return SchematicAttachmentSlot.TOP
+    elif side == SchematicAttachmentSlot.LEFT:
+        return SchematicAttachmentSlot.RIGHT
     else:
-        return SchematicAttachmentSlot.LEFT.value
+        return SchematicAttachmentSlot.LEFT
 
 
 def clamp_alignment(alignment: float | None) -> float:
@@ -76,7 +76,7 @@ def clamp_alignment(alignment: float | None) -> float:
 def get_rect_side_anchor(origin: QPointF,
                          width: float,
                          height: float,
-                         side: str,
+                         side: SchematicAttachmentSlot,
                          alignment: float | None) -> QPointF:
     """
     Get one side anchor on a rectangle in scene coordinates.
@@ -90,11 +90,11 @@ def get_rect_side_anchor(origin: QPointF,
     """
     alignment_value: float = clamp_alignment(alignment)
 
-    if side == SchematicAttachmentSlot.TOP.value:
+    if side == SchematicAttachmentSlot.TOP:
         return QPointF(origin.x() + width * alignment_value, origin.y())
-    elif side == SchematicAttachmentSlot.BOTTOM.value:
+    elif side == SchematicAttachmentSlot.BOTTOM:
         return QPointF(origin.x() + width * alignment_value, origin.y() + height)
-    elif side == SchematicAttachmentSlot.LEFT.value:
+    elif side == SchematicAttachmentSlot.LEFT:
         return QPointF(origin.x(), origin.y() + height * alignment_value)
     else:
         return QPointF(origin.x() + width, origin.y() + height * alignment_value)
@@ -102,7 +102,7 @@ def get_rect_side_anchor(origin: QPointF,
 
 def get_local_rect_side_anchor(width: float,
                                height: float,
-                               side: str,
+                               side: SchematicAttachmentSlot,
                                alignment: float | None) -> QPointF:
     """
     Get one side anchor in item-local coordinates.
@@ -431,7 +431,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         self._nexus_edit_locks_applied: bool = False
         self._owner_movable_before_nexus_edit: bool = True
         self._parent_movable_before_nexus_edit: bool = True
-        self.setTransformOriginPoint(float(self.w) * 0.5, float(self.h) * 0.5)
+        self.setTransformOriginPoint(self.get_rotation_origin_local_point())
 
     def set_glyph(self, glyph: Square | Circle | Polygon | Condenser):
         """
@@ -448,6 +448,31 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         self.update_nexus(self.scenePos())
 
         self._editor.add_to_scene(self.nexus)
+
+    def get_rotation_origin_local_point(self) -> QPointF:
+        """
+        Return the local rotation origin used for injection widgets.
+
+        The injection symbol must rotate as a rigid body around its geometric
+        center so the main widget does not orbit around one corner while the
+        nexus route is refreshed.
+
+        :return: Local rotation origin.
+        """
+        return QPointF(float(self.w) * 0.5, float(self.h) * 0.5)
+
+    def apply_rotation_state(self, angle_degrees: float) -> None:
+        """
+        Apply one rotation angle around the widget center.
+
+        :param angle_degrees: Rotation angle in degrees.
+        :return: ``None``.
+        """
+        normalized_angle: float = float(angle_degrees) % 360.0
+
+        # Keep the pivot synchronized with the current widget size before rotating.
+        self.setTransformOriginPoint(self.get_rotation_origin_local_point())
+        self.setRotation(normalized_angle)
 
     @property
     def parent(self) -> NODE_GRAPHIC:
@@ -1122,7 +1147,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         :return: ``None``.
         """
         new_angle: float = (float(self.rotation()) + 90.0) % 360.0
-        self.setRotation(new_angle)
+        self.apply_rotation_state(angle_degrees=new_angle)
         self.update_nexus(self.scenePos())
         self.editor.update_diagram_element(device=self.api_object,
                                            x=self.scenePos().x(),

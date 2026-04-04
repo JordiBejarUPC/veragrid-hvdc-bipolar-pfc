@@ -41,7 +41,9 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (Schema
                                                                           project_point_to_rectangle_perimeter,
                                                                           get_round_slot_anchor,
                                                                           infer_attachment_side_from_points,
+                                                                          parse_attachment_slot,
                                                                           parse_explicit_slot_key)
+from VeraGridEngine.Devices.Diagrams.schematic_layout import SchematicBranchEndpoint
 from VeraGridEngine.enumerations import DeviceType, BusGraphicType
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 from VeraGridEngine.Devices.Substation import Bus
@@ -457,21 +459,13 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         Return the local rotation origin used for saved/loadable bus orientation.
 
-        Bar-style buses rotate around the terminal bar centerline so branch anchors
-        and docked children keep following the electrical bar instead of the body
-        rectangle corners.
+        All bus rotation now happens around the widget geometric center so the
+        whole symbol behaves as one rigid body during interactive rotation and
+        when restored from persisted schematic coordinates.
 
         :return: Local rotation origin.
         """
-        if self.connectivity_graph:
-            return self.rect().center()
-        else:
-            pass
-
-        terminal_y: float = self._terminal.pos().y() + self._terminal.rect().y()
-        terminal_h: float = self._terminal.rect().height()
-        return QPointF(self.rect().width() * 0.5,
-                       terminal_y + terminal_h * 0.5)
+        return self.rect().center()
 
     def get_default_connection_local_point(self) -> QPointF:
         """
@@ -590,45 +584,46 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         Returns:
             Nothing
         """
-        dock_groups: Dict[str, List[Tuple[int, int, float, float | None, bool, INJECTION_GRAPHICS]]] = {
-            SchematicAttachmentSlot.TOP.value: list(),
-            SchematicAttachmentSlot.BOTTOM.value: list(),
-            SchematicAttachmentSlot.LEFT.value: list(),
-            SchematicAttachmentSlot.RIGHT.value: list(),
+        dock_groups: Dict[
+            SchematicAttachmentSlot, List[Tuple[int, int, float, float | None, bool, INJECTION_GRAPHICS]]] = {
+            SchematicAttachmentSlot.TOP: list(),
+            SchematicAttachmentSlot.BOTTOM: list(),
+            SchematicAttachmentSlot.LEFT: list(),
+            SchematicAttachmentSlot.RIGHT: list(),
         }
         child_index: int
 
         for child_index, elm in enumerate(self._child_graphics):
             dock = self._editor.diagram.sync_injection_dock(api_object=elm.api_object,
                                                             owner_device=self.api_object,
-                                                            side=SchematicAttachmentSlot.BOTTOM.value)
-            side = str(dock.get("side", SchematicAttachmentSlot.BOTTOM.value))
+                                                            side=SchematicAttachmentSlot.BOTTOM)
+            side = parse_attachment_slot(str(dock.get("side", SchematicAttachmentSlot.BOTTOM.value)))
             order = int(dock.get("order", 0))
             offset = float(dock.get("offset", 0.0))
             alignment = dock.get("alignment", None)
             auto_layout = bool(dock.get("auto_layout", True))
 
             if side not in dock_groups:
-                side = SchematicAttachmentSlot.BOTTOM.value
+                side = SchematicAttachmentSlot.BOTTOM
             else:
                 pass
 
             dock_groups[side].append((order, child_index, offset, alignment, auto_layout, elm))
 
-        self._arrange_child_group(side=SchematicAttachmentSlot.TOP.value,
-                                  dock_entries=dock_groups[SchematicAttachmentSlot.TOP.value])
-        self._arrange_child_group(side=SchematicAttachmentSlot.BOTTOM.value,
-                                  dock_entries=dock_groups[SchematicAttachmentSlot.BOTTOM.value])
-        self._arrange_child_group(side=SchematicAttachmentSlot.LEFT.value,
-                                  dock_entries=dock_groups[SchematicAttachmentSlot.LEFT.value])
-        self._arrange_child_group(side=SchematicAttachmentSlot.RIGHT.value,
-                                  dock_entries=dock_groups[SchematicAttachmentSlot.RIGHT.value])
+        self._arrange_child_group(side=SchematicAttachmentSlot.TOP,
+                                  dock_entries=dock_groups[SchematicAttachmentSlot.TOP])
+        self._arrange_child_group(side=SchematicAttachmentSlot.BOTTOM,
+                                  dock_entries=dock_groups[SchematicAttachmentSlot.BOTTOM])
+        self._arrange_child_group(side=SchematicAttachmentSlot.LEFT,
+                                  dock_entries=dock_groups[SchematicAttachmentSlot.LEFT])
+        self._arrange_child_group(side=SchematicAttachmentSlot.RIGHT,
+                                  dock_entries=dock_groups[SchematicAttachmentSlot.RIGHT])
 
         # Arrange line positions
         self._terminal.process_callbacks(self.pos() + self._terminal.pos())
 
     def _arrange_child_group(self,
-                             side: str,
+                             side: SchematicAttachmentSlot,
                              dock_entries: List[
                                  Tuple[int, int, float, float | None, bool, INJECTION_GRAPHICS]]) -> None:
         """
@@ -646,13 +641,13 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         for slot_index, (_, _, offset, alignment, auto_layout, elm) in enumerate(sorted_entries, start=1):
             if auto_layout:
                 span_fraction: float = float(slot_index) / float(slot_count + 1)
-                if side == SchematicAttachmentSlot.TOP.value:
+                if side == SchematicAttachmentSlot.TOP:
                     x_pos = self.w * span_fraction - elm.w * 0.5
                     y_pos = -elm.h - 40.0 - offset
-                elif side == SchematicAttachmentSlot.LEFT.value:
+                elif side == SchematicAttachmentSlot.LEFT:
                     x_pos = -elm.w - 40.0 - offset
                     y_pos = self.rect().height() * span_fraction - elm.h * 0.5
-                elif side == SchematicAttachmentSlot.RIGHT.value:
+                elif side == SchematicAttachmentSlot.RIGHT:
                     x_pos = self.w + 40.0 + offset
                     y_pos = self.rect().height() * span_fraction - elm.h * 0.5
                 else:
@@ -664,13 +659,13 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                 if location is None:
                     span_fraction = clamp_attachment_alignment(alignment)
 
-                    if side == SchematicAttachmentSlot.TOP.value:
+                    if side == SchematicAttachmentSlot.TOP:
                         x_pos = self.w * span_fraction - elm.w * 0.5
                         y_pos = -elm.h - 40.0 - offset
-                    elif side == SchematicAttachmentSlot.LEFT.value:
+                    elif side == SchematicAttachmentSlot.LEFT:
                         x_pos = -elm.w - 40.0 - offset
                         y_pos = self.rect().height() * span_fraction - elm.h * 0.5
-                    elif side == SchematicAttachmentSlot.RIGHT.value:
+                    elif side == SchematicAttachmentSlot.RIGHT:
                         x_pos = self.w + 40.0 + offset
                         y_pos = self.rect().height() * span_fraction - elm.h * 0.5
                     else:
@@ -1050,32 +1045,21 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         Build the explicit slot catalog currently attached to this bus.
         """
         slots: Dict[str, Dict[str, str]] = dict()
-        side_key: str
+        side_key: SchematicAttachmentSlot
 
         for side_key in (
-                SchematicAttachmentSlot.LEFT.value,
-                SchematicAttachmentSlot.RIGHT.value,
-                SchematicAttachmentSlot.TOP.value,
-                SchematicAttachmentSlot.BOTTOM.value,
+                SchematicAttachmentSlot.LEFT,
+                SchematicAttachmentSlot.RIGHT,
+                SchematicAttachmentSlot.TOP,
+                SchematicAttachmentSlot.BOTTOM,
         ):
             order: int
 
             for order in self.get_explicit_slot_orders(side_key=side_key):
                 slot_key: str = build_explicit_slot_key(owner_kind="bus", side=side_key, order=order)
-                slots[slot_key] = {"terminal_key": slot_key, "side": side_key}
+                slots[slot_key] = {"terminal_key": slot_key, "side": side_key.value}
 
         return slots
-
-    @staticmethod
-    def get_default_terminal_key(endpoint: str | None = None) -> str:
-        """
-        Return the compatibility slot key for a branch endpoint.
-        """
-        if endpoint == "from":
-            return SchematicAttachmentSlot.RIGHT.value
-        if endpoint == "to":
-            return SchematicAttachmentSlot.LEFT.value
-        return SchematicAttachmentSlot.DEFAULT.value
 
     def get_terminal_anchor_by_key(self,
                                    terminal_key: str = "default",
@@ -1138,7 +1122,8 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         return self.mapToScene(QPointF(local_x, local_y))
 
-    def get_terminal_alignment_from_scene_point(self, side_key: str, scene_point: QPointF) -> float:
+    def get_terminal_alignment_from_scene_point(self, side_key: str | SchematicAttachmentSlot,
+                                                scene_point: QPointF) -> float:
         """
         Convert one scene point to a normalized alignment value on the requested side.
 
@@ -1148,9 +1133,11 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         local_point: QPointF = self.mapFromScene(scene_point)
 
-        if side_key in (SchematicAttachmentSlot.TOP.value,
-                        SchematicAttachmentSlot.BOTTOM.value,
-                        SchematicAttachmentSlot.DEFAULT.value):
+        normalized_side_key: SchematicAttachmentSlot = parse_attachment_slot(str(side_key))
+
+        if normalized_side_key in (SchematicAttachmentSlot.TOP,
+                                   SchematicAttachmentSlot.BOTTOM,
+                                   SchematicAttachmentSlot.DEFAULT):
             span_value = self.rect().width()
             coordinate = local_point.x()
         else:
@@ -1171,7 +1158,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         else:
             return float(alignment)
 
-    def get_explicit_slot_orders(self, side_key: str) -> List[int]:
+    def get_explicit_slot_orders(self, side_key: SchematicAttachmentSlot) -> List[int]:
         """
         Collect persisted explicit slot orders for this graphic on one side.
         """
@@ -1185,7 +1172,8 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         return orders
 
     def get_explicit_slot_entries(self,
-                                  side_key: str) -> List[Tuple[int, str, GenericDiagramWidget | INJECTION_GRAPHICS]]:
+                                  side_key: SchematicAttachmentSlot
+                                  ) -> List[Tuple[int, str, GenericDiagramWidget | INJECTION_GRAPHICS]]:
         """
         Collect persisted explicit slot entries for this graphic on one side.
         """
@@ -1194,13 +1182,13 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         graphic_object: GenericDiagramWidget | INJECTION_GRAPHICS
 
         for graphic_object in branch_graphics:
-            endpoint: str = self.get_branch_endpoint_for_graphic(graphic_object)
+            endpoint: SchematicBranchEndpoint | None = self.get_branch_endpoint_for_graphic(graphic_object)
 
-            if endpoint == "":
+            if endpoint is None:
                 pass
             else:
                 attachment = self.editor.get_persisted_attachment(api_object=graphic_object.api_object,
-                                                                  endpoint=endpoint)
+                                                                  endpoint=endpoint.value)
                 terminal_key = str(attachment.get("terminal_key", ""))
                 explicit_slot = parse_explicit_slot_key(slot_key=terminal_key)
 
@@ -1213,7 +1201,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         return entries
 
-    def has_duplicate_explicit_slot_order(self, side_key: str, order: int) -> bool:
+    def has_duplicate_explicit_slot_order(self, side_key: SchematicAttachmentSlot, order: int) -> bool:
         """
         Check whether an explicit slot order is duplicated on one side.
         """
@@ -1228,7 +1216,10 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         return count > 1
 
-    def get_branch_endpoint_for_graphic(self, graphic_object: GenericDiagramWidget | INJECTION_GRAPHICS) -> str:
+    def get_branch_endpoint_for_graphic(
+            self,
+            graphic_object: GenericDiagramWidget | INJECTION_GRAPHICS
+    ) -> SchematicBranchEndpoint | None:
         """
         Determine which endpoint of a branch graphic is attached to this node.
         """
@@ -1236,11 +1227,11 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         to_parent = graphic_object.get_terminal_to_parent()
 
         if from_parent is self:
-            return "from"
+            return SchematicBranchEndpoint.FROM
         elif to_parent is self:
-            return "to"
+            return SchematicBranchEndpoint.TO
         else:
-            return ""
+            return None
 
     def get_branch_attachment_center(self) -> QPointF:
         """
@@ -1255,7 +1246,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         return self.mapToScene(local_point)
 
-    def infer_branch_slot_side_and_sort_value(self, other_point: QPointF) -> Tuple[str, float]:
+    def infer_branch_slot_side_and_sort_value(self, other_point: QPointF) -> Tuple[SchematicAttachmentSlot, float]:
         """
         Infer the attachment side and sorting coordinate for one connected branch.
 
@@ -1268,7 +1259,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         terminal_y: float = self._terminal.pos().y() + self._terminal.rect().y()
         terminal_h: float = self._terminal.rect().height()
         local_center_y: float = terminal_y + terminal_h * 0.5
-        side_key: str
+        side_key: SchematicAttachmentSlot
         sort_value: float
 
         if self.connectivity_graph:
@@ -1276,15 +1267,15 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                                                          other=(local_other_point.x(), local_other_point.y()),
                                                          vertical_bias=1.0)
 
-            if side_key in (SchematicAttachmentSlot.TOP.value, SchematicAttachmentSlot.BOTTOM.value):
+            if side_key in (SchematicAttachmentSlot.TOP, SchematicAttachmentSlot.BOTTOM):
                 sort_value = float(local_other_point.x())
             else:
                 sort_value = float(local_other_point.y())
         else:
             if local_other_point.y() < local_center_y:
-                side_key = SchematicAttachmentSlot.TOP.value
+                side_key = SchematicAttachmentSlot.TOP
             else:
-                side_key = SchematicAttachmentSlot.BOTTOM.value
+                side_key = SchematicAttachmentSlot.BOTTOM
 
             sort_value = float(local_other_point.x())
 
@@ -1294,23 +1285,25 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         Assign coordinate-based branch anchors from current geometry.
         """
-        grouped_entries: Dict[str, List[Tuple[float, str, GenericDiagramWidget, str, Dict[str, Any]]]] = {
-            SchematicAttachmentSlot.LEFT.value: list(),
-            SchematicAttachmentSlot.RIGHT.value: list(),
-            SchematicAttachmentSlot.TOP.value: list(),
-            SchematicAttachmentSlot.BOTTOM.value: list(),
+        grouped_entries: Dict[
+            SchematicAttachmentSlot, List[Tuple[float, str, GenericDiagramWidget, str, Dict[str, Any]]]] = {
+            SchematicAttachmentSlot.LEFT: list(),
+            SchematicAttachmentSlot.RIGHT: list(),
+            SchematicAttachmentSlot.TOP: list(),
+            SchematicAttachmentSlot.BOTTOM: list(),
         }
         branch_graphic: GenericDiagramWidget
 
         for branch_graphic in self.get_associated_branch_graphics():
-            endpoint: str = self.get_branch_endpoint_for_graphic(branch_graphic)
+            endpoint: SchematicBranchEndpoint | None = self.get_branch_endpoint_for_graphic(branch_graphic)
 
-            if endpoint == "":
+            if endpoint is None:
                 continue
             else:
                 pass
 
-            attachment = self.editor.get_persisted_attachment(api_object=branch_graphic.api_object, endpoint=endpoint)
+            attachment = self.editor.get_persisted_attachment(api_object=branch_graphic.api_object,
+                                                              endpoint=endpoint.value)
             has_saved_endpoint_state = any(key in attachment for key in ("side",
                                                                          "slot",
                                                                          "terminal_key",
@@ -1337,7 +1330,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             else:
                 pass
 
-            if endpoint == "from":
+            if endpoint == SchematicBranchEndpoint.FROM:
                 other_point = branch_graphic.pos2
             else:
                 other_point = branch_graphic.pos1
@@ -1354,29 +1347,23 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                                               endpoint,
                                               attachment))
 
-        side_key: str
+        side_key: SchematicAttachmentSlot
 
         for side_key, entries in grouped_entries.items():
             entries.sort(key=lambda entry: (entry[0], entry[1]))
 
             for order_index, (_, _, branch_graphic, endpoint, attachment) in enumerate(entries, start=1):
                 slot_key = build_explicit_slot_key(owner_kind="bus", side=side_key, order=order_index)
-                attachment["side"] = side_key
+                attachment["side"] = side_key.value
                 attachment["order"] = order_index
                 attachment["slot"] = slot_key
                 attachment["terminal_key"] = slot_key
                 attachment["auto_slot"] = True
                 self.editor.diagram.set_attachment(api_object=branch_graphic.api_object,
-                                                   endpoint=endpoint,
+                                                   endpoint=endpoint.value,
                                                    attachment=attachment)
 
-    def get_terminal_by_key(self, terminal_key: str = "default") -> BarTerminalItem:
-        """
-        Compatibility hook for future named attachment slots.
-        """
-        return self._terminal
-
-    def add_object(self, api_obj: Union[None, INJECTION_DEVICE_TYPES] = None):
+    def add_object(self, api_obj: INJECTION_DEVICE_TYPES):
         """
         Add any recognized object
         :param api_obj: EditableDevice
@@ -1421,8 +1408,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         if location is None:
             pass
         else:
-            graphic.setTransformOriginPoint(float(graphic.w) * 0.5, float(graphic.h) * 0.5)
-            graphic.setRotation(float(location.r))
+            graphic.apply_rotation_state(angle_degrees=float(location.r))
             graphic.update_nexus(graphic.scenePos())
 
         self._child_graphics.append(graphic)

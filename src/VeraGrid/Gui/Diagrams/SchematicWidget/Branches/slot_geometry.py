@@ -20,22 +20,29 @@ class SchematicAttachmentSlot(Enum):
     BOTTOM = "bottom"
 
 
-def requires_explicit_attachment_anchor(slot_key: str) -> bool:
+def normalize_attachment_slot(slot_key: SchematicAttachmentSlot | str) -> SchematicAttachmentSlot:
+    """
+    Normalize one runtime or persisted slot key to the enum form.
+
+    :param slot_key: Runtime enum or persisted string.
+    :return: Parsed attachment slot enum.
+    """
+    if isinstance(slot_key, SchematicAttachmentSlot):
+        return slot_key
+    else:
+        return parse_attachment_slot(slot_key=str(slot_key))
+
+
+def requires_explicit_attachment_anchor(slot_key: SchematicAttachmentSlot | str) -> bool:
     """
     Determine whether a slot key refers to a future explicit slot id instead of a compatibility alias.
 
     :param slot_key: Persisted slot key.
     :return: ``True`` when the slot should use an explicit anchor, ``False`` for compatibility aliases.
     """
-    if slot_key == SchematicAttachmentSlot.DEFAULT.value:
-        return False
-    elif slot_key == SchematicAttachmentSlot.LEFT.value:
-        return False
-    elif slot_key == SchematicAttachmentSlot.RIGHT.value:
-        return False
-    elif slot_key == SchematicAttachmentSlot.TOP.value:
-        return False
-    elif slot_key == SchematicAttachmentSlot.BOTTOM.value:
+    slot: SchematicAttachmentSlot = normalize_attachment_slot(slot_key)
+
+    if slot == SchematicAttachmentSlot.DEFAULT:
         return False
     else:
         return True
@@ -163,7 +170,7 @@ def project_point_to_bar_terminal(width: float,
 def get_bar_slot_anchor(width: float,
                         terminal_y: float,
                         terminal_h: float,
-                        slot_key: str,
+                        slot_key: SchematicAttachmentSlot | str,
                         alignment: float | None = None) -> Tuple[float, float]:
     """
     Compute the local anchor point for a bar-style terminal.
@@ -175,7 +182,7 @@ def get_bar_slot_anchor(width: float,
     :param alignment: Optional normalized alignment along the hosting side.
     :return: Local anchor point ``(x, y)``.
     """
-    slot: SchematicAttachmentSlot = parse_attachment_slot(slot_key=slot_key)
+    slot: SchematicAttachmentSlot = normalize_attachment_slot(slot_key)
     alignment_value: float = clamp_attachment_alignment(alignment)
     top_y: float = terminal_y
     center_y: float = terminal_y + terminal_h * 0.5
@@ -196,7 +203,7 @@ def get_bar_slot_anchor(width: float,
 
 def get_round_slot_anchor(width: float,
                           height: float,
-                          slot_key: str,
+                          slot_key: SchematicAttachmentSlot | str,
                           alignment: float | None = None) -> Tuple[float, float]:
     """
     Compute the local anchor point for a round or connectivity-style node.
@@ -207,7 +214,7 @@ def get_round_slot_anchor(width: float,
     :param alignment: Optional normalized alignment along the hosting side.
     :return: Local anchor point ``(x, y)``.
     """
-    slot: SchematicAttachmentSlot = parse_attachment_slot(slot_key=slot_key)
+    slot: SchematicAttachmentSlot = normalize_attachment_slot(slot_key)
     alignment_value: float = clamp_attachment_alignment(alignment)
     center_x: float = width * 0.5
     center_y: float = height * 0.5
@@ -227,7 +234,7 @@ def get_round_slot_anchor(width: float,
 
 
 def infer_attachment_slot_from_route(points: Tuple[Tuple[float, float], ...] | list[Tuple[float, float]],
-                                     endpoint: str) -> str:
+                                     endpoint: str) -> SchematicAttachmentSlot:
     """
     Infer the attachment side from the endpoint-adjacent route segment.
 
@@ -236,7 +243,7 @@ def infer_attachment_slot_from_route(points: Tuple[Tuple[float, float], ...] | l
     :return: Canonical slot key.
     """
     if len(points) < 2:
-        return SchematicAttachmentSlot.DEFAULT.value
+        return SchematicAttachmentSlot.DEFAULT
 
     endpoint_point: Tuple[float, float]
     inner_point: Tuple[float, float]
@@ -248,26 +255,26 @@ def infer_attachment_slot_from_route(points: Tuple[Tuple[float, float], ...] | l
         endpoint_point = points[-1]
         inner_point = points[-2]
     else:
-        return SchematicAttachmentSlot.DEFAULT.value
+        return SchematicAttachmentSlot.DEFAULT
 
     dx: float = inner_point[0] - endpoint_point[0]
     dy: float = inner_point[1] - endpoint_point[1]
 
     if abs(dx) >= abs(dy):
         if dx >= 0.0:
-            return SchematicAttachmentSlot.RIGHT.value
+            return SchematicAttachmentSlot.RIGHT
         else:
-            return SchematicAttachmentSlot.LEFT.value
+            return SchematicAttachmentSlot.LEFT
     else:
         if dy >= 0.0:
-            return SchematicAttachmentSlot.BOTTOM.value
+            return SchematicAttachmentSlot.BOTTOM
         else:
-            return SchematicAttachmentSlot.TOP.value
+            return SchematicAttachmentSlot.TOP
 
 
 def infer_attachment_side_from_points(origin: Tuple[float, float],
                                       other: Tuple[float, float],
-                                      vertical_bias: float = 1.0) -> str:
+                                      vertical_bias: float = 1.0) -> SchematicAttachmentSlot:
     """
     Infer the node side that should host a connection based on the other endpoint position.
 
@@ -282,17 +289,17 @@ def infer_attachment_side_from_points(origin: Tuple[float, float],
 
     if abs(dy) >= abs(dx) * bias:
         if dy >= 0.0:
-            return SchematicAttachmentSlot.BOTTOM.value
+            return SchematicAttachmentSlot.BOTTOM
         else:
-            return SchematicAttachmentSlot.TOP.value
+            return SchematicAttachmentSlot.TOP
     else:
         if dx >= 0.0:
-            return SchematicAttachmentSlot.RIGHT.value
+            return SchematicAttachmentSlot.RIGHT
         else:
-            return SchematicAttachmentSlot.LEFT.value
+            return SchematicAttachmentSlot.LEFT
 
 
-def build_explicit_slot_key(owner_kind: str, side: str, order: int) -> str:
+def build_explicit_slot_key(owner_kind: str, side: SchematicAttachmentSlot | str, order: int) -> str:
     """
     Build a stable explicit slot identifier.
 
@@ -301,10 +308,11 @@ def build_explicit_slot_key(owner_kind: str, side: str, order: int) -> str:
     :param order: One-based slot order on that side.
     :return: Explicit slot key.
     """
-    return f"{owner_kind}-{side}-{int(order)}"
+    normalized_side: SchematicAttachmentSlot = normalize_attachment_slot(side)
+    return f"{owner_kind}-{normalized_side.value}-{int(order)}"
 
 
-def parse_explicit_slot_key(slot_key: str) -> Tuple[str, str, int] | None:
+def parse_explicit_slot_key(slot_key: str) -> Tuple[str, SchematicAttachmentSlot, int] | None:
     """
     Parse an explicit slot identifier.
 
@@ -319,23 +327,18 @@ def parse_explicit_slot_key(slot_key: str) -> Tuple[str, str, int] | None:
         pass
 
     owner_kind: str = parts[0]
-    side: str = parts[1]
+    side: SchematicAttachmentSlot = parse_attachment_slot(parts[1])
     order_text: str = parts[2]
 
     if not order_text.isdigit():
         return None
-    elif side not in (
-        SchematicAttachmentSlot.LEFT.value,
-        SchematicAttachmentSlot.RIGHT.value,
-        SchematicAttachmentSlot.TOP.value,
-        SchematicAttachmentSlot.BOTTOM.value,
-    ):
+    elif side == SchematicAttachmentSlot.DEFAULT:
         return None
     else:
         return owner_kind, side, int(order_text)
 
 
-def get_distributed_anchor(side: str,
+def get_distributed_anchor(side: SchematicAttachmentSlot | str,
                            width: float,
                            height: float,
                            terminal_y: float,
@@ -356,6 +359,8 @@ def get_distributed_anchor(side: str,
     :param alignment: Optional normalized alignment override along the side.
     :return: Local anchor point.
     """
+    normalized_side: SchematicAttachmentSlot = normalize_attachment_slot(side)
+
     if alignment is None:
         span_fraction: float = float(order_index) / float(slot_count + 1)
     else:
@@ -365,13 +370,13 @@ def get_distributed_anchor(side: str,
     bar_center_y: float = terminal_y + terminal_h * 0.5
     bar_bottom_y: float = terminal_y + terminal_h
 
-    if side == SchematicAttachmentSlot.LEFT.value:
+    if normalized_side == SchematicAttachmentSlot.LEFT:
         return 0.0, height * span_fraction
-    elif side == SchematicAttachmentSlot.RIGHT.value:
+    elif normalized_side == SchematicAttachmentSlot.RIGHT:
         return width, height * span_fraction
-    elif side == SchematicAttachmentSlot.TOP.value:
+    elif normalized_side == SchematicAttachmentSlot.TOP:
         return width * span_fraction, bar_center_y
-    elif side == SchematicAttachmentSlot.BOTTOM.value:
+    elif normalized_side == SchematicAttachmentSlot.BOTTOM:
         return width * span_fraction, bar_center_y
     else:
         return width * 0.5, bar_center_y

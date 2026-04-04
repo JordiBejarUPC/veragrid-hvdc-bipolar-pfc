@@ -19,6 +19,7 @@ from VeraGridEngine.Devices.Diagrams.schematic_layout import (build_default_bran
                                                               SchematicAttachmentSide,
                                                               SchematicBranchEndpoint,
                                                               SchematicDockRecord,
+                                                              SchematicExplicitAttachmentSlot,
                                                               SchematicRouteKind,
                                                               SchematicRouteRecord,
                                                               parse_schematic_attachment_side,
@@ -72,7 +73,9 @@ def get_default_attachment_side(owner_kind: SchematicAttachmentOwnerKind | None,
         return SchematicAttachmentSide.DEFAULT
 
 
-def get_side_from_slot_tuple(slot_tuple: Tuple[str, str, int] | None) -> SchematicAttachmentSide | None:
+def get_side_from_slot_tuple(
+        slot_tuple: Tuple[SchematicAttachmentOwnerKind, SchematicAttachmentSide, int] | None
+) -> SchematicAttachmentSide | None:
     """
     Convert one explicit slot tuple into a typed compatibility side.
 
@@ -82,7 +85,21 @@ def get_side_from_slot_tuple(slot_tuple: Tuple[str, str, int] | None) -> Schemat
     if slot_tuple is None:
         return None
     else:
-        return parse_schematic_attachment_side(slot_tuple[1])
+        return slot_tuple[1]
+
+
+def build_explicit_attachment_slot(owner_kind: SchematicAttachmentOwnerKind,
+                                   side: SchematicAttachmentSide,
+                                   order: int) -> SchematicExplicitAttachmentSlot:
+    """
+    Build one typed explicit attachment slot for runtime use.
+
+    :param owner_kind: Typed owner kind.
+    :param side: Typed attachment side.
+    :param order: One-based slot order.
+    :return: Typed explicit attachment slot.
+    """
+    return SchematicExplicitAttachmentSlot(owner_kind=owner_kind, side=side, order=order)
 
 
 class SchematicDiagram(BaseDiagram):
@@ -407,13 +424,13 @@ class SchematicDiagram(BaseDiagram):
         else:
             pass
 
-        if attachment_record.slot_key is None:
-            attachment_record.slot_key = attachment_record.side.value
+        if attachment_record.slot_side is None and attachment_record.explicit_slot is None:
+            attachment_record.slot_side = attachment_record.side
         else:
             pass
 
-        if attachment_record.terminal_key is None:
-            attachment_record.terminal_key = attachment_record.side.value
+        if attachment_record.terminal_side is None and attachment_record.explicit_terminal is None:
+            attachment_record.terminal_side = attachment_record.side
         else:
             pass
 
@@ -430,11 +447,17 @@ class SchematicDiagram(BaseDiagram):
             else:
                 attachment_record.order = None
 
-        explicit_slot: Tuple[str, str, int] | None = parse_explicit_attachment_slot_key(
-            slot_key=attachment_record.slot_key
+        explicit_slot: Tuple[SchematicAttachmentOwnerKind, SchematicAttachmentSide, int] | None = (
+            None if attachment_record.explicit_slot is None
+            else (attachment_record.explicit_slot.owner_kind,
+                  attachment_record.explicit_slot.side,
+                  attachment_record.explicit_slot.order)
         )
-        explicit_terminal_key: Tuple[str, str, int] | None = parse_explicit_attachment_slot_key(
-            slot_key=attachment_record.terminal_key
+        explicit_terminal_key: Tuple[SchematicAttachmentOwnerKind, SchematicAttachmentSide, int] | None = (
+            None if attachment_record.explicit_terminal is None
+            else (attachment_record.explicit_terminal.owner_kind,
+                  attachment_record.explicit_terminal.side,
+                  attachment_record.explicit_terminal.order)
         )
         explicit_slot_side: SchematicAttachmentSide | None = get_side_from_slot_tuple(slot_tuple=explicit_slot)
         explicit_terminal_side: SchematicAttachmentSide | None = get_side_from_slot_tuple(
@@ -446,10 +469,10 @@ class SchematicDiagram(BaseDiagram):
                 attachment_record.side = explicit_slot_side
             elif explicit_terminal_side is not None:
                 attachment_record.side = explicit_terminal_side
-            elif is_canonical_attachment_slot(slot_key=attachment_record.slot_key):
-                attachment_record.side = parse_schematic_attachment_side(attachment_record.slot_key)
-            elif is_canonical_attachment_slot(slot_key=attachment_record.terminal_key):
-                attachment_record.side = parse_schematic_attachment_side(attachment_record.terminal_key)
+            elif attachment_record.slot_side is not None and is_canonical_attachment_slot(slot_key=attachment_record.slot_side):
+                attachment_record.side = attachment_record.slot_side
+            elif attachment_record.terminal_side is not None and is_canonical_attachment_slot(slot_key=attachment_record.terminal_side):
+                attachment_record.side = attachment_record.terminal_side
             else:
                 pass
 
@@ -459,17 +482,17 @@ class SchematicDiagram(BaseDiagram):
                 pass
 
             if explicit_slot is None:
-                attachment_record.slot_key = attachment_record.side.value
+                attachment_record.slot_side = attachment_record.side
             else:
-                attachment_record.slot_key = attachment_record.slot_key
+                pass
 
             if explicit_terminal_key is None:
-                if explicit_slot is not None and attachment_record.slot_key is not None:
-                    attachment_record.terminal_key = attachment_record.slot_key
+                if explicit_slot is not None and attachment_record.explicit_slot is not None:
+                    attachment_record.explicit_terminal = attachment_record.explicit_slot
                 else:
-                    attachment_record.terminal_key = attachment_record.side.value
+                    attachment_record.terminal_side = attachment_record.side
             else:
-                attachment_record.terminal_key = attachment_record.terminal_key
+                pass
 
             self.set_attachment_record(api_object=api_object,
                                        endpoint=endpoint,
@@ -479,38 +502,48 @@ class SchematicDiagram(BaseDiagram):
             pass
 
         if owner_kind is not None and isinstance(attachment_record.order, int) and attachment_record.order > 0:
-            explicit_slot_key: str = build_explicit_attachment_slot_key(owner_kind=owner_kind.value,
-                                                                        side=attachment_record.side.value,
-                                                                        order=attachment_record.order)
-
-            if is_canonical_attachment_slot(slot_key=attachment_record.slot_key):
-                attachment_record.slot_key = explicit_slot_key
+            if is_canonical_attachment_slot(slot_key=attachment_record.slot_side):
+                attachment_record.explicit_slot = None
+                attachment_record.slot_side = None
+                attachment_record.explicit_slot = build_explicit_attachment_slot(owner_kind=owner_kind,
+                                                                                 side=attachment_record.side,
+                                                                                 order=attachment_record.order)
             elif explicit_slot is not None:
-                attachment_record.slot_key = explicit_slot_key
+                attachment_record.explicit_slot = build_explicit_attachment_slot(owner_kind=owner_kind,
+                                                                                 side=attachment_record.side,
+                                                                                 order=attachment_record.order)
             else:
                 pass
 
-            if is_canonical_attachment_slot(slot_key=attachment_record.terminal_key):
-                attachment_record.terminal_key = explicit_slot_key
+            if is_canonical_attachment_slot(slot_key=attachment_record.terminal_side):
+                attachment_record.explicit_terminal = build_explicit_attachment_slot(owner_kind=owner_kind,
+                                                                                     side=attachment_record.side,
+                                                                                     order=attachment_record.order)
+                attachment_record.terminal_side = None
             elif explicit_terminal_key is not None:
-                attachment_record.terminal_key = explicit_slot_key
+                attachment_record.explicit_terminal = build_explicit_attachment_slot(owner_kind=owner_kind,
+                                                                                     side=attachment_record.side,
+                                                                                     order=attachment_record.order)
             else:
                 pass
         else:
-            if is_canonical_attachment_slot(slot_key=attachment_record.slot_key):
-                attachment_record.slot_key = attachment_record.side.value
+            if is_canonical_attachment_slot(slot_key=attachment_record.slot_side):
+                attachment_record.slot_side = attachment_record.side
+                attachment_record.explicit_slot = None
             elif explicit_slot is not None:
-                attachment_record.slot_key = attachment_record.slot_key
+                pass
             else:
                 pass
 
-            if is_canonical_attachment_slot(slot_key=attachment_record.terminal_key):
-                if explicit_slot is not None and attachment_record.slot_key is not None:
-                    attachment_record.terminal_key = attachment_record.slot_key
+            if is_canonical_attachment_slot(slot_key=attachment_record.terminal_side):
+                if explicit_slot is not None and attachment_record.explicit_slot is not None:
+                    attachment_record.explicit_terminal = attachment_record.explicit_slot
+                    attachment_record.terminal_side = None
                 else:
-                    attachment_record.terminal_key = attachment_record.side.value
+                    attachment_record.terminal_side = attachment_record.side
+                    attachment_record.explicit_terminal = None
             elif explicit_terminal_key is not None:
-                attachment_record.terminal_key = attachment_record.terminal_key
+                pass
             else:
                 pass
 

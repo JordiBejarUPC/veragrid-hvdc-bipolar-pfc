@@ -1135,6 +1135,8 @@ def test_injection_rotate_90_persists_angle_and_child_load_restores_it() -> None
     update_record = editor.diagram_updates[id(load)]
 
     assert load_graphic.rotation() == 90.0
+    assert load_graphic.transformOriginPoint() == QPointF(float(load_graphic.w) * 0.5,
+                                                          float(load_graphic.h) * 0.5)
     assert update_record["r"] == 90.0
 
     editor.diagram.update_graphic_location(api_object=load,
@@ -1355,8 +1357,9 @@ def test_bus_graphic_applies_persisted_rotation_to_bar_and_nexus_anchors() -> No
     assert graphic.rotation() == 90.0
     assert graphic.r == 90.0
     assert graphic.transformOriginPoint() == graphic.get_rotation_origin_local_point()
-    assert bar_anchor.x() == 90.0
-    assert bar_anchor.y() == 45.0
+    assert graphic.transformOriginPoint() == graphic.rect().center()
+    assert bar_anchor.x() == 65.0
+    assert bar_anchor.y() == 20.0
     assert nexus_anchor == bar_anchor
     assert recovered_alignment == 0.5
 

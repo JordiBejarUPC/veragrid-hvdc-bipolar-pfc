@@ -2003,7 +2003,7 @@ class SchematicWidget(BaseDiagramWidget):
                 else:
                     # the bus is found, return its default terminal
                     if isinstance(bus_graphic0, (BusGraphicItem, FluidNodeGraphicItem)):
-                        return bus_graphic0.get_terminal_by_key(bus_graphic0.get_default_terminal_key())
+                        return bus_graphic0.get_terminal()
                     else:
                         return None
 
@@ -2022,14 +2022,8 @@ class SchematicWidget(BaseDiagramWidget):
 
         obj_from, obj_to, is_ok = branch.get_from_and_to_objects()
 
-        from_port = self.find_port_for_attachment(owner_object=obj_from,
-                                                  attachment=self.get_persisted_attachment(api_object=branch,
-                                                                                           endpoint="from"),
-                                                  endpoint="from")
-        to_port = self.find_port_for_attachment(owner_object=obj_to,
-                                                attachment=self.get_persisted_attachment(api_object=branch,
-                                                                                         endpoint="to"),
-                                                endpoint="to")
+        from_port = self.find_port_for_attachment(owner_object=obj_from)
+        to_port = self.find_port_for_attachment(owner_object=obj_to)
 
         return from_port, to_port
 
@@ -2042,10 +2036,7 @@ class SchematicWidget(BaseDiagramWidget):
 
         obj_from, obj_to, is_ok = branch.get_from_and_to_objects()
 
-        return self.find_port_for_attachment(owner_object=obj_to,
-                                             attachment=self.get_persisted_attachment(api_object=branch,
-                                                                                      endpoint="to"),
-                                             endpoint="to")
+        return self.find_port_for_attachment(owner_object=obj_to)
 
     def get_persisted_attachment(self, api_object: ALL_DEV_TYPES, endpoint: str) -> Dict[str, Any]:
         """
@@ -2062,12 +2053,9 @@ class SchematicWidget(BaseDiagramWidget):
         else:
             return self.diagram.get_attachment(api_object=api_object, endpoint=endpoint)
 
-    def find_port_for_attachment(self,
-                                 owner_object: ALL_DEV_TYPES | None,
-                                 attachment: Dict[str, Any],
-                                 endpoint: str | None = None) -> OPTIONAL_PORT:
+    def find_port_for_attachment(self, owner_object: ALL_DEV_TYPES | None) -> OPTIONAL_PORT:
         """
-        Resolve the graphics terminal for an attachment record, with compatibility fallback to the default terminal.
+        Resolve the graphics terminal for one owner object.
         """
         if owner_object is None:
             return None
@@ -2076,15 +2064,8 @@ class SchematicWidget(BaseDiagramWidget):
         if owner_graphic is None:
             return None
 
-        if "terminal_key" in attachment:
-            terminal_key = attachment["terminal_key"]
-        elif isinstance(owner_graphic, (BusGraphicItem, FluidNodeGraphicItem)):
-            terminal_key = owner_graphic.get_default_terminal_key(endpoint)
-        else:
-            terminal_key = "default"
-
         if isinstance(owner_graphic, (BusGraphicItem, FluidNodeGraphicItem)):
-            return owner_graphic.get_terminal_by_key(terminal_key)
+            return owner_graphic.get_terminal()
         else:
             return None
 

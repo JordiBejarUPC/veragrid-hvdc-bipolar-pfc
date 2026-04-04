@@ -41,6 +41,28 @@ class SchematicAttachmentOwnerKind(Enum):
     FLUID = "fluid"
 
 
+class SchematicExplicitAttachmentSlot:
+    """
+    Store one typed explicit attachment slot for runtime behavior.
+    """
+    __slots__ = ("owner_kind", "side", "order")
+
+    def __init__(self,
+                 owner_kind: SchematicAttachmentOwnerKind,
+                 side: SchematicAttachmentSide,
+                 order: int) -> None:
+        """
+        Initialize one typed explicit attachment slot.
+
+        :param owner_kind: Owning node kind.
+        :param side: Attachment side.
+        :param order: One-based slot order.
+        """
+        self.owner_kind: SchematicAttachmentOwnerKind = owner_kind
+        self.side: SchematicAttachmentSide = side
+        self.order: int = int(order)
+
+
 class SchematicRouteRecord:
     """
     Store one typed route record for runtime behavior.
@@ -74,8 +96,10 @@ class SchematicAttachmentRecord:
         "anchor_y",
         "anchor_auto",
         "side",
-        "slot_key",
-        "terminal_key",
+        "slot_side",
+        "terminal_side",
+        "explicit_slot",
+        "explicit_terminal",
         "order",
         "auto_slot",
     )
@@ -90,8 +114,10 @@ class SchematicAttachmentRecord:
         self.anchor_y: float | None = None
         self.anchor_auto: bool = True
         self.side: SchematicAttachmentSide | None = None
-        self.slot_key: str | None = None
-        self.terminal_key: str | None = None
+        self.slot_side: SchematicAttachmentSide | None = None
+        self.terminal_side: SchematicAttachmentSide | None = None
+        self.explicit_slot: SchematicExplicitAttachmentSlot | None = None
+        self.explicit_terminal: SchematicExplicitAttachmentSlot | None = None
         self.order: int | None = None
         self.auto_slot: bool = True
 
@@ -179,6 +205,32 @@ def parse_schematic_attachment_side(side: SchematicAttachmentSide | str | None) 
     return None
 
 
+def parse_schematic_attachment_owner_kind(owner_kind: SchematicAttachmentOwnerKind | str | None
+                                          ) -> SchematicAttachmentOwnerKind | None:
+    """
+    Parse one attachment owner kind from runtime or persisted data.
+
+    :param owner_kind: Runtime enum or persisted string.
+    :return: Parsed owner kind enum or ``None`` when absent/unknown.
+    """
+    if isinstance(owner_kind, SchematicAttachmentOwnerKind):
+        return owner_kind
+    elif owner_kind is None:
+        return None
+    else:
+        owner_kind_text: str = str(owner_kind)
+
+    owner_kind_value: SchematicAttachmentOwnerKind
+
+    for owner_kind_value in SchematicAttachmentOwnerKind:
+        if owner_kind_value.value == owner_kind_text:
+            return owner_kind_value
+        else:
+            pass
+
+    return None
+
+
 def serialize_schematic_attachment_side(side: SchematicAttachmentSide | str | None,
                                         default_side: SchematicAttachmentSide) -> str:
     """
@@ -194,6 +246,45 @@ def serialize_schematic_attachment_side(side: SchematicAttachmentSide | str | No
         return default_side.value
     else:
         return parsed_side.value
+
+
+def parse_schematic_explicit_attachment_slot(slot_key: str | None) -> SchematicExplicitAttachmentSlot | None:
+    """
+    Parse one explicit persisted slot identifier into a typed runtime object.
+
+    :param slot_key: Persisted slot key.
+    :return: Typed explicit slot object or ``None`` when the key is not explicit.
+    """
+    if slot_key is None:
+        return None
+    else:
+        parts: List[str] = slot_key.split("-")
+
+    if len(parts) != 3:
+        return None
+    else:
+        owner_kind: SchematicAttachmentOwnerKind | None = parse_schematic_attachment_owner_kind(parts[0])
+        side: SchematicAttachmentSide | None = parse_schematic_attachment_side(parts[1])
+        order_text: str = parts[2]
+
+    if owner_kind is None:
+        return None
+    elif side is None or side in (SchematicAttachmentSide.DEFAULT,):
+        return None
+    elif not order_text.isdigit():
+        return None
+    else:
+        return SchematicExplicitAttachmentSlot(owner_kind=owner_kind, side=side, order=int(order_text))
+
+
+def serialize_schematic_explicit_attachment_slot(explicit_slot: SchematicExplicitAttachmentSlot) -> str:
+    """
+    Serialize one typed explicit slot to the persisted string representation.
+
+    :param explicit_slot: Typed explicit slot.
+    :return: Persisted slot key.
+    """
+    return f"{explicit_slot.owner_kind.value}-{explicit_slot.side.value}-{int(explicit_slot.order)}"
 
 
 def parse_schematic_route_kind(kind: SchematicRouteKind | str | None) -> SchematicRouteKind | None:
@@ -642,12 +733,12 @@ def get_attachment_record(location: GraphicLocation,
     )
     attachment_record.anchor_auto = bool(persisted_attachment.get("anchor_auto", True))
     attachment_record.side = parse_schematic_attachment_side(persisted_attachment.get("side", None))
-    attachment_record.slot_key = (
-        str(persisted_attachment.get("slot"))
-        if persisted_attachment.get("slot", None) is not None
-        else None
+    attachment_record.slot_side = parse_schematic_attachment_side(persisted_attachment.get("slot", None))
+    attachment_record.terminal_side = parse_schematic_attachment_side(persisted_attachment.get("terminal_key", None))
+    attachment_record.explicit_slot = parse_schematic_explicit_attachment_slot(
+        str(persisted_attachment.get("slot")) if persisted_attachment.get("slot", None) is not None else None
     )
-    attachment_record.terminal_key = (
+    attachment_record.explicit_terminal = parse_schematic_explicit_attachment_slot(
         str(persisted_attachment.get("terminal_key"))
         if persisted_attachment.get("terminal_key", None) is not None
         else None
@@ -700,15 +791,19 @@ def set_attachment_record(location: GraphicLocation,
     else:
         attachment["side"] = attachment_record.side.value
 
-    if attachment_record.slot_key is None:
+    if attachment_record.explicit_slot is not None:
+        attachment["slot"] = serialize_schematic_explicit_attachment_slot(attachment_record.explicit_slot)
+    elif attachment_record.slot_side is None:
         attachment.pop("slot", None)
     else:
-        attachment["slot"] = attachment_record.slot_key
+        attachment["slot"] = attachment_record.slot_side.value
 
-    if attachment_record.terminal_key is None:
+    if attachment_record.explicit_terminal is not None:
+        attachment["terminal_key"] = serialize_schematic_explicit_attachment_slot(attachment_record.explicit_terminal)
+    elif attachment_record.terminal_side is None:
         attachment.pop("terminal_key", None)
     else:
-        attachment["terminal_key"] = attachment_record.terminal_key
+        attachment["terminal_key"] = attachment_record.terminal_side.value
 
     if attachment_record.order is None:
         attachment.pop("order", None)
@@ -794,30 +889,26 @@ def set_dock(location: GraphicLocation, dock: Dict[str, Any]) -> Dict[str, Any]:
     return set_layout_section(location, "dock", dock)
 
 
-def is_canonical_attachment_slot(slot_key: str | None) -> bool:
+def is_canonical_attachment_slot(slot_key: SchematicAttachmentSide | str | None) -> bool:
     """
     Determine whether a slot key is one of the compatibility aliases.
 
     :param slot_key: Persisted slot key.
     :return: ``True`` when the key is a compatibility alias or missing.
     """
+    parsed_side: SchematicAttachmentSide | None = parse_schematic_attachment_side(slot_key)
+
     if slot_key is None:
         return True
-    elif slot_key == "default":
-        return True
-    elif slot_key == "left":
-        return True
-    elif slot_key == "right":
-        return True
-    elif slot_key == "top":
-        return True
-    elif slot_key == "bottom":
+    elif parsed_side is not None:
         return True
     else:
         return False
 
 
-def build_explicit_attachment_slot_key(owner_kind: str, side: str, order: int) -> str:
+def build_explicit_attachment_slot_key(owner_kind: SchematicAttachmentOwnerKind | str,
+                                       side: SchematicAttachmentSide | str,
+                                       order: int) -> str:
     """
     Build a stable explicit slot identifier for persisted schematic attachments.
 
@@ -826,31 +917,29 @@ def build_explicit_attachment_slot_key(owner_kind: str, side: str, order: int) -
     :param order: One-based slot order on that side.
     :return: Explicit slot key.
     """
-    return f"{owner_kind}-{side}-{int(order)}"
+    owner_kind_value: SchematicAttachmentOwnerKind | None = parse_schematic_attachment_owner_kind(owner_kind)
+    side_value: SchematicAttachmentSide | None = parse_schematic_attachment_side(side)
+
+    if owner_kind_value is None or side_value is None:
+        raise ValueError("Explicit attachment slots require a valid owner kind and side.")
+    else:
+        explicit_slot: SchematicExplicitAttachmentSlot = SchematicExplicitAttachmentSlot(owner_kind=owner_kind_value,
+                                                                                         side=side_value,
+                                                                                         order=order)
+        return serialize_schematic_explicit_attachment_slot(explicit_slot)
 
 
-def parse_explicit_attachment_slot_key(slot_key: str | None) -> Tuple[str, str, int] | None:
+def parse_explicit_attachment_slot_key(slot_key: str | None
+                                       ) -> Tuple[SchematicAttachmentOwnerKind, SchematicAttachmentSide, int] | None:
     """
     Parse an explicit slot identifier.
 
     :param slot_key: Persisted slot key.
     :return: Tuple ``(owner_kind, side, order)`` or ``None`` when the key is not explicit.
     """
-    if slot_key is None:
-        return None
-    else:
-        parts: List[str] = slot_key.split("-")
+    explicit_slot: SchematicExplicitAttachmentSlot | None = parse_schematic_explicit_attachment_slot(slot_key)
 
-    if len(parts) != 3:
+    if explicit_slot is None:
         return None
     else:
-        owner_kind: str = parts[0]
-        side: str = parts[1]
-        order_text: str = parts[2]
-
-    if not order_text.isdigit():
-        return None
-    elif side not in ("left", "right", "top", "bottom"):
-        return None
-    else:
-        return owner_kind, side, int(order_text)
+        return explicit_slot.owner_kind, explicit_slot.side, int(explicit_slot.order)
