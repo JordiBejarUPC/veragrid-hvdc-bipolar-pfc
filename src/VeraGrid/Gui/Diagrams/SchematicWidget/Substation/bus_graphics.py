@@ -50,6 +50,7 @@ from VeraGridEngine.Devices.Substation import Bus
 from VeraGridEngine.Devices.Aggregation.short_cirtcuit_event import ShortCircuitEvent
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
+    from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 
 INJECTION_GRAPHICS = Union[
@@ -250,12 +251,12 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         return self._terminal
 
-    def get_associated_branch_graphics(self) -> List[GenericDiagramWidget]:
+    def get_associated_branch_graphics(self) -> List[LineGraphicTemplateItem]:
         """
         Get a list of all associated branch graphics
         :return:
         """
-        conn: List[GenericDiagramWidget | INJECTION_GRAPHICS] = self._terminal.get_hosted_graphics()
+        conn: List[LineGraphicTemplateItem] = self._terminal.get_hosted_graphics()
 
         return conn
 
@@ -266,12 +267,12 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         return self._child_graphics
 
-    def get_associated_widgets(self) -> List[GenericDiagramWidget | INJECTION_GRAPHICS]:
+    def get_associated_widgets(self) -> List[LineGraphicTemplateItem | INJECTION_GRAPHICS | QGraphicsItem]:
         """
         Get a list of all associated graphics
         :return:
         """
-        conn: List[GenericDiagramWidget | INJECTION_GRAPHICS] = self.get_associated_branch_graphics()
+        conn: List[LineGraphicTemplateItem | INJECTION_GRAPHICS | QGraphicsItem] = self.get_associated_branch_graphics()
 
         for graphics in self._child_graphics:
             conn.append(graphics)
@@ -547,7 +548,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self._terminal.process_callbacks(self._terminal.scenePos())
         self.auto_assign_branch_slots()
 
-        branch_graphic: GenericDiagramWidget
+        branch_graphic: LineGraphicTemplateItem
 
         for branch_graphic in self.get_associated_branch_graphics():
             branch_graphic.update_ports()
@@ -1063,7 +1064,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
     def get_terminal_anchor_by_key(self,
                                    terminal_key: str = "default",
-                                   graphic_object: GenericDiagramWidget | INJECTION_GRAPHICS | None = None,
+                                   graphic_object: LineGraphicTemplateItem | None = None,
                                    alignment: float | None = None) -> QPointF:
         """
         Resolve the scene anchor point for a named attachment slot.
@@ -1164,7 +1165,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         orders: List[int] = list()
         explicit_entries = self.get_explicit_slot_entries(side_key=side_key)
-        entry: Tuple[int, str, GenericDiagramWidget | INJECTION_GRAPHICS]
+        entry: Tuple[int, str, LineGraphicTemplateItem]
 
         for entry in explicit_entries:
             orders.append(entry[0])
@@ -1173,13 +1174,13 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
     def get_explicit_slot_entries(self,
                                   side_key: SchematicAttachmentSlot
-                                  ) -> List[Tuple[int, str, GenericDiagramWidget | INJECTION_GRAPHICS]]:
+                                  ) -> List[Tuple[int, str, LineGraphicTemplateItem]]:
         """
         Collect persisted explicit slot entries for this graphic on one side.
         """
-        entries: List[Tuple[int, str, GenericDiagramWidget | INJECTION_GRAPHICS]] = list()
-        branch_graphics: List[GenericDiagramWidget | INJECTION_GRAPHICS] = self.get_associated_branch_graphics()
-        graphic_object: GenericDiagramWidget | INJECTION_GRAPHICS
+        entries: List[Tuple[int, str, LineGraphicTemplateItem]] = list()
+        branch_graphics: List[LineGraphicTemplateItem] = self.get_associated_branch_graphics()
+        graphic_object: LineGraphicTemplateItem
 
         for graphic_object in branch_graphics:
             endpoint: SchematicBranchEndpoint | None = self.get_branch_endpoint_for_graphic(graphic_object)
@@ -1206,7 +1207,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         Check whether an explicit slot order is duplicated on one side.
         """
         count: int = 0
-        entry: Tuple[int, str, GenericDiagramWidget | INJECTION_GRAPHICS]
+        entry: Tuple[int, str, LineGraphicTemplateItem]
 
         for entry in self.get_explicit_slot_entries(side_key=side_key):
             if entry[0] == order:
@@ -1218,7 +1219,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
     def get_branch_endpoint_for_graphic(
             self,
-            graphic_object: GenericDiagramWidget | INJECTION_GRAPHICS
+            graphic_object: LineGraphicTemplateItem
     ) -> SchematicBranchEndpoint | None:
         """
         Determine which endpoint of a branch graphic is attached to this node.
@@ -1286,13 +1287,15 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         Assign coordinate-based branch anchors from current geometry.
         """
         grouped_entries: Dict[
-            SchematicAttachmentSlot, List[Tuple[float, str, GenericDiagramWidget, str, Dict[str, Any]]]] = {
+            SchematicAttachmentSlot, List[
+                Tuple[float, str, LineGraphicTemplateItem, SchematicBranchEndpoint, Dict[str, Any]]
+            ]] = {
             SchematicAttachmentSlot.LEFT: list(),
             SchematicAttachmentSlot.RIGHT: list(),
             SchematicAttachmentSlot.TOP: list(),
             SchematicAttachmentSlot.BOTTOM: list(),
         }
-        branch_graphic: GenericDiagramWidget
+        branch_graphic: LineGraphicTemplateItem
 
         for branch_graphic in self.get_associated_branch_graphics():
             endpoint: SchematicBranchEndpoint | None = self.get_branch_endpoint_for_graphic(branch_graphic)

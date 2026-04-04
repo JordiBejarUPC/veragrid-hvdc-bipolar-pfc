@@ -35,7 +35,10 @@ from VeraGrid.Gui.messages import yes_no_question, error_msg
 from VeraGrid.Gui.gui_functions import add_menu_entry
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
+    from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
+
+FLUID_CHILD_GRAPHICS = Union[FluidTurbineGraphicItem, FluidPumpGraphicItem, FluidP2xGraphicItem]
 
 
 class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
@@ -64,7 +67,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self.w = w if w >= self.min_w else self.min_w
 
         # loads, shunts, generators, etc...
-        self._child_graphics = list()
+        self._child_graphics: List[FLUID_CHILD_GRAPHICS] = list()
 
         # Enabled for short circuit
         self.sc_enabled = [False, False, False, False]
@@ -118,28 +121,28 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
     def editor(self) -> SchematicWidget:
         return self._editor
 
-    def get_associated_branch_graphics(self) -> List[GenericDiagramWidget]:
+    def get_associated_branch_graphics(self) -> List[LineGraphicTemplateItem]:
         """
         Get a list of all associated branch graphics
         :return:
         """
-        conn: List[GenericDiagramWidget] = self._terminal.get_hosted_graphics()
+        conn: List[LineGraphicTemplateItem] = self._terminal.get_hosted_graphics()
 
         return conn
 
-    def get_associated_widgets(self) -> List[GenericDiagramWidget]:
+    def get_associated_widgets(self) -> List[LineGraphicTemplateItem | FLUID_CHILD_GRAPHICS]:
         """
         Get a list of all associated graphics
         :return:
         """
-        conn: List[GenericDiagramWidget] = self.get_associated_branch_graphics()
+        conn: List[LineGraphicTemplateItem | FLUID_CHILD_GRAPHICS] = self.get_associated_branch_graphics()
 
         for graphics in self._child_graphics:
             conn.append(graphics)
 
         return conn
 
-    def set_api_object_color(self):
+    def set_api_object_color(self) -> None:
         """
         Gather the color from the api object and apply
         :return:
@@ -147,7 +150,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self.color = QColor(self.api_object.color) if self.api_object is not None else ACTIVE['fluid']
         self.set_tile_color(self.color)
 
-    def set_label(self, val: str):
+    def set_label(self, val: str) -> None:
         """
         Set the label content
         :param val:
@@ -164,7 +167,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         if self.api_object is not None:
             self.editor.set_editor_model(api_object=self.api_object)
 
-    def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent):
+    def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
         """
         On mouse move of this object...
         Args:
@@ -181,7 +184,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                                             draw_labels=self.draw_labels,
                                             graphic_object=self)
 
-    def set_position(self, x, y):
+    def set_position(self, x: float, y: float) -> None:
         """
         Set the bus x, y position
         :param x: x in pixels
@@ -193,7 +196,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             y = 0
         self.setPos(QPoint(int(x), int(y)))
 
-    def recolour_mode(self):
+    def recolour_mode(self) -> None:
         """
         Change the colour according to the system theme
         """
@@ -214,13 +217,13 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         return QPointF(self.x() + self.rect().width() / 2.0,
                        self.y() + self.rect().height() + self._terminal.h / 2.0)
 
-    def get_nexus_point_for_child(self, child_graphic: GenericDiagramWidget) -> QPointF:
+    def get_nexus_point_for_child(self, child_graphic: FLUID_CHILD_GRAPHICS) -> QPointF:
         """
         Compatibility connection point for docked child graphics.
         """
         return self.get_nexus_point()
 
-    def set_tile_color(self, brush):
+    def set_tile_color(self, brush: QBrush | QColor) -> None:
         """
         Set the color of the title
         Args:
@@ -229,7 +232,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self.tile.setBrush(brush)
         self._terminal.setBrush(brush)
 
-    def redraw(self):
+    def redraw(self) -> None:
         """
         Update the object
         :return:
@@ -279,32 +282,36 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         return self.w, self.min_h
 
-    def arrange_children(self):
+    def arrange_children(self) -> None:
         """
         This function sorts the load and generators icons
         Returns:
             Nothing
         """
-        dock_groups: Dict[str, List[Tuple[int, int, float, float | None, bool, GenericDiagramWidget]]] = {
-            SchematicAttachmentSlot.TOP.value: list(),
-            SchematicAttachmentSlot.BOTTOM.value: list(),
-            SchematicAttachmentSlot.LEFT.value: list(),
-            SchematicAttachmentSlot.RIGHT.value: list(),
+        dock_groups: Dict[SchematicAttachmentSlot, List[
+            Tuple[int, int, float, float | None, bool, FLUID_CHILD_GRAPHICS]
+        ]] = {
+            SchematicAttachmentSlot.TOP: list(),
+            SchematicAttachmentSlot.BOTTOM: list(),
+            SchematicAttachmentSlot.LEFT: list(),
+            SchematicAttachmentSlot.RIGHT: list(),
         }
         child_index: int
 
         for child_index, elm in enumerate(self._child_graphics):
             dock = self.editor.diagram.sync_injection_dock(api_object=elm.api_object,
                                                            owner_device=self.api_object,
-                                                           side=SchematicAttachmentSlot.BOTTOM.value)
-            side = str(dock.get("side", SchematicAttachmentSlot.BOTTOM.value))
+                                                           side=SchematicAttachmentSlot.BOTTOM)
+            side: SchematicAttachmentSlot = parse_attachment_slot(
+                str(dock.get("side", SchematicAttachmentSlot.BOTTOM.value))
+            )
             order = int(dock.get("order", 0))
             offset = float(dock.get("offset", 0.0))
             alignment = dock.get("alignment", None)
             auto_layout = bool(dock.get("auto_layout", True))
 
             if side not in dock_groups:
-                side = SchematicAttachmentSlot.BOTTOM.value
+                side = SchematicAttachmentSlot.BOTTOM
             else:
                 pass
 
@@ -593,7 +600,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         """
         orders: List[int] = list()
         explicit_entries = self.get_explicit_slot_entries(side_key=side_key)
-        entry: Tuple[int, str, GenericDiagramWidget]
+        entry: Tuple[int, str, LineGraphicTemplateItem]
 
         for entry in explicit_entries:
             orders.append(entry[0])
@@ -601,13 +608,13 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         return orders
 
     def get_explicit_slot_entries(self,
-                                  side_key: SchematicAttachmentSlot) -> List[Tuple[int, str, GenericDiagramWidget]]:
+                                  side_key: SchematicAttachmentSlot) -> List[Tuple[int, str, LineGraphicTemplateItem]]:
         """
         Collect persisted explicit slot entries for this graphic on one side.
         """
-        entries: List[Tuple[int, str, GenericDiagramWidget]] = list()
-        branch_graphics: List[GenericDiagramWidget] = self.get_associated_branch_graphics()
-        graphic_object: GenericDiagramWidget
+        entries: List[Tuple[int, str, LineGraphicTemplateItem]] = list()
+        branch_graphics: List[LineGraphicTemplateItem] = self.get_associated_branch_graphics()
+        graphic_object: LineGraphicTemplateItem
 
         for graphic_object in branch_graphics:
             endpoint: SchematicBranchEndpoint | None = self.get_branch_endpoint_for_graphic(graphic_object)
@@ -634,7 +641,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         Check whether an explicit slot order is duplicated on one side.
         """
         count: int = 0
-        entry: Tuple[int, str, GenericDiagramWidget]
+        entry: Tuple[int, str, LineGraphicTemplateItem]
 
         for entry in self.get_explicit_slot_entries(side_key=side_key):
             if entry[0] == order:
@@ -645,7 +652,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         return count > 1
 
     def get_branch_endpoint_for_graphic(self,
-                                        graphic_object: GenericDiagramWidget) -> SchematicBranchEndpoint | None:
+                                        graphic_object: LineGraphicTemplateItem) -> SchematicBranchEndpoint | None:
         """
         Determine which endpoint of a branch graphic is attached to this node.
         """
@@ -720,7 +727,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         Assign coordinate-based branch anchors to attached fluid paths from current geometry.
         """
         grouped_entries: Dict[SchematicAttachmentSlot, List[
-            Tuple[float, str, GenericDiagramWidget, SchematicBranchEndpoint, Dict[str, Any]]
+            Tuple[float, str, LineGraphicTemplateItem, SchematicBranchEndpoint, Dict[str, Any]]
         ]] = {
             SchematicAttachmentSlot.LEFT: list(),
             SchematicAttachmentSlot.RIGHT: list(),
@@ -731,7 +738,7 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         terminal_y: float = self._terminal.pos().y() + self._terminal.rect().y()
         terminal_h: float = self._terminal.rect().height()
         local_center_y: float = terminal_y + terminal_h * 0.5
-        branch_graphic: GenericDiagramWidget
+        branch_graphic: LineGraphicTemplateItem
 
         for branch_graphic in self.get_associated_branch_graphics():
             endpoint: SchematicBranchEndpoint | None = self.get_branch_endpoint_for_graphic(branch_graphic)
