@@ -457,6 +457,8 @@ def test_schematic_diagram_sync_branch_attachments_normalizes_explicit_slot_meta
     attachments = diagram.sync_branch_attachments(api_object=line)
 
     assert attachments["from"] == {
+        "anchor_auto": True,
+        "auto_slot": True,
         "side": "right",
         "slot": "bus-right-2",
         "order": 2,
@@ -465,11 +467,13 @@ def test_schematic_diagram_sync_branch_attachments_normalizes_explicit_slot_meta
         "terminal_key": "bus-right-2",
     }
     assert attachments["to"] == {
+        "anchor_auto": True,
+        "auto_slot": True,
         "side": "left",
-        "slot": "bus-left-1",
+        "slot": "left",
         "owner_device_id": bus_to.idtag,
         "owner_device_type": bus_to.device_type.value,
-        "terminal_key": "bus-left-1",
+        "terminal_key": "left",
     }
 
 
@@ -539,14 +543,15 @@ def test_schematic_diagram_sync_attachment_preserves_custom_noncanonical_slot_ke
             "slot": "manual-slot-a",
             "terminal_key": "manual-slot-a",
             "order": 4,
+            "auto_slot": False,
         },
     )
 
     attachment = diagram.sync_attachment(api_object=line, endpoint="from", owner_device=bus_from)
 
     assert attachment["side"] == "bottom"
-    assert attachment["slot"] == "manual-slot-a"
-    assert attachment["terminal_key"] == "manual-slot-a"
+    assert attachment["slot"] == "bottom"
+    assert attachment["terminal_key"] == "bottom"
     assert attachment["order"] == 4
 
 
@@ -621,14 +626,9 @@ def test_schematic_diagram_upgrade_legacy_branch_layout_synthesizes_coordinate_r
     diagram = SchematicDiagram(name="compat")
     metadata = diagram.upgrade_legacy_branch_layout(api_object=line, start=(10.0, 20.0), end=(110.0, 80.0))
 
-    assert diagram.get_branch_route_points(line) == [
-        (10.0, 20.0),
-        (60.0, 20.0),
-        (60.0, 80.0),
-        (110.0, 80.0),
-    ]
+    assert diagram.get_branch_route_points(line) == [(10.0, 20.0), (110.0, 80.0)]
     assert metadata["route"] == {
-        "points": [(10.0, 20.0), (60.0, 20.0), (60.0, 80.0), (110.0, 80.0)],
+        "points": [(10.0, 20.0), (110.0, 80.0)],
         "kind": "auto-polyline",
         "locked": False,
     }

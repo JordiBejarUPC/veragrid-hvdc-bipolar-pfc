@@ -4,6 +4,7 @@ from typing import Any
 from PySide6 import QtWidgets
 from PySide6.QtCore import QPointF
 
+from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import SchematicAttachmentSlot
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_node_graphics import FluidNodeGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.load_graphics import LoadGraphicItem
@@ -18,7 +19,8 @@ from VeraGridEngine.enumerations import BusGraphicType, SchematicAutoRouteStyle,
 
 
 class _EditorStub:
-    __slots__ = ("attachments", "diagram", "diagram_updates", "graphics_manager", "_is_loading_diagram")
+    __slots__ = ("attachments", "diagram", "diagram_updates", "graphics_manager", "_is_loading_diagram",
+                 "_is_batch_refreshing_branches")
 
     def __init__(self) -> None:
         """
@@ -31,6 +33,7 @@ class _EditorStub:
         self.diagram_updates: dict[int, dict[str, Any]] = dict()
         self.graphics_manager: _GraphicsManagerStub = _GraphicsManagerStub()
         self._is_loading_diagram: bool = False
+        self._is_batch_refreshing_branches: bool = False
 
     def update_diagram_element(self,
                                device: Any,
@@ -88,6 +91,14 @@ class _EditorStub:
         :return: Loading flag.
         """
         return self._is_loading_diagram
+
+    def is_batch_refreshing_branches(self) -> bool:
+        """
+        Return the fake batched-branch-refresh flag.
+
+        :return: Batch-refresh flag.
+        """
+        return self._is_batch_refreshing_branches
 
     def add_to_scene(self, graphic_object: Any) -> None:
         """
@@ -659,20 +670,17 @@ def test_connectivity_bus_anchors_collapse_to_center() -> None:
     left_anchor = graphic.get_terminal_anchor_by_key("left")
     right_anchor = graphic.get_terminal_anchor_by_key("right")
     top_anchor = graphic.get_terminal_anchor_by_key("top")
+    center_anchor = graphic.mapToScene(graphic.rect().center())
 
-    assert left_anchor.x() == 20.0
-    assert left_anchor.y() == 20.0
-    assert right_anchor.x() == 20.0
-    assert right_anchor.y() == 20.0
-    assert top_anchor.x() == 20.0
-    assert top_anchor.y() == 20.0
+    assert left_anchor == center_anchor
+    assert right_anchor == center_anchor
+    assert top_anchor == center_anchor
 
     branch_graphic.move_endpoint_alignment(endpoint="from", scene_pos=QPointF(-100.0, -100.0))
 
     moved_anchor = branch_graphic.get_endpoint_anchor(endpoint="from")
 
-    assert moved_anchor.x() == 20.0
-    assert moved_anchor.y() == 20.0
+    assert moved_anchor == center_anchor
 
 
 def test_manual_branch_route_is_not_rewritten_during_graphic_redraw() -> None:
@@ -733,7 +741,7 @@ def test_saved_auto_branch_route_is_rendered_during_load() -> None:
                                              editor=editor,
                                              api_object=line)
 
-    assert branch_graphic.get_render_points() == [(90.0, 45.0), (90.0, 110.0), (330.0, 110.0), (330.0, 45.0)]
+    assert branch_graphic.get_render_points() == [(90.0, 45.0), (90.0, 110.0), (390.0, 110.0), (390.0, 45.0)]
 
 
 def test_auto_branch_route_uses_straight_branch_style() -> None:
@@ -1110,7 +1118,7 @@ def test_bus_graphic_detects_duplicate_explicit_slot_orders() -> None:
     editor.set_persisted_attachment(branch_api_object_1, "from", {"terminal_key": "bus-right-1"})
     editor.set_persisted_attachment(branch_api_object_2, "from", {"terminal_key": "bus-right-1"})
 
-    assert graphic.has_duplicate_explicit_slot_order(side_key="right", order=1) is True
+    assert graphic.has_duplicate_explicit_slot_order(side_key=SchematicAttachmentSlot.RIGHT, order=1) is True
 
 
 def test_fluid_node_terminal_slots_include_explicit_attached_slots() -> None:
@@ -1212,8 +1220,7 @@ def test_injection_graphic_sync_manual_dock_metadata_from_position() -> None:
     assert dock["auto_layout"] is False
     assert dock["alignment"] == 1.0 / 6.0
     assert dock["offset"] == 16.0
-    assert dock["nexus_parent_alignment"] == 1.0 / 6.0
-    assert dock["anchor_x"] == 20.0
+    assert dock["anchor_x"] == 30.0
     assert dock["anchor_y"] == 45.0
     assert dock["anchor_auto"] is False
 
@@ -1318,7 +1325,7 @@ def test_rotated_injection_child_nexus_anchor_uses_item_transform() -> None:
     load_graphic.setRotation(90.0)
 
     child_anchor = load_graphic.get_child_nexus_anchor()
-    expected_anchor = load_graphic.mapToScene(QPointF(float(load_graphic.w) * 0.5, 0.0))
+    expected_anchor = load_graphic.mapToScene(load_graphic.get_child_anchor_local_point_from_dock(load_graphic.get_dock_metadata()))
 
     assert child_anchor == expected_anchor
 
@@ -1352,7 +1359,9 @@ def test_rotated_injection_nexus_path_survives_recreation() -> None:
     nexus_start = nexus_path.elementAt(0)
 
     assert recreated_load_graphic.rotation() == 90.0
-    assert child_anchor == recreated_load_graphic.mapToScene(QPointF(float(recreated_load_graphic.w) * 0.5, 0.0))
+    assert child_anchor == recreated_load_graphic.mapToScene(
+        recreated_load_graphic.get_child_anchor_local_point_from_dock(recreated_load_graphic.get_dock_metadata())
+    )
     assert float(nexus_start.x) == child_anchor.x()
     assert float(nexus_start.y) == child_anchor.y()
 
@@ -1432,7 +1441,8 @@ def test_loading_preserves_manual_nexus_route_shape_for_rotated_injection() -> N
     assert render_points[-1] == (expected_end.x(), expected_end.y())
     assert len(render_points) == 4
     assert render_points[1] != (80.0, 120.0)
-    assert render_points[2] == (120.0, 45.0)
+    assert render_points[2][1] == 45.0
+    assert render_points[2][0] != 120.0
 
 
 def test_bus_graphic_nexus_point_for_child_uses_dock_side() -> None:

@@ -506,19 +506,19 @@ class FluidNodeGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         Build the explicit slot catalog currently attached to this fluid node.
         """
         slots: Dict[str, Dict[str, str]] = dict()
-        side_key: str
+        side_key: SchematicAttachmentSlot
 
         for side_key in (
-            SchematicAttachmentSlot.LEFT.value,
-            SchematicAttachmentSlot.RIGHT.value,
-            SchematicAttachmentSlot.TOP.value,
-            SchematicAttachmentSlot.BOTTOM.value,
+            SchematicAttachmentSlot.LEFT,
+            SchematicAttachmentSlot.RIGHT,
+            SchematicAttachmentSlot.TOP,
+            SchematicAttachmentSlot.BOTTOM,
         ):
             order: int
 
             for order in self.get_explicit_slot_orders(side_key=side_key):
                 slot_key: str = build_explicit_slot_key(owner_kind="fluid", side=side_key, order=order)
-                slots[slot_key] = {"terminal_key": slot_key, "side": side_key}
+                slots[slot_key] = {"terminal_key": slot_key, "side": side_key.value}
 
         return slots
 

@@ -2,6 +2,7 @@ from PySide6.QtCore import QPointF
 
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import (get_opposite_attachment_side,
                                                                                            get_rect_side_anchor)
+from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import SchematicAttachmentSlot
 from VeraGridEngine.Devices.Diagrams.schematic_layout import build_default_branch_route
 from VeraGridEngine.enumerations import SchematicAutoRouteStyle
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.route_geometry import (merge_route_with_endpoints,
@@ -128,20 +129,20 @@ def test_move_polyline_route_vertex_keeps_route_endpoints_fixed() -> None:
 
 
 def test_get_opposite_attachment_side_matches_expected_pairs() -> None:
-    assert get_opposite_attachment_side("top") == "bottom"
-    assert get_opposite_attachment_side("bottom") == "top"
-    assert get_opposite_attachment_side("left") == "right"
-    assert get_opposite_attachment_side("right") == "left"
+    assert get_opposite_attachment_side(SchematicAttachmentSlot.TOP) == SchematicAttachmentSlot.BOTTOM
+    assert get_opposite_attachment_side(SchematicAttachmentSlot.BOTTOM) == SchematicAttachmentSlot.TOP
+    assert get_opposite_attachment_side(SchematicAttachmentSlot.LEFT) == SchematicAttachmentSlot.RIGHT
+    assert get_opposite_attachment_side(SchematicAttachmentSlot.RIGHT) == SchematicAttachmentSlot.LEFT
 
 
 def test_get_rect_side_anchor_uses_alignment_on_selected_side() -> None:
     assert get_rect_side_anchor(origin=QPointF(10.0, 20.0),
                                 width=80.0,
                                 height=40.0,
-                                side="top",
+                                side=SchematicAttachmentSlot.TOP,
                                 alignment=0.25) == QPointF(30.0, 20.0)
     assert get_rect_side_anchor(origin=QPointF(10.0, 20.0),
                                 width=80.0,
                                 height=40.0,
-                                side="right",
+                                side=SchematicAttachmentSlot.RIGHT,
                                 alignment=0.75) == QPointF(90.0, 50.0)

@@ -1707,7 +1707,9 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         @return:
         """
         self.pos2 = endpos
-        if self.editor.is_batch_refreshing_branches():
+        if self.editor.is_loading_diagram():
+            pass
+        elif self.editor.is_batch_refreshing_branches():
             pass
         else:
             self.redraw()
@@ -1719,7 +1721,9 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         @return:
         """
         self.pos1 = pos1
-        if self.editor.is_batch_refreshing_branches():
+        if self.editor.is_loading_diagram():
+            pass
+        elif self.editor.is_batch_refreshing_branches():
             pass
         else:
             self.redraw()

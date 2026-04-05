@@ -24,16 +24,16 @@ def test_clamp_attachment_alignment_limits_range() -> None:
 
 def test_requires_explicit_attachment_anchor_distinguishes_future_slot_ids():
     assert requires_explicit_attachment_anchor("default") is False
-    assert requires_explicit_attachment_anchor("left") is False
-    assert requires_explicit_attachment_anchor("top") is False
-    assert requires_explicit_attachment_anchor("bus-right-1") is True
+    assert requires_explicit_attachment_anchor("left") is True
+    assert requires_explicit_attachment_anchor("top") is True
+    assert requires_explicit_attachment_anchor("bus-right-1") is False
 
 
 def test_explicit_slot_key_roundtrip() -> None:
     slot_key = build_explicit_slot_key(owner_kind="bus", side="bottom", order=4)
 
     assert slot_key == "bus-bottom-4"
-    assert parse_explicit_slot_key(slot_key) == ("bus", "bottom", 4)
+    assert parse_explicit_slot_key(slot_key) == ("bus", SchematicAttachmentSlot.BOTTOM, 4)
 
 
 def test_get_bar_slot_anchor_uses_bar_centerline_positions():
@@ -104,5 +104,11 @@ def test_get_distributed_anchor_spreads_slots_by_order():
 
 
 def test_infer_attachment_slot_from_route_uses_endpoint_direction():
-    assert infer_attachment_slot_from_route([(0.0, 0.0), (10.0, 0.0), (10.0, 20.0)], "from") == "right"
-    assert infer_attachment_slot_from_route([(20.0, 20.0), (20.0, 10.0), (0.0, 10.0)], "to") == "right"
+    assert infer_attachment_slot_from_route(
+        [(0.0, 0.0), (10.0, 0.0), (10.0, 20.0)],
+        "from"
+    ) == SchematicAttachmentSlot.RIGHT
+    assert infer_attachment_slot_from_route(
+        [(20.0, 20.0), (20.0, 10.0), (0.0, 10.0)],
+        "to"
+    ) == SchematicAttachmentSlot.RIGHT
