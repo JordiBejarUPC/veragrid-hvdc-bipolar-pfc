@@ -108,6 +108,50 @@ def clamp_coordinate(value: float,
         return value
 
 
+def get_bar_terminal_horizontal_inset(width: float) -> float:
+    """
+    Compute the interior horizontal inset used by bar-style attachment anchors.
+
+    End-of-bar branch connections should not snap exactly to the visual bar
+    borders because that makes the schematic look mechanically clipped. This
+    helper keeps a small interior margin while still scaling down safely for
+    narrow bars.
+
+    :param width: Bar width.
+    :return: Horizontal inset from each bar end.
+    """
+    width_value: float = float(width)
+
+    if width_value <= 0.0:
+        return 0.0
+    else:
+        pass
+
+    preferred_inset: float = min(12.0, width_value * 0.15)
+    maximum_supported_inset: float = max(0.0, width_value * 0.5 - 1.0)
+    return min(preferred_inset, maximum_supported_inset)
+
+
+def clamp_bar_terminal_x(width: float,
+                         point_x: float) -> float:
+    """
+    Clamp one bar attachment X coordinate to the interior connection locus.
+
+    :param width: Bar width.
+    :param point_x: Requested local X coordinate.
+    :return: Clamped local X coordinate.
+    """
+    width_value: float = float(width)
+    inset: float = get_bar_terminal_horizontal_inset(width=width_value)
+
+    if width_value <= inset * 2.0:
+        return width_value * 0.5
+    else:
+        return clamp_coordinate(value=float(point_x),
+                                minimum=inset,
+                                maximum=width_value - inset)
+
+
 def project_point_to_rectangle_perimeter(width: float,
                                          height: float,
                                          point_x: float,
@@ -163,7 +207,8 @@ def project_point_to_bar_terminal(width: float,
     :return: Projected local anchor point.
     """
     center_y: float = terminal_y + terminal_h * 0.5
-    clamped_x: float = clamp_coordinate(value=float(point_x), minimum=0.0, maximum=width)
+    clamped_x: float = clamp_bar_terminal_x(width=width,
+                                            point_x=point_x)
     return clamped_x, center_y
 
 
@@ -187,12 +232,14 @@ def get_bar_slot_anchor(width: float,
     top_y: float = terminal_y
     center_y: float = terminal_y + terminal_h * 0.5
     bottom_y: float = terminal_y + terminal_h
-    aligned_x: float = width * alignment_value
+    inset: float = get_bar_terminal_horizontal_inset(width=width)
+    aligned_x: float = clamp_bar_terminal_x(width=width,
+                                            point_x=width * alignment_value)
 
     if slot == SchematicAttachmentSlot.LEFT:
-        return 0.0, center_y
+        return inset, center_y
     elif slot == SchematicAttachmentSlot.RIGHT:
-        return width, center_y
+        return width - inset, center_y
     elif slot == SchematicAttachmentSlot.TOP:
         return aligned_x, center_y
     elif slot == SchematicAttachmentSlot.BOTTOM:
@@ -366,17 +413,20 @@ def get_distributed_anchor(side: SchematicAttachmentSlot | str,
     else:
         span_fraction = clamp_attachment_alignment(alignment)
 
+    inset: float = get_bar_terminal_horizontal_inset(width=width)
     bar_top_y: float = terminal_y
     bar_center_y: float = terminal_y + terminal_h * 0.5
     bar_bottom_y: float = terminal_y + terminal_h
 
     if normalized_side == SchematicAttachmentSlot.LEFT:
-        return 0.0, height * span_fraction
+        return inset, height * span_fraction
     elif normalized_side == SchematicAttachmentSlot.RIGHT:
-        return width, height * span_fraction
+        return width - inset, height * span_fraction
     elif normalized_side == SchematicAttachmentSlot.TOP:
-        return width * span_fraction, bar_center_y
+        return clamp_bar_terminal_x(width=width,
+                                    point_x=width * span_fraction), bar_center_y
     elif normalized_side == SchematicAttachmentSlot.BOTTOM:
-        return width * span_fraction, bar_center_y
+        return clamp_bar_terminal_x(width=width,
+                                    point_x=width * span_fraction), bar_center_y
     else:
         return width * 0.5, bar_center_y

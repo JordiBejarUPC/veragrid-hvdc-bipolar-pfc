@@ -37,8 +37,8 @@ def test_explicit_slot_key_roundtrip() -> None:
 
 
 def test_get_bar_slot_anchor_uses_bar_centerline_positions():
-    assert get_bar_slot_anchor(width=180.0, terminal_y=20.0, terminal_h=10.0, slot_key="left") == (0.0, 25.0)
-    assert get_bar_slot_anchor(width=180.0, terminal_y=20.0, terminal_h=10.0, slot_key="right") == (180.0, 25.0)
+    assert get_bar_slot_anchor(width=180.0, terminal_y=20.0, terminal_h=10.0, slot_key="left") == (12.0, 25.0)
+    assert get_bar_slot_anchor(width=180.0, terminal_y=20.0, terminal_h=10.0, slot_key="right") == (168.0, 25.0)
     assert get_bar_slot_anchor(width=180.0, terminal_y=20.0, terminal_h=10.0, slot_key="top") == (90.0, 25.0)
     assert get_bar_slot_anchor(width=180.0, terminal_y=20.0, terminal_h=10.0, slot_key="bottom") == (90.0, 25.0)
     assert get_bar_slot_anchor(width=180.0, terminal_y=20.0, terminal_h=10.0, slot_key="default") == (90.0, 25.0)
@@ -57,6 +57,19 @@ def test_get_bar_slot_anchor_uses_manual_alignment_for_bar_feeders() -> None:
                                terminal_h=10.0,
                                slot_key="bottom",
                                alignment=0.25) == (45.0, 25.0)
+
+
+def test_get_bar_slot_anchor_clamps_manual_alignment_away_from_bar_ends() -> None:
+    assert get_bar_slot_anchor(width=180.0,
+                               terminal_y=20.0,
+                               terminal_h=10.0,
+                               slot_key="bottom",
+                               alignment=0.0) == (12.0, 25.0)
+    assert get_bar_slot_anchor(width=180.0,
+                               terminal_y=20.0,
+                               terminal_h=10.0,
+                               slot_key="bottom",
+                               alignment=1.0) == (168.0, 25.0)
 
 
 def test_get_round_slot_anchor_uses_manual_alignment_for_side_feeders() -> None:

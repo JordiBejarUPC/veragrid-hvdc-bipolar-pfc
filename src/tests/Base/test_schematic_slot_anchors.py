@@ -558,9 +558,9 @@ def test_bus_graphic_slot_anchors_follow_named_edges() -> None:
     right_anchor = graphic.get_terminal_anchor_by_key("right")
     top_anchor = graphic.get_terminal_anchor_by_key("top")
 
-    assert left_anchor.x() == 0.0
+    assert left_anchor.x() == 12.0
     assert left_anchor.y() == 45.0
-    assert right_anchor.x() == 180.0
+    assert right_anchor.x() == 168.0
     assert right_anchor.y() == 45.0
     assert top_anchor.x() == 90.0
     assert top_anchor.y() == 45.0
@@ -914,9 +914,9 @@ def test_fluid_node_slot_anchors_follow_named_edges() -> None:
     right_anchor = graphic.get_terminal_anchor_by_key("right")
     top_anchor = graphic.get_terminal_anchor_by_key("top")
 
-    assert left_anchor.x() == 0.0
+    assert left_anchor.x() == 12.0
     assert left_anchor.y() == 45.0
-    assert right_anchor.x() == 180.0
+    assert right_anchor.x() == 168.0
     assert right_anchor.y() == 45.0
     assert top_anchor.x() == 90.0
     assert top_anchor.y() == 45.0
@@ -969,8 +969,8 @@ def test_bus_graphic_duplicate_explicit_orders_do_not_collapse_anchor_positions(
     anchor_1 = graphic.get_terminal_anchor_by_key("bus-right-1", graphic_object=branch_graphic_1)
     anchor_2 = graphic.get_terminal_anchor_by_key("bus-right-1", graphic_object=branch_graphic_2)
 
-    assert anchor_1.x() == 180.0
-    assert anchor_2.x() == 180.0
+    assert anchor_1.x() == 168.0
+    assert anchor_2.x() == 168.0
     assert anchor_1.y() != anchor_2.y()
 
 
@@ -1336,7 +1336,7 @@ def test_bus_graphic_nexus_point_for_child_uses_dock_side() -> None:
 
     nexus_point = graphic.get_nexus_point_for_child(left_child)
 
-    assert nexus_point.x() == 0.0
+    assert nexus_point.x() == 12.0
     assert nexus_point.y() == 45.0
 
 
@@ -1421,7 +1421,7 @@ def test_bus_graphic_auto_assign_branch_slots_prefers_vertical_feeders_for_bar_b
 
     assert editor.diagram.get_attachment(branch_api_object, "from")["side"] == "top"
     assert editor.diagram.get_attachment(branch_api_object, "from")["slot"] == "bus-top-1"
-    assert editor.diagram.get_attachment(branch_api_object, "from")["anchor_x"] == 180.0
+    assert editor.diagram.get_attachment(branch_api_object, "from")["anchor_x"] == 168.0
     assert editor.diagram.get_attachment(branch_api_object, "from")["anchor_y"] == 45.0
 
 
