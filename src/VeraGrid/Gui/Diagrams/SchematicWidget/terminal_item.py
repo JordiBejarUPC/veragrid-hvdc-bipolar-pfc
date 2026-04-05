@@ -317,7 +317,7 @@ class RoundTerminalItem(BaseTerminal, QGraphicsEllipseItem):
     def __init__(self,
                  name: str,
                  editor: SchematicWidget,
-                 parent: Union[Transformer3WGraphicItem, VscGraphicItem3Term],
+                 parent: Union[Transformer3WGraphicItem, VscGraphicItem3Term, BusGraphicItem],
                  terminal_type: TerminalType = TerminalType.OTHER,
                  h=10.0,
                  w=10.0):

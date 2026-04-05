@@ -38,8 +38,6 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (Schema
                                                                           get_distributed_anchor,
                                                                           get_bar_slot_anchor,
                                                                           project_point_to_bar_terminal,
-                                                                          project_point_to_rectangle_perimeter,
-                                                                          get_round_slot_anchor,
                                                                           infer_attachment_side_from_points,
                                                                           parse_attachment_slot,
                                                                           parse_explicit_slot_key)
@@ -105,10 +103,9 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
     """
 
     def __init__(self,
+                 editor: SchematicWidget,
+                 bus: Bus ,
                  parent=None,
-                 index=0,
-                 editor: SchematicWidget = None,
-                 bus: Bus = None,
                  h: float = 40,
                  w: float = 80,
                  x: float = 0,
@@ -117,14 +114,15 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                  r: float = 0):
         """
 
-        :param parent:
-        :param index:
         :param editor:
         :param bus:
+        :param parent:
         :param h:
         :param w:
         :param x:
         :param y:
+        :param draw_labels:
+        :param r:
         """
         GenericDiagramWidget.__init__(self, parent=parent, api_object=bus, editor=editor, draw_labels=draw_labels)
         QtWidgets.QGraphicsRectItem.__init__(self, parent)
@@ -138,7 +136,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self._child_graphics: List[INJECTION_GRAPHICS] = list()
 
         # index
-        self.index = index
+        # self.index = index
 
         self.big_marker = None
 
@@ -187,7 +185,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             self.connectivity_graph = True
 
         else:
-            self._terminal = BarTerminalItem('s', parent=self, editor=self._editor)
+            self._terminal = BarTerminalItem('s', parent=self, editor=editor)
             self.min_w = 180.0
             self.min_h = 40.0
             self.offset = 20
@@ -311,7 +309,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
     def recolour_mode(self) -> None:
         """
-        Change the colour according to the system theme
+        Change the color according to the system theme
         """
         super().recolour_mode()
 
@@ -749,7 +747,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
     def contextMenuEvent(self, event: QtWidgets.QGraphicsSceneContextMenuEvent):
         """
-        Display context menu
+        Display the context menu
         @param event:
         @return:
         """
@@ -1414,7 +1412,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
     def add_child_graphic(self, elm: INJECTION_DEVICE_TYPES, graphic: INJECTION_GRAPHICS):
         """
-        Add a api object and its graphic to this bus graphics domain
+        Add an api object and its graphic to this bus graphics domain
         :param elm:
         :param graphic:
         :return:
@@ -1439,7 +1437,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
     def add_load(self, api_obj: Union[Load, None] = None):
         """
-        Add load object to bus
+        Add a load object to this bus
         :param api_obj:
         :return:
         """
@@ -1452,7 +1450,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
     def add_shunt(self, api_obj: Union[Shunt, None] = None):
         """
-        Add shunt device
+        Add a shunt device to this bus
         :param api_obj: If None, a new shunt is created
         """
         if api_obj is None or type(api_obj) is bool:
@@ -1464,7 +1462,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
     def add_generator(self, api_obj: Union[Generator, None] = None):
         """
-        Add generator
+        Add a generator to this bus
         :param api_obj: if None, a new generator is created
         """
         if api_obj is None or type(api_obj) is bool:
@@ -1476,7 +1474,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
     def add_static_generator(self, api_obj: Union[StaticGenerator, None] = None):
         """
-        Add static generator
+        Add a static generator to this bus
         :param api_obj: If none, a new static generator is created
         :return:
         """
@@ -1586,7 +1584,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
                        VaA: float, VaB: float, VaC: float,
                        tpe: str, format_str="{:10.2f}"):
         """
-        Set three phase tags
+        Set the three-phase tags
         :param i: Bus index
         :param VmA:
         :param VmB:
@@ -1594,12 +1592,6 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         :param VaA:
         :param VaB:
         :param VaC:
-        :param PA:
-        :param PB:
-        :param PC:
-        :param QA:
-        :param QB:
-        :param QC:
         :param tpe: Bus type
         :param format_str: number formatting string
         """
@@ -1627,6 +1619,9 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self.setToolTip(msg)
 
     def clear_label(self):
+        """
+        Clear the result label
+        """
         msg = ""
         title = self._api_object.name if self._api_object is not None else ""
         self.label.setHtml(f'<html><head/><body><p><span style=" font-size:10pt;">{title}<br/></span>'

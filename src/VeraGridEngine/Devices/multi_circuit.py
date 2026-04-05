@@ -15,6 +15,7 @@ import networkx as nx
 from matplotlib import pyplot as plt
 from scipy.sparse import csc_matrix, lil_matrix
 
+from VeraGridEngine import BusGraphicType
 from VeraGridEngine.Devices.assets import Assets
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.basic_structures import IntVec, Vec, Mat, CxVec, IntMat, CxMat, BoolVec
@@ -1622,14 +1623,14 @@ class MultiCircuit(Assets):
 
         return result
 
-    def compose_bus_blocks(self) -> Dict[dev.bus, Block]:
+    def compose_bus_blocks(self) -> Dict[dev.Bus, Block]:
         """
         this function returns a dictionary with keys, the device bus, mand values, a block containing all the rms models of the elements connected to that bus.
         Returns
         -------
 
         """
-        syst_blocks: Dict[dev.bus, Block] = dict()
+        syst_blocks: Dict[dev.Bus, Block] = dict()
 
         bus_regions_dict = self.get_injection_devices_grouped_by_bus()
 
@@ -2792,7 +2793,8 @@ class MultiCircuit(Assets):
                      vmax=original_line.bus_from.Vmax,
                      area=original_line.bus_from.area,
                      zone=original_line.bus_from.zone,
-                     country=original_line.bus_from.country)
+                     country=original_line.bus_from.country,
+                     graphic_type=BusGraphicType.Connectivity)
 
         B2 = dev.Bus(name=original_line.name + ' split bus 2',
                      Vnom=original_line.bus_from.Vnom,
@@ -2800,7 +2802,8 @@ class MultiCircuit(Assets):
                      vmax=original_line.bus_from.Vmax,
                      area=original_line.bus_from.area,
                      zone=original_line.bus_from.zone,
-                     country=original_line.bus_from.country)
+                     country=original_line.bus_from.country,
+                     graphic_type=BusGraphicType.Connectivity)
 
         mid_sub = dev.Substation(name=original_line.name + ' new bus',
                                  area=original_line.bus_from.area,

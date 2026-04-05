@@ -23,9 +23,9 @@ INJECTION_DEVICE_TYPES = Union[
     Shunt,
     ControllableShunt,
     CurrentInjection,
-    FluidP2x,
-    FluidTurbine,
-    FluidPump
+    # FluidP2x,
+    # FluidTurbine,
+    # FluidPump
 ]
 
 BRANCH_TYPES = Union[

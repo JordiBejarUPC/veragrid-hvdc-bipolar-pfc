@@ -280,8 +280,13 @@ def sample_route_segment(points: Iterable[RoutePoint], position: float) -> Tuple
     """
     normalized_points = normalize_route_points(points)
 
-    if len(normalized_points) < 2:
+    if len(normalized_points) == 0:
         raise ValueError("At least two route points are required")
+    elif len(normalized_points) == 1:
+        point: RoutePoint = normalized_points[0]
+        return point, (point, point)
+    else:
+        pass
 
     clamped_position = min(max(float(position), 0.0), 1.0)
     segments: List[Tuple[RouteSegment, float]] = list()

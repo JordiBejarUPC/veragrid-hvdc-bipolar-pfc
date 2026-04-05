@@ -84,6 +84,13 @@ def test_sample_route_segment_clamps_out_of_range_positions():
     assert segment == ((0.0, 10.0), (20.0, 10.0))
 
 
+def test_sample_route_segment_supports_single_point_routes() -> None:
+    point, segment = sample_route_segment([(12.0, 15.0)], 0.5)
+
+    assert point == (12.0, 15.0)
+    assert segment == ((12.0, 15.0), (12.0, 15.0))
+
+
 def test_move_polyline_route_segment_moves_middle_segment_as_rigid_segment():
     moved = move_polyline_route_segment(points=[(10.0, 20.0), (10.0, 80.0), (110.0, 80.0), (110.0, 40.0)],
                                         segment_index=1,
