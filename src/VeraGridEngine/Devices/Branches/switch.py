@@ -28,8 +28,6 @@ class Switch(BranchParent):
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key='R', units='pu', tpe=float, definition='Positive-sequence resistance'),
         GCProp(key='X', units='pu', tpe=float, definition='Positive-sequence reactance'),
-        # GCProp(key='is_open', units="", tpe=bool,
-        #               definition='Switch is open', old_names=['open']),
         GCProp(key='retained', units="", tpe=bool,
                       definition='Switch is retained'),
         GCProp(key='normal_open', units="", tpe=bool,
@@ -105,8 +103,6 @@ class Switch(BranchParent):
         self.rated_current = float(rated_current)
 
         self.graphic_type: SwitchGraphicType = graphic_type
-
-    # Scalar property accessors coerce assignments to the declared schema types.
 
     @property
     def R(self) -> float:

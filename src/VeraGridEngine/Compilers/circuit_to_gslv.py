@@ -2619,28 +2619,26 @@ def get_gslv_opf_options(opt: OptimalPowerFlowOptions,
 
 
 def gslv_opf(circuit: MultiCircuit,
-             opf_opt: OptimalPowerFlowOptions,
+             opf_options: OptimalPowerFlowOptions,
              time_series: bool = False,
              time_indices: Union[IntVec, None] = None,
-             opf_results: Union[None, OptimalPowerFlowResults] = None,
              logger: Logger = Logger()) -> "pg.OptimalPowerFlowResults":
     """
     GSLV power flow
     :param logger:
     :param circuit: MultiCircuit instance
-    :param opf_opt: Power Flow Options
+    :param opf_options: Power Flow Options
     :param time_series: Compile with VeraGrid time series?
     :param time_indices: Array of time indices
-    :param opf_results: Instance of
     :return: GSLV Power flow results object
     """
     gslv_grid, _ = to_gslv(circuit,
                            use_time_series=time_series,
                            time_indices=None,
                            override_branch_controls=False,
-                           opf_results=opf_results)
+                           opf_results=None)
 
-    opf_options = get_gslv_opf_options(opf_opt)
+    opf_options = get_gslv_opf_options(opf_options, circuit, gslv_grid)
 
     if time_series:
         # it is already sliced to the relevant time indices
@@ -2658,7 +2656,7 @@ def gslv_opf(circuit: MultiCircuit,
     opf_res = pg.optimal_power_flow(
         grid=gslv_grid,
         options=opf_options,
-        n_threads=0
+        n_threads=n_threads
     )
 
     logger.add_info("gslv time", value=f"{(time.time() - t0)} s")

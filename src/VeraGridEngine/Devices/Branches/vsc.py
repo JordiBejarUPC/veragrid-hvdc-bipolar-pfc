@@ -44,12 +44,8 @@ class VSC(BranchParent):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
-        # GCProp(key='bus_dc_p', units="", tpe=DeviceType.BusDevice,
-        #               definition='DC positive bus', editable=False),
         GCProp(key='bus_dc_n', units="", tpe=DeviceType.BusDevice,
                       definition='DC negative bus', editable=False),
-        # GCProp(key='bus_ac', units="", tpe=DeviceType.BusDevice,
-        #               definition='AC bus', editable=False),
         GCProp(key='alpha1', units='', tpe=float,
                       definition='Losses constant parameter (IEC 62751-2 loss Correction).'),
         GCProp(key='alpha2', units='', tpe=float,
@@ -256,15 +252,6 @@ class VSC(BranchParent):
 
         self.x = float(x)
         self.y = float(y)
-
-
-
-
-
-
-
-
-
 
     @property
     def bus_from(self) -> Bus:

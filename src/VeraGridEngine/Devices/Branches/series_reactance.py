@@ -58,13 +58,21 @@ class SeriesReactance(BranchParent):
                  tolerance=0,
                  cost=100.0,
                  mttf=0, mttr=0,
-                 r_fault=0.0, x_fault=0.0,
+                 r_fault=0.0,
+                 x_fault=0.0,
                  fault_pos=0.5,
-                 temp_base=20, temp_oper=20, alpha=0.00330,
-                 contingency_factor=1.0, protection_rating_factor: float = 1.4,
-                 contingency_enabled=True, monitor_loading=True,
-                 r0=1e-20, x0=1e-20,  r2=1e-20, x2=1e-20,
-                 capex=0, opex=0, build_status: BuildStatus = BuildStatus.Commissioned):
+                 temp_base=20,
+                 temp_oper=20,
+                 alpha=0.00330,
+                 contingency_factor=1.0,
+                 protection_rating_factor: float = 1.4,
+                 contingency_enabled=True,
+                 monitor_loading=True,
+                 r0=1e-20, x0=1e-20,
+                 r2=1e-20, x2=1e-20,
+                 capex=0,
+                 opex=0,
+                 build_status: BuildStatus = BuildStatus.Commissioned):
         """
         AC current Line
         :param bus_from: "From" :ref:`bus<Bus>` object
@@ -140,11 +148,6 @@ class SeriesReactance(BranchParent):
 
         self.R2 = r2
         self.X2 = x2
-
-
-
-
-
 
     @property
     def R_corrected(self):

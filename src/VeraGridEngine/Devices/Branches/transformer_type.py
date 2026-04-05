@@ -75,7 +75,8 @@ class TransformerType(DynamicDevice):
                  name: str = 'TransformerType',
                  idtag: Union[None, str] = None,
                  capex: float = 0.0,
-                 opex: float = 0.0) -> None:
+                 opex: float = 0.0,
+                 vector_group_number: int = 0) -> None:
         """
         Transformer template from the short circuit study
         :param hv_nominal_voltage: Nominal voltage of the high voltage side in kV
@@ -96,6 +97,7 @@ class TransformerType(DynamicDevice):
         :param idtag: device UUID
         :param capex: Capital expenditures
         :param opex: Operating expenditures
+        :param vector_group_number: Vector Group Number
         """
         DynamicDevice.__init__(self,
                                name=name,
@@ -126,7 +128,7 @@ class TransformerType(DynamicDevice):
 
         self.conn_hv: WindingType = WindingType.GroundedStar
         self.conn_lv: WindingType = WindingType.Delta
-        self.vector_group_number: int = 0
+        self.vector_group_number: int = vector_group_number
 
         # The tap changer parameters are stored and used with the help of the TapChanger object
         self._tap_changer = TapChanger(total_positions=total_positions,
