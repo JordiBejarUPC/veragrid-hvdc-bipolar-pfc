@@ -2,6 +2,8 @@ from PySide6.QtCore import QPointF
 
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import (get_opposite_attachment_side,
                                                                                            get_rect_side_anchor)
+from VeraGridEngine.Devices.Diagrams.schematic_layout import build_default_branch_route
+from VeraGridEngine.enumerations import SchematicAutoRouteStyle
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.route_geometry import (merge_route_with_endpoints,
                                                                            move_polyline_route_segment,
                                                                            move_polyline_route_vertex,
@@ -51,6 +53,21 @@ def test_merge_route_with_endpoints_falls_back_to_straight_line():
     merged = merge_route_with_endpoints(start=(5, 6), end=(7, 8), persisted_points=[])
 
     assert merged == [(5.0, 6.0), (7.0, 8.0)]
+
+
+def test_build_default_branch_route_supports_straight_style() -> None:
+    route = build_default_branch_route(start=(5.0, 6.0),
+                                       end=(25.0, 16.0),
+                                       route_style=SchematicAutoRouteStyle.STRAIGHT)
+
+    assert route == [(5.0, 6.0), (25.0, 16.0)]
+
+
+def test_build_default_branch_route_defaults_to_straight_style() -> None:
+    route = build_default_branch_route(start=(5.0, 6.0),
+                                       end=(25.0, 16.0))
+
+    assert route == [(5.0, 6.0), (25.0, 16.0)]
 
 
 def test_sample_route_segment_follows_path_length():

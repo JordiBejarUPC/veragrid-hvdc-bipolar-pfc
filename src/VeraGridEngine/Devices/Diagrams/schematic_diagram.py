@@ -14,22 +14,26 @@ from VeraGridEngine.Devices.Diagrams.schematic_layout import (build_default_bran
                                                               get_branch_route_record, get_dock,
                                                               get_dock_record,
                                                               is_canonical_attachment_slot,
-                                                              SchematicAttachmentOwnerKind,
+                                                              parse_schematic_auto_route_style,
                                                               SchematicAttachmentRecord,
-                                                              SchematicAttachmentSide,
-                                                              SchematicBranchEndpoint,
                                                               SchematicDockRecord,
                                                               SchematicExplicitAttachmentSlot,
-                                                              SchematicRouteKind,
                                                               SchematicRouteRecord,
                                                               parse_schematic_attachment_side,
                                                               parse_schematic_branch_endpoint,
                                                               parse_explicit_attachment_slot_key,
                                                               set_attachment, set_attachment_record,
                                                               set_branch_route_points,
+                                                              set_branch_route_record,
                                                               set_dock, set_dock_record,
                                                               should_preserve_route_shape)
-from VeraGridEngine.enumerations import DeviceType, DiagramType
+from VeraGridEngine.enumerations import (DeviceType,
+                                         DiagramType,
+                                         SchematicAttachmentOwnerKind,
+                                         SchematicAttachmentSide,
+                                         SchematicAutoRouteStyle,
+                                         SchematicBranchEndpoint,
+                                         SchematicRouteKind)
 
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -222,12 +226,24 @@ class SchematicDiagram(BaseDiagram):
                                 api_object: ALL_DEV_TYPES,
                                 points: Iterable[Tuple[float, float]],
                                 kind: SchematicRouteKind | str | None = SchematicRouteKind.AUTO_POLYLINE,
-                                locked: bool | None = False) -> Dict[str, Any]:
+                                locked: bool | None = False,
+                                route_style: SchematicAutoRouteStyle | str | None = None) -> Dict[str, Any]:
         """
         Persist route points through the compatibility layer while keeping legacy polyline storage in sync.
+
+        :param api_object: Branch API object.
+        :param points: Route points.
+        :param kind: Route kind enum.
+        :param locked: Locked-state flag.
+        :param route_style: Automatic route-style enum.
+        :return: Updated layout metadata.
         """
         location = self._get_or_create_graphic_location(api_object)
-        return set_branch_route_points(location=location, points=points, kind=kind, locked=locked)
+        return set_branch_route_points(location=location,
+                                       points=points,
+                                       kind=kind,
+                                       locked=locked,
+                                       route_style=route_style)
 
     def sync_branch_route_points(self,
                                  api_object: ALL_DEV_TYPES,
@@ -236,7 +252,65 @@ class SchematicDiagram(BaseDiagram):
         Update route points while preserving existing route kind and lock state.
         """
         location = self._get_or_create_graphic_location(api_object)
-        return set_branch_route_points(location=location, points=points, kind=None, locked=None)
+        return set_branch_route_points(location=location,
+                                       points=points,
+                                       kind=None,
+                                       locked=None,
+                                       route_style=None)
+
+    def get_branch_route_record(self, api_object: ALL_DEV_TYPES) -> SchematicRouteRecord | None:
+        """
+        Return the typed route record for one branch.
+
+        :param api_object: Branch API object.
+        :return: Typed route record or ``None`` when no structured route has been stored.
+        """
+        location: GraphicLocation = self._get_or_create_graphic_location(api_object)
+        return get_branch_route_record(location=location)
+
+    def get_branch_auto_route_style(self, api_object: ALL_DEV_TYPES) -> SchematicAutoRouteStyle:
+        """
+        Return the persisted automatic route style for one branch.
+
+        :param api_object: Branch API object.
+        :return: Branch-specific automatic route-style enum.
+        """
+        route_record: SchematicRouteRecord | None = self.get_branch_route_record(api_object=api_object)
+
+        if route_record is None:
+            return SchematicAutoRouteStyle.STRAIGHT
+        elif route_record.route_style is None:
+            return SchematicAutoRouteStyle.STRAIGHT
+        else:
+            return route_record.route_style
+
+    def set_branch_auto_route_style(self,
+                                    api_object: ALL_DEV_TYPES,
+                                    route_style: SchematicAutoRouteStyle | str | None) -> SchematicAutoRouteStyle:
+        """
+        Persist the automatic route style for one branch.
+
+        :param api_object: Branch API object.
+        :param route_style: Requested route-style enum.
+        :return: Effective branch-specific route-style enum.
+        """
+        location: GraphicLocation = self._get_or_create_graphic_location(api_object)
+        route_record: SchematicRouteRecord | None = get_branch_route_record(location=location)
+
+        if route_record is None:
+            route_record = SchematicRouteRecord()
+        else:
+            pass
+
+        route_record.route_style = parse_schematic_auto_route_style(route_style=route_style)
+
+        if route_record.route_style is None:
+            route_record.route_style = SchematicAutoRouteStyle.STRAIGHT
+        else:
+            pass
+
+        set_branch_route_record(location=location, route_record=route_record)
+        return route_record.route_style
 
     def upgrade_legacy_branch_layout(self,
                                      api_object: ALL_DEV_TYPES,
@@ -277,7 +351,8 @@ class SchematicDiagram(BaseDiagram):
             synthesized_route = build_default_branch_route(start=start,
                                                            end=end,
                                                            start_order=from_order,
-                                                           end_order=to_order)
+                                                           end_order=to_order,
+                                                           route_style=self.get_branch_auto_route_style(api_object))
             self.set_branch_route_points(api_object=api_object,
                                          points=synthesized_route,
                                          kind=SchematicRouteKind.AUTO_POLYLINE,

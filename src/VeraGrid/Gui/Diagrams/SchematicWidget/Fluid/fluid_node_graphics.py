@@ -10,10 +10,9 @@ from PySide6.QtCore import Qt, QPoint, QPointF
 from PySide6.QtGui import QPen, QCursor, QBrush, QColor
 from PySide6.QtWidgets import QMenu, QGraphicsSceneMouseEvent
 
-from VeraGridEngine.Devices.Diagrams.schematic_layout import SchematicBranchEndpoint
 from VeraGridEngine.Devices.Fluid import FluidNode, FluidTurbine, FluidPump, FluidP2x
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.enumerations import DeviceType, FaultType
+from VeraGridEngine.enumerations import DeviceType, FaultType, SchematicBranchEndpoint
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Devices.types import FLUID_TYPES
 

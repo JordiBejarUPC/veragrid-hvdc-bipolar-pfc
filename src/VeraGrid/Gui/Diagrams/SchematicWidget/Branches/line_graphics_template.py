@@ -11,7 +11,7 @@ from PySide6.QtGui import (QPen, QCursor, QPixmap, QBrush, QColor, QTransform, Q
                            QPainter, QPainterPath, QPainterPathStroker)
 from PySide6.QtWidgets import (QGraphicsLineItem, QGraphicsRectItem, QGraphicsPolygonItem,
                                QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsTextItem,
-                               QGraphicsPathItem, QStyleOptionGraphicsItem, QWidget)
+                               QGraphicsPathItem, QStyleOptionGraphicsItem, QWidget, QMenu)
 from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, DEACTIVATED, OTHER, GenericDiagramWidget, TRANSPARENT, WHITE
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.route_geometry import (merge_route_with_endpoints,
                                                                            move_polyline_route_segment,
@@ -29,7 +29,6 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_node_graphics import Flui
 from VeraGrid.Gui.messages import yes_no_question
 
 from VeraGridEngine.Devices.Diagrams.schematic_layout import build_default_branch_route
-from VeraGridEngine.Devices.Diagrams.schematic_layout import SchematicRouteKind
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Substation.busbar import BusBar
 from VeraGridEngine.Devices.Branches.line import Line
@@ -44,7 +43,7 @@ from VeraGridEngine.Devices.Branches.hvdc_line import HvdcLine
 from VeraGridEngine.Devices.Fluid.fluid_node import FluidNode
 from VeraGridEngine.Devices.Fluid.fluid_path import FluidPath
 from VeraGridEngine.Devices.types import BRANCH_TYPES
-from VeraGridEngine.enumerations import SwitchGraphicType
+from VeraGridEngine.enumerations import SchematicAutoRouteStyle, SchematicRouteKind, SwitchGraphicType
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -979,7 +978,81 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
             return build_default_branch_route(start=start,
                                               end=end,
                                               start_order=from_order,
-                                              end_order=to_order)
+                                              end_order=to_order,
+                                              route_style=self.get_branch_auto_route_style())
+
+    def get_branch_auto_route_style(self) -> SchematicAutoRouteStyle:
+        """
+        Return the automatic route style currently assigned to this branch.
+
+        :return: Branch-specific automatic route-style enum.
+        """
+        if self.api_object is None:
+            return SchematicAutoRouteStyle.STRAIGHT
+        elif self.editor.diagram is None:
+            return SchematicAutoRouteStyle.STRAIGHT
+        else:
+            return self.editor.diagram.get_branch_auto_route_style(api_object=self.api_object)
+
+    def set_branch_auto_route_style(self, route_style: SchematicAutoRouteStyle) -> None:
+        """
+        Persist one branch-specific automatic route style and redraw the branch.
+
+        :param route_style: Requested route-style enum.
+        :return: ``None``.
+        """
+        if self.api_object is None:
+            return
+        elif self.editor.diagram is None:
+            return
+        else:
+            self.editor.diagram.set_branch_auto_route_style(api_object=self.api_object, route_style=route_style)
+
+        self.load_route_points_from_diagram()
+        self.redraw()
+
+    def set_branch_auto_route_style_reticular(self) -> None:
+        """
+        Switch this branch to the reticular automatic route style.
+
+        :return: ``None``.
+        """
+        self.set_branch_auto_route_style(route_style=SchematicAutoRouteStyle.RETICULAR)
+
+    def set_branch_auto_route_style_straight(self) -> None:
+        """
+        Switch this branch to the straight automatic route style.
+
+        :return: ``None``.
+        """
+        self.set_branch_auto_route_style(route_style=SchematicAutoRouteStyle.STRAIGHT)
+
+    def add_auto_route_style_menu(self, menu: QMenu) -> None:
+        """
+        Add the per-branch automatic route-style submenu when this branch is auto-routed.
+
+        :param menu: Parent context menu.
+        :return: ``None``.
+        """
+        current_route_style: SchematicAutoRouteStyle
+        route_style_menu: QMenu
+        reticular_action: object
+        straight_action: object
+
+        if self.api_object is None:
+            return
+        else:
+            current_route_style = self.get_branch_auto_route_style()
+            route_style_menu = menu.addMenu("Auto route style")
+            reticular_action = route_style_menu.addAction("Reticular")
+            straight_action = route_style_menu.addAction("Straight")
+
+        reticular_action.setCheckable(True)
+        straight_action.setCheckable(True)
+        reticular_action.setChecked(current_route_style == SchematicAutoRouteStyle.RETICULAR)
+        straight_action.setChecked(current_route_style == SchematicAutoRouteStyle.STRAIGHT)
+        reticular_action.triggered.connect(self.set_branch_auto_route_style_reticular)
+        straight_action.triggered.connect(self.set_branch_auto_route_style_straight)
 
     def get_route_points_for_editing(self) -> list[tuple[float, float]]:
         """

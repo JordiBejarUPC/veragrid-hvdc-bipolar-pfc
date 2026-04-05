@@ -10,6 +10,7 @@ from VeraGridEngine.Devices.Diagrams.schematic_layout import build_default_branc
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.enumerations import SchematicAutoRouteStyle
 
 
 def _build_obj_dict(*devices):
@@ -168,6 +169,24 @@ def test_schematic_diagram_roundtrip_preserves_manual_polyline_route_and_nexus_d
         "nexus_parent_alignment": 0.35,
         "nexus_child_alignment": 0.7,
     }
+
+
+def test_schematic_diagram_roundtrip_preserves_branch_auto_route_style() -> None:
+    bus_from = Bus(name="B1")
+    bus_to = Bus(name="B2")
+    line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
+
+    diagram = SchematicDiagram(name="style-roundtrip")
+    diagram.set_point(bus_from, GraphicLocation(x=5, y=10, w=80, h=20, r=0, api_object=bus_from))
+    diagram.set_point(bus_to, GraphicLocation(x=105, y=10, w=80, h=20, r=0, api_object=bus_to))
+    diagram.set_branch_auto_route_style(api_object=line, route_style=SchematicAutoRouteStyle.STRAIGHT)
+
+    parsed = SchematicDiagram()
+    parsed.parse_data(data=diagram.get_data_dict(),
+                      obj_dict=_build_obj_dict(bus_from, bus_to, line),
+                      logger=Logger())
+
+    assert parsed.get_branch_auto_route_style(api_object=line) == SchematicAutoRouteStyle.STRAIGHT
 
 
 def test_schematic_diagram_legacy_parse_defaults_layout_metadata_and_polyline():
@@ -646,7 +665,8 @@ def test_build_default_branch_route_uses_coordinate_midline_and_optional_lane_of
     route = build_default_branch_route(start=(20.0, 10.0),
                                        end=(120.0, 10.0),
                                        start_order=1,
-                                       end_order=3)
+                                       end_order=3,
+                                       route_style=SchematicAutoRouteStyle.RETICULAR)
 
     assert route == [
         (20.0, 10.0),

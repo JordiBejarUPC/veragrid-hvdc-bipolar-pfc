@@ -21,8 +21,8 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.route_geometry import (merge
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (SchematicAttachmentSlot,
                                                                           project_point_to_rectangle_perimeter)
 from VeraGridEngine.Devices.Diagrams.schematic_layout import (build_default_branch_route,
-                                                              parse_schematic_route_kind,
-                                                              SchematicRouteKind)
+                                                              parse_schematic_route_kind)
+from VeraGridEngine.enumerations import SchematicRouteKind
 
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 

@@ -6,39 +6,16 @@
 from __future__ import annotations
 
 from copy import deepcopy
-from enum import Enum
 from typing import Any, Dict, Iterable, List, Tuple
 
 from VeraGridEngine.Devices.Diagrams.graphic_location import GraphicLocation
+from VeraGridEngine.enumerations import (SchematicAttachmentOwnerKind,
+                                         SchematicAttachmentSide,
+                                         SchematicAutoRouteStyle,
+                                         SchematicBranchEndpoint,
+                                         SchematicRouteKind)
 
 SCHEMATIC_LAYOUT_SCHEMA_VERSION = 1
-
-
-class SchematicBranchEndpoint(Enum):
-    """
-    Enumerate the supported branch endpoint identifiers.
-    """
-    FROM = "from"
-    TO = "to"
-
-
-class SchematicAttachmentSide(Enum):
-    """
-    Enumerate the supported compatibility attachment sides.
-    """
-    DEFAULT = "default"
-    LEFT = "left"
-    RIGHT = "right"
-    TOP = "top"
-    BOTTOM = "bottom"
-
-
-class SchematicAttachmentOwnerKind(Enum):
-    """
-    Enumerate the supported owner kinds used in explicit slot keys.
-    """
-    BUS = "bus"
-    FLUID = "fluid"
 
 
 class SchematicExplicitAttachmentSlot:
@@ -67,22 +44,25 @@ class SchematicRouteRecord:
     """
     Store one typed route record for runtime behavior.
     """
-    __slots__ = ("points", "kind", "locked")
+    __slots__ = ("points", "kind", "locked", "route_style")
 
     def __init__(self,
                  points: List[Tuple[float, float]] | None = None,
                  kind: SchematicRouteKind | None = None,
-                 locked: bool = False) -> None:
+                 locked: bool = False,
+                 route_style: SchematicAutoRouteStyle | None = None) -> None:
         """
         Initialize one route record.
 
         :param points: Route polyline points.
         :param kind: Route kind enum.
         :param locked: Locked-state flag.
+        :param route_style: Automatic route-style enum.
         """
         self.points: List[Tuple[float, float]] = list() if points is None else list(points)
         self.kind: SchematicRouteKind | None = kind
         self.locked: bool = bool(locked)
+        self.route_style: SchematicAutoRouteStyle | None = route_style
 
 
 class SchematicAttachmentRecord:
@@ -145,18 +125,6 @@ class SchematicDockRecord:
         self.order: int | None = None
 
 
-class SchematicRouteKind(Enum):
-    """
-    Enumerate the supported persisted route kinds.
-    """
-    ORTHOGONAL = "orthogonal"
-    AUTO = "auto"
-    AUTO_ORTHOGONAL = "auto-orthogonal"
-    AUTO_POLYLINE = "auto-polyline"
-    MANUAL_ORTHOGONAL = "manual-orthogonal"
-    MANUAL_POLYLINE = "manual-polyline"
-
-
 def parse_schematic_branch_endpoint(endpoint: SchematicBranchEndpoint | str) -> SchematicBranchEndpoint | None:
     """
     Parse one branch endpoint value from runtime or persisted data.
@@ -164,12 +132,22 @@ def parse_schematic_branch_endpoint(endpoint: SchematicBranchEndpoint | str) -> 
     :param endpoint: Runtime enum or persisted string.
     :return: Parsed endpoint enum or ``None`` when absent/unknown.
     """
+    endpoint_value: SchematicBranchEndpoint
+    parsed_endpoint: object
+
     if isinstance(endpoint, SchematicBranchEndpoint):
         return endpoint
+    elif endpoint is None:
+        return None
     else:
         endpoint_text: str = str(endpoint)
 
-    endpoint_value: SchematicBranchEndpoint
+    parsed_endpoint = SchematicBranchEndpoint.argparse(endpoint_text)
+
+    if isinstance(parsed_endpoint, SchematicBranchEndpoint):
+        return parsed_endpoint
+    else:
+        pass
 
     for endpoint_value in SchematicBranchEndpoint:
         if endpoint_value.value == endpoint_text:
@@ -187,6 +165,9 @@ def parse_schematic_attachment_side(side: SchematicAttachmentSide | str | None) 
     :param side: Runtime enum or persisted string.
     :return: Parsed side enum or ``None`` when absent/unknown.
     """
+    side_value: SchematicAttachmentSide
+    parsed_side: object
+
     if isinstance(side, SchematicAttachmentSide):
         return side
     elif side is None:
@@ -194,7 +175,12 @@ def parse_schematic_attachment_side(side: SchematicAttachmentSide | str | None) 
     else:
         side_text: str = str(side)
 
-    side_value: SchematicAttachmentSide
+    parsed_side = SchematicAttachmentSide.argparse(side_text)
+
+    if isinstance(parsed_side, SchematicAttachmentSide):
+        return parsed_side
+    else:
+        pass
 
     for side_value in SchematicAttachmentSide:
         if side_value.value == side_text:
@@ -213,6 +199,9 @@ def parse_schematic_attachment_owner_kind(owner_kind: SchematicAttachmentOwnerKi
     :param owner_kind: Runtime enum or persisted string.
     :return: Parsed owner kind enum or ``None`` when absent/unknown.
     """
+    owner_kind_value: SchematicAttachmentOwnerKind
+    parsed_owner_kind: object
+
     if isinstance(owner_kind, SchematicAttachmentOwnerKind):
         return owner_kind
     elif owner_kind is None:
@@ -220,7 +209,12 @@ def parse_schematic_attachment_owner_kind(owner_kind: SchematicAttachmentOwnerKi
     else:
         owner_kind_text: str = str(owner_kind)
 
-    owner_kind_value: SchematicAttachmentOwnerKind
+    parsed_owner_kind = SchematicAttachmentOwnerKind.argparse(owner_kind_text)
+
+    if isinstance(parsed_owner_kind, SchematicAttachmentOwnerKind):
+        return parsed_owner_kind
+    else:
+        pass
 
     for owner_kind_value in SchematicAttachmentOwnerKind:
         if owner_kind_value.value == owner_kind_text:
@@ -294,15 +288,22 @@ def parse_schematic_route_kind(kind: SchematicRouteKind | str | None) -> Schemat
     :param kind: Runtime enum or persisted string.
     :return: Parsed route kind or ``None`` when absent/unknown.
     """
+    route_kind: SchematicRouteKind
+    parsed_kind: object
+
     if isinstance(kind, SchematicRouteKind):
         return kind
     elif kind is None:
         return None
     else:
-        pass
+        kind_text: str = str(kind)
 
-    kind_text: str = str(kind)
-    route_kind: SchematicRouteKind
+    parsed_kind = SchematicRouteKind.argparse(kind_text)
+
+    if isinstance(parsed_kind, SchematicRouteKind):
+        return parsed_kind
+    else:
+        pass
 
     for route_kind in SchematicRouteKind:
         if route_kind.value == kind_text:
@@ -311,6 +312,57 @@ def parse_schematic_route_kind(kind: SchematicRouteKind | str | None) -> Schemat
             pass
 
     return None
+
+
+def parse_schematic_auto_route_style(route_style: SchematicAutoRouteStyle | str | None
+                                     ) -> SchematicAutoRouteStyle | None:
+    """
+    Parse one auto-route style value from runtime or persisted data.
+
+    :param route_style: Runtime enum or persisted string.
+    :return: Parsed route-style enum or ``None`` when absent/unknown.
+    """
+    route_style_value: SchematicAutoRouteStyle
+    parsed_route_style: object
+
+    if isinstance(route_style, SchematicAutoRouteStyle):
+        return route_style
+    elif route_style is None:
+        return None
+    else:
+        route_style_text: str = str(route_style)
+
+    parsed_route_style = SchematicAutoRouteStyle.argparse(route_style_text)
+
+    if isinstance(parsed_route_style, SchematicAutoRouteStyle):
+        return parsed_route_style
+    else:
+        pass
+
+    for route_style_value in SchematicAutoRouteStyle:
+        if route_style_value.value == route_style_text:
+            return route_style_value
+        else:
+            pass
+
+    return None
+
+
+def serialize_schematic_auto_route_style(route_style: SchematicAutoRouteStyle | str | None,
+                                         default_route_style: SchematicAutoRouteStyle) -> str:
+    """
+    Serialize one auto-route style to the persisted string representation.
+
+    :param route_style: Runtime enum or persisted string.
+    :param default_route_style: Default style when ``route_style`` is absent or invalid.
+    :return: Persisted route-style string.
+    """
+    parsed_route_style: SchematicAutoRouteStyle | None = parse_schematic_auto_route_style(route_style=route_style)
+
+    if parsed_route_style is None:
+        return default_route_style.value
+    else:
+        return parsed_route_style.value
 
 
 def serialize_schematic_route_kind(kind: SchematicRouteKind | str | None,
@@ -415,6 +467,7 @@ def get_branch_route_record(location: GraphicLocation) -> SchematicRouteRecord |
     route_record.points = _normalize_points(points) if points else list()
     route_record.kind = parse_schematic_route_kind(route_section.get("kind", None))
     route_record.locked = bool(route_section.get("locked", False))
+    route_record.route_style = parse_schematic_auto_route_style(route_section.get("route_style", None))
     return route_record
 
 
@@ -436,15 +489,32 @@ def set_branch_route_record(location: GraphicLocation,
     route_section["kind"] = serialize_schematic_route_kind(kind=route_record.kind,
                                                            default_kind=SchematicRouteKind.AUTO_POLYLINE)
     route_section["locked"] = bool(route_record.locked)
+
+    if route_record.route_style is None:
+        route_section.pop("route_style", None)
+    else:
+        route_section["route_style"] = serialize_schematic_auto_route_style(
+            route_style=route_record.route_style,
+            default_route_style=SchematicAutoRouteStyle.STRAIGHT,
+        )
+
     return set_layout_section(location, "route", route_section)
 
 
 def set_branch_route_points(location: GraphicLocation,
                             points: Iterable[Tuple[float, float]],
                             kind: SchematicRouteKind | str | None = SchematicRouteKind.AUTO_POLYLINE,
-                            locked: bool | None = False) -> Dict[str, Any]:
+                            locked: bool | None = False,
+                            route_style: SchematicAutoRouteStyle | str | None = None) -> Dict[str, Any]:
     """
     Persist route points in both the legacy polyline field and the structured layout metadata.
+
+    :param location: Graphic location record.
+    :param points: Route points.
+    :param kind: Route kind enum.
+    :param locked: Locked-state flag.
+    :param route_style: Automatic route-style enum.
+    :return: Updated layout metadata.
     """
     route_record: SchematicRouteRecord | None = get_branch_route_record(location=location)
     normalized_points: List[Tuple[float, float]] = _normalize_points(points)
@@ -466,6 +536,11 @@ def set_branch_route_points(location: GraphicLocation,
         route_record.locked = bool(route_record.locked)
     else:
         route_record.locked = bool(locked)
+
+    if route_style is None:
+        route_record.route_style = parse_schematic_auto_route_style(route_style=route_record.route_style)
+    else:
+        route_record.route_style = parse_schematic_auto_route_style(route_style=route_style)
 
     return set_branch_route_record(location=location, route_record=route_record)
 
@@ -636,18 +711,31 @@ def should_preserve_route_shape(route: Dict[str, Any] | None) -> bool:
 def build_default_branch_route(start: Tuple[float, float],
                                end: Tuple[float, float],
                                start_order: int | None = None,
-                               end_order: int | None = None) -> List[Tuple[float, float]]:
+                               end_order: int | None = None,
+                               route_style: SchematicAutoRouteStyle | str | None = SchematicAutoRouteStyle.STRAIGHT
+                               ) -> List[Tuple[float, float]]:
     """
-    Build one deterministic coordinate-driven orthogonal route.
+    Build one deterministic coordinate-driven auto route.
 
     :param start: Start point.
     :param end: End point.
     :param start_order: Optional ordering hint used to separate coincident routes.
     :param end_order: Optional ordering hint used to separate coincident routes.
-    :return: Orthogonal route points.
+    :param route_style: Auto-route visual style.
+    :return: Route points.
     """
     start_point: Tuple[float, float] = (float(start[0]), float(start[1]))
     end_point: Tuple[float, float] = (float(end[0]), float(end[1]))
+    parsed_route_style: SchematicAutoRouteStyle | None = parse_schematic_auto_route_style(route_style=route_style)
+    effective_route_style: SchematicAutoRouteStyle = (
+        SchematicAutoRouteStyle.STRAIGHT if parsed_route_style is None else parsed_route_style
+    )
+
+    if effective_route_style == SchematicAutoRouteStyle.STRAIGHT:
+        return compress_route_points([start_point, end_point])
+    else:
+        pass
+
     lane_pitch: float = 14.0
     lane_index: int = get_default_route_lane_index(start_order=start_order, end_order=end_order)
     lane_offset: float = float(max(0, lane_index - 1)) * lane_pitch

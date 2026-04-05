@@ -14,7 +14,7 @@ from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Fluid.fluid_node import FluidNode
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.enumerations import BusGraphicType
+from VeraGridEngine.enumerations import BusGraphicType, SchematicAutoRouteStyle, SchematicRouteKind
 
 
 class _EditorStub:
@@ -298,8 +298,9 @@ class _DiagramStub:
     def set_branch_route_points(self,
                                 api_object: Any,
                                 points: list[tuple[float, float]],
-                                kind: str,
-                                locked: bool) -> None:
+                                kind: SchematicRouteKind | str,
+                                locked: bool,
+                                route_style: SchematicAutoRouteStyle | None = None) -> None:
         """
         Store branch route metadata for lightweight graphics tests.
 
@@ -307,6 +308,7 @@ class _DiagramStub:
         :param points: Route points.
         :param kind: Route kind.
         :param locked: Lock flag.
+        :param route_style: Automatic route-style enum.
         :return: ``None``.
         """
         location = self.query_point(api_object)
@@ -318,13 +320,85 @@ class _DiagramStub:
             pass
 
         location.poly_line = list(points)
-        location.layout_metadata = {
-            "route": {
-                "points": list(points),
-                "kind": kind,
-                "locked": locked,
-            }
+        route_metadata: dict[str, Any] = {
+            "points": list(points),
+            "kind": kind,
+            "locked": locked,
         }
+
+        if route_style is None:
+            existing_route: Any = None if location.layout_metadata is None else location.layout_metadata.get("route", None)
+
+            if isinstance(existing_route, dict) and "route_style" in existing_route:
+                route_metadata["route_style"] = existing_route["route_style"]
+            else:
+                pass
+        else:
+            route_metadata["route_style"] = route_style.value
+
+        location.layout_metadata = {"route": route_metadata}
+
+    def get_branch_auto_route_style(self, api_object: Any) -> SchematicAutoRouteStyle:
+        """
+        Return the stored automatic route style for one branch.
+
+        :param api_object: Branch API object.
+        :return: Branch-specific automatic route-style enum.
+        """
+        location: GraphicLocation | None = self.query_point(api_object)
+        route_metadata: Any
+        route_style_text: Any
+
+        if location is None or location.layout_metadata is None:
+            return SchematicAutoRouteStyle.STRAIGHT
+        else:
+            route_metadata = location.layout_metadata.get("route", None)
+
+        if not isinstance(route_metadata, dict):
+            return SchematicAutoRouteStyle.STRAIGHT
+        else:
+            route_style_text = route_metadata.get("route_style", None)
+
+        if route_style_text == SchematicAutoRouteStyle.STRAIGHT.value:
+            return SchematicAutoRouteStyle.STRAIGHT
+        elif route_style_text == SchematicAutoRouteStyle.RETICULAR.value:
+            return SchematicAutoRouteStyle.RETICULAR
+        else:
+            return SchematicAutoRouteStyle.STRAIGHT
+
+    def set_branch_auto_route_style(self,
+                                    api_object: Any,
+                                    route_style: SchematicAutoRouteStyle) -> None:
+        """
+        Store one branch-specific automatic route style.
+
+        :param api_object: Branch API object.
+        :param route_style: Requested route-style enum.
+        :return: ``None``.
+        """
+        location: GraphicLocation | None = self.query_point(api_object)
+        route_metadata: dict[str, Any]
+
+        if location is None:
+            location = GraphicLocation(api_object=api_object)
+            self.locations[id(api_object)] = location
+        else:
+            pass
+
+        if location.layout_metadata is None:
+            route_metadata = dict()
+            location.layout_metadata = {"route": route_metadata}
+        else:
+            route_section: Any = location.layout_metadata.get("route", None)
+
+            if isinstance(route_section, dict):
+                route_metadata = dict(route_section)
+            else:
+                route_metadata = dict()
+
+            location.layout_metadata["route"] = route_metadata
+
+        route_metadata["route_style"] = route_style.value
 
     def should_preserve_branch_route_shape(self, api_object: Any) -> bool:
         """
@@ -660,6 +734,46 @@ def test_saved_auto_branch_route_is_rendered_during_load() -> None:
                                              api_object=line)
 
     assert branch_graphic.get_render_points() == [(90.0, 45.0), (90.0, 110.0), (330.0, 110.0), (330.0, 45.0)]
+
+
+def test_auto_branch_route_uses_straight_branch_style() -> None:
+    """
+    Automatic branch routes should collapse to one segment when the branch style is straight.
+    """
+    _get_app()
+    editor: _BranchEditorStub = _BranchEditorStub()
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    line: Line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
+    editor.diagram.set_branch_auto_route_style(api_object=line, route_style=SchematicAutoRouteStyle.STRAIGHT)
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=300.0, y=0.0)
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                                             to_port=graphic_to.get_terminal(),
+                                             editor=editor,
+                                             api_object=line)
+    render_points = branch_graphic.get_render_points()
+
+    assert render_points == [(90.0, 45.0), (390.0, 45.0)]
+
+
+def test_auto_branch_route_defaults_to_straight_style() -> None:
+    """
+    Automatic branch routes should be straight when no explicit branch style has been stored.
+    """
+    _get_app()
+    editor: _BranchEditorStub = _BranchEditorStub()
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    line: Line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=300.0, y=0.0)
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                                             to_port=graphic_to.get_terminal(),
+                                             editor=editor,
+                                             api_object=line)
+
+    assert branch_graphic.get_render_points() == [(90.0, 45.0), (390.0, 45.0)]
 
 
 def test_loading_reattaches_saved_branch_route_to_live_endpoint_anchors() -> None:

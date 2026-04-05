@@ -523,6 +523,143 @@ class DiagramType(Enum):
         return list(map(lambda c: c.value, cls))
 
 
+class SchematicBranchEndpoint(Enum):
+    """
+    Schematic branch endpoint identifiers.
+    """
+    FROM = "from"
+    TO = "to"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return SchematicBranchEndpoint[s]
+        except KeyError:
+            return s
+
+
+class SchematicAttachmentSide(Enum):
+    """
+    Schematic attachment-side identifiers.
+    """
+    DEFAULT = "default"
+    LEFT = "left"
+    RIGHT = "right"
+    TOP = "top"
+    BOTTOM = "bottom"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return SchematicAttachmentSide[s]
+        except KeyError:
+            return s
+
+
+class SchematicAttachmentOwnerKind(Enum):
+    """
+    Schematic attachment owner kinds.
+    """
+    BUS = "bus"
+    FLUID = "fluid"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return SchematicAttachmentOwnerKind[s]
+        except KeyError:
+            return s
+
+
+class SchematicRouteKind(Enum):
+    """
+    Schematic route kinds.
+    """
+    ORTHOGONAL = "orthogonal"
+    AUTO = "auto"
+    AUTO_ORTHOGONAL = "auto-orthogonal"
+    AUTO_POLYLINE = "auto-polyline"
+    MANUAL_ORTHOGONAL = "manual-orthogonal"
+    MANUAL_POLYLINE = "manual-polyline"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return SchematicRouteKind[s]
+        except KeyError:
+            return s
+
+
+class SchematicAutoRouteStyle(Enum):
+    """
+    Schematic automatic route styles.
+    """
+    RETICULAR = "reticular"
+    STRAIGHT = "straight"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return SchematicAutoRouteStyle[s]
+        except KeyError:
+            return s
+
+
 class AcOpfMode(Enum):
     """
     AC-OPF problem types

@@ -43,8 +43,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (Schema
                                                                           infer_attachment_side_from_points,
                                                                           parse_attachment_slot,
                                                                           parse_explicit_slot_key)
-from VeraGridEngine.Devices.Diagrams.schematic_layout import SchematicBranchEndpoint
-from VeraGridEngine.enumerations import DeviceType, BusGraphicType
+from VeraGridEngine.enumerations import DeviceType, BusGraphicType, SchematicBranchEndpoint
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 from VeraGridEngine.Devices.Substation import Bus
 from VeraGridEngine.Devices.Aggregation.short_cirtcuit_event import ShortCircuitEvent
