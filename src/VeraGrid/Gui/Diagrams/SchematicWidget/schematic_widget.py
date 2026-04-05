@@ -43,7 +43,7 @@ from VeraGridEngine.Devices.Diagrams.graphic_location import GraphicLocation
 from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_results import PowerFlowTimeSeriesResults
 from VeraGridEngine.Topology.VoltageLevels.vl_creation_common_functions import transform_bus_to_connectivity_grid
-from VeraGridEngine.enumerations import DeviceType, ResultTypes, BusGraphicType
+from VeraGridEngine.enumerations import DeviceType, ResultTypes, BusGraphicType, SchematicAutoRouteStyle
 from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, Logger
 import VeraGridEngine.Devices.Diagrams.palettes as palettes
 from VeraGridEngine.Topology.VoltageLevels import vl_creation_common_functions as substation_wizards
@@ -88,6 +88,19 @@ BRANCH_GRAPHICS = Union[
     SeriesReactanceGraphicItem,
     SwitchGraphicItem
 ]
+
+SCHEMATIC_BRANCH_DEVICE_TYPES: Tuple[DeviceType, ...] = (
+    DeviceType.LineDevice,
+    DeviceType.DCLineDevice,
+    DeviceType.HVDCLineDevice,
+    DeviceType.VscDevice,
+    DeviceType.UpfcDevice,
+    DeviceType.Transformer2WDevice,
+    DeviceType.SeriesReactanceDevice,
+    DeviceType.SwitchDevice,
+    DeviceType.WindingDevice,
+    DeviceType.FluidPathDevice,
+)
 
 OPTIONAL_PORT = Union[BarTerminalItem, RoundTerminalItem, None]
 
@@ -2105,6 +2118,23 @@ class SchematicWidget(BaseDiagramWidget):
             return owner_graphic.get_terminal()
         else:
             return None
+
+    def set_all_branch_drawing_styles(self, route_style: SchematicAutoRouteStyle) -> None:
+        """
+        Set one automatic drawing style on all registered schematic branch widgets.
+
+        :param route_style: Requested automatic branch drawing style.
+        :return: ``None``.
+        """
+        branch_device_type: DeviceType
+        graphic_object: object
+
+        for branch_device_type in SCHEMATIC_BRANCH_DEVICE_TYPES:
+            for graphic_object in self.graphics_manager.get_device_type_list(device_type=branch_device_type):
+                if isinstance(graphic_object, LineGraphicTemplateItem):
+                    graphic_object.set_branch_auto_route_style(route_style=route_style)
+                else:
+                    pass
 
     def add_api_branch(self,
                        branch: BRANCH_TYPES,

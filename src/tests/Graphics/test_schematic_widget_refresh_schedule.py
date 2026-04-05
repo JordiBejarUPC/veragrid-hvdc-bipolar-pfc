@@ -4,6 +4,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QGraphicsView
 
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import CustomGraphicsView, SchematicWidget
+from VeraGridEngine.enumerations import DeviceType, SchematicAutoRouteStyle
 
 
 class _UpdateDiagramStub:
@@ -76,6 +77,52 @@ class _UpdateDiagramGraphicsManagerStub:
         :return: ``None``.
         """
         self.registrations.append((elm, graphic))
+
+
+class _BranchStyleGraphicStub:
+    __slots__ = ("styles",)
+
+    def __init__(self) -> None:
+        """
+        Initialize the recorded style list.
+
+        :return: ``None``.
+        """
+        self.styles: list[SchematicAutoRouteStyle] = list()
+
+    def set_branch_auto_route_style(self, route_style: SchematicAutoRouteStyle) -> None:
+        """
+        Record one widget-level branch style change.
+
+        :param route_style: Requested route style.
+        :return: ``None``.
+        """
+        self.styles.append(route_style)
+
+
+class _BranchStyleLineGraphicStub(_BranchStyleGraphicStub):
+    __slots__ = tuple()
+
+
+class _BranchStyleGraphicsManagerStub:
+    __slots__ = ("device_type_lists",)
+
+    def __init__(self) -> None:
+        """
+        Initialize branch graphics grouped by device type.
+
+        :return: ``None``.
+        """
+        self.device_type_lists: dict[DeviceType, list[object]] = dict()
+
+    def get_device_type_list(self, device_type: DeviceType) -> list[object]:
+        """
+        Return the configured graphic list for one device type.
+
+        :param device_type: Device type key.
+        :return: Registered graphics.
+        """
+        return self.device_type_lists.get(device_type, list())
 
 
 class _RefreshScheduleStub:
@@ -213,3 +260,27 @@ def test_update_diagram_element_syncs_branch_attachments_outside_loading() -> No
                                            graphic_object=None)
 
     assert stub.diagram.sync_calls == [device]
+
+
+def test_set_all_branch_drawing_styles_updates_all_registered_branch_widgets(monkeypatch) -> None:
+    """
+    Applying one branch drawing style at widget level should fan out to every registered branch graphic.
+    """
+    graphics_manager = _BranchStyleGraphicsManagerStub()
+    line_graphic = _BranchStyleLineGraphicStub()
+    fluid_path_graphic = _BranchStyleLineGraphicStub()
+    non_branch_graphic = _BranchStyleGraphicStub()
+    stub = type("BranchStyleWidgetStub", (), {"graphics_manager": graphics_manager})()
+    monkeypatch.setattr(
+        "VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget.LineGraphicTemplateItem",
+        _BranchStyleLineGraphicStub
+    )
+
+    graphics_manager.device_type_lists[DeviceType.LineDevice] = [line_graphic, non_branch_graphic]
+    graphics_manager.device_type_lists[DeviceType.FluidPathDevice] = [fluid_path_graphic]
+
+    SchematicWidget.set_all_branch_drawing_styles(stub, route_style=SchematicAutoRouteStyle.RETICULAR)
+
+    assert line_graphic.styles == [SchematicAutoRouteStyle.RETICULAR]
+    assert fluid_path_graphic.styles == [SchematicAutoRouteStyle.RETICULAR]
+    assert non_branch_graphic.styles == list()
