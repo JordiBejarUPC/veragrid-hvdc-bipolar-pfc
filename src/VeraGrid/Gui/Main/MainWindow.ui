@@ -11121,7 +11121,7 @@ QProgressBar::chunk{
    <addaction name="actionDelete_selected"/>
    <addaction name="separator"/>
    <addaction name="actionLaunch_data_analysis_tool"/>
-   <addaction name="separator"/>
+   <addaction name="actionai_chat"/>
   </widget>
   <action name="actionOpen_file">
    <property name="icon">
@@ -12808,6 +12808,18 @@ QProgressBar::chunk{
   <action name="actionSetStraightBranchStyles">
    <property name="text">
     <string>Straight</string>
+   </property>
+  </action>
+  <action name="actionai_chat">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/message.png</normaloff>:/Icons/icons/message.png</iconset>
+   </property>
+   <property name="text">
+    <string>ai_chat</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
    </property>
   </action>
  </widget>
