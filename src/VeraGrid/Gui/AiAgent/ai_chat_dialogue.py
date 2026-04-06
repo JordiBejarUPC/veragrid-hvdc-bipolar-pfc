@@ -16,6 +16,7 @@ configuration, live app-derived context and a visible transcript.
 import html
 import json
 import os
+from enum import Enum
 from typing import Any, Optional, TYPE_CHECKING
 
 import numpy as np
@@ -40,7 +41,10 @@ from VeraGrid.Gui.AiAgent.ai_backend import build_default_tool_registry
 from VeraGrid.Gui.AiAgent.ai_backend import build_provider
 from VeraGrid.Gui.AiAgent.ai_backend import list_provider_models
 from VeraGrid.Gui.AiAgent.ai_chat_gui import Ui_AiChatDialog
+from VeraGrid.Gui.Analysis.object_plot_analysis import GridErrorLog
+from VeraGrid.Gui.Analysis.object_plot_analysis import grid_analysis
 from VeraGrid.Gui.AiAgent.ai_retrieval import ProgramKnowledgeIndex
+from VeraGrid.Gui.AiAgent.ai_retrieval import RuntimeKnowledgeSnapshot
 from VeraGrid.Gui.AiAgent.ai_retrieval import build_default_knowledge_package_name
 from VeraGrid.Gui.AiAgent.ai_retrieval import build_retrieved_context_text
 from VeraGrid.Gui.AiAgent.ai_retrieval import build_runtime_knowledge_snapshot
@@ -282,87 +286,392 @@ class SnapshotStudySummaryTool:
             )
 
 
-def execute_live_power_flow_from_app(app: "SimulationsMain") -> ToolExecutionResult:
+class RuntimeSnapshotSearchTool:
     """
-    Execute the standard VeraGrid power flow directly from the live application.
+    Read-only tool exposing lexical search over the live runtime snapshot.
 
-    :param app: VeraGrid main window.
-    :returns: Tool execution result.
+    :param runtime_snapshot: Runtime snapshot.
     """
-    if app.circuit.valid_for_simulation():
-        if app.session.is_this_running(SimulationTypes.PowerFlow_run):
+
+    __slots__ = ("_runtime_snapshot",)
+
+    def __init__(self, runtime_snapshot: RuntimeKnowledgeSnapshot) -> None:
+        """
+        Store the runtime snapshot.
+
+        :param runtime_snapshot: Runtime snapshot.
+        """
+        self._runtime_snapshot: RuntimeKnowledgeSnapshot = runtime_snapshot
+
+    def execute(self, arguments: dict[str, object]) -> ToolExecutionResult:
+        """
+        Search the runtime snapshot.
+
+        :param arguments: Tool arguments.
+        :returns: Tool execution result.
+        """
+        query_obj: object = arguments.get("query", None)
+        category_obj: object = arguments.get("category", None)
+        limit_obj: object = arguments.get("limit", None)
+        query_text: str
+        category_text: Optional[str] = None
+        limit_value: int = 6
+        hits: list[object]
+        items: list[dict[str, object]] = list()
+        index: int = 0
+
+        if isinstance(query_obj, str) and (len(query_obj.strip()) > 0):
+            query_text = query_obj.strip()
+        else:
             return ToolExecutionResult(
                 success=False,
                 error_code=ToolErrorCode.EXECUTION_ERROR,
-                error_message="A power flow simulation is already running.",
+                error_message="The query argument must be a non-empty string.",
+                payload_json="{}",
+            )
+
+        if isinstance(category_obj, str) and (len(category_obj.strip()) > 0):
+            category_text = category_obj.strip()
+        else:
+            category_text = None
+
+        if isinstance(limit_obj, int) and (limit_obj > 0):
+            limit_value = min(limit_obj, 12)
+        else:
+            pass
+
+        hits = self._runtime_snapshot.search(
+            query=query_text,
+            top_k=limit_value,
+            category=category_text,
+        )
+
+        while index < len(hits):
+            hit = hits[index]
+            items.append(
+                {
+                    "title": hit.record.title,
+                    "category": hit.record.category,
+                    "score": hit.score,
+                    "excerpt": hit.excerpt,
+                    "content": hit.record.content,
+                }
+            )
+            index += 1
+
+        return ToolExecutionResult(
+            success=True,
+            error_code=ToolErrorCode.NONE,
+            error_message="",
+            payload_json=json.dumps(
+                {
+                    "query": query_text,
+                    "category": category_text,
+                    "count": len(items),
+                    "items": items,
+                },
+                ensure_ascii=False,
+            ),
+        )
+
+
+class RuntimeSnapshotRecordTool:
+    """
+    Read-only tool exposing exact runtime records by title.
+
+    :param runtime_snapshot: Runtime snapshot.
+    """
+
+    __slots__ = ("_runtime_snapshot",)
+
+    def __init__(self, runtime_snapshot: RuntimeKnowledgeSnapshot) -> None:
+        """
+        Store the runtime snapshot.
+
+        :param runtime_snapshot: Runtime snapshot.
+        """
+        self._runtime_snapshot: RuntimeKnowledgeSnapshot = runtime_snapshot
+
+    def execute(self, arguments: dict[str, object]) -> ToolExecutionResult:
+        """
+        Return one runtime record by exact title.
+
+        :param arguments: Tool arguments.
+        :returns: Tool execution result.
+        """
+        title_obj: object = arguments.get("title", None)
+        record = None
+
+        if isinstance(title_obj, str) and (len(title_obj.strip()) > 0):
+            record = self._runtime_snapshot.find_record_by_title(title_obj.strip())
+        else:
+            return ToolExecutionResult(
+                success=False,
+                error_code=ToolErrorCode.EXECUTION_ERROR,
+                error_message="The title argument must be a non-empty string.",
+                payload_json="{}",
+            )
+
+        if record is None:
+            return ToolExecutionResult(
+                success=False,
+                error_code=ToolErrorCode.EXECUTION_ERROR,
+                error_message=f"Runtime record '{title_obj}' was not found.",
                 payload_json="{}",
             )
         else:
-            app.run_power_flow()
             return ToolExecutionResult(
                 success=True,
                 error_code=ToolErrorCode.NONE,
                 error_message="",
                 payload_json=json.dumps(
                     {
-                        "started": True,
-                        "study_name": SimulationTypes.PowerFlow_run.value,
-                        "message": (
-                            "Started the standard VeraGrid power flow simulation "
-                            "for the active project and current GUI options."
-                        ),
+                        "title": record.title,
+                        "category": record.category,
+                        "content": record.content,
                     },
                     ensure_ascii=False,
                 ),
             )
-    else:
-        return ToolExecutionResult(
-            success=False,
-            error_code=ToolErrorCode.EXECUTION_ERROR,
-            error_message="The current circuit is not valid for simulation.",
-            payload_json="{}",
-        )
 
 
-def is_direct_power_flow_request(message_text: str) -> bool:
+def build_default_grid_analysis_parameters() -> dict[str, object]:
     """
-    Check whether the user explicitly asked to run a standard power flow.
+    Build the default grid-analysis parameters used by the AI diagnostics tool.
 
-    :param message_text: User message text.
-    :returns: True when the request clearly targets a power-flow run.
+    :returns: Grid-analysis parameter dictionary.
     """
-    normalized_text: str = message_text.lower()
-    run_verbs: list[str] = list()
+    parameters: dict[str, object] = dict()
+
+    parameters["analyze_ts"] = True
+    parameters["imbalance_threshold"] = 0.02
+    parameters["v_low"] = 0.95
+    parameters["v_high"] = 1.05
+    parameters["tap_min"] = 0.95
+    parameters["tap_max"] = 1.05
+    parameters["transformer_virtual_tap_tolerance"] = 0.1
+    parameters["branch_connection_voltage_tolerance"] = 0.1
+    parameters["min_vcc"] = 8.0
+    parameters["max_vcc"] = 18.0
+    parameters["branch_x_threshold"] = 1e-4
+    parameters["condition_number_threshold"] = 1e-4
+    parameters["eps_max"] = 1e20
+    parameters["eps_min"] = 1e-20
+
+    return parameters
+
+
+def build_grid_error_log_entries(error_log: GridErrorLog) -> list[dict[str, object]]:
+    """
+    Convert a ``GridErrorLog`` into a JSON-safe list of issue entries.
+
+    :param error_log: Grid error log.
+    :returns: Issue-entry list.
+    """
+    entries: list[dict[str, object]] = list()
+
+    for message_text, message_entries in error_log.logs.items():
+        message_index: int = 0
+
+        while message_index < len(message_entries):
+            entry: list[object] = message_entries[message_index]
+            severity_text: str = str(entry[3].value) if hasattr(entry[3], "value") else str(entry[3])
+            entries.append(
+                {
+                    "message": str(message_text),
+                    "object_type": str(entry[0]),
+                    "element_name": str(entry[1]),
+                    "element_index": int(entry[2]),
+                    "severity": severity_text,
+                    "property_name": str(entry[4]),
+                    "lower": str(entry[5]),
+                    "value": str(entry[6]),
+                    "upper": str(entry[7]),
+                }
+            )
+            message_index += 1
+
+    return entries
+
+
+def build_grid_analysis_payload_from_app(
+    app: "SimulationsMain",
+    analyze_time_series: bool,
+    max_issue_count: int,
+) -> dict[str, object]:
+    """
+    Run VeraGrid structural diagnostics and return a JSON-safe payload.
+
+    :param app: VeraGrid main window.
+    :param analyze_time_series: Whether to analyze time-series consistency.
+    :param max_issue_count: Maximum issue entries to include in the payload.
+    :returns: Grid-diagnostic payload.
+    """
+    parameters: dict[str, object] = build_default_grid_analysis_parameters()
+    error_log: GridErrorLog = GridErrorLog()
+    fixable_errors: list[object]
+    issue_entries: list[dict[str, object]]
+    severity_counts: dict[str, int] = dict()
+    message_counts: dict[str, int] = dict()
+    limited_issue_entries: list[dict[str, object]] = list()
+    index: int = 0
+    payload: dict[str, object] = dict()
+
+    parameters["analyze_ts"] = analyze_time_series
+    parameters["logger"] = error_log
+    fixable_errors = grid_analysis(
+        circuit=app.circuit,
+        analyze_ts=bool(parameters["analyze_ts"]),
+        imbalance_threshold=float(parameters["imbalance_threshold"]),
+        v_low=float(parameters["v_low"]),
+        v_high=float(parameters["v_high"]),
+        tap_min=float(parameters["tap_min"]),
+        tap_max=float(parameters["tap_max"]),
+        transformer_virtual_tap_tolerance=float(parameters["transformer_virtual_tap_tolerance"]),
+        branch_connection_voltage_tolerance=float(parameters["branch_connection_voltage_tolerance"]),
+        min_vcc=float(parameters["min_vcc"]),
+        max_vcc=float(parameters["max_vcc"]),
+        logger=error_log,
+        branch_x_threshold=float(parameters["branch_x_threshold"]),
+        condition_number_threshold=float(parameters["condition_number_threshold"]),
+        eps_max=float(parameters["eps_max"]),
+        eps_min=float(parameters["eps_min"]),
+    )
+    issue_entries = build_grid_error_log_entries(error_log)
+
+    while index < len(issue_entries):
+        severity_text: str = str(issue_entries[index]["severity"])
+        message_text: str = str(issue_entries[index]["message"])
+
+        if severity_text in severity_counts:
+            severity_counts[severity_text] += 1
+        else:
+            severity_counts[severity_text] = 1
+
+        if message_text in message_counts:
+            message_counts[message_text] += 1
+        else:
+            message_counts[message_text] = 1
+
+        if len(limited_issue_entries) < max_issue_count:
+            limited_issue_entries.append(issue_entries[index])
+        else:
+            pass
+
+        index += 1
+
+    payload["project_name"] = get_current_project_name_from_app(app)
+    payload["issue_count"] = len(issue_entries)
+    payload["fixable_issue_count"] = len(fixable_errors)
+    payload["severity_counts"] = severity_counts
+    payload["top_messages"] = [
+        {
+            "message": message_text,
+            "count": count_value,
+        }
+        for message_text, count_value in sort_message_count_items(message_counts)[:12]
+    ]
+    payload["issues"] = limited_issue_entries
+    payload["analyze_time_series"] = analyze_time_series
+
+    return payload
+
+
+def sort_message_count_items(message_counts: dict[str, int]) -> list[tuple[str, int]]:
+    """
+    Sort message-count pairs by descending count and ascending message text.
+
+    :param message_counts: Message-count dictionary.
+    :returns: Sorted message-count items.
+    """
+    items: list[tuple[str, int]] = list(message_counts.items())
+    items.sort(key=sort_message_count_item)
+    return items
+
+
+def sort_message_count_item(item: tuple[str, int]) -> tuple[int, str]:
+    """
+    Build the sorting key for a message-count item.
+
+    :param item: Message-count item.
+    :returns: Sorting key.
+    """
+    return (-item[1], item[0])
+
+
+def build_grid_diagnostic_summary_text(payload: dict[str, object]) -> str:
+    """
+    Build a concise assistant-facing summary from a grid-diagnostic payload.
+
+    :param payload: Grid-diagnostic payload.
+    :returns: Summary text.
+    """
+    issue_count_obj: object = payload.get("issue_count", 0)
+    fixable_issue_count_obj: object = payload.get("fixable_issue_count", 0)
+    top_messages_obj: object = payload.get("top_messages", list())
+    lines: list[str] = list()
     index: int = 0
 
-    run_verbs.append("run")
-    run_verbs.append("execute")
-    run_verbs.append("start")
-    run_verbs.append("launch")
-    run_verbs.append("solve")
-    run_verbs.append("calculate")
+    lines.append(
+        f"Detected {issue_count_obj} grid issues, with {fixable_issue_count_obj} marked as fixable."
+    )
 
-    if "power flow" in normalized_text:
-        while index < len(run_verbs):
-            if run_verbs[index] in normalized_text:
-                return True
+    if isinstance(top_messages_obj, list) and (len(top_messages_obj) > 0):
+        lines.append("Most relevant issues:")
+
+        while index < min(len(top_messages_obj), 5):
+            item: object = top_messages_obj[index]
+            if isinstance(item, dict):
+                lines.append(f"- {item.get('message', '')} ({item.get('count', 0)})")
             else:
                 pass
             index += 1
     else:
-        pass
+        lines.append("No structural issues were reported by the grid analysis.")
+
+    return "\n".join(lines)
+
+
+def is_direct_grid_diagnostics_request(message_text: str) -> bool:
+    """
+    Check whether the user explicitly asked for grid diagnostics.
+
+    :param message_text: User message text.
+    :returns: True when the request clearly targets diagnostic analysis.
+    """
+    normalized_text: str = normalize_simulation_request_text(message_text)
+    diagnosis_phrases: list[str] = list()
+    index: int = 0
+
+    diagnosis_phrases.append("what is wrong with the grid")
+    diagnosis_phrases.append("what's wrong with the grid")
+    diagnosis_phrases.append("what is wrong with this grid")
+    diagnosis_phrases.append("what's wrong with this grid")
+    diagnosis_phrases.append("problems with the grid")
+    diagnosis_phrases.append("issues with the grid")
+    diagnosis_phrases.append("diagnose the grid")
+    diagnosis_phrases.append("analyze the grid")
+    diagnosis_phrases.append("grid diagnostics")
+    diagnosis_phrases.append("grid diagnosis")
+
+    while index < len(diagnosis_phrases):
+        if diagnosis_phrases[index] in normalized_text:
+            return True
+        else:
+            pass
+        index += 1
 
     return False
 
 
-class MainThreadPowerFlowRunner(QtCore.QObject):
+class MainThreadGridDiagnosticsRunner(QtCore.QObject):
     """
-    Main-thread bridge used to launch a VeraGrid power flow safely from the AI worker.
+    Main-thread bridge used to run VeraGrid grid diagnostics safely from the AI worker.
 
     :param app: VeraGrid main window.
     """
 
-    request_run = QtCore.Signal()
+    request_run = QtCore.Signal(object, object)
 
     __slots__ = (
         "_app",
@@ -371,7 +680,7 @@ class MainThreadPowerFlowRunner(QtCore.QObject):
 
     def __init__(self, app: "SimulationsMain") -> None:
         """
-        Build the main-thread power-flow bridge.
+        Build the main-thread diagnostics bridge.
 
         :param app: VeraGrid main window.
         """
@@ -380,36 +689,945 @@ class MainThreadPowerFlowRunner(QtCore.QObject):
         self._pending_result: ToolExecutionResult = ToolExecutionResult(
             success=False,
             error_code=ToolErrorCode.EXECUTION_ERROR,
-            error_message="The power flow tool did not run.",
+            error_message="The grid diagnostics tool did not run.",
             payload_json="{}",
         )
         self.request_run.connect(
-            self._execute_run_power_flow,
+            self._execute_grid_diagnostics,
             QtCore.Qt.ConnectionType.BlockingQueuedConnection,
         )
 
-    def run_power_flow(self) -> ToolExecutionResult:
+    def run_diagnostics(self, analyze_time_series: bool, max_issue_count: int) -> ToolExecutionResult:
         """
-        Launch the current VeraGrid power flow on the GUI thread.
+        Launch VeraGrid grid diagnostics on the GUI thread.
 
+        :param analyze_time_series: Whether to analyze time-series consistency.
+        :param max_issue_count: Maximum issue count to include in the payload.
         :returns: Tool execution result.
         """
-        self.request_run.emit()
+        self.request_run.emit(analyze_time_series, max_issue_count)
         return self._pending_result
 
-    @QtCore.Slot()
-    def _execute_run_power_flow(self) -> None:
+    @QtCore.Slot(object, object)
+    def _execute_grid_diagnostics(
+        self,
+        analyze_time_series_obj: object,
+        max_issue_count_obj: object,
+    ) -> None:
         """
-        Execute the standard power-flow action on the GUI thread.
+        Execute the grid diagnostics action on the GUI thread.
 
+        :param analyze_time_series_obj: Analyze-time-series flag.
+        :param max_issue_count_obj: Maximum issue count.
         :returns: Nothing.
         """
-        self._pending_result = execute_live_power_flow_from_app(self._app)
+        analyze_time_series: bool = bool(analyze_time_series_obj)
+        max_issue_count: int = int(max_issue_count_obj) if isinstance(max_issue_count_obj, int) else 20
+        payload: dict[str, object] = build_grid_analysis_payload_from_app(
+            app=self._app,
+            analyze_time_series=analyze_time_series,
+            max_issue_count=max_issue_count,
+        )
+
+        self._pending_result = ToolExecutionResult(
+            success=True,
+            error_code=ToolErrorCode.NONE,
+            error_message="",
+            payload_json=json.dumps(payload, ensure_ascii=False),
+        )
 
 
-class LiveRunPowerFlowTool:
+class LiveGridDiagnosticsTool:
     """
-    Live VeraGrid tool that launches the standard power flow.
+    Live VeraGrid tool that runs the structural grid diagnostics.
+
+    :param app: VeraGrid main window.
+    """
+
+    __slots__ = ("_runner",)
+
+    def __init__(self, app: "SimulationsMain") -> None:
+        """
+        Build the live grid-diagnostics tool.
+
+        :param app: VeraGrid main window.
+        """
+        self._runner: MainThreadGridDiagnosticsRunner = MainThreadGridDiagnosticsRunner(app)
+
+    def execute(self, arguments: dict[str, object]) -> ToolExecutionResult:
+        """
+        Execute the live grid-diagnostics tool.
+
+        :param arguments: Tool arguments.
+        :returns: Tool execution result.
+        """
+        analyze_time_series_obj: object = arguments.get("analyze_time_series", True)
+        max_issue_count_obj: object = arguments.get("max_issue_count", 20)
+        analyze_time_series: bool = True
+        max_issue_count: int = 20
+
+        if isinstance(analyze_time_series_obj, bool):
+            analyze_time_series = analyze_time_series_obj
+        else:
+            pass
+
+        if isinstance(max_issue_count_obj, int) and (max_issue_count_obj > 0):
+            max_issue_count = min(max_issue_count_obj, 100)
+        else:
+            pass
+
+        return self._runner.run_diagnostics(
+            analyze_time_series=analyze_time_series,
+            max_issue_count=max_issue_count,
+        )
+
+
+class AiSimulationCommand(Enum):
+    """
+    Simulation commands exposed to the AI layer.
+
+    The values are stable identifiers used by the tool schema and the
+    deterministic direct-command parser.
+    """
+    POWER_FLOW = "power_flow"
+    POWER_FLOW_3PH = "power_flow_3ph"
+    SHORT_CIRCUIT = "short_circuit"
+    CONTINUATION_POWER_FLOW = "continuation_power_flow"
+    POWER_FLOW_TIME_SERIES = "power_flow_time_series"
+    STOCHASTIC_POWER_FLOW = "stochastic_power_flow"
+    STATE_ESTIMATION = "state_estimation"
+    OPTIMAL_POWER_FLOW = "optimal_power_flow"
+    OPTIMAL_POWER_FLOW_TIME_SERIES = "optimal_power_flow_time_series"
+    OPTIMAL_NET_TRANSFER_CAPACITY = "optimal_net_transfer_capacity"
+    OPTIMAL_NET_TRANSFER_CAPACITY_TIME_SERIES = "optimal_net_transfer_capacity_time_series"
+    INPUTS_ANALYSIS = "inputs_analysis"
+    LINEAR_ANALYSIS = "linear_analysis"
+    LINEAR_ANALYSIS_TIME_SERIES = "linear_analysis_time_series"
+    CONTINGENCY_ANALYSIS = "contingency_analysis"
+    CONTINGENCY_ANALYSIS_TIME_SERIES = "contingency_analysis_time_series"
+    AVAILABLE_TRANSFER_CAPACITY = "available_transfer_capacity"
+    AVAILABLE_TRANSFER_CAPACITY_TIME_SERIES = "available_transfer_capacity_time_series"
+    CLUSTERING_ANALYSIS = "clustering_analysis"
+    SIGMA_ANALYSIS = "sigma_analysis"
+    NODE_GROUPS = "node_groups"
+    INVESTMENTS_EVALUATION = "investments_evaluation"
+    RELIABILITY_STUDY = "reliability_study"
+    RMS_DYNAMIC = "rms_dynamic"
+    RMS_SMALL_SIGNAL = "rms_small_signal"
+    EMT_DYNAMIC = "emt_dynamic"
+    EMT_SMALL_SIGNAL = "emt_small_signal"
+    NODAL_CAPACITY = "nodal_capacity"
+
+
+class SimulationCommandDefinition:
+    """
+    Explicit definition for one VeraGrid simulation command.
+
+    :param command: Stable AI command identifier.
+    :param display_name: User-facing simulation name.
+    :param aliases: Direct-command aliases expected in user prompts.
+    :param running_simulation_tpe: Simulation type tracked by the session, if any.
+    :param assistant_message: Default assistant acknowledgement message.
+    :param optimistic_success: Whether the action should be considered executed
+        even when the session does not expose a running driver afterwards.
+    """
+
+    __slots__ = (
+        "command",
+        "display_name",
+        "aliases",
+        "running_simulation_tpe",
+        "assistant_message",
+        "optimistic_success",
+    )
+
+    def __init__(
+        self,
+        command: AiSimulationCommand,
+        display_name: str,
+        aliases: list[str],
+        running_simulation_tpe: Optional[SimulationTypes],
+        assistant_message: str,
+        optimistic_success: bool,
+    ) -> None:
+        """
+        Store one explicit simulation command definition.
+
+        :param command: Stable AI command identifier.
+        :param display_name: User-facing simulation name.
+        :param aliases: Direct-command aliases expected in user prompts.
+        :param running_simulation_tpe: Simulation type tracked by the session, if any.
+        :param assistant_message: Default assistant acknowledgement message.
+        :param optimistic_success: Whether the action should be considered
+            executed even when the session does not expose a running driver afterwards.
+        """
+        self.command: AiSimulationCommand = command
+        self.display_name: str = display_name
+        self.aliases: list[str] = aliases
+        self.running_simulation_tpe: Optional[SimulationTypes] = running_simulation_tpe
+        self.assistant_message: str = assistant_message
+        self.optimistic_success: bool = optimistic_success
+
+
+def build_simulation_command_definitions() -> list[SimulationCommandDefinition]:
+    """
+    Build the explicit VeraGrid simulation command definitions.
+
+    The order is intentional: more specific aliases come first so the direct
+    parser does not accidentally match a generic phrase such as "power flow"
+    before "optimal power flow" or "power flow time series".
+
+    :returns: Ordered simulation command definitions.
+    """
+    definitions: list[SimulationCommandDefinition] = list()
+
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.OPTIMAL_NET_TRANSFER_CAPACITY_TIME_SERIES,
+            display_name="Optimal net transfer capacity time series",
+            aliases=["optimal net transfer capacity time series", "opf ntc time series", "ntc opf time series"],
+            running_simulation_tpe=SimulationTypes.OPF_NTC_TS_run,
+            assistant_message="Started the optimal net transfer capacity time series study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.OPTIMAL_NET_TRANSFER_CAPACITY,
+            display_name="Optimal net transfer capacity",
+            aliases=["optimal net transfer capacity", "opf ntc", "ntc opf"],
+            running_simulation_tpe=SimulationTypes.OPF_NTC_run,
+            assistant_message="Started the optimal net transfer capacity study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.OPTIMAL_POWER_FLOW_TIME_SERIES,
+            display_name="Optimal power flow time series",
+            aliases=["optimal power flow time series", "opf time series"],
+            running_simulation_tpe=SimulationTypes.OPFTimeSeries_run,
+            assistant_message="Started the optimal power flow time series study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.OPTIMAL_POWER_FLOW,
+            display_name="Optimal power flow",
+            aliases=["optimal power flow", "opf"],
+            running_simulation_tpe=SimulationTypes.OPF_run,
+            assistant_message="Started the optimal power flow study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.AVAILABLE_TRANSFER_CAPACITY_TIME_SERIES,
+            display_name="Available transfer capacity time series",
+            aliases=["available transfer capacity time series", "atc time series"],
+            running_simulation_tpe=SimulationTypes.NetTransferCapacityTS_run,
+            assistant_message="Started the available transfer capacity time series study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.AVAILABLE_TRANSFER_CAPACITY,
+            display_name="Available transfer capacity",
+            aliases=["available transfer capacity", "atc"],
+            running_simulation_tpe=SimulationTypes.NetTransferCapacity_run,
+            assistant_message="Started the available transfer capacity study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.CONTINGENCY_ANALYSIS_TIME_SERIES,
+            display_name="Contingency analysis time series",
+            aliases=["contingency analysis time series", "otdf time series", "contingency time series"],
+            running_simulation_tpe=SimulationTypes.ContingencyAnalysisTS_run,
+            assistant_message="Started the contingency analysis time series study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.CONTINGENCY_ANALYSIS,
+            display_name="Contingency analysis",
+            aliases=["contingency analysis", "contingencies", "otdf"],
+            running_simulation_tpe=SimulationTypes.ContingencyAnalysis_run,
+            assistant_message="Started the contingency analysis study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.LINEAR_ANALYSIS_TIME_SERIES,
+            display_name="Linear analysis time series",
+            aliases=["linear analysis time series", "ptdf time series"],
+            running_simulation_tpe=SimulationTypes.LinearAnalysis_TS_run,
+            assistant_message="Started the linear analysis time series study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.LINEAR_ANALYSIS,
+            display_name="Linear analysis",
+            aliases=["linear analysis", "linear power flow", "ptdf"],
+            running_simulation_tpe=SimulationTypes.LinearAnalysis_run,
+            assistant_message="Started the linear analysis study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.CONTINUATION_POWER_FLOW,
+            display_name="Continuation power flow",
+            aliases=["continuation power flow", "voltage stability"],
+            running_simulation_tpe=SimulationTypes.ContinuationPowerFlow_run,
+            assistant_message="Started the continuation power flow study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.POWER_FLOW_TIME_SERIES,
+            display_name="Power flow time series",
+            aliases=["power flow time series", "time series power flow"],
+            running_simulation_tpe=SimulationTypes.PowerFlowTimeSeries_run,
+            assistant_message="Started the power flow time series study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.POWER_FLOW_3PH,
+            display_name="3-phase power flow",
+            aliases=["three phase power flow", "three-phase power flow", "3 phase power flow", "3-phase power flow"],
+            running_simulation_tpe=SimulationTypes.PowerFlow3ph_run,
+            assistant_message="Started the 3-phase power flow study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.POWER_FLOW,
+            display_name="Power flow",
+            aliases=["power flow", "load flow"],
+            running_simulation_tpe=SimulationTypes.PowerFlow_run,
+            assistant_message="Started the standard power flow study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.STOCHASTIC_POWER_FLOW,
+            display_name="Stochastic power flow",
+            aliases=["stochastic power flow", "monte carlo power flow", "latin hypercube power flow"],
+            running_simulation_tpe=SimulationTypes.StochasticPowerFlow,
+            assistant_message="Started the stochastic power flow study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.SHORT_CIRCUIT,
+            display_name="Short circuit",
+            aliases=["short circuit", "short-circuit"],
+            running_simulation_tpe=SimulationTypes.ShortCircuit_run,
+            assistant_message="Started the short-circuit study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.STATE_ESTIMATION,
+            display_name="State estimation",
+            aliases=["state estimation"],
+            running_simulation_tpe=SimulationTypes.StateEstimation_run,
+            assistant_message="Started the state estimation study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.INPUTS_ANALYSIS,
+            display_name="Inputs analysis",
+            aliases=["inputs analysis"],
+            running_simulation_tpe=SimulationTypes.InputsAnalysis_run,
+            assistant_message="Started the inputs analysis study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.CLUSTERING_ANALYSIS,
+            display_name="Clustering analysis",
+            aliases=["clustering analysis", "clustering"],
+            running_simulation_tpe=SimulationTypes.ClusteringAnalysis_run,
+            assistant_message="Started the clustering analysis.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.SIGMA_ANALYSIS,
+            display_name="Sigma analysis",
+            aliases=["sigma analysis"],
+            running_simulation_tpe=SimulationTypes.SigmaAnalysis_run,
+            assistant_message="Executed the sigma analysis command. Review the sigma window or VeraGrid messages for details.",
+            optimistic_success=True,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.NODE_GROUPS,
+            display_name="Node groups",
+            aliases=["find node groups", "node groups"],
+            running_simulation_tpe=SimulationTypes.NodeGrouping_run,
+            assistant_message="Executed the node-groups command. Review VeraGrid for PTDF prerequisites or resulting markers.",
+            optimistic_success=True,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.INVESTMENTS_EVALUATION,
+            display_name="Investments evaluation",
+            aliases=["investments evaluation", "investment evaluation"],
+            running_simulation_tpe=SimulationTypes.InvestmentsEvaluation_run,
+            assistant_message="Started the investments evaluation study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.NODAL_CAPACITY,
+            display_name="Nodal capacity",
+            aliases=["nodal capacity", "hosting capacity"],
+            running_simulation_tpe=SimulationTypes.NodalCapacityTimeSeries_run,
+            assistant_message="Started the nodal capacity study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.RELIABILITY_STUDY,
+            display_name="Reliability study",
+            aliases=["reliability study", "reliability"],
+            running_simulation_tpe=SimulationTypes.Reliability_run,
+            assistant_message="Started the reliability study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.RMS_SMALL_SIGNAL,
+            display_name="RMS small-signal stability",
+            aliases=["rms small signal", "rms small-signal", "small signal rms", "small-signal rms"],
+            running_simulation_tpe=SimulationTypes.RmsSmallSignal_run,
+            assistant_message="Started the RMS small-signal stability study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.EMT_SMALL_SIGNAL,
+            display_name="EMT small-signal stability",
+            aliases=["emt small signal", "emt small-signal", "small signal emt", "small-signal emt"],
+            running_simulation_tpe=SimulationTypes.EmtSmallSignal_run,
+            assistant_message="Started the EMT small-signal stability study.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.RMS_DYNAMIC,
+            display_name="Dynamic RMS simulation",
+            aliases=["dynamic rms simulation", "rms dynamic simulation", "rms simulation"],
+            running_simulation_tpe=SimulationTypes.RmsDynamic_run,
+            assistant_message="Started the dynamic RMS simulation.",
+            optimistic_success=False,
+        )
+    )
+    definitions.append(
+        SimulationCommandDefinition(
+            command=AiSimulationCommand.EMT_DYNAMIC,
+            display_name="Dynamic EMT simulation",
+            aliases=["dynamic emt simulation", "emt dynamic simulation", "emt simulation"],
+            running_simulation_tpe=SimulationTypes.EmtDynamic_run,
+            assistant_message="Started the dynamic EMT simulation.",
+            optimistic_success=False,
+        )
+    )
+
+    return definitions
+
+
+def find_simulation_command_definition(
+    command: AiSimulationCommand,
+) -> Optional[SimulationCommandDefinition]:
+    """
+    Find the explicit definition for a simulation command.
+
+    :param command: Simulation command identifier.
+    :returns: Matching command definition or None.
+    """
+    definitions: list[SimulationCommandDefinition] = build_simulation_command_definitions()
+    index: int = 0
+
+    while index < len(definitions):
+        if definitions[index].command == command:
+            return definitions[index]
+        else:
+            pass
+        index += 1
+
+    return None
+
+
+def parse_ai_simulation_command(
+    value: str,
+) -> tuple[bool, Optional[AiSimulationCommand], str]:
+    """
+    Parse a simulation command value from the tool payload.
+
+    :param value: Raw command value.
+    :returns: Tuple with success flag, parsed command and error message.
+    """
+    definitions: list[SimulationCommandDefinition] = build_simulation_command_definitions()
+    index: int = 0
+
+    while index < len(definitions):
+        if definitions[index].command.value == value:
+            return True, definitions[index].command, ""
+        else:
+            pass
+        index += 1
+
+    return False, None, f"Unsupported simulation_name '{value}'."
+
+
+def normalize_simulation_request_text(message_text: str) -> str:
+    """
+    Normalize a user request before alias matching.
+
+    :param message_text: Raw user message.
+    :returns: Normalized text.
+    """
+    normalized_text: str = message_text.lower().replace("-", " ").replace("_", " ")
+    return normalized_text
+
+
+def is_explicit_run_request(message_text: str) -> bool:
+    """
+    Check whether the message explicitly asks to launch an action.
+
+    :param message_text: User message text.
+    :returns: True when the request clearly targets execution.
+    """
+    normalized_text: str = normalize_simulation_request_text(message_text)
+    run_verbs: list[str] = [
+        "run",
+        "execute",
+        "start",
+        "launch",
+        "solve",
+        "calculate",
+        "perform",
+    ]
+    index: int = 0
+
+    while index < len(run_verbs):
+        if run_verbs[index] in normalized_text:
+            return True
+        else:
+            pass
+        index += 1
+
+    return False
+
+
+def detect_direct_simulation_command(message_text: str) -> Optional[AiSimulationCommand]:
+    """
+    Detect an explicit simulation command from a user request.
+
+    :param message_text: User message text.
+    :returns: Matching simulation command or None.
+    """
+    definitions: list[SimulationCommandDefinition] = build_simulation_command_definitions()
+    normalized_text: str = normalize_simulation_request_text(message_text)
+    definition_index: int = 0
+
+    if not is_explicit_run_request(normalized_text):
+        return None
+    else:
+        pass
+
+    while definition_index < len(definitions):
+        alias_index: int = 0
+        aliases: list[str] = definitions[definition_index].aliases
+
+        while alias_index < len(aliases):
+            if aliases[alias_index] in normalized_text:
+                return definitions[definition_index].command
+            else:
+                pass
+            alias_index += 1
+
+        definition_index += 1
+
+    return None
+
+
+def build_run_simulation_schema_json() -> str:
+    """
+    Build the JSON schema for the generic simulation tool.
+
+    :returns: JSON schema string.
+    """
+    definitions: list[SimulationCommandDefinition] = build_simulation_command_definitions()
+    command_values: list[str] = list()
+    description_lines: list[str] = list()
+    index: int = 0
+
+    while index < len(definitions):
+        command_values.append(definitions[index].command.value)
+        description_lines.append(
+            f"{definitions[index].command.value}: {definitions[index].display_name}"
+        )
+        index += 1
+
+    return json.dumps(
+        {
+            "type": "object",
+            "properties": {
+                "simulation_name": {
+                    "type": "string",
+                    "enum": command_values,
+                    "description": "Supported simulations: " + "; ".join(description_lines),
+                }
+            },
+            "required": ["simulation_name"],
+            "additionalProperties": False,
+        }
+    )
+
+
+def build_run_simulation_tool_description() -> str:
+    """
+    Build the generic simulation-tool description.
+
+    :returns: Tool description.
+    """
+    return (
+        "Run a VeraGrid simulation or analysis on the active project using the current GUI options. "
+        "Choose the exact simulation_name enum value that matches the requested study."
+    )
+
+
+def build_simulation_tool_result(
+    definition: SimulationCommandDefinition,
+    started: bool,
+    used_optimistic_success: bool,
+) -> ToolExecutionResult:
+    """
+    Build the successful simulation tool response payload.
+
+    :param definition: Simulation command definition.
+    :param started: Whether VeraGrid exposed a started background study.
+    :param used_optimistic_success: Whether the success was inferred for an immediate GUI action.
+    :returns: Tool execution result.
+    """
+    payload: dict[str, object] = dict()
+    payload["simulation_name"] = definition.command.value
+    payload["display_name"] = definition.display_name
+    payload["study_name"] = (
+        None
+        if definition.running_simulation_tpe is None
+        else definition.running_simulation_tpe.value
+    )
+    payload["started"] = started
+    payload["optimistic_success"] = used_optimistic_success
+    payload["message"] = definition.assistant_message
+
+    return ToolExecutionResult(
+        success=True,
+        error_code=ToolErrorCode.NONE,
+        error_message="",
+        payload_json=json.dumps(payload, ensure_ascii=False),
+    )
+
+
+def execute_ai_simulation_command(app: "SimulationsMain", command: AiSimulationCommand) -> None:
+    """
+    Execute one explicit VeraGrid simulation command on the GUI thread.
+
+    :param app: VeraGrid main window.
+    :param command: Simulation command to execute.
+    :returns: Nothing.
+    """
+    if command == AiSimulationCommand.POWER_FLOW:
+        app.power_flow_dispatcher()
+    else:
+        if command == AiSimulationCommand.POWER_FLOW_3PH:
+            app.power_flow_3ph_dispatcher()
+        else:
+            if command == AiSimulationCommand.SHORT_CIRCUIT:
+                app.run_short_circuit()
+            else:
+                if command == AiSimulationCommand.CONTINUATION_POWER_FLOW:
+                    app.run_continuation_power_flow()
+                else:
+                    if command == AiSimulationCommand.POWER_FLOW_TIME_SERIES:
+                        app.run_power_flow_time_series()
+                    else:
+                        if command == AiSimulationCommand.STOCHASTIC_POWER_FLOW:
+                            app.run_stochastic()
+                        else:
+                            if command == AiSimulationCommand.STATE_ESTIMATION:
+                                app.run_state_estimation()
+                            else:
+                                if command == AiSimulationCommand.OPTIMAL_POWER_FLOW:
+                                    app.optimal_power_flow_dispatcher()
+                                else:
+                                    if command == AiSimulationCommand.OPTIMAL_POWER_FLOW_TIME_SERIES:
+                                        app.run_opf_time_series()
+                                    else:
+                                        if command == AiSimulationCommand.OPTIMAL_NET_TRANSFER_CAPACITY:
+                                            app.run_opf_ntc()
+                                        else:
+                                            if command == AiSimulationCommand.OPTIMAL_NET_TRANSFER_CAPACITY_TIME_SERIES:
+                                                app.run_opf_ntc_ts()
+                                            else:
+                                                if command == AiSimulationCommand.INPUTS_ANALYSIS:
+                                                    app.run_inputs_analysis()
+                                                else:
+                                                    if command == AiSimulationCommand.LINEAR_ANALYSIS:
+                                                        app.linear_pf_dispatcher()
+                                                    else:
+                                                        if command == AiSimulationCommand.LINEAR_ANALYSIS_TIME_SERIES:
+                                                            app.run_linear_analysis_ts()
+                                                        else:
+                                                            if command == AiSimulationCommand.CONTINGENCY_ANALYSIS:
+                                                                app.contingencies_dispatcher()
+                                                            else:
+                                                                if command == AiSimulationCommand.CONTINGENCY_ANALYSIS_TIME_SERIES:
+                                                                    app.run_contingency_analysis_ts()
+                                                                else:
+                                                                    if command == AiSimulationCommand.AVAILABLE_TRANSFER_CAPACITY:
+                                                                        app.atc_dispatcher()
+                                                                    else:
+                                                                        if command == AiSimulationCommand.AVAILABLE_TRANSFER_CAPACITY_TIME_SERIES:
+                                                                            app.run_available_transfer_capacity_ts()
+                                                                        else:
+                                                                            if command == AiSimulationCommand.CLUSTERING_ANALYSIS:
+                                                                                app.run_clustering()
+                                                                            else:
+                                                                                if command == AiSimulationCommand.SIGMA_ANALYSIS:
+                                                                                    app.run_sigma_analysis()
+                                                                                else:
+                                                                                    if command == AiSimulationCommand.NODE_GROUPS:
+                                                                                        app.ui.actionFind_node_groups.setChecked(True)
+                                                                                        app.run_find_node_groups()
+                                                                                    else:
+                                                                                        if command == AiSimulationCommand.INVESTMENTS_EVALUATION:
+                                                                                            app.run_investments_evaluation()
+                                                                                        else:
+                                                                                            if command == AiSimulationCommand.RELIABILITY_STUDY:
+                                                                                                app.reliability_dispatcher()
+                                                                                            else:
+                                                                                                if command == AiSimulationCommand.RMS_DYNAMIC:
+                                                                                                    app.rms_dispatcher()
+                                                                                                else:
+                                                                                                    if command == AiSimulationCommand.RMS_SMALL_SIGNAL:
+                                                                                                        app.rms_small_signal_dispatcher()
+                                                                                                    else:
+                                                                                                        if command == AiSimulationCommand.EMT_DYNAMIC:
+                                                                                                            app.emt_dispatcher()
+                                                                                                        else:
+                                                                                                            if command == AiSimulationCommand.EMT_SMALL_SIGNAL:
+                                                                                                                app.emt_small_signal_dispatcher()
+                                                                                                            else:
+                                                                                                                if command == AiSimulationCommand.NODAL_CAPACITY:
+                                                                                                                    app.run_nodal_capacity()
+                                                                                                                else:
+                                                                                                                    raise ValueError(
+                                                                                                                        f"Unsupported AI simulation command: {command.value}"
+                                                                                                                    )
+
+
+def execute_live_simulation_from_app(
+    app: "SimulationsMain",
+    command: AiSimulationCommand,
+) -> ToolExecutionResult:
+    """
+    Execute a VeraGrid simulation from the live application.
+
+    :param app: VeraGrid main window.
+    :param command: Simulation command to execute.
+    :returns: Tool execution result.
+    """
+    definition: Optional[SimulationCommandDefinition] = find_simulation_command_definition(command)
+    before_remote_job_count: int = len(app._remote_jobs)
+    running_simulation_tpe: Optional[SimulationTypes]
+    started: bool = False
+
+    if definition is None:
+        return ToolExecutionResult(
+            success=False,
+            error_code=ToolErrorCode.EXECUTION_ERROR,
+            error_message=f"Unsupported simulation command '{command.value}'.",
+            payload_json="{}",
+        )
+    else:
+        running_simulation_tpe = definition.running_simulation_tpe
+
+    if running_simulation_tpe is None:
+        pass
+    else:
+        if app.session.is_this_running(running_simulation_tpe):
+            return ToolExecutionResult(
+                success=False,
+                error_code=ToolErrorCode.EXECUTION_ERROR,
+                error_message=f"{definition.display_name} is already running.",
+                payload_json="{}",
+            )
+        else:
+            pass
+
+    # Execute the explicit VeraGrid GUI action on the main thread.
+    execute_ai_simulation_command(app, command)
+
+    if running_simulation_tpe is None:
+        started = definition.optimistic_success
+    else:
+        if app.session.is_this_running(running_simulation_tpe):
+            started = True
+        else:
+            if running_simulation_tpe in app.stuff_running_now:
+                started = True
+            else:
+                if len(app._remote_jobs) > before_remote_job_count:
+                    started = True
+                else:
+                    started = False
+
+    if started:
+        return build_simulation_tool_result(
+            definition=definition,
+            started=started,
+            used_optimistic_success=(definition.optimistic_success and (running_simulation_tpe is None)),
+        )
+    else:
+        return ToolExecutionResult(
+            success=False,
+            error_code=ToolErrorCode.EXECUTION_ERROR,
+            error_message=(
+                f"VeraGrid did not report that {definition.display_name} started. "
+                f"Check the GUI for prerequisite or validation messages."
+            ),
+            payload_json="{}",
+        )
+
+
+def extract_assistant_message_from_tool_result(result: ToolExecutionResult) -> str:
+    """
+    Extract the assistant-facing acknowledgement message from a tool result.
+
+    :param result: Tool execution result.
+    :returns: Assistant message text.
+    """
+    payload_obj: Any
+
+    if not result.success:
+        return result.error_message
+    else:
+        pass
+
+    try:
+        payload_obj = json.loads(result.payload_json)
+    except json.JSONDecodeError:
+        payload_obj = dict()
+
+    if isinstance(payload_obj, dict):
+        message_obj: object = payload_obj.get("message", "")
+        if isinstance(message_obj, str) and (len(message_obj) > 0):
+            return message_obj
+        else:
+            pass
+    else:
+        pass
+
+    return "Executed the requested VeraGrid simulation command."
+
+
+class MainThreadSimulationRunner(QtCore.QObject):
+    """
+    Main-thread bridge used to launch VeraGrid simulations safely from the AI worker.
+
+    :param app: VeraGrid main window.
+    """
+
+    request_run = QtCore.Signal(object)
+
+    __slots__ = (
+        "_app",
+        "_pending_result",
+    )
+
+    def __init__(self, app: "SimulationsMain") -> None:
+        """
+        Build the main-thread simulation bridge.
+
+        :param app: VeraGrid main window.
+        """
+        QtCore.QObject.__init__(self)
+        self._app: SimulationsMain = app
+        self._pending_result: ToolExecutionResult = ToolExecutionResult(
+            success=False,
+            error_code=ToolErrorCode.EXECUTION_ERROR,
+            error_message="The simulation tool did not run.",
+            payload_json="{}",
+        )
+        self.request_run.connect(
+            self._execute_requested_simulation,
+            QtCore.Qt.ConnectionType.BlockingQueuedConnection,
+        )
+
+    def run_simulation(self, command: AiSimulationCommand) -> ToolExecutionResult:
+        """
+        Launch the requested VeraGrid simulation on the GUI thread.
+
+        :param command: Simulation command to execute.
+        :returns: Tool execution result.
+        """
+        self.request_run.emit(command)
+        return self._pending_result
+
+    @QtCore.Slot(object)
+    def _execute_requested_simulation(self, command_obj: object) -> None:
+        """
+        Execute the requested simulation action on the GUI thread.
+
+        :param command_obj: Simulation command object.
+        :returns: Nothing.
+        """
+        if isinstance(command_obj, AiSimulationCommand):
+            self._pending_result = execute_live_simulation_from_app(self._app, command_obj)
+        else:
+            self._pending_result = ToolExecutionResult(
+                success=False,
+                error_code=ToolErrorCode.EXECUTION_ERROR,
+                error_message="Invalid simulation command.",
+                payload_json="{}",
+            )
+
+
+class LiveRunSimulationTool:
+    """
+    Live VeraGrid tool that launches the selected simulation command.
 
     :param app: VeraGrid main window.
     """
@@ -420,21 +1638,42 @@ class LiveRunPowerFlowTool:
 
     def __init__(self, app: "SimulationsMain") -> None:
         """
-        Build the live power-flow tool.
+        Build the live simulation tool.
 
         :param app: VeraGrid main window.
         """
-        self._runner: MainThreadPowerFlowRunner = MainThreadPowerFlowRunner(app)
+        self._runner: MainThreadSimulationRunner = MainThreadSimulationRunner(app)
 
     def execute(self, arguments: dict[str, object]) -> ToolExecutionResult:
         """
-        Execute the live power-flow tool.
+        Execute the live simulation tool.
 
         :param arguments: Tool arguments.
         :returns: Tool execution result.
         """
-        del arguments
-        return self._runner.run_power_flow()
+        simulation_name_obj: object = arguments.get("simulation_name", None)
+        ok_command: bool
+        command: Optional[AiSimulationCommand]
+        error_message: str
+
+        if isinstance(simulation_name_obj, str):
+            ok_command, command, error_message = parse_ai_simulation_command(simulation_name_obj)
+            if ok_command and (command is not None):
+                return self._runner.run_simulation(command)
+            else:
+                return ToolExecutionResult(
+                    success=False,
+                    error_code=ToolErrorCode.EXECUTION_ERROR,
+                    error_message=error_message,
+                    payload_json="{}",
+                )
+        else:
+            return ToolExecutionResult(
+                success=False,
+                error_code=ToolErrorCode.EXECUTION_ERROR,
+                error_message="The simulation_name argument must be a string.",
+                payload_json="{}",
+            )
 
 
 class AiTurnExecutionRequest:
@@ -886,6 +2125,78 @@ def build_turn_failure_result(
     )
 
 
+def sanitize_runtime_json_value(value: object) -> object:
+    """
+    Convert runtime values into JSON-safe payload values.
+
+    :param value: Runtime value.
+    :returns: JSON-safe value.
+    """
+    if value is None:
+        return None
+    else:
+        pass
+
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    else:
+        pass
+
+    if isinstance(value, np.ndarray):
+        flat_value: np.ndarray = value.reshape(-1)
+        sample_count: int = min(int(flat_value.shape[0]), 8)
+        sample_values: list[object] = list()
+        index: int = 0
+
+        while index < sample_count:
+            sample_values.append(sanitize_runtime_json_value(flat_value[index].item()))
+            index += 1
+
+        return {
+            "kind": "ndarray",
+            "shape": list(value.shape),
+            "dtype": str(value.dtype),
+            "sample": sample_values,
+        }
+    else:
+        pass
+
+    if isinstance(value, list):
+        items: list[object] = list()
+        sample_count = min(len(value), 12)
+        index = 0
+
+        while index < sample_count:
+            items.append(sanitize_runtime_json_value(value[index]))
+            index += 1
+
+        return items
+    else:
+        pass
+
+    if isinstance(value, tuple):
+        return sanitize_runtime_json_value(list(value))
+    else:
+        pass
+
+    if isinstance(value, dict):
+        sanitized_dict: dict[str, object] = dict()
+        for key_obj, item_value in value.items():
+            sanitized_dict[str(key_obj)] = sanitize_runtime_json_value(item_value)
+        return sanitized_dict
+    else:
+        pass
+
+    serialized_text: str = str(value)
+    if " object at 0x" in serialized_text:
+        return value.__class__.__name__
+    else:
+        if len(serialized_text) > 160:
+            return serialized_text[:160].rstrip() + "..."
+        else:
+            return serialized_text
+
+
 def build_object_save_record(device: Any) -> dict[str, object]:
     """
     Build a JSON-safe object record from ``get_save_data()``.
@@ -900,7 +2211,7 @@ def build_object_save_record(device: Any) -> dict[str, object]:
     item_count: int = min(len(headers), len(values))
 
     while index < item_count:
-        record[str(headers[index])] = values[index]
+        record[str(headers[index])] = sanitize_runtime_json_value(values[index])
         index += 1
 
     record["idtag"] = device.idtag
@@ -1026,6 +2337,116 @@ def summarize_power_flow_time_series_results(
     }
 
 
+def build_logger_summary_payload(logger_obj: object | None) -> dict[str, object]:
+    """
+    Build a compact logger payload from a VeraGrid driver logger.
+
+    :param logger_obj: Logger object or None.
+    :returns: Logger payload.
+    """
+    payload: dict[str, object] = dict()
+
+    if logger_obj is None:
+        payload["has_logger"] = False
+    else:
+        payload["has_logger"] = True
+        payload["info_count"] = int(logger_obj.info_count())
+        payload["warning_count"] = int(logger_obj.warning_count())
+        payload["error_count"] = int(logger_obj.error_count())
+
+    return payload
+
+
+def build_results_payload(results_obj: object | None) -> dict[str, object]:
+    """
+    Build a compact payload for one VeraGrid results object.
+
+    :param results_obj: Results object or None.
+    :returns: Results payload.
+    """
+    payload: dict[str, object] = dict()
+    available_result_tree_obj: object
+    result_type_dict_obj: object
+    data_variables_obj: object
+    result_dict_obj: object
+    result_keys: list[str] = list()
+    variable_names: list[str] = list()
+    index: int = 0
+
+    if results_obj is None:
+        payload["has_results"] = False
+        return payload
+    else:
+        payload["has_results"] = True
+        payload["result_class"] = results_obj.__class__.__name__
+
+    try:
+        available_result_tree_obj = results_obj.get_name_tree()
+    except Exception:
+        available_result_tree_obj = dict()
+
+    try:
+        result_type_dict_obj = results_obj.get_name_to_results_type_dict()
+    except Exception:
+        result_type_dict_obj = dict()
+
+    payload["available_result_tree"] = sanitize_runtime_json_value(available_result_tree_obj)
+    payload["available_result_types"] = sanitize_runtime_json_value(result_type_dict_obj)
+
+    data_variables_obj = getattr(results_obj, "data_variables", None)
+    if isinstance(data_variables_obj, dict):
+        variable_names = list(data_variables_obj.keys())
+        payload["data_variable_names"] = variable_names
+        payload["data_variable_preview"] = dict()
+
+        while index < min(len(variable_names), 8):
+            variable_name: str = variable_names[index]
+            try:
+                variable_value: object = object.__getattribute__(results_obj, variable_name)
+            except AttributeError:
+                variable_value = None
+
+            payload["data_variable_preview"][variable_name] = sanitize_runtime_json_value(variable_value)
+            index += 1
+    else:
+        pass
+
+    try:
+        result_dict_obj = results_obj.get_dict()
+    except Exception:
+        result_dict_obj = dict()
+
+    if isinstance(result_dict_obj, dict):
+        result_keys = list(result_dict_obj.keys())
+        payload["result_data_keys"] = result_keys
+    else:
+        payload["result_data_keys"] = list()
+
+    return payload
+
+
+def build_driver_payload(app: "SimulationsMain", driver: Any) -> dict[str, object]:
+    """
+    Build a compact payload for one session driver.
+
+    :param app: VeraGrid main window.
+    :param driver: Session driver.
+    :returns: Driver payload.
+    """
+    payload: dict[str, object] = dict()
+
+    payload["driver_name"] = driver.name
+    payload["driver_type"] = driver.tpe.value
+    payload["driver_class"] = driver.__class__.__name__
+    payload["is_running"] = bool(app.session.is_this_running(driver.tpe))
+    payload["elapsed_s"] = sanitize_runtime_json_value(driver.elapsed)
+    payload["engine"] = sanitize_runtime_json_value(driver.engine)
+    payload["logger"] = build_logger_summary_payload(driver.logger)
+    payload["results"] = build_results_payload(driver.results)
+
+    return payload
+
+
 def build_study_summary_payload_from_app(
     app: "SimulationsMain",
     requested_study_name: Optional[str],
@@ -1062,9 +2483,11 @@ def build_study_summary_payload_from_app(
             pass
 
     payload["study_name"] = study_name
+    payload["driver"] = build_driver_payload(app, driver)
     payload["driver_name"] = driver.name
     payload["driver_type"] = str(driver.tpe.value)
     payload["available_result_tree"] = driver.results.get_name_tree()
+    payload["results"] = build_results_payload(driver.results)
 
     if driver.tpe == SimulationTypes.PowerFlow_run:
         _, results = app.session.power_flow
@@ -1105,13 +2528,10 @@ def build_live_tool_registry_from_app(app: "SimulationsMain") -> ToolRegistry:
     bus_records: list[dict[str, object]] = list()
     available_studies: list[str] = list()
     study_payload_by_name: dict[str, dict[str, object]] = dict()
-    run_power_flow_schema: str = json.dumps(
-        {
-            "type": "object",
-            "properties": dict(),
-            "additionalProperties": False,
-        }
-    )
+    run_simulation_schema_json: str = build_run_simulation_schema_json()
+    runtime_snapshot: RuntimeKnowledgeSnapshot = build_runtime_knowledge_snapshot(app)
+    runtime_category_names: list[str] = runtime_snapshot.list_categories()
+    runtime_record_titles: list[str] = runtime_snapshot.list_titles(32)
     index: int = 0
 
     while index < len(selected_devices):
@@ -1165,17 +2585,17 @@ def build_live_tool_registry_from_app(app: "SimulationsMain") -> ToolRegistry:
         index += 1
 
     model_summary_payload["available_studies"] = available_studies
+    model_summary_payload["session_driver_count"] = len(app.session.get_available_drivers())
+    model_summary_payload["runtime_category_names"] = runtime_category_names
+    model_summary_payload["runtime_record_title_preview"] = runtime_record_titles
 
     registry.register(
         ToolSpec(
-            name="run_power_flow",
-            description=(
-                "Start the standard VeraGrid power flow simulation for the active project "
-                "using the current GUI options."
-            ),
-            input_schema_json=run_power_flow_schema,
+            name="run_simulation",
+            description=build_run_simulation_tool_description(),
+            input_schema_json=run_simulation_schema_json,
             risk=ToolRisk.COMPUTE,
-            handler=LiveRunPowerFlowTool(app),
+            handler=LiveRunSimulationTool(app),
         )
     )
     registry.register(
@@ -1237,6 +2657,11 @@ def build_live_tool_registry_from_app(app: "SimulationsMain") -> ToolRegistry:
                             {
                                 "study_name": study_name,
                                 "driver_type": study_name,
+                                "is_running": bool(app.session.is_this_running(app.session.get_driver_by_name(study_name).tpe)),
+                                "has_results": bool(
+                                    app.session.get_driver_by_name(study_name) is not None
+                                    and app.session.get_driver_by_name(study_name).results is not None
+                                ),
                             }
                             for study_name in available_studies
                         ],
@@ -1262,6 +2687,71 @@ def build_live_tool_registry_from_app(app: "SimulationsMain") -> ToolRegistry:
                 active_study=get_current_study_name_from_app(app),
                 payload_by_study=study_payload_by_name,
             ),
+        )
+    )
+    registry.register(
+        ToolSpec(
+            name="search_runtime_records",
+            description=(
+                "Search live VeraGrid runtime records built from app.circuit, app.session, "
+                "session drivers, and loaded results."
+            ),
+            input_schema_json=json.dumps(
+                {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string"},
+                        "category": {"type": "string"},
+                        "limit": {"type": "integer"},
+                    },
+                    "required": ["query"],
+                    "additionalProperties": False,
+                }
+            ),
+            risk=ToolRisk.READ_ONLY,
+            handler=RuntimeSnapshotSearchTool(runtime_snapshot=runtime_snapshot),
+        )
+    )
+    registry.register(
+        ToolSpec(
+            name="get_runtime_record",
+            description=(
+                "Get one exact live VeraGrid runtime record by title. "
+                "Use this after search_runtime_records when you need the full content."
+            ),
+            input_schema_json=json.dumps(
+                {
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string"},
+                    },
+                    "required": ["title"],
+                    "additionalProperties": False,
+                }
+            ),
+            risk=ToolRisk.READ_ONLY,
+            handler=RuntimeSnapshotRecordTool(runtime_snapshot=runtime_snapshot),
+        )
+    )
+    registry.register(
+        ToolSpec(
+            name="analyze_grid_issues",
+            description=(
+                "Run VeraGrid structural diagnostics over the current grid and report what is wrong, "
+                "including imbalance, invalid ranges, connection issues, and numerical-stability warnings."
+            ),
+            input_schema_json=json.dumps(
+                {
+                    "type": "object",
+                    "properties": {
+                        "analyze_time_series": {"type": "boolean"},
+                        "max_issue_count": {"type": "integer"},
+                    },
+                    "additionalProperties": False,
+                }
+            ),
+            risk=ToolRisk.READ_ONLY,
+            handler=LiveGridDiagnosticsTool(app),
         )
     )
 
@@ -2113,28 +3603,44 @@ class AiChatDialogue(QtWidgets.QDialog):
 
     def _try_handle_direct_app_command(self, message_text: str) -> bool:
         """
-        Execute simple explicit app commands without relying on LLM tool-calling.
+        Execute explicit simulation commands without relying on LLM tool-calling.
 
         :param message_text: User message text.
         :returns: True when the command was handled directly.
         """
+        command: Optional[AiSimulationCommand]
+        result: ToolExecutionResult
+        assistant_text: str
+
         if self._app is None:
             return False
         else:
             pass
 
-        if is_direct_power_flow_request(message_text):
-            result: ToolExecutionResult = execute_live_power_flow_from_app(self._app)
-            assistant_text: str
+        if is_direct_grid_diagnostics_request(message_text):
+            result = LiveGridDiagnosticsTool(self._app).execute(
+                {
+                    "analyze_time_series": True,
+                    "max_issue_count": 20,
+                }
+            )
 
             self._history.append(ChatMessage(role="user", content=message_text, name=None))
 
             if result.success:
-                assistant_text = (
-                    "Started the standard VeraGrid power flow using the current GUI options. "
-                    "The results will appear in VeraGrid when the simulation finishes."
-                )
-                self._set_status_message("Started the power flow simulation.")
+                payload_obj: object
+
+                try:
+                    payload_obj = json.loads(result.payload_json)
+                except json.JSONDecodeError:
+                    payload_obj = dict()
+
+                if isinstance(payload_obj, dict):
+                    assistant_text = build_grid_diagnostic_summary_text(payload_obj)
+                else:
+                    assistant_text = "Finished the grid diagnostics."
+
+                self._set_status_message("Finished the grid diagnostics.")
             else:
                 assistant_text = result.error_message
                 self._set_status_message(result.error_message)
@@ -2143,7 +3649,26 @@ class AiChatDialogue(QtWidgets.QDialog):
             self._render_transcript()
             return True
         else:
+            pass
+
+        command = detect_direct_simulation_command(message_text)
+
+        if command is None:
             return False
+        else:
+            result = execute_live_simulation_from_app(self._app, command)
+            self._history.append(ChatMessage(role="user", content=message_text, name=None))
+
+            if result.success:
+                assistant_text = extract_assistant_message_from_tool_result(result)
+                self._set_status_message(assistant_text)
+            else:
+                assistant_text = result.error_message
+                self._set_status_message(result.error_message)
+
+            self._history.append(ChatMessage(role="assistant", content=assistant_text, name=None))
+            self._render_transcript()
+            return True
 
     def approve_pending_tool_call(self) -> None:
         """

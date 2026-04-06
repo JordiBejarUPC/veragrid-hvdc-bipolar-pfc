@@ -21,6 +21,8 @@ from enum import Enum
 from importlib.resources import files
 from typing import Any, Optional, TYPE_CHECKING
 
+import numpy as np
+
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.simulations import SimulationsMain
 
@@ -221,12 +223,71 @@ class RuntimeKnowledgeSnapshot:
 
         return records
 
-    def search(self, query: str, top_k: int) -> list[RuntimeRetrievalHit]:
+    def list_categories(self) -> list[str]:
+        """
+        List the runtime categories present in the snapshot.
+
+        :returns: Sorted category names.
+        """
+        category_names: set[str] = set()
+        index: int = 0
+
+        while index < len(self._records):
+            category_names.add(self._records[index].category)
+            index += 1
+
+        return sorted(list(category_names))
+
+    def list_titles(self, limit: int) -> list[str]:
+        """
+        List runtime record titles.
+
+        :param limit: Maximum title count.
+        :returns: Record titles.
+        """
+        titles: list[str] = list()
+        index: int = 0
+
+        while index < len(self._records):
+            titles.append(self._records[index].title)
+            if len(titles) >= limit:
+                index = len(self._records)
+            else:
+                pass
+            index += 1
+
+        return titles
+
+    def find_record_by_title(self, title: str) -> Optional[RuntimeKnowledgeRecord]:
+        """
+        Find one runtime record by its exact title.
+
+        :param title: Exact record title.
+        :returns: Matching record or None.
+        """
+        index: int = 0
+
+        while index < len(self._records):
+            if self._records[index].title == title:
+                return self._records[index]
+            else:
+                pass
+            index += 1
+
+        return None
+
+    def search(
+        self,
+        query: str,
+        top_k: int,
+        category: Optional[str] = None,
+    ) -> list[RuntimeRetrievalHit]:
         """
         Search the runtime snapshot with lexical scoring.
 
         :param query: User query.
         :param top_k: Maximum hit count.
+        :param category: Optional runtime category filter.
         :returns: Ordered runtime hits.
         """
         normalized_query: str = normalize_search_text(query)
@@ -236,6 +297,12 @@ class RuntimeKnowledgeSnapshot:
 
         while index < len(self._records):
             record: RuntimeKnowledgeRecord = self._records[index]
+            if (category is None) or (record.category == category):
+                pass
+            else:
+                index += 1
+                continue
+
             score: int = score_search_document(
                 title_text=record.title,
                 content_text=record.content,
@@ -701,6 +768,26 @@ def serialize_runtime_value(value: object) -> Optional[str]:
     else:
         pass
 
+    if isinstance(value, np.ndarray):
+        return serialize_runtime_array(value)
+    else:
+        pass
+
+    if isinstance(value, list):
+        return serialize_runtime_list(value)
+    else:
+        pass
+
+    if isinstance(value, tuple):
+        return serialize_runtime_list(list(value))
+    else:
+        pass
+
+    if isinstance(value, dict):
+        return serialize_runtime_dict(value)
+    else:
+        pass
+
     # Skip opaque Python object reprs, which only add noise to the prompt.
     serialized_text: str = str(value)
     if " object at 0x" in serialized_text:
@@ -710,6 +797,266 @@ def serialize_runtime_value(value: object) -> Optional[str]:
             return serialized_text[:80].rstrip() + "..."
         else:
             return serialized_text
+
+
+def serialize_runtime_array(value: np.ndarray) -> str:
+    """
+    Serialize a numpy array into a compact runtime string.
+
+    :param value: Numpy array.
+    :returns: Compact serialized string.
+    """
+    flat_value: np.ndarray = value.reshape(-1)
+    sample_count: int = min(int(flat_value.shape[0]), 6)
+    sample_values: list[str] = list()
+    index: int = 0
+
+    while index < sample_count:
+        sample_values.append(str(flat_value[index]))
+        index += 1
+
+    return (
+        f"ndarray shape={tuple(value.shape)} dtype={value.dtype} "
+        f"sample=[{', '.join(sample_values)}]"
+    )
+
+
+def serialize_runtime_list(values: list[object]) -> str:
+    """
+    Serialize a runtime list into a compact prompt-safe string.
+
+    :param values: Runtime list.
+    :returns: Compact serialized string.
+    """
+    items: list[str] = list()
+    sample_count: int = min(len(values), 6)
+    index: int = 0
+
+    while index < sample_count:
+        item_text: Optional[str] = serialize_runtime_value(values[index])
+        if item_text is None:
+            pass
+        else:
+            items.append(item_text)
+        index += 1
+
+    return f"list len={len(values)} sample=[{', '.join(items)}]"
+
+
+def serialize_runtime_dict(values: dict[object, object]) -> str:
+    """
+    Serialize a runtime dictionary into a compact prompt-safe string.
+
+    :param values: Runtime dictionary.
+    :returns: Compact serialized string.
+    """
+    items: list[str] = list()
+    keys: list[object] = list(values.keys())
+    sample_count: int = min(len(keys), 6)
+    index: int = 0
+
+    while index < sample_count:
+        key_obj: object = keys[index]
+        value_text: Optional[str] = serialize_runtime_value(values[key_obj])
+        if value_text is None:
+            pass
+        else:
+            items.append(f"{key_obj}: {value_text}")
+        index += 1
+
+    return f"dict size={len(values)} sample={{" + ", ".join(items) + "}}"
+
+
+def read_object_attribute(obj: object, attribute_name: str) -> object:
+    """
+    Read an object attribute safely for runtime serialization.
+
+    :param obj: Source object.
+    :param attribute_name: Attribute name.
+    :returns: Attribute value or None when unavailable.
+    """
+    try:
+        return object.__getattribute__(obj, attribute_name)
+    except AttributeError:
+        return None
+
+
+def build_driver_field_lines(driver: Any, running: bool) -> list[str]:
+    """
+    Build compact field lines for a VeraGrid driver.
+
+    :param driver: VeraGrid driver.
+    :param running: Whether the driver is currently running.
+    :returns: Driver field lines.
+    """
+    lines: list[str] = list()
+    logger_obj: object = read_object_attribute(driver, "logger")
+    results_obj: object = read_object_attribute(driver, "results")
+    elapsed_obj: object = read_object_attribute(driver, "elapsed")
+    engine_obj: object = read_object_attribute(driver, "engine")
+    logger_info_count_obj: object = None
+    logger_warning_count_obj: object = None
+    logger_error_count_obj: object = None
+
+    lines.append(f"driver_name: {driver.name}")
+    lines.append(f"driver_type: {driver.tpe.value}")
+    lines.append(f"driver_class: {driver.__class__.__name__}")
+    lines.append(f"running: {running}")
+    lines.append(f"has_results: {results_obj is not None}")
+
+    if isinstance(elapsed_obj, (int, float)):
+        lines.append(f"elapsed_s: {elapsed_obj}")
+    else:
+        pass
+
+    if engine_obj is None:
+        pass
+    else:
+        lines.append(f"engine: {engine_obj}")
+
+    if logger_obj is None:
+        pass
+    else:
+        logger_info_count_obj = read_object_attribute(logger_obj, "info_count")
+        logger_warning_count_obj = read_object_attribute(logger_obj, "warning_count")
+        logger_error_count_obj = read_object_attribute(logger_obj, "error_count")
+
+        if callable(logger_info_count_obj):
+            lines.append(f"logger_info_count: {logger_info_count_obj()}")
+        else:
+            pass
+
+        if callable(logger_warning_count_obj):
+            lines.append(f"logger_warning_count: {logger_warning_count_obj()}")
+        else:
+            pass
+
+        if callable(logger_error_count_obj):
+            lines.append(f"logger_error_count: {logger_error_count_obj()}")
+        else:
+            pass
+
+    return lines
+
+
+def build_results_field_lines(results: Any) -> list[str]:
+    """
+    Build compact field lines for a VeraGrid results object.
+
+    :param results: VeraGrid results object.
+    :returns: Results field lines.
+    """
+    lines: list[str] = list()
+    available_tree_obj: object = None
+    data_variables_obj: object = read_object_attribute(results, "data_variables")
+    result_dict_obj: object = None
+    time_array_obj: object = read_object_attribute(results, "time_array")
+    using_clusters_obj: object = read_object_attribute(results, "using_clusters")
+    variable_items: list[tuple[str, object]] = list()
+    variable_names: list[str] = list()
+    sample_variable_count: int = 0
+    index: int = 0
+
+    lines.append(f"result_class: {results.__class__.__name__}")
+
+    try:
+        available_tree_obj = results.get_name_tree()
+    except Exception:
+        available_tree_obj = None
+
+    if available_tree_obj is None:
+        pass
+    else:
+        tree_text: Optional[str] = serialize_runtime_value(available_tree_obj)
+        if tree_text is None:
+            pass
+        else:
+            lines.append(f"available_result_tree: {tree_text}")
+
+    if time_array_obj is None:
+        pass
+    else:
+        time_array_text: Optional[str] = serialize_runtime_value(time_array_obj)
+        if time_array_text is None:
+            pass
+        else:
+            lines.append(f"time_array: {time_array_text}")
+
+    if isinstance(using_clusters_obj, bool):
+        lines.append(f"using_clusters: {using_clusters_obj}")
+    else:
+        pass
+
+    if isinstance(data_variables_obj, dict):
+        variable_items = list(data_variables_obj.items())
+        while index < len(variable_items):
+            variable_names.append(variable_items[index][0])
+            index += 1
+
+        lines.append(f"data_variable_names: {', '.join(variable_names[:12])}")
+
+        index = 0
+        sample_variable_count = min(len(variable_items), 6)
+        while index < sample_variable_count:
+            variable_name: str = variable_items[index][0]
+            variable_value: object = read_object_attribute(results, variable_name)
+            variable_text: Optional[str] = serialize_runtime_value(variable_value)
+
+            if variable_text is None:
+                pass
+            else:
+                lines.append(f"{variable_name}: {variable_text}")
+
+            index += 1
+    else:
+        pass
+
+    try:
+        result_dict_obj = results.get_dict()
+    except Exception:
+        result_dict_obj = None
+
+    if isinstance(result_dict_obj, dict):
+        result_keys: list[str] = list(result_dict_obj.keys())
+        lines.append("result_data_keys: " + ", ".join(result_keys[:16]))
+    else:
+        pass
+
+    return lines
+
+
+def build_runtime_record_from_driver(driver: Any, running: bool) -> RuntimeKnowledgeRecord:
+    """
+    Build one runtime record from a VeraGrid driver.
+
+    :param driver: VeraGrid driver.
+    :param running: Whether the driver is currently running.
+    :returns: Runtime record.
+    """
+    return RuntimeKnowledgeRecord(
+        category="study",
+        title=f"study: {driver.tpe.value}",
+        content="\n".join(build_driver_field_lines(driver, running)),
+    )
+
+
+def build_runtime_record_from_results(driver: Any) -> Optional[RuntimeKnowledgeRecord]:
+    """
+    Build one runtime record from a VeraGrid driver results object.
+
+    :param driver: VeraGrid driver.
+    :returns: Runtime record or None when results are unavailable.
+    """
+    results_obj: object = read_object_attribute(driver, "results")
+
+    if results_obj is None:
+        return None
+    else:
+        return RuntimeKnowledgeRecord(
+            category="study_result",
+            title=f"study_result: {driver.tpe.value}",
+            content="\n".join(build_results_field_lines(results_obj)),
+        )
 
 
 def build_runtime_record_from_device(device: Any, category: str) -> RuntimeKnowledgeRecord:
@@ -770,8 +1117,16 @@ def build_runtime_knowledge_snapshot(app: "SimulationsMain") -> RuntimeKnowledge
     lines: list[Any] = list(app.circuit.get_lines())
     loads: list[Any] = list(app.circuit.get_loads())
     generators: list[Any] = list(app.circuit.get_generators())
+    batteries: list[Any] = list(app.circuit.batteries)
+    shunts: list[Any] = list(app.circuit.shunts)
+    static_generators: list[Any] = list(app.circuit.static_generators)
+    external_grids: list[Any] = list(app.circuit.external_grids)
+    hvdc_lines: list[Any] = list(app.circuit.hvdc_lines)
+    vsc_devices: list[Any] = list(app.circuit.vsc_devices)
+    dc_lines: list[Any] = list(app.circuit.dc_lines)
     drivers: list[Any] = list(app.session.get_available_drivers())
     summary_lines: list[str] = list()
+    session_lines: list[str] = list()
     index: int = 0
 
     summary_lines.append(f"project_name: {app.circuit.name}")
@@ -794,6 +1149,23 @@ def build_runtime_knowledge_snapshot(app: "SimulationsMain") -> RuntimeKnowledge
             category="project_summary",
             title="project_summary: active VeraGrid session",
             content="\n".join(summary_lines),
+        )
+    )
+
+    session_lines.append(f"session_name: {app.session.name}")
+    session_lines.append(f"driver_count: {len(drivers)}")
+    session_lines.append(f"stored_driver_count: {len(app.session.drivers)}")
+    session_lines.append(f"thread_count: {len(app.session.threads)}")
+    session_lines.append(f"is_anything_running: {app.session.is_anything_running()}")
+    session_lines.append(
+        "driver_names: "
+        + ", ".join([str(driver.tpe.value) for driver in drivers[:12]])
+    )
+    records.append(
+        RuntimeKnowledgeRecord(
+            category="session_summary",
+            title="session_summary: VeraGrid simulation session",
+            content="\n".join(session_lines),
         )
     )
 
@@ -829,19 +1201,55 @@ def build_runtime_knowledge_snapshot(app: "SimulationsMain") -> RuntimeKnowledge
         index += 1
 
     index = 0
+    while index < len(batteries):
+        records.append(build_runtime_record_from_device(batteries[index], "battery"))
+        index += 1
+
+    index = 0
+    while index < len(shunts):
+        records.append(build_runtime_record_from_device(shunts[index], "shunt"))
+        index += 1
+
+    index = 0
+    while index < len(static_generators):
+        records.append(build_runtime_record_from_device(static_generators[index], "static_generator"))
+        index += 1
+
+    index = 0
+    while index < len(external_grids):
+        records.append(build_runtime_record_from_device(external_grids[index], "external_grid"))
+        index += 1
+
+    index = 0
+    while index < len(hvdc_lines):
+        records.append(build_runtime_record_from_device(hvdc_lines[index], "hvdc_line"))
+        index += 1
+
+    index = 0
+    while index < len(vsc_devices):
+        records.append(build_runtime_record_from_device(vsc_devices[index], "vsc_device"))
+        index += 1
+
+    index = 0
+    while index < len(dc_lines):
+        records.append(build_runtime_record_from_device(dc_lines[index], "dc_line"))
+        index += 1
+
+    index = 0
     while index < len(drivers):
         driver: Any = drivers[index]
-        driver_lines: list[str] = list()
-        driver_lines.append(f"driver_name: {driver.name}")
-        driver_lines.append(f"driver_type: {driver.tpe.value}")
-        driver_lines.append(f"has_results: {driver.results is not None}")
         records.append(
-            RuntimeKnowledgeRecord(
-                category="study",
-                title=f"study: {driver.tpe.value}",
-                content="\n".join(driver_lines),
+            build_runtime_record_from_driver(
+                driver=driver,
+                running=app.session.is_this_running(driver.tpe),
             )
         )
+
+        result_record: Optional[RuntimeKnowledgeRecord] = build_runtime_record_from_results(driver)
+        if result_record is None:
+            pass
+        else:
+            records.append(result_record)
         index += 1
 
     return RuntimeKnowledgeSnapshot(records=records)
