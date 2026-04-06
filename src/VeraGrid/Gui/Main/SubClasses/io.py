@@ -684,7 +684,6 @@ class IoMain(ScenariosMain):
         options = filedrv.FileSavingOptions(
             sessions_data=sessions_data,
             dictionary_of_json_files=json_files,
-            multiverse=self.multiverse,
         )
 
         return options
@@ -719,6 +718,7 @@ class IoMain(ScenariosMain):
 
             self.save_file_thread_object = filedrv.FileSaveThread(
                 circuit=self.circuit if grid is None else grid,
+                multiverse=self.multiverse,
                 file_name=filename,
                 options=options2
             )

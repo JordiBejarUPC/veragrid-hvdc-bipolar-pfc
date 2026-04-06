@@ -19,21 +19,26 @@ from VeraGridEngine.Topology import *
 from VeraGridEngine.Compilers import *
 from VeraGridEngine.Templates import *
 from VeraGridEngine.IO.file_open import FileOpen, FileOpenOptions
-from VeraGridEngine.IO.file_save import FileSave, FileSavingOptions, save_veragrid
+from VeraGridEngine.IO.file_save import FileSave, FileSavingOptions, save_veragrid_multiverse
 from VeraGridEngine.IO.veragrid.remote import (gather_model_as_jsons_for_communication, RemoteInstruction,
                                                SimulationTypes, send_json_data, get_certificate_path, get_certificate)
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at, NumericalCircuit
 
 
 def open_file(filename: Union[str, List[str]],
-              options: FileOpenOptions | None = None) -> MultiCircuit | None:
+              options: FileOpenOptions | None = None) -> MultiCircuit:
     """
     Open file
     :param filename: name of the file (.veragrid, .ejson, .m, .xml, .zip, etc.) or list of files (.xml, .zip)
     :param options: FileOpenOptions instance (optional)
     :return: MultiCircuit instance
     """
-    return FileOpen(file_name=filename, options=options).open()
+    drv = FileOpen(file_name=filename, options=options)
+    drv.open()
+    if drv.circuit is None:
+        drv.logger.print("Error")
+        raise Exception("File open error")
+    return drv.circuit
 
 
 def save_file(grid: MultiCircuit, filename: str, drivers_to_save: List[DriverToSave] | None = None):
@@ -41,7 +46,7 @@ def save_file(grid: MultiCircuit, filename: str, drivers_to_save: List[DriverToS
     Save file
     :param grid: MultiCircuit instance
     :param filename: name of the file (.veragrid, .ejson)
-    :param drivers_to_save: List of drivers to save, this structures can be obtained from driver.get_save_data()
+    :param drivers_to_save: List of drivers to save, this structure can be obtained from driver.get_save_data()
     """
     FileSave(
         circuit=grid,
@@ -58,12 +63,10 @@ def save_multiverse(mv: MultiVerse, filename: str):
     :param mv: MultiVerse instance
     :param filename: name of the file (.veragrid)
     """
-    save_veragrid(
-        circuit=mv.current_node.circuit,
+    save_veragrid_multiverse(
         file_name=filename,
-        options=FileSavingOptions(
-            multiverse=mv
-        )
+        options=FileSavingOptions(),
+        multiverse=mv
     )
 
 

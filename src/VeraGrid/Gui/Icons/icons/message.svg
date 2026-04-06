@@ -59,7 +59,7 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="5.6"
-     inkscape:cx="44.464286"
+     inkscape:cx="6.6071429"
      inkscape:cy="7.5892857"
      inkscape:document-units="px"
      inkscape:current-layer="layer1-3"
@@ -109,22 +109,6 @@
          inkscape:path-effect="#path-effect1"
          inkscape:original-d="m 68.464287,1035.0051 30.178571,-0.1359 v 17.993 H 88.464287 l -12.142858,9.1071 2.5,-8.9285 H 68.107144 Z"
          transform="matrix(1.0866356,0,0,1.0866356,-7.6478295,-92.177631)" />
-      <rect
-         style="opacity:1;fill:#37c8ab;fill-opacity:1;stroke:#2c89a0;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke markers fill"
-         id="rect1"
-         width="11.071428"
-         height="10.357142"
-         x="-13.857141"
-         y="968.57654"
-         ry="5.1785712" />
-      <rect
-         style="opacity:1;fill:#2c89a0;fill-opacity:1;stroke:#2c89a0;stroke-width:4;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;stroke-opacity:1;paint-order:stroke markers fill"
-         id="rect2"
-         width="14.464286"
-         height="9.6428576"
-         x="18.464287"
-         y="969.64795"
-         ry="4.8214288" />
     </g>
   </g>
 </svg>

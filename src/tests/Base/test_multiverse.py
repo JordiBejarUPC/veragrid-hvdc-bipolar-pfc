@@ -248,7 +248,7 @@ def test_multiverse_parse_json_roundtrip() -> None:
     # Build an in-memory sample multiverse and serialize it to metadata + model payloads.
     mv, _, _, _, _ = _build_sample_multiverse()
 
-    metadata, model_data = mv.get_save_data()
+    metadata, model_data, drivers_data = mv.get_save_data()
 
     # Parse the serialized payloads into a fresh multiverse instance.
     loaded_mv = vge.MultiVerse(current_model=None)
@@ -590,7 +590,7 @@ def test_multiverse_get_save_data_contains_consistent_metadata() -> None:
     mv.activate_scenario(sibling.node_id)
 
     # Serialize metadata and split out the node records from the metadata envelope.
-    metadata, model_data = mv.get_save_data()
+    metadata, model_data, driver_data = mv.get_save_data()
     nodes = metadata["nodes"]
 
     # Verify both top-level and per-node metadata fields.
@@ -619,7 +619,7 @@ def test_multiverse_parse_json_initializes_active_state() -> None:
     mv, root, child, _, _ = _build_sample_multiverse()
     mv.activate_scenario(child.node_id)
 
-    metadata, model_data = mv.get_save_data()
+    metadata, model_data, driver_data = mv.get_save_data()
 
     # Parse the payload into a fresh instance.
     loaded_mv = vge.MultiVerse(current_model=None)

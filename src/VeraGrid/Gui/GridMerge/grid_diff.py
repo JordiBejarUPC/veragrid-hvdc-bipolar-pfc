@@ -170,11 +170,13 @@ class GridDiffDialogue(QtWidgets.QDialog):
                 if file_extension == '':
                     filename = name + ".dveragrid"
 
-                self.save_file_thread_object = filedrv.FileSaveThread(circuit=self._diff,
-                                                                      file_name=filename,
-                                                                      options=filedrv.FileSavingOptions(
-                                                                          file_type=FileType.VeraGrid_delta
-                                                                      ))
+                self.save_file_thread_object = filedrv.FileSaveThread(
+                    circuit=self._diff,
+                    file_name=filename,
+                    options=filedrv.FileSavingOptions(
+                        file_type=FileType.VeraGrid_delta
+                    )
+                )
 
                 # make connections
                 self.save_file_thread_object.done_signal.connect(self.post_save_diff)

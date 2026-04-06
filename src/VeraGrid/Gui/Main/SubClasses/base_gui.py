@@ -294,7 +294,7 @@ class BaseMainGui(QMainWindow):
         )
         self.ui.actionFix_loads_active_based_on_the_power.triggered.connect(self.fix_loads_active_based_on_the_power)
         self.ui.actionInitialize_contingencies.triggered.connect(self.initialize_contingencies)
-        self.ui.actionai_chat.triggered.connect(self.open_ai_dialogue)
+        self.ui.actionai_chat.triggered.connect(self.open_ai_chat_dialogue)
 
         # Buttons
         self.ui.cancelButton.clicked.connect(self.set_cancel_state)
@@ -929,7 +929,7 @@ class BaseMainGui(QMainWindow):
                 self.ai_chat_dialogue.hide()
                 self.sync_ai_dialogue_action_state(False)
 
-    def open_ai_dialogue(self) -> None:
+    def open_ai_chat_dialogue(self) -> None:
         """
         Open the AI dialogue connected to the live VeraGrid main window.
 

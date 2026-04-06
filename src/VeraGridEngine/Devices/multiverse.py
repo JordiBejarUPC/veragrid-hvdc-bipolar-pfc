@@ -11,6 +11,7 @@ from VeraGridEngine.enumerations import SimulationTypes
 
 if TYPE_CHECKING:
     from VeraGridEngine.Simulations.types import DRIVER_OBJECTS
+    from VeraGridEngine.Simulations.driver_template import DriverToSave
 
 
 class ScenarioNode:
@@ -55,6 +56,14 @@ class ScenarioNode:
         self.children: list[ScenarioNode] = children if children is not None else list()
 
         self.drivers: Dict[SimulationTypes, DRIVER_OBJECTS] = dict()
+
+    def get_drivers_to_save(self)-> List[DriverToSave]:
+
+        data = list()
+        for tpe, drv in self.drivers.items():
+            data.append(drv.get_save_data())
+
+        return data
 
     def append_child(self, child: ScenarioNode) -> None:
         """
@@ -660,17 +669,20 @@ class MultiVerse:
 
         return records
 
-    def get_save_data(self) -> Tuple[Dict[str, Dict[str, str]], Dict[str, MultiCircuit]]:
+    def get_save_data(self) -> Tuple[Dict[str, Dict[str, str]],
+                                     Dict[str, MultiCircuit],
+                                     Dict[str, List[DriverToSave]]]:
         """
 
         :return:
         """
-        multiverse_node_data = dict()
-        multiverse_model_data = dict()
+        multiverse_node_data: Dict[str, Dict[str, str]] = dict()
+        multiverse_grid_data: Dict[str, MultiCircuit] = dict()
+        multiverse_drivers_data: Dict[str, List[DriverToSave]] = dict()
 
         for node in self.iter_nodes_depth_first():
-            save_grid = node.circuit.copy()
-            save_grid.diagrams = copy.deepcopy(node.diagrams)
+            # save_grid = node.circuit.copy()
+            # save_grid.diagrams = copy.deepcopy(node.diagrams)
 
             multiverse_node_data[node.node_id] = {
                 "node_id": node.node_id,
@@ -682,14 +694,15 @@ class MultiVerse:
 
             # we want to store all those models that are not the root
             # if node.data != base_circuit:
-            multiverse_model_data[node.circuit.idtag] = save_grid
+            multiverse_grid_data[node.circuit.idtag] = node.circuit
+            multiverse_drivers_data[node.circuit.idtag] = node.get_drivers_to_save()
 
         multiverse_meta_data = {
             "active_node_id": None if self._current_node is None else self._current_node.node_id,
             "nodes": multiverse_node_data,
         }
 
-        return multiverse_meta_data, multiverse_model_data
+        return multiverse_meta_data, multiverse_grid_data, multiverse_drivers_data
 
     def parse_json(self,
                    diffs_dict: Dict[str, MultiCircuit],
