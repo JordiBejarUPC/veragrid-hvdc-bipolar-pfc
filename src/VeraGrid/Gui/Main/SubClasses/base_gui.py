@@ -210,6 +210,17 @@ class BaseMainGui(QMainWindow):
             remove_actions=True
         )
 
+        self.stochastic_menu_button = gf.create_menu_button(
+            parent=self,
+            toolbar=self.ui.toolBar,
+            actions=[self.ui.actionPower_flow_Stochastic,
+                     self.ui.actionBlackout_cascade,
+                     self.ui.actionReliability,
+                     self.ui.actionFind_node_groups],
+            position=self.ui.actionPower_flow_Stochastic,
+            remove_actions=True
+        )
+
         # Add console --------------------------------------------------------------------------------------------------
         self.console = PythonConsole(banner="VeraGrid Python Console!")
         self.ui.consoleLayout.addWidget(self.console)

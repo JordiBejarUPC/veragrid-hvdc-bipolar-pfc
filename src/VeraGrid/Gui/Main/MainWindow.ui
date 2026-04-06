@@ -11099,7 +11099,6 @@ QProgressBar::chunk{
    <addaction name="separator"/>
    <addaction name="actionInvestments_evaluation"/>
    <addaction name="actionPower_flow_Stochastic"/>
-   <addaction name="actionReliability"/>
    <addaction name="actionClustering"/>
    <addaction name="actionUse_clustering"/>
    <addaction name="actionEdit_simulation_time_limits"/>

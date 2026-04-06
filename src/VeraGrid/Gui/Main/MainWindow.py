@@ -5448,7 +5448,6 @@ class Ui_mainWindow(object):
         self.toolBar.addSeparator()
         self.toolBar.addAction(self.actionInvestments_evaluation)
         self.toolBar.addAction(self.actionPower_flow_Stochastic)
-        self.toolBar.addAction(self.actionReliability)
         self.toolBar.addAction(self.actionClustering)
         self.toolBar.addAction(self.actionUse_clustering)
         self.toolBar.addAction(self.actionEdit_simulation_time_limits)
