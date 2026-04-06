@@ -30,7 +30,7 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit
 from VeraGridEngine.data_logger import DataLogger
 
 
-class DiffFileOpenThread(QThread):
+class OpenAndDiffThread(QThread):
     """
     FileOpenThread
     """
@@ -149,13 +149,14 @@ class DiffFileOpenThread(QThread):
         self.logger += file_handler.logger
         self.valid = True
 
-        # assign the loaded circuit
+        # perform the diff if we actually loaded something
         if self.circuit is not None:
 
             if self.multiverse is None:
                 # there is no multiverse
                 base_grid: MultiCircuit = self.circuit
             else:
+                # TODO: If we are in a multiverse case, shouldn't we compare all nodes?
                 # there is a multiverse, choose the grid to make diff
                 base_grid: MultiCircuit = self.multiverse.base_model
 
@@ -183,7 +184,7 @@ class DiffFileOpenThread(QThread):
         self.__cancel__ = True
 
 
-class DiffFileSaveThread(QThread):
+class DiffSaveThread(QThread):
     """
     Thread to save
     """
@@ -284,21 +285,6 @@ class DiffFileSaveThread(QThread):
         """
         self.__cancel__ = True
 
-
-
-def handle_item_changed(item: QtWidgets.QTreeWidgetItem, column: int):
-    """
-
-    :param item:
-    :param column: This must be here because this is an event handler
-    :return:
-    """
-    if item.parent() is None:  # Root item
-        item.setCheckState(0, Qt.CheckState.Checked)  # always checked...
-        for i in range(item.childCount()):
-            item.child(i).setCheckState(0, Qt.CheckState.Checked)
-
-
 class GridDiffDialogue(QtWidgets.QDialog):
     """
     GridDiffDialogue
@@ -323,6 +309,7 @@ class GridDiffDialogue(QtWidgets.QDialog):
         self._current_grid: MultiCircuit = grid
 
         self.all_elms_base_dict: Dict[str, ALL_DEV_TYPES] = {}
+        self.diff_objects_dict: Dict[str, ALL_DEV_TYPES] = {}
         _, ok = self._current_grid.get_all_elements_dict(logger=self.logger)
 
         if not ok:
@@ -337,13 +324,13 @@ class GridDiffDialogue(QtWidgets.QDialog):
         self.ui.addButton.setText("Open base")
         self.ui.acceptButton.setText("Save diff")
 
-        self.open_file_thread_object: DiffFileOpenThread = None
-        self.save_file_thread_object: DiffFileSaveThread = None
+        self.open_file_thread_object: OpenAndDiffThread = None
+        self.save_file_thread_object: DiffSaveThread = None
 
         self.ui.progressFrame.setVisible(False)
 
         # tree item changes
-        self.ui.treeWidget.itemChanged.connect(handle_item_changed)
+        self.ui.treeWidget.itemChanged.connect(self.handle_item_changed)
         self.ui.acceptButton.clicked.connect(self.save_diff)
         self.ui.addButton.clicked.connect(self.open_base_grid)
 
@@ -361,7 +348,7 @@ class GridDiffDialogue(QtWidgets.QDialog):
         if len(filename) > 0:
             if os.path.exists(filename):
                 # create thread
-                self.open_file_thread_object = DiffFileOpenThread(
+                self.open_file_thread_object = OpenAndDiffThread(
                     file_name=filename,
                     current_grid=self._current_grid,
                     options=FileOpenOptions(
@@ -398,6 +385,7 @@ class GridDiffDialogue(QtWidgets.QDialog):
                     # Create the base dictionary
                     self.all_elms_base_dict = self.open_file_thread_object.all_elms_base_dict
                     self._diff =  self.open_file_thread_object.diff
+                    self.diff_objects_dict, _ = self._diff.get_all_elements_dict(logger=self.logger)
 
                     if self.open_file_thread_object.logger.has_logs():
                         dlg = LogsDialogue('Errors while computing the differential :(',
@@ -418,6 +406,49 @@ class GridDiffDialogue(QtWidgets.QDialog):
                                       diff=self._diff,
                                       all_elms_base_dict=self.all_elms_base_dict,
                                       diff_creation=True)
+
+    def handle_item_changed(self, item: QtWidgets.QTreeWidgetItem, column: int):
+        """
+
+        :param item:
+        :param column: This must be here because this is an event handler
+        :return:
+        """
+        if column != 0:
+            return
+
+        if item.parent() is None:
+            idtag = item.text(3)
+            elm = self.diff_objects_dict.get(idtag)
+
+            if elm is None:
+                return
+
+            selected = item.checkState(0) == Qt.CheckState.Checked
+            elm.selected_to_merge = selected
+
+            previous_signals_blocked = self.ui.treeWidget.blockSignals(True)
+            try:
+                for i in range(item.childCount()):
+                    child = item.child(i)
+                    child.setCheckState(0, item.checkState(0))
+                    elm.set_diff_change(property_name=child.text(5), selected=selected)
+            finally:
+                self.ui.treeWidget.blockSignals(previous_signals_blocked)
+
+            return
+
+        parent_item = item.parent()
+        idtag = parent_item.text(3)
+        elm = self.diff_objects_dict.get(idtag)
+
+        if elm is None:
+            return
+
+        elm.set_diff_change(
+            property_name=item.text(5),
+            selected=item.checkState(0) == Qt.CheckState.Checked
+        )
 
     def save_diff(self):
         """
@@ -441,7 +472,7 @@ class GridDiffDialogue(QtWidgets.QDialog):
                 if file_extension == '':
                     filename = name + ".dveragrid"
 
-                self.save_file_thread_object = DiffFileSaveThread(
+                self.save_file_thread_object = DiffSaveThread(
                     circuit=self._diff,
                     file_name=filename,
                     options=FileSavingOptions(
