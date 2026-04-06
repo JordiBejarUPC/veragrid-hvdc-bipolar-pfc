@@ -297,12 +297,13 @@ def save_veragrid_multiverse_data_to_zip(filename_zip: str,
             filename = name + ".json"
             f_zip_ptr.writestr(filename, json.dumps(value))
 
-            save_multiverse_data_to_zip(f_zip_ptr=f_zip_ptr,
-                                        multiverse=multiverse,
-                                        filename_zip=filename_zip,
-                                        text_func=text_func,
-                                        progress_func=progress_func,
-                                        logger=logger)
+        # save the multicircuit data------------------------------------------------------------------------------------
+        save_multiverse_data_to_zip(f_zip_ptr=f_zip_ptr,
+                                    multiverse=multiverse,
+                                    filename_zip=filename_zip,
+                                    text_func=text_func,
+                                    progress_func=progress_func,
+                                    logger=logger)
 
     if n_failed:
         print('Failed to pickle several profiles, but saved them as csv.\nFor improved speed install Pandas >= 1.2')

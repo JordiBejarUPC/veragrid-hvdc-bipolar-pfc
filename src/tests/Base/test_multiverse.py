@@ -2,8 +2,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+import os
 from pathlib import Path
-
 import pytest
 
 import VeraGridEngine.api as vge
@@ -269,7 +269,7 @@ def test_multiverse_save_load_roundtrip(tmp_path: Path) -> None:
     mv.activate_scenario(sibling.node_id)
 
     # Save to a real .veragrid file and load it back through the file API.
-    file_name = tmp_path / "multiverse_roundtrip.veragrid"
+    file_name = os.path.join("output", "multiverse_roundtrip.veragrid")
     vge.save_multiverse(mv=mv, filename=str(file_name))
 
     loader = FileOpen(str(file_name))
