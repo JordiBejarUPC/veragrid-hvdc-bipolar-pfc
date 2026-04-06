@@ -594,7 +594,7 @@ def build_grid_analysis_payload_from_app(
     :returns: Grid-diagnostic payload.
     """
     parameters: dict[str, object] = build_default_grid_analysis_parameters()
-    error_log: GridErrorLog = GridErrorLog()
+    logger: GridErrorLog = GridErrorLog()
     fixable_errors: list[object]
     issue_entries: list[dict[str, object]]
     severity_counts: dict[str, int] = dict()
@@ -604,7 +604,6 @@ def build_grid_analysis_payload_from_app(
     payload: dict[str, object] = dict()
 
     parameters["analyze_ts"] = analyze_time_series
-    parameters["logger"] = error_log
     fixable_errors = grid_analysis(
         circuit=app.circuit,
         analyze_ts=bool(parameters["analyze_ts"]),
@@ -617,13 +616,13 @@ def build_grid_analysis_payload_from_app(
         branch_connection_voltage_tolerance=float(parameters["branch_connection_voltage_tolerance"]),
         min_vcc=float(parameters["min_vcc"]),
         max_vcc=float(parameters["max_vcc"]),
-        logger=error_log,
+        logger=logger,
         branch_x_threshold=float(parameters["branch_x_threshold"]),
         condition_number_threshold=float(parameters["condition_number_threshold"]),
         eps_max=float(parameters["eps_max"]),
         eps_min=float(parameters["eps_min"]),
     )
-    issue_entries = build_grid_error_log_entries(error_log)
+    issue_entries = build_grid_error_log_entries(logger)
 
     while index < len(issue_entries):
         severity_text: str = str(issue_entries[index]["severity"])
@@ -727,7 +726,12 @@ def is_direct_grid_diagnostics_request(message_text: str) -> bool:
     """
     normalized_text: str = normalize_simulation_request_text(message_text)
     diagnosis_phrases: list[str] = list()
+    issue_markers: list[str] = list()
+    grid_markers: list[str] = list()
     index: int = 0
+    marker_index: int = 0
+    has_issue_marker: bool = False
+    has_grid_marker: bool = False
 
     diagnosis_phrases.append("what is wrong with the grid")
     diagnosis_phrases.append("what's wrong with the grid")
@@ -735,10 +739,32 @@ def is_direct_grid_diagnostics_request(message_text: str) -> bool:
     diagnosis_phrases.append("what's wrong with this grid")
     diagnosis_phrases.append("problems with the grid")
     diagnosis_phrases.append("issues with the grid")
+    diagnosis_phrases.append("issues in the grid")
+    diagnosis_phrases.append("grid issues")
     diagnosis_phrases.append("diagnose the grid")
+    diagnosis_phrases.append("diagnose this grid")
+    diagnosis_phrases.append("diagnose the network")
     diagnosis_phrases.append("analyze the grid")
+    diagnosis_phrases.append("analyse the grid")
+    diagnosis_phrases.append("analyze grid issues")
+    diagnosis_phrases.append("analyse grid issues")
+    diagnosis_phrases.append("analyze the grid issues")
+    diagnosis_phrases.append("analyse the grid issues")
     diagnosis_phrases.append("grid diagnostics")
     diagnosis_phrases.append("grid diagnosis")
+    issue_markers.append("issue")
+    issue_markers.append("issues")
+    issue_markers.append("problem")
+    issue_markers.append("problems")
+    issue_markers.append("wrong")
+    issue_markers.append("diagnose")
+    issue_markers.append("diagnosis")
+    issue_markers.append("diagnostics")
+    issue_markers.append("analyze")
+    issue_markers.append("analyse")
+    grid_markers.append("grid")
+    grid_markers.append("network")
+    grid_markers.append("model")
 
     while index < len(diagnosis_phrases):
         if diagnosis_phrases[index] in normalized_text:
@@ -746,6 +772,26 @@ def is_direct_grid_diagnostics_request(message_text: str) -> bool:
         else:
             pass
         index += 1
+
+    while marker_index < len(issue_markers):
+        if issue_markers[marker_index] in normalized_text:
+            has_issue_marker = True
+        else:
+            pass
+        marker_index += 1
+
+    marker_index = 0
+    while marker_index < len(grid_markers):
+        if grid_markers[marker_index] in normalized_text:
+            has_grid_marker = True
+        else:
+            pass
+        marker_index += 1
+
+    if has_issue_marker and has_grid_marker:
+        return True
+    else:
+        pass
 
     return False
 
