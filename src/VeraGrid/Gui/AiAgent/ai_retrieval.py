@@ -1059,6 +1059,83 @@ def build_runtime_record_from_results(driver: Any) -> Optional[RuntimeKnowledgeR
         )
 
 
+def build_holistic_overview_lines(
+    app: "SimulationsMain",
+    drivers: list[Any],
+    selected_devices: list[Any],
+    selected_bus_tuples: list[tuple[int, Any, object | None]],
+) -> list[str]:
+    """
+    Build a merged overview of the loaded model, session, and study-result state.
+
+    :param app: VeraGrid main window.
+    :param drivers: Available session drivers.
+    :param selected_devices: Selected devices.
+    :param selected_bus_tuples: Selected bus tuples.
+    :returns: Holistic overview lines.
+    """
+    lines: list[str] = list()
+    selected_labels: list[str] = list()
+    driver_index: int = 0
+    selected_index: int = 0
+    active_study_name: str = app.ui.available_results_to_color_comboBox.currentText().strip()
+
+    lines.append("This record merges the current grid inputs, session state, and study-result availability.")
+    lines.append(f"project_name: {app.circuit.name}")
+    lines.append(f"active_study: {active_study_name}")
+    lines.append(f"solver_name: {app.ui.engineComboBox.currentText().strip()}")
+    lines.append(f"bus_count: {app.circuit.get_bus_number()}")
+    lines.append(
+        f"branch_count: {app.circuit.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True)}"
+    )
+    lines.append(f"load_count: {app.circuit.get_loads_number()}")
+    lines.append(f"generator_count: {app.circuit.get_generators_number()}")
+
+    while selected_index < len(selected_devices):
+        selected_labels.append(f"{selected_devices[selected_index].type_name}: {selected_devices[selected_index].name}")
+        selected_index += 1
+
+    selected_index = 0
+    while selected_index < len(selected_bus_tuples):
+        _, bus, _ = selected_bus_tuples[selected_index]
+        selected_labels.append(f"{bus.type_name}: {bus.name}")
+        selected_index += 1
+
+    if len(selected_labels) > 0:
+        lines.append("selected_elements: " + ", ".join(selected_labels[:8]))
+    else:
+        lines.append("selected_elements: none")
+
+    while driver_index < len(drivers):
+        driver: Any = drivers[driver_index]
+        result_class_text: str = "none"
+
+        if read_object_attribute(driver, "results") is None:
+            pass
+        else:
+            result_class_text = str(driver.results.__class__.__name__)
+
+        lines.append(
+            f"study_status: {driver.tpe.value}; running={app.session.is_this_running(driver.tpe)}; "
+            f"has_results={driver.results is not None}; result_class={result_class_text}"
+        )
+
+        if driver.tpe.value == active_study_name:
+            if driver.results is None:
+                pass
+            else:
+                result_lines: list[str] = build_results_field_lines(driver.results)
+                result_line_index: int = 0
+
+                while result_line_index < min(len(result_lines), 6):
+                    lines.append("active_study_result: " + result_lines[result_line_index])
+                    result_line_index += 1
+
+        driver_index += 1
+
+    return lines
+
+
 def build_runtime_record_from_device(device: Any, category: str) -> RuntimeKnowledgeRecord:
     """
     Build one runtime record from a VeraGrid device.
@@ -1166,6 +1243,20 @@ def build_runtime_knowledge_snapshot(app: "SimulationsMain") -> RuntimeKnowledge
             category="session_summary",
             title="session_summary: VeraGrid simulation session",
             content="\n".join(session_lines),
+        )
+    )
+    records.append(
+        RuntimeKnowledgeRecord(
+            category="holistic_overview",
+            title="holistic_overview: current grid inputs and study results",
+            content="\n".join(
+                build_holistic_overview_lines(
+                    app=app,
+                    drivers=drivers,
+                    selected_devices=selected_devices,
+                    selected_bus_tuples=selected_bus_tuples,
+                )
+            ),
         )
     )
 
@@ -1341,7 +1432,19 @@ def build_retrieved_context_text(
         project_summary_record: Optional[RuntimeKnowledgeRecord] = runtime_snapshot.get_first_record_by_category(
             "project_summary"
         )
+        holistic_overview_record: Optional[RuntimeKnowledgeRecord] = runtime_snapshot.get_first_record_by_category(
+            "holistic_overview"
+        )
         selected_records: list[RuntimeKnowledgeRecord] = list()
+
+        if holistic_overview_record is None:
+            pass
+        else:
+            lines.append("Holistic runtime overview:")
+            if is_summary_request:
+                lines.append(holistic_overview_record.content)
+            else:
+                lines.append(build_excerpt_from_text(holistic_overview_record.content, summary_query_tokens, 520))
 
         if project_summary_record is None:
             pass

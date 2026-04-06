@@ -23,7 +23,7 @@ integrated into VeraGrid with minimal hidden behaviour.
 from enum import Enum
 import json
 import os
-from typing import Any, Optional, Protocol
+from typing import Any, Callable, Optional, Protocol
 
 import requests
 
@@ -497,6 +497,108 @@ class ToolRegistry:
         return result
 
 
+def strip_json_code_fence(text: str) -> str:
+    """
+    Remove a surrounding Markdown code fence from a JSON-like text block.
+
+    :param text: Raw text block.
+    :returns: Unwrapped text.
+    """
+    stripped_text: str = text.strip()
+    newline_index: int
+
+    if stripped_text.startswith("```") and stripped_text.endswith("```"):
+        newline_index = stripped_text.find("\n")
+
+        if newline_index > -1:
+            return stripped_text[(newline_index + 1):-3].strip()
+        else:
+            return stripped_text[3:-3].strip()
+    else:
+        return stripped_text
+
+
+def try_parse_text_tool_call(
+    text: str,
+    tool_registry: ToolRegistry,
+) -> tuple[bool, Optional[ToolCall]]:
+    """
+    Parse a raw assistant text blob as a tool call when a local model emits JSON instead of structured tool use.
+
+    :param text: Assistant text.
+    :param tool_registry: Registered tool set.
+    :returns: Tuple with success flag and parsed tool call.
+    """
+    normalized_text: str = strip_json_code_fence(text)
+    parsed_obj: Any
+    tool_name_obj: object
+    arguments_obj: object
+    tool_name: str
+
+    if len(normalized_text) == 0:
+        return False, None
+    else:
+        pass
+
+    if normalized_text.startswith("{") and normalized_text.endswith("}"):
+        pass
+    else:
+        return False, None
+
+    try:
+        parsed_obj = json.loads(normalized_text)
+    except json.JSONDecodeError:
+        return False, None
+
+    if isinstance(parsed_obj, dict):
+        tool_name_obj = parsed_obj.get("name", None)
+
+        if tool_name_obj is None:
+            tool_name_obj = parsed_obj.get("tool_name", None)
+        else:
+            pass
+
+        if isinstance(tool_name_obj, str):
+            tool_name = tool_name_obj.strip()
+        else:
+            return False, None
+
+        if tool_registry.get_tool(tool_name) is None:
+            return False, None
+        else:
+            pass
+
+        arguments_obj = parsed_obj.get("parameters", None)
+
+        if arguments_obj is None:
+            arguments_obj = parsed_obj.get("arguments", None)
+        else:
+            pass
+
+        if arguments_obj is None:
+            arguments_obj = parsed_obj.get("input", None)
+        else:
+            pass
+
+        if isinstance(arguments_obj, dict):
+            return True, ToolCall(
+                call_id="text_tool_call_0",
+                tool_name=tool_name,
+                arguments_json=json.dumps(arguments_obj, ensure_ascii=False),
+            )
+        else:
+            if arguments_obj is None:
+                return True, ToolCall(
+                    call_id="text_tool_call_0",
+                    tool_name=tool_name,
+                    arguments_json="{}",
+                )
+            else:
+                return False, None
+    else:
+        return False, None
+
+
 class LLMProviderProtocol(Protocol):
     """Protocol for LLM providers."""
 
@@ -507,6 +609,15 @@ class LLMProviderProtocol(Protocol):
         tool_specs: list[ToolSpec],
     ) -> LLMResponse:
         """Run one provider completion."""
+
+    def complete_with_callback(
+        self,
+        system_prompt: str,
+        messages: list[ChatMessage],
+        tool_specs: list[ToolSpec],
+        text_delta_callback: Optional[Callable[[str], None]],
+    ) -> LLMResponse:
+        """Run one provider completion and emit text deltas when supported."""
 
 
 class HTTPClient:
@@ -637,6 +748,38 @@ class HTTPClient:
 
         return is_ok, result_obj, error_msg
 
+    def post_stream(self, url: str, payload: dict[str, Any]) -> tuple[bool, Optional[requests.Response], str]:
+        """
+        Execute a streaming POST request.
+
+        :param url: Endpoint URL.
+        :param payload: JSON payload.
+        :returns: Tuple with success flag, response object and error message.
+        """
+        response_obj: Optional[requests.Response] = None
+        error_msg: str = ""
+
+        try:
+            response_obj = requests.post(
+                url,
+                headers=self.build_headers(),
+                json=payload,
+                timeout=self._config.timeout_s,
+                stream=True,
+            )
+            if response_obj.status_code >= 400:
+                error_msg = f"HTTP {response_obj.status_code}: {response_obj.text}"
+                response_obj.close()
+                return False, None, error_msg
+            else:
+                return True, response_obj, ""
+        except requests.RequestException as exc:
+            if response_obj is None:
+                pass
+            else:
+                response_obj.close()
+            return False, None, str(exc)
+
 
 class OpenAIProvider:
     """
@@ -722,6 +865,25 @@ class OpenAIProvider:
                     error_message=http_error,
                 )
 
+    def complete_with_callback(
+        self,
+        system_prompt: str,
+        messages: list[ChatMessage],
+        tool_specs: list[ToolSpec],
+        text_delta_callback: Optional[Callable[[str], None]],
+    ) -> LLMResponse:
+        """
+        Execute one completion and emit the final text when streaming is unavailable.
+
+        :param system_prompt: System prompt.
+        :param messages: Conversation messages.
+        :param tool_specs: Available tools.
+        :param text_delta_callback: Optional text-delta callback.
+        :returns: Provider response.
+        """
+        del text_delta_callback
+        return self.complete(system_prompt=system_prompt, messages=messages, tool_specs=tool_specs)
+
 
 class AnthropicProvider:
     """
@@ -802,6 +964,25 @@ class AnthropicProvider:
                     error_message=http_error,
                 )
 
+    def complete_with_callback(
+        self,
+        system_prompt: str,
+        messages: list[ChatMessage],
+        tool_specs: list[ToolSpec],
+        text_delta_callback: Optional[Callable[[str], None]],
+    ) -> LLMResponse:
+        """
+        Execute one completion and emit the final text when streaming is unavailable.
+
+        :param system_prompt: System prompt.
+        :param messages: Conversation messages.
+        :param tool_specs: Available tools.
+        :param text_delta_callback: Optional text-delta callback.
+        :returns: Provider response.
+        """
+        del text_delta_callback
+        return self.complete(system_prompt=system_prompt, messages=messages, tool_specs=tool_specs)
+
 
 class OpenAICompatibleProvider:
     """
@@ -875,6 +1056,162 @@ class OpenAICompatibleProvider:
                     error_code=ProviderErrorCode.HTTP_ERROR,
                     error_message=http_error,
                 )
+
+    def complete_with_callback(
+        self,
+        system_prompt: str,
+        messages: list[ChatMessage],
+        tool_specs: list[ToolSpec],
+        text_delta_callback: Optional[Callable[[str], None]],
+    ) -> LLMResponse:
+        """
+        Execute one completion and emit the final text when streaming is unavailable.
+
+        :param system_prompt: System prompt.
+        :param messages: Conversation messages.
+        :param tool_specs: Available tools.
+        :param text_delta_callback: Optional text-delta callback.
+        :returns: Provider response.
+        """
+        base_url: Optional[str] = self._config.base_url
+        payload_messages: list[dict[str, Any]]
+        tool_items: list[dict[str, Any]] = list()
+        payload: dict[str, Any] = dict()
+        url: str
+        ok_http: bool
+        response_obj: Optional[requests.Response]
+        http_error: str
+        chunk_line: Any
+        chunk_text: str
+        json_text: str
+        chunk_obj: Any
+        choices_obj: Any
+        choice_obj: Any
+        delta_obj: Any
+        index: int = 0
+        accumulated_text: str = ""
+        tool_call_states: list[dict[str, str]] = list()
+
+        if text_delta_callback is None:
+            return self.complete(system_prompt=system_prompt, messages=messages, tool_specs=tool_specs)
+        else:
+            pass
+
+        if base_url is None:
+            return LLMResponse(
+                text="",
+                tool_calls=list(),
+                error_code=ProviderErrorCode.INVALID_CONFIGURATION,
+                error_message="OpenAI-compatible base URL is not configured.",
+            )
+        else:
+            payload_messages = build_openai_compatible_messages(system_prompt, messages)
+
+        while index < len(tool_specs):
+            tool_items.append(tool_specs[index].build_openai_tool())
+            index += 1
+
+        payload["model"] = self._config.model_name
+        payload["messages"] = payload_messages
+        payload["tools"] = tool_items
+        payload["tool_choice"] = "auto"
+        payload["max_tokens"] = 2048
+        payload["stream"] = True
+
+        url = f"{base_url.rstrip('/')}/chat/completions"
+        ok_http, response_obj, http_error = self._http_client.post_stream(url, payload)
+
+        if ok_http:
+            pass
+        else:
+            return LLMResponse(
+                text="",
+                tool_calls=list(),
+                error_code=ProviderErrorCode.HTTP_ERROR,
+                error_message=http_error,
+            )
+
+        try:
+            if response_obj is None:
+                return LLMResponse(
+                    text="",
+                    tool_calls=list(),
+                    error_code=ProviderErrorCode.HTTP_ERROR,
+                    error_message="OpenAI-compatible streaming response was not available.",
+                )
+            else:
+                for chunk_line in response_obj.iter_lines(decode_unicode=True):
+                    if isinstance(chunk_line, bytes):
+                        chunk_text = chunk_line.decode("utf-8", errors="ignore").strip()
+                    else:
+                        if isinstance(chunk_line, str):
+                            chunk_text = chunk_line.strip()
+                        else:
+                            chunk_text = ""
+
+                    if len(chunk_text) == 0:
+                        continue
+                    else:
+                        pass
+
+                    if chunk_text.startswith("data:"):
+                        json_text = chunk_text[5:].strip()
+                    else:
+                        json_text = chunk_text
+
+                    if json_text == "[DONE]":
+                        continue
+                    else:
+                        pass
+
+                    try:
+                        chunk_obj = json.loads(json_text)
+                    except json.JSONDecodeError:
+                        continue
+
+                    choices_obj = chunk_obj.get("choices", None)
+
+                    if isinstance(choices_obj, list) and (len(choices_obj) > 0):
+                        choice_obj = choices_obj[0]
+                        if isinstance(choice_obj, dict):
+                            delta_obj = choice_obj.get("delta", None)
+
+                            if isinstance(delta_obj, dict):
+                                text_delta: str
+                                text_delta, tool_call_states = apply_openai_compatible_stream_delta(
+                                    delta_obj=delta_obj,
+                                    tool_call_states=tool_call_states,
+                                )
+
+                                if len(text_delta) > 0:
+                                    accumulated_text += text_delta
+                                    text_delta_callback(text_delta)
+                                else:
+                                    pass
+                            else:
+                                pass
+                        else:
+                            pass
+                    else:
+                        pass
+        except Exception:
+            if response_obj is None:
+                pass
+            else:
+                response_obj.close()
+            return self.complete(system_prompt=system_prompt, messages=messages, tool_specs=tool_specs)
+
+        if response_obj is None:
+            pass
+        else:
+            response_obj.close()
+
+        return LLMResponse(
+            text=accumulated_text,
+            tool_calls=build_tool_calls_from_stream_state(tool_call_states),
+            error_code=ProviderErrorCode.NONE,
+            error_message="",
+        )
 
 
 def build_openai_compatible_messages(
@@ -1059,6 +1396,111 @@ def import_llama_cpp_llama() -> tuple[bool, Any, str]:
         return False, None, "llama-cpp-python is not installed."
 
 
+def apply_openai_compatible_stream_delta(
+    delta_obj: dict[str, Any],
+    tool_call_states: list[dict[str, str]],
+) -> tuple[str, list[dict[str, str]]]:
+    """
+    Apply one OpenAI-compatible streaming delta.
+
+    :param delta_obj: Delta object from one stream chunk.
+    :param tool_call_states: Mutable tool-call state list.
+    :returns: Text delta and updated tool-call states.
+    """
+    text_delta: str = ""
+    content_obj: Any = delta_obj.get("content", None)
+    tool_calls_obj: Any = delta_obj.get("tool_calls", None)
+    index: int = 0
+
+    if isinstance(content_obj, str):
+        text_delta = content_obj
+    else:
+        pass
+
+    if isinstance(tool_calls_obj, list):
+        while index < len(tool_calls_obj):
+            tool_item: Any = tool_calls_obj[index]
+            if isinstance(tool_item, dict):
+                tool_index_obj: Any = tool_item.get("index", 0)
+                tool_index: int = int(tool_index_obj) if isinstance(tool_index_obj, int) else 0
+
+                while len(tool_call_states) <= tool_index:
+                    tool_call_states.append(
+                        {
+                            "call_id": "",
+                            "tool_name": "",
+                            "arguments_json": "",
+                        }
+                    )
+
+                function_obj: Any = tool_item.get("function", None)
+                id_obj: Any = tool_item.get("id", None)
+
+                if isinstance(id_obj, str):
+                    tool_call_states[tool_index]["call_id"] = id_obj
+                else:
+                    pass
+
+                if isinstance(function_obj, dict):
+                    name_obj: Any = function_obj.get("name", None)
+                    arguments_obj: Any = function_obj.get("arguments", None)
+
+                    if isinstance(name_obj, str):
+                        tool_call_states[tool_index]["tool_name"] = name_obj
+                    else:
+                        pass
+
+                    if isinstance(arguments_obj, str):
+                        tool_call_states[tool_index]["arguments_json"] += arguments_obj
+                    else:
+                        pass
+                else:
+                    pass
+            else:
+                pass
+            index += 1
+    else:
+        pass
+
+    return text_delta, tool_call_states
+
+
+def build_tool_calls_from_stream_state(tool_call_states: list[dict[str, str]]) -> list[ToolCall]:
+    """
+    Build final tool calls from accumulated stream state.
+
+    :param tool_call_states: Accumulated tool-call states.
+    :returns: Parsed tool calls.
+    """
+    tool_calls: list[ToolCall] = list()
+    index: int = 0
+
+    while index < len(tool_call_states):
+        call_state: dict[str, str] = tool_call_states[index]
+        tool_name: str = call_state.get("tool_name", "")
+        arguments_json: str = call_state.get("arguments_json", "")
+        call_id: str = call_state.get("call_id", "")
+
+        if len(tool_name) > 0:
+            if len(call_id) == 0:
+                call_id = f"stream_call_{index}"
+            else:
+                pass
+
+            tool_calls.append(
+                ToolCall(
+                    call_id=call_id,
+                    tool_name=tool_name,
+                    arguments_json=arguments_json if len(arguments_json) > 0 else "{}",
+                )
+            )
+        else:
+            pass
+        index += 1
+
+    return tool_calls
+
+
 class LocalLlamaCppProvider:
     """
     Local in-process provider backed by llama-cpp-python.
@@ -1205,6 +1647,133 @@ class LocalLlamaCppProvider:
                 error_message="Local llama.cpp provider returned an invalid response object.",
             )
 
+    def complete_with_callback(
+        self,
+        system_prompt: str,
+        messages: list[ChatMessage],
+        tool_specs: list[ToolSpec],
+        text_delta_callback: Optional[Callable[[str], None]],
+    ) -> LLMResponse:
+        """
+        Execute one in-process llama.cpp streamed chat completion.
+
+        :param system_prompt: System prompt.
+        :param messages: Conversation messages.
+        :param tool_specs: Available tools.
+        :param text_delta_callback: Optional callback for streamed text deltas.
+        :returns: Provider response.
+        """
+        ok_model: bool
+        model_error: str
+        payload_messages: list[dict[str, Any]]
+        tool_items: list[dict[str, Any]]
+        payload: dict[str, Any]
+        response_stream: Any
+        chunk_obj: Any
+        index: int
+        accumulated_text: str = ""
+        tool_call_states: list[dict[str, str]] = list()
+
+        ok_model, model_error = self._ensure_model()
+        if ok_model:
+            pass
+        else:
+            return LLMResponse(
+                text="",
+                tool_calls=list(),
+                error_code=ProviderErrorCode.INVALID_CONFIGURATION,
+                error_message=model_error,
+            )
+
+        payload_messages = build_openai_compatible_messages(system_prompt, messages)
+        tool_items = list()
+        index = 0
+
+        while index < len(tool_specs):
+            tool_items.append(tool_specs[index].build_openai_tool())
+            index += 1
+
+        payload = dict()
+        payload["messages"] = payload_messages
+        payload["max_tokens"] = 2048
+        payload["stream"] = True
+
+        if len(self._config.model_name.strip()) > 0:
+            payload["model"] = self._config.model_name.strip()
+        else:
+            pass
+
+        if len(tool_items) > 0:
+            payload["tools"] = tool_items
+            payload["tool_choice"] = "auto"
+        else:
+            pass
+
+        try:
+            if self._model_instance is None:
+                return LLMResponse(
+                    text="",
+                    tool_calls=list(),
+                    error_code=ProviderErrorCode.INVALID_CONFIGURATION,
+                    error_message="Local llama.cpp model is not loaded.",
+                )
+            else:
+                response_stream = self._model_instance.create_chat_completion(**payload)
+        except Exception:
+            return self.complete(
+                system_prompt=system_prompt,
+                messages=messages,
+                tool_specs=tool_specs,
+            )
+
+        try:
+            for chunk_obj in response_stream:
+                if isinstance(chunk_obj, dict):
+                    choices_obj: Any = chunk_obj.get("choices", None)
+
+                    if isinstance(choices_obj, list) and (len(choices_obj) > 0):
+                        choice_obj: Any = choices_obj[0]
+
+                        if isinstance(choice_obj, dict):
+                            delta_obj: Any = choice_obj.get("delta", None)
+
+                            if isinstance(delta_obj, dict):
+                                text_delta: str
+                                text_delta, tool_call_states = apply_openai_compatible_stream_delta(
+                                    delta_obj=delta_obj,
+                                    tool_call_states=tool_call_states,
+                                )
+
+                                if len(text_delta) > 0:
+                                    accumulated_text += text_delta
+                                    if text_delta_callback is None:
+                                        pass
+                                    else:
+                                        text_delta_callback(text_delta)
+                                else:
+                                    pass
+                            else:
+                                pass
+                        else:
+                            pass
+                    else:
+                        pass
+                else:
+                    pass
+        except Exception:
+            return self.complete(
+                system_prompt=system_prompt,
+                messages=messages,
+                tool_specs=tool_specs,
+            )
+
+        return LLMResponse(
+            text=accumulated_text,
+            tool_calls=build_tool_calls_from_stream_state(tool_call_states),
+            error_code=ProviderErrorCode.NONE,
+            error_message="",
+        )
+
 
 class VeraGridContext:
     """
@@ -1299,6 +1868,7 @@ class ConversationOrchestrator:
         history: list[ChatMessage],
         approved_tool_name: Optional[str],
         approved_arguments_json: Optional[str],
+        text_delta_callback: Optional[Callable[[str], None]] = None,
     ) -> ConversationRunResult:
         """
         Execute the orchestration loop.
@@ -1326,6 +1896,12 @@ class ConversationOrchestrator:
 
         if len(grounding_context_text.strip()) > 0:
             effective_user_message = (
+                "Agent execution instructions for this turn:\n"
+                "- Internally break the request into tasks.\n"
+                "- Use available VeraGrid tools to complete those tasks in order.\n"
+                "- After each tool result, continue if work remains.\n"
+                "- Do not expose the internal task list unless the user asks for it.\n"
+                "- Give the final answer only after the relevant tasks are complete.\n\n"
                 "Authoritative VeraGrid grounding context for this request:\n"
                 f"{grounding_context_text}\n\n"
                 "User request:\n"
@@ -1334,17 +1910,53 @@ class ConversationOrchestrator:
                 "Answer from that grounding context first. If the answer still requires more project data, use tools."
             )
         else:
-            pass
+            effective_user_message = (
+                "Agent execution instructions for this turn:\n"
+                "- Internally break the request into tasks.\n"
+                "- Use available VeraGrid tools to complete those tasks in order.\n"
+                "- After each tool result, continue if work remains.\n"
+                "- Do not expose the internal task list unless the user asks for it.\n"
+                "- Give the final answer only after the relevant tasks are complete.\n\n"
+                "User request:\n"
+                f"{user_message}"
+            )
 
         transcript.append(ChatMessage(role="user", content=user_message, name=None))
         llm_transcript.append(ChatMessage(role="user", content=effective_user_message, name=None))
 
         while round_index < self._max_rounds:
-            provider_response: LLMResponse = self._provider.complete(
+            provider_response: LLMResponse
+            parsed_text_tool_ok: bool
+            parsed_text_tool_call: Optional[ToolCall]
+
+            provider_response = self._provider.complete_with_callback(
                 system_prompt=system_prompt,
                 messages=llm_transcript,
                 tool_specs=self._tool_registry.list_tools(),
+                text_delta_callback=text_delta_callback,
             )
+
+            if len(provider_response.tool_calls) == 0:
+                parsed_text_tool_ok, parsed_text_tool_call = try_parse_text_tool_call(
+                    text=provider_response.text,
+                    tool_registry=self._tool_registry,
+                )
+
+                if parsed_text_tool_ok and (parsed_text_tool_call is not None):
+                    provider_response.tool_calls.append(parsed_text_tool_call)
+                    provider_response.text = ""
+                else:
+                    pass
+            else:
+                parsed_text_tool_ok, parsed_text_tool_call = try_parse_text_tool_call(
+                    text=provider_response.text,
+                    tool_registry=self._tool_registry,
+                )
+
+                if parsed_text_tool_ok:
+                    provider_response.text = ""
+                else:
+                    pass
 
             if provider_response.error_code == ProviderErrorCode.NONE:
                 final_text = provider_response.text
@@ -1451,15 +2063,29 @@ class PromptFactory:
 
         prompt_text: str = (
             "You are the VeraGrid engineering assistant. "
+            "Operate as an agent, not as a passive chatbot. "
+            "For every non-trivial request, privately decompose the goal into a short sequence of tasks, "
+            "execute those tasks one by one, and reassess after each tool result. "
+            "Keep the task list internal unless the user explicitly asks for a concise plan. "
             "Use tools when authoritative project data is required. "
             "For questions about the currently loaded model, session, studies, drivers, or results, "
             "query the live runtime tools instead of guessing. "
-            "Prefer search_runtime_records, get_runtime_record, get_model_summary, "
+            "Prefer get_holistic_grid_context, search_runtime_records, get_runtime_record, get_model_summary, "
             "get_selected_elements, list_available_studies, and get_study_summary when they are available. "
             "If the user asks what is wrong with the grid, to diagnose the model, or to explain structural issues, "
             "use analyze_grid_issues when it is available. "
             "When the user asks you to run, execute, launch, solve, or calculate an analysis "
             "and a matching tool exists, call the tool instead of only describing the action. "
+            "When a request mixes analysis and action, first gather the necessary runtime facts, "
+            "then execute the action, then inspect the resulting study or results before answering. "
+            "Do not stop after the first tool call when the request still has unfinished tasks. "
+            "After each tool result, decide whether another tool call is required. "
+            "Prefer one focused tool call at a time over many speculative calls. "
+            "If a simulation finishes and results are available, summarize the actual results. "
+            "If the user asks to analyze, summarize, inspect, diagnose, or explain existing results, "
+            "do not re-run the study unless the user explicitly asked for a re-run. "
+            "Use get_holistic_grid_context, list_available_studies, get_study_summary, "
+            "search_runtime_records, or get_runtime_record first. "
             "Do not invent study results. "
             "Treat phrases such as 'this grid', 'given grid', 'current grid', and 'loaded grid' "
             "as references to the active VeraGrid project context below. "

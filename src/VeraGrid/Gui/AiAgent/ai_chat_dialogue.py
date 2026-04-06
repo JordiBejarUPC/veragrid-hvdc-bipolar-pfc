@@ -16,6 +16,7 @@ configuration, live app-derived context and a visible transcript.
 import html
 import json
 import os
+import time
 from enum import Enum
 from typing import Any, Optional, TYPE_CHECKING
 
@@ -284,6 +285,91 @@ class SnapshotStudySummaryTool:
                 error_message="",
                 payload_json=json.dumps(payload, ensure_ascii=False),
             )
+
+
+class SnapshotHolisticContextTool:
+    """
+    Read-only tool exposing one merged project-and-results context snapshot.
+
+    :param active_study: Active study name.
+    :param common_payload: Shared project/session payload.
+    :param payload_by_study: Study payloads by study name.
+    """
+
+    __slots__ = (
+        "_active_study",
+        "_common_payload",
+        "_payload_by_study",
+    )
+
+    def __init__(
+        self,
+        active_study: Optional[str],
+        common_payload: dict[str, object],
+        payload_by_study: dict[str, dict[str, object]],
+    ) -> None:
+        """
+        Store the snapshotted holistic context data.
+
+        :param active_study: Active study name.
+        :param common_payload: Shared project/session payload.
+        :param payload_by_study: Study payloads by study name.
+        """
+        self._active_study: Optional[str] = active_study
+        self._common_payload: dict[str, object] = common_payload
+        self._payload_by_study: dict[str, dict[str, object]] = payload_by_study
+
+    def execute(self, arguments: dict[str, object]) -> ToolExecutionResult:
+        """
+        Return the merged context for the requested or active study.
+
+        :param arguments: Tool arguments.
+        :returns: Tool execution result.
+        """
+        study_name_obj: object = arguments.get("study_name", None)
+        study_name: Optional[str] = None
+        focus_study_payload: Optional[dict[str, object]] = None
+        payload: dict[str, object] = dict()
+
+        if study_name_obj is None:
+            study_name = self._active_study
+        else:
+            if isinstance(study_name_obj, str) and (len(study_name_obj.strip()) > 0):
+                study_name = study_name_obj.strip()
+            else:
+                return ToolExecutionResult(
+                    success=False,
+                    error_code=ToolErrorCode.EXECUTION_ERROR,
+                    error_message="Invalid study_name value.",
+                    payload_json="{}",
+                )
+
+        for key_text, value_obj in self._common_payload.items():
+            payload[key_text] = value_obj
+
+        if study_name is None:
+            payload["focus_study"] = None
+        else:
+            focus_study_payload = self._payload_by_study.get(study_name, None)
+
+            if focus_study_payload is None:
+                return ToolExecutionResult(
+                    success=False,
+                    error_code=ToolErrorCode.EXECUTION_ERROR,
+                    error_message=f"Study '{study_name}' is not available in the current session.",
+                    payload_json="{}",
+                )
+            else:
+                payload["focus_study"] = focus_study_payload
+
+        payload["requested_study"] = study_name
+
+        return ToolExecutionResult(
+            success=True,
+            error_code=ToolErrorCode.NONE,
+            error_message="",
+            payload_json=json.dumps(payload, ensure_ascii=False),
+        )
 
 
 class RuntimeSnapshotSearchTool:
@@ -664,6 +750,407 @@ def is_direct_grid_diagnostics_request(message_text: str) -> bool:
     return False
 
 
+def is_results_analysis_request(message_text: str) -> bool:
+    """
+    Check whether the user explicitly asked to inspect existing study results.
+
+    :param message_text: User message text.
+    :returns: True when the request targets already available results.
+    """
+    normalized_text: str = normalize_simulation_request_text(message_text)
+    analysis_markers: list[str] = list()
+    analysis_verbs: list[str] = list()
+    index: int = 0
+    verb_index: int = 0
+
+    analysis_markers.append("analyze the results")
+    analysis_markers.append("analyse the results")
+    analysis_markers.append("analyze results")
+    analysis_markers.append("analyse results")
+    analysis_markers.append("summarize the results")
+    analysis_markers.append("summarise the results")
+    analysis_markers.append("inspect the results")
+    analysis_markers.append("review the results")
+    analysis_markers.append("explain the results")
+    analysis_markers.append("what is wrong with the results")
+    analysis_markers.append("what's wrong with the results")
+    analysis_markers.append("issues in the results")
+    analysis_markers.append("problems in the results")
+    analysis_verbs.append("analyze")
+    analysis_verbs.append("analyse")
+    analysis_verbs.append("inspect")
+    analysis_verbs.append("review")
+    analysis_verbs.append("explain")
+    analysis_verbs.append("summarize")
+    analysis_verbs.append("summarise")
+
+    while index < len(analysis_markers):
+        if analysis_markers[index] in normalized_text:
+            return True
+        else:
+            pass
+        index += 1
+
+    if ("results" in normalized_text or "result" in normalized_text):
+        if ("what is wrong" in normalized_text) or ("what's wrong" in normalized_text):
+            return True
+        else:
+            if ("issue" in normalized_text) or ("problem" in normalized_text):
+                return True
+            else:
+                pass
+    else:
+        pass
+
+    if ("results" in normalized_text) or ("result" in normalized_text):
+        while verb_index < len(analysis_verbs):
+            if analysis_verbs[verb_index] in normalized_text:
+                return True
+            else:
+                pass
+            verb_index += 1
+    else:
+        pass
+
+    return False
+
+
+def get_preferred_study_name_for_result_analysis(
+    app: "SimulationsMain",
+    message_text: Optional[str] = None,
+) -> Optional[str]:
+    """
+    Select the most relevant study name for direct result analysis.
+
+    :param app: VeraGrid main window.
+    :param message_text: Optional user message naming the target study.
+    :returns: Preferred study name or None.
+    """
+    current_study_name: Optional[str] = get_current_study_name_from_app(app)
+    requested_study_name: Optional[str] = None
+    preferred_study_names: list[str] = list()
+    available_drivers: list[Any] = app.session.get_available_drivers()
+
+    if message_text is None:
+        requested_study_name = None
+    else:
+        requested_study_name = detect_requested_study_name(message_text)
+
+    if requested_study_name is None:
+        pass
+    else:
+        return requested_study_name
+
+    if current_study_name is None:
+        pass
+    else:
+        if current_study_name != SimulationTypes.DesignView.value:
+            if app.session.get_driver_by_name(study_name=current_study_name) is None:
+                pass
+            else:
+                return current_study_name
+        else:
+            pass
+
+    preferred_study_names.append(SimulationTypes.PowerFlow_run.value)
+    preferred_study_names.append(SimulationTypes.PowerFlowTimeSeries_run.value)
+    preferred_study_names.append(SimulationTypes.PowerFlow3ph_run.value)
+    preferred_study_names.append(SimulationTypes.ShortCircuit_run.value)
+    preferred_study_names.append(SimulationTypes.OPF_run.value)
+    preferred_study_names.append(SimulationTypes.OPFTimeSeries_run.value)
+
+    for current_study_name in preferred_study_names:
+        if app.session.get_driver_by_name(study_name=current_study_name) is None:
+            pass
+        else:
+            return current_study_name
+
+    if len(available_drivers) > 0:
+        return str(available_drivers[-1].tpe.value)
+    else:
+        return None
+
+
+def build_study_results_analysis_text(
+    study_payload: dict[str, object],
+) -> str:
+    """
+    Build a concise assistant analysis from a study-summary payload.
+
+    :param study_payload: Study-summary payload.
+    :returns: Assistant analysis text.
+    """
+    study_name_obj: object = study_payload.get("study_name", "")
+    summary_obj: object = study_payload.get("summary", dict())
+    driver_obj: object = study_payload.get("driver", dict())
+    results_obj: object = study_payload.get("results", dict())
+    study_name: str = str(study_name_obj) if isinstance(study_name_obj, str) else "current study"
+    summary: dict[str, object] = summary_obj if isinstance(summary_obj, dict) else dict()
+    driver_payload: dict[str, object] = driver_obj if isinstance(driver_obj, dict) else dict()
+    results_payload: dict[str, object] = results_obj if isinstance(results_obj, dict) else dict()
+    logger_obj: object = driver_payload.get("logger", dict())
+    logger_payload: dict[str, object] = logger_obj if isinstance(logger_obj, dict) else dict()
+    lines: list[str] = list()
+    issues: list[str] = list()
+    converged_obj: object
+    min_voltage_obj: object
+    max_voltage_obj: object
+    max_loading_obj: object
+    warning_count_obj: object
+    error_count_obj: object
+    ignored_voltage_bus_count_obj: object
+    ignored_branch_count_obj: object
+    under_voltage_bus_count_obj: object
+    over_voltage_bus_count_obj: object
+    overloaded_branch_count_obj: object
+    top_low_voltage_buses_obj: object
+    top_high_voltage_buses_obj: object
+    top_loaded_branches_obj: object
+    top_low_voltage_buses: list[dict[str, object]] = list()
+    top_high_voltage_buses: list[dict[str, object]] = list()
+    top_loaded_branches: list[dict[str, object]] = list()
+    top_issue_parts: list[str] = list()
+    index: int = 0
+
+    lines.append(f"I analyzed the results of `{study_name}`.")
+
+    if not bool(results_payload.get("has_results", False)):
+        lines.append("There are no loaded results available for that study.")
+        return "\n".join(lines)
+    else:
+        pass
+
+    converged_obj = summary.get("converged", None)
+    min_voltage_obj = summary.get("min_voltage_pu", None)
+    max_voltage_obj = summary.get("max_voltage_pu", None)
+    max_loading_obj = summary.get("max_branch_loading_pct", None)
+    warning_count_obj = logger_payload.get("warning_count", 0)
+    error_count_obj = logger_payload.get("error_count", 0)
+    ignored_voltage_bus_count_obj = summary.get("ignored_voltage_bus_count", 0)
+    ignored_branch_count_obj = summary.get("ignored_branch_count", 0)
+    under_voltage_bus_count_obj = summary.get("under_voltage_bus_count", 0)
+    over_voltage_bus_count_obj = summary.get("over_voltage_bus_count", 0)
+    overloaded_branch_count_obj = summary.get("overloaded_branch_count", 0)
+    top_low_voltage_buses_obj = summary.get("top_low_voltage_buses", list())
+    top_high_voltage_buses_obj = summary.get("top_high_voltage_buses", list())
+    top_loaded_branches_obj = summary.get("top_loaded_branches", list())
+
+    if isinstance(top_low_voltage_buses_obj, list):
+        top_low_voltage_buses = top_low_voltage_buses_obj
+    else:
+        pass
+
+    if isinstance(top_high_voltage_buses_obj, list):
+        top_high_voltage_buses = top_high_voltage_buses_obj
+    else:
+        pass
+
+    if isinstance(top_loaded_branches_obj, list):
+        top_loaded_branches = top_loaded_branches_obj
+    else:
+        pass
+
+    if isinstance(converged_obj, bool):
+        if converged_obj:
+            lines.append("The power flow converged.")
+        else:
+            issues.append("The power flow did not converge.")
+    else:
+        pass
+
+    if isinstance(min_voltage_obj, (int, float)):
+        lines.append(f"Minimum voltage: {float(min_voltage_obj):.3f} pu.")
+        if isinstance(under_voltage_bus_count_obj, int) and (under_voltage_bus_count_obj > 0):
+            issues.append(
+                f"There are {int(under_voltage_bus_count_obj)} buses below 0.95 pu, with a minimum valid voltage of {float(min_voltage_obj):.3f} pu."
+            )
+        else:
+            pass
+    else:
+        lines.append("Minimum voltage: unavailable from the valid solved bus values.")
+
+    if isinstance(max_voltage_obj, (int, float)):
+        lines.append(f"Maximum voltage: {float(max_voltage_obj):.3f} pu.")
+        if isinstance(over_voltage_bus_count_obj, int) and (over_voltage_bus_count_obj > 0):
+            issues.append(
+                f"There are {int(over_voltage_bus_count_obj)} buses above 1.05 pu, with a maximum valid voltage of {float(max_voltage_obj):.3f} pu."
+            )
+        else:
+            pass
+    else:
+        lines.append("Maximum voltage: unavailable from the valid solved bus values.")
+
+    if isinstance(max_loading_obj, (int, float)):
+        lines.append(f"Maximum branch loading: {float(max_loading_obj):.1f}%.")
+        if isinstance(overloaded_branch_count_obj, int) and (overloaded_branch_count_obj > 0):
+            issues.append(
+                f"There are {int(overloaded_branch_count_obj)} monitored branches above 100% loading, with a maximum valid loading of {float(max_loading_obj):.1f}%."
+            )
+        else:
+            if float(max_loading_obj) > 90.0:
+                issues.append(
+                    f"The system is close to a thermal limit because the maximum branch loading is {float(max_loading_obj):.1f}%."
+                )
+            else:
+                pass
+    else:
+        lines.append("Maximum branch loading: unavailable from the monitored branch set.")
+
+    if isinstance(ignored_voltage_bus_count_obj, int) and (ignored_voltage_bus_count_obj > 0):
+        lines.append(
+            f"I ignored {int(ignored_voltage_bus_count_obj)} buses with invalid or zero voltage values in the summary."
+        )
+    else:
+        pass
+
+    if isinstance(ignored_branch_count_obj, int) and (ignored_branch_count_obj > 0):
+        lines.append(
+            f"I ignored {int(ignored_branch_count_obj)} branches without a valid positive rating or without finite loading values."
+        )
+    else:
+        pass
+
+    if len(top_low_voltage_buses) > 0:
+        top_issue_parts = list()
+        index = 0
+
+        while index < len(top_low_voltage_buses):
+            name_obj: object = top_low_voltage_buses[index].get("name", "")
+            voltage_obj: object = top_low_voltage_buses[index].get("voltage_pu", None)
+
+            if isinstance(voltage_obj, (int, float)):
+                top_issue_parts.append(f"{str(name_obj)} ({float(voltage_obj):.3f} pu)")
+            else:
+                pass
+
+            index += 1
+
+        if len(top_issue_parts) > 0:
+            lines.append("Worst undervoltage buses: " + ", ".join(top_issue_parts) + ".")
+        else:
+            pass
+    else:
+        pass
+
+    if len(top_high_voltage_buses) > 0:
+        top_issue_parts = list()
+        index = 0
+
+        while index < len(top_high_voltage_buses):
+            name_obj = top_high_voltage_buses[index].get("name", "")
+            voltage_obj = top_high_voltage_buses[index].get("voltage_pu", None)
+
+            if isinstance(voltage_obj, (int, float)):
+                top_issue_parts.append(f"{str(name_obj)} ({float(voltage_obj):.3f} pu)")
+            else:
+                pass
+
+            index += 1
+
+        if len(top_issue_parts) > 0:
+            lines.append("Worst overvoltage buses: " + ", ".join(top_issue_parts) + ".")
+        else:
+            pass
+    else:
+        pass
+
+    if len(top_loaded_branches) > 0:
+        top_issue_parts = list()
+        index = 0
+
+        while index < len(top_loaded_branches):
+            name_obj = top_loaded_branches[index].get("name", "")
+            loading_obj = top_loaded_branches[index].get("loading_pct", None)
+
+            if isinstance(loading_obj, (int, float)):
+                top_issue_parts.append(f"{str(name_obj)} ({float(loading_obj):.1f}%)")
+            else:
+                pass
+
+            index += 1
+
+        if len(top_issue_parts) > 0:
+            lines.append("Most heavily loaded monitored branches: " + ", ".join(top_issue_parts) + ".")
+        else:
+            pass
+    else:
+        pass
+
+    if isinstance(error_count_obj, int) and (error_count_obj > 0):
+        issues.append(f"The study logger reported {error_count_obj} errors.")
+    else:
+        pass
+
+    if isinstance(warning_count_obj, int) and (warning_count_obj > 0):
+        issues.append(f"The study logger reported {warning_count_obj} warnings.")
+    else:
+        pass
+
+    if len(issues) > 0:
+        lines.append("")
+        lines.append("What looks wrong:")
+        lines.extend(issues)
+    else:
+        lines.append("")
+        lines.append("I do not see an obvious issue in the current high-level summary of the loaded results.")
+
+    return "\n".join(lines)
+
+
+def analyze_current_results_from_app(
+    app: "SimulationsMain",
+    message_text: Optional[str] = None,
+) -> ToolExecutionResult:
+    """
+    Analyze the currently available study results directly from the live app.
+
+    :param app: VeraGrid main window.
+    :param message_text: Optional user message naming the target study.
+    :returns: Tool execution result.
+    """
+    study_name: Optional[str] = get_preferred_study_name_for_result_analysis(
+        app=app,
+        message_text=message_text,
+    )
+    ok_summary: bool
+    payload: dict[str, object]
+    error_message: str
+    assistant_text: str
+
+    if study_name is None:
+        return ToolExecutionResult(
+            success=False,
+            error_code=ToolErrorCode.EXECUTION_ERROR,
+            error_message="There are no study results available in the current session.",
+            payload_json="{}",
+        )
+    else:
+        ok_summary, payload, error_message = build_study_summary_payload_from_app(app, study_name)
+
+    if not ok_summary:
+        return ToolExecutionResult(
+            success=False,
+            error_code=ToolErrorCode.EXECUTION_ERROR,
+            error_message=error_message,
+            payload_json="{}",
+        )
+    else:
+        assistant_text = build_study_results_analysis_text(payload)
+        return ToolExecutionResult(
+            success=True,
+            error_code=ToolErrorCode.NONE,
+            error_message="",
+            payload_json=json.dumps(
+                {
+                    "study_name": study_name,
+                    "analysis_text": assistant_text,
+                    "study_summary": payload,
+                },
+                ensure_ascii=False,
+            ),
+        )
+
+
 class MainThreadGridDiagnosticsRunner(QtCore.QObject):
     """
     Main-thread bridge used to run VeraGrid grid diagnostics safely from the AI worker.
@@ -705,7 +1192,10 @@ class MainThreadGridDiagnosticsRunner(QtCore.QObject):
         :param max_issue_count: Maximum issue count to include in the payload.
         :returns: Tool execution result.
         """
-        self.request_run.emit(analyze_time_series, max_issue_count)
+        if QtCore.QThread.currentThread() == self.thread():
+            self._execute_grid_diagnostics(analyze_time_series, max_issue_count)
+        else:
+            self.request_run.emit(analyze_time_series, max_issue_count)
         return self._pending_result
 
     @QtCore.Slot(object, object)
@@ -1217,6 +1707,26 @@ def normalize_simulation_request_text(message_text: str) -> str:
     :returns: Normalized text.
     """
     normalized_text: str = message_text.lower().replace("-", " ").replace("_", " ")
+    typo_replacements: list[tuple[str, str]] = list()
+    replacement_index: int = 0
+
+    typo_replacements.append(("reuslts", "results"))
+    typo_replacements.append(("resutls", "results"))
+    typo_replacements.append(("resut", "result"))
+    typo_replacements.append(("anaylize", "analyze"))
+    typo_replacements.append(("analize", "analyze"))
+    typo_replacements.append(("analysze", "analyze"))
+    typo_replacements.append(("powre flow", "power flow"))
+    typo_replacements.append(("powef flow", "power flow"))
+
+    while replacement_index < len(typo_replacements):
+        normalized_text = normalized_text.replace(
+            typo_replacements[replacement_index][0],
+            typo_replacements[replacement_index][1],
+        )
+        replacement_index += 1
+
+    normalized_text = " ".join(normalized_text.split())
     return normalized_text
 
 
@@ -1281,6 +1791,45 @@ def detect_direct_simulation_command(message_text: str) -> Optional[AiSimulation
     return None
 
 
+def detect_requested_study_name(message_text: str) -> Optional[str]:
+    """
+    Detect a study reference from a user message without requiring a run verb.
+
+    :param message_text: User message text.
+    :returns: Matching study name or None.
+    """
+    definitions: list[SimulationCommandDefinition] = build_simulation_command_definitions()
+    normalized_text: str = normalize_simulation_request_text(message_text)
+    definition_index: int = 0
+    best_match_length: int = 0
+    best_match_study_name: Optional[str] = None
+
+    while definition_index < len(definitions):
+        aliases: list[str] = definitions[definition_index].aliases
+        alias_index: int = 0
+
+        while alias_index < len(aliases):
+            alias_text: str = aliases[alias_index]
+            running_simulation_tpe: Optional[SimulationTypes] = definitions[definition_index].running_simulation_tpe
+
+            if alias_text in normalized_text:
+                if running_simulation_tpe is None:
+                    pass
+                else:
+                    if len(alias_text) > best_match_length:
+                        best_match_length = len(alias_text)
+                        best_match_study_name = running_simulation_tpe.value
+                    else:
+                        pass
+            else:
+                pass
+
+            alias_index += 1
+        definition_index += 1
+
+    return best_match_study_name
+
+
 def build_run_simulation_schema_json() -> str:
     """
     Build the JSON schema for the generic simulation tool.
@@ -1323,7 +1872,9 @@ def build_run_simulation_tool_description() -> str:
     """
     return (
         "Run a VeraGrid simulation or analysis on the active project using the current GUI options. "
-        "Choose the exact simulation_name enum value that matches the requested study."
+        "Choose the exact simulation_name enum value that matches the requested study. "
+        "Use this only when the user explicitly asks to run, start, launch, solve, calculate, or re-run a study. "
+        "Do not use this tool when the user is asking to inspect, summarize, diagnose, or explain already available results."
     )
 
 
@@ -1358,6 +1909,126 @@ def build_simulation_tool_result(
         error_message="",
         payload_json=json.dumps(payload, ensure_ascii=False),
     )
+
+
+def build_simulation_completion_tool_result(
+    definition: SimulationCommandDefinition,
+    status_payload: dict[str, object],
+    timed_out: bool,
+) -> ToolExecutionResult:
+    """
+    Build the post-run simulation tool response payload.
+
+    :param definition: Simulation command definition.
+    :param status_payload: Runtime simulation status payload.
+    :param timed_out: Whether waiting for completion timed out.
+    :returns: Tool execution result.
+    """
+    payload: dict[str, object] = dict()
+    has_results_obj: object = status_payload.get("has_results", False)
+    is_running_obj: object = status_payload.get("is_running", False)
+    study_summary_obj: object = status_payload.get("study_summary", None)
+    driver_exists_obj: object = status_payload.get("driver_exists", False)
+    has_results: bool = bool(has_results_obj)
+    is_running: bool = bool(is_running_obj)
+    driver_exists: bool = bool(driver_exists_obj)
+    message_text: str
+
+    payload["simulation_name"] = definition.command.value
+    payload["display_name"] = definition.display_name
+    payload["study_name"] = status_payload.get("study_name", None)
+    payload["started"] = True
+    payload["completed"] = (not timed_out) and (not is_running)
+    payload["timed_out"] = timed_out
+    payload["is_running"] = is_running
+    payload["has_results"] = has_results
+    payload["driver_exists"] = driver_exists
+    payload["study_summary"] = study_summary_obj
+
+    if has_results:
+        message_text = f"{definition.display_name} finished and the results are now available."
+    else:
+        if timed_out:
+            message_text = (
+                f"{definition.display_name} started, but it is still running or the results are not ready yet."
+            )
+        else:
+            if driver_exists:
+                message_text = (
+                    f"{definition.display_name} finished, but VeraGrid did not expose results for that study."
+                )
+            else:
+                message_text = (
+                    f"{definition.display_name} started, but VeraGrid did not expose the study state afterwards."
+                )
+
+    payload["message"] = message_text
+
+    return ToolExecutionResult(
+        success=True,
+        error_code=ToolErrorCode.NONE,
+        error_message="",
+        payload_json=json.dumps(payload, ensure_ascii=False),
+    )
+
+
+def build_simulation_status_payload_from_app(
+    app: "SimulationsMain",
+    definition: SimulationCommandDefinition,
+) -> dict[str, object]:
+    """
+    Build the live runtime status payload for one simulation command.
+
+    :param app: VeraGrid main window.
+    :param definition: Simulation command definition.
+    :returns: Runtime status payload.
+    """
+    payload: dict[str, object] = dict()
+    driver: Any = None
+    results_obj: object = None
+    study_name: Optional[str]
+    ok_summary: bool
+    summary_payload: dict[str, object]
+    error_message: str
+
+    study_name = (
+        None
+        if definition.running_simulation_tpe is None
+        else definition.running_simulation_tpe.value
+    )
+    payload["simulation_name"] = definition.command.value
+    payload["study_name"] = study_name
+
+    if definition.running_simulation_tpe is None:
+        payload["is_running"] = False
+        payload["in_running_list"] = False
+        payload["driver_exists"] = False
+        payload["has_results"] = False
+        payload["study_summary"] = None
+        return payload
+    else:
+        pass
+
+    driver, results_obj = app.session.get_driver_results(definition.running_simulation_tpe)
+    payload["is_running"] = bool(app.session.is_this_running(definition.running_simulation_tpe))
+    payload["in_running_list"] = definition.running_simulation_tpe in app.stuff_running_now
+    payload["driver_exists"] = driver is not None
+    payload["has_results"] = results_obj is not None
+
+    if study_name is None:
+        payload["study_summary"] = None
+    else:
+        ok_summary, summary_payload, error_message = build_study_summary_payload_from_app(app, study_name)
+
+        if ok_summary:
+            payload["study_summary"] = summary_payload
+        else:
+            payload["study_summary"] = {
+                "study_name": study_name,
+                "error": error_message,
+            }
+
+    return payload
 
 
 def execute_ai_simulation_command(app: "SimulationsMain", command: AiSimulationCommand) -> None:
@@ -1571,10 +2242,12 @@ class MainThreadSimulationRunner(QtCore.QObject):
     """
 
     request_run = QtCore.Signal(object)
+    request_status = QtCore.Signal(object)
 
     __slots__ = (
         "_app",
         "_pending_result",
+        "_pending_status_payload",
     )
 
     def __init__(self, app: "SimulationsMain") -> None:
@@ -1591,8 +2264,13 @@ class MainThreadSimulationRunner(QtCore.QObject):
             error_message="The simulation tool did not run.",
             payload_json="{}",
         )
+        self._pending_status_payload: dict[str, object] = dict()
         self.request_run.connect(
             self._execute_requested_simulation,
+            QtCore.Qt.ConnectionType.BlockingQueuedConnection,
+        )
+        self.request_status.connect(
+            self._collect_requested_status,
             QtCore.Qt.ConnectionType.BlockingQueuedConnection,
         )
 
@@ -1603,8 +2281,78 @@ class MainThreadSimulationRunner(QtCore.QObject):
         :param command: Simulation command to execute.
         :returns: Tool execution result.
         """
-        self.request_run.emit(command)
-        return self._pending_result
+        definition: Optional[SimulationCommandDefinition] = find_simulation_command_definition(command)
+        start_time_s: float = time.monotonic()
+        timeout_s: float = 120.0
+        startup_grace_s: float = 2.0
+        status_payload: dict[str, object]
+        elapsed_s: float
+
+        if QtCore.QThread.currentThread() == self.thread():
+            self._execute_requested_simulation(command)
+        else:
+            self.request_run.emit(command)
+
+        if not self._pending_result.success:
+            return self._pending_result
+        else:
+            pass
+
+        if definition is None:
+            return self._pending_result
+        else:
+            pass
+
+        if definition.running_simulation_tpe is None:
+            return self._pending_result
+        else:
+            pass
+
+        while (time.monotonic() - start_time_s) < timeout_s:
+            status_payload = self.get_simulation_status(command)
+            elapsed_s = time.monotonic() - start_time_s
+
+            if bool(status_payload.get("is_running", False)) or bool(status_payload.get("in_running_list", False)):
+                time.sleep(0.25)
+            else:
+                if (not bool(status_payload.get("driver_exists", False))) and (elapsed_s < startup_grace_s):
+                    time.sleep(0.25)
+                    continue
+                else:
+                    pass
+
+                if bool(status_payload.get("has_results", False)):
+                    return build_simulation_completion_tool_result(
+                        definition=definition,
+                        status_payload=status_payload,
+                        timed_out=False,
+                    )
+                else:
+                    return build_simulation_completion_tool_result(
+                        definition=definition,
+                        status_payload=status_payload,
+                        timed_out=False,
+                    )
+
+        status_payload = self.get_simulation_status(command)
+        return build_simulation_completion_tool_result(
+            definition=definition,
+            status_payload=status_payload,
+            timed_out=True,
+        )
+
+    def get_simulation_status(self, command: AiSimulationCommand) -> dict[str, object]:
+        """
+        Query the live simulation status on the GUI thread.
+
+        :param command: Simulation command to inspect.
+        :returns: Runtime status payload.
+        """
+        if QtCore.QThread.currentThread() == self.thread():
+            self._collect_requested_status(command)
+        else:
+            self.request_status.emit(command)
+        return self._pending_status_payload
 
     @QtCore.Slot(object)
     def _execute_requested_simulation(self, command_obj: object) -> None:
@@ -1623,6 +2371,29 @@ class MainThreadSimulationRunner(QtCore.QObject):
                 error_message="Invalid simulation command.",
                 payload_json="{}",
             )
+
+    @QtCore.Slot(object)
+    def _collect_requested_status(self, command_obj: object) -> None:
+        """
+        Collect the live runtime status for one simulation command on the GUI thread.
+
+        :param command_obj: Simulation command object.
+        :returns: Nothing.
+        """
+        definition: Optional[SimulationCommandDefinition]
+
+        if isinstance(command_obj, AiSimulationCommand):
+            definition = find_simulation_command_definition(command_obj)
+
+            if definition is None:
+                self._pending_status_payload = dict()
+            else:
+                self._pending_status_payload = build_simulation_status_payload_from_app(
+                    self._app,
+                    definition,
+                )
+        else:
+            self._pending_status_payload = dict()
 
 
 class LiveRunSimulationTool:
@@ -1771,12 +2542,85 @@ class AiTurnExecutionResponse:
         self.error_message: str = error_message
 
 
+class DirectSimulationAnalysisRequest:
+    """
+    Input bundle for one deterministic simulation-and-analysis execution.
+
+    :param tool_registry: Live tool registry.
+    :param base_history: Transcript before the current user turn.
+    :param user_message: User message.
+    :param simulation_command: Simulation command to execute.
+    """
+
+    __slots__ = (
+        "tool_registry",
+        "base_history",
+        "user_message",
+        "simulation_command",
+    )
+
+    def __init__(
+        self,
+        tool_registry: ToolRegistry,
+        base_history: list[ChatMessage],
+        user_message: str,
+        simulation_command: AiSimulationCommand,
+    ) -> None:
+        """
+        Store one deterministic simulation-and-analysis request.
+
+        :param tool_registry: Live tool registry.
+        :param base_history: Transcript before the current user turn.
+        :param user_message: User message.
+        :param simulation_command: Simulation command to execute.
+        """
+        self.tool_registry: ToolRegistry = tool_registry
+        self.base_history: list[ChatMessage] = base_history
+        self.user_message: str = user_message
+        self.simulation_command: AiSimulationCommand = simulation_command
+
+
+class DirectSimulationAnalysisResponse:
+    """
+    Output bundle returned by the deterministic simulation-and-analysis worker path.
+
+    :param success: Execution success flag.
+    :param transcript: Final transcript.
+    :param error_message: Fatal execution error message.
+    """
+
+    __slots__ = (
+        "success",
+        "transcript",
+        "error_message",
+    )
+
+    def __init__(
+        self,
+        success: bool,
+        transcript: list[ChatMessage],
+        error_message: str,
+    ) -> None:
+        """
+        Store one deterministic simulation-and-analysis response.
+
+        :param success: Execution success flag.
+        :param transcript: Final transcript.
+        :param error_message: Fatal execution error message.
+        """
+        self.success: bool = success
+        self.transcript: list[ChatMessage] = transcript
+        self.error_message: str = error_message
+
+
 class AiTurnWorker(QtCore.QObject):
     """
     Background worker that executes AI turns in a dedicated QThread.
     """
 
     completed = QtCore.Signal(object)
+    partial_text_received = QtCore.Signal(str)
+    direct_simulation_analysis_completed = QtCore.Signal(object)
 
     __slots__ = (
         "_cached_provider",
@@ -1842,7 +2686,7 @@ class AiTurnWorker(QtCore.QObject):
             orchestrator: ConversationOrchestrator = ConversationOrchestrator(
                 provider=provider,
                 tool_registry=request.tool_registry,
-                max_rounds=4,
+                max_rounds=8,
             )
             result: ConversationRunResult = orchestrator.run(
                 system_prompt=request.system_prompt,
@@ -1851,6 +2695,7 @@ class AiTurnWorker(QtCore.QObject):
                 history=request.base_history,
                 approved_tool_name=request.approved_tool_name,
                 approved_arguments_json=request.approved_arguments_json,
+                text_delta_callback=self.partial_text_received.emit,
             )
             self.completed.emit(
                 AiTurnExecutionResponse(
@@ -1867,6 +2712,70 @@ class AiTurnWorker(QtCore.QObject):
                     success=False,
                     request=request,
                     result=failure_result,
+                    error_message=str(exc),
+                )
+            )
+
+    @QtCore.Slot(object)
+    def run_direct_simulation_analysis(self, request: DirectSimulationAnalysisRequest) -> None:
+        """
+        Execute one deterministic simulation-and-analysis command in the worker thread.
+
+        :param request: Deterministic execution request.
+        :returns: Nothing.
+        """
+        transcript: list[ChatMessage] = copy_chat_history(request.base_history)
+        run_result: ToolExecutionResult
+        run_payload_obj: object
+        study_summary_obj: object
+        assistant_text: str
+
+        try:
+            run_result = request.tool_registry.execute(
+                tool_name="run_simulation",
+                arguments_json=json.dumps(
+                    {
+                        "simulation_name": request.simulation_command.value,
+                    },
+                    ensure_ascii=False,
+                ),
+                is_approved=False,
+            )
+            transcript.append(ChatMessage(role="user", content=request.user_message, name=None))
+
+            if run_result.success:
+                try:
+                    run_payload_obj = json.loads(run_result.payload_json)
+                except json.JSONDecodeError:
+                    run_payload_obj = dict()
+
+                if isinstance(run_payload_obj, dict):
+                    study_summary_obj = run_payload_obj.get("study_summary", None)
+
+                    if isinstance(study_summary_obj, dict):
+                        assistant_text = build_study_results_analysis_text(study_summary_obj)
+                    else:
+                        assistant_text = extract_assistant_message_from_tool_result(run_result)
+                else:
+                    assistant_text = extract_assistant_message_from_tool_result(run_result)
+            else:
+                assistant_text = run_result.error_message
+
+            transcript.append(ChatMessage(role="assistant", content=assistant_text, name=None))
+            self.direct_simulation_analysis_completed.emit(
+                DirectSimulationAnalysisResponse(
+                    success=run_result.success,
+                    transcript=transcript,
+                    error_message="" if run_result.success else run_result.error_message,
+                )
+            )
+        except Exception as exc:
+            transcript.append(ChatMessage(role="user", content=request.user_message, name=None))
+            transcript.append(ChatMessage(role="assistant", content=str(exc), name=None))
+            self.direct_simulation_analysis_completed.emit(
+                DirectSimulationAnalysisResponse(
+                    success=False,
+                    transcript=transcript,
                     error_message=str(exc),
                 )
             )
@@ -2147,9 +3056,18 @@ def sanitize_runtime_json_value(value: object) -> object:
         sample_count: int = min(int(flat_value.shape[0]), 8)
         sample_values: list[object] = list()
         index: int = 0
+        sample_item: object
+        normalized_item: object
 
         while index < sample_count:
-            sample_values.append(sanitize_runtime_json_value(flat_value[index].item()))
+            sample_item = flat_value[index]
+
+            if isinstance(sample_item, np.generic):
+                normalized_item = sample_item.item()
+            else:
+                normalized_item = sample_item
+
+            sample_values.append(sanitize_runtime_json_value(normalized_item))
             index += 1
 
         return {
@@ -2297,44 +3215,340 @@ def get_current_solver_name_from_app(app: "SimulationsMain") -> Optional[str]:
         return None
 
 
-def summarize_power_flow_results(results: PowerFlowResults) -> dict[str, float | bool]:
+def sort_voltage_entry_ascending(item: dict[str, object]) -> float:
+    """
+    Build the sorting key for increasing bus voltage severity.
+
+    :param item: Voltage-entry dictionary.
+    :returns: Sorting key.
+    """
+    voltage_obj: object = item.get("voltage_pu", 0.0)
+
+    if isinstance(voltage_obj, (int, float)):
+        return float(voltage_obj)
+    else:
+        return float("inf")
+
+
+def sort_voltage_entry_descending(item: dict[str, object]) -> float:
+    """
+    Build the sorting key for decreasing bus voltage severity.
+
+    :param item: Voltage-entry dictionary.
+    :returns: Sorting key.
+    """
+    voltage_obj: object = item.get("voltage_pu", 0.0)
+
+    if isinstance(voltage_obj, (int, float)):
+        return -float(voltage_obj)
+    else:
+        return 0.0
+
+
+def sort_loading_entry_descending(item: dict[str, object]) -> float:
+    """
+    Build the sorting key for decreasing branch loading severity.
+
+    :param item: Loading-entry dictionary.
+    :returns: Sorting key.
+    """
+    loading_obj: object = item.get("loading_pct", 0.0)
+
+    if isinstance(loading_obj, (int, float)):
+        return -float(loading_obj)
+    else:
+        return 0.0
+
+
+def build_branch_rate_values_from_app(
+    app: "SimulationsMain",
+    expected_count: int,
+) -> np.ndarray:
+    """
+    Build the branch thermal-rate vector aligned with the branch-result arrays.
+
+    :param app: VeraGrid main window.
+    :param expected_count: Expected branch count.
+    :returns: Branch-rate vector.
+    """
+    branches: list[Any] = list(app.circuit.get_branches(add_hvdc=False, add_vsc=False, add_switch=True))
+    rates: np.ndarray = np.full(expected_count, np.nan, dtype=float)
+    index: int = 0
+    item_count: int = min(expected_count, len(branches))
+
+    while index < item_count:
+        rate_obj: object = branches[index].rate
+
+        if isinstance(rate_obj, (int, float)):
+            rates[index] = float(rate_obj)
+        else:
+            pass
+
+        index += 1
+
+    return rates
+
+
+def build_valid_bus_voltage_entries(
+    bus_name_values: Any,
+    voltage_values: np.ndarray,
+) -> tuple[list[dict[str, object]], int]:
+    """
+    Build valid per-bus voltage entries from one result array.
+
+    :param bus_name_values: Bus names aligned with the voltage array.
+    :param voltage_values: Complex bus-voltage array.
+    :returns: Valid voltage entries and ignored-entry count.
+    """
+    entries: list[dict[str, object]] = list()
+    ignored_entry_count: int = 0
+    index: int = 0
+    item_count: int = min(len(bus_name_values), int(voltage_values.shape[0]))
+
+    while index < item_count:
+        voltage_abs_value: float = float(np.abs(voltage_values[index]))
+
+        if np.isfinite(voltage_abs_value) and (voltage_abs_value > 1e-6):
+            entries.append(
+                {
+                    "name": str(bus_name_values[index]),
+                    "voltage_pu": voltage_abs_value,
+                }
+            )
+        else:
+            ignored_entry_count += 1
+
+        index += 1
+
+    return entries, ignored_entry_count
+
+
+def build_valid_branch_loading_entries(
+    branch_name_values: Any,
+    loading_values: np.ndarray,
+    branch_rate_values: np.ndarray,
+) -> tuple[list[dict[str, object]], int]:
+    """
+    Build valid per-branch loading entries from one result array.
+
+    :param branch_name_values: Branch names aligned with the loading array.
+    :param loading_values: Complex branch-loading array.
+    :param branch_rate_values: Branch-rate vector aligned with the loading array.
+    :returns: Valid loading entries and ignored-entry count.
+    """
+    entries: list[dict[str, object]] = list()
+    ignored_entry_count: int = 0
+    index: int = 0
+    item_count: int = min(
+        len(branch_name_values),
+        int(loading_values.shape[0]),
+        int(branch_rate_values.shape[0]),
+    )
+
+    while index < item_count:
+        rate_value: float = float(branch_rate_values[index])
+        loading_pct_value: float = float(np.abs(loading_values[index]) * 100.0)
+
+        if np.isfinite(rate_value) and (rate_value > 1e-6):
+            if np.isfinite(loading_pct_value):
+                entries.append(
+                    {
+                        "name": str(branch_name_values[index]),
+                        "loading_pct": loading_pct_value,
+                        "rate_mva": rate_value,
+                    }
+                )
+            else:
+                ignored_entry_count += 1
+        else:
+            ignored_entry_count += 1
+
+        index += 1
+
+    return entries, ignored_entry_count
+
+
+def limit_sorted_entries(
+    entries: list[dict[str, object]],
+    limit: int,
+    sort_key: Any,
+) -> list[dict[str, object]]:
+    """
+    Sort and trim one entry list without mutating the source list.
+
+    :param entries: Source entry list.
+    :param limit: Maximum entry count.
+    :param sort_key: Sorting function.
+    :returns: Sorted limited list.
+    """
+    copied_entries: list[dict[str, object]] = list(entries)
+
+    copied_entries.sort(key=sort_key)
+    return copied_entries[:limit]
+
+
+def summarize_power_flow_results(
+    app: "SimulationsMain",
+    results: PowerFlowResults,
+) -> dict[str, object]:
     """
     Summarize one steady-state power-flow result set.
 
+    :param app: VeraGrid main window.
     :param results: Power-flow results instance.
     :returns: Numeric summary dictionary.
     """
-    voltage_abs: np.ndarray = np.abs(results.voltage)
-    loading_abs: np.ndarray = np.abs(results.loading) * 100.0
+    summary: dict[str, object] = dict()
+    branch_rate_values: np.ndarray = build_branch_rate_values_from_app(app, len(results.branch_names))
+    voltage_entries: list[dict[str, object]]
+    ignored_voltage_entry_count: int
+    loading_entries: list[dict[str, object]]
+    ignored_loading_entry_count: int
+    low_voltage_entries: list[dict[str, object]] = list()
+    high_voltage_entries: list[dict[str, object]] = list()
+    overloaded_entries: list[dict[str, object]] = list()
+    voltage_index: int = 0
+    loading_index: int = 0
 
-    return {
-        "converged": bool(results.converged),
-        "min_voltage_pu": float(np.min(voltage_abs)),
-        "max_voltage_pu": float(np.max(voltage_abs)),
-        "max_branch_loading_pct": float(np.max(loading_abs)),
-        "iterations": float(results.iterations),
-        "elapsed_s": float(results.elapsed),
-    }
+    voltage_entries, ignored_voltage_entry_count = build_valid_bus_voltage_entries(
+        bus_name_values=results.bus_names,
+        voltage_values=results.voltage,
+    )
+    loading_entries, ignored_loading_entry_count = build_valid_branch_loading_entries(
+        branch_name_values=results.branch_names,
+        loading_values=results.loading,
+        branch_rate_values=branch_rate_values,
+    )
+
+    while voltage_index < len(voltage_entries):
+        voltage_value_obj: object = voltage_entries[voltage_index].get("voltage_pu", None)
+
+        if isinstance(voltage_value_obj, (int, float)):
+            if float(voltage_value_obj) < 0.95:
+                low_voltage_entries.append(voltage_entries[voltage_index])
+            else:
+                if float(voltage_value_obj) > 1.05:
+                    high_voltage_entries.append(voltage_entries[voltage_index])
+                else:
+                    pass
+        else:
+            pass
+
+        voltage_index += 1
+
+    while loading_index < len(loading_entries):
+        loading_value_obj: object = loading_entries[loading_index].get("loading_pct", None)
+
+        if isinstance(loading_value_obj, (int, float)) and (float(loading_value_obj) > 100.0):
+            overloaded_entries.append(loading_entries[loading_index])
+        else:
+            pass
+
+        loading_index += 1
+
+    summary["converged"] = bool(results.converged)
+    summary["iterations"] = float(results.iterations)
+    summary["elapsed_s"] = float(results.elapsed)
+    summary["valid_voltage_bus_count"] = len(voltage_entries)
+    summary["ignored_voltage_bus_count"] = ignored_voltage_entry_count
+    summary["monitored_branch_count"] = len(loading_entries)
+    summary["ignored_branch_count"] = ignored_loading_entry_count
+    summary["under_voltage_bus_count"] = len(low_voltage_entries)
+    summary["over_voltage_bus_count"] = len(high_voltage_entries)
+    summary["overloaded_branch_count"] = len(overloaded_entries)
+    summary["top_low_voltage_buses"] = limit_sorted_entries(
+        entries=low_voltage_entries,
+        limit=5,
+        sort_key=sort_voltage_entry_ascending,
+    )
+    summary["top_high_voltage_buses"] = limit_sorted_entries(
+        entries=high_voltage_entries,
+        limit=5,
+        sort_key=sort_voltage_entry_descending,
+    )
+    summary["top_loaded_branches"] = limit_sorted_entries(
+        entries=loading_entries,
+        limit=5,
+        sort_key=sort_loading_entry_descending,
+    )
+
+    if len(voltage_entries) > 0:
+        sorted_voltage_entries: list[dict[str, object]] = limit_sorted_entries(
+            entries=voltage_entries,
+            limit=len(voltage_entries),
+            sort_key=sort_voltage_entry_ascending,
+        )
+        summary["min_voltage_pu"] = sorted_voltage_entries[0]["voltage_pu"]
+        summary["max_voltage_pu"] = sorted_voltage_entries[-1]["voltage_pu"]
+    else:
+        summary["min_voltage_pu"] = None
+        summary["max_voltage_pu"] = None
+
+    if len(loading_entries) > 0:
+        sorted_loading_entries: list[dict[str, object]] = limit_sorted_entries(
+            entries=loading_entries,
+            limit=len(loading_entries),
+            sort_key=sort_loading_entry_descending,
+        )
+        summary["max_branch_loading_pct"] = sorted_loading_entries[0]["loading_pct"]
+    else:
+        summary["max_branch_loading_pct"] = None
+
+    return summary
 
 
 def summarize_power_flow_time_series_results(
+    app: "SimulationsMain",
     results: PowerFlowTimeSeriesResults,
-) -> dict[str, float | int]:
+) -> dict[str, object]:
     """
     Summarize one power-flow time-series result set.
 
+    :param app: VeraGrid main window.
     :param results: Time-series power-flow results instance.
     :returns: Numeric summary dictionary.
     """
-    voltage_abs: np.ndarray = np.abs(results.voltage)
-    loading_abs: np.ndarray = np.abs(results.loading) * 100.0
+    summary: dict[str, object] = dict()
+    branch_rate_values: np.ndarray = build_branch_rate_values_from_app(app, int(results.loading.shape[1]))
+    voltage_abs_values: np.ndarray = np.abs(results.voltage)
+    valid_voltage_mask: np.ndarray = np.isfinite(voltage_abs_values) & (voltage_abs_values > 1e-6)
+    loading_abs_values: np.ndarray = np.abs(results.loading) * 100.0
+    valid_rate_mask: np.ndarray = np.isfinite(branch_rate_values) & (branch_rate_values > 1e-6)
+    valid_loading_mask: np.ndarray = np.zeros_like(loading_abs_values, dtype=bool)
+    valid_voltage_values: np.ndarray = voltage_abs_values[valid_voltage_mask]
+    valid_loading_values: np.ndarray
 
-    return {
-        "time_steps": int(results.voltage.shape[0]),
-        "min_voltage_pu": float(np.min(voltage_abs)),
-        "max_voltage_pu": float(np.max(voltage_abs)),
-        "max_branch_loading_pct": float(np.max(loading_abs)),
-    }
+    if loading_abs_values.shape[1] == valid_rate_mask.shape[0]:
+        valid_loading_mask = np.isfinite(loading_abs_values) & valid_rate_mask.reshape(1, -1)
+        valid_loading_values = loading_abs_values[valid_loading_mask]
+    else:
+        valid_loading_values = np.array([], dtype=float)
+
+    summary["time_steps"] = int(results.voltage.shape[0])
+    summary["valid_voltage_value_count"] = int(valid_voltage_values.size)
+    summary["ignored_voltage_value_count"] = int(voltage_abs_values.size - valid_voltage_values.size)
+    summary["valid_loading_value_count"] = int(valid_loading_values.size)
+    summary["ignored_loading_value_count"] = int(loading_abs_values.size - valid_loading_values.size)
+    summary["ignored_branch_count"] = int(np.size(valid_rate_mask) - int(np.sum(valid_rate_mask)))
+
+    if hasattr(results, "converged_values"):
+        summary["converged_time_step_count"] = int(np.sum(results.converged_values))
+    else:
+        pass
+
+    if valid_voltage_values.size > 0:
+        summary["min_voltage_pu"] = float(np.min(valid_voltage_values))
+        summary["max_voltage_pu"] = float(np.max(valid_voltage_values))
+    else:
+        summary["min_voltage_pu"] = None
+        summary["max_voltage_pu"] = None
+
+    if valid_loading_values.size > 0:
+        summary["max_branch_loading_pct"] = float(np.max(valid_loading_values))
+    else:
+        summary["max_branch_loading_pct"] = None
+
+    return summary
 
 
 def build_logger_summary_payload(logger_obj: object | None) -> dict[str, object]:
@@ -2494,18 +3708,119 @@ def build_study_summary_payload_from_app(
         if results is None:
             payload["summary"] = dict()
         else:
-            payload["summary"] = summarize_power_flow_results(results)
+            payload["summary"] = summarize_power_flow_results(app=app, results=results)
     else:
         if driver.tpe == SimulationTypes.PowerFlowTimeSeries_run:
             _, results = app.session.power_flow_ts
             if results is None:
                 payload["summary"] = dict()
             else:
-                payload["summary"] = summarize_power_flow_time_series_results(results)
+                payload["summary"] = summarize_power_flow_time_series_results(app=app, results=results)
         else:
             payload["summary"] = dict()
 
     return True, payload, ""
+
+
+def build_name_sample_from_devices(devices: list[Any], limit: int) -> list[str]:
+    """
+    Build a compact name sample from one device collection.
+
+    :param devices: Device collection.
+    :param limit: Maximum sample count.
+    :returns: Device-name sample.
+    """
+    names: list[str] = list()
+    index: int = 0
+
+    while index < len(devices):
+        if len(names) >= limit:
+            index = len(devices)
+        else:
+            names.append(str(devices[index].name))
+        index += 1
+
+    return names
+
+
+def build_study_status_payloads_from_app(
+    app: "SimulationsMain",
+    available_studies: list[str],
+) -> list[dict[str, object]]:
+    """
+    Build one compact status payload for each available study.
+
+    :param app: VeraGrid main window.
+    :param available_studies: Available study names.
+    :returns: Study-status payloads.
+    """
+    items: list[dict[str, object]] = list()
+    index: int = 0
+
+    while index < len(available_studies):
+        study_name: str = available_studies[index]
+        driver: Any = app.session.get_driver_by_name(study_name)
+        item: dict[str, object] = dict()
+
+        item["study_name"] = study_name
+        item["driver_type"] = study_name
+        item["is_running"] = bool(driver is not None and app.session.is_this_running(driver.tpe))
+        item["has_results"] = bool(driver is not None and driver.results is not None)
+        item["result_class"] = None if driver is None or driver.results is None else str(driver.results.__class__.__name__)
+        items.append(item)
+        index += 1
+
+    return items
+
+
+def build_model_summary_payload_from_app(
+    app: "SimulationsMain",
+    selected_devices: list[Any],
+    selected_bus_tuples: list[tuple[int, Any, object | None]],
+    runtime_snapshot: RuntimeKnowledgeSnapshot,
+) -> dict[str, object]:
+    """
+    Build a compact project-summary payload from the live VeraGrid app.
+
+    :param app: VeraGrid main window.
+    :param selected_devices: Selected devices.
+    :param selected_bus_tuples: Selected bus tuples.
+    :param runtime_snapshot: Runtime snapshot.
+    :returns: Project-summary payload.
+    """
+    model_summary_payload: dict[str, object] = dict()
+
+    model_summary_payload["project_name"] = get_current_project_name_from_app(app)
+    model_summary_payload["active_study"] = get_current_study_name_from_app(app)
+    model_summary_payload["solver_name"] = get_current_solver_name_from_app(app)
+    model_summary_payload["selected_diagram"] = (
+        None
+        if app.get_selected_diagram_widget() is None
+        else str(app.get_selected_diagram_widget().__class__.__name__)
+    )
+    model_summary_payload["bus_count"] = int(app.circuit.get_bus_number())
+    model_summary_payload["branch_count"] = int(
+        app.circuit.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True)
+    )
+    model_summary_payload["load_count"] = int(app.circuit.get_loads_number())
+    model_summary_payload["generator_count"] = int(app.circuit.get_generators_number())
+    model_summary_payload["selected_device_count"] = len(selected_devices)
+    model_summary_payload["selected_bus_count"] = len(selected_bus_tuples)
+    model_summary_payload["selected_element_labels"] = build_selected_element_labels_from_app(app)
+    model_summary_payload["sample_bus_names"] = build_name_sample_from_devices(list(app.circuit.get_buses()), 8)
+    model_summary_payload["sample_branch_names"] = build_name_sample_from_devices(
+        list(app.circuit.get_branches(add_hvdc=False, add_vsc=False, add_switch=True)),
+        8,
+    )
+    model_summary_payload["sample_load_names"] = build_name_sample_from_devices(list(app.circuit.get_loads()), 8)
+    model_summary_payload["sample_generator_names"] = build_name_sample_from_devices(
+        list(app.circuit.get_generators()),
+        8,
+    )
+    model_summary_payload["runtime_category_names"] = runtime_snapshot.list_categories()
+    model_summary_payload["runtime_record_title_preview"] = runtime_snapshot.list_titles(32)
+
+    return model_summary_payload
 
 
 def build_live_tool_registry_from_app(app: "SimulationsMain") -> ToolRegistry:
@@ -2527,11 +3842,12 @@ def build_live_tool_registry_from_app(app: "SimulationsMain") -> ToolRegistry:
     selected_bus_idtags: set[str] = set()
     bus_records: list[dict[str, object]] = list()
     available_studies: list[str] = list()
+    study_status_items: list[dict[str, object]] = list()
     study_payload_by_name: dict[str, dict[str, object]] = dict()
     run_simulation_schema_json: str = build_run_simulation_schema_json()
     runtime_snapshot: RuntimeKnowledgeSnapshot = build_runtime_knowledge_snapshot(app)
-    runtime_category_names: list[str] = runtime_snapshot.list_categories()
-    runtime_record_titles: list[str] = runtime_snapshot.list_titles(32)
+    model_summary_payload: dict[str, object]
+    holistic_common_payload: dict[str, object] = dict()
     index: int = 0
 
     while index < len(selected_devices):
@@ -2553,18 +3869,12 @@ def build_live_tool_registry_from_app(app: "SimulationsMain") -> ToolRegistry:
         bus_records.append(record)
         index += 1
 
-    model_summary_payload: dict[str, object] = {
-        "project_name": get_current_project_name_from_app(app),
-        "active_study": get_current_study_name_from_app(app),
-        "solver_name": get_current_solver_name_from_app(app),
-        "selected_diagram": None if app.get_selected_diagram_widget() is None else str(app.get_selected_diagram_widget().__class__.__name__),
-        "bus_count": int(app.circuit.get_bus_number()),
-        "branch_count": int(app.circuit.get_branch_number(add_hvdc=False, add_vsc=False, add_switch=True)),
-        "load_count": int(app.circuit.get_loads_number()),
-        "generator_count": int(app.circuit.get_generators_number()),
-        "selected_device_count": len(selected_devices),
-        "selected_bus_count": len(selected_bus_tuples),
-    }
+    model_summary_payload = build_model_summary_payload_from_app(
+        app=app,
+        selected_devices=selected_devices,
+        selected_bus_tuples=selected_bus_tuples,
+        runtime_snapshot=runtime_snapshot,
+    )
 
     index = 0
     while index < len(app.session.get_available_drivers()):
@@ -2584,10 +3894,23 @@ def build_live_tool_registry_from_app(app: "SimulationsMain") -> ToolRegistry:
             }
         index += 1
 
+    study_status_items = build_study_status_payloads_from_app(app=app, available_studies=available_studies)
     model_summary_payload["available_studies"] = available_studies
     model_summary_payload["session_driver_count"] = len(app.session.get_available_drivers())
-    model_summary_payload["runtime_category_names"] = runtime_category_names
-    model_summary_payload["runtime_record_title_preview"] = runtime_record_titles
+    model_summary_payload["study_status_items"] = study_status_items
+
+    holistic_common_payload["project_summary"] = model_summary_payload
+    holistic_common_payload["selected_elements"] = {
+        "selected_devices": selected_device_records,
+        "selected_buses": selected_bus_records,
+    }
+    holistic_common_payload["session_overview"] = {
+        "available_studies": available_studies,
+        "study_status_items": study_status_items,
+        "session_driver_count": len(app.session.get_available_drivers()),
+        "runtime_category_names": runtime_snapshot.list_categories(),
+        "runtime_record_title_preview": runtime_snapshot.list_titles(32),
+    }
 
     registry.register(
         ToolSpec(
@@ -2605,6 +3928,28 @@ def build_live_tool_registry_from_app(app: "SimulationsMain") -> ToolRegistry:
             input_schema_json=json.dumps({"type": "object", "properties": dict(), "additionalProperties": False}),
             risk=ToolRisk.READ_ONLY,
             handler=SnapshotPayloadTool(json.dumps(model_summary_payload, ensure_ascii=False)),
+        )
+    )
+    registry.register(
+        ToolSpec(
+            name="get_holistic_grid_context",
+            description=(
+                "Get one merged VeraGrid context snapshot containing the current model inputs, "
+                "selection, session study status, and the chosen study results summary."
+            ),
+            input_schema_json=json.dumps(
+                {
+                    "type": "object",
+                    "properties": {"study_name": {"type": "string"}},
+                    "additionalProperties": False,
+                }
+            ),
+            risk=ToolRisk.READ_ONLY,
+            handler=SnapshotHolisticContextTool(
+                active_study=get_current_study_name_from_app(app),
+                common_payload=holistic_common_payload,
+                payload_by_study=study_payload_by_name,
+            ),
         )
     )
     registry.register(
@@ -2653,18 +3998,7 @@ def build_live_tool_registry_from_app(app: "SimulationsMain") -> ToolRegistry:
                 json.dumps(
                     {
                         "active_study": get_current_study_name_from_app(app),
-                        "items": [
-                            {
-                                "study_name": study_name,
-                                "driver_type": study_name,
-                                "is_running": bool(app.session.is_this_running(app.session.get_driver_by_name(study_name).tpe)),
-                                "has_results": bool(
-                                    app.session.get_driver_by_name(study_name) is not None
-                                    and app.session.get_driver_by_name(study_name).results is not None
-                                ),
-                            }
-                            for study_name in available_studies
-                        ],
+                        "items": study_status_items,
                     },
                     ensure_ascii=False,
                 )
@@ -2838,6 +4172,7 @@ class AiChatDialogue(QtWidgets.QDialog):
     """
 
     turn_execution_requested = QtCore.Signal(object)
+    direct_simulation_analysis_requested = QtCore.Signal(object)
     dialogue_visibility_changed = QtCore.Signal(bool)
 
     __slots__ = (
@@ -2859,6 +4194,8 @@ class AiChatDialogue(QtWidgets.QDialog):
         "_waiting_animation_index",
         "_waiting_status_base_text",
         "_allow_window_close",
+        "_stream_update_timer",
+        "_pending_stream_text_delta",
     )
 
     def __init__(
@@ -2913,7 +4250,14 @@ class AiChatDialogue(QtWidgets.QDialog):
         self._turn_running: bool = False
         self._turn_worker.moveToThread(self._turn_thread)
         self.turn_execution_requested.connect(self._turn_worker.run_request)
+        self.direct_simulation_analysis_requested.connect(
+            self._turn_worker.run_direct_simulation_analysis
+        )
         self._turn_worker.completed.connect(self._handle_turn_execution_response)
+        self._turn_worker.partial_text_received.connect(self._handle_partial_text_received)
+        self._turn_worker.direct_simulation_analysis_completed.connect(
+            self._handle_direct_simulation_analysis_response
+        )
         self._turn_thread.start()
         self._path_scan_timer: QtCore.QTimer = QtCore.QTimer(self)
         self._path_scan_timer.setSingleShot(True)
@@ -2921,8 +4265,13 @@ class AiChatDialogue(QtWidgets.QDialog):
         self._waiting_animation_index: int = 0
         self._waiting_status_base_text: str = ""
         self._allow_window_close: bool = False
+        self._stream_update_timer: QtCore.QTimer = QtCore.QTimer(self)
+        self._stream_update_timer.setInterval(60)
+        self._stream_update_timer.setSingleShot(True)
+        self._pending_stream_text_delta: str = ""
         self._waiting_animation_timer.setInterval(140)
         self._waiting_animation_timer.timeout.connect(self._advance_waiting_animation)
+        self._stream_update_timer.timeout.connect(self._flush_pending_stream_text_delta)
         self._path_scan_timer.timeout.connect(self._scan_local_model_path_if_directory)
         qt_application: Optional[QtWidgets.QApplication] = QtWidgets.QApplication.instance()
         if qt_application is None:
@@ -3611,6 +4960,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         command: Optional[AiSimulationCommand]
         result: ToolExecutionResult
         assistant_text: str
+        payload_obj: object
 
         if self._app is None:
             return False
@@ -3651,6 +5001,54 @@ class AiChatDialogue(QtWidgets.QDialog):
         else:
             pass
 
+        if is_results_analysis_request(message_text):
+            command = detect_direct_simulation_command(message_text)
+
+            if command is None:
+                result = analyze_current_results_from_app(
+                    app=self._app,
+                    message_text=message_text,
+                )
+                self._history.append(ChatMessage(role="user", content=message_text, name=None))
+
+                if result.success:
+                    try:
+                        payload_obj = json.loads(result.payload_json)
+                    except json.JSONDecodeError:
+                        payload_obj = dict()
+
+                    if isinstance(payload_obj, dict):
+                        analysis_text_obj: object = payload_obj.get("analysis_text", "")
+                        if isinstance(analysis_text_obj, str) and (len(analysis_text_obj) > 0):
+                            assistant_text = analysis_text_obj
+                        else:
+                            assistant_text = "I analyzed the current study results."
+                    else:
+                        assistant_text = "I analyzed the current study results."
+
+                    self._set_status_message("Finished analyzing the current study results.")
+                else:
+                    assistant_text = result.error_message
+                    self._set_status_message(result.error_message)
+
+                self._history.append(ChatMessage(role="assistant", content=assistant_text, name=None))
+                self._render_transcript()
+                return True
+            else:
+                # Mixed requests such as "run a power flow and analyze the results" must go through
+                # a deterministic worker path so the study can finish and the session can be inspected.
+                tool_registry: ToolRegistry = build_live_tool_registry_from_app(self._app)
+                self._tool_registry = tool_registry
+                self._run_direct_simulation_analysis(
+                    base_history=copy_chat_history(self._history),
+                    user_message=message_text,
+                    simulation_command=command,
+                    tool_registry=tool_registry,
+                )
+                return True
+        else:
+            pass
+
         command = detect_direct_simulation_command(message_text)
 
         if command is None:
@@ -3669,6 +5067,36 @@ class AiChatDialogue(QtWidgets.QDialog):
             self._history.append(ChatMessage(role="assistant", content=assistant_text, name=None))
             self._render_transcript()
             return True
+
+    def _run_direct_simulation_analysis(
+        self,
+        base_history: list[ChatMessage],
+        user_message: str,
+        simulation_command: AiSimulationCommand,
+        tool_registry: ToolRegistry,
+    ) -> None:
+        """
+        Execute one deterministic simulation-and-analysis command in the worker thread.
+
+        :param base_history: Transcript before the current user turn.
+        :param user_message: User message to process.
+        :param simulation_command: Simulation command to execute.
+        :param tool_registry: Live tool registry.
+        :returns: Nothing.
+        """
+        request: DirectSimulationAnalysisRequest = DirectSimulationAnalysisRequest(
+            tool_registry=tool_registry,
+            base_history=copy_chat_history(base_history),
+            user_message=user_message,
+            simulation_command=simulation_command,
+        )
+
+        self._pending_stream_text_delta = ""
+        self._stream_update_timer.stop()
+        self._set_turn_running(True)
+        self._show_pending_turn_preview(base_history=base_history, user_message=user_message)
+        self._set_status_message("Running simulation and analyzing the results...")
+        self.direct_simulation_analysis_requested.emit(request)
 
     def approve_pending_tool_call(self) -> None:
         """
@@ -3752,9 +5180,87 @@ class AiChatDialogue(QtWidgets.QDialog):
                     approved_tool_name=approved_tool_name,
                     approved_arguments_json=approved_arguments_json,
                 )
+                self._pending_stream_text_delta = ""
+                self._stream_update_timer.stop()
                 self._set_turn_running(True)
+                self._show_pending_turn_preview(base_history=base_history, user_message=user_message)
                 self._set_status_message("Running AI turn...")
                 self.turn_execution_requested.emit(request)
+
+    def _show_pending_turn_preview(
+        self,
+        base_history: list[ChatMessage],
+        user_message: str,
+    ) -> None:
+        """
+        Show an immediate provisional user/assistant exchange while the worker runs.
+
+        :param base_history: Transcript before the current user turn.
+        :param user_message: User message being processed.
+        :returns: Nothing.
+        """
+        provisional_history: list[ChatMessage] = copy_chat_history(base_history)
+
+        provisional_history.append(ChatMessage(role="user", content=user_message, name=None))
+        provisional_history.append(ChatMessage(role="assistant", content="...", name=None))
+        self._history = provisional_history
+        self._render_transcript()
+
+    @QtCore.Slot(str)
+    def _handle_partial_text_received(self, text_delta: str) -> None:
+        """
+        Collect streamed text deltas from the background worker.
+
+        :param text_delta: Streamed text delta.
+        :returns: Nothing.
+        """
+        if self._turn_running and (len(text_delta) > 0):
+            if self._waiting_status_base_text != "Generating response":
+                self._waiting_status_base_text = "Generating response"
+            else:
+                pass
+            self._pending_stream_text_delta += text_delta
+
+            if self._stream_update_timer.isActive():
+                pass
+            else:
+                self._stream_update_timer.start()
+        else:
+            pass
+
+    def _flush_pending_stream_text_delta(self) -> None:
+        """
+        Flush any buffered streamed text into the provisional assistant bubble.
+
+        :returns: Nothing.
+        """
+        if (not self._turn_running) or (len(self._pending_stream_text_delta) == 0):
+            self._pending_stream_text_delta = ""
+            return
+        else:
+            pass
+
+        if len(self._history) == 0:
+            self._pending_stream_text_delta = ""
+            return
+        else:
+            pass
+
+        last_message: ChatMessage = self._history[-1]
+
+        if last_message.role != "assistant":
+            self._pending_stream_text_delta = ""
+            return
+        else:
+            pass
+
+        if last_message.content == "...":
+            last_message.content = self._pending_stream_text_delta
+        else:
+            last_message.content += self._pending_stream_text_delta
+
+        self._pending_stream_text_delta = ""
+        self._render_transcript()
 
     def _set_turn_running(self, running: bool) -> None:
         """
@@ -3773,6 +5279,8 @@ class AiChatDialogue(QtWidgets.QDialog):
             self._waiting_animation_timer.start()
         else:
             self._waiting_animation_timer.stop()
+            self._stream_update_timer.stop()
+            self._pending_stream_text_delta = ""
             self.ui.send_button.setText("Send")
             self._refresh_pending_approval_widgets()
 
@@ -3799,6 +5307,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         """
         result: ConversationRunResult = response.result
 
+        self._flush_pending_stream_text_delta()
         self._set_turn_running(False)
         self._history = result.transcript
 
@@ -3817,6 +5326,28 @@ class AiChatDialogue(QtWidgets.QDialog):
             self._set_status_message("The backend requested tool approval, but approval UI is disabled.")
 
         self._refresh_pending_approval_widgets()
+        self._render_transcript()
+
+    @QtCore.Slot(object)
+    def _handle_direct_simulation_analysis_response(
+        self,
+        response: DirectSimulationAnalysisResponse,
+    ) -> None:
+        """
+        Collect the deterministic simulation-and-analysis callback and update the GUI state.
+
+        :param response: Deterministic worker response.
+        :returns: Nothing.
+        """
+        self._set_turn_running(False)
+        self._history = response.transcript
+        self._pending_state = None
+
+        if response.success:
+            self._set_status_message("Simulation completed and the results were analyzed.")
+        else:
+            self._set_status_message(response.error_message)
+
         self._render_transcript()
 
     def shutdown_turn_thread(self) -> None:
