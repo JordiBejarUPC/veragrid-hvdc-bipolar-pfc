@@ -181,6 +181,7 @@ class BaseMainGui(QMainWindow):
             parent=self,
             toolbar=self.ui.toolBar,
             actions=[self.ui.actionPower_flow,
+                     self.ui.actionPower_flow_3ph,
                      self.ui.actionLinearAnalysis,
                      self.ui.actionSigma_analysis],
             position=self.ui.actionPower_flow,
