@@ -478,6 +478,7 @@ def benchmark_sparse_backends(profile: SparseBenchmarkProfile = SparseBenchmarkP
 
         case_index += 1
 
+    # TODO: Andrés, fix this ASAP
     export_sparse_backend_benchmark(rows, build_sparse_backend_benchmark_file_stem(profile))
     return rows
 

@@ -56,9 +56,9 @@ class ControllableBranchParent(BranchParent):
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key='R', units='p.u.', tpe=float, definition='Total positive sequence resistance.',
-                      old_names=['R1', 'Rl']),
+               old_names=['R1', 'Rl']),
         GCProp(key='X', units='p.u.', tpe=float, definition='Total positive sequence reactance.',
-                      old_names=['X1', 'Xl']),
+               old_names=['X1', 'Xl']),
         GCProp(key='G', units='p.u.', tpe=float, definition='Total positive sequence shunt conductance.'),
         GCProp(key='B', units='p.u.', tpe=float, definition='Total positive sequence shunt susceptance.'),
         GCProp(key='R0', units='p.u.', tpe=float, definition='Total zero sequence resistance.'),
@@ -70,39 +70,39 @@ class ControllableBranchParent(BranchParent):
         GCProp(key='G2', units='p.u.', tpe=float, definition='Total negative sequence shunt conductance.'),
         GCProp(key='B2', units='p.u.', tpe=float, definition='Total negative sequence shunt susceptance.'),
         GCProp(key='tolerance', units='%', tpe=float,
-                      definition='Tolerance expected for the impedance values% '
-                                 'is expected for transformers0% for lines.'),
+               definition='Tolerance expected for the impedance values% '
+                          'is expected for transformers0% for lines.'),
         GCProp(key='tap_changer', units='', tpe=SubObjectType.TapChanger, definition='Tap changer object',
-                      editable=False, display=False),
+               editable=False, display=False),
         GCProp(key='tap_module', units='', tpe=float, definition='Tap changer module, it a value close to 1.0',
-                      profile_name='tap_module_prof', old_names=['tap', 'm']),
+               profile_name='tap_module_prof', old_names=['tap', 'm']),
         GCProp(key='tap_module_max', units='', tpe=float, definition='Tap changer module max value',
-                      old_names=['m_max']),
+               old_names=['m_max']),
         GCProp(key='tap_module_min', units='', tpe=float, definition='Tap changer module min value',
-                      old_names=['m_min']),
+               old_names=['m_min']),
         GCProp(key='tap_module_control_mode', units='', tpe=TapModuleControl,
-                      definition='Control available with the tap module',
-                      profile_name='tap_module_control_mode_prof'),
+               definition='Control available with the tap module',
+               profile_name='tap_module_control_mode_prof'),
         GCProp(key='vset', units='p.u.', tpe=float,
-                      definition='Objective voltage at the "to" side of the bus when regulating the tap.',
-                      profile_name='vset_prof', old_names=['Vdc_set']),
+               definition='Objective voltage at the "to" side of the bus when regulating the tap.',
+               profile_name='vset_prof', old_names=['Vdc_set']),
         GCProp(key='Qset', units='MVAr', tpe=float,
-                      definition='Objective power at the selected side.',
-                      profile_name='Qset_prof'),
+               definition='Objective power at the selected side.',
+               profile_name='Qset_prof'),
         GCProp(key='regulation_bus', units='', tpe=DeviceType.BusDevice,
-                      definition='Bus where the regulation is applied.', editable=True),
+               definition='Bus where the regulation is applied.', editable=True),
         GCProp(key='tap_phase', units='rad', tpe=float, definition='Angle shift of the tap changer.',
-                      profile_name='tap_phase_prof', old_names=['angle', 'theta']),
+               profile_name='tap_phase_prof', old_names=['angle', 'theta']),
         GCProp(key='tap_phase_max', units='rad', tpe=float, definition='Max angle.',
-                      old_names=['angle_max', 'theta_max']),
+               old_names=['angle_max', 'theta_max']),
         GCProp(key='tap_phase_min', units='rad', tpe=float, definition='Min angle.',
-                      old_names=['angle_min', 'theta_min']),
+               old_names=['angle_min', 'theta_min']),
         GCProp(key='tap_phase_control_mode', units='', tpe=TapPhaseControl,
-                      definition='Control available with the tap angle', old_names=['tap_angle_control_mode'],
-                      profile_name='tap_phase_control_mode_prof'),
+               definition='Control available with the tap angle', old_names=['tap_angle_control_mode'],
+               profile_name='tap_phase_control_mode_prof'),
         GCProp(key='Pset', units='MW', tpe=float,
-                      definition='Objective power at the selected side.',
-                      profile_name='Pset_prof', old_names=['Pdc_set']),
+               definition='Objective power at the selected side.',
+               profile_name='Pset_prof', old_names=['Pdc_set']),
     )
 
     def __init__(self,
@@ -293,20 +293,9 @@ class ControllableBranchParent(BranchParent):
         self.vset = float(vset)
         self._vset_prof = Profile(default_value=self.vset, data_type=float)
 
-        self.regulation_branch: BranchParent = regulation_branch
+        self.regulation_branch: BranchParent | None = regulation_branch
 
-        self.regulation_bus: Bus = regulation_bus
-
-
-
-
-
-
-
-
-
-
-
+        self.regulation_bus: Bus | None = regulation_bus
 
     @property
     def tap_module_prof(self) -> Profile:

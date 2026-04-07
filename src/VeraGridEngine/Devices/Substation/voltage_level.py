@@ -47,8 +47,6 @@ class VoltageLevel(PhysicalDevice):
 
         self.substation: Union[None, Substation] = substation
 
-    # Scalar property accessors coerce assignments to the declared schema types.
-
     @property
     def Vnom(self) -> float:
         """

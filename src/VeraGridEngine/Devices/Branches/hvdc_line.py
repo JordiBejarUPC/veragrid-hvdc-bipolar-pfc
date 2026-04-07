@@ -303,6 +303,7 @@ class HvdcLine(BranchParent):
 
         # Line locations
         self._locations: LineLocations = LineLocations()
+
     @property
     def active_prof(self) -> Profile:
         """

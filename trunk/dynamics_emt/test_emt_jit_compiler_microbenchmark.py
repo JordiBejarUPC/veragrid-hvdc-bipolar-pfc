@@ -18,6 +18,7 @@ def test_compiler_microbenchmark_exports_for_rload_case() -> None:
     rows = compiler_microbenchmark.run_compiler_microbenchmark_suite(
         [compiler_microbenchmark.CompilerBenchmarkCase.RLOAD]
     )
+    # TODO: Andrés, fix this ASAP
     exported_paths = compiler_microbenchmark.export_compiler_microbenchmark(
         rows,
         "emt_jit_compiler_microbenchmark_smoke_src_tests",
@@ -80,6 +81,7 @@ def test_compiler_microbenchmark_exports_for_rload_case() -> None:
 
 def test_repeated_compiler_microbenchmark_exports_statistics() -> None:
     aggregated_rows = compiler_microbenchmark_statistics.run_repeated_compiler_microbenchmark(repetitions=2)
+    # TODO: Andrés, fix this ASAP
     exported_paths = compiler_microbenchmark_statistics.export_repeated_compiler_microbenchmark(
         aggregated_rows,
         "emt_jit_compiler_microbenchmark_repeated_src_tests",

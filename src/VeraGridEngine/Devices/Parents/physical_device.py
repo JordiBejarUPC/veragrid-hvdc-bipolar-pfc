@@ -46,7 +46,9 @@ class PhysicalDevice(EditableDevice):
                  idtag: Union[str, None],
                  code: str,
                  device_type: DeviceType,
-                 build_status: BuildStatus):
+                 build_status: BuildStatus,
+                 commissioned_date: float = 0,
+                 decommissioned_date: float = 0):
         """
         PhysicalDevice
         :param name: Name of the device
@@ -63,19 +65,16 @@ class PhysicalDevice(EditableDevice):
 
         self.modelling_authority: Union[ModellingAuthority, None] = None
 
-        self._commissioned_date: int = 0
+        self._commissioned_date: float = commissioned_date
 
-        self._decommissioned_date: int = 0
+        self._decommissioned_date: float = decommissioned_date
 
         self.build_status = build_status
 
         self.owners: Associations = Associations(device_type=DeviceType.Owner)
 
-
-
-
     @property
-    def commissioned_date(self) -> int:
+    def commissioned_date(self) -> float:
         """
 
         :return:
@@ -83,9 +82,9 @@ class PhysicalDevice(EditableDevice):
         return self._commissioned_date
 
     @commissioned_date.setter
-    def commissioned_date(self, val: int | datetime.datetime):
-        if isinstance(val, int):
-            self._commissioned_date = val
+    def commissioned_date(self, val: float | datetime.datetime):
+        if isinstance(val, (float, int)):
+            self._commissioned_date = float(val)
         elif isinstance(val, datetime.datetime):
             self._commissioned_date = val.timestamp()
 
@@ -106,7 +105,7 @@ class PhysicalDevice(EditableDevice):
         return datetime.datetime.fromtimestamp(self._commissioned_date)
 
     @property
-    def decommissioned_date(self) -> int:
+    def decommissioned_date(self) -> float:
         """
 
         :return:
@@ -114,9 +113,9 @@ class PhysicalDevice(EditableDevice):
         return self._decommissioned_date
 
     @decommissioned_date.setter
-    def decommissioned_date(self, val: int | datetime.datetime):
-        if isinstance(val, int):
-            self._decommissioned_date = val
+    def decommissioned_date(self, val: float | datetime.datetime):
+        if isinstance(val, (float, int)):
+            self._decommissioned_date = float(val)
         elif isinstance(val, datetime.datetime):
             self._decommissioned_date = val.timestamp()
 
