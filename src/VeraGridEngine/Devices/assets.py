@@ -773,6 +773,34 @@ class Assets:
     def var_factory(self, value: dev.VarFactory):
         self._var_factory = value
 
+    @property
+    def rms_var_factory(self) -> dev.VarFactory:
+        """
+        Return the shared symbolic variable factory through the RMS-specific alias.
+
+        The FMU and dynamic-editor integrations distinguish RMS and EMT conceptually,
+        but the current engine still stores a single shared factory. This alias keeps
+        that contract explicit for RMS callers without duplicating the factory state.
+
+        :return: Shared variable factory.
+        """
+
+        return self._var_factory
+
+    @property
+    def emt_var_factory(self) -> dev.VarFactory:
+        """
+        Return the shared symbolic variable factory through the EMT-specific alias.
+
+        The FMU and dynamic-editor integrations distinguish RMS and EMT conceptually,
+        but the current engine still stores a single shared factory. This alias keeps
+        that contract explicit for EMT callers without duplicating the factory state.
+
+        :return: Shared variable factory.
+        """
+
+        return self._var_factory
+
     # ------------------------------------------------------------------------------------------------------------------
     # AC line
     # ------------------------------------------------------------------------------------------------------------------
