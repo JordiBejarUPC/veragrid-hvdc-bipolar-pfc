@@ -30,6 +30,7 @@ class TestEmtSparseBackendBenchmark(unittest.TestCase):
         else:
             self.skipTest("External Pardiso plugin runtime not installed for this environment")
 
+        # TODO: Andrés, fix this ASAP
         rows = sparse_backend_benchmark.benchmark_sparse_backends(
             sparse_backend_benchmark.SparseBenchmarkProfile.RegressionShort
         )

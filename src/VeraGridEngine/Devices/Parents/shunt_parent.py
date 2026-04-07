@@ -159,9 +159,6 @@ class ShuntParent(InjectionParent):
 
         self._ysh = AdmittanceMatrix()
 
-
-
-
     @property
     def G_prof(self) -> Profile:
         """

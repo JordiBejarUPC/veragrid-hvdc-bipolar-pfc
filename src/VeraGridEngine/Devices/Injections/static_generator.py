@@ -12,7 +12,7 @@ from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 class StaticGenerator(LoadParent):
-    __slots__ = ("_Snom")
+    __slots__ = "_Snom"
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key='Snom', units='MVA', tpe=float, definition='Nominal power.'),
@@ -68,7 +68,6 @@ class StaticGenerator(LoadParent):
 
         # Nominal power in MVA (also the machine base)
         self._Snom = float(Snom)
-
 
     @property
     def Snom(self):

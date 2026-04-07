@@ -67,8 +67,3 @@ class Shunt(ShuntParent):
                              opex=opex,
                              build_status=build_status,
                              device_type=DeviceType.ShuntDevice)
-
-        Sbase: float = 100  # NOTE: to remove
-        self.g = self.G / Sbase
-        self.b = self.B / Sbase
-

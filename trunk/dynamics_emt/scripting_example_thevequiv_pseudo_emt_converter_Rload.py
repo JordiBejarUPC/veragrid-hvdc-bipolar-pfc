@@ -143,7 +143,7 @@ def attach_emt_models(
         sbase=grid.Sbase,
         fbase=grid.fBase,
         P_ref0=float(dc_load.P),
-        Q_ref0=0.0,
+        Q_ref0=float(converter.control1_val),
         Vdc_ref0=1.0,
         R_eq=0.03,
         L_eq=0.12,
@@ -235,7 +235,7 @@ def build_problem(grid: gce.MultiCircuit, pf_results: PowerFlowResults) -> EmtPr
         simulation_time=0.1,
         tolerance=1e-6,
         solver_type=EmtSolverTypes.StructuralCompiled,
-        initialization_method=EmtInitializationMethod.Explicit,
+        initialization_method=EmtInitializationMethod.Auto,
         integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
         verbose=1,
     )

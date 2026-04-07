@@ -159,7 +159,7 @@ class InjectionParent(DynamicDevice):
         self.color = color if color is not None else "#909090"  # light gray
 
     @property
-    def bus(self) -> Bus:
+    def bus(self) -> Bus | None:
         """
         Bus
         :return: Bus

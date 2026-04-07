@@ -164,6 +164,8 @@ class LineGraphicItem(LineGraphicTemplateItem):
                            icon_path=":/Icons/icons/divide.png")
 
             menu.addSeparator()
+            self.add_auto_route_style_menu(menu=menu)
+            menu.addSeparator()
 
             add_menu_entry(menu=menu,
                            text="Delete",

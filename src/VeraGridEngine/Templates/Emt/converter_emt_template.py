@@ -322,73 +322,9 @@ def get_pseudo_emt_converter(
     control2_val: float | None = None,
 ) -> EmtModelTemplate:
     """
-    Build a pseudo-EMT averaged grid-following VSC with explicit DC-link
-    capacitor, dq0 current dynamics and a PLL.
-
-    Overview of the model
-    ---------------------
-    This is a reduced-order pseudo-EMT model of a voltage-source converter in
-    grid-following mode. It is not a switching EMT model. The bridge is
-    represented as an averaged internal AC voltage command behind an equivalent
-    AC interface branch, coupled to an explicit DC-link capacitor.
-
-    Numerically, the model is a DAE composed of:
-    - differential states for the DC capacitor, PLL, dq currents, PI
-      integrators, and filtered power measurements
-    - algebraic equations for dq0 transforms, power calculation, current
-      references, internal converter voltage commands, AC current injection, and
-      DC terminal coupling
-
-    Electrical interface with the AC network
-    ----------------------------------------
-    The AC terminal exchanges instantaneous phase voltages ``v_A``, ``v_B``,
-    ``v_C`` and injected currents ``i_A``, ``i_B``, ``i_C`` with the EMT bus.
-    Internally, the converter is connected to the AC bus through an equivalent
-    branch parameterized by ``R_eq`` and ``L_eq``.
-
-    ``L_eq`` is interpreted in the same normalized sense as the other EMT
-    templates in this codebase, so the branch-current dynamics are scaled with
-    ``omega_base / L_eq``.
-
-    Sign conventions
-    ----------------
-    The implementation follows the EMT network sign conventions used by the
-    framework:
-    - AC-side branch currents are positive when leaving the AC bus.
-    - DC-side branch current ``i_dc`` is positive when leaving the DC bus.
-    - Positive ``P`` and ``Q`` therefore mean that the converter absorbs active
-      and reactive power from the AC bus.
-    - When the converter rectifies power from AC to DC, ``P`` is positive and
-      ``i_dc`` is typically negative because current enters the DC bus.
-
-    dq0 transformations and reference-frame convention
-    --------------------------------------------------
-    The dq0 convention used here is explicit and matches the requested test
-    convention:
-    - ``d`` is aligned with phase-a.
-    - ``q`` is delayed by 90 electrical degrees with respect to ``d``.
-    - zero sequence is retained explicitly through ``v_0`` and ``i_0``.
-
-    The implemented abc -> dq0 equations are:
-
-    ``v_d = (2/3) * [sin(theta)*v_A + sin(theta-2pi/3)*v_B + sin(theta+2pi/3)*v_C]``
-
-    ``v_q = -(2/3) * [cos(theta)*v_A + cos(theta-2pi/3)*v_B + cos(theta+2pi/3)*v_C]``
-
-    ``v_0 = (1/3) * (v_A + v_B + v_C)``
-
-    The injected phase currents are reconstructed as:
-
-    ``i_A = i_d*sin(theta) - i_q*cos(theta) + i_0``
-
-    ``i_B = i_d*sin(theta-2pi/3) - i_q*cos(theta-2pi/3) + i_0``
-
-    ``i_C = i_d*sin(theta+2pi/3) - i_q*cos(theta+2pi/3) + i_0``
-
-    PLL subsystem
-    -------------
-    The PLL is a synchronous-reference-frame PLL. It uses the algebraic dq
-    transform and drives ``v_q`` to zero:
+    Build a pseudo-EMT averaged grid-following VSC model with explicit DC-link
+    capacitor, SRF-PLL, outer Vdc/Q loops, inner dq current control, current
+    limitation and converter voltage limitation.
 
     ``omega_pll = omega_base + pll_kp * v_q + xi_pll``
 
