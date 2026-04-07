@@ -64,7 +64,7 @@ grid.add_bus(bus_rlc)
 
 # Initialize RMS bus models
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.rms_var_factory)
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 # ------------------------------------------------------------
 # Physical parameters
@@ -111,8 +111,8 @@ grid.add_load(bus=bus_rlc, api_obj=capacitor)
 
 
 # Templates (NO manual equations)
-line_mdl = get_line_rms_template(grid.rms_var_factory).block
-load_mdl = get_load_rms_template(grid.rms_var_factory).block
+line_mdl = get_line_rms_template(grid.var_factory).block
+load_mdl = get_load_rms_template(grid.var_factory).block
 
 # -----------------------------
 # Connect RL line to buses

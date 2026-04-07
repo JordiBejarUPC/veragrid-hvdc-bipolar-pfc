@@ -339,16 +339,16 @@ def build_two_bus_real_emt_case(
     for bus in grid.buses:
         get_bus_emt_template(grid, bus)
 
-    gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.emt_var_factory).block
+    gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.var_factory).block
     line_mdl = get_pi_line_emt_template(grid=grid, line=line0).block
     if zip_load:
-        load_mdl = get_load_ZIP_3ph_emt_template(vf=grid.emt_var_factory).block
+        load_mdl = get_load_ZIP_3ph_emt_template(vf=grid.var_factory).block
     else:
-        load_mdl = get_shunt_r_3ph_emt_template(vf=grid.emt_var_factory).block
+        load_mdl = get_shunt_r_3ph_emt_template(vf=grid.var_factory).block
 
-    set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=line0, model=line_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=load, model=load_mdl, var_factory=grid.emt_var_factory)
+    set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
     pf_options = PowerFlowOptions(
         solver_type=gce.SolverType.NR,

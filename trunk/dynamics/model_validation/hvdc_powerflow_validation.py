@@ -108,11 +108,11 @@ def setup_rms_models(grid):
     
     # Initialize bus RMS models
     for bus in grid.buses:
-        initialize_bus_rms(bus, vf=grid.rms_var_factory)
+        initialize_bus_rms(bus, vf=grid.var_factory)
     
     # Create RMS models for generators
     for gen in grid.get_generators():
-        template = get_genrow_rms_template(grid.rms_var_factory, name=f"Gen_{gen.name}")
+        template = get_genrow_rms_template(grid.var_factory, name=f"Gen_{gen.name}")
         genrow_mdl = template.block
         
         bus = gen.bus
@@ -129,7 +129,7 @@ def setup_rms_models(grid):
     
     # Create RMS models for lines
     for line in grid.lines:
-        line_mdl = get_line_rms_template(grid.rms_var_factory, name=f"Line_{line.name}").block
+        line_mdl = get_line_rms_template(grid.var_factory, name=f"Line_{line.name}").block
         
         from_bus = line.bus_from
         to_bus = line.bus_to
@@ -146,7 +146,7 @@ def setup_rms_models(grid):
         Pl0_pu = load.P / grid.Sbase
         Ql0_pu = load.Q / grid.Sbase
         # Negative sign because load consumes power (injection is negative)
-        load_template = ZIPLoadBuild(grid.rms_var_factory, name=f"Load_{load.name}",
+        load_template = ZIPLoadBuild(grid.var_factory, name=f"Load_{load.name}",
                                      Pl0=-Pl0_pu, Ql0=-Ql0_pu)
         load_mdl = load_template.block
         
@@ -159,7 +159,7 @@ def setup_rms_models(grid):
     # Create RMS models for HVDC lines
     nc = compile_numerical_circuit_at(circuit=grid)
     for hvdc_idx, hvdc in enumerate(grid.hvdc_lines):
-        initialize_hvdc_rms(hvdc, hvdc_idx=hvdc_idx, vf=grid.rms_var_factory, nc=nc)
+        initialize_hvdc_rms(hvdc, hvdc_idx=hvdc_idx, vf=grid.var_factory, nc=nc)
         hvdc_mdl = hvdc.rms_model
         from_bus = hvdc.bus_from
         to_bus = hvdc.bus_to

@@ -669,7 +669,7 @@ class MultiVerse:
         multiverse_model_data = dict()
 
         for node in self.iter_nodes_depth_first():
-            save_grid = node.circuit.copy()
+            save_grid = node.circuit.copy() # the problem is here
             save_grid.diagrams = copy.deepcopy(node.diagrams)
 
             multiverse_node_data[node.node_id] = {

@@ -136,7 +136,7 @@ def get_xfmr_emt_template(
     templ.name = name
     templ.block.name = name
 
-    vf: VarFactory = grid.emt_var_factory
+    vf: VarFactory = grid.var_factory
     omega_base = 2.0 * math.pi * float(grid.fBase)
 
     c0 = vf.add_const(0.0)

@@ -131,24 +131,24 @@ for bus in grid.buses:
 ######################################################################################################
 
 # generator
-gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.emt_var_factory).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.var_factory).block
 
 # line
 line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
-# line_mdl = get_pi_line_emt_template(vf= grid.emt_var_factory).block
+# line_mdl = get_pi_line_emt_template(vf= grid.var_factory).block
 
 # load
-load_mdl = get_shunt_r_3ph_emt_template(vf = grid.emt_var_factory).block
+load_mdl = get_shunt_r_3ph_emt_template(vf = grid.var_factory).block
 
 ######################################################################################################
 # Add models to devices
 ######################################################################################################
 
-set_emt_model(device=gen0, model=gen_mdl, var_factory= grid.emt_var_factory)
+set_emt_model(device=gen0, model=gen_mdl, var_factory= grid.var_factory)
 
-set_emt_model(device=line0, model=line_mdl, var_factory= grid.emt_var_factory)
+set_emt_model(device=line0, model=line_mdl, var_factory= grid.var_factory)
 
-set_emt_model(device=load, model=load_mdl, var_factory= grid.emt_var_factory)
+set_emt_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 
 
 ######################################################################################################
