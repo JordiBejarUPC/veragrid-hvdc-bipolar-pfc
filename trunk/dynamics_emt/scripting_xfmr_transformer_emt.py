@@ -129,7 +129,7 @@ for bus in circuit.buses:
 # =====================================================================
 
 # Generator model (Thevenin equivalent)
-gen_mdl = get_generator_thevenin_rl_emt_template(grid=circuit, gen=gen1).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf=circuit.emt_var_factory).block
 
 # Transformer model (series RL with ideal transformer)
 trafo_mdl = get_xfmr_emt_template(grid=circuit, trafo=transformer).block

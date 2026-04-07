@@ -16,8 +16,8 @@ from VeraGridEngine.Utils.Symbolic.block import Var, Expr
 
 def get_pi_line_emt_template(
         grid: MultiCircuit,
-                             line: Line,
-                             name: str = EmtLineTypes.PI) -> EmtModelTemplate:
+        line: Line,
+        name: str = EmtLineTypes.PI) -> EmtModelTemplate:
     """
     :param grid: Multicircuit
     :param line: Line object to apply the template

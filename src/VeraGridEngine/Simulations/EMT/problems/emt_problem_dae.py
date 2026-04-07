@@ -32,7 +32,7 @@ from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt, run_emt_native_initialization
+from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt, init_explicit_common, build_symbolic_vector_single_equation_compiler, run_emt_native_initialization
 from VeraGridEngine.Utils.Symbolic.compiled_functions import get_compiled_functions_cache_stats
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_algebraic_vars
 # from trunk.veragrid_fmu_import import finalize_emt_fmu_cs_devices, finalize_emt_fmu_me_devices, queue_emt_fmu_cs_device, queue_emt_fmu_me_device #TODO: importing from trunk!
@@ -484,6 +484,80 @@ class EmtProblemDae(EmtProblemTemplate):
                 self._models_with_diff_init_eqs_seen.add(mid)
                 self._models_with_diff_init_eqs.append(mdl)
 
+    # def _run_explicit_initialization_old(self)-> None:
+    #     """
+    #     Run explicit initialization for every block that defines initialization equations.
+    #
+    #     The routine may modify runtime parameter expressions, so runtime parameter
+    #     buffers are rebuilt afterwards.
+    #
+    #     :return: None
+    #     """
+    #
+    #     if len(self._models_with_init_eqs) == 0 and len(self._models_with_diff_init_eqs) == 0:
+    #         return
+    #
+    #     # sys_vars dict (uid -> Var), size = n_vars
+    #     sys_vars: Dict[int, Var] = {v.uid: v for v in (self._state_vars + self._algebraic_vars)}
+    #     sys_diff_vars: Dict[int, Var] = {dv.uid: dv for dv in self._diff_vars}
+    #
+    #     seen_blocks: set[int] = set()
+    #
+    #     for mdl in chain(self._models_with_init_eqs, self._models_with_diff_init_eqs):
+    #         mdl_id = id(mdl)
+    #
+    #         if mdl_id not in seen_blocks:
+    #             seen_blocks.add(mdl_id)
+    #
+    #             try:
+    #                 init_explicit_emt(
+    #                     mdl=mdl,
+    #                     sys_vars=sys_vars,
+    #                     sys_diff_vars=sys_diff_vars,
+    #                     variable_parameters=self._variable_parameters,
+    #                     event_parameters_eqs=self._event_parameters_eqs,
+    #                     constant_parameters=self._constant_parameters,
+    #                     init_guess=self.init_guess,
+    #                     diff_init_guess=self.diff_init_guess,
+    #                     uid2idx_vars=self.uid2idx_vars,
+    #                     uid2idx_diff=self.uid2idx_diff,
+    #                     uid2idx_params=self.uid2idx_params,
+    #                     uid2idx_event_params=self.uid2idx_event_params,
+    #                     compiler_names_dict=self._compiler_names_dict,
+    #                     alias_names_dict=self._alias_names_dict,
+    #                     VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+    #                     # TIME_NAME=self.TIME_NAME,
+    #                     VARS_NAME=self.VARS_NAME,
+    #                     DIFF_NAME=self.DIFF_NAME,
+    #                     CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+    #                     verbose=bool(self.options.verbose > 0),
+    #                 )
+    #             except Exception as e:
+    #                 block_name: str = _get_block_name(mdl)
+    #                 error_detail = f"{type(e).__name__}: {str(e)}"
+    #
+    #                 self.logger.add_warning(
+    #                     msg="EMT explicit initialization failed for block.",
+    #                     device=block_name,
+    #                     value=error_detail,
+    #                     expected_value="Successful explicit initialization",
+    #                     device_class="EMT",
+    #                     device_property="init_explicit"
+    #                 )
+    #
+    #                 if self.options.verbose > 0:
+    #                     self.logger.add_debug(
+    #                         f"[EMT][init_explicit] failed for block '{block_name}'. Error: {error_detail}"
+    #                     )
+    #
+    #                     print(
+    #                         f"EMT explicit initialization failed for block {block_name}. "
+    #                         f"Error detail: {error_detail}"
+    #                     )
+    #
+    #
+    #     self._build_runtime_param_vectors()
+
     def _run_explicit_initialization(self)-> None:
         """
         Run explicit initialization for every block that defines initialization equations.
@@ -500,6 +574,14 @@ class EmtProblemDae(EmtProblemTemplate):
         # sys_vars dict (uid -> Var), size = n_vars
         sys_vars: Dict[int, Var] = {v.uid: v for v in (self._state_vars + self._algebraic_vars)}
         sys_diff_vars: Dict[int, Var] = {dv.uid: dv for dv in self._diff_vars}
+        compile_single_equation = build_symbolic_vector_single_equation_compiler(
+            compiler_names_dict=self._compiler_names_dict,
+            alias_names_dict=self._alias_names_dict,
+            vars_name=self.VARS_NAME,
+            diff_name=self.DIFF_NAME,
+            event_params_name=self.VARIABLE_PARAMS_NAME,
+            params_name=self.CONSTANT_PARAMS_NAME,
+        )
 
         seen_blocks: set[int] = set()
 
@@ -510,7 +592,17 @@ class EmtProblemDae(EmtProblemTemplate):
                 seen_blocks.add(mdl_id)
 
                 try:
-                    init_explicit_emt(
+                    params_array: np.ndarray = np.zeros(len(self._constant_parameters))
+
+                    for param, const in mdl.parameters.items():
+                        param_idx: int | None = self.uid2idx_params.get(param.uid, None)
+
+                        if param_idx is None:
+                            params_array = params_array
+                        else:
+                            params_array[param_idx] = const.value
+
+                    self.init_guess, self.diff_init_guess = init_explicit_common(
                         mdl=mdl,
                         sys_vars=sys_vars,
                         sys_diff_vars=sys_diff_vars,
@@ -523,15 +615,20 @@ class EmtProblemDae(EmtProblemTemplate):
                         uid2idx_diff=self.uid2idx_diff,
                         uid2idx_params=self.uid2idx_params,
                         uid2idx_event_params=self.uid2idx_event_params,
-                        compiler_names_dict=self._compiler_names_dict,
-                        alias_names_dict=self._alias_names_dict,
-                        VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                        # TIME_NAME=self.TIME_NAME,
-                        VARS_NAME=self.VARS_NAME,
-                        DIFF_NAME=self.DIFF_NAME,
-                        CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+                        params_array=params_array,
+                        compile_single_equation=compile_single_equation,
                         verbose=bool(self.options.verbose > 0),
                     )
+
+
+                    for event_var in mdl.event_dict.keys():
+                        event_idx: int | None = self.uid2idx_event_params.get(event_var.uid, None)
+
+                        if event_idx is None:
+                            mdl.event_dict[event_var] = mdl.event_dict[event_var]
+                        else:
+                            mdl.event_dict[event_var] = self._event_parameters_eqs[event_idx]
+                            self._runtime_parameter_eqs0[event_idx] = self._event_parameters_eqs[event_idx]
                 except Exception as e:
                     block_name: str = _get_block_name(mdl)
                     error_detail = f"{type(e).__name__}: {str(e)}"

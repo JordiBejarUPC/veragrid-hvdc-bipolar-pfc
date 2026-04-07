@@ -126,7 +126,8 @@ gen_mdl = get_simple_generator_emt_template(vf = grid.emt_var_factory).block
 # gen_mdl = get_generator_emt_type_template(grid=grid, gen = gen0).block
 
 # line
-line_mdl = get_pi_line_emt_template(vf=grid.emt_var_factory, line = line0).block
+# line_mdl = get_pi_line_emt_template(vf=grid.emt_var_factory, line = line0).block
+line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 
 # load
 load_mdl = get_shunt_r_3ph_emt_template(vf = grid.emt_var_factory).block
