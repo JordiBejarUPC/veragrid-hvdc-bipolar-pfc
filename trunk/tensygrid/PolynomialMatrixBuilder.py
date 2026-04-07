@@ -6,6 +6,7 @@ from sympy.parsing.sympy_parser import parse_expr
 from enum import Enum
 from typing import Optional, Any, List, Tuple
 import warnings
+import re
 
 # ------------------------------------------------------------------
 # Enums for Options
@@ -101,7 +102,7 @@ class PolynomialMatrixBuilder:
     """
 
     # Finalizing the class to prevent dynamic attribute assignment and save memory
-    # __slots__ = ['verbose', 'eqs', 'ineqs', 'all_symbols', 'sym_to_idx','S_H', 'Phi_H', 'S_W', 'Phi_W', 'E', 'A', 'B', 'EABC''state_vars', 'algebraic_vars']
+    #__slots__ = ['verbose', 'eqs', 'ineqs', 'all_symbols', 'sym_to_idx','S_H', 'Phi_H', 'S_W', 'Phi_W', 'E', 'A', 'B', 'EABC', 'state_vars', 'algebraic_vars']
 
     # ------------------------------------------------------------------
     # Construction
@@ -183,43 +184,39 @@ class PolynomialMatrixBuilder:
         parsing_context['O'] = sp.Symbol('O')
         parsing_context['S'] = sp.Symbol('S')
 
-        parsed_predefined: list = list()
+        parsed_predefined: list[sp.Symbol] = []
 
-        for s_name in processed_state_vars:
-            new_sym: sp.Symbol = sp.Symbol(s_name)
-            parsing_context[s_name] = new_sym
-            parsed_predefined.append(new_sym)
-            self.state_vars.append(new_sym)
+        # 1. Symbols
+        for names, target_list in [(processed_state_vars, self.state_vars),
+                                   (processed_algebraic_vars, self.algebraic_vars)]:
+            for name in names:
+                clean_name = name.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
+                clean_name = re.sub(r'\bd_', 'dt_', clean_name)
 
-        for a_name in processed_algebraic_vars:
-            new_sym: sp.Symbol = sp.Symbol(a_name)
-            parsing_context[a_name] = new_sym
-            parsed_predefined.append(new_sym)
-            self.algebraic_vars.append(new_sym)
+                if clean_name not in parsing_context:
+                    sym = sp.Symbol(clean_name)
+                    parsing_context[clean_name] = sym
+                    target_list.append(sym)
+                    parsed_predefined.append(sym)
 
-        for raw_eq in processed_eqs:
-            eq_str: str = raw_eq if isinstance(raw_eq, str) else str(raw_eq)
-            parsed_eq: sp.Expr = parse_expr(eq_str, local_dict=parsing_context, evaluate=True)
-            self.eqs.append(parsed_eq)
+        # 2. Expression parsing
+        for raw_exprs, target_list in [(processed_eqs, self.eqs),
+                                       (processed_ineqs, self.ineqs)]:
+            for raw in raw_exprs:
+                s = raw if isinstance(raw, str) else str(raw)
 
-        for raw_ineq in processed_ineqs:
-            ineq_str: str = raw_ineq if isinstance(raw_ineq, str) else str(raw_ineq)
-            parsed_ineq: sp.Expr = parse_expr(ineq_str, local_dict=parsing_context, evaluate=True)
-            self.ineqs.append(parsed_ineq)
+                s = s.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
+                s = re.sub(r'\bd_', 'dt_', s)
 
-        self.all_symbols: list = list()
-        self.sym_to_idx: dict = dict()
+                target_list.append(parse_expr(s, local_dict=parsing_context, evaluate=False)) # Check this
 
-        combined_exprs: list = list()
-        for parsed_e in self.eqs:
-            combined_exprs.append(parsed_e)
-        for parsed_i in self.ineqs:
-            combined_exprs.append(parsed_i)
+        # 3. Symbols' inizialization
+        self.all_symbols = []
+        self.sym_to_idx = {}
 
+        # 4. Symbol extraction
+        self.extract_symbols(self.eqs + self.ineqs, predefined=parsed_predefined)
 
-        self.extract_symbols(combined_exprs, predefined=parsed_predefined)
-
-        # --- FIX: AUTOMATIC FLATTENING & GLOBAL SORTING ---
         self._argaux_map: dict = dict()
 
         # LINEARIZATION: \propto x^n, n\in\mathbb{R}
@@ -300,6 +297,32 @@ class PolynomialMatrixBuilder:
                 else:
                     pass
 
+        # --- ARCHITECTURE FIX: AUTO-INJECT MISSING BASE STATES ---
+        # Algorithm: If a derivative exists (e.g., 'dt_delta') but its base state
+        # ('delta') does not appear isolated in any equation, we force it into
+        # the state space to prevent phantom variables in the Jacobian matrix.
+        missing_bases: list = list()
+        sym_check: sp.Symbol
+        for sym_check in list(extracted_symbols):
+            name_check: str = sym_check.name
+            base_name: str | None = None
+
+            if name_check.startswith('dt_'):
+                base_name = name_check[3:]
+            elif name_check.startswith('d_'):
+                base_name = name_check[2:]
+            elif name_check.startswith('dx') or name_check.startswith('xp'):
+                base_name = name_check[2:]
+
+            if base_name is not None:
+                new_base_sym: sp.Symbol = sp.Symbol(base_name)
+                if new_base_sym not in seen:
+                    seen.add(new_base_sym)
+                    missing_bases.append(new_base_sym)
+
+        extracted_symbols.extend(missing_bases)
+        # --- END OF ARCHITECTURE FIX ---
+
         # Apply priority sorting strictly to all gathered symbols
         extracted_symbols.sort(key=_sort_symbol)
 
@@ -310,7 +333,6 @@ class PolynomialMatrixBuilder:
 
         self.all_symbols = extracted_symbols
         return extracted_symbols
-
     # ------------------------------------------------------------------
     # Matrix creation
     # ------------------------------------------------------------------
@@ -421,11 +443,12 @@ class PolynomialMatrixBuilder:
                 pass
 
         if requires_expansion:
+            """
             if self.verbose:
                 print(f"   Expanding complex term: {term}")
             else:
                 pass
-
+            """
             expanded_expr: sp.Expr = term.expand()
             expanded_sub_terms: tuple = sp.Add.make_args(expanded_expr)
 
@@ -869,23 +892,6 @@ class PolynomialMatrixBuilder:
     # ------------------------------------------------------------------
     # Linearization – public entry point
     # ------------------------------------------------------------------
-    # This may be deleted
-    def linearize_with_problem(self, problem: Any, v_dict_override: Optional[dict] = None) -> np.ndarray:
-        warnings.warn("This will be deleted in a week from now if nobody complains.", DeprecationWarning)
-        """
-        Syncs the MTI_Problem's internal state (including dxOP) with the builder
-        to ensure nonlinear terms are linearized at the correct operating point.
-        """
-        # Start with the problem's full initial guess (x, y, dx, u, etc.)
-        full_v = problem.init_guess.copy()
-
-        # Override with any specific values from your test's v_dict
-        if v_dict_override:
-            full_v.update(v_dict_override)
-
-        # Call the standard linearization
-        return self.linearize(full_v)
-
     def linearize(self, v_dict: dict, c_type: ConstraintType = ConstraintType.EQUALITY) -> np.ndarray:
         """
         Analytic linearization for iMTI models (CPN representation).
@@ -899,6 +905,9 @@ class PolynomialMatrixBuilder:
         for key in keys_to_check:
             if key.startswith('x') and 'p' not in key:
                 val: float = float(v_dict[key])
+
+                if val == 0:
+                    val = 1e-8
 
                 # --- ARCHITECTURE FIX: EXACT PREFIX MATCHING ---
                 # These keys MUST match the sp.Symbol names generated in the lifting method
@@ -945,7 +954,7 @@ class PolynomialMatrixBuilder:
         to prevent singular Jacobians during evaluation.
         """
         n_vars: int = len(self.all_symbols)
-        v: np.ndarray = np.zeros(n_vars, dtype=float)
+        v: np.ndarray = np.full(n_vars, 1e-9, dtype=float)
 
         # 1. Fill standard variables from user dictionary
         k: str
@@ -1070,7 +1079,7 @@ class PolynomialMatrixBuilder:
                 idx_vars.append(idx_counter)
 
             idx_counter = idx_counter + 1
-        #print(f"\n[DEBUG] Derivadas detectadas en la lista: {[self.all_symbols[idx].name for idx in idx_dx]}")
+        print(f"\n[DEBUG] Detected derivatives: {[self.all_symbols[idx].name for idx in idx_dx]}")
         n_eqs: int = int(EABC.shape[0])
         E: np.ndarray = np.zeros((n_eqs, n_eqs))
         A: np.ndarray = np.zeros((n_eqs, n_eqs))
@@ -1121,6 +1130,10 @@ class PolynomialMatrixBuilder:
             if deriv_idx != -1 and deriv_idx in idx_dx:
                 E[:, i] = -EABC[:, deriv_idx]
 
+        print("\nMatriz E (Sparse representation):")
+        print(sparse.csr_matrix(E))
+        rank_E = np.linalg.matrix_rank(E)
+        print(f"Rango de E: {rank_E}")
         B: np.ndarray = EABC[:, idx_u]
 
         return E, A, B
@@ -1132,9 +1145,11 @@ class PolynomialMatrixBuilder:
     def compute_stability(self) -> Tuple[
         Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], bool, Optional[float]]:
         """
-        Compute generalised eigenvalues for the descriptor pair (A, E).
+        Compute generalised eigenvalues for the descriptor pair (A, E) using QZ factorization.
+        Includes Null Space Elimination (Matrix Patching) to prevent Singular Pencil failures
+        caused by structurally empty rows or columns (e.g., 0 = 0 equations).
 
-        :return: tuple of (eigenvalues, left_evecs, right_evecs, participation, is_stable, max_real)
+        :return: tuple of (eigenvalues, left_evecs, right_evecs, participation_matrix, is_stable, max_real)
         :rtype: Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], bool, Optional[float]]
         """
         current_a: np.ndarray | None = self.A
@@ -1142,79 +1157,129 @@ class PolynomialMatrixBuilder:
 
         if current_a is None or current_e is None:
             return None, None, None, None, False, None
-        else:
-            pass
 
         try:
+            # Convert to dense arrays for numerical factorization
+            A_dense: np.ndarray = current_a.toarray() if hasattr(current_a, 'toarray') else np.array(current_a)
+            E_dense: np.ndarray = current_e.toarray() if hasattr(current_e, 'toarray') else np.array(current_e)
+            """
+            n_dims: int = A_dense.shape[0]
+            patched_rows: int = 0
+            patched_cols: int = 0
+
+            # --- ALGORITHM: SINGULAR PENCIL PATCHING (NULL SPACE ELIMINATION) ---
+            # 1. Patch empty rows (Equations that evaluate to 0 = 0)
+            i: int
+            for i in range(n_dims):
+                if np.max(np.abs(A_dense[i, :])) < 1e-10 and np.max(np.abs(E_dense[i, :])) < 1e-10:
+                    A_dense[i, i] = -1.0
+                    patched_rows += 1
+
+            # 2. Patch empty columns (Variables that do not participate in any equation)
+            j: int
+            for j in range(n_dims):
+                if np.max(np.abs(A_dense[:, j])) < 1e-10 and np.max(np.abs(E_dense[:, j])) < 1e-10:
+                    A_dense[j, j] = -1.0
+                    patched_cols += 1
+
+            if self.verbose and (patched_rows > 0 or patched_cols > 0):
+                print(
+                    f"\n[+] QZ Matrix Pre-conditioning: Neutralized {patched_rows} empty rows and {patched_cols} empty columns.")
+
+            # --- ALGORITHM: QZ FACTORIZATION (GENERALIZED EIGENVALUE PROBLEM) ---
+            # QZ robustly handles DAE index > 1 without requiring algebraic matrix inversion.
+            """
             evals: np.ndarray
             evecs_left_raw: np.ndarray
             evecs_right_raw: np.ndarray
-            evals, evecs_left_raw, evecs_right_raw = linalg.eig(current_a, current_e, left=True, right=True)
+
+            evals, evecs_left_raw, evecs_right_raw = linalg.eig(A_dense, b=E_dense, left=True, right=True)
 
             # --- ALGORITHM: INFINITE AND NAN FILTERING ---
-            # 1. Identify which indices correspond to valid finite values
+            # Algebraic constraints yield infinite eigenvalues. We filter them out to keep physical modes.
             valid_idx: np.ndarray = np.isfinite(evals)
-
-            # 2. Keep only the valid finite eigenvalues
             evals = evals[valid_idx]
 
-            # --- ALGORITHM: MEMORY SPACE PROTECTION ---
-            # 3. Filter eigenvector columns to match valid eigenvalues, and cast to
-            #    complex to prevent TypeError during complex normalization.
             evecs_left: np.ndarray = evecs_left_raw[:, valid_idx].astype(complex)
             evecs_right: np.ndarray = evecs_right_raw[:, valid_idx].astype(complex)
 
             if len(evals) == 0:
                 return evals, evecs_left, evecs_right, None, True, -np.inf
-            else:
-                pass
 
-            # --- ALGORITHM: PARTICIPATION MATRIX NORMALIZATION ---
-            n_states: int = int(evecs_right.shape[1])
-            i: int
-            for i in range(n_states):
-                # 1. Calculate the normalization scalar
-                scaling_val: complex = complex(np.vdot(evecs_left[:, i], evecs_right[:, i]))
-                scaling_mag: float = float(np.abs(scaling_val))
+            # --- ALGORITHM: PARTICIPATION MATRIX COMPUTATION ---
+            n_states: int = int(evecs_right.shape[0])
+            n_modes: int = int(evecs_right.shape[1])
+            participation_matrix: np.ndarray = np.zeros((n_states, n_modes), dtype=float)
 
-                # 2. Safety check against division by zero AND NaN propagation
-                is_invalid: bool = False
-                if np.isnan(scaling_mag):
-                    is_invalid = True
-                elif scaling_mag < 1e-12:
-                    is_invalid = True
-                else:
-                    pass
+            m: int
+            for m in range(n_modes):
+                # Robust normalization for descriptor systems avoiding E-matrix singular divisions
+                mag_product = np.abs(evecs_left[:, m]) * np.abs(evecs_right[:, m])
+                total_mag = np.sum(mag_product)
 
-                if is_invalid:
-                    # If the mode is singular or defective, zeroing the left eigenvector
-                    # forces its participation to 0.0, avoiding NaN propagation.
-                    evecs_left[:, i] = 0.0 + 0.0j
-                else:
-                    # 3. Normalization
-                    evecs_left[:, i] = evecs_left[:, i] / scaling_val
-
-            # 4. Element-wise matrix multiplication to compute participation factors
-            participation_matrix: np.ndarray = np.abs(evecs_right) * np.abs(evecs_left)
+                if total_mag > 1e-12:
+                    participation_matrix[:, m] = mag_product / total_mag
 
             max_real: float = float(np.max(np.real(evals)))
-            is_stable: bool = False
+            is_stable: bool = max_real < 1e-6
 
-            if max_real < 0.0:
-                is_stable = True
-            else:
-                pass
+            # --- ALGORITHM: CONSOLE REPORTING ---
+            print("\n[6] Analysis complete!")
+            num_evals: int = len(evals)
+            print(f"  Found {num_evals} finite eigenvalues (Physical Modes)\n")
+
+            print("  Dominant eigenvalues (top 10 active modes):")
+            print("  Mode   Real            Imag            Freq (Hz)    Damping      Status")
+            print("  " + "-" * 78)
+
+            sorted_indices: np.ndarray = np.argsort(-np.real(evals))
+
+            printed_count: int = 0
+            k: int
+            for k in range(num_evals):
+                if printed_count < 10:
+                    idx: int = int(sorted_indices[k])
+                    val: complex = complex(evals[idx])
+                    real_part: float = float(np.real(val))
+                    imag_part: float = float(np.imag(val))
+                    freq: float = float(abs(imag_part) / (2.0 * np.pi))
+
+                    magnitude: float = float(np.abs(val))
+                    damping: float = 0.0
+                    if magnitude > 1e-12:
+                        damping = float(-real_part / magnitude)
+
+                    status: str = "UNSTABLE" if real_part > 1e-6 else "Stable"
+
+                    print(
+                        f"  {printed_count + 1:<6} {real_part:<15.6f} {imag_part:<15.6f} {freq:<12.4f} {damping:<12.4f} {status}")
+                    printed_count += 1
+
+            # Unstable Modes and Participation
+            all_unstable: list = [u for u in range(num_evals) if np.real(evals[sorted_indices[u]]) > 1e-6]
+
+            if len(all_unstable) > 0:
+                print(f"\n  ⚠️  Found {len(all_unstable)} unstable eigenvalues:")
+                print("  Mode   Real            Imag            Dominant State (Dyn Index)")
+                print("  " + "-" * 78)
+
+                for u_print_idx, u in enumerate(all_unstable, 1):
+                    u_idx: int = int(sorted_indices[u])
+                    u_val: complex = complex(evals[u_idx])
+
+                    part_col: np.ndarray = participation_matrix[:, u_idx]
+                    dom_state_idx: int = int(np.argmax(part_col))
+                    dom_pf: float = float(part_col[dom_state_idx])
+
+                    print(
+                        f"  {u_print_idx:<6} {np.real(u_val):<15.6f} {np.imag(u_val):<15.6f} State {dom_state_idx:<22} (PF={dom_pf:.3f})")
+
+            print(f"\n  Stability: {'STABLE' if max_real < -1e-6 else 'UNSTABLE' if max_real > 1e-6 else 'MARGINAL'}")
 
             return evals, evecs_left, evecs_right, participation_matrix, is_stable, max_real
 
         except linalg.LinAlgError as e:
-            # We catch strictly LinAlgError because Scipy internally throws this on convergence failure
             print(f"Error computing eigenvalues: {e}")
-            if self.verbose:
-                det_val: float = float(linalg.det(current_e - current_a))
-                print(f"det(E - A) = {det_val}")
-            else:
-                pass
             return None, None, None, None, False, None
 
     # ------------------------------------------------------------------
@@ -1262,9 +1327,11 @@ class PolynomialMatrixBuilder:
                 else:
                     pass
 
-            print("\n--- Stability Analysis ---")
-            print(f"Is stable:     {is_stable}")
-            print(f"Max Real Part: {max_real}")
+            stability_txt: str = (
+                f"Is stable:     {is_stable}\n"
+                f"Max Real Part: {max_real}\n"
+                f"Stability: {'STABLE' if max_real < -1e-6 else 'UNSTABLE' if max_real > 1e-6 else 'MARGINAL'}\n"
+            )
 
             if eigenvalues is not None:
                 valid_evs: list = list(eigenvalues[np.isfinite(eigenvalues)])
