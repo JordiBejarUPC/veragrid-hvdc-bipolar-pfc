@@ -193,9 +193,6 @@ class RmsProblemDae(RmsProblemTemplate):
                 initialize_bus_rms(elm, self.grid.var_factory)
                 # initialize_bus_rms, get_bus_rms_algebraic_vars
 
-            # flatten model
-            #elm.rms_model.unify_blocks()
-
             self.add_variables_to_compilation_dicts(elm, elm.rms_model)
 
             # add init values from powerflow to initial guess
@@ -223,6 +220,7 @@ class RmsProblemDae(RmsProblemTemplate):
                                       device=elm.name)
             else:
                 elm.rms_model.unify_blocks()
+                #Todo: change unify_blocks for recursivity across blocks
 
                 # get parameters from api object
                 elm.rms_model.parameters[
@@ -306,7 +304,7 @@ class RmsProblemDae(RmsProblemTemplate):
                 mdl = elm.rms_model
 
                 # flatten model to collect all variables including those from child blocks
-                mdl.unify_blocks()
+                #mdl.unify_blocks()
 
                 # get parameters from api object
                 elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha1]] = Const(elm.alpha1)
@@ -374,7 +372,7 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
 
                 # flatten model - variables already registered in first VSC loop above
-                elm.rms_model.unify_blocks()
+                #elm.rms_model.unify_blocks()
 
                 # find init values for the variables of this model
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
@@ -410,7 +408,7 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
                 bus_index = bus_dict[elm.bus]
 
-                elm.rms_model.unify_blocks()
+                # elm.rms_model.unify_blocks()
 
                 # get variables from bus
                 if elm.bus.rms_model.empty():
@@ -557,11 +555,8 @@ class RmsProblemDae(RmsProblemTemplate):
         self._n_alg = len(self._algebraic_vars)
         self._n_algebraic = len(self._algebraic_eqs)
 
-        # self._compiler_names_dict: Dict[int, str] = dict()
-        # self._alias_names_dict: Dict[int, str] = dict()
         self._uid2idx_vars: Dict[int, int] = dict()
-        # self._uid2idx_event_params: Dict[int, int] = dict()
-        # self._uid2idx_params: Dict[int, int] = dict()
+
         self._uid2idx_diff: Dict[int, int] = dict()
         self._uid2idx_t: Dict[int, int] = dict()
 
@@ -577,16 +572,6 @@ class RmsProblemDae(RmsProblemTemplate):
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{i}"
             self._uid2idx_vars[v.uid] = i
             i += 1
-
-        # for j, ep in enumerate(self._constant_parameters):
-        #     self._compiler_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}[{j}]"
-        #     self._alias_names_dict[ep.uid] = f"{self.CONSTANT_PARAMS_NAME}_{j}"
-        #     self._uid2idx_params[ep.uid] = j
-        #
-        # for k, ep in enumerate(self._variable_parameters):
-        #     self._compiler_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}[{k}]"
-        #     self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{k}"
-        #     self._uid2idx_event_params[ep.uid] = k
 
         for k, ep in enumerate(self._diff_vars):
             self._compiler_names_dict[ep.uid] = f"{self.DIFF_NAME}[{k}]"
@@ -727,8 +712,14 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # we mark the problem as ready for simulation
         self.set_initialize_flag()
-
     def add_variables_to_compilation_dicts(self, elm: ALL_DEV_TYPES, mdl: Block):
+
+        self.add_block_variables_to_compilation_dicts(elm, mdl)
+        for child in mdl.children:
+            self.add_variables_to_compilation_dicts(elm, child)
+
+
+    def add_block_variables_to_compilation_dicts(self, elm: ALL_DEV_TYPES, mdl: Block):
         """
         add variables and parameters info to the system block
 

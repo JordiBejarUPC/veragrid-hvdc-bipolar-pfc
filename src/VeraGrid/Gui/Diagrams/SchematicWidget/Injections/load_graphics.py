@@ -65,6 +65,11 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
                            function_ptr=self.edit_rms,
                            icon_path=":/Icons/icons/edit.png")
 
+            add_menu_entry(menu=menu,
+                           text="Emt Editor",
+                           function_ptr=self.edit_emt,
+                           icon_path=":/Icons/icons/edit.png")
+
             menu.exec(event.screenPos())
         else:
             self.editor.gui.show_error_toast("The graphic has no API object!")
@@ -92,6 +97,33 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
             api_object=self.api_object,
             mode=DynamicEditorMode.RMS,
             templates_list=self.editor.circuit.get_rms_models_by_device_type(self.api_object.device_type),
+            main_editor=True,
+        )
+        rms_model_editor.show()
+
+    def edit_emt(self):
+        """
+
+        :return:
+        """
+        # load templates
+        templates = self.editor.circuit.rms_models
+
+        # select line templates
+        templ_catalogue = dict()
+        templ_list = []
+        for templ in templates:
+            if templ.tpe == DeviceType.LoadDevice:
+                templ_list.append(templ.name)
+                templ_catalogue[templ.name] = templ
+
+        # prompt RmsModelEditorGUI
+        rms_model_editor = DynamicBlockEditorGUI(
+            var_factory=self.editor.circuit.var_factory,
+            block=self.api_object.rms_model,
+            api_object=self.api_object,
+            mode=DynamicEditorMode.EMT,
+            templates_list=self.editor.circuit.get_emt_models_by_device_type(self.api_object.device_type),
             main_editor=True,
         )
         rms_model_editor.show()

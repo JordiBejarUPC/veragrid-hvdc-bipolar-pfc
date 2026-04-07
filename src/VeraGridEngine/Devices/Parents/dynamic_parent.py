@@ -118,6 +118,7 @@ class DynamicDevice(PhysicalDevice):
 
             if self.auto_update_enabled:
                 val.block.unify_blocks()
+                # Todo: add promp to edit parameters from template after copy
                 self.rms_model = duplicate_block(val.block, self._var_factory)
 
         elif val is None:
