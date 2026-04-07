@@ -1839,3 +1839,74 @@ def test_terminal_reassignment_updates_branch_endpoint_port_reference() -> None:
     assert branch_graphic.get_terminal_from() is graphic_new.get_terminal()
     assert branch_graphic in graphic_new.get_terminal().get_hosted_graphics()
     assert branch_graphic not in graphic_from.get_terminal().get_hosted_graphics()
+
+
+def test_plain_branch_selection_does_not_activate_route_handles() -> None:
+    """
+    Rubber-band or programmatic selection alone must not surface branch edit handles.
+    """
+    _get_app()
+    editor: _BranchEditorStub = _BranchEditorStub()
+    scene: QtWidgets.QGraphicsScene = QtWidgets.QGraphicsScene()
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    line: Line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=300.0, y=0.0)
+
+    scene.addItem(graphic_from)
+    scene.addItem(graphic_to)
+
+    editor.diagram.set_attachment(line, "from", {"side": "bottom", "slot": "bottom", "terminal_key": "bottom"})
+    editor.diagram.set_attachment(line, "to", {"side": "bottom", "slot": "bottom", "terminal_key": "bottom"})
+    editor.diagram.set_branch_route_points(api_object=line,
+                                           points=[(90.0, 45.0), (90.0, 110.0), (390.0, 110.0), (390.0, 45.0)],
+                                           kind="manual-polyline",
+                                           locked=False)
+
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                                             to_port=graphic_to.get_terminal(),
+                                             editor=editor,
+                                             api_object=line)
+    scene.addItem(branch_graphic)
+
+    branch_graphic.setSelected(True)
+    branch_graphic.refresh_route_handles()
+
+    assert len(branch_graphic._route_handles) > 0
+    assert all(not handle.isVisible() for handle in branch_graphic._route_handles)
+    assert all(not handle.isVisible() for handle in branch_graphic._vertex_handles)
+    assert all(not handle.isVisible() for handle in branch_graphic._endpoint_handles.values())
+
+    branch_graphic.set_route_edit_active(True)
+
+    assert all(handle.isVisible() for handle in branch_graphic._route_handles)
+    assert all(handle.isVisible() for handle in branch_graphic._vertex_handles)
+    assert all(handle.isVisible() for handle in branch_graphic._endpoint_handles.values())
+
+
+def test_plain_injection_selection_does_not_activate_nexus_handles() -> None:
+    """
+    Selecting one injection without clicking into edit mode must keep nexus handles hidden.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    scene: QtWidgets.QGraphicsScene = QtWidgets.QGraphicsScene()
+    bus: Bus = Bus(name="B1")
+    load: Load = Load(name="L1")
+    bus_graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    load_graphic: LoadGraphicItem = LoadGraphicItem(parent=bus_graphic, api_obj=load, editor=editor)
+
+    scene.addItem(bus_graphic)
+    scene.addItem(load_graphic.nexus)
+    load_graphic.update_nexus(load_graphic.scenePos())
+    load_graphic.setSelected(True)
+    load_graphic.refresh_nexus_handles()
+
+    assert not load_graphic._nexus_endpoint_handles["child"].isVisible()
+    assert not load_graphic._nexus_endpoint_handles["parent"].isVisible()
+
+    load_graphic.set_nexus_edit_active(True)
+
+    assert load_graphic._nexus_endpoint_handles["child"].isVisible()
+    assert load_graphic._nexus_endpoint_handles["parent"].isVisible()
