@@ -565,14 +565,20 @@ def build_program_documents_from_package(package_name: str) -> list[RetrievalDoc
     :returns: Indexed documents.
     """
     documents: list[RetrievalDocument] = list()
-    resource_entries: list[Any] = list(files(package_name).iterdir())
+    resource_entries: list[Any] = sorted(list(files(package_name).iterdir()), key=get_resource_entry_name)
     resource_index: int = 0
 
     while resource_index < len(resource_entries):
         resource_entry: Any = resource_entries[resource_index]
         resource_name: str = str(resource_entry.name)
         if resource_name.endswith(".md"):
-            documents.extend(build_markdown_documents_from_resource(resource_name, resource_entry.read_text(encoding="utf-8")))
+            documents.extend(
+                build_markdown_documents_from_resource(
+                    resource_name=resource_name,
+                    source_text=resource_entry.read_text(encoding="utf-8"),
+                    document_kind=build_document_kind_from_resource_name(resource_name),
+                )
+            )
         else:
             pass
         resource_index += 1
@@ -580,15 +586,49 @@ def build_program_documents_from_package(package_name: str) -> list[RetrievalDoc
     return documents
 
 
+def get_resource_entry_name(resource_entry: Any) -> str:
+    """
+    Build the sorting key for one package resource entry.
+
+    :param resource_entry: Package resource entry.
+    :returns: Resource name.
+    """
+    return str(resource_entry.name)
+
+
+def build_document_kind_from_resource_name(resource_name: str) -> str:
+    """
+    Classify one packaged markdown resource for retrieval metadata.
+
+    :param resource_name: Packaged markdown resource name.
+    :returns: Document kind identifier.
+    """
+    if resource_name.startswith("generated_gui_main__"):
+        return "generated_gui_main"
+    else:
+        if resource_name.startswith("generated_engine__"):
+            return "generated_engine"
+        else:
+            if resource_name.startswith("generated_doc__"):
+                return "generated_official_doc"
+            else:
+                if resource_name.startswith("generated_knowledge_catalog"):
+                    return "generated_catalog"
+                else:
+                    return "knowledge_section"
+
+
 def build_markdown_documents_from_resource(
     resource_name: str,
     source_text: str,
+    document_kind: str,
 ) -> list[RetrievalDocument]:
     """
     Build heading-level documents from one packaged markdown resource.
 
     :param resource_name: Markdown resource name.
     :param source_text: Markdown text.
+    :param document_kind: Document kind identifier.
     :returns: Indexed documents.
     """
     documents: list[RetrievalDocument] = list()
@@ -609,7 +649,7 @@ def build_markdown_documents_from_resource(
                             title=f"{resource_name}::{current_heading}",
                             content=section_text,
                             keywords=tokenize_search_text(f"{resource_name} {current_heading}"),
-                            kind="knowledge_section",
+                            kind=document_kind,
                         )
                     )
                 else:
@@ -631,7 +671,7 @@ def build_markdown_documents_from_resource(
                 title=f"{resource_name}::{current_heading}",
                 content=final_section_text,
                 keywords=tokenize_search_text(f"{resource_name} {current_heading}"),
-                kind="knowledge_section",
+                kind=document_kind,
             )
         )
     else:
@@ -650,9 +690,18 @@ def classify_query_intent(query: str) -> QueryIntent:
     normalized_query: str = normalize_search_text(query)
     code_tokens: list[str] = list()
     runtime_tokens: list[str] = list()
+    code_patterns: list[tuple[str, str]] = list()
     index: int = 0
     has_code_token: bool = False
     has_runtime_token: bool = False
+
+    code_patterns.append(("python", "example"))
+    code_patterns.append(("python", "script"))
+    code_patterns.append(("python", "code"))
+    code_patterns.append(("source", "code"))
+    code_patterns.append(("code", "snippet"))
+    code_patterns.append(("how to", "python"))
+    code_patterns.append(("from code", "power flow"))
 
     code_tokens.extend(
         [
@@ -697,6 +746,14 @@ def classify_query_intent(query: str) -> QueryIntent:
     while index < len(code_tokens):
         if code_tokens[index] in normalized_query:
             has_code_token = True
+        else:
+            pass
+        index += 1
+
+    index = 0
+    while index < len(code_patterns):
+        if (code_patterns[index][0] in normalized_query) and (code_patterns[index][1] in normalized_query):
+            return QueryIntent.CODE
         else:
             pass
         index += 1

@@ -18,14 +18,15 @@ from PySide6.QtGui import (QBrush, QColor, QConicalGradient, QCursor,
 from PySide6.QtWidgets import (QApplication, QComboBox, QDialog, QDoubleSpinBox,
     QFrame, QGridLayout, QGroupBox, QHBoxLayout,
     QLabel, QLineEdit, QPlainTextEdit, QPushButton,
-    QRadioButton, QSizePolicy, QSpacerItem, QSplitter,
-    QTabWidget, QTextBrowser, QVBoxLayout, QWidget)
+    QRadioButton, QSizePolicy, QSpacerItem, QSpinBox,
+    QSplitter, QTabWidget, QTextBrowser, QVBoxLayout,
+    QWidget)
 
 class Ui_AiChatDialog(object):
     def setupUi(self, AiChatDialog):
         if not AiChatDialog.objectName():
             AiChatDialog.setObjectName(u"AiChatDialog")
-        AiChatDialog.resize(767, 496)
+        AiChatDialog.resize(654, 605)
         self.verticalLayout_4 = QVBoxLayout(AiChatDialog)
         self.verticalLayout_4.setObjectName(u"verticalLayout_4")
         self.verticalLayout_4.setContentsMargins(0, 0, 0, 0)
@@ -55,6 +56,7 @@ class Ui_AiChatDialog(object):
         self.splitter.addWidget(self.frame)
         self.chat_frame = QFrame(self.splitter)
         self.chat_frame.setObjectName(u"chat_frame")
+        self.chat_frame.setMaximumSize(QSize(16777215, 16777215))
         self.chat_frame.setFrameShape(QFrame.Shape.NoFrame)
         self.chat_frame.setFrameShadow(QFrame.Shadow.Raised)
         self.chat_layout = QVBoxLayout(self.chat_frame)
@@ -63,12 +65,17 @@ class Ui_AiChatDialog(object):
         self.message_plain_text_edit = QPlainTextEdit(self.chat_frame)
         self.message_plain_text_edit.setObjectName(u"message_plain_text_edit")
         self.message_plain_text_edit.setMinimumSize(QSize(0, 120))
+        self.message_plain_text_edit.setMaximumSize(QSize(16777215, 16777215))
         self.message_plain_text_edit.setFrameShape(QFrame.Shape.NoFrame)
         self.message_plain_text_edit.setTabChangesFocus(True)
 
         self.chat_layout.addWidget(self.message_plain_text_edit)
 
-        self.frame_2 = QFrame(self.chat_frame)
+        self.splitter.addWidget(self.chat_frame)
+
+        self.verticalLayout_2.addWidget(self.splitter)
+
+        self.frame_2 = QFrame(self.tab)
         self.frame_2.setObjectName(u"frame_2")
         self.frame_2.setFrameShape(QFrame.Shape.NoFrame)
         self.frame_2.setFrameShadow(QFrame.Shadow.Raised)
@@ -96,11 +103,7 @@ class Ui_AiChatDialog(object):
         self.horizontalLayout.addWidget(self.send_button)
 
 
-        self.chat_layout.addWidget(self.frame_2)
-
-        self.splitter.addWidget(self.chat_frame)
-
-        self.verticalLayout_2.addWidget(self.splitter)
+        self.verticalLayout_2.addWidget(self.frame_2)
 
         self.tabWidget.addTab(self.tab, "")
         self.tab_2 = QWidget()
@@ -125,7 +128,7 @@ class Ui_AiChatDialog(object):
 
         self.verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
-        self.gridLayout_2.addItem(self.verticalSpacer, 10, 1, 1, 1)
+        self.gridLayout_2.addItem(self.verticalSpacer, 16, 1, 1, 1)
 
         self.local_model_path_line_edit = QLineEdit(self.groupBox)
         self.local_model_path_line_edit.setObjectName(u"local_model_path_line_edit")
@@ -167,6 +170,118 @@ class Ui_AiChatDialog(object):
         self.local_timeout_label.setObjectName(u"local_timeout_label")
 
         self.gridLayout_2.addWidget(self.local_timeout_label, 7, 0, 1, 1)
+
+        self.local_context_tokens_label = QLabel(self.groupBox)
+        self.local_context_tokens_label.setObjectName(u"local_context_tokens_label")
+
+        self.gridLayout_2.addWidget(self.local_context_tokens_label, 8, 0, 1, 1)
+
+        self.local_context_tokens_spin_box = QSpinBox(self.groupBox)
+        self.local_context_tokens_spin_box.setObjectName(u"local_context_tokens_spin_box")
+        self.local_context_tokens_spin_box.setMinimum(512)
+        self.local_context_tokens_spin_box.setMaximum(32768)
+        self.local_context_tokens_spin_box.setSingleStep(512)
+        self.local_context_tokens_spin_box.setValue(4096)
+
+        self.gridLayout_2.addWidget(self.local_context_tokens_spin_box, 8, 1, 1, 2)
+
+        self.local_completion_tokens_label = QLabel(self.groupBox)
+        self.local_completion_tokens_label.setObjectName(u"local_completion_tokens_label")
+
+        self.gridLayout_2.addWidget(self.local_completion_tokens_label, 9, 0, 1, 1)
+
+        self.local_completion_tokens_spin_box = QSpinBox(self.groupBox)
+        self.local_completion_tokens_spin_box.setObjectName(u"local_completion_tokens_spin_box")
+        self.local_completion_tokens_spin_box.setMinimum(64)
+        self.local_completion_tokens_spin_box.setMaximum(8192)
+        self.local_completion_tokens_spin_box.setSingleStep(64)
+        self.local_completion_tokens_spin_box.setValue(1024)
+
+        self.gridLayout_2.addWidget(self.local_completion_tokens_spin_box, 9, 1, 1, 2)
+
+        self.local_gpu_layers_label = QLabel(self.groupBox)
+        self.local_gpu_layers_label.setObjectName(u"local_gpu_layers_label")
+
+        self.gridLayout_2.addWidget(self.local_gpu_layers_label, 10, 0, 1, 1)
+
+        self.local_gpu_layers_spin_box = QSpinBox(self.groupBox)
+        self.local_gpu_layers_spin_box.setObjectName(u"local_gpu_layers_spin_box")
+        self.local_gpu_layers_spin_box.setMinimum(-1)
+        self.local_gpu_layers_spin_box.setMaximum(512)
+        self.local_gpu_layers_spin_box.setValue(33)
+
+        self.gridLayout_2.addWidget(self.local_gpu_layers_spin_box, 10, 1, 1, 2)
+
+        self.local_temperature_label = QLabel(self.groupBox)
+        self.local_temperature_label.setObjectName(u"local_temperature_label")
+
+        self.gridLayout_2.addWidget(self.local_temperature_label, 11, 0, 1, 1)
+
+        self.local_temperature_double_spin_box = QDoubleSpinBox(self.groupBox)
+        self.local_temperature_double_spin_box.setObjectName(u"local_temperature_double_spin_box")
+        self.local_temperature_double_spin_box.setDecimals(2)
+        self.local_temperature_double_spin_box.setMinimum(0.000000000000000)
+        self.local_temperature_double_spin_box.setMaximum(2.000000000000000)
+        self.local_temperature_double_spin_box.setSingleStep(0.050000000000000)
+        self.local_temperature_double_spin_box.setValue(0.150000000000000)
+
+        self.gridLayout_2.addWidget(self.local_temperature_double_spin_box, 11, 1, 1, 2)
+
+        self.local_top_p_label = QLabel(self.groupBox)
+        self.local_top_p_label.setObjectName(u"local_top_p_label")
+
+        self.gridLayout_2.addWidget(self.local_top_p_label, 12, 0, 1, 1)
+
+        self.local_top_p_double_spin_box = QDoubleSpinBox(self.groupBox)
+        self.local_top_p_double_spin_box.setObjectName(u"local_top_p_double_spin_box")
+        self.local_top_p_double_spin_box.setDecimals(2)
+        self.local_top_p_double_spin_box.setMinimum(0.050000000000000)
+        self.local_top_p_double_spin_box.setMaximum(1.000000000000000)
+        self.local_top_p_double_spin_box.setSingleStep(0.050000000000000)
+        self.local_top_p_double_spin_box.setValue(0.900000000000000)
+
+        self.gridLayout_2.addWidget(self.local_top_p_double_spin_box, 12, 1, 1, 2)
+
+        self.local_history_messages_label = QLabel(self.groupBox)
+        self.local_history_messages_label.setObjectName(u"local_history_messages_label")
+
+        self.gridLayout_2.addWidget(self.local_history_messages_label, 13, 0, 1, 1)
+
+        self.local_history_messages_spin_box = QSpinBox(self.groupBox)
+        self.local_history_messages_spin_box.setObjectName(u"local_history_messages_spin_box")
+        self.local_history_messages_spin_box.setMinimum(1)
+        self.local_history_messages_spin_box.setMaximum(64)
+        self.local_history_messages_spin_box.setValue(6)
+
+        self.gridLayout_2.addWidget(self.local_history_messages_spin_box, 13, 1, 1, 2)
+
+        self.local_history_chars_label = QLabel(self.groupBox)
+        self.local_history_chars_label.setObjectName(u"local_history_chars_label")
+
+        self.gridLayout_2.addWidget(self.local_history_chars_label, 14, 0, 1, 1)
+
+        self.local_history_chars_spin_box = QSpinBox(self.groupBox)
+        self.local_history_chars_spin_box.setObjectName(u"local_history_chars_spin_box")
+        self.local_history_chars_spin_box.setMinimum(512)
+        self.local_history_chars_spin_box.setMaximum(64000)
+        self.local_history_chars_spin_box.setSingleStep(256)
+        self.local_history_chars_spin_box.setValue(2200)
+
+        self.gridLayout_2.addWidget(self.local_history_chars_spin_box, 14, 1, 1, 2)
+
+        self.local_grounding_chars_label = QLabel(self.groupBox)
+        self.local_grounding_chars_label.setObjectName(u"local_grounding_chars_label")
+
+        self.gridLayout_2.addWidget(self.local_grounding_chars_label, 15, 0, 1, 1)
+
+        self.local_grounding_chars_spin_box = QSpinBox(self.groupBox)
+        self.local_grounding_chars_spin_box.setObjectName(u"local_grounding_chars_spin_box")
+        self.local_grounding_chars_spin_box.setMinimum(256)
+        self.local_grounding_chars_spin_box.setMaximum(64000)
+        self.local_grounding_chars_spin_box.setSingleStep(256)
+        self.local_grounding_chars_spin_box.setValue(1800)
+
+        self.gridLayout_2.addWidget(self.local_grounding_chars_spin_box, 15, 1, 1, 2)
 
 
         self.gridLayout.addWidget(self.groupBox, 0, 0, 1, 2)
@@ -278,6 +393,14 @@ class Ui_AiChatDialog(object):
         self.local_model_label.setText(QCoreApplication.translate("AiChatDialog", u"GGUF model", None))
         self.local_model_path_label.setText(QCoreApplication.translate("AiChatDialog", u"Model path", None))
         self.local_timeout_label.setText(QCoreApplication.translate("AiChatDialog", u"Timeout [s]", None))
+        self.local_context_tokens_label.setText(QCoreApplication.translate("AiChatDialog", u"Context tokens", None))
+        self.local_completion_tokens_label.setText(QCoreApplication.translate("AiChatDialog", u"Completion tokens", None))
+        self.local_gpu_layers_label.setText(QCoreApplication.translate("AiChatDialog", u"GPU layers", None))
+        self.local_temperature_label.setText(QCoreApplication.translate("AiChatDialog", u"Temperature", None))
+        self.local_top_p_label.setText(QCoreApplication.translate("AiChatDialog", u"Top p", None))
+        self.local_history_messages_label.setText(QCoreApplication.translate("AiChatDialog", u"History messages", None))
+        self.local_history_chars_label.setText(QCoreApplication.translate("AiChatDialog", u"History chars", None))
+        self.local_grounding_chars_label.setText(QCoreApplication.translate("AiChatDialog", u"Grounding chars", None))
         self.groupBox_2.setTitle(QCoreApplication.translate("AiChatDialog", u"Remote AI", None))
         self.api_api_key_line_edit.setPlaceholderText(QCoreApplication.translate("AiChatDialog", u"Leave empty for unauthenticated endpoints", None))
         self.api_ai_radioButton.setText(QCoreApplication.translate("AiChatDialog", u"API AI settings", None))

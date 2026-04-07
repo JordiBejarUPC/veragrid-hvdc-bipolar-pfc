@@ -27,6 +27,9 @@ from typing import Any, Callable, Optional, Protocol
 
 import requests
 
+LOCAL_LLAMA_CPP_CONTEXT_WINDOW_TOKENS: int = 4096
+LOCAL_LLAMA_CPP_MAX_COMPLETION_TOKENS: int = 1024
+
 
 class ProviderType(Enum):
     """Supported LLM provider types."""
@@ -50,6 +53,7 @@ class ProviderErrorCode(Enum):
     """Error categories for provider execution."""
 
     NONE = "none"
+    CANCELED = "canceled"
     HTTP_ERROR = "http_error"
     PARSE_ERROR = "parse_error"
     INVALID_CONFIGURATION = "invalid_configuration"
@@ -73,6 +77,14 @@ class ProviderConfig:
     :param api_key: API key if required.
     :param base_url: Base URL for the provider endpoint.
     :param timeout_s: HTTP timeout in seconds.
+    :param context_window_tokens: Local context-window token budget.
+    :param completion_tokens: Completion token budget.
+    :param gpu_layers: Local llama.cpp GPU layer count.
+    :param temperature: Local llama.cpp sampling temperature.
+    :param top_p: Local llama.cpp nucleus sampling factor.
+    :param history_message_limit: Prompt history message budget.
+    :param history_char_budget: Prompt history character budget.
+    :param grounding_char_budget: Prompt grounding character budget.
     """
 
     __slots__ = (
@@ -81,6 +93,14 @@ class ProviderConfig:
         "api_key",
         "base_url",
         "timeout_s",
+        "context_window_tokens",
+        "completion_tokens",
+        "gpu_layers",
+        "temperature",
+        "top_p",
+        "history_message_limit",
+        "history_char_budget",
+        "grounding_char_budget",
     )
 
     def __init__(
@@ -90,12 +110,28 @@ class ProviderConfig:
         api_key: Optional[str],
         base_url: Optional[str],
         timeout_s: float,
+        context_window_tokens: int = LOCAL_LLAMA_CPP_CONTEXT_WINDOW_TOKENS,
+        completion_tokens: int = LOCAL_LLAMA_CPP_MAX_COMPLETION_TOKENS,
+        gpu_layers: int = 33,
+        temperature: float = 0.15,
+        top_p: float = 0.90,
+        history_message_limit: int = 6,
+        history_char_budget: int = 2200,
+        grounding_char_budget: int = 1800,
     ) -> None:
         self.provider_tpe: ProviderType = provider_tpe
         self.model_name: str = model_name
         self.api_key: Optional[str] = api_key
         self.base_url: Optional[str] = base_url
         self.timeout_s: float = timeout_s
+        self.context_window_tokens: int = context_window_tokens
+        self.completion_tokens: int = completion_tokens
+        self.gpu_layers: int = gpu_layers
+        self.temperature: float = temperature
+        self.top_p: float = top_p
+        self.history_message_limit: int = history_message_limit
+        self.history_char_budget: int = history_char_budget
+        self.grounding_char_budget: int = grounding_char_budget
 
 
 class ChatMessage:
@@ -616,6 +652,7 @@ class LLMProviderProtocol(Protocol):
         messages: list[ChatMessage],
         tool_specs: list[ToolSpec],
         text_delta_callback: Optional[Callable[[str], None]],
+        cancellation_check: Optional[Callable[[], bool]] = None,
     ) -> LLMResponse:
         """Run one provider completion and emit text deltas when supported."""
 
@@ -871,6 +908,7 @@ class OpenAIProvider:
         messages: list[ChatMessage],
         tool_specs: list[ToolSpec],
         text_delta_callback: Optional[Callable[[str], None]],
+        cancellation_check: Optional[Callable[[], bool]] = None,
     ) -> LLMResponse:
         """
         Execute one completion and emit the final text when streaming is unavailable.
@@ -882,6 +920,7 @@ class OpenAIProvider:
         :returns: Provider response.
         """
         del text_delta_callback
+        del cancellation_check
         return self.complete(system_prompt=system_prompt, messages=messages, tool_specs=tool_specs)
 
 
@@ -970,6 +1009,7 @@ class AnthropicProvider:
         messages: list[ChatMessage],
         tool_specs: list[ToolSpec],
         text_delta_callback: Optional[Callable[[str], None]],
+        cancellation_check: Optional[Callable[[], bool]] = None,
     ) -> LLMResponse:
         """
         Execute one completion and emit the final text when streaming is unavailable.
@@ -981,6 +1021,7 @@ class AnthropicProvider:
         :returns: Provider response.
         """
         del text_delta_callback
+        del cancellation_check
         return self.complete(system_prompt=system_prompt, messages=messages, tool_specs=tool_specs)
 
 
@@ -1063,6 +1104,7 @@ class OpenAICompatibleProvider:
         messages: list[ChatMessage],
         tool_specs: list[ToolSpec],
         text_delta_callback: Optional[Callable[[str], None]],
+        cancellation_check: Optional[Callable[[], bool]] = None,
     ) -> LLMResponse:
         """
         Execute one completion and emit the final text when streaming is unavailable.
@@ -1091,6 +1133,19 @@ class OpenAICompatibleProvider:
         index: int = 0
         accumulated_text: str = ""
         tool_call_states: list[dict[str, str]] = list()
+
+        if cancellation_check is not None:
+            if cancellation_check():
+                return LLMResponse(
+                    text="",
+                    tool_calls=list(),
+                    error_code=ProviderErrorCode.CANCELED,
+                    error_message="Generation stopped.",
+                )
+            else:
+                pass
+        else:
+            pass
 
         if text_delta_callback is None:
             return self.complete(system_prompt=system_prompt, messages=messages, tool_specs=tool_specs)
@@ -1141,6 +1196,20 @@ class OpenAICompatibleProvider:
                 )
             else:
                 for chunk_line in response_obj.iter_lines(decode_unicode=True):
+                    if cancellation_check is not None:
+                        if cancellation_check():
+                            response_obj.close()
+                            return LLMResponse(
+                                text=accumulated_text,
+                                tool_calls=list(),
+                                error_code=ProviderErrorCode.CANCELED,
+                                error_message="Generation stopped.",
+                            )
+                        else:
+                            pass
+                    else:
+                        pass
+
                     if isinstance(chunk_line, bytes):
                         chunk_text = chunk_line.decode("utf-8", errors="ignore").strip()
                     else:
@@ -1551,8 +1620,8 @@ class LocalLlamaCppProvider:
                 # Keep the defaults explicit and conservative for desktop usage.
                 self._model_instance = llama_class(
                     model_path=model_path,
-                    n_ctx=4096,
-                    n_gpu_layers=33,
+                    n_ctx=self._config.context_window_tokens,
+                    n_gpu_layers=self._config.gpu_layers,
                     verbose=False,
                 )
                 self._loaded_model_path = model_path
@@ -1606,7 +1675,9 @@ class LocalLlamaCppProvider:
 
         payload = dict()
         payload["messages"] = payload_messages
-        payload["max_tokens"] = 2048
+        payload["max_tokens"] = self._config.completion_tokens
+        payload["temperature"] = self._config.temperature
+        payload["top_p"] = self._config.top_p
 
         if len(self._config.model_name.strip()) > 0:
             payload["model"] = self._config.model_name.strip()
@@ -1653,6 +1724,7 @@ class LocalLlamaCppProvider:
         messages: list[ChatMessage],
         tool_specs: list[ToolSpec],
         text_delta_callback: Optional[Callable[[str], None]],
+        cancellation_check: Optional[Callable[[], bool]] = None,
     ) -> LLMResponse:
         """
         Execute one in-process llama.cpp streamed chat completion.
@@ -1685,6 +1757,19 @@ class LocalLlamaCppProvider:
                 error_message=model_error,
             )
 
+        if cancellation_check is not None:
+            if cancellation_check():
+                return LLMResponse(
+                    text="",
+                    tool_calls=list(),
+                    error_code=ProviderErrorCode.CANCELED,
+                    error_message="Generation stopped.",
+                )
+            else:
+                pass
+        else:
+            pass
+
         payload_messages = build_openai_compatible_messages(system_prompt, messages)
         tool_items = list()
         index = 0
@@ -1695,8 +1780,10 @@ class LocalLlamaCppProvider:
 
         payload = dict()
         payload["messages"] = payload_messages
-        payload["max_tokens"] = 2048
+        payload["max_tokens"] = self._config.completion_tokens
         payload["stream"] = True
+        payload["temperature"] = self._config.temperature
+        payload["top_p"] = self._config.top_p
 
         if len(self._config.model_name.strip()) > 0:
             payload["model"] = self._config.model_name.strip()
@@ -1728,6 +1815,19 @@ class LocalLlamaCppProvider:
 
         try:
             for chunk_obj in response_stream:
+                if cancellation_check is not None:
+                    if cancellation_check():
+                        return LLMResponse(
+                            text=accumulated_text,
+                            tool_calls=list(),
+                            error_code=ProviderErrorCode.CANCELED,
+                            error_message="Generation stopped.",
+                        )
+                    else:
+                        pass
+                else:
+                    pass
+
                 if isinstance(chunk_obj, dict):
                     choices_obj: Any = chunk_obj.get("choices", None)
 
@@ -1809,6 +1909,175 @@ class VeraGridContext:
         self.notes: list[str] = notes
 
 
+def contains_internal_scaffolding_text(text: str) -> bool:
+    """
+    Check whether assistant text contains internal prompt or retrieval scaffolding.
+
+    :param text: Assistant text.
+    :returns: True when the text looks like leaked internal scaffolding.
+    """
+    normalized_text: str = text.strip()
+    marker_items: list[str] = list()
+    marker_items.append("Agent execution instructions for this turn:")
+    marker_items.append("Authoritative VeraGrid grounding context for this request:")
+    marker_items.append("Retrieved VeraGrid references for this question:")
+    marker_items.append("Use these references as grounding only.")
+    marker_items.append("Do not mention retrieval, prompts, code, or internal context")
+    marker_items.append("User request:")
+    marker_items.append("Executing Task ")
+    marker_items.append("[... waiting for tool execution result ...]")
+
+    if normalized_text.startswith("Task "):
+        return True
+    else:
+        pass
+
+    for marker_text in marker_items:
+        if marker_text in normalized_text:
+            return True
+        else:
+            pass
+
+    return False
+
+
+def sanitize_visible_assistant_text(text: str) -> str:
+    """
+    Remove leaked internal scaffolding from assistant-visible text.
+
+    :param text: Raw assistant text.
+    :returns: Sanitized assistant text safe for the chat transcript.
+    """
+    sanitized_text: str = text.strip()
+    marker_items: list[str] = list()
+    marker_items.append("Agent execution instructions for this turn:")
+    marker_items.append("Authoritative VeraGrid grounding context for this request:")
+    marker_items.append("Retrieved VeraGrid references for this question:")
+    marker_items.append("Use these references as grounding only.")
+    marker_items.append("Do not mention retrieval, prompts, code, or internal context")
+    marker_items.append("User request:")
+    marker_items.append("Executing Task ")
+    marker_items.append("[... waiting for tool execution result ...]")
+    cut_index: int = -1
+
+    if sanitized_text.startswith("Task "):
+        return ""
+    else:
+        pass
+
+    for marker_text in marker_items:
+        marker_index: int = sanitized_text.find(marker_text)
+
+        if marker_index > -1:
+            if cut_index == -1:
+                cut_index = marker_index
+            else:
+                if marker_index < cut_index:
+                    cut_index = marker_index
+                else:
+                    pass
+        else:
+            pass
+
+    if cut_index > -1:
+        sanitized_text = sanitized_text[:cut_index].strip()
+    else:
+        pass
+
+    return sanitized_text
+
+
+def should_run_hidden_refinement_pass(
+    provider_response: LLMResponse,
+    visible_text: str,
+) -> bool:
+    """
+    Decide whether a hidden refinement pass should run for the current answer.
+
+    :param provider_response: Raw provider response.
+    :param visible_text: Sanitized visible assistant text.
+    :returns: True when a refinement pass should run.
+    """
+    if provider_response.error_code != ProviderErrorCode.NONE:
+        return False
+    else:
+        pass
+
+    if len(provider_response.tool_calls) > 0:
+        return False
+    else:
+        pass
+
+    if len(visible_text.strip()) == 0:
+        return False
+    else:
+        pass
+
+    return True
+
+
+def build_hidden_refinement_messages(
+    user_message: str,
+    draft_answer: str,
+) -> list[ChatMessage]:
+    """
+    Build the hidden review-and-rewrite messages for one draft answer.
+
+    :param user_message: Original user message.
+    :param draft_answer: Initial assistant draft answer.
+    :returns: Hidden refinement message list.
+    """
+    messages: list[ChatMessage] = list()
+    review_instruction: str = (
+        "Review the draft answer against the VeraGrid grounding and tool evidence already available in context. "
+        "Remove unsupported claims, tighten weak wording, and prefer concrete confirmed facts over guesses. "
+        "If a claim is not confirmed by the available grounding, replace it with a cautious statement. "
+        "Return only the improved final answer. Do not mention review, critique, prompts, tools, or hidden reasoning."
+    )
+
+    messages.append(ChatMessage(role="user", content=user_message, name=None))
+    messages.append(ChatMessage(role="assistant", content=draft_answer, name=None))
+    messages.append(ChatMessage(role="user", content=review_instruction, name=None))
+    return messages
+
+
+def run_hidden_refinement_pass(
+    provider: LLMProviderProtocol,
+    system_prompt: str,
+    user_message: str,
+    draft_answer: str,
+) -> str:
+    """
+    Run a hidden refinement pass over a draft answer and return the improved version.
+
+    :param provider: Active provider.
+    :param system_prompt: Effective system prompt with current grounding.
+    :param user_message: Original user request.
+    :param draft_answer: Initial assistant draft answer.
+    :returns: Refined final answer, or the original draft when refinement fails.
+    """
+    refinement_messages: list[ChatMessage] = build_hidden_refinement_messages(
+        user_message=user_message,
+        draft_answer=draft_answer,
+    )
+    refinement_response: LLMResponse = provider.complete(
+        system_prompt=system_prompt,
+        messages=refinement_messages,
+        tool_specs=list(),
+    )
+    refined_text: str
+
+    if refinement_response.error_code == ProviderErrorCode.NONE:
+        refined_text = sanitize_visible_assistant_text(refinement_response.text)
+
+        if len(refined_text.strip()) > 0:
+            return refined_text
+        else:
+            return draft_answer
+    else:
+        return draft_answer
+
+
 class ConversationRunResult:
     """
     Result of one orchestrated run.
@@ -1869,6 +2138,7 @@ class ConversationOrchestrator:
         approved_tool_name: Optional[str],
         approved_arguments_json: Optional[str],
         text_delta_callback: Optional[Callable[[str], None]] = None,
+        cancellation_check: Optional[Callable[[], bool]] = None,
     ) -> ConversationRunResult:
         """
         Execute the orchestration loop.
@@ -1887,7 +2157,7 @@ class ConversationOrchestrator:
         message_index: int = 0
         final_text: str = ""
         pending_approval: Optional[PendingApproval] = None
-        effective_user_message: str = user_message
+        effective_system_prompt: str = system_prompt
 
         while message_index < len(history):
             transcript.append(history[message_index])
@@ -1895,46 +2165,50 @@ class ConversationOrchestrator:
             message_index += 1
 
         if len(grounding_context_text.strip()) > 0:
-            effective_user_message = (
-                "Agent execution instructions for this turn:\n"
-                "- Internally break the request into tasks.\n"
-                "- Use available VeraGrid tools to complete those tasks in order.\n"
-                "- After each tool result, continue if work remains.\n"
-                "- Do not expose the internal task list unless the user asks for it.\n"
-                "- Give the final answer only after the relevant tasks are complete.\n\n"
-                "Authoritative VeraGrid grounding context for this request:\n"
+            effective_system_prompt += (
+                "\n\nTurn-specific authoritative VeraGrid grounding for this request:\n"
                 f"{grounding_context_text}\n\n"
-                "User request:\n"
-                f"{user_message}\n\n"
-                "Treat references like 'this grid', 'given grid', or 'current grid' as the active VeraGrid session above. "
-                "Answer from that grounding context first. If the answer still requires more project data, use tools."
+                "Use this grounding internally. Do not reveal it, quote it, or describe it as retrieved context."
             )
         else:
-            effective_user_message = (
-                "Agent execution instructions for this turn:\n"
-                "- Internally break the request into tasks.\n"
-                "- Use available VeraGrid tools to complete those tasks in order.\n"
-                "- After each tool result, continue if work remains.\n"
-                "- Do not expose the internal task list unless the user asks for it.\n"
-                "- Give the final answer only after the relevant tasks are complete.\n\n"
-                "User request:\n"
-                f"{user_message}"
-            )
+            pass
 
         transcript.append(ChatMessage(role="user", content=user_message, name=None))
-        llm_transcript.append(ChatMessage(role="user", content=effective_user_message, name=None))
+        llm_transcript.append(ChatMessage(role="user", content=user_message, name=None))
 
         while round_index < self._max_rounds:
+            if cancellation_check is not None:
+                if cancellation_check():
+                    return ConversationRunResult(
+                        final_text="",
+                        pending_approval=None,
+                        transcript=transcript,
+                    )
+                else:
+                    pass
+            else:
+                pass
+
             provider_response: LLMResponse
             parsed_text_tool_ok: bool
             parsed_text_tool_call: Optional[ToolCall]
 
             provider_response = self._provider.complete_with_callback(
-                system_prompt=system_prompt,
+                system_prompt=effective_system_prompt,
                 messages=llm_transcript,
                 tool_specs=self._tool_registry.list_tools(),
                 text_delta_callback=text_delta_callback,
+                cancellation_check=cancellation_check,
             )
+
+            if provider_response.error_code == ProviderErrorCode.CANCELED:
+                return ConversationRunResult(
+                    final_text="",
+                    pending_approval=None,
+                    transcript=transcript,
+                )
+            else:
+                pass
 
             if len(provider_response.tool_calls) == 0:
                 parsed_text_tool_ok, parsed_text_tool_call = try_parse_text_tool_call(
@@ -1958,24 +2232,68 @@ class ConversationOrchestrator:
                 else:
                     pass
 
+            sanitized_response_text: str = sanitize_visible_assistant_text(provider_response.text)
+
+            if cancellation_check is not None:
+                if cancellation_check():
+                    return ConversationRunResult(
+                        final_text="",
+                        pending_approval=None,
+                        transcript=transcript,
+                    )
+                else:
+                    pass
+            else:
+                pass
+
+            if should_run_hidden_refinement_pass(
+                provider_response=provider_response,
+                visible_text=sanitized_response_text,
+            ):
+                sanitized_response_text = run_hidden_refinement_pass(
+                    provider=self._provider,
+                    system_prompt=effective_system_prompt,
+                    user_message=user_message,
+                    draft_answer=sanitized_response_text,
+                )
+            else:
+                pass
+
             if provider_response.error_code == ProviderErrorCode.NONE:
-                final_text = provider_response.text
+                final_text = sanitized_response_text
             else:
                 final_text = provider_response.error_message
 
-            if len(provider_response.text) > 0:
+            if len(sanitized_response_text) > 0:
                 assistant_message: ChatMessage = ChatMessage(
                     role="assistant",
-                    content=provider_response.text,
+                    content=sanitized_response_text,
                     name=None,
                 )
             else:
                 assistant_message = ChatMessage(role="assistant", content=final_text, name=None)
 
-            transcript.append(assistant_message)
-            llm_transcript.append(assistant_message)
+            if len(assistant_message.content) > 0:
+                transcript.append(assistant_message)
+                llm_transcript.append(assistant_message)
+            else:
+                pass
 
             if len(provider_response.tool_calls) == 0:
+                if (provider_response.error_code == ProviderErrorCode.NONE) and (
+                    len(sanitized_response_text) == 0
+                ) and contains_internal_scaffolding_text(provider_response.text):
+                    fallback_message: ChatMessage = ChatMessage(
+                        role="assistant",
+                        content="I could not produce a clean answer for that turn.",
+                        name=None,
+                    )
+                    transcript.append(fallback_message)
+                    llm_transcript.append(fallback_message)
+                    final_text = fallback_message.content
+                else:
+                    pass
+
                 pending_approval = None
                 round_index = self._max_rounds
             else:
@@ -1983,6 +2301,18 @@ class ConversationOrchestrator:
                 stop_loop: bool = False
 
                 while tool_index < len(provider_response.tool_calls) and (not stop_loop):
+                    if cancellation_check is not None:
+                        if cancellation_check():
+                            return ConversationRunResult(
+                                final_text="",
+                                pending_approval=None,
+                                transcript=transcript,
+                            )
+                        else:
+                            pass
+                    else:
+                        pass
+
                     tool_call: ToolCall = provider_response.tool_calls[tool_index]
                     is_approved: bool = False
 
@@ -2067,6 +2397,7 @@ class PromptFactory:
             "For every non-trivial request, privately decompose the goal into a short sequence of tasks, "
             "execute those tasks one by one, and reassess after each tool result. "
             "Keep the task list internal unless the user explicitly asks for a concise plan. "
+            "Before returning a final answer, privately review it for unsupported claims and revise it if needed. "
             "Use tools when authoritative project data is required. "
             "For questions about the currently loaded model, session, studies, drivers, or results, "
             "query the live runtime tools instead of guessing. "
@@ -2076,6 +2407,12 @@ class PromptFactory:
             "use analyze_grid_issues when it is available. "
             "When the user asks you to run, execute, launch, solve, or calculate an analysis "
             "and a matching tool exists, call the tool instead of only describing the action. "
+            "If the user asks for Python code, source code, an example script, or how to do something from code, "
+            "do not execute the live action unless they explicitly ask you to run it in the current VeraGrid session. "
+            "For code answers, only use VeraGrid modules, classes, functions, and patterns that are supported by the "
+            "available grounding. Do not invent APIs, imports, classes, helper methods, or file-loading calls. "
+            "If the grounding is insufficient to provide exact code, say that you cannot confirm the exact API and "
+            "then provide only a cautious high-level outline. "
             "When a request mixes analysis and action, first gather the necessary runtime facts, "
             "then execute the action, then inspect the resulting study or results before answering. "
             "Do not stop after the first tool call when the request still has unfinished tasks. "
@@ -2087,6 +2424,10 @@ class PromptFactory:
             "Use get_holistic_grid_context, list_available_studies, get_study_summary, "
             "search_runtime_records, or get_runtime_record first. "
             "Do not invent study results. "
+            "Do not invent runtime values, object properties, study status, or simulation outcomes. "
+            "If the live VeraGrid data does not confirm a value, say that you cannot confirm it yet. "
+            "Prefer deterministic summaries and tool payloads over extrapolating from partial records. "
+            "When explaining results, clearly separate confirmed facts from engineering interpretation. "
             "Treat phrases such as 'this grid', 'given grid', 'current grid', and 'loaded grid' "
             "as references to the active VeraGrid project context below. "
             "If a project-changing action is requested, require approval before executing it.\n\n"

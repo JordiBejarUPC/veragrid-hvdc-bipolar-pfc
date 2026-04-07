@@ -737,6 +737,14 @@ class BaseMainGui(QMainWindow):
             base_url=model_path,
             api_key=None,
             timeout_s=60.0,
+            context_window_tokens=4096,
+            completion_tokens=1024,
+            gpu_layers=33,
+            temperature=0.15,
+            top_p=0.90,
+            history_message_limit=6,
+            history_char_budget=2200,
+            grounding_char_budget=1800,
         )
 
     def build_ai_config_data(self) -> dict[str, str | float | bool]:
@@ -758,6 +766,14 @@ class BaseMainGui(QMainWindow):
         data["base_url"] = state_to_save.base_url
         data["api_key"] = state_to_save.api_key or ""
         data["timeout_s"] = state_to_save.timeout_s
+        data["context_window_tokens"] = state_to_save.context_window_tokens
+        data["completion_tokens"] = state_to_save.completion_tokens
+        data["gpu_layers"] = state_to_save.gpu_layers
+        data["temperature"] = state_to_save.temperature
+        data["top_p"] = state_to_save.top_p
+        data["history_message_limit"] = state_to_save.history_message_limit
+        data["history_char_budget"] = state_to_save.history_char_budget
+        data["grounding_char_budget"] = state_to_save.grounding_char_budget
         # The AI window must always stay hidden at startup until the user opens it manually.
         data["visible"] = False
 
@@ -774,6 +790,14 @@ class BaseMainGui(QMainWindow):
         provider_tpe: ProviderType = ProviderType.LOCAL_LLAMA_CPP
         api_key_obj: object = data.get("api_key", "")
         timeout_obj: object = data.get("timeout_s", 60.0)
+        context_window_tokens_obj: object = data.get("context_window_tokens", 4096)
+        completion_tokens_obj: object = data.get("completion_tokens", 1024)
+        gpu_layers_obj: object = data.get("gpu_layers", 33)
+        temperature_obj: object = data.get("temperature", 0.15)
+        top_p_obj: object = data.get("top_p", 0.90)
+        history_message_limit_obj: object = data.get("history_message_limit", 6)
+        history_char_budget_obj: object = data.get("history_char_budget", 2200)
+        grounding_char_budget_obj: object = data.get("grounding_char_budget", 1800)
         provider_items: list[ProviderType] = list(ProviderType)
         enum_index: int = 0
 
@@ -791,6 +815,38 @@ class BaseMainGui(QMainWindow):
             base_url=str(data.get("base_url", self.build_default_ai_backend_state().base_url)),
             api_key=str(api_key_obj) if isinstance(api_key_obj, str) and len(api_key_obj) > 0 else None,
             timeout_s=float(timeout_obj) if isinstance(timeout_obj, (int, float)) else 60.0,
+            context_window_tokens=(
+                int(context_window_tokens_obj)
+                if isinstance(context_window_tokens_obj, int)
+                else 4096
+            ),
+            completion_tokens=(
+                int(completion_tokens_obj)
+                if isinstance(completion_tokens_obj, int)
+                else 1024
+            ),
+            gpu_layers=int(gpu_layers_obj) if isinstance(gpu_layers_obj, int) else 33,
+            temperature=(
+                float(temperature_obj)
+                if isinstance(temperature_obj, (int, float))
+                else 0.15
+            ),
+            top_p=float(top_p_obj) if isinstance(top_p_obj, (int, float)) else 0.90,
+            history_message_limit=(
+                int(history_message_limit_obj)
+                if isinstance(history_message_limit_obj, int)
+                else 6
+            ),
+            history_char_budget=(
+                int(history_char_budget_obj)
+                if isinstance(history_char_budget_obj, int)
+                else 2200
+            ),
+            grounding_char_budget=(
+                int(grounding_char_budget_obj)
+                if isinstance(grounding_char_budget_obj, int)
+                else 1800
+            ),
         )
         self.ai_restore_visible = False
 
