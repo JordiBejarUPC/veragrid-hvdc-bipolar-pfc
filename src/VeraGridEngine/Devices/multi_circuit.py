@@ -15,6 +15,7 @@ import networkx as nx
 from matplotlib import pyplot as plt
 from scipy.sparse import csc_matrix, lil_matrix
 
+from VeraGridEngine import BusGraphicType
 from VeraGridEngine.Devices.assets import Assets
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.basic_structures import IntVec, Vec, Mat, CxVec, IntMat, CxMat, BoolVec
@@ -362,6 +363,14 @@ class MultiCircuit(Assets):
                 'if_measurements',
                 'modelling_authorities',
                 'diagrams',
+                'rms_var_factory',
+                'emt_var_factory',
+                'rms_models',
+                'emt_models',
+                'rms_events',
+                'emt_events',
+                'rms_events_groups',
+                'emt_events_groups',
                 ]
 
         for pr in ppts:
@@ -386,6 +395,8 @@ class MultiCircuit(Assets):
             for branch in branch_list:
                 f = bus_dictionary[branch.bus_from.idtag]
                 t = bus_dictionary[branch.bus_to.idtag]
+
+                # TODO: Refactor to not use hasattr
                 if branch.device_type in [DeviceType.LineDevice,
                                           DeviceType.DCLineDevice,
                                           DeviceType.HVDCLineDevice]:
@@ -1622,14 +1633,14 @@ class MultiCircuit(Assets):
 
         return result
 
-    def compose_bus_blocks(self) -> Dict[dev.bus, Block]:
+    def compose_bus_blocks(self) -> Dict[dev.Bus, Block]:
         """
         this function returns a dictionary with keys, the device bus, mand values, a block containing all the rms models of the elements connected to that bus.
         Returns
         -------
 
         """
-        syst_blocks: Dict[dev.bus, Block] = dict()
+        syst_blocks: Dict[dev.Bus, Block] = dict()
 
         bus_regions_dict = self.get_injection_devices_grouped_by_bus()
 
@@ -2792,7 +2803,8 @@ class MultiCircuit(Assets):
                      vmax=original_line.bus_from.Vmax,
                      area=original_line.bus_from.area,
                      zone=original_line.bus_from.zone,
-                     country=original_line.bus_from.country)
+                     country=original_line.bus_from.country,
+                     graphic_type=BusGraphicType.Connectivity)
 
         B2 = dev.Bus(name=original_line.name + ' split bus 2',
                      Vnom=original_line.bus_from.Vnom,
@@ -2800,7 +2812,8 @@ class MultiCircuit(Assets):
                      vmax=original_line.bus_from.Vmax,
                      area=original_line.bus_from.area,
                      zone=original_line.bus_from.zone,
-                     country=original_line.bus_from.country)
+                     country=original_line.bus_from.country,
+                     graphic_type=BusGraphicType.Connectivity)
 
         mid_sub = dev.Substation(name=original_line.name + ' new bus',
                                  area=original_line.bus_from.area,
@@ -2930,12 +2943,20 @@ class MultiCircuit(Assets):
         :param data:
         :return:
         """
-        self.transformer_types += data.transformer_types
-        self.underground_cable_types += data.underground_cable_types
-        self.wire_types += data.wire_types
-        self.sequence_line_types += data.sequence_line_types
+        for tpe in data.transformer_types:
+            self.add_transformer_type(tpe)
+
+        for tpe in data.underground_cable_types:
+            self.add_underground_line(tpe)
+
+        for tpe in data.wire_types:
+            self.add_wire(tpe)
+
+        for tpe in data.sequence_line_types:
+            self.add_sequence_line(tpe)
+
         self.rms_models += data.rms_models
-        print("done 2")
+        self.emt_models += data.emt_models
 
     def set_opf_ts_results(self, results: OptimalPowerFlowTimeSeriesResults):
         """
@@ -3262,6 +3283,25 @@ class MultiCircuit(Assets):
         for elm in self.get_injection_devices_iter():
             if elm.rms_model.empty():
                 logger.add_error("Missing RMS model",
+                                 device_class=elm.device_type.value,
+                                 device=elm.name)
+        return logger
+
+    def check_emt_models(self) -> Logger:
+        """
+        This function checks that a device has a valid emt model
+        :return:
+        """
+        logger = Logger()
+
+        for elm in self.get_branches_iter():
+            if elm.emt_model.empty():
+                logger.add_error("Missing EMT model",
+                                 device_class=elm.device_type.value,
+                                 device=elm.name)
+        for elm in self.get_injection_devices_iter():
+            if elm.emt_model.empty():
+                logger.add_error("Missing EMT model",
                                  device_class=elm.device_type.value,
                                  device=elm.name)
         return logger

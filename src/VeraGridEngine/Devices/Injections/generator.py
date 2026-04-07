@@ -15,9 +15,7 @@ from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Parents.generator_parent import GeneratorParent
 from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
 from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Utils.Symbolic.block import Var
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
-# from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 
 
 class Generator(GeneratorParent):
@@ -72,20 +70,20 @@ class Generator(GeneratorParent):
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key='is_controlled', units='', tpe=bool, definition='Is this generator voltage-controlled?'),
         GCProp(key='Pf', units='', tpe=float,
-                      definition='Power factor (cos(phi)). This is used for non-controlled generators.',
-                      profile_name='Pf_prof'),
+               definition='Power factor (cos(phi)). This is used for non-controlled generators.',
+               profile_name='Pf_prof'),
         GCProp(key='Vset', units='p.u.', tpe=float,
-                      definition='Set voltage. This is used for controlled generators.', profile_name='Vset_prof'),
+               definition='Set voltage. This is used for controlled generators.', profile_name='Vset_prof'),
         GCProp(key='Snom', units='MVA', tpe=float, definition='Nominal power.'),
         GCProp(key='Qmin', units='MVAr', tpe=float, definition='Minimum reactive power.',
-                      profile_name='Qmin_prof'),
+               profile_name='Qmin_prof'),
         GCProp(key='Qmax', units='MVAr', tpe=float, definition='Maximum reactive power.',
-                      profile_name='Qmax_prof'),
+               profile_name='Qmax_prof'),
         GCProp(key='use_reactive_power_curve', units='', tpe=bool,
-                      definition='Use the reactive power capability curve?'),
+               definition='Use the reactive power capability curve?'),
         GCProp(key='q_curve', units='MVAr', tpe=SubObjectType.GeneratorQCurve,
-                      definition='Capability curve data (double click on the generator to edit)',
-                      editable=False, display=False),
+               definition='Capability curve data (double click on the generator to edit)',
+               editable=False, display=False),
         GCProp(key='R1', units='p.u.', tpe=float, definition='Total positive sequence resistance.'),
         GCProp(key='X1', units='p.u.', tpe=float, definition='Total positive sequence reactance.'),
         GCProp(key='R0', units='p.u.', tpe=float, definition='Total zero sequence resistance.'),
@@ -93,27 +91,33 @@ class Generator(GeneratorParent):
         GCProp(key='R2', units='p.u.', tpe=float, definition='Total negative sequence resistance.'),
         GCProp(key='X2', units='p.u.', tpe=float, definition='Total negative sequence reactance.'),
         GCProp(key='Cost2', units='e/MW²/h', tpe=float, definition='Generation quadratic cost. Used in OPF.',
-                      profile_name='Cost2_prof'),
+               profile_name='Cost2_prof'),
         GCProp(key='Cost0', units='e/h', tpe=float, definition='Generation constant cost. Used in OPF.',
-                      profile_name='Cost0_prof'),
-        GCProp(key='StartupCost', units='e/h', tpe=float, definition='Generation start-up cost. Used in OPF.'),
-        GCProp(key='ShutdownCost', units='e/h', tpe=float, definition='Generation shut-down cost. Used in OPF.'),
-        GCProp(key='MinTimeUp', units='h', tpe=float,
-                      definition='Minimum time that the generator has to be on when started. Used in OPF.'),
-        GCProp(key='MinTimeDown', units='h', tpe=float,
-                      definition='Minimum time that the generator has to be off when shut down. Used in OPF.'),
-        GCProp(key='RampUp', units='MW/h', tpe=float,
-                      definition='Maximum amount of generation increase per hour.'),
-        GCProp(key='RampDown', units='MW/h', tpe=float,
-                      definition='Maximum amount of generation decrease per hour.'),
+               profile_name='Cost0_prof'),
+        GCProp(key='startup_cost', units='e/h', tpe=float, definition='Generation start-up cost. Used in OPF.',
+               old_names=["StartupCost"]),
+        GCProp(key='shutdown_cost', units='e/h', tpe=float, definition='Generation shut-down cost. Used in OPF.',
+               old_names=["ShutdownCost"]),
+        GCProp(key='min_time_up', units='h', tpe=float,
+               definition='Minimum time that the generator has to be on when started. Used in OPF.',
+               old_names=["MinTimeUp"]),
+        GCProp(key='min_time_down', units='h', tpe=float,
+               definition='Minimum time that the generator has to be off when shut down. Used in OPF.',
+               old_names=["MinTimeDown"]),
+        GCProp(key='ramp_up', units='MW/h', tpe=float,
+               definition='Maximum amount of generation increase per hour.',
+               old_names=["RampUp"]),
+        GCProp(key='ramp_down', units='MW/h', tpe=float,
+               definition='Maximum amount of generation decrease per hour.',
+               old_names=["RampDown"]),
         GCProp(key='enabled_dispatch', units='', tpe=bool, profile_name="enabled_dispatch_prof",
-                      definition='Enabled for dispatch? Used in OPF.'),
+               definition='Enabled for dispatch? Used in OPF.'),
         GCProp(key='must_run', units='', tpe=bool, profile_name="must_run_prof",
-                      definition='P >= Pmin constraint. Used in OPF with unit commitment active.'),
+               definition='P >= Pmin constraint. Used in OPF with unit commitment active.'),
         GCProp(key='emissions', units='t/MWh', tpe=SubObjectType.Associations,
-                      definition='List of emissions', display=False),
+               definition='List of emissions', display=False),
         GCProp(key='fuels', units='t/MWh', tpe=SubObjectType.Associations,
-                      definition='List of fuels', display=False),
+               definition='List of fuels', display=False),
     )
 
     def __init__(self,
@@ -157,7 +161,13 @@ class Generator(GeneratorParent):
                  opex: float = 0,
                  srap_enabled: bool = True,
                  build_status: BuildStatus = BuildStatus.Commissioned,
-                 must_run: bool = False):
+                 must_run: bool = False,
+                 startup_cost=0.0,
+                 shutdown_cost=0.0,
+                 min_time_up=0.0,
+                 min_time_down=0.0,
+                 ramp_up=1e20,
+                 ramp_down=1e20):
         """
 
         :param name: Name of the generator
@@ -285,12 +295,12 @@ class Generator(GeneratorParent):
         self.Cost2 = float(Cost2)  # Cost of operation e/MW²
         self.Cost0 = float(Cost0)  # Cost of operation e
 
-        self.StartupCost = 0.0
-        self.ShutdownCost = 0.0
-        self.MinTimeUp = 0.0
-        self.MinTimeDown = 0.0
-        self.RampUp = 1e20
-        self.RampDown = 1e20
+        self.startup_cost = startup_cost
+        self.shutdown_cost = shutdown_cost
+        self.min_time_up = min_time_up
+        self.min_time_down = min_time_down
+        self.ramp_up = ramp_up
+        self.ramp_down = ramp_down
 
         self._Qmin_prof = Profile(default_value=Qmin, data_type=float)
         self._Qmax_prof = Profile(default_value=Qmax, data_type=float)
@@ -312,13 +322,6 @@ class Generator(GeneratorParent):
         self.vf = vf
         self.Kp = Kp
         self.Ki = Ki
-
-
-
-
-
-
-
 
     @property
     def Pf_prof(self) -> Profile:
@@ -867,7 +870,7 @@ class Generator(GeneratorParent):
         self._Cost0 = float(val)
 
     @property
-    def StartupCost(self) -> float:
+    def startup_cost(self) -> float:
         """
         Get ``StartupCost``.
 
@@ -875,8 +878,8 @@ class Generator(GeneratorParent):
         """
         return self._StartupCost
 
-    @StartupCost.setter
-    def StartupCost(self, val: float) -> None:
+    @startup_cost.setter
+    def startup_cost(self, val: float) -> None:
         """
         Set ``StartupCost``.
 
@@ -886,7 +889,7 @@ class Generator(GeneratorParent):
         self._StartupCost = float(val)
 
     @property
-    def ShutdownCost(self) -> float:
+    def shutdown_cost(self) -> float:
         """
         Get ``ShutdownCost``.
 
@@ -894,8 +897,8 @@ class Generator(GeneratorParent):
         """
         return self._ShutdownCost
 
-    @ShutdownCost.setter
-    def ShutdownCost(self, val: float) -> None:
+    @shutdown_cost.setter
+    def shutdown_cost(self, val: float) -> None:
         """
         Set ``ShutdownCost``.
 
@@ -905,7 +908,7 @@ class Generator(GeneratorParent):
         self._ShutdownCost = float(val)
 
     @property
-    def MinTimeUp(self) -> float:
+    def min_time_up(self) -> float:
         """
         Get ``MinTimeUp``.
 
@@ -913,8 +916,8 @@ class Generator(GeneratorParent):
         """
         return self._MinTimeUp
 
-    @MinTimeUp.setter
-    def MinTimeUp(self, val: float) -> None:
+    @min_time_up.setter
+    def min_time_up(self, val: float) -> None:
         """
         Set ``MinTimeUp``.
 
@@ -924,7 +927,7 @@ class Generator(GeneratorParent):
         self._MinTimeUp = float(val)
 
     @property
-    def MinTimeDown(self) -> float:
+    def min_time_down(self) -> float:
         """
         Get ``MinTimeDown``.
 
@@ -932,8 +935,8 @@ class Generator(GeneratorParent):
         """
         return self._MinTimeDown
 
-    @MinTimeDown.setter
-    def MinTimeDown(self, val: float) -> None:
+    @min_time_down.setter
+    def min_time_down(self, val: float) -> None:
         """
         Set ``MinTimeDown``.
 
@@ -943,7 +946,7 @@ class Generator(GeneratorParent):
         self._MinTimeDown = float(val)
 
     @property
-    def RampUp(self) -> float:
+    def ramp_up(self) -> float:
         """
         Get ``RampUp``.
 
@@ -951,8 +954,8 @@ class Generator(GeneratorParent):
         """
         return self._RampUp
 
-    @RampUp.setter
-    def RampUp(self, val: float) -> None:
+    @ramp_up.setter
+    def ramp_up(self, val: float) -> None:
         """
         Set ``RampUp``.
 
@@ -962,7 +965,7 @@ class Generator(GeneratorParent):
         self._RampUp = float(val)
 
     @property
-    def RampDown(self) -> float:
+    def ramp_down(self) -> float:
         """
         Get ``RampDown``.
 
@@ -970,8 +973,8 @@ class Generator(GeneratorParent):
         """
         return self._RampDown
 
-    @RampDown.setter
-    def RampDown(self, val: float) -> None:
+    @ramp_down.setter
+    def ramp_down(self, val: float) -> None:
         """
         Set ``RampDown``.
 

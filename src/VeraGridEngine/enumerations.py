@@ -523,6 +523,143 @@ class DiagramType(Enum):
         return list(map(lambda c: c.value, cls))
 
 
+class SchematicBranchEndpoint(Enum):
+    """
+    Schematic branch endpoint identifiers.
+    """
+    FROM = "from"
+    TO = "to"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return SchematicBranchEndpoint[s]
+        except KeyError:
+            return s
+
+
+class SchematicAttachmentSide(Enum):
+    """
+    Schematic attachment-side identifiers.
+    """
+    DEFAULT = "default"
+    LEFT = "left"
+    RIGHT = "right"
+    TOP = "top"
+    BOTTOM = "bottom"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return SchematicAttachmentSide[s]
+        except KeyError:
+            return s
+
+
+class SchematicAttachmentOwnerKind(Enum):
+    """
+    Schematic attachment owner kinds.
+    """
+    BUS = "bus"
+    FLUID = "fluid"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return SchematicAttachmentOwnerKind[s]
+        except KeyError:
+            return s
+
+
+class SchematicRouteKind(Enum):
+    """
+    Schematic route kinds.
+    """
+    ORTHOGONAL = "orthogonal"
+    AUTO = "auto"
+    AUTO_ORTHOGONAL = "auto-orthogonal"
+    AUTO_POLYLINE = "auto-polyline"
+    MANUAL_ORTHOGONAL = "manual-orthogonal"
+    MANUAL_POLYLINE = "manual-polyline"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return SchematicRouteKind[s]
+        except KeyError:
+            return s
+
+
+class SchematicAutoRouteStyle(Enum):
+    """
+    Schematic automatic route styles.
+    """
+    RETICULAR = "reticular"
+    STRAIGHT = "straight"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return SchematicAutoRouteStyle[s]
+        except KeyError:
+            return s
+
+
 class AcOpfMode(Enum):
     """
     AC-OPF problem types
@@ -1357,6 +1494,7 @@ class StudyResultsType(Enum):
     NetTransferCapacityTimeSeries = 'NetTransferCapacityTimeSeries'
     StochasticPowerFlow = 'StochasticPowerFlow'
     RmsSimulation = "RmsSimulation"
+    EmtSimulation = "EmtSimulation"
     SmallSignalStability = "SmallSignalStability"
 
     def __str__(self):
@@ -2563,6 +2701,36 @@ class RmsProblemTypes(Enum):
         :return:
         """
         return list(map(lambda c: c.value, cls))
+
+class EmtProblemTypes(Enum):
+
+    CurrentBalance       = "EmtProblemDae"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return EmtProblemTypes[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
     
 class SmallSignalEmtBuildTypes(Enum):
     """
@@ -2636,6 +2804,7 @@ class EraSvdSolverType(Enum):
 class RmsInitializationMethod(Enum):
     Explicit = "Explicit"
     PseudoTransient = "PseudoTransient"
+    CustomValues = "CustomValues"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -2796,6 +2965,9 @@ class VarPowerFlowRefferenceType(Enum):
     Vdc = "Vdc"  # Bus voltage for DC voltage in p.u.
     Idc = "Idc"  # Bus current for DC Bus in p.u.
 
+    If_dc = "If_dc"  # Branch from current for DC Bus in p.u.
+    It_dc = "It_dc"  # Branch from current for DC Bus in p.u.
+
     # from Power Flow 3ph
     v_N = "v_N"  # Bus voltage at phase N.
     v_A = "v_A"  # Bus voltage at phase A.
@@ -2806,15 +2978,15 @@ class VarPowerFlowRefferenceType(Enum):
     d_v_B = "d_v_B"  # Bus voltage derivative at phase B.
     d_v_C = "d_v_C"  # Bus voltage derivative at phase C.
 
-    v_N_f = "v_N_f"  # From Bus voltage at phase N.
-    v_A_f = "v_A_f"  # From Bus voltage at phase A.
-    v_B_f = "v_B_f"  # From Bus voltage at phase B.
-    v_C_f = "v_C_f"  # From Bus voltage at phase C.
+    vf_N = "vf_N"  # From Bus voltage at phase N.
+    vf_A = "vf_A"  # From Bus voltage at phase A.
+    vf_B = "vf_B"  # From Bus voltage at phase B.
+    vf_C = "vf_C"  # From Bus voltage at phase C.
 
-    v_N_t = "v_N_t"  # To Bus voltage at phase N.
-    v_A_t = "v_A_t"  # To Bus voltage at phase A.
-    v_B_t = "v_B_t"  # To Bus voltage at phase B.
-    v_C_t = "v_C_t"  # To Bus voltage at phase C.
+    vt_N = "vt_N"  # To Bus voltage at phase N.
+    vt_A = "vt_A"  # To Bus voltage at phase A.
+    vt_B = "vt_B"  # To Bus voltage at phase B.
+    vt_C = "vt_C"  # To Bus voltage at phase C.
 
     d_v_N_f = "d_v_N_f"  # From bus voltage derivative at phase N.
     d_v_A_f = "d_v_A_f"  # From bBus voltage derivative at phase A.
@@ -3039,6 +3211,7 @@ class ParamPowerFlowRefferenceType(Enum):
     # Electrical / additional machine parameters
     R1 = "R1"
     X1 = "X1"
+    X0 = "X0"
     freq = "freq"  # corresponds to Var("frequ")
     vf = "vf"
     tm0 = "tm0"

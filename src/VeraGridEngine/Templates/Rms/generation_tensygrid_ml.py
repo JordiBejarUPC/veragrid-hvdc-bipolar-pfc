@@ -11,7 +11,7 @@ from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import (Block, find_name_in_block)
 from VeraGridEngine.Templates.templates_common_functions import (tf_to_block, tf_to_diffblock_with_output,
-                                                                 tf_to_block_with_states)
+                                                                 tf_to_block_with_states, to_implicit)
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
 import VeraGridEngine.Utils.Symbolic.symbolic_ml as sym_ml
@@ -1054,7 +1054,7 @@ def OELBuild(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def get_complete_generator_template(vfactory: VarFactory, name="complete generator rms template") -> RmsModelTemplate:
+def get_complete_generator_template(vfactory: VarFactory, name: str = "complete generator rms template", implicit: bool = False) -> RmsModelTemplate:
     """
     
     :return: 
@@ -1089,7 +1089,8 @@ def get_complete_generator_template(vfactory: VarFactory, name="complete generat
     templ.block.children.append(stabilizer_mdl)
     templ.block.children.append(exciter_mdl)
     templ.block.unify_blocks()
-
+    if implicit:
+        templ.block = to_implicit(templ.block, vfactory=vfactory)
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Vm: genqec_mdl.in_vars[0],
         VarPowerFlowRefferenceType.Va: genqec_mdl.in_vars[1],

@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import datetime
+import math
 
 import numpy as np
 from typing import Dict, List, Union
@@ -261,6 +262,37 @@ class ObjectsModel(WrappableTableModel):
             # there is a mismatch because the element was deleted without refreshing this table model
             return ""
 
+    @staticmethod
+    def _format_date_display(value) -> str:
+        """
+        Format epoch seconds for display without crashing on malformed values.
+        """
+        if value in ("", None):
+            return ""
+
+        if isinstance(value, datetime.datetime):
+            return value.strftime("%Y/%m/%d")
+
+        if isinstance(value, (np.integer, int)):
+            epoch_seconds = int(value)
+        elif isinstance(value, (np.floating, float)):
+            numeric_value = float(value)
+            if not math.isfinite(numeric_value) or not numeric_value.is_integer():
+                return str(value)
+            epoch_seconds = int(numeric_value)
+        else:
+            try:
+                epoch_seconds = int(value)
+            except (TypeError, ValueError, OverflowError):
+                return str(value)
+
+        dt = QtCore.QDateTime.fromSecsSinceEpoch(epoch_seconds)
+
+        if not dt.isValid():
+            return str(value)
+
+        return dt.toString("yyyy/MM/dd")
+
     def data(self, index: QtCore.QModelIndex, role=None):
         """
         Get the data to display
@@ -280,9 +312,7 @@ class ObjectsModel(WrappableTableModel):
             if role == QtCore.Qt.ItemDataRole.DisplayRole:
 
                 if self.property_list[attr_idx].is_date:
-                    dt = QtCore.QDateTime.fromSecsSinceEpoch(self.data_with_type(index))
-                    formatted_date = dt.toString("yyyy/MM/dd")
-                    return formatted_date
+                    return self._format_date_display(self.data_with_type(index))
                 else:
                     return str(self.data_with_type(index))
 

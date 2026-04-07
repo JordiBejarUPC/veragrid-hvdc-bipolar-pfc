@@ -4496,6 +4496,9 @@ QProgressBar::chunk{
                  <property name="toolTip">
                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Maximum numberof iterations to use.&lt;/p&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;p&gt;Tipical values: &lt;/p&gt;&lt;p&gt;Newton Raphson: 5&lt;/p&gt;&lt;p&gt;Levenberg-Marquards: 20&lt;/p&gt;&lt;p&gt;Fast decoupled: 10&lt;/p&gt;&lt;p&gt;Others: 20&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                  </property>
+                 <property name="suffix">
+                  <string> iterations</string>
+                 </property>
                  <property name="minimum">
                   <number>1</number>
                  </property>
@@ -4516,16 +4519,6 @@ QProgressBar::chunk{
                   <enum>QFrame::Shadow::Raised</enum>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_38">
-                  <item row="3" column="0">
-                   <widget class="QCheckBox" name="control_q_checkBox">
-                    <property name="toolTip">
-                     <string>General switch for reactive power limits control</string>
-                    </property>
-                    <property name="text">
-                     <string>Control Q limits</string>
-                    </property>
-                   </widget>
-                  </item>
                   <item row="4" column="1">
                    <widget class="QCheckBox" name="control_remote_voltage_checkBox">
                     <property name="toolTip">
@@ -4533,16 +4526,6 @@ QProgressBar::chunk{
                     </property>
                     <property name="text">
                      <string>Control remote voltage</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="0">
-                   <widget class="QCheckBox" name="pf_three_phase_checkBox">
-                    <property name="toolTip">
-                     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If active, the power flow is run using the three-pahse unbalanced formulation composing 4x4 impedance matrices form the available database data.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                    </property>
-                    <property name="text">
-                     <string>Unbalanced formulation</string>
                     </property>
                    </widget>
                   </item>
@@ -4576,26 +4559,6 @@ QProgressBar::chunk{
                     </property>
                    </widget>
                   </item>
-                  <item row="6" column="0">
-                   <widget class="QCheckBox" name="temperature_correction_checkBox">
-                    <property name="toolTip">
-                     <string>Correct the branches resistance using the temperature</string>
-                    </property>
-                    <property name="text">
-                     <string>Apply temperature correction</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="5" column="0">
-                   <widget class="QCheckBox" name="orthogonalize_pf_controls_checkBox">
-                    <property name="toolTip">
-                     <string>If checked, the controls are adjusted to their closest tap</string>
-                    </property>
-                    <property name="text">
-                     <string>Orthogonalize controls</string>
-                    </property>
-                   </widget>
-                  </item>
                   <item row="2" column="1">
                    <widget class="QCheckBox" name="distributed_slack_checkBox">
                     <property name="toolTip">
@@ -4603,16 +4566,6 @@ QProgressBar::chunk{
                     </property>
                     <property name="text">
                      <string>Distributed slack</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="4" column="0">
-                   <widget class="QCheckBox" name="control_tap_phase_checkBox">
-                    <property name="toolTip">
-                     <string>General switch for branches tap phase control</string>
-                    </property>
-                    <property name="text">
-                     <string>Control tap phase</string>
                     </property>
                    </widget>
                   </item>
@@ -4656,6 +4609,46 @@ QProgressBar::chunk{
                     </property>
                     <property name="text">
                      <string>Add report</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="0">
+                   <widget class="QCheckBox" name="control_q_checkBox">
+                    <property name="toolTip">
+                     <string>General switch for reactive power limits control</string>
+                    </property>
+                    <property name="text">
+                     <string>Control Q limits</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="0">
+                   <widget class="QCheckBox" name="control_tap_phase_checkBox">
+                    <property name="toolTip">
+                     <string>General switch for branches tap phase control</string>
+                    </property>
+                    <property name="text">
+                     <string>Control tap phase</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="4" column="0">
+                   <widget class="QCheckBox" name="orthogonalize_pf_controls_checkBox">
+                    <property name="toolTip">
+                     <string>If checked, the controls are adjusted to their closest tap</string>
+                    </property>
+                    <property name="text">
+                     <string>Orthogonalize controls</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="5" column="0">
+                   <widget class="QCheckBox" name="temperature_correction_checkBox">
+                    <property name="toolTip">
+                     <string>Correct the branches resistance using the temperature</string>
+                    </property>
+                    <property name="text">
+                     <string>Apply temperature correction</string>
                     </property>
                    </widget>
                   </item>
@@ -4710,6 +4703,9 @@ QProgressBar::chunk{
                  <property name="toolTip">
                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Error tolerance of the method&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                  </property>
+                 <property name="suffix">
+                  <string> p.u.</string>
+                 </property>
                  <property name="prefix">
                   <string>1e-</string>
                  </property>
@@ -4728,6 +4724,9 @@ QProgressBar::chunk{
                 <widget class="QDoubleSpinBox" name="muSpinBox">
                  <property name="toolTip">
                   <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Factor that multiplies each increment solution. &lt;/p&gt;&lt;p&gt;In practice this is used to slow down troublesome solutions.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 </property>
+                 <property name="suffix">
+                  <string> p.u.</string>
                  </property>
                  <property name="decimals">
                   <number>4</number>
@@ -10922,6 +10921,7 @@ QProgressBar::chunk{
     <addaction name="actionEdit_simulation_time_limits"/>
     <addaction name="separator"/>
     <addaction name="actionPower_flow"/>
+    <addaction name="actionPower_flow_3ph"/>
     <addaction name="actionLinearAnalysis"/>
     <addaction name="actionSigma_analysis"/>
     <addaction name="separator"/>
@@ -10987,6 +10987,17 @@ QProgressBar::chunk{
     <property name="title">
      <string>Diagram</string>
     </property>
+    <widget class="QMenu" name="menuBranches_drawing_style">
+     <property name="title">
+      <string>Branches drawing style</string>
+     </property>
+     <property name="icon">
+      <iconset resource="../Icons/icons.qrc">
+       <normaloff>:/Icons/icons/move_bus.png</normaloff>:/Icons/icons/move_bus.png</iconset>
+     </property>
+     <addaction name="actionSetReticularBranchStyles"/>
+     <addaction name="actionSetStraightBranchStyles"/>
+    </widget>
     <addaction name="actionAdd_general_bus_branch_diagram"/>
     <addaction name="actionNew_bus_branch_diagram_from_selection"/>
     <addaction name="actionBigger_nodes"/>
@@ -10994,6 +11005,7 @@ QProgressBar::chunk{
     <addaction name="actionAutoatic_layout"/>
     <addaction name="actionTry_to_fix_buses_location"/>
     <addaction name="actionRotate"/>
+    <addaction name="menuBranches_drawing_style"/>
     <addaction name="actionDisable_all_results_tags"/>
     <addaction name="actionEnable_all_results_tags"/>
     <addaction name="actionSet_schematic_positions_from_GPS_coordinates"/>
@@ -11087,7 +11099,6 @@ QProgressBar::chunk{
    <addaction name="separator"/>
    <addaction name="actionInvestments_evaluation"/>
    <addaction name="actionPower_flow_Stochastic"/>
-   <addaction name="actionReliability"/>
    <addaction name="actionClustering"/>
    <addaction name="actionUse_clustering"/>
    <addaction name="actionEdit_simulation_time_limits"/>
@@ -11100,7 +11111,7 @@ QProgressBar::chunk{
    <addaction name="actionDelete_selected"/>
    <addaction name="separator"/>
    <addaction name="actionLaunch_data_analysis_tool"/>
-   <addaction name="separator"/>
+   <addaction name="actionai_chat"/>
   </widget>
   <action name="actionOpen_file">
    <property name="icon">
@@ -12774,6 +12785,49 @@ QProgressBar::chunk{
    </property>
    <property name="toolTip">
     <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Small Signal Simulation (EMT)&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run an EMT Small Signal stability analysis simulation&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::TextHeuristicRole</enum>
+   </property>
+  </action>
+  <action name="actionSetReticularBranchStyles">
+   <property name="text">
+    <string>Reticular</string>
+   </property>
+  </action>
+  <action name="actionSetStraightBranchStyles">
+   <property name="text">
+    <string>Straight</string>
+   </property>
+  </action>
+  <action name="actionai_chat">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/message.png</normaloff>:/Icons/icons/message.png</iconset>
+   </property>
+   <property name="text">
+    <string>ai_chat</string>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;VeraGrid AI &lt;/span&gt;&lt;/p&gt;&lt;p&gt;Show the VeraGrid AI chat&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="menuRole">
+    <enum>QAction::MenuRole::NoRole</enum>
+   </property>
+  </action>
+  <action name="actionPower_flow_3ph">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/pf3.png</normaloff>:/Icons/icons/pf3.png</iconset>
+   </property>
+   <property name="text">
+    <string>Power Flow 3-phase</string>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Power Flow 3-phase&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Run an unbalanced 3-phase power flow analysis&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+   </property>
+   <property name="font">
+    <font/>
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::TextHeuristicRole</enum>

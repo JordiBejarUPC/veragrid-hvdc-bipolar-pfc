@@ -20,8 +20,13 @@ class VoltageLevelTemplate(EditableDevice):
                       definition='Add disconnectors additionally to the circuit breakers', editable=True),
     )
 
-    def __init__(self, name='', code='', idtag: str | None = None,
-                 device_type=DeviceType.GenericArea, voltage: float = 10):
+    def __init__(self,
+                 name='',
+                 code='',
+                 idtag: str | None = None,
+                 device_type=DeviceType.GenericArea,
+                 voltage: float = 10,
+                 n_bays: int = 1):
         """
 
         :param name:
@@ -29,6 +34,7 @@ class VoltageLevelTemplate(EditableDevice):
         :param idtag:
         :param device_type:
         :param voltage:
+        :param n_bays:
         """
         EditableDevice.__init__(self,
                                 name=name,
@@ -38,7 +44,7 @@ class VoltageLevelTemplate(EditableDevice):
 
         self.vl_type: VoltageLevelTypes = VoltageLevelTypes.SingleBar
         self.voltage: float = voltage
-        self.n_bays: int = 1
+        self.n_bays: int = n_bays
         self.add_disconnectors: bool = False
 
     # Scalar property accessors coerce assignments to the declared schema types.

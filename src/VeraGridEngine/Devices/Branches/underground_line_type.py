@@ -5,10 +5,11 @@
 from __future__ import annotations
 from typing import Tuple
 import numpy as np
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
+from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
+from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 
 
-class UndergroundLineType(EditableDevice):
+class UndergroundLineType(DynamicDevice):
     __slots__ = (
         '_Imax',
         '_Vnom',
@@ -66,7 +67,7 @@ class UndergroundLineType(EditableDevice):
         :param capex: Capital expenditures
         :param opex: Operating expenditures
         """
-        EditableDevice.__init__(self,
+        DynamicDevice.__init__(self,
                                 name=name,
                                 idtag=idtag,
                                 code='',

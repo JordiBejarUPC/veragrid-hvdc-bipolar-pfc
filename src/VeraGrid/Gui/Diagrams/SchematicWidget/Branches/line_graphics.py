@@ -164,6 +164,8 @@ class LineGraphicItem(LineGraphicTemplateItem):
                            icon_path=":/Icons/icons/divide.png")
 
             menu.addSeparator()
+            self.add_auto_route_style_menu(menu=menu)
+            menu.addSeparator()
 
             add_menu_entry(menu=menu,
                            text="Delete",
@@ -243,6 +245,7 @@ class LineGraphicItem(LineGraphicTemplateItem):
             block=self.api_object.rms_model,
             api_object=self.api_object,
             mode=DynamicEditorMode.RMS,
+            templates_list=self.editor.circuit.get_rms_models_by_device_type(self.api_object.device_type),
             main_editor=True,
         )
         rms_model_editor.show()

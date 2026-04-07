@@ -300,7 +300,8 @@ def build_gfl_converter_model(vfactory: VarFactory, inputs,
         
     elif control1 == ConverterControlType.Vm_dc:
         # DC voltage control - regulates v_dc to Vdc_ref
-        # Positive i_q_ref increases power flow from DC to AC, reducing v_dc
+        # With current sign convention, more negative i_q_ref increases
+        # power transfer from DC to AC, reducing v_dc.
         control_block_1, _ = tf_to_block(vfactory,
             num=[Ki_vdc, Kp_vdc],
             den=[0, 1],
@@ -439,6 +440,69 @@ def build_gfl_converter_model(vfactory: VarFactory, inputs,
     gfl_block.add(EMT_block)
     gfl_block.unify_blocks()
 
+    internals = {
+        "theta": theta,
+        "v_d_c": v_d_c,
+        "v_q_c": v_q_c,
+        "vd_hat": vd_hat,
+        "vq_hat": vq_hat,
+    }
+    return gfl_block, i_d, i_q, P, Q, internals
+
+
+def trafo_gfl_converter_model(vfactory: VarFactory,
+                              inputs,
+                              control1: ConverterControlType = ConverterControlType.Pac,
+                              control2: ConverterControlType = ConverterControlType.Qac):
+    """
+    GFL converter model for transformer-coupled setup.
+
+    Inputs order:
+      [Vm_f, Va_f, Vm_t, Va_t, Vdc, Pt_vsc, Qt_vsc]
+
+    - from side (f): AC internal converter bus
+    - to side   (t): AC grid bus
+    """
+    Vm_f = inputs[0]
+    Va_f = inputs[1]
+    Vm_t = inputs[2]
+    Va_t = inputs[3]
+    Vdc = inputs[4]
+    Pt_vsc = inputs[5]
+    Qt_vsc = inputs[6]
+
+    gfl_block, i_d, i_q, P, Q, internals = build_gfl_converter_model(
+        vfactory=vfactory,
+        inputs=[Vm_t, Va_t, Vdc, Pt_vsc, Qt_vsc],
+        control1=control1,
+        control2=control2,
+    )
+
+    # Enforce converter dq voltages on the internal AC bus side.
+    theta = internals["theta"]
+    v_d_c = internals["v_d_c"]
+    v_q_c = internals["v_q_c"]
+    vd_hat = internals["vd_hat"]
+    vq_hat = internals["vq_hat"]
+    if theta is not None and v_d_c is not None and v_q_c is not None:
+        # Replace the two converter-voltage command equations with direct dq coupling
+        # to the internal AC bus voltage.
+        filtered_eqs = []
+        for eq in gfl_block.algebraic_eqs:
+            vars_in_eq = eq.get_vars()
+            is_vd_cmd = (v_d_c in vars_in_eq) and (vd_hat in vars_in_eq)
+            is_vq_cmd = (v_q_c in vars_in_eq) and (vq_hat in vars_in_eq)
+            if is_vd_cmd or is_vq_cmd:
+                continue
+            filtered_eqs.append(eq)
+        gfl_block.algebraic_eqs = filtered_eqs
+
+        gfl_block.algebraic_eqs.append(v_d_c - Vm_f * sym.sin(Va_f - theta))
+        gfl_block.algebraic_eqs.append(v_q_c - Vm_f * sym.cos(Va_f - theta))
+        gfl_block.init_eqs[v_d_c] = Vm_f * sym.sin(Va_f - theta)
+        gfl_block.init_eqs[v_q_c] = Vm_f * sym.cos(Va_f - theta)
+
+    gfl_block.unify_blocks()
     return gfl_block, i_d, i_q, P, Q
 
 def VscGflBuild(vfactory: VarFactory, name: str = "",
@@ -483,7 +547,7 @@ def VscGflBuild(vfactory: VarFactory, name: str = "",
     a2 = vfactory.add_var('a2')
     
     # Build the converter model with specified control modes
-    gfl_block, i_d, i_q, P, Q = build_gfl_converter_model(
+    gfl_block, i_d, i_q, P, Q, _ = build_gfl_converter_model(
         vfactory = vfactory,
         inputs=[Vm, Va, v_dc, Pt_vsc, Qt_vsc],
         control1=control1,
@@ -502,7 +566,7 @@ def VscGflBuild(vfactory: VarFactory, name: str = "",
     Im = sym.sqrt(i_d**2 + i_q**2 + vfactory.add_const(1e-5))
     vsc_block = Block(
         algebraic_eqs=[
-            Pf_vsc - (P - (a0 + a1*Im + a2*Im**2)),
+            Pf_vsc + P - (a0 + a1*Im + a2*Im**2),
             Pt_vsc + P,
             Qt_vsc + Q,
         ],
@@ -531,6 +595,70 @@ def VscGflBuild(vfactory: VarFactory, name: str = "",
 
     vsc_block.add(gfl_block)
     vsc_block.name = 'gfl_block'
+
+    templ._block = vsc_block
+    return templ
+
+
+def TrafoGflBuild(vfactory: VarFactory, name: str = "",
+                  control1: ConverterControlType = ConverterControlType.Pac,
+                  control2: ConverterControlType = ConverterControlType.Qac) -> RmsModelTemplate:
+    """
+    Transformer-coupled GFL model where AC-from side is internal converter bus
+    and AC-to side is grid bus.
+    """
+    templ = RmsModelTemplate()
+    templ.tpe = DeviceType.VscDevice
+
+    Vm_f = vfactory.add_var("Vmf_")
+    Va_f = vfactory.add_var("Vaf_")
+    Vm_t = vfactory.add_var("Vmt_")
+    Va_t = vfactory.add_var("Vat_")
+    Vdc = vfactory.add_var("Vdc_")
+    inputs = [Vm_f, Va_f, Vm_t, Va_t, Vdc]
+
+    Pt_vsc = vfactory.add_var('Pt_vsc')
+    Qt_vsc = vfactory.add_var('Qt_vsc')
+
+    Qf = vfactory.add_var('Qf')
+
+    gfl_block, i_d, i_q, P, Q = trafo_gfl_converter_model(
+        vfactory=vfactory,
+        inputs=[Vm_f, Va_f, Vm_t, Va_t, Vdc, Pt_vsc, Qt_vsc],
+        control1=control1,
+        control2=control2,
+    )
+    gfl_block.init_eqs[P] = Pt_vsc
+
+    event_dict = {
+        Qf: vfactory.add_const(0.0),
+    }
+
+    vsc_block = Block(
+        algebraic_eqs=[
+            Pt_vsc + P,
+            Qt_vsc + Q,
+        ],
+        algebraic_vars=[Pt_vsc, Qt_vsc],
+        event_dict=event_dict,
+        in_vars=inputs,
+        out_vars=[Pt_vsc, Qt_vsc],
+    )
+
+    vsc_block.external_mapping = {
+        VarPowerFlowRefferenceType.Vmf: Vm_f,
+        VarPowerFlowRefferenceType.Vaf: Va_f,
+        VarPowerFlowRefferenceType.Vmt: Vm_t,
+        VarPowerFlowRefferenceType.Vat: Va_t,
+        VarPowerFlowRefferenceType.Vdc: Vdc,
+        VarPowerFlowRefferenceType.Pt: Pt_vsc,
+        VarPowerFlowRefferenceType.Qt: Qt_vsc,
+        VarPowerFlowRefferenceType.Pf: Pt_vsc,
+        VarPowerFlowRefferenceType.Qf: Qf,
+    }
+
+    vsc_block.add(gfl_block)
+    vsc_block.name = 'trafo_gfl_block'
 
     templ._block = vsc_block
     return templ

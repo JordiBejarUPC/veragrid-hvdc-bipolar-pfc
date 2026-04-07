@@ -14,13 +14,13 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Templates.templates_common_functions import (tf_to_block, tf_to_diffblock_with_output,
                                                                  tf_to_diffblock_with_antiwindup,
                                                                  tf_to_block_with_states, 
-                                                                 to_explicit)
+                                                                 to_implicit)
 
 
 
 
 
-def get_genqec(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def get_genqec_rms(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     """
      generator with quadratic saturation
     """
@@ -319,7 +319,7 @@ def get_genqec(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
     return templ
 
 
-def get_governor(vfactory: VarFactory, name: str = "Governor") -> RmsModelTemplate:
+def get_governor_rms(vfactory: VarFactory, name: str = "Governor") -> RmsModelTemplate:
     templ = RmsModelTemplate(name=name)
 
     parameters = {
@@ -378,7 +378,7 @@ def get_governor(vfactory: VarFactory, name: str = "Governor") -> RmsModelTempla
 
     events_dict = {
         # control parameters
-        Pm_ref: vfactory.add_const(None),
+        Pm_ref: inputs[1],
         Kp: vfactory.add_const(-0.01),
         Ki: vfactory.add_const(-0.01),
         p0: vfactory.add_const(1.0),
@@ -477,7 +477,6 @@ def get_governor(vfactory: VarFactory, name: str = "Governor") -> RmsModelTempla
         name="governor",
 
         init_eqs={
-            Pm_ref: inputs[1],
             y1: vfactory.add_const(0.0),
             x1: inputs[0] - omega_ref,
             u_gov1: vfactory.add_const(0),
@@ -511,7 +510,7 @@ def get_governor(vfactory: VarFactory, name: str = "Governor") -> RmsModelTempla
     return templ
 
 
-def get_stabilizer(vfactory: VarFactory, name: str = "stabilizer") -> RmsModelTemplate:
+def get_stabilizer_rms(vfactory: VarFactory, name: str = "stabilizer") -> RmsModelTemplate:
     templ = RmsModelTemplate(name=name)
 
     parameters = {
@@ -619,7 +618,7 @@ def get_stabilizer(vfactory: VarFactory, name: str = "stabilizer") -> RmsModelTe
     return templ
 
 
-def get_exciter(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemplate:
+def get_exciter_rms(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemplate:
     """
 
     :param vfactory:
@@ -699,7 +698,7 @@ def get_exciter(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemplate
 
     events_dict = {
         # Exciter (AVR) parameters
-        UsRefPu: vfactory.add_const(None),  # reference voltage (pu)
+        UsRefPu: Efe / parameters['Ka'].value + inputs[1],  # reference voltage (pu)
         AEz: vfactory.add_const(0.02),  # saturation gain
         BEz: vfactory.add_const(1.5),  # saturation exponential coefficient
         Se_threshold: vfactory.add_const(1.0),  # saturation threshold
@@ -836,7 +835,7 @@ def get_exciter(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemplate
                 Ve - Se_threshold)),
             u_aux: aux_expr,
             Efe: inputs[0] * parameters["Kd"].value + u_aux,
-            UsRefPu: Efe / parameters['Ka'].value + inputs[1],
+            # UsRefPu: Efe / parameters['Ka'].value + inputs[1],
             y1: inputs[1],
             y2: vfactory.add_const(0.0),
             y3: -y1 + UsRefPu,
@@ -1086,7 +1085,7 @@ def OELBuild(vfactory: VarFactory, name: str = "OEL") -> RmsModelTemplate:
     return oel_block, V_oel_sat
 
 
-def get_complete_generator_template(vfactory: VarFactory, name="complete generator rms template") -> RmsModelTemplate:
+def get_complete_generator_template_rms(vfactory: VarFactory, name="complete generator rms template") -> RmsModelTemplate:
     """
     
     :return: 
@@ -1096,10 +1095,10 @@ def get_complete_generator_template(vfactory: VarFactory, name="complete generat
     templ.name = name
 
     # generate models
-    genqec_mdl = get_genqec(vfactory=vfactory).block
-    exciter_mdl = get_exciter(vfactory=vfactory).block
-    governor_mdl = get_governor(vfactory=vfactory).block
-    stabilizer_mdl = get_stabilizer(vfactory=vfactory).block
+    genqec_mdl = get_genqec_rms(vfactory=vfactory).block
+    exciter_mdl = get_exciter_rms(vfactory=vfactory).block
+    governor_mdl = get_governor_rms(vfactory=vfactory).block
+    stabilizer_mdl = get_stabilizer_rms(vfactory=vfactory).block
 
     # connect models
     genqec_mdl.connect([genqec_mdl.in_vars[3]], [exciter_mdl.out_vars[0]])
@@ -1119,8 +1118,9 @@ def get_complete_generator_template(vfactory: VarFactory, name="complete generat
     templ.block.children.append(governor_mdl)
     templ.block.children.append(stabilizer_mdl)
     templ.block.children.append(exciter_mdl)
-    #templ.block.unify_blocks()
-    #templ.block = to_explicit(templ.block, vfactory=vfactory)
+    # necessary for tensygrid but still not working well
+    # templ.block = to_implicit(templ.block, vfactory=vfactory)
+    # templ.block.unify_blocks()
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Vm: genqec_mdl.in_vars[0],
         VarPowerFlowRefferenceType.Va: genqec_mdl.in_vars[1],

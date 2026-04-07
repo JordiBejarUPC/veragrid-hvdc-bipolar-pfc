@@ -18,7 +18,7 @@ from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDa
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 
@@ -291,10 +291,10 @@ def rms_kundur_small_signal():
 
     # Build rms models from template
     # generators
-    genrow_mdl1 = get_complete_generator_template(grid.rms_var_factory).block
-    genrow_mdl2 = get_complete_generator_template(grid.rms_var_factory).block
-    genrow_mdl3 = get_complete_generator_template(grid.rms_var_factory).block
-    genrow_mdl4 = get_complete_generator_template(grid.rms_var_factory).block
+    genrow_mdl1 = get_complete_generator_template_rms(grid.rms_var_factory).block
+    genrow_mdl2 = get_complete_generator_template_rms(grid.rms_var_factory).block
+    genrow_mdl3 = get_complete_generator_template_rms(grid.rms_var_factory).block
+    genrow_mdl4 = get_complete_generator_template_rms(grid.rms_var_factory).block
 
     # lines
     line0_mdl = get_line_rms_template(grid.rms_var_factory).block

@@ -8,7 +8,7 @@ import os
 import json
 import numpy as np
 import pandas as pd
-from typing import List, Set, Dict, Union, Tuple, TYPE_CHECKING, Iterable
+from typing import Any, List, Set, Dict, Union, Tuple, TYPE_CHECKING, Iterable
 from collections.abc import Callable
 from collections import defaultdict
 from warnings import warn
@@ -17,7 +17,7 @@ import pyproj
 from matplotlib import pyplot as plt
 
 from PySide6.QtCore import (Qt, QPoint, QSize, QPointF, QRect, QRectF, QMimeData, QIODevice, QByteArray,
-                            QDataStream, QModelIndex)
+                            QDataStream, QModelIndex, QTimer)
 from PySide6.QtGui import (QIcon, QPixmap, QImage, QPainter, QStandardItemModel, QStandardItem, QColor, QPen, QBrush,
                            QDragEnterEvent, QDragMoveEvent, QDropEvent, QWheelEvent, QKeyEvent, QMouseEvent,
                            QContextMenuEvent)
@@ -43,7 +43,7 @@ from VeraGridEngine.Devices.Diagrams.graphic_location import GraphicLocation
 from VeraGridEngine.Simulations.OPF.opf_ts_results import OptimalPowerFlowTimeSeriesResults
 from VeraGridEngine.Simulations.PowerFlow.power_flow_ts_results import PowerFlowTimeSeriesResults
 from VeraGridEngine.Topology.VoltageLevels.vl_creation_common_functions import transform_bus_to_connectivity_grid
-from VeraGridEngine.enumerations import DeviceType, ResultTypes, BusGraphicType
+from VeraGridEngine.enumerations import DeviceType, ResultTypes, BusGraphicType, SchematicAutoRouteStyle
 from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, Logger
 import VeraGridEngine.Devices.Diagrams.palettes as palettes
 from VeraGridEngine.Topology.VoltageLevels import vl_creation_common_functions as substation_wizards
@@ -88,6 +88,19 @@ BRANCH_GRAPHICS = Union[
     SeriesReactanceGraphicItem,
     SwitchGraphicItem
 ]
+
+SCHEMATIC_BRANCH_DEVICE_TYPES: Tuple[DeviceType, ...] = (
+    DeviceType.LineDevice,
+    DeviceType.DCLineDevice,
+    DeviceType.HVDCLineDevice,
+    DeviceType.VscDevice,
+    DeviceType.UpfcDevice,
+    DeviceType.Transformer2WDevice,
+    DeviceType.SeriesReactanceDevice,
+    DeviceType.SwitchDevice,
+    DeviceType.WindingDevice,
+    DeviceType.FluidPathDevice,
+)
 
 OPTIONAL_PORT = Union[BarTerminalItem, RoundTerminalItem, None]
 
@@ -274,7 +287,7 @@ class CustomGraphicsView(QGraphicsView):
         """
         super().__init__(scene)
         self._parent = parent
-        self.drag_mode = QGraphicsView.DragMode.RubberBandDrag
+        self.drag_mode = QGraphicsView.DragMode.ScrollHandDrag
         self.setDragMode(self.drag_mode)
         self.setRubberBandSelectionMode(Qt.ItemSelectionMode.IntersectsItemShape)
         self.setMouseTracking(True)
@@ -282,17 +295,28 @@ class CustomGraphicsView(QGraphicsView):
         self.setRenderHints(QPainter.RenderHint.Antialiasing | QPainter.RenderHint.SmoothPixmapTransform)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
+    @staticmethod
+    def get_drag_mode_for_modifiers(modifiers: Qt.KeyboardModifiers) -> QGraphicsView.DragMode:
+        """
+        Resolve the view drag mode for the current keyboard modifiers.
+
+        The default interaction should pan the schematic, while holding
+        ``Ctrl`` should temporarily switch to rubber-band selection.
+
+        :param modifiers: Active keyboard modifiers.
+        :return: Matching graphics-view drag mode.
+        """
+        if modifiers & Qt.KeyboardModifier.ControlModifier:
+            return QGraphicsView.DragMode.RubberBandDrag
+        else:
+            return QGraphicsView.DragMode.ScrollHandDrag
+
     def mousePressEvent(self, event: QMouseEvent) -> None:
         """
         Mouse press event
         :param event: QMouseEvent
         """
-
-        # By pressing ctrl while dragging, we can move the grid
-        if event.modifiers() & Qt.KeyboardModifier.ControlModifier:
-            self.drag_mode = QGraphicsView.DragMode.ScrollHandDrag
-        else:
-            self.drag_mode = QGraphicsView.DragMode.RubberBandDrag
+        self.drag_mode = self.get_drag_mode_for_modifiers(event.modifiers())
 
         self.setDragMode(self.drag_mode)
 
@@ -422,6 +446,11 @@ class SchematicWidget(BaseDiagramWidget):
         # for graphics dev purposes
         # self.pos_label = QGraphicsTextItem()
         # self.add_to_scene(self.pos_label)
+        self._needs_post_show_branch_refresh: bool = False
+        self._branch_refresh_scheduled: bool = False
+        self._is_loading_diagram: bool = False
+        self._is_batch_refreshing_branches: bool = False
+        self._saved_viewport_update_mode: QGraphicsView.ViewportUpdateMode | None = None
 
         if diagram is not None:
             self.draw()
@@ -654,15 +683,20 @@ class SchematicWidget(BaseDiagramWidget):
         :param diagram: SchematicDiagram
         :param logger: Logger
         """
+        self._is_loading_diagram = True
+        self.suspend_viewport_updates_for_loading()
         inj_dev_by_bus = self.circuit.get_injection_devices_grouped_by_bus()
         inj_dev_by_fluid_node = self.circuit.get_injection_devices_grouped_by_fluid_node()
+        category_items = list(diagram.data.items())
 
         # add node-like elements first
-        for category, points_group in diagram.data.items():
+        for category, points_group in category_items:
 
             if category == DeviceType.BusDevice.value:
 
-                for idtag, location in points_group.locations.items():
+                location_items = list(points_group.locations.items())
+
+                for idtag, location in location_items:
 
                     # search for the api object, because it may be created already
                     graphic_object = self.graphics_manager.query(elm=location.api_object)
@@ -691,7 +725,9 @@ class SchematicWidget(BaseDiagramWidget):
 
             elif category == DeviceType.FluidNodeDevice.value:
 
-                for idtag, location in points_group.locations.items():
+                location_items = list(points_group.locations.items())
+
+                for idtag, location in location_items:
 
                     # search for the api object, because it may be created already
                     graphic_object = self.graphics_manager.query(elm=location.api_object)
@@ -722,11 +758,13 @@ class SchematicWidget(BaseDiagramWidget):
                 pass
 
         # add 3W transformers after the node devices
-        for category, points_group in diagram.data.items():
+        for category, points_group in category_items:
 
             if category == DeviceType.Transformer3WDevice.value:
 
-                for idtag, location in points_group.locations.items():
+                location_items = list(points_group.locations.items())
+
+                for idtag, location in location_items:
 
                     # search for the api object, because it may be created already
                     graphic_object = self.graphics_manager.query(elm=location.api_object)
@@ -777,32 +815,40 @@ class SchematicWidget(BaseDiagramWidget):
                         self.graphics_manager.add_device(elm=elm, graphic=graphic_object)
 
         # add the rest of the branches
-        for category, points_group in diagram.data.items():
+        for category, points_group in category_items:
 
             if category == DeviceType.LineDevice.value:
 
-                for idtag, location in points_group.locations.items():
+                location_items = list(points_group.locations.items())
+
+                for idtag, location in location_items:
                     self.add_api_line(branch=location.api_object,
                                       draw_labels=location.draw_labels,
                                       logger=logger)
 
             elif category == DeviceType.DCLineDevice.value:
 
-                for idtag, location in points_group.locations.items():
+                location_items = list(points_group.locations.items())
+
+                for idtag, location in location_items:
                     self.add_api_dc_line(branch=location.api_object,
                                          draw_labels=location.draw_labels,
                                          logger=logger)
 
             elif category == DeviceType.HVDCLineDevice.value:
 
-                for idtag, location in points_group.locations.items():
+                location_items = list(points_group.locations.items())
+
+                for idtag, location in location_items:
                     self.add_api_hvdc(branch=location.api_object,
                                       draw_labels=location.draw_labels,
                                       logger=logger)
 
             elif category == DeviceType.VscDevice.value:
 
-                for idtag, location in points_group.locations.items():
+                location_items = list(points_group.locations.items())
+
+                for idtag, location in location_items:
                     # Use add_api_vsc to create VSC with connections instead of just graphics
                     self.add_api_vsc(elm=location.api_object,
                                      x=location.x,
@@ -812,46 +858,61 @@ class SchematicWidget(BaseDiagramWidget):
 
             elif category == DeviceType.UpfcDevice.value:
 
-                for idtag, location in points_group.locations.items():
+                location_items = list(points_group.locations.items())
+
+                for idtag, location in location_items:
                     self.add_api_upfc(branch=location.api_object,
                                       draw_labels=location.draw_labels,
                                       logger=logger)
 
             elif category == DeviceType.Transformer2WDevice.value:
 
-                for idtag, location in points_group.locations.items():
+                location_items = list(points_group.locations.items())
+
+                for idtag, location in location_items:
                     self.add_api_transformer(branch=location.api_object,
                                              draw_labels=location.draw_labels,
                                              logger=logger)
 
             elif category == DeviceType.SeriesReactanceDevice.value:
 
-                for idtag, location in points_group.locations.items():
+                location_items = list(points_group.locations.items())
+
+                for idtag, location in location_items:
                     self.add_api_series_reactance(branch=location.api_object,
                                                   draw_labels=location.draw_labels,
                                                   logger=logger)
 
             elif category == DeviceType.SwitchDevice.value:
 
-                for idtag, location in points_group.locations.items():
+                location_items = list(points_group.locations.items())
+
+                for idtag, location in location_items:
                     self.add_api_switch(branch=location.api_object,
                                         draw_labels=location.draw_labels,
                                         logger=logger)
 
             elif category == DeviceType.WindingDevice.value:
 
-                for idtag, location in points_group.locations.items():
+                location_items = list(points_group.locations.items())
+
+                for idtag, location in location_items:
 
                     # search for the api object, because it may be created already
                     graphic_object = self.graphics_manager.query(elm=location.api_object)
 
                     if graphic_object is not None:
-                        graphic_object.redraw()
+                        if self.is_loading_diagram():
+                            pass
+                        else:
+                            graphic_object.redraw()
                         self.graphics_manager.add_device(elm=location.api_object, graphic=graphic_object)
 
             elif category == DeviceType.FluidPathDevice.value:
 
-                for idtag, location in points_group.locations.items():
+                location_items = list(points_group.locations.items())
+
+                for idtag, location in location_items:
 
                     # search for the api object, because it may be created already
                     graphic_object = self.graphics_manager.query(elm=location.api_object)
@@ -868,24 +929,142 @@ class SchematicWidget(BaseDiagramWidget):
                                                                   draw_labels=location.draw_labels)
                             self.add_to_scene(graphic_object=graphic_object)
 
-                            graphic_object.redraw()
+                            if self.is_loading_diagram():
+                                pass
+                            else:
+                                graphic_object.redraw()
                             self.graphics_manager.add_device(elm=location.api_object, graphic=graphic_object)
 
             else:
                 pass
                 # print('draw: Unrecognized category: {}'.format(category))
 
-        # last pass: arrange children
-        for category in [DeviceType.BusDevice, DeviceType.FluidNodeDevice]:
+        # last pass: arrange children immediately, then defer the connection refresh until Qt has settled
+        for category in [DeviceType.BusDevice, DeviceType.BusBarDevice, DeviceType.FluidNodeDevice]:
             graphics_dict = self.graphics_manager.get_device_type_dict(device_type=category)
             for idtag, graphic in graphics_dict.items():
                 graphic.arrange_children()
+
+        self.schedule_branch_callbacks_after_draw()
+
+    def suspend_viewport_updates_for_loading(self) -> None:
+        """
+        Freeze viewport repaint work while the diagram scene is rebuilt.
+
+        Large diagram loads create many intermediate geometry states. Suppressing
+        incremental viewport updates during that batch avoids repainting those
+        transient states and leaves one final redraw for the post-load refresh.
+
+        :return: ``None``.
+        """
+        if self._saved_viewport_update_mode is None:
+            self._saved_viewport_update_mode = self.editor_graphics_view.viewportUpdateMode()
+            self.editor_graphics_view.setViewportUpdateMode(QGraphicsView.ViewportUpdateMode.NoViewportUpdate)
+        else:
+            pass
+
+    def restore_viewport_updates_after_loading(self) -> None:
+        """
+        Restore the viewport update mode captured at the start of loading.
+
+        :return: ``None``.
+        """
+        if self._saved_viewport_update_mode is None:
+            pass
+        else:
+            self.editor_graphics_view.setViewportUpdateMode(self._saved_viewport_update_mode)
+            self._saved_viewport_update_mode = None
+
+    def schedule_branch_callbacks_after_draw(self) -> None:
+        """
+        Coalesce expensive post-draw branch refresh work into a single pass.
+
+        During initial startup, ``draw()`` can run before the widget is shown.
+        In that case we must defer the refresh until ``showEvent()``. Once the
+        widget is visible, repeated draw/update paths should still collapse into
+        one queued refresh instead of replaying the full callback and redraw
+        sweep multiple times.
+
+        :return: ``None``.
+        """
+        if not self.isVisible():
+            self._needs_post_show_branch_refresh = True
+        elif self._branch_refresh_scheduled:
+            pass
+        else:
+            self._branch_refresh_scheduled = True
+            QTimer.singleShot(0, self.refresh_branch_callbacks_after_draw)
+
+    def refresh_branch_callbacks_after_draw(self) -> None:
+        """
+        Refresh terminal-hosted branch callbacks after the scene graph has settled.
+        """
+        self._branch_refresh_scheduled = False
+        branch_graphics_to_refresh: set = set()
+        self._is_batch_refreshing_branches = True
+
+        try:
+            for category in [DeviceType.BusDevice, DeviceType.BusBarDevice, DeviceType.FluidNodeDevice]:
+                graphics_dict = self.graphics_manager.get_device_type_dict(device_type=category)
+
+                for idtag, graphic in graphics_dict.items():
+                    terminal = graphic.get_terminal()
+                    terminal.update()
+                    terminal.process_callbacks(terminal.scenePos())
+                    graphic.auto_assign_branch_slots()
+
+                    for branch_graphic in graphic.get_associated_branch_graphics():
+                        branch_graphics_to_refresh.add(branch_graphic)
+
+                    graphic.arrange_children()
+
+            self._is_batch_refreshing_branches = False
+
+            for branch_graphic in branch_graphics_to_refresh:
+                branch_graphic.upgrade_legacy_layout_from_diagram()
+                branch_graphic.load_route_points_from_diagram()
+                branch_graphic.redraw()
+        finally:
+            self._is_batch_refreshing_branches = False
+            self._is_loading_diagram = False
+            self.restore_viewport_updates_after_loading()
+
+    def is_loading_diagram(self) -> bool:
+        """
+        Determine whether the schematic is still reconstructing diagram geometry.
+
+        :return: ``True`` while diagram items are being loaded and callbacks are settling.
+        """
+        return self._is_loading_diagram
+
+    def is_batch_refreshing_branches(self) -> bool:
+        """
+        Determine whether branch endpoints are being updated in a batched refresh.
+
+        During this phase terminal callbacks should only update endpoint
+        positions. A single final redraw pass is executed afterwards.
+
+        :return: ``True`` while branch callbacks are being coalesced.
+        """
+        return self._is_batch_refreshing_branches
 
     def draw(self) -> None:
         """
         Draw the stored diagram
         """
         self.draw_additional_diagram(diagram=self.diagram, logger=self.logger)
+
+    def showEvent(self, event) -> None:
+        """
+        Trigger a final branch refresh once the widget is actually shown.
+        """
+        super().showEvent(event)
+
+        if self._needs_post_show_branch_refresh:
+            self._needs_post_show_branch_refresh = False
+            self.schedule_branch_callbacks_after_draw()
+        else:
+            pass
 
     def expand_diagram_from_bus(self, root_bus: Bus) -> None:
         """
@@ -913,14 +1092,18 @@ class SchematicWidget(BaseDiagramWidget):
         :param draw_labels: Draw the labels?
         :param graphic_object: Graphic object associated
         """
-        self.diagram.set_point(device=device,
-                               location=GraphicLocation(x=x,
-                                                        y=y,
-                                                        h=h,
-                                                        w=w,
-                                                        r=r,
-                                                        draw_labels=draw_labels,
-                                                        api_object=device))
+        self.diagram.update_graphic_location(api_object=device,
+                                             x=x,
+                                             y=y,
+                                             h=h,
+                                             w=w,
+                                             r=r,
+                                             draw_labels=draw_labels)
+
+        if self.is_loading_diagram():
+            pass
+        else:
+            self.diagram.sync_branch_attachments(api_object=device)
 
         self.graphics_manager.add_device(elm=device, graphic=graphic_object)
 
@@ -964,7 +1147,7 @@ class SchematicWidget(BaseDiagramWidget):
         lst: List[Tuple[int, Bus, Union[BusGraphicItem, None]]] = list()
         bus_graphic_dict = self.graphics_manager.get_device_type_dict(DeviceType.BusDevice)
 
-        bus_dict: Dict[str: Tuple[int, Bus]] = {b.idtag: (i, b) for i, b in enumerate(self.circuit.get_buses())}
+        bus_dict: Dict[str, Tuple[int, Bus]] = {b.idtag: (i, b) for i, b in enumerate(self.circuit.get_buses())}
 
         for idtag, graphic_object in bus_graphic_dict.items():
             if isinstance(graphic_object, BusGraphicItem):
@@ -980,7 +1163,7 @@ class SchematicWidget(BaseDiagramWidget):
         """
         lst: List[Tuple[int, Bus, Union[BusGraphicItem, None]]] = list()
         bus_graphics_dict = self.graphics_manager.get_device_type_dict(DeviceType.BusDevice)
-        bus_dict: Dict[str: Tuple[int, Bus]] = {b.idtag: (i, b) for i, b in enumerate(self.circuit.get_buses())}
+        bus_dict: Dict[str, Tuple[int, Bus]] = {b.idtag: (i, b) for i, b in enumerate(self.circuit.get_buses())}
 
         for bus_idtag, graphic_object in bus_graphics_dict.items():
             idx, bus = bus_dict[bus_idtag]
@@ -1868,8 +2051,11 @@ class SchematicWidget(BaseDiagramWidget):
                     return None
 
                 else:
-                    # the from bu is found, return its terminal
-                    return bus_graphic0.get_terminal()
+                    # the bus is found, return its default terminal
+                    if isinstance(bus_graphic0, (BusGraphicItem, FluidNodeGraphicItem)):
+                        return bus_graphic0.get_terminal()
+                    else:
+                        return None
 
             else:
                 # nothing was provided...
@@ -1886,23 +2072,8 @@ class SchematicWidget(BaseDiagramWidget):
 
         obj_from, obj_to, is_ok = branch.get_from_and_to_objects()
 
-        # Bus provided, search its graphics
-        bus_graphic0 = self.graphics_manager.query(obj_from)
-        if bus_graphic0 is None:
-            # could not find any graphics :(
-            from_port = None
-        else:
-            # the from bu is found, return its terminal
-            from_port = bus_graphic0.get_terminal()
-
-        # Bus provided, search its graphics
-        bus_graphic1 = self.graphics_manager.query(obj_to)
-        if bus_graphic1 is None:
-            # could not find any graphics :(
-            to_port = None
-        else:
-            # the from bu is found, return its terminal
-            to_port = bus_graphic1.get_terminal()
+        from_port = self.find_port_for_attachment(owner_object=obj_from)
+        to_port = self.find_port_for_attachment(owner_object=obj_to)
 
         return from_port, to_port
 
@@ -1915,16 +2086,55 @@ class SchematicWidget(BaseDiagramWidget):
 
         obj_from, obj_to, is_ok = branch.get_from_and_to_objects()
 
-        # Bus provided, search its graphics
-        bus_graphic1 = self.graphics_manager.query(obj_to)
-        if bus_graphic1 is None:
-            # could not find any graphics :(
-            to_port = None
-        else:
-            # the from bus is found, return its terminal
-            to_port = bus_graphic1.get_terminal()
+        return self.find_port_for_attachment(owner_object=obj_to)
 
-        return to_port
+    def get_persisted_attachment(self, api_object: ALL_DEV_TYPES, endpoint: str) -> Dict[str, Any]:
+        """
+        Read attachment metadata without creating placeholder diagram locations as a side effect.
+        """
+        if api_object is None:
+            return dict()
+        else:
+            pass
+
+        location = self.diagram.query_point(api_object)
+        if location is None:
+            return dict()
+        else:
+            return self.diagram.get_attachment(api_object=api_object, endpoint=endpoint)
+
+    def find_port_for_attachment(self, owner_object: ALL_DEV_TYPES | None) -> OPTIONAL_PORT:
+        """
+        Resolve the graphics terminal for one owner object.
+        """
+        if owner_object is None:
+            return None
+
+        owner_graphic = self.graphics_manager.query(owner_object)
+        if owner_graphic is None:
+            return None
+
+        if isinstance(owner_graphic, (BusGraphicItem, FluidNodeGraphicItem)):
+            return owner_graphic.get_terminal()
+        else:
+            return None
+
+    def set_all_branch_drawing_styles(self, route_style: SchematicAutoRouteStyle) -> None:
+        """
+        Set one automatic drawing style on all registered schematic branch widgets.
+
+        :param route_style: Requested automatic branch drawing style.
+        :return: ``None``.
+        """
+        branch_device_type: DeviceType
+        graphic_object: object
+
+        for branch_device_type in SCHEMATIC_BRANCH_DEVICE_TYPES:
+            for graphic_object in self.graphics_manager.get_device_type_list(device_type=branch_device_type):
+                if isinstance(graphic_object, LineGraphicTemplateItem):
+                    graphic_object.set_branch_auto_route_style(route_style=route_style)
+                else:
+                    pass
 
     def add_api_branch(self,
                        branch: BRANCH_TYPES,
@@ -1970,7 +2180,10 @@ class SchematicWidget(BaseDiagramWidget):
 
                 self.add_to_scene(graphic_object=graphic_object)
 
-                graphic_object.redraw()
+                if self.is_loading_diagram():
+                    pass
+                else:
+                    graphic_object.redraw()
                 self.update_diagram_element(device=branch, x=0, y=0, w=0, h=0, r=0,
                                             draw_labels=graphic_object.draw_labels,
                                             graphic_object=graphic_object)
@@ -2390,6 +2603,7 @@ class SchematicWidget(BaseDiagramWidget):
         :return: Nothing
         """
         hvdc = self.circuit.convert_line_to_hvdc(line)
+        self.diagram.copy_layout_state(source_api_object=line, target_api_object=hvdc)
 
         # add device to the schematic
         graphic_object = self.add_api_hvdc(branch=hvdc,
@@ -2416,6 +2630,7 @@ class SchematicWidget(BaseDiagramWidget):
         :return: Nothing
         """
         transformer = self.circuit.convert_line_to_transformer(line)
+        self.diagram.copy_layout_state(source_api_object=line, target_api_object=transformer)
 
         # add device to the schematic
         graphic_object = self.add_api_transformer(branch=transformer,
@@ -2443,6 +2658,7 @@ class SchematicWidget(BaseDiagramWidget):
         :return: Nothing
         """
         vsc = self.circuit.convert_line_to_vsc(line)
+        self.diagram.copy_layout_state(source_api_object=line, target_api_object=vsc)
 
         # add device to the schematic
         graphic_object = self.add_api_vsc(elm=vsc,
@@ -2468,6 +2684,7 @@ class SchematicWidget(BaseDiagramWidget):
         :return: Nothing
         """
         upfc = self.circuit.convert_line_to_upfc(line)
+        self.diagram.copy_layout_state(source_api_object=line, target_api_object=upfc)
 
         # add device to the schematic
         graphic_object = self.add_api_upfc(branch=upfc,
@@ -2494,6 +2711,7 @@ class SchematicWidget(BaseDiagramWidget):
         :return: Nothing
         """
         series_reactance = self.circuit.convert_line_to_series_reactance(line)
+        self.diagram.copy_layout_state(source_api_object=line, target_api_object=series_reactance)
 
         # add device to the schematic
         graphic_object = self.add_api_series_reactance(branch=series_reactance,
@@ -2520,6 +2738,7 @@ class SchematicWidget(BaseDiagramWidget):
         :return: Nothing
         """
         switch = self.circuit.convert_line_to_switch(line)
+        self.diagram.copy_layout_state(source_api_object=line, target_api_object=switch)
 
         # add device to the schematic
         graphic_object = self.add_api_switch(branch=switch,
@@ -2553,6 +2772,7 @@ class SchematicWidget(BaseDiagramWidget):
         fl_to.create_bus_if_necessary()
 
         line = self.circuit.convert_fluid_path_to_line(element)
+        self.diagram.copy_layout_state(source_api_object=element, target_api_object=line)
 
         # add device to the schematic
         graphic_object = self.add_api_line(branch=line,
@@ -3673,7 +3893,7 @@ class SchematicWidget(BaseDiagramWidget):
                                                       tpe=bus_types[int(types[i])])
 
                         vals = [VmA[i], VmB[i], VmC[i]]
-                        vals_nz = [v for v in vals if v != 0.0] # ignore exact zeros
+                        vals_nz = [v for v in vals if v != 0.0]  # ignore exact zeros
 
                         if vals_nz:  # at least one phase is not zero
                             worst_Umax = max(vals_nz)
@@ -4048,7 +4268,7 @@ class SchematicWidget(BaseDiagramWidget):
                 location = self.diagram.query_point(item.api_object)
 
                 if location:
-                    diagram.set_point(device=item.api_object, location=location)
+                    diagram.set_point(device=item.api_object, location=location.copy())
                     bus_dict[item.api_object.idtag] = item
                 else:
                     raise Exception('Item was selected but was not registered!')
@@ -4057,15 +4277,20 @@ class SchematicWidget(BaseDiagramWidget):
         for item in self.diagram_scene.selectedItems():
             if isinstance(item, BRANCH_GRAPHICS):
 
-                # add the element
-                rect = item.boundingRect()
-                diagram.set_point(device=item.api_object,
-                                  location=GraphicLocation(x=rect.x(),
-                                                           y=rect.y(),
-                                                           h=rect.height(),
-                                                           w=rect.width(),
-                                                           r=item.rotation(),
-                                                           api_object=item.api_object))
+                location = self.diagram.query_point(item.api_object)
+
+                if location:
+                    diagram.set_point(device=item.api_object, location=location.copy())
+                else:
+                    # Fallback for partially registered graphics; preserve previous behavior.
+                    rect = item.boundingRect()
+                    diagram.set_point(device=item.api_object,
+                                      location=GraphicLocation(x=rect.x(),
+                                                               y=rect.y(),
+                                                               h=rect.height(),
+                                                               w=rect.width(),
+                                                               r=item.rotation(),
+                                                               api_object=item.api_object))
 
                 # get the api buses from and to
                 bus_from = item.api_object.bus_from
@@ -4079,7 +4304,7 @@ class SchematicWidget(BaseDiagramWidget):
                     if location and (bus.idtag not in bus_dict):
                         # if the bus was not added in the first
                         # pass and is in the original diagram, add it now
-                        diagram.set_point(device=bus, location=location)
+                        diagram.set_point(device=bus, location=location.copy())
                         graphic_object = self.graphics_manager.query(elm=bus)
                         bus_dict[bus.idtag] = graphic_object
 
@@ -4931,6 +5156,9 @@ class SchematicWidget(BaseDiagramWidget):
                 if branch_graphic is None:
                     print(f"Warning: No graphic found for element {element.name}")
                     continue
+                if not isinstance(branch_graphic, LineGraphicTemplateItem):
+                    print(f"Warning: Graphic for element {element.name} is not a branch graphic")
+                    continue
 
                 # At this point the API branch has been reassigned already
                 terminal = new_bus_graphic.get_terminal()
@@ -4939,12 +5167,12 @@ class SchematicWidget(BaseDiagramWidget):
                         graphic_obj=branch_graphic,
                         another_terminal=bus_graphics.terminal
                     )
-
-                if hasattr(branch_graphic, 'api_object') and branch_graphic.api_object is not None:
-                    branch_graphic.api_object.reassign_bus(
-                        old_bus=bus_graphics.api_object,
-                        new_bus=new_bus_graphic.api_object
-                    )
+                    branch_graphic.api_object.reassign_bus(old_bus=old_bus,
+                                                           new_bus=new_bus_graphic.api_object)
+                    branch_graphic.update_ports()
+                    branch_graphic.redraw()
+                else:
+                    pass
 
                 if terminal is not None:
                     terminal.update()
@@ -5229,7 +5457,7 @@ List[FluidPath]]:
             has_winding = True
 
     # create a pool of buses
-    bus_pool: List[Tuple[bus, int]] = list()  # store the bus objects and their level from the root
+    bus_pool: List[Tuple[Bus, int]] = list()  # store the bus objects and their level from the root
 
     for b in buses:
         bus_pool.append((b, 0))
@@ -5357,7 +5585,7 @@ List[FluidPath]]:
     for b in buses_tr3:
         buses.add(b)
 
-    return (list(buses ), lines, dc_lines, transformers2w, list(transformers3w),
+    return (list(buses), lines, dc_lines, transformers2w, list(transformers3w),
             windings, hvdc_lines, vsc_converters, upfc_devices, series_reactances, switches,
             list(fluid_nodes), fluid_paths)
 

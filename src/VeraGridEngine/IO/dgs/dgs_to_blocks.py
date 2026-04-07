@@ -255,6 +255,7 @@ class ElmCompInstanceEntry:
         "element_kind",
         "type_id",
         "type_name",
+        "parameter_values",
     )
 
     def __init__(
@@ -266,6 +267,7 @@ class ElmCompInstanceEntry:
         element_kind: str | None,
         type_id: str | None,
         type_name: str | None,
+        parameter_values: Dict[str, Any] | None = None,
     ) -> None:
         self.slot_id: str | None = slot_id
         self.slot_name: str | None = slot_name
@@ -274,6 +276,7 @@ class ElmCompInstanceEntry:
         self.element_kind: str | None = element_kind
         self.type_id: str | None = type_id
         self.type_name: str | None = type_name
+        self.parameter_values: Dict[str, Any] = dict(parameter_values or {})
 
 
 class DgsBlockInstanceSelection:
@@ -1015,10 +1018,12 @@ def _emit_template_style_module(
     result: DgsRootBlockResult,
     subgraph: DgsBlockSubgraphResult,
     dgs_path: str,
+    template_name: str | None = None,
 ) -> str:
     block = subgraph.view_block
     identifier_map = _make_identifier_map(block)
-    func_base_name = _safe_name(subgraph.selected_block.blkdef.loc_name).lower()
+    resolved_template_name = template_name if template_name is not None else subgraph.selected_block.blkdef.loc_name
+    func_base_name = _safe_name(resolved_template_name).lower()
     has_procedural_logic = any(len(item.procedural_logic) > 0 for item in _iter_blocks_recursive(block))
     procedural_import_names = _procedural_logic_import_names(block)
 
@@ -1054,7 +1059,7 @@ def _emit_template_style_module(
         lines.append("from VeraGridEngine.Utils.procedural_logic import " + ", ".join(procedural_import_names))
     lines.append("from VeraGridEngine.enumerations import DeviceType")
     lines.append("")
-    lines.append(f"def get_{func_base_name}_emt_template(vf: VarFactory, name: str = {repr(subgraph.selected_block.blkdef.loc_name)}) -> EmtModelTemplate:")
+    lines.append(f"def get_{func_base_name}_emt_template(vf: VarFactory, name: str = {repr(resolved_template_name)}) -> EmtModelTemplate:")
     lines.append("    templ = EmtModelTemplate()")
     lines.append("    templ.tpe = DeviceType.NoDevice")
     lines.append("    templ.name = name")
@@ -1114,7 +1119,7 @@ def _emit_template_style_module(
     lines.append("    return templ")
     lines.append("")
     lines.append("def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:")
-    lines.append(f"    return get_{func_base_name}_emt_template(vf=vf, name={repr(subgraph.selected_block.blkdef.loc_name)} if name is None else name)")
+    lines.append(f"    return get_{func_base_name}_emt_template(vf=vf, name={repr(resolved_template_name)} if name is None else name)")
 
     return "\n".join(lines) + "\n"
 
@@ -1584,7 +1589,45 @@ def _filter_internal_candidates(
 
     return filtered
 
-def _build_block_from_parsed(parsed: ParsedDgsBlockDefinition, shared_signals: Dict[str, Var]) -> Block:
+def _parameter_values_by_type_id(entries: Iterable[ElmCompInstanceEntry]) -> Dict[str, Dict[str, Any]]:
+    """
+    Build a unique parameter lookup keyed by block-definition identifier.
+
+    :param entries: Direct instance entries extracted from one ElmComp.
+    :return: Parameter values keyed by BlkDef identifier when the type appears only once.
+    """
+    parameter_values_by_type: Dict[str, Dict[str, Any]] = dict()
+    duplicated_type_ids: Set[str] = set()
+
+    for entry in entries:
+        # We only propagate values when one block type appears once inside the parent ElmComp.
+        if entry.type_id is None or len(entry.parameter_values) == 0:
+            pass
+        else:
+            if entry.type_id in parameter_values_by_type:
+                duplicated_type_ids.add(entry.type_id)
+            else:
+                parameter_values_by_type[entry.type_id] = dict(entry.parameter_values)
+
+    for type_id in duplicated_type_ids:
+        parameter_values_by_type.pop(type_id, None)
+
+    return parameter_values_by_type
+
+
+def _build_block_from_parsed(
+    parsed: ParsedDgsBlockDefinition,
+    shared_signals: Dict[str, Var],
+    parameter_values: Dict[str, Any] | None = None,
+) -> Block:
+    """
+    Materialize one parsed DGS block into a runtime Block.
+
+    :param parsed: Parsed DGS block definition.
+    :param shared_signals: Shared signal table reused across sibling blocks.
+    :param parameter_values: Optional instance values obtained from ElmDsl rows.
+    :return: Runtime block ready to be composed or exported.
+    """
     symbol_table, state_vars, _state_map, diff_var_map, param_var_map = _build_symbol_table(parsed.blkdef, shared_signals)
 
     for name, old_var in parsed.symbol_table.items():
@@ -1627,7 +1670,12 @@ def _build_block_from_parsed(parsed: ParsedDgsBlockDefinition, shared_signals: D
             effective_diff_vars.append(diff_var_map[state_name])
             state_eqs.append(parsed.state_rhs[state_name].subs(var_mapping))
 
-    event_dict: Dict[Var, Const] = {param_var: Const(None, name=param_name) for param_name, param_var in param_var_map.items()}
+    # The BlkDef stores the parameter names, while the ElmDsl instance stores the concrete numbers.
+    resolved_parameter_values: Dict[str, Any] = dict(parameter_values or {})
+    event_dict: Dict[Var, Const] = {
+        param_var: Const(resolved_parameter_values.get(param_name, None), name=param_name)
+        for param_name, param_var in param_var_map.items()
+    }
 
     init_eqs: Dict[Var, Expr] = dict()
     for lhs_name, rhs_expr in parsed.init_rhs.items():
@@ -1710,9 +1758,10 @@ def dgs_to_root_block(path: str, root_name: str = "Grid Forming Converter", root
 
     root_element, root_blkdef = _select_root_element(circuit, parsed_blocks, root_name=root_name, root_typ_id=root_typ_id)
     reachable_blocks = _collect_reachable_blocks(root_blkdef, parsed_blocks)
+    parameter_values_by_type_id = _parameter_values_by_type_id(extract_elmcomp_direct_instances(circuit, root_element))
 
     child_blocks: List[Block] = [
-        _build_block_from_parsed(parsed, shared_signals)
+        _build_block_from_parsed(parsed, shared_signals, parameter_values=parameter_values_by_type_id.get(parsed.blkdef.ID, None))
         for _, parsed in sorted(reachable_blocks.items(), key=lambda item: item[1].blkdef.loc_name)
     ]
 
@@ -1735,6 +1784,59 @@ def dgs_to_root_block(path: str, root_name: str = "Grid Forming Converter", root
         dependency_graph=dependency_graph,
         producer_map=producer_map,
         consumer_map=consumer_map,
+    )
+
+
+def _build_direct_root_elmcomp_block(
+    circuit: DgsCircuit,
+    result: DgsRootBlockResult,
+) -> Block:
+    """
+    Build a root ElmComp block using only its direct DGS child instances.
+
+    :param circuit: Parsed DGS circuit.
+    :param result: Root selection result.
+    :return: Root runtime block with direct DSL children only.
+    """
+    shared_signals: Dict[str, Var] = dict()
+    root_signal_names: List[str] = list()
+    for root_var in result.root_block.in_vars:
+        root_signal_names.append(root_var.name)
+    for root_var in result.root_block.out_vars:
+        root_signal_names.append(root_var.name)
+    for root_var in result.root_block.algebraic_vars:
+        root_signal_names.append(root_var.name)
+
+    for signal_name in root_signal_names:
+        if signal_name not in shared_signals:
+            shared_signals[signal_name] = Var(name=signal_name)
+        else:
+            pass
+
+    child_blocks: List[Block] = list()
+    direct_entries = extract_elmcomp_direct_instances(circuit, result.root_element)
+    for entry in direct_entries:
+        if entry.type_id is None:
+            pass
+        else:
+            parsed_block = result.parsed_blocks.get(entry.type_id, None)
+            if parsed_block is None:
+                pass
+            else:
+                # Each direct ElmDsl instance provides the concrete parameter constants for its block type.
+                child_block = _build_block_from_parsed(
+                    parsed_block,
+                    shared_signals,
+                    parameter_values=entry.parameter_values,
+                )
+                child_blocks.append(child_block)
+
+    return Block(
+        name=result.root_element.loc_name,
+        children=child_blocks,
+        in_vars=[shared_signals[var.name] for var in result.root_block.in_vars if var.name in shared_signals],
+        out_vars=[shared_signals[var.name] for var in result.root_block.out_vars if var.name in shared_signals],
+        algebraic_vars=[shared_signals[var.name] for var in result.root_block.algebraic_vars if var.name in shared_signals],
     )
 
 def _build_dgs_element_index(circuit: DgsCircuit) -> dict[str, object]:
@@ -2353,6 +2455,7 @@ def extract_elmcomp_direct_instances(
         element_kind: str | None = None
         type_id: str | None = None
         type_name: str | None = None
+        parameter_values: Dict[str, Any] = dict()
 
         if slot_id is not None:
             slot_obj: object | None = element_by_id.get(slot_id, None)
@@ -2372,6 +2475,7 @@ def extract_elmcomp_direct_instances(
                     type_id = element_obj.typ_id
                 else:
                     type_id = None
+                parameter_values = element_obj.get_parameter_map()
             elif isinstance(element_obj, ElmComp):
                 element_name = element_obj.loc_name
                 element_kind = "ElmComp"
@@ -2379,14 +2483,17 @@ def extract_elmcomp_direct_instances(
                     type_id = element_obj.typ_id
                 else:
                     type_id = None
+                parameter_values = dict()
             else:
                 element_name = None
                 element_kind = None
                 type_id = None
+                parameter_values = dict()
         else:
             element_name = None
             element_kind = None
             type_id = None
+            parameter_values = dict()
 
         if type_id is not None:
             blkdef_obj: BlkDef | None = blkdef_by_id.get(type_id, None)
@@ -2413,6 +2520,7 @@ def extract_elmcomp_direct_instances(
             element_kind=element_kind,
             type_id=type_id,
             type_name=type_name,
+            parameter_values=parameter_values,
         )
 
         entries.append(entry)
@@ -2691,15 +2799,25 @@ def extract_root_slot_block_internal_signal_tree(
 
     shared_signals: Dict[str, Var] = dict()
     sub_children: List[Block] = list()
+    element_by_id = _build_dgs_element_index(circuit)
+    selected_element_obj = element_by_id.get(selection.instance_entry.element_id or "", None)
+    nested_parameter_values_by_type_id: Dict[str, Dict[str, Any]] = dict()
+    if isinstance(selected_element_obj, ElmComp):
+        nested_parameter_values_by_type_id = _parameter_values_by_type_id(extract_elmcomp_direct_instances(circuit, selected_element_obj))
 
     ordered_ids: List[str] = list(node_ids)
     ordered_ids.sort()
 
     for node_id in ordered_ids:
         parsed = result.parsed_blocks[node_id]
-        sub_children.append(_build_block_from_parsed(parsed, shared_signals))
+        parameter_values = selection.instance_entry.parameter_values if node_id == selection.parsed_block.blkdef.ID else nested_parameter_values_by_type_id.get(parsed.blkdef.ID, None)
+        sub_children.append(_build_block_from_parsed(parsed, shared_signals, parameter_values=parameter_values))
 
-    selected_runtime_block: Block = _build_block_from_parsed(selection.parsed_block, shared_signals)
+    selected_runtime_block: Block = _build_block_from_parsed(
+        selection.parsed_block,
+        shared_signals,
+        parameter_values=selection.instance_entry.parameter_values,
+    )
 
     view_block = Block(
         name=f"{selection.parsed_block.blkdef.loc_name}_InternalSignalTree",
@@ -2775,6 +2893,16 @@ def extract_root_slot_block_graphical_tree(
 
     alias_map = _build_graph_signal_alias_map(node_ids, node_by_id, node_signals)
     local_adj = _build_augmented_graphical_adjacency(node_ids, adjacency, node_by_id, node_signals, alias_map)
+    element_by_id = _build_dgs_element_index(circuit)
+    selected_element_obj = element_by_id.get(selection.instance_entry.element_id or "", None)
+    nested_entries_by_label: Dict[str, ElmCompInstanceEntry] = dict()
+    nested_entries_by_type_name: Dict[str, ElmCompInstanceEntry] = dict()
+    nested_parameter_values_by_type_id: Dict[str, Dict[str, Any]] = dict()
+    if isinstance(selected_element_obj, ElmComp):
+        nested_entries = extract_elmcomp_direct_instances(circuit, selected_element_obj)
+        nested_entries_by_label = {entry.slot_name: entry for entry in nested_entries if entry.slot_name is not None}
+        nested_entries_by_type_name = {entry.type_name: entry for entry in nested_entries if entry.type_name is not None}
+        nested_parameter_values_by_type_id = _parameter_values_by_type_id(nested_entries)
 
     for node_id in sorted(node_ids, key=lambda nid: _graphic_node_label(node_by_id.get(nid, nid))):
         node_obj = node_by_id.get(node_id)
@@ -2790,7 +2918,15 @@ def extract_root_slot_block_graphical_tree(
             parsed = result.parsed_blocks.get(node_obj.typ_id, None)
             if parsed is None:
                 continue
-            blk = _build_block_from_parsed(parsed, dict())
+            instance_entry = nested_entries_by_label.get(node_obj.cdisName, None)
+            if instance_entry is None:
+                instance_entry = nested_entries_by_type_name.get(parsed.blkdef.loc_name, None)
+
+            parameter_values = nested_parameter_values_by_type_id.get(parsed.blkdef.ID, None)
+            if instance_entry is not None and len(instance_entry.parameter_values) > 0:
+                parameter_values = instance_entry.parameter_values
+
+            blk = _build_block_from_parsed(parsed, dict(), parameter_values=parameter_values)
             blk.name = _graphic_node_label(node_obj)
             child_blocks.append(blk)
             child_blocks_by_node[node_id] = blk
@@ -2805,7 +2941,11 @@ def extract_root_slot_block_graphical_tree(
             child_output_specs[node_id] = output_specs
             child_node_ids.append(node_id)
 
-    selected_runtime_block = _build_block_from_parsed(selection.parsed_block, dict())
+    selected_runtime_block = _build_block_from_parsed(
+        selection.parsed_block,
+        dict(),
+        parameter_values=selection.instance_entry.parameter_values,
+    )
     connections, resolved_outputs = _resolve_graphic_block_connections(
         selected_block=selection.parsed_block,
         child_node_ids=child_node_ids,
@@ -3064,6 +3204,47 @@ def export_root_slot_block_graphical_template_to_python(
 
     module_text = _emit_template_style_module(result, graph_tree, dgs_path)
 
+    out_path.write_text(module_text, encoding="utf-8")
+    return out_path
+
+
+def export_root_elmcomp_template_to_python(
+    dgs_path: str,
+    output_path: str,
+    root_name: str,
+    *,
+    root_typ_id: str | None = None,
+) -> Path:
+    """
+    Export one root ElmComp as a standalone EMT template module.
+
+    :param dgs_path: Source DGS file.
+    :param output_path: Destination `.py` file.
+    :param root_name: Root ElmComp display name.
+    :param root_typ_id: Optional exact root typ_id.
+    :return: Path to the generated Python module.
+    """
+    circuit = DgsCircuit()
+    circuit.parse_dgs(dgs_path)
+    result = dgs_to_root_block(dgs_path, root_name=root_name, root_typ_id=root_typ_id)
+    direct_root_block = _build_direct_root_elmcomp_block(circuit, result)
+    root_subgraph = DgsBlockSubgraphResult(
+        selected_block=result.root_blkdef,
+        view_block=direct_root_block,
+        node_ids=set(result.dependency_graph.keys()),
+        dependency_graph=result.dependency_graph,
+        upstream=dict(),
+        downstream=dict(),
+    )
+
+    out_path = Path(output_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    module_text = _emit_template_style_module(
+        result,
+        root_subgraph,
+        dgs_path,
+        template_name=result.root_element.loc_name,
+    )
     out_path.write_text(module_text, encoding="utf-8")
     return out_path
 

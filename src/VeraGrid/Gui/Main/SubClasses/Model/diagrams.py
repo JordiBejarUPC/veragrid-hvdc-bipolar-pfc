@@ -24,7 +24,8 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlo
 from VeraGridEngine.Simulations.StateEstimation.state_estimation_results import StateEstimationResults
 from VeraGridEngine.Utils.progress_bar import print_progress_bar
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import SimulationTypes, Colormaps, DeviceType, MethodShortCircuit
+from VeraGridEngine.enumerations import (SimulationTypes, Colormaps, DeviceType, MethodShortCircuit,
+                                         SchematicAutoRouteStyle)
 from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 
 import VeraGridEngine.Devices as dev
@@ -253,6 +254,9 @@ class DiagramsMain(CompiledArraysMain):
         self.ui.actionReset_coordinates.triggered.connect(self.reset_diagram_coordinates)
         self.ui.actionRotate.triggered.connect(self.rotate)
         self.ui.actionClear_highlights.triggered.connect(self.clear_big_bus_markers)
+
+        self.ui.actionSetReticularBranchStyles.triggered.connect(self.set_diagram_branches_reticular_style)
+        self.ui.actionSetStraightBranchStyles.triggered.connect(self.set_diagram_branches_straight_style)
 
         # Buttons
         self.ui.colour_results_pushButton.clicked.connect(self.colour_diagrams)
@@ -3324,3 +3328,21 @@ class DiagramsMain(CompiledArraysMain):
         self.ui.max_branch_size_spinBox.setValue(0.002)
         self.ui.arrow_size_size_spinBox.setValue(0.0015)
         self.redraw_current_diagram()
+
+    def set_diagram_branches_reticular_style(self):
+        """
+        Set all branches drawing mode to reticular
+        """
+        diagram = self.get_selected_diagram_widget()
+
+        if isinstance(diagram, SchematicWidget):
+            diagram.set_all_branch_drawing_styles(SchematicAutoRouteStyle.RETICULAR)
+
+    def set_diagram_branches_straight_style(self):
+        """
+        Set all branches drawing mode to straight
+        """
+        diagram = self.get_selected_diagram_widget()
+
+        if isinstance(diagram, SchematicWidget):
+                diagram.set_all_branch_drawing_styles(SchematicAutoRouteStyle.STRAIGHT)

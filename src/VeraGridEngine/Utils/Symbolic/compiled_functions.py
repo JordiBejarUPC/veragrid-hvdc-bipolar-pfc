@@ -274,6 +274,20 @@ class SymbolicVector:
         return self.data
 
 
+def get_compiled_functions_cache_stats() -> Dict[str, float]:
+    """
+    Return cache statistics for compiled symbolic helper functions.
+
+    The legacy compiled-function module does not yet expose a persistent cache,
+    so the reported cache entry count is zero. The function exists so EMT build
+    reports can depend on a stable interface while the cache work remains staged.
+
+    :return: Cache statistics.
+    :rtype: Dict[str, float]
+    """
+    return dict(entry_count=0.0)
+
+
 class SymbolicParamsVector:
     """
     SymbolicFunction

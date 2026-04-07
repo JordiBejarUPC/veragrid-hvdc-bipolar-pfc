@@ -56,7 +56,6 @@ def tf_to_block(var_factory: VarFactory,
     diff_vars = list()
     state_eqs = list()
     state_vars = list()
-    init_eqs = dict()
     base_var = x
     for i in range(1, len(num)):
         if i == 1 and create_state:
@@ -326,7 +325,7 @@ def tf_to_block2(
     )
     return block, y_states[0]
 
-def to_explicit(block: Block, vfactory: VarFactory) -> Block:
+def to_implicit(block: Block, vfactory: VarFactory) -> Block:
     """
     Convert a block with explicit state equations to implicit form.
     
@@ -347,7 +346,7 @@ def to_explicit(block: Block, vfactory: VarFactory) -> Block:
         
         # Create a new algebraic variable for the derivative
         if state_var.diff_var == None:
-            dt_var = vfactory.add_diff_var(f"dt_{state_var.name}")
+            dt_var = vfactory.add_diff_var(f"dt_{state_var.name}", base_var=state_var)
             block.diff_vars.append(dt_var)
         else:
             dt_var = state_var.diff_var
@@ -356,7 +355,7 @@ def to_explicit(block: Block, vfactory: VarFactory) -> Block:
         block.algebraic_vars.append(state_var)
         block.algebraic_eqs.append(implicit_eq)
         
-        block.init_eqs[dt_var] = vfactory.add_const(0.0)
+        #block.init_eqs[dt_var] = block.init_eqs[state_var]
 
     
     # The state_vars become algebraic_vars since they now appear in algebraic equations
@@ -366,7 +365,7 @@ def to_explicit(block: Block, vfactory: VarFactory) -> Block:
     
     # Recursively process children
     for b in block.children:
-        to_explicit(b, vfactory)
+        to_implicit(b, vfactory)
     
     return block
 
@@ -900,10 +899,10 @@ def connect_line_emt_from(mdl1: Block, mdl2: Block):
     # Create a dictionary to map the bus output variable
     # to the corresponding line input variable ("from" side)
     phase_map = {
-        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.v_N_f,
-        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.v_A_f,
-        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.v_B_f,
-        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.v_C_f
+        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.vf_N,
+        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.vf_A,
+        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.vf_B,
+        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.vf_C
     }
 
     # Find the variable pairs that match our mapping
@@ -931,10 +930,10 @@ def connect_line_emt_to(mdl1: Block, mdl2: Block):
     # Create a dictionary to map the bus output variable
     # to the corresponding line input variable ("to" side)
     phase_map = {
-        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.v_N_t,
-        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.v_A_t,
-        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.v_B_t,
-        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.v_C_t
+        VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.vt_N,
+        VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.vt_A,
+        VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.vt_B,
+        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.vt_C
     }
 
     # Find the variable pairs that match our mapping

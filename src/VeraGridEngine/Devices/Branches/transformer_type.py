@@ -5,11 +5,12 @@
 from typing import Tuple, Union
 from numpy import sqrt
 from VeraGridEngine.enumerations import TapChangerTypes, WindingType
-from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
+from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
+from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.Devices.Branches.tap_changer import TapChanger
 
 
-class TransformerType(EditableDevice):
+class TransformerType(DynamicDevice):
     __slots__ = (
         '_HV',
         '_LV',
@@ -44,12 +45,12 @@ class TransformerType(EditableDevice):
         GCProp(key='neutral_position', units='', tpe=int, definition='neutral position counting from zero'),
         GCProp(key='asymmetry_angle', units='deg', tpe=float, definition='Asymmetry_angle'),
         GCProp(key='conn_hv', units='', tpe=WindingType,
-                      definition='Winding 3 phase connection at the from side'),
+               definition='Winding 3 phase connection at the from side'),
         GCProp(key='conn_lv', units='', tpe=WindingType,
-                      definition='Winding 3 phase connection at the to side'),
+               definition='Winding 3 phase connection at the to side'),
         GCProp(key='vector_group_number', units='', tpe=int,
-                      definition='Vector group number. It indicates the structural phase:'
-                                 'phase = vector_group_number · 30º'),
+               definition='Vector group number. It indicates the structural phase:'
+                          'phase = vector_group_number · 30º'),
         GCProp(key='tap_module_min', units='p.u.', tpe=float, definition='Min tap module', editable=False),
         GCProp(key='tap_module_max', units='p.u.', tpe=float, definition='Max tap module', editable=False),
         GCProp(key='tap_phase_min', units='rad', tpe=float, definition='Min tap phase', editable=False),
@@ -74,7 +75,8 @@ class TransformerType(EditableDevice):
                  name: str = 'TransformerType',
                  idtag: Union[None, str] = None,
                  capex: float = 0.0,
-                 opex: float = 0.0) -> None:
+                 opex: float = 0.0,
+                 vector_group_number: int = 0) -> None:
         """
         Transformer template from the short circuit study
         :param hv_nominal_voltage: Nominal voltage of the high voltage side in kV
@@ -95,12 +97,13 @@ class TransformerType(EditableDevice):
         :param idtag: device UUID
         :param capex: Capital expenditures
         :param opex: Operating expenditures
+        :param vector_group_number: Vector Group Number
         """
-        EditableDevice.__init__(self,
-                                name=name,
-                                idtag=idtag,
-                                code='',
-                                device_type=DeviceType.TransformerTypeDevice)
+        DynamicDevice.__init__(self,
+                               name=name,
+                               idtag=idtag,
+                               code='',
+                               device_type=DeviceType.TransformerTypeDevice)
 
         self.HV = float(hv_nominal_voltage)
 
@@ -125,7 +128,7 @@ class TransformerType(EditableDevice):
 
         self.conn_hv: WindingType = WindingType.GroundedStar
         self.conn_lv: WindingType = WindingType.Delta
-        self.vector_group_number: int = 0
+        self.vector_group_number: int = vector_group_number
 
         # The tap changer parameters are stored and used with the help of the TapChanger object
         self._tap_changer = TapChanger(total_positions=total_positions,
@@ -133,13 +136,6 @@ class TransformerType(EditableDevice):
                                        dV=dV,
                                        asymmetry_angle=asymmetry_angle,
                                        tc_type=tc_type)
-
-
-
-
-
-
-
 
     @property
     def tap_module_min(self) -> float:

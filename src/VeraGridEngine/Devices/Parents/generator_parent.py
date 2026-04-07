@@ -113,8 +113,6 @@ class GeneratorParent(InjectionParent):
         self.srap_enabled = bool(srap_enabled)
         self._srap_enabled_prof = Profile(default_value=self.srap_enabled, data_type=bool)
 
-
-
     @property
     def P(self) -> float:
         """

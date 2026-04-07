@@ -16,7 +16,7 @@ from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImpl
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.load1_rms_template import get_load1_rms_template
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
@@ -107,8 +107,8 @@ load1_dynhost = DynamicModelHost()
 gen1_dynhost = DynamicModelHost()
 
 # generator
-genqec0_mdl = get_complete_generator_template(grid.rms_var_factory).block
-genqec1_mdl = get_complete_generator_template(grid.rms_var_factory).block
+genqec0_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
+genqec1_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
 
 # line
 line0_mdl = get_line_rms_template(grid.rms_var_factory).block

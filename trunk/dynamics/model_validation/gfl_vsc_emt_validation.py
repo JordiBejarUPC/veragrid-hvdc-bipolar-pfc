@@ -126,7 +126,7 @@ print(res.get_branch_df())
 
 
 #Initialise the EMT
-line12_mdl = get_pi_line_emt_template(grid.rms_var_factory).block
+line12_mdl = get_pi_line_emt_template(vf=grid.emt_var_factory).block
 load_type = 'zip'
 if load_type == 'zip':
     load_mdl = ZIPLoadEmtBuild(grid.rms_var_factory, Pl0=-0.1, Ql0=-0.01).block

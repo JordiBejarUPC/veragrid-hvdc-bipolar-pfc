@@ -16,7 +16,6 @@ from trunk.implicit_solver_test_EMT.initialization_workflow_support import (
     evaluate_algebraic_residual_inf,
 )
 
-
 class TestEmtInitializationWorkflow(unittest.TestCase):
 
     def test_consistent_newton_initializes_missing_algebraic_and_dx0(self) -> None:

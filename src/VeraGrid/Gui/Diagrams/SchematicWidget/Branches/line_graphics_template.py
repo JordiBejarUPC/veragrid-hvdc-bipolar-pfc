@@ -7,15 +7,28 @@ import sys
 import numpy as np
 from typing import Union, TYPE_CHECKING
 from PySide6.QtCore import Qt, QLineF, QPointF, QRectF
-from PySide6.QtGui import QPen, QCursor, QPixmap, QBrush, QColor, QTransform, QPolygonF, QFont
+from PySide6.QtGui import (QPen, QCursor, QPixmap, QBrush, QColor, QTransform, QPolygonF, QFont,
+                           QPainter, QPainterPath, QPainterPathStroker)
 from PySide6.QtWidgets import (QGraphicsLineItem, QGraphicsRectItem, QGraphicsPolygonItem,
-                               QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsTextItem)
+                               QGraphicsEllipseItem, QGraphicsSceneMouseEvent, QGraphicsTextItem,
+                               QGraphicsPathItem, QStyleOptionGraphicsItem, QWidget, QMenu)
 from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, DEACTIVATED, OTHER, GenericDiagramWidget, TRANSPARENT, WHITE
+from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.route_geometry import (merge_route_with_endpoints,
+                                                                           move_polyline_route_segment,
+                                                                           move_polyline_route_vertex,
+                                                                           normalize_route_points,
+                                                                           sample_route_segment)
+from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (SchematicAttachmentSlot,
+                                                                          infer_attachment_slot_from_route,
+                                                                          parse_attachment_slot,
+                                                                          parse_explicit_slot_key,
+                                                                          requires_explicit_attachment_anchor)
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Substation.bus_graphics import BusGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_node_graphics import FluidNodeGraphicItem
 from VeraGrid.Gui.messages import yes_no_question
 
+from VeraGridEngine.Devices.Diagrams.schematic_layout import build_default_branch_route
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Substation.busbar import BusBar
 from VeraGridEngine.Devices.Branches.line import Line
@@ -30,7 +43,7 @@ from VeraGridEngine.Devices.Branches.hvdc_line import HvdcLine
 from VeraGridEngine.Devices.Fluid.fluid_node import FluidNode
 from VeraGridEngine.Devices.Fluid.fluid_path import FluidPath
 from VeraGridEngine.Devices.types import BRANCH_TYPES
-from VeraGridEngine.enumerations import SwitchGraphicType
+from VeraGridEngine.enumerations import SchematicAutoRouteStyle, SchematicRouteKind, SwitchGraphicType
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -116,20 +129,7 @@ class TransformerSymbol(QGraphicsRectItem):
 
         :return:
         """
-        h = self.parent.pos2.y() - self.parent.pos1.y()
-        b = self.parent.pos2.x() - self.parent.pos1.x()
-        ang = np.arctan2(h, b)
-        h2 = self.rect().height() / 2.0
-        w2 = self.rect().width() / 2.0
-        a = h2 * np.cos(ang) - w2 * np.sin(ang)
-        b = w2 * np.sin(ang) + h2 * np.cos(ang)
-
-        center = (self.parent.pos1 + self.parent.pos2) * 0.5 - QPointF(a, b)
-
-        transform = QTransform()
-        transform.translate(center.x(), center.y())
-        transform.rotate(np.rad2deg(ang))
-        self.setTransform(transform)
+        self.setTransform(self.parent.get_symbol_transform(self.rect()))
 
 
 class VscSymbol(QGraphicsRectItem):
@@ -276,20 +276,7 @@ class VscSymbol(QGraphicsRectItem):
 
         :return:
         """
-        h = self.parent.pos2.y() - self.parent.pos1.y()
-        b = self.parent.pos2.x() - self.parent.pos1.x()
-        ang = np.arctan2(h, b)
-        h2 = self.rect().height() / 2.0
-        w2 = self.rect().width() / 2.0
-        a = h2 * np.cos(ang) - w2 * np.sin(ang)
-        b = w2 * np.sin(ang) + h2 * np.cos(ang)
-
-        center = (self.parent.pos1 + self.parent.pos2) * 0.5 - QPointF(a, b)
-
-        transform = QTransform()
-        transform.translate(center.x(), center.y())
-        transform.rotate(np.rad2deg(ang))
-        self.setTransform(transform)
+        self.setTransform(self.parent.get_symbol_transform(self.rect()))
 
 
 class UpfcSymbol(VscSymbol):
@@ -396,20 +383,7 @@ class HvdcSymbol(QGraphicsRectItem):
         """
         Redraw the HVDC symbol
         """
-        h = self.parent.pos2.y() - self.parent.pos1.y()
-        b = self.parent.pos2.x() - self.parent.pos1.x()
-        ang = np.arctan2(h, b)
-        h2 = self.rect().height() / 2.0
-        w2 = self.rect().width() / 2.0
-        a = h2 * np.cos(ang) - w2 * np.sin(ang)
-        b = w2 * np.sin(ang) + h2 * np.cos(ang)
-
-        center = (self.parent.pos1 + self.parent.pos2) * 0.5 - QPointF(a, b)
-
-        transform = QTransform()
-        transform.translate(center.x(), center.y())
-        transform.rotate(np.rad2deg(ang))
-        self.setTransform(transform)
+        self.setTransform(self.parent.get_symbol_transform(self.rect()))
 
 
 class ArrowHead(QGraphicsPolygonItem):
@@ -506,11 +480,15 @@ class ArrowHead(QGraphicsPolygonItem):
         """
         Redraw the arrow
         """
-        line = self.parent.line()
+        if isinstance(self.parent, LineGraphicTemplateItem):
+            base_pt, segment = self.parent.get_route_sample(self.position)
+            line = QLineF(QPointF(segment[0][0], segment[0][1]), QPointF(segment[1][0], segment[1][1]))
+        else:
+            line = self.parent.line()
+            base_pt = line.p1() + (line.p2() - line.p1()) * self.position
 
         # the angle is added 180º if the sign is negative
         angle = - line.angle()
-        base_pt = line.p1() + (line.p2() - line.p1()) * self.position
 
         p1 = -self.arrow_size if self.backwards else self.arrow_size
         p2 = -self.arrow_size if self.under else self.arrow_size
@@ -538,6 +516,225 @@ class ArrowHead(QGraphicsPolygonItem):
                 self.label.setRotation(angle)
 
             self.label.setPos(label_p)
+
+
+class RouteSegmentHandleItem(QGraphicsEllipseItem):
+    """
+    Draggable handle for one editable interior route segment.
+    """
+
+    def __init__(self,
+                 parent_branch: "LineGraphicTemplateItem",
+                 segment_index: int,
+                 radius: float = 6.0):
+        """
+        Initialize one draggable route handle.
+
+        :param parent_branch: Owning branch graphic.
+        :param segment_index: Editable segment index.
+        :param radius: Handle radius.
+        """
+        QGraphicsEllipseItem.__init__(self, -radius, -radius, radius * 2.0, radius * 2.0, parent_branch)
+
+        self.parent_branch: LineGraphicTemplateItem = parent_branch
+        self.segment_index: int = segment_index
+        self._drag_origin_scene_pos: QPointF | None = None
+        self._drag_origin_route_points: list[tuple[float, float]] = list()
+
+        self.setBrush(QBrush(QColor(245, 195, 70, 255)))
+        self.setPen(QPen(QColor(32, 32, 32, 255), 1.5))
+        self.setCursor(QCursor(Qt.CursorShape.SizeAllCursor))
+        self.setZValue(10)
+        self.setVisible(False)
+
+    def set_segment_index(self, segment_index: int) -> None:
+        """
+        Update the editable segment index.
+
+        :param segment_index: Editable segment index.
+        :return: ``None``.
+        """
+        self.segment_index = segment_index
+
+    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Capture the route state at the start of a segment drag.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        if event.button() == Qt.MouseButton.LeftButton:
+            self._drag_origin_scene_pos = event.scenePos()
+            self._drag_origin_route_points = self.parent_branch.get_route_points_for_editing()
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Move the owning branch polyline segment.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        if self._drag_origin_scene_pos is None:
+            super().mouseMoveEvent(event)
+        else:
+            delta = event.scenePos() - self._drag_origin_scene_pos
+            self.parent_branch.move_route_segment(segment_index=self.segment_index,
+                                                  original_points=self._drag_origin_route_points,
+                                                  delta_x=delta.x(),
+                                                  delta_y=delta.y())
+            event.accept()
+
+    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Finish the current route-segment drag.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        self._drag_origin_scene_pos = None
+        self._drag_origin_route_points = list()
+        event.accept()
+
+
+class RouteVertexHandleItem(QGraphicsRectItem):
+    """
+    Draggable handle for one interior route vertex.
+    """
+
+    def __init__(self,
+                 parent_branch: "LineGraphicTemplateItem",
+                 vertex_index: int,
+                 half_size: float = 5.0):
+        """
+        Initialize one draggable vertex handle.
+
+        :param parent_branch: Owning branch graphic.
+        :param vertex_index: Editable vertex index.
+        :param half_size: Half side length of the square handle.
+        """
+        QGraphicsRectItem.__init__(self, -half_size, -half_size, half_size * 2.0, half_size * 2.0, parent_branch)
+
+        self.parent_branch: LineGraphicTemplateItem = parent_branch
+        self.vertex_index: int = vertex_index
+
+        self.setBrush(QBrush(QColor(85, 180, 255, 255)))
+        self.setPen(QPen(QColor(20, 20, 20, 255), 1.5))
+        self.setCursor(QCursor(Qt.CursorShape.SizeAllCursor))
+        self.setZValue(11)
+        self.setVisible(False)
+
+    def set_vertex_index(self, vertex_index: int) -> None:
+        """
+        Update the controlled vertex index.
+
+        :param vertex_index: Vertex index.
+        :return: ``None``.
+        """
+        self.vertex_index = vertex_index
+
+    def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Move the associated route vertex.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        self.parent_branch.move_route_vertex(vertex_index=self.vertex_index, scene_pos=event.scenePos())
+        event.accept()
+
+    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Accept the drag start.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        event.accept()
+
+    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Accept the drag end.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        event.accept()
+
+
+class EndpointAlignmentHandleItem(QGraphicsEllipseItem):
+    """
+    Draggable handle for one branch endpoint alignment on its host node.
+    """
+
+    def __init__(self,
+                 parent_branch: "LineGraphicTemplateItem",
+                 endpoint: str,
+                 radius: float = 5.5):
+        """
+        Initialize one endpoint alignment handle.
+
+        :param parent_branch: Owning branch graphic.
+        :param endpoint: Endpoint key.
+        :param radius: Handle radius.
+        """
+        QGraphicsEllipseItem.__init__(self, -radius, -radius, radius * 2.0, radius * 2.0, parent_branch)
+
+        self.parent_branch: LineGraphicTemplateItem = parent_branch
+        self.endpoint: str = endpoint
+        self._hit_radius: float = max(radius, 11.0)
+
+        self.setBrush(QBrush(QColor(130, 255, 150, 255)))
+        self.setPen(QPen(QColor(20, 20, 20, 255), 1.5))
+        self.setCursor(QCursor(Qt.CursorShape.OpenHandCursor))
+        self.setAcceptedMouseButtons(Qt.MouseButton.LeftButton)
+        self.setZValue(40)
+        self.setVisible(False)
+
+    def shape(self) -> QPainterPath:
+        """
+        Widen hit testing so endpoint dragging does not fail when the handle overlaps the bus bar.
+
+        :return: Hit-test path.
+        """
+        path = QPainterPath()
+        path.addEllipse(QPointF(0.0, 0.0), self._hit_radius, self._hit_radius)
+        return path
+
+    def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Move the endpoint alignment along the owning node side.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        self.parent_branch.move_endpoint_alignment(endpoint=self.endpoint, scene_pos=event.scenePos())
+        event.accept()
+
+    def mousePressEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Accept the drag start.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.setCursor(QCursor(Qt.CursorShape.ClosedHandCursor))
+            event.accept()
+        else:
+            super().mousePressEvent(event)
+
+    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Accept the drag end.
+
+        :param event: Mouse event.
+        :return: ``None``.
+        """
+        self.setCursor(QCursor(Qt.CursorShape.OpenHandCursor))
+        event.accept()
 
 
 class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
@@ -598,7 +795,20 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         self.width = width
 
         self.setFlag(self.GraphicsItemFlag.ItemIsSelectable, True)
+        self.setFlag(self.GraphicsItemFlag.ItemSendsGeometryChanges, True)
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+
+        self._route_item = QGraphicsPathItem(parent=self)
+        self._route_item.setAcceptedMouseButtons(Qt.MouseButton.NoButton)
+        self._route_item.setFlag(self.GraphicsItemFlag.ItemIsSelectable, False)
+        self._rendered_path = QPainterPath()
+        self._route_points: list[tuple[float, float]] = list()
+        self._route_handles: list[RouteSegmentHandleItem] = list()
+        self._vertex_handles: list[RouteVertexHandleItem] = list()
+        self._endpoint_handles: dict[str, EndpointAlignmentHandleItem] = {
+            "from": EndpointAlignmentHandleItem(parent_branch=self, endpoint="from"),
+            "to": EndpointAlignmentHandleItem(parent_branch=self, endpoint="to"),
+        }
 
         self.pos1: QPointF = QPointF(0.0, 0.0)
         self.pos2: QPointF = QPointF(0.0, 0.0)
@@ -613,14 +823,21 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         self.arrow_p_to = ArrowHead(parent=self, arrow_size=arrow_size, position=arrow_t_pos, under=False)
         self.arrow_q_to = ArrowHead(parent=self, arrow_size=arrow_size, position=arrow_t_pos, under=True)
 
-        if from_port and to_port:
-            self.redraw()
-
         if from_port:
             self.set_from_port(from_port)
 
         if to_port:
             self.set_to_port(to_port)
+
+        self.load_route_points_from_diagram()
+
+        if from_port and to_port:
+            if self.editor.is_loading_diagram():
+                pass
+            else:
+                self.redraw()
+        else:
+            pass
 
         self.set_colour(self.color, self.width, self.style)
 
@@ -664,7 +881,10 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         Get the terminal from parent object
         :return: TerminalItem 
         """
-        return self._from_port.get_parent()
+        if self._from_port is None:
+            return None
+        else:
+            return self._from_port.get_parent()
 
     def get_terminal_to_parent(self) -> Union[None, BusGraphicItem, Transformer3WGraphicItem,
                                               FluidNodeGraphicItem, VscGraphicItem3Term]:
@@ -672,7 +892,10 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         Get the terminal to parent object
         :return: TerminalItem
         """
-        return self._to_port.get_parent()
+        if self._to_port is None:
+            return None
+        else:
+            return self._to_port.get_parent()
 
     def update_ports(self):
         """
@@ -690,6 +913,602 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
 
         self.set_colour(self.color, self.width, self.style)
 
+    def load_route_points_from_diagram(self) -> None:
+        """
+        Load any persisted route points from the diagram compatibility layer.
+        """
+        if self.api_object is None:
+            return
+
+        location = self.editor.diagram.query_point(self.api_object)
+        if location is None:
+            return
+
+        route_points = self.editor.diagram.get_branch_route_points(self.api_object)
+        if len(route_points) >= 2:
+            self._route_points = normalize_route_points(route_points)
+
+    def upgrade_legacy_layout_from_diagram(self) -> None:
+        """
+        Synthesize structured layout data for legacy branches before the first redraw.
+        """
+        if self.api_object is None:
+            return
+        elif self._from_port is None:
+            return
+        elif self._to_port is None:
+            return
+        else:
+            pass
+
+        self.editor.diagram.sync_branch_attachments(api_object=self.api_object)
+
+        start_point: QPointF = self.get_endpoint_anchor(endpoint="from")
+        end_point: QPointF = self.get_endpoint_anchor(endpoint="to")
+
+        self.editor.diagram.upgrade_legacy_branch_layout(api_object=self.api_object,
+                                                         start=(start_point.x(), start_point.y()),
+                                                         end=(end_point.x(), end_point.y()))
+
+    def get_render_points(self) -> list[tuple[float, float]]:
+        """
+        Replace persisted endpoints with the live endpoint positions and keep
+        the saved interior polyline points when the route is manual.
+        """
+        start_point: QPointF = self.get_endpoint_anchor(endpoint="from")
+        end_point: QPointF = self.get_endpoint_anchor(endpoint="to")
+        start = (start_point.x(), start_point.y())
+        end = (end_point.x(), end_point.y())
+
+        if self.editor.is_loading_diagram() and len(self._route_points) >= 2:
+            return merge_route_with_endpoints(start=start,
+                                              end=end,
+                                              persisted_points=self._route_points)
+        elif self.api_object is not None and self.editor.diagram.should_preserve_branch_route_shape(self.api_object) and len(self._route_points) >= 2:
+            return merge_route_with_endpoints(start=start,
+                                              end=end,
+                                              persisted_points=self._route_points)
+        elif self.api_object is None:
+            return [start, end]
+        else:
+            from_attachment = self.get_persisted_endpoint_attachment(endpoint="from")
+            to_attachment = self.get_persisted_endpoint_attachment(endpoint="to")
+            from_order = from_attachment.get("order", None)
+            to_order = to_attachment.get("order", None)
+            return build_default_branch_route(start=start,
+                                              end=end,
+                                              start_order=from_order,
+                                              end_order=to_order,
+                                              route_style=self.get_branch_auto_route_style())
+
+    def get_branch_auto_route_style(self) -> SchematicAutoRouteStyle:
+        """
+        Return the automatic route style currently assigned to this branch.
+
+        :return: Branch-specific automatic route-style enum.
+        """
+        if self.api_object is None:
+            return SchematicAutoRouteStyle.STRAIGHT
+        elif self.editor.diagram is None:
+            return SchematicAutoRouteStyle.STRAIGHT
+        else:
+            return self.editor.diagram.get_branch_auto_route_style(api_object=self.api_object)
+
+    def set_branch_auto_route_style(self, route_style: SchematicAutoRouteStyle) -> None:
+        """
+        Persist one branch-specific automatic route style and redraw the branch.
+
+        :param route_style: Requested route-style enum.
+        :return: ``None``.
+        """
+        if self.api_object is None:
+            return
+        elif self.editor.diagram is None:
+            return
+        else:
+            self.editor.diagram.set_branch_auto_route_style(api_object=self.api_object, route_style=route_style)
+
+        self.load_route_points_from_diagram()
+        self.redraw()
+
+    def set_branch_auto_route_style_reticular(self) -> None:
+        """
+        Switch this branch to the reticular automatic route style.
+
+        :return: ``None``.
+        """
+        self.set_branch_auto_route_style(route_style=SchematicAutoRouteStyle.RETICULAR)
+
+    def set_branch_auto_route_style_straight(self) -> None:
+        """
+        Switch this branch to the straight automatic route style.
+
+        :return: ``None``.
+        """
+        self.set_branch_auto_route_style(route_style=SchematicAutoRouteStyle.STRAIGHT)
+
+    def add_auto_route_style_menu(self, menu: QMenu) -> None:
+        """
+        Add the per-branch automatic route-style submenu when this branch is auto-routed.
+
+        :param menu: Parent context menu.
+        :return: ``None``.
+        """
+        current_route_style: SchematicAutoRouteStyle
+        route_style_menu: QMenu
+        reticular_action: object
+        straight_action: object
+
+        if self.api_object is None:
+            return
+        else:
+            current_route_style = self.get_branch_auto_route_style()
+            route_style_menu = menu.addMenu("Auto route style")
+            reticular_action = route_style_menu.addAction("Reticular")
+            straight_action = route_style_menu.addAction("Straight")
+
+        reticular_action.setCheckable(True)
+        straight_action.setCheckable(True)
+        reticular_action.setChecked(current_route_style == SchematicAutoRouteStyle.RETICULAR)
+        straight_action.setChecked(current_route_style == SchematicAutoRouteStyle.STRAIGHT)
+        reticular_action.triggered.connect(self.set_branch_auto_route_style_reticular)
+        straight_action.triggered.connect(self.set_branch_auto_route_style_straight)
+
+    def get_route_points_for_editing(self) -> list[tuple[float, float]]:
+        """
+        Return the currently rendered route points used by the manual editor.
+
+        :return: Route points.
+        """
+        return normalize_route_points(self.get_render_points())
+
+    def refresh_z_order(self) -> None:
+        """
+        Keep the branch subtree above buses only while it is selected for editing.
+
+        :return: ``None``.
+        """
+        if self.isSelected():
+            self.setZValue(4)
+        else:
+            self.setZValue(-1)
+
+    def get_persisted_endpoint_attachment(self, endpoint: str) -> dict[str, object]:
+        """
+        Return persisted attachment data for one endpoint.
+
+        :param endpoint: Endpoint key.
+        :return: Attachment dictionary.
+        """
+        if self.api_object is None:
+            return dict()
+        else:
+            return self.editor.get_persisted_attachment(api_object=self.api_object, endpoint=endpoint)
+
+    def get_endpoint_owner_graphic(self, endpoint: str) -> NODE_GRAPHIC | None:
+        """
+        Return the owner graphic of one endpoint.
+
+        :param endpoint: Endpoint key.
+        :return: Owner graphic or ``None``.
+        """
+        if endpoint == "from":
+            return self.get_terminal_from_parent()
+        elif endpoint == "to":
+            return self.get_terminal_to_parent()
+        else:
+            return None
+
+    def get_editable_segment_indexes(self, points: list[tuple[float, float]]) -> list[int]:
+        """
+        Return interior segment indexes that may be dragged by the user.
+
+        :param points: Current route points.
+        :return: Editable segment indexes.
+        """
+        editable_indexes: list[int] = list()
+        segment_index: int
+
+        if len(points) < 4:
+            return editable_indexes
+        else:
+            pass
+
+        for segment_index in range(1, len(points) - 2):
+            p1 = points[segment_index]
+            p2 = points[segment_index + 1]
+
+            if p1 == p2:
+                pass
+            else:
+                editable_indexes.append(segment_index)
+
+        return editable_indexes
+
+    def get_editable_vertex_indexes(self, points: list[tuple[float, float]]) -> list[int]:
+        """
+        Return the editable interior route-vertex indexes.
+
+        :param points: Current route points.
+        :return: Editable vertex indexes.
+        """
+        if len(points) < 3:
+            return list()
+        else:
+            return list(range(1, len(points) - 1))
+
+    def move_route_segment(self,
+                           segment_index: int,
+                           original_points: list[tuple[float, float]],
+                           delta_x: float,
+                           delta_y: float) -> None:
+        """
+        Move one interior route segment and persist the result as a manual polyline.
+
+        :param segment_index: Editable segment index.
+        :param original_points: Route points captured at drag start.
+        :param delta_x: Horizontal scene delta.
+        :param delta_y: Vertical scene delta.
+        :return: ``None``.
+        """
+        if self.api_object is None:
+            return
+        else:
+            pass
+
+        moved_points = move_polyline_route_segment(points=original_points,
+                                                   segment_index=segment_index,
+                                                   delta_x=delta_x,
+                                                   delta_y=delta_y)
+        self._route_points = normalize_route_points(moved_points)
+        self.editor.diagram.set_branch_route_points(api_object=self.api_object,
+                                                    points=self._route_points,
+                                                    kind=SchematicRouteKind.MANUAL_POLYLINE,
+                                                    locked=False)
+        self.redraw()
+
+    def move_route_vertex(self, vertex_index: int, scene_pos: QPointF) -> None:
+        """
+        Move one interior route vertex and persist the manual polyline.
+
+        :param vertex_index: Vertex index.
+        :param scene_pos: New scene position.
+        :return: ``None``.
+        """
+        if self.api_object is None:
+            return
+        else:
+            pass
+
+        current_points = self.get_route_points_for_editing()
+        moved_points = move_polyline_route_vertex(points=current_points,
+                                                  vertex_index=vertex_index,
+                                                  new_x=scene_pos.x(),
+                                                  new_y=scene_pos.y())
+        self._route_points = normalize_route_points(moved_points)
+        self.editor.diagram.set_branch_route_points(api_object=self.api_object,
+                                                    points=self._route_points,
+                                                    kind=SchematicRouteKind.MANUAL_POLYLINE,
+                                                    locked=False)
+        self.redraw()
+
+    def move_endpoint_alignment(self, endpoint: str, scene_pos: QPointF) -> None:
+        """
+        Move one endpoint anchor along the hosting node side and persist the alignment.
+
+        :param endpoint: Endpoint key.
+        :param scene_pos: Scene point chosen by the user.
+        :return: ``None``.
+        """
+        if self.api_object is None:
+            return
+        else:
+            pass
+
+        owner_graphic = self.get_endpoint_owner_graphic(endpoint=endpoint)
+
+        if owner_graphic is None:
+            return
+        else:
+            pass
+
+        attachment = self.get_persisted_endpoint_attachment(endpoint=endpoint)
+        local_anchor: QPointF = self.get_owner_local_anchor_from_scene_point(owner_graphic=owner_graphic,
+                                                                             scene_pos=scene_pos)
+        attachment["anchor_x"] = float(local_anchor.x())
+        attachment["anchor_y"] = float(local_anchor.y())
+        attachment["anchor_auto"] = False
+        self.editor.diagram.set_attachment(api_object=self.api_object,
+                                           endpoint=endpoint,
+                                           attachment=attachment)
+        self.redraw()
+
+    def get_owner_local_anchor_from_scene_point(self,
+                                                owner_graphic: NODE_GRAPHIC,
+                                                scene_pos: QPointF) -> QPointF:
+        """
+        Project one scene point to the owner-local attachment manifold.
+
+        :param owner_graphic: Endpoint owner graphic.
+        :param scene_pos: Requested scene point.
+        :return: Projected owner-local attachment point.
+        """
+        if isinstance(owner_graphic, BusGraphicItem):
+            return owner_graphic.get_connection_local_point_from_scene_point(scene_pos)
+        elif isinstance(owner_graphic, FluidNodeGraphicItem):
+            return owner_graphic.get_connection_local_point_from_scene_point(scene_pos)
+        else:
+            return QPointF(0.0, 0.0)
+
+    def get_owner_scene_anchor_from_attachment(self,
+                                               owner_graphic: NODE_GRAPHIC,
+                                               attachment: dict[str, object],
+                                               fallback_point: QPointF) -> QPointF:
+        """
+        Resolve one endpoint anchor from coordinate metadata.
+
+        :param owner_graphic: Endpoint owner graphic.
+        :param attachment: Persisted attachment metadata.
+        :param fallback_point: Fallback scene point.
+        :return: Scene attachment point.
+        """
+        anchor_x = attachment.get("anchor_x", None)
+        anchor_y = attachment.get("anchor_y", None)
+
+        if anchor_x is None or anchor_y is None:
+            if isinstance(owner_graphic, BusGraphicItem):
+                return owner_graphic.get_connection_scene_point_from_local_point(owner_graphic.get_default_connection_local_point())
+            elif isinstance(owner_graphic, FluidNodeGraphicItem):
+                return owner_graphic.get_connection_scene_point_from_local_point(owner_graphic.get_default_connection_local_point())
+            else:
+                return fallback_point
+        elif isinstance(owner_graphic, BusGraphicItem):
+            return owner_graphic.get_connection_scene_point_from_local_point(QPointF(float(anchor_x), float(anchor_y)))
+        elif isinstance(owner_graphic, FluidNodeGraphicItem):
+            return owner_graphic.get_connection_scene_point_from_local_point(QPointF(float(anchor_x), float(anchor_y)))
+        else:
+            return fallback_point
+
+    def resolve_endpoint_alignment_side_key(self,
+                                            endpoint: str,
+                                            attachment: dict[str, object]) -> SchematicAttachmentSlot:
+        """
+        Resolve the canonical node side used when dragging one endpoint alignment handle.
+
+        This path must not trust stale legacy ``side`` values blindly. Existing diagrams can
+        contain migrated attachments where the saved ``terminal_key`` already points to the
+        correct bar side but ``side`` still reflects an older heuristic. Endpoint dragging
+        should follow the side that the user is actually editing on screen.
+
+        :param endpoint: Endpoint key.
+        :param attachment: Persisted attachment metadata.
+        :return: Canonical side key.
+        """
+        terminal_key_value: object | None = attachment.get("terminal_key", None)
+        canonical_terminal_keys: tuple[SchematicAttachmentSlot, ...] = (
+            SchematicAttachmentSlot.TOP,
+            SchematicAttachmentSlot.BOTTOM,
+            SchematicAttachmentSlot.LEFT,
+            SchematicAttachmentSlot.RIGHT,
+            SchematicAttachmentSlot.DEFAULT,
+        )
+
+        if terminal_key_value is None:
+            pass
+        else:
+            terminal_key: str = str(terminal_key_value)
+            explicit_slot = parse_explicit_slot_key(slot_key=terminal_key)
+
+            if explicit_slot is not None:
+                return explicit_slot[1]
+            elif parse_attachment_slot(slot_key=terminal_key) in canonical_terminal_keys:
+                return parse_attachment_slot(slot_key=terminal_key)
+            else:
+                pass
+
+        route_points: list[tuple[float, float]] = self.get_route_points_for_editing()
+        inferred_side_key: SchematicAttachmentSlot = infer_attachment_slot_from_route(points=route_points,
+                                                                                     endpoint=endpoint)
+
+        if inferred_side_key != SchematicAttachmentSlot.DEFAULT:
+            return inferred_side_key
+        else:
+            pass
+
+        side_value: object | None = attachment.get("side", None)
+
+        if side_value is None:
+            return SchematicAttachmentSlot.BOTTOM
+        else:
+            return parse_attachment_slot(slot_key=str(side_value))
+
+    def refresh_route_handles(self) -> None:
+        """
+        Sync draggable route handles with the current rendered route.
+
+        :return: ``None``.
+        """
+        points = self.get_route_points_for_editing()
+        editable_indexes = self.get_editable_segment_indexes(points=points)
+        editable_vertex_indexes = self.get_editable_vertex_indexes(points=points)
+        handle_index: int
+
+        while len(self._route_handles) < len(editable_indexes):
+            self._route_handles.append(RouteSegmentHandleItem(parent_branch=self, segment_index=0))
+
+        while len(self._route_handles) > len(editable_indexes):
+            handle = self._route_handles.pop()
+            if handle.scene() is not None:
+                handle.scene().removeItem(handle)
+            else:
+                pass
+
+        for handle_index, segment_index in enumerate(editable_indexes):
+            handle = self._route_handles[handle_index]
+            segment_start = points[segment_index]
+            segment_end = points[segment_index + 1]
+            handle_mid_x = (segment_start[0] + segment_end[0]) * 0.5
+            handle_mid_y = (segment_start[1] + segment_end[1]) * 0.5
+            handle.set_segment_index(segment_index=segment_index)
+            handle.setPos(handle_mid_x, handle_mid_y)
+            handle.setVisible(self.isSelected() and self.api_object is not None)
+
+        while len(self._vertex_handles) < len(editable_vertex_indexes):
+            self._vertex_handles.append(RouteVertexHandleItem(parent_branch=self, vertex_index=0))
+
+        while len(self._vertex_handles) > len(editable_vertex_indexes):
+            handle = self._vertex_handles.pop()
+            if handle.scene() is not None:
+                handle.scene().removeItem(handle)
+            else:
+                pass
+
+        for handle_index, vertex_index in enumerate(editable_vertex_indexes):
+            handle = self._vertex_handles[handle_index]
+            vertex_point = points[vertex_index]
+            handle.set_vertex_index(vertex_index=vertex_index)
+            handle.setPos(vertex_point[0], vertex_point[1])
+            handle.setVisible(self.isSelected() and self.api_object is not None)
+
+        for endpoint_key, handle in self._endpoint_handles.items():
+            anchor_point = self.get_endpoint_anchor(endpoint=endpoint_key)
+            handle.setPos(anchor_point)
+            handle.setVisible(self.isSelected() and self.api_object is not None)
+
+    def itemChange(self, change, value):
+        """
+        Keep route handles aligned with selection state changes.
+
+        :param change: Graphics item change.
+        :param value: New value.
+        :return: Base implementation result.
+        """
+        result = QGraphicsLineItem.itemChange(self, change, value)
+
+        if change == self.GraphicsItemChange.ItemSelectedHasChanged:
+            self.refresh_z_order()
+            self.refresh_route_handles()
+        else:
+            pass
+
+        return result
+
+    def get_endpoint_anchor(self, endpoint: str) -> QPointF:
+        """
+        Resolve the live scene anchor point for one branch endpoint.
+        """
+        if endpoint == "from":
+            owner_graphic: NODE_GRAPHIC | None = self.get_terminal_from_parent()
+            fallback_point: QPointF = self.pos1
+        else:
+            owner_graphic = self.get_terminal_to_parent()
+            fallback_point = self.pos2
+
+        if owner_graphic is None:
+            return fallback_point
+        elif self.api_object is None:
+            return fallback_point
+        else:
+            pass
+
+        attachment = self.get_persisted_endpoint_attachment(endpoint=endpoint)
+        coordinate_anchor: QPointF = self.get_owner_scene_anchor_from_attachment(owner_graphic=owner_graphic,
+                                                                                 attachment=attachment,
+                                                                                 fallback_point=fallback_point)
+        return coordinate_anchor
+
+    def sync_route_points_to_diagram(self) -> None:
+        """
+        Persist the currently rendered route without changing route kind or lock metadata.
+        """
+        if self.api_object is None:
+            return
+        elif self.editor.is_loading_diagram():
+            return
+        elif self.editor.diagram.should_preserve_branch_route_shape(self.api_object):
+            return
+        else:
+            pass
+
+        location = self.editor.diagram.query_point(self.api_object)
+        if location is None:
+            return
+        else:
+            pass
+
+        render_points = self.get_render_points()
+        if len(render_points) < 2:
+            return
+        else:
+            pass
+
+        self._route_points = normalize_route_points(render_points)
+        self.editor.diagram.sync_branch_route_points(api_object=self.api_object, points=self._route_points)
+        self.sync_attachment_slots_to_diagram(render_points=self._route_points)
+
+    def sync_attachment_slots_to_diagram(self, render_points: list[tuple[float, float]]) -> None:
+        """
+        Synchronize route endpoint coordinates back to the persisted attachment metadata.
+        """
+        endpoints: tuple[str, str] = ("from", "to")
+        endpoint_key: str
+
+        for endpoint_key in endpoints:
+            attachment = self.editor.get_persisted_attachment(api_object=self.api_object, endpoint=endpoint_key)
+            if endpoint_key == "from":
+                owner_graphic: NODE_GRAPHIC | None = self.get_terminal_from_parent()
+                scene_point = QPointF(render_points[0][0], render_points[0][1])
+            else:
+                owner_graphic = self.get_terminal_to_parent()
+                scene_point = QPointF(render_points[-1][0], render_points[-1][1])
+
+            if owner_graphic is None:
+                owner_device = None
+            else:
+                local_anchor = self.get_owner_local_anchor_from_scene_point(owner_graphic=owner_graphic,
+                                                                            scene_pos=scene_point)
+                attachment["anchor_x"] = float(local_anchor.x())
+                attachment["anchor_y"] = float(local_anchor.y())
+                if "anchor_auto" not in attachment:
+                    attachment["anchor_auto"] = True
+                else:
+                    pass
+                owner_device = owner_graphic.api_object
+
+            self.editor.diagram.set_attachment(api_object=self.api_object,
+                                               endpoint=endpoint_key,
+                                               attachment=attachment)
+            self.editor.diagram.sync_attachment(api_object=self.api_object,
+                                                endpoint=endpoint_key,
+                                                owner_device=owner_device)
+
+    def get_route_sample(self, position: float) -> tuple[QPointF, tuple[tuple[float, float], tuple[float, float]]]:
+        """
+        Sample the rendered route at a normalized path position.
+        """
+        point, segment = sample_route_segment(self.get_render_points(), position)
+        return QPointF(point[0], point[1]), segment
+
+    def get_symbol_transform(self, rect: QRectF) -> QTransform:
+        """
+        Build the transform for a branch symbol using the route midpoint orientation.
+        """
+        base_pt, segment = self.get_route_sample(0.5)
+        h = segment[1][1] - segment[0][1]
+        b = segment[1][0] - segment[0][0]
+        ang = np.arctan2(h, b)
+        h2 = rect.height() / 2.0
+        w2 = rect.width() / 2.0
+        a = h2 * np.cos(ang) - w2 * np.sin(ang)
+        b = w2 * np.sin(ang) + h2 * np.cos(ang)
+
+        center = base_pt - QPointF(a, b)
+
+        transform = QTransform()
+        transform.translate(center.x(), center.y())
+        transform.rotate(np.rad2deg(ang))
+        return transform
+
     def set_colour(self, color: QColor, w, style: Qt.PenStyle):
         """
         Set color and style
@@ -701,7 +1520,12 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
 
         pen = QPen(color, w, style, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin)
 
-        self.setPen(pen)
+        self._route_item.setPen(pen)
+        self.setPen(QPen(TRANSPARENT,
+                         max(1, int(round(float(w)))),
+                         style,
+                         Qt.PenCapStyle.RoundCap,
+                         Qt.PenJoinStyle.RoundJoin))
         self.arrow_p_from.set_colour(color)
         self.arrow_q_from.set_colour(color)
         self.arrow_p_to.set_colour(color)
@@ -729,6 +1553,30 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         """
         if self.api_object is not None:
             self.editor.set_editor_model(api_object=self.api_object)
+        else:
+            pass
+
+        QGraphicsLineItem.mousePressEvent(self, event)
+
+    def paint(self,
+              painter: QPainter,
+              option: QStyleOptionGraphicsItem,
+              widget: QWidget | None = None) -> None:
+        """
+        Keep the controller item visually inert.
+
+        The visible branch stroke is rendered by ``self._route_item``. If the
+        ``QGraphicsLineItem`` base class also paints its straight controller
+        line, scene invalidation can leave faint shadows while selection and
+        redraw update the routed child path. The parent item therefore only
+        exists for selection, hit testing, and child ownership.
+
+        :param painter: Unused painter.
+        :param option: Unused style option.
+        :param widget: Unused target widget.
+        :return: ``None``.
+        """
+        return None
 
     def remove_widget(self):
         """
@@ -805,7 +1653,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         i = self._editor.circuit.get_branches().index(self.api_object)
         self._editor.plot_branch(i, self.api_object)
 
-    def set_from_port(self, from_port: BarTerminalItem):
+    def set_from_port(self, from_port: BarTerminalItem | RoundTerminalItem) -> None:
         """
         Set the From terminal in a connection
         @param from_port: TerminalItem
@@ -821,7 +1669,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         self._from_port.update()
         self._from_port.get_parent().setZValue(0)
 
-    def set_to_port(self, to_port: BarTerminalItem):
+    def set_to_port(self, to_port: BarTerminalItem | RoundTerminalItem) -> None:
         """
         Set the To terminal in a connection
         @param to_port: TerminalItem
@@ -859,7 +1707,12 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         @return:
         """
         self.pos2 = endpos
-        self.redraw()
+        if self.editor.is_loading_diagram():
+            pass
+        elif self.editor.is_batch_refreshing_branches():
+            pass
+        else:
+            self.redraw()
 
     def setBeginPos(self, pos1: QPointF):
         """
@@ -868,7 +1721,51 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         @return:
         """
         self.pos1 = pos1
-        self.redraw()
+        if self.editor.is_loading_diagram():
+            pass
+        elif self.editor.is_batch_refreshing_branches():
+            pass
+        else:
+            self.redraw()
+
+    def _build_render_path(self) -> QPainterPath:
+        """
+        Build the visible route path for the current branch.
+        """
+        points = self.get_render_points()
+        path = QPainterPath()
+
+        if not points:
+            return path
+
+        path.moveTo(points[0][0], points[0][1])
+
+        for x, y in points[1:]:
+            path.lineTo(x, y)
+
+        return path
+
+    def shape(self) -> QPainterPath:
+        """
+        Use the rendered route path for hit testing so routed branches remain selectable.
+        """
+        if self._rendered_path.isEmpty():
+            return super().shape()
+
+        stroker = QPainterPathStroker()
+        stroker.setWidth(max(8.0, float(self.pen_width) + 4.0))
+        stroker.setCapStyle(Qt.PenCapStyle.RoundCap)
+        stroker.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        return stroker.createStroke(self._rendered_path)
+
+    def boundingRect(self) -> QRectF:
+        """
+        Keep the item bounds aligned with the rendered route path.
+        """
+        if self._rendered_path.isEmpty():
+            return super().boundingRect()
+
+        return self.shape().boundingRect()
 
     def redraw(self) -> None:
         """
@@ -877,11 +1774,19 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         """
         if self.pos1 is not None and self.pos2 is not None:
 
+            # The controller item uses a path-based bounding rect. Notify the
+            # scene before replacing the rendered route so old pixels are
+            # invalidated correctly during selection and redraw updates.
+            self.prepareGeometryChange()
+
             # Set position
             self.setLine(QLineF(self.pos1, self.pos2))
+            self.sync_route_points_to_diagram()
+            self._rendered_path = self._build_render_path()
+            self._route_item.setPath(self._rendered_path)
 
-            # set Z-Order (to the back)
-            self.setZValue(-1)
+            # keep editable branches above nodes only while selected
+            self.refresh_z_order()
 
             if self.api_object is not None:
 
@@ -894,6 +1799,8 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
 
                 if self.symbol is not None:
                     self.symbol.redraw()
+
+            self.refresh_route_handles()
 
     def set_pen(self, pen, scale: float = 1.0):
         """
@@ -910,7 +1817,12 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
 
         pen.setWidth(self.pen_width / scale)
 
-        self.setPen(pen)
+        self._route_item.setPen(pen)
+        self.setPen(QPen(TRANSPARENT,
+                         max(1, int(round(self.pen_width / scale))),
+                         pen.style(),
+                         Qt.PenCapStyle.RoundCap,
+                         Qt.PenJoinStyle.RoundJoin))
 
         if self.symbol:
             self.symbol.set_pen(pen)

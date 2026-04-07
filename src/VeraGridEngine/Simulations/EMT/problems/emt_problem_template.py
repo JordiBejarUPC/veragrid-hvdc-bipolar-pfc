@@ -5,11 +5,12 @@
 
 from abc import ABC
 import numpy as np
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Protocol
 
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var
+from VeraGridEngine.Utils.Symbolic.symbolic import Const, Expr, Var, piecewise
 from VeraGridEngine.basic_structures import Vec
+from VeraGridEngine.Simulations.driver_template import DummySignal
 
 
 def _get_diff_var_sort_key(diff_var: Var) -> int:
@@ -37,6 +38,87 @@ def _get_external_mapping(mdl: Block) -> Optional[Dict[Any, Var]]:
         return external_mapping
 
 
+class EmtBoundaryUpdateProtocol(Protocol):
+    """
+    Structural protocol implemented by EMT boundary update providers.
+    """
+
+    def update(self, t: float, x: Vec, params: Vec) -> None:
+        """
+        Update the full parameter vector in place.
+        """
+        ...
+
+    def get_next_forced_event_time(self, t_prev: float, t_target: float) -> float | None:
+        """
+        Return the next exact-alignment event time inside ``(t_prev, t_target]``.
+        """
+        ...
+
+
+def resolve_solver_boundary_updater(
+        problem: "EmtProblemTemplate",
+        boundary_updater: Any,
+        t0: float,
+) -> Any:
+    """
+    Resolve the boundary updater consumed by an EMT solver.
+
+    The problem-owned updater remains the default, but demos and legacy callers
+    may still provide external wrappers that only implement ``update()``.
+    """
+    problem.reset_boundary_update_state(float(t0))
+
+    if boundary_updater is None:
+        return problem.boundary_update
+
+    return boundary_updater
+
+
+def get_solver_forced_event_time(boundary_updater: Any, t_prev: float, t_target: float) -> float | None:
+    """
+    Query the next forced-alignment event time if the updater exposes it.
+
+    Legacy boundary updaters that only implement ``update()`` are treated as
+    having no forced event alignment requirements.
+    """
+    if boundary_updater is None:
+        return None
+
+    get_next_time = getattr(boundary_updater, "get_next_forced_event_time", None)
+
+    if callable(get_next_time):
+        next_time: Any = get_next_time(float(t_prev), float(t_target))
+
+        if next_time is None:
+            return None
+
+        return float(next_time)
+
+    return None
+
+
+def is_problem_owned_boundary_updater(problem: "EmtProblemTemplate", boundary_updater: Any) -> bool:
+    """
+    Return whether the updater is owned by the EMT problem itself.
+
+    This distinguishes endogenous problem boundary logic from external wrappers
+    supplied by tests or demos.
+    """
+    if boundary_updater is None:
+        return False
+
+    if boundary_updater is problem:
+        return True
+
+    problem_boundary_updater = problem.boundary_update
+
+    if problem_boundary_updater is None:
+        return False
+
+    return boundary_updater is problem_boundary_updater
+
+
 class EmtProblemTemplate(ABC):
     """
     Intermediate layer that manages DAE plumbing including indexing, variable mapping,
@@ -50,7 +132,11 @@ class EmtProblemTemplate(ABC):
     DIFF_NAME = "diff"
     TIME_NAME = "glob_time"
 
-    def __init__(self, sys_block: Block, glob_time: Var)->None:
+    def __init__(self, sys_block: Block,
+                 glob_time: Var,
+                 progress_signal: DummySignal | None = None,
+                 progress_text: DummySignal | None = None,
+                 )->None:
         """
         Initialize the EMT problem template.
 
@@ -83,11 +169,10 @@ class EmtProblemTemplate(ABC):
             self._variable_parameters.extend(list(self.sys_block.event_dict.keys()))
             self._event_parameters_eqs.extend(list(self.sys_block.event_dict.values()))
 
-        if hasattr(self.sys_block, 'mode_dict') and self.sys_block.mode_dict:
-            self._variable_parameters.extend(list(self.sys_block.mode_dict.keys()))
-            self._event_parameters_eqs.extend(list(self.sys_block.mode_dict.values()))
-            for v in self.sys_block.mode_dict.keys():
-                self._runtime_mode_uids.add(v.uid)
+        self._variable_parameters.extend(list(self.sys_block.mode_dict.keys()))
+        self._event_parameters_eqs.extend(list(self.sys_block.mode_dict.values()))
+        for v in self.sys_block.mode_dict.keys():
+            self._runtime_mode_uids.add(v.uid)
 
         self._runtime_all_parameters_source: List[Var] = list(self._variable_parameters)
         self._runtime_all_eqs_source: List[Any] = list(self._event_parameters_eqs)
@@ -112,6 +197,9 @@ class EmtProblemTemplate(ABC):
         self._constant_params_values: Vec = np.zeros(0, dtype=np.float64)
         self._build_runtime_param_vectors()
 
+        self.progress_signal = DummySignal() if progress_signal is None else progress_signal
+        self.progress_text = DummySignal(str) if progress_text is None else progress_text
+
     @property
     def glob_time(self) -> Var:
         """
@@ -120,6 +208,15 @@ class EmtProblemTemplate(ABC):
         :return: Global time symbolic variable.
         """
         return self._glob_time
+
+    @property
+    def boundary_update(self) -> EmtBoundaryUpdateProtocol | None:
+        """
+        Return the boundary update provider consumed by EMT solvers.
+
+        Problems without endogenous boundary logic return ``None``.
+        """
+        return None
 
     def _finalize_order_and_maps(self)->None:
         """
@@ -146,17 +243,21 @@ class EmtProblemTemplate(ABC):
         self._uid2idx_diff: Dict[int, int] = dict()
         self._uid2idx_t: Dict[int, int] = dict()
 
+        self._vars_glob_name2uid: Dict[str, int] = dict()
+
         i: int = 0
         for v in self._state_vars:
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{i}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{i}"
             self._uid2idx_vars[v.uid] = i
+            self._vars_glob_name2uid[v.name] = v.uid
             i += 1
 
         for v in self._algebraic_vars:
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{i}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{i}"
             self._uid2idx_vars[v.uid] = i
+            self._vars_glob_name2uid[v.name] = v.uid
             i += 1
 
         for j, p in enumerate(self._constant_parameters):
@@ -173,6 +274,7 @@ class EmtProblemTemplate(ABC):
             self._compiler_names_dict[d.uid] = f"{self.DIFF_NAME}[{k}]"
             self._alias_names_dict[d.uid] = f"{self.DIFF_NAME}_{k}"
             self._uid2idx_diff[d.uid] = k
+            self._vars_glob_name2uid[d.name] = d.uid
 
         self._compiler_names_dict[self._glob_time.uid] = self.TIME_NAME
         self._uid2idx_t[self._glob_time.uid] = 0
@@ -209,6 +311,54 @@ class EmtProblemTemplate(ABC):
         :return: None
         """
         self._build_runtime_param_vectors()
+
+    def set_events_group(self, emt_events_group) -> None:
+        """Apply a selected EMT events group to the runtime parameter equations.
+
+        The method is generic with respect to the specific EMT templates used in the
+        problem. Any runtime parameter exposed through `event_dict` / `mode_dict`
+        can be reassigned with a piecewise time function driven by the selected
+        group of `grid.emt_events`.
+        """
+        self._event_parameters_eqs = list(self._runtime_all_eqs_source)
+
+        collect_events = {param: {"times": [], "values": []} for param in self._variable_parameters}
+        emt_events = getattr(self.grid, "emt_events", [])
+        selected_events = [
+            evt for evt in emt_events
+            if getattr(getattr(evt, "group", None), "idtag", None) == emt_events_group.idtag
+        ]
+
+        for emt_evt in selected_events:
+            parameter = emt_evt.parameter
+            if parameter in collect_events:
+                collect_events[parameter]["times"].append(float(emt_evt.time))
+                collect_events[parameter]["values"].append(float(emt_evt.value))
+
+        for parameter, info in collect_events.items():
+            if len(info["times"]) == 0:
+                continue
+            param_index = self._variable_parameters.index(parameter)
+            default_value = self._event_parameters_eqs[param_index]
+            self._event_parameters_eqs[param_index] = piecewise(
+                time_var=self._glob_time,
+                t_events=np.asarray(info["times"], dtype=np.float64),
+                new_values=np.asarray(info["values"], dtype=np.float64),
+                default_value=default_value,
+            )
+
+        self._rebuild_runtime_parameter_partition()
+        self._build_runtime_param_vectors()
+
+    def reset_boundary_update_state(self, t0: float = 0.0) -> None:
+        """
+        Reset runtime parameter values before a new EMT simulation starts.
+
+        :param t0: Initial simulation time.
+        :return: None
+        """
+        self._event_params_values = self._initialize_runtime_parameter_values(float(t0))
+        self._event_params_values = self.def_event_params_fn(self._event_params_values, float(t0))
 
     def get_compiler_names_dict(self) -> Dict[int, str]:
         """
@@ -390,6 +540,7 @@ class EmtProblemTemplate(ABC):
         else:
             return float(expression)
 
+
     def get_state_vars(self)->List[Var]:
         """
         Return the ordered list of state variables.
@@ -397,6 +548,7 @@ class EmtProblemTemplate(ABC):
         :return: Ordered list of state variables.
         """
         return self._state_vars
+
 
     def get_algebraic_vars(self)->List[Var]:
         """
@@ -406,6 +558,18 @@ class EmtProblemTemplate(ABC):
         """
         return self._algebraic_vars
 
+    def state_and_algebraic_vars(self) -> List[Var]:
+        """
+        :return:
+        """
+        variables = list()
+        for lst in [self._state_vars, self._algebraic_vars]:
+            for var in lst:
+                variables.append(var)
+
+        return variables
+
+
     def get_state_eqs(self)->List[Any]:
         """
         Return the ordered list of state equations.
@@ -413,6 +577,7 @@ class EmtProblemTemplate(ABC):
         :return: Ordered list of state equations.
         """
         return self._state_eqs
+
 
     def get_algebraic_eqs(self)->List[Any]:
         """
@@ -422,6 +587,7 @@ class EmtProblemTemplate(ABC):
         """
         return self._algebraic_eqs
 
+
     def get_variable_parameters(self)-> List[Var]:
         """
         Return the ordered list of runtime parameters.
@@ -429,6 +595,7 @@ class EmtProblemTemplate(ABC):
         :return: Ordered list of runtime parameters.
         """
         return self._variable_parameters
+
 
     def get_constant_parameters(self)-> List[Var]:
         """
@@ -438,6 +605,7 @@ class EmtProblemTemplate(ABC):
         """
         return self._constant_parameters
 
+
     def get_diff_vars(self)-> List[Var]:
         """
         Return the ordered list of differential variables.
@@ -445,6 +613,7 @@ class EmtProblemTemplate(ABC):
         :return: Ordered list of differential variables.
         """
         return self._diff_vars
+
 
     def get_parameters_values(self)-> List[Const]:
         """
@@ -505,6 +674,8 @@ class EmtProblemTemplate(ABC):
             idx = self._uid2idx_vars.get(uid, None)
             if idx is not None:
                 x[idx] = float(val)
+            else:
+                pass
 
         return x
 
@@ -519,6 +690,8 @@ class EmtProblemTemplate(ABC):
             idx = self._uid2idx_diff.get(uid, None)
             if idx is not None:
                 dx[idx] = float(val)
+            else:
+                pass
         return dx
 
     def def_event_params_fn(self, ev_param: Vec, tm: float) -> Vec:
@@ -615,6 +788,13 @@ class EmtProblemTemplate(ABC):
         :return: Flat differential index.
         """
         return self._uid2idx_diff[dv.uid]
+
+    @property
+    def vars_glob_name2uid(self):
+        """
+        :return:
+        """
+        return self._vars_glob_name2uid
 
     def set_init_guess(self, mdl: Block, reference_powerflow: Any, val: float) -> None:
         """

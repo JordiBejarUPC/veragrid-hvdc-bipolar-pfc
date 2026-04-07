@@ -3,19 +3,21 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Dict, Any
+from typing import Dict
 import numpy as np
 
+from VeraGridEngine import EmtLineTypes
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Var, Expr
 
-def get_pi_line_emt_template(grid: MultiCircuit,
+def get_pi_line_emt_template(
+        grid: MultiCircuit,
                              line: Line,
-                             name: str = "pi_line_emt_template") -> EmtModelTemplate:
+                             name: str = EmtLineTypes.PI) -> EmtModelTemplate:
     """
     :param grid: Multicircuit
     :param line: Line object to apply the template
@@ -25,6 +27,8 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LineDevice
     templ.name = name
+
+    templ.block.name = EmtLineTypes.PI
 
     vf: VarFactory = grid.emt_var_factory
     fbase: float = grid.fBase
@@ -57,15 +61,15 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     # vf_vars = [vf.add_var(f"vf_{ph}_{name}") for ph in active_ph]
     # vt_vars = [vf.add_var(f"vt_{ph}_{name}") for ph in active_ph]
 
-    v_N_f = vf.add_var(name=f"vf_N_{name}", ref=VarPowerFlowRefferenceType.v_N_f) if ph_mask[0] else None
-    v_A_f = vf.add_var(name=f"vf_A_{name}", ref=VarPowerFlowRefferenceType.v_A_f) if ph_mask[1] else None
-    v_B_f = vf.add_var(name=f"vf_B_{name}", ref=VarPowerFlowRefferenceType.v_B_f) if ph_mask[2] else None
-    v_C_f = vf.add_var(name=f"vf_C_{name}", ref=VarPowerFlowRefferenceType.v_C_f) if ph_mask[3] else None
+    v_N_f = vf.add_var(name=f"vf_N_{name}", reference=VarPowerFlowRefferenceType.vf_N) if ph_mask[0] else None
+    v_A_f = vf.add_var(name=f"vf_A_{name}", reference=VarPowerFlowRefferenceType.vf_A) if ph_mask[1] else None
+    v_B_f = vf.add_var(name=f"vf_B_{name}", reference=VarPowerFlowRefferenceType.vf_B) if ph_mask[2] else None
+    v_C_f = vf.add_var(name=f"vf_C_{name}", reference=VarPowerFlowRefferenceType.vf_C) if ph_mask[3] else None
 
-    v_N_t = vf.add_var(name=f"vt_N_{name}", ref=VarPowerFlowRefferenceType.v_N_t) if ph_mask[0] else None
-    v_A_t = vf.add_var(name=f"vt_A_{name}", ref=VarPowerFlowRefferenceType.v_A_t) if ph_mask[1] else None
-    v_B_t = vf.add_var(name=f"vt_B_{name}", ref=VarPowerFlowRefferenceType.v_B_t) if ph_mask[2] else None
-    v_C_t = vf.add_var(name=f"vt_C_{name}", ref=VarPowerFlowRefferenceType.v_C_t) if ph_mask[3] else None
+    v_N_t = vf.add_var(name=f"vt_N_{name}", reference=VarPowerFlowRefferenceType.vt_N) if ph_mask[0] else None
+    v_A_t = vf.add_var(name=f"vt_A_{name}", reference=VarPowerFlowRefferenceType.vt_A) if ph_mask[1] else None
+    v_B_t = vf.add_var(name=f"vt_B_{name}", reference=VarPowerFlowRefferenceType.vt_B) if ph_mask[2] else None
+    v_C_t = vf.add_var(name=f"vt_C_{name}", reference=VarPowerFlowRefferenceType.vt_C) if ph_mask[3] else None
 
     vf_vars = [v for v in (v_N_f, v_A_f, v_B_f, v_C_f) if v is not None]
     vt_vars = [v for v in (v_N_t, v_A_t, v_B_t, v_C_t) if v is not None]
@@ -253,6 +257,18 @@ def get_pi_line_emt_template(grid: MultiCircuit,
         "B": VarPowerFlowRefferenceType.it_B,
         "C": VarPowerFlowRefferenceType.it_C,
     }
+    vf_keys = {
+        "N": VarPowerFlowRefferenceType.vf_N,
+        "A": VarPowerFlowRefferenceType.vf_A,
+        "B": VarPowerFlowRefferenceType.vf_B,
+        "C": VarPowerFlowRefferenceType.vf_C,
+    }
+    vt_keys = {
+        "N": VarPowerFlowRefferenceType.vt_N,
+        "A": VarPowerFlowRefferenceType.vt_A,
+        "B": VarPowerFlowRefferenceType.vt_B,
+        "C": VarPowerFlowRefferenceType.vt_C,
+    }
     Sf_keys = {
         "A": VarPowerFlowRefferenceType.Sf_A,
         "B": VarPowerFlowRefferenceType.Sf_B,
@@ -280,6 +296,8 @@ def get_pi_line_emt_template(grid: MultiCircuit,
     mapping: Dict[VarPowerFlowRefferenceType, Var | None] = {
         if_keys["N"]: None, if_keys["A"]: None, if_keys["B"]: None, if_keys["C"]: None,
         it_keys["N"]: None, it_keys["A"]: None, it_keys["B"]: None, it_keys["C"]: None,
+        vf_keys["N"]: None, vf_keys["A"]: None, vf_keys["B"]: None, vf_keys["C"]: None,
+        vt_keys["N"]: None, vt_keys["A"]: None, vt_keys["B"]: None, vt_keys["C"]: None,
         Sf_keys["A"]: None, Sf_keys["B"]: None, Sf_keys["C"]: None,
         St_keys["A"]: None, St_keys["B"]: None, St_keys["C"]: None,
         d_vf_keys["N"]: None, d_vf_keys["A"]: None, d_vf_keys["B"]: None, d_vf_keys["C"]: None,
@@ -288,6 +306,8 @@ def get_pi_line_emt_template(grid: MultiCircuit,
 
     # Fill only active phases
     for k, ph in enumerate(active_ph):
+        mapping[vf_keys[ph]] = vf_vars[k]
+        mapping[vt_keys[ph]] = vt_vars[k]
         mapping[if_keys[ph]] = if_act[k]
         mapping[it_keys[ph]] = it_act[k]
         mapping[d_vf_keys[ph]] = d_vf_vars[k]
