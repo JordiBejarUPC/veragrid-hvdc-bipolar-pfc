@@ -8,13 +8,19 @@ from __future__ import annotations
 import json
 from typing import Dict, List
 
+import pytest
 
-from trunk.dynamics_emt.support.benchmark_dependency_stubs import install_optional_dependency_stubs
+benchmark_dependency_stubs = pytest.importorskip(
+    "trunk.dynamics_emt.support.benchmark_dependency_stubs"
+)
+benchmark_dependency_stubs.install_optional_dependency_stubs()
 
-install_optional_dependency_stubs()
-
-from trunk.dynamics_emt.benchmarks import emt_sparse_backend_benchmark as sparse_backend_benchmark
-from trunk.dynamics_emt.benchmarks import emt_sparse_backend_benchmark_statistics as sparse_backend_stats
+sparse_backend_benchmark = pytest.importorskip(
+    "trunk.dynamics_emt.benchmarks.emt_sparse_backend_benchmark"
+)
+sparse_backend_stats = pytest.importorskip(
+    "trunk.dynamics_emt.benchmarks.emt_sparse_backend_benchmark_statistics"
+)
 
 
 def test_sparse_backend_ab_benchmark_exports() -> None:

@@ -115,6 +115,7 @@ ALL_DEV_TYPES = Union[
     SequenceLineType,
     RmsModelTemplate,
     EmtModelTemplate,
+    FmuTemplate,
     RmsEvent,
     RmsEventsGroup,
     ShortCircuitEvent,

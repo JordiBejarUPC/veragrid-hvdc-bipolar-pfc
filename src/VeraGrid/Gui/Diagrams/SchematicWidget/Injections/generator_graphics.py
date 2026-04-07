@@ -15,8 +15,9 @@ from VeraGrid.Gui.Diagrams.Editors.generator_editor import GeneratorQCurveEditor
 from VeraGrid.Gui.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
 from VeraGrid.Gui.WindPowerWizard.wind_power_wizzard import WindFarmWizard
 from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Gui.RmsModelEditor.dynamic_device_editor import DynamicDeviceEditorDialog, choose_initial_dynamic_editor_mode
 from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -69,8 +70,8 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
                        function_ptr=self.set_regulation_bus)
 
         add_menu_entry(menu=menu,
-                       text="Rms Editor",
-                       function_ptr=self.edit_rms,
+                       text="Dynamic Editor",
+                       function_ptr=self.edit_dynamic,
                        icon_path=":/Icons/icons/edit.png")
 
         add_menu_entry(menu=menu,
@@ -99,6 +100,21 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
 
         menu.exec_(event.screenPos())
 
+    def edit_dynamic(self):
+        """
+        Open the tabbed dynamic editor for this generator.
+
+        :return: None.
+        """
+
+        self.dynamic_editor_window = DynamicDeviceEditorDialog(
+            circuit=self.editor.circuit,
+            api_object=self.api_object,
+            initial_mode=choose_initial_dynamic_editor_mode(self.api_object),
+            parent=None,
+        )
+        self.dynamic_editor_window.exec()
+
     def edit_rms(self):
         """
 
@@ -122,10 +138,35 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
             block=self.api_object.rms_model,
             api_object=self.api_object,
             mode=DynamicEditorMode.RMS,
-            templates_list=self.editor.circuit.get_rms_models_by_device_type(self.api_object.device_type),
+            templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
+                self.api_object.device_type,
+                FmuTemplateDomain.RMS,
+            ),
+            circuit=self.editor.circuit,
             main_editor=True,
         )
         rms_model_editor.show()
+
+    def edit_emt(self):
+        """
+        Open the EMT dynamic model editor for this generator.
+
+        :return: None.
+        """
+
+        emt_model_editor = DynamicBlockEditorGUI(
+            var_factory=self.editor.circuit.emt_var_factory,
+            block=self.api_object.emt_model,
+            api_object=self.api_object,
+            mode=DynamicEditorMode.EMT,
+            templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
+                self.api_object.device_type,
+                FmuTemplateDomain.EMT,
+            ),
+            circuit=self.editor.circuit,
+            main_editor=True,
+        )
+        emt_model_editor.show()
 
     def to_battery(self):
         """

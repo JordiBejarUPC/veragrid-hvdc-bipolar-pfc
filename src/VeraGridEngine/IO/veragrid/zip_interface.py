@@ -12,8 +12,8 @@ except ImportError:
     _HAS_ORJSON = False
 from io import StringIO, TextIOWrapper, BytesIO, BufferedReader
 import os
+from pathlib import Path
 import numpy as np
-import chardet
 import pandas as pd
 import zipfile
 from warnings import warn
@@ -120,7 +120,7 @@ def save_multiverse_data_to_zip(f_zip_ptr: zipfile.ZipFile,
     for diff_idtag, diff_grid in multiverse_model_data.items():
         base_path = f"multiverse/{diff_idtag}"
 
-        for key, data in gather_model_as_jsons(diff_grid).items():
+        for key, data in gather_model_as_jsons(diff_grid, project_directory=Path(filename_zip).resolve().parent).items():
             if key == "model_data":
                 ext = ".model"
                 sub_folder = "model_data"
@@ -160,7 +160,7 @@ def save_single_circuit_data_to_zip(f_zip_ptr: zipfile.ZipFile,
     """
     Save the non-multiverse circuit payload into an already opened VeraGrid archive.
     """
-    for key, data in gather_model_as_jsons(circuit).items():
+    for key, data in gather_model_as_jsons(circuit, project_directory=Path(filename_zip).resolve().parent).items():
         if key == "model_data":
             ext = ".model"
         elif key == "symbolic_data":
@@ -665,11 +665,7 @@ def get_xml_content(file_ptr: zipfile.ZipExtFile | BufferedReader) -> List[str]:
     if b'encoding' in first_line:
         encoding = first_line.split()[2].split(b'=')[1].replace(b'"', b'').replace(b'?>', b'').decode()
     else:
-        try:
-            detection = chardet.detect(first_line)
-            encoding = detection['encoding']
-        except TypeError:
-            encoding = 'utf-8'
+        encoding = 'utf-8'
 
     # sequential back to the start
     file_ptr.seek(0)

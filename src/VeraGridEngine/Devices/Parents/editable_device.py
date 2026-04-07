@@ -14,16 +14,17 @@ from VeraGridEngine.Devices.profile import Profile
 from typing import List, Dict, AnyStr, Any, Union, Type, Tuple
 from VeraGridEngine.basic_structures import Logger, IntVec
 from VeraGridEngine.enumerations import (DeviceType, TimeFrame, BuildStatus, WindingsConnection,
-                                         TapModuleControl, TapPhaseControl, SubObjectType, ConverterControlType,
-                                         HvdcControlType, ActionType, AvailableTransferMode, ContingencyMethod,
-                                         CpfParametrization, CpfStopAt, InvestmentEvaluationMethod, SolverType,
-                                         InvestmentsEvaluationObjectives, NodalCapacityMethod, TimeGrouping,
-                                         ZonalGrouping, MIPSolvers, AcOpfMode, VoltageLevelTypes, BranchGroupTypes,
-                                         BranchImpedanceMode, FaultType, TapChangerTypes, ContingencyOperationTypes,
-                                         WindingType, MethodShortCircuit, PhasesShortCircuit, ShuntConnectionType,
-                                         BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod, OpfDispatchMode,
-                                         EmtLineTypes, EmtProblemTypes, EmtInitializationMethod, SmallSignalEmtBuildTypes,
-                                         EraSvdSolverType, ShuntControlMode, RmsProblemTypes,)
+                                          TapModuleControl, TapPhaseControl, SubObjectType, ConverterControlType,
+                                          HvdcControlType, ActionType, AvailableTransferMode, ContingencyMethod,
+                                          CpfParametrization, CpfStopAt, InvestmentEvaluationMethod, SolverType,
+                                          InvestmentsEvaluationObjectives, NodalCapacityMethod, TimeGrouping,
+                                          ZonalGrouping, MIPSolvers, AcOpfMode, VoltageLevelTypes, BranchGroupTypes,
+                                          BranchImpedanceMode, FaultType, TapChangerTypes, ContingencyOperationTypes,
+                                          WindingType, MethodShortCircuit, PhasesShortCircuit, ShuntConnectionType,
+                                          BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod, OpfDispatchMode,
+                                          EmtLineTypes, EmtProblemTypes, EmtInitializationMethod, SmallSignalEmtBuildTypes,
+                                          EraSvdSolverType, ShuntControlMode, RmsProblemTypes, FmuTemplateDomain,
+                                          FmuTemplateMode)
 # types that can be assigned to a VeraGrid property
 GCPROP_TYPES = Union[
     Type[int],
@@ -74,7 +75,9 @@ GCPROP_TYPES = Union[
     Type[EmtInitializationMethod],
     Type[RmsProblemTypes],
     Type[SmallSignalEmtBuildTypes],
-    Type[EraSvdSolverType]
+    Type[EraSvdSolverType],
+    Type[FmuTemplateDomain],
+    Type[FmuTemplateMode],
 ]
 
 

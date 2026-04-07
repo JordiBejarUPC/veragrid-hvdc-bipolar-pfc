@@ -35,7 +35,12 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowRes
 from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt, init_explicit_common, build_symbolic_vector_single_equation_compiler, run_emt_native_initialization
 from VeraGridEngine.Utils.Symbolic.compiled_functions import get_compiled_functions_cache_stats
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_algebraic_vars
-# from trunk.veragrid_fmu_import import finalize_emt_fmu_cs_devices, finalize_emt_fmu_me_devices, queue_emt_fmu_cs_device, queue_emt_fmu_me_device #TODO: importing from trunk!
+from VeraGridEngine.IO.fmu.importer import (
+    finalize_emt_fmu_cs_devices,
+    finalize_emt_fmu_me_devices,
+    queue_emt_fmu_cs_device,
+    queue_emt_fmu_me_device,
+)
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     EmtBoundaryUpdateProtocol,
@@ -275,6 +280,10 @@ class EmtProblemDae(EmtProblemTemplate):
 
         self.history_models: List[BergeronHistoryRuntime] = list()
         self.step_counter: int = 0
+        self._fmu_cs_adapters: List[Any] = list()
+        self._pending_fmu_cs_devices: List[Tuple[Any, Block]] = list()
+        self._fmu_me_adapters: List[Any] = list()
+        self._pending_fmu_me_devices: List[Tuple[Any, Block]] = list()
 
         t_build = _tic()
         t_phase_start: float = t_build
@@ -323,8 +332,8 @@ class EmtProblemDae(EmtProblemTemplate):
             )
 
         self._runtime_parameter_eqs0 = list(self._runtime_all_eqs_source)
-        # finalize_emt_fmu_cs_devices(self) # TODO: comented to make it work, find what this is about (Andrés)
-        # finalize_emt_fmu_me_devices(self)
+        finalize_emt_fmu_cs_devices(self)
+        finalize_emt_fmu_me_devices(self)
 
         if len(self._runtime_mode_parameters) > 0:
             self._initialize_mode_event_state()
@@ -869,6 +878,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         self._register_runtime_event_parameters(dev=dev, mdl=mdl)
         self._add_model_to_system_mappings(dev, mdl)
+        queue_emt_fmu_cs_device(self, dev, mdl)
+        queue_emt_fmu_me_device(self, dev, mdl)
         sys_block.add(mdl)
 
         self._register_init_model(mdl)

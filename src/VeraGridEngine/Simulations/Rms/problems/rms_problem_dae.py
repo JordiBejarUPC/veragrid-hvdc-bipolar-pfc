@@ -28,6 +28,16 @@ from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
+from VeraGridEngine.IO.fmu.importer import (
+    advance_rms_fmu_cs_devices,
+    advance_rms_fmu_me_devices,
+    close_rms_fmu_cs_devices,
+    close_rms_fmu_me_devices,
+    initialize_rms_fmu_cs_devices,
+    initialize_rms_fmu_me_devices,
+    register_rms_fmu_cs_device,
+    register_rms_fmu_me_device,
+)
 
 
 def _tic():
@@ -135,6 +145,10 @@ class RmsProblemDae(RmsProblemTemplate):
 
         self._variable_parameters_values: Vec | None = None
         self._constant_params: Vec | None = None
+        self._fmu_cs_adapters: List[object] = list()
+        self._fmu_cs_initialized: bool = False
+        self._fmu_me_adapters: List[object] = list()
+        self._fmu_me_initialized: bool = False
 
         # --------------------------------------------------------------------------------------------------------------
         # Initialize the RMS problem
@@ -254,6 +268,8 @@ class RmsProblemDae(RmsProblemTemplate):
 
 
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
+                register_rms_fmu_cs_device(self, elm, elm.rms_model)
+                register_rms_fmu_me_device(self, elm, elm.rms_model)
 
                 # add init values from powerflow to initial guess
                 self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Pf, self.Sf[branch_num].real)
@@ -429,8 +445,10 @@ class RmsProblemDae(RmsProblemTemplate):
                     if VarPowerFlowRefferenceType.Vdc in elm.rms_model.external_mapping:
                         elm.rms_model.update_model(
                             elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc], Vdc)
-                    
+
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
+                register_rms_fmu_cs_device(self, elm, elm.rms_model)
+                register_rms_fmu_me_device(self, elm, elm.rms_model)
 
                 if elm.bus.is_dc:
                     self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.P,
@@ -956,6 +974,88 @@ class RmsProblemDae(RmsProblemTemplate):
             raise ValueError("_event_params_fn is None")
 
         self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
+
+    def initialize_fmu_cs_devices(self, x_snapshot: Vec, t: float = 0.0) -> None:
+        """
+        Initialize imported FMU Co-Simulation devices before the RMS time loop starts.
+
+        :param x_snapshot: Initial accepted state vector.
+        :param t: Initial simulation time.
+        :return: None.
+        """
+
+        if len(self._fmu_cs_adapters) > 0:
+            initialize_rms_fmu_cs_devices(problem=self, x_snapshot=x_snapshot, time_value=t)
+        else:
+            self._fmu_cs_initialized = True
+
+    def advance_fmu_cs_devices(self, t: float, x_snapshot: Vec, h: float) -> None:
+        """
+        Advance imported FMU Co-Simulation devices for one RMS communication step.
+
+        :param t: Current simulation time.
+        :param x_snapshot: Current accepted state vector.
+        :param h: RMS communication step.
+        :return: None.
+        """
+
+        if len(self._fmu_cs_adapters) > 0:
+            advance_rms_fmu_cs_devices(problem=self, time_value=t, x_snapshot=x_snapshot, step_size=h)
+        else:
+            pass
+
+    def close_fmu_cs_devices(self) -> None:
+        """
+        Release imported FMU Co-Simulation devices after the RMS simulation ends.
+
+        :return: None.
+        """
+
+        if len(self._fmu_cs_adapters) > 0:
+            close_rms_fmu_cs_devices(self)
+        else:
+            pass
+
+    def initialize_fmu_me_devices(self, x_snapshot: Vec, t: float = 0.0) -> None:
+        """
+        Initialize imported FMU Model Exchange devices before the RMS time loop starts.
+
+        :param x_snapshot: Initial accepted state vector.
+        :param t: Initial simulation time.
+        :return: None.
+        """
+
+        if len(self._fmu_me_adapters) > 0:
+            initialize_rms_fmu_me_devices(problem=self, x_snapshot=x_snapshot, time_value=t)
+        else:
+            self._fmu_me_initialized = True
+
+    def advance_fmu_me_devices(self, t: float, x_snapshot: Vec, h: float) -> None:
+        """
+        Advance imported FMU Model Exchange devices for one RMS communication step.
+
+        :param t: Current simulation time.
+        :param x_snapshot: Current accepted state vector.
+        :param h: RMS communication step.
+        :return: None.
+        """
+
+        if len(self._fmu_me_adapters) > 0:
+            advance_rms_fmu_me_devices(problem=self, time_value=t, x_snapshot=x_snapshot, step_size=h)
+        else:
+            pass
+
+    def close_fmu_me_devices(self) -> None:
+        """
+        Release imported FMU Model Exchange devices after the RMS simulation ends.
+
+        :return: None.
+        """
+
+        if len(self._fmu_me_adapters) > 0:
+            close_rms_fmu_me_devices(self)
+        else:
+            pass
 
     def get_dx(self, x: Vec, xn: Vec, dx: Vec, h: float) -> Vec:
 

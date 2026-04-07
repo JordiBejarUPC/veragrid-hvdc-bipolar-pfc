@@ -35,3 +35,4 @@ opencv-python>=4.10.0.84
 setuptools
 packaging
 torch >= 2.10.0
+fmpy>=0.3.22

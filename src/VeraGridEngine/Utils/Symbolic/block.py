@@ -207,12 +207,12 @@ class Block:
             },
 
             "external_mapping": {
-                k: _expr_to_dict(v)
+                k: _expr_to_dict(v) if v is not None else None
                 for k, v in self.external_mapping.items()
             },
 
             "api_obj_mapping": {
-                k.value: _expr_to_dict(v)
+                k.value: _expr_to_dict(v) if v is not None else None
                 for k, v in self.api_obj_mapping.items()
             },
 
@@ -280,11 +280,11 @@ class Block:
             },
             procedural_logic=Block._procedural_logic_from_dict(data.get("procedural_logic", [])),
             external_mapping={
-                VarPowerFlowRefferenceType(k): _dict_to_expr(v)
+                VarPowerFlowRefferenceType(k): (_dict_to_expr(v) if v is not None else None)
                 for k, v in data["external_mapping"].items()
             },
             api_obj_mapping={
-                ParamPowerFlowRefferenceType(k): _dict_to_expr(v)
+                ParamPowerFlowRefferenceType(k): (_dict_to_expr(v) if v is not None else None)
                 for k, v in data["api_obj_mapping"].items()
             },
             name=data["name"],

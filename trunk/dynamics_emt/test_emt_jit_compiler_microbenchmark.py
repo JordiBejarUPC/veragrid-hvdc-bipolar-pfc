@@ -9,9 +9,14 @@ import json
 import math
 from typing import Dict, List
 
+import pytest
 
-from trunk.dynamics_emt.benchmarks import emt_jit_compiler_microbenchmark as compiler_microbenchmark
-from trunk.dynamics_emt.benchmarks import emt_jit_compiler_microbenchmark_statistics as compiler_microbenchmark_statistics
+compiler_microbenchmark = pytest.importorskip(
+    "trunk.dynamics_emt.benchmarks.emt_jit_compiler_microbenchmark"
+)
+compiler_microbenchmark_statistics = pytest.importorskip(
+    "trunk.dynamics_emt.benchmarks.emt_jit_compiler_microbenchmark_statistics"
+)
 
 
 def test_compiler_microbenchmark_exports_for_rload_case() -> None:

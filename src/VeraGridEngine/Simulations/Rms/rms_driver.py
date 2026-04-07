@@ -49,6 +49,7 @@ class RmsSimulationDriver(DriverTemplate):
         self.options = options
 
         self.results: RmsResults | None = None
+        self.problem: RmsProblemDae | None = None
 
     def run(self):
         """
@@ -84,6 +85,7 @@ class RmsSimulationDriver(DriverTemplate):
             pf_results=self.pf_results,
             progress_signal=self.progress_signal,
         )
+        self.problem = problem
         self.results = RmsResults(
             time_array=pd.DatetimeIndex(pd.to_datetime(t * 1e9)),
             rms_events_group_names=rms_events_group_names,

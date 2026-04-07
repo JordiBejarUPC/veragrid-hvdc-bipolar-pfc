@@ -15,7 +15,7 @@ import VeraGridEngine.Devices as dev
 import VeraGridEngine.Templates as tem
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, BRANCH_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES
 from VeraGridEngine.Devices.Parents.editable_device import GCPROP_TYPES
-from VeraGridEngine.enumerations import DeviceType, ActionType
+from VeraGridEngine.enumerations import DeviceType, ActionType, FmuTemplateDomain
 from VeraGridEngine.basic_structures import Logger, ListSet
 from VeraGridEngine.data_logger import DataLogger
 
@@ -111,6 +111,7 @@ class Assets:
         '_diagrams',
         '_rms_models',
         '_emt_models',
+        '_fmu_templates',
         'template_objects_dict',
         'profile_magnitudes',
         'device_type_name_dict',
@@ -313,6 +314,9 @@ class Assets:
         # list of EMT models
         self._emt_models: List[dev.EmtModelTemplate] = list()
 
+        # list of reusable FMU templates
+        self._fmu_templates: List[dev.FmuTemplate] = list()
+
         # list of declared diagrams
         self._diagrams: List[Union[dev.MapDiagram, dev.SchematicDiagram]] = list()
 
@@ -394,14 +398,17 @@ class Assets:
                 # dev.DynamicPlotEntry()
                 # dev.DynamicPlot(),
             ],
+            "Templates": [
+                dev.RmsModelTemplate(),
+                dev.EmtModelTemplate(),
+                dev.FmuTemplate(),
+            ],
             "Catalogue": [
                 dev.Wire(),
                 dev.OverheadLineType(),
                 dev.UndergroundLineType(),
                 dev.SequenceLineType(),
                 dev.TransformerType(),
-                dev.RmsModelTemplate(),
-                dev.EmtModelTemplate()
             ],
             "Measurements": [
                 dev.PiMeasurement(),
@@ -6014,6 +6021,175 @@ class Assets:
         """
         return [elm for elm in self.emt_models if elm.tpe == tpe]
 
+    @property
+    def fmu_templates(self) -> List[dev.FmuTemplate]:
+        """
+        List of reusable FMU templates.
+
+        :return: FMU templates.
+        """
+
+        return self._fmu_templates
+
+    @fmu_templates.setter
+    def fmu_templates(self, value: List[dev.FmuTemplate]) -> None:
+        """
+        Replace the complete FMU template catalogue.
+
+        :param value: FMU template list.
+        :return: None.
+        """
+
+        self._fmu_templates = value
+
+    def get_fmu_templates_number(self) -> int:
+        """
+        Return the number of reusable FMU templates.
+
+        :return: Number of FMU templates.
+        """
+
+        return len(self._fmu_templates)
+
+    def add_fmu_template(self, obj: dev.FmuTemplate) -> None:
+        """
+        Add one reusable FMU template to the catalogue.
+
+        :param obj: FMU template instance.
+        :return: None.
+        """
+
+        if obj is not None:
+            if isinstance(obj, dev.FmuTemplate):
+                self._fmu_templates.append(obj)
+            else:
+                print('The template is not a FmuTemplate!')
+        else:
+            pass
+
+    def delete_fmu_template(self, obj: dev.FmuTemplate) -> None:
+        """
+        Delete one reusable FMU template from the catalogue.
+
+        :param obj: FMU template instance.
+        :return: None.
+        """
+
+        for elm in self.buses:
+            if elm.rms_fmu_template == obj:
+                elm.rms_fmu_template = None
+            else:
+                pass
+
+            if elm.emt_fmu_template == obj:
+                elm.emt_fmu_template = None
+            else:
+                pass
+
+        for elm in self.get_injection_devices_iter():
+            if elm.rms_fmu_template == obj:
+                elm.rms_fmu_template = None
+            else:
+                pass
+
+            if elm.emt_fmu_template == obj:
+                elm.emt_fmu_template = None
+            else:
+                pass
+
+        for elm in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+            if elm.rms_fmu_template == obj:
+                elm.rms_fmu_template = None
+            else:
+                pass
+
+            if elm.emt_fmu_template == obj:
+                elm.emt_fmu_template = None
+            else:
+                pass
+
+        try:
+            self._fmu_templates.remove(obj)
+        except ValueError:
+            pass
+
+    def get_fmu_templates_by_device_type(self, tpe: DeviceType) -> List[dev.FmuTemplate]:
+        """
+        Get FMU templates filtered by supported device type.
+
+        :param tpe: Supported VeraGrid device type.
+        :return: Matching FMU templates.
+        """
+
+        return [elm for elm in self.fmu_templates if elm.tpe == tpe]
+
+    def get_fmu_templates_by_device_type_and_domain(self,
+                                                    tpe: DeviceType,
+                                                    domain: FmuTemplateDomain) -> List[dev.FmuTemplate]:
+        """
+        Get FMU templates filtered by supported device type and simulation domain.
+
+        :param tpe: Supported VeraGrid device type.
+        :param domain: Supported FMU simulation domain.
+        :return: Matching FMU templates.
+        """
+
+        return [elm for elm in self.fmu_templates if elm.tpe == tpe and elm.domain == domain]
+
+    def get_dynamic_templates_by_device_type_and_domain(self,
+                                                        tpe: DeviceType,
+                                                        domain: FmuTemplateDomain) -> List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate]:
+        """
+        Get all reusable templates for one device type and one simulation domain.
+
+        Native templates and FMU templates are both returned because the block editor
+        library must expose both under the same ``Templates`` category.
+
+        :param tpe: Supported VeraGrid device type.
+        :param domain: Simulation domain used by the editor.
+        :return: Matching native and FMU templates.
+        """
+
+        if domain == FmuTemplateDomain.RMS:
+            native_templates: List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate] = list(
+                self.get_rms_models_by_device_type(tpe)
+            )
+        else:
+            if domain == FmuTemplateDomain.EMT:
+                native_templates = list(self.get_emt_models_by_device_type(tpe))
+            else:
+                raise ValueError(f"Unsupported dynamic template domain {domain}")
+
+        native_templates.extend(self.get_fmu_templates_by_device_type_and_domain(tpe, domain))
+        return native_templates
+
+    def get_dynamic_templates_by_domain(self,
+                                        domain: FmuTemplateDomain) -> List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate]:
+        """
+        Get all reusable templates registered for one simulation domain.
+
+        :param domain: Simulation domain used by the editor.
+        :return: Matching native and FMU templates.
+        """
+
+        templates: List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate] = list()
+        if domain == FmuTemplateDomain.RMS:
+            templates.extend(self.rms_models)
+        else:
+            if domain == FmuTemplateDomain.EMT:
+                templates.extend(self.emt_models)
+            else:
+                raise ValueError(f"Unsupported dynamic template domain {domain}")
+
+        fmu_template: dev.FmuTemplate
+        for fmu_template in self.fmu_templates:
+            if fmu_template.domain == domain:
+                templates.append(fmu_template)
+            else:
+                pass
+
+        return templates
+
     # ------------------------------------------------------------------------------------------------------------------
     #
     #
@@ -6835,6 +7011,9 @@ class Assets:
         elif device_type == DeviceType.EmtModelTemplateDevice:
             return self.emt_models
 
+        elif device_type == DeviceType.FmuTemplateDevice:
+            return self.fmu_templates
+
         elif device_type == DeviceType.RmsEventDevice:
             return self.rms_events
 
@@ -7071,6 +7250,9 @@ class Assets:
         elif device_type == DeviceType.EmtModelTemplateDevice:
             self._emt_models = devices
 
+        elif device_type == DeviceType.FmuTemplateDevice:
+            self._fmu_templates = devices
+
         elif device_type == DeviceType.RmsEventDevice:
             self._rms_events = devices
 
@@ -7290,6 +7472,9 @@ class Assets:
 
         elif obj.device_type == DeviceType.EmtModelTemplateDevice:
             self.add_emt_model(obj=obj)
+
+        elif obj.device_type == DeviceType.FmuTemplateDevice:
+            self.add_fmu_template(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventDevice:
             self.add_rms_event(obj=obj)
@@ -7521,6 +7706,9 @@ class Assets:
 
         elif obj.device_type == DeviceType.EmtModelTemplateDevice:
             self.delete_emt_model(obj=obj)
+
+        elif obj.device_type == DeviceType.FmuTemplateDevice:
+            self.delete_fmu_template(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventDevice:
             self.delete_rms_event(obj=obj)
@@ -8128,6 +8316,10 @@ class Assets:
             elm = dev.EmtModelTemplate()
             dictionary_of_lists = dict()
 
+        elif elm_type == DeviceType.FmuTemplateDevice:
+            elm = dev.FmuTemplate()
+            dictionary_of_lists = dict()
+
         elif elm_type == DeviceType.RmsEventDevice:
             elm = dev.RmsEvent()
             dictionary_of_lists = {DeviceType.RmsEventsGroupDevice: self.rms_events_groups}
@@ -8205,6 +8397,19 @@ class Assets:
 
         else:
             raise Exception(f'elm_type not understood: {elm_type.value}')
+
+        if (DeviceType.RmsModelTemplateDevice in dictionary_of_lists) or (DeviceType.EmtModelTemplateDevice in dictionary_of_lists):
+            dictionary_of_lists[DeviceType.FmuTemplateDevice] = self.get_fmu_templates_by_device_type(elm_type)
+            dictionary_of_lists[("rms_fmu_template", DeviceType.FmuTemplateDevice)] = self.get_fmu_templates_by_device_type_and_domain(
+                elm_type,
+                FmuTemplateDomain.RMS,
+            )
+            dictionary_of_lists[("emt_fmu_template", DeviceType.FmuTemplateDevice)] = self.get_fmu_templates_by_device_type_and_domain(
+                elm_type,
+                FmuTemplateDomain.EMT,
+            )
+        else:
+            pass
 
         return elm, dictionary_of_lists
 

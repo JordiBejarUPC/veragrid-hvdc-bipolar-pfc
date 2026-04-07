@@ -2956,6 +2956,7 @@ class MultiCircuit(Assets):
 
         self.rms_models += data.rms_models
         self.emt_models += data.emt_models
+        self.fmu_templates += data.fmu_templates
 
     def set_opf_ts_results(self, results: OptimalPowerFlowTimeSeriesResults):
         """
