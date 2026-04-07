@@ -716,7 +716,7 @@ def duplicate_expr(var_factory: VarFactory,
     return expr
 
 
-def duplicate_block(block: Block, var_factory: VarFactory) -> Block:
+def duplicate_block(block: Block, var_factory: VarFactory | None) -> Block:
     """
     Create a duplicate of this block with new variable UIDs.
     The new block contains variables with the same names but different UIDs,

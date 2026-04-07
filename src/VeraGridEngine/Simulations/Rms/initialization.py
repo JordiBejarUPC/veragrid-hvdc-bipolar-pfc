@@ -253,6 +253,8 @@ def init_explicit(mdl: Block,
                     uid_bindings.update({vr.uid: event_params_array[uid2idx_event_params[vr.uid]]})
                 elif vr.uid in uid2idx_vars:
                     uid_bindings.update({vr.uid: x[uid2idx_vars[vr.uid]]})
+                elif vr.uid in uid2idx_params:
+                    uid_bindings.update({vr.uid: params_array[uid2idx_params[vr.uid]]})
 
             result = eq.eval_uid(uid_bindings)
             # eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
