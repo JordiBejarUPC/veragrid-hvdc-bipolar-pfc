@@ -18,7 +18,7 @@ from VeraGridEngine.Simulations.SmallSignalStabilityEmt.emt_floquet_operator imp
                                                                                      BlockEmtFloquetOperator,
                                                                                      AkStackBlockEmtFloquetOperator)
 from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_emt_options import \
-    SmallSignalStabilityEmtOptions
+    EmtSmallSignalStabilityOptions
 from VeraGridEngine.Simulations.SmallSignalStabilityEmt.small_signal_stability_emt_results import \
     SmallSignalStabilityEmtResults
 from VeraGridEngine.Simulations.SmallSignalStabilityEmt.emt_floquet_numba_kernels import NUMBA_AVAILABLE, \
@@ -241,7 +241,7 @@ class SmallSignalStabilityEmtDriver(DriverTemplate):
                  grid: MultiCircuit,
                  problem: EmtProblemTemplate,
                  emt_options: EmtOptions,
-                 options: SmallSignalStabilityEmtOptions):
+                 options: EmtSmallSignalStabilityOptions):
         """
         Initializes the EMT Small Signal Stability Driver.
 
@@ -254,7 +254,7 @@ class SmallSignalStabilityEmtDriver(DriverTemplate):
         DriverTemplate.__init__(self, grid=grid)
         self.problem: EmtProblemTemplate = problem
         self.emt_options: EmtOptions = emt_options
-        self.options: SmallSignalStabilityEmtOptions = options
+        self.options: EmtSmallSignalStabilityOptions = options
         self.results: SmallSignalStabilityEmtResults | None = None
 
     def _capture_limit_cycle_and_evaluator(self,

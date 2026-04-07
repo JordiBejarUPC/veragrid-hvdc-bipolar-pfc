@@ -77,7 +77,6 @@ class Line(BranchParent):
         'Pt',
         'Qf',
         'Qt',
-        'emt_model_type',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -122,8 +121,7 @@ class Line(BranchParent):
         GCProp(key='possible_sequence_line_types', units='', tpe=SubObjectType.Associations,
                definition='Possible sequence line types (>1 to denote association), - to denote no association',
                display=False),
-        GCProp(key='emt_model_type', units='', tpe=EmtLineTypes,
-               definition='Line EMT model'),
+
     )
 
     def __init__(self,
@@ -260,7 +258,6 @@ class Line(BranchParent):
         # Line locations
         self._locations: LineLocations = LineLocations()
 
-        self.emt_model_type: EmtLineTypes = EmtLineTypes.Bergeron
 
     @property
     def R(self):
@@ -573,6 +570,8 @@ class Line(BranchParent):
             self.ysh = obj.get_ysh(circuit_idx=self.circuit_idx, Sbase=Sbase, length=self.length, Vnom=vn)
 
             self.template = obj
+            self.rms_template = obj.rms_template
+            self.emt_template = obj.emt_template
 
         elif isinstance(obj, UndergroundLineType):
             (self.R, self.X, self.B,
@@ -580,6 +579,8 @@ class Line(BranchParent):
              self.rate) = obj.get_values(Sbase=Sbase, length=self.length)
 
             self.template = obj
+            self.rms_template = obj.rms_template
+            self.emt_template = obj.emt_template
 
         elif isinstance(obj, SequenceLineType):
             (self.R, self.X, self.B,
@@ -594,6 +595,8 @@ class Line(BranchParent):
             self.ysh = obj.get_ysh_nabc()
 
             self.template = obj
+            self.rms_template = obj.rms_template
+            self.emt_template = obj.emt_template
 
         else:
             logger.add_error('Template not recognised', self.name)
@@ -615,29 +618,29 @@ class Line(BranchParent):
                                 X0=self.X0 / self.length,
                                 B0=self.B0 / self.length)
 
-    def get_save_data(self) -> List[str]:
-        """
-        Return the data that matches the edit_headers
-        :return:
-        """
-        data = list()
-        for name, properties in self.registered_properties.items():
-            obj = getattr(self, name)
-
-            if obj is None:
-                data.append("")
-            else:
-
-                if hasattr(obj, 'idtag'):
-                    obj = obj.idtag
-                else:
-                    if properties.tpe not in [str, float, int, bool]:
-                        obj = str(obj)
-                    else:
-                        obj = str(obj)
-
-                data.append(obj)
-        return data
+    # def get_save_data(self) -> List[str]:
+    #     """
+    #     Return the data that matches the edit_headers
+    #     :return:
+    #     """
+    #     data = list()
+    #     for name, properties in self.registered_properties.items():
+    #         obj = getattr(self, name)
+    #
+    #         if obj is None:
+    #             data.append("")
+    #         else:
+    #
+    #             if hasattr(obj, 'idtag'):
+    #                 obj = obj.idtag
+    #             else:
+    #                 if properties.tpe not in [str, float, int, bool]:
+    #                     obj = str(obj)
+    #                 else:
+    #                     obj = str(obj)
+    #
+    #             data.append(obj)
+    #     return data
 
     def fix_inconsistencies(self, logger: Logger) -> bool:
         """

@@ -14,7 +14,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Branches.line import Line
-from plot_emt_results import plot_ilines, plot_generators, plot_isource, plot_voltages, plot_v_i
+from VeraGrid.trunk.dynamics_emt.support.plot_emt_results import plot_ilines, plot_generators, plot_isource, plot_voltages, plot_v_i
 from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 
@@ -67,7 +67,6 @@ line0 = Line(name="line 1-2", bus_from=bus1, bus_to=bus2, rate=300, length=l1)
 
 # [CAMBIO IMPORTANTE] Selección del modelo numérico para el driver
 # Opciones: 'Bergeron', 'Pi', 'JMarti'
-line0.emt_model_type = gce.EmtLineTypes.Bergeron
 
 # Configuración Física (Torre)
 tower = gce.OverheadLineType(name="Tower", Vnom=Vbase)

@@ -6,7 +6,7 @@ from __future__ import annotations
 import sys
 import uuid
 import networkx as nx
-from typing import Dict, Union, List, Tuple, TYPE_CHECKING
+from typing import Any, Dict, Union, List, Tuple, TYPE_CHECKING
 from VeraGridEngine.Devices.Diagrams.graphic_location import GraphicLocation
 from VeraGridEngine.Devices.Diagrams.map_location import MapLocation
 from VeraGridEngine.enumerations import DiagramType, DeviceType
@@ -73,7 +73,7 @@ class PointsGroup:
         return points
 
     def parse_data(self,
-                   data: Dict[str, Dict[str, Union[int, float, bool, List[Tuple[float, float]]]]],
+                   data: Dict[str, Dict[str, Any]],
                    obj_dict: Dict[str, ALL_DEV_TYPES],
                    logger: Logger,
                    category: str = "") -> None:
@@ -102,6 +102,8 @@ class PointsGroup:
                                                             w=location['w'],
                                                             h=location['h'],
                                                             r=location['r'],
+                                                            poly_line=location.get('poly_line', list()),
+                                                            layout_metadata=location.get('layout_metadata', dict()),
                                                             draw_labels=location.get('draw_labels', True),
                                                             api_object=api_object)
                 if 'latitude' in location:

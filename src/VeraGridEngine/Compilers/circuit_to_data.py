@@ -1022,13 +1022,13 @@ def fill_generator_parent(
     data.x1[k] = elm.X1
     data.x2[k] = elm.X2
 
-    data.startup_cost[k] = elm.StartupCost
-    data.shut_down_cost[k] = elm.ShutdownCost
+    data.startup_cost[k] = elm.startup_cost
+    data.shut_down_cost[k] = elm.shutdown_cost
 
-    data.ramp_up[k] = elm.RampUp
-    data.ramp_down[k] = elm.RampDown
-    data.min_time_up[k] = elm.MinTimeUp
-    data.min_time_down[k] = elm.MinTimeDown
+    data.ramp_up[k] = elm.ramp_up
+    data.ramp_down[k] = elm.ramp_down
+    data.min_time_up[k] = elm.min_time_up
+    data.min_time_down[k] = elm.min_time_down
 
     data.dispatchable[k] = elm.get_enabled_dispatch_at(t_idx)
     data.must_run[k] = elm.get_must_run_at(t_idx)

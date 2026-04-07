@@ -55,7 +55,6 @@ class PointerDeviceParent(EditableDevice):
         self._device_name: str = device.name if device is not None else "No device"
         self._device = device
 
-
     @property
     def device_idtag(self) -> str:
         """

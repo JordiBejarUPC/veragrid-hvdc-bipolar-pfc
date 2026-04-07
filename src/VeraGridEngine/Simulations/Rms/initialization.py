@@ -176,21 +176,29 @@ def init_explicit(mdl: Block,
 
     # compute and assign known event parameters value
     event_params_array = np.ones(len(variable_parameters))
-    for event_param in mdl.event_dict.keys():
-        eq = mdl.event_dict[event_param]
+    # for event_param in mdl.event_dict.keys():
+    #     eq = mdl.event_dict[event_param]
+    #
+    #     if (isinstance(eq, Const) and eq.value is not None) or not isinstance(eq, Const):
+    #         vars_list = find_vars_order(eq)
+    #
+    #         uid_bindings: Dict[int, float] = {
+    #             var.uid: event_params_array[uid2idx_event_params[var.uid]]
+    #             for var in vars_list
+    #         }
+    #         result = eq.eval_uid(uid_bindings)
+    #         # eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
+    #         #                                  VARIABLE_PARAMS_NAME, TIME_NAME)
+    #         # result = float(eq_fn(x, event_params_array, 0.0)[0])
+    #         event_params_array[uid2idx_event_params[event_param.uid]] = result
 
-        if (isinstance(eq, Const) and eq.value is not None) or not isinstance(eq, Const):
-            vars_list = find_vars_order(eq)
+    # unify event_dict and init_equations
 
-            uid_bindings: Dict[int, float] = {
-                var.uid: event_params_array[uid2idx_event_params[var.uid]]
-                for var in vars_list
-            }
-            result = eq.eval_uid(uid_bindings)
-            # eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
-            #                                  VARIABLE_PARAMS_NAME, TIME_NAME)
-            # result = float(eq_fn(x, event_params_array, 0.0)[0])
-            event_params_array[uid2idx_event_params[event_param.uid]] = result
+    dic_total = mdl.event_dict.copy()
+    dic_total.update(mdl.init_eqs)
+
+
+
 
     # compute and assign missing init_vars and None event parameters
 
@@ -202,10 +210,10 @@ def init_explicit(mdl: Block,
 
     dependencies = {}
 
-    for var, eq in mdl.init_eqs.items():
+    for var, eq in dic_total.items():
 
         vars_in_eq = get_expression_vars(eq)
-        deps = [v for v in vars_in_eq if v in mdl.init_eqs]
+        deps = [v for v in vars_in_eq if v in dic_total]
 
         dependencies[var] = deps
 
@@ -230,12 +238,12 @@ def init_explicit(mdl: Block,
             if in_degree[v] == 0:
                 queue.append(v)
 
-    if len(topo_order) != len(mdl.init_eqs):
+    if len(topo_order) != len(dic_total):
         raise RuntimeError("Cycle detected between different variables")
 
     # evaluate
     for var in topo_order:
-        eq = mdl.init_eqs[var]
+        eq = dic_total[var]
         vars_list = find_vars_order(eq)
 
         if var in mdl.event_dict.keys():
@@ -253,10 +261,8 @@ def init_explicit(mdl: Block,
             # result = float(eq_fn(x, event_params_array, 0.0)[0])
             event_params_array[uid2idx_event_params[var.uid]] = result
             index = variable_parameters.index(var)
-            if event_parameters_eqs[index].value is None:
-                event_parameters_eqs[index] = Const(result)
-
-        else:
+            event_parameters_eqs[index] = Const(result)
+        elif var.base_var is None:
             # check if implicit equation
             is_self_implicit = var in dependencies[var]
 
@@ -297,50 +303,14 @@ def init_explicit(mdl: Block,
                 init_guess[var.uid] = init_val
                 x[uid2idx_vars[var.uid]] = init_val
 
-                # else:
-            #     # compile equation
-            #     eq_fn = rms_compiler.compile_rhs([eq], "equation")
-            #
-            #     idx = uid2idx_vars[var.uid]
-            #
-            #     # Solve with Newton
-            #     init_val = solve_newton(
-            #         eq_fn=eq_fn,
-            #         x=x,
-            #         idx=idx,
-            #         event_params_array=event_params_array,
-            #         params_array=params_array,
-            #         dummy_diff=dummy_diff,
-            #         tol=1e-8,
-            #         max_iter=20
-            #     )
-            #
-            #     init_guess[var.uid] = init_val
-            #     x[idx] = init_val
+
+def init_custom(mdl, init_guess):
+    for lst in [mdl.state_vars, mdl.algebraic_vars]:
+        for var in lst:
+            init_guess[var.uid] = mdl.init_values[var.uid]
 
 
 
-            # else:
-            #     # eq_fn = SymbolicVector([eq], compiler_names_dict, alias_names_dict, VARS_NAME, DIFF_NAME,
-            #     #                        VARIABLE_PARAMS_NAME, CONSTANT_PARAMS_NAME)
-            #     eq_fn = rms_compiler.compile_rhs([eq], "equation")
-            #     init_val = 0
-            #     tol = 1e-8
-            #     error = 1
-            #     alpha = 1.3
-            #     x0 = 1.2
-            #     x[uid2idx_vars[var.uid]] = x0
-            #     while error > tol:
-            #         try:
-            #             init_val = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
-            #         except:
-            #             x[uid2idx_vars[var.uid]] = -0.1
-            #             init_val = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
-            #         x[uid2idx_vars[var.uid]] = (1 - alpha) * x0 + alpha * init_val
-            #         error = np.linalg.norm(init_val - x0)
-            #         x0 = x[uid2idx_vars[var.uid]]
-            #     init_guess[var.uid] = init_val
-            #     x[uid2idx_vars[var.uid]] = init_val
 
 
 class PseudoTransientInitProblem:
@@ -594,5 +564,4 @@ def init_pseudo_transient(mdl: Block,
     
     # Update init_guess with solution
     for var, value in init_guess_result.items():
-        if hasattr(var, 'uid'):
-            init_guess[var.uid] = value
+        init_guess[var.uid] = value

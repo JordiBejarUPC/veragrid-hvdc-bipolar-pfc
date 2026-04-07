@@ -21,6 +21,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResu
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.initialization import init_explicit, init_pseudo_transient
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 
@@ -79,7 +80,6 @@ class RmsProblemTensygrid(RmsProblemTemplate):
     VARIABLE_PARAMS_NAME = "vprms"
     CONSTANT_PARAMS_NAME = "cprms"
     DIFF_NAME = "diff"
-    ALTER_PARAMS_NAME = "alter"
     TIME_NAME = "glob_time"
 
     def __init__(self,
@@ -113,6 +113,7 @@ class RmsProblemTensygrid(RmsProblemTemplate):
         self._state_eqs: List[Expr] = list()
         self._diff_vars: List[Var] = list()
         self._variable_parameters: List[Var] = list()
+        self._event_parameters_eqs0: List[Expr | Const] = list()
         self._event_parameters_eqs: List[Expr | Const] = list()
         self._constant_parameters: List[Var] = list()
         self._parameters_values: List[Const] = list()
@@ -389,6 +390,9 @@ class RmsProblemTensygrid(RmsProblemTemplate):
                 eq = eq.subs({diff_var: Const(0)})
                 eq = eq.simplify()
             self._stability_eqs.append(eq)
+
+        # Store a copy of the original event parameters equations for later use with set_events_group
+        self._event_parameters_eqs0 = self._event_parameters_eqs.copy()
 
         #We populate the reformulated vars
         for it, eq in enumerate(self._algebraic_eqs):
@@ -774,3 +778,50 @@ class RmsProblemTensygrid(RmsProblemTemplate):
     def get_dt_value(self):
         dt_value = self._variable_parameters_values[-2]
         return dt_value
+
+    def set_events_group(self, rms_events_group: RmsEventsGroup):
+        """
+        Set the events group to use for this simulation.
+        This filters events by group and recompiles the event parameters function.
+
+        :param rms_events_group: The RmsEventsGroup to use
+        """
+        # Restore original event parameters equations
+        self._event_parameters_eqs = self._event_parameters_eqs0.copy()
+
+        # Collect events for this group only
+        collect_events = {
+            param: {"times": [], "values": []}
+            for param in self._variable_parameters
+        }
+
+        # Filter events by group
+        rms_evts = [evt for evt in self.grid.rms_events if evt.group.idtag == rms_events_group.idtag]
+        for rms_evt in rms_evts:
+            collect_events[rms_evt.parameter]["times"].append(rms_evt.time)
+            collect_events[rms_evt.parameter]["values"].append(rms_evt.value)
+
+        # Apply piecewise functions for events
+        for param, events_info in collect_events.items():
+            if events_info["times"]:
+                default_value = self._event_parameters_eqs[self._variable_parameters.index(param)]
+                self._event_parameters_eqs[self._variable_parameters.index(param)] = piecewise(
+                    time_var=self._glob_time,
+                    t_events=np.array(events_info["times"]),
+                    new_values=np.array(events_info["values"]),
+                    default_value=default_value
+                )
+
+        # Recompile the event parameters function
+        self._event_params_fn = SymbolicParamsVector(
+            eqs=self._event_parameters_eqs,
+            compiler_names_dict=self._compiler_names_dict,
+            alias_names_dict=self._alias_names_dict,
+            EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+            TIME_NAME=self.TIME_NAME,
+        )
+
+        # Reinitialize variable parameters values
+        variable_parameters_init = np.ones(self.get_variable_parameter_number())
+        self._variable_parameters_values = self._event_params_fn(variable_parameters_init, 0.0)
+        self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, 0.0)

@@ -2,8 +2,8 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+import os
 from pathlib import Path
-
 import pytest
 
 import VeraGridEngine.api as vge
@@ -14,10 +14,22 @@ GRID_FOLDER = Path(__file__).resolve().parents[1] / "data" / "grids"
 
 
 def _load_grid(name: str):
+    """
+    Load a test grid from the shared test data folder.
+
+    Every multiverse test uses real `.gridcal` fixtures so that serialization, diagram
+    handling, and circuit diffs exercise the same code paths used by the application.
+    """
     return vge.open_file(str(GRID_FOLDER / name))
 
 
 def _get_bus_by_name(grid, bus_name: str):
+    """
+    Find a bus by name in a grid.
+
+    The tests use names as stable intent-revealing identifiers when asserting that a
+    scenario gained or did not gain a specific object.
+    """
     for bus in grid.buses:
         if bus.name == bus_name:
             return bus
@@ -25,6 +37,12 @@ def _get_bus_by_name(grid, bus_name: str):
 
 
 def _assert_circuits_equal(grid1, grid2) -> None:
+    """
+    Assert semantic circuit equality using the engine's comparison helper.
+
+    When a comparison fails, the logger is printed so the failing structural difference is
+    visible immediately from the pytest output.
+    """
     equal, logger = grid1.compare_circuits(
         grid2,
         detailed_profile_comparison=True,
@@ -38,16 +56,33 @@ def _assert_circuits_equal(grid1, grid2) -> None:
 
 
 def _assert_same_multiverse(expected, loaded) -> None:
+    """
+    Assert that two multiverse objects represent the same scenario tree and scenario content.
+
+    The comparison checks:
+    - node traversal order and node ids
+    - parent relationships
+    - active scenario identity
+    - scenario names
+    - per-node diagrams
+    - fully composed scenario circuits for every node
+    """
+    # Compare the traversal shape first so later node-by-node comparisons are aligned.
     expected_ids = [node.node_id for node in expected.iter_nodes_depth_first()]
     loaded_ids = [node.node_id for node in loaded.iter_nodes_depth_first()]
 
     assert loaded_ids == expected_ids
     assert len(loaded.root_nodes) == len(expected.root_nodes)
+    assert loaded.current_node is not None
+    assert expected.current_node is not None
+    assert loaded.current_node.node_id == expected.current_node.node_id
 
     for node_id in expected_ids:
+        # Resolve the corresponding nodes in both trees.
         expected_node = expected.get_node(node_id)
         loaded_node = loaded.get_node(node_id)
 
+        # Parent ids must match exactly so the restored tree shape is identical.
         expected_parent_id = None if expected_node.parent is None else expected_node.parent.node_id
         loaded_parent_id = None if loaded_node.parent is None else loaded_node.parent.node_id
 
@@ -55,10 +90,12 @@ def _assert_same_multiverse(expected, loaded) -> None:
         assert loaded_node.circuit.name == expected_node.circuit.name
         assert len(loaded_node.diagrams) == len(expected_node.diagrams)
 
+        # Diagrams are scenario-owned, so content must match but object identity must not.
         for expected_diagram, loaded_diagram in zip(expected_node.diagrams, loaded_node.diagrams):
             assert loaded_diagram is not expected_diagram
             assert loaded_diagram.name == expected_diagram.name
 
+        # The fully composed scenario represented by each node must round-trip exactly.
         _assert_circuits_equal(
             expected.checkout(expected_node),
             loaded.checkout(loaded_node),
@@ -66,9 +103,22 @@ def _assert_same_multiverse(expected, loaded) -> None:
 
 
 def _build_sample_multiverse():
+    """
+    Build a small but non-trivial multiverse used by multiple tests.
+
+    The fixture shape is:
+    - one root
+    - two direct children
+    - one grandchild under the first child
+
+    Each non-root scenario receives its own bus so checkout, save/load, and active-node logic
+    can verify inherited versus local changes clearly.
+    """
+    # Start from a real base grid so the scenarios contain realistic objects and diagrams.
     base_grid = _load_grid("lynn5node.gridcal")
     mv = vge.MultiVerse(base_grid)
 
+    # Build a two-level scenario tree with siblings and a grandchild.
     root = mv.root_nodes[0]
     child = mv.create_node(
         data=vge.MultiCircuit(name="child"),
@@ -86,12 +136,15 @@ def _build_sample_multiverse():
         position=child.child_count(),
     )
 
+    # Add one child-only change.
     mv.activate_scenario(child.node_id)
     mv.current_model.add_bus(vge.Bus(Vnom=10.0, name="child_only_bus"))
 
+    # Add one grandchild-only change on top of the child state.
     mv.activate_scenario(grandchild.node_id)
     mv.current_model.add_bus(vge.Bus(Vnom=11.0, name="grandchild_only_bus"))
 
+    # Add one sibling-only change and commit so the tree is in a saved-like state.
     mv.activate_scenario(sibling.node_id)
     mv.current_model.add_bus(vge.Bus(Vnom=12.0, name="sibling_only_bus"))
     mv.commit_current()
@@ -106,9 +159,11 @@ def test_multiverse_child_edits_do_not_touch_root() -> None:
     The child should keep its added bus after switching away and back, while the root
     should remain equal to the pristine base grid.
     """
+    # Load a real base grid and snapshot its pristine state before building the multiverse.
     base_grid = _load_grid("lynn5node.gridcal")
     pristine_root = base_grid.copy()
 
+    # Build a root plus one child scenario.
     mv = vge.MultiVerse(base_grid)
     root = mv.root_nodes[0]
     child = mv.create_node(
@@ -117,12 +172,14 @@ def test_multiverse_child_edits_do_not_touch_root() -> None:
         position=root.child_count(),
     )
 
+    # Edit only the child scenario.
     mv.activate_scenario(child.node_id)
     mv.current_model.add_bus(vge.Bus(Vnom=10.0, name="child_only_bus"))
 
     # Switching away from the child must persist the delta automatically.
     mv.activate_scenario(root.node_id)
 
+    # Compose both scenarios and verify isolation.
     root_grid = mv.checkout(root)
     child_grid = mv.checkout(child)
 
@@ -131,6 +188,7 @@ def test_multiverse_child_edits_do_not_touch_root() -> None:
     _assert_circuits_equal(root_grid, pristine_root)
     _assert_circuits_equal(root.circuit, pristine_root)
 
+    # Re-activating the child must restore the child-only change.
     reloaded_child_grid = mv.activate_scenario(child.node_id)
     assert _get_bus_by_name(reloaded_child_grid, "child_only_bus") is not None
 
@@ -142,6 +200,7 @@ def test_multiverse_nested_checkout_replays_parent_deltas() -> None:
     A grandchild should inherit the child's changes plus its own changes, while the
     child should not include changes introduced only at the grandchild level.
     """
+    # Create a root -> child -> grandchild chain.
     base_grid = _load_grid("lynn5node.gridcal")
     mv = vge.MultiVerse(base_grid)
 
@@ -157,6 +216,7 @@ def test_multiverse_nested_checkout_replays_parent_deltas() -> None:
         position=child.child_count(),
     )
 
+    # Add a child-level change first.
     mv.activate_scenario(child.node_id)
     mv.current_model.add_bus(vge.Bus(Vnom=10.0, name="child_only_bus"))
 
@@ -165,6 +225,7 @@ def test_multiverse_nested_checkout_replays_parent_deltas() -> None:
     mv.current_model.add_bus(vge.Bus(Vnom=11.0, name="grandchild_only_bus"))
     mv.commit_current()
 
+    # Reconstruct each scenario and verify inheritance boundaries.
     root_grid = mv.checkout(root)
     child_grid = mv.checkout(child)
     grandchild_grid = mv.checkout(grandchild)
@@ -184,13 +245,16 @@ def test_multiverse_parse_json_roundtrip() -> None:
     This covers tree structure, parent relationships, scenario names, and composed
     circuit equality for every node.
     """
+    # Build an in-memory sample multiverse and serialize it to metadata + model payloads.
     mv, _, _, _, _ = _build_sample_multiverse()
 
-    metadata, model_data = mv.get_save_data()
+    metadata, model_data, drivers_data = mv.get_save_data()
 
+    # Parse the serialized payloads into a fresh multiverse instance.
     loaded_mv = vge.MultiVerse(current_model=None)
     loaded_mv.parse_json(model_data, metadata)
 
+    # The reconstructed tree and scenario content must match the original.
     _assert_same_multiverse(mv, loaded_mv)
 
 
@@ -200,27 +264,30 @@ def test_multiverse_save_load_roundtrip(tmp_path: Path) -> None:
 
     The loaded multiverse should match the original one node-for-node and scenario-for-scenario.
     """
-    mv, root, _, _, _ = _build_sample_multiverse()
+    # Build a non-trivial multiverse and make a non-root node active before saving.
+    mv, _, _, sibling, _ = _build_sample_multiverse()
+    mv.activate_scenario(sibling.node_id)
 
-    # Saving from the root avoids serializing a child delta as the top-level circuit.
-    mv.activate_scenario(root.node_id)
-
-    file_name = tmp_path / "multiverse_roundtrip.veragrid"
+    # Save to a real .veragrid file and load it back through the file API.
+    file_name = os.path.join("output", "multiverse_roundtrip.veragrid")
     vge.save_multiverse(mv=mv, filename=str(file_name))
 
     loader = FileOpen(str(file_name))
     loader.open()
 
+    # The loaded multiverse must match node structure, active node, diagrams, and circuits.
     assert loader.multiverse is not None
     _assert_same_multiverse(mv, loader.multiverse)
 
 
-def test_multiverse_move_and_delete_update_tree_registry() -> None:
+def test_multiverse_move_node_is_disabled_until_rebasing_exists() -> None:
     """
-    Verify that move_node() and delete_node() keep both the tree and node registry coherent.
+    Verify that move_node() is disabled until scenario delta rebasing is implemented.
 
-    This covers reparenting, cycle protection, and recursive registry cleanup on delete.
+    Reparenting a node without recomputing its delta relative to the new parent corrupts the
+    scenario semantics, so the operation must fail loudly for now.
     """
+    # Build a small tree where a move would require delta rebasing.
     mv = vge.MultiVerse(vge.MultiCircuit(name="base"))
     root = mv.root_nodes[0]
 
@@ -240,21 +307,44 @@ def test_multiverse_move_and_delete_update_tree_registry() -> None:
         position=child_a.child_count(),
     )
 
-    mv.move_node(grandchild.node_id, child_b.node_id, position=0)
+    # The API must reject the move explicitly until rebasing semantics are implemented.
+    with pytest.raises(NotImplementedError):
+        mv.move_node(grandchild.node_id, child_b.node_id, position=0)
 
-    assert grandchild.parent is child_b
-    assert child_a.child_count() == 0
-    assert child_b.child(0) is grandchild
 
-    with pytest.raises(ValueError):
-        mv.move_node(child_b.node_id, grandchild.node_id)
+def test_multiverse_delete_active_node_falls_back_to_parent() -> None:
+    """
+    Verify that deleting the active scenario switches the active state to a valid fallback node.
 
-    mv.delete_node(child_b.node_id)
+    Removing the current node must not leave current_node/current_model pointing at detached data.
+    """
+    # Build a root -> child -> grandchild tree and make the grandchild active.
+    mv = vge.MultiVerse(_load_grid("lynn5node.gridcal"))
+    root = mv.root_nodes[0]
+    child = mv.create_node(
+        data=vge.MultiCircuit(name="child"),
+        parent_id=root.node_id,
+        position=root.child_count(),
+    )
+    grandchild = mv.create_node(
+        data=vge.MultiCircuit(name="grandchild"),
+        parent_id=child.node_id,
+        position=child.child_count(),
+    )
 
-    assert not mv.exists(child_b.node_id)
+    # Add a grandchild-only edit so the active scenario has meaningful state.
+    mv.activate_scenario(grandchild.node_id)
+    mv.current_model.add_bus(vge.Bus(Vnom=10.0, name="grandchild_bus"))
+    mv.commit_current()
+
+    # Delete the parent subtree and verify that active state falls back safely.
+    mv.delete_node(child.node_id)
+
+    assert not mv.exists(child.node_id)
     assert not mv.exists(grandchild.node_id)
-    assert root.child_count() == 1
-    assert root.child(0) is child_a
+    assert mv.current_node is root
+    assert mv.current_model is root.circuit
+    assert root.child_count() == 0
 
 
 def test_multiverse_merge_children_into_parent_rebases_grandchildren() -> None:
@@ -264,6 +354,7 @@ def test_multiverse_merge_children_into_parent_rebases_grandchildren() -> None:
     Direct children should be removed after their changes are absorbed by the parent,
     while grandchildren should move under the parent and keep the same composed scenario.
     """
+    # Create a parent with two children and one grandchild to exercise merge + rebase logic.
     base_grid = _load_grid("lynn5node.gridcal")
     mv = vge.MultiVerse(base_grid)
 
@@ -284,23 +375,31 @@ def test_multiverse_merge_children_into_parent_rebases_grandchildren() -> None:
         position=child_a.child_count(),
     )
 
+    # Child A contributes both network and diagram changes.
     mv.activate_scenario(child_a.node_id)
     mv.current_model.add_bus(vge.Bus(Vnom=10.0, name="child_a_bus"))
+    mv.current_model.diagrams[0].name = "child_a_diagram"
 
+    # Child B contributes later network and diagram changes that should win on conflicts.
     mv.activate_scenario(child_b.node_id)
     mv.current_model.add_bus(vge.Bus(Vnom=11.0, name="child_b_bus"))
+    mv.current_model.diagrams[0].name = "child_b_diagram"
 
+    # The grandchild keeps its own extra state and must be rebased under the parent after merge.
     mv.activate_scenario(grandchild.node_id)
     mv.current_model.add_bus(vge.Bus(Vnom=12.0, name="grandchild_bus"))
     mv.commit_current()
 
+    # Compute the expected merged parent and preserved grandchild scenarios before mutating the tree.
     expected_parent = mv.checkout(root)
     expected_parent.merge_circuit(child_a.circuit)
     expected_parent.merge_circuit(child_b.circuit)
     expected_grandchild = mv.checkout(grandchild)
 
+    # Merge the direct children into the root.
     mv.merge_children_into_parent(root.node_id)
 
+    # Verify structure, inherited buses, and diagram override semantics.
     assert root.child_count() == 1
     assert root.child(0) is grandchild
     assert grandchild.parent is root
@@ -314,6 +413,8 @@ def test_multiverse_merge_children_into_parent_rebases_grandchildren() -> None:
     assert _get_bus_by_name(merged_root, "child_b_bus") is not None
     assert _get_bus_by_name(merged_root, "grandchild_bus") is None
     assert _get_bus_by_name(merged_grandchild, "grandchild_bus") is not None
+    assert root.diagrams[0].name == "child_b_diagram"
+    assert merged_root.diagrams[0].name == "child_b_diagram"
 
     _assert_circuits_equal(merged_root, expected_parent)
     _assert_circuits_equal(merged_grandchild, expected_grandchild)
@@ -326,6 +427,7 @@ def test_multiverse_root_edits_are_persisted_in_place() -> None:
     Root scenarios are not stored as deltas, so switching away and back must not lose
     the changes or require a separate diff commit step.
     """
+    # Create a root and one child so switching away and back exercises root persistence.
     base_grid = _load_grid("lynn5node.gridcal")
     mv = vge.MultiVerse(base_grid)
 
@@ -336,12 +438,15 @@ def test_multiverse_root_edits_are_persisted_in_place() -> None:
         position=root.child_count(),
     )
 
+    # Edit the root directly.
     root_bus = vge.Bus(Vnom=13.0, name="root_only_bus")
     mv.current_model.add_bus(root_bus)
 
+    # Switch away and back to force the normal activation flow.
     mv.activate_scenario(child.node_id)
     mv.activate_scenario(root.node_id)
 
+    # Root changes must still be present everywhere the authoritative root is observed.
     root_grid = mv.checkout(root)
 
     assert _get_bus_by_name(root.circuit, "root_only_bus") is not None
@@ -356,11 +461,13 @@ def test_multicircuit_copy_deep_copies_diagrams() -> None:
     Child scenario activation relies on checkout(), which uses circuit copies. If diagrams are
     shared by reference, edits in one scenario can leak visually into other scenarios.
     """
+    # Load a grid with existing diagrams and append two extra diagrams to make the check explicit.
     original = _load_grid("lynn5node.gridcal")
     original.add_diagram(vge.SchematicDiagram(name="Schematic Copy Test"))
     original.add_diagram(vge.MapDiagram(name="Map Copy Test"))
     original_schematic_index = len(original.diagrams) - 2
 
+    # Copy the grid through the engine helper under test.
     copied = original.copy()
 
     assert len(copied.diagrams) == len(original.diagrams)
@@ -369,6 +476,7 @@ def test_multicircuit_copy_deep_copies_diagrams() -> None:
         assert copied_diagram is not original_diagram
         assert copied_diagram.name == original_diagram.name
 
+    # Mutate the copied diagram and verify the source diagram is untouched.
     copied.diagrams[original_schematic_index].name = "Modified Diagram Name"
     assert original.diagrams[original_schematic_index].name == "Schematic Copy Test"
 
@@ -380,6 +488,7 @@ def test_multiverse_child_starts_with_copies_of_parent_diagrams() -> None:
     The child should start with the same diagram content as the parent, but diagram objects
     must not be shared by reference between the two scenarios.
     """
+    # Create a parent and child without any edits so the child starts from inherited diagrams.
     mv = vge.MultiVerse(_load_grid("lynn5node.gridcal"))
     root = mv.root_nodes[0]
     child = mv.create_node(
@@ -388,6 +497,7 @@ def test_multiverse_child_starts_with_copies_of_parent_diagrams() -> None:
         position=root.child_count(),
     )
 
+    # The child should inherit the same diagram content but as different Python objects.
     assert len(child.diagrams) == len(root.diagrams)
 
     for root_diagram, child_diagram in zip(root.diagrams, child.diagrams):
@@ -402,6 +512,7 @@ def test_multiverse_child_diagram_edits_persist_across_switches() -> None:
     This covers the workflow where the user activates a child, edits its diagrams, commits,
     switches to the parent, and later comes back to the child.
     """
+    # Create a root and child and activate the child for diagram editing.
     mv = vge.MultiVerse(_load_grid("lynn5node.gridcal"))
     root = mv.root_nodes[0]
     child = mv.create_node(
@@ -410,18 +521,22 @@ def test_multiverse_child_diagram_edits_persist_across_switches() -> None:
         position=root.child_count(),
     )
 
+    # Rename the first child diagram and commit that scenario.
     mv.activate_scenario(child.node_id)
     original_root_diagram_name = root.diagrams[0].name
     child_diagram_name = "Child Diagram Edited"
     mv.current_model.diagrams[0].name = child_diagram_name
     mv.commit_current()
 
+    # Root and child must now diverge in diagram state.
     assert child.diagrams[0].name == child_diagram_name
     assert root.diagrams[0].name == original_root_diagram_name
 
+    # Switching to root must restore root diagrams.
     mv.activate_scenario(root.node_id)
     assert mv.current_model.diagrams[0].name == original_root_diagram_name
 
+    # Switching back to child must restore the child-specific diagram edits.
     mv.activate_scenario(child.node_id)
     assert mv.current_model.diagrams[0].name == child_diagram_name
     assert child.diagrams[0].name == child_diagram_name
@@ -434,6 +549,7 @@ def test_multiverse_reactivated_child_rebinds_branch_bus_references() -> None:
 
     This protects the root -> child -> root -> child workflow used before running a simulation.
     """
+    # Create a root and child, then add a line while the child is active.
     mv = vge.MultiVerse(_load_grid("lynn5node.gridcal"))
     root = mv.root_nodes[0]
     child = mv.create_node(
@@ -442,6 +558,7 @@ def test_multiverse_reactivated_child_rebinds_branch_bus_references() -> None:
         position=root.child_count(),
     )
 
+    # Activate the child and create a branch between buses from the composed child grid.
     mv.activate_scenario(child.node_id)
 
     bus_from = mv.current_model.buses[0]
@@ -450,9 +567,11 @@ def test_multiverse_reactivated_child_rebinds_branch_bus_references() -> None:
     mv.current_model.add_line(new_line)
     mv.commit_current()
 
+    # Force a full root -> child reactivation cycle.
     mv.activate_scenario(root.node_id)
     child_grid = mv.activate_scenario(child.node_id)
 
+    # The restored line endpoints must belong to the newly composed child grid.
     child_bus_set = set(child_grid.buses)
     restored_line = next(line for line in child_grid.lines if line.name == "child_line")
 
@@ -466,41 +585,52 @@ def test_multiverse_get_save_data_contains_consistent_metadata() -> None:
 
     This guards the serialization contract consumed later by parse_json() and the zip loader.
     """
+    # Build a sample multiverse and make the sibling the active scenario before serialization.
     mv, root, child, sibling, grandchild = _build_sample_multiverse()
+    mv.activate_scenario(sibling.node_id)
 
-    metadata, model_data = mv.get_save_data()
+    # Serialize metadata and split out the node records from the metadata envelope.
+    metadata, model_data, driver_data = mv.get_save_data()
+    nodes = metadata["nodes"]
 
-    assert set(metadata.keys()) == {root.node_id, child.node_id, sibling.node_id, grandchild.node_id}
+    # Verify both top-level and per-node metadata fields.
+    assert metadata["active_node_id"] == sibling.node_id
+    assert set(nodes.keys()) == {root.node_id, child.node_id, sibling.node_id, grandchild.node_id}
     assert set(model_data.keys()) == {node.circuit.idtag for node in mv.iter_nodes_depth_first()}
 
-    assert metadata[root.node_id]["parent_id"] is None
-    assert metadata[root.node_id]["children"] == [child.node_id, sibling.node_id]
-    assert metadata[child.node_id]["parent_id"] == root.node_id
-    assert metadata[child.node_id]["children"] == [grandchild.node_id]
-    assert metadata[sibling.node_id]["parent_id"] == root.node_id
-    assert metadata[sibling.node_id]["children"] == []
-    assert metadata[grandchild.node_id]["parent_id"] == child.node_id
-    assert metadata[grandchild.node_id]["children"] == []
+    assert nodes[root.node_id]["parent_id"] is None
+    assert nodes[root.node_id]["children"] == [child.node_id, sibling.node_id]
+    assert nodes[child.node_id]["parent_id"] == root.node_id
+    assert nodes[child.node_id]["children"] == [grandchild.node_id]
+    assert nodes[sibling.node_id]["parent_id"] == root.node_id
+    assert nodes[sibling.node_id]["children"] == []
+    assert nodes[grandchild.node_id]["parent_id"] == child.node_id
+    assert nodes[grandchild.node_id]["children"] == []
 
 
 def test_multiverse_parse_json_initializes_active_state() -> None:
     """
     Verify that parse_json() leaves the loaded multiverse in a usable active state.
 
-    After parsing, the first root should be the current node, and the base/current model
-    should point to the root's authoritative circuit.
+    After parsing, the saved active node should be restored, while base_model should still
+    point to the authoritative root circuit.
     """
-    mv, root, _, _, _ = _build_sample_multiverse()
+    # Build and serialize a multiverse with a non-root active node.
+    mv, root, child, _, _ = _build_sample_multiverse()
+    mv.activate_scenario(child.node_id)
 
-    metadata, model_data = mv.get_save_data()
+    metadata, model_data, driver_data = mv.get_save_data()
 
+    # Parse the payload into a fresh instance.
     loaded_mv = vge.MultiVerse(current_model=None)
     loaded_mv.parse_json(model_data, metadata)
 
-    assert loaded_mv.current_node is loaded_mv.root_nodes[0]
-    assert loaded_mv.current_node.node_id == root.node_id
-    assert loaded_mv.current_model is loaded_mv.root_nodes[0].circuit
+    # The active node must be restored while the base model remains the root.
+    assert loaded_mv.current_node.node_id == child.node_id
+    assert loaded_mv.current_model is not loaded_mv.current_node.circuit
+    _assert_circuits_equal(loaded_mv.current_model, loaded_mv.checkout(loaded_mv.current_node))
     assert loaded_mv.base_model is loaded_mv.root_nodes[0].circuit
+    assert loaded_mv.base_model is loaded_mv.get_node(root.node_id).circuit
 
 
 def test_multiverse_merge_children_into_parent_updates_current_when_child_was_active() -> None:
@@ -510,6 +640,7 @@ def test_multiverse_merge_children_into_parent_updates_current_when_child_was_ac
     If the currently active node is one of the removed children, the multiverse should
     keep a valid active node/model pair by switching to the merge target parent.
     """
+    # Build a parent with two children and make one child active before merging.
     mv = vge.MultiVerse(_load_grid("lynn5node.gridcal"))
     root = mv.root_nodes[0]
     child = mv.create_node(
@@ -523,6 +654,7 @@ def test_multiverse_merge_children_into_parent_updates_current_when_child_was_ac
         position=root.child_count(),
     )
 
+    # Give each child a distinct edit so both should appear in the merged parent.
     mv.activate_scenario(child.node_id)
     mv.current_model.add_bus(vge.Bus(Vnom=10.0, name="child_bus"))
 
@@ -530,9 +662,11 @@ def test_multiverse_merge_children_into_parent_updates_current_when_child_was_ac
     mv.current_model.add_bus(vge.Bus(Vnom=11.0, name="sibling_bus"))
     mv.commit_current()
 
+    # Merge while the soon-to-be-removed child is active.
     mv.activate_scenario(child.node_id)
     mv.merge_children_into_parent(root.node_id)
 
+    # The active scenario must fall back to the merge target parent with both edits applied.
     assert mv.current_node is root
     assert mv.current_model is root.circuit
     assert _get_bus_by_name(mv.current_model, "child_bus") is not None
@@ -545,6 +679,7 @@ def test_multiverse_merge_children_into_parent_noop_without_children() -> None:
 
     This covers the degenerate path where the selected node has no direct children to merge.
     """
+    # Build a simple root + leaf tree so the merge target has no direct children.
     mv = vge.MultiVerse(_load_grid("lynn5node.gridcal"))
     root = mv.root_nodes[0]
     leaf = mv.create_node(
@@ -553,9 +688,11 @@ def test_multiverse_merge_children_into_parent_noop_without_children() -> None:
         position=root.child_count(),
     )
 
+    # Activate the leaf and capture its current composed state.
     leaf_model = mv.activate_scenario(leaf.node_id)
     before_leaf = mv.checkout(leaf)
 
+    # Merging a leaf should do nothing but still keep active state valid.
     result = mv.merge_children_into_parent(leaf.node_id)
 
     assert result is leaf

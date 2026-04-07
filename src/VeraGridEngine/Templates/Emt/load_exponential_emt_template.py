@@ -8,7 +8,7 @@ from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType, VarPowerFl
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 
-def ExponentialLoad3phEmtBuild(vf: VarFactory, name: str = "EXP_Load_EMT_3ph") -> EmtModelTemplate:
+def get_exponential_load_3ph_emt(vf: VarFactory, name: str = "EXP_Load_EMT_3ph") -> EmtModelTemplate:
     """
     EMT 3-phase abc exponential load as CURRENT INJECTION.
 
@@ -21,6 +21,7 @@ def ExponentialLoad3phEmtBuild(vf: VarFactory, name: str = "EXP_Load_EMT_3ph") -
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
+    templ.block.name = name
 
     v_A = vf.add_var("v_A_" + name)
     v_B = vf.add_var("v_B_" + name)
@@ -163,7 +164,6 @@ def ExponentialLoad3phEmtBuild(vf: VarFactory, name: str = "EXP_Load_EMT_3ph") -
         VarPowerFlowRefferenceType.i_A: i_A,
         VarPowerFlowRefferenceType.i_B: i_B,
         VarPowerFlowRefferenceType.i_C: i_C,
-        VarPowerFlowRefferenceType.theta: None
     }
 
     templ.block.api_obj_mapping = {

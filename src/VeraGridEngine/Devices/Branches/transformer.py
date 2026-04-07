@@ -226,8 +226,8 @@ class Transformer2W(ControllableBranchParent):
                                           tc_type=tc_type)
 
         # set the high and low voltage values
-        self._HV: float = None if HV is None else float(HV)
-        self._LV: float = None if LV is None else float(LV)
+        self._HV: float | None = None if HV is None else float(HV)
+        self._LV: float | None = None if LV is None else float(LV)
 
         if self.bus_from and self.bus_to:
             self.set_hv_and_lv(HV, LV)
@@ -255,8 +255,6 @@ class Transformer2W(ControllableBranchParent):
         self._conn_t: WindingType = WindingType.GroundedStar
         self._vector_group_number: int = 0
         self._phases: IntVec = np.array([1, 2, 3])
-
-        # register
 
         # TODO: do we need to edit the phases vector?
 
@@ -306,7 +304,7 @@ class Transformer2W(ControllableBranchParent):
         else:
             raise Exception("phases must be a numpy array (IntVec)")
 
-    def set_hv_and_lv(self, HV: float, LV: float):
+    def set_hv_and_lv(self, HV: float | None, LV: float | None):
         """
         set the high and low voltage values
         :param HV: higher voltage value (kV)
@@ -431,6 +429,9 @@ class Transformer2W(ControllableBranchParent):
                     logger.add_error('Template not recognised', self.name)
             else:
                 self.template = obj
+
+            self.rms_template = obj.rms_template
+            self.emt_template = obj.emt_template
 
     def delete_virtual_taps(self):
         """

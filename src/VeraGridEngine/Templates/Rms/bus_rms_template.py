@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Tuple
+from typing import Tuple, Optional
 
 from typing import TYPE_CHECKING
 from VeraGridEngine.enumerations import DeviceType
@@ -48,6 +48,7 @@ class BusRmsTemplate(RmsModelTemplate):
             self.Vm = vf.add_var("Vm", VarPowerFlowRefferenceType.Vm)
             self.Va = vf.add_var("Va", VarPowerFlowRefferenceType.Va)
 
+
             self._block = Block(
                 algebraic_vars=[self.Vm, self.Va],
                 out_vars=[self.Vm, self.Va]
@@ -68,12 +69,33 @@ def initialize_bus_rms(bus: Bus, vf: VarFactory):
     """
     bus.rms_model = BusRmsTemplate(vf=vf, is_dc=bus.is_dc).block
 
-def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Var]:
-    """
-    Initializes rms model if not initialized
-    :return: Vm, Va rms vars
-    """
 
-    return bus_rms_model.algebraic_vars[0], bus_rms_model.algebraic_vars[1]
+
+def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Optional[Var]]:
+    """
+    Return the RMS bus algebraic voltage variables.
+
+    For AC buses:
+        returns (Vm, Va)
+
+    For DC buses:
+        returns (Vdc, None)
+
+    :param bus_rms_model: RMS bus block
+    :return: Tuple with two positions to preserve the project API
+    """
+    mapping = bus_rms_model.external_mapping
+
+    vdc = mapping.get(VarPowerFlowRefferenceType.Vdc, None)
+    if vdc is not None:
+        return vdc, None
+
+    Vm = mapping.get(VarPowerFlowRefferenceType.Vm, None)
+    Va = mapping.get(VarPowerFlowRefferenceType.Va, None)
+
+    if Vm is None or Va is None:
+        raise ValueError("Invalid RMS bus model: expected either (Vdc) or (Vm, Va)")
+
+    return Vm, Va
 
 

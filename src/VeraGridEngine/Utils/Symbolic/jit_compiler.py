@@ -53,6 +53,260 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Expr, BinOp, UnOp, Func, Var,
 from VeraGridEngine.basic_structures import Vec
 
 
+class GeneratedKernelCacheEntry:
+    """
+    In-process cache entry for one generated eager kernel.
+    """
+
+    __slots__ = ["_python_function", "_signature_tpe"]
+
+    def __init__(self, python_function: Callable, signature_tpe: Any) -> None:
+        """
+        Build one generated-kernel cache entry.
+
+        :param python_function: Generated Python function.
+        :type python_function: Callable
+        :param signature_tpe: Eager Numba signature.
+        :type signature_tpe: Any
+        :return: None.
+        :rtype: None
+        """
+        self._python_function = python_function
+        self._signature_tpe = signature_tpe
+
+    def get_python_function(self) -> Callable:
+        """
+        Return the generated Python function.
+
+        :return: Generated Python function.
+        :rtype: Callable
+        """
+        return self._python_function
+
+    def get_signature_tpe(self) -> Any:
+        """
+        Return the eager Numba signature.
+
+        :return: Eager Numba signature.
+        :rtype: Any
+        """
+        return self._signature_tpe
+
+
+def _build_equation_compiler_residual_cache_key(equations: List[Expr],
+                                                var_map: Dict[int, int],
+                                                param_map: Dict[int, int],
+                                                method_name: str,
+                                                use_cse: bool,
+                                                offset: int,
+                                                inplace: bool) -> str:
+    """
+    Return a deterministic cache key for one ``EquationCompiler`` residual kernel.
+
+    :param equations: Residual equations.
+    :type equations: List[Expr]
+    :param var_map: Runtime variable index map.
+    :type var_map: Dict[int, int]
+    :param param_map: Parameter index map.
+    :type param_map: Dict[int, int]
+    :param method_name: Discretization strategy name.
+    :type method_name: str
+    :param use_cse: Whether CSE is enabled.
+    :type use_cse: bool
+    :param offset: Output offset.
+    :type offset: int
+    :param inplace: Whether the kernel writes in place.
+    :type inplace: bool
+    :return: Deterministic cache key.
+    :rtype: str
+    """
+    expr_fingerprints: List[str] = list()
+    equation_index: int = 0
+
+    while equation_index < len(equations):
+        expr_fingerprints.append(
+            _fingerprint_codegen_expr(
+                equations[equation_index],
+                var_map,
+                param_map,
+                method_name,
+                None,
+            )
+        )
+        equation_index += 1
+
+    payload: str = "|".join([
+        "eq-compiler-residual",
+        method_name,
+        str(use_cse),
+        str(offset),
+        str(inplace),
+        str(len(var_map)),
+        str(len(param_map)),
+        "::".join(expr_fingerprints),
+    ])
+    return _build_codegen_cache_key(payload)
+
+
+def _build_equation_compiler_ad_cache_key(equations: List[Expr],
+                                          var_map: Dict[int, int],
+                                          param_map: Dict[int, int],
+                                          method_name: str,
+                                          use_cse: bool,
+                                          active_indices: set | None) -> str:
+    """
+    Return a deterministic cache key for one ``EquationCompiler`` AD kernel.
+
+    :param equations: Residual equations.
+    :type equations: List[Expr]
+    :param var_map: Runtime variable index map.
+    :type var_map: Dict[int, int]
+    :param param_map: Parameter index map.
+    :type param_map: Dict[int, int]
+    :param method_name: Discretization strategy name.
+    :type method_name: str
+    :param use_cse: Whether CSE is enabled.
+    :type use_cse: bool
+    :param active_indices: Optional active seed indices.
+    :type active_indices: set | None
+    :return: Deterministic cache key.
+    :rtype: str
+    """
+    expr_fingerprints: List[str] = list()
+    active_index_tokens: List[str] = list()
+    equation_index: int = 0
+
+    while equation_index < len(equations):
+        expr_fingerprints.append(
+            _fingerprint_codegen_expr(
+                equations[equation_index],
+                var_map,
+                param_map,
+                method_name,
+                None,
+            )
+        )
+        equation_index += 1
+
+    if active_indices is None:
+        active_index_tokens = list()
+    else:
+        active_index_tokens = [str(index) for index in sorted(list(active_indices))]
+
+    payload: str = "|".join([
+        "eq-compiler-ad",
+        method_name,
+        str(use_cse),
+        str(len(var_map)),
+        str(len(param_map)),
+        ",".join(active_index_tokens),
+        "::".join(expr_fingerprints),
+    ])
+    return _build_codegen_cache_key(payload)
+
+
+def _build_equation_compiler_matrix_cache_key(template_eq: Expr,
+                                              var_map: Dict[int, int],
+                                              param_map: Dict[int, int],
+                                              method_name: str,
+                                              col_map: Dict[str, int]) -> str:
+    """
+    Return a deterministic cache key for one ``MatrixVectorizedCompiler`` kernel.
+
+    :param template_eq: Structural template equation.
+    :type template_eq: Expr
+    :param var_map: Runtime variable index map.
+    :type var_map: Dict[int, int]
+    :param param_map: Parameter index map.
+    :type param_map: Dict[int, int]
+    :param method_name: Discretization strategy name.
+    :type method_name: str
+    :param col_map: Matrix-kernel column map.
+    :type col_map: Dict[str, int]
+    :return: Deterministic cache key.
+    :rtype: str
+    """
+    sorted_col_items: List[str] = list()
+    col_name: str
+
+    for col_name in sorted(col_map.keys()):
+        sorted_col_items.append(f"{col_name}:{col_map[col_name]}")
+
+    payload: str = "|".join([
+        "eq-compiler-matrix",
+        method_name,
+        str(len(var_map)),
+        str(len(param_map)),
+        ",".join(sorted_col_items),
+        _fingerprint_codegen_expr(template_eq, var_map, param_map, method_name, col_map),
+    ])
+    return _build_codegen_cache_key(payload)
+
+
+class GeneratedKernelCache:
+    """
+    In-process cache for generated eager kernels keyed by structural signature.
+    """
+
+    __slots__ = ["_residual_cache", "_ad_cache", "_matrix_cache"]
+
+    def __init__(self) -> None:
+        """
+        Build the generated-kernel cache.
+
+        :return: None.
+        :rtype: None
+        """
+        self._residual_cache: Dict[str, GeneratedKernelCacheEntry] = dict()
+        self._ad_cache: Dict[str, GeneratedKernelCacheEntry] = dict()
+        self._matrix_cache: Dict[str, GeneratedKernelCacheEntry] = dict()
+
+    def get_entry(self, cache_kind: str, cache_key: str) -> GeneratedKernelCacheEntry | None:
+        """
+        Return one cached kernel entry.
+
+        :param cache_kind: Cache family identifier.
+        :type cache_kind: str
+        :param cache_key: Deterministic cache key.
+        :type cache_key: str
+        :return: Cached entry or ``None``.
+        :rtype: GeneratedKernelCacheEntry | None
+        """
+        if cache_kind == "residual":
+            return self._residual_cache.get(cache_key, None)
+        elif cache_kind == "ad":
+            return self._ad_cache.get(cache_key, None)
+        elif cache_kind == "matrix":
+            return self._matrix_cache.get(cache_key, None)
+        else:
+            raise ValueError(f"Unknown generated-kernel cache kind: {cache_kind}")
+
+    def set_entry(self, cache_kind: str, cache_key: str, entry: GeneratedKernelCacheEntry) -> None:
+        """
+        Store one cached kernel entry.
+
+        :param cache_kind: Cache family identifier.
+        :type cache_kind: str
+        :param cache_key: Deterministic cache key.
+        :type cache_key: str
+        :param entry: Cache entry.
+        :type entry: GeneratedKernelCacheEntry
+        :return: None.
+        :rtype: None
+        """
+        if cache_kind == "residual":
+            self._residual_cache[cache_key] = entry
+        elif cache_kind == "ad":
+            self._ad_cache[cache_key] = entry
+        elif cache_kind == "matrix":
+            self._matrix_cache[cache_key] = entry
+        else:
+            raise ValueError(f"Unknown generated-kernel cache kind: {cache_kind}")
+
+
+GENERATED_KERNEL_CACHE = GeneratedKernelCache()
+
+
 def _is_zero(s: str) -> bool:
     return s in ["0.0", "0", "0.00", "(-0.0)"]
 
@@ -94,6 +348,263 @@ def _compile_to_file(full_source: str, func_name: str) -> Callable:
     spec.loader.exec_module(module)
 
     return module.__dict__[func_name]
+
+
+def _build_codegen_cache_key(payload: str) -> str:
+    """
+    Return a deterministic cache key for generated eager kernels.
+
+    :param payload: Deterministic payload string.
+    :type payload: str
+    :return: Cache key.
+    :rtype: str
+    """
+    cache_version: str = "jit-codegen-v1"
+    return hashlib.md5((cache_version + "|" + payload).encode("utf-8")).hexdigest()
+
+
+def _fingerprint_codegen_var(node: Var,
+                             var_map: Dict[int, int],
+                             param_map: Dict[int, int],
+                             method_name: str,
+                             col_map: Dict[str, int] | None = None) -> str:
+    """
+    Return a stable code-generation fingerprint for one variable node.
+
+    :param node: Variable node.
+    :type node: Var
+    :param var_map: Runtime variable index map.
+    :type var_map: Dict[int, int]
+    :param param_map: Parameter index map.
+    :type param_map: Dict[int, int]
+    :param method_name: Discretization strategy name.
+    :type method_name: str
+    :param col_map: Optional matrix-kernel column map.
+    :type col_map: Dict[str, int] | None
+    :return: Stable fingerprint string.
+    :rtype: str
+    """
+    if node.uid in param_map:
+        return f"P{param_map[node.uid]}"
+    elif col_map is None and node.uid in var_map:
+        return f"S{var_map[node.uid]}"
+    elif col_map is not None and node.uid in var_map:
+        mapped_name: str = node.name
+
+        if mapped_name in col_map:
+            return f"M{col_map[mapped_name]}"
+        elif node.base_var is not None and node.origin_var.name in col_map:
+            return f"M{col_map[node.origin_var.name]}"
+        else:
+            return f"MN:{mapped_name}"
+    elif node.base_var is not None:
+        if node.base_var.base_var is not None:
+            nested_fp: str = _fingerprint_codegen_var(node.base_var, var_map, param_map, method_name, col_map)
+            return f"DD[{method_name}|{nested_fp}]"
+        elif col_map is None:
+            return f"D[{method_name}|S{var_map[node.base_var.uid]}]"
+        else:
+            return f"D[{method_name}|M{col_map[node.origin_var.name]}]"
+    elif node.name == 'h':
+        return "H"
+    else:
+        return f"N:{node.name}"
+
+
+def _fingerprint_codegen_expr(node: Expr,
+                              var_map: Dict[int, int],
+                              param_map: Dict[int, int],
+                              method_name: str,
+                              col_map: Dict[str, int] | None = None) -> str:
+    """
+    Return a stable code-generation fingerprint for one symbolic expression.
+
+    :param node: Symbolic expression node.
+    :type node: Expr
+    :param var_map: Runtime variable index map.
+    :type var_map: Dict[int, int]
+    :param param_map: Parameter index map.
+    :type param_map: Dict[int, int]
+    :param method_name: Discretization strategy name.
+    :type method_name: str
+    :param col_map: Optional matrix-kernel column map.
+    :type col_map: Dict[str, int] | None
+    :return: Stable fingerprint string.
+    :rtype: str
+    """
+    if isinstance(node, Const):
+        return f"C[{repr(node.value)}]"
+    elif isinstance(node, Var):
+        return _fingerprint_codegen_var(node, var_map, param_map, method_name, col_map)
+    elif isinstance(node, BinOp):
+        left_fp: str = _fingerprint_codegen_expr(node.left, var_map, param_map, method_name, col_map)
+        right_fp: str = _fingerprint_codegen_expr(node.right, var_map, param_map, method_name, col_map)
+
+        if node.op in ['+', '*'] and left_fp > right_fp:
+            left_fp, right_fp = right_fp, left_fp
+        else:
+            pass
+
+        return f"B[{node.op}|{left_fp}|{right_fp}]"
+    elif isinstance(node, UnOp):
+        operand_fp: str = _fingerprint_codegen_expr(node.operand, var_map, param_map, method_name, col_map)
+        return f"U[{node.op}|{operand_fp}]"
+    elif isinstance(node, Func):
+        arg_fp: str = _fingerprint_codegen_expr(node.arg, var_map, param_map, method_name, col_map)
+        return f"F[{node.op}|{arg_fp}]"
+    else:
+        return f"RAW[{type(node).__name__}|{str(node)}]"
+
+
+def _build_residual_codegen_cache_key(equations: List[Expr],
+                                      var_map: Dict[int, int],
+                                      param_map: Dict[int, int],
+                                      method_name: str,
+                                      use_cse: bool,
+                                      offset: int,
+                                      n_variables: int,
+                                      n_parameters: int) -> str:
+    """
+    Return the cache key of one residual kernel.
+
+    :param equations: Residual equations.
+    :type equations: List[Expr]
+    :param var_map: Runtime variable index map.
+    :type var_map: Dict[int, int]
+    :param param_map: Parameter index map.
+    :type param_map: Dict[int, int]
+    :param method_name: Discretization strategy name.
+    :type method_name: str
+    :param use_cse: Whether CSE is enabled.
+    :type use_cse: bool
+    :param offset: Output offset.
+    :type offset: int
+    :param n_variables: Number of runtime variables.
+    :type n_variables: int
+    :param n_parameters: Number of parameters.
+    :type n_parameters: int
+    :return: Deterministic cache key.
+    :rtype: str
+    """
+    expr_fingerprints: List[str] = list()
+    equation_index: int = 0
+
+    while equation_index < len(equations):
+        expr_fingerprints.append(_fingerprint_codegen_expr(equations[equation_index], var_map, param_map, method_name, None))
+        equation_index += 1
+
+    payload: str = "|".join([
+        "residual",
+        method_name,
+        str(use_cse),
+        str(offset),
+        str(n_variables),
+        str(n_parameters),
+        str(len(equations)),
+        "::".join(expr_fingerprints),
+    ])
+    return _build_codegen_cache_key(payload)
+
+
+def _build_ad_codegen_cache_key(equations: List[Expr],
+                                var_map: Dict[int, int],
+                                param_map: Dict[int, int],
+                                method_name: str,
+                                use_cse: bool,
+                                active_indices: set | None,
+                                n_variables: int,
+                                n_parameters: int) -> str:
+    """
+    Return the cache key of one AD kernel.
+
+    :param equations: Residual equations.
+    :type equations: List[Expr]
+    :param var_map: Runtime variable index map.
+    :type var_map: Dict[int, int]
+    :param param_map: Parameter index map.
+    :type param_map: Dict[int, int]
+    :param method_name: Discretization strategy name.
+    :type method_name: str
+    :param use_cse: Whether CSE is enabled.
+    :type use_cse: bool
+    :param active_indices: Active seed indices or ``None``.
+    :type active_indices: set | None
+    :param n_variables: Number of runtime variables.
+    :type n_variables: int
+    :param n_parameters: Number of parameters.
+    :type n_parameters: int
+    :return: Deterministic cache key.
+    :rtype: str
+    """
+    expr_fingerprints: List[str] = list()
+    active_index_list: List[str] = list()
+    equation_index: int = 0
+
+    while equation_index < len(equations):
+        expr_fingerprints.append(_fingerprint_codegen_expr(equations[equation_index], var_map, param_map, method_name, None))
+        equation_index += 1
+
+    if active_indices is None:
+        active_index_list = list()
+    else:
+        active_index_list = [str(index) for index in sorted(list(active_indices))]
+
+    payload: str = "|".join([
+        "ad",
+        method_name,
+        str(use_cse),
+        str(n_variables),
+        str(n_parameters),
+        str(len(equations)),
+        ",".join(active_index_list),
+        "::".join(expr_fingerprints),
+    ])
+    return _build_codegen_cache_key(payload)
+
+
+def _build_matrix_codegen_cache_key(template_eq: Expr,
+                                    var_map: Dict[int, int],
+                                    param_map: Dict[int, int],
+                                    method_name: str,
+                                    col_map: Dict[str, int],
+                                    n_variables: int,
+                                    n_parameters: int) -> str:
+    """
+    Return the cache key of one matrix-vectorized kernel.
+
+    :param template_eq: Structural template equation.
+    :type template_eq: Expr
+    :param var_map: Runtime variable index map.
+    :type var_map: Dict[int, int]
+    :param param_map: Parameter index map.
+    :type param_map: Dict[int, int]
+    :param method_name: Discretization strategy name.
+    :type method_name: str
+    :param col_map: Matrix-kernel column map.
+    :type col_map: Dict[str, int]
+    :param n_variables: Number of runtime variables.
+    :type n_variables: int
+    :param n_parameters: Number of parameters.
+    :type n_parameters: int
+    :return: Deterministic cache key.
+    :rtype: str
+    """
+    expr_fingerprint: str = _fingerprint_codegen_expr(template_eq, var_map, param_map, method_name, col_map)
+    sorted_col_items: List[str] = list()
+    col_name: str
+
+    for col_name in sorted(col_map.keys()):
+        sorted_col_items.append(f"{col_name}:{col_map[col_name]}")
+
+    payload: str = "|".join([
+        "matrix",
+        method_name,
+        str(n_variables),
+        str(n_parameters),
+        ",".join(sorted_col_items),
+        expr_fingerprint,
+    ])
+    return _build_codegen_cache_key(payload)
 
 # ==============================================================================
 # 1. Discretization strategy (Numerical Methods)
@@ -767,11 +1278,29 @@ class EquationCompiler:
                 offset: int = 0, inplace: bool = False) -> Callable:
 
         lines: List[str] = list()
+        cache_key: str = _build_equation_compiler_residual_cache_key(
+            equations,
+            self.var_map,
+            self.param_map,
+            type(self.strategy).__name__,
+            use_cse,
+            offset,
+            inplace,
+        )
+        cache_entry: GeneratedKernelCacheEntry | None = GENERATED_KERNEL_CACHE.get_entry("residual", cache_key)
+
+        if cache_entry is None:
+            pass
+        else:
+            return cache_entry.get_python_function()
+
+        canonical_func_name: str = f"eq_step_{cache_key[:16]}"
+
         # Header depends on mode
         if inplace:
-            lines.append(f"def {func_name}(states, params, history, d_history, h, residuals, history2=None):")
+            lines.append(f"def {canonical_func_name}(states, params, history, d_history, h, residuals, history2=None):")
         else:
-            lines.append(f"def {func_name}(states, params, history, d_history, h, history2=None):")
+            lines.append(f"def {canonical_func_name}(states, params, history, d_history, h, history2=None):")
 
         # --- CSE Block ---
         if use_cse:
@@ -817,16 +1346,33 @@ class EquationCompiler:
         self.visitor._str_cache = dict()
 
         full_source = "\n".join(lines)
-
-        return _compile_to_file(full_source, func_name)
+        py_func: Callable = _compile_to_file(full_source, canonical_func_name)
+        GENERATED_KERNEL_CACHE.set_entry("residual", cache_key, GeneratedKernelCacheEntry(py_func, None))
+        return py_func
 
     def compile_ad_kernel(self, equations: List[Expr], func_name: str = "ad_step", use_cse: bool = True,
                           active_indices: set | None = None) -> Callable:
 
         adv = ADVisitor(self.var_map, self.param_map, self.strategy, seeds_var='seeds', active_indices=active_indices)
+        cache_key: str = _build_equation_compiler_ad_cache_key(
+            equations,
+            self.var_map,
+            self.param_map,
+            type(self.strategy).__name__,
+            use_cse,
+            active_indices,
+        )
+        cache_entry: GeneratedKernelCacheEntry | None = GENERATED_KERNEL_CACHE.get_entry("ad", cache_key)
+
+        if cache_entry is None:
+            pass
+        else:
+            return cache_entry.get_python_function()
+
+        canonical_func_name: str = f"eq_ad_{cache_key[:16]}"
 
         lines: List[str] = list()
-        lines.append(f"def {func_name}(states, seeds, params, history, d_history, h, history2=None):")
+        lines.append(f"def {canonical_func_name}(states, seeds, params, history, d_history, h, history2=None):")
 
         if use_cse:
             analyzer = SubexpressionAnalyzer()
@@ -872,8 +1418,9 @@ class EquationCompiler:
         adv._str_cache = dict()
 
         full_source: str = "\n".join(lines)
-
-        return _compile_to_file(full_source, func_name)
+        py_func: Callable = _compile_to_file(full_source, canonical_func_name)
+        GENERATED_KERNEL_CACHE.set_entry("ad", cache_key, GeneratedKernelCacheEntry(py_func, None))
+        return py_func
 
 
 # ==============================================================================
@@ -962,20 +1509,38 @@ class MatrixVectorizedCompiler(EquationCompiler):
             name = v.base_var.name if v.base_var is not None else v.name
             col_map[name] = i
 
+        cache_key: str = _build_equation_compiler_matrix_cache_key(
+            template_eq,
+            self.var_map,
+            self.param_map,
+            type(self.strategy).__name__,
+            col_map,
+        )
+        cache_entry: GeneratedKernelCacheEntry | None = GENERATED_KERNEL_CACHE.get_entry("matrix", cache_key)
+
+        if cache_entry is None:
+            pass
+        else:
+            return cache_entry.get_python_function()
+
+        canonical_func_name: str = f"eq_matrix_{cache_key[:16]}"
+
         # 2. Generate source code using the Matrix Visitor
         visitor = MatrixVectorizedVisitor(self.var_map, self.param_map, self.strategy, col_map)
         rhs_code = visitor.visit(template_eq)
 
         # 3. Package into a function (indices is now a 2D int32 array)
         lines: List[str] = list()
-        lines.append(f"def {func_name}(states, params, history, d_history, h, indices, history2=None):")
+        lines.append(f"def {canonical_func_name}(states, params, history, d_history, h, indices, history2=None):")
         lines.append(f"    # Vectorized Matrix Kernel (No Dicts)")
         lines.append(f"    residuals = {rhs_code}")
         lines.append(f"    return residuals")
         full_source = "\n".join(lines)
 
         # 4. Compile to file (enabling Numba's persistent cache)
-        return _compile_to_file(full_source, func_name)
+        py_func: Callable = _compile_to_file(full_source, canonical_func_name)
+        GENERATED_KERNEL_CACHE.set_entry("matrix", cache_key, GeneratedKernelCacheEntry(py_func, None))
+        return py_func
 
 
 class EagerKernelKind(Enum):
@@ -1153,16 +1718,40 @@ class EagerEquationCompiler(EquationCompiler):
         py_func: Callable
         signature_tpe: Any
         full_source: str
+        cache_key: str
+        cache_entry: GeneratedKernelCacheEntry | None
+        canonical_func_name: str
+        cache_key: str
+        cache_entry: GeneratedKernelCacheEntry | None
+        canonical_func_name: str
 
         if inplace:
             pass
         else:
             raise ValueError("EagerEquationCompiler only supports inplace residual kernels")
 
+        cache_key = _build_residual_codegen_cache_key(
+            equations,
+            self.var_map,
+            self.param_map,
+            type(self.strategy).__name__,
+            use_cse,
+            offset,
+            len(self.variables_objs),
+            len(self.parameters_objs),
+        )
+        cache_entry = GENERATED_KERNEL_CACHE.get_entry("residual", cache_key)
+
+        if cache_entry is None:
+            pass
+        else:
+            return cache_entry.get_python_function(), cache_entry.get_signature_tpe()
+
         _reset_symbolic_codegen_state(self.visitor)
+        canonical_func_name = f"eager_residual_{cache_key[:16]}"
 
         # The eager ABI receives an explicit output vector and writes residuals in place.
-        lines.append(f"def {func_name}(states, params, history, d_history, h, data_out, history2):")
+        lines.append(f"def {canonical_func_name}(states, params, history, d_history, h, data_out, history2):")
 
         # Common subexpressions are emitted first so the body performs direct writes only once.
         if use_cse:
@@ -1191,7 +1780,7 @@ class EagerEquationCompiler(EquationCompiler):
             lines.append(f"    data_out[{offset + i}] = {expr_code}")
 
         full_source = "\n".join(lines)
-        py_func = _compile_to_file(full_source, func_name)
+        py_func = _compile_to_file(full_source, canonical_func_name)
         signature_tpe = self.generate_signature(
             kernel_tpe=EagerKernelKind.Residual,
             n_variables=len(self.variables_objs),
@@ -1201,6 +1790,7 @@ class EagerEquationCompiler(EquationCompiler):
         )
 
         _reset_symbolic_codegen_state(self.visitor)
+        GENERATED_KERNEL_CACHE.set_entry("residual", cache_key, GeneratedKernelCacheEntry(py_func, signature_tpe))
         return py_func, signature_tpe
 
     def compile_ad_kernel(
@@ -1235,11 +1825,32 @@ class EagerEquationCompiler(EquationCompiler):
         py_func: Callable
         signature_tpe: Any
         full_source: str
+        cache_key: str
+        cache_entry: GeneratedKernelCacheEntry | None
+        canonical_func_name: str
+
+        cache_key = _build_ad_codegen_cache_key(
+            equations,
+            self.var_map,
+            self.param_map,
+            type(self.strategy).__name__,
+            use_cse,
+            active_indices,
+            len(self.variables_objs),
+            len(self.parameters_objs),
+        )
+        cache_entry = GENERATED_KERNEL_CACHE.get_entry("ad", cache_key)
+
+        if cache_entry is None:
+            pass
+        else:
+            return cache_entry.get_python_function(), cache_entry.get_signature_tpe()
 
         _reset_symbolic_codegen_state(adv)
+        canonical_func_name = f"eager_ad_{cache_key[:16]}"
 
         # The eager AD ABI also writes into a caller-owned buffer to avoid JVP allocations.
-        lines.append(f"def {func_name}(states, seeds, params, history, d_history, h, data_out, history2):")
+        lines.append(f"def {canonical_func_name}(states, seeds, params, history, d_history, h, data_out, history2):")
 
         # Emit CSE definitions first so both values and directional derivatives can be reused.
         if use_cse:
@@ -1282,7 +1893,7 @@ class EagerEquationCompiler(EquationCompiler):
                 lines.append(f"    data_out[{i}] = 0.0")
 
         full_source = "\n".join(lines)
-        py_func = _compile_to_file(full_source, func_name)
+        py_func = _compile_to_file(full_source, canonical_func_name)
         signature_tpe = self.generate_signature(
             kernel_tpe=EagerKernelKind.AutomaticDifferentiation,
             n_variables=len(self.variables_objs),
@@ -1292,6 +1903,7 @@ class EagerEquationCompiler(EquationCompiler):
         )
 
         _reset_symbolic_codegen_state(adv)
+        GENERATED_KERNEL_CACHE.set_entry("ad", cache_key, GeneratedKernelCacheEntry(py_func, signature_tpe))
         return py_func, signature_tpe
 
     def compile_matrix_kernel(
@@ -1329,16 +1941,33 @@ class EagerEquationCompiler(EquationCompiler):
                 mapped_name = v.base_var.name
             col_map[mapped_name] = i
 
+        cache_key = _build_matrix_codegen_cache_key(
+            template_eq,
+            self.var_map,
+            self.param_map,
+            type(self.strategy).__name__,
+            col_map,
+            len(self.variables_objs),
+            len(self.parameters_objs),
+        )
+        cache_entry = GENERATED_KERNEL_CACHE.get_entry("matrix", cache_key)
+
+        if cache_entry is None:
+            pass
+        else:
+            return cache_entry.get_python_function(), cache_entry.get_signature_tpe()
+
         # The matrix visitor resolves vectorized gather operations through the grouped index matrix.
         visitor = MatrixVectorizedVisitor(self.var_map, self.param_map, self.strategy, col_map)
         rhs_code = visitor.visit(template_eq)
+        canonical_func_name = f"eager_matrix_{cache_key[:16]}"
 
         # The eager matrix ABI writes directly into the caller-owned batch buffer.
-        lines.append(f"def {func_name}(states, params, history, d_history, h, indices, data_out, history2):")
+        lines.append(f"def {canonical_func_name}(states, params, history, d_history, h, indices, data_out, history2):")
         lines.append(f"    data_out[:indices.shape[0]] = {rhs_code}")
 
         full_source = "\n".join(lines)
-        py_func = _compile_to_file(full_source, func_name)
+        py_func = _compile_to_file(full_source, canonical_func_name)
         signature_tpe = self.generate_signature(
             kernel_tpe=EagerKernelKind.MatrixVectorized,
             n_variables=len(self.variables_objs),
@@ -1347,6 +1976,7 @@ class EagerEquationCompiler(EquationCompiler):
             with_history2=True,
         )
 
+        GENERATED_KERNEL_CACHE.set_entry("matrix", cache_key, GeneratedKernelCacheEntry(py_func, signature_tpe))
         return py_func, signature_tpe
 
 # ==============================================================================

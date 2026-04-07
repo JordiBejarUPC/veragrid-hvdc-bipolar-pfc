@@ -92,6 +92,9 @@
               <attribute name="title">
                <string>Library</string>
               </attribute>
+              <attribute name="toolTip">
+               <string>Drag and drop models into the scene</string>
+              </attribute>
               <layout class="QVBoxLayout" name="verticalLayout_5">
                <property name="leftMargin">
                 <number>0</number>
@@ -117,10 +120,13 @@
              <widget class="QWidget" name="tab_2">
               <attribute name="icon">
                <iconset resource="../Icons/icons.qrc">
-                <normaloff>:/Icons/icons/data.png</normaloff>:/Icons/icons/data.png</iconset>
+                <normaloff>:/Icons/icons/edit.png</normaloff>:/Icons/icons/edit.png</iconset>
               </attribute>
               <attribute name="title">
-               <string>Parameters</string>
+               <string>Edit Selected</string>
+              </attribute>
+              <attribute name="toolTip">
+               <string>Select one block to edit its variables and equations</string>
               </attribute>
               <layout class="QVBoxLayout" name="verticalLayout_2">
                <property name="leftMargin">
@@ -136,7 +142,51 @@
                 <number>0</number>
                </property>
                <item>
+                <widget class="QLabel" name="variablesLabel">
+                 <property name="styleSheet">
+                  <string>font-weight: bold; padding: 4px;</string>
+                 </property>
+                 <property name="text">
+                  <string>Variables</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QTableView" name="variablesTableView">
+                 <property name="frameShape">
+                  <enum>QFrame::Shape::NoFrame</enum>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="parametersLabel">
+                 <property name="styleSheet">
+                  <string>font-weight: bold; padding: 4px;</string>
+                 </property>
+                 <property name="text">
+                  <string>Parameters</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
                 <widget class="QTableView" name="parametersTableView">
+                 <property name="frameShape">
+                  <enum>QFrame::Shape::NoFrame</enum>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="equationsLabel">
+                 <property name="styleSheet">
+                  <string>font-weight: bold; padding: 4px;</string>
+                 </property>
+                 <property name="text">
+                  <string>Equations</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QTableView" name="equationsTableView">
                  <property name="frameShape">
                   <enum>QFrame::Shape::NoFrame</enum>
                  </property>

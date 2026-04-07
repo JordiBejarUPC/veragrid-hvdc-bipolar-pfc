@@ -122,6 +122,7 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
             block=self.api_object.rms_model,
             api_object=self.api_object,
             mode=DynamicEditorMode.RMS,
+            templates_list=self.editor.circuit.get_rms_models_by_device_type(self.api_object.device_type),
             main_editor=True,
         )
         rms_model_editor.show()

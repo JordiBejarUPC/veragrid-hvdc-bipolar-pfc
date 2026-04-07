@@ -6,24 +6,26 @@
 from typing import Tuple
 
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes
+from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledWarmupPolicy
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtInitializationMethod, EmtSolverTypes, EmtProblemTypes, SparseSolver
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 
 class EmtOptions(OptionsTemplate):
     """
-    Rms simulation options
+    EMT simulation options
     """
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key="time_step", tpe=float),
         GCProp(key="simulation_time", tpe=float),
         GCProp(key="tolerance", tpe=float),
-        GCProp(key="solver", tpe=EmtSolverTypes),
+        GCProp(key="solver_type", tpe=EmtSolverTypes),
         GCProp(key="integration_method", tpe=DynamicIntegrationMethod),
         GCProp(key="verbose", tpe=int),
         GCProp(key="initialization_method", tpe=EmtInitializationMethod),
+        GCProp(key="problem_type", tpe=EmtProblemTypes),
         GCProp(key="init_newton_tol", tpe=float),
         GCProp(key="init_newton_max_iter", tpe=int),
         GCProp(key="init_newton_backtracking", tpe=bool),
@@ -47,16 +49,22 @@ class EmtOptions(OptionsTemplate):
         GCProp(key="newton_backtracking_beta", tpe=float),
         GCProp(key="newton_backtracking_min_alpha", tpe=float),
         GCProp(key="newton_backtracking_max_iter", tpe=int),
+        GCProp(key="compiled_warmup_policy", tpe=StructuralCompiledWarmupPolicy),
+        GCProp(key="sparse_solver", tpe=SparseSolver),
+        GCProp(key="external_sparse_solver_directory", tpe=str),
+        GCProp(key="external_sparse_solver_plugin_name", tpe=str),
+        GCProp(key="allow_internal_sparse_fallback", tpe=bool),
     )
 
     def __init__(self,
-                 time_step: float = 0.0001,
-                 simulation_time: float = 5,
+                 time_step: float = 5e-6,
+                 simulation_time: float = 0.02,
                  tolerance: float = 1e-6,
-                 solver: EmtSolverTypes = EmtSolverTypes.StructuralAD,
+                 solver_type: EmtSolverTypes = EmtSolverTypes.StructuralAD,
                  integration_method: DynamicIntegrationMethod = DynamicIntegrationMethod.DaeTrapezoidal,
                  verbose: int = 0,
                  initialization_method: EmtInitializationMethod = EmtInitializationMethod.Auto,
+                 problem_type: EmtProblemTypes = EmtProblemTypes.CurrentBalance,
                  init_newton_tol: float = 1e-8,
                  init_newton_max_iter: int = 20,
                  init_newton_backtracking: bool = True,
@@ -79,7 +87,12 @@ class EmtOptions(OptionsTemplate):
                  newton_index1_fail_pivot_ratio: float = 1e-14,
                  newton_backtracking_beta: float = 0.5,
                  newton_backtracking_min_alpha: float = 1e-4,
-                 newton_backtracking_max_iter: int = 6):
+                 newton_backtracking_max_iter: int = 6,
+                 compiled_warmup_policy: StructuralCompiledWarmupPolicy = StructuralCompiledWarmupPolicy.Adaptive,
+                 sparse_solver: SparseSolver = SparseSolver.SuperLU,
+                 external_sparse_solver_directory: str = "",
+                 external_sparse_solver_plugin_name: str = "",
+                 allow_internal_sparse_fallback: bool = True):
         """
         EmtOptions
         :param time_step: time step of the simulations (s)
@@ -93,10 +106,11 @@ class EmtOptions(OptionsTemplate):
         self.time_step: float = time_step
         self.simulation_time: float = simulation_time
         self.tolerance: float = tolerance
-        self.solver: EmtSolverTypes = solver
+        self.solver_type: EmtSolverTypes = solver_type
         self.integration_method: DynamicIntegrationMethod = integration_method
         self.verbose = verbose
         self.initialization_method: EmtInitializationMethod = initialization_method
+        self.problem_type: EmtProblemTypes = problem_type
         self.init_newton_tol: float = init_newton_tol
         self.init_newton_max_iter: int = init_newton_max_iter
         self.init_newton_backtracking: bool = init_newton_backtracking
@@ -120,5 +134,10 @@ class EmtOptions(OptionsTemplate):
         self.newton_backtracking_beta = newton_backtracking_beta
         self.newton_backtracking_min_alpha = newton_backtracking_min_alpha
         self.newton_backtracking_max_iter = newton_backtracking_max_iter
+        self.compiled_warmup_policy: StructuralCompiledWarmupPolicy = compiled_warmup_policy
+        self.sparse_solver: SparseSolver = sparse_solver
+        self.external_sparse_solver_directory: str = external_sparse_solver_directory
+        self.external_sparse_solver_plugin_name: str = external_sparse_solver_plugin_name
+        self.allow_internal_sparse_fallback: bool = allow_internal_sparse_fallback
 
 

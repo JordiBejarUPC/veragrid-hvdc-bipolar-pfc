@@ -148,19 +148,6 @@ class Substation(PhysicalDevice):
 
         self.color = color if color is not None else self.rnd_color()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
     @property
     def area(self) -> Union[Area, None]:
         """

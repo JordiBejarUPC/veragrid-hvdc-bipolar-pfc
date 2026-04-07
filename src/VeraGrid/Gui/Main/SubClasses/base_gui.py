@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import ctypes
 import gc
+import json
 import os.path
 import sys
 import threading
@@ -36,6 +37,7 @@ from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringR
 import VeraGrid.Gui.gui_functions as gf
 import VeraGrid.Session.synchronization_driver as syncdrv
 from VeraGrid.Gui.AboutDialogue.about_dialogue import AboutDialogueGuiGUI
+
 from VeraGrid.Gui.Analysis.AnalysisDialogue import GridAnalysisGUI
 from VeraGrid.Gui.ContingencyPlanner.contingency_planner_dialogue import ContingencyPlannerGUI
 from VeraGrid.Gui.CoordinatesInput.coordinates_dialogue import CoordinatesInputGUI
@@ -61,7 +63,9 @@ from VeraGrid.Gui.python_script_editor import PythonCodeEditor
 from VeraGrid.Gui.toast_widget import ToastManager
 from VeraGrid.Gui.PsseDialogue.psse_import import PsseImportDialogue
 from VeraGrid.Gui.ProceduralGrid.procedural_grid import ProceduralGridWindow
-
+from VeraGrid.Gui.AiAgent.ai_chat_dialogue import AiChatDialogue, AiBackendState
+from VeraGrid.Gui.AiAgent.ai_backend import ProviderType
+from VeraGridEngine.IO.file_system import get_create_veragrid_folder
 
 
 def terminate_thread(thread):
@@ -171,6 +175,51 @@ class BaseMainGui(QMainWindow):
         # simulation start end
         self.simulation_start_index: int = -1
         self.simulation_end_index: int = -1
+        # Menu buttons -------------------------------------------------------------------------------------------------
+
+        self.pf_menu_button = gf.create_menu_button(
+            parent=self,
+            toolbar=self.ui.toolBar,
+            actions=[self.ui.actionPower_flow,
+                     self.ui.actionPower_flow_3ph,
+                     self.ui.actionLinearAnalysis,
+                     self.ui.actionSigma_analysis],
+            position=self.ui.actionPower_flow,
+            remove_actions=True
+        )
+
+        self.rms_menu_button = gf.create_menu_button(
+            parent=self,
+            toolbar=self.ui.toolBar,
+            actions=[self.ui.actionRun_Dynamic_RMS_Simulation,
+                     self.ui.actionRun_Dynamic_EMT_Simulation,
+                     self.ui.actionRun_Small_Signal_RMS_Simulation,
+                     self.ui.actionRun_Small_Signal_EMT_Simulation],
+            position=self.ui.actionRun_Dynamic_RMS_Simulation,
+            remove_actions=True
+        )
+
+        self.opf_menu_button = gf.create_menu_button(
+            parent=self,
+            toolbar=self.ui.toolBar,
+            actions=[self.ui.actionOPF,
+                     self.ui.actionNodal_capacity,
+                     self.ui.actionOptimal_Net_Transfer_Capacity,
+                     self.ui.actionATC],
+            position=self.ui.actionNodal_capacity,
+            remove_actions=True
+        )
+
+        self.stochastic_menu_button = gf.create_menu_button(
+            parent=self,
+            toolbar=self.ui.toolBar,
+            actions=[self.ui.actionPower_flow_Stochastic,
+                     self.ui.actionBlackout_cascade,
+                     self.ui.actionReliability,
+                     self.ui.actionFind_node_groups],
+            position=self.ui.actionPower_flow_Stochastic,
+            remove_actions=True
+        )
 
         # Add console --------------------------------------------------------------------------------------------------
         self.console = PythonConsole(banner="VeraGrid Python Console!")
@@ -209,7 +258,10 @@ class BaseMainGui(QMainWindow):
         self.file_selector: FileTypeSelector | None = None
         self.cgmes_selector: CgmesOptionsSelector | None = None
         self.psse_import_dialogue: PsseImportDialogue | None = None
-        self.procedural_grid_window : ProceduralGridWindow | None = None
+        self.procedural_grid_window: ProceduralGridWindow | None = None
+        self.ai_chat_dialogue: AiChatDialogue | None = None
+        self.ai_backend_state: AiBackendState = self.build_default_ai_backend_state()
+        self.ai_restore_visible: bool = False
 
         # available engines --------------------------------------------------------------------------------------------
         engine_lst = [EngineType.VeraGrid]
@@ -254,6 +306,7 @@ class BaseMainGui(QMainWindow):
         )
         self.ui.actionFix_loads_active_based_on_the_power.triggered.connect(self.fix_loads_active_based_on_the_power)
         self.ui.actionInitialize_contingencies.triggered.connect(self.initialize_contingencies)
+        self.ui.actionai_chat.triggered.connect(self.open_ai_chat_dialogue)
 
         # Buttons
         self.ui.cancelButton.clicked.connect(self.set_cancel_state)
@@ -263,10 +316,13 @@ class BaseMainGui(QMainWindow):
         self.ui.sbase_doubleSpinBox.valueChanged.connect(self.change_circuit_base)
 
         self.ui.grid_name_line_edit.textChanged.connect(self.change_circuit_name)
+        self.ui.grid_name_line_edit.textChanged.connect(self.refresh_ai_context_if_available)
 
         # combo-boxes
         self.ui.fromComboBox.currentTextChanged.connect(self.update_from_to_list_views)
         self.ui.toComboBox.currentTextChanged.connect(self.update_from_to_list_views)
+        self.ui.engineComboBox.currentTextChanged.connect(self.refresh_ai_context_if_available)
+        self.ui.available_results_to_color_comboBox.currentTextChanged.connect(self.refresh_ai_context_if_available)
 
     def LOCK(self, val: bool = True) -> None:
         """
@@ -294,6 +350,23 @@ class BaseMainGui(QMainWindow):
         self._multiverse = val
         self.scenario_tree_model = ScenarioTreeModel(multiverse=val)
         self.ui.multiverseTreeView.setModel(self.scenario_tree_model)
+        selection_model = self.ui.multiverseTreeView.selectionModel()
+
+        # A loaded multiverse should present the whole scenario tree immediately.
+        self.ui.multiverseTreeView.expandAll()
+
+        # Restore the saved active scenario visually so the tree selection matches the
+        # multiverse current_node/current_model pair as soon as the model is assigned.
+        current_index = self.scenario_tree_model.index_for_node(val.current_node)
+        if current_index.isValid():
+            self.ui.multiverseTreeView.setCurrentIndex(current_index)
+            if selection_model is not None:
+                selection_model.select(
+                    current_index,
+                    QtCore.QItemSelectionModel.SelectionFlag.ClearAndSelect
+                    | QtCore.QItemSelectionModel.SelectionFlag.Rows,
+                )
+            self.ui.multiverseTreeView.scrollTo(current_index)
 
     @property
     def circuit(self) -> MultiCircuit:
@@ -577,6 +650,304 @@ class BaseMainGui(QMainWindow):
 
         self.about_msg_window = AboutDialogueGuiGUI(self)
         self.about_msg_window.setVisible(True)
+
+    @staticmethod
+    def ai_config_file_path() -> str:
+        """
+        Return the AI configuration file path.
+
+        :returns: AI configuration file path.
+        """
+        return os.path.join(get_create_veragrid_folder(), "ai_config.json")
+
+    def find_first_gguf_file(self, directory_path: str) -> str:
+        """
+        Find the first GGUF file in a directory in lexicographic order.
+
+        :param directory_path: Directory to inspect.
+        :returns: GGUF file name or an empty string.
+        """
+        expanded_directory_path: str = os.path.expanduser(directory_path)
+        entry_names: list[str]
+        sorted_entry_names: list[str]
+        index: int = 0
+
+        if os.path.isdir(expanded_directory_path):
+            try:
+                entry_names = os.listdir(expanded_directory_path)
+            except OSError:
+                return ""
+
+            sorted_entry_names = sorted(entry_names)
+
+            # Prefer a stable first GGUF file so the local backend opens ready to use.
+            while index < len(sorted_entry_names):
+                entry_name: str = sorted_entry_names[index]
+                if entry_name.lower().endswith(".gguf"):
+                    return entry_name
+                else:
+                    pass
+                index += 1
+
+            return ""
+        else:
+            return ""
+
+    def build_default_ai_backend_state(self) -> AiBackendState:
+        """
+        Build the default AI backend state for the main window.
+
+        :returns: Default backend state.
+        """
+        candidate_paths: list[str] = list()
+        home_models_path: str = os.path.expanduser("~/models")
+        home_downloads_path: str = os.path.expanduser("~/Downloads")
+        project_directory_path: str = os.path.expanduser(self.project_directory)
+        model_name: str = ""
+        model_path: str = ""
+        candidate_index: int = 0
+
+        candidate_paths.append(home_models_path)
+        candidate_paths.append(home_downloads_path)
+
+        if len(project_directory_path) > 0:
+            candidate_paths.append(project_directory_path)
+            candidate_paths.append(os.path.join(project_directory_path, "models"))
+        else:
+            pass
+
+        # Probe a few likely model directories so the floating AI window starts close to a usable local setup.
+        while candidate_index < len(candidate_paths):
+            candidate_path: str = candidate_paths[candidate_index]
+            model_name = self.find_first_gguf_file(candidate_path)
+            if len(model_name) > 0:
+                model_path = candidate_path
+                candidate_index = len(candidate_paths)
+            else:
+                candidate_index += 1
+
+        if len(model_path) == 0:
+            model_path = home_models_path
+        else:
+            pass
+
+        return AiBackendState(
+            provider_tpe=ProviderType.LOCAL_LLAMA_CPP,
+            model_name=model_name,
+            base_url=model_path,
+            api_key=None,
+            timeout_s=60.0,
+        )
+
+    def build_ai_config_data(self) -> dict[str, str | float | bool]:
+        """
+        Build the persistable AI configuration dictionary.
+
+        :returns: AI configuration dictionary.
+        """
+        state_to_save: AiBackendState
+        data: dict[str, str | float | bool] = dict()
+
+        if self.ai_chat_dialogue is None:
+            state_to_save = self.ai_backend_state
+        else:
+            state_to_save = self.ai_chat_dialogue.get_backend_state()
+
+        data["provider_tpe"] = state_to_save.provider_tpe.value
+        data["model_name"] = state_to_save.model_name
+        data["base_url"] = state_to_save.base_url
+        data["api_key"] = state_to_save.api_key or ""
+        data["timeout_s"] = state_to_save.timeout_s
+        # The AI window must always stay hidden at startup until the user opens it manually.
+        data["visible"] = False
+
+        return data
+
+    def apply_ai_config_data(self, data: dict[str, object]) -> None:
+        """
+        Apply persisted AI configuration data.
+
+        :param data: Persisted AI configuration dictionary.
+        :returns: Nothing.
+        """
+        provider_value: object = data.get("provider_tpe", ProviderType.LOCAL_LLAMA_CPP.value)
+        provider_tpe: ProviderType = ProviderType.LOCAL_LLAMA_CPP
+        api_key_obj: object = data.get("api_key", "")
+        timeout_obj: object = data.get("timeout_s", 60.0)
+        provider_items: list[ProviderType] = list(ProviderType)
+        enum_index: int = 0
+
+        while enum_index < len(provider_items):
+            enum_item: ProviderType = provider_items[enum_index]
+            if provider_value == enum_item.value:
+                provider_tpe = enum_item
+                enum_index = len(provider_items)
+            else:
+                enum_index += 1
+
+        self.ai_backend_state = AiBackendState(
+            provider_tpe=provider_tpe,
+            model_name=str(data.get("model_name", "")),
+            base_url=str(data.get("base_url", self.build_default_ai_backend_state().base_url)),
+            api_key=str(api_key_obj) if isinstance(api_key_obj, str) and len(api_key_obj) > 0 else None,
+            timeout_s=float(timeout_obj) if isinstance(timeout_obj, (int, float)) else 60.0,
+        )
+        self.ai_restore_visible = False
+
+        if self.ai_chat_dialogue is None:
+            pass
+        else:
+            self.ai_chat_dialogue.apply_backend_state(self.ai_backend_state)
+
+    def save_ai_config(self) -> None:
+        """
+        Save the AI configuration to disk.
+
+        :returns: Nothing.
+        """
+        with open(self.ai_config_file_path(), "w") as file_pointer:
+            file_pointer.write(json.dumps(self.build_ai_config_data(), indent=4))
+
+    def load_ai_config(self) -> None:
+        """
+        Load the AI configuration from disk.
+
+        :returns: Nothing.
+        """
+        config_path: str = self.ai_config_file_path()
+
+        if os.path.exists(config_path):
+            with open(config_path, "r") as file_pointer:
+                try:
+                    self.apply_ai_config_data(json.load(file_pointer))
+                except json.decoder.JSONDecodeError:
+                    self.ai_backend_state = self.build_default_ai_backend_state()
+                    self.ai_restore_visible = False
+                    self.save_ai_config()
+                    self.show_warning_toast("AI config file was erroneous, wrote a new one")
+        else:
+            self.ai_backend_state = self.build_default_ai_backend_state()
+            self.ai_restore_visible = False
+
+        self.ai_restore_visible = False
+
+    def ensure_ai_dialogue(self) -> None:
+        """
+        Create the floating AI dialogue lazily and bind it to the live main window.
+
+        :returns: Nothing.
+        """
+        if self.ai_chat_dialogue is None:
+            self.ai_chat_dialogue = AiChatDialogue(parent=self, app=self)
+            self.ai_chat_dialogue.set_embedded_mode(False)
+            self.ai_chat_dialogue.apply_backend_state(self.ai_backend_state)
+            self.ai_chat_dialogue.dialogue_visibility_changed.connect(
+                self.handle_ai_dialogue_visibility_changed
+            )
+        else:
+            self.ai_chat_dialogue.apply_backend_state(self.ai_backend_state)
+
+    def sync_ai_dialogue_action_state(self, visible: bool) -> None:
+        """
+        Synchronize the floating dialogue visibility with the toolbar/menu action state.
+
+        :param visible: Dialogue visibility.
+        :returns: Nothing.
+        """
+        self.ui.actionai_chat.blockSignals(True)
+        self.ui.actionai_chat.setChecked(visible)
+        self.ui.actionai_chat.blockSignals(False)
+
+        self.ai_restore_visible = visible
+
+        if visible:
+            self.refresh_ai_context_if_available()
+        else:
+            pass
+
+    def refresh_ai_context_if_available(self) -> None:
+        """
+        Refresh the AI dialogue context when the floating window exists.
+
+        :returns: Nothing.
+        """
+        if self.ai_chat_dialogue is None:
+            pass
+        else:
+            self.ai_chat_dialogue.refresh_context_from_app()
+
+    def handle_ai_dialogue_visibility_changed(self, visible: bool) -> None:
+        """
+        Keep the AI action state synchronized with the persistent floating dialogue.
+
+        :param visible: Dialogue visibility state.
+        :returns: Nothing.
+        """
+        self.sync_ai_dialogue_action_state(visible)
+
+    def shutdown_ai_dialogue_if_available(self) -> None:
+        """
+        Stop the AI worker thread when the dialogue exists.
+
+        :returns: Nothing.
+        """
+        if self.ai_chat_dialogue is None:
+            pass
+        else:
+            self.ai_chat_dialogue.prepare_for_shutdown()
+            self.ai_chat_dialogue.shutdown_turn_thread()
+
+    def set_ai_dialogue_visible(self, visible: bool) -> None:
+        """
+        Show or hide the floating AI dialogue.
+
+        :param visible: Desired visibility.
+        :returns: Nothing.
+        """
+        self.ensure_ai_dialogue()
+
+        if self.ai_chat_dialogue is None:
+            pass
+        else:
+            if visible:
+                self.ai_chat_dialogue.show()
+                self.ai_chat_dialogue.raise_()
+                self.ai_chat_dialogue.activateWindow()
+                self.refresh_ai_context_if_available()
+                self.ai_backend_state = self.ai_chat_dialogue.get_backend_state()
+                if (
+                    self.ai_backend_state.provider_tpe == ProviderType.LOCAL_LLAMA_CPP
+                    and len(self.ai_backend_state.base_url.strip()) == 0
+                ):
+                    default_state: AiBackendState = self.build_default_ai_backend_state()
+                    self.ai_backend_state = default_state
+                    self.ai_chat_dialogue.apply_backend_state(default_state)
+                else:
+                    pass
+
+                if self.ai_backend_state.provider_tpe == ProviderType.LOCAL_LLAMA_CPP:
+                    self.ai_chat_dialogue.refresh_available_models()
+                    self.ai_backend_state = self.ai_chat_dialogue.get_backend_state()
+                else:
+                    pass
+
+                if len(self.ai_backend_state.model_name.strip()) == 0:
+                    self.show_info_toast("Configure a local GGUF model path for the AI window", duration=3500)
+                else:
+                    pass
+
+                self.sync_ai_dialogue_action_state(True)
+            else:
+                self.ai_chat_dialogue.hide()
+                self.sync_ai_dialogue_action_state(False)
+
+    def open_ai_chat_dialogue(self) -> None:
+        """
+        Open the AI dialogue connected to the live VeraGrid main window.
+
+        :returns: Nothing.
+        """
+        self.set_ai_dialogue_visible(True)
 
     @staticmethod
     def show_online_docs():

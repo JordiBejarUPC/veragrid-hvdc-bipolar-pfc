@@ -17,7 +17,8 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProb
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
-from VeraGridEngine.enumerations import DynamicIntegrationMethod
+from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Simulations.EMT.initialization_emt import init_explicit_emt
 
@@ -63,7 +64,6 @@ class GenericEmtProblem(EmtProblemTemplate):
                 compiler_names_dict=self._compiler_names_dict,
                 alias_names_dict=self._alias_names_dict,
                 VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                TIME_NAME=self.TIME_NAME,
                 VARS_NAME=self.VARS_NAME,
                 DIFF_NAME=self.DIFF_NAME,
                 CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
@@ -215,9 +215,9 @@ def create_mechanical_system(vf: VarFactory) -> Tuple[Block, Var]:
 # Simulation runner
 # -----------------------------------------------------------------------------
 
-def run_case(backend_str: str,
+def run_case(backend_str: EmtSolverTypes,
              h: float,
-             t_end: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
+             t_end: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, float]:
     print("\n" + "=" * 70)
     print(f"Running Mechanical system | Backend: {backend_str}")
     print("=" * 70)
@@ -234,22 +234,25 @@ def run_case(backend_str: str,
     print(f"{df}")
 
     integration_method = DynamicIntegrationMethod.DaeTrapezoidal
-    # integration_method = DynamicIntegrationMethod.DaeBDF2
     predictor_method = DynamicIntegrationMethod.OdeEuler
-    # predictor_method = None
 
-    if backend_str == "SD":
+    if backend_str == EmtSolverTypes.Symbolic:
         solver = JitSymbolicSolver(
             problem, t0=0.0, t_end=t_end, h=h,
             method=integration_method, pred_method=predictor_method, verbose=True
         )
-    elif backend_str == "AD":
+    elif backend_str == EmtSolverTypes.Automatic:
         solver = JitAdSolver(
             problem, t0=0.0, t_end=t_end, h=h,
             method=integration_method, verbose=False
         )
-    elif backend_str == "StructuralVectorizedSolver":
+    elif backend_str == EmtSolverTypes.StructuralAD:
         solver = StructuralVectorizedSolver(
+            problem, t0=0.0, t_end=t_end, h=h,
+            method=integration_method, verbose=False
+        )
+    elif backend_str == EmtSolverTypes.StructuralCompiled:
+        solver = StructuralCompiledSolver(
             problem, t0=0.0, t_end=t_end, h=h,
             method=integration_method, verbose=False
         )
@@ -284,7 +287,7 @@ def run_case(backend_str: str,
     else:
         pass
 
-    return t_arr, sol_theta, sol_omega, sol_d_theta, sol_d_omega, elapsed
+    return t_arr, y_arr, dy_arr, sol_theta, sol_omega, sol_d_theta, sol_d_omega, elapsed
 
 
 # -----------------------------------------------------------------------------
@@ -295,19 +298,40 @@ def main() -> None:
     h = 1e-6
     t_end = 0.01
 
-    t_sym_sd, sol_theta_sd, sol_omega_sd, sol_d_theta_sd, sol_d_omega_sd, time_sym_sd = run_case(backend_str="SD", h=h,
-                                                                                                 t_end=t_end)
-    t_sym_ad, sol_theta_ad, sol_omega_ad, sol_d_theta_ad, sol_d_omega_ad, time_sym_ad = run_case(backend_str="AD", h=h,
-                                                                                                 t_end=t_end)
-    t_sym_vec, sol_theta_vec, sol_omega_vec, sol_d_theta_vec, sol_d_omega_vec, time_sym_vec = run_case(
-        backend_str="StructuralVectorizedSolver", h=h, t_end=t_end)
+    (t_sym_sd, y_sd, dy_sd, sol_theta_sd, sol_omega_sd,
+     sol_d_theta_sd, sol_d_omega_sd, time_sym_sd) = run_case(backend_str=EmtSolverTypes.Symbolic, h=h, t_end=t_end)
+    (t_sym_ad, y_ad, dy_ad, sol_theta_ad, sol_omega_ad,
+     sol_d_theta_ad, sol_d_omega_ad, time_sym_ad) = run_case(backend_str=EmtSolverTypes.Automatic, h=h, t_end=t_end)
+    (t_sym_vec, y_vec, dy_vec, sol_theta_vec, sol_omega_vec,
+     sol_d_theta_vec, sol_d_omega_vec, time_sym_vec) = run_case(backend_str=EmtSolverTypes.StructuralAD, h=h, t_end=t_end)
+    (t_sym_comp, y_comp, dy_comp, sol_theta_comp, sol_omega_comp,
+     sol_d_theta_comp, sol_d_omega_comp, time_sym_comp) = run_case(backend_str=EmtSolverTypes.StructuralCompiled,h=h,
+                                                                      t_end=t_end)
 
     steps: int = int(t_end / h)
     tme: np.ndarray = np.linspace(0, t_end, steps)
 
+    res = np.concatenate((y_sd, dy_sd, y_ad, dy_ad, y_vec, dy_vec, y_comp, dy_comp), axis=1)
+
+    cols_y_sd = [f"y_sd{i}" for i in range(y_sd.shape[1])]
+    cols_dy_sd = [f"dy_sd{i}" for i in range(dy_sd.shape[1])]
+    cols_y_ad = [f"y_ad{i}" for i in range(y_ad.shape[1])]
+    cols_dy_ad = [f"dy_ad{i}" for i in range(dy_ad.shape[1])]
+    cols_y_vec = [f"y_vec{i}" for i in range(y_vec.shape[1])]
+    cols_dy_vec = [f"dy_vec{i}" for i in range(dy_vec.shape[1])]
+    cols_y_comp = [f"y_comp{i}" for i in range(y_comp.shape[1])]
+    cols_dy_comp = [f"dy_comp{i}" for i in range(dy_comp.shape[1])]
+    cols = cols_y_sd + cols_dy_sd + cols_y_ad + cols_dy_ad + cols_y_vec + cols_dy_vec + cols_y_comp + cols_dy_comp
+
+    results_df = pd.DataFrame(res, index=t_sym_sd, columns=cols)
+    results_df.index.name = "time_s"
+
+    name = "demo_check_derivatives.csv"
+    results_df.to_csv(name, index=False)
+
     plt.figure(figsize=(12, 8))
 
-    plt.subplot(3, 3, 1)
+    plt.subplot(3, 4, 1)
     plt.plot(tme, sol_theta_sd[:len(tme)], label='Theta (rad)', color='blue')
     plt.title("Angle Symbolic solver")
     plt.xlabel("Time")
@@ -316,7 +340,7 @@ def main() -> None:
     plt.grid(True)
     plt.legend()
 
-    plt.subplot(3, 3, 2)
+    plt.subplot(3, 4, 5)
     plt.plot(tme, sol_omega_sd[:len(tme)], label='Omega (rad/s)', color='blue')
     plt.plot(tme, sol_d_theta_sd[:len(tme)], label='d_theta (rad/s)', color='red')
     plt.title("Speed Symbolic solver")
@@ -325,7 +349,7 @@ def main() -> None:
     plt.legend(loc='upper left')
     plt.grid(True)
 
-    plt.subplot(3, 3, 3)
+    plt.subplot(3, 4, 9)
     plt.plot(tme, sol_d_omega_sd[:len(tme)], label='d_omega (rad/s2)', color='red')
     plt.title("Acceleration Symbolic solver")
     plt.xlabel("Time")
@@ -333,7 +357,7 @@ def main() -> None:
     plt.legend(loc='upper left')
     plt.grid(True)
 
-    plt.subplot(3, 3, 4)
+    plt.subplot(3, 4, 2)
     plt.plot(tme, sol_theta_ad[:len(tme)], label='Theta (rad)', color='blue')
     plt.title("Angle AD solver")
     plt.xlabel("Time")
@@ -342,7 +366,7 @@ def main() -> None:
     plt.grid(True)
     plt.legend()
 
-    plt.subplot(3, 3, 5)
+    plt.subplot(3, 4, 6)
     plt.plot(tme, sol_omega_ad[:len(tme)], label='Omega (rad/s)', color='blue')
     plt.plot(tme, sol_d_theta_ad[:len(tme)], label='d_theta (rad/s)', color='red')
     plt.title("Speed AD solver")
@@ -351,7 +375,7 @@ def main() -> None:
     plt.legend(loc='upper left')
     plt.grid(True)
 
-    plt.subplot(3, 3, 6)
+    plt.subplot(3, 4, 10)
     plt.plot(tme, sol_d_omega_ad[:len(tme)], label='d_omega (rad/s2)', color='red')
     plt.title("Acceleration AD solver")
     plt.xlabel("Time")
@@ -359,7 +383,7 @@ def main() -> None:
     plt.legend(loc='upper left')
     plt.grid(True)
 
-    plt.subplot(3, 3, 7)
+    plt.subplot(3, 4, 3)
     plt.plot(tme, sol_theta_vec[:len(tme)], label='Theta (rad)', color='blue')
     plt.title("Angle Structural Vectorized solver")
     plt.xlabel("Time")
@@ -368,7 +392,7 @@ def main() -> None:
     plt.grid(True)
     plt.legend()
 
-    plt.subplot(3, 3, 8)
+    plt.subplot(3, 4, 7)
     plt.plot(tme, sol_omega_vec[:len(tme)], label='Omega (rad/s)', color='blue')
     plt.plot(tme, sol_d_theta_vec[:len(tme)], label='d_theta (rad/s)', color='red')
     plt.title("Speed Structural Vectorized solver")
@@ -377,9 +401,35 @@ def main() -> None:
     plt.legend(loc='upper left')
     plt.grid(True)
 
-    plt.subplot(3, 3, 9)
+    plt.subplot(3, 4, 11)
     plt.plot(tme, sol_d_omega_vec[:len(tme)], label='d_omega (rad/s2)', color='red')
     plt.title("Acceleration Structural Vectorized solver")
+    plt.xlabel("Time")
+    plt.ylabel("Acceleration")
+    plt.legend(loc='upper left')
+    plt.grid(True)
+
+    plt.subplot(3, 4, 4)
+    plt.plot(tme, sol_theta_comp[:len(tme)], label='Theta (rad)', color='blue')
+    plt.title("Angle Structural Compiled solver")
+    plt.xlabel("Time")
+    plt.ylabel("Angle")
+    plt.legend(loc='upper left')
+    plt.grid(True)
+    plt.legend()
+
+    plt.subplot(3, 4, 8)
+    plt.plot(tme, sol_omega_comp[:len(tme)], label='Omega (rad/s)', color='blue')
+    plt.plot(tme, sol_d_theta_comp[:len(tme)], label='d_theta (rad/s)', color='red')
+    plt.title("Speed Structural Compiled solver")
+    plt.xlabel("Time")
+    plt.ylabel("Speed")
+    plt.legend(loc='upper left')
+    plt.grid(True)
+
+    plt.subplot(3, 4, 12)
+    plt.plot(tme, sol_d_omega_comp[:len(tme)], label='d_omega (rad/s2)', color='red')
+    plt.title("Acceleration Structural Compiled solver")
     plt.xlabel("Time")
     plt.ylabel("Acceleration")
     plt.legend(loc='upper left')

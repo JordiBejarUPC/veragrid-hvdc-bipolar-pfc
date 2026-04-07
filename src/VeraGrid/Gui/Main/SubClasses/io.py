@@ -684,7 +684,6 @@ class IoMain(ScenariosMain):
         options = filedrv.FileSavingOptions(
             sessions_data=sessions_data,
             dictionary_of_json_files=json_files,
-            multiverse=self.multiverse,
         )
 
         return options
@@ -719,6 +718,7 @@ class IoMain(ScenariosMain):
 
             self.save_file_thread_object = filedrv.FileSaveThread(
                 circuit=self.circuit if grid is None else grid,
+                multiverse=self.multiverse,
                 file_name=filename,
                 options=options2
             )
@@ -990,20 +990,28 @@ class IoMain(ScenariosMain):
         """
         Add default catalogue to circuit
         """
-        if not self.circuit.transformer_types:
-            self.circuit.transformer_types += get_transformer_catalogue()
 
-        if not self.circuit.underground_cable_types:
-            self.circuit.underground_cable_types += get_cables_catalogue()
 
-        if not self.circuit.wire_types:
-            self.circuit.wire_types += get_wires_catalogue()
+        for tpe in get_transformer_catalogue():
+            self.circuit.add_transformer_type(tpe)
 
-        if not self.circuit.sequence_line_types:
-            self.circuit.sequence_line_types += get_sequence_lines_catalogue()
+        for tpe in get_cables_catalogue():
+            self.circuit.add_underground_line(tpe)
+
+        for tpe in get_wires_catalogue():
+            self.circuit.add_wire(tpe)
+
+        for tpe in get_sequence_lines_catalogue():
+            self.circuit.add_sequence_line(tpe)
 
         if not self.circuit.rms_models:
             self.circuit.add_rms_model_catalogue()
+
+        # commented until Emt templates can be saved properly
+        # if not self.circuit.emt_models:
+        #     self.circuit.add_emt_model_catalogue()
+
+        self.show_info_toast("Catalogue added!")
 
     def load_custom_catalogue(self):
         """
@@ -1031,6 +1039,8 @@ class IoMain(ScenariosMain):
                     dlg.exec()
 
                 self.circuit.add_catalogue(data)
+                self.show_info_toast("Catalogue loaded!")
+            return None
         else:
             return None
 
@@ -1052,6 +1062,7 @@ class IoMain(ScenariosMain):
                 filename += ".xlsx"
 
             save_catalogue(fname=filename, grid=self.circuit)
+            self.show_info_toast("Catalogue saved!")
 
     def set_circuit(self, grid: MultiCircuit, create_diagram: bool = True):
         """

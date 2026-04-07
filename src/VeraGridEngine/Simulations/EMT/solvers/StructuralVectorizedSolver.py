@@ -25,8 +25,15 @@ from VeraGridEngine.Utils.Symbolic.diagnostic import (
     sparse_lsqr_fallback,
     with_newton_diagnostics,
 )
-from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
-from VeraGridEngine.Utils.Symbolic.jit_compiler import EquationCompiler, MatrixVectorizedCompiler, _compile_to_file
+from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
+    EmtBoundaryUpdateProtocol,
+    EmtProblemTemplate,
+    get_solver_forced_event_time,
+    resolve_solver_boundary_updater,
+)
+from VeraGridEngine.Utils.Symbolic.jit_compiler import EagerEquationCompiler, EquationCompiler, MatrixVectorizedCompiler, _compile_to_file
+from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSparseFactorizationManager
+from VeraGridEngine.Utils.NumericalMethods.external_sparse_solver_interface import SparseLinearSolverBackendProvider
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.basic_structures import Vec, Mat
 
@@ -34,6 +41,140 @@ from VeraGridEngine.basic_structures import Vec, Mat
 DenseFactorization = Tuple[Any, Any]
 DenseSolveBundle = Tuple[DenseFactorization, np.ndarray]
 SparseSolveBundle = Tuple[SuperLU, csc_matrix]
+
+
+def _build_backend_cache_token(
+        method: DynamicIntegrationMethod,
+        n_rows: int,
+        n_cols: int,
+        group_keys: List[str],
+) -> str:
+    """
+    Return a deterministic cache token for backend-generated kernels.
+
+    :param method: Integration method used by the backend.
+    :type method: DynamicIntegrationMethod
+    :param n_rows: Number of residual equations.
+    :type n_rows: int
+    :param n_cols: Number of runtime variables.
+    :type n_cols: int
+    :param group_keys: Structural group signatures.
+    :type group_keys: List[str]
+    :return: Stable cache token.
+    :rtype: str
+    """
+    payload: str = "|".join([method.name, str(n_rows), str(n_cols), str(len(group_keys))])
+    return hashlib.md5(payload.encode("utf-8")).hexdigest()[:16]
+
+
+def fill_full_parameter_buffer(runtime_params: Vec, static_params: Vec, full_params_out: Vec) -> None:
+    """
+    Write runtime and static parameters into one preallocated full buffer.
+
+    :param runtime_params: Runtime parameter slice.
+    :type runtime_params: Vec
+    :param static_params: Static parameter slice.
+    :type static_params: Vec
+    :param full_params_out: Destination full parameter vector.
+    :type full_params_out: Vec
+    :return: None.
+    :rtype: None
+    """
+    n_runtime: int = runtime_params.shape[0]
+    n_static: int = static_params.shape[0]
+
+    # The runtime slice changes at every local substep because events and
+    # boundary updaters may mutate it in place.
+    full_params_out[:n_runtime] = runtime_params
+
+    # The static slice remains fixed, but copying it explicitly preserves the
+    # stable [runtime | static] memory contract seen by compiled kernels.
+    full_params_out[n_runtime:n_runtime + n_static] = static_params
+
+
+def evaluate_vectorized_residual(
+        residual_evaluator: Callable[..., Any],
+        states: Vec,
+        params: Vec,
+        history: Vec,
+        d_history: Vec,
+        h: float,
+        history2: Vec,
+        residual_out: Vec,
+) -> float:
+    """
+    Evaluate the fused vectorized residual into a caller-owned buffer.
+
+    :param residual_evaluator: Fixed-signature residual evaluator.
+    :type residual_evaluator: Callable[..., Any]
+    :param states: Current Newton iterate.
+    :type states: Vec
+    :param params: Full parameter vector.
+    :type params: Vec
+    :param history: Previous accepted state.
+    :type history: Vec
+    :param d_history: Previous derivative vector.
+    :type d_history: Vec
+    :param h: Effective local time step.
+    :type h: float
+    :param history2: Secondary state history.
+    :type history2: Vec
+    :param residual_out: Destination residual buffer.
+    :type residual_out: Vec
+    :return: Residual infinity norm.
+    :rtype: float
+    """
+    residual_evaluator(states, params, history, d_history, h, history2, residual_out)
+    return float(np.max(np.abs(residual_out)))
+
+
+def build_residual_evaluator(
+        residual_dispatcher: Callable[..., Any],
+        vec_flat_args: Any | None,
+) -> Callable[[Vec, Vec, Vec, Vec, float, Vec, Vec], None]:
+    """
+    Build one fixed-signature residual evaluator for the current dispatcher.
+
+    This resolves the dispatcher signature once per simulation so the Newton hot
+    path does not pay per-call tuple unpacking or compatibility branching.
+
+    :param residual_dispatcher: Residual dispatcher or test double.
+    :type residual_dispatcher: Callable[..., Any]
+    :param vec_flat_args: Flat runtime args used by some test doubles.
+    :type vec_flat_args: Any | None
+    :return: Residual evaluator with signature ``(states, params, history,
+        d_history, h, history2, out)``.
+    :rtype: Callable[[Vec, Vec, Vec, Vec, float, Vec, Vec], None]
+    """
+    direct_evaluator = getattr(residual_dispatcher, "evaluate", None)
+
+    if callable(direct_evaluator):
+        return direct_evaluator
+
+    if vec_flat_args is None:
+        def residual_evaluator(
+                states: Vec,
+                params: Vec,
+                history: Vec,
+                d_history: Vec,
+                h: float,
+                history2: Vec,
+                out: Vec,
+        ) -> None:
+            residual_dispatcher(states, params, history, d_history, h, history2, out)
+    else:
+        def residual_evaluator(
+                states: Vec,
+                params: Vec,
+                history: Vec,
+                d_history: Vec,
+                h: float,
+                history2: Vec,
+                out: Vec,
+        ) -> None:
+            residual_dispatcher(states, params, history, d_history, h, vec_flat_args, out, history2)
+
+    return residual_evaluator
 
 
 # ==============================================================================
@@ -171,36 +312,353 @@ def canonicalize_expression(
     return canonical_str, found_runtime_vars_ordered
 
 
-def _compile_fused_residual(kernels_data: List[Dict[str, Any]]) -> Callable[..., Any]:
+class VectorizedKernelSpec:
     """
-    Compiles a fused residual kernel that calls all sub-kernels in sequence.
-
-    :param kernels_data: List of dictionaries containing the kernel functions and their indices.
-    :type kernels_data: List[Dict[str, Any]]
-    :return: A Numba JIT compiled fused function.
-    :rtype: Callable[..., Any]
+    Typed container for one vectorized residual kernel.
     """
-    lines: List[str] = list()
-    signature_payload = "|".join(
-        f"{i}:{list(k_data['target'])}:{tuple(k_data['indices'].shape)}"
-        for i, k_data in enumerate(kernels_data)
-    )
-    func_name = f"fused_residual_kernel_{hashlib.md5(signature_payload.encode()).hexdigest()[:12]}"
 
-    lines.append(f"def {func_name}(states, params, history, d_history, h, args, out, history2=None):")
-    lines.append("    out[:] = 0.0")
+    __slots__ = ["_kernel", "_indices", "_target_rows", "_row_count"]
 
-    for i, k_data in enumerate(kernels_data):
-        lines.append(f"    target_{i} = args[{2 * i}]")
-        lines.append(f"    indices_{i} = args[{2 * i + 1}]")
-        lines.append(f"    r_part_{i} = func_{i}(states, params, history, d_history, h, indices_{i}, history2)")
-        lines.append(f"    out[target_{i}] = r_part_{i}")
+    def __init__(self, kernel: Callable[..., Any], indices: np.ndarray, target_rows: np.ndarray) -> None:
+        """
+        Build one vectorized residual-kernel specification.
 
-    py_func = _compile_to_file("\n".join(lines), func_name)
-    for i, k_data in enumerate(kernels_data):
-        py_func.__globals__[f"func_{i}"] = k_data['func']
+        :param kernel: Compiled eager kernel.
+        :type kernel: Callable[..., Any]
+        :param indices: Runtime gather matrix.
+        :type indices: np.ndarray
+        :param target_rows: Residual rows written by the kernel.
+        :type target_rows: np.ndarray
+        :return: None.
+        :rtype: None
+        """
+        self._kernel = kernel
+        self._indices = indices
+        self._target_rows = target_rows
+        self._row_count = int(target_rows.shape[0])
 
-    return nb.njit(fastmath=True, cache=True)(py_func)
+    def get_kernel(self) -> Callable[..., Any]:
+        """
+        Return the compiled kernel.
+
+        :return: Compiled kernel.
+        :rtype: Callable[..., Any]
+        """
+        return self._kernel
+
+    def get_indices(self) -> np.ndarray:
+        """
+        Return the runtime gather matrix.
+
+        :return: Runtime gather matrix.
+        :rtype: np.ndarray
+        """
+        return self._indices
+
+    def get_target_rows(self) -> np.ndarray:
+        """
+        Return the residual target rows.
+
+        :return: Residual target rows.
+        :rtype: np.ndarray
+        """
+        return self._target_rows
+
+    def get_row_count(self) -> int:
+        """
+        Return the number of rows emitted by the kernel.
+
+        :return: Number of grouped rows.
+        :rtype: int
+        """
+        return self._row_count
+
+
+class FusedResidualDispatcher:
+    """
+    Dispatcher that applies all vectorized residual kernels in order.
+
+    The structural group kernels are already eagerly compiled with Numba. The
+    dispatcher keeps one reusable work row per group so the hot loop does not
+    allocate temporary residual blocks.
+    """
+
+    __slots__ = ["_kernel_specs", "_work_buffer"]
+
+    def __init__(self, kernel_specs: List[VectorizedKernelSpec]) -> None:
+        """
+        Build the fused residual dispatcher.
+
+        :param kernel_specs: Vectorized residual-kernel specifications.
+        :type kernel_specs: List[VectorizedKernelSpec]
+        :return: None.
+        :rtype: None
+        """
+        max_kernel_size: int = 0
+        kernel_spec: VectorizedKernelSpec
+
+        self._kernel_specs = kernel_specs
+
+        for kernel_spec in kernel_specs:
+            if kernel_spec.get_row_count() > max_kernel_size:
+                max_kernel_size = kernel_spec.get_row_count()
+            else:
+                pass
+
+        # The work buffer keeps one row per structural group and enough columns
+        # for the largest group output.
+        self._work_buffer: Mat = np.zeros((len(kernel_specs), max_kernel_size), dtype=np.float64)
+
+    def evaluate(
+            self,
+            states: Vec,
+            params: Vec,
+            history: Vec,
+            d_history: Vec,
+            h: float,
+            history2: Vec,
+            out: Vec,
+    ) -> None:
+        """
+        Evaluate the grouped residual system in place.
+
+        :param states: Current Newton iterate.
+        :type states: Vec
+        :param params: Full parameter vector.
+        :type params: Vec
+        :param history: Previous accepted state.
+        :type history: Vec
+        :param d_history: Previous derivative vector.
+        :type d_history: Vec
+        :param h: Effective local time step.
+        :type h: float
+        :param history2: Secondary state history.
+        :type history2: Vec
+        :param out: Residual output buffer.
+        :type out: Vec
+        :return: None.
+        :rtype: None
+        """
+        out[:] = 0.0
+
+        kernel_index: int = 0
+
+        while kernel_index < len(self._kernel_specs):
+            kernel_spec: VectorizedKernelSpec = self._kernel_specs[kernel_index]
+            row_count: int = kernel_spec.get_row_count()
+            local_out: Vec = self._work_buffer[kernel_index, :row_count]
+
+            kernel_spec.get_kernel()(
+                states,
+                params,
+                history,
+                d_history,
+                h,
+                kernel_spec.get_indices(),
+                local_out,
+                history2,
+            )
+            out[kernel_spec.get_target_rows()] = local_out[:row_count]
+            kernel_index += 1
+
+    def __call__(self, *args: Any) -> None:
+        """
+        Evaluate the grouped residual system in place.
+
+        :param states: Current Newton iterate.
+        :type states: Vec
+        :param params: Full parameter vector.
+        :type params: Vec
+        :param history: Previous accepted state.
+        :type history: Vec
+        :param d_history: Previous derivative vector.
+        :type d_history: Vec
+        :param h: Effective local time step.
+        :type h: float
+        :param history2: Secondary state history.
+        :type history2: Vec
+        :param out: Residual output buffer.
+        :type out: Vec
+        :return: None.
+        :rtype: None
+        """
+        if len(args) == 7:
+            states, params, history, d_history, h, history2, out = args
+        elif len(args) == 8:
+            states, params, history, d_history, h, _vec_flat_args, out, history2 = args
+        else:
+            raise TypeError(f"Unsupported fused residual signature with {len(args)} arguments")
+
+        self.evaluate(states, params, history, d_history, h, history2, out)
+
+
+class VectorizedResidualTrialEvaluator:
+    """
+    Callable helper that evaluates vectorized residuals during backtracking.
+    """
+
+    __slots__ = ["_residual_evaluator", "_full_params", "_x_prev", "_dx_prev", "_h_eff", "_x_prev2"]
+
+    def __init__(self) -> None:
+        """
+        Build one empty trial-residual evaluator.
+
+        :return: None.
+        :rtype: None
+        """
+        self._residual_evaluator: Callable[..., Any] | None = None
+        self._full_params: Vec | None = None
+        self._x_prev: Vec | None = None
+        self._dx_prev: Vec | None = None
+        self._h_eff: float = 0.0
+        self._x_prev2: Vec | None = None
+
+    def set_context(
+            self,
+            residual_evaluator: Callable[..., Any],
+            full_params: Vec,
+            x_prev: Vec,
+            dx_prev: Vec,
+            h_eff: float,
+            x_prev2: Vec,
+    ) -> None:
+        """
+        Store the residual-evaluation context of the current Newton step.
+
+        :param residual_evaluator: Fixed-signature residual evaluator.
+        :type residual_evaluator: Callable[..., Any]
+        :param full_params: Full parameter vector.
+        :type full_params: Vec
+        :param x_prev: Previous accepted state.
+        :type x_prev: Vec
+        :param dx_prev: Previous derivative vector.
+        :type dx_prev: Vec
+        :param h_eff: Effective local time step.
+        :type h_eff: float
+        :param x_prev2: Secondary state history.
+        :type x_prev2: Vec
+        :return: None.
+        :rtype: None
+        """
+        self._residual_evaluator = residual_evaluator
+        self._full_params = full_params
+        self._x_prev = x_prev
+        self._dx_prev = dx_prev
+        self._h_eff = float(h_eff)
+        self._x_prev2 = x_prev2
+
+    def __call__(self, trial_x: Vec, out_res: Vec) -> float:
+        """
+        Evaluate one trial Newton iterate during backtracking.
+
+        :param trial_x: Trial iterate.
+        :type trial_x: Vec
+        :param out_res: Destination residual buffer.
+        :type out_res: Vec
+        :return: Residual infinity norm.
+        :rtype: float
+        """
+        if self._residual_evaluator is None:
+            return np.inf
+        else:
+            pass
+
+        if self._full_params is None or self._x_prev is None or self._dx_prev is None or self._x_prev2 is None:
+            return np.inf
+        else:
+            pass
+
+        return evaluate_vectorized_residual(
+            residual_evaluator=self._residual_evaluator,
+            states=trial_x,
+            params=self._full_params,
+            history=self._x_prev,
+            d_history=self._dx_prev,
+            h=self._h_eff,
+            history2=self._x_prev2,
+            residual_out=out_res,
+        )
+
+
+class DirectResidualDispatcher:
+    """
+    Residual dispatcher backed by one monolithic in-place kernel.
+    """
+
+    __slots__ = ["_kernel"]
+
+    def __init__(self, kernel: Callable[..., Any]) -> None:
+        """
+        Build the direct residual dispatcher.
+
+        :param kernel: Monolithic in-place residual kernel.
+        :type kernel: Callable[..., Any]
+        :return: None.
+        :rtype: None
+        """
+        self._kernel = kernel
+
+    def evaluate(
+            self,
+            states: Vec,
+            params: Vec,
+            history: Vec,
+            d_history: Vec,
+            h: float,
+            history2: Vec,
+            out: Vec,
+    ) -> None:
+        """
+        Evaluate the full residual system in place.
+
+        :param states: Current Newton iterate.
+        :type states: Vec
+        :param params: Full parameter vector.
+        :type params: Vec
+        :param history: Previous accepted state.
+        :type history: Vec
+        :param d_history: Previous derivative vector.
+        :type d_history: Vec
+        :param h: Effective local time step.
+        :type h: float
+        :param history2: Secondary state history.
+        :type history2: Vec
+        :param out: Residual output buffer.
+        :type out: Vec
+        :return: None.
+        :rtype: None
+        """
+        self._kernel(states, params, history, d_history, h, out, history2)
+
+    def __call__(self, *args: Any) -> None:
+        """
+        Evaluate the full residual system in place.
+
+        :param states: Current Newton iterate.
+        :type states: Vec
+        :param params: Full parameter vector.
+        :type params: Vec
+        :param history: Previous accepted state.
+        :type history: Vec
+        :param d_history: Previous derivative vector.
+        :type d_history: Vec
+        :param h: Effective local time step.
+        :type h: float
+        :param history2: Secondary state history.
+        :type history2: Vec
+        :param out: Residual output buffer.
+        :type out: Vec
+        :return: None.
+        :rtype: None
+        """
+        if len(args) == 7:
+            states, params, history, d_history, h, history2, out = args
+        elif len(args) == 8:
+            states, params, history, d_history, h, _vec_flat_args, out, history2 = args
+        else:
+            raise TypeError(f"Unsupported direct residual signature with {len(args)} arguments")
+
+        self.evaluate(states, params, history, d_history, h, history2, out)
 
 @nb.njit(cache=True, fastmath=True)
 def _scatter_color_jvp_to_csc_data(
@@ -213,6 +671,43 @@ def _scatter_color_jvp_to_csc_data(
         p1 = col_ptr[k + 1]
         for p in range(p0, p1):
             data[data_idx[p]] = jvp[row_idx[p]]
+
+
+def _compile_master_jacobian_kernel(ad_kernel: Callable[..., Any], n_colors: int) -> Callable[..., Any]:
+    """
+    Build the eager sparse Jacobian dispatcher.
+
+    :param ad_kernel: Generic AD kernel reused across colors.
+    :type ad_kernel: Callable[..., Any]
+    :param n_colors: Number of graph colors.
+    :type n_colors: int
+    :return: Jacobian dispatcher.
+    :rtype: Callable[..., Any]
+    """
+    def master_jacobian(
+            states: Vec,
+            seed_matrix: Mat,
+            params: Vec,
+            history: Vec,
+            d_history: Vec,
+            h: float,
+            history2: Vec,
+            data: Vec,
+            color_ptr: np.ndarray,
+            col_ptr: np.ndarray,
+            row_idx: np.ndarray,
+            data_idx: np.ndarray,
+            work_jvp: Mat,
+    ) -> None:
+        color_index: int = 0
+
+        while color_index < n_colors:
+            local_jvp: Vec = work_jvp[color_index]
+            ad_kernel(states, seed_matrix[color_index], params, history, d_history, h, local_jvp, history2)
+            _scatter_color_jvp_to_csc_data(local_jvp, data, color_ptr, col_ptr, row_idx, data_idx, color_index)
+            color_index += 1
+
+    return master_jacobian
 
 
 class Predictor:
@@ -355,7 +850,7 @@ class SparseADJacobian:
         'verbose', 'equations', 'variables', 'parameters', 'method', 'dtype',
         'n_rows', 'n_cols', 'var_map', 'col_rows', 'J', 'colors', 'n_colors',
         'color_groups', 'color_ptr', 'color_cols', 'col_ptr', 'row_idx', 'data_idx',
-        '_compiler', 'ad_kernel', 'master_jac', '_seed_matrix'
+        '_compiler', '_ad_kernel', '_master_dispatcher', '_seed_matrix', '_jvp_work_buffer', '_data_buffer'
     ]
     def __init__(
             self, equations: List[Any], variables: List[Any], parameters: List[Any],
@@ -471,33 +966,24 @@ class SparseADJacobian:
         self.color_ptr, self.color_cols = color_ptr, np.asarray(color_cols, dtype=np.int32)
         self.col_ptr, self.row_idx, self.data_idx = col_ptr, row_idx, data_idx
 
-        # Compile kernels
-        self._compiler = EquationCompiler(variables=variables, parameters=parameters, method=method)
-        k_name = f"advec_step_generic_{method}_{self.n_rows}_{self.n_cols}"
-        py_ad = self._compiler.compile_ad_kernel(
+        # Compile the generic eager AD kernel once and reuse it across graph colors.
+        self._compiler = EagerEquationCompiler(variables=variables, parameters=parameters, method=method)
+        k_name = f"advec_step_generic_{method.name}_{self.n_rows}_{self.n_cols}"
+        py_ad, signature_tpe = self._compiler.compile_ad_kernel(
             equations,
             func_name=k_name,
             use_cse=use_cse,
             active_indices=None,
         )
-        self.ad_kernel = _safe_njit(py_ad, cache=True, fastmath=True)
+        self._ad_kernel = _safe_njit(py_ad, cache=True, fastmath=True, signature=signature_tpe)
 
         self._seed_matrix = np.zeros((self.n_colors, self.n_cols), dtype=self.dtype)
         for c in range(self.n_colors):
             self._seed_matrix[c, self.color_groups[c]] = 1.0
 
-        func_name = f"master_jac_{method}_{self.n_rows}_{self.n_cols}_{self.n_colors}"
-        src: List[str] = list([
-            f"def {func_name}(states, seed_matrix, params, history, d_history, h, history2, data, color_ptr, col_ptr, row_idx, data_idx):"
-        ])
-        for c in range(self.n_colors):
-            src.append(f"    jvp_{c} = kernel(states, seed_matrix[{c}], params, history, d_history, h, history2)")
-            src.append(f"    _scatter(jvp_{c}, data, color_ptr, col_ptr, row_idx, data_idx, {c})")
-
-        py_func = _compile_to_file("\n".join(src), func_name)
-        py_func.__globals__["_scatter"] = _scatter_color_jvp_to_csc_data
-        py_func.__globals__["kernel"] = self.ad_kernel
-        self.master_jac = _safe_njit(py_func, fastmath=True, cache=True)
+        self._master_dispatcher = _compile_master_jacobian_kernel(self._ad_kernel, self.n_colors)
+        self._jvp_work_buffer = np.zeros((self.n_colors, self.n_rows), dtype=self.dtype)
+        self._data_buffer = self.J.data
 
     @staticmethod
     def _greedy_color_columns(col_rows: List[List[int]], n_rows: int) -> Tuple[np.ndarray, int]:
@@ -542,9 +1028,43 @@ class SparseADJacobian:
         return colors, int(max_color + 1)
 
     def __call__(self, states, params, history, d_history, h, history2=None) -> csc_matrix:
-        self.master_jac(states, self._seed_matrix, params, history, d_history, h, history2, self.J.data, self.color_ptr,
-                        self.col_ptr, self.row_idx, self.data_idx)
+        if history2 is None:
+            history2 = history
+
+        self._master_dispatcher(
+            states,
+            self._seed_matrix,
+            params,
+            history,
+            d_history,
+            h,
+            history2,
+            self._data_buffer,
+            self.color_ptr,
+            self.col_ptr,
+            self.row_idx,
+            self.data_idx,
+            self._jvp_work_buffer,
+        )
         return self.J
+
+    def get_matrix(self) -> csc_matrix:
+        """
+        Return the reusable CSC Jacobian shell.
+
+        :return: CSC Jacobian shell.
+        :rtype: csc_matrix
+        """
+        return self.J
+
+    def get_data_buffer(self) -> Vec:
+        """
+        Return the reusable CSC numeric buffer.
+
+        :return: CSC numeric buffer.
+        :rtype: Vec
+        """
+        return self._data_buffer
 
 # ==============================================================================
 # StructuralVectorizedSolver
@@ -556,7 +1076,10 @@ class StructuralVectorizedSolver:
         '_state_vars', '_algebraic_vars', '_diff_vars', '_state_eqs', '_algebraic_eqs',
         'sorted_vars', '_n_state', '_n_vars', '_n_diff', 'uid2idx_vars',
         '_event_parameters', '_parameters', '_parameters_values', '_event_params_fn',
-        'jit_jacobians_ad', 'vectorized_ready', '_last_sim_loop_time', '_newton_diag_config', '_vectorized_warmup_done'
+        'jit_jacobians_ad', 'vectorized_ready', '_last_sim_loop_time', '_newton_diag_config', '_vectorized_warmup_done',
+        '_predictor', '_runtime_param_count', '_static_parameter_buffer', '_full_parameter_buffer', '_residual_buffer',
+        '_trial_state_buffer', '_trial_residual_buffer', '_trial_residual_evaluator',
+        '_backend_build_stats', '_last_runtime_stats', '_sparse_solver_backend_provider', '_sparse_factorization_manager'
     ]
 
     def __init__(self,
@@ -569,6 +1092,7 @@ class StructuralVectorizedSolver:
                  dense_threshold: int = 100,
                  verbose: bool = False,
                  auto_vectorization: bool = True,
+                 sparse_solver_backend_provider: SparseLinearSolverBackendProvider | None = None,
                  newton_diag_config: NewtonDiagnosticsConfig | None = None)-> None:
         """
         :param problem: The DAE problem definition.
@@ -579,6 +1103,8 @@ class StructuralVectorizedSolver:
         :param pred_method: DynamicIntegrationMethod used in the predictor step if method is explicit.
         :param dense_threshold: Threshold to switch between dense and sparse linear solvers.
         :param verbose: Print compilation and simulation timings.
+        :param sparse_solver_backend_provider: Sparse linear solver backend provider.
+        :type sparse_solver_backend_provider: SparseLinearSolverBackendProvider | None
         """
         self.problem = problem
         self.t0 = t0
@@ -622,7 +1148,26 @@ class StructuralVectorizedSolver:
 
         self.jit_jacobians_ad: Dict[DynamicIntegrationMethod, SparseADJacobian] = dict()
         self.vectorized_ready = False
+        self._last_sim_loop_time = 0.0
         self._vectorized_warmup_done = False
+        self._predictor = Predictor(n_states=self._n_state)
+        self._runtime_param_count: int = len(self._event_parameters)
+        self._static_parameter_buffer: Vec = np.asarray(
+            [float(constant.value) for constant in self._parameters_values],
+            dtype=np.float64,
+        )
+        self._full_parameter_buffer: Vec = np.zeros(
+            self._runtime_param_count + self._static_parameter_buffer.shape[0],
+            dtype=np.float64,
+        )
+        self._residual_buffer: Vec = np.zeros(self._n_vars, dtype=np.float64)
+        self._trial_state_buffer: Vec = np.zeros(self._n_vars, dtype=np.float64)
+        self._trial_residual_buffer: Vec = np.zeros(self._n_vars, dtype=np.float64)
+        self._trial_residual_evaluator = VectorizedResidualTrialEvaluator()
+        self._backend_build_stats: Dict[str, float] = dict()
+        self._last_runtime_stats: Dict[str, float] = dict()
+        self._sparse_solver_backend_provider = sparse_solver_backend_provider
+        self._sparse_factorization_manager = None
 
         if auto_vectorization:
             self.auto_detect_vectorization(method)
@@ -637,7 +1182,9 @@ class StructuralVectorizedSolver:
 
         if self.verbose:
             print("--- [AUTO-VEC] Inferring Algebraic Structure (Clustering) ---")
-        t0 = time.time()
+        else:
+            pass
+        t0 = time.perf_counter()
 
         groups: Dict[str, EquationGroup] = dict()
 
@@ -669,6 +1216,8 @@ class StructuralVectorizedSolver:
         # -----------------------------
         # PHASE 2: CLUSTERING
         # -----------------------------
+        grouping_t0: float = time.perf_counter()
+
         for i, residual_eq in enumerate(full_eq_list):
             sig_str, runtime_vars = canonicalize_expression(
                 residual_eq,
@@ -715,65 +1264,117 @@ class StructuralVectorizedSolver:
 
         if self.verbose:
             print(f"   [AUTO-VEC] Detected {len(groups)} patterns in {len(full_eq_list)} total equations.")
+        else:
+            pass
+        grouping_s: float = time.perf_counter() - grouping_t0
 
         # -----------------------------
         # PHASE 3: KERNEL COMPILATION
         # -----------------------------
-        self.vec_kernels: List[Dict[str, Any]] = list()
+        self.vec_kernels: List[VectorizedKernelSpec] = list()
+        group_keys: List[str] = sorted(list(groups.keys()))
+        backend_cache_token: str = _build_backend_cache_token(method, len(full_eq_list), self._n_vars, group_keys)
+        avg_group_size: float = float(len(full_eq_list) / max(len(group_keys), 1))
+        use_direct_residual: bool = len(group_keys) >= 20 and avg_group_size <= 3.0
 
         all_params: List[Any] = list()
         all_params.extend(self._event_parameters)
         all_params.extend(self._parameters)
 
-        vec_compiler = MatrixVectorizedCompiler(self.sorted_vars, all_params, method=method)
+        vec_compiler = EagerEquationCompiler(self.sorted_vars, all_params, method=method)
 
-        for group_key_index, signature in enumerate(sorted(groups.keys())):
-            group_data = groups[signature]
-            k_name = f"vec_kernel_{method.name}_{group_key_index}"
+        residual_compile_t0: float = time.perf_counter()
 
-            py_func = vec_compiler.compile_matrix_kernel(
-                group_data.get_template_eq(),
-                func_name=k_name,
-                template_vars=group_data.get_template_vars()
+        if use_direct_residual:
+            direct_name: str = f"structural_vectorized_residual_{backend_cache_token}"
+            py_func: Callable[..., Any]
+            signature_tpe: Any
+            py_func, signature_tpe = vec_compiler.compile(
+                equations=full_eq_list,
+                func_name=direct_name,
+                use_cse=False,
+                offset=0,
+                inplace=True,
             )
+            self.fused_residual = DirectResidualDispatcher(
+                _safe_njit(py_func, cache=True, fastmath=True, signature=signature_tpe)
+            )
+            self.vec_kernels = list()
+        else:
+            for group_key_index, signature in enumerate(group_keys):
+                group_data = groups[signature]
+                k_name = f"vec_kernel_{method.name}_{group_key_index}"
 
-            self.vec_kernels.append({
-                'func': nb.njit(cache=True, fastmath=True)(py_func),
-                'indices': np.array(group_data.get_idx_matrix(), dtype=np.int32),
-                'target': np.array(group_data.get_row_indices(), dtype=np.int32)
-            })
+                py_func, signature_tpe = vec_compiler.compile_matrix_kernel(
+                    group_data.get_template_eq(),
+                    func_name=k_name,
+                    template_vars=group_data.get_template_vars()
+                )
+
+                self.vec_kernels.append(
+                    VectorizedKernelSpec(
+                        # The vectorized residual kernels are compiled eagerly so the
+                        # benchmark build phase captures their cost explicitly and the
+                        # simulation phase measures the hot loop more cleanly.
+                        kernel=_safe_njit(py_func, cache=True, fastmath=True, signature=signature_tpe),
+                        indices=np.array(group_data.get_idx_matrix(), dtype=np.int32),
+                        target_rows=np.array(group_data.get_row_indices(), dtype=np.int32),
+                    )
+                )
+
+            self.fused_residual = FusedResidualDispatcher(self.vec_kernels)
+
+        residual_compile_s: float = time.perf_counter() - residual_compile_t0
 
         # -----------------------------
         # PHASE 4: DISPATCHER SETUP
         # -----------------------------
-        self.fused_residual = _compile_fused_residual(self.vec_kernels)
-
         temp_args: List[Any] = list()
-        for k in self.vec_kernels:
-            temp_args.extend([k['target'], k['indices']])
+        kernel_spec: VectorizedKernelSpec
+        for kernel_spec in self.vec_kernels:
+            temp_args.extend([kernel_spec.get_target_rows(), kernel_spec.get_indices()])
 
         self.vec_flat_args = tuple(temp_args)
 
         # -----------------------------
         # PHASE 5: JACOBIAN SETUP
         # -----------------------------
+        jacobian_build_t0: float = time.perf_counter()
+
         if method not in self.jit_jacobians_ad:
             self.jit_jacobians_ad[method] = SparseADJacobian(
                 full_eq_list, self.sorted_vars, all_params, method, verbose=self.verbose
             )
 
         self.vec_jacobian = self.jit_jacobians_ad[method]
+        self._sparse_factorization_manager = StructuralCompiledSparseFactorizationManager(
+            self.vec_jacobian.get_matrix(),
+            self.vec_jacobian.get_data_buffer(),
+            self._sparse_solver_backend_provider,
+        )
         self.vectorized_ready = True
+        jacobian_build_s: float = time.perf_counter() - jacobian_build_t0
+
+        self._backend_build_stats = dict(
+            grouping_s=grouping_s,
+            residual_compile_s=residual_compile_s,
+            jacobian_build_s=jacobian_build_s,
+            direct_residual_mode=1.0 if use_direct_residual else 0.0,
+            structural_groups=float(len(group_keys)),
+            total_s=time.perf_counter() - t0,
+        )
 
         if self.verbose:
-            print(f"   [AUTO-VEC] Setup finished in {time.time() - t0:.4f}s")
+            print(f"   [AUTO-VEC] Setup finished in {self._backend_build_stats['total_s']:.4f}s")
+        else:
+            pass
 
 
     def simulate(self,
                  x0: Union[Vec| None] = None,
                  dx0: Union[Vec| None] = None,
                  params0: Union[Vec| None] = None,
-                 boundary_updater: BoundaryUpdateWrapper| None = None) -> Tuple[Vec, Mat, Mat]:
+                 boundary_updater: EmtBoundaryUpdateProtocol | None = None) -> Tuple[Vec, Mat, Mat]:
 
         """
         Run the vectorized DAE time-domain simulation.
@@ -781,7 +1382,7 @@ class StructuralVectorizedSolver:
         :param x0: Initial state vector.
         :param dx0: Initial derivative vector.
         :param params0: Initial event parameters.
-        :param boundary_updater: Boundary condition updater.
+        :param boundary_updater: Optional override for the problem boundary updater.
         :return: Time vector and state trajectory matrix.
         """
 
@@ -793,12 +1394,15 @@ class StructuralVectorizedSolver:
             dx0 = self.problem.get_dx0()
         else: pass
 
-        if params0 is None:
-            params0 = np.zeros(len(self._event_parameters), dtype=np.float64)
-        else: pass
+        active_boundary_updater = resolve_solver_boundary_updater(self.problem, boundary_updater, float(self.t0))
+
+        if params0 is not None:
+            params0 =  np.array(params0, dtype=np.float64, copy=True)
+        else:
+            params0 = self.problem.event_params_values.copy()
 
         return self._simulate_vectorized(self.t0, self.t_end, self.h, x0, dx0, params0, self.method,
-                                         boundary_updater, self.verbose, self.dense_threshold)
+                                         active_boundary_updater, self.verbose, self.dense_threshold)
 
     def _simulate_vectorized(self,
                              t0:float,
@@ -808,7 +1412,7 @@ class StructuralVectorizedSolver:
                              dx0: Vec,
                              params0: Vec,
                              method: DynamicIntegrationMethod,
-                             boundary_updater: BoundaryUpdateWrapper,
+                             boundary_updater: EmtBoundaryUpdateProtocol | None,
                              verbose: bool,
                              dense_threshold: int)-> Tuple[Vec, Mat, Mat]:
         if not self.vectorized_ready:
@@ -825,19 +1429,20 @@ class StructuralVectorizedSolver:
         dx_prev: Vec = dx0.copy()
         x_prev2: Vec = x0.copy()
         x_iter: Vec = x0.copy()
-        res_global: Vec = np.zeros(self._n_vars, dtype=np.float64)
-        trial_state: Vec = np.zeros(self._n_vars, dtype=np.float64)
-        trial_residual: Vec = np.zeros(self._n_vars, dtype=np.float64)
+        res_global: Vec = self._residual_buffer
+        trial_state: Vec = self._trial_state_buffer
+        trial_residual: Vec = self._trial_residual_buffer
 
-        static_params = np.array([c.value for c in self._parameters_values], dtype=np.float64)
-        ev_params = np.asarray(params0, dtype=np.float64)
+        static_params = self._static_parameter_buffer
+        ev_params = np.array(params0, dtype=np.float64, copy=True)
 
-        full_params = np.empty(len(self._event_parameters) + len(static_params), dtype=np.float64)
+        full_params = self._full_parameter_buffer
 
         if len(ev_params) > 0:
-            full_params[:len(ev_params)] = self.problem.def_event_params_fn(ev_params, float(t0))
-
-        full_params[len(ev_params):] = static_params
+            runtime_params = self.problem.def_event_params_fn(ev_params, float(t0))
+            fill_full_parameter_buffer(runtime_params, static_params, full_params)
+        else:
+            fill_full_parameter_buffer(ev_params, static_params, full_params)
 
         if boundary_updater is not None:
             boundary_updater.update(float(t0), x_prev, full_params)
@@ -858,6 +1463,7 @@ class StructuralVectorizedSolver:
 
         dense_solve: Callable[..., Vec] | None = None
         sparse_solve: Callable[..., Vec] | None = None
+        residual_evaluator = build_residual_evaluator(self.fused_residual, self.vec_flat_args)
 
         if diagnostics_enabled:
             dense_solve = with_newton_diagnostics(
@@ -869,20 +1475,31 @@ class StructuralVectorizedSolver:
                 matrix_getter=lambda bundle: bundle[1],
             )
             sparse_solve = with_newton_diagnostics(
-                lambda bundle, rhs: bundle[0].solve(rhs),
-                fallback_solve=lambda bundle, rhs: sparse_lsqr_fallback(bundle[1], rhs),
+                lambda manager, rhs: manager.solve(rhs),
+                fallback_solve=lambda manager, rhs: sparse_lsqr_fallback(manager.get_active_matrix(), rhs),
                 collector=trace_collector,
                 config=diag_cfg,
-                solver_name="superlu",
-                matrix_getter=lambda bundle: bundle[1],
+                solver_name="emt_sparse_backend",
+                matrix_getter=lambda manager: manager.get_active_matrix(),
             )
         else:
             pass
 
         if verbose:
             print("-> JIT Warmup.")
+        else:
+            pass
 
-        self.fused_residual(x_prev, full_params, x_prev, dx_prev, h, self.vec_flat_args, res_global, x_prev2)
+        _ = evaluate_vectorized_residual(
+            residual_evaluator=residual_evaluator,
+            states=x_prev,
+            params=full_params,
+            history=x_prev,
+            d_history=dx_prev,
+            h=h,
+            history2=x_prev2,
+            residual_out=res_global,
+        )
         _ = self.vec_jacobian(
             states=x_prev,
             params=full_params,
@@ -892,13 +1509,18 @@ class StructuralVectorizedSolver:
             history2=x_prev2
         )
 
-        t_start_loop = time.time()  # Timer local para debug
+        t_start_loop = time.perf_counter()
+        total_newton_iterations: int = 0
+        jacobian_evaluation_count: int = 0
+        aligned_substep_count: int = 0
+        sparse_factor_manager = self._sparse_factorization_manager
 
-        if verbose: print(f"-> Starting VECTORIZED Simulation (Integration loop)...")
+        if verbose:
+            print(f"-> Starting VECTORIZED Simulation (Integration loop)...")
+        else:
+            pass
 
         for i in range(steps):
-            if verbose:
-                print(f"Simulating at step {i}")
 
             t_step_start: float = float(t[i])
             t_step_target: float = float(t[i + 1])
@@ -908,14 +1530,11 @@ class StructuralVectorizedSolver:
 
             while t_local_prev < (t_step_target - 1e-15):
 
-                forced_event_time: float | None = None
-                if boundary_updater is None:
-                    pass
-                else:
-                    forced_event_time = boundary_updater.get_next_forced_event_time(
-                        t_prev=float(t_local_prev),
-                        t_target=float(t_step_target),
-                    )
+                forced_event_time = get_solver_forced_event_time(
+                    boundary_updater,
+                    float(t_local_prev),
+                    float(t_step_target),
+                )
 
                 if forced_event_time is None:
                     t_curr = t_step_target
@@ -929,6 +1548,11 @@ class StructuralVectorizedSolver:
 
                 is_aligned_substep: bool = t_curr < (t_step_target - 1e-15)
 
+                if is_aligned_substep:
+                    aligned_substep_count += 1
+                else:
+                    aligned_substep_count = aligned_substep_count
+
                 if method == DynamicIntegrationMethod.DaeBDF2 and is_aligned_substep:
                     raise NotImplementedError(
                         "force_step_alignment is not implemented for DaeBDF2 in StructuralVectorizedSolver."
@@ -939,7 +1563,8 @@ class StructuralVectorizedSolver:
                 h_eff: float = float(t_curr - t_local_prev)
 
                 # Update params in-place for the local substep end
-                full_params[:len(ev_params)] = self.problem.def_event_params_fn(ev_params, float(t_curr))
+                runtime_params = self.problem.def_event_params_fn(ev_params, float(t_curr))
+                fill_full_parameter_buffer(runtime_params, static_params, full_params)
 
                 if boundary_updater is not None:
                     boundary_updater.update(t_curr, x_prev, full_params)
@@ -954,13 +1579,17 @@ class StructuralVectorizedSolver:
                 # IMPORTANT:
                 # LU factors must be local to each substep, because x_prev, params and h_eff may change.
                 cached_lu_dense: DenseSolveBundle | None = None
-                cached_lu_sparse: SparseSolveBundle | None = None
+                if sparse_factor_manager is None:
+                    pass
+                else:
+                    if sparse_factor_manager.has_factorization():
+                        sparse_factor_manager.invalidate()
+                    else:
+                        pass
 
                 # PREDICTOR
                 if i == 0 and is_first_local_step and method == DynamicIntegrationMethod.DaeTrapezoidal:
-                    n_states = self.problem.get_states_number()
-                    predictor = Predictor(n_states=n_states)
-                    predictor.predict(
+                    self._predictor.predict(
                         x_iter=x_iter,
                         x_prev=x_prev,
                         dx_prev=dx_prev,
@@ -971,18 +1600,18 @@ class StructuralVectorizedSolver:
                     pass
 
                 for k in range(15):
+                    total_newton_iterations += 1
                     ctx: NewtonSolveContext | None = None
-                    self.fused_residual(
-                        x_iter,
-                        full_params,
-                        x_prev,
-                        dx_prev,
-                        h_eff,
-                        self.vec_flat_args,
-                        res_global,
-                        x_prev2
+                    res_norm: float = evaluate_vectorized_residual(
+                        residual_evaluator=residual_evaluator,
+                        states=x_iter,
+                        params=full_params,
+                        history=x_prev,
+                        d_history=dx_prev,
+                        h=h_eff,
+                        history2=x_prev2,
+                        residual_out=res_global,
                     )
-                    res_norm: float = np.max(np.abs(res_global))
 
                     if res_norm < 1e-6:
                         break
@@ -1001,7 +1630,7 @@ class StructuralVectorizedSolver:
                     else:
                         pass
 
-                    recompute: bool = (cached_lu_dense is None and cached_lu_sparse is None) or \
+                    recompute: bool = (cached_lu_dense is None and (sparse_factor_manager is None or not sparse_factor_manager.has_factorization())) or \
                                       (k > 0 and (res_norm / (last_res_norm + 1e-16)) > 0.5)
 
                     if recompute:
@@ -1013,6 +1642,7 @@ class StructuralVectorizedSolver:
                             h=h_eff,
                             history2=x_prev2
                         )
+                        jacobian_evaluation_count += 1
 
                         if use_dense:
                             dense_jacobian = cached_J.toarray()
@@ -1023,14 +1653,16 @@ class StructuralVectorizedSolver:
                                 pass
 
                             cached_lu_dense = (lu_factor(dense_jacobian), dense_jacobian)
-                            cached_lu_sparse = None
                         else:
                             if diagnostics_enabled and ctx is not None:
                                 maybe_check_index1(cached_J, self._n_state, ctx=ctx, config=diag_cfg)
                             else:
                                 pass
 
-                            cached_lu_sparse = (splu(cached_J), cached_J)
+                            if sparse_factor_manager is None:
+                                raise RuntimeError("StructuralVectorizedSolver sparse factorization manager is not initialized")
+                            else:
+                                sparse_factor_manager.factorize()
                             cached_lu_dense = None
                     else:
                         pass
@@ -1046,25 +1678,21 @@ class StructuralVectorizedSolver:
                     else:
                         if diagnostics_enabled and ctx is not None:
                             assert sparse_solve is not None
-                            assert cached_lu_sparse is not None
-                            delta = sparse_solve(cached_lu_sparse, -res_global, ctx)
+                            assert sparse_factor_manager is not None
+                            delta = sparse_solve(sparse_factor_manager, -res_global, ctx)
                         else:
-                            assert cached_lu_sparse is not None
-                            delta = cached_lu_sparse[0].solve(-res_global)
+                            assert sparse_factor_manager is not None
+                            delta = sparse_factor_manager.solve(-res_global)
 
                     if diag_cfg.enable_backtracking:
-                        def _evaluate_trial_residual(trial_x: Vec, out_res: Vec) -> float:
-                            self.fused_residual(
-                                trial_x,
-                                full_params,
-                                x_prev,
-                                dx_prev,
-                                h_eff,
-                                self.vec_flat_args,
-                                out_res,
-                                x_prev2,
-                            )
-                            return float(np.max(np.abs(out_res)))
+                        self._trial_residual_evaluator.set_context(
+                            residual_evaluator=residual_evaluator,
+                            full_params=full_params,
+                            x_prev=x_prev,
+                            dx_prev=dx_prev,
+                            h_eff=h_eff,
+                            x_prev2=x_prev2,
+                        )
 
                         maybe_apply_backtracking(
                             x_iter,
@@ -1072,7 +1700,7 @@ class StructuralVectorizedSolver:
                             res_norm,
                             trial_state,
                             trial_residual,
-                            evaluate_residual=_evaluate_trial_residual,
+                            evaluate_residual=self._trial_residual_evaluator,
                             config=diag_cfg,
                         )
                     else:
@@ -1109,7 +1737,45 @@ class StructuralVectorizedSolver:
             y[i + 1] = x_prev
             dy[i + 1] = dx_prev
 
-        self._last_sim_loop_time = time.time() - t_start_loop
-        if verbose: print(f"VECTORIZED INTEGRATION LOOP Finished: {self._last_sim_loop_time:.4f}s")
+        self._last_sim_loop_time = time.perf_counter() - t_start_loop
+        self._last_runtime_stats = dict(
+            sim_loop_s=self._last_sim_loop_time,
+            total_newton_iterations=float(total_newton_iterations),
+            jacobian_evaluations=float(jacobian_evaluation_count),
+            aligned_substeps=float(aligned_substep_count),
+            macro_steps=float(steps),
+        )
+
+        if verbose:
+            print(f"VECTORIZED INTEGRATION LOOP Finished: {self._last_sim_loop_time:.4f}s")
+        else:
+            pass
 
         return t, y, dy
+
+    def get_backend_build_stats(self) -> Dict[str, float]:
+        """
+        Return setup timings collected during backend compilation.
+
+        :return: Backend build statistics.
+        :rtype: Dict[str, float]
+        """
+        return dict(self._backend_build_stats)
+
+    def get_last_runtime_stats(self) -> Dict[str, float]:
+        """
+        Return runtime statistics collected during the latest simulation.
+
+        :return: Runtime statistics.
+        :rtype: Dict[str, float]
+        """
+        return dict(self._last_runtime_stats)
+
+    def get_last_sim_loop_time(self) -> float:
+        """
+        Return the latest integration-loop wall time.
+
+        :return: Latest loop time in seconds.
+        :rtype: float
+        """
+        return self._last_sim_loop_time

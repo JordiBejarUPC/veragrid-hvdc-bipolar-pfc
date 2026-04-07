@@ -6,16 +6,13 @@ from __future__ import annotations
 from typing import Union, List, TYPE_CHECKING, Tuple
 import numpy as np
 
-from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
+from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import BuildStatus, DeviceType, SubObjectType, ShuntConnectionType
 from VeraGridEngine.basic_structures import CxVec
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Aggregation.facility import Facility
-from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
-from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 if TYPE_CHECKING:
@@ -23,7 +20,7 @@ if TYPE_CHECKING:
     from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
 
-class InjectionParent(PhysicalDevice):
+class InjectionParent(DynamicDevice):
     """
     Parent class for Injections
     """
@@ -48,10 +45,7 @@ class InjectionParent(PhysicalDevice):
         '_use_kw',
         '_bus_pos',
         '_conn',
-        '_rms_model',
-        '_emt_model',
-        '_rms_template',
-        '_emt_template',
+
         'color',
     )
 
@@ -81,14 +75,7 @@ class InjectionParent(PhysicalDevice):
         GCProp(key='use_kw', units='', tpe=bool, definition='Consider the injections in kW and kVAr?'),
         GCProp(key='conn', units='', tpe=ShuntConnectionType,
                definition='Connection type for 3-phase studies'),
-        GCProp(key='rms_model', units='', tpe=SubObjectType.DaeBlockType,
-               definition='RMS dynamic model', display=False),
-        GCProp(key='emt_model', units='', tpe=SubObjectType.DaeBlockType,
-               definition='EMT dynamic model', display=False),
-        GCProp(key='rms_template', units='', tpe=DeviceType.RmsModelTemplateDevice,
-               definition='RMS template used', display=True),
-        GCProp(key='emt_template', units='', tpe=DeviceType.EmtModelTemplateDevice,
-               definition='Emt template used', display=True),
+
         GCProp(key='bus_pos', units='', tpe=int, definition='Aid to locate devices on a busbar',
                display=False),
     )
@@ -125,7 +112,7 @@ class InjectionParent(PhysicalDevice):
         :param device_type: DeviceType
         """
 
-        PhysicalDevice.__init__(self,
+        DynamicDevice.__init__(self,
                                 name=name,
                                 idtag=idtag,
                                 code=code,
@@ -165,18 +152,14 @@ class InjectionParent(PhysicalDevice):
 
         self._conn: ShuntConnectionType = ShuntConnectionType.GroundedStar
 
-        self._rms_model: Block = Block()
-        self._rms_template: RmsModelTemplate | None = None
 
-        self._emt_model: Block = Block()
-        self._emt_template: EmtModelTemplate | None = None
 
         self.bus_pos: int = 0
 
         self.color = color if color is not None else "#909090"  # light gray
 
     @property
-    def bus(self) -> Bus:
+    def bus(self) -> Bus | None:
         """
         Bus
         :return: Bus
@@ -301,71 +284,7 @@ class InjectionParent(PhysicalDevice):
         if isinstance(val, ShuntConnectionType):
             self._conn = val
 
-    @property
-    def rms_model(self) -> Block:
-        """
-        Get the RMS model
-        """
-        return self._rms_model
 
-    @rms_model.setter
-    def rms_model(self, val: Block):
-        if isinstance(val, Block):
-            self._rms_model = val
-        else:
-            raise ValueError(f"RMS model cannot accept {val}")
-
-    @property
-    def emt_model(self) -> Block:
-        """
-        Get the EMT model
-        """
-        return self._emt_model
-
-    @emt_model.setter
-    def emt_model(self, val: Block):
-        if isinstance(val, Block):
-            self._emt_model = val
-        else:
-            raise ValueError(f"EMT model cannot accept {val}")
-
-    @property
-    def rms_template(self) -> RmsModelTemplate | None:
-        """
-        Get the RMS model
-        """
-        return self._rms_template
-
-    @rms_template.setter
-    def rms_template(self, val: RmsModelTemplate):
-        if isinstance(val, RmsModelTemplate):
-            self._rms_template = val
-
-            if self.auto_update_enabled:
-                self.rms_model = val.block.copy()
-        elif val is None:
-            self._rms_template = None
-        else:
-            raise ValueError(f"RMS template cannot accept {val}")
-
-    @property
-    def emt_template(self) -> EmtModelTemplate | None:
-        """
-        Get the EMT template
-        """
-        return self._emt_template
-
-    @emt_template.setter
-    def emt_template(self, val: EmtModelTemplate):
-        if isinstance(val, EmtModelTemplate):
-            self._emt_template = val
-
-            if self.auto_update_enabled:
-                self.emt_model = val.block.copy()
-        elif val is None:
-            self._emt_template = None
-        else:
-            raise ValueError(f"EMT template cannot accept {val}")
 
     def get_S_with_sign(self) -> complex:
         """

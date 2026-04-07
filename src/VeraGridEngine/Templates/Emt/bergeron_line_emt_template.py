@@ -6,18 +6,17 @@ import numpy as np
 import scipy.linalg as spla
 from typing import Dict, List, Tuple, Any
 
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.block import Block, Var
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, EmtLineTypes
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Branches.line import Line
 
 
 def get_bergeron_line_emt_template(
-    grid: MultiCircuit,
+    vf: VarFactory,
     line: Line,
-    name: str | None = None,
+    name: str | None = EmtLineTypes.Bergeron,
 ) -> EmtModelTemplate:
     """
     Create the symbolic EMT template for a Bergeron line.
@@ -27,9 +26,10 @@ def get_bergeron_line_emt_template(
     """
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LineDevice
-    templ.name = f"emt_bergeron_template_{line.name}" if name is None else f"{name}_{line.name}"
+    templ.name = name
 
-    vf: VarFactory = grid.emt_var_factory
+    templ.block.name = EmtLineTypes.Bergeron
+
 
     ph_labels = ["N", "A", "B", "C"]
     ph_mask = np.array([
@@ -48,6 +48,7 @@ def get_bergeron_line_emt_template(
     ih_t = [vf.add_var(f"Ih_t_{line.name}_{ph}") for ph in active_ph]
 
     templ.block.event_dict = {p: vf.add_const(0.0) for p in (ih_f + ih_t)}
+
 
     return templ
 

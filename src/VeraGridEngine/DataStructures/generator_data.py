@@ -106,6 +106,8 @@ class GeneratorData:
 
         data.active = self.active[elm_idx]
         data.p = self.p[elm_idx]
+        elm_idx_3 = ((elm_idx * 3)[:, np.newaxis] + np.arange(3)).flatten()
+        data.p3_star = self.p3_star[elm_idx_3]
         data.pf = self.pf[elm_idx]
         data.v = self.v[elm_idx]
 
@@ -161,6 +163,8 @@ class GeneratorData:
         data.scalable = self.scalable[elm_idx]
 
         data.original_idx = elm_idx
+        data.name_to_idx = {str(name): i for i, name in enumerate(data.names)}
+        data.is_at_dc_bus = self.is_at_dc_bus[elm_idx]
 
         return data
 
@@ -198,6 +202,7 @@ class GeneratorData:
 
         data.active = self.active.copy()
         data.p = self.p.copy()
+        data.p3_star = self.p3_star.copy()
         data.pf = self.pf.copy()
         data.v = self.v.copy()
 
@@ -242,7 +247,9 @@ class GeneratorData:
         data.shift_key = self.shift_key.copy()
         data.scalable = self.scalable.copy()
 
-        data.original_idx = self.original_idx
+        data.original_idx = self.original_idx.copy()
+        data.name_to_idx = self.name_to_idx.copy()
+        data.is_at_dc_bus = self.is_at_dc_bus.copy()
 
         return data
 

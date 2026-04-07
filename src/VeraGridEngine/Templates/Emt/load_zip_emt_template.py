@@ -4,10 +4,8 @@
 # SPDX-License-Identifier: MPL-2.0
 import numpy as np
 
-from VeraGridEngine import MultiCircuit
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 
 def get_load_ZIP_3ph_emt_template(vf: VarFactory,   name: str = "ZIP_Load_EMT_3ph") -> EmtModelTemplate:
@@ -23,6 +21,7 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory,   name: str = "ZIP_Load_EMT_3p
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
+    templ.block.name = name
 
     # fbase: float = grid.fBase
     # sbase: float = grid.Sbase
@@ -33,9 +32,9 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory,   name: str = "ZIP_Load_EMT_3p
     c05 = vf.add_const(0.5)
 
     # Inputs: Instantaneous phase voltages from the grid
-    v_A = vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
+    v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowRefferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowRefferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowRefferenceType.v_C)
     templ.block.in_vars = [v_A, v_B, v_C]
 
     # Used for initialization:
@@ -196,6 +195,10 @@ def get_load_ZIP_3ph_emt_template(vf: VarFactory,   name: str = "ZIP_Load_EMT_3p
 
 
     templ.block.external_mapping = {
+        VarPowerFlowRefferenceType.v_N: None,
+        VarPowerFlowRefferenceType.v_A: v_A,
+        VarPowerFlowRefferenceType.v_B: v_B,
+        VarPowerFlowRefferenceType.v_C: v_C,
         VarPowerFlowRefferenceType.P: None,
         VarPowerFlowRefferenceType.Q: None,
         VarPowerFlowRefferenceType.P_N: None,

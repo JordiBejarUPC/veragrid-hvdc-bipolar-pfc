@@ -20,7 +20,7 @@ from VeraGridEngine.Templates.Rms.vsc_template import PVCellBuild
 from VeraGridEngine.Templates.Rms.vsc_gfm import VscGfmBuild
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource
 from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
@@ -269,7 +269,7 @@ else:
     raise ValueError(f"Unknown load type: {load_type}")
     
 genrow_mdl1 = get_genrow1_rms_template(grid.rms_var_factory).block
-genrow_mdl1 = get_complete_generator_template(grid.rms_var_factory).block
+genrow_mdl1 = get_complete_generator_template_rms(grid.rms_var_factory).block
 
 # Initialize the RMS
 line12_mdl = (get_line_rms_template(grid.rms_var_factory).block)

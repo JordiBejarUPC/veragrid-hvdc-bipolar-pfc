@@ -20,7 +20,7 @@ from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
@@ -93,7 +93,7 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 
 
 # generator
-genqec_mdl = get_complete_generator_template(grid.rms_var_factory).block
+genqec_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
 
 # line
 line_mdl = get_line_rms_template(grid.rms_var_factory).block
@@ -126,6 +126,16 @@ grid.add_rms_events_group(events_group)
 event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group)
 grid.add_rms_event(event)
 
+gce.save_file(grid=grid, filename="saved_grid_1.veragrid")
+grid_opened = gce.open_file("saved_grid_1.veragrid")
+
+# equal, logger = grid.compare_circuits(grid_opened, detailed_profile_comparison=True)
+# if not equal:
+#     logger.print()
+# # asset for failing
+# assert equal
+
+
 rms_events_group_names = np.array(0)
 
 # choose variables to save values
@@ -137,11 +147,6 @@ rms_events_group_names = np.array(0)
 # uid_save = [var.uid for var in vars_to_save]
 
 
-
-load_mdl_uid = grid.loads[0].rms_model.uid
-gce.save_file(grid=grid, filename="2bus_gen_load_evt.veragrid")
-grid2 = gce.open_file(filename="2bus_gen_load_evt.veragrid")
-load_mdl_uid2 = grid2.loads[0].rms_model.uid
 
 ######################################################################################################
 # Power flow
@@ -169,7 +174,7 @@ options = gce.PowerFlowOptions(
     initialize_angles=False,
     generate_report=False,
 )
-res = gce.power_flow(grid, options=options)
+res = gce.power_flow(grid_opened, options=options)
 
 print(f"Converged: {res.converged}")
 print(res.get_bus_df())
@@ -191,7 +196,7 @@ options = RmsOptions(time_step=0.001,
 ######################################################################################################
 
 
-problem = RmsProblemDae(grid=grid,
+problem = RmsProblemDae(grid=grid_opened,
                         options=options,
                         pf_results=res)
 

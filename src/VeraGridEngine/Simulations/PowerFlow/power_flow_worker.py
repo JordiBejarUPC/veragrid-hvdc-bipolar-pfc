@@ -520,6 +520,10 @@ def __solve_island_limited_support(island: NumericalCircuit,
                                                   pq=indices.pq,
                                                   pv=indices.pv)
 
+                if solver_idx > 0:
+                    # if we get to this solver, the converged tag should not tell me it worked
+                    solution.converged = solution.norm_f <= options.tolerance
+
             # LAC PF
             elif solver_type == SolverType.LACPF:
                 adms = island.get_series_admittance_matrices()
@@ -533,7 +537,8 @@ def __solve_island_limited_support(island: NumericalCircuit,
                                       V0=V0,
                                       pq=indices.pq,
                                       pv=indices.pv,
-                                      vd=indices.vd)
+                                      vd=indices.vd,
+                                      logger=logger)
                 if options.distributed_slack:
                     ok, delta = compute_slack_distribution(Scalc=solution.Scalc,
                                                            vd=indices.vd,
@@ -549,7 +554,11 @@ def __solve_island_limited_support(island: NumericalCircuit,
                                               V0=V0,
                                               pq=indices.pq,
                                               pv=indices.pv,
-                                              vd=indices.vd)
+                                              vd=indices.vd,
+                                              logger=logger)
+                if solver_idx > 0:
+                    # if we get to this solver, the converged tag should not tell me it worked
+                    solution.converged = solution.norm_f <= options.tolerance
 
             # Gauss-Seidel
             elif solver_type == SolverType.GAUSS:

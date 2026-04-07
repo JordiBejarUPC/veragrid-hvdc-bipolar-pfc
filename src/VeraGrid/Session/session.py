@@ -52,6 +52,7 @@ from VeraGridEngine.Simulations.StateEstimation.state_stimation_driver import (S
 from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import (SmallSignalStabilityRmsDriver,
                                                                                     SmallSignalStabilityRmsResults)
 from VeraGridEngine.Simulations.Rms.rms_driver import RmsSimulationDriver, RmsResults
+from VeraGridEngine.Simulations.EMT.emt_driver import EmtSimulationDriver, EmtResults
 from VeraGridEngine.Simulations.Topology.node_groups_driver import NodeGroupsDriver
 from VeraGridEngine.Simulations.driver_template import DriverTemplate, DriverToSave
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -592,6 +593,15 @@ class SimulationSession:
         return drv, results
 
     @property
+    def emt_dynamic_simulation(self) -> Tuple[EmtSimulationDriver, EmtResults]:
+        """
+
+        :return:
+        """
+        drv, results = self.get_driver_results(SimulationTypes.EmtDynamic_run)
+        return drv, results
+
+    @property
     def stochastic_power_flow(self) -> Tuple[StochasticPowerFlowDriver, StochasticPowerFlowResults]:
         """
 
@@ -651,5 +661,5 @@ class SimulationSession:
 
         :return:
         """
-        drv, results = self.get_driver_results(SimulationTypes.SmallSignal_run)
+        drv, results = self.get_driver_results(SimulationTypes.RmsSmallSignal_run)
         return drv, results

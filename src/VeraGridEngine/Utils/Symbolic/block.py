@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import uuid
 from typing import List, Dict, Any
+
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, _expr_to_dict, _dict_to_expr
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
@@ -34,7 +35,6 @@ class Block:
                  reformulated_vars: List[Var] | None = None,
                  differential_eqs: List[Expr] | None = None,
                  parameters: Dict[Var, Const] | None = None,
-                 alter_params: List[Var] | None = None,
                  init_values: Dict[Var, Const] | None = None,
                  init_eqs: Dict[Var, Expr] | None = None,
                  diff_init_eqs: Dict[Var, Expr] | None = None,
@@ -94,7 +94,6 @@ class Block:
 
         self.parameters: Dict[Var, Const] = dict() if parameters is None else parameters
 
-        self.alter_params: List[Var] = list() if alter_params is None else alter_params
         self.discrete_eqs: Dict[Var, Expr] = dict() if discrete_eqs is None else discrete_eqs
         self.external_mapping: Dict[VarPowerFlowRefferenceType, Var | None] = (dict()
                                                                                if external_mapping is None
@@ -249,7 +248,6 @@ class Block:
                 _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
                 for item in data["parameters"].values()
             },
-            alter_params=None,
             init_values={
                 _dict_to_expr(data=item["key"]): _dict_to_expr(data=item["value"])
                 for item in data["init_values"].values()
@@ -305,13 +303,6 @@ class Block:
         """
         d = self.to_dict()
         return Block.parse(d)
-
-    def deep_copy(self)-> "Block":
-        """
-        Deep copy using var factory
-        :return:
-        :rtype:
-        """
 
 
     def _procedural_logic_to_dict(self) -> List[Dict[str, Any]]:
@@ -406,7 +397,6 @@ class Block:
                 not self.reformulated_vars and
                 not self.differential_eqs and
                 not self.parameters and
-                not self.alter_params and
                 not self.init_values and
                 not self.init_eqs and
                 not self.diff_init_eqs and
@@ -472,6 +462,18 @@ class Block:
         """
         self.children.remove(val)
 
+    def check_valid_init_method(self):
+
+        explicit = True
+        for lst in [self.state_vars, self.algebraic_vars]:
+            for var in lst:
+                if self.init_eqs[var] is None:
+                    explicit = False
+                # if self.init_values[var] is None:
+                #     self.init_values[var] = Const(0)
+        return explicit
+
+
     def get_all_blocks(self) -> List[Block]:
         """
         Depth-first collection of all *primitive* Blocks.
@@ -536,6 +538,9 @@ class Block:
             for var, init_eq in b.init_eqs.items():
                 mdl_placeholder.init_eqs[var] = init_eq
 
+            for var, init_val in b.init_values.items():
+                mdl_placeholder.init_values[var] = init_val
+
             for diffvar, diff_init_eq in b.diff_init_eqs.items():
                 mdl_placeholder.diff_init_eqs[diffvar] = diff_init_eq
 
@@ -582,9 +587,28 @@ class Block:
             variables.extend(blk.diff_vars)
         return variables
 
+    def update_variables(self, old, new):
+        """
+        this function changes the variable old for the variable new in the block variables
+        :param old:
+        :type old:
+        :param new:
+        :type new:
+        :return:
+        :rtype:
+        """
+
+        for lst in [self.state_vars, self.algebraic_vars, self.diff_vars]:
+            for i, var in enumerate(lst):
+                if var.uid == old.uid:
+                    lst[i]=new
+
+
+
+
     def update_equations(self, old, new):
         """
-        this function changes the variable old for the variable new in a block
+        this function changes the variable old for the variable new in the block equations
         :param old:
         :param new:
         :return:
@@ -653,6 +677,7 @@ class Block:
         :return:
         """
         self.update_equations(old, new)
+        self.update_variables(old, new)
         if self.children:
             for child in self.children:
                 child.update_model(old, new)

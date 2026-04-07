@@ -229,7 +229,6 @@ class ConfigurationMain(ResultsMain):
             "power_flow": {
                 "solver": self.ui.solver_comboBox,
                 "retry": self.ui.helm_retry_checkBox,
-                "three_phase": self.ui.pf_three_phase_checkBox,
                 "distributed_slack": self.ui.distributed_slack_checkBox,
                 "ignore_single_node_islands": self.ui.ignore_single_node_islands_checkBox,
                 "use_voltage_guess": self.ui.use_voltage_guess_checkBox,
@@ -343,10 +342,10 @@ class ConfigurationMain(ResultsMain):
                 "rms_int_method_comboBox": self.ui.rms_integration_method_comboBox,
                 "rms_initialization_method": self.ui.rms_initialization_method_comboBox,
                 "tolerance_rms_spinBox": self.ui.tolerance_rms_spinBox,
-                "sim_time_spinBox": self.ui.sim_time_spinBox,
-                "h_spinBox": self.ui.h_spinBox,
+                "sim_time_spinBox": self.ui.rms_sim_time_spinBox,
+                "h_spinBox": self.ui.rms_h_spinBox,
 
-                "ss_assessment_time_spinBox_2": self.ui.ss_assessment_time_spinBox_2
+                "ss_assessment_time_spinBox_2": self.ui.rms_ss_assessment_time_spinBox
             }
         }
 

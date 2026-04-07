@@ -18,6 +18,30 @@ def _split_dgs_line(line: str) -> List[str]:
     return next(csv.reader([line.rstrip('\n')], delimiter=';', quotechar='"'))
 
 
+def _parse_elm_dsl_param_value(raw: str | None) -> float | str | None:
+    """
+    Parse one ElmDsl parameter value from the DGS row.
+
+    :param raw: Raw DGS text.
+    :return: Parsed numeric value, raw text fallback, or ``None`` for empty placeholders.
+    """
+    if raw is None:
+        return None
+    else:
+        pass
+
+    text: str = raw.strip()
+    if text in {'', '*'}:
+        return None
+    else:
+        pass
+
+    try:
+        return float(text.replace(',', '.'))
+    except ValueError:
+        return text
+
+
 class DgsProperty:
     """
     Dgs Property
@@ -284,14 +308,32 @@ class ElmDsl(DGSElement):
         self.fold_id: str = ""
         self.typ_id: str = ""
         self.outserv: int = 0
+        self.params: List[float | str | None] = list()
         self.pelm: List[str | None] = list()
         self.signal: List[str] = list()
         self.parameter_names: List[str] = list()
+
+    def get_parameter_map(self) -> Dict[str, float | str | None]:
+        """
+        Return the instance parameter mapping using the DGS order.
+
+        :return: Dictionary keyed by PowerFactory parameter name.
+        """
+        return {
+            name: value
+            for name, value in zip(self.parameter_names, self.params)
+        }
 
     @classmethod
     def parse_line(cls, line: str, header_map: dict[str, int]):
         parts = _split_dgs_line(line)
         obj = super().parse_line(";".join(parts), header_map)
+
+        raw_params_size = _dgs_get(parts, header_map, 'params:SIZEROW')
+        n_params = int(float(raw_params_size.replace(',', '.'))) if raw_params_size is not None and raw_params_size.strip() != '' else 0
+        for i in range(n_params):
+            # The ElmDsl row stores the concrete instance values that must later feed the generated event_dict.
+            obj.params.append(_parse_elm_dsl_param_value(_dgs_get(parts, header_map, f'params:{i}')))
 
         raw_pelm = _dgs_get(parts, header_map, 'pelm:SIZEROW')
         n_pelm = int(float(raw_pelm.replace(',', '.'))) if raw_pelm is not None and raw_pelm.strip() != '' else 0
@@ -1429,6 +1471,8 @@ class BlkDef(DGSElement):
         self.inputs: List[str] = list()
         self.states: List[str] = list()
         self.params: List[str] = list()
+        self.upper_limit_params: List[str] = list()
+        self.lower_limit_params: List[str] = list()
         self.internals: List[str] = list()
         self.equations_raw: List[str] = list()
 
@@ -1460,6 +1504,22 @@ class BlkDef(DGSElement):
         return values
 
     @classmethod
+    def _append_unique_symbols(cls, target: List[str], raw: str | None) -> None:
+        """
+        Append parsed symbols to a target list preserving order and uniqueness.
+
+        :param target: Destination symbol list.
+        :param raw: Raw DGS symbol field.
+        :return: None.
+        """
+        parsed_values: List[str] = cls._split_symbol_field(raw)
+        for value in parsed_values:
+            if value not in target:
+                target.append(value)
+            else:
+                pass
+
+    @classmethod
     def parse_line(cls, line: str, header_map: dict[str, int]):
         parts = _split_dgs_line(line)
         obj = super().parse_line(";".join(parts), header_map)
@@ -1474,6 +1534,20 @@ class BlkDef(DGSElement):
         obj.states = cls._split_symbol_field(_dgs_get(parts, header_map, 'cStates'))
         obj.params = cls._split_symbol_field(_dgs_get(parts, header_map, 'cParams'))
         obj.internals = cls._split_symbol_field(_dgs_get(parts, header_map, 'cIntern'))
+
+        # PowerFactory exports limiter parameters separately from cParams through upper/lower limit fields.
+        cls._append_unique_symbols(obj.upper_limit_params, _dgs_get(parts, header_map, 'sUpLimPar:0'))
+        cls._append_unique_symbols(obj.lower_limit_params, _dgs_get(parts, header_map, 'sLowLimPar:0'))
+        for param_name in obj.upper_limit_params:
+            if param_name not in obj.params:
+                obj.params.append(param_name)
+            else:
+                pass
+        for param_name in obj.lower_limit_params:
+            if param_name not in obj.params:
+                obj.params.append(param_name)
+            else:
+                pass
 
         raw_n_eq = _dgs_get(parts, header_map, 'sAddEquat:SIZEROW')
         n_eq = int(float(raw_n_eq.replace(',', '.'))) if raw_n_eq is not None and raw_n_eq.strip() != '' else 0

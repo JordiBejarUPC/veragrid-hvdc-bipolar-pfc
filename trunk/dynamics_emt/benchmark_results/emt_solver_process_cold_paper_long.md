@@ -1,0 +1,26 @@
+| Case | Mode | Solver | Build [s] | Sim [s] | Total [s] | Loop [s] | Cold Build [s] | Cold Sim [s] | Warm Sim [s] | Speedup |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| zipload | standard | SYMBOLIC | 0.177254 | 8.757860 | 8.935265 | 8.757238 | nan | nan | nan | nan |
+| zipload | standard | AD | 0.048824 | 6.218041 | 6.267037 | 6.217304 | nan | nan | nan | nan |
+| zipload | standard | VECTORIZED | 0.042432 | 5.908896 | 5.951391 | 5.898061 | nan | nan | nan | nan |
+| zipload | standard | COMPILED | 0.066112 | 5.900026 | 5.966245 | 5.899166 | nan | nan | nan | nan |
+| rload | standard | SYMBOLIC | 0.121027 | 1.316417 | 1.437597 | 1.315892 | nan | nan | nan | nan |
+| rload | standard | AD | 0.042116 | 0.786734 | 0.829006 | 0.786230 | nan | nan | nan | nan |
+| rload | standard | VECTORIZED | 0.057636 | 1.157760 | 1.215497 | 1.142826 | nan | nan | nan | nan |
+| rload | standard | COMPILED | 0.067571 | 0.395901 | 0.463598 | 0.394984 | nan | nan | nan | nan |
+| event | standard | SYMBOLIC | 0.108683 | 9.052681 | 9.161543 | 9.052054 | nan | nan | nan | nan |
+| event | standard | AD | 0.032608 | 3.979503 | 4.012222 | 3.978791 | nan | nan | nan | nan |
+| event | standard | VECTORIZED | 0.045277 | 5.719603 | 5.764975 | 5.710270 | nan | nan | nan | nan |
+| event | standard | COMPILED | 0.052747 | 2.445102 | 2.498069 | 2.444116 | nan | nan | nan | nan |
+| zipload | cold_warm | SYMBOLIC | nan | nan | nan | nan | 0.155618 | 9.814109 | 9.462692 | 1.037 |
+| zipload | cold_warm | AD | nan | nan | nan | nan | 0.040912 | 6.121566 | 6.126233 | 0.999 |
+| zipload | cold_warm | VECTORIZED | nan | nan | nan | nan | 0.063635 | 9.693314 | 9.090180 | 1.066 |
+| zipload | cold_warm | COMPILED | nan | nan | nan | nan | 0.060192 | 5.323032 | 5.403280 | 0.985 |
+| rload | cold_warm | SYMBOLIC | nan | nan | nan | nan | 0.099379 | 1.190869 | 1.053652 | 1.130 |
+| rload | cold_warm | AD | nan | nan | nan | nan | 0.036764 | 0.657089 | 0.648543 | 1.013 |
+| rload | cold_warm | VECTORIZED | nan | nan | nan | nan | 0.057773 | 1.018183 | 0.945420 | 1.077 |
+| rload | cold_warm | COMPILED | nan | nan | nan | nan | 0.054239 | 0.354947 | 0.336447 | 1.055 |
+| event | cold_warm | SYMBOLIC | nan | nan | nan | nan | 0.107142 | 7.113216 | 7.041330 | 1.010 |
+| event | cold_warm | AD | nan | nan | nan | nan | 0.038181 | 5.072208 | 5.093986 | 0.996 |
+| event | cold_warm | VECTORIZED | nan | nan | nan | nan | 0.056254 | 7.066539 | 7.137286 | 0.990 |
+| event | cold_warm | COMPILED | nan | nan | nan | nan | 0.068775 | 3.280574 | 3.233582 | 1.015 |

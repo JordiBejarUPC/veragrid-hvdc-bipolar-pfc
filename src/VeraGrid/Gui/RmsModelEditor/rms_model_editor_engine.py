@@ -21,10 +21,10 @@ from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter, QIcon,
 from PySide6.QtCore import Qt, QPointF, QByteArray, QDataStream, QIODevice, QModelIndex, QMimeData, Signal
 
 from VeraGridEngine import RmsModelTemplate
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import (get_genqec,
-                                                                      get_governor,
-                                                                      get_stabilizer,
-                                                                      get_exciter)
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import (get_genqec_rms,
+                                                                      get_governor_rms,
+                                                                      get_stabilizer_rms,
+                                                                      get_exciter_rms)
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template

@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Union, Tuple, Any
+from typing import Union, Tuple
 import numpy as np
 
 from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType, ShuntControlMode
@@ -174,22 +174,6 @@ class ControllableShunt(ShuntParent):
 
         self.control_mode: ShuntControlMode = control_mode
 
-    # def set_snapshot_value(self, property_name, value: Any) -> None:
-    #     """
-    #     Set the value of a snapshot property
-    #     :param property_name: name of the property
-    #     :param value: Any
-    #     """
-    #     # handle legacy props that disappeared
-    #     try:
-    #         super().set_snapshot_value(property_name, value)
-    #     except AttributeError:
-    #         if property_name == 'is_controllable':
-    #             if bool(value):
-    #                 self.control_bus.is_controllable = ShuntControlMode.Continuous
-    #             else:
-    #                 self.control_bus.is_controllable = ShuntControlMode.Locked
-
     @property
     def step(self):
         """
@@ -214,28 +198,6 @@ class ControllableShunt(ShuntParent):
 
             self._step = int(value)
 
-    # @property
-    # def Bmin(self):
-    #     """
-    #
-    #     :return:
-    #     """
-    #     if len(self._b_steps):
-    #         return self._b_steps[0] * self._active_steps[0]
-    #     else:
-    #         return -9999.0
-    #
-    # @property
-    # def Bmax(self):
-    #     """
-    #
-    #     :return:
-    #     """
-    #     if len(self._b_steps):
-    #         return np.sum(self._b_steps * self._active_steps)
-    #     else:
-    #         return 9999.0
-
     @property
     def g_steps(self):
         """
@@ -248,8 +210,6 @@ class ControllableShunt(ShuntParent):
     def g_steps(self, value: np.ndarray):
         assert isinstance(value, np.ndarray)
         self._g_steps = value
-        # self.Gmax = value.max()
-        # self.Gmin = value.min()
 
     @property
     def active_steps(self):

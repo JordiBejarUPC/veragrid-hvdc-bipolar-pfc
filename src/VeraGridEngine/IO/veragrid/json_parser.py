@@ -1574,12 +1574,12 @@ def save_json_file_v3(file_path: str, circuit: MultiCircuit, simulation_drivers:
                               'cost1': elm.Cost,
                               'cost0': elm.Cost0,
 
-                              'startup_cost': elm.StartupCost,
-                              'shutdown_cost': elm.ShutdownCost,
-                              'min_time_up': elm.MinTimeUp,
-                              'min_time_down': elm.MinTimeDown,
-                              'ramp_up': elm.RampUp,
-                              'ramp_down': elm.RampDown,
+                              'startup_cost': elm.startup_cost,
+                              'shutdown_cost': elm.shutdown_cost,
+                              'min_time_up': elm.min_time_up,
+                              'min_time_down': elm.min_time_down,
+                              'ramp_up': elm.ramp_up,
+                              'ramp_down': elm.ramp_down,
 
                               'capex': elm.capex,
                               'opex': elm.opex,

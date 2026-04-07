@@ -19,7 +19,7 @@ from VeraGridEngine.Topology import *
 from VeraGridEngine.Compilers import *
 from VeraGridEngine.Templates import *
 from VeraGridEngine.IO.file_open import FileOpen, FileOpenOptions
-from VeraGridEngine.IO.file_save import FileSave, FileSavingOptions, save_veragrid
+from VeraGridEngine.IO.file_save import FileSave, FileSavingOptions, save_veragrid_multiverse
 from VeraGridEngine.IO.veragrid.remote import (gather_model_as_jsons_for_communication, RemoteInstruction,
                                                SimulationTypes, send_json_data, get_certificate_path, get_certificate)
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at, NumericalCircuit
@@ -33,7 +33,12 @@ def open_file(filename: Union[str, List[str]],
     :param options: FileOpenOptions instance (optional)
     :return: MultiCircuit instance
     """
-    return FileOpen(file_name=filename, options=options).open()
+    drv = FileOpen(file_name=filename, options=options)
+    drv.open()
+    if drv.circuit is None:
+        drv.logger.print("Error")
+        raise Exception("File open error")
+    return drv.circuit
 
 
 def save_file(grid: MultiCircuit, filename: str, drivers_to_save: List[DriverToSave] | None = None):
@@ -41,7 +46,7 @@ def save_file(grid: MultiCircuit, filename: str, drivers_to_save: List[DriverToS
     Save file
     :param grid: MultiCircuit instance
     :param filename: name of the file (.veragrid, .ejson)
-    :param drivers_to_save: List of drivers to save, this structures can be obtained from driver.get_save_data()
+    :param drivers_to_save: List of drivers to save, this structure can be obtained from driver.get_save_data()
     """
     FileSave(
         circuit=grid,
@@ -58,13 +63,27 @@ def save_multiverse(mv: MultiVerse, filename: str):
     :param mv: MultiVerse instance
     :param filename: name of the file (.veragrid)
     """
-    save_veragrid(
-        circuit=mv.current_node.circuit,
+    save_veragrid_multiverse(
         file_name=filename,
-        options=FileSavingOptions(
-            multiverse=mv
-        )
+        options=FileSavingOptions(),
+        multiverse=mv
     )
+
+
+def open_cgmes(filenames: Union[str, List[str]], cgmes_version=CGMESVersions.v2_4_15) -> MultiCircuit | None:
+    """
+    Open CGMES files
+    :param filenames: name of the file (.xml, .zip) or list of files (.xml, .zip)
+    :param cgmes_version: CGMES version
+    :return: MultiCircuit instance
+    """
+    return FileOpen(
+        file_name=filenames,
+        options=FileOpenOptions(
+            cgmes_version=cgmes_version,
+            file_type=FileType.CGMES
+        )
+    ).open()
 
 
 def save_cgmes_file(grid: MultiCircuit,
@@ -286,31 +305,35 @@ def continuation_power_flow(grid: MultiCircuit,
     :return: Short circuit results
     """
     if pf_results is None:
-        pf_results = power_flow(grid=grid,
-                                options=pf_options)
+        pf_results2 = power_flow(grid=grid,
+                                 options=pf_options)
+    else:
+        pf_results2 = pf_results
 
     # declare the CPF options
     if options is None:
-        options = ContinuationPowerFlowOptions(step=0.001,
-                                               approximation_order=CpfParametrization.ArcLength,
-                                               adapt_step=True,
-                                               step_min=0.00001,
-                                               step_max=0.2,
-                                               error_tol=1e-3,
-                                               tol=1e-6,
-                                               max_it=20,
-                                               stop_at=stop_at,
-                                               verbose=False)
+        options2 = ContinuationPowerFlowOptions(step=0.001,
+                                                approximation_order=CpfParametrization.ArcLength,
+                                                adapt_step=True,
+                                                step_min=0.00001,
+                                                step_max=0.2,
+                                                error_tol=1e-3,
+                                                tol=1e-6,
+                                                max_it=20,
+                                                stop_at=stop_at,
+                                                verbose=False)
+    else:
+        options2 = options
 
     # We compose the target direction
-    base_power = pf_results.Sbus / grid.Sbase
+    base_power = pf_results2.Sbus / grid.Sbase
     vc_inputs = ContinuationPowerFlowInput(Sbase=base_power,
-                                           Vbase=pf_results.voltage,
+                                           Vbase=pf_results2.voltage,
                                            Starget=base_power * factor)
 
     # declare the CPF driver and run
     vc = ContinuationPowerFlowDriver(grid=grid,
-                                     options=options,
+                                     options=options2,
                                      inputs=vc_inputs,
                                      pf_options=pf_options)
     vc.run()

@@ -5,19 +5,15 @@
 
 
 import numpy as np
-from VeraGridEngine import MultiCircuit
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType, ParamPowerFlowRefferenceType
 
-def get_generator_thevenin_rl_emt_template(
-        grid: MultiCircuit,
-        gen: Generator,
-        name: str = "emt_thevenin_eq_generator_template"
-) -> EmtModelTemplate:
+def get_generator_thevenin_rl_emt_template(vf: VarFactory,
+                                           name: str = "emt_thevenin_eq_generator_template"
+                                           ) -> EmtModelTemplate:
     """
     Simple EMT three-phase Thevenin generator behind series R-X.
 
@@ -57,37 +53,34 @@ def get_generator_thevenin_rl_emt_template(
         using the Thevenin steady-state relation:
             E = V + (R + jX) I
 
-    :param grid: MultiCircuit
-    :param gen: Generator object
+    :param vf: EMT  VarFactory
     :param name: Model name
     :return: EmtModelTemplate
     """
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.GeneratorDevice
     templ.name = name
-
-    vf: VarFactory = grid.emt_var_factory
+    templ.block.name = name
 
     # ----------------------------------------------------------------------------------
     # Constants for symbolic expressions
     # ----------------------------------------------------------------------------------
-    c0 = vf.add_const(0.0)
     c05 = vf.add_const(0.5)
 
     # ----------------------------------------------------------------------------------
     # Inputs: bus terminal instantaneous phase voltages
     # ----------------------------------------------------------------------------------
-    v_A = vf.add_var(name=f"v_A_{name}", ref=VarPowerFlowRefferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", ref=VarPowerFlowRefferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", ref=VarPowerFlowRefferenceType.v_C)
+    v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowRefferenceType.v_A)
+    v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowRefferenceType.v_B)
+    v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowRefferenceType.v_C)
     inputs = [v_A, v_B, v_C]
 
     # ----------------------------------------------------------------------------------
     # States
     # ----------------------------------------------------------------------------------
-    i_A = vf.add_var(name=f"i_A_{name}", ref=VarPowerFlowRefferenceType.i_A)
-    i_B = vf.add_var(name=f"i_B_{name}", ref=VarPowerFlowRefferenceType.i_B)
-    i_C = vf.add_var(name=f"i_C_{name}", ref=VarPowerFlowRefferenceType.i_C)
+    i_A = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowRefferenceType.i_A)
+    i_B = vf.add_var(name=f"i_B_{name}", reference=VarPowerFlowRefferenceType.i_B)
+    i_C = vf.add_var(name=f"i_C_{name}", reference=VarPowerFlowRefferenceType.i_C)
     theta = vf.add_var("theta_" + name)
 
     # Diff vars
@@ -118,10 +111,10 @@ def get_generator_thevenin_rl_emt_template(
     phi = vf.add_var("phi_" + name)
     Vpk = vf.add_var("Vpk_" + name)
     Ipk = vf.add_var("Ipk_" + name)
-
-    # Init-only internal auxiliary quantities
-    delta = vf.add_var("delta_" + name)
-    Epk = vf.add_var("Epk_" + name)
+    E_re = Vpk + R_s * Ipk * sym.cos(phi) - X_s * Ipk * sym.sin(phi)
+    E_im = R_s * Ipk * sym.sin(phi) + X_s * Ipk * sym.cos(phi)
+    delta_expr = sym.atan(E_im / E_re)
+    Epk_expr = ((E_re ** 2 + E_im ** 2) ** c05)
 
     # ----------------------------------------------------------------------------------
     # Block
@@ -136,9 +129,9 @@ def get_generator_thevenin_rl_emt_template(
         state_vars=[i_A, i_B, i_C, theta],
 
         algebraic_eqs=[
-            e_A - Epk * sym.sin(theta),
-            e_B - Epk * sym.sin(theta - 2 * np.pi / 3),
-            e_C - Epk * sym.sin(theta + 2 * np.pi / 3),
+            e_A - Epk_expr * sym.sin(theta),
+            e_B - Epk_expr * sym.sin(theta - 2 * np.pi / 3),
+            e_C - Epk_expr * sym.sin(theta + 2 * np.pi / 3),
 
             Pe - (i_A * v_A + i_B * v_B + i_C * v_C),
             Qe - (1 / np.sqrt(3)) * (
@@ -159,6 +152,10 @@ def get_generator_thevenin_rl_emt_template(
     # External mapping
     # ----------------------------------------------------------------------------------
     templ.block.external_mapping = {
+        VarPowerFlowRefferenceType.v_N: None,
+        VarPowerFlowRefferenceType.v_A: v_A,
+        VarPowerFlowRefferenceType.v_B: v_B,
+        VarPowerFlowRefferenceType.v_C: v_C,
         VarPowerFlowRefferenceType.P: None,
         VarPowerFlowRefferenceType.Q: None,
         VarPowerFlowRefferenceType.P_N: None,
@@ -186,32 +183,21 @@ def get_generator_thevenin_rl_emt_template(
     # ----------------------------------------------------------------------------------
     # Event dict
     # ----------------------------------------------------------------------------------
-    w_base = 2.0 * np.pi * grid.fBase
 
-    # Use the generator positive-sequence impedance as the simplest Thevenin impedance
-    # for the test model.
-    Rs_num = max(gen.R1, 1e-6)
-    Xs_num = max(gen.X1, 1e-6)
-
-    E_re = Vpk + R_s * Ipk * sym.cos(phi) - X_s * Ipk * sym.sin(phi)
-    E_im = R_s * Ipk * sym.sin(phi) + X_s * Ipk * sym.cos(phi)
+    templ.block.api_obj_mapping = {
+        ParamPowerFlowRefferenceType.omega_base: omega_base,
+        ParamPowerFlowRefferenceType.R1: R_s,
+        ParamPowerFlowRefferenceType.X1: X_s,
+        ParamPowerFlowRefferenceType.X0: None,
+    }
 
     templ.block.event_dict = {
-        omega_base: vf.add_const(w_base),
-        R_s: vf.add_const(Rs_num),
-        X_s: vf.add_const(Xs_num),
-
         # PF-derived init-only values
         phi_v: vf.add_const(None),
         phi: vf.add_const(None),
         Vpk: vf.add_const(None),
         Ipk: vf.add_const(None),
 
-        # Internal init-only auxiliary values
-        # delta: vf.add_const(None),
-        delta: sym.atan(E_im / E_re),
-        # Epk: vf.add_const(None),
-        Epk: ((E_re ** 2 + E_im ** 2) ** c05),
     }
 
     # ----------------------------------------------------------------------------------
@@ -244,15 +230,11 @@ def get_generator_thevenin_rl_emt_template(
 
 
     templ.block.init_eqs = {
-        # delta: sym.atan(E_im / E_re),
+        theta: phi_v + delta_expr,
 
-        # Epk: ((E_re ** 2 + E_im ** 2) ** c05),
-
-        theta: phi_v + delta,
-
-        e_A: Epk * sym.sin(theta),
-        e_B: Epk * sym.sin(theta - 2 * np.pi / 3),
-        e_C: Epk * sym.sin(theta + 2 * np.pi / 3),
+        e_A: Epk_expr * sym.sin(theta),
+        e_B: Epk_expr * sym.sin(theta - 2 * np.pi / 3),
+        e_C: Epk_expr * sym.sin(theta + 2 * np.pi / 3),
 
         Pe: (i_A * v_A + i_B * v_B + i_C * v_C),
         Qe: (1 / np.sqrt(3)) * (

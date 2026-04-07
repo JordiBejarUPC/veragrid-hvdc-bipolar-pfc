@@ -20,7 +20,7 @@ from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializ
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Simulations.Rms.initialization import init_explicit, init_pseudo_transient
+from VeraGridEngine.Simulations.Rms.initialization import init_explicit, init_pseudo_transient, init_custom
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -84,7 +84,6 @@ class RmsProblemDae(RmsProblemTemplate):
     VARIABLE_PARAMS_NAME = "vprms"
     CONSTANT_PARAMS_NAME = "cprms"
     DIFF_NAME = "diff"
-    ALTER_PARAMS_NAME = "alter"
     TIME_NAME = "glob_time"
 
     def __init__(self,
@@ -189,11 +188,12 @@ class RmsProblemDae(RmsProblemTemplate):
             # Todo: missing default initialization for the model
             bus_dict[elm] = bus_num
 
-            # flatten model
+            # default initialization
             if elm.rms_model.empty():
                 initialize_bus_rms(elm, self.grid.rms_var_factory)
                 # initialize_bus_rms, get_bus_rms_algebraic_vars
 
+            # flatten model
             elm.rms_model.unify_blocks()
 
             self.add_variables_to_compilation_dicts(elm, elm.rms_model)
@@ -202,13 +202,13 @@ class RmsProblemDae(RmsProblemTemplate):
             if elm.is_dc:
                 # DC bus: use Vdc (magnitude) - angle is not applicable for DC
                 self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Vdc,
-                                    np.abs(self.power_flow_results.voltage[bus_num]))
+                                    float(np.abs(self.power_flow_results.voltage[bus_num])))
             else:
                 # AC bus: use Vm and Va
                 self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Vm,
-                                    np.abs(self.power_flow_results.voltage[bus_num]))
+                                    float(np.abs(self.power_flow_results.voltage[bus_num])))
                 self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Va,
-                                    np.angle(self.power_flow_results.voltage[bus_num]))
+                                    float(np.angle(self.power_flow_results.voltage[bus_num])))
 
             # add model to system block
             self.sys_block.add(elm.rms_model)
@@ -395,6 +395,7 @@ class RmsProblemDae(RmsProblemTemplate):
                                   DIFF_NAME=self.DIFF_NAME,
                                   CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
                                   )
+
                 else:
                     raise ValueError("Not implemented initialization method")
                 # add model to system block
@@ -417,14 +418,17 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 if not elm.bus.is_dc:
                     Vm, Va = get_bus_rms_algebraic_vars(elm.bus.rms_model)
-                    elm.rms_model.update_model(
-                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
-                    elm.rms_model.update_model(
-                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Va], Va)
+                    if VarPowerFlowRefferenceType.Vm in elm.rms_model.external_mapping:
+                        elm.rms_model.update_model(
+                            elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm], Vm)
+                    if VarPowerFlowRefferenceType.Va in elm.rms_model.external_mapping:
+                        elm.rms_model.update_model(
+                            elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Va], Va)
                 else:
                     Vdc = elm.bus.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
-                    elm.rms_model.update_model(
-                        elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc], Vdc)
+                    if VarPowerFlowRefferenceType.Vdc in elm.rms_model.external_mapping:
+                        elm.rms_model.update_model(
+                            elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc], Vdc)
                     
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
 
@@ -445,6 +449,11 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
 
+                    #Todo: add check to see if all the initialization equations are there, otherwise raise error
+                    # if not elm.rms_model.check_valid_init_method():
+                    #     init_custom(elm.rms_model, self.init_guess)
+
+                    # else:
                     init_explicit(
                         mdl=elm.rms_model,
                         sys_vars=self.sys_vars,
@@ -465,27 +474,36 @@ class RmsProblemDae(RmsProblemTemplate):
                     )
 
                 elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
-                    init_pseudo_transient(
-                        mdl=elm.rms_model,
-                        sys_vars=self.sys_vars,
-                        variable_parameters=self._variable_parameters,
-                        event_parameters_eqs=self._event_parameters_eqs0,
-                        constant_parameters=self._constant_parameters,
-                        init_guess=self.init_guess,
-                        uid2idx_vars=self._uid2idx_vars,
-                        uid2idx_params=self._uid2idx_params,
-                        uid2idx_event_params=self._uid2idx_event_params,
-                        compiler_names_dict=self._compiler_names_dict,
-                        alias_names_dict=self._alias_names_dict,
-                        VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                        TIME_NAME=self.TIME_NAME,
-                        VARS_NAME=self.VARS_NAME,
-                        DIFF_NAME=self.DIFF_NAME,
-                        CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-                        dtau0=1e0,
-                        max_iter=1000,
-                        tol=1e-6
-                    )
+                    raise ValueError("Not implemented initialization method")
+
+                # elif self.options.initialization_method == RmsInitializationMethod.CustomValues:
+                #
+                #     # Todo: add check to see if all the init values are there, otherwise raise error
+                #     init_custom(mdl=elm.rms_model, init_guess=self.init_guess)
+
+                # not implemented yet
+                # elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
+                #     init_pseudo_transient(
+                #         mdl=elm.rms_model,
+                #         sys_vars=self.sys_vars,
+                #         variable_parameters=self._variable_parameters,
+                #         event_parameters_eqs=self._event_parameters_eqs0,
+                #         constant_parameters=self._constant_parameters,
+                #         init_guess=self.init_guess,
+                #         uid2idx_vars=self._uid2idx_vars,
+                #         uid2idx_params=self._uid2idx_params,
+                #         uid2idx_event_params=self._uid2idx_event_params,
+                #         compiler_names_dict=self._compiler_names_dict,
+                #         alias_names_dict=self._alias_names_dict,
+                #         VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                #         TIME_NAME=self.TIME_NAME,
+                #         VARS_NAME=self.VARS_NAME,
+                #         DIFF_NAME=self.DIFF_NAME,
+                #         CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
+                #         dtau0=1e0,
+                #         max_iter=1000,
+                #         tol=1e-6
+                #     )
                 else:
                     raise ValueError("Not implemented initialization method")
 
@@ -504,9 +522,13 @@ class RmsProblemDae(RmsProblemTemplate):
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)
                 else:
-                    if not elm.is_dc and (elm.idtag not in ac_virtual_buses):
+                    if elm.is_dc:
+                        self._algebraic_eqs.append(P[i])
+                    elif (elm.idtag in ac_virtual_buses):
+                        self._algebraic_eqs.append(P[i])
+                    else:
                         self._algebraic_eqs.append(Q[i])
-                    self._algebraic_eqs.append(P[i])
+                        self._algebraic_eqs.append(P[i])
 
         # We define the parameter dt and delta
         self._dt = Var(name='dt')

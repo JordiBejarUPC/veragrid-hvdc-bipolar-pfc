@@ -9,11 +9,12 @@ from pandas.testing import assert_frame_equal
 
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 
@@ -45,7 +46,9 @@ def test_simulation_with_event():
     folder = os.path.join('data', 'dynamics')
     name = "simulation_with_event.csv"
 
-    fname = os.path.join(folder, name)
+    # fname = os.path.join(folder, name)
+
+    fname = "simulation_with_event.csv"
 
     reference_df = pd.read_csv(fname)
 
@@ -89,7 +92,7 @@ def test_simulation_with_event():
     ######################################################################################################
 
     # generator
-    genqec_mdl = get_complete_generator_template(grid.rms_var_factory).block
+    genqec_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
 
     # line
     line_mdl = get_line_rms_template(grid.rms_var_factory).block
@@ -127,8 +130,10 @@ def test_simulation_with_event():
 
     # apply event
     Pl0 = find_name_in_block('Pl0', load_mdl)
-    event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.09)
+    events_group = RmsEventsGroup("simulation1")
+    event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.09, group=events_group)
     grid.add_rms_event(event)
+
 
     grid.add_line(line0)
     grid.add_load(bus=bus1, api_obj=load)
@@ -178,6 +183,8 @@ def test_simulation_with_event():
                             options=options,
                             pf_results=res)
 
+    problem.set_events_group(events_group)
+
     solver = BackEulerImplicitIntegration(
         problem=problem,
         t0=0,
@@ -199,3 +206,7 @@ def test_simulation_with_event():
         check_index_type=False,
         atol=1e-6
     )
+
+
+
+test_simulation_with_event()
