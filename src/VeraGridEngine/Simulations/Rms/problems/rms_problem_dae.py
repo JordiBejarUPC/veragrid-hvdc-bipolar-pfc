@@ -190,7 +190,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
             # default initialization
             if elm.rms_model.empty():
-                initialize_bus_rms(elm, self.grid.rms_var_factory)
+                initialize_bus_rms(elm, self.grid.var_factory)
                 # initialize_bus_rms, get_bus_rms_algebraic_vars
 
             # flatten model
@@ -236,9 +236,9 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 # get variables from bus
                 if elm.bus_from.rms_model.empty():
-                    initialize_bus_rms(elm.bus_from, self.grid.rms_var_factory)
+                    initialize_bus_rms(elm.bus_from, self.grid.var_factory)
                 if elm.bus_to.rms_model.empty():
-                    initialize_bus_rms(elm.bus_to, self.grid.rms_var_factory)
+                    initialize_bus_rms(elm.bus_to, self.grid.var_factory)
 
                 Vmf, Vaf = get_bus_rms_algebraic_vars(elm.bus_from.rms_model)
                 Vmt, Vat = get_bus_rms_algebraic_vars(elm.bus_to.rms_model)
@@ -414,7 +414,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 # get variables from bus
                 if elm.bus.rms_model.empty():
-                    initialize_bus_rms(elm.bus, self.grid.rms_var_factory)
+                    initialize_bus_rms(elm.bus, self.grid.var_factory)
 
                 if not elm.bus.is_dc:
                     Vm, Va = get_bus_rms_algebraic_vars(elm.bus.rms_model)
@@ -517,7 +517,7 @@ class RmsProblemDae(RmsProblemTemplate):
         # add the nodal balance equations
         ac_virtual_buses = [elm.bus_to.idtag for elm in grid.get_vsc()]
         for i, elm in enumerate(self.grid.buses):
-            mdl = block_deep_copy(elm.rms_model, grid.rms_var_factory)
+            mdl = block_deep_copy(elm.rms_model, grid.var_factory)
             if len(mdl.algebraic_eqs) == 0:
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)

@@ -135,15 +135,15 @@ gen_mdl = get_generator_thevenin_rl_emt_template(vf=circuit.emt_var_factory).blo
 trafo_mdl = get_xfmr_emt_template(grid=circuit, trafo=transformer).block
 
 # DC Load model (constant power load)
-load_mdl = get_shunt_r_3ph_emt_template(vf = circuit.emt_var_factory).block
+load_mdl = get_shunt_r_3ph_emt_template(vf = circuit.var_factory).block
 
 # =====================================================================
 # ASSIGN MODELS TO DEVICES
 # =====================================================================
 
-set_emt_model(device=gen1, model=gen_mdl, var_factory=circuit.emt_var_factory)
-set_emt_model(device=transformer, model=trafo_mdl, var_factory=circuit.emt_var_factory)
-set_emt_model(device=load, model=load_mdl, var_factory=circuit.emt_var_factory)
+set_emt_model(device=gen1, model=gen_mdl, var_factory=circuit.var_factory)
+set_emt_model(device=transformer, model=trafo_mdl, var_factory=circuit.var_factory)
+set_emt_model(device=load, model=load_mdl, var_factory=circuit.var_factory)
 
 ###########################################################################################################################
 # POWER FLOW (for DC initialization)

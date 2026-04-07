@@ -94,7 +94,7 @@ grid.add_bus(bus2)
 grid.add_bus(bus3)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.rms_var_factory)
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 grid.add_line(line12)
 grid.add_generator(bus=bus1, api_obj=gen1)
@@ -118,16 +118,16 @@ print(f"Trafo flows (PF): Qf={res.Sf[trafo_idx].imag:.6f}, Qt={res.St[trafo_idx]
 
 
 # Build Rms models
-line12_mdl = (get_line_rms_template(grid.rms_var_factory).block)
-initialize_trafo_rms(trafo_1, grid.rms_var_factory, Sbase=grid.Sbase)
+line12_mdl = (get_line_rms_template(grid.var_factory).block)
+initialize_trafo_rms(trafo_1, grid.var_factory, Sbase=grid.Sbase)
 trafo_mdl = trafo_1.rms_model
 
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = (ZIPLoadBuild(grid.rms_var_factory, Pl0=-0.01, Ql0=-0.001).block)
+    load_mdl = (ZIPLoadBuild(grid.var_factory, Pl0=-0.01, Ql0=-0.001).block)
 else:
     raise ValueError(f"Unknown load type: {load_type}")
-genrow_mdl1 = (get_complete_generator_template_rms(grid.rms_var_factory).block)
+genrow_mdl1 = (get_complete_generator_template_rms(grid.var_factory).block)
 
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
 genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])

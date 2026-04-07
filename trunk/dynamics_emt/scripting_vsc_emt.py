@@ -175,15 +175,15 @@ for bus in circuit.buses:
 # =====================================================================
 
 # Generator model (Thevenin equivalent)
-gen_mdl = get_generator_thevenin_rl_emt_template(vf = circuit.emt_var_factory).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf = circuit.var_factory).block
 
 # Transformer model (series RL with ideal transformer)
-# trafo_mdl = get_transformer_emt_template(vf = circuit.emt_var_factory, grid=circuit, trafo=transformer, name=transformer.name).block
+# trafo_mdl = get_transformer_emt_template(vf = circuit.var_factory, grid=circuit, trafo=transformer, name=transformer.name).block
 trafo_mdl = get_transformer_emt_template(grid=circuit, trafo=transformer, name=transformer.name).block
 
 # VSC model (standard converter: DC -> AC with power balance)
 vsc_mdl = get_emt_ideal_converter(
-    vf=circuit.emt_var_factory,
+    vf=circuit.var_factory,
     name=vsc.name,
     sbase=circuit.Sbase,
     fbase=circuit.fBase,
@@ -208,10 +208,10 @@ dc_load_mdl = get_dc_load_emt_template(
 # =====================================================================
 # ASSIGN MODELS TO DEVICES
 # =====================================================================
-set_emt_model(device=gen1, model=gen_mdl, var_factory=circuit.emt_var_factory)
-set_emt_model(device=transformer, model=trafo_mdl, var_factory=circuit.emt_var_factory)
-set_emt_model(device=vsc, model=vsc_mdl, var_factory=circuit.emt_var_factory)
-set_emt_model(device=dc_load, model=dc_load_mdl, var_factory=circuit.emt_var_factory)
+set_emt_model(device=gen1, model=gen_mdl, var_factory=circuit.var_factory)
+set_emt_model(device=transformer, model=trafo_mdl, var_factory=circuit.var_factory)
+set_emt_model(device=vsc, model=vsc_mdl, var_factory=circuit.var_factory)
+set_emt_model(device=dc_load, model=dc_load_mdl, var_factory=circuit.var_factory)
 
 ###########################################################################################################################
 # 3ph POWER FLOW (for EMT initialization)

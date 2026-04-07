@@ -241,7 +241,7 @@ class LineGraphicItem(LineGraphicTemplateItem):
 
         # prompt RmsModelEditorGUI
         rms_model_editor = DynamicBlockEditorGUI(
-            var_factory=self.editor.circuit.rms_var_factory,
+            var_factory=self.editor.circuit.var_factory,
             block=self.api_object.rms_model,
             api_object=self.api_object,
             mode=DynamicEditorMode.RMS,

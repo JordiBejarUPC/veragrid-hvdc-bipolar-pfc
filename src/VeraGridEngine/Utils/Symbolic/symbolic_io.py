@@ -429,7 +429,8 @@ class BlockSaver:
 
         # diff_vars: List[DiffVar] = list()
         for diff_var in blk.diff_vars:
-            if diff_var.uid not in self.var_factory.get_diff_var_dict():
+            found_var = self.var_factory.get_diff_var(diff_var.uid)
+            if found_var is None:
                 raise ValueError(f"variable {diff_var.name} not added to vars factory")
 
         for dyn_var_type, var in blk.external_mapping.items():
@@ -745,7 +746,7 @@ def duplicate_expr(var_factory: VarFactory,
     return expr
 
 
-def duplicate_block(block: Block, var_factory: VarFactory) -> Block:
+def duplicate_block(block: Block, var_factory: VarFactory | None) -> Block:
     """
     Create a duplicate of this block with new variable UIDs.
     The new block contains variables with the same names but different UIDs,

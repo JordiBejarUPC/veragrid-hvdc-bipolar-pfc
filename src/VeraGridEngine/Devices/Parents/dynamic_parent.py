@@ -19,8 +19,7 @@ class DynamicDevice(PhysicalDevice):
     Parent class for devices with dynamic models
     """
     __slots__ = (
-        '_rms_var_factory',
-        '_emt_var_factory',
+        '_var_factory',
         '_rms_model',
         '_emt_model',
         '_rms_template',
@@ -59,8 +58,7 @@ class DynamicDevice(PhysicalDevice):
                                 device_type=device_type,
                                 build_status=build_status)
 
-        self._rms_var_factory: VarFactory | None = None
-        self._emt_var_factory: VarFactory | None = None
+        self._var_factory: VarFactory | None = None
 
         self._rms_model: Block = Block()
         self._rms_template: RmsModelTemplate | None = None
@@ -68,23 +66,13 @@ class DynamicDevice(PhysicalDevice):
         self._emt_model: Block = Block()
         self._emt_template: EmtModelTemplate | None = None
 
-    def set_rms_var_factory(self, val: VarFactory):
+    def set_var_factory(self, val: VarFactory):
         """
         Set the var factory pointer
         :param val: VarFactory
         """
         if isinstance(val, VarFactory):
-            self._rms_var_factory = val
-        else:
-            raise ValueError(f"VarFactory cannot accept {val}")
-
-    def set_emt_var_factory(self, val: VarFactory):
-        """
-        Set the var factory pointer
-        :param val: VarFactory
-        """
-        if isinstance(val, VarFactory):
-            self._emt_var_factory = val
+            self._var_factory = val
         else:
             raise ValueError(f"VarFactory cannot accept {val}")
 
@@ -130,7 +118,7 @@ class DynamicDevice(PhysicalDevice):
 
             if self.auto_update_enabled:
                 val.block.unify_blocks()
-                self.rms_model = duplicate_block(val.block, self._rms_var_factory)
+                self.rms_model = duplicate_block(val.block, self._var_factory)
 
         elif val is None:
             self._rms_template = None
@@ -150,7 +138,7 @@ class DynamicDevice(PhysicalDevice):
             self._emt_template = val
 
             if self.auto_update_enabled:
-                self.emt_model = duplicate_block(val.block, self._emt_var_factory)
+                self.emt_model = duplicate_block(val.block, self._var_factory)
         elif val is None:
             self._emt_template = None
         else:

@@ -34,7 +34,7 @@ class TestDgsToBlocks(unittest.TestCase):
 
     class _DummyGrid:
         def __init__(self) -> None:
-            self.emt_var_factory = VarFactory()
+            self.var_factory = VarFactory()
 
     @classmethod
     def setUpClass(cls) -> None:

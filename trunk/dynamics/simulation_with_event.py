@@ -68,7 +68,7 @@ def test_simulation_with_event():
     grid.add_bus(bus1)
 
     for bus in grid.buses:
-        initialize_bus_rms(bus, vf=grid.rms_var_factory)
+        initialize_bus_rms(bus, vf=grid.var_factory)
 
     # Lines
     line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
@@ -92,13 +92,13 @@ def test_simulation_with_event():
     ######################################################################################################
 
     # generator
-    genqec_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
+    genqec_mdl = get_complete_generator_template_rms(grid.var_factory).block
 
     # line
-    line_mdl = get_line_rms_template(grid.rms_var_factory).block
+    line_mdl = get_line_rms_template(grid.var_factory).block
 
     # load
-    load_mdl = get_load_rms_template(grid.rms_var_factory).block
+    load_mdl = get_load_rms_template(grid.var_factory).block
 
     # connection with buses
 

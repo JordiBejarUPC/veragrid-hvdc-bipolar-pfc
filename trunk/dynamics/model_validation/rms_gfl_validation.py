@@ -102,7 +102,7 @@ def initialize_grid2_rms_models(grid2):
     print("Initializing RMS Models for Grid 2 with GFL VSC")
     print("-" * 70)
 
-    vf = grid2.rms_var_factory
+    vf = grid2.var_factory
 
     for trafo in grid2.transformers2w:
         print(f"  Initializing Transformer '{trafo.name}' with initialize_trafo_rms...")
