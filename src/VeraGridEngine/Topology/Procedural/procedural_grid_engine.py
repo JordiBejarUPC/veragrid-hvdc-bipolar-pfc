@@ -117,6 +117,7 @@ class TransitionMatrix:
         :param V2: Voltage target
         :return: Probability of transition
         """
+
         i1 = self.voltages_dict[V1]
         i2 = self.voltages_dict[V2]
         return self.transition_matrix[i1, i2]
@@ -207,8 +208,8 @@ class ProceduralGridGraph:
 
         self.min_lon = np.inf
         self.min_lat = np.inf
-        self.max_lon = 0
-        self.max_lat = 0
+        self.max_lon = -np.inf
+        self.max_lat = -np.inf
 
         for i, bus in enumerate(self.target_buses):
             self.coord_target[i, 0] = bus.longitude
@@ -294,6 +295,8 @@ class ProceduralGridGraph:
 
             if fitness < best_fitness:
                 best_fitness = fitness
+                mu_lon = candidate_lon
+                mu_lat = candidate_lat
                 best_solution = np.c_[candidate_lon, candidate_lat]
 
             convergence_history.append(best_fitness)
@@ -472,6 +475,7 @@ class Topology:
                             output_bus=output_bus,
                             edge=edge,
                             intermediate_bus_counter=intermediate_bus_counter,
+
                         )
                     else:
                         # Do nothing, the bus already exists in the original grid so no need to add it
