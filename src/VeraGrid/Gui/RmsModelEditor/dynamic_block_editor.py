@@ -672,7 +672,10 @@ class ConnectionItem(QGraphicsPathItem):
         self._original_elbows: List[QPointF] = []
 
         if elbow_points:
-            self.custom_elbow_points = [QPointF(x, y) for x, y in elbow_points]
+            self.custom_elbow_points = [
+                QPointF(p.x(), p.y()) if isinstance(p, QPointF) else QPointF(p[0], p[1])
+                for p in elbow_points
+            ]
 
         if self.source_port.connections is None:
             self.source_port.connections = list()
@@ -894,7 +897,10 @@ class ConnectionItem(QGraphicsPathItem):
         :param elbows:
         :return:
         """
-        self.custom_elbow_points = [QPointF(x, y) for x, y in elbows]
+        self.custom_elbow_points = [
+            QPointF(p.x(), p.y()) if isinstance(p, QPointF) else QPointF(p[0], p[1])
+            for p in elbows
+        ]
         self.update_path()
 
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
@@ -3174,12 +3180,16 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
 
         self.var_factory = var_factory
+        self.api_object = api_object
         # Todo: is this correct?
         self.original_block: Block = block  # api_object.rms_model
-        self.main_block: Block = clone_block_for_editing(block)
+        if self.api_object.rms_template is not None:
+            self.main_block: Block = Block()
+        else:
+            self.main_block: Block = clone_block_for_editing(block)
 
         self.diagram: BlockDiagram = self.main_block.diagram
-        self.api_object = api_object
+
         self.mode = mode
         self.main_editor = main_editor
         self.block_counters: Dict[BlockType, int] = dict()
@@ -4367,7 +4377,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if self.api_object.rms_template is not None:
             #Todo: Here are the changes
             self.api_object.rms_template = None
-            self.original_block = Block()
         copy_block_state(source_block=self.main_block, target_block=self.original_block)
         self.changes_applied = True
         self.close()

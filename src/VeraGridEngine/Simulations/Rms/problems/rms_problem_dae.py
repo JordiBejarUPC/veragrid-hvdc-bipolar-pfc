@@ -194,7 +194,7 @@ class RmsProblemDae(RmsProblemTemplate):
                 # initialize_bus_rms, get_bus_rms_algebraic_vars
 
             # flatten model
-            elm.rms_model.unify_blocks()
+            #elm.rms_model.unify_blocks()
 
             self.add_variables_to_compilation_dicts(elm, elm.rms_model)
 
