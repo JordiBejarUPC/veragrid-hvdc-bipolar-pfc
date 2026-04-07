@@ -141,7 +141,7 @@ def save_multiverse_data_to_zip(f_zip_ptr: zipfile.ZipFile,
             if sessions_data is not None:
                 save_results_in_zip(f_zip_ptr=f_zip_ptr,
                                     filename_zip=filename_zip,
-                                    folder=f"{base_path}/{sub_folder}/{"sessions"}",
+                                    folder=f"{base_path}/{sub_folder}/sessions",
                                     sessions_data=sessions_data,
                                     text_func=text_func,
                                     progress_func=progress_func)
