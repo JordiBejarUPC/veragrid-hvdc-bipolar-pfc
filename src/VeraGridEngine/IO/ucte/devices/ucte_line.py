@@ -24,7 +24,7 @@ class UcteLine:
         self.current_limit = 0  # 45-50: Current limit (A)
         self.name = ""
 
-    def is_active_and_reducible(self) -> tuple[bool, bool]:
+    def is_active_and_reducible(self, logger: Logger) -> tuple[bool, bool]:
         """
         Returns if this line is active and/or reducible
         :return: active, reducible
@@ -51,6 +51,12 @@ class UcteLine:
             return True, True
         elif self.status == 7:
             return False, True
+        else:
+            logger.add_error(msg="Unrecognized status",
+                             value=str(self.status),
+                             expected_value="0, 1, 2, 7, 8, 9",
+                             device_class="Line")
+            return True, False
 
     def parse(self, line: str, logger: Logger):
         """

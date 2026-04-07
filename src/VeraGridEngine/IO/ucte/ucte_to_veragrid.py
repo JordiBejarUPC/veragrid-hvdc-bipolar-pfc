@@ -124,7 +124,7 @@ def parse_lines(ucte_grid: UcteCircuit, grid: MultiCircuit, bus_dict: Dict[str, 
         bus_t = bus_dict.get(ucte_elm.node2, None)
 
         if bus_f is not None and bus_t is not None:
-            active, reducible = ucte_elm.is_active_and_reducible()
+            active, reducible = ucte_elm.is_active_and_reducible(logger=logger)
 
             elm = dev.Line(
                 bus_from=bus_f,
@@ -178,7 +178,7 @@ def parse_transformer(ucte_grid: UcteCircuit, grid: MultiCircuit, bus_dict: Dict
         bus_t = bus_dict.get(ucte_elm.node1, None)  # non-regulated winding (in veragrid always the "to" bus)
 
         if bus_f is not None and bus_t is not None:
-            active, reducible = ucte_elm.is_active_and_reducible()
+            active, reducible = ucte_elm.is_active_and_reducible(logger=logger)
 
             R, X, B, rate = get_line_impedances_with_b(
                 r_ohm=ucte_elm.resistance,
@@ -281,13 +281,4 @@ def convert_ucte_to_veragrid(ucte_grid: UcteCircuit, logger: Logger) -> MultiCir
     return grid
 
 
-if __name__ == "__main__":
-    # fname = "/Users/santi/Git/eRoots/VeraGrid/src/tests/data/grids/ucte/12_node_network.uct"
-    fname = "/Users/santi/Git/eRoots/VeraGrid/src/tests/data/grids/ucte/tapPositionsRange.uct"
 
-    logger = Logger()
-    g = UcteCircuit()
-    g.parse_file([fname], logger)
-    parser = convert_ucte_to_veragrid(g, logger)
-
-    print()

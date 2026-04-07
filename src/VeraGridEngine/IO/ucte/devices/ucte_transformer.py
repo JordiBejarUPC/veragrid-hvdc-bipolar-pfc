@@ -32,7 +32,7 @@ class UcteTransformer:
         """
         return f"{self.node1}_{self.node2}_{self.order_code}"
 
-    def is_active_and_reducible(self) -> tuple[bool, bool]:
+    def is_active_and_reducible(self, logger: Logger) -> tuple[bool, bool]:
         """
         Returns if this line is active and/or reducible
         :return: active, reducible
@@ -59,6 +59,12 @@ class UcteTransformer:
             return True, True
         elif self.status == 7:
             return False, True
+        else:
+            logger.add_error(msg="Unrecognized status",
+                             value=str(self.status),
+                             expected_value="0, 1, 2, 7, 8, 9",
+                             device_class="Transformer")
+            return True, False
 
     def parse(self, line, logger: Logger):
         """
