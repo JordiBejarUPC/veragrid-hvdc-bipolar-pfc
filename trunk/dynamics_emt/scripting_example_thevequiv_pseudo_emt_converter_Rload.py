@@ -33,7 +33,7 @@ from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import St
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
-from VeraGridEngine.Templates.Emt.converter_emt_template import get_pseudo_emt_converter
+from VeraGridEngine.Templates.Emt.converter_emt_template import get_full_pseudo_emt_converter
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
@@ -137,7 +137,7 @@ def attach_emt_models(
     losses_vsc = getattr(pf_results, "losses_vsc", None)
     p_loss0: float = float(losses_vsc[vsc_index]) if losses_vsc is not None else 0.0
 
-    vsc_mdl: Block = get_pseudo_emt_converter(
+    vsc_mdl: Block = get_full_pseudo_emt_converter(
         vf=grid.emt_var_factory,
         control1=ConverterControlType.Vm_dc,
         control2=ConverterControlType.Qac,
