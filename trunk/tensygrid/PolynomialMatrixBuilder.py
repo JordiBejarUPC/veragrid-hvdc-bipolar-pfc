@@ -297,32 +297,6 @@ class PolynomialMatrixBuilder:
                 else:
                     pass
 
-        # --- ARCHITECTURE FIX: AUTO-INJECT MISSING BASE STATES ---
-        # Algorithm: If a derivative exists (e.g., 'dt_delta') but its base state
-        # ('delta') does not appear isolated in any equation, we force it into
-        # the state space to prevent phantom variables in the Jacobian matrix.
-        missing_bases: list = list()
-        sym_check: sp.Symbol
-        for sym_check in list(extracted_symbols):
-            name_check: str = sym_check.name
-            base_name: str | None = None
-
-            if name_check.startswith('dt_'):
-                base_name = name_check[3:]
-            elif name_check.startswith('d_'):
-                base_name = name_check[2:]
-            elif name_check.startswith('dx') or name_check.startswith('xp'):
-                base_name = name_check[2:]
-
-            if base_name is not None:
-                new_base_sym: sp.Symbol = sp.Symbol(base_name)
-                if new_base_sym not in seen:
-                    seen.add(new_base_sym)
-                    missing_bases.append(new_base_sym)
-
-        extracted_symbols.extend(missing_bases)
-        # --- END OF ARCHITECTURE FIX ---
-
         # Apply priority sorting strictly to all gathered symbols
         extracted_symbols.sort(key=_sort_symbol)
 
@@ -906,8 +880,6 @@ class PolynomialMatrixBuilder:
             if key.startswith('x') and 'p' not in key:
                 val: float = float(v_dict[key])
 
-                if val == 0:
-                    val = 1e-8
 
                 # --- ARCHITECTURE FIX: EXACT PREFIX MATCHING ---
                 # These keys MUST match the sp.Symbol names generated in the lifting method
@@ -954,7 +926,7 @@ class PolynomialMatrixBuilder:
         to prevent singular Jacobians during evaluation.
         """
         n_vars: int = len(self.all_symbols)
-        v: np.ndarray = np.full(n_vars, 1e-9, dtype=float)
+        v: np.ndarray = np.zeros(n_vars, dtype=float)
 
         # 1. Fill standard variables from user dictionary
         k: str
