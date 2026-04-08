@@ -5,7 +5,7 @@
 
 import numpy as np
 from typing import List, Dict, Tuple
-from VeraGridEngine.enumerations import DeviceType, ConverterControlType
+from VeraGridEngine.enumerations import DeviceType, ConverterControlType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
@@ -38,19 +38,64 @@ For KCL connection:
 - AC currents i_A, i_B, i_C are added to the AC bus KCL
 """
 
+def _converter_control_type_code(control: ConverterControlType | None) -> int:
+    code_dict: Dict[ConverterControlType | None, int] = {
+        None: 0,
+        ConverterControlType.Vm_dc: 1,
+        ConverterControlType.Vm_ac: 2,
+        ConverterControlType.Va_ac: 3,
+        ConverterControlType.Qac: 4,
+        ConverterControlType.Pdc: 5,
+        ConverterControlType.Pac: 6,
+        ConverterControlType.Pdc_angle_droop: 7,
+        ConverterControlType.Imax: 8,
+    }
+    return code_dict[control]
+
+
+def _converter_control_match_expr(control_var: Var, control_type: ConverterControlType | None) -> sym.Expr:
+    return (control_var == _converter_control_type_code(control_type)).to_expression()
+
+
+def _resolve_converter_control_reference_exprs(
+    control1: Var,
+    control2: Var,
+    control1_val: Var,
+    control2_val: Var,
+) -> Tuple[sym.Expr, sym.Expr, sym.Expr, sym.Expr, sym.Expr]:
+    control1_is_vm_dc = _converter_control_match_expr(control1, ConverterControlType.Vm_dc)
+    control2_is_vm_dc = _converter_control_match_expr(control2, ConverterControlType.Vm_dc)
+    control1_is_qac = _converter_control_match_expr(control1, ConverterControlType.Qac)
+    control2_is_qac = _converter_control_match_expr(control2, ConverterControlType.Qac)
+    control1_is_pac = _converter_control_match_expr(control1, ConverterControlType.Pac)
+    control2_is_pac = _converter_control_match_expr(control2, ConverterControlType.Pac)
+    control1_is_pdc = _converter_control_match_expr(control1, ConverterControlType.Pdc)
+    control2_is_pdc = _converter_control_match_expr(control2, ConverterControlType.Pdc)
+
+    regulate_vdc = sym.max(control1_is_vm_dc, control2_is_vm_dc)
+    regulate_q = sym.max(control1_is_qac, control2_is_qac)
+    vdc_ref = (
+        control1_is_vm_dc * control1_val
+        + (Const(1.0) - control1_is_vm_dc)
+        * (control2_is_vm_dc * control2_val + (Const(1.0) - control2_is_vm_dc) * Const(1.0))
+    )
+    q_ref = (
+        control1_is_qac * control1_val
+        + (Const(1.0) - control1_is_qac)
+        * (control2_is_qac * control2_val + (Const(1.0) - control2_is_qac) * Const(0.0))
+    )
+    p_ref = (
+        (control1_is_pac + control1_is_pdc) * control1_val
+        + (Const(1.0) - (control1_is_pac + control1_is_pdc))
+        * ((control2_is_pac + control2_is_pdc) * control2_val)
+    )
+
+    return p_ref, q_ref, vdc_ref, regulate_vdc, regulate_q
+
+
 def get_emt_ideal_converter(
     vf: VarFactory,
     name: str = "ideal_converter_emt",
-    sbase: float = 1.0,
-    fbase: float = 50.0,
-    P_ref0: float = 0.0,
-    Q_ref0: float = 0.0,
-    P_loss0: float = 0.0,
-    control1: ConverterControlType | None = None,
-    control2: ConverterControlType | None = None,
-    control1_val: float | None = None,
-    control2_val: float | None = None,
-    vdc_kp: float = 2.0,
 ) -> EmtModelTemplate:
     """
     Build an idealized averaged EMT converter model current injection type with DC power balance.
@@ -120,6 +165,11 @@ def get_emt_ideal_converter(
     Vdc_ref = vf.add_var(name=f"Vdc_ref_{name}")
     P_loss = vf.add_var(name=f"P_loss_{name}")
     omega_base = vf.add_var(name=f"omega_base_{name}")
+    sbase = vf.add_var(name=f"sbase_{name}")
+    control1 = vf.add_var(name=f"control1_{name}")
+    control2 = vf.add_var(name=f"control2_{name}")
+    control1_val = vf.add_var(name=f"control1_val_{name}")
+    control2_val = vf.add_var(name=f"control2_val_{name}")
     phi_v = vf.add_var(name=f"phi_v_{name}")
     Vpk = vf.add_var(name=f"Vpk_{name}")
 
@@ -127,30 +177,26 @@ def get_emt_ideal_converter(
     # PARAMETERS
     # =================================================================
 
-    regulate_vdc = (
-        control1 == ConverterControlType.Vm_dc
-        or control2 == ConverterControlType.Vm_dc
+    p_ref_expr, q_ref_expr, vdc_ref_expr, regulate_vdc, regulate_q = _resolve_converter_control_reference_exprs(
+        control1=control1,
+        control2=control2,
+        control1_val=control1_val,
+        control2_val=control2_val,
     )
-
-    regulate_q = control1 == ConverterControlType.Qac or control2 == ConverterControlType.Qac
-
-    vdc_ref0 = 1.0
-    if control1 == ConverterControlType.Vm_dc and control1_val is not None:
-        vdc_ref0 = float(control1_val)
-    elif control2 == ConverterControlType.Vm_dc and control2_val is not None:
-        vdc_ref0 = float(control2_val)
 
     eps = vf.add_const(1e-10)
     c_two_over_three = vf.add_const(2.0 / 3.0)
     c_sqrt3_over_two = vf.add_const(np.sqrt(3.0) / 2.0)
     c_half = vf.add_const(0.5)
-    c_sbase = vf.add_const(max(float(sbase), 1e-12))
+    sbase_eff = sym.max(sbase, eps)
     event_dict = {
-        P_ref: vf.add_const(P_ref0),
-        Q_ref: vf.add_const(Q_ref0),
-        Vdc_ref: vf.add_const(vdc_ref0),
-        P_loss: vf.add_const(P_loss0),
-        omega_base: vf.add_const(2.0 * np.pi * float(fbase)),
+        P_loss: vf.add_const(0.0),
+        omega_base: vf.add_const(2.0 * np.pi * 50.0),
+        sbase: vf.add_const(1.0),
+        control1: vf.add_const(float(_converter_control_type_code(None))),
+        control2: vf.add_const(float(_converter_control_type_code(None))),
+        control1_val: vf.add_const(0.0),
+        control2_val: vf.add_const(0.0),
         phi_v: vf.add_const(0.0),
         Vpk: vf.add_const(np.sqrt(2.0)),
     }
@@ -158,11 +204,11 @@ def get_emt_ideal_converter(
     # =================================================================
     # CURRENT REFERENCE EQUATIONS
     # =================================================================
-    P_dc_cmd = P_ref + vf.add_const(vdc_kp) * (v_dc - Vdc_ref) if regulate_vdc else P_ref
-    Q_cmd = Q_ref if regulate_q else vf.add_const(0.0)
-    P_dc_cmd_pu = P_dc_cmd / c_sbase
-    Q_cmd_pu = Q_cmd / c_sbase
-    P_ac_cmd_pu = P_dc_cmd_pu + P_loss / c_sbase
+    P_dc_cmd = P_ref + vf.add_const(2.0) * (v_dc - Vdc_ref) * regulate_vdc
+    Q_cmd = Q_ref * regulate_q
+    P_dc_cmd_pu = P_dc_cmd / sbase_eff
+    Q_cmd_pu = Q_cmd / sbase_eff
+    P_ac_cmd_pu = P_dc_cmd_pu + P_loss / sbase_eff
 
     i_d_cmd = c_two_over_three * Q_cmd_pu / (Vpk + eps)
     i_q_cmd = c_two_over_three * P_ac_cmd_pu / (Vpk + eps)
@@ -173,9 +219,9 @@ def get_emt_ideal_converter(
     i_C_cmd = ((-c_half * i_d_cmd + c_sqrt3_over_two * i_q_cmd) * sym.cos(theta)
                + ((-c_sqrt3_over_two * i_d_cmd) - c_half * i_q_cmd) * sym.sin(theta))
 
-    Q_init_pu = Q_ref / c_sbase if regulate_q else vf.add_const(0.0)
-    P_dc_init_pu = P_ref / c_sbase
-    P_ac_init_pu = P_dc_init_pu + P_loss / c_sbase
+    Q_init_pu = Q_ref * regulate_q / sbase_eff
+    P_dc_init_pu = P_ref / sbase_eff
+    P_ac_init_pu = P_dc_init_pu + P_loss / sbase_eff
     i_d_init = c_two_over_three * Q_init_pu / (Vpk + eps)
     i_q_init = c_two_over_three * P_ac_init_pu / (Vpk + eps)
     i_A_init = i_d_init * sym.cos(phi_v) + i_q_init * sym.sin(phi_v)
@@ -187,6 +233,9 @@ def get_emt_ideal_converter(
     state_eqs = [omega_base]
 
     algebraic_eqs = [
+        P_ref - p_ref_expr,
+        Q_ref - q_ref_expr,
+        Vdc_ref - vdc_ref_expr,
         i_A - i_A_cmd,
         i_B - i_B_cmd,
         i_C - i_C_cmd,
@@ -198,12 +247,15 @@ def get_emt_ideal_converter(
     # =================================================================
     # ALGEBRAIC VARIABLES
     # =================================================================
-    algebraic_vars = [i_A, i_B, i_C, i_dc, P, Q]
+    algebraic_vars = [P_ref, Q_ref, Vdc_ref, i_A, i_B, i_C, i_dc, P, Q]
 
     # =================================================================
     # INITIALIZATION EQUATIONS
     # =================================================================
     init_eqs = {
+        P_ref: p_ref_expr,
+        Q_ref: q_ref_expr,
+        Vdc_ref: vdc_ref_expr,
         i_A: i_A_init,
         i_B: i_B_init,
         i_C: i_C_init,
@@ -228,6 +280,15 @@ def get_emt_ideal_converter(
         in_vars=inputs,
         out_vars=[i_A, i_B, i_C, i_dc],
     )
+    converter_block.api_obj_mapping = {
+        ParamPowerFlowRefferenceType.Sbase: sbase,
+        ParamPowerFlowRefferenceType.P_loss0: P_loss,
+        ParamPowerFlowRefferenceType.omega_base: omega_base,
+        ParamPowerFlowRefferenceType.control1: control1,
+        ParamPowerFlowRefferenceType.control2: control2,
+        ParamPowerFlowRefferenceType.control1_val: control1_val,
+        ParamPowerFlowRefferenceType.control2_val: control2_val,
+    }
 
     # =================================================================
     # EXTERNAL MAPPING
@@ -292,31 +353,11 @@ def get_emt_ideal_converter(
 ############################################################################
 
 
-def _validate_pseudo_emt_converter_controls(
-    control1: ConverterControlType | None,
-    control2: ConverterControlType | None,
-) -> None:
-    if control1 not in (None, ConverterControlType.Vm_dc):
-        raise ValueError(
-            f"Pseudo EMT converter supports only control1=None/Vm_dc, got {control1}"
-        )
-    if control2 not in (None, ConverterControlType.Qac):
-        raise ValueError(
-            f"Pseudo EMT converter supports only control2=None/Qac, got {control2}"
-        )
-
-
 def _build_pseudo_emt_converter_vsc_block(
     vf: VarFactory,
     name: str,
-    control1: ConverterControlType | None,
-    control2: ConverterControlType | None,
-    control1_val: float | None,
-    control2_val: float | None,
 ) -> Block:
     """VSC electrical/DC block with converter parameters and power/loss equations."""
-    _validate_pseudo_emt_converter_controls(control1=control1, control2=control2)
-
     v_d = vf.add_var(name=f"v_d_in_{name}")
     v_q = vf.add_var(name=f"v_q_in_{name}")
     v_0 = vf.add_var(name=f"v_0_in_{name}")
@@ -339,6 +380,10 @@ def _build_pseudo_emt_converter_vsc_block(
     P_ref = vf.add_var(name=f"P_ref_{name}")
     Q_ref = vf.add_var(name=f"Q_ref_{name}")
     Vdc_ref = vf.add_var(name=f"Vdc_ref_{name}")
+    control1 = vf.add_var(name=f"control1_{name}")
+    control2 = vf.add_var(name=f"control2_{name}")
+    control1_val = vf.add_var(name=f"control1_val_{name}")
+    control2_val = vf.add_var(name=f"control2_val_{name}")
     omega_base = vf.add_var(name=f"omega_base_{name}")
     phi_v = vf.add_var(name=f"phi_v_{name}")
     Vpk = vf.add_var(name=f"Vpk_{name}")
@@ -364,12 +409,12 @@ def _build_pseudo_emt_converter_vsc_block(
     aw_gain = vf.add_var(name=f"aw_gain_{name}")
     vdc_floor = vf.add_var(name=f"vdc_floor_{name}")
 
-    vdc_ref0 = 1.0
-    q_ref0 = 0.0
-    if control1 == ConverterControlType.Vm_dc and control1_val is not None:
-        vdc_ref0 = float(control1_val)
-    if control2 == ConverterControlType.Qac and control2_val is not None:
-        q_ref0 = float(control2_val)
+    p_ref_expr, q_ref_expr, vdc_ref_expr, _, _ = _resolve_converter_control_reference_exprs(
+        control1=control1,
+        control2=control2,
+        control1_val=control1_val,
+        control2_val=control2_val,
+    )
 
     eps = vf.add_const(1e-10)
     c0 = vf.add_const(0.0)
@@ -393,7 +438,7 @@ def _build_pseudo_emt_converter_vsc_block(
     i_dc0 = (i_dc_conv0 + v_dc_bus / R_dc) / (c1 + R_dc_term / R_dc)
     v_dc0 = v_dc_bus - R_dc_term * i_dc0
 
-    return Block(
+    block = Block(
         # DC-side physical model and converter power/loss balance.
         state_eqs=[
             # DC-link capacitor dynamics.
@@ -402,6 +447,9 @@ def _build_pseudo_emt_converter_vsc_block(
         state_vars=[v_dc],
         diff_vars=[d_v_dc],
         algebraic_eqs=[
+            P_ref - p_ref_expr,
+            Q_ref - q_ref_expr,
+            Vdc_ref - vdc_ref_expr,
             # Instantaneous active power in dq0 coordinates.
             P - (c32 * (v_d * i_d + v_q * i_q) + c3 * v_0 * i_0),
             # Instantaneous reactive power in dq coordinates.
@@ -415,12 +463,13 @@ def _build_pseudo_emt_converter_vsc_block(
             # Resistive coupling between the DC bus and the internal capacitor node.
             i_dc - (v_dc_bus - v_dc) / R_dc_term,
         ],
-        algebraic_vars=[i_dc, P, Q, i_mag, P_loss, i_dc_conv],
+        algebraic_vars=[P_ref, Q_ref, Vdc_ref, i_dc, P, Q, i_mag, P_loss, i_dc_conv],
         event_dict={
             sbase: vf.add_const(1.0),
-            P_ref: vf.add_const(0.0),
-            Q_ref: vf.add_const(q_ref0),
-            Vdc_ref: vf.add_const(vdc_ref0),
+            control1: vf.add_const(float(_converter_control_type_code(ConverterControlType.Vm_dc))),
+            control2: vf.add_const(float(_converter_control_type_code(ConverterControlType.Qac))),
+            control1_val: vf.add_const(1.0),
+            control2_val: vf.add_const(0.0),
             omega_base: vf.add_const(2.0 * np.pi * 50.0),
             phi_v: vf.add_const(0.0),
             Vpk: vf.add_const(np.sqrt(2.0)),
@@ -448,6 +497,9 @@ def _build_pseudo_emt_converter_vsc_block(
         },
         init_eqs={
             v_dc: v_dc0,
+            P_ref: p_ref_expr,
+            Q_ref: q_ref_expr,
+            Vdc_ref: vdc_ref_expr,
             i_dc: i_dc0,
             P: P0,
             Q: Q0,
@@ -467,8 +519,16 @@ def _build_pseudo_emt_converter_vsc_block(
         ],
         name=f"{name}_vsc",
     )
-
-
+    block.api_obj_mapping = {
+        ParamPowerFlowRefferenceType.Sbase: sbase,
+        ParamPowerFlowRefferenceType.P_loss0: P_loss0,
+        ParamPowerFlowRefferenceType.omega_base: omega_base,
+        ParamPowerFlowRefferenceType.control1: control1,
+        ParamPowerFlowRefferenceType.control2: control2,
+        ParamPowerFlowRefferenceType.control1_val: control1_val,
+        ParamPowerFlowRefferenceType.control2_val: control2_val,
+    }
+    return block
 def _build_pseudo_emt_converter_pll_block(vf: VarFactory, name: str) -> Block:
     """SRF-PLL aligned with the q-axis voltage error convention used by the converter."""
     v_q = vf.add_var(name=f"v_q_pll_in_{name}")
@@ -831,15 +891,9 @@ def _build_pseudo_emt_converter_transformer_block(vf: VarFactory, name: str) -> 
         out_vars=[i_A, i_B, i_C, i_d, i_q, i_0, v_d, v_q, v_0],
         name=f"{name}_transformer",
     )
-
-
 def get_full_pseudo_emt_converter(
     vf: VarFactory,
     name: str = "pseudo_converter_emt",
-    control1: ConverterControlType | None = ConverterControlType.Vm_dc,
-    control2: ConverterControlType | None = ConverterControlType.Qac,
-    control1_val: float | None = None,
-    control2_val: float | None = None,
 ) -> EmtModelTemplate:
     """Assemble the pseudo-EMT converter from meaningful electrical and control sub-blocks."""
     templ = EmtModelTemplate()
@@ -856,10 +910,6 @@ def get_full_pseudo_emt_converter(
     vsc_block = _build_pseudo_emt_converter_vsc_block(
         vf=vf,
         name=name,
-        control1=control1,
-        control2=control2,
-        control1_val=control1_val,
-        control2_val=control2_val,
     )
 
     # Control hierarchy blocks.
@@ -962,23 +1012,8 @@ def get_full_pseudo_emt_converter(
         VarPowerFlowRefferenceType.phi_v: vsc_block.out_vars[9],
         VarPowerFlowRefferenceType.Vpk: vsc_block.out_vars[10],
     }
+    templ.block.api_obj_mapping = dict(vsc_block.api_obj_mapping)
 
     return templ
 
 
-def get_pseudo_emt_converter(
-    vf: VarFactory,
-    name: str = "pseudo_converter_emt",
-    control1: ConverterControlType | None = ConverterControlType.Vm_dc,
-    control2: ConverterControlType | None = ConverterControlType.Qac,
-    control1_val: float | None = None,
-    control2_val: float | None = None,
-) -> EmtModelTemplate:
-    return get_full_pseudo_emt_converter(
-        vf=vf,
-        name=name,
-        control1=control1,
-        control2=control2,
-        control1_val=control1_val,
-        control2_val=control2_val,
-    )

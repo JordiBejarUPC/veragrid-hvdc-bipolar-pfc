@@ -4,20 +4,20 @@
 # SPDX-License-Identifier: MPL-2.0
 import cProfile
 import pstats
+import os
+import sys
 import numpy as np
 from typing import Any, cast
 
-# import sys
-# import os
+SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
+REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
+SRC_ROOT = os.path.join(REPO_ROOT, 'src')
 
-# REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-# SRC_ROOT = os.path.join(REPO_ROOT, 'src')
-#
-# if SRC_ROOT not in sys.path:
-#     sys.path.insert(0, SRC_ROOT)
-#
-# if REPO_ROOT not in sys.path:
-#     sys.path.insert(0, REPO_ROOT)
+if SRC_ROOT not in sys.path:
+    sys.path.insert(0, SRC_ROOT)
+
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 import matplotlib.pyplot as plt
 
@@ -152,6 +152,11 @@ pf_options = gce.PowerFlowOptions(
 
 pf_results = gce.power_flow(grid=circuit, options=pf_options)
 
+vsc.control1 = emt_control1
+vsc.control2 = emt_control2
+vsc.control1_val = p_transfer_mw
+vsc.control2_val = q_transfer_mvar
+
 print("="*60)
 print("POWER FLOW RESULTS")
 print("="*60)
@@ -185,15 +190,6 @@ trafo_mdl = get_transformer_emt_template(grid=circuit, trafo=transformer, name=t
 vsc_mdl = get_emt_ideal_converter(
     vf=circuit.var_factory,
     name=vsc.name,
-    sbase=circuit.Sbase,
-    fbase=circuit.fBase,
-    P_ref0=p_transfer_mw,
-    Q_ref0=q_transfer_mvar,
-    P_loss0=float(pf_results.losses_vsc[circuit.get_vsc().index(vsc)]),
-    control1=emt_control1,
-    control2=emt_control2,
-    control1_val=p_transfer_mw,
-    control2_val=q_transfer_mvar,
 ).block
 
 # DC Load model (constant resistance load around the PF point)
@@ -260,12 +256,12 @@ if pf_res_3ph.converged:
 ###########################################################################################################################
 
 # Solver configuration
-CHOSEN_SOLVER = "SYMBOLIC"
+CHOSEN_SOLVER = "COMPILED"
 RUN_ALL_SOLVERS = False
-ENABLE_PLOTS = True
+ENABLE_PLOTS = False
 ENABLE_NEWTON_TRACE = False
 DENSE_THRESHOLD = 0
-SOLVER_VERBOSE = True
+SOLVER_VERBOSE = False
 
 SOLVER_TYPE_MAP = {
     "SYMBOLIC": EmtSolverTypes.Symbolic,

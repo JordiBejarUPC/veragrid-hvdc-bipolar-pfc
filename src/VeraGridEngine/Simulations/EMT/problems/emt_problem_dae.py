@@ -26,7 +26,13 @@ from VeraGridEngine.Devices.Aggregation.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise, Const
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, DeviceType, EmtLineTypes
+from VeraGridEngine.enumerations import (
+    VarPowerFlowRefferenceType,
+    ParamPowerFlowRefferenceType,
+    DeviceType,
+    EmtLineTypes,
+    ConverterControlType,
+)
 from VeraGridEngine.basic_structures import Logger, CxVec
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
@@ -1079,9 +1085,9 @@ class EmtProblemDae(EmtProblemTemplate):
         sbase: float = float(grid.Sbase)
         fbase: float = float(grid.fBase)
 
-        vsc_idx_dict: Dict[Any, int] = dict()
+        vsc_idx_dict: Dict[str, int] = dict()
         for vsc_idx, vsc in enumerate(grid.vsc_devices):
-            vsc_idx_dict[vsc] = vsc_idx
+            vsc_idx_dict[vsc.idtag] = vsc_idx
 
 
         for branch_idx, br in enumerate(grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):
@@ -1094,14 +1100,10 @@ class EmtProblemDae(EmtProblemTemplate):
                 is_bergeron = True
             else:
                 pass
-            is_vsc: bool = br in vsc_idx_dict
+            is_vsc: bool = br.device_type == DeviceType.VscDevice
+            vsc_index: int = vsc_idx_dict.get(br.idtag, -1)
 
-
-            if is_vsc:
-                # self._assign_api_obj_mapping_vsc(br)
-                pass
-            else:
-                self._assign_api_obj_mapping_branch(br)
+            self._assign_api_obj_mapping_branch(br=br, is_vsc=is_vsc, vsc_index=vsc_index)
 
             if is_bergeron:
                 v_f_vars: List[Any] = _get_bus_v_list(
@@ -1233,7 +1235,7 @@ class EmtProblemDae(EmtProblemTemplate):
                         else:
                             pass
 
-                vsc_index: int = vsc_idx_dict.get(br, -1)
+
 
                 if self.power_flow_results_3ph is not None:
                     if is_vsc and vsc_index >= 0:
@@ -3599,133 +3601,10 @@ class EmtProblemDae(EmtProblemTemplate):
 
         return df
 
-
-    # def _assign_api_obj_mapping_branch(self, br): # TODO: still not working: branches need their phase number before creating the template not after!
-    #     # -----------------------------
-    #     # 1. Assign phase flags USING ENUMS
-    #     # -----------------------------
-    #     ph_mappings = [
-    #         (ParamPowerFlowRefferenceType.phN, br.ys.phN),
-    #         (ParamPowerFlowRefferenceType.phA, br.ys.phA),
-    #         (ParamPowerFlowRefferenceType.phB, br.ys.phB),
-    #         (ParamPowerFlowRefferenceType.phC, br.ys.phC),
-    #     ]
-    #
-    #     # Create a boolean mask and extract active global indices
-    #     ph_mask = [bool(br.ys.phN), bool(br.ys.phA), bool(br.ys.phB), bool(br.ys.phC)]
-    #     idx_global = [i for i, active in enumerate(ph_mask) if active]
-    #     m = len(idx_global)
-    #
-    #     for enum_key, ph_val in ph_mappings:
-    #         self._assign_api_obj_param_if_present(br.emt_model, enum_key, Const(ph_val))
-    #
-    #     # -----------------------------
-    #     # 2. Compute continuous parameters in PU
-    #     # -----------------------------
-    #     fbase = self.grid.fBase
-    #     w0 = 2.0 * np.pi * fbase
-    #     Vbase = br.bus_from.Vnom * 1e3
-    #     sbase = self.grid.Sbase
-    #     S = sbase * 1e6
-    #     Zbase = (Vbase * Vbase) / S
-    #     Ybase = 1.0 / Zbase
-    #
-    #     # Z_phys i Y_phys ara seran matrius de mida m x m
-    #     Z_phys = br.template.z_nabc * br.length
-    #     Y_phys = br.template.y_nabc * br.length
-    #
-    #     Z_pu = Z_phys / Zbase
-    #     Y_pu = Y_phys / Ybase
-    #
-    #     R_full = np.real(Z_pu)
-    #     X_full = np.imag(Z_pu)
-    #     L_full = X_full / (w0 + 1e-20)
-    #
-    #     Bsh_full = np.imag(Y_pu)
-    #     C_full = Bsh_full / (w0 + 1e-20)
-    #     C_full = C_full/2.0
-    #
-    #     # -----------------------------
-    #     # 3. Validations
-    #     # -----------------------------
-    #     # Ara validem contra la mida m x m real de les fases actives
-    #     if R_full.shape != (m, m):
-    #         raise ValueError(
-    #             f"Line '{br.name}' must have a {m}x{m} Z matrix based on active phases. Got {R_full.shape}.")
-    #
-    #     if L_full.shape != R_full.shape or C_full.shape != R_full.shape:
-    #         raise ValueError(
-    #             f"Line '{br.name}' has inconsistent matrix shapes: "
-    #             f"R={R_full.shape}, L={L_full.shape}, C={C_full.shape}."
-    #         )
-    #
-    #     try:
-    #         L_inv = np.linalg.inv(L_full)
-    #     except np.linalg.LinAlgError:
-    #         raise ValueError(f"Inductance matrix L for line '{br.name}' is singular and cannot be inverted.")
-    #
-    #     # -----------------------------
-    #     # 4. Assign Matrix values (R, Linv, C) USING ENUM MATRICES
-    #     # -----------------------------
-    #     r_enums = [
-    #         [ParamPowerFlowRefferenceType.Rnn, ParamPowerFlowRefferenceType.Rna, ParamPowerFlowRefferenceType.Rnb,
-    #          ParamPowerFlowRefferenceType.Rnc],
-    #         [ParamPowerFlowRefferenceType.Ran, ParamPowerFlowRefferenceType.Raa, ParamPowerFlowRefferenceType.Rab,
-    #          ParamPowerFlowRefferenceType.Rac],
-    #         [ParamPowerFlowRefferenceType.Rbn, ParamPowerFlowRefferenceType.Rba, ParamPowerFlowRefferenceType.Rbb,
-    #          ParamPowerFlowRefferenceType.Rbc],
-    #         [ParamPowerFlowRefferenceType.Rcn, ParamPowerFlowRefferenceType.Rca, ParamPowerFlowRefferenceType.Rcb,
-    #          ParamPowerFlowRefferenceType.Rcc]
-    #     ]
-    #     linv_enums = [
-    #         [ParamPowerFlowRefferenceType.Linv_nn, ParamPowerFlowRefferenceType.Linv_na,
-    #          ParamPowerFlowRefferenceType.Linv_nb, ParamPowerFlowRefferenceType.Linv_nc],
-    #         [ParamPowerFlowRefferenceType.Linv_an, ParamPowerFlowRefferenceType.Linv_aa,
-    #          ParamPowerFlowRefferenceType.Linv_ab, ParamPowerFlowRefferenceType.Linv_ac],
-    #         [ParamPowerFlowRefferenceType.Linv_bn, ParamPowerFlowRefferenceType.Linv_ba,
-    #          ParamPowerFlowRefferenceType.Linv_bb, ParamPowerFlowRefferenceType.Linv_bc],
-    #         [ParamPowerFlowRefferenceType.Linv_cn, ParamPowerFlowRefferenceType.Linv_ca,
-    #          ParamPowerFlowRefferenceType.Linv_cb, ParamPowerFlowRefferenceType.Linv_cc]
-    #     ]
-    #     c_enums = [
-    #         [ParamPowerFlowRefferenceType.Cnn, ParamPowerFlowRefferenceType.Cna, ParamPowerFlowRefferenceType.Cnb,
-    #          ParamPowerFlowRefferenceType.Cnc],
-    #         [ParamPowerFlowRefferenceType.Can, ParamPowerFlowRefferenceType.Caa, ParamPowerFlowRefferenceType.Cab,
-    #          ParamPowerFlowRefferenceType.Cac],
-    #         [ParamPowerFlowRefferenceType.Cbn, ParamPowerFlowRefferenceType.Cba, ParamPowerFlowRefferenceType.Cbb,
-    #          ParamPowerFlowRefferenceType.Cbc],
-    #         [ParamPowerFlowRefferenceType.Ccn, ParamPowerFlowRefferenceType.Cca, ParamPowerFlowRefferenceType.Ccb,
-    #          ParamPowerFlowRefferenceType.Ccc]
-    #     ]
-    #
-    #     # Initialize all 16 vars at zero to after assign nonzero values to active phases
-    #     for i in range(4):
-    #         for j in range(4):
-    #             self._assign_api_obj_param_if_present(br.emt_model, r_enums[i][j], 0.0)
-    #             self._assign_api_obj_param_if_present(br.emt_model, linv_enums[i][j], 0.0)
-    #             self._assign_api_obj_param_if_present(br.emt_model, c_enums[i][j], 0.0)
-    #
-    #     # 'i_red' i 'j_red' from 0 to m-1 (physical matrix inidices R_full, L_inv, etc.)
-    #     # 'i_glob' i 'j_glob' from 0 to 3 (global indices associated to enums)
-    #     for i_red, i_glob in enumerate(idx_global):
-    #         for j_red, j_glob in enumerate(idx_global):
-    #             self._assign_api_obj_param_if_present(
-    #                 br.emt_model,
-    #                 r_enums[i_glob][j_glob],
-    #                 float(R_full[i_red, j_red])
-    #             )
-    #             self._assign_api_obj_param_if_present(
-    #                 br.emt_model,
-    #                 linv_enums[i_glob][j_glob],
-    #                 float(L_inv[i_red, j_red])
-    #             )
-    #             self._assign_api_obj_param_if_present(
-    #                 br.emt_model,
-    #                 c_enums[i_glob][j_glob],
-    #                 float(C_full[i_red, j_red])
-    #             )
-
-    def _assign_api_obj_mapping_branch(self, br: Any) -> None:
+    def _assign_api_obj_mapping_branch(self,
+                                       br: Any,
+                                       is_vsc: bool,
+                                       vsc_index: int) -> None:
         """
         Assign branch EMT pi-line parameters into the API object mapping.
          The routine keeps the historical contract used by the EMT pi-line
@@ -3737,6 +3616,74 @@ class EmtProblemDae(EmtProblemTemplate):
         :return: None.
         :raises ValueError: If the reduced physical matrices are inconsistent.
         """
+        if is_vsc:
+            vsc = br
+            if 0 <= vsc_index < len(self.grid.vsc_devices):
+                vsc = self.grid.vsc_devices[vsc_index]
+
+            p_loss0: float = 0.0
+            if self.power_flow_results is not None:
+                try:
+                    p_loss0 = float(self.power_flow_results.losses_vsc[vsc_index])
+                except (AttributeError, IndexError, TypeError, ValueError):
+                    p_loss0 = 0.0
+
+            control_code_dict: Dict[ConverterControlType | None, float] = {
+                None: 0.0,
+                ConverterControlType.Vm_dc: 1.0,
+                ConverterControlType.Vm_ac: 2.0,
+                ConverterControlType.Va_ac: 3.0,
+                ConverterControlType.Qac: 4.0,
+                ConverterControlType.Pdc: 5.0,
+                ConverterControlType.Pac: 6.0,
+                ConverterControlType.Pdc_angle_droop: 7.0,
+                ConverterControlType.Imax: 8.0,
+            }
+
+            def assign_vsc_event_param_if_present(key: ParamPowerFlowRefferenceType, value: Any) -> None:
+                api_obj_mapping_local: Any = vsc.emt_model.api_obj_mapping
+                if isinstance(api_obj_mapping_local, dict):
+                    target_local: Any | None = api_obj_mapping_local.get(key, None)
+                    if target_local is not None:
+                        if target_local in vsc.emt_model.event_dict:
+                            vsc.emt_model.event_dict[target_local] = self._to_const(value)
+                        else:
+                            vsc.emt_model.parameters[target_local] = self._to_const(value)
+                    else:
+                        pass
+                else:
+                    pass
+
+            assign_vsc_event_param_if_present(ParamPowerFlowRefferenceType.Sbase, self.grid.Sbase)
+            assign_vsc_event_param_if_present(
+                ParamPowerFlowRefferenceType.omega_base,
+                2.0 * np.pi * self.grid.fBase,
+            )
+            assign_vsc_event_param_if_present(ParamPowerFlowRefferenceType.P_loss0, p_loss0)
+            assign_vsc_event_param_if_present(
+                ParamPowerFlowRefferenceType.control1,
+                control_code_dict[vsc.control1],
+            )
+            assign_vsc_event_param_if_present(
+                ParamPowerFlowRefferenceType.control2,
+                control_code_dict[vsc.control2],
+            )
+            assign_vsc_event_param_if_present(
+                ParamPowerFlowRefferenceType.control1_val,
+                vsc.control1_val,
+            )
+            assign_vsc_event_param_if_present(
+                ParamPowerFlowRefferenceType.control2_val,
+                vsc.control2_val,
+            )
+            return
+
+        api_obj_mapping: Any = br.emt_model.api_obj_mapping
+        if not isinstance(api_obj_mapping, dict):
+            return
+        if ParamPowerFlowRefferenceType.Rnn not in api_obj_mapping:
+            return
+
         # -----------------------------
         # 1. Resolve the physical phase layout from the line connection.
         # This selects the reduced subspace that exists in the physical line,

@@ -238,15 +238,6 @@ def test_vsc_emt_passes_validation():
     vsc_mdl = get_emt_ideal_converter(
         vf=grid.var_factory,
         name=vsc.name,
-        sbase=grid.Sbase,
-        fbase=grid.fBase,
-        P_ref0=p_transfer_mw,
-        Q_ref0=q_transfer_mvar,
-        P_loss0=float(pf_results.losses_vsc[grid.get_vsc().index(vsc)]),
-        control1=ConverterControlType.Qac,
-        control2=ConverterControlType.Vm_dc,
-        control1_val=q_transfer_mvar,
-        control2_val=p_transfer_mw,
     ).block
     dc_load_r_pu = grid.Sbase / p_transfer_mw
     dc_load_mdl = get_dc_load_emt_template(grid=grid, P_dc=dc_load.P, R_dc=dc_load_r_pu, name="dc_load_emt").block
