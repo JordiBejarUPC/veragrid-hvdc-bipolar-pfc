@@ -125,6 +125,13 @@ class PolynomialMatrixBuilder:
         self.state_vars: list = list()
         self.algebraic_vars: list = list()
 
+        has_problem: bool = problem is not None
+        # --- NUEVO: Extraer parámetros protegidos del problema ---
+        self._protected_params: list = []
+        if has_problem and hasattr(problem, 'variable_parameters') and problem.variable_parameters is not None:
+            # Guardamos solo los nombres (strings) para que la búsqueda sea ultra rápida después
+            self._protected_params = [getattr(vp, 'name', str(vp)) for vp in problem.variable_parameters]
+
         processed_eqs: list = list()
         processed_ineqs: list = list()
         processed_state_vars: list = list()
@@ -153,17 +160,41 @@ class PolynomialMatrixBuilder:
         if ineqs is not None:
             processed_ineqs = list(ineqs)
 
+        # Inicializa el diccionario para guardar mapeos exactos
+        self._explicit_deriv_map: dict = dict()
+
+        def _extract_mappings(var_list: list) -> None:
+            if not var_list: return
+            for var_obj in var_list:
+                if not isinstance(var_obj, str):
+                    base_name = getattr(var_obj, 'name', None)
+                    diff_var = getattr(var_obj, 'diff_var', None)
+                    if diff_var is not None:
+                        diff_name = getattr(diff_var, 'name', None)
+                        if base_name and diff_name:
+                            self._explicit_deriv_map[base_name] = diff_name
+
+                    base_var = getattr(var_obj, 'base_var', None)
+                    if base_var is not None:
+                        base_var_name = getattr(base_var, 'name', None)
+                        if base_var_name and base_name:
+                            self._explicit_deriv_map[base_var_name] = base_name
+
         if state_vars is not None:
-            processed_state_vars = list(state_vars)
+            _extract_mappings(state_vars)
+            processed_state_vars = [_safe_to_string(v) for v in state_vars]
         elif has_problem:
             if hasattr(problem, '_state_vars'):
+                _extract_mappings(problem._state_vars)
                 for s_var in problem._state_vars:
                     processed_state_vars.append(_safe_to_string(s_var))
 
         if algebraic_vars is not None:
-            processed_algebraic_vars = list(algebraic_vars)
+            _extract_mappings(algebraic_vars)
+            processed_algebraic_vars = [_safe_to_string(v) for v in algebraic_vars]
         elif has_problem:
             if hasattr(problem, '_algebraic_vars'):
+                _extract_mappings(problem._algebraic_vars)
                 for a_var in problem._algebraic_vars:
                     processed_algebraic_vars.append(_safe_to_string(a_var))
 
@@ -186,6 +217,18 @@ class PolynomialMatrixBuilder:
 
         parsed_predefined: list[sp.Symbol] = []
 
+        # 1. Symbols
+        for names, target_list in [(processed_state_vars, self.state_vars),
+                                   (processed_algebraic_vars, self.algebraic_vars)]:
+            for name in names:
+                clean_name = name.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
+                clean_name = re.sub(r'\bd_', 'dt_', clean_name)
+
+                if clean_name not in parsing_context:
+                    sym = sp.Symbol(clean_name)
+                    parsing_context[clean_name] = sym
+                    target_list.append(sym)
+                    parsed_predefined.append(sym)
 
         # 2. Expression parsing
         for raw_exprs, target_list in [(processed_eqs, self.eqs),
@@ -193,7 +236,10 @@ class PolynomialMatrixBuilder:
             for raw in raw_exprs:
                 s = raw if isinstance(raw, str) else str(raw)
 
-                target_list.append(parse_expr(s, local_dict=parsing_context, evaluate=False))
+                s = s.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
+                s = re.sub(r'\bd_', 'dt_', s)
+
+                target_list.append(parse_expr(s, local_dict=parsing_context, evaluate=False)) # Check this
 
         # 3. Symbols' inizialization
         self.all_symbols = []
@@ -201,6 +247,7 @@ class PolynomialMatrixBuilder:
 
         # 4. Symbol extraction
         self.extract_symbols(self.eqs + self.ineqs, predefined=parsed_predefined)
+
         self._argaux_map: dict = dict()
 
         # LINEARIZATION: \propto x^n, n\in\mathbb{R}
@@ -218,7 +265,7 @@ class PolynomialMatrixBuilder:
 
         # --- ALGORITHM: TWO-PASS COMPILATION FOR AUTOMATIC LIFTING ---
         self.matrix_creation(self.eqs)
-        self._generate_lifting_equations()
+        self._generate_lifting_equations(problem)
 
         S_H_sp: sparse.csc_matrix
         Phi_H_sp: sparse.csr_matrix
@@ -241,6 +288,12 @@ class PolynomialMatrixBuilder:
     # ------------------------------------------------------------------
     # Symbol extraction
     # ------------------------------------------------------------------
+    def _is_protected_param(self, var_name: str) -> bool:
+        """
+        Comprueba si una variable pertenece a los parámetros del problema
+        para evitar que cualquier algoritmo le aplique lifting.
+        """
+        return hasattr(self, '_protected_params') and var_name in self._protected_params
 
     def extract_symbols(self, all_exprs: list, predefined: list | None = None) -> list:
         """
@@ -642,7 +695,13 @@ class PolynomialMatrixBuilder:
                     cp_var = sp.Symbol(f"xp_cos_{arg.name}")
 
                     # Assume the derivative of the argument replaces 'x' with 'xp'
-                    arg_p = sp.Symbol(arg.name.replace('x', 'xp'))
+                    # 1. Prioridad: Mapa explícito extraído de los objetos (si existe)
+                    arg_name = arg.name
+                    if hasattr(self, '_explicit_deriv_map') and arg_name in self._explicit_deriv_map:
+                        arg_p = sp.Symbol(self._explicit_deriv_map[arg_name])
+                    else:
+                        # 2. Fallback: Asume que la derivada reemplaza 'x' por 'xp' (Tu lógica original)
+                        arg_p = sp.Symbol(arg_name.replace('x', 'xp'))
 
                     # 2. Formulate the differential equations for the tangent space
                     eq_ds = sp_var - (c_var * arg_p)
@@ -670,7 +729,7 @@ class PolynomialMatrixBuilder:
         if self.verbose:
             print(f"[LIFTING] Applied Lie-Bäcklund isomorphism to {len(processed_args)} angular variables.")
 
-    def _generate_lifting_equations(self) -> None:
+    def _generate_lifting_equations(self, problem) -> None:
         """
         Automatically generates and appends the algebraic constraint equations
         for all internally generated auxiliary variables (lifting).
@@ -684,68 +743,71 @@ class PolynomialMatrixBuilder:
 
         sym: sp.Symbol
         for sym in self.all_symbols:
-            s_name: str = sym.name
+            print(sym)
+            if sym not in problem._variable_parameters: # Añadir que mire si hay problema
+                s_name: str = sym.name
 
-            # --- ALGORITHM: LIFTING DETECTION ---
-            is_mul: bool = "_mulaux" in s_name
-            is_inv: bool = "_invaux" in s_name
-            is_sqrt: bool = "_sqrtaux" in s_name
+                # --- ALGORITHM: LIFTING DETECTION ---
+                is_mul: bool = "_mulaux" in s_name
+                is_inv: bool = "_invaux" in s_name
+                is_sqrt: bool = "_sqrtaux" in s_name
 
-            if is_mul:
-                # Generate x_base - x_aux = 0
-                base_name_m: str = s_name.split("_mulaux")[0]
-                base_sym_m: Optional[sp.Symbol] = self._get_symbol_by_name(base_name_m)
+                if is_mul:
+                    # Generate x_base - x_aux = 0
+                    base_name_m: str = s_name.split("_mulaux")[0]
+                    base_sym_m: Optional[sp.Symbol] = self._get_symbol_by_name(base_name_m)
 
-                if base_sym_m is not None:
-                    constraint_m: sp.Expr = base_sym_m - sym
-                    # Prevent duplicates if method is called safely multiple times
-                    if constraint_m not in self.eqs:
-                        new_constraints.append(constraint_m)
-                    else:
-                        pass
-                else:
-                    pass
-
-            elif is_inv:
-                # Generate x_base * x_aux - 1.0 = 0
-                base_name_i: str = s_name.split("_invaux")[0]
-                base_sym_i: Optional[sp.Symbol] = self._get_symbol_by_name(base_name_i)
-
-                if base_sym_i is not None:
-                    constraint_i: sp.Expr = base_sym_i * sym - 1.0
-                    if constraint_i not in self.eqs:
-                        new_constraints.append(constraint_i)
-                    else:
-                        pass
-                else:
-                    pass
-
-
-            elif is_sqrt:
-                # We need to find both aux variables to form the multilinear constraints
-                if s_name.endswith("_sqrtaux0"):
-                    base_name_s: str = s_name.split("_sqrtaux0")[0]
-                    base_sym_s: Optional[sp.Symbol] = self._get_symbol_by_name(base_name_s)
-                    sym_aux1: Optional[sp.Symbol] = self._get_symbol_by_name(f"{base_name_s}_sqrtaux1")
-                    if base_sym_s is not None and sym_aux1 is not None:
-                        # Constraint 1: base - z0*z1 = 0 (Strict multilinear square)
-                        constraint_s1: sp.Expr = base_sym_s - (sym * sym_aux1)
-                        if constraint_s1 not in self.eqs:
-                            new_constraints.append(constraint_s1)
-                        else:
-                            pass
-                        # Constraint 2: z0 - z1 = 0 (Equality enforcement)
-                        constraint_s2: sp.Expr = sym - sym_aux1
-                        if constraint_s2 not in self.eqs:
-                            new_constraints.append(constraint_s2)
+                    if base_sym_m is not None:
+                        constraint_m: sp.Expr = base_sym_m - sym
+                        # Prevent duplicates if method is called safely multiple times
+                        if constraint_m not in self.eqs:
+                            new_constraints.append(constraint_m)
                         else:
                             pass
                     else:
                         pass
-                else:
-                    # _sqrtaux1 is handled when the loop processes _sqrtaux0
-                    pass
 
+                elif is_inv:
+                    # Generate x_base * x_aux - 1.0 = 0
+                    base_name_i: str = s_name.split("_invaux")[0]
+                    base_sym_i: Optional[sp.Symbol] = self._get_symbol_by_name(base_name_i)
+
+                    if base_sym_i is not None:
+                        constraint_i: sp.Expr = base_sym_i * sym - 1.0
+                        if constraint_i not in self.eqs:
+                            new_constraints.append(constraint_i)
+                        else:
+                            pass
+                    else:
+                        pass
+
+
+                elif is_sqrt:
+                    # We need to find both aux variables to form the multilinear constraints
+                    if s_name.endswith("_sqrtaux0"):
+                        base_name_s: str = s_name.split("_sqrtaux0")[0]
+                        base_sym_s: Optional[sp.Symbol] = self._get_symbol_by_name(base_name_s)
+                        sym_aux1: Optional[sp.Symbol] = self._get_symbol_by_name(f"{base_name_s}_sqrtaux1")
+                        if base_sym_s is not None and sym_aux1 is not None:
+                            # Constraint 1: base - z0*z1 = 0 (Strict multilinear square)
+                            constraint_s1: sp.Expr = base_sym_s - (sym * sym_aux1)
+                            if constraint_s1 not in self.eqs:
+                                new_constraints.append(constraint_s1)
+                            else:
+                                pass
+                            # Constraint 2: z0 - z1 = 0 (Equality enforcement)
+                            constraint_s2: sp.Expr = sym - sym_aux1
+                            if constraint_s2 not in self.eqs:
+                                new_constraints.append(constraint_s2)
+                            else:
+                                pass
+                        else:
+                            pass
+                    else:
+                        # _sqrtaux1 is handled when the loop processes _sqrtaux0
+                        pass
+            else:
+                pass
         # --- ALGORITHM: MATRIX AUGMENTATION ---
         # Append the new structural equations directly to the core list
         if len(new_constraints) > 0:
@@ -858,7 +920,7 @@ class PolynomialMatrixBuilder:
         """
         import math
 
-        """    keys_to_check: list = list(v_dict.keys())
+        keys_to_check: list = list(v_dict.keys())
         key: str
         for key in keys_to_check:
             if key.startswith('x') and 'p' not in key:
@@ -871,7 +933,7 @@ class PolynomialMatrixBuilder:
                 v_dict[f"x_cos_{key}"] = math.cos(val)
 
                 v_dict[f"xp_sin_{key}"] = 0.0
-                v_dict[f"xp_cos_{key}"] = 0.0"""
+                v_dict[f"xp_cos_{key}"] = 0.0
 
         S: np.ndarray
         Phi: np.ndarray
@@ -1035,6 +1097,7 @@ class PolynomialMatrixBuilder:
                 idx_vars.append(idx_counter)
 
             idx_counter = idx_counter + 1
+        print(f"\n[DEBUG] Detected derivatives: {[self.all_symbols[idx].name for idx in idx_dx]}")
         n_eqs: int = int(EABC.shape[0])
         E: np.ndarray = np.zeros((n_eqs, n_eqs))
         A: np.ndarray = np.zeros((n_eqs, n_eqs))
@@ -1050,42 +1113,60 @@ class PolynomialMatrixBuilder:
 
         # 3. Build E matrix (Derivatives strictly aligned to state variables)
         i: int
-        # 1. Creamos un mapa: { "nombre_limpio": indice_real }
-        # Esto se hace UNA VEZ fuera del bucle de columnas
-        deriv_map = {}
-        for dx_idx in idx_dx:
-            full_name = self.all_symbols[dx_idx].name
-
-            # Normalizamos el nombre de la derivada para encontrar su "raíz"
-            # Quitamos prefijos típicos y el posible "1_" o "2_"
-            clean = full_name.replace('dt_', '').replace('d_', '').replace('xp', 'x').replace('dx', 'x')
-
-            # Si después de quitar dt_ queda algo como "1_Vf", quitamos el "1_"
-            if "_" in clean and clean.split('_')[0].isdigit():
-                clean = "_".join(clean.split('_')[1:])
-
-
-            # Guardamos ambas versiones para asegurar el tiro
-            deriv_map[clean] = dx_idx
-            deriv_map[full_name] = dx_idx
-
-            # 2. El bucle de estados ahora es ultrasimple
         for i in range(cols_to_take):
-            state_name = self.all_symbols[idx_vars[i]].name
+            state_idx: int = idx_vars[i]
+            state_sym: sp.Symbol = self.all_symbols[state_idx]
+            state_name: str = state_sym.name
 
-            # Buscamos directamente en nuestro mapa
-            deriv_idx = deriv_map.get(state_name, -1)
+            # Identify expected derivative names
+            deriv_names: list = list()
+            if state_name.startswith('x'):
+                deriv_names.append(str("xp" + state_name[1:]))
+                deriv_names.append(str("dx" + state_name[1:]))
 
-            if deriv_idx != -1:
+            deriv_names.append(str("dt_" + state_name))
+            deriv_names.append(str("d_" + state_name))
+
+            deriv_idx: int = -1
+
+            # 0. Búsqueda por diccionario explícito (prioridad máxima para las variables del modelo real)
+            if hasattr(self, '_explicit_deriv_map') and state_name in self._explicit_deriv_map:
+                exact_d_name = self._explicit_deriv_map[state_name]
+                if exact_d_name in self.sym_to_idx:
+                    deriv_idx = self.sym_to_idx[exact_d_name]
+
+            # 1. Búsqueda exacta (Ej: d_u_cos -> u_cos) - Fallback original
+            if deriv_idx == -1:
+                d_name: str
+                for d_name in deriv_names:
+                    if d_name in self.sym_to_idx:
+                        deriv_idx = self.sym_to_idx[d_name]
+                        break
+
+            # 2. Búsqueda flexible para prefijos de componentes (Ej: dt_1_Vf -> Vf) - Fallback original
+            if deriv_idx == -1:
+                for dx_idx in idx_dx:
+                    dx_name = self.all_symbols[dx_idx].name
+                    if dx_name.endswith(f"_{state_name}") and (dx_name.startswith("dt_") or dx_name.startswith("d_")):
+                        deriv_idx = dx_idx
+                        break
+
+            # If a derivative exists, place it in the EXACT SAME column as the state
+            if deriv_idx != -1 and deriv_idx in idx_dx:
                 E[:, i] = -EABC[:, deriv_idx]
 
         print("\nMatriz E (Sparse representation):")
         print(sparse.csr_matrix(E))
-        rank_E = np.linalg.matrix_rank(E)
-        print(f"rank(E) = {rank_E}")
-        print(deriv_map)
-        B: np.ndarray = EABC[:, idx_u]
 
+        # Protección extra: Evita crasheos de NumPy si el sistema es puramente algebraico
+        if E.size == 0 or E.shape[0] == 0 or E.shape[1] == 0:
+            rank_E = 0
+        else:
+            rank_E = np.linalg.matrix_rank(E)
+
+        print(f"rank(E) = {rank_E}")
+        print(self._explicit_deriv_map)
+        B: np.ndarray = EABC[:, idx_u]
         return E, A, B
 
     # ------------------------------------------------------------------
