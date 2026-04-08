@@ -289,6 +289,9 @@ def get_emt_ideal_converter(
     return templ
 
 
+############################################################################
+
+
 def _validate_pseudo_emt_converter_controls(
     control1: ConverterControlType | None,
     control2: ConverterControlType | None,

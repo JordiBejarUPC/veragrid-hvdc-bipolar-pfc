@@ -956,7 +956,7 @@ def build_uid_bindings(
     return uid_bindings
 
 ####################################################################
-
+#
 
 
 def _evaluate_explicit_init_equation(
@@ -1909,238 +1909,238 @@ def init_explicit_emt(
 
     return init_guess, diff_init_guess
 
-def solve_secant(eq_fn, x, idx, event_params_array, params_array,
-                 tol=1e-8, max_iter=50):
-    x0 = 1.0
-    x1 = 1.1
-
-    for _ in range(max_iter):
-
-        x[idx] = x0
-        f0 = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0]) - x0
-
-        x[idx] = x1
-        f1 = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0]) - x1
-
-        if abs(f1) < tol:
-            return x1
-
-        denom = (f1 - f0)
-        if abs(denom) < 1e-12:
-            break
-
-        x2 = x1 - f1 * (x1 - x0) / denom
-        x0, x1 = x1, x2
-
-    return x1
-
-def init_explicit_emt_new(mdl: Block,
-                  sys_vars: Dict[int, Var],
-                  sys_diff_vars: Dict[int, Var],
-                  variable_parameters: List[Var],
-                  event_parameters_eqs: List[Expr | Const],
-                  constant_parameters: List[Var],
-                  init_guess: Dict[int, float],
-                  diff_init_guess: Dict[int, float],
-                  uid2idx_vars: Dict[int, int],
-                  uid2idx_diff: Dict[int, int],
-                  uid2idx_params: Dict[int, int],
-                  uid2idx_event_params: Dict[int, int],
-                  compiler_names_dict: Dict[int, str],
-                  verbose: bool = False
-                  ) -> Optional[Tuple[Dict[int, float], Dict[int, float]]]:
-    """
-
-    Initializes the EMT model by solving initialization and differential equations.
-
-    This function performs a topological-like resolution of model variables.
-    It uses fixed-point iteration for self-referencing equations and handles
-    dependencies between algebraic and differential states.
-
-    :param mdl: Symbolic model block.
-    :param sys_vars: Registry of system variables.
-    :param sys_diff_vars: Registry of system differential variables.
-    :param variable_parameters: List of parameters that change on events.
-    :param event_parameters_eqs: Initial equations for event parameters.
-    :param constant_parameters: List of constant parameters.
-    :param init_guess: Initial guesses for variables.
-    :param diff_init_guess: Initial guesses for derivatives.
-    :param uid2idx_vars: Index map for variables.
-    :param uid2idx_diff: Index map for derivatives.
-    :param uid2idx_params: Index map for parameters.
-    :param uid2idx_event_params: Index map for event parameters.
-    :param compiler_names_dict: Map for variable naming in compilation.
-    :param verbose: Whether to print explicit initialization diagnostics.
-    :return: Updated initial guesses and modified model block.
-    """
-
-    rms_compiler = RMSCompiler(
-        variables=list(sys_vars.values()),
-        diff_vars=list(sys_diff_vars.values()),
-        v_params=variable_parameters,
-        c_params=constant_parameters,
-        dt_var= Var("dt"),
-        compiler_names_dict=compiler_names_dict
-    )
-
-    # initialize array for model variables
-    x: np.ndarray = np.ones(len(sys_vars))
-    dx: np.ndarray = np.zeros(len(sys_diff_vars))
-
-    # assign initial guesses for known variables
-    for uid, val in init_guess.items():
-        if verbose:
-            print(f"Var {sys_vars[uid].name} with uid= {uid} initialized with val: {val} ")
-        x[uid2idx_vars[uid]] = val
-
-    for uid, val in diff_init_guess.items():
-        if verbose:
-            print(f"Diff var {sys_diff_vars[uid].name} with uid= {uid} initialized with val: {val} ")
-        dx[uid2idx_diff[uid]] = val
-
-    # initialize array for model params
-    params_array = np.zeros(len(constant_parameters))
-
-    # compute and assign parameters value
-    for param, const in mdl.parameters.items():
-        params_array[uid2idx_params[param.uid]] = const.value
-
-    # compute and assign known event parameters value
-    event_params_array = np.ones(len(variable_parameters))
-
-    # unify event_dict and init_equations
-
-    # create dictionary with all the parameters, variables and derivatives to be initialized
-    dic_total = mdl.event_dict.copy()
-    dic_total.update(mdl.init_eqs)
-    dic_total.update(mdl.diff_init_eqs)
-
-    # compute and assign missing init_vars and None event parameters
-    ####################################################################################################################################
-
-    # construct graph of dependencies
-    graph = defaultdict(list)
-    in_degree = defaultdict(int)
-
-    dependencies = {}
-
-    for var, eq in dic_total.items():
-
-        vars_in_eq = get_expression_vars(eq)
-        deps = [v for v in vars_in_eq if v in dic_total]
-
-        dependencies[var] = deps
-
-        for dep in deps:
-            if dep.uid != var.uid:
-                graph[dep].append(var)
-                in_degree[var] += 1
-
-        if var not in in_degree:
-            in_degree[var] = 0
-
-    # topological sort
-    queue = deque([var for var in in_degree if in_degree[var] == 0])
-    topo_order = []
-
-    while queue:
-        u = queue.popleft()
-        topo_order.append(u)
-
-        for v in graph[u]:
-            in_degree[v] -= 1
-            if in_degree[v] == 0:
-                queue.append(v)
-
-    if len(topo_order) != len(dic_total):
-        raise RuntimeError("Cycle detected between different variables")
-
-    # evaluate
-    for var in topo_order:
-        eq = dic_total[var]
-        vars_list = find_vars_order(eq)
-
-        if var in mdl.event_dict.keys(): # parameters
-            uid_bindings: Dict[int, float] = {}
-            for vr in vars_list:
-                if vr.uid in uid2idx_event_params:
-                    uid_bindings.update({vr.uid: event_params_array[uid2idx_event_params[vr.uid]]})
-                elif vr.uid in uid2idx_vars:
-                    uid_bindings.update({vr.uid: x[uid2idx_vars[vr.uid]]})
-                elif vr.uid in uid2idx_diff:
-                    uid_bindings.update({vr.uid: dx[uid2idx_diff[vr.uid]]})
-                elif vr.uid in uid2idx_params:
-                    uid_bindings.update({vr.uid: params_array[uid2idx_params[vr.uid]]})
-
-            result = eq.eval_uid(uid_bindings)
-            event_params_array[uid2idx_event_params[var.uid]] = result
-            index = variable_parameters.index(var)
-            event_parameters_eqs[index] = Const(result)
-
-        else: # variables
-            # check if implicit equation
-            is_self_implicit = var in dependencies[var]
-
-            if not is_self_implicit:
-                uid_bindings: Dict[int, float] = {}
-                vars_list = find_vars_order(eq)
-                for vr in vars_list:
-                    if vr.uid in uid2idx_event_params:
-                        uid_bindings.update({vr.uid: event_params_array[uid2idx_event_params[vr.uid]]})
-                    elif vr.uid in uid2idx_vars:
-                        uid_bindings.update({vr.uid: x[uid2idx_vars[vr.uid]]})
-                    elif vr.uid in uid2idx_diff:
-                        uid_bindings.update({vr.uid: dx[uid2idx_diff[vr.uid]]})
-                    elif vr.uid in uid2idx_params:
-                        uid_bindings.update({vr.uid: params_array[uid2idx_params[vr.uid]]})
-
-                result = eq.eval_uid(uid_bindings)
-                if var.base_var is None:
-                    init_guess[var.uid] = result
-                    x[uid2idx_vars[var.uid]] = result
-                else:
-                    diff_init_guess[var.uid] = result
-                    dx[uid2idx_diff[var.uid]] = result
-
-            else:
-                # compile equations
-                eq_fn = rms_compiler.compile_rhs([eq], "equation")
-
-                if var.base_var is None: # variable
-                    idx = uid2idx_vars[var.uid]
-
-                    # solve using secant method
-                    init_val = solve_secant(
-                        eq_fn=eq_fn,
-                        x=x,
-                        idx=idx,
-                        event_params_array=event_params_array,
-                        params_array=params_array,
-                        tol=1e-8,
-                        max_iter=50
-                    )
-
-                    init_guess[var.uid] = init_val
-                    x[uid2idx_vars[var.uid]] = init_val
-
-                else: # derivative
-                    idx = uid2idx_diff[var.uid]
-
-                    # solve using secant method
-                    init_val = solve_secant(
-                        eq_fn=eq_fn,
-                        x=dx,
-                        idx=idx,
-                        event_params_array=event_params_array,
-                        params_array=params_array,
-                        tol=1e-8,
-                        max_iter=50
-                    )
-
-                    diff_init_guess[var.uid] = init_val
-                    dx[uid2idx_vars[var.uid]] = init_val
-
-    return init_guess, diff_init_guess
+# def solve_secant(eq_fn, x, idx, event_params_array, params_array,
+#                  tol=1e-8, max_iter=50):
+#     x0 = 1.0
+#     x1 = 1.1
+#
+#     for _ in range(max_iter):
+#
+#         x[idx] = x0
+#         f0 = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0]) - x0
+#
+#         x[idx] = x1
+#         f1 = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0]) - x1
+#
+#         if abs(f1) < tol:
+#             return x1
+#
+#         denom = (f1 - f0)
+#         if abs(denom) < 1e-12:
+#             break
+#
+#         x2 = x1 - f1 * (x1 - x0) / denom
+#         x0, x1 = x1, x2
+#
+#     return x1
+#
+# def init_explicit_emt_new(mdl: Block,
+#                   sys_vars: Dict[int, Var],
+#                   sys_diff_vars: Dict[int, Var],
+#                   variable_parameters: List[Var],
+#                   event_parameters_eqs: List[Expr | Const],
+#                   constant_parameters: List[Var],
+#                   init_guess: Dict[int, float],
+#                   diff_init_guess: Dict[int, float],
+#                   uid2idx_vars: Dict[int, int],
+#                   uid2idx_diff: Dict[int, int],
+#                   uid2idx_params: Dict[int, int],
+#                   uid2idx_event_params: Dict[int, int],
+#                   compiler_names_dict: Dict[int, str],
+#                   verbose: bool = False
+#                   ) -> Optional[Tuple[Dict[int, float], Dict[int, float]]]:
+#     """
+#
+#     Initializes the EMT model by solving initialization and differential equations.
+#
+#     This function performs a topological-like resolution of model variables.
+#     It uses fixed-point iteration for self-referencing equations and handles
+#     dependencies between algebraic and differential states.
+#
+#     :param mdl: Symbolic model block.
+#     :param sys_vars: Registry of system variables.
+#     :param sys_diff_vars: Registry of system differential variables.
+#     :param variable_parameters: List of parameters that change on events.
+#     :param event_parameters_eqs: Initial equations for event parameters.
+#     :param constant_parameters: List of constant parameters.
+#     :param init_guess: Initial guesses for variables.
+#     :param diff_init_guess: Initial guesses for derivatives.
+#     :param uid2idx_vars: Index map for variables.
+#     :param uid2idx_diff: Index map for derivatives.
+#     :param uid2idx_params: Index map for parameters.
+#     :param uid2idx_event_params: Index map for event parameters.
+#     :param compiler_names_dict: Map for variable naming in compilation.
+#     :param verbose: Whether to print explicit initialization diagnostics.
+#     :return: Updated initial guesses and modified model block.
+#     """
+#
+#     rms_compiler = RMSCompiler(
+#         variables=list(sys_vars.values()),
+#         diff_vars=list(sys_diff_vars.values()),
+#         v_params=variable_parameters,
+#         c_params=constant_parameters,
+#         dt_var= Var("dt"),
+#         compiler_names_dict=compiler_names_dict
+#     )
+#
+#     # initialize array for model variables
+#     x: np.ndarray = np.ones(len(sys_vars))
+#     dx: np.ndarray = np.zeros(len(sys_diff_vars))
+#
+#     # assign initial guesses for known variables
+#     for uid, val in init_guess.items():
+#         if verbose:
+#             print(f"Var {sys_vars[uid].name} with uid= {uid} initialized with val: {val} ")
+#         x[uid2idx_vars[uid]] = val
+#
+#     for uid, val in diff_init_guess.items():
+#         if verbose:
+#             print(f"Diff var {sys_diff_vars[uid].name} with uid= {uid} initialized with val: {val} ")
+#         dx[uid2idx_diff[uid]] = val
+#
+#     # initialize array for model params
+#     params_array = np.zeros(len(constant_parameters))
+#
+#     # compute and assign parameters value
+#     for param, const in mdl.parameters.items():
+#         params_array[uid2idx_params[param.uid]] = const.value
+#
+#     # compute and assign known event parameters value
+#     event_params_array = np.ones(len(variable_parameters))
+#
+#     # unify event_dict and init_equations
+#
+#     # create dictionary with all the parameters, variables and derivatives to be initialized
+#     dic_total = mdl.event_dict.copy()
+#     dic_total.update(mdl.init_eqs)
+#     dic_total.update(mdl.diff_init_eqs)
+#
+#     # compute and assign missing init_vars and None event parameters
+#     ####################################################################################################################################
+#
+#     # construct graph of dependencies
+#     graph = defaultdict(list)
+#     in_degree = defaultdict(int)
+#
+#     dependencies = {}
+#
+#     for var, eq in dic_total.items():
+#
+#         vars_in_eq = get_expression_vars(eq)
+#         deps = [v for v in vars_in_eq if v in dic_total]
+#
+#         dependencies[var] = deps
+#
+#         for dep in deps:
+#             if dep.uid != var.uid:
+#                 graph[dep].append(var)
+#                 in_degree[var] += 1
+#
+#         if var not in in_degree:
+#             in_degree[var] = 0
+#
+#     # topological sort
+#     queue = deque([var for var in in_degree if in_degree[var] == 0])
+#     topo_order = []
+#
+#     while queue:
+#         u = queue.popleft()
+#         topo_order.append(u)
+#
+#         for v in graph[u]:
+#             in_degree[v] -= 1
+#             if in_degree[v] == 0:
+#                 queue.append(v)
+#
+#     if len(topo_order) != len(dic_total):
+#         raise RuntimeError("Cycle detected between different variables")
+#
+#     # evaluate
+#     for var in topo_order:
+#         eq = dic_total[var]
+#         vars_list = find_vars_order(eq)
+#
+#         if var in mdl.event_dict.keys(): # parameters
+#             uid_bindings: Dict[int, float] = {}
+#             for vr in vars_list:
+#                 if vr.uid in uid2idx_event_params:
+#                     uid_bindings.update({vr.uid: event_params_array[uid2idx_event_params[vr.uid]]})
+#                 elif vr.uid in uid2idx_vars:
+#                     uid_bindings.update({vr.uid: x[uid2idx_vars[vr.uid]]})
+#                 elif vr.uid in uid2idx_diff:
+#                     uid_bindings.update({vr.uid: dx[uid2idx_diff[vr.uid]]})
+#                 elif vr.uid in uid2idx_params:
+#                     uid_bindings.update({vr.uid: params_array[uid2idx_params[vr.uid]]})
+#
+#             result = eq.eval_uid(uid_bindings)
+#             event_params_array[uid2idx_event_params[var.uid]] = result
+#             index = variable_parameters.index(var)
+#             event_parameters_eqs[index] = Const(result)
+#
+#         else: # variables
+#             # check if implicit equation
+#             is_self_implicit = var in dependencies[var]
+#
+#             if not is_self_implicit:
+#                 uid_bindings: Dict[int, float] = {}
+#                 vars_list = find_vars_order(eq)
+#                 for vr in vars_list:
+#                     if vr.uid in uid2idx_event_params:
+#                         uid_bindings.update({vr.uid: event_params_array[uid2idx_event_params[vr.uid]]})
+#                     elif vr.uid in uid2idx_vars:
+#                         uid_bindings.update({vr.uid: x[uid2idx_vars[vr.uid]]})
+#                     elif vr.uid in uid2idx_diff:
+#                         uid_bindings.update({vr.uid: dx[uid2idx_diff[vr.uid]]})
+#                     elif vr.uid in uid2idx_params:
+#                         uid_bindings.update({vr.uid: params_array[uid2idx_params[vr.uid]]})
+#
+#                 result = eq.eval_uid(uid_bindings)
+#                 if var.base_var is None:
+#                     init_guess[var.uid] = result
+#                     x[uid2idx_vars[var.uid]] = result
+#                 else:
+#                     diff_init_guess[var.uid] = result
+#                     dx[uid2idx_diff[var.uid]] = result
+#
+#             else:
+#                 # compile equations
+#                 eq_fn = rms_compiler.compile_rhs([eq], "equation")
+#
+#                 if var.base_var is None: # variable
+#                     idx = uid2idx_vars[var.uid]
+#
+#                     # solve using secant method
+#                     init_val = solve_secant(
+#                         eq_fn=eq_fn,
+#                         x=x,
+#                         idx=idx,
+#                         event_params_array=event_params_array,
+#                         params_array=params_array,
+#                         tol=1e-8,
+#                         max_iter=50
+#                     )
+#
+#                     init_guess[var.uid] = init_val
+#                     x[uid2idx_vars[var.uid]] = init_val
+#
+#                 else: # derivative
+#                     idx = uid2idx_diff[var.uid]
+#
+#                     # solve using secant method
+#                     init_val = solve_secant(
+#                         eq_fn=eq_fn,
+#                         x=dx,
+#                         idx=idx,
+#                         event_params_array=event_params_array,
+#                         params_array=params_array,
+#                         tol=1e-8,
+#                         max_iter=50
+#                     )
+#
+#                     diff_init_guess[var.uid] = init_val
+#                     dx[uid2idx_vars[var.uid]] = init_val
+#
+#     return init_guess, diff_init_guess
 
 
 def init_pseudo_transient(problem: EmtProblemTemplate, options: EmtOptions) -> EmtInitializationReport:
