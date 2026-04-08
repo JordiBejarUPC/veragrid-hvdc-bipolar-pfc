@@ -861,12 +861,14 @@ class MultiCircuit(Assets):
 
     def set_state(self, t: int):
         """
-        Set the profiles state at the index t as the default values.
+        Set the profiles' state at the index t as the default values.
         """
         self.ensure_profiles_exist()
 
         for device in self.items():
+            device.disable_auto_updates()
             device.set_profile_values(t)
+            device.enable_auto_updates()
 
         self.snapshot_time = self.time_profile[t]
 
