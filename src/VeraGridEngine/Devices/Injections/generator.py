@@ -18,6 +18,7 @@ from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 
+
 def compute_q(p: float, pf: float) -> float:
     """
     Compute the reactive power from p and the power factor
@@ -39,7 +40,7 @@ def compute_pf(p: float, q: float) -> float:
     :param q: Reactive power
     :return: Power factor
     """
-    s = np.sqrt(p*p+q*q)
+    s = np.sqrt(p * p + q * q)
     sign = 1.0 if q >= 0.0 else -1.0
     if s > 0:
         return sign * p / s
@@ -328,7 +329,6 @@ class Generator(InjectionParent):
 
         self.use_reactive_power_curve = bool(use_reactive_power_curve)
 
-
         # declare the generation curve
         self.q_curve = GeneratorQCurve()
 
@@ -348,8 +348,6 @@ class Generator(InjectionParent):
         self.min_time_down = min_time_down
         self.ramp_up = ramp_up
         self.ramp_down = ramp_down
-
-
 
         self._Cost2_prof = Profile(default_value=self.Cost2, data_type=float)
         self._Cost0_prof = Profile(default_value=self.Cost0, data_type=float)
@@ -667,8 +665,6 @@ class Generator(InjectionParent):
         """
         self._srap_enabled = bool(val)
 
-
-
     @property
     def Vset_prof(self) -> Profile:
         """
@@ -843,7 +839,6 @@ class Generator(InjectionParent):
             errors = True
 
         return errors
-
 
     @property
     def Snom(self):

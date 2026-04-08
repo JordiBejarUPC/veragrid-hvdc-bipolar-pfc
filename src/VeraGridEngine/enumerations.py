@@ -2272,6 +2272,9 @@ class ResultTypes(Enum):
     ReliabilityLOLFResults = "LOLF"
     ReliabilityLOLETResults = "LOLET"
     ReliabilityLOLFTResults = "LOLFT"
+    ReliabilitySAIDIResults = "SAIDI"
+    ReliabilitySAIFIResults = "SAIFI"
+    ReliabilityCAIDIResults = "CAIDI"
 
 
 
