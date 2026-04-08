@@ -1197,15 +1197,24 @@ class EmtProblemDae(EmtProblemTemplate):
                 vsc_index: int = vsc_idx_dict.get(br, -1)
 
                 if self.power_flow_results_3ph is not None:
-                    self._try_set_branch_pf_init(
-                        mdl=mdl,
-                        branch_index=branch_idx,
-                        f_bus_idx=f,
-                        t_bus_idx=t,
-                        sbase=grid.Sbase,
-                        is_vsc=is_vsc,
-                        vsc_index=vsc_index
-                    )
+                    if is_vsc and vsc_index >= 0:
+                        self._try_set_vsc_branch_pf_init(
+                            mdl=mdl,
+                            f_bus_idx=f,
+                            t_bus_idx=t,
+                            sbase=sbase,
+                            vsc_index=vsc_index,
+                        )
+                    else:
+                        self._try_set_branch_pf_init(
+                            mdl=mdl,
+                            branch_index=branch_idx,
+                            f_bus_idx=f,
+                            t_bus_idx=t,
+                            sbase=grid.Sbase,
+                            is_vsc=is_vsc,
+                            vsc_index=vsc_index
+                        )
                 else:
                     if self.power_flow_results is not None:
                         if self.options.verbose:
@@ -1944,9 +1953,9 @@ class EmtProblemDae(EmtProblemTemplate):
 
         self._set_vsc_pf_positive_sequence(
             mdl=mdl,
-            VA=VA,
-            VB=VB,
-            VC=VC,
+            VA=complex(VA),
+            VB=complex(VB),
+            VC=complex(VC),
             IA=IA,
             IB=IB,
             IC=IC,
@@ -2128,9 +2137,9 @@ class EmtProblemDae(EmtProblemTemplate):
 
         self._set_vsc_pf_positive_sequence(
             mdl=mdl,
-            VA=VA,
-            VB=VB,
-            VC=VC,
+            VA=complex(VA),
+            VB=complex(VB),
+            VC=complex(VC),
             IA=IA,
             IB=IB,
             IC=IC,
@@ -2183,15 +2192,6 @@ class EmtProblemDae(EmtProblemTemplate):
         :param sbase: Base power of the grid.
         :return: None
         """
-        if is_vsc and vsc_index >= 0:
-            self._try_set_vsc_branch_pf_init(
-                mdl=mdl,
-                f_bus_idx=f_bus_idx,
-                t_bus_idx=t_bus_idx,
-                sbase=sbase,
-                vsc_index=vsc_index,
-            )
-            return
 
         phases: List[str] = ["N", "A", "B", "C"]
 
@@ -2233,53 +2233,27 @@ class EmtProblemDae(EmtProblemTemplate):
             "C": VarPowerFlowRefferenceType.d_v_C_t,
         }
 
-        if is_vsc and vsc_index >= 0:
-            voltage_from_dict: Dict[str, Optional[np.ndarray]] = {
-                "N": None,
-                "A": None,
-                "B": None,
-                "C": None,
-            }
-            voltage_to_dict: Dict[str, Optional[np.ndarray]] = {
-                "N": None,
-                "A": self.power_flow_results_3ph.voltage_A,
-                "B": self.power_flow_results_3ph.voltage_B,
-                "C": self.power_flow_results_3ph.voltage_C,
-            }
 
-            sf_array_dict: Dict[str, Optional[np.ndarray]] = {
-                "N": None,
-                "A": None,
-                "B": None,
-                "C": None,
-            }
-            st_array_dict: Dict[str, Optional[np.ndarray]] = {
-                "N": None,
-                "A": self.power_flow_results_3ph.St_vsc_A,
-                "B": self.power_flow_results_3ph.St_vsc_B,
-                "C": self.power_flow_results_3ph.St_vsc_C,
-            }
-        else:
-            voltage_from_dict = {
-                "N": self.power_flow_results_3ph.voltage_N,
-                "A": self.power_flow_results_3ph.voltage_A,
-                "B": self.power_flow_results_3ph.voltage_B,
-                "C": self.power_flow_results_3ph.voltage_C,
-            }
-            voltage_to_dict = voltage_from_dict
+        voltage_from_dict = {
+            "N": self.power_flow_results_3ph.voltage_N,
+            "A": self.power_flow_results_3ph.voltage_A,
+            "B": self.power_flow_results_3ph.voltage_B,
+            "C": self.power_flow_results_3ph.voltage_C,
+        }
+        voltage_to_dict = voltage_from_dict
 
-            sf_array_dict = {
-                "N": None,
-                "A": self.power_flow_results_3ph.Sf_A,
-                "B": self.power_flow_results_3ph.Sf_B,
-                "C": self.power_flow_results_3ph.Sf_C,
-            }
-            st_array_dict = {
-                "N": None,
-                "A": self.power_flow_results_3ph.St_A,
-                "B": self.power_flow_results_3ph.St_B,
-                "C": self.power_flow_results_3ph.St_C,
-            }
+        sf_array_dict = {
+            "N": None,
+            "A": self.power_flow_results_3ph.Sf_A,
+            "B": self.power_flow_results_3ph.Sf_B,
+            "C": self.power_flow_results_3ph.Sf_C,
+        }
+        st_array_dict = {
+            "N": None,
+            "A": self.power_flow_results_3ph.St_A,
+            "B": self.power_flow_results_3ph.St_B,
+            "C": self.power_flow_results_3ph.St_C,
+        }
 
 
         sf_sum: complex = 0.0 + 0.0j
@@ -2381,31 +2355,11 @@ class EmtProblemDae(EmtProblemTemplate):
                 d_vt: float = omega_base * np.sqrt(2.0) * np.real(vt_ph)
                 self.set_external_param(mdl, d_vt_key, d_vt)
 
-        if is_vsc and vsc_index >= 0:
-            pf_dc = complex(self.power_flow_results_3ph.Pfp_vsc[vsc_index] / sbase, 0.0)
-            pt_ac = (
-                self.power_flow_results_3ph.St_vsc_A[vsc_index]
-                + self.power_flow_results_3ph.St_vsc_B[vsc_index]
-                + self.power_flow_results_3ph.St_vsc_C[vsc_index]
-            ) / sbase
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pf, value=float(np.real(pf_dc)))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qf, value=float(np.imag(pf_dc)))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pt, value=float(np.real(pt_ac)))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qt, value=float(np.imag(pt_ac)))
-        else:
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pf, value=float(np.real(sf_sum)))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qf, value=float(np.imag(sf_sum)))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pt, value=float(np.real(st_sum)))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qt, value=float(np.imag(st_sum)))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pf, value=float(np.real(sf_sum)))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qf, value=float(np.imag(sf_sum)))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pt, value=float(np.real(st_sum)))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qt, value=float(np.imag(st_sum)))
 
-        if is_vsc and vsc_index >= 0:
-            pt_ac = (
-                self.power_flow_results_3ph.St_vsc_A[vsc_index]
-                + self.power_flow_results_3ph.St_vsc_B[vsc_index]
-                + self.power_flow_results_3ph.St_vsc_C[vsc_index]
-            ) / sbase
-            P_vsc = -float(np.real(pt_ac))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.P, value=P_vsc)
 
     def _try_set_branch_pf_init_balanced(
             self,
