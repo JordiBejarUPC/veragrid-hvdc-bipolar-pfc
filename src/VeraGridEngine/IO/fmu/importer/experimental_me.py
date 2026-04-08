@@ -630,7 +630,7 @@ class RmsFmuMeDeviceAdapter:
     :param output_param_indices: Runtime-parameter indices receiving FMU outputs.
     """
 
-    __slots__ = ("problem", "device", "spec", "output_param_indices", "runtime_adapter")
+    __slots__ = ("problem", "device", "spec", "output_param_indices", "runtime_adapter", "last_outputs")
 
     def __init__(
         self,
@@ -649,6 +649,7 @@ class RmsFmuMeDeviceAdapter:
         self.spec: FmuMeDeviceSpec = spec
         self.output_param_indices: dict[VarPowerFlowRefferenceType, int] = output_param_indices
         self.runtime_adapter: FmuMeDeviceAdapter = FmuMeDeviceAdapter(spec)
+        self.last_outputs: dict[VarPowerFlowRefferenceType, float] = dict()
 
     def _build_input_values(self, x_snapshot: np.ndarray) -> dict[str, float]:
         """Collect the FMU ME input values from the current RMS snapshot.
@@ -685,7 +686,11 @@ class RmsFmuMeDeviceAdapter:
         """
 
         self.runtime_adapter.initialize(start_time=time_value, input_values=self._build_input_values(x_snapshot))
-        return self._map_outputs(self.runtime_adapter.evaluate_outputs(time_value, self._build_input_values(x_snapshot)))
+        outputs: dict[VarPowerFlowRefferenceType, float] = self._map_outputs(
+            self.runtime_adapter.evaluate_outputs(time_value, self._build_input_values(x_snapshot))
+        )
+        self.last_outputs = dict(outputs)
+        return outputs
 
     def advance(self, current_time: float, step_size: float, x_snapshot: np.ndarray) -> dict[VarPowerFlowRefferenceType, float]:
         """Advance the FMU ME runtime for one RMS communication step.
@@ -696,9 +701,11 @@ class RmsFmuMeDeviceAdapter:
         :return: FMU outputs indexed by VeraGrid reference.
         """
 
-        return self._map_outputs(
+        outputs: dict[VarPowerFlowRefferenceType, float] = self._map_outputs(
             self.runtime_adapter.explicit_euler_step(current_time=current_time, step_size=step_size, input_values=self._build_input_values(x_snapshot))
         )
+        self.last_outputs = dict(outputs)
+        return outputs
 
     def apply_outputs(self, target: np.ndarray, outputs: dict[VarPowerFlowRefferenceType, float]) -> None:
         """Write the FMU ME outputs into VeraGrid runtime-parameter storage.
@@ -718,6 +725,13 @@ class RmsFmuMeDeviceAdapter:
         :return: None.
         """
 
+        if len(self.last_outputs) == 0:
+            if self.runtime_adapter.initialized:
+                self.last_outputs = dict(self.runtime_adapter.evaluate_outputs(0.0, dict()))
+            else:
+                pass
+        else:
+            pass
         self.runtime_adapter.close()
 
 
@@ -873,6 +887,10 @@ def initialize_rms_fmu_me_devices(problem: Any, x_snapshot: np.ndarray, time_val
         for adapter in problem._fmu_me_adapters:
             outputs = adapter.initialize_outputs(time_value, x_snapshot)
             adapter.apply_outputs(problem._variable_parameters_values, outputs)
+            if problem._variable_parameters_values is None:
+                problem._last_variable_parameters_values = None
+            else:
+                problem._last_variable_parameters_values = np.array(problem._variable_parameters_values, copy=True)
         problem._fmu_me_initialized = True
     else:
         problem._fmu_me_initialized = True
@@ -898,6 +916,10 @@ def advance_rms_fmu_me_devices(problem: Any, time_value: float, x_snapshot: np.n
         for adapter in problem._fmu_me_adapters:
             outputs = adapter.advance(current_time=time_value, step_size=step_size, x_snapshot=x_snapshot)
             adapter.apply_outputs(problem._variable_parameters_values, outputs)
+            if problem._variable_parameters_values is None:
+                problem._last_variable_parameters_values = None
+            else:
+                problem._last_variable_parameters_values = np.array(problem._variable_parameters_values, copy=True)
     else:
         pass
 

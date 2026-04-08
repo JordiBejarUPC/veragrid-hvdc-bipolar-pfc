@@ -6,11 +6,11 @@ from types import SimpleNamespace
 import pytest
 
 from VeraGridEngine.IO.fmu.exporter.api import export_fmu
-from VeraGridEngine.IO.fmu.exporter.build import _detect_gcc
-from VeraGridEngine.IO.fmu.exporter.config import ExportConfig as CsExportConfig, TargetPlatform as CsTargetPlatform
+from VeraGridEngine.IO.fmu.exporter.build import host_build_capable
+from VeraGridEngine.IO.fmu.exporter.config import ExportConfig as CsExportConfig, detect_target_platform as detect_cs_target_platform
 from VeraGridEngine.IO.fmu.exporter.compat import Block, Const, Var
 from VeraGridEngine.IO.fmu.exporter_me.api import export_fmu_me
-from VeraGridEngine.IO.fmu.exporter_me.config import ExportConfig as MeExportConfig, TargetPlatform as MeTargetPlatform
+from VeraGridEngine.IO.fmu.exporter_me.config import ExportConfig as MeExportConfig, detect_target_platform as detect_me_target_platform
 from VeraGridEngine.IO.fmu.importer import (
     FmuImportConfig,
     FmuMeIntegrationMethod,
@@ -76,7 +76,7 @@ class FakeProblem:
         self._fmu_me_adapters = list()
 
 
-@pytest.mark.skipif(_detect_gcc()[0] is None, reason="No usable gcc toolchain available")
+@pytest.mark.skipif(not host_build_capable(), reason="No usable host build toolchain available")
 def test_rms_device_config_can_restore_runtime_spec() -> None:
     pytest.importorskip("fmpy")
 
@@ -88,7 +88,7 @@ def test_rms_device_config_can_restore_runtime_spec() -> None:
             CsExportConfig(
                 model_name="RestoreRmsDevice",
                 output_path=fmu_path,
-                target_platform=CsTargetPlatform.WIN64,
+                target_platform=detect_cs_target_platform(),
                 compile_binary=True,
                 keep_build_dir=False,
             ),
@@ -120,7 +120,7 @@ def test_rms_device_config_can_restore_runtime_spec() -> None:
         fmu_path.unlink(missing_ok=True)
 
 
-@pytest.mark.skipif(_detect_gcc()[0] is None, reason="No usable gcc toolchain available")
+@pytest.mark.skipif(not host_build_capable(), reason="No usable host build toolchain available")
 def test_emt_device_config_can_restore_runtime_spec() -> None:
     pytest.importorskip("fmpy")
 
@@ -132,7 +132,7 @@ def test_emt_device_config_can_restore_runtime_spec() -> None:
             CsExportConfig(
                 model_name="RestoreEmtDevice",
                 output_path=fmu_path,
-                target_platform=CsTargetPlatform.WIN64,
+                target_platform=detect_cs_target_platform(),
                 compile_binary=True,
                 keep_build_dir=False,
             ),
@@ -164,7 +164,7 @@ def test_emt_device_config_can_restore_runtime_spec() -> None:
         fmu_path.unlink(missing_ok=True)
 
 
-@pytest.mark.skipif(_detect_gcc()[0] is None, reason="No usable gcc toolchain available")
+@pytest.mark.skipif(not host_build_capable(), reason="No usable host build toolchain available")
 def test_rms_me_device_config_can_restore_runtime_spec() -> None:
     pytest.importorskip("fmpy")
 
@@ -176,7 +176,7 @@ def test_rms_me_device_config_can_restore_runtime_spec() -> None:
             MeExportConfig(
                 model_name="RestoreRmsMeDevice",
                 output_path=fmu_path,
-                target_platform=MeTargetPlatform.WIN64,
+                target_platform=detect_me_target_platform(),
                 compile_binary=True,
                 keep_build_dir=False,
             ),
@@ -209,7 +209,7 @@ def test_rms_me_device_config_can_restore_runtime_spec() -> None:
         fmu_path.unlink(missing_ok=True)
 
 
-@pytest.mark.skipif(_detect_gcc()[0] is None, reason="No usable gcc toolchain available")
+@pytest.mark.skipif(not host_build_capable(), reason="No usable host build toolchain available")
 def test_emt_me_device_config_can_restore_runtime_spec() -> None:
     pytest.importorskip("fmpy")
 
@@ -221,7 +221,7 @@ def test_emt_me_device_config_can_restore_runtime_spec() -> None:
             MeExportConfig(
                 model_name="RestoreEmtMeDevice",
                 output_path=fmu_path,
-                target_platform=MeTargetPlatform.WIN64,
+                target_platform=detect_me_target_platform(),
                 compile_binary=True,
                 keep_build_dir=False,
             ),

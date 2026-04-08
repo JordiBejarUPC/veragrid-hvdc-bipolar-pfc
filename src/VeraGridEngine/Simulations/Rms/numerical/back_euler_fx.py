@@ -186,15 +186,17 @@ class BackEulerImplicitIntegration:
                             print(f"x is {x_new}")
                         else:
                             well_initialized = False
-                            print(f"System bad initialized. DAE resiudal is {residual}.")
-                            print(f'rhs is {rhs}')
-                            non_zero_indexes = np.where(np.abs(rhs) > 1e-7)[0]
-                            all_eq = self.problem._state_eqs + self.problem._algebraic_eqs
-                            print("eqs are")
-                            for i in non_zero_indexes:
-                                eq = all_eq[i]
-                                print(f"eq {eq} with error {rhs[i]}")
-                            exit()
+                            if residual > 1e-4:
+                                print(f"System requires iterative initialization. Initial DAE residual is {residual}.")
+                                print(f'rhs is {rhs}')
+                                non_zero_indexes = np.where(np.abs(rhs) > 1e-7)[0]
+                                all_eq = self.problem._state_eqs + self.problem._algebraic_eqs
+                                print("eqs are")
+                                for i in non_zero_indexes:
+                                    eq = all_eq[i]
+                                    print(f"eq {eq} with error {rhs[i]}")
+                            else:
+                                pass
 
 
                     if not converged:
@@ -262,8 +264,11 @@ class BackEulerImplicitIntegration:
                     timings["lag_update_time"] += lag_update_end - lag_update_start
 
                 else:
-                    print(f"Failed to converge at step {step_idx} and n_iter is {n_iter}")
-                    print(f'Residual is {residual}')
+                    if step_idx == 0:
+                        print(f"Iterative initialization stopped at iter {n_iter} with residual {residual}")
+                    else:
+                        print(f"Failed to converge at step {step_idx} and n_iter is {n_iter}")
+                        print(f'Residual is {residual}')
                     break
         finally:
             self.problem.close_fmu_cs_devices()

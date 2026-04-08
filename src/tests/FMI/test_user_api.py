@@ -6,8 +6,8 @@ from types import SimpleNamespace
 import pytest
 
 from VeraGridEngine.IO.fmu.exporter.api import export_fmu
-from VeraGridEngine.IO.fmu.exporter.build import _detect_gcc
-from VeraGridEngine.IO.fmu.exporter.config import ExportConfig as CsExportConfig, TargetPlatform as CsTargetPlatform
+from VeraGridEngine.IO.fmu.exporter.build import host_build_capable
+from VeraGridEngine.IO.fmu.exporter.config import ExportConfig as CsExportConfig, detect_target_platform as detect_cs_target_platform
 from VeraGridEngine.IO.fmu.exporter.compat import Block, Const, Var
 from VeraGridEngine.IO.fmu.importer import (
     FmuDeviceAttachmentRequest,
@@ -20,7 +20,7 @@ from VeraGridEngine.IO.fmu.importer import (
     attach_fmu_to_device,
 )
 from VeraGridEngine.IO.fmu.exporter_me.api import export_fmu_me
-from VeraGridEngine.IO.fmu.exporter_me.config import ExportConfig as MeExportConfig, TargetPlatform as MeTargetPlatform
+from VeraGridEngine.IO.fmu.exporter_me.config import ExportConfig as MeExportConfig, detect_target_platform as detect_me_target_platform
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 
 
@@ -74,7 +74,7 @@ def build_me_output_block() -> Block:
     )
 
 
-@pytest.mark.skipif(_detect_gcc()[0] is None, reason="No usable gcc toolchain available")
+@pytest.mark.skipif(not host_build_capable(), reason="No usable host build toolchain available")
 def test_user_api_attaches_rms_cs_device() -> None:
     pytest.importorskip("fmpy")
 
@@ -86,7 +86,7 @@ def test_user_api_attaches_rms_cs_device() -> None:
             CsExportConfig(
                 model_name="UserApiRmsCs",
                 output_path=fmu_path,
-                target_platform=CsTargetPlatform.WIN64,
+                target_platform=detect_cs_target_platform(),
                 compile_binary=True,
                 keep_build_dir=False,
             ),
@@ -109,7 +109,7 @@ def test_user_api_attaches_rms_cs_device() -> None:
         fmu_path.unlink(missing_ok=True)
 
 
-@pytest.mark.skipif(_detect_gcc()[0] is None, reason="No usable gcc toolchain available")
+@pytest.mark.skipif(not host_build_capable(), reason="No usable host build toolchain available")
 def test_user_api_attaches_emt_me_device() -> None:
     pytest.importorskip("fmpy")
 
@@ -121,7 +121,7 @@ def test_user_api_attaches_emt_me_device() -> None:
             MeExportConfig(
                 model_name="UserApiEmtMe",
                 output_path=fmu_path,
-                target_platform=MeTargetPlatform.WIN64,
+                target_platform=detect_me_target_platform(),
                 compile_binary=True,
                 keep_build_dir=False,
             ),

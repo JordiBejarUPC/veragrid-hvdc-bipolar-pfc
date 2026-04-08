@@ -4,11 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from VeraGridEngine.IO.fmu.exporter.build import _detect_gcc
+from VeraGridEngine.IO.fmu.exporter.build import host_build_capable
 from VeraGridEngine.IO.fmu.importer.examples.common import run_rms_cs_example
 
 
-@pytest.mark.skipif(_detect_gcc()[0] is None, reason="No usable C/C++ toolchain available")
+@pytest.mark.skipif(not host_build_capable(), reason="No usable host build toolchain available")
 def test_rms_fmu_example_runs_end_to_end(tmp_path: Path) -> None:
     """
     Export one FMU, attach it to a load, and run the RMS example end to end.

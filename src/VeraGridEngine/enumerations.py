@@ -3239,6 +3239,12 @@ class ParamPowerFlowRefferenceType(Enum):
     alpha1 = 'alpha1'
     alpha2 = 'alpha2'
     alpha3 = 'alpha3'    
+
+    P_loss0 = "P_loss0"
+    control1 = "control1"
+    control2 = "control2"
+    control1_val = "control1_val"
+    control2_val = "control2_val"
     
     omega_base = "omega_base" # in rad/s
     Sbase = "Sbase" # in MVA

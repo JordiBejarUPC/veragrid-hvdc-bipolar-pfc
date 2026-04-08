@@ -526,6 +526,7 @@ class Block:
             mdl_placeholder.diff_vars.extend(b.diff_vars)
             mdl_placeholder.reformulated_vars.extend(b.reformulated_vars)
             mdl_placeholder.external_mapping.update(b.external_mapping)
+            mdl_placeholder.api_obj_mapping.update(b.api_obj_mapping)
             for event_param, eq in b.event_dict.items():
                 mdl_placeholder.event_dict[event_param] = eq
 
@@ -558,6 +559,7 @@ class Block:
         self.diff_init_eqs = mdl_placeholder.diff_init_eqs
         self.reformulated_vars = mdl_placeholder.reformulated_vars
         self.external_mapping = mdl_placeholder.external_mapping
+        self.api_obj_mapping = mdl_placeholder.api_obj_mapping
         self.procedural_logic = mdl_placeholder.procedural_logic
         self.children = list()
 
