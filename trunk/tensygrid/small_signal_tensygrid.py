@@ -101,13 +101,11 @@ def define_problem():
 
     return phasor_problem
 
-
-
-def solve_problem(problem: Any) -> None:
-    print("\n[4] Rebuilding equations and extracting exact physics...")
-    builder = PolynomialMatrixBuilder(problem=problem, verbose=True)
-    v_dict: dict  = dict()
-
+def op_extraction(problem: vge.RmsProblemPhasor) -> dict:
+    """
+    Returns the operating point dictionary from a defined VeraGrid problem.
+    """
+    v_dict: dict = dict()
     def safe_get_value(val):
         try:
             return float(val)
@@ -147,6 +145,7 @@ def solve_problem(problem: Any) -> None:
             if val is not None:
                 v_dict[s_name] = val
 
+    return v_dict
     # 5. LIFTING SUPPORT AND DEFAULT VALUES
     for sym in builder.all_symbols:
         s_name = str(sym.name)
@@ -160,6 +159,12 @@ def solve_problem(problem: Any) -> None:
             else:
                 v_dict[s_name] = 0.0
 
+
+
+def solve_problem(problem: Any) -> None:
+    print("\n[4] Rebuilding equations and extracting exact physics...")
+    builder = PolynomialMatrixBuilder(problem=problem, verbose=True)
+    v_dict: dict = op_extraction(problem=problem)
 
     print("\n[*] Linearizing model with real parameters...")
     builder.linearize(v_dict=v_dict)
@@ -199,28 +204,44 @@ if __name__ == "__main__":
                       "(-0.39635072300328184+0j)", "(-10.00000000099956+0j)", "(-1.0000000000000023e-09+0j)",
                       "(-9.999999999999996e-10+0j)", "(-9.999999999999992e-10+0j)"]]
 
-    # --- LOGICA DE EMPAREJAMIENTO ---
+    from scipy.optimize import linear_sum_assignment
+
+    # --- LOGICA DE EMPAREJAMIENTO (Hungarian Algorithm) ---
     finite_evs = calculated_evs[np.isfinite(calculated_evs) & (np.abs(calculated_evs) < 1e6)] if len(
         calculated_evs) > 0 else []
 
-    tol = 1e-3  # Tolerancia para considerar que coinciden
-    unmatched_ref = list(reference_evs)
+    tol = 0.06  # Tolerancia para considerar que coinciden
     matched_calc = []
     unmatched_calc = []
+    unmatched_ref = list(reference_evs)
 
-    for c_ev in finite_evs:
-        if not unmatched_ref:
-            unmatched_calc.append(c_ev)
-            continue
+    if len(finite_evs) > 0 and len(reference_evs) > 0:
+        # 1. Crear matriz de distancias (costos)
+        cost_matrix = np.zeros((len(finite_evs), len(reference_evs)))
+        for i, c_ev in enumerate(finite_evs):
+            for j, r_ev in enumerate(reference_evs):
+                cost_matrix[i, j] = np.abs(c_ev - r_ev)
 
-        distances = np.abs(np.array(unmatched_ref) - c_ev)
-        min_idx = np.argmin(distances)
+        # 2. Asignación óptima
+        row_ind, col_ind = linear_sum_assignment(cost_matrix)
 
-        if distances[min_idx] < tol:
-            unmatched_ref.pop(min_idx)  # Lo extraemos de la lista de pendientes
-            matched_calc.append(c_ev)
-        else:
-            unmatched_calc.append(c_ev)
+        # 3. Filtrar por tolerancia
+        for i, j in zip(row_ind, col_ind):
+            if cost_matrix[i, j] < tol:
+                matched_calc.append(finite_evs[i])
+                unmatched_ref[j] = None  # Marcamos como encontrado
+            else:
+                unmatched_calc.append(finite_evs[i])
+
+        # 4. Limpiar listas de no emparejados
+        unmatched_ref = [x for x in unmatched_ref if x is not None]
+
+        # Añadir los calculados que ni siquiera entraron en la asignación
+        for i in range(len(finite_evs)):
+            if i not in row_ind:
+                unmatched_calc.append(finite_evs[i])
+    else:
+        unmatched_calc = list(finite_evs)
 
     n_matches = len(matched_calc)
     n_unmatched_calc = len(unmatched_calc)
@@ -247,16 +268,16 @@ if __name__ == "__main__":
     # OJO AQUÍ: Añadida la 'r' antes del string para evitar el SyntaxWarning de '\R' e '\I'
     ax1.set_xlabel(r'$\Re({\lambda})$', fontsize=12)
     ax1.set_ylabel(r'$\Im({\lambda})$', fontsize=12)
-    ax1.set_title("Comparación de Eigenvalues")
+    ax1.set_title("Eigenvalue comparison")
 
     # --- SUBPLOT 2: BARRAS Y RESULTADOS ---
-    labels = ['Coinciden', 'Sobran\n(TenSyGrid)', 'Faltan\n(Pablo)']
+    labels = ['Matching', 'Exceeding\n(TenSyGrid)', 'Missing\n(Pablo)']
     counts = [n_matches, n_unmatched_calc, n_unmatched_ref]
     colors = ['#4CAF50', '#F44336', '#FFC107']  # Verde, Rojo, Amarillo
 
     bars = ax2.bar(labels, counts, color=colors, edgecolor='black', alpha=0.8)
-    ax2.set_title(f"Resultados de Coincidencia\n(Tolerancia: {tol})")
-    ax2.set_ylabel("Cantidad")
+    ax2.set_title(f"Coincidence\n(Tolerance: {tol})")
+    ax2.set_ylabel("Amount")
 
     # Añadir el número encima de cada barra
     for bar in bars:
