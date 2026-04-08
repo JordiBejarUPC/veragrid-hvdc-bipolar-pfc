@@ -186,18 +186,6 @@ class PolynomialMatrixBuilder:
 
         parsed_predefined: list[sp.Symbol] = []
 
-        # 1. Symbols
-        for names, target_list in [(processed_state_vars, self.state_vars),
-                                   (processed_algebraic_vars, self.algebraic_vars)]:
-            for name in names:
-                clean_name = name.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
-                clean_name = re.sub(r'\bd_', 'dt_', clean_name)
-
-                if clean_name not in parsing_context:
-                    sym = sp.Symbol(clean_name)
-                    parsing_context[clean_name] = sym
-                    target_list.append(sym)
-                    parsed_predefined.append(sym)
 
         # 2. Expression parsing
         for raw_exprs, target_list in [(processed_eqs, self.eqs),
@@ -205,10 +193,7 @@ class PolynomialMatrixBuilder:
             for raw in raw_exprs:
                 s = raw if isinstance(raw, str) else str(raw)
 
-                s = s.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
-                s = re.sub(r'\bd_', 'dt_', s)
-
-                target_list.append(parse_expr(s, local_dict=parsing_context, evaluate=False)) # Check this
+                target_list.append(parse_expr(s, local_dict=parsing_context, evaluate=False))
 
         # 3. Symbols' inizialization
         self.all_symbols = []
@@ -216,7 +201,6 @@ class PolynomialMatrixBuilder:
 
         # 4. Symbol extraction
         self.extract_symbols(self.eqs + self.ineqs, predefined=parsed_predefined)
-
         self._argaux_map: dict = dict()
 
         # LINEARIZATION: \propto x^n, n\in\mathbb{R}
@@ -874,7 +858,7 @@ class PolynomialMatrixBuilder:
         """
         import math
 
-        keys_to_check: list = list(v_dict.keys())
+        """    keys_to_check: list = list(v_dict.keys())
         key: str
         for key in keys_to_check:
             if key.startswith('x') and 'p' not in key:
@@ -887,7 +871,7 @@ class PolynomialMatrixBuilder:
                 v_dict[f"x_cos_{key}"] = math.cos(val)
 
                 v_dict[f"xp_sin_{key}"] = 0.0
-                v_dict[f"xp_cos_{key}"] = 0.0
+                v_dict[f"xp_cos_{key}"] = 0.0"""
 
         S: np.ndarray
         Phi: np.ndarray
@@ -1051,7 +1035,6 @@ class PolynomialMatrixBuilder:
                 idx_vars.append(idx_counter)
 
             idx_counter = idx_counter + 1
-        print(f"\n[DEBUG] Detected derivatives: {[self.all_symbols[idx].name for idx in idx_dx]}")
         n_eqs: int = int(EABC.shape[0])
         E: np.ndarray = np.zeros((n_eqs, n_eqs))
         A: np.ndarray = np.zeros((n_eqs, n_eqs))
@@ -1067,45 +1050,40 @@ class PolynomialMatrixBuilder:
 
         # 3. Build E matrix (Derivatives strictly aligned to state variables)
         i: int
+        # 1. Creamos un mapa: { "nombre_limpio": indice_real }
+        # Esto se hace UNA VEZ fuera del bucle de columnas
+        deriv_map = {}
+        for dx_idx in idx_dx:
+            full_name = self.all_symbols[dx_idx].name
+
+            # Normalizamos el nombre de la derivada para encontrar su "raíz"
+            # Quitamos prefijos típicos y el posible "1_" o "2_"
+            clean = full_name.replace('dt_', '').replace('d_', '').replace('xp', 'x').replace('dx', 'x')
+
+            # Si después de quitar dt_ queda algo como "1_Vf", quitamos el "1_"
+            if "_" in clean and clean.split('_')[0].isdigit():
+                clean = "_".join(clean.split('_')[1:])
+
+
+            # Guardamos ambas versiones para asegurar el tiro
+            deriv_map[clean] = dx_idx
+            deriv_map[full_name] = dx_idx
+
+            # 2. El bucle de estados ahora es ultrasimple
         for i in range(cols_to_take):
-            state_idx: int = idx_vars[i]
-            state_sym: sp.Symbol = self.all_symbols[state_idx]
-            state_name: str = state_sym.name
+            state_name = self.all_symbols[idx_vars[i]].name
 
-            # Identify expected derivative names
-            deriv_names: list = list()
-            if state_name.startswith('x'):
-                deriv_names.append(str("xp" + state_name[1:]))
-                deriv_names.append(str("dx" + state_name[1:]))
+            # Buscamos directamente en nuestro mapa
+            deriv_idx = deriv_map.get(state_name, -1)
 
-            deriv_names.append(str("dt_" + state_name))
-            deriv_names.append(str("d_" + state_name))
-
-            # 1. Búsqueda exacta (Ej: d_u_cos -> u_cos)
-            deriv_idx: int = -1
-            d_name: str
-            for d_name in deriv_names:
-                if d_name in self.sym_to_idx:
-                    deriv_idx = self.sym_to_idx[d_name]
-                    break
-
-            # 2. Búsqueda flexible para prefijos de componentes (Ej: dt_1_Vf -> Vf)
-            if deriv_idx == -1:
-                for dx_idx in idx_dx:
-                    dx_name = self.all_symbols[dx_idx].name
-                    # Si la derivada termina en "_Vf" y el estado es "Vf", es la suya
-                    if dx_name.endswith(f"_{state_name}") and (dx_name.startswith("dt_") or dx_name.startswith("d_")):
-                        deriv_idx = dx_idx
-                        break
-
-            # If a derivative exists, place it in the EXACT SAME column as the state
-            if deriv_idx != -1 and deriv_idx in idx_dx:
+            if deriv_idx != -1:
                 E[:, i] = -EABC[:, deriv_idx]
 
         print("\nMatriz E (Sparse representation):")
         print(sparse.csr_matrix(E))
         rank_E = np.linalg.matrix_rank(E)
-        print(f"Rango de E: {rank_E}")
+        print(f"rank(E) = {rank_E}")
+        print(deriv_map)
         B: np.ndarray = EABC[:, idx_u]
 
         return E, A, B
