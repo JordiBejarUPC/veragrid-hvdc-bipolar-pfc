@@ -9,13 +9,14 @@ import pandas as pd
 from typing import Union, Tuple
 from matplotlib import pyplot as plt
 
-from VeraGridEngine.basic_structures import Logger
+from VeraGridEngine.basic_structures import Logger, CxVec
+from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType
 from VeraGridEngine.Devices.Associations.association import Associations
-from VeraGridEngine.Devices.Parents.generator_parent import GeneratorParent
 from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
+from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 
 def compute_q(p: float, pf: float) -> float:
     """
@@ -46,8 +47,24 @@ def compute_pf(p: float, q: float) -> float:
         return sign
 
 
-class Generator(GeneratorParent):
+class Generator(InjectionParent):
     __slots__ = (
+        'control_bus',
+        'control_cn',
+        '_P',
+        '_P_prof',
+        '_Pmax',
+        '_Pmax_prof',
+        '_Pmin',
+        '_Pmin_prof',
+        '_Q',
+        '_Q_prof',
+        '_Qmin_prof',
+        '_Qmax_prof',
+        'qmin_set',
+        'qmax_set',
+        '_srap_enabled',
+        '_srap_enabled_prof',
         '_enabled_dispatch',
         '_enabled_dispatch_prof',
         '_R1',
@@ -84,7 +101,20 @@ class Generator(GeneratorParent):
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+
+        GCProp(key='P', units='MW', tpe=float, definition='Active power', profile_name='P_prof'),
+        GCProp(key='Pmin', units='MW', tpe=float, definition='Minimum active power. Used in OPF.',
+               profile_name='Pmin_prof'),
+        GCProp(key='Pmax', units='MW', tpe=float, definition='Maximum active power. Used in OPF.',
+               profile_name='Pmax_prof'),
+        GCProp(key='Q', units='MVAr', tpe=float, definition='Reactive power', profile_name='Q_prof'),
+        GCProp(key='Qmin', units='MVAr', tpe=float, definition='Minimum reactive power.',
+               profile_name='Qmin_prof'),
+        GCProp(key='Qmax', units='MVAr', tpe=float, definition='Maximum reactive power.',
+               profile_name='Qmax_prof'),
         GCProp(key='is_controlled', units='', tpe=bool, definition='Is this generator voltage-controlled?'),
+        GCProp(key='control_bus', units='', tpe=DeviceType.BusDevice, definition='Control bus',
+               editable=True),
         GCProp(key='Pf', units='', tpe=float,
                definition='Power factor (cos(phi)). This is used for non-controlled generators.',
                profile_name='Pf_prof'),
@@ -131,6 +161,9 @@ class Generator(GeneratorParent):
                definition='List of emissions', display=False),
         GCProp(key='fuels', units='t/MWh', tpe=SubObjectType.Associations,
                definition='List of fuels', display=False),
+        GCProp(key='srap_enabled', units='', tpe=bool,
+               definition='Is the unit available for SRAP participation?',
+               editable=True, profile_name="srap_enabled_prof"),
     )
 
     def __init__(self,
@@ -164,13 +197,6 @@ class Generator(GeneratorParent):
                  r2: float = 1e-20,
                  x2: float = 1e-20,
                  freq=60.0,
-                 tm0=0.0750281479189543,
-                 M=1.0 / 100.0 * 900.0,  # from Machine to System base
-                 D=4.0 / 100.0 * 900.0,  # from Machine to System base
-                 omega_ref=1.0,
-                 vf=0.9967798127873505,
-                 Kp=0.0,
-                 Ki=0.0,
                  capex: float = 0,
                  opex: float = 0,
                  srap_enabled: bool = True,
@@ -213,40 +239,49 @@ class Generator(GeneratorParent):
         :param r2:
         :param x2:
         :param freq:
-        :param tm0:
-        :param M:
-        :param D:
-        :param omega_ref:
-        :param vf:
-        :param Kp:
-        :param Ki:
         :param capex:
         :param opex:
         :param srap_enabled:
         :param build_status:
         :param must_run:
         """
-        GeneratorParent.__init__(self,
+        InjectionParent.__init__(self,
                                  name=name,
                                  idtag=idtag,
                                  code=code,
                                  bus=None,
-                                 control_bus=None,
                                  active=active,
-                                 P=P,
-                                 Pmin=Pmin,
-                                 Pmax=Pmax,
-                                 Q=Q,
-                                 Qmin=Qmin,
-                                 Qmax=Qmax,
                                  Cost=Cost,
                                  mttf=mttf,
                                  mttr=mttr,
                                  capex=capex,
                                  opex=opex,
-                                 srap_enabled=srap_enabled,
                                  build_status=build_status,
                                  device_type=DeviceType.GeneratorDevice)
+
+        self.control_bus: Bus | None = None
+        self.control_cn = None
+
+        self._P = float(P)
+        self._P_prof = Profile(default_value=self.P, data_type=float)
+
+        self.Pmax = float(Pmax)
+        self._Pmax_prof = Profile(default_value=self.Pmax, data_type=float)
+
+        self.Pmin = float(Pmin)
+        self._Pmin_prof = Profile(default_value=self.Pmin, data_type=float)
+
+        self._Q = float(Q)
+        self._Q_prof = Profile(default_value=self.Q, data_type=float)
+
+        self._Qmin_prof = Profile(default_value=Qmin, data_type=float)
+        self._Qmax_prof = Profile(default_value=Qmax, data_type=float)
+
+        self.qmin_set = float(Qmin)
+        self.qmax_set = float(Qmax)
+
+        self.srap_enabled = bool(srap_enabled)
+        self._srap_enabled_prof = Profile(default_value=self.srap_enabled, data_type=bool)
 
         # is the device active for active power dispatch?
         self.enabled_dispatch = bool(enabled_dispatch)
@@ -326,6 +361,311 @@ class Generator(GeneratorParent):
         self.Sbase = float(Sbase)
 
         self.freq = freq
+
+    @property
+    def P(self) -> float:
+        """
+        Get the active power value
+        :return: float
+        """
+        return self._P
+
+    @P.setter
+    def P(self, val: float):
+        """
+        Set active power value
+        :param val: some float
+        """
+        val = float(val)
+        try:
+            self._P = float(val)
+        except ValueError:
+            print("The value you're trying to set into P is not a float :(")
+
+    @property
+    def P_prof(self) -> Profile:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._P_prof
+
+    @P_prof.setter
+    def P_prof(self, val: Union[Profile, np.ndarray]):
+        if isinstance(val, Profile):
+            self._P_prof = val
+        elif isinstance(val, np.ndarray):
+            self._P_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a P_prof')
+
+    def get_P_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.P, self.P_prof, t)
+
+    @property
+    def Q(self) -> float:
+        """
+        Get the active power value
+        :return: float
+        """
+        return self._Q
+
+    @Q.setter
+    def Q(self, val: float):
+        """
+        Set active power value
+        :param val: some float
+        """
+        val = float(val)
+        try:
+            self._Q = float(val)
+        except ValueError:
+            print("The value you're trying to set into Q is not a float :(")
+
+    @property
+    def Q_prof(self) -> Profile:
+        """
+        Q profile
+        :return: Profile
+        """
+        return self._Q_prof
+
+    @Q_prof.setter
+    def Q_prof(self, val: Union[Profile, np.ndarray]):
+        if isinstance(val, Profile):
+            self._Q_prof = val
+        elif isinstance(val, np.ndarray):
+            self._Q_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a Q_prof')
+
+    def get_Q_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Q, self.Q_prof, t)
+
+    @property
+    def Qmin(self):
+        """
+        Return the reactive power lower limit
+        :return: value
+        """
+        return self.qmin_set
+
+    @Qmin.setter
+    def Qmin(self, val):
+        val = float(val)
+        self.qmin_set = val
+
+    @property
+    def Qmin_prof(self) -> Profile:
+        """
+        Qmin profile
+        :return: Profile
+        """
+        return self._Qmin_prof
+
+    @Qmin_prof.setter
+    def Qmin_prof(self, val: Union[Profile, np.ndarray]):
+        if isinstance(val, Profile):
+            self._Qmin_prof = val
+        elif isinstance(val, np.ndarray):
+            self._Qmin_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a Qmin_prof')
+
+    def get_Qmin_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Qmin, self.Qmin_prof, t)
+
+    @property
+    def Qmax(self):
+        """
+        Return the reactive power upper limit
+        :return: value
+        """
+        return self.qmax_set
+
+    @Qmax.setter
+    def Qmax(self, val):
+        val = float(val)
+        self.qmax_set = val
+
+    @property
+    def Qmax_prof(self) -> Profile:
+        """
+        Qmax profile
+        :return: Profile
+        """
+        return self._Qmax_prof
+
+    @Qmax_prof.setter
+    def Qmax_prof(self, val: Union[Profile, np.ndarray]):
+        if isinstance(val, Profile):
+            self._Qmax_prof = val
+        elif isinstance(val, np.ndarray):
+            self._Qmax_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a Qmax_prof')
+
+    def get_Qmax_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Qmax, self.Qmax_prof, t)
+
+    @property
+    def srap_enabled_prof(self) -> Profile:
+        """
+        Control bus profile
+        :return: Profile
+        """
+        return self._srap_enabled_prof
+
+    @srap_enabled_prof.setter
+    def srap_enabled_prof(self, val: Union[Profile, np.ndarray]):
+        if isinstance(val, Profile):
+            self._srap_enabled_prof = val
+        elif isinstance(val, np.ndarray):
+            self._srap_enabled_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into srap_enabled_prof')
+
+    def get_srap_enabled_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.srap_enabled, self.srap_enabled_prof, t)
+
+    @property
+    def Pmax_prof(self) -> Profile:
+        """
+        Pmax profile
+        :return: Profile
+        """
+        return self._Pmax_prof
+
+    @Pmax_prof.setter
+    def Pmax_prof(self, val: Union[Profile, np.ndarray]):
+        if isinstance(val, Profile):
+            self._Pmax_prof = val
+        elif isinstance(val, np.ndarray):
+            self._Pmax_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a Pmax_prof')
+
+    def get_Pmax_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Pmax, self.Pmax_prof, t)
+
+    @property
+    def Pmin_prof(self) -> Profile:
+        """
+        Pmin profile
+        :return: Profile
+        """
+        return self._Pmin_prof
+
+    @Pmin_prof.setter
+    def Pmin_prof(self, val: Union[Profile, np.ndarray]):
+        if isinstance(val, Profile):
+            self._Pmin_prof = val
+        elif isinstance(val, np.ndarray):
+            self._Pmin_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a Pmin_prof')
+
+    def get_Pmin_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Pmin, self.Pmin_prof, t)
+
+    def get_S_with_sign(self) -> complex:
+        """
+
+        :return:
+        """
+        return complex(self.P, 0.0)
+
+    def get_Sprof_with_sign(self) -> CxVec:
+        """
+
+        :return:
+        """
+        return self.P_prof.toarray().astype(complex)
+
+    @property
+    def Pmin(self) -> float:
+        """
+        Get ``Pmin``.
+
+        :return: float
+        """
+        return self._Pmin
+
+    @Pmin.setter
+    def Pmin(self, val: float) -> None:
+        """
+        Set ``Pmin``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Pmin = float(val)
+
+    @property
+    def Pmax(self) -> float:
+        """
+        Get ``Pmax``.
+
+        :return: float
+        """
+        return self._Pmax
+
+    @Pmax.setter
+    def Pmax(self, val: float) -> None:
+        """
+        Set ``Pmax``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._Pmax = float(val)
+
+    @property
+    def srap_enabled(self) -> bool:
+        """
+        Get ``srap_enabled``.
+
+        :return: bool
+        """
+        return self._srap_enabled
+
+    @srap_enabled.setter
+    def srap_enabled(self, val: bool) -> None:
+        """
+        Set ``srap_enabled``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._srap_enabled = bool(val)
 
 
 

@@ -6,7 +6,6 @@ from VeraGridEngine.Devices.Injections.shunt import ShuntParent
 from VeraGridEngine.enumerations import DeviceType, BuildStatus, HvdcControlType, TapPhaseControl, TapModuleControl
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
-from VeraGridEngine.Devices.Parents.generator_parent import GeneratorParent
 from VeraGridEngine.Devices.Parents.controllable_branch_parent import ControllableBranchParent
 from VeraGridEngine.Devices.Branches.hvdc_line import HvdcLine
 
@@ -332,73 +331,6 @@ def test_branchparent_getters_match_profiles():
             ), f"{name}({t_idx}) returned {result}, expected {expected}"
 
     print("✅ All BranchParent.get_*_at(t_idx) methods match their profiles and attributes correctly.")
-
-
-def test_generatorparent_getters_match_profiles():
-    """
-    Verify that all get_*_at(t_idx) methods in GeneratorParent return the correct
-    values from their associated attributes and profiles.
-    """
-
-    # Create a dummy GeneratorParent with deterministic attributes
-    gen = GeneratorParent(
-        name="TestGen",
-        idtag=None,
-        code="",
-        bus=None,
-        control_bus=None,
-        active=True,
-        P=100.0,
-        Q=60,
-        Pmin=10.0,
-        Pmax=150.0,
-        Qmin=-80,
-        Qmax=80,
-        Cost=25.0,
-        mttf=1000.0,
-        mttr=10.0,
-        capex=500.0,
-        opex=20.0,
-        srap_enabled=True,
-        build_status=BuildStatus.Commissioned,
-        device_type=DeviceType.GeneratorDevice
-    )
-
-    # Fill all *_prof with predictable data
-    n_steps = 5
-    for name, attr in inspect.getmembers(gen):
-        if name.endswith("_prof") and hasattr(attr, "set"):
-            attr.set(arr=np.linspace(1.0, 10.0, n_steps))
-
-    # Automatically find all get_*_at methods
-    getter_methods = [
-        (name, method)
-        for name, method in inspect.getmembers(gen, predicate=inspect.ismethod)
-        if name.startswith("get_") and name.endswith("_at")
-    ]
-
-    # Check each getter result against base value and profile
-    for name, method in getter_methods:
-        base = name[len("get_"): -len("_at")]
-        attr_name = base
-        prof_name = f"{base}_prof"
-
-        # Skip if missing attribute/profile pair
-        if not (hasattr(gen, attr_name) and hasattr(gen, prof_name)):
-            continue
-
-        attr_val = getattr(gen, attr_name)
-        prof_obj = getattr(gen, prof_name)
-        arr = prof_obj.toarray()
-
-        for t_idx in [None, 0, n_steps // 2, n_steps - 1]:
-            expected = attr_val if t_idx is None else arr[t_idx]
-            result = method(t_idx)
-            assert np.isclose(result, expected), (
-                f"{name}({t_idx}) returned {result}, expected {expected}"
-            )
-
-    print("✅ All GeneratorParent.get_*_at(t_idx) methods correctly match their profiles and attributes.")
 
 
 def test_hvdcline_getters_match_profiles():
