@@ -22,12 +22,16 @@ class GeneratorParent(InjectionParent):
     __slots__ = (
         'control_bus',
         'control_cn',
+
         '_P',
         '_P_prof',
+
         '_Pmax',
         '_Pmax_prof',
+
         '_Pmin',
         '_Pmin_prof',
+
         '_Q',
         '_Q_prof',
 

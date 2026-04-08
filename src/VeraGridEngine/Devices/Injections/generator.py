@@ -274,7 +274,7 @@ class Generator(GeneratorParent):
         self.X2 = float(x2)
 
         # Power factor
-        self.Pf = float(power_factor)
+        self._Pf = float(power_factor)
 
         # voltage set profile for this load in p.u.
         self._Pf_prof = Profile(default_value=self.Pf, data_type=float)
