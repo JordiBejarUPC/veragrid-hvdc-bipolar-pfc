@@ -17,6 +17,14 @@ def _artifacts_root() -> Path:
     return Path(__file__).resolve().parents[1] / "data" / "fmi" / "artifacts"
 
 
+def _known_fmi_platforms() -> set[str]:
+    known_platforms: set[str] = set()
+    known_platforms.add("win64")
+    known_platforms.add("linux64")
+    known_platforms.add("darwin64")
+    return known_platforms
+
+
 def test_read_existing_co_simulation_fmu_metadata() -> None:
     fmu_path = _artifacts_root() / "FrequencyLoadPilot.fmu"
     metadata = read_fmu_model_description(fmu_path)
@@ -26,7 +34,8 @@ def test_read_existing_co_simulation_fmu_metadata() -> None:
     assert metadata.get_supports_model_exchange() is False
     assert metadata.resolve_mode() == FmuInterfaceMode.CO_SIMULATION
     assert metadata.get_model_identifier(FmuInterfaceMode.CO_SIMULATION) != ""
-    assert "win64" in metadata.platforms
+    assert len(metadata.platforms) > 0
+    assert set(metadata.platforms).issubset(_known_fmi_platforms())
     assert any(variable.causality == "input" for variable in metadata.variables)
     assert any(variable.causality == "output" for variable in metadata.variables)
 

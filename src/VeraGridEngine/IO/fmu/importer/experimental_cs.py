@@ -109,7 +109,7 @@ class FmuCsDeviceAdapter:
     :param output_param_indices: Runtime-parameter indices receiving FMU outputs.
     """
 
-    __slots__ = ("problem", "device", "spec", "output_param_indices", "runtime_host", "last_time", "initialized")
+    __slots__ = ("problem", "device", "spec", "output_param_indices", "runtime_host", "last_time", "initialized", "last_outputs")
 
     def __init__(
         self,
@@ -130,6 +130,7 @@ class FmuCsDeviceAdapter:
         self.runtime_host: FmuRuntimeHost | None = None
         self.last_time: float = 0.0
         self.initialized: bool = False
+        self.last_outputs: dict[VarPowerFlowRefferenceType, float] = dict()
 
     def _build_input_values(self, x_snapshot: np.ndarray) -> dict[str, float]:
         """Collect the FMU input values from the current VeraGrid snapshot.
@@ -194,7 +195,9 @@ class FmuCsDeviceAdapter:
         """
 
         self._ensure_runtime(x_snapshot, time_value)
-        return self._read_outputs()
+        outputs: dict[VarPowerFlowRefferenceType, float] = self._read_outputs()
+        self.last_outputs = dict(outputs)
+        return outputs
 
     def advance(self, current_time: float, step_size: float, x_snapshot: np.ndarray) -> dict[VarPowerFlowRefferenceType, float]:
         """Advance the FMU one communication step and read the outputs.
@@ -217,7 +220,9 @@ class FmuCsDeviceAdapter:
                 pass
             self.runtime_host.do_step(current_time=current_time, step_size=step_size)
             self.last_time = current_time + step_size
-            return self._read_outputs()
+            outputs = self._read_outputs()
+            self.last_outputs = dict(outputs)
+            return outputs
 
     def apply_outputs(self, target: np.ndarray, outputs: dict[VarPowerFlowRefferenceType, float]) -> None:
         """Write the FMU outputs into VeraGrid runtime-parameter storage.
@@ -238,6 +243,10 @@ class FmuCsDeviceAdapter:
         """
 
         if self.runtime_host is not None:
+            if len(self.last_outputs) == 0:
+                self.last_outputs = self._read_outputs()
+            else:
+                pass
             self.runtime_host.close()
             self.runtime_host = None
         else:
@@ -670,6 +679,10 @@ def initialize_rms_fmu_cs_devices(problem: Any, x_snapshot: np.ndarray, time_val
         for adapter in problem._fmu_cs_adapters:
             outputs: dict[VarPowerFlowRefferenceType, float] = adapter.initialize_outputs(time_value, x_snapshot)
             adapter.apply_outputs(problem._variable_parameters_values, outputs)
+            if problem._variable_parameters_values is None:
+                problem._last_variable_parameters_values = None
+            else:
+                problem._last_variable_parameters_values = np.array(problem._variable_parameters_values, copy=True)
         problem._fmu_cs_initialized = True
     else:
         problem._fmu_cs_initialized = True
@@ -695,6 +708,10 @@ def advance_rms_fmu_cs_devices(problem: Any, time_value: float, x_snapshot: np.n
         for adapter in problem._fmu_cs_adapters:
             outputs = adapter.advance(current_time=time_value, step_size=step_size, x_snapshot=x_snapshot)
             adapter.apply_outputs(problem._variable_parameters_values, outputs)
+            if problem._variable_parameters_values is None:
+                problem._last_variable_parameters_values = None
+            else:
+                problem._last_variable_parameters_values = np.array(problem._variable_parameters_values, copy=True)
     else:
         pass
 

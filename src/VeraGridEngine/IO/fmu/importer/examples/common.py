@@ -108,6 +108,7 @@ else:
     setattr(VeraGridEngine, "MultiCircuit", VeraGridMultiCircuit)
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Branches.line import Line
@@ -136,7 +137,7 @@ from VeraGridEngine.enumerations import (
 )
 
 from VeraGridEngine.IO.fmu.exporter.api import export_fmu
-from VeraGridEngine.IO.fmu.exporter.config import ExportConfig as CsExportConfig, TargetPlatform as CsTargetPlatform
+from VeraGridEngine.IO.fmu.exporter.config import ExportConfig as CsExportConfig, detect_target_platform as detect_cs_target_platform
 from VeraGridEngine.IO.fmu.exporter.compat import Block, Const, Var
 from VeraGridEngine.IO.fmu.importer import (
     FmuDeviceAttachmentRequest,
@@ -151,21 +152,7 @@ from VeraGridEngine.IO.fmu.importer import (
     register_emt_fmu_me_device,
 )
 from VeraGridEngine.IO.fmu.exporter_me.api import export_fmu_me
-from VeraGridEngine.IO.fmu.exporter_me.config import ExportConfig as MeExportConfig, TargetPlatform as MeTargetPlatform
-
-
-def _build_output_parameter_name(output_var_name: str) -> str:
-    """
-    Build the runtime event-parameter name associated with one FMU output variable.
-
-    :param output_var_name: Symbolic output variable name.
-    :return: Event-parameter variable name.
-    """
-
-    if output_var_name.startswith("fmu_"):
-        return output_var_name.replace("fmu_", "fmu_param_", 1)
-    else:
-        return f"fmu_param_{output_var_name}"
+from VeraGridEngine.IO.fmu.exporter_me.config import ExportConfig as MeExportConfig, detect_target_platform as detect_me_target_platform
 
 
 def get_example_output_dir() -> Path:
@@ -309,7 +296,7 @@ def export_example_rms_cs_fmu(output_dir: Path) -> Path:
         CsExportConfig(
             model_name=unique_name,
             output_path=output_dir / f"{unique_name}.fmu",
-            target_platform=CsTargetPlatform.WIN64,
+            target_platform=detect_cs_target_platform(),
             compile_binary=True,
             keep_build_dir=False,
         ),
@@ -329,7 +316,7 @@ def export_example_rms_me_fmu(output_dir: Path) -> Path:
         MeExportConfig(
             model_name=unique_name,
             output_path=output_dir / f"{unique_name}.fmu",
-            target_platform=MeTargetPlatform.WIN64,
+            target_platform=detect_me_target_platform(),
             compile_binary=True,
             keep_build_dir=False,
         ),
@@ -349,7 +336,7 @@ def export_example_emt_cs_fmu(output_dir: Path) -> Path:
         CsExportConfig(
             model_name=unique_name,
             output_path=output_dir / f"{unique_name}.fmu",
-            target_platform=CsTargetPlatform.WIN64,
+            target_platform=detect_cs_target_platform(),
             compile_binary=True,
             keep_build_dir=False,
         ),
@@ -369,7 +356,7 @@ def export_example_emt_me_fmu(output_dir: Path) -> Path:
         MeExportConfig(
             model_name=unique_name,
             output_path=output_dir / f"{unique_name}.fmu",
-            target_platform=MeTargetPlatform.WIN64,
+            target_platform=detect_me_target_platform(),
             compile_binary=True,
             keep_build_dir=False,
         ),
@@ -406,6 +393,25 @@ def _build_power_flow_options() -> PowerFlowOptions:
     )
 
 
+def _get_bus_power_default(grid: MultiCircuit, pf_results: Any, bus: Bus) -> tuple[float, float]:
+    """
+    Return the exact active and reactive power injection solved at one bus.
+
+    The FMU examples use these values as output defaults so the imported FMU shell
+    starts from the same operating point that the static network used during the
+    power-flow initialization.
+
+    :param grid: Solved grid.
+    :param pf_results: Finished power-flow results.
+    :param bus: Bus where the imported FMU device is connected.
+    :return: Active and reactive bus injections.
+    """
+
+    bus_index: int = grid.buses.index(bus)
+    bus_power: complex = complex(pf_results.Sbus[bus_index] / grid.Sbase)
+    return float(bus_power.real), float(bus_power.imag)
+
+
 def _build_rms_demo_grid() -> tuple[MultiCircuit, Load]:
     """Build the minimal RMS demo grid used by the RMS FMU import examples.
 
@@ -428,6 +434,7 @@ def _build_rms_demo_grid() -> tuple[MultiCircuit, Load]:
 
     line.rms_model = get_line_rms_template(grid.rms_var_factory).block
     generator.rms_model = get_complete_generator_template_rms(grid.rms_var_factory).block
+    grid.add_rms_events_group(RmsEventsGroup(name="default_rms_example_group"))
 
     grid.add_line(line)
     grid.add_generator(bus=bus_slack, api_obj=generator)
@@ -573,28 +580,108 @@ def _build_rms_results_summary(driver: RmsSimulationDriver, load: Load) -> tuple
         )
 
 
-def _read_rms_runtime_parameter(problem: Any, block: Block, parameter_name: str) -> float | None:
-    """Read one RMS runtime parameter from the finished problem parameter vector.
+def _read_rms_fmu_output(problem: Any, device: Load, reference: VarPowerFlowRefferenceType) -> float | None:
+    """
+    Read one FMU-backed RMS output directly from the registered runtime adapters.
+
+    The helper prefers adapter indices over symbolic-name reconstruction because the
+    runtime adapters already own the authoritative mapping from VeraGrid references
+    to the parameter vector updated during the simulation.
 
     :param problem: Finished RMS problem instance.
-    :param block: Imported FMU shell block.
-    :param parameter_name: Event-parameter variable name.
-    :return: Runtime parameter value.
+    :param device: Device hosting the imported FMU.
+    :param reference: VeraGrid output reference to recover.
+    :return: Runtime output value when available.
     """
 
-    if problem._variable_parameters_values is None:
-        return None
-    else:
-        sub_block: Block
-        for sub_block in block.get_all_blocks():
-            event_parameter: Var
-            for event_parameter in sub_block.event_dict.keys():
-                if event_parameter.name == parameter_name:
-                    index: int = problem._uid2idx_event_params[event_parameter.uid]
-                    return float(problem._variable_parameters_values[index])
+    adapter = None
+    for adapter in problem._fmu_cs_adapters:
+        if adapter.device == device:
+            if reference in adapter.last_outputs:
+                return adapter.last_outputs[reference]
+            else:
+                if problem._last_variable_parameters_values is None:
+                    return None
                 else:
-                    pass
-        return None
+                    if reference in adapter.output_param_indices:
+                        output_index: int = adapter.output_param_indices[reference]
+                        return float(problem._last_variable_parameters_values[output_index])
+                    else:
+                        return None
+        else:
+            pass
+
+    for adapter in problem._fmu_me_adapters:
+        if adapter.device == device:
+            if reference in adapter.last_outputs:
+                return adapter.last_outputs[reference]
+            else:
+                if problem._last_variable_parameters_values is None:
+                    return None
+                else:
+                    if reference in adapter.output_param_indices:
+                        output_index = adapter.output_param_indices[reference]
+                        return float(problem._last_variable_parameters_values[output_index])
+                    else:
+                        return None
+        else:
+            pass
+
+    return None
+
+
+def _build_final_rms_snapshot(driver: RmsSimulationDriver) -> np.ndarray:
+    """
+    Build the final RMS state snapshot from the finished results matrix.
+
+    :param driver: Finished RMS simulation driver.
+    :return: Final RMS state/algebraic snapshot.
+    """
+
+    final_values: np.ndarray = np.asarray(driver.results.values[-1, :, 0], dtype=float)
+    return np.ravel(final_values)
+
+
+def _refresh_rms_fmu_outputs_from_final_snapshot(problem: Any,
+                                                 device: Load,
+                                                 final_snapshot: np.ndarray,
+                                                 final_time: float) -> None:
+    """
+    Re-evaluate FMU outputs from the final RMS network snapshot when the runtime cache is empty.
+
+    The fallback is used only by the example report helpers. It keeps the example
+    informative even when the solver lifecycle closes the FMU before the report is
+    assembled.
+
+    :param problem: Finished RMS problem instance.
+    :param device: Device hosting the imported FMU.
+    :param final_snapshot: Final RMS state/algebraic snapshot.
+    :param final_time: Final simulation time.
+    :return: None.
+    """
+
+    adapter = None
+    for adapter in problem._fmu_cs_adapters:
+        if adapter.device == device:
+            if len(adapter.last_outputs) == 0:
+                outputs = adapter.initialize_outputs(final_time, final_snapshot)
+                adapter.last_outputs = dict(outputs)
+                adapter.close()
+            else:
+                pass
+        else:
+            pass
+
+    for adapter in problem._fmu_me_adapters:
+        if adapter.device == device:
+            if len(adapter.last_outputs) == 0:
+                outputs = adapter.initialize_outputs(final_time, final_snapshot)
+                adapter.last_outputs = dict(outputs)
+                adapter.close()
+            else:
+                pass
+        else:
+            pass
 
 
 def _build_emt_results_summary(driver: EmtSimulationDriver, load: Load) -> tuple[str, ...]:
@@ -678,6 +765,11 @@ def run_rms_cs_example(output_dir: Path) -> Path:
     grid: MultiCircuit
     load: Load
     grid, load = _build_rms_demo_grid()
+    pf_driver: PowerFlowDriver = PowerFlowDriver(grid=grid, options=_build_power_flow_options())
+    pf_driver.run()
+    p_default: float
+    q_default: float
+    p_default, q_default = _get_bus_power_default(grid, pf_driver.results, load.bus)
 
     request = FmuDeviceAttachmentRequest(
         fmu_path=fmu_path,
@@ -689,8 +781,8 @@ def run_rms_cs_example(output_dir: Path) -> Path:
             FmuRefBinding(VarPowerFlowRefferenceType.Q, "q_out"),
         ),
         output_defaults=(
-            FmuReferenceValue(VarPowerFlowRefferenceType.P, -0.1),
-            FmuReferenceValue(VarPowerFlowRefferenceType.Q, -0.01),
+            FmuReferenceValue(VarPowerFlowRefferenceType.P, p_default),
+            FmuReferenceValue(VarPowerFlowRefferenceType.Q, q_default),
         ),
         extraction_root=output_dir,
     )
@@ -698,8 +790,6 @@ def run_rms_cs_example(output_dir: Path) -> Path:
     # The imported FMU is attached as a normal load device shell before running the RMS driver.
     attach_fmu_to_device(load, grid, request)
 
-    pf_driver: PowerFlowDriver = PowerFlowDriver(grid=grid, options=_build_power_flow_options())
-    pf_driver.run()
     rms_driver: RmsSimulationDriver = RmsSimulationDriver(
         grid=grid,
         options=RmsOptions(time_step=1e-3, simulation_time=5e-3, tolerance=1e-6, integration_method=DynamicIntegrationMethod.DaeBackEuler, max_iter=50),
@@ -710,10 +800,11 @@ def run_rms_cs_example(output_dir: Path) -> Path:
     if rms_driver.problem is None:
         raise RuntimeError("The RMS example did not keep a reference to the simulation problem")
     else:
-        p_param_name: str = _build_output_parameter_name(str(load.rms_model.external_mapping[VarPowerFlowRefferenceType.P].name))
-        q_param_name: str = _build_output_parameter_name(str(load.rms_model.external_mapping[VarPowerFlowRefferenceType.Q].name))
-        p_value = _read_rms_runtime_parameter(rms_driver.problem, load.rms_model, p_param_name)
-        q_value = _read_rms_runtime_parameter(rms_driver.problem, load.rms_model, q_param_name)
+        final_snapshot: np.ndarray = _build_final_rms_snapshot(rms_driver)
+        final_time_seconds: float = float(rms_driver.results.time_array[-1].value) * 1e-9
+        _refresh_rms_fmu_outputs_from_final_snapshot(rms_driver.problem, load, final_snapshot, final_time_seconds)
+        p_value = _read_rms_fmu_output(rms_driver.problem, load, VarPowerFlowRefferenceType.P)
+        q_value = _read_rms_fmu_output(rms_driver.problem, load, VarPowerFlowRefferenceType.Q)
         p_text: str = "not available" if p_value is None else f"{p_value:.8f}"
         q_text: str = "not available" if q_value is None else f"{q_value:.8f}"
 
@@ -750,6 +841,9 @@ def run_rms_me_example(output_dir: Path) -> Path:
     grid: MultiCircuit
     load: Load
     grid, load = _build_rms_demo_grid()
+    pf_driver: PowerFlowDriver = PowerFlowDriver(grid=grid, options=_build_power_flow_options())
+    pf_driver.run()
+    p_default, q_default = _get_bus_power_default(grid, pf_driver.results, load.bus)
 
     request = FmuDeviceAttachmentRequest(
         fmu_path=fmu_path,
@@ -761,8 +855,8 @@ def run_rms_me_example(output_dir: Path) -> Path:
             FmuRefBinding(VarPowerFlowRefferenceType.Q, "q_out"),
         ),
         output_defaults=(
-            FmuReferenceValue(VarPowerFlowRefferenceType.P, 0.0),
-            FmuReferenceValue(VarPowerFlowRefferenceType.Q, -0.01),
+            FmuReferenceValue(VarPowerFlowRefferenceType.P, p_default),
+            FmuReferenceValue(VarPowerFlowRefferenceType.Q, q_default),
         ),
         extraction_root=output_dir,
         integration_method=FmuMeIntegrationMethod.EXPLICIT_EULER,
@@ -770,8 +864,6 @@ def run_rms_me_example(output_dir: Path) -> Path:
 
     attach_fmu_to_device(load, grid, request)
 
-    pf_driver: PowerFlowDriver = PowerFlowDriver(grid=grid, options=_build_power_flow_options())
-    pf_driver.run()
     rms_driver: RmsSimulationDriver = RmsSimulationDriver(
         grid=grid,
         options=RmsOptions(time_step=1e-3, simulation_time=5e-3, tolerance=1e-6, integration_method=DynamicIntegrationMethod.DaeBackEuler, max_iter=50),
@@ -782,10 +874,11 @@ def run_rms_me_example(output_dir: Path) -> Path:
     if rms_driver.problem is None:
         raise RuntimeError("The RMS example did not keep a reference to the simulation problem")
     else:
-        p_param_name = _build_output_parameter_name(str(load.rms_model.external_mapping[VarPowerFlowRefferenceType.P].name))
-        q_param_name = _build_output_parameter_name(str(load.rms_model.external_mapping[VarPowerFlowRefferenceType.Q].name))
-        p_value = _read_rms_runtime_parameter(rms_driver.problem, load.rms_model, p_param_name)
-        q_value = _read_rms_runtime_parameter(rms_driver.problem, load.rms_model, q_param_name)
+        final_snapshot = _build_final_rms_snapshot(rms_driver)
+        final_time_seconds = float(rms_driver.results.time_array[-1].value) * 1e-9
+        _refresh_rms_fmu_outputs_from_final_snapshot(rms_driver.problem, load, final_snapshot, final_time_seconds)
+        p_value = _read_rms_fmu_output(rms_driver.problem, load, VarPowerFlowRefferenceType.P)
+        q_value = _read_rms_fmu_output(rms_driver.problem, load, VarPowerFlowRefferenceType.Q)
         p_text = "not available" if p_value is None else f"{p_value:.8f}"
         q_text = "not available" if q_value is None else f"{q_value:.8f}"
 
