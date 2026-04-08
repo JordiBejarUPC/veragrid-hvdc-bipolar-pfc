@@ -41,15 +41,15 @@ def get_nuactis_modulator_rms_template(vf: VarFactory, name: str = "NuActis_Modu
     )
 
     modulator.event_dict = {
-        mod_m_max: vf.add_const(1.0, name="m_max"),
+        mod_m_max: vf.add_const(1.1, name="m_max"),
         mod_eps: vf.add_const(1e-6, name="eps"),
     }
 
     modulator.init_eqs = {
         m_mag: sym.sqrt((pmd * pmd) + (pmq * pmq) + mod_eps),
-        k_lim: one,
-        md: pmd,
-        mq: pmq,
+        k_lim: (one + (((mod_m_max / (m_mag + mod_eps)) - one) * sym.heaviside(one - (mod_m_max / (m_mag + mod_eps))))),
+        md: pmd * k_lim,
+        mq: pmq * k_lim,
     }
 
     templ.block = modulator

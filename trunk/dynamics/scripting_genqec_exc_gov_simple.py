@@ -126,7 +126,7 @@ grid.add_rms_events_group(events_group)
 event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group)
 grid.add_rms_event(event)
 
-rms_events_group_names = np.array(0)
+rms_events_group_names = np.array([events_group.name], dtype=str)
 
 # choose variables to save values
 # vars_to_save = list()
@@ -173,7 +173,7 @@ print(res.get_branch_df())
 params_mapping = dict()
 
 options = RmsOptions(time_step=0.001,
-                     simulation_time=5,
+                     simulation_time=1,
                      tolerance=1e-6,
                      integration_method=DynamicIntegrationMethod.DaeBackEuler,
                      initialization_method=RmsInitializationMethod.Explicit,
@@ -203,93 +203,60 @@ solver = BackEulerImplicitIntegration(
 
 t, y, well_initialized, converged = solver.simulate()
 
-# results = RmsResults(
-#             time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
-#             rms_events_group_names = rms_events_group_names,
-#             variables=problem.state_and_algebraic_vars,
-#             uid2idx=problem.uid2idx_vars,
-#             vars_glob_name2uid=problem.vars_glob_name2uid,
-#             devices_vars_info=problem.get_device_vars_dict()
-#             )
+results = RmsResults(
+            time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
+            rms_events_group_names = rms_events_group_names,
+            variables=problem.state_and_algebraic_vars,
+            uid2idx=problem.uid2idx_vars,
+            vars_glob_name2uid=problem.vars_glob_name2uid,
+            devices_vars_info=problem.get_device_vars_dict()
+            )
+
+xlim = options.simulation_time
 
 
+def series_from_var(var_name: str, block: Block):
+    var = find_name_in_block(var_name, block)
+    if var is None:
+        return None
+    return y[:, problem.get_var_idx(var)]
 
-#
-#
-#
-#
-# xlim = options.simulation_time
-#
-# omega = find_name_in_block("omega", genqec_mdl)
-# Pg = genqec_mdl.out_vars[0]
-# Qg = genqec_mdl.out_vars[1]
-# Ir = find_name_in_block("Ir", genqec_mdl)
-# Efd = find_name_in_block("Efd", genqec_mdl)
-# Te = find_name_in_block("Te", genqec_mdl)
-# Vm = find_name_in_block("Vm", genqec_mdl)
-#
-# u_gov1 = find_name_in_block("u_gov1", genqec_mdl)
-# y_subexciter = find_name_in_block("y_subexciter1", genqec_mdl)
-# y_exciter1 = find_name_in_block("y_exciter1", genqec_mdl)
-# y_exciter4 = find_name_in_block("y_exciter4", genqec_mdl)
-# Efe = find_name_in_block("Efe", genqec_mdl)
-# delta = find_name_in_block("delta", genqec_mdl)
-#
-# # Generator state variables
-# plt.plot(t, y[:, problem.get_var_idx(omega)], label="omega (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(delta)], label="delta (pu)")
-# # plt.plot(t, y[:, problem.get_var_idx(Vm)], label="Vm (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Pg)], label="P (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Qg)], label="Q (pu)")
-# # plt.plot(t, y[:, solver.get_var_idx(Ir)], label="Ir (pu)")
-#
-# plt.legend(loc='upper right', ncol=2)
-# plt.xlabel("Time (s)")
-# plt.ylabel("Values (pu)")
-# plt.xlim([0, xlim])
-# # plt.ylim([0.85, 1.15])
-# plt.grid(True)
-# plt.tight_layout()
-# plt.show()
-#
-#
-# Eq_prime = find_name_in_block("Eq_prime", genqec_mdl)
-# Ed_prime = find_name_in_block("Ed_prime", genqec_mdl)
-# Psiq_prime = find_name_in_block("Psiq_prime", genqec_mdl)
-# Psid_prime = find_name_in_block("Psid_prime", genqec_mdl)
-#
-# Ed1 = find_name_in_block("Ed1", genqec_mdl)
-# Eq1 = find_name_in_block("Eq1", genqec_mdl)
-#
-# # Generator state variables
-# plt.plot(t, y[:, problem.get_var_idx(Eq_prime)], label="Eq_prime (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Ed_prime)], label="Ed_prime (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Psiq_prime)], label="Eq_2prime (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Psid_prime)], label="Ed_2prime (pu)")
-#
-# plt.plot(t, y[:, problem.get_var_idx(Ed1)], label="Ed1 (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Eq1)], label="Eq1 (pu)")
-# plt.legend(loc='upper right', ncol=2)
-# plt.xlabel("Time (s)")
-# plt.ylabel("Values (pu)")
-# plt.xlim([0, xlim])
-# # plt.ylim([0.85, 1.15])
-# plt.grid(True)
-# plt.tight_layout()
-# plt.show()
 
-# Generator state variables
-# plt.plot(t, y[:, problem.get_var_idx(u_gov1)], label="u_gov1 (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(y_subexciter)], label="y_subexciter (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Efe)], label="Efe (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(y_exciter1)], label="y_exciter1 (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(y_exciter4)], label="y_exciter4 (pu)")
+omega = series_from_var("omega", genqec_mdl)
+delta = series_from_var("delta", genqec_mdl)
+pg = y[:, problem.get_var_idx(genqec_mdl.out_vars[0])]
+qg = y[:, problem.get_var_idx(genqec_mdl.out_vars[1])]
+pl = series_from_var("Pl", load_mdl)
+ql = series_from_var("Ql", load_mdl)
 
-# plt.legend(loc='upper right', ncol=2)
-# plt.xlabel("Time (s)")
-# plt.ylabel("Values (pu)")
-# plt.xlim([0, xlim])
-# # plt.ylim([0.85, 1.15])
-# plt.grid(True)
-# plt.tight_layout()
-# plt.show()
+fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
+
+if omega is not None:
+    axes[0].plot(t, omega, label="omega")
+if delta is not None:
+    axes[0].plot(t, delta, label="delta")
+axes[0].set_ylabel("Rotor")
+axes[0].grid(True)
+
+axes[1].plot(t, pg, label="Pg")
+axes[1].plot(t, qg, label="Qg")
+axes[1].set_ylabel("Generator (pu)")
+axes[1].grid(True)
+
+if pl is not None:
+    axes[2].plot(t, pl, label="Pl")
+if ql is not None:
+    axes[2].plot(t, ql, label="Ql")
+axes[2].set_ylabel("Load (pu)")
+axes[2].set_xlabel("Time (s)")
+axes[2].grid(True)
+
+for ax in axes:
+    ax.axvline(x=event.time, color="tab:red", linestyle="--", linewidth=1.0, label="event")
+    ax.set_xlim([0, xlim])
+
+for ax in axes:
+    ax.legend(loc="best")
+
+plt.tight_layout()
+plt.show()

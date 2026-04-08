@@ -84,8 +84,11 @@ def build_vsc_rms(vfactory: VarFactory, name:str = ''):
 
     #Active power is conserved Reactive isnt
     block.algebraic_eqs  = [
-        Pf - Pt - 0.0*(alpha1 + alpha2*Im + alpha3*Im**2),
+        Pf + Pt - 0.0*(alpha1 + alpha2*Im + alpha3*Im**2),
     ]
+    block.init_eqs = {
+        Pt: -Pf,
+    }
 
     block.external_mapping = {
         VarPowerFlowRefferenceType.Pf: Pf,

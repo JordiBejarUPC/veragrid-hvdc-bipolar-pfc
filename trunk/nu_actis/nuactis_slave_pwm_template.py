@@ -8,11 +8,14 @@ from VeraGridEngine.Utils.Symbolic import symbolic as sym
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.procedural_logic import picdro, sampled_value
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import ConverterControlType, DeviceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Templates.Rms.vsc_gfl import pll_transform_rms
 from trunk.nu_actis.nuactis_modulator_template import get_nuactis_modulator_rms_template
 
-def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model', bindings: dict | None = None) -> tuple[RmsModelTemplate, dict]:
+def get_slavepwm_model_emt_template(vf: VarFactory,
+                                    name: str = 'SlavePWM_Model',
+                                    bindings: dict | None = None,
+                                    q_ctrl_mode: float = 1.0) -> tuple[RmsModelTemplate, dict]:
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.NoDevice
     templ.name = name
@@ -160,8 +163,8 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
     # --- Block Assembly ---
     Vxy_To_dqFrame_0 = Block(
         algebraic_eqs=[
-            (vd - ((ur * cosphi) + (ui * sinphi))),
-            (vq - ((ui * cosphi) - (ur * sinphi))),
+            (vd - ((ui * cosphi) - (ur * sinphi))),
+            (vq - ((ur * cosphi) + (ui * sinphi))),
         ],
         algebraic_vars=[vd, vq],
         in_vars=[ur, ui, cosphi, sinphi],
@@ -170,8 +173,8 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
     )
     # --- Initial Equations and Guesses ---
     Vxy_To_dqFrame_0.init_eqs = {
-        vd: ((ur * cosphi) + (ui * sinphi)),
-        vq: (((-ur) * sinphi) + (ui * cosphi)),
+        vd: (((-ur) * sinphi) + (ui * cosphi)),
+        vq: ((ur * cosphi) + (ui * sinphi)),
     }
 
     Outer_ctrl_P_1 = Block(
@@ -208,13 +211,16 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
     }
     # --- Initial Equations and Guesses ---
     Outer_ctrl_P_1.init_eqs = {
-        Outer_Ctrl_P_wEPC_PI_V2_C: id,
+        C_id: id,
         Outer_Ctrl_P_wEPC_PI_V2_dx: C_id,
         id_ref: C_id,
         id_limit: vf.add_const(1.0, name=''),
         min_lim_p: (-id_limit),
-        # Pdc_ref: P_act,
-        # uDC_ref: uDC,
+        o5: (((-P_act) + Pdc_ref) + P_epc),
+        o4: (uDC - uDC_ref),
+        yi: ((Outer_Ctrl_P_wEPC_PI_V2_proc_select_0 * o5) + ((sym.Const(1.0) - Outer_Ctrl_P_wEPC_PI_V2_proc_select_0) * o4)),
+        Pdc_ref: P_act,
+        uDC_ref: uDC,
     }
     Outer_ctrl_P_1.procedural_logic = [
         sampled_value(output=Outer_Ctrl_P_wEPC_PI_V2_proc_select_0, source=o3),
@@ -233,6 +239,7 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
             (yiq - ((-o3q) + u)),
             (o5q - (o4q + iq_ref_PI)),
             (iq_ref_nonlimited - ((Outer_Ctrl_Q_proc_select_2 * o5q) + ((sym.Const(1.0) - Outer_Ctrl_Q_proc_select_2) * iq_ref_PI))),
+            (iq_ref - iq_ref_nonlimited),
             (iq_ref_PI - ((min_lim_q + ((((Outer_Ctrl_Q_Kp * yi_q) + (((min_lim_q - (Outer_Ctrl_Q_Kp * yi_q)) + ((Outer_Ctrl_Q_dx - (min_lim_q - (Outer_Ctrl_Q_Kp * yi_q))) * sym.heaviside((Outer_Ctrl_Q_dx - (min_lim_q - (Outer_Ctrl_Q_Kp * yi_q)))))) - ((Outer_Ctrl_Q_dx - (iq_limit - (Outer_Ctrl_Q_Kp * yi_q))) * sym.heaviside((Outer_Ctrl_Q_dx - (iq_limit - (Outer_Ctrl_Q_Kp * yi_q))))))) - min_lim_q) * sym.heaviside((((Outer_Ctrl_Q_Kp * yi_q) + (((min_lim_q - (Outer_Ctrl_Q_Kp * yi_q)) + ((Outer_Ctrl_Q_dx - (min_lim_q - (Outer_Ctrl_Q_Kp * yi_q))) * sym.heaviside((Outer_Ctrl_Q_dx - (min_lim_q - (Outer_Ctrl_Q_Kp * yi_q)))))) - ((Outer_Ctrl_Q_dx - (iq_limit - (Outer_Ctrl_Q_Kp * yi_q))) * sym.heaviside((Outer_Ctrl_Q_dx - (iq_limit - (Outer_Ctrl_Q_Kp * yi_q))))))) - min_lim_q)))) - ((((Outer_Ctrl_Q_Kp * yi_q) + (((min_lim_q - (Outer_Ctrl_Q_Kp * yi_q)) + ((Outer_Ctrl_Q_dx - (min_lim_q - (Outer_Ctrl_Q_Kp * yi_q))) * sym.heaviside((Outer_Ctrl_Q_dx - (min_lim_q - (Outer_Ctrl_Q_Kp * yi_q)))))) - ((Outer_Ctrl_Q_dx - (iq_limit - (Outer_Ctrl_Q_Kp * yi_q))) * sym.heaviside((Outer_Ctrl_Q_dx - (iq_limit - (Outer_Ctrl_Q_Kp * yi_q))))))) - iq_limit) * sym.heaviside((((Outer_Ctrl_Q_Kp * yi_q) + (((min_lim_q - (Outer_Ctrl_Q_Kp * yi_q)) + ((Outer_Ctrl_Q_dx - (min_lim_q - (Outer_Ctrl_Q_Kp * yi_q))) * sym.heaviside((Outer_Ctrl_Q_dx - (min_lim_q - (Outer_Ctrl_Q_Kp * yi_q)))))) - ((Outer_Ctrl_Q_dx - (iq_limit - (Outer_Ctrl_Q_Kp * yi_q))) * sym.heaviside((Outer_Ctrl_Q_dx - (iq_limit - (Outer_Ctrl_Q_Kp * yi_q))))))) - iq_limit))))),
             (min_lim_q - (-iq_limit)),
             (o3_q - Outer_Ctrl_Q_Q_ctrl_mode),
@@ -241,7 +248,7 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
             (o5_q - (Q_act - Q_ref)),
             (yi_q - ((Outer_Ctrl_Q_proc_select_3 * o5_q) + ((sym.Const(1.0) - Outer_Ctrl_Q_proc_select_3) * o2))),
         ],
-        algebraic_vars=[u_fault, o1q, o3q, o4q, yiq, o5q, iq_ref_nonlimited, iq_ref_PI, min_lim_q, o3_q, C_iq, o2, o5_q, yi_q],
+        algebraic_vars=[u_fault, o1q, o3q, o4q, yiq, o5q, iq_ref_nonlimited, iq_ref, iq_ref_PI, min_lim_q, o3_q, C_iq, o2, o5_q, yi_q],
         in_vars=[iq, Q_ref, Q_act, Vmt, Vac_ref, iq_limit],
         out_vars=[iq_ref],
         name='Outer_ctrl_Q'
@@ -251,11 +258,11 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
     Outer_ctrl_Q_2.event_dict = {
         Outer_Ctrl_Q_U_fault: vf.add_const(value=0.0, name='U_fault'),
         Outer_Ctrl_Q_K: vf.add_const(value=0.0, name='K'),
-        Outer_Ctrl_Q_Q_ctrl_mode: vf.add_const(None, name='Q_ctrl_mode'),
+        Outer_Ctrl_Q_Q_ctrl_mode: vf.add_const(value=q_ctrl_mode, name='Q_ctrl_mode'),
         Outer_Ctrl_Q_Kp: vf.add_const(value=0.1, name='Kp'),
         Outer_Ctrl_Q_Ki: vf.add_const(value=10.0, name='Ki'),
         Q_ref: Q_act,  # references are parameters of the controller
-        Vac_ref: Vmt,  # references are parameters of the controller
+        Vac_ref: u,  # references are parameters of the controller
     }
     # --- Retained Runtime Modes ---
     Outer_ctrl_Q_2.mode_dict = {
@@ -266,14 +273,25 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
     }
     # --- Initial Equations and Guesses ---
     Outer_ctrl_Q_2.init_eqs = {
-        o1q: ((Outer_Ctrl_Q_proc_select_1 * sym.Const(1.0))),
-        Outer_Ctrl_Q_C: iq,
+        C_iq: sym.hard_sat(iq, min_lim_q, iq_limit),
+        u_fault: Outer_Ctrl_Q_U_fault,
+        o1q: sym.Const(0.0),
+        o3q: Outer_Ctrl_Q_U_fault,
+        yiq: ((-o3q) + u),
+        o4q: (yiq * Outer_Ctrl_Q_K),
+        o5q: (o4q + iq_ref_PI),
+        iq_ref_nonlimited: ((Outer_Ctrl_Q_proc_select_2 * o5q) + ((sym.Const(1.0) - Outer_Ctrl_Q_proc_select_2) * iq_ref_PI)),
+        iq_ref: iq_ref_nonlimited,
         Outer_Ctrl_Q_dx: C_iq,
-        iq_ref: C_iq,
-        iq_limit: vf.add_const(1.0, name=''),
+        iq_ref_PI: C_iq,
+        iq_limit: vf.add_const(0.3, name=''),
         min_lim_q: (-iq_limit),
-        # Q_ref: Q_act,
-        # Vac_ref: u,
+        o3_q: Outer_Ctrl_Q_Q_ctrl_mode,
+        o2: (u - Vac_ref),
+        o5_q: (Q_act - Q_ref),
+        yi_q: ((Outer_Ctrl_Q_proc_select_3 * o5_q) + ((sym.Const(1.0) - Outer_Ctrl_Q_proc_select_3) * o2)),
+        Q_ref: Q_act,
+        Vac_ref: u,
     }
     Outer_ctrl_Q_2.procedural_logic = [
         picdro((u < u_fault), sym.Const(0.0), sym.Const(0.0), output=Outer_Ctrl_Q_proc_picdro_0),
@@ -284,9 +302,9 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
 
     Current_Limiter_3 = Block(
         algebraic_eqs=[
-            (o10_lim - ((sym.sqrt(((((i_mag_1 * i_mag_1) - (o2 * o2)) * sym.heaviside((((i_mag_1 * i_mag_1) - (o2 * o2)) - sym.Const(0.0)))) + (sym.Const(0.0) * (sym.Const(1) - sym.heaviside((((i_mag_1 * i_mag_1) - (o2 * o2)) - sym.Const(0.0))))))) * sym.heaviside((sym.Const(0.3) - sym.sqrt(((((i_mag_1 * i_mag_1) - (o2 * o2)) * sym.heaviside((((i_mag_1 * i_mag_1) - (o2 * o2)) - sym.Const(0.0)))) + (sym.Const(0.0) * (sym.Const(1) - sym.heaviside((((i_mag_1 * i_mag_1) - (o2 * o2)) - sym.Const(0.0)))))))))) + (sym.Const(0.3) * (sym.Const(1) - sym.heaviside((sym.Const(0.3) - sym.sqrt(((((i_mag_1 * i_mag_1) - (o2 * o2)) * sym.heaviside((((i_mag_1 * i_mag_1) - (o2 * o2)) - sym.Const(0.0)))) + (sym.Const(0.0) * (sym.Const(1) - sym.heaviside((((i_mag_1 * i_mag_1) - (o2 * o2)) - sym.Const(0.0))))))))))))),
+            (o10_lim - ((sym.sqrt(((((Current_Limiter_C * Current_Limiter_C) - (o2 * o2)) * sym.heaviside((((Current_Limiter_C * Current_Limiter_C) - (o2 * o2)) - sym.Const(0.0)))) + (sym.Const(0.0) * (sym.Const(1) - sym.heaviside((((Current_Limiter_C * Current_Limiter_C) - (o2 * o2)) - sym.Const(0.0))))))) * sym.heaviside((sym.Const(0.3) - sym.sqrt(((((Current_Limiter_C * Current_Limiter_C) - (o2 * o2)) * sym.heaviside((((Current_Limiter_C * Current_Limiter_C) - (o2 * o2)) - sym.Const(0.0)))) + (sym.Const(0.0) * (sym.Const(1) - sym.heaviside((((Current_Limiter_C * Current_Limiter_C) - (o2 * o2)) - sym.Const(0.0)))))))))) + (sym.Const(0.3) * (sym.Const(1) - sym.heaviside((sym.Const(0.3) - sym.sqrt(((((Current_Limiter_C * Current_Limiter_C) - (o2 * o2)) * sym.heaviside((((Current_Limiter_C * Current_Limiter_C) - (o2 * o2)) - sym.Const(0.0)))) + (sym.Const(0.0) * (sym.Const(1) - sym.heaviside((((Current_Limiter_C * Current_Limiter_C) - (o2 * o2)) - sym.Const(0.0))))))))))))),
             (o4_lim - iq_ref),
-            (o11 - sym.sqrt(((((i_mag_3 * i_mag_3) - (o5 * o5)) * sym.heaviside((((i_mag_3 * i_mag_3) - (o5 * o5)) - sym.Const(0.0)))) + (sym.Const(0.0) * (sym.Const(1) - sym.heaviside((((i_mag_3 * i_mag_3) - (o5 * o5)) - sym.Const(0.0)))))))),
+            (o11 - sym.sqrt(((((sym.Const(1.0) * sym.Const(1.0)) - (o5 * o5)) * sym.heaviside((((sym.Const(1.0) * sym.Const(1.0)) - (o5 * o5)) - sym.Const(0.0)))) + (sym.Const(0.0) * (sym.Const(1) - sym.heaviside((((sym.Const(1.0) * sym.Const(1.0)) - (o5 * o5)) - sym.Const(0.0)))))))),
             (o3_lim - id_ref),
             (o1 - Current_Limiter_proc_picdro_0),
             (o13 - Current_Limiter_C),
@@ -326,11 +344,27 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
     }
     # --- Initial Equations and Guesses ---
     Current_Limiter_3.init_eqs = {
-        o1: ((Current_Limiter_proc_select_1 * sym.Const(1.0)) + ((sym.Const(1.0) - Current_Limiter_proc_select_1) * sym.Const(0.0))),
-        id_ref_lmtd: id_ref,
-        iq_ref_lmtd: iq_ref,
+        Current_Limiter_C: vf.add_const(value=1.0, name='C_init'),
+        o1: sym.Const(0.0),
+        o3_lim: id_ref,
+        o4_lim: iq_ref,
+        o13: Current_Limiter_C,
+        o14: sym.Const(1.0),
+        o10_lim: sym.Const(0.3),
+        o11: sym.Const(1.0),
+        id_lim_cal: o11,
+        iq_lim_cal: o10_lim,
+        o12: id_lim_cal,
+        o15: iq_lim_cal,
+        id_ref_lmtd: o2,
+        iq_ref_lmtd: o4_lim,
         id_limit: Current_Limiter_C,
         iq_limit: iq_lim_cal,
+        Current_Limiter_U_sgnl: o1,
+        o6_lim: Current_Limiter_U_sgnl,
+        o7: Current_Limiter_U_sgnl,
+        o8: Current_Limiter_U_sgnl,
+        o9_lim: Current_Limiter_U_sgnl,
     }
     Current_Limiter_3.procedural_logic = [
         picdro((u < Current_Limiter_V_fault), sym.Const(0.0), sym.Const(0.0), output=Current_Limiter_proc_picdro_0),
@@ -374,7 +408,7 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
         Inner_Control_wL: vf.add_const(value=0.2, name='wL'),
         Inner_Control_Kp_q: vf.add_const(value=1.43, name='Kp_q'),
         Inner_Control_Ki_q: vf.add_const(value=30.0, name='Ki_q'),
-        Inner_Control_V_ac_base: vf.add_const(value=525.0, name='V_ac_base'),
+        Inner_Control_V_ac_base: vf.add_const(value=520.0, name='V_ac_base'),
         Inner_Control_U_dc_base: vf.add_const(value=1050.0, name='U_dc_base'),
     }
     # --- Initial Equations and Guesses ---
@@ -383,8 +417,14 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
         Inner_Control_xq: (((-vq) + vmq) - (Inner_Control_wL * id)),
         vmd: ((((Pmd * uDC) * Inner_Control_U_dc_base) * sym.sqrt(sym.Const(3.0))) / ((sym.Const(2.0) * sym.sqrt(sym.Const(2.0))) * Inner_Control_V_ac_base)),
         vmq: ((((Pmq * uDC) * Inner_Control_U_dc_base) * sym.sqrt(sym.Const(3.0))) / ((sym.Const(2.0) * sym.sqrt(sym.Const(2.0))) * Inner_Control_V_ac_base)),
-        id_ref_lmtd: id,
-        iq_ref_lmtd: iq,
+        yi1: (id_ref_lmtd - id),
+        yi_i: (iq_ref_lmtd - iq),
+        o10_i: (id * Inner_Control_wL),
+        o9_i: (iq * Inner_Control_wL),
+        o5_i: ((Inner_Control_Kp_d * yi1) + Inner_Control_xd),
+        o6_i: ((Inner_Control_Kp_q * yi_i) + Inner_Control_xq),
+        yi2: (vmd / uDC),
+        yi3: (vmq / uDC),
     }
 
     EPC_Block_5 = Block(
@@ -402,11 +442,11 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
     )
     # --- Parameter Values ---
     EPC_Block_5.event_dict = {
-        EPC_Control_Droop_VSC_MainFrame_dF_max: vf.add_const(None, name='dF_max'),
-        EPC_Control_Droop_VSC_MainFrame_G_dc: vf.add_const(None, name='G_dc'),
-        EPC_Control_Droop_VSC_MainFrame_df_trig: vf.add_const(None, name='df_trig'),
-        EPC_Control_Droop_VSC_MainFrame_dP_max_epc: vf.add_const(None, name='dP_max_epc'),
-        fe: vf.add_const(value = 50)
+        EPC_Control_Droop_VSC_MainFrame_dF_max: vf.add_const(50.0, name='dF_max'),
+        EPC_Control_Droop_VSC_MainFrame_G_dc: vf.add_const(0.0, name='G_dc'),
+        EPC_Control_Droop_VSC_MainFrame_df_trig: vf.add_const(0.008, name='df_trig'),
+        EPC_Control_Droop_VSC_MainFrame_dP_max_epc: vf.add_const(1.0, name='dP_max_epc'),
+        fe: vf.add_const(value = 1.0)
     }
     # --- Retained Runtime Modes ---
     EPC_Block_5.mode_dict = {
@@ -443,6 +483,15 @@ def get_slavepwm_model_emt_template(vf: VarFactory, name: str = 'SlavePWM_Model'
             P_act - (vq * iq + vd * id),
             Q_act - (vq * id - vd * iq),
         ],
+        init_eqs={
+            u: Vmf,
+            ur: Vmf * sym.cos(Vaf),
+            ui: Vmf * sym.sin(Vaf),
+            cosphi: sym.cos(theta),
+            sinphi: sym.sin(theta),
+            P_act: (vq * iq + vd * id),
+            Q_act: (vq * id - vd * iq),
+        },
         in_vars=[Vmf, Vaf, Vmt, Vat, uDC, id, iq],
         out_vars=[Pmd, Pmq],
         name='SlavePWM_Model'
@@ -473,7 +522,9 @@ def get_template(vf: VarFactory, name: str | None = None) -> RmsModelTemplate:
     return get_slavepwm_model_emt_template(vf=vf, name='SlavePWM_Model' if name is None else name)
 
 
-def build_trafo_slave_block(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def build_trafo_slave_block(vfactory: VarFactory,
+                            name: str = "",
+                            q_control_type: ConverterControlType = ConverterControlType.Qac) -> RmsModelTemplate:
     templ = RmsModelTemplate()
     templ.tpe = DeviceType.VscDevice
 
@@ -500,10 +551,13 @@ def build_trafo_slave_block(vfactory: VarFactory, name: str = "") -> RmsModelTem
 
     i_d = vfactory.add_var("id" + suffix)
     i_q = vfactory.add_var("iq" + suffix)
+    q_ctrl_mode = 1.0 if str(q_control_type) == str(ConverterControlType.Qac) else 0.0
+
     slave_ctrl_templ, internal = get_slavepwm_model_emt_template(
         vf=vfactory,
         name=f"SlavePWM_Model{suffix}",
         bindings={"Vmf": vm_f, "Vaf": va_f, "Vmt": vm_t, "Vat": va_t, "uDC": vdc, "id": i_d, "iq": i_q},
+        q_ctrl_mode=q_ctrl_mode,
     )
     slave_ctrl = slave_ctrl_templ.block
     modulator = get_nuactis_modulator_rms_template(vf=vfactory, name=f"NuActis_Modulator{suffix}").block
@@ -535,14 +589,16 @@ def build_trafo_slave_block(vfactory: VarFactory, name: str = "") -> RmsModelTem
             q_act + qt_vsc,
             v_d_c - md,
             v_q_c - mq,
+            v_d_c - vm_f * sym.sin(va_f - theta),
+            v_q_c - vm_f * sym.cos(va_f - theta),
             v_d_c - v_d + (r_traf * i_d + l_traf * dt_id - omega * l_traf * i_q),
             v_q_c - v_q + (r_traf * i_q + l_traf * dt_iq + omega * l_traf * i_d),
             i_mag - sym.sqrt((i_d * i_d) + (i_q * i_q) + eps),
-            pf_vsc - pt_vsc - (r_traf * i_mag * i_mag),
+            pf_vsc + pt_vsc + (r_traf * i_mag * i_mag),
             qf_vsc - qf,
             im_out - i_mag,
         ],
-        algebraic_vars=[pt_vsc, qt_vsc, pf_vsc, qf_vsc, i_mag, im_out, v_d_c, v_q_c],
+        algebraic_vars=[pt_vsc, qt_vsc, pf_vsc, qf_vsc, i_mag, im_out, v_d_c, v_q_c, i_d, i_q],
         diff_vars=[dt_id, dt_iq],
         in_vars=[vm_f, va_f, vm_t, va_t, vdc],
         out_vars=[pf_vsc, pt_vsc, qt_vsc, im_out, md, mq],
@@ -553,18 +609,25 @@ def build_trafo_slave_block(vfactory: VarFactory, name: str = "") -> RmsModelTem
             qf: vfactory.add_const(0.0),
         },
         init_eqs={
-            pf_vsc: pt_vsc + (r_traf * i_mag * i_mag),
-            qf_vsc: qf,
+            p_act: -pt_vsc,
+            q_act: -qt_vsc,
+            pf_vsc: -(pt_vsc + (r_traf * i_mag * i_mag)),
             theta: va_t,
             omega: vfactory.add_const(1),
             v_d: vfactory.add_const(0),
             v_q: vm_t,
-            i_q: -pt_vsc / v_q,
-            i_d: -qt_vsc / v_q,
+            i_q: (((-pt_vsc) * v_q) - ((-qt_vsc) * v_d)) / ((v_d * v_d) + (v_q * v_q) + eps),
+            i_d: (((-qt_vsc) * v_q) + ((-pt_vsc) * v_d)) / ((v_d * v_d) + (v_q * v_q) + eps),
+            pmd: v_d_c,
+            pmq: v_q_c,
             i_mag: sym.sqrt((i_d * i_d) + (i_q * i_q) + eps),
             im_out: i_mag,
-            v_d_c: md,
-            v_q_c: mq,
+            v_d_c: vm_f * sym.sin(va_f - theta),
+            v_q_c: vm_f * sym.cos(va_f - theta),
+        },
+        diff_init_eqs={
+            dt_id: sym.Const(0.0),
+            dt_iq: sym.Const(0.0),
         },
         children=[slave_ctrl, modulator],
         name="trafo_slave_block",

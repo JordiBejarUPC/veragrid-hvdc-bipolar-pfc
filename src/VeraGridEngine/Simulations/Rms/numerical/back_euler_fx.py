@@ -116,7 +116,7 @@ class BackEulerImplicitIntegration:
         :return:
         """
         converged: bool = False
-        well_initialized: bool  = True
+        well_initialized: bool = True
 
         x0: Vec = self.problem.get_x0()
 
@@ -136,128 +136,155 @@ class BackEulerImplicitIntegration:
         self.y[0, :] = x0.copy()
         dx = dx0.copy()
         dx_last = dx0.copy()
-        x_new = x0.copy()
         residual = 0.0
+
+        n_states: int = self.problem.get_states_number()
 
         for step_idx in range(self.steps):
 
-            converged = False
-            n_iter = 0
-            current_time = self.t[step_idx]
-            dx_last = dx 
-            self.problem.update_variable_params(t=current_time)
-
-            xn = self.y[step_idx, :]
-            tol = 1e-7
-
-            # Report progress
             self.problem.report_progress2(step_idx, self.steps)
 
-            while not converged and n_iter < self.max_iter_0:
-                if step_idx == 0:
-                    dx = dx0.copy()
+            t_current_macro: float = self.t[step_idx]
+            t_macro_target: float = t_current_macro + self.h
+
+            x_prev = self.y[step_idx, :].copy()
+            x_new = x_prev.copy()
+            t_local_prev = t_current_macro
+            is_first_local_step = True
+            dx_last = dx
+
+            while t_local_prev < (t_macro_target - 1e-15):
+                forced_event_time: float | None = self.problem.get_next_forced_event_time(
+                    t_local_prev,
+                    t_macro_target,
+                )
+
+                if forced_event_time is None:
+                    t_curr = t_macro_target
                 else:
-                    dx = self.problem.get_dx(x_new, xn, dx_last, self.h)
+                    t_curr = forced_event_time
 
-                # ---------------- rhs calculation ----------------
-                rhs_start = time.time()
-                rhs = self._rhs_implicit(x_new, dx, xn, self.h)
+                h_eff: float = t_curr - t_local_prev
+                if h_eff <= 0.0:
+                    raise RuntimeError(
+                        f"Invalid local step size h_eff={h_eff} while integrating RMS macro step {step_idx}."
+                    )
 
-                rhs_end = time.time()
-                timings["rhs_time"] += rhs_end - rhs_start
-                # -------------------------------------------------
+                self.problem.update_variable_params(t_local_prev)
+                self.problem.update(t_curr, x_new, self.problem._variable_parameters_values)
 
-                residual = np.linalg.norm(rhs, np.inf)
-                converged = residual < tol
-                Jf = self._jacobian_implicit(x_new, dx, self.h)
+                n_iter = 0
+                substep_converged = False
+                tol = 1e-7
 
-                ### print info ###
-                if step_idx == 0:
-                    Jf = self._jacobian_implicit(x_new, dx, self.h)
-                    delta = sp.linalg.spsolve(Jf, -rhs)
-                    if converged:
-                        print("System well initialized.")
-                        print(f"x is {x_new}")
+                while not substep_converged and n_iter < self.max_iter_0:
+                    if step_idx == 0 and is_first_local_step:
+                        dx = dx0.copy()
                     else:
-                        well_initialized = False
-                        print(f"System bad initialized. DAE resiudal is {residual}.")
-                        print(f'rhs is {rhs}')
-                        non_zero_indexes = np.where(np.abs(rhs) > 1e-7)[0]
-                        all_eq = self.problem._state_eqs + self.problem._algebraic_eqs
-                        print("eqs are")
-                        for i in non_zero_indexes:
-                            eq = all_eq[i]
-                            print(f"eq {eq} with error {rhs[i]}")
-                        exit()
+                        dx = self.problem.get_dx(x_new, x_prev, dx_last, h_eff)
 
+                    # ---------------- rhs calculation ----------------
+                    rhs_start = time.time()
+                    rhs = self._rhs_implicit(x_new, dx, x_prev, h_eff)
+                    rhs_end = time.time()
+                    timings["rhs_time"] += rhs_end - rhs_start
+                    # -------------------------------------------------
 
-                if not converged:
+                    residual = np.linalg.norm(rhs, np.inf)
+                    substep_converged = residual < tol
+                    Jf = self._jacobian_implicit(x_new, dx, h_eff)
 
-                    solved = False
-                    linear_start = time.time()
-                    delta = sp.linalg.spsolve(Jf, -rhs)
-                    linear_end = time.time()
-                    timings["linear_solver_time"] += linear_end - linear_start
-                    solved = np.all(np.isfinite(delta))
+                    ### print info ###
+                    if step_idx == 0 and is_first_local_step:
+                        delta = sp.linalg.spsolve(Jf, -rhs)
+                        if substep_converged:
+                            print("System well initialized.")
+                            print(f"x is {x_new}")
+                        else:
+                            well_initialized = False
+                            print(f"System bad initialized. DAE resiudal is {residual}.")
+                            print(f"rhs is {rhs}")
+                            non_zero_indexes = np.where(np.abs(rhs) > 1e-7)[0]
+                            all_eq = self.problem._state_eqs + self.problem._algebraic_eqs
+                            print("eqs are")
+                            for i in non_zero_indexes:
+                                eq = all_eq[i]
+                                print(f"eq {eq} with error {rhs[i]}")
+                            exit()
 
-                    if not solved:
-                        delta, *_ = sp.linalg.lsqr(Jf, -rhs)
+                    if not substep_converged:
+
+                        solved = False
+                        linear_start = time.time()
+                        delta = sp.linalg.spsolve(Jf, -rhs)
+                        linear_end = time.time()
+                        timings["linear_solver_time"] += linear_end - linear_start
                         solved = np.all(np.isfinite(delta))
-                        u, s, vh = np.linalg.svd(Jf.toarray() if sp.issparse(Jf) else Jf)
-                        singular_dirs = np.where(s < tol)[0]
-                        for i in singular_dirs:
-                            v = vh.T[:, i]  # variable-space vector
-                            abs_v = np.abs(v)
-                            dominant_idx = np.argsort(abs_v)[::-1][:5]  # top 5 vars
-                            print(f"\nSingular direction {i}, σ={s[i]:.3e}")
-                            for j in dominant_idx:
-                                if j < self.problem.get_algebraic_var_number():
-                                    algeb_vars = self.problem.get_algebraic_vars
-                                    var_name = algeb_vars[j].name
-                                    print(f"  {var_name:20s} {v[j]:+.3e}")
-                        print("Using LSQR")
-                        print(f"residual is {residual} for timestep {step_idx}")
 
-                    if not solved:
-                        nan_indices = np.where(np.isnan(rhs))[0]
-                        # nan_indices = np.where(np.abs(rhs) > 1e-2)[0]
-                        nan_eqs = [self.problem._algebraic_eqs[i] for i in nan_indices]
-                        print(f'Jf is {Jf}')
-                        raise ValueError(
-                            f"spsolve returned non-finite values (NaN or Inf).\n"
-                            f"delta = {delta}\n"
-                            f"rhs = {rhs}\n"
-                            f"Jacobian shape = {Jf.shape}\n"
-                            f"NaNs found at indices {nan_indices.tolist()} in equations:\n{nan_eqs}",
-                        )
+                        if not solved:
+                            delta, *_ = sp.linalg.lsqr(Jf, -rhs)
+                            solved = np.all(np.isfinite(delta))
+                            u, s, vh = np.linalg.svd(Jf.toarray() if sp.issparse(Jf) else Jf)
+                            singular_dirs = np.where(s < tol)[0]
+                            for i in singular_dirs:
+                                v = vh.T[:, i]  # variable-space vector
+                                abs_v = np.abs(v)
+                                dominant_idx = np.argsort(abs_v)[::-1][:5]  # top 5 vars
+                                print(f"\nSingular direction {i}, σ={s[i]:.3e}")
+                                for j in dominant_idx:
+                                    if j < self.problem.get_algebraic_var_number():
+                                        algeb_vars = self.problem.get_algebraic_vars
+                                        var_name = algeb_vars[j].name
+                                        print(f"  {var_name:20s} {v[j]:+.3e}")
+                            print("Using LSQR")
+                            print(f"residual is {residual} for timestep {step_idx}")
 
-                    if not solved:
-                        print("Failed to solve linear system even with regularization.")
-                        break
+                        if not solved:
+                            nan_indices = np.where(np.isnan(rhs))[0]
+                            # nan_indices = np.where(np.abs(rhs) > 1e-2)[0]
+                            nan_eqs = [self.problem._algebraic_eqs[i] for i in nan_indices]
+                            print(f'Jf is {Jf}')
+                            raise ValueError(
+                                f"spsolve returned non-finite values (NaN or Inf).\n"
+                                f"delta = {delta}\n"
+                                f"rhs = {rhs}\n"
+                                f"Jacobian shape = {Jf.shape}\n"
+                                f"NaNs found at indices {nan_indices.tolist()} in equations:\n{nan_eqs}",
+                            )
 
+                        if not solved:
+                            print("Failed to solve linear system even with regularization.")
+                            break
 
-                    x_new += delta
-                    n_iter += 1
+                        x_new += delta
+                        n_iter += 1
 
-            if converged:
+                if substep_converged:
+                    dx_last = dx.copy()
 
-                lag_update_start = time.time()
-                print(f'converged is {converged} at step {step_idx} and iter {n_iter}')
+                    x_prev = x_new.copy()
+                    t_local_prev = t_curr
+                    is_first_local_step = False
+                else:
+                    print(f"Failed to converge at step {step_idx} and n_iter is {n_iter}")
+                    print(f'Residual is {residual}')
+                    converged = False
+                    break
 
-                self.y[step_idx + 1, :] = x_new
-
-                self.t[step_idx + 1] = self.t[step_idx] + self.h
-
-                # add results to reduced results matrix
-                # self.y_red[step_idx + 1, :] = x_new[self.index_to_save] # only the indices of the variables that we want to save
-
-                dx_last = dx.copy()
-                lag_update_end = time.time()
-                timings["lag_update_time"] += lag_update_end - lag_update_start
-
-            else:
-                print(f"Failed to converge at step {step_idx} and n_iter is {n_iter}")
-                print(f'Residual is {residual}')
+            if not substep_converged:
                 break
+
+            lag_update_start = time.time()
+            print(f'converged is {True} at step {step_idx}')
+
+            self.y[step_idx + 1, :] = x_prev
+            self.t[step_idx + 1] = t_macro_target
+
+            # add results to reduced results matrix
+            # self.y_red[step_idx + 1, :] = x_prev[self.index_to_save] # only the indices of the variables that we want to save
+
+            lag_update_end = time.time()
+            timings["lag_update_time"] += lag_update_end - lag_update_start
+            converged = True
 
         return self.t, self.y, well_initialized, converged

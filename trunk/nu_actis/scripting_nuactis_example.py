@@ -143,7 +143,11 @@ lineB_mdl = get_line_rms_template(grid.rms_var_factory, name=lineB.name).block
 dc_line_mdl = get_dc_line_rms_template(grid.rms_var_factory, name=dc_line.name).block
 
 trafo_master_mdl = build_trafo_master_block(vfactory=grid.rms_var_factory, name=trafoA.name).block
-trafo_slave_mdl = build_trafo_slave_block(vfactory=grid.rms_var_factory, name=trafoB.name).block
+trafo_slave_mdl = build_trafo_slave_block(
+    vfactory=grid.rms_var_factory,
+    name=trafoB.name,
+    q_control_type=vsc_slave.control1,
+).block
 
 vsc_master_mdl = build_vsc_rms(vfactory=grid.rms_var_factory, name=vsc_master.name).block
 vsc_slave_mdl = build_vsc_rms(vfactory=grid.rms_var_factory, name=vsc_slave.name).block
@@ -170,8 +174,8 @@ dc_line.rms_model.connect([dc_vm_f, dc_vm_t], [bus3_vdc, bus4_vdc])
 # Connect master/slave trafo-control models to buses
 connect_rms_vsc_to_buses(
     vsc_model=trafoA.rms_model,
-    controlled_bus_model=bus2_1.rms_model,
-    grid_bus_model=bus2.rms_model,
+    controlled_bus_model=bus2.rms_model,
+    grid_bus_model=bus2_1.rms_model,
     dc_bus_model=bus3.rms_model,
 )
 connect_rms_vsc_to_buses(
@@ -184,11 +188,11 @@ connect_rms_vsc_to_buses(
 # Connect standalone VSC DC/link model to trafo-control outputs
 for vsc_dev, trafo_model in [(vsc_master, trafoA.rms_model), (vsc_slave, trafoB.rms_model)]:
     im_trafo = trafo_model.external_mapping[VarPowerFlowRefferenceType.Im]
-    pt_trafo = trafo_model.external_mapping[VarPowerFlowRefferenceType.Pt]
+    pf_trafo = trafo_model.external_mapping[VarPowerFlowRefferenceType.Pf]
 
     vsc_dev.rms_model.connect(
         [vsc_dev.rms_model.in_vars[0], vsc_dev.rms_model.in_vars[1]],
-        [im_trafo, pt_trafo],
+        [im_trafo, pf_trafo],
     )
 
 

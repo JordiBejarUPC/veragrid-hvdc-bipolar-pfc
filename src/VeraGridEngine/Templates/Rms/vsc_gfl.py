@@ -106,15 +106,17 @@ def park_transform_block(vfactory: VarFactory, v_abc: list[Var], theta: Var, mul
     return park_block, (x_d, x_q), aux_vars
 
 def pll_transform_rms(vfactory: VarFactory, Vm, Va, name:str = ''):
-    #Variables 
-    theta = Var('theta')
-    vd = Var('vd')
-    vq = Var('vq')
+    suffix = f"_{name}" if name else ""
 
-    #Parameters
-    Kp_pll = Var('Kp_pll')      
-    Ki_pll = Var('Ki_pll')        
-    fn = Var('fn')
+    # Variables
+    theta = vfactory.add_var(f'theta{suffix}')
+    vd = vfactory.add_var(f'vd{suffix}')
+    vq = vfactory.add_var(f'vq{suffix}')
+
+    # Parameters
+    Kp_pll = vfactory.add_var(f'Kp_pll{suffix}')
+    Ki_pll = vfactory.add_var(f'Ki_pll{suffix}')
+    fn = vfactory.add_var(f'fn{suffix}')
 
     event_dict = {
         fn: vfactory.add_const(50),
@@ -137,6 +139,11 @@ def pll_transform_rms(vfactory: VarFactory, Vm, Va, name:str = ''):
         ],
         algebraic_vars = [vd,vq],
         event_dict = event_dict,
+        init_eqs={
+            theta: Va,
+            vd: Vm * sym.sin(Va - theta),
+            vq: Vm * sym.cos(Va - theta),
+        },
         children = [PI_block]
     )
 

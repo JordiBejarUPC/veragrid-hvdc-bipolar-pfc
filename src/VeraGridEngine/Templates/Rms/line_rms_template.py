@@ -10,6 +10,7 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, cos, sin
+import VeraGridEngine.Utils.Symbolic.symbolic as sym
 
 
 def get_line_rms_template(vfactory: VarFactory, name="Line_rms_template") -> RmsModelTemplate:
@@ -102,6 +103,14 @@ def get_dc_line_rms_template(vfactory: VarFactory, name="DC_Line_rms_template") 
         Pf - Vdcf * If_dc,
         Pt + Vdct * If_dc,
     ]
+    templ.block.init_eqs = {
+        If_dc: (Vdcf - Vdct) / r,
+        Pf: Vdcf * If_dc,
+        Pt: -Vdct * If_dc,
+    }
+    templ.block.diff_init_eqs = {
+        dIf_dcdt: sym.Const(0.0),
+    }
 
     templ.block.external_mapping = {
         VarPowerFlowRefferenceType.Vmf: Vdcf,
