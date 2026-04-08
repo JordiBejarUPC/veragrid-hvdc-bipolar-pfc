@@ -239,8 +239,7 @@ def test_vsc_emt_passes_validation():
         vf=grid.var_factory,
         name=vsc.name,
     ).block
-    dc_load_r_pu = grid.Sbase / p_transfer_mw
-    dc_load_mdl = get_dc_load_emt_template(grid=grid, P_dc=dc_load.P, R_dc=dc_load_r_pu, name="dc_load_emt").block
+    dc_load_mdl = get_dc_load_emt_template(vf=grid.var_factory, name="dc_load_emt").block
 
     set_emt_model(device=gen1, model=gen_mdl, var_factory=grid.var_factory)
     set_emt_model(device=transformer, model=trafo_mdl, var_factory=grid.var_factory)

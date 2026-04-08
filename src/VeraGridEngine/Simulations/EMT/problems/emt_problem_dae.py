@@ -3892,7 +3892,17 @@ class EmtProblemDae(EmtProblemTemplate):
 
             self._assign_api_obj_param_if_present(load.emt_model, ParamPowerFlowRefferenceType.omega_base, w0)
         else:
-            pass
+            dc_p_value: float = load.P / sbase
+            dc_g_value: float = load.G / sbase
+
+            if dc_g_value == 0.0:
+                dc_p_value = 0.0
+                dc_g_value = load.P / sbase
+            else:
+                pass
+
+            self._assign_api_obj_param_if_present(load.emt_model, ParamPowerFlowRefferenceType.Pl0, dc_p_value)
+            self._assign_api_obj_param_if_present(load.emt_model, ParamPowerFlowRefferenceType.g, dc_g_value)
 
     def _assign_api_obj_mapping_generator(self, gen) -> None:
         """

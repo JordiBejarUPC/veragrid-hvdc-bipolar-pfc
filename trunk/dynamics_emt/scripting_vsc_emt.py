@@ -193,11 +193,8 @@ vsc_mdl = get_emt_ideal_converter(
 ).block
 
 # DC Load model (constant resistance load around the PF point)
-dc_load_r_pu = circuit.Sbase / p_transfer_mw
 dc_load_mdl = get_dc_load_emt_template(
-    grid=circuit,
-    P_dc=dc_load.P,
-    R_dc=dc_load_r_pu,
+    vf=circuit.var_factory,
     name="dc_load_emt"
 ).block
 

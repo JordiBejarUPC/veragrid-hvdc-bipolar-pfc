@@ -77,7 +77,7 @@ def build_grid() -> Tuple[gce.MultiCircuit, gce.Bus, gce.Bus, gce.Generator, gce
         Snom=grid.Sbase,
         freq=50.0,
         r1=0.001,
-        x1=0.3,
+        x1=0.4,
     )
     grid.add_generator(bus_ac, generator)
 
@@ -88,10 +88,10 @@ def build_grid() -> Tuple[gce.MultiCircuit, gce.Bus, gce.Bus, gce.Generator, gce
         bus_from=bus_dc,
         bus_to=bus_ac,
         rate=grid.Sbase,
-        control1=ConverterControlType.Qac,
-        control2=ConverterControlType.Vm_dc,
-        control1_val=q_transfer_mvar,
-        control2_val=1.0,
+        control1=ConverterControlType.Vm_dc,
+        control2=ConverterControlType.Qac,
+        control1_val=1.0,
+        control2_val=q_transfer_mvar,
     )
     grid.add_vsc(converter)
 
@@ -164,11 +164,8 @@ def attach_emt_models(
     vsc_mdl.set_parameter_in_model(var_name="aw_gain_pseudo_converter_emt", new_value=0.1)
     vsc_mdl.set_parameter_in_model(var_name="vdc_floor_pseudo_converter_emt", new_value=0.05)
 
-    dc_load_r_pu: float = grid.Sbase / float(dc_load.P)
     dc_load_mdl: Block = get_dc_load_emt_template(
-        grid=grid,
-        P_dc=dc_load.P,
-        R_dc=dc_load_r_pu,
+        vf=grid.var_factory,
         name="dc_r_load_emt",
     ).block
 
@@ -187,7 +184,7 @@ def build_power_flow_options() -> PowerFlowOptions:
         Power-flow options.
     """
     return PowerFlowOptions(
-        solver_type=SolverType.NR,
+        solver_type=SolverType.LM,
         retry_with_other_methods=True,
         verbose=False,
         tolerance=1e-6,
