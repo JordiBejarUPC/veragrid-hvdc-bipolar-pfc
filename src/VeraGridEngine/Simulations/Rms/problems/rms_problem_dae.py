@@ -80,7 +80,7 @@ class RmsProblemDae(RmsProblemTemplate):
         - Store residual equations
         - Store sparsity patterns
     """
-    VARS_NAME = "vars"
+    VARS_NAME = "vrs"
     VARIABLE_PARAMS_NAME = "vprms"
     CONSTANT_PARAMS_NAME = "cprms"
     DIFF_NAME = "diff"
@@ -304,7 +304,7 @@ class RmsProblemDae(RmsProblemTemplate):
                 mdl = elm.rms_model
 
                 # flatten model to collect all variables including those from child blocks
-                #mdl.unify_blocks()
+                # mdl.unify_blocks()
 
                 # get parameters from api object
                 elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha1]] = Const(elm.alpha1)
@@ -372,7 +372,7 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
 
                 # flatten model - variables already registered in first VSC loop above
-                #elm.rms_model.unify_blocks()
+                # elm.rms_model.unify_blocks()
 
                 # find init values for the variables of this model
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
@@ -596,7 +596,6 @@ class RmsProblemDae(RmsProblemTemplate):
                 eq = eq.simplify()
             self._stability_eqs.append(eq)
 
-        #
 
     def set_events_group(self, rms_events_group: RmsEventsGroup):
         """
@@ -736,6 +735,7 @@ class RmsProblemDae(RmsProblemTemplate):
             if v.uid in self._uid2idx_vars:
                 raise ValueError(f"State variable '{v.name}' (uid={v.uid}) is already registered in the system. "
                                  f"Previous device may have created a duplicate variable.")
+
             self._compiler_names_dict[v.uid] = f"{self.VARS_NAME}[{self._n_vars}]"
             self._alias_names_dict[v.uid] = f"{self.VARS_NAME}_{self._n_vars}"
             self._uid2idx_vars[v.uid] = self._n_vars
