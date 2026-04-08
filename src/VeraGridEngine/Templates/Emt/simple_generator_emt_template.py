@@ -510,8 +510,7 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
         Kp:         vf.add_const(2.0),
         Ki:         vf.add_const(2.0),
         v_f0:       vf.add_const(-0.000006702),
-        # init-only value that depends on other values.
-        Lmd:        vf.add_const(None),
+        Lmd: Ld - La,
         # init-only external auxiliary values
         phi_v: vf.add_const(None),
         phi: vf.add_const(None),
@@ -533,7 +532,6 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
 
     templ.block.init_eqs = {
         et: vf.add_const(0.0),
-        Lmd: Ld - La,
         omega: omega_ref,
         delta: sym.atan(
             ( Ra * Ipk * sym.sin(phi) - omega * (Lmq + La) * Ipk * sym.cos(phi)) /

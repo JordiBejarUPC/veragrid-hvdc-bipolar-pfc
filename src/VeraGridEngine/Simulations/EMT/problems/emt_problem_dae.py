@@ -32,7 +32,9 @@ from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt, init_explicit_common, build_symbolic_vector_single_equation_compiler, run_emt_native_initialization
+from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt,run_emt_native_initialization
+# from VeraGridEngine.Simulations.EMT.initialization_emt import init_explicit_common, build_symbolic_vector_single_equation_compiler
+from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import init_explicit_common, build_symbolic_vector_single_equation_compiler
 from VeraGridEngine.Utils.Symbolic.compiled_functions import get_compiled_functions_cache_stats
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_algebraic_vars
 from VeraGridEngine.IO.fmu.importer import (
@@ -677,12 +679,21 @@ class EmtProblemDae(EmtProblemTemplate):
 
         for br in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
             if br.emt_model.empty():
-                missing_models.append((br.name, "branch", f"bus_from={getattr(br, 'bus_from', '?').name}, bus_to={getattr(br, 'bus_to', '?').name}"))
+                missing_models.append((br.name, "branch", f"bus_from={br.bus_from.name}, bus_to={br.bus_to.name}"))
 
         for inj in self.grid.get_injection_devices_iter():
             if inj.emt_model.empty():
-                inj_bus_name = getattr(inj.bus, 'name', '?') if hasattr(inj, 'bus') else '?'
-                missing_models.append((inj.name, inj.device_type.value if hasattr(inj, 'device_type') else "injection", f"bus={inj_bus_name}"))
+                try:
+                    inj_bus_name = inj.bus.name
+                except AttributeError:
+                    inj_bus_name = '?'
+
+                try:
+                    inj_type = inj.device_type.value
+                except AttributeError:
+                    inj_type = "injection"
+
+                missing_models.append((inj.name, inj_type, f"bus={inj_bus_name}"))
 
         if missing_models:
             errors = []
@@ -746,99 +757,118 @@ class EmtProblemDae(EmtProblemTemplate):
         }
 
         for br in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-            if not hasattr(br, 'emt_model') or br.emt_model is None:
-                continue
-            if not hasattr(br, 'bus_from') or not hasattr(br, 'bus_to'):
-                continue
+            try:
+                br_emt_model = br.emt_model
+            except AttributeError:
+                br_emt_model = None
 
-            is_bergeron = br.emt_model.name == EmtLineTypes.Bergeron
-
-            if is_bergeron:
-                if hasattr(br, 'ys') and br.ys is not None:
-                    if br.ys.phN:
-                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_N)].add(f"branch_from:{br.name}")
-                        bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_N)].add(f"branch_to:{br.name}")
-                    else:
-                        pass
-
-                    if br.ys.phA:
-                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_A)].add(f"branch_from:{br.name}")
-                        bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_A)].add(f"branch_to:{br.name}")
-                    else:
-                        pass
-
-                    if br.ys.phB:
-                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_B)].add(f"branch_from:{br.name}")
-                        bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_B)].add(f"branch_to:{br.name}")
-                    else:
-                        pass
-
-                    if br.ys.phC:
-                        bus_phase_connections[(br.bus_from, VarPowerFlowRefferenceType.v_C)].add(f"branch_from:{br.name}")
-                        bus_phase_connections[(br.bus_to, VarPowerFlowRefferenceType.v_C)].add(f"branch_to:{br.name}")
-                    else:
-                        pass
-                else:
+            if br_emt_model is not None:
+                try:
+                    br_bus_from = br.bus_from
+                    br_bus_to = br.bus_to
+                except AttributeError:
                     pass
-
-                continue
-
-            for in_var in br.emt_model.in_vars:
-                if in_var.ref in branch_phase_refs:
-                    bus_phase = phase_ref_to_bus_phase[in_var.ref]
-
-                    if in_var.ref in {
-                        VarPowerFlowRefferenceType.vf_N,
-                        VarPowerFlowRefferenceType.vf_A,
-                        VarPowerFlowRefferenceType.vf_B,
-                        VarPowerFlowRefferenceType.vf_C,
-                    }:
-                        bus_phase_connections[(br.bus_from, bus_phase)].add(f"branch_from:{br.name}")
-                    elif in_var.ref in {
-                        VarPowerFlowRefferenceType.vt_N,
-                        VarPowerFlowRefferenceType.vt_A,
-                        VarPowerFlowRefferenceType.vt_B,
-                        VarPowerFlowRefferenceType.vt_C,
-                    }:
-                        bus_phase_connections[(br.bus_to, bus_phase)].add(f"branch_to:{br.name}")
-                    else:
-                        pass
-                elif in_var.ref in vsc_ac_phase_refs:
-                    if br.bus_to.is_dc:
-                        bus_phase_connections[(br.bus_from, in_var.ref)].add(f"branch_from:{br.name}")
-                    else:
-                        bus_phase_connections[(br.bus_to, in_var.ref)].add(f"branch_to:{br.name}")
                 else:
-                    pass
+                    is_bergeron = br_emt_model.name == EmtLineTypes.Bergeron
+
+                    if is_bergeron:
+                        try:
+                            br_ys = br.ys
+                        except AttributeError:
+                            br_ys = None
+
+                        if br_ys is not None:
+                            if br_ys.phN:
+                                bus_phase_connections[(br_bus_from, VarPowerFlowRefferenceType.v_N)].add(f"branch_from:{br.name}")
+                                bus_phase_connections[(br_bus_to, VarPowerFlowRefferenceType.v_N)].add(f"branch_to:{br.name}")
+                            else:
+                                pass
+
+                            if br_ys.phA:
+                                bus_phase_connections[(br_bus_from, VarPowerFlowRefferenceType.v_A)].add(f"branch_from:{br.name}")
+                                bus_phase_connections[(br_bus_to, VarPowerFlowRefferenceType.v_A)].add(f"branch_to:{br.name}")
+                            else:
+                                pass
+
+                            if br_ys.phB:
+                                bus_phase_connections[(br_bus_from, VarPowerFlowRefferenceType.v_B)].add(f"branch_from:{br.name}")
+                                bus_phase_connections[(br_bus_to, VarPowerFlowRefferenceType.v_B)].add(f"branch_to:{br.name}")
+                            else:
+                                pass
+
+                            if br_ys.phC:
+                                bus_phase_connections[(br_bus_from, VarPowerFlowRefferenceType.v_C)].add(f"branch_from:{br.name}")
+                                bus_phase_connections[(br_bus_to, VarPowerFlowRefferenceType.v_C)].add(f"branch_to:{br.name}")
+                            else:
+                                pass
+                        else:
+                            pass
+                    else:
+                        for in_var in br_emt_model.in_vars:
+                            if in_var.ref in branch_phase_refs:
+                                bus_phase = phase_ref_to_bus_phase[in_var.ref]
+
+                                if in_var.ref in {
+                                    VarPowerFlowRefferenceType.vf_N,
+                                    VarPowerFlowRefferenceType.vf_A,
+                                    VarPowerFlowRefferenceType.vf_B,
+                                    VarPowerFlowRefferenceType.vf_C,
+                                }:
+                                    bus_phase_connections[(br_bus_from, bus_phase)].add(f"branch_from:{br.name}")
+                                elif in_var.ref in {
+                                    VarPowerFlowRefferenceType.vt_N,
+                                    VarPowerFlowRefferenceType.vt_A,
+                                    VarPowerFlowRefferenceType.vt_B,
+                                    VarPowerFlowRefferenceType.vt_C,
+                                }:
+                                    bus_phase_connections[(br_bus_to, bus_phase)].add(f"branch_to:{br.name}")
+                                else:
+                                    pass
+                            elif in_var.ref in vsc_ac_phase_refs:
+                                if br_bus_to.is_dc:
+                                    bus_phase_connections[(br_bus_from, in_var.ref)].add(f"branch_from:{br.name}")
+                                else:
+                                    bus_phase_connections[(br_bus_to, in_var.ref)].add(f"branch_to:{br.name}")
+                            else:
+                                pass
+            else:
+                pass
 
         for inj in self.grid.get_injection_devices_iter():
-            if not hasattr(inj, 'emt_model') or inj.emt_model is None:
-                continue
-            if not hasattr(inj, 'bus'):
-                continue
+            try:
+                inj_emt_model = inj.emt_model
+            except AttributeError:
+                inj_emt_model = None
 
-            inj_bus = inj.bus
-            for in_var in inj.emt_model.in_vars:
-                if in_var.ref in ac_phases:
-                    bus_phase_connections[(inj_bus, in_var.ref)].add(f"injection:{inj.name}")
-                else:
+            if inj_emt_model is not None:
+                try:
+                    inj_bus = inj.bus
+                except AttributeError:
                     pass
+                else:
+                    for in_var in inj_emt_model.in_vars:
+                        if in_var.ref in ac_phases:
+                            bus_phase_connections[(inj_bus, in_var.ref)].add(f"injection:{inj.name}")
+                        else:
+                            pass
+            else:
+                pass
 
         floating_phases: List[str] = list()
         for bus in self.grid.buses:
-            if bus.is_dc:
-                continue
-
-            bus_out_refs = {v.ref for v in bus.emt_model.out_vars}
-            for phase in ac_phases:
-                connections = bus_phase_connections.get((bus, phase), set())
-                if phase in bus_out_refs and len(connections) < 2:
-                    floating_phases.append(
-                        f"  - Bus '{bus.name}' phase '{phase.value}' is floating "
-                        f"(connected to {len(connections)} element(s): {connections})"
-                    )
-                else:
-                    pass
+            if not bus.is_dc:
+                bus_out_refs = {v.ref for v in bus.emt_model.out_vars}
+                for phase in ac_phases:
+                    connections = bus_phase_connections.get((bus, phase), set())
+                    if phase in bus_out_refs and len(connections) < 2:
+                        floating_phases.append(
+                            f"  - Bus '{bus.name}' phase '{phase.value}' is floating "
+                            f"(connected to {len(connections)} element(s): {connections})"
+                        )
+                    else:
+                        pass
+            else:
+                pass
 
         if floating_phases:
             error_msg = (
@@ -1197,15 +1227,24 @@ class EmtProblemDae(EmtProblemTemplate):
                 vsc_index: int = vsc_idx_dict.get(br, -1)
 
                 if self.power_flow_results_3ph is not None:
-                    self._try_set_branch_pf_init(
-                        mdl=mdl,
-                        branch_index=branch_idx,
-                        f_bus_idx=f,
-                        t_bus_idx=t,
-                        sbase=grid.Sbase,
-                        is_vsc=is_vsc,
-                        vsc_index=vsc_index
-                    )
+                    if is_vsc and vsc_index >= 0:
+                        self._try_set_vsc_branch_pf_init(
+                            mdl=mdl,
+                            f_bus_idx=f,
+                            t_bus_idx=t,
+                            sbase=sbase,
+                            vsc_index=vsc_index,
+                        )
+                    else:
+                        self._try_set_branch_pf_init(
+                            mdl=mdl,
+                            branch_index=branch_idx,
+                            f_bus_idx=f,
+                            t_bus_idx=t,
+                            sbase=grid.Sbase,
+                            is_vsc=is_vsc,
+                            vsc_index=vsc_index
+                        )
                 else:
                     if self.power_flow_results is not None:
                         if self.options.verbose:
@@ -1822,11 +1861,16 @@ class EmtProblemDae(EmtProblemTemplate):
         IB = 0.0 + 0.0j if abs(VB) <= 1e-12 else np.conj(SB / VB)
         IC = 0.0 + 0.0j if abs(VC) <= 1e-12 else np.conj(SC / VC)
 
+        try:
+            pf_results_3ph_pfn_vsc = pf_results_3ph.Pfn_vsc[vsc_index]
+        except AttributeError:
+            pf_results_3ph_pfn_vsc = 0.0
+
         S_ac_total = SA + SB + SC
         S_dc_total = complex(
             (
                 pf_results_3ph.Pfp_vsc[vsc_index]
-                + (pf_results_3ph.Pfn_vsc[vsc_index] if hasattr(pf_results_3ph, "Pfn_vsc") else 0.0)
+                + pf_results_3ph_pfn_vsc
             ) / sbase,
             0.0,
         )
@@ -1944,9 +1988,9 @@ class EmtProblemDae(EmtProblemTemplate):
 
         self._set_vsc_pf_positive_sequence(
             mdl=mdl,
-            VA=VA,
-            VB=VB,
-            VC=VC,
+            VA=complex(VA),
+            VB=complex(VB),
+            VC=complex(VC),
             IA=IA,
             IB=IB,
             IC=IC,
@@ -1998,11 +2042,16 @@ class EmtProblemDae(EmtProblemTemplate):
         VC = V_bus * np.exp(+1j * alpha)
         VN = 0.0 + 0.0j
 
+        try:
+            pf_results_pfn_vsc = pf_results.Pfn_vsc[vsc_index]
+        except AttributeError:
+            pf_results_pfn_vsc = 0.0
+
         S_ac_total = pf_results.St_vsc[vsc_index] / sbase
         S_dc_total = complex(
             (
                 pf_results.Pfp_vsc[vsc_index]
-                + (pf_results.Pfn_vsc[vsc_index] if hasattr(pf_results, "Pfn_vsc") else 0.0)
+                + pf_results_pfn_vsc
             ) / sbase,
             0.0,
         )
@@ -2128,9 +2177,9 @@ class EmtProblemDae(EmtProblemTemplate):
 
         self._set_vsc_pf_positive_sequence(
             mdl=mdl,
-            VA=VA,
-            VB=VB,
-            VC=VC,
+            VA=complex(VA),
+            VB=complex(VB),
+            VC=complex(VC),
             IA=IA,
             IB=IB,
             IC=IC,
@@ -2183,15 +2232,6 @@ class EmtProblemDae(EmtProblemTemplate):
         :param sbase: Base power of the grid.
         :return: None
         """
-        if is_vsc and vsc_index >= 0:
-            self._try_set_vsc_branch_pf_init(
-                mdl=mdl,
-                f_bus_idx=f_bus_idx,
-                t_bus_idx=t_bus_idx,
-                sbase=sbase,
-                vsc_index=vsc_index,
-            )
-            return
 
         phases: List[str] = ["N", "A", "B", "C"]
 
@@ -2233,53 +2273,27 @@ class EmtProblemDae(EmtProblemTemplate):
             "C": VarPowerFlowRefferenceType.d_v_C_t,
         }
 
-        if is_vsc and vsc_index >= 0:
-            voltage_from_dict: Dict[str, Optional[np.ndarray]] = {
-                "N": None,
-                "A": None,
-                "B": None,
-                "C": None,
-            }
-            voltage_to_dict: Dict[str, Optional[np.ndarray]] = {
-                "N": None,
-                "A": self.power_flow_results_3ph.voltage_A,
-                "B": self.power_flow_results_3ph.voltage_B,
-                "C": self.power_flow_results_3ph.voltage_C,
-            }
 
-            sf_array_dict: Dict[str, Optional[np.ndarray]] = {
-                "N": None,
-                "A": None,
-                "B": None,
-                "C": None,
-            }
-            st_array_dict: Dict[str, Optional[np.ndarray]] = {
-                "N": None,
-                "A": self.power_flow_results_3ph.St_vsc_A,
-                "B": self.power_flow_results_3ph.St_vsc_B,
-                "C": self.power_flow_results_3ph.St_vsc_C,
-            }
-        else:
-            voltage_from_dict = {
-                "N": self.power_flow_results_3ph.voltage_N,
-                "A": self.power_flow_results_3ph.voltage_A,
-                "B": self.power_flow_results_3ph.voltage_B,
-                "C": self.power_flow_results_3ph.voltage_C,
-            }
-            voltage_to_dict = voltage_from_dict
+        voltage_from_dict = {
+            "N": self.power_flow_results_3ph.voltage_N,
+            "A": self.power_flow_results_3ph.voltage_A,
+            "B": self.power_flow_results_3ph.voltage_B,
+            "C": self.power_flow_results_3ph.voltage_C,
+        }
+        voltage_to_dict = voltage_from_dict
 
-            sf_array_dict = {
-                "N": None,
-                "A": self.power_flow_results_3ph.Sf_A,
-                "B": self.power_flow_results_3ph.Sf_B,
-                "C": self.power_flow_results_3ph.Sf_C,
-            }
-            st_array_dict = {
-                "N": None,
-                "A": self.power_flow_results_3ph.St_A,
-                "B": self.power_flow_results_3ph.St_B,
-                "C": self.power_flow_results_3ph.St_C,
-            }
+        sf_array_dict = {
+            "N": None,
+            "A": self.power_flow_results_3ph.Sf_A,
+            "B": self.power_flow_results_3ph.Sf_B,
+            "C": self.power_flow_results_3ph.Sf_C,
+        }
+        st_array_dict = {
+            "N": None,
+            "A": self.power_flow_results_3ph.St_A,
+            "B": self.power_flow_results_3ph.St_B,
+            "C": self.power_flow_results_3ph.St_C,
+        }
 
 
         sf_sum: complex = 0.0 + 0.0j
@@ -2381,31 +2395,11 @@ class EmtProblemDae(EmtProblemTemplate):
                 d_vt: float = omega_base * np.sqrt(2.0) * np.real(vt_ph)
                 self.set_external_param(mdl, d_vt_key, d_vt)
 
-        if is_vsc and vsc_index >= 0:
-            pf_dc = complex(self.power_flow_results_3ph.Pfp_vsc[vsc_index] / sbase, 0.0)
-            pt_ac = (
-                self.power_flow_results_3ph.St_vsc_A[vsc_index]
-                + self.power_flow_results_3ph.St_vsc_B[vsc_index]
-                + self.power_flow_results_3ph.St_vsc_C[vsc_index]
-            ) / sbase
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pf, value=float(np.real(pf_dc)))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qf, value=float(np.imag(pf_dc)))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pt, value=float(np.real(pt_ac)))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qt, value=float(np.imag(pt_ac)))
-        else:
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pf, value=float(np.real(sf_sum)))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qf, value=float(np.imag(sf_sum)))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pt, value=float(np.real(st_sum)))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qt, value=float(np.imag(st_sum)))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pf, value=float(np.real(sf_sum)))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qf, value=float(np.imag(sf_sum)))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Pt, value=float(np.real(st_sum)))
+        self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.Qt, value=float(np.imag(st_sum)))
 
-        if is_vsc and vsc_index >= 0:
-            pt_ac = (
-                self.power_flow_results_3ph.St_vsc_A[vsc_index]
-                + self.power_flow_results_3ph.St_vsc_B[vsc_index]
-                + self.power_flow_results_3ph.St_vsc_C[vsc_index]
-            ) / sbase
-            P_vsc = -float(np.real(pt_ac))
-            self.set_if_exists(mdl=mdl, key=VarPowerFlowRefferenceType.P, value=P_vsc)
 
     def _try_set_branch_pf_init_balanced(
             self,
@@ -2505,10 +2499,15 @@ class EmtProblemDae(EmtProblemTemplate):
         v_t_bus: CxVec = pf_results.voltage[t_bus_idx]
 
         if is_vsc and vsc_index >= 0:
+            try:
+                pf_results_pfn_vsc = pf_results.Pfn_vsc[vsc_index]
+            except AttributeError:
+                pf_results_pfn_vsc = 0.0
+
             sf_total = complex(
                 (
                     pf_results.Pfp_vsc[vsc_index]
-                    + (pf_results.Pfn_vsc[vsc_index] if hasattr(pf_results, "Pfn_vsc") else 0.0)
+                    + pf_results_pfn_vsc
                 ) / sbase,
                 0.0,
             )

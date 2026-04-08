@@ -228,78 +228,78 @@ t, y, well_initialized, converged = solver.simulate()
 #
 #
 #
-# xlim = options.simulation_time
-#
-# omega = find_name_in_block("omega", genqec_mdl)
-# Pg = genqec_mdl.out_vars[0]
-# Qg = genqec_mdl.out_vars[1]
-# Ir = find_name_in_block("Ir", genqec_mdl)
-# Efd = find_name_in_block("Efd", genqec_mdl)
-# Te = find_name_in_block("Te", genqec_mdl)
-# Vm = find_name_in_block("Vm", genqec_mdl)
-#
-# u_gov1 = find_name_in_block("u_gov1", genqec_mdl)
-# y_subexciter = find_name_in_block("y_subexciter1", genqec_mdl)
-# y_exciter1 = find_name_in_block("y_exciter1", genqec_mdl)
-# y_exciter4 = find_name_in_block("y_exciter4", genqec_mdl)
-# Efe = find_name_in_block("Efe", genqec_mdl)
-# delta = find_name_in_block("delta", genqec_mdl)
-#
-# # Generator state variables
-# plt.plot(t, y[:, problem.get_var_idx(omega)], label="omega (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(delta)], label="delta (pu)")
-# # plt.plot(t, y[:, problem.get_var_idx(Vm)], label="Vm (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Pg)], label="P (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Qg)], label="Q (pu)")
-# # plt.plot(t, y[:, solver.get_var_idx(Ir)], label="Ir (pu)")
-#
-# plt.legend(loc='upper right', ncol=2)
-# plt.xlabel("Time (s)")
-# plt.ylabel("Values (pu)")
-# plt.xlim([0, xlim])
-# # plt.ylim([0.85, 1.15])
-# plt.grid(True)
-# plt.tight_layout()
-# plt.show()
-#
-#
-# Eq_prime = find_name_in_block("Eq_prime", genqec_mdl)
-# Ed_prime = find_name_in_block("Ed_prime", genqec_mdl)
-# Psiq_prime = find_name_in_block("Psiq_prime", genqec_mdl)
-# Psid_prime = find_name_in_block("Psid_prime", genqec_mdl)
-#
-# Ed1 = find_name_in_block("Ed1", genqec_mdl)
-# Eq1 = find_name_in_block("Eq1", genqec_mdl)
-#
-# # Generator state variables
-# plt.plot(t, y[:, problem.get_var_idx(Eq_prime)], label="Eq_prime (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Ed_prime)], label="Ed_prime (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Psiq_prime)], label="Eq_2prime (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Psid_prime)], label="Ed_2prime (pu)")
-#
-# plt.plot(t, y[:, problem.get_var_idx(Ed1)], label="Ed1 (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Eq1)], label="Eq1 (pu)")
-# plt.legend(loc='upper right', ncol=2)
-# plt.xlabel("Time (s)")
-# plt.ylabel("Values (pu)")
-# plt.xlim([0, xlim])
-# # plt.ylim([0.85, 1.15])
-# plt.grid(True)
-# plt.tight_layout()
-# plt.show()
+xlim = options.simulation_time
+
+omega = find_name_in_block("omega", genqec_mdl)
+Pg = genqec_mdl.out_vars[0]
+Qg = genqec_mdl.out_vars[1]
+Ir = find_name_in_block("Ir", genqec_mdl)
+Efd = find_name_in_block("Efd", genqec_mdl)
+Te = find_name_in_block("Te", genqec_mdl)
+Vm = find_name_in_block("Vm", genqec_mdl)
+
+u_gov1 = find_name_in_block("u_gov1", genqec_mdl)
+y_subexciter = find_name_in_block("y_subexciter1", genqec_mdl)
+y_exciter1 = find_name_in_block("y_exciter1", genqec_mdl)
+y_exciter4 = find_name_in_block("y_exciter4", genqec_mdl)
+Efe = find_name_in_block("Efe", genqec_mdl)
+delta = find_name_in_block("delta", genqec_mdl)
 
 # Generator state variables
-# plt.plot(t, y[:, problem.get_var_idx(u_gov1)], label="u_gov1 (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(y_subexciter)], label="y_subexciter (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(Efe)], label="Efe (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(y_exciter1)], label="y_exciter1 (pu)")
-# plt.plot(t, y[:, problem.get_var_idx(y_exciter4)], label="y_exciter4 (pu)")
+plt.plot(t, y[:, problem.get_var_idx(omega)], label="omega (pu)")
+plt.plot(t, y[:, problem.get_var_idx(delta)], label="delta (pu)")
+# plt.plot(t, y[:, problem.get_var_idx(Vm)], label="Vm (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Pg)], label="P (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Qg)], label="Q (pu)")
+# plt.plot(t, y[:, solver.get_var_idx(Ir)], label="Ir (pu)")
 
-# plt.legend(loc='upper right', ncol=2)
-# plt.xlabel("Time (s)")
-# plt.ylabel("Values (pu)")
-# plt.xlim([0, xlim])
-# # plt.ylim([0.85, 1.15])
-# plt.grid(True)
-# plt.tight_layout()
-# plt.show()
+plt.legend(loc='upper right', ncol=2)
+plt.xlabel("Time (s)")
+plt.ylabel("Values (pu)")
+plt.xlim([0, xlim])
+# plt.ylim([0.85, 1.15])
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+
+Eq_prime = find_name_in_block("Eq_prime", genqec_mdl)
+Ed_prime = find_name_in_block("Ed_prime", genqec_mdl)
+Psiq_prime = find_name_in_block("Psiq_prime", genqec_mdl)
+Psid_prime = find_name_in_block("Psid_prime", genqec_mdl)
+
+Ed1 = find_name_in_block("Ed1", genqec_mdl)
+Eq1 = find_name_in_block("Eq1", genqec_mdl)
+
+# Generator state variables
+plt.plot(t, y[:, problem.get_var_idx(Eq_prime)], label="Eq_prime (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Ed_prime)], label="Ed_prime (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Psiq_prime)], label="Eq_2prime (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Psid_prime)], label="Ed_2prime (pu)")
+
+plt.plot(t, y[:, problem.get_var_idx(Ed1)], label="Ed1 (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Eq1)], label="Eq1 (pu)")
+plt.legend(loc='upper right', ncol=2)
+plt.xlabel("Time (s)")
+plt.ylabel("Values (pu)")
+plt.xlim([0, xlim])
+# plt.ylim([0.85, 1.15])
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+# Generator state variables
+plt.plot(t, y[:, problem.get_var_idx(u_gov1)], label="u_gov1 (pu)")
+plt.plot(t, y[:, problem.get_var_idx(y_subexciter)], label="y_subexciter (pu)")
+plt.plot(t, y[:, problem.get_var_idx(Efe)], label="Efe (pu)")
+plt.plot(t, y[:, problem.get_var_idx(y_exciter1)], label="y_exciter1 (pu)")
+plt.plot(t, y[:, problem.get_var_idx(y_exciter4)], label="y_exciter4 (pu)")
+
+plt.legend(loc='upper right', ncol=2)
+plt.xlabel("Time (s)")
+plt.ylabel("Values (pu)")
+plt.xlim([0, xlim])
+# plt.ylim([0.85, 1.15])
+plt.grid(True)
+plt.tight_layout()
+plt.show()
