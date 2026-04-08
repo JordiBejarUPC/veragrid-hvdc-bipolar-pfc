@@ -50,6 +50,10 @@ def get_shunt_r_3ph_emt_template(vf: VarFactory, name: str = "Shunt_R_3ph") -> E
 
     Vnom = vf.add_var("Vnom_" + name)
     templ.block.event_dict[Vnom] = vf.add_const(1.0)
+    templ.block.event_dict[R_A] = Vnom ** 2 / Pl0_A
+    templ.block.event_dict[R_B] = Vnom ** 2 / Pl0_B
+    templ.block.event_dict[R_C] = Vnom ** 2 / Pl0_C
+
 
     # Algebraic injected currents
     i_A = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowRefferenceType.i_A)
@@ -102,11 +106,7 @@ def get_shunt_r_3ph_emt_template(vf: VarFactory, name: str = "Shunt_R_3ph") -> E
         ParamPowerFlowRefferenceType.Ql0_C: None,
     }
 
-    templ.block.init_eqs = {
-        R_A: Vnom**2 / Pl0_A,
-        R_B: Vnom**2 / Pl0_B,
-        R_C: Vnom**2 / Pl0_C,
-    }
+
 
     return templ
 
@@ -135,6 +135,7 @@ def get_shunt_r_1ph_emt_template(vf: VarFactory, name: str = "Shunt_R_1ph") -> E
 
     Vnom = vf.add_var("Vnom_" + name)
     templ.block.event_dict[Vnom] = vf.add_const(1.0)
+    templ.block.event_dict[R_A] = Vnom ** 2 / Pl0_A
 
     # Algebraic injected currents
     i_A = vf.add_var(name=f"i_A_{name}", reference=VarPowerFlowRefferenceType.i_A)
@@ -183,9 +184,7 @@ def get_shunt_r_1ph_emt_template(vf: VarFactory, name: str = "Shunt_R_1ph") -> E
         ParamPowerFlowRefferenceType.Ql0_C: None,
     }
 
-    templ.block.init_eqs = {
-        R_A: Vnom**2 / Pl0_A,
-    }
+
 
     return templ
 
@@ -207,6 +206,11 @@ def get_shunt_l_3ph_emt_template(vf: VarFactory, name: str = "Shunt_L_3ph") -> E
     w_base = vf.add_var("w_base_" + name)
     Vnom = vf.add_var("Vnom_" + name)
     templ.block.event_dict[Vnom] = vf.add_const(1.0)
+    # L = V^2 / (Q * w)
+    templ.block.event_dict[L_A] = Vnom ** 2 / (Ql0_A * w_base)
+    templ.block.event_dict[L_B] = Vnom ** 2 / (Ql0_A * w_base)
+    templ.block.event_dict[L_C] = Vnom ** 2 / (Ql0_A * w_base)
+
 
     # State vars (injected currents)
     i_A, i_B, i_C = [vf.add_var(f"i_{p}_{name}") for p in ["A", "B", "C"]]
@@ -233,12 +237,7 @@ def get_shunt_l_3ph_emt_template(vf: VarFactory, name: str = "Shunt_L_3ph") -> E
         ParamPowerFlowRefferenceType.Ql0_C: Ql0_C,
     }
 
-    # L = V^2 / (Q * w)
-    templ.block.init_eqs = {
-        L_A: Vnom ** 2 / (Ql0_A * w_base),
-        L_B: Vnom ** 2 / (Ql0_B * w_base),
-        L_C: Vnom ** 2 / (Ql0_C * w_base),
-    }
+
 
     templ.block.diff_init_eqs = {
         d_i_A: vf.add_const(0.0),
@@ -278,6 +277,10 @@ def get_shunt_c_3ph_emt_template(vf: VarFactory, name: str = "Shunt_C_3ph") -> E
     w_base = vf.add_var("w_base_" + name)
     Vnom = vf.add_var("Vnom_" + name)
     templ.block.event_dict[Vnom] = vf.add_const(1.0)
+    # C = Q / (V^2 * w)
+    templ.block.event_dict[C_A] = Ql0_A / (Vnom ** 2 * w_base)
+    templ.block.event_dict[C_B] = Ql0_B / (Vnom ** 2 * w_base)
+    templ.block.event_dict[C_C] = Ql0_C / (Vnom ** 2 * w_base)
 
     i_A, i_B, i_C = [vf.add_var(f"i_{p}_{name}") for p in ["A", "B", "C"]]
     vCapA, vCapB, vCapC = [vf.add_var(f"vCap{p}_{name}") for p in ["A", "B", "C"]]
@@ -309,12 +312,7 @@ def get_shunt_c_3ph_emt_template(vf: VarFactory, name: str = "Shunt_C_3ph") -> E
         ParamPowerFlowRefferenceType.Ql0_C: Ql0_C,
     }
 
-    # C = Q / (V^2 * w)
-    templ.block.init_eqs = {
-        C_A: Ql0_A / (Vnom ** 2 * w_base),
-        C_B: Ql0_B / (Vnom ** 2 * w_base),
-        C_C: Ql0_C / (Vnom ** 2 * w_base),
-    }
+
 
     templ.block.diff_init_eqs = {
         dvCapA: vf.add_const(0.0),

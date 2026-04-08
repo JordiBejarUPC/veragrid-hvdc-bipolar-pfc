@@ -9,36 +9,11 @@ Small Signal Analysis for Phasor-based RMS Grid.
 This script creates the phasor problem manually and injects it into the SmallSignalStabilityRmsDriver.
 """
 from typing import Tuple, Any, List
-
-#import sys
 import numpy as np
 from PolynomialMatrixBuilder import PolynomialMatrixBuilder
 from matplotlib import pyplot as plt
 import VeraGridEngine.api as vge
-from VeraGridEngine import to_implicit
 
-    #print("\n" + "="*60)
-    #print("INSPECCIÓN EXACTA DE LA MATRIZ E (ESTADOS REALES)")
-    #print("="*60)
-    #print(f"[+] Estados con dinámica ACTIVA (Rango aportado: {len(active_vars)})")
-    #for state in active_vars:
-    #    print(f"    ✓ {state}")
-
-    #print("="*60 + "\n")
-
-def inspect_algebraic_states(builder_obj: PolynomialMatrixBuilder, e_matrix: np.ndarray) -> None:
-    """
-    Finds and prints the variables that have become algebraic (zeros on the diagonal of E).
-    """
-    zero_tolerance = 1e-10
-    algebraic_vars: List[str] = []
-
-    for i, symbol in enumerate(builder_obj.all_symbols):
-        if abs(e_matrix[i, i]) < zero_tolerance:
-            algebraic_vars.append(str(symbol.name))
-
-    print(f"[DEBUG] Found {len(algebraic_vars)} algebraic/dependent variables in E.")
-    print(f"[DEBUG] Affected variables: {algebraic_vars}")
 
 def define_problem():
     """Creates the grid, runs the power flow, and returns the phasor problem."""
@@ -126,25 +101,11 @@ def define_problem():
 
     return phasor_problem
 
-
-def solve_problem(phasor_problem):
-    # 1. Initialize the builder.
-    # The __init__ will trigger the lifting and register auxiliary symbols.
-    builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(
-        problem=phasor_problem,
-        verbose=False
-    )
-
-    # --- ESCÁNER DE DEBUG ---
-    print("\n[DEBUG] Buscando el escondite de los parámetros...")
-    atributos = [a for a in dir(phasor_problem) if not a.startswith('_')]
-    print(f"Atributos disponibles en phasor_problem: {atributos}")
-
-def solve_problem(problem: Any) -> None:
-    print("\n[4] Rebuilding equations and extracting exact physics...")
-    builder = PolynomialMatrixBuilder(problem=problem, verbose=True)
-    v_dict: dict  = dict()
-
+def op_extraction(problem: vge.RmsProblemPhasor) -> dict:
+    """
+    Returns the operating point dictionary from a defined VeraGrid problem.
+    """
+    v_dict: dict = dict()
     def safe_get_value(val):
         try:
             return float(val)
@@ -165,7 +126,6 @@ def solve_problem(problem: Any) -> None:
         pass
 
     # 4. EXTRACTION FROM THE PHOTO PATHS
-    # Based on your screenshot: _variable_parameters and _variable_parameters_values
     if hasattr(problem, '_variable_parameters') and hasattr(problem, '_variable_parameters_values'):
         names = problem._variable_parameters
         values = problem._variable_parameters_values
@@ -185,9 +145,8 @@ def solve_problem(problem: Any) -> None:
             if val is not None:
                 v_dict[s_name] = val
 
+    return v_dict
     # 5. LIFTING SUPPORT AND DEFAULT VALUES
-    missing: list = list()
-
     for sym in builder.all_symbols:
         s_name = str(sym.name)
         if s_name not in v_dict:
@@ -198,27 +157,17 @@ def solve_problem(problem: Any) -> None:
                 base = s_name.split('_mulaux')[0]
                 v_dict[s_name] = v_dict[base] if base in v_dict else 1.0
             else:
-                missing.append(s_name)
                 v_dict[s_name] = 0.0
 
-    if missing:
-        print(f"[!] Still missing: {missing}")
 
-    print("[*] Linearizing model with real parameters...")
+
+def solve_problem(problem: Any) -> None:
+    print("\n[4] Rebuilding equations and extracting exact physics...")
+    builder = PolynomialMatrixBuilder(problem=problem, verbose=True)
+    v_dict: dict = op_extraction(problem=problem)
+
+    print("\n[*] Linearizing model with real parameters...")
     builder.linearize(v_dict=v_dict)
-
-
-    A_mat = builder.A.toarray() if hasattr(builder.A, 'toarray') else np.array(builder.A)
-    E_mat = builder.E.toarray() if hasattr(builder.E, 'toarray') else np.array(builder.E)
-
-    builder.A = A_mat
-    builder.E = E_mat
-    # ---------------------------------
-
-    if hasattr(builder, 'E_matrix') and builder.E_matrix is not None:
-        inspect_algebraic_states(builder, builder.E_matrix)
-
-    #inspect_e_matrix_derivatives_v2(builder, problem)
     res = builder.compute_stability()
 
     eigenvalues = res[0]
@@ -238,10 +187,11 @@ if __name__ == "__main__":
     problem = define_problem()
     calculated_evs = []
     if problem:
-        # Obtenemos los autovalores reales del cálculo del Builder
         calculated_evs = solve_problem(problem)
 
-    # La lista de referencia que proporcionaste
+    import matplotlib.pyplot as plt
+    import numpy as np
+
     reference_evs = [complex(x) for x in
                      ["(-20.000000001+0j)", "(-10.000000001+0j)", "(-50.00000013636582+0j)", "(-49.9999998638391+0j)",
                       "(-12.168789431034414+0j)", "(-10.142655446318065+0j)", "(-6.854035294550814+0j)",
@@ -254,27 +204,105 @@ if __name__ == "__main__":
                       "(-0.39635072300328184+0j)", "(-10.00000000099956+0j)", "(-1.0000000000000023e-09+0j)",
                       "(-9.999999999999996e-10+0j)", "(-9.999999999999992e-10+0j)"]]
 
-    plt.figure(figsize=(10, 6))
+    from scipy.optimize import linear_sum_assignment
 
-    # 1. Graficar los autovalores de REFERENCIA (Cruces pequeñas)
-    plt.scatter(np.real(reference_evs), np.imag(reference_evs),
-                color='gray', marker='x', alpha=0.5, label='Referencia')
+    # --- LOGICA DE EMPAREJAMIENTO (Hungarian Algorithm) ---
+    finite_evs = calculated_evs[np.isfinite(calculated_evs) & (np.abs(calculated_evs) < 1e6)] if len(
+        calculated_evs) > 0 else []
 
-    # 2. Graficar los autovalores CALCULADOS (Cruces grandes de color)
-    if len(calculated_evs) > 0:
-        # Filtramos infinitos para que no rompan el zoom del gráfico
-        finite_evs = calculated_evs[np.isfinite(calculated_evs) & (np.abs(calculated_evs) < 1e6)]
+    tol = 0.06  # Tolerancia para considerar que coinciden
+    matched_calc = []
+    unmatched_calc = []
+    unmatched_ref = list(reference_evs)
 
-        plt.scatter(np.real(finite_evs), np.imag(finite_evs),
+    if len(finite_evs) > 0 and len(reference_evs) > 0:
+        # 1. Crear matriz de distancias (costos)
+        cost_matrix = np.zeros((len(finite_evs), len(reference_evs)))
+        for i, c_ev in enumerate(finite_evs):
+            for j, r_ev in enumerate(reference_evs):
+                cost_matrix[i, j] = np.abs(c_ev - r_ev)
+
+        # 2. Asignación óptima
+        row_ind, col_ind = linear_sum_assignment(cost_matrix)
+
+        # 3. Filtrar por tolerancia
+        for i, j in zip(row_ind, col_ind):
+            if cost_matrix[i, j] < tol:
+                matched_calc.append(finite_evs[i])
+                unmatched_ref[j] = None  # Marcamos como encontrado
+            else:
+                unmatched_calc.append(finite_evs[i])
+
+        # 4. Limpiar listas de no emparejados
+        unmatched_ref = [x for x in unmatched_ref if x is not None]
+
+        # Añadir los calculados que ni siquiera entraron en la asignación
+        for i in range(len(finite_evs)):
+            if i not in row_ind:
+                unmatched_calc.append(finite_evs[i])
+    else:
+        unmatched_calc = list(finite_evs)
+
+    n_matches = len(matched_calc)
+    n_unmatched_calc = len(unmatched_calc)
+    n_unmatched_ref = len(unmatched_ref)
+
+    # --- PLOT: Creación de la figura 1x2 ---
+    # Damos más espacio ancho (14) y reservamos más espacio al gráfico de dispersión (ratio 2:1)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6), gridspec_kw={'width_ratios': [2.5, 1]})
+
+    # --- SUBPLOT 1: SCATTER (Tu gráfica original adaptada al eje ax1) ---
+    ax1.scatter(np.real(reference_evs), np.imag(reference_evs),
+                color='gray', marker='x', alpha=0.5, label="Pablo's computation")
+
+    if len(finite_evs) > 0:
+        ax1.scatter(np.real(finite_evs), np.imag(finite_evs),
                     c=(np.real(finite_evs) > 1e-6), cmap='coolwarm',
-                    marker='+', s=100, linewidths=2, label='Calculados (Builder)')
+                    marker='+', s=100, linewidths=2, label="TenSyGrid's computation")
 
-    plt.axvline(0, color='k', linestyle='--')
-    plt.axhline(0, color='k', alpha=0.3)
-    plt.grid(True, alpha=0.3)
-    plt.legend()
-    plt.title('Comparativa de Eigenvalues: Referencia vs Builder')
-    plt.xlabel('Real')
-    plt.ylabel('Imag')
-    plt.savefig("scatter.png", dpi=300)
+    ax1.axvline(0, color='k', linestyle='--')
+    ax1.axhline(0, color='k', alpha=0.3)
+    ax1.grid(True, alpha=0.3)
+    ax1.legend(loc='lower left')
+
+    # OJO AQUÍ: Añadida la 'r' antes del string para evitar el SyntaxWarning de '\R' e '\I'
+    ax1.set_xlabel(r'$\Re({\lambda})$', fontsize=12)
+    ax1.set_ylabel(r'$\Im({\lambda})$', fontsize=12)
+    ax1.set_title("Eigenvalue comparison")
+
+    # --- SUBPLOT 2: BARRAS Y RESULTADOS ---
+    labels = ['Matching', 'Exceeding\n(TenSyGrid)', 'Missing\n(Pablo)']
+    counts = [n_matches, n_unmatched_calc, n_unmatched_ref]
+    colors = ['#4CAF50', '#F44336', '#FFC107']  # Verde, Rojo, Amarillo
+
+    bars = ax2.bar(labels, counts, color=colors, edgecolor='black', alpha=0.8)
+    ax2.set_title(f"Coincidence\n(Tolerance: {tol})")
+    ax2.set_ylabel("Amount")
+
+    # Añadir el número encima de cada barra
+    for bar in bars:
+        yval = bar.get_height()
+        ax2.text(bar.get_x() + bar.get_width() / 2, yval + 0.1, int(yval), ha='center', va='bottom', fontweight='bold')
+
+    # Ocultar los bordes de arriba y derecha del gráfico de barras para que quede más limpio
+    ax2.spines['top'].set_visible(False)
+    ax2.spines['right'].set_visible(False)
+
+    plt.tight_layout()
+    plt.savefig("scatter_and_bars.png", dpi=300, bbox_inches='tight')
     plt.show()
+
+    # --- IMPRESIÓN POR CONSOLA (Para que veas cuáles son exactamente) ---
+    print("=== REPORTE DE EIGENVALUES ===")
+    print(f"Total calculados (TenSyGrid): {len(finite_evs)}")
+    print(f"Total referenciados (Pablo): {len(reference_evs)}")
+    print("-" * 30)
+    print(f"✅ Coincidencias: {n_matches}")
+
+    print(f"\n❌ POLOS SOBRANTES (Calculados por TenSyGrid que Pablo no tiene): {n_unmatched_calc}")
+    for ev in unmatched_calc:
+        print(f"   {ev.real:.4f} + {ev.imag:.4f}j")
+
+    print(f"\n⚠️ POLOS FALTANTES (Referencia de Pablo que TenSyGrid no encontró): {n_unmatched_ref}")
+    for ev in unmatched_ref:
+        print(f"   {ev.real:.4f} + {ev.imag:.4f}j")

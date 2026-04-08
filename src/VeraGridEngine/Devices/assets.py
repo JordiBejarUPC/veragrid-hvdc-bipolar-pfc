@@ -8517,6 +8517,9 @@ class Assets:
             tem.get_exponential_load_3ph_emt(vf=self._var_factory),
             tem.get_load_ZIP_3ph_emt_template(vf=self._var_factory),
             tem.get_generator_thevenin_rl_emt_template(vf=self._var_factory),
+            tem.get_emt_ideal_converter(vf=self._var_factory),
+            tem.get_full_pseudo_emt_converter(vf=self._var_factory),
+            tem.get_dc_load_emt_template(vf=self._var_factory),
             # the following are functions that generate templates depending on the specific object
             # tem.get_pi_line_emt_template(vf=self._var_factory, line=line),
             # tem.get_bergeron_line_emt_template(vf=self._var_factory, line=line),
