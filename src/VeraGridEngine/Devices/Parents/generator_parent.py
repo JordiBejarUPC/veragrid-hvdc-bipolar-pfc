@@ -28,6 +28,15 @@ class GeneratorParent(InjectionParent):
         '_Pmax_prof',
         '_Pmin',
         '_Pmin_prof',
+        '_Q',
+        '_Q_prof',
+
+        '_Qmin_prof',
+        '_Qmax_prof',
+
+        'qmin_set',
+        'qmax_set',
+
         '_srap_enabled',
         '_srap_enabled_prof',
     )
@@ -40,6 +49,11 @@ class GeneratorParent(InjectionParent):
                       profile_name='Pmin_prof'),
         GCProp(key='Pmax', units='MW', tpe=float, definition='Maximum active power. Used in OPF.',
                       profile_name='Pmax_prof'),
+        GCProp(key='Q', units='MVAr', tpe=float, definition='Reactive power', profile_name='Q_prof'),
+        GCProp(key='Qmin', units='MVAr', tpe=float, definition='Minimum reactive power.',
+               profile_name='Qmin_prof'),
+        GCProp(key='Qmax', units='MVAr', tpe=float, definition='Maximum reactive power.',
+               profile_name='Qmax_prof'),
         GCProp(key='srap_enabled', units='', tpe=bool,
                       definition='Is the unit available for SRAP participation?',
                       editable=True, profile_name="srap_enabled_prof"),
@@ -55,6 +69,9 @@ class GeneratorParent(InjectionParent):
                  P: float,
                  Pmin: float,
                  Pmax: float,
+                 Q: float,
+                 Qmin: float,
+                 Qmax: float,
                  Cost: float,
                  mttf: float,
                  mttr: float,
@@ -110,6 +127,19 @@ class GeneratorParent(InjectionParent):
         self.Pmin = float(Pmin)
         self._Pmin_prof = Profile(default_value=self.Pmin, data_type=float)
 
+        self._Q = float(Q)
+        self._Q_prof = Profile(default_value=self.Q, data_type=float)
+
+        self._Qmin_prof = Profile(default_value=Qmin, data_type=float)
+        self._Qmax_prof = Profile(default_value=Qmax, data_type=float)
+
+
+        # minimum reactive power in MVAr
+        self.qmin_set = float(Qmin)
+
+        # Maximum reactive power in MVAr
+        self.qmax_set = float(Qmax)
+
         self.srap_enabled = bool(srap_enabled)
         self._srap_enabled_prof = Profile(default_value=self.srap_enabled, data_type=bool)
 
@@ -156,6 +186,127 @@ class GeneratorParent(InjectionParent):
         :return:
         """
         return get_at(self.P, self.P_prof, t)
+
+    @property
+    def Q(self) -> float:
+        """
+        Get the active power value
+        :return: float
+        """
+        return self._Q
+
+    @Q.setter
+    def Q(self, val: float):
+        """
+        Set active power value
+        :param val: some float
+        """
+        val = float(val)
+        try:
+            self._Q = float(val)
+        except ValueError:
+            print("The value you're trying to set into Q is not a float :(")
+
+    @property
+    def Q_prof(self) -> Profile:
+        """
+        Q profile
+        :return: Profile
+        """
+        return self._Q_prof
+
+    @Q_prof.setter
+    def Q_prof(self, val: Union[Profile, np.ndarray]):
+        if isinstance(val, Profile):
+            self._Q_prof = val
+        elif isinstance(val, np.ndarray):
+            self._Q_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a Q_prof')
+
+    def get_Q_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Q, self.Q_prof, t)
+
+
+
+    @property
+    def Qmin(self):
+        """
+        Return the reactive power lower limit
+        :return: value
+        """
+        return self.qmin_set
+
+    @Qmin.setter
+    def Qmin(self, val):
+        val = float(val)
+        self.qmin_set = val
+
+    @property
+    def Qmin_prof(self) -> Profile:
+        """
+        Qmin profile
+        :return: Profile
+        """
+        return self._Qmin_prof
+
+    @Qmin_prof.setter
+    def Qmin_prof(self, val: Union[Profile, np.ndarray]):
+        if isinstance(val, Profile):
+            self._Qmin_prof = val
+        elif isinstance(val, np.ndarray):
+            self._Qmin_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a Qmin_prof')
+
+    def get_Qmin_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Qmin, self.Qmin_prof, t)
+
+
+    @property
+    def Qmax(self):
+        """
+        Return the reactive power upper limit
+        :return: value
+        """
+        return self.qmax_set
+
+    @Qmax.setter
+    def Qmax(self, val):
+        val = float(val)
+        self.qmax_set = val
+
+    @property
+    def Qmax_prof(self) -> Profile:
+        """
+        Qmax profile
+        :return: Profile
+        """
+        return self._Qmax_prof
+
+    @Qmax_prof.setter
+    def Qmax_prof(self, val: Union[Profile, np.ndarray]):
+        if isinstance(val, Profile):
+            self._Qmax_prof = val
+        elif isinstance(val, np.ndarray):
+            self._Qmax_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a Qmax_prof')
+
+    def get_Qmax_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Qmax, self.Qmax_prof, t)
 
     @property
     def srap_enabled_prof(self) -> Profile:

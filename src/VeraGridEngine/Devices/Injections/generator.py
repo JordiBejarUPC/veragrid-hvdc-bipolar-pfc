@@ -17,6 +17,34 @@ from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
 from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
+def compute_q(p: float, pf: float) -> float:
+    """
+    Compute the reactive power from p and the power factor
+    :param p: Active power
+    :param pf: power factor
+    :return: Reactive power
+    """
+    sign = 1.0 if pf >= 0.0 else -1.0
+    if -1.0 <= pf <= 1.0:
+        return sign * p * np.sqrt(1.0 / (pf * pf) - 1.0)
+    else:
+        return sign * p
+
+
+def compute_pf(p: float, q: float) -> float:
+    """
+    Compute the power factor from p and q
+    :param p: Active power
+    :param q: Reactive power
+    :return: Power factor
+    """
+    s = np.sqrt(p*p+q*q)
+    sign = 1.0 if q >= 0.0 else -1.0
+    if s > 0:
+        return sign * p / s
+    else:
+        return sign
+
 
 class Generator(GeneratorParent):
     __slots__ = (
@@ -35,8 +63,6 @@ class Generator(GeneratorParent):
         '_Vset',
         '_Vset_prof',
         '_use_reactive_power_curve',
-        'qmin_set',
-        'qmax_set',
         'q_curve',
         'custom_q_points',
         '_Cost2',
@@ -47,22 +73,12 @@ class Generator(GeneratorParent):
         '_MinTimeDown',
         '_RampUp',
         '_RampDown',
-        '_Qmin_prof',
-        '_Qmax_prof',
         '_Cost2_prof',
         '_Cost0_prof',
         'emissions',
         'fuels',
         'Sbase',
         'freq',
-        'M',
-        'D',
-        'tm0',
-        'omega_ref',
-        'vf',
-        'Kp',
-        'Ki',
-        'Kw',
         '_must_run',
         '_must_run_prof',
     )
@@ -75,10 +91,7 @@ class Generator(GeneratorParent):
         GCProp(key='Vset', units='p.u.', tpe=float,
                definition='Set voltage. This is used for controlled generators.', profile_name='Vset_prof'),
         GCProp(key='Snom', units='MVA', tpe=float, definition='Nominal power.'),
-        GCProp(key='Qmin', units='MVAr', tpe=float, definition='Minimum reactive power.',
-               profile_name='Qmin_prof'),
-        GCProp(key='Qmax', units='MVAr', tpe=float, definition='Maximum reactive power.',
-               profile_name='Qmax_prof'),
+
         GCProp(key='use_reactive_power_curve', units='', tpe=bool,
                definition='Use the reactive power capability curve?'),
         GCProp(key='q_curve', units='MVAr', tpe=SubObjectType.GeneratorQCurve,
@@ -125,6 +138,7 @@ class Generator(GeneratorParent):
                  idtag: Union[str, None] = None,
                  code: str = '',
                  P: float = 0.0,
+                 Q: float = 0.0,
                  power_factor: float = 0.8,
                  vset: float = 1.0,
                  is_controlled=True,
@@ -222,6 +236,9 @@ class Generator(GeneratorParent):
                                  P=P,
                                  Pmin=Pmin,
                                  Pmax=Pmax,
+                                 Q=Q,
+                                 Qmin=Qmin,
+                                 Qmax=Qmax,
                                  Cost=Cost,
                                  mttf=mttf,
                                  mttr=mttr,
@@ -276,11 +293,6 @@ class Generator(GeneratorParent):
 
         self.use_reactive_power_curve = bool(use_reactive_power_curve)
 
-        # minimum reactive power in MVAr
-        self.qmin_set = float(Qmin)
-
-        # Maximum reactive power in MVAr
-        self.qmax_set = float(Qmax)
 
         # declare the generation curve
         self.q_curve = GeneratorQCurve()
@@ -302,8 +314,7 @@ class Generator(GeneratorParent):
         self.ramp_up = ramp_up
         self.ramp_down = ramp_down
 
-        self._Qmin_prof = Profile(default_value=Qmin, data_type=float)
-        self._Qmax_prof = Profile(default_value=Qmax, data_type=float)
+
 
         self._Cost2_prof = Profile(default_value=self.Cost2, data_type=float)
         self._Cost0_prof = Profile(default_value=self.Cost0, data_type=float)
@@ -315,47 +326,8 @@ class Generator(GeneratorParent):
         self.Sbase = float(Sbase)
 
         self.freq = freq
-        self.tm0 = tm0
-        self.M = M
-        self.D = D
-        self.omega_ref = omega_ref
-        self.vf = vf
-        self.Kp = Kp
-        self.Ki = Ki
 
-    @property
-    def Pf_prof(self) -> Profile:
-        """
-        Cost profile
-        :return: Profile
-        """
-        return self._Pf_prof
 
-    @Pf_prof.setter
-    def Pf_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
-            self._Pf_prof = val
-        elif isinstance(val, np.ndarray):
-            self._Pf_prof.set(arr=val)
-        else:
-            raise Exception(str(type(val)) + 'not supported to be set into a Pf_prof')
-
-    def get_Pf_at(self, t: int | None) -> float:
-        """
-        :param t:
-        :return:
-        """
-        return get_at(self.Pf, self.Pf_prof, t)
-
-    def get_Q_at(self, t: int | None) -> float:
-        """
-        :param t:
-        :return:
-        """
-        p = self.get_P_at(t)
-        pf = get_at(self.Pf, self.Pf_prof, t)
-
-        return p * np.sqrt(1.0 / (pf * pf) - 1.0)
 
     @property
     def Vset_prof(self) -> Profile:
@@ -380,54 +352,6 @@ class Generator(GeneratorParent):
         :return:
         """
         return get_at(self.Vset, self.Vset_prof, t)
-
-    @property
-    def Qmin_prof(self) -> Profile:
-        """
-        Qmin profile
-        :return: Profile
-        """
-        return self._Qmin_prof
-
-    @Qmin_prof.setter
-    def Qmin_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
-            self._Qmin_prof = val
-        elif isinstance(val, np.ndarray):
-            self._Qmin_prof.set(arr=val)
-        else:
-            raise Exception(str(type(val)) + 'not supported to be set into a Qmin_prof')
-
-    def get_Qmin_at(self, t: int | None) -> float:
-        """
-        :param t:
-        :return:
-        """
-        return get_at(self.Qmin, self.Qmin_prof, t)
-
-    @property
-    def Qmax_prof(self) -> Profile:
-        """
-        Qmax profile
-        :return: Profile
-        """
-        return self._Qmax_prof
-
-    @Qmax_prof.setter
-    def Qmax_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
-            self._Qmax_prof = val
-        elif isinstance(val, np.ndarray):
-            self._Qmax_prof.set(arr=val)
-        else:
-            raise Exception(str(type(val)) + 'not supported to be set into a Qmax_prof')
-
-    def get_Qmax_at(self, t: int | None) -> float:
-        """
-        :param t:
-        :return:
-        """
-        return get_at(self.Qmax, self.Qmax_prof, t)
 
     @property
     def Cost2_prof(self) -> Profile:
@@ -580,31 +504,6 @@ class Generator(GeneratorParent):
 
         return errors
 
-    @property
-    def Qmax(self):
-        """
-        Return the reactive power upper limit
-        :return: value
-        """
-        return self.qmax_set
-
-    @Qmax.setter
-    def Qmax(self, val):
-        val = float(val)
-        self.qmax_set = val
-
-    @property
-    def Qmin(self):
-        """
-        Return the reactive power lower limit
-        :return: value
-        """
-        return self.qmin_set
-
-    @Qmin.setter
-    def Qmin(self, val):
-        val = float(val)
-        self.qmin_set = val
 
     @property
     def Snom(self):
@@ -678,6 +577,33 @@ class Generator(GeneratorParent):
         :return: None
         """
         self._Pf = float(val)
+
+        if self.auto_update_enabled:
+            self.Q = compute_q(p=self.P, pf=self._Pf)
+
+    @property
+    def Pf_prof(self) -> Profile:
+        """
+        Cost profile
+        :return: Profile
+        """
+        return self._Pf_prof
+
+    @Pf_prof.setter
+    def Pf_prof(self, val: Union[Profile, np.ndarray]):
+        if isinstance(val, Profile):
+            self._Pf_prof = val
+        elif isinstance(val, np.ndarray):
+            self._Pf_prof.set(arr=val)
+        else:
+            raise Exception(str(type(val)) + 'not supported to be set into a Pf_prof')
+
+    def get_Pf_at(self, t: int | None) -> float:
+        """
+        :param t:
+        :return:
+        """
+        return get_at(self.Pf, self.Pf_prof, t)
 
     @property
     def Vset(self) -> float:

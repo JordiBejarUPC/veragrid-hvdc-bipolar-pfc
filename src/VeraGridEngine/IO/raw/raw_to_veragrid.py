@@ -316,6 +316,7 @@ def get_veragrid_generator(psse_elm: RawGenerator, psse_bus_dict: Dict[int, dev.
                         idtag=None,
                         code=name,
                         P=psse_elm.PG,
+                        Q=psse_elm.QG,
                         vset=psse_elm.VS,
                         Qmin=Qmin,
                         Qmax=Qmax,

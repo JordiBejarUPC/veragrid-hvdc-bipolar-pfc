@@ -1411,7 +1411,7 @@ def get_cgmes_generators(multicircuit_model: MultiCircuit,
         cgmes_syn.minQ = mc_elm.Qmin
         cgmes_syn.r = mc_elm.R1 if mc_elm.R1 != 1e-20 else None  # default value not exported
         cgmes_syn.p = -mc_elm.P  # negative sign!
-        cgmes_syn.q = -mc_elm.P * np.tan(np.arccos(mc_elm.Pf))
+        cgmes_syn.q = -mc_elm.Q
         # TODO cgmes_syn.qPercent =
         if mc_elm.q_curve is not None:
             pMin = mc_elm.q_curve.get_Pmin()

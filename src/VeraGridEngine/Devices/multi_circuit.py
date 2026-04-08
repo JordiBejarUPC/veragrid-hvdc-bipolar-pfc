@@ -517,6 +517,7 @@ class MultiCircuit(Assets):
         batt = dev.Battery(name=gen.name,
                            idtag=gen.idtag,
                            P=gen.P,
+                           Q=gen.Q,
                            power_factor=gen.Pf,
                            vset=gen.Vset,
                            is_controlled=gen.is_controlled,
@@ -540,7 +541,7 @@ class MultiCircuit(Assets):
 
         batt.active_prof = gen.active_prof
         batt.P_prof = gen.P_prof
-        batt.Pf_prof = gen.Pf_prof
+        batt.Q_prof = gen.Q_prof
         batt.Vset_prof = gen.Vset_prof
         batt.enabled_dispatch_prof = gen.enabled_dispatch_prof
         batt.must_run_prof = gen.must_run_prof
