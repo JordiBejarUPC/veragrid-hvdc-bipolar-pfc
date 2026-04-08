@@ -977,7 +977,10 @@ def _evaluate_unary_function(op: str, value: NUMBER) -> NUMBER:
     elif op == "exp":
         return np.exp(value)
     elif op == "log":
-        return math.log(value)
+        if np.iscomplexobj(value):
+            return np.log(value)
+        else:
+            return math.log(value)
     elif op == "sqrt":
         return math.sqrt(value)
     elif op == "asin":

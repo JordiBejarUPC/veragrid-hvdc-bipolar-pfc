@@ -13,7 +13,7 @@ import numpy as np
 from PolynomialMatrixBuilder import PolynomialMatrixBuilder
 from matplotlib import pyplot as plt
 import VeraGridEngine.api as vge
-
+from scipy.optimize import linear_sum_assignment
 
 def define_problem():
     """Creates the grid, runs the power flow, and returns the phasor problem."""
@@ -189,8 +189,7 @@ if __name__ == "__main__":
     if problem:
         calculated_evs = solve_problem(problem)
 
-    import matplotlib.pyplot as plt
-    import numpy as np
+
 
     reference_evs = [complex(x) for x in
                      ["(-20.000000001+0j)", "(-10.000000001+0j)", "(-50.00000013636582+0j)", "(-49.9999998638391+0j)",
@@ -204,7 +203,6 @@ if __name__ == "__main__":
                       "(-0.39635072300328184+0j)", "(-10.00000000099956+0j)", "(-1.0000000000000023e-09+0j)",
                       "(-9.999999999999996e-10+0j)", "(-9.999999999999992e-10+0j)"]]
 
-    from scipy.optimize import linear_sum_assignment
 
     # --- LOGICA DE EMPAREJAMIENTO (Hungarian Algorithm) ---
     finite_evs = calculated_evs[np.isfinite(calculated_evs) & (np.abs(calculated_evs) < 1e6)] if len(

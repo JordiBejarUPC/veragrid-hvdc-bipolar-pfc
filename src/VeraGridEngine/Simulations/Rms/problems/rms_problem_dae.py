@@ -146,6 +146,7 @@ class RmsProblemDae(RmsProblemTemplate):
         self._j22_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
 
         self._variable_parameters_values: Vec | None = None
+        self._last_variable_parameters_values: Vec | None = None
         self._constant_params: Vec | None = None
         self._fmu_cs_adapters: List[object] = list()
         self._fmu_cs_initialized: bool = False

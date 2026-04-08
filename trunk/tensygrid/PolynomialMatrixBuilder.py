@@ -1,11 +1,8 @@
 import sympy as sp
 import numpy as np
-from numpy import dtype, ndarray
 from scipy import sparse, linalg
-from sympy.parsing.sympy_parser import parse_expr
 from enum import Enum
 from typing import Optional, Any, List, Tuple
-import warnings
 import re
 
 
@@ -26,38 +23,32 @@ class ConstraintType(Enum):
 # Helper Functions (Replacing Lambdas and Nested Functions)
 # ------------------------------------------------------------------
 
-def _get_symbol_name(sym: sp.Symbol) -> str:
-    return sym.name
+'''def _get_symbol_name(sym: sp.Symbol) -> str:
+    return sym.name'''
 
 
 def _sort_symbol(sym: sp.Symbol) -> tuple:
+    """
+    Pre: A symbol.
+    Post: Returns if it's a derivative
+    """
     name: str = sym.name
     if name.startswith('dx') or name.startswith('xp') or name.startswith('d_') or name.startswith('dt_'):
         return 0, name
-    elif name.startswith('x') and not name.startswith('xp'):
-        return 1, name
-    elif name.startswith('u'):
-        return 2, name
-    elif name.startswith('y'):
-        return 3, name
-    elif name.startswith('z'):
-        return 4, name
     else:
-        return 5, name
+        return 1, name
 
 
 def _get_real_part(val: complex) -> float:
     return float(val.real)
 
 
+'''
 def _section(title: str, content: str) -> str:
     bar: str = "=" * (len(title) + 4)
     return f"{bar}\n  {title}\n{bar}\n{content}\n"
+'''
 
-
-# ------------------------------------------------------------------
-# Main Class
-# ------------------------------------------------------------------
 
 class PolynomialMatrixBuilder:
     """
@@ -77,21 +68,19 @@ class PolynomialMatrixBuilder:
     ) -> None:
 
         self.verbose: bool = verbose
-
         self.eqs: list = list()
         self.ineqs: list = list()
         self.state_vars: list = list()
         self.algebraic_vars: list = list()
-
-        has_problem: bool = problem is not None
+        self.has_problem: bool = problem is not None
 
         # --- 0. RESOLVE DUPLICATE VARIABLE NAMES DYNAMICALLY ---
         # This prevents SymPy from physically fusing distinct limiters together.
-        if has_problem:
+        if self.has_problem:
             seen_vars = set()
             name_counters = {}
-
             all_vg_vars = []
+
             if hasattr(problem, '_state_vars') and problem._state_vars is not None:
                 all_vg_vars.extend(problem._state_vars)
             if hasattr(problem, '_algebraic_vars') and problem._algebraic_vars is not None:
@@ -100,6 +89,7 @@ class PolynomialMatrixBuilder:
             for var in all_vg_vars:
                 if hasattr(var, 'name'):
                     vid = id(var)
+
                     if vid not in seen_vars:
                         seen_vars.add(vid)
                         base_name = getattr(var, 'name')
@@ -111,7 +101,8 @@ class PolynomialMatrixBuilder:
                             new_name = f"{base_name}_{name_counters[base_name]}"
                             try:
                                 var.name = new_name
-                            except Exception:
+                            except Exception as e:
+                                print("Exception on for var in all_vg_vars", e)
                                 pass
 
                             # Also rename the corresponding derivative variable to avoid mapping breaks
@@ -126,14 +117,16 @@ class PolynomialMatrixBuilder:
                                         d_new = f"{d_base}_{name_counters[base_name]}"
                                     try:
                                         d_var.name = d_new
-                                    except Exception:
+                                    except Exception as e:
+                                        print("Exception in hasattrib")
                                         pass
 
         # 1. PARAMETER EXTRACTION
         self._param_map: dict = {}
         self._protected_params: list = []
 
-        if has_problem:
+        if self.has_problem:
+            """TODO: Change _variable_parameters with a getter in the main class"""
             if hasattr(problem, '_variable_parameters') and problem._variable_parameters is not None:
                 self._protected_params.extend([getattr(vp, 'name', str(vp)) for vp in problem._variable_parameters])
 
@@ -155,12 +148,13 @@ class PolynomialMatrixBuilder:
                     if i < len(problem._constant_params):
                         self._param_map[p_name] = problem._constant_params[i]
 
-        processed_eqs: list = list()
-        processed_ineqs: list = list()
-        processed_state_vars: list = list()
-        processed_algebraic_vars: list = list()
+        processed_eqs = list()
+        processed_ineqs = list()
+        processed_state_vars = list()
+        processed_algebraic_vars = list()
 
         def _safe_to_string(item: Any) -> str:
+            """TODO: Remove hasattr"""
             if hasattr(item, 'expr'):
                 return str(getattr(item, 'expr'))
             elif hasattr(item, 'to_string'):
@@ -169,7 +163,8 @@ class PolynomialMatrixBuilder:
 
         if eqs is not None:
             processed_eqs = list(eqs)
-        elif has_problem:
+        elif self.has_problem:
+            """TODO: Remove hasattr"""
             if hasattr(problem, '_state_eqs'):
                 for s_eq in problem._state_eqs:
                     processed_eqs.append(_safe_to_string(s_eq))
@@ -192,23 +187,23 @@ class PolynomialMatrixBuilder:
             if not var_list: return
             for var_obj in var_list:
                 if not isinstance(var_obj, str):
-                    base_name = getattr(var_obj, 'name', None)
+                    base_name_mappings = getattr(var_obj, 'name', None)
                     diff_var = getattr(var_obj, 'diff_var', None)
                     if diff_var is not None:
                         diff_name = getattr(diff_var, 'name', None)
-                        if base_name and diff_name:
-                            self._explicit_deriv_map[clean_name_fn(base_name)] = clean_name_fn(diff_name)
+                        if base_name_mappings and diff_name:
+                            self._explicit_deriv_map[clean_name_fn(base_name_mappings)] = clean_name_fn(diff_name)
 
                     base_var = getattr(var_obj, 'base_var', None)
                     if base_var is not None:
                         base_var_name = getattr(base_var, 'name', None)
-                        if base_var_name and base_name:
-                            self._explicit_deriv_map[clean_name_fn(base_var_name)] = clean_name_fn(base_name)
+                        if base_var_name and base_name_mappings:
+                            self._explicit_deriv_map[clean_name_fn(base_var_name)] = clean_name_fn(base_name_mappings)
 
         if state_vars is not None:
             _extract_mappings(state_vars)
             processed_state_vars = [_safe_to_string(v) for v in state_vars]
-        elif has_problem:
+        elif self.has_problem:
             if hasattr(problem, '_state_vars'):
                 _extract_mappings(problem._state_vars)
                 for s_var in problem._state_vars:
@@ -217,13 +212,13 @@ class PolynomialMatrixBuilder:
         if algebraic_vars is not None:
             _extract_mappings(algebraic_vars)
             processed_algebraic_vars = [_safe_to_string(v) for v in algebraic_vars]
-        elif has_problem:
+        elif self.has_problem:
             if hasattr(problem, '_algebraic_vars'):
                 _extract_mappings(problem._algebraic_vars)
                 for a_var in problem._algebraic_vars:
                     processed_algebraic_vars.append(_safe_to_string(a_var))
 
-        parsing_context: dict = dict()
+        parsing_context = dict()
         parsing_context['cos'] = sp.cos
         parsing_context['sin'] = sp.sin
         parsing_context['tan'] = sp.tan
@@ -247,14 +242,13 @@ class PolynomialMatrixBuilder:
                     parsed_predefined.append(sym)
 
         # 3. Expression parsing
-        for raw_exprs, target_list in [(processed_eqs, self.eqs),
-                                       (processed_ineqs, self.ineqs)]:
+        for raw_exprs, target_list in [(processed_eqs, self.eqs), (processed_ineqs, self.ineqs)]:
             for raw in raw_exprs:
                 s = raw if isinstance(raw, str) else str(raw)
                 s = s.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
                 s = re.sub(r'\bd_', 'dt_', s)
 
-                expr = parse_expr(s, local_dict=parsing_context, evaluate=False)
+                expr = sp.parsing.sympy_parser.parse_expr(s, local_dict=parsing_context, evaluate=False)
 
                 if self._param_map:
                     expr = expr.subs(self._param_map)
@@ -265,7 +259,7 @@ class PolynomialMatrixBuilder:
         self.all_symbols = []
         self.sym_to_idx = {}
         self.extract_symbols(self.eqs + self.ineqs, predefined=parsed_predefined)
-        self._argaux_map: dict = dict()
+        self._argaux_map = dict()
 
         self._flatten_nonlinear_arguments()
         self._apply_automatic_trig_lifting()
@@ -499,6 +493,12 @@ class PolynomialMatrixBuilder:
 
         self.eqs = [eq.subs(subs_dict) for eq in self.eqs] + new_eqs
 
+
+    def _get_symbol_by_name(self, name: str) -> Optional[sp.Symbol]:
+        for target_sym in self.all_symbols:
+            if target_sym.name == name: return target_sym
+        return None
+
     def _generate_lifting_equations(self, problem) -> None:
         new_constraints = []
         for sym in self.all_symbols:
@@ -523,11 +523,6 @@ class PolynomialMatrixBuilder:
                             new_constraints.append(sym - sym_aux1)
 
         self.eqs.extend(new_constraints)
-
-    def _get_symbol_by_name(self, name: str) -> Optional[sp.Symbol]:
-        for target_sym in self.all_symbols:
-            if target_sym.name == name: return target_sym
-        return None
 
     def _flatten_nonlinear_arguments(self) -> None:
         new_constraints, arg_counter = [], 0
@@ -560,8 +555,6 @@ class PolynomialMatrixBuilder:
                 v_dict[f"x_cos_{key}"] = math.cos(val)
                 v_dict[f"xp_sin_{key}"] = 0.0
                 v_dict[f"xp_cos_{key}"] = 0.0
-
-
 
         S, Phi = (self.S_W, self.Phi_W) if c_type == ConstraintType.INEQUALITY else (self.S_H, self.Phi_H)
         v = self._build_v_vector(v_dict)
