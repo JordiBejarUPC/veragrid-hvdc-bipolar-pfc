@@ -131,8 +131,8 @@ for bus in grid.buses:
 gen_mdl = get_generator_thevenin_rl_emt_template(vf= grid.var_factory).block
 
 # line
-line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
-# line_mdl = get_pi_line_emt_template(vf= grid.var_factory).block
+# line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
+line_mdl = get_pi_line_emt_template(vf= grid.var_factory, line = line0).block
 
 # load
 load_mdl = get_shunt_r_3ph_emt_template(vf = grid.var_factory).block
