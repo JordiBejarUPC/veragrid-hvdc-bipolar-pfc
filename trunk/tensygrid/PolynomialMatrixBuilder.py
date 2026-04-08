@@ -561,6 +561,8 @@ class PolynomialMatrixBuilder:
                 v_dict[f"xp_sin_{key}"] = 0.0
                 v_dict[f"xp_cos_{key}"] = 0.0
 
+
+
         S, Phi = (self.S_W, self.Phi_W) if c_type == ConstraintType.INEQUALITY else (self.S_H, self.Phi_H)
         v = self._build_v_vector(v_dict)
         F = self._compute_jacobian(S, v)

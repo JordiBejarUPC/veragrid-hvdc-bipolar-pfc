@@ -101,13 +101,11 @@ def define_problem():
 
     return phasor_problem
 
-
-
-def solve_problem(problem: Any) -> None:
-    print("\n[4] Rebuilding equations and extracting exact physics...")
-    builder = PolynomialMatrixBuilder(problem=problem, verbose=True)
-    v_dict: dict  = dict()
-
+def op_extraction(problem: vge.RmsProblemPhasor) -> dict:
+    """
+    Returns the operating point dictionary from a defined VeraGrid problem.
+    """
+    v_dict: dict = dict()
     def safe_get_value(val):
         try:
             return float(val)
@@ -147,6 +145,7 @@ def solve_problem(problem: Any) -> None:
             if val is not None:
                 v_dict[s_name] = val
 
+    return v_dict
     # 5. LIFTING SUPPORT AND DEFAULT VALUES
     for sym in builder.all_symbols:
         s_name = str(sym.name)
@@ -160,6 +159,12 @@ def solve_problem(problem: Any) -> None:
             else:
                 v_dict[s_name] = 0.0
 
+
+
+def solve_problem(problem: Any) -> None:
+    print("\n[4] Rebuilding equations and extracting exact physics...")
+    builder = PolynomialMatrixBuilder(problem=problem, verbose=True)
+    v_dict: dict = op_extraction(problem=problem)
 
     print("\n[*] Linearizing model with real parameters...")
     builder.linearize(v_dict=v_dict)
@@ -205,7 +210,7 @@ if __name__ == "__main__":
     finite_evs = calculated_evs[np.isfinite(calculated_evs) & (np.abs(calculated_evs) < 1e6)] if len(
         calculated_evs) > 0 else []
 
-    tol = 1e-1  # Tolerancia para considerar que coinciden
+    tol = 0.06  # Tolerancia para considerar que coinciden
     matched_calc = []
     unmatched_calc = []
     unmatched_ref = list(reference_evs)
@@ -263,16 +268,16 @@ if __name__ == "__main__":
     # OJO AQUÍ: Añadida la 'r' antes del string para evitar el SyntaxWarning de '\R' e '\I'
     ax1.set_xlabel(r'$\Re({\lambda})$', fontsize=12)
     ax1.set_ylabel(r'$\Im({\lambda})$', fontsize=12)
-    ax1.set_title("Comparación de Eigenvalues")
+    ax1.set_title("Eigenvalue comparison")
 
     # --- SUBPLOT 2: BARRAS Y RESULTADOS ---
-    labels = ['Coinciden', 'Sobran\n(TenSyGrid)', 'Faltan\n(Pablo)']
+    labels = ['Matching', 'Exceeding\n(TenSyGrid)', 'Missing\n(Pablo)']
     counts = [n_matches, n_unmatched_calc, n_unmatched_ref]
     colors = ['#4CAF50', '#F44336', '#FFC107']  # Verde, Rojo, Amarillo
 
     bars = ax2.bar(labels, counts, color=colors, edgecolor='black', alpha=0.8)
-    ax2.set_title(f"Resultados de Coincidencia\n(Tolerancia: {tol})")
-    ax2.set_ylabel("Cantidad")
+    ax2.set_title(f"Coincidence\n(Tolerance: {tol})")
+    ax2.set_ylabel("Amount")
 
     # Añadir el número encima de cada barra
     for bar in bars:
