@@ -187,18 +187,18 @@ class PolynomialMatrixBuilder:
             if not var_list: return
             for var_obj in var_list:
                 if not isinstance(var_obj, str):
-                    base_name = getattr(var_obj, 'name', None)
+                    base_name_mappings = getattr(var_obj, 'name', None)
                     diff_var = getattr(var_obj, 'diff_var', None)
                     if diff_var is not None:
                         diff_name = getattr(diff_var, 'name', None)
-                        if base_name and diff_name:
-                            self._explicit_deriv_map[clean_name_fn(base_name)] = clean_name_fn(diff_name)
+                        if base_name_mappings and diff_name:
+                            self._explicit_deriv_map[clean_name_fn(base_name_mappings)] = clean_name_fn(diff_name)
 
                     base_var = getattr(var_obj, 'base_var', None)
                     if base_var is not None:
                         base_var_name = getattr(base_var, 'name', None)
-                        if base_var_name and base_name:
-                            self._explicit_deriv_map[clean_name_fn(base_var_name)] = clean_name_fn(base_name)
+                        if base_var_name and base_name_mappings:
+                            self._explicit_deriv_map[clean_name_fn(base_var_name)] = clean_name_fn(base_name_mappings)
 
         if state_vars is not None:
             _extract_mappings(state_vars)
@@ -218,7 +218,7 @@ class PolynomialMatrixBuilder:
                 for a_var in problem._algebraic_vars:
                     processed_algebraic_vars.append(_safe_to_string(a_var))
 
-        parsing_context: dict = dict()
+        parsing_context = dict()
         parsing_context['cos'] = sp.cos
         parsing_context['sin'] = sp.sin
         parsing_context['tan'] = sp.tan
@@ -242,8 +242,7 @@ class PolynomialMatrixBuilder:
                     parsed_predefined.append(sym)
 
         # 3. Expression parsing
-        for raw_exprs, target_list in [(processed_eqs, self.eqs),
-                                       (processed_ineqs, self.ineqs)]:
+        for raw_exprs, target_list in [(processed_eqs, self.eqs), (processed_ineqs, self.ineqs)]:
             for raw in raw_exprs:
                 s = raw if isinstance(raw, str) else str(raw)
                 s = s.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
@@ -260,7 +259,7 @@ class PolynomialMatrixBuilder:
         self.all_symbols = []
         self.sym_to_idx = {}
         self.extract_symbols(self.eqs + self.ineqs, predefined=parsed_predefined)
-        self._argaux_map: dict = dict()
+        self._argaux_map = dict()
 
         self._flatten_nonlinear_arguments()
         self._apply_automatic_trig_lifting()
@@ -494,6 +493,12 @@ class PolynomialMatrixBuilder:
 
         self.eqs = [eq.subs(subs_dict) for eq in self.eqs] + new_eqs
 
+
+    def _get_symbol_by_name(self, name: str) -> Optional[sp.Symbol]:
+        for target_sym in self.all_symbols:
+            if target_sym.name == name: return target_sym
+        return None
+
     def _generate_lifting_equations(self, problem) -> None:
         new_constraints = []
         for sym in self.all_symbols:
@@ -518,11 +523,6 @@ class PolynomialMatrixBuilder:
                             new_constraints.append(sym - sym_aux1)
 
         self.eqs.extend(new_constraints)
-
-    def _get_symbol_by_name(self, name: str) -> Optional[sp.Symbol]:
-        for target_sym in self.all_symbols:
-            if target_sym.name == name: return target_sym
-        return None
 
     def _flatten_nonlinear_arguments(self) -> None:
         new_constraints, arg_counter = [], 0
@@ -555,8 +555,6 @@ class PolynomialMatrixBuilder:
                 v_dict[f"x_cos_{key}"] = math.cos(val)
                 v_dict[f"xp_sin_{key}"] = 0.0
                 v_dict[f"xp_cos_{key}"] = 0.0
-
-
 
         S, Phi = (self.S_W, self.Phi_W) if c_type == ConstraintType.INEQUALITY else (self.S_H, self.Phi_H)
         v = self._build_v_vector(v_dict)
