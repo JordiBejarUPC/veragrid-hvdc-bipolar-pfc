@@ -1434,8 +1434,6 @@ def init_explicit_common(
         mdl: Block,
         sys_vars: Dict[int, Var],
         sys_diff_vars: Dict[int, Var],
-        # x: np.ndarray,
-        # dx: np.ndarray,
         variable_parameters: List[Var],
         event_parameters_eqs: List[Union[Expr, Const]],
         constant_parameters: List[Var],
@@ -1454,10 +1452,6 @@ def init_explicit_common(
 
     :param mdl: Symbolic model block.
     :type mdl: Block
-    :param x: Algebraic or state vector.
-    :type x: np.ndarray
-    :param dx: Differential initialization vector.
-    :type dx: np.ndarray
     :param variable_parameters: Runtime or event parameters.
     :type variable_parameters: List[Var]
     :param event_parameters_eqs: Runtime parameter equations storage.
@@ -1492,7 +1486,7 @@ def init_explicit_common(
     dx: np.ndarray = np.zeros(len(sys_diff_vars))
 
     # Seed the working vectors with the guesses already assembled before the
-    # explicit stage. EMT relies on those PF-driven values and on previously
+    # explicit stage. The problem relies on those PF-driven values and on previously
     # resolved block values when evaluating downstream explicit equations.
     for uid, val in init_guess.items():
         if uid in uid2idx_vars:
