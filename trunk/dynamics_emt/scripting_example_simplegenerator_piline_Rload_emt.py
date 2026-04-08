@@ -100,6 +100,7 @@ line0.apply_template(tower, grid.Sbase, grid.fBase)
 R_ph =100 #ohm
 v_ph = vnom / (3**0.5)
 P_ph = (v_ph**2) / R_ph # kv*kv/ohm = MW
+print("P_ph=", P_ph)
 
 # load = gce.Load(name="load",P1= P/3, P2= P/3, P3= P/3, Q1= Q/3, Q2= Q/3, Q3= Q/3)
 load = gce.Load(name="load",P1= P_ph, P2= P_ph, P3= P_ph, Q1= 0.0, Q2= 0.0, Q3= 0.0)
@@ -126,7 +127,7 @@ gen_mdl = get_simple_generator_emt_template(vf = grid.var_factory).block
 # gen_mdl = get_generator_emt_type_template(grid=grid, gen = gen0).block
 
 # line
-line_mdl = get_pi_line_emt_template(vf=grid.var_factory, line = line0).block
+line_mdl = get_pi_line_emt_template(vf=grid.var_factory, phN = True, phA = True, phB = True, phC = True).block
 # line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 
 # load
@@ -377,8 +378,8 @@ def benchmark_all_solvers() -> None:
         else:
             max_abs_diff = float(np.max(np.abs(y_arr - reference_y)))
 
-        loop_time = getattr(solver, "_last_sim_loop_time", np.nan)
-        build_stats_fn = getattr(solver, "get_backend_build_stats", None)
+        loop_time = solver.get_last_sim_loop_time()
+        build_stats = solver.get_backend_build_stats()
 
         results.append({
             "solver": solver_key,
@@ -389,7 +390,7 @@ def benchmark_all_solvers() -> None:
             "solver_total_s": solver_init_s + solver_build_s + simulate_s,
             "loop_s": float(loop_time) if loop_time == loop_time else np.nan,
             "max_abs_diff": max_abs_diff,
-            "build_stats": build_stats_fn() if callable(build_stats_fn) else dict(),
+            "build_stats": build_stats,
             "steps": len(t_arr) - 1,
             "shape": y_arr.shape,
             "dy_shape": dy_arr.shape,
@@ -440,10 +441,9 @@ build_solver_backend(CHOSEN_SOLVER, solver, problem)
 boundary_updater = cast(Any, problem)
 t, y, dy = solver.simulate(boundary_updater=boundary_updater)
 
-if hasattr(solver, "get_backend_build_stats"):
-    print("StructuralCompiled backend build stats")
-    for key, value in solver.get_backend_build_stats().items():
-        print(f"  {key}: {value:.6f}s")
+print("StructuralCompiled backend build stats")
+for key, value in solver.get_backend_build_stats().items():
+    print(f"  {key}: {value:.6f}s")
 
 
 collector = problem.get_newton_trace_collector()

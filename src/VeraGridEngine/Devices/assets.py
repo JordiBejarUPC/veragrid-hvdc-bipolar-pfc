@@ -8521,9 +8521,8 @@ class Assets:
             tem.get_full_pseudo_emt_converter(vf=self._var_factory),
             tem.get_dc_load_emt_template(vf=self._var_factory),
             # the following are functions that generate templates depending on the specific object
-            # tem.get_pi_line_emt_template(vf=self._var_factory, line=line),
-            # tem.get_bergeron_line_emt_template(vf=self._var_factory, line=line),
-            # tem.get_emt_ideal_converter(vf=self._var_factory),
+            tem.get_pi_line_emt_template(vf=self._var_factory),
+            # tem.get_bergeron_line_emt_template(vf=self._var_factory),
             # tem.get_transformer_emt_template(vf=self._var_factory),
             # tem.get_xfmr_emt_template(vf=self._var_factory)
         ]

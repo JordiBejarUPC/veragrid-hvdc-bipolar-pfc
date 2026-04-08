@@ -36,6 +36,7 @@ from VeraGridEngine.enumerations import (
 from VeraGridEngine.basic_structures import Logger, CxVec
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
+from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt,run_emt_native_initialization
@@ -225,6 +226,113 @@ def _get_external_mapping(mdl: Block) -> Optional[Dict[Any, Var]]:
         return None
     else:
         return external_mapping
+
+
+def _get_expected_pi_line_terminal_refs(ph_mask: List[bool]) -> List[VarPowerFlowRefferenceType]:
+    """
+    Build the ordered terminal-voltage references for the active pi-line phases.
+
+    :param ph_mask: Physical line phase mask in NABC order.
+    :return: Ordered ``vf_*`` and ``vt_*`` references for the active phases only.
+    """
+    vf_refs: List[VarPowerFlowRefferenceType] = list([
+        VarPowerFlowRefferenceType.vf_N,
+        VarPowerFlowRefferenceType.vf_A,
+        VarPowerFlowRefferenceType.vf_B,
+        VarPowerFlowRefferenceType.vf_C,
+    ])
+    vt_refs: List[VarPowerFlowRefferenceType] = list([
+        VarPowerFlowRefferenceType.vt_N,
+        VarPowerFlowRefferenceType.vt_A,
+        VarPowerFlowRefferenceType.vt_B,
+        VarPowerFlowRefferenceType.vt_C,
+    ])
+
+    ordered_refs: List[VarPowerFlowRefferenceType] = list()
+
+    for idx, is_active in enumerate(ph_mask):
+        if is_active:
+            ordered_refs.append(vf_refs[idx])
+        else:
+            pass
+
+    for idx, is_active in enumerate(ph_mask):
+        if is_active:
+            ordered_refs.append(vt_refs[idx])
+        else:
+            pass
+
+    return ordered_refs
+
+
+def _normalize_pi_line_phase_layout(branch: Any, grid: MultiCircuit) -> None:
+    """
+    Rebuild the standard pi-line template when its symbolic phase layout does not
+    match the physical branch connection mask.
+
+    The EMT parameter mapper writes reduced branch matrices into the fixed NABC
+    API map using ``branch.ys``. After the recent API change, callers can create
+    a pi-line template with a phase mask that does not match ``branch.ys``. When
+    that happens, the symbolic block keeps terminal inputs for non-existent bus
+    phases and later substitutions introduce ``None`` or unresolved UIDs.
+
+    This helper keeps the public explicit-mask API in place, but re-aligns the
+    standard pi-line block with the physical branch mask right before the EMT
+    problem flattens the device into the global system.
+
+    :param branch: Grid branch device.
+    :param grid: Parent circuit, used for the shared variable factory.
+    :return: None.
+    """
+    mdl: Any = branch.emt_model
+    api_obj_mapping: Any = mdl.api_obj_mapping
+
+    if not isinstance(api_obj_mapping, dict):
+        return
+    else:
+        pass
+
+    if ParamPowerFlowRefferenceType.Rnn not in api_obj_mapping:
+        return
+    else:
+        pass
+
+    ph_mask: List[bool] = list([
+        bool(branch.ys.phN),
+        bool(branch.ys.phA),
+        bool(branch.ys.phB),
+        bool(branch.ys.phC),
+    ])
+    expected_refs: List[VarPowerFlowRefferenceType] = _get_expected_pi_line_terminal_refs(ph_mask)
+    tracked_refs: Set[VarPowerFlowRefferenceType] = set([
+        VarPowerFlowRefferenceType.vf_N,
+        VarPowerFlowRefferenceType.vf_A,
+        VarPowerFlowRefferenceType.vf_B,
+        VarPowerFlowRefferenceType.vf_C,
+        VarPowerFlowRefferenceType.vt_N,
+        VarPowerFlowRefferenceType.vt_A,
+        VarPowerFlowRefferenceType.vt_B,
+        VarPowerFlowRefferenceType.vt_C,
+    ])
+    current_refs: List[VarPowerFlowRefferenceType] = list()
+
+    for in_var in mdl.in_vars:
+        if in_var.ref in tracked_refs:
+            current_refs.append(in_var.ref)
+        else:
+            pass
+
+    if current_refs != expected_refs:
+        branch.emt_model = get_pi_line_emt_template(
+            vf=grid.var_factory,
+            phN=ph_mask[0],
+            phA=ph_mask[1],
+            phB=ph_mask[2],
+            phC=ph_mask[3],
+            name=mdl.name,
+        ).block
+    else:
+        pass
 
 
 class EmtProblemDae(EmtProblemTemplate):
@@ -1093,6 +1201,7 @@ class EmtProblemDae(EmtProblemTemplate):
         for branch_idx, br in enumerate(grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True)):
             f: int = bus_dict[br.bus_from]
             t: int = bus_dict[br.bus_to]
+            _normalize_pi_line_phase_layout(branch=br, grid=grid)
             mdl: Block = self._process_device_model(br, sys_block, grid, glob_time)
 
             is_bergeron: bool = False
@@ -1228,8 +1337,10 @@ class EmtProblemDae(EmtProblemTemplate):
                         if external_mapping is not None:
                             for ph in range(4):
                                 mapped_var = external_mapping.get(terminal_keys[ph], None)
-                                if mapped_var is not None:
-                                    br.emt_model.update_model(mapped_var, terminal_voltage_vars[ph])
+                                terminal_voltage_var = terminal_voltage_vars[ph]
+
+                                if mapped_var is not None and terminal_voltage_var is not None:
+                                    br.emt_model.update_model(mapped_var, terminal_voltage_var)
                                 else:
                                     pass
                         else:
@@ -1325,8 +1436,10 @@ class EmtProblemDae(EmtProblemTemplate):
                 if inj_external_mapping is not None:
                     for ph in range(4):
                         mapped_var = inj_external_mapping.get(ph_v_keys[ph], None)
-                        if mapped_var is not None:
-                            inj.emt_model.update_model(mapped_var, inj_bus_voltage_vars[ph])
+                        inj_bus_voltage_var = inj_bus_voltage_vars[ph]
+
+                        if mapped_var is not None and inj_bus_voltage_var is not None:
+                            inj.emt_model.update_model(mapped_var, inj_bus_voltage_var)
                         else:
                             pass
                 else:

@@ -390,10 +390,9 @@ build_solver_backend(CHOSEN_SOLVER, solver, problem)
 boundary_updater = cast(Any, problem)
 t, y, dy = solver.simulate(boundary_updater=boundary_updater)
 
-if hasattr(solver, "get_backend_build_stats"):
-    print("StructuralCompiled backend build stats")
-    for key, value in solver.get_backend_build_stats().items():
-        print(f"  {key}: {value:.6f}s")
+print("StructuralCompiled backend build stats")
+for key, value in solver.get_backend_build_stats().items():
+    print(f"  {key}: {value:.6f}s")
 
 # =====================================================================
 # PROFILING REPORT

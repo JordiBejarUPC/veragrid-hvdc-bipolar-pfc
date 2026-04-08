@@ -125,7 +125,7 @@ for bus in grid.buses:
 gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.var_factory).block
 
 # line
-line_mdl = get_bergeron_line_emt_template(vf = grid.var_factory, line = line0).block
+line_mdl = get_bergeron_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
 
 # load
 load_mdl = get_shunt_r_3ph_emt_template(vf = grid.var_factory).block
@@ -369,8 +369,8 @@ def benchmark_all_solvers() -> None:
         else:
             max_abs_diff = float(np.max(np.abs(y_arr - reference_y)))
 
-        loop_time = getattr(solver, "_last_sim_loop_time", np.nan)
-        build_stats_fn = getattr(solver, "get_backend_build_stats", None)
+        loop_time = solver.get_last_sim_loop_time()
+        build_stats = solver.get_backend_build_stats()
 
         results.append({
             "solver": solver_key,
@@ -381,7 +381,7 @@ def benchmark_all_solvers() -> None:
             "solver_total_s": solver_init_s + solver_build_s + simulate_s,
             "loop_s": float(loop_time) if loop_time == loop_time else np.nan,
             "max_abs_diff": max_abs_diff,
-            "build_stats": build_stats_fn() if callable(build_stats_fn) else dict(),
+            "build_stats": build_stats,
             "steps": len(t_arr) - 1,
             "shape": y_arr.shape,
             "dy_shape": dy_arr.shape,
@@ -432,10 +432,9 @@ build_solver_backend(CHOSEN_SOLVER, solver, problem)
 boundary_updater = cast(Any, problem)
 t, y, dy = solver.simulate(boundary_updater=boundary_updater)
 
-if hasattr(solver, "get_backend_build_stats"):
-    print("StructuralCompiled backend build stats")
-    for key, value in solver.get_backend_build_stats().items():
-        print(f"  {key}: {value:.6f}s")
+print("StructuralCompiled backend build stats")
+for key, value in solver.get_backend_build_stats().items():
+    print(f"  {key}: {value:.6f}s")
 
 
 collector = problem.get_newton_trace_collector()

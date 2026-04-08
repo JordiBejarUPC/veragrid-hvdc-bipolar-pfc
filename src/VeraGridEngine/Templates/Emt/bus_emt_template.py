@@ -143,6 +143,7 @@ def get_bus_emt_template(grid: MultiCircuit,
         if not any(mask):
             # The dynamic editor can open EMT templates before the network has any EMT-aware branches.
             # In that case we expose a default ABC shell so the user can still build and attach EMT models.
+            mask[0] = True
             mask[1] = True
             mask[2] = True
             mask[3] = True

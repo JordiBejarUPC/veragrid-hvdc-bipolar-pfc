@@ -118,7 +118,7 @@ def attach_emt_models(
         get_bus_emt_template(grid, bus)
 
     gen_mdl: Block = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
-    line_mdl = get_pi_line_emt_template(vf = grid.var_factory, line = line0).block
+    line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = True, phA = True, phB = True, phC = True).block
     load_mdl: Block = get_exponential_load_3ph_emt(vf=grid.var_factory).block
 
     # ``a = 2`` reproduces an impedance-like active-power dependence. This keeps the

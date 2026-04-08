@@ -3450,7 +3450,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return BlockPositionChangedCallback(self, block_uid)
 
-    def create_generic_block_item(self, block_type: BlockType, x_pos, y_pos) -> BlockItem:
+    def create_generic_block_item(self, block_type: BlockType, x_pos, y_pos) -> GenericBlockItem|None:
         """
         Create and place a generic block item.
 

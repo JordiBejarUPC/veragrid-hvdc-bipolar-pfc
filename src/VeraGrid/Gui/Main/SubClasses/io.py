@@ -1007,7 +1007,6 @@ class IoMain(ScenariosMain):
         if not self.circuit.rms_models:
             self.circuit.add_rms_model_catalogue()
 
-        # commented until Emt templates can be saved properly
         if not self.circuit.emt_models:
             self.circuit.add_emt_model_catalogue()
 
