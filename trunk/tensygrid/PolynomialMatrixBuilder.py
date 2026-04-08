@@ -115,7 +115,10 @@ class PolynomialMatrixBuilder:
             ineqs: Optional[list] = None,
             state_vars: Optional[list] = None,
             algebraic_vars: Optional[list] = None,
-            verbose: bool = False
+            verbose: bool = False,
+            enable_arg_lifting: bool = True,
+            enable_trig_lifting: bool = True,
+            enable_aux_constraints: bool = True,
     ) -> None:
 
         self.verbose: bool = verbose
@@ -251,10 +254,12 @@ class PolynomialMatrixBuilder:
         self._argaux_map: dict = dict()
 
         # LINEARIZATION: \propto x^n, n\in\mathbb{R}
-        self._flatten_nonlinear_arguments()
+        if enable_arg_lifting:
+            self._flatten_nonlinear_arguments()
 
         # LINEARIZATION: \propto \cos(x), \propto \sin(x)
-        self._apply_automatic_trig_lifting()
+        if enable_trig_lifting:
+            self._apply_automatic_trig_lifting()
         self.all_symbols.sort(key=_sort_symbol)
 
         self.sym_to_idx.clear()
@@ -265,7 +270,8 @@ class PolynomialMatrixBuilder:
 
         # --- ALGORITHM: TWO-PASS COMPILATION FOR AUTOMATIC LIFTING ---
         self.matrix_creation(self.eqs)
-        self._generate_lifting_equations(problem)
+        if enable_aux_constraints:
+            self._generate_lifting_equations(problem)
 
         S_H_sp: sparse.csc_matrix
         Phi_H_sp: sparse.csr_matrix
@@ -741,10 +747,14 @@ class PolynomialMatrixBuilder:
         # Rule: Explicit lists
         new_constraints: list = list()
 
+        protected_params = set()
+        if problem is not None and hasattr(problem, '_variable_parameters') and problem._variable_parameters is not None:
+            protected_params = set(problem._variable_parameters)
+
         sym: sp.Symbol
         for sym in self.all_symbols:
             print(sym)
-            if sym not in problem._variable_parameters: # Añadir que mire si hay problema
+            if sym not in protected_params: # Añadir que mire si hay problema
                 s_name: str = sym.name
 
                 # --- ALGORITHM: LIFTING DETECTION ---
