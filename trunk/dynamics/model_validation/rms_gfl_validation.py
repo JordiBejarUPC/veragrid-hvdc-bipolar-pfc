@@ -152,6 +152,61 @@ def print_gfl_init_consistency(grid2, pf_results):
     print(f"  mismatch dv_q = {v_q_c_from_pq - v_q_c_from_internal_bus:.6f}")
 
 
+def print_trafo_powerflow_equation_consistency(grid, pf_results):
+    """Quick PF-side check for dq/trafo equations used in NUACTIS-style models."""
+    if len(grid.transformers2w) == 0:
+        return
+
+    bus_names = [b.name for b in grid.buses]
+    branches = list(grid.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True))
+
+    print("\n" + "-" * 70)
+    print("Trafo PF Equation Consistency (NUACTIS-style)")
+    print("-" * 70)
+
+    for trafo in grid.transformers2w:
+        if trafo not in branches:
+            continue
+
+        bidx = branches.index(trafo)
+        idx_f = bus_names.index(trafo.bus_from.name)
+        idx_t = bus_names.index(trafo.bus_to.name)
+
+        vm_f = float(np.abs(pf_results.voltage[idx_f]))
+        va_f = float(np.angle(pf_results.voltage[idx_f]))
+        vm_t = float(np.abs(pf_results.voltage[idx_t]))
+        va_t = float(np.angle(pf_results.voltage[idx_t]))
+
+        # Use branch "to" powers like NUACTIS Pt/Qt wiring in current setup
+        pt = float(np.real(pf_results.St[bidx]) / grid.Sbase)
+        qt = float(np.imag(pf_results.St[bidx]) / grid.Sbase)
+
+        theta = va_t
+        omega = 1.0
+        r_traf = float(getattr(trafo, 'R', getattr(trafo, 'r', 0.01)))
+        l_traf = float(getattr(trafo, 'X', getattr(trafo, 'x', 0.05)))
+
+        vd = vm_f * np.sin(va_f - theta)
+        vq = vm_f * np.cos(va_f - theta)
+
+        # From P_act = -Pt, Q_act = -Qt with P_act=vq*iq+vd*id, Q_act=vq*id-vd*iq
+        den = vd * vd + vq * vq + 1e-12
+        iq = ((-pt) * vq - (-qt) * vd) / den
+        id_ = ((-qt) * vq + (-pt) * vd) / den
+
+        vd_c_from_rl = vd - r_traf * id_ + omega * l_traf * iq
+        vq_c_from_rl = vq - r_traf * iq - omega * l_traf * id_
+
+        vd_c_from_bus = vm_f * np.sin(va_f - theta)
+        vq_c_from_bus = vm_f * np.cos(va_f - theta)
+
+        print(f"  {trafo.name}:")
+        print(f"    Pt={pt:.6f}, Qt={qt:.6f}, Vm_f={vm_f:.6f}, Vm_t={vm_t:.6f}")
+        print(f"    id={id_:.6f}, iq={iq:.6f}, R={r_traf:.6f}, L={l_traf:.6f}")
+        print(f"    RL v_d_c={vd_c_from_rl:.6f}, bus v_d={vd_c_from_bus:.6f}, mismatch={vd_c_from_rl - vd_c_from_bus:.6f}")
+        print(f"    RL v_q_c={vq_c_from_rl:.6f}, bus v_q={vq_c_from_bus:.6f}, mismatch={vq_c_from_rl - vq_c_from_bus:.6f}")
+
+
 def create_grid_2():
     circuit = vge.MultiCircuit(name='Grid 2 - Transformer + GFL VSC')
 
@@ -484,4 +539,5 @@ if __name__ == "__main__":
 
     initialize_grid2_rms_models(grid2, results2)
     print_gfl_init_consistency(grid2, results2)
+    print_trafo_powerflow_equation_consistency(grid2, results2)
     run_rms_simulation(grid2, results2)

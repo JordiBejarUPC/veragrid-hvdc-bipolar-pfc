@@ -326,6 +326,16 @@ class RmsProblemDae(RmsProblemTemplate):
                 self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Pt, self.St[branch_num].real)
                 self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Qt, self.St[branch_num].imag)
 
+                if VarPowerFlowRefferenceType.If_dc in elm.rms_model.external_mapping and Vmf is not None:
+                    vmf_idx = self.uid2idx_vars.get(Vmf.uid, None)
+                    vmf0 = self.init_guess.get(vmf_idx, 1.0) if vmf_idx is not None else 1.0
+                    if abs(vmf0) > 1e-9:
+                        self.set_init_guess(
+                            elm.rms_model,
+                            VarPowerFlowRefferenceType.If_dc,
+                            self.Sf[branch_num].real / vmf0,
+                        )
+
                 # Run explicit initialization for branches to solve algebraic equations
                 if isinstance(elm, Transformer2W):
 
