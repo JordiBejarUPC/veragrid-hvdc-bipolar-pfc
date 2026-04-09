@@ -161,7 +161,7 @@ def op_extraction(problem: vge.RmsProblemPhasor) -> dict:
 
 
 
-def solve_problem(problem: Any) -> None:
+def solve_problem(problem: Any) -> Any:
     print("\n[4] Rebuilding equations and extracting exact physics...")
     builder = PolynomialMatrixBuilder(problem=problem, verbose=True)
     v_dict: dict = op_extraction(problem=problem)
@@ -173,6 +173,7 @@ def solve_problem(problem: Any) -> None:
     eigenvalues = res[0]
     stable = res[4]
     margin = res[5] if res[5] is not None else 0.0
+    participation_matrix = res[3] if res[3] is not None else None
 
     print("\n" + "=" * 80)
     print("SMALL SIGNAL ANALYSIS COMPLETE - POLYNOMIAL BUILDER")
@@ -181,6 +182,28 @@ def solve_problem(problem: Any) -> None:
     print(f"  System is stable: {stable}")
     print(f"  Stability margin: {margin:.4f}")
     print("=" * 80)
+
+    # Extract the mapping using the class's corrected function
+    pf_map: dict = builder.get_participation_mapping(eigenvalues, participation_matrix)
+
+    print("\n" + "!" * 80)
+    print("!!! UNSTABLE MODE ANALYSIS (Re > 0)")
+    print("!" * 80)
+
+    unstable_found = False
+    for ev, participations in pf_map.items():
+        # Strictly filter poles in the right half-plane
+        if ev.real > 1e-6:
+            unstable_found = True
+            print(f"\n🚨 Critical mode: {ev.real:.4f} + {ev.imag:.4f}j")
+            if not participations:
+                print("  -> [!] No dominant physical variables (check structural patch)")
+            for var_name, pf in participations:
+                print(f"  -> {var_name}: {pf * 100:.1f}%")
+
+    if not unstable_found:
+        print("\n✅ The system is stable! There is no real part greater than 0.")
+
     return eigenvalues
 
 if __name__ == "__main__":
@@ -204,37 +227,37 @@ if __name__ == "__main__":
                       "(-9.999999999999996e-10+0j)", "(-9.999999999999992e-10+0j)"]]
 
 
-    # --- LOGICA DE EMPAREJAMIENTO (Hungarian Algorithm) ---
+    # --- MATCHING LOGIC (Hungarian Algorithm) ---
     finite_evs = calculated_evs[np.isfinite(calculated_evs) & (np.abs(calculated_evs) < 1e6)] if len(
         calculated_evs) > 0 else []
 
-    tol = 0.06  # Tolerancia para considerar que coinciden
+    tol = 0.06  # Tolerance to consider eigenvalues as matching
     matched_calc = []
     unmatched_calc = []
     unmatched_ref = list(reference_evs)
 
     if len(finite_evs) > 0 and len(reference_evs) > 0:
-        # 1. Crear matriz de distancias (costos)
+        # 1. Build distance (cost) matrix
         cost_matrix = np.zeros((len(finite_evs), len(reference_evs)))
         for i, c_ev in enumerate(finite_evs):
             for j, r_ev in enumerate(reference_evs):
                 cost_matrix[i, j] = np.abs(c_ev - r_ev)
 
-        # 2. Asignación óptima
+        # 2. Optimal assignment
         row_ind, col_ind = linear_sum_assignment(cost_matrix)
 
-        # 3. Filtrar por tolerancia
+        # 3. Filter by tolerance
         for i, j in zip(row_ind, col_ind):
             if cost_matrix[i, j] < tol:
                 matched_calc.append(finite_evs[i])
-                unmatched_ref[j] = None  # Marcamos como encontrado
+                unmatched_ref[j] = None  # Mark as matched
             else:
                 unmatched_calc.append(finite_evs[i])
 
-        # 4. Limpiar listas de no emparejados
+        # 4. Clean unmatched lists
         unmatched_ref = [x for x in unmatched_ref if x is not None]
 
-        # Añadir los calculados que ni siquiera entraron en la asignación
+        # Add computed eigenvalues that were not assigned at all
         for i in range(len(finite_evs)):
             if i not in row_ind:
                 unmatched_calc.append(finite_evs[i])
@@ -245,11 +268,11 @@ if __name__ == "__main__":
     n_unmatched_calc = len(unmatched_calc)
     n_unmatched_ref = len(unmatched_ref)
 
-    # --- PLOT: Creación de la figura 1x2 ---
-    # Damos más espacio ancho (14) y reservamos más espacio al gráfico de dispersión (ratio 2:1)
+    # --- PLOT: Create 1x2 figure ---
+    # Use wider spacing and reserve more room for the scatter plot (2:1 ratio)
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6), gridspec_kw={'width_ratios': [2.5, 1]})
 
-    # --- SUBPLOT 1: SCATTER (Tu gráfica original adaptada al eje ax1) ---
+    # --- SUBPLOT 1: SCATTER (Original plot adapted to ax1) ---
     ax1.scatter(np.real(reference_evs), np.imag(reference_evs),
                 color='gray', marker='x', alpha=0.5, label="Pablo's computation")
 
@@ -263,26 +286,26 @@ if __name__ == "__main__":
     ax1.grid(True, alpha=0.3)
     ax1.legend(loc='lower left')
 
-    # OJO AQUÍ: Añadida la 'r' antes del string para evitar el SyntaxWarning de '\R' e '\I'
+    # Note: Added 'r' prefix to avoid SyntaxWarning for '\R' and '\I'
     ax1.set_xlabel(r'$\Re({\lambda})$', fontsize=12)
     ax1.set_ylabel(r'$\Im({\lambda})$', fontsize=12)
     ax1.set_title("Eigenvalue comparison")
 
-    # --- SUBPLOT 2: BARRAS Y RESULTADOS ---
+    # --- SUBPLOT 2: BARS AND RESULTS ---
     labels = ['Matching', 'Exceeding\n(TenSyGrid)', 'Missing\n(Pablo)']
     counts = [n_matches, n_unmatched_calc, n_unmatched_ref]
-    colors = ['#4CAF50', '#F44336', '#FFC107']  # Verde, Rojo, Amarillo
+    colors = ['#4CAF50', '#F44336', '#FFC107']  # Green, Red, Yellow
 
     bars = ax2.bar(labels, counts, color=colors, edgecolor='black', alpha=0.8)
     ax2.set_title(f"Coincidence\n(Tolerance: {tol})")
     ax2.set_ylabel("Amount")
 
-    # Añadir el número encima de cada barra
+    # Add the number above each bar
     for bar in bars:
         yval = bar.get_height()
         ax2.text(bar.get_x() + bar.get_width() / 2, yval + 0.1, int(yval), ha='center', va='bottom', fontweight='bold')
 
-    # Ocultar los bordes de arriba y derecha del gráfico de barras para que quede más limpio
+    # Hide top and right spines for a cleaner bar chart
     ax2.spines['top'].set_visible(False)
     ax2.spines['right'].set_visible(False)
 
@@ -290,17 +313,18 @@ if __name__ == "__main__":
     plt.savefig("scatter_and_bars.png", dpi=300, bbox_inches='tight')
     plt.show()
 
-    # --- IMPRESIÓN POR CONSOLA (Para que veas cuáles son exactamente) ---
-    print("=== REPORTE DE EIGENVALUES ===")
-    print(f"Total calculados (TenSyGrid): {len(finite_evs)}")
-    print(f"Total referenciados (Pablo): {len(reference_evs)}")
+    # --- CONSOLE OUTPUT (So you can see the exact values) ---
+    print("=== EIGENVALUE REPORT ===")
+    print(f"Total computed (TenSyGrid): {len(finite_evs)}")
+    print(f"Total reference (Pablo): {len(reference_evs)}")
     print("-" * 30)
-    print(f"✅ Coincidencias: {n_matches}")
+    print(f"✅ Matches: {n_matches}")
 
-    print(f"\n❌ POLOS SOBRANTES (Calculados por TenSyGrid que Pablo no tiene): {n_unmatched_calc}")
+    print(f"\n❌ EXTRA POLES (Computed by TenSyGrid, not in Pablo's reference): {n_unmatched_calc}")
     for ev in unmatched_calc:
         print(f"   {ev.real:.4f} + {ev.imag:.4f}j")
 
-    print(f"\n⚠️ POLOS FALTANTES (Referencia de Pablo que TenSyGrid no encontró): {n_unmatched_ref}")
+
+    print(f"\n⚠️ MISSING POLES (In Pablo's reference, not found by TenSyGrid): {n_unmatched_ref}")
     for ev in unmatched_ref:
         print(f"   {ev.real:.4f} + {ev.imag:.4f}j")

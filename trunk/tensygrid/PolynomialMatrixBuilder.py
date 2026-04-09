@@ -986,6 +986,48 @@ class PolynomialMatrixBuilder:
             print(f"Error computing eigenvalues: {e}")
             return None, None, None, None, False, None
 
+    def get_participation_mapping(self, evals: np.ndarray, participation_matrix: np.ndarray,
+                                  threshold: float = 0.05) -> dict:
+        """
+        Maps the raw participation matrix to the exact physical state variables for each dynamic mode.
+        Filters out derivative and input tokens to match the true dimensions of the state-space.
+        """
+        mapping: dict = dict()
+        if participation_matrix is None or evals is None: return mapping
+
+        # 1. Dynamically rebuild the exact physical-state order (ignoring dx, xp, u)
+        state_symbols: list = list()
+        for s in self.all_symbols:
+            s_name: str = s.name
+            is_deriv: bool = s_name.startswith('dx') or s_name.startswith('xp') or s_name.startswith(
+                'd_') or s_name.startswith('dt_')
+            is_input: bool = s_name.startswith('u') and not s_name.startswith('u_')
+
+            if not is_deriv and not is_input:
+                state_symbols.append(s)
+
+        n_modes: int = int(participation_matrix.shape[1])
+        n_states: int = int(participation_matrix.shape[0])
+
+        # 2. Map matrix participation factors to the filtered list
+        for m in range(n_modes):
+            mode_eval: complex = evals[m]
+            mode_pfs: list = list()
+
+            # Iterate up to n_states (in case Singular Pencil Patching / extra padding was applied)
+            limit: int = min(n_states, len(state_symbols))
+            for i in range(limit):
+                pf_val: float = float(participation_matrix[i, m])
+                if pf_val >= threshold:
+                    mode_pfs.append((state_symbols[i].name, pf_val))
+
+            # Sort variables by dominance level for this specific mode
+            mode_pfs.sort(key=lambda x: x[1], reverse=True)
+            mapping[mode_eval] = mode_pfs
+
+        return mapping
+
+
     def report(self, eigenvalues=None, is_stable=False, max_real=None, print_matrices=True, save_path=None):
         """
             Outputs or exports the internal structural matrices and eigenvalue results
