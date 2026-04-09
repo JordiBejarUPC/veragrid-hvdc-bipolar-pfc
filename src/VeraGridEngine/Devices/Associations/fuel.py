@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from typing import Union, Tuple
 import numpy as np
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles.profile import Profile
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
 
 

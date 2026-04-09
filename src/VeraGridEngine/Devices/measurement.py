@@ -17,7 +17,7 @@ from VeraGridEngine.Devices.Branches.switch import Switch
 from VeraGridEngine.Devices.Branches.series_reactance import SeriesReactance
 from VeraGridEngine.Devices.Branches.upfc import UPFC
 from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles.profile import Profile
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.basic_structures import Vec
 

@@ -6,7 +6,7 @@ import math
 import os
 import numpy as np
 import VeraGridEngine.api as gce
-from VeraGridEngine.Devices.profile import Profile, SparseArray, check_if_sparse
+from VeraGridEngine.Devices.Profiles.profile import Profile, SparseArray, check_if_sparse
 
 
 def test_sparse_array1():

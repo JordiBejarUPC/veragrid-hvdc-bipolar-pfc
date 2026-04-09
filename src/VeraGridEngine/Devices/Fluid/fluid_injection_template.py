@@ -9,7 +9,7 @@ import numpy as np
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Devices.Fluid.fluid_node import FluidNode
 from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles.profile import Profile
 from VeraGridEngine.Devices.Aggregation.facility import Facility
 from VeraGridEngine.enumerations import BuildStatus, DeviceType
 from VeraGridEngine.Devices.Parents.editable_device import GCProp

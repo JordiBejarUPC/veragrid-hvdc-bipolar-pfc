@@ -12,7 +12,7 @@ from VeraGridEngine.enumerations import (BuildStatus, TapModuleControl, TapPhase
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Branches.tap_changer import TapChanger
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType, get_at, GCProp
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles.profile import Profile
 
 
 class ControllableBranchParent(BranchParent):

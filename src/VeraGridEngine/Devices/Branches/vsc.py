@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
 from typing import List, Tuple, TYPE_CHECKING
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles.profile import Profile
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import BuildStatus, ConverterControlType
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent

@@ -13,11 +13,10 @@ from VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation import (pg, build_stat
                                                                   group_type_dict, contingency_ops_type_dict,
                                                                   contingency_method_dict, converter_control_type_dict,
                                                                   bus_type_dict,
-                                                                  GSLV_AVAILABLE, GSLV_VERSION,
-                                                                  GSLV_RECOMMENDED_VERSION)
+                                                                  GSLV_AVAILABLE, GSLV_RECOMMENDED_VERSION, GSLV_VERSION)
 from VeraGridEngine.DataStructures.branch_parent_data import BranchParentData
 from VeraGridEngine.basic_structures import IntVec, Vec, ConvergenceReport
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles.profile import Profile
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
@@ -31,9 +30,7 @@ from VeraGridEngine.basic_structures import Logger
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGridEngine.Simulations.OPF.opf_results import OptimalPowerFlowResults
     from VeraGridEngine.Simulations.OPF.opf_options import OptimalPowerFlowOptions
-    from VeraGridEngine.Simulations.LinearFactors.linear_analysis_options import LinearAnalysisOptions
     from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_options import ContingencyAnalysisOptions
-    from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_results import ContingencyAnalysisResults
 
 
 def get_gslv_mip_solvers_list() -> List[str]:

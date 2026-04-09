@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.enumerations import DeviceType, BuildStatus
 from VeraGridEngine.Devices.Parents.load_parent import InjectionParent
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles.profile import Profile
 
 
 class CurrentInjection(InjectionParent):

@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import json
-from typing import List, Union, Any, Dict
+from typing import List, Any, Dict
 from warnings import warn
 import numpy as np
 from VeraGridEngine.basic_structures import Logger
@@ -13,7 +13,7 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.veragrid.contingency_parser import get_contingencies_dict, parse_contingencies
 from VeraGridEngine.IO.veragrid.generic_io_functions import CustomJSONizer
 import VeraGridEngine.Devices as dev
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles.profile import Profile
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Simulations.driver_template import DriverToSave
 from VeraGridEngine.enumerations import (DeviceType, HvdcControlType, BuildStatus,

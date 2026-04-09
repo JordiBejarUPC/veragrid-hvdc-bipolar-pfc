@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from VeraGridEngine import RmsInitializationMethod, EmtSolverTypes
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles.profile import Profile
 from typing import List, Dict, AnyStr, Any, Union, Type, Tuple
 from VeraGridEngine.basic_structures import Logger, IntVec
 from VeraGridEngine.enumerations import (DeviceType, TimeFrame, BuildStatus, WindingsConnection,

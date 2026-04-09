@@ -7,7 +7,7 @@
 from typing import Union, Tuple
 import numpy as np
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles.profile import Profile
 
 
 class EmissionGas(EditableDevice):

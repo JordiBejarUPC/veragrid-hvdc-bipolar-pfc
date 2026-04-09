@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Union, List, Tuple
+from typing import Union, Tuple
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -12,9 +12,8 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.enumerations import DeviceType, BuildStatus
 from VeraGridEngine.Devices.Parents.load_parent import LoadParent
-from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
-from VeraGridEngine.Utils.Symbolic.symbolic import piecewise
+from VeraGridEngine.Devices.Profiles.profile import Profile
+from VeraGridEngine.Utils.Symbolic.block import VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 

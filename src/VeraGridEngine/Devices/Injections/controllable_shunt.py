@@ -9,7 +9,7 @@ import numpy as np
 
 from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType, ShuntControlMode
 from VeraGridEngine.Devices.Parents.shunt_parent import ShuntParent
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles.profile import Profile
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 from VeraGridEngine.basic_structures import Vec
