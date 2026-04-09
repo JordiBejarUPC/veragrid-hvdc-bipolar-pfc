@@ -132,7 +132,7 @@ gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
 line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = True, phA = True, phB = True, phC = True).block
 
 # load
-load_mdl = get_load_ZIP_emt_template(vf = grid.var_factory).block
+load_mdl = get_load_ZIP_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
 # connection with buses
 gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
