@@ -16,7 +16,7 @@ from VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation import (pg, build_stat
                                                                   GSLV_AVAILABLE, GSLV_RECOMMENDED_VERSION, GSLV_VERSION)
 from VeraGridEngine.DataStructures.branch_parent_data import BranchParentData
 from VeraGridEngine.basic_structures import IntVec, Vec, ConvergenceReport
-from VeraGridEngine.Devices.Profiles.profile import Profile
+from VeraGridEngine.Devices.Profiles import AnyProfile
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
@@ -81,7 +81,7 @@ def convert_tap_phase_control_mode_lst(data: List[TapPhaseControl]) -> List["pg.
 
 
 def fill_profile(gslv_profile: "pg.Profiledouble|pg.Profilebool|pg.Profileint|pg.Profileuint",
-                 gc_profile: Profile,
+                 gc_profile: AnyProfile,
                  use_time_series: bool,
                  time_indices: Union[IntVec, None],
                  n_time: int = 1,

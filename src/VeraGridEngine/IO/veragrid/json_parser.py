@@ -13,7 +13,7 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.IO.veragrid.contingency_parser import get_contingencies_dict, parse_contingencies
 from VeraGridEngine.IO.veragrid.generic_io_functions import CustomJSONizer
 import VeraGridEngine.Devices as dev
-from VeraGridEngine.Devices.Profiles.profile import Profile
+from VeraGridEngine.Devices.Profiles import AnyProfile
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.Simulations.driver_template import DriverToSave
 from VeraGridEngine.enumerations import (DeviceType, HvdcControlType, BuildStatus,
@@ -45,7 +45,7 @@ def add_to_dict2(main_dict: Dict[str, Any], data: Dict[Any, Any], key: str):
         main_dict[key] = data
 
 
-def profile_to_json(profile: Profile) -> Dict[str, Any]:
+def profile_to_json(profile: AnyProfile) -> Dict[str, Any]:
     """
     Convert a Profile to a json dictionary
     :param profile:
@@ -64,7 +64,7 @@ def profile_to_json(profile: Profile) -> Dict[str, Any]:
                 'data': arr}
 
 
-def json_to_profile(profile: Profile, d: Dict[str, Any]) -> None:
+def json_to_profile(profile: AnyProfile, d: Dict[str, Any]) -> None:
     """
     Assign a json profile to a Profile object
     :param profile: Profile to modify

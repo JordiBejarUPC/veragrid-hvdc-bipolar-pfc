@@ -9,7 +9,7 @@ import numpy as np
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Devices.Fluid.fluid_node import FluidNode
 from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGridEngine.Devices.Profiles.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileBool
 from VeraGridEngine.Devices.Aggregation.facility import Facility
 from VeraGridEngine.enumerations import BuildStatus, DeviceType
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
@@ -70,7 +70,7 @@ class FluidInjectionTemplate(PhysicalDevice):
                                 build_status=build_status)
 
         self.active = True
-        self._active_prof = Profile(default_value=self.active, data_type=bool)
+        self._active_prof = ProfileBool(default_value=self.active)
 
         self.efficiency = float(efficiency)  # MWh/m3
         self.max_flow_rate = float(max_flow_rate)  # m3/s
@@ -117,7 +117,7 @@ class FluidInjectionTemplate(PhysicalDevice):
             self._generator = val
 
     @property
-    def active_prof(self) -> Profile:
+    def active_prof(self) -> ProfileBool:
         """
         Cost profile
         :return: Profile
@@ -125,8 +125,8 @@ class FluidInjectionTemplate(PhysicalDevice):
         return self._active_prof
 
     @active_prof.setter
-    def active_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def active_prof(self, val: Union[ProfileBool, np.ndarray]):
+        if isinstance(val, ProfileBool):
             self._active_prof = val
         elif isinstance(val, np.ndarray):
             self._active_prof.set(arr=val)

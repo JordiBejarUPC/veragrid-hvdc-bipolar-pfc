@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.enumerations import DeviceType, BuildStatus
 from VeraGridEngine.Devices.Parents.load_parent import InjectionParent
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
-from VeraGridEngine.Devices.Profiles.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileFloat
 
 
 class CurrentInjection(InjectionParent):
@@ -111,18 +111,18 @@ class CurrentInjection(InjectionParent):
         self.Ii2 = float(Ii2)
         self.Ii3 = float(Ii3)
 
-        self._Ir_prof = Profile(default_value=self.Ir, data_type=float)
-        self._Ir1_prof = Profile(default_value=self.Ir1, data_type=float)
-        self._Ir2_prof = Profile(default_value=self.Ir2, data_type=float)
-        self._Ir3_prof = Profile(default_value=self.Ir3, data_type=float)
-        self._Ii_prof = Profile(default_value=self.Ii, data_type=float)
-        self._Ii1_prof = Profile(default_value=self.Ii1, data_type=float)
-        self._Ii2_prof = Profile(default_value=self.Ii2, data_type=float)
-        self._Ii3_prof = Profile(default_value=self.Ii3, data_type=float)
+        self._Ir_prof = ProfileFloat(default_value=self.Ir)
+        self._Ir1_prof = ProfileFloat(default_value=self.Ir1)
+        self._Ir2_prof = ProfileFloat(default_value=self.Ir2)
+        self._Ir3_prof = ProfileFloat(default_value=self.Ir3)
+        self._Ii_prof = ProfileFloat(default_value=self.Ii)
+        self._Ii1_prof = ProfileFloat(default_value=self.Ii1)
+        self._Ii2_prof = ProfileFloat(default_value=self.Ii2)
+        self._Ii3_prof = ProfileFloat(default_value=self.Ii3)
 
 
     @property
-    def Ir_prof(self) -> Profile:
+    def Ir_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -130,8 +130,8 @@ class CurrentInjection(InjectionParent):
         return self._Ir_prof
 
     @Ir_prof.setter
-    def Ir_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ir_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ir_prof = val
         elif isinstance(val, np.ndarray):
             self._Ir_prof.set(arr=val)
@@ -146,7 +146,7 @@ class CurrentInjection(InjectionParent):
         return get_at(self.Ir, self.Ir_prof, t)
 
     @property
-    def Ir1_prof(self) -> Profile:
+    def Ir1_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -154,8 +154,8 @@ class CurrentInjection(InjectionParent):
         return self._Ir1_prof
 
     @Ir1_prof.setter
-    def Ir1_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ir1_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ir1_prof = val
         elif isinstance(val, np.ndarray):
             self._Ir1_prof.set(arr=val)
@@ -170,7 +170,7 @@ class CurrentInjection(InjectionParent):
         return get_at(self.Ir1, self.Ir1_prof, t)
 
     @property
-    def Ir2_prof(self) -> Profile:
+    def Ir2_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -178,8 +178,8 @@ class CurrentInjection(InjectionParent):
         return self._Ir2_prof
 
     @Ir2_prof.setter
-    def Ir2_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ir2_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ir2_prof = val
         elif isinstance(val, np.ndarray):
             self._Ir2_prof.set(arr=val)
@@ -194,7 +194,7 @@ class CurrentInjection(InjectionParent):
         return get_at(self.Ir2, self.Ir2_prof, t)
 
     @property
-    def Ir3_prof(self) -> Profile:
+    def Ir3_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -202,8 +202,8 @@ class CurrentInjection(InjectionParent):
         return self._Ir3_prof
 
     @Ir3_prof.setter
-    def Ir3_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ir3_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ir3_prof = val
         elif isinstance(val, np.ndarray):
             self._Ir3_prof.set(arr=val)
@@ -218,7 +218,7 @@ class CurrentInjection(InjectionParent):
         return get_at(self.Ir3, self.Ir3_prof, t)
 
     @property
-    def Ii_prof(self) -> Profile:
+    def Ii_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -226,8 +226,8 @@ class CurrentInjection(InjectionParent):
         return self._Ii_prof
 
     @Ii_prof.setter
-    def Ii_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ii_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ii_prof = val
         elif isinstance(val, np.ndarray):
             self._Ii_prof.set(arr=val)
@@ -242,7 +242,7 @@ class CurrentInjection(InjectionParent):
         return get_at(self.Ii, self.Ii_prof, t)
 
     @property
-    def Ii1_prof(self) -> Profile:
+    def Ii1_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -250,8 +250,8 @@ class CurrentInjection(InjectionParent):
         return self._Ii1_prof
 
     @Ii1_prof.setter
-    def Ii1_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ii1_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ii1_prof = val
         elif isinstance(val, np.ndarray):
             self._Ii1_prof.set(arr=val)
@@ -266,7 +266,7 @@ class CurrentInjection(InjectionParent):
         return get_at(self.Ii1, self.Ii1_prof, t)
 
     @property
-    def Ii2_prof(self) -> Profile:
+    def Ii2_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -274,8 +274,8 @@ class CurrentInjection(InjectionParent):
         return self._Ii2_prof
 
     @Ii2_prof.setter
-    def Ii2_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ii2_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ii2_prof = val
         elif isinstance(val, np.ndarray):
             self._Ii2_prof.set(arr=val)
@@ -290,7 +290,7 @@ class CurrentInjection(InjectionParent):
         return get_at(self.Ii2, self.Ii2_prof, t)
 
     @property
-    def Ii3_prof(self) -> Profile:
+    def Ii3_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -298,8 +298,8 @@ class CurrentInjection(InjectionParent):
         return self._Ii3_prof
 
     @Ii3_prof.setter
-    def Ii3_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ii3_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ii3_prof = val
         elif isinstance(val, np.ndarray):
             self._Ii3_prof.set(arr=val)

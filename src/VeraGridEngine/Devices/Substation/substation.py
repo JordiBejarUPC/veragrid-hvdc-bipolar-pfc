@@ -14,7 +14,7 @@ from VeraGridEngine.Devices.Aggregation.country import Country
 from VeraGridEngine.Devices.Aggregation.community import Community
 from VeraGridEngine.Devices.Aggregation.region import Region
 from VeraGridEngine.Devices.Aggregation.municipality import Municipality
-from VeraGridEngine.Devices.Profiles.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileFloat
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 from VeraGridEngine.enumerations import BuildStatus, DeviceType
 
@@ -133,13 +133,13 @@ class Substation(PhysicalDevice):
         self.address: str = address
 
         self.irradiation: float = float(irradiation)
-        self._irradiation_prof = Profile(default_value=self.irradiation, data_type=float)
+        self._irradiation_prof = ProfileFloat(default_value=self.irradiation)
 
         self.temperature: float = float(temperature)
-        self._temperature_prof = Profile(default_value=self.temperature, data_type=float)
+        self._temperature_prof = ProfileFloat(default_value=self.temperature)
 
         self.wind_speed: float = float(wind_speed)
-        self._wind_speed_prof = Profile(default_value=self.wind_speed, data_type=float)
+        self._wind_speed_prof = ProfileFloat(default_value=self.wind_speed)
 
         self.terrain_roughness: float = float(terrain_roughness)
 
@@ -283,7 +283,7 @@ class Substation(PhysicalDevice):
                 str(type(val)) + 'not supported to be set into a municipality of type Union[Municipality, None]')
 
     @property
-    def irradiation_prof(self) -> Profile:
+    def irradiation_prof(self) -> ProfileFloat:
         """
         Irradiation profile
         :return: Profile
@@ -291,8 +291,8 @@ class Substation(PhysicalDevice):
         return self._irradiation_prof
 
     @irradiation_prof.setter
-    def irradiation_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def irradiation_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._irradiation_prof = val
         elif isinstance(val, np.ndarray):
             self._irradiation_prof.set(arr=val)
@@ -307,7 +307,7 @@ class Substation(PhysicalDevice):
         return get_at(self.irradiation, self.irradiation_prof, t)
 
     @property
-    def temperature_prof(self) -> Profile:
+    def temperature_prof(self) -> ProfileFloat:
         """
         Temperature profile
         :return: Profile
@@ -315,8 +315,8 @@ class Substation(PhysicalDevice):
         return self._temperature_prof
 
     @temperature_prof.setter
-    def temperature_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def temperature_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._temperature_prof = val
         elif isinstance(val, np.ndarray):
             self._temperature_prof.set(arr=val)
@@ -331,7 +331,7 @@ class Substation(PhysicalDevice):
         return get_at(self.temperature, self.temperature_prof, t)
 
     @property
-    def wind_speed_prof(self) -> Profile:
+    def wind_speed_prof(self) -> ProfileFloat:
         """
         wind_speed_prof profile
         :return: Profile
@@ -339,8 +339,8 @@ class Substation(PhysicalDevice):
         return self._wind_speed_prof
 
     @wind_speed_prof.setter
-    def wind_speed_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def wind_speed_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._wind_speed_prof = val
         elif isinstance(val, np.ndarray):
             self._wind_speed_prof.set(arr=val)

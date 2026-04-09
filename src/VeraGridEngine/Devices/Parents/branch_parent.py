@@ -13,7 +13,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import BuildStatus, DeviceType
 from VeraGridEngine.Devices.Parents.dynamic_parent import DynamicDevice
 from VeraGridEngine.Devices.Aggregation.branch_group import BranchGroup
-from VeraGridEngine.Devices.Profiles.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileFloat
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 if TYPE_CHECKING:
@@ -166,12 +166,12 @@ class BranchParent(DynamicDevice):
             raise Exception(f"Bus from is a strange value {bus_from}")
 
         self.active = bool(active)
-        self._active_prof = Profile(default_value=self.active, data_type=bool)
+        self._active_prof = ProfileBool(default_value=self.active)
 
         # Conductor base and operating temperatures in ºC
         self.temp_base = float(temp_base)
         self.temp_oper = float(temp_oper)
-        self._temp_oper_prof = Profile(default_value=self.temp_oper, data_type=float)
+        self._temp_oper_prof = ProfileFloat(default_value=self.temp_oper)
 
         # Conductor thermal constant (1/ºC)
         self.alpha = float(alpha)
@@ -188,7 +188,7 @@ class BranchParent(DynamicDevice):
 
         self.Cost = cost
 
-        self._Cost_prof = Profile(default_value=cost, data_type=float)
+        self._Cost_prof = ProfileFloat(default_value=cost)
 
         self.capex = capex
 
@@ -198,17 +198,17 @@ class BranchParent(DynamicDevice):
         if not isinstance(rate, Union[float, int]):
             raise ValueError("Rate must be a float")
         self._rate = float(rate)
-        self._rate_prof = Profile(default_value=rate, data_type=float)
+        self._rate_prof = ProfileFloat(default_value=rate)
 
         if not isinstance(contingency_factor, Union[float, int]):
             raise ValueError("contingency_factor must be a float")
         self._contingency_factor = float(contingency_factor)
-        self._contingency_factor_prof = Profile(default_value=contingency_factor, data_type=float)
+        self._contingency_factor_prof = ProfileFloat(default_value=contingency_factor)
 
         if not isinstance(protection_rating_factor, Union[float, int]):
             raise ValueError("protection_rating_factor must be a float")
         self._protection_rating_factor = float(protection_rating_factor)
-        self._protection_rating_factor_prof = Profile(default_value=protection_rating_factor, data_type=float)
+        self._protection_rating_factor_prof = ProfileFloat(default_value=protection_rating_factor)
 
         self.color = color if color is not None else "#909090"  # light gray
 
@@ -255,7 +255,7 @@ class BranchParent(DynamicDevice):
                 raise Exception(str(type(val)) + 'not supported to be set into a _bus_to')
 
     @property
-    def active_prof(self) -> Profile:
+    def active_prof(self) -> ProfileBool:
         """
         Cost profile
         :return: Profile
@@ -263,8 +263,8 @@ class BranchParent(DynamicDevice):
         return self._active_prof
 
     @active_prof.setter
-    def active_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def active_prof(self, val: Union[ProfileBool, np.ndarray]):
+        if isinstance(val, ProfileBool):
             self._active_prof = val
         elif isinstance(val, np.ndarray):
             self._active_prof.set(arr=val)
@@ -279,7 +279,7 @@ class BranchParent(DynamicDevice):
         return get_at(self.active, self.active_prof, t)
 
     @property
-    def rate_prof(self) -> Profile:
+    def rate_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -287,8 +287,8 @@ class BranchParent(DynamicDevice):
         return self._rate_prof
 
     @rate_prof.setter
-    def rate_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def rate_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._rate_prof = val
         elif isinstance(val, np.ndarray):
             self._rate_prof.set(arr=val)
@@ -303,7 +303,7 @@ class BranchParent(DynamicDevice):
         return get_at(self.rate, self.rate_prof, t)
 
     @property
-    def contingency_factor_prof(self) -> Profile:
+    def contingency_factor_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -311,8 +311,8 @@ class BranchParent(DynamicDevice):
         return self._contingency_factor_prof
 
     @contingency_factor_prof.setter
-    def contingency_factor_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def contingency_factor_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._contingency_factor_prof = val
         elif isinstance(val, np.ndarray):
             self._contingency_factor_prof.set(arr=val)
@@ -327,7 +327,7 @@ class BranchParent(DynamicDevice):
         return get_at(self.contingency_factor, self.contingency_factor_prof, t)
 
     @property
-    def protection_rating_factor_prof(self) -> Profile:
+    def protection_rating_factor_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -335,8 +335,8 @@ class BranchParent(DynamicDevice):
         return self._protection_rating_factor_prof
 
     @protection_rating_factor_prof.setter
-    def protection_rating_factor_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def protection_rating_factor_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._protection_rating_factor_prof = val
         elif isinstance(val, np.ndarray):
             self._protection_rating_factor_prof.set(arr=val)
@@ -351,7 +351,7 @@ class BranchParent(DynamicDevice):
         return get_at(self.protection_rating_factor, self.protection_rating_factor_prof, t)
 
     @property
-    def Cost_prof(self) -> Profile:
+    def Cost_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -359,8 +359,8 @@ class BranchParent(DynamicDevice):
         return self._Cost_prof
 
     @Cost_prof.setter
-    def Cost_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Cost_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Cost_prof = val
         elif isinstance(val, np.ndarray):
             self._Cost_prof.set(arr=val)
@@ -375,7 +375,7 @@ class BranchParent(DynamicDevice):
         return get_at(self.Cost, self.Cost_prof, t)
 
     @property
-    def temp_oper_prof(self) -> Profile:
+    def temp_oper_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -383,8 +383,8 @@ class BranchParent(DynamicDevice):
         return self._temp_oper_prof
 
     @temp_oper_prof.setter
-    def temp_oper_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def temp_oper_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._temp_oper_prof = val
         elif isinstance(val, np.ndarray):
             self._temp_oper_prof.set(arr=val)

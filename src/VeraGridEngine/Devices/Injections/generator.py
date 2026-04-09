@@ -14,7 +14,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType
 from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Injections.generator_q_curve import GeneratorQCurve
-from VeraGridEngine.Devices.Profiles.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileFloat
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 
@@ -264,32 +264,32 @@ class Generator(InjectionParent):
         self.control_cn = None
 
         self._P = float(P)
-        self._P_prof = Profile(default_value=self.P, data_type=float)
+        self._P_prof = ProfileFloat(default_value=self.P)
 
         self.Pmax = float(Pmax)
-        self._Pmax_prof = Profile(default_value=self.Pmax, data_type=float)
+        self._Pmax_prof = ProfileFloat(default_value=self.Pmax)
 
         self.Pmin = float(Pmin)
-        self._Pmin_prof = Profile(default_value=self.Pmin, data_type=float)
+        self._Pmin_prof = ProfileFloat(default_value=self.Pmin)
 
         self._Q = float(Q)
-        self._Q_prof = Profile(default_value=self.Q, data_type=float)
+        self._Q_prof = ProfileFloat(default_value=self.Q)
 
-        self._Qmin_prof = Profile(default_value=Qmin, data_type=float)
-        self._Qmax_prof = Profile(default_value=Qmax, data_type=float)
+        self._Qmin_prof = ProfileFloat(default_value=Qmin)
+        self._Qmax_prof = ProfileFloat(default_value=Qmax)
 
         self.qmin_set = float(Qmin)
         self.qmax_set = float(Qmax)
 
         self.srap_enabled = bool(srap_enabled)
-        self._srap_enabled_prof = Profile(default_value=self.srap_enabled, data_type=bool)
+        self._srap_enabled_prof = ProfileBool(default_value=self.srap_enabled)
 
         # is the device active for active power dispatch?
         self.enabled_dispatch = bool(enabled_dispatch)
-        self._enabled_dispatch_prof = Profile(default_value=self.enabled_dispatch, data_type=bool)
+        self._enabled_dispatch_prof = ProfileBool(default_value=self.enabled_dispatch)
 
         self.must_run = bool(must_run)
-        self._must_run_prof = Profile(default_value=self.must_run, data_type=bool)
+        self._must_run_prof = ProfileBool(default_value=self.must_run)
 
         # positive sequence resistance
         self.R1 = float(r1)
@@ -313,7 +313,7 @@ class Generator(InjectionParent):
         self._Pf = float(power_factor)
 
         # voltage set profile for this load in p.u.
-        self._Pf_prof = Profile(default_value=self.Pf, data_type=float)
+        self._Pf_prof = ProfileFloat(default_value=self.Pf)
 
         # If this generator is voltage controlled it produces a PV node, otherwise the node remains as PQ
         self.is_controlled = bool(is_controlled)
@@ -325,7 +325,7 @@ class Generator(InjectionParent):
         self.Vset = float(vset)
 
         # voltage set profile for this load in p.u.
-        self._Vset_prof = Profile(default_value=self.Vset, data_type=float)
+        self._Vset_prof = ProfileFloat(default_value=self.Vset)
 
         self.use_reactive_power_curve = bool(use_reactive_power_curve)
 
@@ -349,8 +349,8 @@ class Generator(InjectionParent):
         self.ramp_up = ramp_up
         self.ramp_down = ramp_down
 
-        self._Cost2_prof = Profile(default_value=self.Cost2, data_type=float)
-        self._Cost0_prof = Profile(default_value=self.Cost0, data_type=float)
+        self._Cost2_prof = ProfileFloat(default_value=self.Cost2)
+        self._Cost0_prof = ProfileFloat(default_value=self.Cost0)
 
         self.emissions: Associations = Associations(device_type=DeviceType.EmissionGasDevice)
         self.fuels: Associations = Associations(device_type=DeviceType.FuelDevice)
@@ -381,7 +381,7 @@ class Generator(InjectionParent):
             print("The value you're trying to set into P is not a float :(")
 
     @property
-    def P_prof(self) -> Profile:
+    def P_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -389,8 +389,8 @@ class Generator(InjectionParent):
         return self._P_prof
 
     @P_prof.setter
-    def P_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def P_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._P_prof = val
         elif isinstance(val, np.ndarray):
             self._P_prof.set(arr=val)
@@ -425,7 +425,7 @@ class Generator(InjectionParent):
             print("The value you're trying to set into Q is not a float :(")
 
     @property
-    def Q_prof(self) -> Profile:
+    def Q_prof(self) -> ProfileFloat:
         """
         Q profile
         :return: Profile
@@ -433,8 +433,8 @@ class Generator(InjectionParent):
         return self._Q_prof
 
     @Q_prof.setter
-    def Q_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Q_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Q_prof = val
         elif isinstance(val, np.ndarray):
             self._Q_prof.set(arr=val)
@@ -462,7 +462,7 @@ class Generator(InjectionParent):
         self.qmin_set = val
 
     @property
-    def Qmin_prof(self) -> Profile:
+    def Qmin_prof(self) -> ProfileFloat:
         """
         Qmin profile
         :return: Profile
@@ -470,8 +470,8 @@ class Generator(InjectionParent):
         return self._Qmin_prof
 
     @Qmin_prof.setter
-    def Qmin_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Qmin_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Qmin_prof = val
         elif isinstance(val, np.ndarray):
             self._Qmin_prof.set(arr=val)
@@ -499,7 +499,7 @@ class Generator(InjectionParent):
         self.qmax_set = val
 
     @property
-    def Qmax_prof(self) -> Profile:
+    def Qmax_prof(self) -> ProfileFloat:
         """
         Qmax profile
         :return: Profile
@@ -507,8 +507,8 @@ class Generator(InjectionParent):
         return self._Qmax_prof
 
     @Qmax_prof.setter
-    def Qmax_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Qmax_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Qmax_prof = val
         elif isinstance(val, np.ndarray):
             self._Qmax_prof.set(arr=val)
@@ -523,7 +523,7 @@ class Generator(InjectionParent):
         return get_at(self.Qmax, self.Qmax_prof, t)
 
     @property
-    def srap_enabled_prof(self) -> Profile:
+    def srap_enabled_prof(self) -> ProfileBool:
         """
         Control bus profile
         :return: Profile
@@ -531,8 +531,8 @@ class Generator(InjectionParent):
         return self._srap_enabled_prof
 
     @srap_enabled_prof.setter
-    def srap_enabled_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def srap_enabled_prof(self, val: Union[ProfileBool, np.ndarray]):
+        if isinstance(val, ProfileBool):
             self._srap_enabled_prof = val
         elif isinstance(val, np.ndarray):
             self._srap_enabled_prof.set(arr=val)
@@ -547,7 +547,7 @@ class Generator(InjectionParent):
         return get_at(self.srap_enabled, self.srap_enabled_prof, t)
 
     @property
-    def Pmax_prof(self) -> Profile:
+    def Pmax_prof(self) -> ProfileFloat:
         """
         Pmax profile
         :return: Profile
@@ -555,8 +555,8 @@ class Generator(InjectionParent):
         return self._Pmax_prof
 
     @Pmax_prof.setter
-    def Pmax_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Pmax_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Pmax_prof = val
         elif isinstance(val, np.ndarray):
             self._Pmax_prof.set(arr=val)
@@ -571,7 +571,7 @@ class Generator(InjectionParent):
         return get_at(self.Pmax, self.Pmax_prof, t)
 
     @property
-    def Pmin_prof(self) -> Profile:
+    def Pmin_prof(self) -> ProfileFloat:
         """
         Pmin profile
         :return: Profile
@@ -579,8 +579,8 @@ class Generator(InjectionParent):
         return self._Pmin_prof
 
     @Pmin_prof.setter
-    def Pmin_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Pmin_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Pmin_prof = val
         elif isinstance(val, np.ndarray):
             self._Pmin_prof.set(arr=val)
@@ -666,7 +666,7 @@ class Generator(InjectionParent):
         self._srap_enabled = bool(val)
 
     @property
-    def Vset_prof(self) -> Profile:
+    def Vset_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -674,8 +674,8 @@ class Generator(InjectionParent):
         return self._Vset_prof
 
     @Vset_prof.setter
-    def Vset_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Vset_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Vset_prof = val
         elif isinstance(val, np.ndarray):
             self._Vset_prof.set(arr=val)
@@ -690,7 +690,7 @@ class Generator(InjectionParent):
         return get_at(self.Vset, self.Vset_prof, t)
 
     @property
-    def Cost2_prof(self) -> Profile:
+    def Cost2_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -698,8 +698,8 @@ class Generator(InjectionParent):
         return self._Cost2_prof
 
     @Cost2_prof.setter
-    def Cost2_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Cost2_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Cost2_prof = val
         elif isinstance(val, np.ndarray):
             self._Cost2_prof.set(arr=val)
@@ -714,7 +714,7 @@ class Generator(InjectionParent):
         return get_at(self.Cost2, self.Cost2_prof, t)
 
     @property
-    def Cost0_prof(self) -> Profile:
+    def Cost0_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -722,8 +722,8 @@ class Generator(InjectionParent):
         return self._Cost0_prof
 
     @Cost0_prof.setter
-    def Cost0_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Cost0_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Cost0_prof = val
         elif isinstance(val, np.ndarray):
             self._Cost0_prof.set(arr=val)
@@ -738,7 +738,7 @@ class Generator(InjectionParent):
         return get_at(self.Cost0, self.Cost0_prof, t)
 
     @property
-    def enabled_dispatch_prof(self) -> Profile:
+    def enabled_dispatch_prof(self) -> ProfileBool:
         """
         Cost profile
         :return: Profile
@@ -746,8 +746,8 @@ class Generator(InjectionParent):
         return self._enabled_dispatch_prof
 
     @enabled_dispatch_prof.setter
-    def enabled_dispatch_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def enabled_dispatch_prof(self, val: Union[ProfileBool, np.ndarray]):
+        if isinstance(val, ProfileBool):
             self._enabled_dispatch_prof = val
         elif isinstance(val, np.ndarray):
             self._enabled_dispatch_prof.set(arr=val)
@@ -762,7 +762,7 @@ class Generator(InjectionParent):
         return get_at(self.enabled_dispatch, self.enabled_dispatch_prof, t)
 
     @property
-    def must_run_prof(self) -> Profile:
+    def must_run_prof(self) -> ProfileBool:
         """
         Cost profile
         :return: Profile
@@ -770,8 +770,8 @@ class Generator(InjectionParent):
         return self._must_run_prof
 
     @must_run_prof.setter
-    def must_run_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def must_run_prof(self, val: Union[ProfileBool, np.ndarray]):
+        if isinstance(val, ProfileBool):
             self._must_run_prof = val
         elif isinstance(val, np.ndarray):
             self._must_run_prof.set(arr=val)
@@ -917,7 +917,7 @@ class Generator(InjectionParent):
             self.Q = compute_q(p=self.P, pf=self._Pf)
 
     @property
-    def Pf_prof(self) -> Profile:
+    def Pf_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -925,8 +925,8 @@ class Generator(InjectionParent):
         return self._Pf_prof
 
     @Pf_prof.setter
-    def Pf_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Pf_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Pf_prof = val
         elif isinstance(val, np.ndarray):
             self._Pf_prof.set(arr=val)

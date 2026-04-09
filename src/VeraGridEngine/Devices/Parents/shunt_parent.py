@@ -10,7 +10,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import BuildStatus, DeviceType, SubObjectType
-from VeraGridEngine.Devices.Profiles.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileFloat
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.Devices.admittance_matrix import AdmittanceMatrix
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
@@ -128,39 +128,39 @@ class ShuntParent(InjectionParent):
                                  device_type=device_type)
 
         self.G = float(G)
-        self._G_prof = Profile(default_value=self.G, data_type=float)
+        self._G_prof = ProfileFloat(default_value=self.G)
 
         self.B = float(B)
-        self._B_prof = Profile(default_value=self.B, data_type=float)
+        self._B_prof = ProfileFloat(default_value=self.B)
 
         self.G0 = float(G0)
-        self._G0_prof = Profile(default_value=self.G0, data_type=float)
+        self._G0_prof = ProfileFloat(default_value=self.G0)
 
         self.B0 = float(B0)
-        self._B0_prof = Profile(default_value=self.B0, data_type=float)
+        self._B0_prof = ProfileFloat(default_value=self.B0)
 
         self.Ga = float(G1)
-        self._Ga_prof = Profile(default_value=self.Ga, data_type=float)
+        self._Ga_prof = ProfileFloat(default_value=self.Ga)
 
         self.Gb = float(G2)
-        self._Gb_prof = Profile(default_value=self.Gb, data_type=float)
+        self._Gb_prof = ProfileFloat(default_value=self.Gb)
 
         self.Gc = float(G3)
-        self._Gc_prof = Profile(default_value=self.Gc, data_type=float)
+        self._Gc_prof = ProfileFloat(default_value=self.Gc)
 
         self.Ba = float(B1)
-        self._Ba_prof = Profile(default_value=self.Ba, data_type=float)
+        self._Ba_prof = ProfileFloat(default_value=self.Ba)
 
         self.Bb = float(B2)
-        self._Bb_prof = Profile(default_value=self.Bb, data_type=float)
+        self._Bb_prof = ProfileFloat(default_value=self.Bb)
 
         self.Bc = float(B3)
-        self._Bc_prof = Profile(default_value=self.Bc, data_type=float)
+        self._Bc_prof = ProfileFloat(default_value=self.Bc)
 
         self._ysh = AdmittanceMatrix()
 
     @property
-    def G_prof(self) -> Profile:
+    def G_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -168,8 +168,8 @@ class ShuntParent(InjectionParent):
         return self._G_prof
 
     @G_prof.setter
-    def G_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def G_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._G_prof = val
         elif isinstance(val, np.ndarray):
             self._G_prof.set(arr=val)
@@ -184,7 +184,7 @@ class ShuntParent(InjectionParent):
         return get_at(self.G, self.G_prof, t)
 
     @property
-    def Ga_prof(self) -> Profile:
+    def Ga_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -192,8 +192,8 @@ class ShuntParent(InjectionParent):
         return self._Ga_prof
 
     @Ga_prof.setter
-    def Ga_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ga_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ga_prof = val
         elif isinstance(val, np.ndarray):
             self._Ga_prof.set(arr=val)
@@ -208,7 +208,7 @@ class ShuntParent(InjectionParent):
         return get_at(self.Ga, self.Ga_prof, t)
 
     @property
-    def Gb_prof(self) -> Profile:
+    def Gb_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -216,8 +216,8 @@ class ShuntParent(InjectionParent):
         return self._Gb_prof
 
     @Gb_prof.setter
-    def Gb_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Gb_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Gb_prof = val
         elif isinstance(val, np.ndarray):
             self._Gb_prof.set(arr=val)
@@ -232,7 +232,7 @@ class ShuntParent(InjectionParent):
         return get_at(self.Gb, self.Gb_prof, t)
 
     @property
-    def Gc_prof(self) -> Profile:
+    def Gc_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -240,8 +240,8 @@ class ShuntParent(InjectionParent):
         return self._Gc_prof
 
     @Gc_prof.setter
-    def Gc_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Gc_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Gc_prof = val
         elif isinstance(val, np.ndarray):
             self._Gc_prof.set(arr=val)
@@ -256,7 +256,7 @@ class ShuntParent(InjectionParent):
         return get_at(self.Gc, self.Gc_prof, t)
 
     @property
-    def B_prof(self) -> Profile:
+    def B_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -264,8 +264,8 @@ class ShuntParent(InjectionParent):
         return self._B_prof
 
     @B_prof.setter
-    def B_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def B_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._B_prof = val
         elif isinstance(val, np.ndarray):
             self._B_prof.set(arr=val)
@@ -280,7 +280,7 @@ class ShuntParent(InjectionParent):
         return get_at(self.B, self.B_prof, t)
 
     @property
-    def Ba_prof(self) -> Profile:
+    def Ba_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -288,8 +288,8 @@ class ShuntParent(InjectionParent):
         return self._Ba_prof
 
     @Ba_prof.setter
-    def Ba_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ba_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ba_prof = val
         elif isinstance(val, np.ndarray):
             self._Ba_prof.set(arr=val)
@@ -304,7 +304,7 @@ class ShuntParent(InjectionParent):
         return get_at(self.Ba, self.Ba_prof, t)
 
     @property
-    def Bb_prof(self) -> Profile:
+    def Bb_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -312,8 +312,8 @@ class ShuntParent(InjectionParent):
         return self._Bb_prof
 
     @Bb_prof.setter
-    def Bb_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Bb_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Bb_prof = val
         elif isinstance(val, np.ndarray):
             self._Bb_prof.set(arr=val)
@@ -328,7 +328,7 @@ class ShuntParent(InjectionParent):
         return get_at(self.Bb, self.Bb_prof, t)
 
     @property
-    def Bc_prof(self) -> Profile:
+    def Bc_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -336,8 +336,8 @@ class ShuntParent(InjectionParent):
         return self._Bc_prof
 
     @Bc_prof.setter
-    def Bc_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Bc_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Bc_prof = val
         elif isinstance(val, np.ndarray):
             self._Bc_prof.set(arr=val)
@@ -352,7 +352,7 @@ class ShuntParent(InjectionParent):
         return get_at(self.Bc, self.Bc_prof, t)
 
     @property
-    def G0_prof(self) -> Profile:
+    def G0_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -360,8 +360,8 @@ class ShuntParent(InjectionParent):
         return self._G0_prof
 
     @G0_prof.setter
-    def G0_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def G0_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._G0_prof = val
         elif isinstance(val, np.ndarray):
             self._G0_prof.set(arr=val)
@@ -376,7 +376,7 @@ class ShuntParent(InjectionParent):
         return get_at(self.G0, self.G0_prof, t)
 
     @property
-    def B0_prof(self) -> Profile:
+    def B0_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -384,8 +384,8 @@ class ShuntParent(InjectionParent):
         return self._B0_prof
 
     @B0_prof.setter
-    def B0_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def B0_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._B0_prof = val
         elif isinstance(val, np.ndarray):
             self._B0_prof.set(arr=val)

@@ -13,7 +13,7 @@ from VeraGridEngine.Devices.Branches.winding import Winding
 from VeraGridEngine.Devices.Parents.editable_device import GCProp, get_at
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.Devices.Profiles.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileBool
 from VeraGridEngine.enumerations import BuildStatus, DeviceType
 
 
@@ -98,7 +98,7 @@ class TransformerNW(PhysicalDevice):
         self.cn0 = None
 
         self.active = bool(active)
-        self._active_prof = Profile(default_value=self.active, data_type=bool)
+        self._active_prof = ProfileBool(default_value=self.active)
 
         self._Pfe = float(Pfe)
         self._I0 = float(I0)
@@ -112,7 +112,7 @@ class TransformerNW(PhysicalDevice):
         self.initialize_windings(winding_count=winding_count, buses=buses)
 
     @property
-    def active_prof(self) -> Profile:
+    def active_prof(self) -> ProfileBool:
         """
         Cost profile
         :return: Profile
@@ -120,8 +120,8 @@ class TransformerNW(PhysicalDevice):
         return self._active_prof
 
     @active_prof.setter
-    def active_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def active_prof(self, val: Union[ProfileBool, np.ndarray]):
+        if isinstance(val, ProfileBool):
             self._active_prof = val
         elif isinstance(val, np.ndarray):
             self._active_prof.set(arr=val)

@@ -12,7 +12,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.enumerations import HvdcControlType
-from VeraGridEngine.Devices.Profiles.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileFloat
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 from VeraGridEngine.Devices.Branches.line_locations import LineLocations
 
@@ -295,17 +295,17 @@ class HvdcLine(BranchParent):
 
         self.control_mode: HvdcControlType = control_mode
 
-        self._Pset_prof: Profile = Profile(default_value=Pset, data_type=float)
-        self._active_prof: Profile = Profile(default_value=active, data_type=bool)
-        self._Vset_f_prof: Profile = Profile(default_value=Vset_f, data_type=float)
-        self._Vset_t_prof: Profile = Profile(default_value=Vset_t, data_type=float)
-        self._angle_droop_prof: Profile = Profile(default_value=angle_droop, data_type=float)
+        self._Pset_prof: ProfileFloat = ProfileFloat(default_value=Pset)
+        self._active_prof: ProfileBool = ProfileBool(default_value=active)
+        self._Vset_f_prof: ProfileFloat = ProfileFloat(default_value=Vset_f)
+        self._Vset_t_prof: ProfileFloat = ProfileFloat(default_value=Vset_t)
+        self._angle_droop_prof: ProfileFloat = ProfileFloat(default_value=angle_droop)
 
         # Line locations
         self._locations: LineLocations = LineLocations()
 
     @property
-    def active_prof(self) -> Profile:
+    def active_prof(self) -> ProfileBool:
         """
         Cost profile
         :return: Profile
@@ -313,8 +313,8 @@ class HvdcLine(BranchParent):
         return self._active_prof
 
     @active_prof.setter
-    def active_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def active_prof(self, val: Union[ProfileBool, np.ndarray]):
+        if isinstance(val, ProfileBool):
             self._active_prof = val
         elif isinstance(val, np.ndarray):
             self._active_prof.set(arr=val)
@@ -329,7 +329,7 @@ class HvdcLine(BranchParent):
         return get_at(self.active, self.active_prof, t)
 
     @property
-    def rate_prof(self) -> Profile:
+    def rate_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -337,8 +337,8 @@ class HvdcLine(BranchParent):
         return self._rate_prof
 
     @rate_prof.setter
-    def rate_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def rate_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._rate_prof = val
         elif isinstance(val, np.ndarray):
             self._rate_prof.set(arr=val)
@@ -353,7 +353,7 @@ class HvdcLine(BranchParent):
         return get_at(self.rate, self.rate_prof, t)
 
     @property
-    def contingency_factor_prof(self) -> Profile:
+    def contingency_factor_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -361,8 +361,8 @@ class HvdcLine(BranchParent):
         return self._contingency_factor_prof
 
     @contingency_factor_prof.setter
-    def contingency_factor_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def contingency_factor_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._contingency_factor_prof = val
         elif isinstance(val, np.ndarray):
             self._contingency_factor_prof.set(arr=val)
@@ -377,7 +377,7 @@ class HvdcLine(BranchParent):
         return get_at(self.contingency_factor, self.contingency_factor_prof, t)
 
     @property
-    def Cost_prof(self) -> Profile:
+    def Cost_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -385,8 +385,8 @@ class HvdcLine(BranchParent):
         return self._Cost_prof
 
     @Cost_prof.setter
-    def Cost_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Cost_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Cost_prof = val
         elif isinstance(val, np.ndarray):
             self._Cost_prof.set(arr=val)
@@ -401,7 +401,7 @@ class HvdcLine(BranchParent):
         return get_at(self.Cost, self.Cost_prof, t)
 
     @property
-    def Pset_prof(self) -> Profile:
+    def Pset_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -409,8 +409,8 @@ class HvdcLine(BranchParent):
         return self._Pset_prof
 
     @Pset_prof.setter
-    def Pset_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Pset_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Pset_prof = val
         elif isinstance(val, np.ndarray):
             self._Pset_prof.set(arr=val)
@@ -425,7 +425,7 @@ class HvdcLine(BranchParent):
         return get_at(self.Pset, self.Pset_prof, t)
 
     @property
-    def angle_droop_prof(self) -> Profile:
+    def angle_droop_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -433,8 +433,8 @@ class HvdcLine(BranchParent):
         return self._angle_droop_prof
 
     @angle_droop_prof.setter
-    def angle_droop_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def angle_droop_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._angle_droop_prof = val
         elif isinstance(val, np.ndarray):
             self._angle_droop_prof.set(arr=val)
@@ -449,7 +449,7 @@ class HvdcLine(BranchParent):
         return get_at(self.angle_droop, self.angle_droop_prof, t)
 
     @property
-    def Vset_f_prof(self) -> Profile:
+    def Vset_f_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -457,8 +457,8 @@ class HvdcLine(BranchParent):
         return self._Vset_f_prof
 
     @Vset_f_prof.setter
-    def Vset_f_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Vset_f_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Vset_f_prof = val
         elif isinstance(val, np.ndarray):
             self._Vset_f_prof.set(arr=val)
@@ -473,7 +473,7 @@ class HvdcLine(BranchParent):
         return get_at(self.Vset_f, self.Vset_f_prof, t)
 
     @property
-    def Vset_t_prof(self) -> Profile:
+    def Vset_t_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -481,8 +481,8 @@ class HvdcLine(BranchParent):
         return self._Vset_t_prof
 
     @Vset_t_prof.setter
-    def Vset_t_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Vset_t_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Vset_t_prof = val
         elif isinstance(val, np.ndarray):
             self._Vset_t_prof.set(arr=val)

@@ -12,7 +12,7 @@ from VeraGridEngine.enumerations import (BuildStatus, TapModuleControl, TapPhase
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Branches.tap_changer import TapChanger
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType, get_at, GCProp
-from VeraGridEngine.Devices.Profiles.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileEnum, ProfileFloat
 
 
 class ControllableBranchParent(BranchParent):
@@ -266,39 +266,39 @@ class ControllableBranchParent(BranchParent):
         else:
             self.tap_module = self._tap_changer.get_tap_module()
 
-        self._tap_module_prof = Profile(default_value=self.tap_module, data_type=float)
+        self._tap_module_prof = ProfileFloat(default_value=self.tap_module)
 
         self._tap_module_max = float(tap_module_max)
         self._tap_module_min = float(tap_module_min)
 
         self._tap_phase_control_mode: TapPhaseControl = tap_phase_control_mode
-        self._tap_phase_control_mode_prof = Profile(default_value=tap_phase_control_mode, data_type=TapPhaseControl)
+        self._tap_phase_control_mode_prof = ProfileEnum(default_value=tap_phase_control_mode, enum_type=TapPhaseControl)
 
         self.Pset = float(Pset)
-        self._Pset_prof = Profile(default_value=self.Pset, data_type=float)
+        self._Pset_prof = ProfileFloat(default_value=self.Pset)
 
         self.Qset = float(Qset)
-        self._Qset_prof = Profile(default_value=self.Qset, data_type=float)
+        self._Qset_prof = ProfileFloat(default_value=self.Qset)
 
         # Tap angle
         self.tap_phase = float(tap_phase)
-        self._tap_phase_prof = Profile(default_value=self.tap_phase, data_type=float)
+        self._tap_phase_prof = ProfileFloat(default_value=self.tap_phase)
 
         self._tap_phase_max = float(tap_phase_max)
         self._tap_phase_min = float(tap_phase_min)
 
         self._tap_module_control_mode: TapModuleControl = tap_module_control_mode
-        self._tap_module_control_mode_prof = Profile(default_value=tap_module_control_mode, data_type=TapModuleControl)
+        self._tap_module_control_mode_prof = ProfileEnum(default_value=tap_module_control_mode, enum_type=TapModuleControl)
 
         self.vset = float(vset)
-        self._vset_prof = Profile(default_value=self.vset, data_type=float)
+        self._vset_prof = ProfileFloat(default_value=self.vset)
 
         self.regulation_branch: BranchParent | None = regulation_branch
 
         self.regulation_bus: Bus | None = regulation_bus
 
     @property
-    def tap_module_prof(self) -> Profile:
+    def tap_module_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -306,8 +306,8 @@ class ControllableBranchParent(BranchParent):
         return self._tap_module_prof
 
     @tap_module_prof.setter
-    def tap_module_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def tap_module_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._tap_module_prof = val
         elif isinstance(val, np.ndarray):
             self._tap_module_prof.set(arr=val)
@@ -322,7 +322,7 @@ class ControllableBranchParent(BranchParent):
         return get_at(self.tap_module, self.tap_module_prof, t)
 
     @property
-    def tap_phase_prof(self) -> Profile:
+    def tap_phase_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -330,8 +330,8 @@ class ControllableBranchParent(BranchParent):
         return self._tap_phase_prof
 
     @tap_phase_prof.setter
-    def tap_phase_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def tap_phase_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._tap_phase_prof = val
         elif isinstance(val, np.ndarray):
             self._tap_phase_prof.set(arr=val)
@@ -346,7 +346,7 @@ class ControllableBranchParent(BranchParent):
         return get_at(self.tap_phase, self.tap_phase_prof, t)
 
     @property
-    def vset_prof(self) -> Profile:
+    def vset_prof(self) -> ProfileFloat:
         """
         vset profile
         :return: Profile
@@ -354,8 +354,8 @@ class ControllableBranchParent(BranchParent):
         return self._vset_prof
 
     @vset_prof.setter
-    def vset_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def vset_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._vset_prof = val
         elif isinstance(val, np.ndarray):
             self._vset_prof.set(arr=val)
@@ -370,7 +370,7 @@ class ControllableBranchParent(BranchParent):
         return get_at(self.vset, self.vset_prof, t)
 
     @property
-    def Pset_prof(self) -> Profile:
+    def Pset_prof(self) -> ProfileFloat:
         """
         vset profile
         :return: Profile
@@ -378,8 +378,8 @@ class ControllableBranchParent(BranchParent):
         return self._Pset_prof
 
     @Pset_prof.setter
-    def Pset_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Pset_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Pset_prof = val
         elif isinstance(val, np.ndarray):
             self._Pset_prof.set(arr=val)
@@ -394,7 +394,7 @@ class ControllableBranchParent(BranchParent):
         return get_at(self.Pset, self.Pset_prof, t)
 
     @property
-    def Qset_prof(self) -> Profile:
+    def Qset_prof(self) -> ProfileFloat:
         """
         vset profile
         :return: Profile
@@ -402,8 +402,8 @@ class ControllableBranchParent(BranchParent):
         return self._Qset_prof
 
     @Qset_prof.setter
-    def Qset_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Qset_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Qset_prof = val
         elif isinstance(val, np.ndarray):
             self._Qset_prof.set(arr=val)
@@ -418,7 +418,7 @@ class ControllableBranchParent(BranchParent):
         return get_at(self.Qset, self.Qset_prof, t)
 
     @property
-    def tap_module_control_mode_prof(self) -> Profile:
+    def tap_module_control_mode_prof(self) -> ProfileEnum:
         """
         _tap_module_control_mode_prof profile
         :return: Profile
@@ -426,8 +426,8 @@ class ControllableBranchParent(BranchParent):
         return self._tap_module_control_mode_prof
 
     @tap_module_control_mode_prof.setter
-    def tap_module_control_mode_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def tap_module_control_mode_prof(self, val: Union[ProfileEnum, np.ndarray]):
+        if isinstance(val, ProfileEnum):
             self._tap_module_control_mode_prof = val
         elif isinstance(val, np.ndarray):
             self._tap_module_control_mode_prof.set(arr=val)
@@ -442,7 +442,7 @@ class ControllableBranchParent(BranchParent):
         return get_at(self.tap_module_control_mode, self.tap_module_control_mode_prof, t)
 
     @property
-    def tap_phase_control_mode_prof(self) -> Profile:
+    def tap_phase_control_mode_prof(self) -> ProfileEnum:
         """
         tap_phase_control_mode_prof profile
         :return: Profile
@@ -450,8 +450,8 @@ class ControllableBranchParent(BranchParent):
         return self._tap_phase_control_mode_prof
 
     @tap_phase_control_mode_prof.setter
-    def tap_phase_control_mode_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def tap_phase_control_mode_prof(self, val: Union[ProfileEnum, np.ndarray]):
+        if isinstance(val, ProfileEnum):
             self._tap_phase_control_mode_prof = val
         elif isinstance(val, np.ndarray):
             self._tap_phase_control_mode_prof.set(arr=val)

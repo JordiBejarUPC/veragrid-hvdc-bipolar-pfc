@@ -11,7 +11,7 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import BuildStatus, DeviceType
 from VeraGridEngine.basic_structures import CxVec
-from VeraGridEngine.Devices.Profiles.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileFloat
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
@@ -111,32 +111,32 @@ class LoadParent(InjectionParent):
                                  device_type=device_type)
 
         self.P = float(P)
-        self._P_prof = Profile(default_value=self.P, data_type=float)
+        self._P_prof = ProfileFloat(default_value=self.P)
 
         self.Pa = float(P1)
-        self._Pa_prof = Profile(default_value=self.Pa, data_type=float)
+        self._Pa_prof = ProfileFloat(default_value=self.Pa)
 
         self.Pb = float(P2)
-        self._Pb_prof = Profile(default_value=self.Pb, data_type=float)
+        self._Pb_prof = ProfileFloat(default_value=self.Pb)
 
         self.Pc = float(P3)
-        self._Pc_prof = Profile(default_value=self.Pc, data_type=float)
+        self._Pc_prof = ProfileFloat(default_value=self.Pc)
 
         self.Q = float(Q)
-        self._Q_prof = Profile(default_value=self.Q, data_type=float)
+        self._Q_prof = ProfileFloat(default_value=self.Q)
 
         self.Qa = float(Q1)
-        self._Qa_prof = Profile(default_value=self.Qa, data_type=float)
+        self._Qa_prof = ProfileFloat(default_value=self.Qa)
 
         self.Qb = float(Q2)
-        self._Qb_prof = Profile(default_value=self.Qb, data_type=float)
+        self._Qb_prof = ProfileFloat(default_value=self.Qb)
 
         self.Qc = float(Q3)
-        self._Qc_prof = Profile(default_value=self.Qc, data_type=float)
+        self._Qc_prof = ProfileFloat(default_value=self.Qc)
 
 
     @property
-    def P_prof(self) -> Profile:
+    def P_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -144,8 +144,8 @@ class LoadParent(InjectionParent):
         return self._P_prof
 
     @P_prof.setter
-    def P_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def P_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._P_prof = val
         elif isinstance(val, np.ndarray):
             self._P_prof.set(arr=val)
@@ -161,7 +161,7 @@ class LoadParent(InjectionParent):
         return get_at(self.P, self.P_prof, t)
 
     @property
-    def Pa_prof(self) -> Profile:
+    def Pa_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -169,8 +169,8 @@ class LoadParent(InjectionParent):
         return self._Pa_prof
 
     @Pa_prof.setter
-    def Pa_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Pa_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Pa_prof = val
         elif isinstance(val, np.ndarray):
             self._Pa_prof.set(arr=val)
@@ -185,7 +185,7 @@ class LoadParent(InjectionParent):
         return get_at(self.Pa, self.Pa_prof, t)
 
     @property
-    def Pb_prof(self) -> Profile:
+    def Pb_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -193,8 +193,8 @@ class LoadParent(InjectionParent):
         return self._Pb_prof
 
     @Pb_prof.setter
-    def Pb_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Pb_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Pb_prof = val
         elif isinstance(val, np.ndarray):
             self._Pb_prof.set(arr=val)
@@ -209,7 +209,7 @@ class LoadParent(InjectionParent):
         return get_at(self.Pb, self.Pb_prof, t)
 
     @property
-    def Pc_prof(self) -> Profile:
+    def Pc_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -217,8 +217,8 @@ class LoadParent(InjectionParent):
         return self._Pc_prof
 
     @Pc_prof.setter
-    def Pc_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Pc_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Pc_prof = val
         elif isinstance(val, np.ndarray):
             self._Pc_prof.set(arr=val)
@@ -233,7 +233,7 @@ class LoadParent(InjectionParent):
         return get_at(self.Pc, self.Pc_prof, t)
 
     @property
-    def Q_prof(self) -> Profile:
+    def Q_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -241,8 +241,8 @@ class LoadParent(InjectionParent):
         return self._Q_prof
 
     @Q_prof.setter
-    def Q_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Q_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Q_prof = val
         elif isinstance(val, np.ndarray):
             self._Q_prof.set(arr=val)
@@ -257,7 +257,7 @@ class LoadParent(InjectionParent):
         return get_at(self.Q, self.Q_prof, t)
 
     @property
-    def Qa_prof(self) -> Profile:
+    def Qa_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -265,8 +265,8 @@ class LoadParent(InjectionParent):
         return self._Qa_prof
 
     @Qa_prof.setter
-    def Qa_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Qa_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Qa_prof = val
         elif isinstance(val, np.ndarray):
             self._Qa_prof.set(arr=val)
@@ -281,7 +281,7 @@ class LoadParent(InjectionParent):
         return get_at(self.Qa, self.Qa_prof, t)
 
     @property
-    def Qb_prof(self) -> Profile:
+    def Qb_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -289,8 +289,8 @@ class LoadParent(InjectionParent):
         return self._Qb_prof
 
     @Qb_prof.setter
-    def Qb_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Qb_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Qb_prof = val
         elif isinstance(val, np.ndarray):
             self._Qb_prof.set(arr=val)
@@ -305,7 +305,7 @@ class LoadParent(InjectionParent):
         return get_at(self.Qb, self.Qb_prof, t)
 
     @property
-    def Qc_prof(self) -> Profile:
+    def Qc_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -313,8 +313,8 @@ class LoadParent(InjectionParent):
         return self._Qc_prof
 
     @Qc_prof.setter
-    def Qc_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Qc_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Qc_prof = val
         elif isinstance(val, np.ndarray):
             self._Qc_prof.set(arr=val)

@@ -14,7 +14,7 @@ from VeraGridEngine.Devices.Aggregation import Area, Zone, Country
 from VeraGridEngine.Devices.Substation.substation import Substation
 from VeraGridEngine.Devices.Substation.busbar import BusBar
 from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
-from VeraGridEngine.Devices.Profiles.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileFloat
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 
@@ -184,7 +184,7 @@ class Bus(DynamicDevice):
                                build_status=build_status)
 
         self.active = bool(active)
-        self._active_prof = Profile(default_value=self.active, data_type=bool)
+        self._active_prof = ProfileBool(default_value=self.active)
 
         # Nominal voltage (kV)
         self.Vnom = float(Vnom)
@@ -200,8 +200,8 @@ class Bus(DynamicDevice):
 
         self.Va0 = float(Va0)
 
-        self._Vmin_prof = Profile(default_value=vmin, data_type=float)
-        self._Vmax_prof = Profile(default_value=vmax, data_type=float)
+        self._Vmin_prof = ProfileFloat(default_value=vmin)
+        self._Vmax_prof = ProfileFloat(default_value=vmax)
 
         self.angle_min = float(angle_min)
 
@@ -276,7 +276,7 @@ class Bus(DynamicDevice):
         self.color = color if color is not None else "#000000"
 
     @property
-    def active_prof(self) -> Profile:
+    def active_prof(self) -> ProfileBool:
         """
         Cost profile
         :return: Profile
@@ -284,8 +284,8 @@ class Bus(DynamicDevice):
         return self._active_prof
 
     @active_prof.setter
-    def active_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def active_prof(self, val: Union[ProfileBool, np.ndarray]):
+        if isinstance(val, ProfileBool):
             self._active_prof = val
         elif isinstance(val, np.ndarray):
             self._active_prof.set(arr=val)
@@ -300,7 +300,7 @@ class Bus(DynamicDevice):
         return get_at(self.active, self.active_prof, t)
 
     @property
-    def Vmin_prof(self) -> Profile:
+    def Vmin_prof(self) -> ProfileFloat:
         """
         Pmin profile
         :return: Profile
@@ -308,8 +308,8 @@ class Bus(DynamicDevice):
         return self._Vmin_prof
 
     @Vmin_prof.setter
-    def Vmin_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Vmin_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Vmin_prof = val
         elif isinstance(val, np.ndarray):
             self._Vmin_prof.set(arr=val)
@@ -324,7 +324,7 @@ class Bus(DynamicDevice):
         return get_at(self.Vmin, self.Vmin_prof, t)
 
     @property
-    def Vmax_prof(self) -> Profile:
+    def Vmax_prof(self) -> ProfileFloat:
         """
         Pmin profile
         :return: Profile
@@ -332,8 +332,8 @@ class Bus(DynamicDevice):
         return self._Vmax_prof
 
     @Vmax_prof.setter
-    def Vmax_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Vmax_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Vmax_prof = val
         elif isinstance(val, np.ndarray):
             self._Vmax_prof.set(arr=val)
