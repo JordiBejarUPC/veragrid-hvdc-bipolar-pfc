@@ -51,6 +51,8 @@ def define_problem_with_path(grid_path):
         loadec = vge.get_load_phasor_current_rms_template(grid.var_factory, name=load.name).block
         loadec = vge.to_implicit(loadec, grid.var_factory)
         vge.set_rms_model(device=load, model=loadec, var_factory=grid.var_factory)
+    for trafo in grid.transformers2w:
+        trafoec = vge.get
     #line_mdl = vge.get_line_phasor_rms_template(grid.var_factory).block
     #line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
     #line_mdl.connect([line_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
@@ -301,8 +303,8 @@ def solve_problem(problem: Any) -> Any:
 
 if __name__ == "__main__":
     # problem = define_problem()
-    grid_path = 'trunk/tensygrid/grids/IEEE_14-2.gridcal'
-    # grid_path = 'trunk/tensygrid/grids/IEEE118_opf.gridcal'
+    #grid_path = 'trunk/tensygrid/grids/IEEE_14-2.gridcal'
+    grid_path = 'trunk/tensygrid/grids/IEEE118_opf.gridcal'
     problem = define_problem_with_path(grid_path)
     calculated_evs = []
     if problem:
