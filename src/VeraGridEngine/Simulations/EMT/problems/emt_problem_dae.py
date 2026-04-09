@@ -21,6 +21,7 @@ from typing import Dict, List, Any, Set, Optional, Tuple
 from itertools import chain
 
 from VeraGridEngine.Devices import MultiCircuit
+from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Devices.Aggregation.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
@@ -3719,11 +3720,12 @@ class EmtProblemDae(EmtProblemTemplate):
                                        is_vsc: bool,
                                        vsc_index: int) -> None:
         """
-        Assign branch EMT pi-line parameters into the API object mapping.
-         The routine keeps the historical contract used by the EMT pi-line
-        template: the symbolic block exposes a full 4x4 NABC parameter map,
-        while the physical line data only fills the active-phase subspace and
-        all inactive entries remain zero.
+        Assign branch EMT mapped parameters into the API object mapping.
+
+        The routine supports the historical pi-line mapping contract and the
+        classical transformer coupled-winding contract. Each template exposes a
+        fixed symbolic parameter interface, and this stage injects the numerical
+        values derived from the corresponding static API object.
 
         :param br: Branch device whose EMT model receives the mapped values.
         :return: None.
@@ -3794,11 +3796,91 @@ class EmtProblemDae(EmtProblemTemplate):
         api_obj_mapping: Any = br.emt_model.api_obj_mapping
         if not isinstance(api_obj_mapping, dict):
             return
-        if ParamPowerFlowRefferenceType.Rnn not in api_obj_mapping:
-            return
 
         # -----------------------------
-        # 1. Resolve the physical phase layout from the line connection.
+        # 1. Handle the classical transformer mapping before the line path.
+        # The transformer block now exposes only symbolic winding parameters,
+        # so the EMT assembler must derive and assign the numerical values here.
+        # -----------------------------
+        transformer_keys: list[ParamPowerFlowRefferenceType] = list([
+            ParamPowerFlowRefferenceType.xfmr_r1,
+            ParamPowerFlowRefferenceType.xfmr_r2,
+            ParamPowerFlowRefferenceType.xfmr_l1,
+            ParamPowerFlowRefferenceType.xfmr_l2,
+            ParamPowerFlowRefferenceType.xfmr_m,
+            ParamPowerFlowRefferenceType.xfmr_gm,
+        ])
+        has_transformer_mapping: bool = all(key in api_obj_mapping for key in transformer_keys)
+
+        if has_transformer_mapping:
+            if isinstance(br, Transformer2W):
+                fbase: float = float(self.grid.fBase)
+                w0: float = 2.0 * np.pi * fbase
+                eps_value: float = 1e-12
+
+                tap_module: float = float(br.tap_module)
+                n_tap: float
+                if abs(tap_module) > eps_value:
+                    n_tap = tap_module
+                else:
+                    n_tap = 1.0
+
+                n_sq: float = n_tap * n_tap
+                r_total: float = float(br.R)
+                x_total: float = float(br.X)
+                g_core: float = float(br.G)
+                b_magnetizing: float = float(br.B)
+
+                # -----------------------------
+                # Split the short-circuit branch equally between both windings so
+                # the primary-side equivalent remains equal to the static branch
+                # data. The magnetizing susceptance sets the mutual coupling, and
+                # when it is absent we fall back to a very large inductance so the
+                # historical nearly-open magnetizing branch behavior is preserved.
+                # -----------------------------
+                l_sigma_primary: float = 0.5 * x_total / (w0 + eps_value)
+                l_sigma_secondary: float = l_sigma_primary / (n_sq + eps_value)
+
+                x_magnetizing: float
+                if abs(b_magnetizing) > eps_value:
+                    x_magnetizing = 1.0 / abs(b_magnetizing)
+                else:
+                    x_magnetizing = max(abs(x_total), 1.0) * 1e6
+
+                l_m_primary: float = x_magnetizing / (w0 + eps_value)
+                l_m_secondary: float = l_m_primary / (n_sq + eps_value)
+                mutual_inductance: float = l_m_primary / (n_tap + np.sign(n_tap) * eps_value)
+
+                r1_value: float = 0.5 * r_total
+                r2_value: float = 0.5 * r_total / (n_sq + eps_value)
+                l1_value: float = l_sigma_primary + l_m_primary
+                l2_value: float = l_sigma_secondary + l_m_secondary
+                det_value: float = l1_value * l2_value - mutual_inductance * mutual_inductance
+
+                if det_value <= eps_value:
+                    raise ValueError(
+                        f"Transformer '{br.name}' has a non-physical inductance matrix determinant {det_value}."
+                    )
+                else:
+                    pass
+
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_r1, r1_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_r2, r2_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_l1, l1_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_l2, l2_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_m, mutual_inductance)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_gm, g_core)
+                return
+            else:
+                return
+
+        if ParamPowerFlowRefferenceType.Rnn not in api_obj_mapping:
+            return
+        else:
+            pass
+
+        # -----------------------------
+        # 2. Resolve the physical phase layout from the line connection.
         # This selects the reduced subspace that exists in the physical line,
         # which is the basis for placing values into the global 4x4 NABC map.
         # -----------------------------
@@ -3812,7 +3894,7 @@ class EmtProblemDae(EmtProblemTemplate):
         n_active: int = len(idx_global)
 
         # -----------------------------
-        # 2. Convert the physical line matrices into the EMT per-unit form.
+        # 3. Convert the physical line matrices into the EMT per-unit form.
         # The EMT template is parameterized in per-unit R, L^-1 and C values,
         # so this stage preserves the existing numerical pipeline exactly.
         # -----------------------------
@@ -3837,7 +3919,7 @@ class EmtProblemDae(EmtProblemTemplate):
         c_full: np.ndarray = (bsh_full / (w0 + 1e-20)) / 2.0
 
         # -----------------------------
-        # 3. Validate the reduced matrices before mapping them.
+        # 4. Validate the reduced matrices before mapping them.
         # These checks keep bad topology or singular data from silently
         # corrupting the full API mapping used by the EMT assembly.
         # -----------------------------
@@ -3862,7 +3944,7 @@ class EmtProblemDae(EmtProblemTemplate):
             ) from exc
 
         # -----------------------------
-        # 4. Define the fixed global NABC mapping contract.
+        # 5. Define the fixed global NABC mapping contract.
         # Both the EMT initializer and the EMT template rely on the same enum
         # layout so that active reduced matrices land in deterministic slots.
         # -----------------------------
@@ -3945,7 +4027,7 @@ class EmtProblemDae(EmtProblemTemplate):
             ]),
         ])
         # -----------------------------
-        # 5. Reset the full 4x4 map and then write the active reduced values.
+        # 6. Reset the full 4x4 map and then write the active reduced values.
         # Zeroing all entries preserves the previous semantics for inactive
         # rows and columns, which the template later reduces with line.ys.
         # -----------------------------

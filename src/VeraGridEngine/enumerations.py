@@ -3168,6 +3168,14 @@ class ParamPowerFlowRefferenceType(Enum):
     Ccb = "Ccb"  # C-B line shunt capacitance
     Ccc = "Ccc"  # C-C line shunt capacitance
 
+    # Classical transformer EMT mapped parameters
+    xfmr_r1 = "xfmr_r1"  # Primary winding resistance in pu
+    xfmr_r2 = "xfmr_r2"  # Secondary winding resistance in pu
+    xfmr_l1 = "xfmr_l1"  # Primary self inductance in pu*s/rad
+    xfmr_l2 = "xfmr_l2"  # Secondary self inductance in pu*s/rad
+    xfmr_m = "xfmr_m"  # Mutual inductance in pu*s/rad
+    xfmr_gm = "xfmr_gm"  # Primary shunt conductance in pu
+
 
     # Active phases in a branch
     phN = "phN" # 1 if the N wire is active, else 0.

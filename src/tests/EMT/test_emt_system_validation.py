@@ -234,7 +234,7 @@ def test_vsc_emt_passes_validation():
     pf_results, pf_res_3ph = run_power_flow(grid)
 
     gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
-    trafo_mdl = get_transformer_emt_template(grid=grid, trafo=transformer, name=transformer.name).block
+    trafo_mdl = get_transformer_emt_template(vf=grid.var_factory, name=transformer.name).block
     vsc_mdl = get_emt_ideal_converter(
         vf=grid.var_factory,
         name=vsc.name,
