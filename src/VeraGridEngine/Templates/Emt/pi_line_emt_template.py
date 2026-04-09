@@ -32,13 +32,12 @@ def get_pi_line_emt_template(vf: VarFactory,
     :param phB: Bool. True if the line has phase B, else False.
     :param phC: Bool. True if the line has phase C, else False.
     :param name: Symbolic model name.
-    :param line: Optional legacy argument kept for caller compatibility.
     :return: EMT pi-line model template.
     :raises ValueError: If the line has no active phases.
     """
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LineDevice
-    templ.name = name
+    templ.name = EmtLineTypes.PI
 
     c0 = vf.add_const(0.0)
 

@@ -3464,6 +3464,7 @@ class BlockType(Enum):
     PRODUCT = "PRODUCT"
     DIVIDE = "Divide"
     ABS = "Abs"
+
     GENRAW = "GENRAW"
     GENQEC = "GENQEC"
     GOV = "Gov"
@@ -3472,6 +3473,18 @@ class BlockType(Enum):
     LINE = "Line"
     LOAD = "Load"
     GENERIC = "Generic"
+
+    EMT_GENERATOR = "EMT_GENERATOR"
+    EMT_PI_LINE = "EMT_PI_LINE"
+    EMT_BERGERON_LINE = "EMT_BERGERON_LINE"
+    R_LOAD = "R_LOAD"
+    L_LOAD = "L_LOAD"
+    C_LOAD = "C_LOAD"
+    EXP_LOAD = "EXP_LOAD"
+    ZIP_LOAD = "ZIP_LOAD"
+    DC_LOAD = "DC_LOAD"
+    EMT_THEVENIN = "EMT_THEVENIN"
+
     BUS_CONNECTION = "Bus Connection"
     EXTERNAL_MAPPING = "EXTERNAL_MAPPING"
 

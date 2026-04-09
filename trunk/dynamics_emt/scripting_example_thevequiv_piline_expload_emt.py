@@ -20,7 +20,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOpti
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
-from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_exponential_load_3ph_emt
+from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_exponential_load_emt
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
@@ -119,7 +119,7 @@ def attach_emt_models(
 
     gen_mdl: Block = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
     line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = True, phA = True, phB = True, phC = True).block
-    load_mdl: Block = get_exponential_load_3ph_emt(vf=grid.var_factory).block
+    load_mdl: Block = get_exponential_load_emt(vf=grid.var_factory).block
 
     # ``a = 2`` reproduces an impedance-like active-power dependence. This keeps the
     # example aligned with the original resistive load while exercising the new EMT

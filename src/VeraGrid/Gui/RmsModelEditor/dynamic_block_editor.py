@@ -3319,6 +3319,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     ("Abs", BlockType.ABS),
                 ],
                 "Devices": [
+                    ("Generator", BlockType.EMT_GENERATOR),
+                    ("Governor", BlockType.GOV),
+                    ("Stabilizer", BlockType.STAB),
+                    ("Exciter", BlockType.EXCITER),
+                    ("Generic", BlockType.GENERIC),
                     ("Emt pi line", BlockType.EMT_PI_LINE),
                     ("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
                     ("Emt load", BlockType.EMTLOAD),

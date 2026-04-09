@@ -140,7 +140,6 @@ def attach_emt_models(
 
     vsc_mdl: Block = get_full_pseudo_emt_converter(
         vf=grid.var_factory,
-        name=converter.name,
     ).block
 
     vsc_mdl.set_parameter_in_model(var_name="R_eq_pseudo_converter_emt", new_value=0.03)

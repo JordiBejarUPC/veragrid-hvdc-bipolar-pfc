@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import numpy as np
-from typing import List, Dict, Tuple
+from typing import Dict, Tuple
 from VeraGridEngine.enumerations import DeviceType, ConverterControlType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Block, VarPowerFlowRefferenceType
@@ -127,8 +127,6 @@ def get_emt_ideal_converter(
 
    :param vf: Variable factory for creating symbolic variables
    :param name: Name for the converter model
-   :param sbase: System base power used to convert external power references to pu
-   :param fbase: System base frequency for the synchronized current references
 
     :return: EmtModelTemplate with the converter block
     """
@@ -387,6 +385,8 @@ def _build_pseudo_emt_converter_vsc_block(
     P_loss = vf.add_var(name=f"P_loss_{name}")
     i_dc_conv = vf.add_var(name=f"i_dc_conv_{name}")
 
+    P0 = vf.add_var(name=f"P0_{name}")
+
     sbase = vf.add_var(name=f"sbase_{name}")
     P_ref = vf.add_var(name=f"P_ref_{name}")
     Q_ref = vf.add_var(name=f"Q_ref_{name}")
@@ -425,6 +425,7 @@ def _build_pseudo_emt_converter_vsc_block(
         control2=control2,
         control1_val=control1_val,
         control2_val=control2_val,
+        p0=P0,
     )
 
     eps = vf.add_const(1e-10)
@@ -442,10 +443,10 @@ def _build_pseudo_emt_converter_vsc_block(
     i_d0 = (vf.add_const(2.0 / 3.0) * ((P_ref / sbase) + (P_loss0 / sbase))) / (Vpk + eps)
     i_q0 = (vf.add_const(2.0 / 3.0) * (Q_ref / sbase)) / (Vpk + eps)
     i_mag0 = sym.sqrt(i_d0 * i_d0 + i_q0 * i_q0 + eps)
-    P0 = c32 * Vpk * i_d0
-    Q0 = c32 * Vpk * i_q0
+    P_init = c32 * Vpk * i_d0
+    Q_init = c32 * Vpk * i_q0
     P_loss0_expr = P_loss0_pu + P_loss_i1_pu * i_mag0 + P_loss_i2_pu * i_mag0 * i_mag0
-    i_dc_conv0 = -(P0 - P_loss0_expr) / (Vdc_ref + eps)
+    i_dc_conv0 = -(P_init - P_loss0_expr) / (Vdc_ref + eps)
     i_dc0 = (i_dc_conv0 + v_dc_bus / R_dc) / (c1 + R_dc_term / R_dc)
     v_dc0 = v_dc_bus - R_dc_term * i_dc0
 
@@ -477,6 +478,7 @@ def _build_pseudo_emt_converter_vsc_block(
         algebraic_vars=[P_ref, Q_ref, Vdc_ref, i_dc, P, Q, i_mag, P_loss, i_dc_conv],
         event_dict={
             sbase: vf.add_const(1.0),
+            P0: vf.add_const(0.0),
             control1: vf.add_const(float(_converter_control_type_code(ConverterControlType.Vm_dc))),
             control2: vf.add_const(float(_converter_control_type_code(ConverterControlType.Qac))),
             control1_val: vf.add_const(1.0),
@@ -512,8 +514,8 @@ def _build_pseudo_emt_converter_vsc_block(
             Q_ref: q_ref_expr,
             Vdc_ref: vdc_ref_expr,
             i_dc: i_dc0,
-            P: P0,
-            Q: Q0,
+            P: P_init,
+            Q: Q_init,
             i_mag: i_mag0,
             P_loss: P_loss0_expr,
             i_dc_conv: i_dc_conv0,
@@ -538,6 +540,7 @@ def _build_pseudo_emt_converter_vsc_block(
         ParamPowerFlowRefferenceType.control2: control2,
         ParamPowerFlowRefferenceType.control1_val: control1_val,
         ParamPowerFlowRefferenceType.control2_val: control2_val,
+        ParamPowerFlowRefferenceType.P0: P0,
     }
     return block
 def _build_pseudo_emt_converter_pll_block(vf: VarFactory, name: str) -> Block:
