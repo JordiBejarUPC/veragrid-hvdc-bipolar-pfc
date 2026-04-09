@@ -43,8 +43,10 @@ def test_simulation_with_event():
     #########
     # retrieve reference results df
 
+    folder = os.path.join('data', 'dynamics')
     name = "simulation_with_event.csv"
-    fname = os.path.join(os.path.dirname(__file__), '..', 'data', 'dynamics', name)
+
+    fname = os.path.join(folder, name)
 
     reference_df = pd.read_csv(fname)
 
