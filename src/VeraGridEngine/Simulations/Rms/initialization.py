@@ -52,7 +52,7 @@ def build_init_dict(mdl, init_vars, init_event):
     """
     add_items(mdl, init_vars, init_event)
     for blk in mdl.children:
-        add_items(blk, init_vars, init_event)
+        build_init_dict(blk, init_vars, init_event)
 
 
 
