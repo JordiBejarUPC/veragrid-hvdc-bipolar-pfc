@@ -149,7 +149,7 @@ def get_layout_substation_name(api_object: ALL_DEV_TYPES) -> str:
     return substation_name
 
 
-def add_node_layout_data(graph: nx.DiGraph, node_index: int, api_object: ALL_DEV_TYPES) -> None:
+def add_node_layout_data(graph: nx.MultiDiGraph, node_index: int, api_object: ALL_DEV_TYPES) -> None:
     """
     Add one node together with the electrical metadata needed by the schematic layouts.
 
@@ -199,7 +199,7 @@ def get_branch_endpoint_voltages(branch: ALL_DEV_TYPES) -> Tuple[float, float]:
     return source_voltage_kv, target_voltage_kv
 
 
-def add_branch_layout_edge(graph: nx.DiGraph,
+def add_branch_layout_edge(graph: nx.MultiDiGraph,
                            from_idx: int,
                            to_idx: int,
                            branch: ALL_DEV_TYPES,
@@ -225,6 +225,7 @@ def add_branch_layout_edge(graph: nx.DiGraph,
     # and spring-based layouts interpret edge lengths in opposite directions.
     graph.add_edge(from_idx,
                    to_idx,
+                   key=branch.idtag,
                    branch_id=branch.idtag,
                    kind=dev_tpe.value,
                    impedance=impedance,
@@ -626,12 +627,12 @@ class BaseDiagram:
                                     category=category)
             self.data[category] = points_group
 
-    def build_graph(self) -> Tuple[nx.DiGraph, List[Bus | FluidNode | Transformer3W | TransformerNW]]:
+    def build_graph(self) -> Tuple[nx.MultiDiGraph, List[Bus | FluidNode | Transformer3W | TransformerNW]]:
         """
-        Returns a networkx DiGraph object of the grid.
-        return DiGraph, List[BusGraphicObject
+        Returns a networkx MultiDiGraph object of the grid.
+        return MultiDiGraph, List[BusGraphicObject
         """
-        graph = nx.DiGraph()
+        graph = nx.MultiDiGraph()
 
         node_devices = list()  # visible node-like diagram anchors
 
