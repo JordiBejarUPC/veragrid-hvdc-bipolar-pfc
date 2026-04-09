@@ -203,6 +203,7 @@ def get_psse_generator(generator: dev.Generator, bus_dict: Dict[dev.Bus, int], i
     psse_generator.PB = generator.Pmin
     psse_generator.STAT = 1 if generator.active else 0
     psse_generator.WPF = generator.Pf
+    psse_generator.QG = generator.Q
 
     return psse_generator
 

@@ -16,13 +16,13 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.veragrid.json_parser import save_json_file_v3
 from VeraGridEngine.IO.veragrid.excel_interface import (save_excel_v4)
-from VeraGridEngine.IO.veragrid.pack_unpack import (gather_model_as_data_frames, gather_model_as_jsons)
+from VeraGridEngine.IO.veragrid.pack_unpack import gather_model_as_data_frames
 from VeraGridEngine.IO.dgs.veragrid_to_dgs import circuit_to_dgs
 from VeraGridEngine.IO.raw.raw_parser_writer import write_raw
 from VeraGridEngine.IO.raw.veragrid_to_raw import veragrid_to_raw
 from VeraGridEngine.IO.cim.cim16.cim_parser import CIMExport
 from VeraGridEngine.IO.cim.cgmes.cgmes_circuit import CgmesCircuit
-from VeraGridEngine.IO.veragrid.zip_interface import save_veragrid_data_to_zip
+from VeraGridEngine.IO.veragrid.zip_interface import save_veragrid_data_to_zip, save_veragrid_multiverse_data_to_zip
 from VeraGridEngine.IO.veragrid.sqlite_interface import save_data_frames_to_sqlite
 from VeraGridEngine.IO.veragrid.h5_interface import save_h5
 from VeraGridEngine.IO.raw.rawx_parser_writer import write_rawx
@@ -35,7 +35,6 @@ from VeraGridEngine.enumerations import CGMESVersions, SimulationTypes, FileType
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
 
 
-
 class FileSavingOptions:
     """
     This class is to store the extra stuff that needs to be passed to save more complex files
@@ -44,7 +43,6 @@ class FileSavingOptions:
     def __init__(self,
                  file_type: FileType | None = None,
                  sessions_data: List[DriverToSave] = None,
-                 multiverse: MultiVerse | None = None,
                  dictionary_of_json_files: Dict[str, Dict[str, Any]] = None,
                  cgmes_boundary_set: str = "",
                  cgmes_version: CGMESVersions = CGMESVersions.v2_4_15,
@@ -67,8 +65,6 @@ class FileSavingOptions:
         self.file_type: FileType | None = file_type
 
         self.sessions_data: List[DriverToSave] = list() if sessions_data is None else sessions_data
-
-        self.multiverse: MultiVerse | None = multiverse
 
         self.dictionary_of_json_files = dict() if dictionary_of_json_files is None else dictionary_of_json_files
 
@@ -122,11 +118,11 @@ def save_veragrid_excel(circuit: MultiCircuit, file_name: str) -> Logger:
     return logger
 
 
-def save_veragrid(circuit: MultiCircuit,
-                  file_name: str,
-                  options: FileSavingOptions,
-                  text_func=None,
-                  progress_func=None) -> Logger:
+def save_veragrid_multiverse(file_name: str,
+                             multiverse: MultiVerse,
+                             options: FileSavingOptions,
+                             text_func=None,
+                             progress_func=None) -> Logger:
     """
     Save the circuit information in zip format
     If a multiverse is passed in the options, it is "commited" before saving
@@ -135,15 +131,63 @@ def save_veragrid(circuit: MultiCircuit,
 
     logger = Logger()
 
-    if options.multiverse is not None:
+    if multiverse is not None:
         # this is to make the leaf the actual diff for saving
-        options.multiverse.commit_current()
+        multiverse.commit_current()
+
+        save_veragrid_multiverse_data_to_zip(filename_zip=file_name,
+                                             multiverse=multiverse,
+                                             json_files=options.dictionary_of_json_files,
+                                             text_func=text_func,
+                                             progress_func=progress_func,
+                                             logger=logger)
+    else:
+        logger.add_error("No multiverse data to save")
+
+    return logger
+
+
+def save_veragrid_circuit(circuit: MultiCircuit,
+                          file_name: str,
+                          options: FileSavingOptions,
+                          text_func=None,
+                          progress_func=None) -> Logger:
+    """
+    Save the circuit information in zip format
+    If a multiverse is passed in the options, it is "commited" before saving
+    :return: logger with information
+    """
+
+    logger = Logger()
 
     save_veragrid_data_to_zip(filename_zip=file_name,
                               circuit=circuit,
                               sessions_data=options.sessions_data,
                               json_files=options.dictionary_of_json_files,
-                              multiverse=options.multiverse,
+                              text_func=text_func,
+                              progress_func=progress_func,
+                              logger=logger)
+
+    return logger
+
+
+def save_veragrid_delta(circuit: MultiCircuit,
+                        file_name: str,
+                        options: FileSavingOptions,
+                        text_func=None,
+                        progress_func=None) -> Logger:
+    """
+    Save the circuit information in zip format
+    If a multiverse is passed in the options, it is "commited" before saving
+    :return: logger with information
+    """
+
+    logger = Logger()
+
+    save_veragrid_data_to_zip(filename_zip=file_name,
+                              circuit=circuit,
+                              sessions_data=options.sessions_data,
+                              json_files=options.dictionary_of_json_files,
                               text_func=text_func,
                               progress_func=progress_func,
                               logger=logger)
@@ -375,6 +419,7 @@ class FileSave:
                  circuit: MultiCircuit,
                  file_name: str,
                  options: FileSavingOptions | None = None,
+                 multiverse: MultiVerse | None = None,
                  text_func=None,
                  progress_func=None):
         """
@@ -382,10 +427,13 @@ class FileSave:
         :param circuit: MultiCircuit
         :param file_name: file name to save to
         :param options: FileSavingOptions (optional)
+        :param multiverse: Multiverse instance
         :param text_func: Pointer to the text function
         :param progress_func: Pointer to the progress function
         """
         self.circuit = circuit
+
+        self.multiverse: MultiVerse | None = multiverse
 
         self.file_name = file_name
 
@@ -405,14 +453,32 @@ class FileSave:
         """
         logger = Logger()
 
-        if self.options.file_type == FileType.VeraGrid_xlsx4:
+        if self.options.file_type == FileType.VeraGrid_xlsx4 or self.options.file_type == FileType.generic_excel:
             logger = save_veragrid_excel(
                 circuit=self.circuit,
                 file_name=self.file_name
             )
 
-        elif self.options.file_type == FileType.VeraGrid or self.options.file_type == FileType.VeraGrid_delta:
-            logger = save_veragrid(
+        elif self.options.file_type == FileType.VeraGrid:
+            if self.multiverse is None:
+                logger = save_veragrid_circuit(
+                    circuit=self.circuit,
+                    file_name=self.file_name,
+                    options=self.options,
+                    text_func=self.text_func,
+                    progress_func=self.progress_func
+                )
+            else:
+                logger = save_veragrid_multiverse(
+                    file_name=self.file_name,
+                    multiverse=self.multiverse,
+                    options=self.options,
+                    text_func=self.text_func,
+                    progress_func=self.progress_func
+                )
+
+        elif self.options.file_type == FileType.VeraGrid_delta:
+            logger = save_veragrid_delta(
                 circuit=self.circuit,
                 file_name=self.file_name,
                 options=self.options,

@@ -180,7 +180,7 @@ class SchematicDiagram(BaseDiagram):
         """
         Return an existing schematic location or create a placeholder entry for compatibility-layer updates.
         """
-        location = self.query_point(api_object)
+        location: GraphicLocation = self.query_point(api_object)
 
         if location is None:
             location = GraphicLocation(api_object=api_object)

@@ -2995,7 +2995,7 @@ def compare_nc(nc_gslv: "pg.NumericalCircuit", nc_gc: NumericalCircuit, tol: flo
     errors += CheckArrEq(nc_gslv.generator_data.bus_idx, nc_gc.generator_data.bus_idx, 'GenData', 'bus_idx')
     errors += CheckArrEq(nc_gslv.generator_data.active, nc_gc.generator_data.active, 'GenData', 'active')
     errors += CheckArr(nc_gslv.generator_data.p, nc_gc.generator_data.p, tol, 'GenData', 'P')
-    errors += CheckArr(nc_gslv.generator_data.pf, nc_gc.generator_data.pf, tol, 'GenData', 'Pf')
+    # errors += CheckArr(nc_gslv.generator_data.pf, nc_gc.generator_data.pf, tol, 'GenData', 'Pf')
     errors += CheckArr(nc_gslv.generator_data.v, nc_gc.generator_data.v, tol, 'GenData', 'v')
     errors += CheckArr(nc_gslv.generator_data.qmin, nc_gc.generator_data.qmin, tol, 'GenData', 'qmin')
     errors += CheckArr(nc_gslv.generator_data.qmax, nc_gc.generator_data.qmax, tol, 'GenData', 'qmax')

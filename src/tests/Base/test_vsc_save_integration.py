@@ -19,6 +19,9 @@ def test_vsc_save_integration():
     fname = os.path.join('data', 'grids', 'Matpower', 'case24_7_jb.matpower')
     grid = FileOpen(fname).open()
 
+    if grid is None:
+        raise Exception("File not found")
+
     control1_vsc0 = grid.vsc_devices[0].control1
     control1_vsc1 = grid.vsc_devices[1].control1
     control1_vsc2 = grid.vsc_devices[2].control1
@@ -54,6 +57,8 @@ def test_vsc_save_integration():
     # save and reload grid
     gce.save_file(grid, "test_vsc_save_integration_temp.veragrid")
     grid_reload = gce.open_file("test_vsc_save_integration_temp.veragrid")
+
+
 
     try:
         assert control1_vsc0 == grid_reload.vsc_devices[0].control1

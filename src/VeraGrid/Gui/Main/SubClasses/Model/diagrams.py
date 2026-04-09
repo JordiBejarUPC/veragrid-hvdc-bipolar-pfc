@@ -180,6 +180,7 @@ class DiagramsMain(CompiledArraysMain):
 
         # Automatic layout modes
         self.layout_algorithms_dict = dict()
+        self.layout_algorithms_dict['power_system_layout'] = nx.spring_layout
         self.layout_algorithms_dict['circular_layout'] = nx.circular_layout
         self.layout_algorithms_dict['random_layout'] = nx.random_layout
         self.layout_algorithms_dict['shell_layout'] = nx.shell_layout
@@ -194,7 +195,7 @@ class DiagramsMain(CompiledArraysMain):
 
         mdl = gf.get_list_model(list(self.layout_algorithms_dict.keys()))
         self.ui.automatic_layout_comboBox.setModel(mdl)
-        self.ui.automatic_layout_comboBox.setCurrentIndex(6)
+        self.ui.automatic_layout_comboBox.setCurrentText('power_system_layout')
 
         # list of steps in the schematic
         self.schematic_list_steps = list()

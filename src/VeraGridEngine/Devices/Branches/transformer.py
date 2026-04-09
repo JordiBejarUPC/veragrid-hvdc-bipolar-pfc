@@ -388,10 +388,11 @@ class Transformer2W(ControllableBranchParent):
 
         if isinstance(obj, TransformerType):
 
-            VH, VL = self.get_sorted_buses_voltages()
+            self.HV = obj.HV
+            self.LV = obj.LV
 
             # get the transformer impedance in the base of the transformer
-            z_series, y_shunt = obj.get_impedances(VH=VH, VL=VL, Sbase=Sbase)
+            z_series, y_shunt = obj.get_impedances(VH=obj.HV, VL=obj.LV, Sbase=Sbase)
 
             self.R = z_series.real
             self.X = z_series.imag
@@ -406,9 +407,6 @@ class Transformer2W(ControllableBranchParent):
             self.Pfe = obj.Pfe
             self.I0 = obj.I0
             self.Vsc = obj.Vsc
-
-            self.HV = obj.HV
-            self.LV = obj.LV
 
             self.tap_changer = obj.get_tap_changer()
 
