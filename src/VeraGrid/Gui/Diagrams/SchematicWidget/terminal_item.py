@@ -16,6 +16,7 @@ if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
     from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
     from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformer3w_graphics import Transformer3WGraphicItem
+    from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformerNw_graphics import TransformerNWGraphicItem
     from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.vsc_graphics_3term import VscGraphicItem3Term
     from VeraGrid.Gui.Diagrams.SchematicWidget.Substation.bus_graphics import BusGraphicItem
     from VeraGrid.Gui.Diagrams.SchematicWidget.Fluid.fluid_node_graphics import FluidNodeGraphicItem
@@ -29,7 +30,8 @@ class BaseTerminal:
     def __init__(self,
                  name: str,
                  editor: SchematicWidget,
-                 parent: Union[None, BusGraphicItem, Transformer3WGraphicItem, FluidNodeGraphicItem] = None,
+                 parent: Union[None, BusGraphicItem, Transformer3WGraphicItem, TransformerNWGraphicItem,
+                               FluidNodeGraphicItem] = None,
                  terminal_type: TerminalType = TerminalType.OTHER):
         """
 
@@ -41,7 +43,8 @@ class BaseTerminal:
         self.terminal_type = terminal_type
 
         # terminal parent object
-        self.parent: Union[BusGraphicItem, Transformer3WGraphicItem, FluidNodeGraphicItem] = parent
+        self.parent: Union[BusGraphicItem, Transformer3WGraphicItem, TransformerNWGraphicItem,
+                           FluidNodeGraphicItem] = parent
 
         # object -> callback
         self._hosting_connections: Dict[LineGraphicTemplateItem, Callable[[QPointF], None]] = dict()
@@ -52,7 +55,8 @@ class BaseTerminal:
         # Name:
         self.name = name
 
-    def get_parent(self) -> Union[None, BusGraphicItem, Transformer3WGraphicItem, VscGraphicItem3Term]:
+    def get_parent(self) -> Union[None, BusGraphicItem, Transformer3WGraphicItem, TransformerNWGraphicItem,
+                                  VscGraphicItem3Term]:
         """
         Returns the parent object
         :return: Union[None, BusGraphicItem, Transformer3WGraphicItem]
@@ -171,7 +175,8 @@ class BarTerminalItem(BaseTerminal, QGraphicsRectItem):
                  name: str,
                  editor: SchematicWidget,
                  parent: Union[
-                     None, BusGraphicItem, Transformer3WGraphicItem, FluidNodeGraphicItem] = None,
+                     None, BusGraphicItem, Transformer3WGraphicItem, TransformerNWGraphicItem,
+                     FluidNodeGraphicItem] = None,
                  h=10.0,
                  w=10.0):
         """
@@ -317,7 +322,8 @@ class RoundTerminalItem(BaseTerminal, QGraphicsEllipseItem):
     def __init__(self,
                  name: str,
                  editor: SchematicWidget,
-                 parent: Union[Transformer3WGraphicItem, VscGraphicItem3Term, BusGraphicItem],
+                 parent: Union[Transformer3WGraphicItem, TransformerNWGraphicItem, VscGraphicItem3Term,
+                               BusGraphicItem],
                  terminal_type: TerminalType = TerminalType.OTHER,
                  h=10.0,
                  w=10.0):

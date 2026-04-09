@@ -48,6 +48,7 @@ from VeraGridEngine.enumerations import SchematicAutoRouteStyle, SchematicRouteK
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
     from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformer3w_graphics import Transformer3WGraphicItem
+    from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformerNw_graphics import TransformerNWGraphicItem
     from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.vsc_graphics_3term import VscGraphicItem3Term
 
 NODE_GRAPHIC = Union[BusGraphicItem, FluidNodeGraphicItem]
@@ -876,7 +877,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         """
         return self._to_port
 
-    def get_terminal_from_parent(self) -> Union[None, BusGraphicItem, Transformer3WGraphicItem,
+    def get_terminal_from_parent(self) -> Union[None, BusGraphicItem, Transformer3WGraphicItem, TransformerNWGraphicItem,
                                                 FluidNodeGraphicItem, VscGraphicItem3Term]:
         """
         Get the terminal from parent object
@@ -887,7 +888,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         else:
             return self._from_port.get_parent()
 
-    def get_terminal_to_parent(self) -> Union[None, BusGraphicItem, Transformer3WGraphicItem,
+    def get_terminal_to_parent(self) -> Union[None, BusGraphicItem, Transformer3WGraphicItem, TransformerNWGraphicItem,
                                               FluidNodeGraphicItem, VscGraphicItem3Term]:
         """
         Get the terminal to parent object
@@ -2163,7 +2164,10 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
                 # keep this here, we need an actual instance
                 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformer3w_graphics import \
                     Transformer3WGraphicItem
-            return isinstance(self.get_terminal_from_parent(), Transformer3WGraphicItem)
+            if 'TransformerNWGraphicItem' not in sys.modules:
+                from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformerNw_graphics import \
+                    TransformerNWGraphicItem
+            return isinstance(self.get_terminal_from_parent(), (Transformer3WGraphicItem, TransformerNWGraphicItem))
         else:
             return False
 
@@ -2177,7 +2181,10 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
                 # keep this here, we need an actual instance
                 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformer3w_graphics import \
                     Transformer3WGraphicItem
-            return isinstance(self.get_terminal_to_parent(), Transformer3WGraphicItem)
+            if 'TransformerNWGraphicItem' not in sys.modules:
+                from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformerNw_graphics import \
+                    TransformerNWGraphicItem
+            return isinstance(self.get_terminal_to_parent(), (Transformer3WGraphicItem, TransformerNWGraphicItem))
         else:
             return False
 

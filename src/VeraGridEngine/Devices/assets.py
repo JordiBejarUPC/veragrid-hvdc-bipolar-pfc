@@ -52,6 +52,7 @@ class Assets:
         '_upfc_devices',
         '_switch_devices',
         '_transformers3w',
+        '_transformers_nw',
         '_windings',
         '_series_reactances',
         '_buses',
@@ -148,6 +149,8 @@ class Assets:
         self._switch_devices: List[dev.Switch] = list()
 
         self._transformers3w: List[dev.Transformer3W] = list()
+
+        self._transformers_nw: List[dev.TransformerNW] = list()
 
         self._windings: List[dev.Winding] = list()
 
@@ -359,6 +362,7 @@ class Assets:
                 dev.Winding(),
                 dev.Transformer2W(),
                 dev.Transformer3W(),
+                dev.TransformerNW(),
                 dev.SeriesReactance(),
                 dev.HvdcLine(),
                 dev.VSC(),
@@ -1290,6 +1294,71 @@ class Assets:
         self.delete_bus(obj.bus0, delete_associated=True)  # also delete the middle bus
 
     # ------------------------------------------------------------------------------------------------------------------
+    # Transformer NW
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def transformers_nw(self) -> List[dev.TransformerNW]:
+        """
+        Get list of N-winding transformers
+        :return:
+        """
+        return self._transformers_nw
+
+    @transformers_nw.setter
+    def transformers_nw(self, value: List[dev.TransformerNW]):
+        self._transformers_nw = value
+
+    def get_transformers_nw(self) -> List[dev.TransformerNW]:
+        """
+
+        :return:
+        """
+        return self._transformers_nw
+
+    def get_transformers_nw_number(self) -> int:
+        """
+
+        :return:
+        """
+        return len(self._transformers_nw)
+
+    def get_transformers_nw_names(self) -> List[str]:
+        """
+
+        :return:
+        """
+        return [elm.name for elm in self._transformers_nw]
+
+    def add_transformer_nw(self, obj: dev.TransformerNW, add_middle_bus: bool = True):
+        """
+        Add an N-winding transformer object
+        :param obj: TransformerNW instance
+        :param add_middle_bus: Add the internal star bus?
+        """
+
+        if self.time_profile is not None:
+            obj.ensure_profiles_exist(self.time_profile)
+        self._transformers_nw.append(obj)
+        if add_middle_bus:
+            self.add_bus(obj.bus0)
+        for winding in obj.windings:
+            self.add_winding(winding)
+
+    def delete_transformer_nw(self, obj: dev.TransformerNW):
+        """
+        Delete N-winding transformer
+        :param obj: TransformerNW instance
+        """
+        for winding in list(obj.windings):
+            self.delete_winding(winding)
+        self.delete_bus(obj.bus0, delete_associated=True)
+        try:
+            self._transformers_nw.remove(obj)
+        except ValueError:
+            pass
+
+    # ------------------------------------------------------------------------------------------------------------------
     # Windings
     # ------------------------------------------------------------------------------------------------------------------
 
@@ -1355,6 +1424,12 @@ class Assets:
 
             if obj == tr3.winding3:
                 tr3.bus3 = None
+
+        for tr_nw in self._transformers_nw:
+            for i, winding in enumerate(tr_nw.windings):
+                if obj == winding:
+                    tr_nw.delete_winding(i)
+                    break
 
         try:
             self._windings.remove(obj)
@@ -6686,6 +6761,9 @@ class Assets:
         elif device_type == DeviceType.Transformer3WDevice:
             return self._transformers3w
 
+        elif device_type == DeviceType.TransformerNwDevice:
+            return self._transformers_nw
+
         elif device_type == DeviceType.WindingDevice:
             return self._windings
 
@@ -6937,6 +7015,9 @@ class Assets:
         elif device_type == DeviceType.Transformer3WDevice:
             self._transformers3w = devices
 
+        elif device_type == DeviceType.TransformerNwDevice:
+            self._transformers_nw = devices
+
         elif device_type == DeviceType.WindingDevice:
             self._windings = devices
 
@@ -7169,6 +7250,9 @@ class Assets:
         elif obj.device_type == DeviceType.Transformer3WDevice:
             self.add_transformer3w(obj=obj)
 
+        elif obj.device_type == DeviceType.TransformerNwDevice:
+            self.add_transformer_nw(obj=obj)
+
         elif obj.device_type == DeviceType.WindingDevice:
             self.add_winding(obj=obj)
 
@@ -7390,6 +7474,9 @@ class Assets:
 
         elif obj.device_type == DeviceType.Transformer3WDevice:
             self.delete_transformer3w(obj)
+
+        elif obj.device_type == DeviceType.TransformerNwDevice:
+            self.delete_transformer_nw(obj)
 
         elif obj.device_type == DeviceType.WindingDevice:
             self.delete_winding(obj)
@@ -7930,6 +8017,14 @@ class Assets:
                 DeviceType.BusDevice: self.buses,
                 # DeviceType.RmsModelTemplateDevice: self.get_rms_models_by_device_type(elm_type),
                 # DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
+            }
+
+        elif elm_type == DeviceType.TransformerNwDevice:
+            elm = dev.TransformerNW()
+            dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
+                DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.BusDevice: self.buses,
             }
 
         elif elm_type == DeviceType.HVDCLineDevice:

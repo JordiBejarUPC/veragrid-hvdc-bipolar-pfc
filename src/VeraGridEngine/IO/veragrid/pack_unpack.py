@@ -91,6 +91,7 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
 
         'windings': dev.Winding(),
         'transformer3w': dev.Transformer3W(),
+        'transformernw': dev.TransformerNW(),
 
         'line': dev.Line(),
         'dc_line': dev.DcLine(),
@@ -141,7 +142,6 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
         'va_measurement': dev.VaMeasurement(),
         'pg_measurement': dev.PgMeasurement(),
         'qg_measurement': dev.QgMeasurement(),
-
     }
 
 
@@ -431,7 +431,7 @@ def profile_todict_str(profile: Profile) -> Dict[str, str]:
 
 
 def get_profile_from_dict(profile: Profile,
-                          data: Dict[str, Union[str, Union[Any, Dict[str, Any]]]],
+                          data: Dict[str, Any | Dict[str, Any]],
                           collection: Union[None, Dict[str, Any]] = None):
     """
     Create a profile from json dict data
@@ -440,7 +440,7 @@ def get_profile_from_dict(profile: Profile,
     :param collection: if the collection is provided, it will be used to convert idtags into objects
     :return: None
     """
-    default_value = data['default']
+    default_value: Any = data['default']
     is_sparse = bool(data['is_sparse'])
     # profile = Profile(default_value=default_value, is_sparse=bool(data['is_sparse']))
 

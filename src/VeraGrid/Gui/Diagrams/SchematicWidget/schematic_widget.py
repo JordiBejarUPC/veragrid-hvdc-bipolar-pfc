@@ -36,6 +36,7 @@ from VeraGridEngine.Devices.Branches.switch import Switch
 from VeraGridEngine.Devices.Branches.series_reactance import SeriesReactance
 from VeraGridEngine.Devices.Branches.hvdc_line import HvdcLine
 from VeraGridEngine.Devices.Branches.transformer3w import Transformer3W, Winding
+from VeraGridEngine.Devices.Branches.transformerNw import TransformerNW
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Fluid import FluidNode, FluidPath
 from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
@@ -65,6 +66,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.upfc_graphics import UpfcGra
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.series_reactance_graphics import SeriesReactanceGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.switch_graphics import SwitchGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformer3w_graphics import Transformer3WGraphicItem
+from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformerNw_graphics import TransformerNWGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.generator_graphics import GeneratorGraphicItem
 from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, GenericDiagramWidget
 from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
@@ -127,12 +129,14 @@ class SchematicLibraryModel(QStandardItemModel):
         self.bus_name = "Bus"
         self.cn_name = "Connectivity bus"
         self.transformer3w_name = "3W-Transformer"
+        self.transformer_nw_name = "NW-Transformer"
         self.fluid_node_name = "Fluid-node"
         self.vsc_name = "VSC"  # Add VSC name
 
         self.add(name=self.bus_name, icon_name="bus_icon")
         self.add(name=self.cn_name, icon_name="cn_icon")
         self.add(name=self.transformer3w_name, icon_name="transformer3w")
+        self.add(name=self.transformer_nw_name, icon_name="transformerNw")
         self.add(name=self.fluid_node_name, icon_name="dam")
         self.add(name=self.vsc_name, icon_name="to_vsc")
 
@@ -174,6 +178,13 @@ class SchematicLibraryModel(QStandardItemModel):
         :return:
         """
         return self.to_bytes_array(self.transformer3w_name)
+
+    def get_nw_transformer_mime_data(self) -> QByteArray:
+        """
+
+        :return:
+        """
+        return self.to_bytes_array(self.transformer_nw_name)
 
     def get_fluid_node_mime_data(self) -> QByteArray:
         """
@@ -355,7 +366,7 @@ def is_tr3_terminal(arriving_widget: Union[BarTerminalItem, RoundTerminalItem, Q
     :param arriving_widget:
     :return: True / False
     """
-    return isinstance(arriving_widget.parent, Transformer3WGraphicItem)
+    return isinstance(arriving_widget.parent, (Transformer3WGraphicItem, TransformerNWGraphicItem))
 
 
 def is_vsc3_terminal(arriving_widget: Union[BarTerminalItem, RoundTerminalItem, QGraphicsItem]) -> bool:
@@ -510,6 +521,23 @@ class SchematicWidget(BaseDiagramWidget):
                 graphic_object = self.create_transformer_3w_graphics(elm=obj, x=x0, y=y0)
                 self.circuit.add_transformer3w(obj)
 
+            elif obj_type == self.library_model.get_nw_transformer_mime_data():
+                dlg = InputNumberDialogue(min_value=3,
+                                          max_value=20,
+                                          default_value=4,
+                                          is_int=True,
+                                          title='NW transformer',
+                                          text='Select the number of windings')
+                dlg.exec()
+
+                if not dlg.is_accepted:
+                    return
+
+                obj = TransformerNW(name=f"Transformer NW {len(self.circuit.transformers_nw)}",
+                                    winding_count=dlg.value)
+                graphic_object = self.create_transformer_nw_graphics(elm=obj, x=x0, y=y0)
+                self.circuit.add_transformer_nw(obj)
+
             elif obj_type == self.library_model.get_fluid_node_mime_data():
                 obj = FluidNode(name=f"Fluid node {self.circuit.get_fluid_nodes_number()}")
                 graphic_object = self.create_fluid_node_graphics(node=obj, x=x0, y=y0, h=20, w=80)
@@ -607,6 +635,18 @@ class SchematicWidget(BaseDiagramWidget):
         :return: Transformer3WGraphicItem
         """
         graphic_object = Transformer3WGraphicItem(editor=self, elm=elm)
+        graphic_object.setPos(QPointF(x, y))
+        return graphic_object
+
+    def create_transformer_nw_graphics(self, elm: TransformerNW, x: float, y: float) -> TransformerNWGraphicItem:
+        """
+        Add TransformerNW to the graphics
+        :param elm: TransformerNW
+        :param x: x coordinate
+        :param y: y coordinate
+        :return: TransformerNWGraphicItem
+        """
+        graphic_object = TransformerNWGraphicItem(editor=self, elm=elm)
         graphic_object.setPos(QPointF(x, y))
         return graphic_object
 
@@ -816,6 +856,39 @@ class SchematicWidget(BaseDiagramWidget):
                         graphic_object.change_size(h=location.h, w=location.w)
 
                         # graphic_object.update_conn()
+                        self.graphics_manager.add_device(elm=elm, graphic=graphic_object)
+
+            elif category == DeviceType.TransformerNwDevice.value:
+
+                location_items = list(points_group.locations.items())
+
+                for idtag, location in location_items:
+
+                    graphic_object = self.graphics_manager.query(elm=location.api_object)
+
+                    if graphic_object is None:
+                        elm: TransformerNW = location.api_object
+
+                        graphic_object = self.create_transformer_nw_graphics(elm=elm,
+                                                                             x=location.x,
+                                                                             y=location.y)
+                        self.graphics_manager.add_device(elm=elm, graphic=graphic_object)
+                        self.add_to_scene(graphic_object=graphic_object)
+
+                        for i, winding in enumerate(elm.windings[:graphic_object.n_windings]):
+                            winding_graphics = self.add_api_winding(
+                                branch=winding,
+                                from_port=graphic_object.terminals[i],
+                                draw_labels=location.draw_labels,
+                                logger=logger
+                            )
+                            if winding_graphics is not None:
+                                self.graphics_manager.add_device(elm=winding, graphic=winding_graphics)
+                                graphic_object.connection_lines[i] = winding_graphics
+                                graphic_object.slot_windings[i] = winding
+
+                        graphic_object.set_position(x=location.x, y=location.y)
+                        graphic_object.change_size(h=location.h, w=location.w)
                         self.graphics_manager.add_device(elm=elm, graphic=graphic_object)
 
         # add the rest of the branches
@@ -1734,7 +1807,8 @@ class SchematicWidget(BaseDiagramWidget):
             for item in self.diagram_scene.items():
                 if isinstance(item, (BusGraphicItem,
                                      FluidNodeGraphicItem,
-                                     Transformer3WGraphicItem)):
+                                     Transformer3WGraphicItem,
+                                     TransformerNWGraphicItem)):
                     x = item.pos().x()
                     y = item.pos().y()
 
@@ -1749,7 +1823,8 @@ class SchematicWidget(BaseDiagramWidget):
             for item in self.diagram_scene.items():
                 if isinstance(item, (BusGraphicItem,
                                      FluidNodeGraphicItem,
-                                     Transformer3WGraphicItem)):
+                                     Transformer3WGraphicItem,
+                                     TransformerNWGraphicItem)):
 
                     if item.api_object in elements_s:
                         x = item.pos().x()
@@ -2541,6 +2616,37 @@ class SchematicWidget(BaseDiagramWidget):
 
         return tr3_graphic_object
 
+    def add_api_transformer_nw(self, elm: TransformerNW, set_voltage: bool = False):
+        """
+        Add API TransformerNW to the Scene
+        :param elm: TransformerNW instance
+        :param set_voltage:
+        """
+
+        trn_graphic_object = self.create_transformer_nw_graphics(elm=elm, x=elm.x, y=elm.y)
+
+        for i, winding in enumerate(elm.windings[:trn_graphic_object.n_windings]):
+            port = self.find_port(bus=winding.bus_to)
+            if port is None:
+                continue
+
+            conn = WindingGraphicItem(from_port=trn_graphic_object.terminals[i],
+                                      to_port=port,
+                                      editor=self)
+            trn_graphic_object.set_connection(i=i, bus=winding.bus_to, conn=conn, set_voltage=set_voltage)
+            self.update_diagram_element(device=conn._api_object, graphic_object=conn)
+
+        self.update_diagram_element(device=elm,
+                                    x=elm.x,
+                                    y=elm.y,
+                                    w=80,
+                                    h=80,
+                                    r=0,
+                                    draw_labels=True,
+                                    graphic_object=trn_graphic_object)
+
+        return trn_graphic_object
+
     def add_api_fluid_node(self, node: FluidNode,
                            injections_by_tpe: Dict[DeviceType, List[ALL_DEV_TYPES]]):
         """
@@ -2900,6 +3006,9 @@ class SchematicWidget(BaseDiagramWidget):
             elif isinstance(elm, Transformer3W):
                 graphic_obj = self.add_api_transformer_3w(elm, set_voltage=False)
 
+            elif isinstance(elm, TransformerNW):
+                graphic_obj = self.add_api_transformer_nw(elm, set_voltage=False)
+
             elif isinstance(elm, HvdcLine):
                 graphic_obj = self.add_api_hvdc(elm)
 
@@ -2934,6 +3043,7 @@ class SchematicWidget(BaseDiagramWidget):
                                   dc_lines: List[DcLine],
                                   transformers2w: List[Transformer2W],
                                   transformers3w: List[Transformer3W],
+                                  transformers_nw: List[TransformerNW],
                                   hvdc_lines: List[HvdcLine],
                                   vsc_devices: List[VSC],
                                   upfc_devices: List[UPFC],
@@ -2952,6 +3062,7 @@ class SchematicWidget(BaseDiagramWidget):
         :param dc_lines: list of DcLine objects
         :param transformers2w: list of Transformer Objects
         :param transformers3w: list of Transformer3W Objects
+        :param transformers_nw: list of TransformerNW Objects
         :param hvdc_lines: list of HvdcLine objects
         :param vsc_devices: list Vsc objects
         :param upfc_devices: List of UPFC devices
@@ -3048,6 +3159,19 @@ class SchematicWidget(BaseDiagramWidget):
                 prog_func((i + 1) / nn * 100.0)
 
             graphic_obj = self.add_api_transformer_3w(elm, set_voltage=False)
+            self.add_to_scene(graphic_obj)
+
+        # --------------------------------------------------------------------------------------------------------------
+        if text_func is not None:
+            text_func('Creating schematic transformerNW devices')
+
+        nn = len(transformers_nw)
+        for i, elm in enumerate(transformers_nw):
+
+            if prog_func is not None:
+                prog_func((i + 1) / nn * 100.0)
+
+            graphic_obj = self.add_api_transformer_nw(elm, set_voltage=False)
             self.add_to_scene(graphic_obj)
 
         # --------------------------------------------------------------------------------------------------------------
@@ -4889,7 +5013,7 @@ class SchematicWidget(BaseDiagramWidget):
 
         (buses,
          lines, dc_lines, transformers2w,
-         transformers3w, windings, hvdc_lines,
+         transformers3w, transformers_nw, windings, hvdc_lines,
          vsc_converters, upfc_devices,
          series_reactances, switches,
          fluid_nodes, fluid_paths) = get_devices_to_expand(circuit=self.circuit, buses=buses, max_level=1)
@@ -4900,6 +5024,7 @@ class SchematicWidget(BaseDiagramWidget):
                                              dc_lines=dc_lines,
                                              transformers2w=transformers2w,
                                              transformers3w=transformers3w,
+                                             transformers_nw=transformers_nw,
                                              windings=windings,
                                              hvdc_lines=hvdc_lines,
                                              vsc_devices=vsc_converters,
@@ -4925,7 +5050,7 @@ class SchematicWidget(BaseDiagramWidget):
 
         (buses,
          lines, dc_lines, transformers2w,
-         transformers3w, windings, hvdc_lines,
+         transformers3w, transformers_nw, windings, hvdc_lines,
          vsc_converters, upfc_devices,
          series_reactances, switches,
          fluid_nodes, fluid_paths) = get_devices_to_expand(circuit=self.circuit,
@@ -4939,6 +5064,7 @@ class SchematicWidget(BaseDiagramWidget):
                                              dc_lines=dc_lines,
                                              transformers2w=transformers2w,
                                              transformers3w=transformers3w,
+                                             transformers_nw=transformers_nw,
                                              windings=windings,
                                              hvdc_lines=hvdc_lines,
                                              vsc_devices=vsc_converters,
@@ -5205,6 +5331,7 @@ def generate_schematic_diagram(buses: List[Bus],
                                dc_lines: List[DcLine],
                                transformers2w: List[Transformer2W],
                                transformers3w: List[Transformer3W],
+                               transformers_nw: List[TransformerNW],
                                windings: List[Winding],
                                hvdc_lines: List[HvdcLine],
                                vsc_devices: List[VSC],
@@ -5224,6 +5351,7 @@ def generate_schematic_diagram(buses: List[Bus],
     :param dc_lines: list of DcLine objects
     :param transformers2w: list of Transformer Objects
     :param transformers3w: list of Transformer3W Objects
+    :param transformers_nw: list of TransformerNW Objects
     :param windings: list of Winding objects
     :param hvdc_lines: list of HvdcLine objects
     :param vsc_devices: list Vsc objects
@@ -5246,6 +5374,7 @@ def generate_schematic_diagram(buses: List[Bus],
                              dc_lines=dc_lines,
                              transformers2w=transformers2w,
                              transformers3w=transformers3w,
+                             transformers_nw=transformers_nw,
                              windings=windings,
                              hvdc_lines=hvdc_lines,
                              vsc_devices=vsc_devices,
@@ -5267,6 +5396,7 @@ def add_to_schematic_diagram(diagram: SchematicDiagram,
                              dc_lines: List[DcLine],
                              transformers2w: List[Transformer2W],
                              transformers3w: List[Transformer3W],
+                             transformers_nw: List[TransformerNW],
                              windings: List[Winding],
                              hvdc_lines: List[HvdcLine],
                              vsc_devices: List[VSC],
@@ -5286,6 +5416,7 @@ def add_to_schematic_diagram(diagram: SchematicDiagram,
     :param dc_lines: list of DcLine objects
     :param transformers2w: list of Transformer Objects
     :param transformers3w: list of Transformer3W Objects
+    :param transformers_nw: list of TransformerNW Objects
     :param windings: list of Winding objects
     :param hvdc_lines: list of HvdcLine objects
     :param vsc_devices: list Vsc objects
@@ -5342,6 +5473,7 @@ def add_to_schematic_diagram(diagram: SchematicDiagram,
 
     add_devices_list(cls="fluid_nodes", dev_lst=fluid_nodes)
     add_devices_list(cls="transformers3w", dev_lst=transformers3w)
+    add_devices_list(cls="transformers_nw", dev_lst=transformers_nw)
 
     add_devices_list(cls="lines", dev_lst=lines)
     add_devices_list(cls="dc_lines", dev_lst=dc_lines)
@@ -5395,6 +5527,7 @@ def generate_grid_diagram(circuit: MultiCircuit,
                                       dc_lines=circuit.get_dc_lines(),
                                       transformers2w=circuit.get_transformers2w(),
                                       transformers3w=circuit.get_transformers3w(),
+                                      transformers_nw=circuit.get_transformers_nw(),
                                       windings=circuit.get_windings(),
                                       hvdc_lines=circuit.get_hvdc(),
                                       vsc_devices=circuit.get_vsc(),
@@ -5417,6 +5550,7 @@ List[Line],
 List[DcLine],
 List[Transformer2W],
 List[Transformer3W],
+List[TransformerNW],
 List[Winding],
 List[HvdcLine],
 List[VSC],
@@ -5462,14 +5596,20 @@ List[FluidPath]]:
     for b in buses:
         bus_pool.append((b, 0))
 
-    # create a map of the tr3 that own the windings
+    # create maps of the multi-winding transformers that own the windings
     windings2tr3 = dict()
+    windings2tr_nw = dict()
 
     for tr3 in circuit.transformers3w:
         windings2tr3[tr3.winding1] = tr3
         windings2tr3[tr3.winding2] = tr3
         windings2tr3[tr3.winding3] = tr3
         tr3.bus0.graphic_type = BusGraphicType.Internal  # make sure these don't show up
+
+    for tr_nw in circuit.transformers_nw:
+        tr_nw.bus0.graphic_type = BusGraphicType.Internal
+        for winding in tr_nw.windings:
+            windings2tr_nw[winding] = tr_nw
 
     buses = set()
     fluid_nodes = set()
@@ -5521,6 +5661,7 @@ List[FluidPath]]:
     dc_lines: List[DcLine] = list()
     transformers2w: List[Transformer2W] = list()
     transformers3w: Set[Transformer3W] = set()
+    transformers_nw: Set[TransformerNW] = set()
     windings: List[Winding] = list()
     hvdc_lines: List[HvdcLine] = list()
     vsc_converters: List[VSC] = list()
@@ -5545,10 +5686,13 @@ List[FluidPath]]:
         elif obj.device_type == DeviceType.WindingDevice:
             windings.append(obj)
 
-            # for each winding, we add the tr3
+            # For each winding, add its owning multi-winding transformer container.
             tr3 = windings2tr3.get(obj, None)
             if tr3 is not None:
                 transformers3w.add(tr3)
+            tr_nw = windings2tr_nw.get(obj, None)
+            if tr_nw is not None:
+                transformers_nw.add(tr_nw)
 
         elif obj.device_type == DeviceType.HVDCLineDevice:
             hvdc_lines.append(obj)
@@ -5585,7 +5729,17 @@ List[FluidPath]]:
     for b in buses_tr3:
         buses.add(b)
 
-    return (list(buses), lines, dc_lines, transformers2w, list(transformers3w),
+    buses_tr_nw = set()
+    for tr_nw in transformers_nw:
+        if any(bus in buses for bus in tr_nw.buses if bus is not None):
+            for bus in tr_nw.buses:
+                if bus is not None:
+                    buses_tr_nw.add(bus)
+
+    for b in buses_tr_nw:
+        buses.add(b)
+
+    return (list(buses), lines, dc_lines, transformers2w, list(transformers3w), list(transformers_nw),
             windings, hvdc_lines, vsc_converters, upfc_devices, series_reactances, switches,
             list(fluid_nodes), fluid_paths)
 
@@ -5609,7 +5763,7 @@ def make_vicinity_diagram(circuit: MultiCircuit,
 
     (buses,
      lines, dc_lines, transformers2w,
-     transformers3w, windings, hvdc_lines,
+     transformers3w, transformers_nw, windings, hvdc_lines,
      vsc_converters, upfc_devices,
      series_reactances, switches,
      fluid_nodes, fluid_paths) = get_devices_to_expand(circuit=circuit, buses=[root_bus], max_level=max_level)
@@ -5621,6 +5775,7 @@ def make_vicinity_diagram(circuit: MultiCircuit,
         dc_lines=dc_lines,
         transformers2w=transformers2w,
         transformers3w=transformers3w,
+        transformers_nw=transformers_nw,
         windings=windings,
         hvdc_lines=hvdc_lines,
         vsc_devices=vsc_converters,
@@ -5655,7 +5810,7 @@ def make_diagram_from_buses(circuit: MultiCircuit,
 
     (buses,
      lines, dc_lines, transformers2w,
-     transformers3w, windings, hvdc_lines,
+     transformers3w, transformers_nw, windings, hvdc_lines,
      vsc_converters, upfc_devices,
      series_reactances, switches,
      fluid_nodes, fluid_paths) = get_devices_to_expand(circuit=circuit, buses=buses, max_level=1)
@@ -5666,6 +5821,7 @@ def make_diagram_from_buses(circuit: MultiCircuit,
                                          dc_lines=dc_lines,
                                          transformers2w=transformers2w,
                                          transformers3w=transformers3w,
+                                         transformers_nw=transformers_nw,
                                          windings=windings,
                                          hvdc_lines=hvdc_lines,
                                          vsc_devices=vsc_converters,

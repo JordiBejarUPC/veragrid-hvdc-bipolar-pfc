@@ -91,6 +91,7 @@ ALL_DEV_TYPES = Union[
         # MEASUREMENT_TYPES,
     AREA_TYPES,
     Transformer3W,
+    TransformerNW,
     OverheadLineType,
     Wire,
     Area,

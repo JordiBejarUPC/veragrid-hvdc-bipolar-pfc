@@ -1841,6 +1841,7 @@ class DiagramsMain(CompiledArraysMain):
                                                      dc_lines=self.circuit.get_dc_lines(),
                                                      transformers2w=self.circuit.get_transformers2w(),
                                                      transformers3w=self.circuit.get_transformers3w(),
+                                                     transformers_nw=self.circuit.get_transformers_nw(),
                                                      windings=self.circuit.get_windings(),
                                                      hvdc_lines=self.circuit.get_hvdc(),
                                                      vsc_devices=self.circuit.get_vsc(),
@@ -1878,6 +1879,7 @@ class DiagramsMain(CompiledArraysMain):
                                              dc_lines=self.circuit.get_dc_lines(),
                                              transformers2w=self.circuit.get_transformers2w(),
                                              transformers3w=self.circuit.get_transformers3w(),
+                                             transformers_nw=self.circuit.get_transformers_nw(),
                                              windings=self.circuit.get_windings(),
                                              hvdc_lines=self.circuit.get_hvdc(),
                                              vsc_devices=self.circuit.get_vsc(),
@@ -1963,6 +1965,9 @@ class DiagramsMain(CompiledArraysMain):
                 root_bus = sel_obj.bus_from
 
             elif isinstance(sel_obj, dev.Transformer3W):
+                root_bus = sel_obj.bus0
+
+            elif isinstance(sel_obj, dev.TransformerNW):
                 root_bus = sel_obj.bus0
 
             elif isinstance(sel_obj, dev.VoltageLevel):
