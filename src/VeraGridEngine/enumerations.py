@@ -3488,6 +3488,10 @@ class BlockType(Enum):
     BUS_CONNECTION = "Bus Connection"
     EXTERNAL_MAPPING = "EXTERNAL_MAPPING"
 
+    EMT_PI_LINE = "EMT_PI_LINE"
+    EMT_BERGERON_LINE = "EMT_BERGERON_LINE"
+    EMTLOAD = "EMT_LOAD"
+
     def __str__(self):
         return self.value
 

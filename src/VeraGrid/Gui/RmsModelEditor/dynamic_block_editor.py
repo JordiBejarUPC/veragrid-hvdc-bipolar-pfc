@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
                                QDialog, QVBoxLayout, QDialogButtonBox, QLabel, QListWidget, QWidget,
                                QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QDoubleSpinBox, QTableWidget, QTableWidgetItem,
-                               QColorDialog, QPlainTextEdit)
+                               QColorDialog, QPlainTextEdit, QCheckBox)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter,
                            QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import QAbstractItemModel, QLineF
@@ -41,7 +41,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_t
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import BlockType
-from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block
+from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
 
 BLOCK_BORDER: QColor = QColor("#36536b")
 BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
@@ -514,6 +514,45 @@ class GenericBlockDialog(QDialog):
         algeb_ins = self.algeb_inputs_spin.value()
         algeb_outs = [s.strip() for s in self.algeb_outputs_edit.text().split(",") if s.strip()]
         return name, state_ins, state_outs, algeb_ins, algeb_outs
+
+
+class EmtTemplateWizardDialog(QDialog):
+    """
+    Dialog to configure EMT template wizard block phases.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Configure EMT Block Phases")
+
+        layout = QVBoxLayout(self)
+
+        label = QLabel("Select the phases for this EMT block:")
+        layout.addWidget(label)
+
+        self.phase_n_check = QCheckBox("phase_n")
+        self.phase_a_check = QCheckBox("phase_a")
+        self.phase_b_check = QCheckBox("phase_b")
+        self.phase_c_check = QCheckBox("phase_c")
+
+        layout.addWidget(self.phase_n_check)
+        layout.addWidget(self.phase_a_check)
+        layout.addWidget(self.phase_b_check)
+        layout.addWidget(self.phase_c_check)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def get_values(self):
+        """Return phase selection as a tuple of booleans."""
+        return (
+            self.phase_n_check.isChecked(),
+            self.phase_a_check.isChecked(),
+            self.phase_b_check.isChecked(),
+            self.phase_c_check.isChecked()
+        )
 
 
 class PortItem(QGraphicsEllipseItem):
@@ -3285,6 +3324,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     ("Stabilizer", BlockType.STAB),
                     ("Exciter", BlockType.EXCITER),
                     ("Generic", BlockType.GENERIC),
+                    ("Emt pi line", BlockType.EMT_PI_LINE),
+                    ("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
+                    ("Emt load", BlockType.EMTLOAD),
                 ],
             }
         else:
@@ -3494,6 +3536,51 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
 
             return item
+        else:
+            return None
+
+    def create_emt_wizard_block_item(self, block_type: BlockType, x_pos, y_pos) -> BlockItem|None:
+        """
+        Create and place a generic block item.
+
+        :param block_type:
+        :param x_pos:
+        :param y_pos:
+        :return:
+        """
+
+        dialog = EmtTemplateWizardDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            phase_n, phase_a, phase_b, phase_c = dialog.get_values()
+            count: int = self.block_counters.get(block_type, 0) + 1
+            item_name: str = f"{block_type.name}_{count}"
+            block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+            block_model = create_emt_wizard_block(phase_n, phase_a, phase_b, phase_c, self.var_factory, block_type=block_type, item_name=item_name)
+
+            if block_model is not None:
+                # The symbolic block has to be attached first so the graphics item can build its ports from it.
+                self.block_counters[block_type] = count
+                block_item.set_subsystem(block_model)
+                block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+                block_item.build_item()
+
+                # The editor block is the authoritative model container for later save/rebuild steps.
+                self.main_block.add(block_model)
+                self.scene.addItem(block_item)
+                block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+
+                # Keep the diagram synchronized so later features can rebuild from the same data source.
+                self.diagram.add_node(
+                    name=item_name,
+                    x=x_pos,
+                    y=y_pos,
+                    tpe=block_type.name,
+                    device_uid=block_model.uid
+                )
+
+                return block_item
+            else:
+                return None
         else:
             return None
 
@@ -5075,6 +5162,31 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     x_pos=scene_position.x(),
                     y_pos=scene_position.y()
                 )
+
+            elif isinstance(payload, BlockType) and payload == BlockType.EMT_PI_LINE:
+
+                block_item = self.create_emt_wizard_block_item(
+                    block_type=payload,
+                    x_pos=scene_position.x(),
+                    y_pos=scene_position.y()
+                )
+
+            elif isinstance(payload, BlockType) and payload == BlockType.EMT_BERGERON_LINE:
+
+                block_item = self.create_emt_wizard_block_item(
+                    block_type=payload,
+                    x_pos=scene_position.x(),
+                    y_pos=scene_position.y()
+                )
+
+            elif isinstance(payload, BlockType) and payload == BlockType.EMTLOAD:
+
+                block_item = self.create_emt_wizard_block_item(
+                    block_type=payload,
+                    x_pos=scene_position.x(),
+                    y_pos=scene_position.y()
+                )
+
 
             elif isinstance(payload, BlockType):
                 block_item = self.create_block_item(
