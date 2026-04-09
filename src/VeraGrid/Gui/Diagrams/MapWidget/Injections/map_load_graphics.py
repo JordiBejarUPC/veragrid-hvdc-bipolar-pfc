@@ -12,7 +12,6 @@ from PySide6.QtGui import QPolygonF
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.generic_graphics import Polygon
 from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics import MapInjectionTemplateGraphicItem
-from VeraGrid.Gui.RmsModelEditor.dynamic_device_editor import DynamicDeviceEditorDialog, choose_initial_dynamic_editor_mode
 from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
@@ -64,21 +63,6 @@ class MapLoadGraphicItem(MapInjectionTemplateGraphicItem):
             menu.exec(event.screenPos())
         else:
             self.editor.gui.show_error_toast("The graphic has no API object!")
-
-    def edit_dynamic(self):
-        """
-        Open the tabbed dynamic editor for this load.
-
-        :return: None.
-        """
-
-        self.dynamic_editor_window = DynamicDeviceEditorDialog(
-            circuit=self.editor.circuit,
-            api_object=self.api_object,
-            initial_mode=choose_initial_dynamic_editor_mode(self.api_object),
-            parent=None,
-        )
-        self.dynamic_editor_window.exec()
 
     def edit_rms(self):
         """

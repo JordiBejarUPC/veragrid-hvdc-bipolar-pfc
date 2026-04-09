@@ -3165,9 +3165,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  mode: DynamicEditorMode = DynamicEditorMode.RMS,
                  templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None,
                  circuit: Any | None = None,
-                 embedded: bool = False,
                  main_editor=False,
-                 modal: bool = True):
+                 modal: bool = True
+                 ):
         """
         Initializes a dynamic block editor window used for editing and managing blocks within a graphical model.
 
@@ -3194,15 +3194,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui = Ui_BlockEditorWindow()
         self.ui.setupUi(self)
 
-        if modal and not embedded:
+        if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
-        else:
-            pass
-
-        if embedded:
-            self.setWindowFlags(QtCore.Qt.WindowType.Widget)
-        else:
-            pass
 
         # set object label
         if api_object is not None:
@@ -3212,6 +3205,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.block_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 300
         self.mime_type: str = "application/x-veragrid-dynamics-block"
+
+        self.setWindowTitle("Dynamic Model Editor")
 
         self.ui.splitter.setStretchFactor(0, 1)
         self.ui.splitter.setStretchFactor(1, 10)
@@ -3232,7 +3227,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.diagram: BlockDiagram = self.main_block.diagram
         self.circuit = circuit
         self.mode = mode
-        self.embedded = embedded
         self.main_editor = main_editor
         self._emt_bus_fallback_warning_shown: bool = False
         self.setWindowTitle(f"Dynamic Model Editor [{self.mode.name}]")
@@ -3353,11 +3347,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.graphicsView.dragMoveEvent = self.graphicsDragMoveEvent
         self.ui.graphicsView.dropEvent = self.graphicsDropEvent
 
-        if self.embedded:
-            self.ui.doItButton.hide()
-        else:
-            pass
-
         self.ui.doItButton.clicked.connect(self.apply_changes)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
         if not self.main_block.diagram.node_data and self.main_editor:
@@ -3365,19 +3354,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.add_external_mapping_block()
             self.add_api_obj_mapping()
         self.rebuild_scene_from_diagram()
-
-        # self.parameters_model = ParametersTreeModel(var_factory=self.var_factory, main_block=self.main_block)
-        # self.ui.parametersTreeView.setModel(self.parameters_model)
-        # self.ui.parametersTreeView.expandAll()
-        #
-        # # Conecta el signal del editor al métod de añadir bloque
-        # self.block_added.connect(self.parameters_model.add_block)
-        #
-        #
-        # self.ui.parametersTreeView.header().setStretchLastSection(True)
-        # header = self.ui.parametersTreeView.header()
-        # header.setStretchLastSection(True)
-        # header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
 
     def build_library_tree_model(self,
                                  block_role: int,
@@ -4398,10 +4374,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block.parameters[b] = self.var_factory.add_const(0.0710059)
             self.main_block.parameters[bsh] = self.var_factory.add_const(0.03)
 
-            self.main_block.api_obj_mapping = dict()
-            self.main_block.api_obj_mapping[ParamPowerFlowRefferenceType.g] = g
-            self.main_block.api_obj_mapping[ParamPowerFlowRefferenceType.b] = b
-            self.main_block.api_obj_mapping[ParamPowerFlowRefferenceType.bsh] = bsh
+            self.main_block.api_obj_mapping = {
+                ParamPowerFlowRefferenceType.g: g,
+                ParamPowerFlowRefferenceType.b: b,
+                ParamPowerFlowRefferenceType.bsh: bsh,
+            }
 
     def get_block_from_main_block(self, device_uid: int) -> Block | None:
         """
@@ -4879,25 +4856,21 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return:
         """
-        if self.api_object.rms_template is not None:
-            #Todo: Here are the changes
-            self.api_object.rms_template = None
-        # self.commit_changes(close_window=True)
-
-    def commit_changes(self, close_window: bool) -> None:
-        """
-        Commit the edited working copy back into the original block.
-
-        :param close_window: Close the editor after committing.
-        :return: None.
-        """
-        self._break_domain_template_link()
-        copy_block_state(source_block=self.main_block, target_block=self.original_block)
-        self.changes_applied = True
-        if close_window:
+        if self.mode == DynamicEditorMode.RMS:
+            if self.api_object.rms_template is not None:
+                # Todo: Here are the changes
+                self.api_object.rms_template = None
+            copy_block_state(source_block=self.main_block, target_block=self.original_block)
+            self.changes_applied = True
             self.close()
-        else:
-            pass
+
+        elif self.mode == DynamicEditorMode.EMT:
+            if self.api_object.emt_template is not None:
+                # Todo: Here are the changes
+                self.api_object.emt_template = None
+            copy_block_state(source_block=self.main_block, target_block=self.original_block)
+            self.changes_applied = True
+            self.close()
 
     def open_inspect_dialog(self):
         """
