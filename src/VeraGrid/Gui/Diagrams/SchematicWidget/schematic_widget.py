@@ -2348,8 +2348,7 @@ class SchematicWidget(BaseDiagramWidget):
                     # Add connection line to scene
                     self.add_to_scene(conn_line_dcn)
 
-                graphic_object.setRotation(r)
-                graphic_object.update_conn()
+                graphic_object.set_rotation_angle(angle_degrees=r, persist=False)
 
                 # Update diagram element
                 self.update_diagram_element(device=elm,

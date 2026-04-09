@@ -407,17 +407,18 @@ class RoundTerminalItem(BaseTerminal, QGraphicsEllipseItem):
         :param value:
         :return:
         """
-        return value + self.center
+        return self.mapToScene(self.rect().center())
 
     def process_callbacks(self, value: QPointF):
         """
         Send the callbacks, usually setEndPos or setStartPos functions from the line template
         :param value: Parent position
         """
+        scene_center: QPointF = self.mapToScene(self.rect().center())
 
         for i, (connection, call_back) in enumerate(self._hosting_connections.items()):
             if call_back is not None:
-                call_back(value + self.center)
+                call_back(scene_center)
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: QPointF) -> QPointF:
         """
