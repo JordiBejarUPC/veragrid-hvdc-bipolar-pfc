@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 2
 - Top-level function count: 76
-- Representative imports: __future__, time, numpy, typing, VeraGridEngine, VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation, VeraGridEngine.DataStructures.branch_parent_data, VeraGridEngine.basic_structures, VeraGridEngine.Devices.profile, VeraGridEngine.Devices.multi_circuit, VeraGridEngine.Devices, VeraGridEngine.Simulations.PowerFlow.power_flow_options, VeraGridEngine.Simulations.PowerFlow.power_flow_results, VeraGridEngine.enumerations, VeraGridEngine.enumerations, VeraGridEngine.DataStructures.numerical_circuit
+- Representative imports: __future__, time, numpy, typing, VeraGridEngine, VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation, VeraGridEngine.DataStructures.branch_parent_data, VeraGridEngine.basic_structures, VeraGridEngine.Devices.multi_circuit, VeraGridEngine.Devices, VeraGridEngine.Simulations.PowerFlow.power_flow_options, VeraGridEngine.Simulations.PowerFlow.power_flow_results, VeraGridEngine.enumerations, VeraGridEngine.enumerations, VeraGridEngine.DataStructures.numerical_circuit
 
 ## Function: get_gslv_mip_solvers_list()
 

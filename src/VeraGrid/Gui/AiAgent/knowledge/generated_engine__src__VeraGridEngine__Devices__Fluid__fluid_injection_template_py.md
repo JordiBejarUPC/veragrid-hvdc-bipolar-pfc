@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 1
 - Top-level function count: 0
-- Representative imports: __future__, typing, numpy, VeraGridEngine.Devices.Parents.physical_device, VeraGridEngine.Devices.Fluid.fluid_node, VeraGridEngine.Devices.Injections.generator, VeraGridEngine.Devices.profile, VeraGridEngine.Devices.Aggregation.facility, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.editable_device
+- Representative imports: __future__, typing, numpy, VeraGridEngine.Devices.Parents.physical_device, VeraGridEngine.Devices.Fluid.fluid_node, VeraGridEngine.Devices.Injections.generator,  VeraGridEngine.Devices.Aggregation.facility, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.editable_device
 
 ## Class: FluidInjectionTemplate
 

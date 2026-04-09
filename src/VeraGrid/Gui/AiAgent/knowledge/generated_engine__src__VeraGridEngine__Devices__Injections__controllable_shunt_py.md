@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 1
 - Top-level function count: 0
-- Representative imports: __future__, typing, numpy, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.shunt_parent, VeraGridEngine.Devices.profile, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.Devices.Parents.editable_device, VeraGridEngine.basic_structures
+- Representative imports: __future__, typing, numpy, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.shunt_parent,  VeraGridEngine.Devices.Substation.bus, VeraGridEngine.Devices.Parents.editable_device, VeraGridEngine.basic_structures
 
 ## Class: ControllableShunt
 

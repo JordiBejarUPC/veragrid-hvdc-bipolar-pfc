@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 1
 - Top-level function count: 0
-- Representative imports: __future__, numpy, pandas, typing, matplotlib, VeraGridEngine.basic_structures, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.enumerations, VeraGridEngine.Devices.Associations.association, VeraGridEngine.Devices.Injections.generator_q_curve, VeraGridEngine.Devices.profile, VeraGridEngine.Devices.Parents.editable_device, VeraGridEngine.Devices.Parents.injection_parent
+- Representative imports: __future__, numpy, pandas, typing, matplotlib, VeraGridEngine.basic_structures, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.enumerations, VeraGridEngine.Devices.Associations.association, VeraGridEngine.Devices.Injections.generator_q_curve,  VeraGridEngine.Devices.Parents.editable_device, VeraGridEngine.Devices.Parents.injection_parent
 
 ## Class: Generator
 

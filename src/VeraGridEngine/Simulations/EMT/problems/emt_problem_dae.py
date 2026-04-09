@@ -35,7 +35,6 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowRes
 from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt, run_emt_native_initialization
 from VeraGridEngine.Utils.Symbolic.compiled_functions import get_compiled_functions_cache_stats
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_algebraic_vars
-# from trunk.veragrid_fmu_import import finalize_emt_fmu_cs_devices, finalize_emt_fmu_me_devices, queue_emt_fmu_cs_device, queue_emt_fmu_me_device #TODO: importing from trunk!
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     EmtBoundaryUpdateProtocol,

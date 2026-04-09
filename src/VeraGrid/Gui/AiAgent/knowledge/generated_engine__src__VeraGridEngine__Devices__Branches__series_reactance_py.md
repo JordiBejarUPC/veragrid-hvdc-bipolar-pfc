@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 1
 - Top-level function count: 0
-- Representative imports: numpy, typing, VeraGridEngine.basic_structures, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.branch_parent, VeraGridEngine.Devices.profile, VeraGridEngine.Devices.Parents.editable_device
+- Representative imports: numpy, typing, VeraGridEngine.basic_structures, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.branch_parent,  VeraGridEngine.Devices.Parents.editable_device
 
 ## Class: SeriesReactance
 

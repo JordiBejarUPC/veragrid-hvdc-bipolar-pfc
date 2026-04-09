@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 1
 - Top-level function count: 0
-- Representative imports: __future__, typing, numpy, pandas, matplotlib, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.dynamic_parent, VeraGridEngine.Devices.Aggregation, VeraGridEngine.Devices.Substation.substation, VeraGridEngine.Devices.Substation.busbar, VeraGridEngine.Devices.Substation.voltage_level, VeraGridEngine.Devices.profile, VeraGridEngine.Devices.Parents.editable_device
+- Representative imports: __future__, typing, numpy, pandas, matplotlib, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.dynamic_parent, VeraGridEngine.Devices.Aggregation, VeraGridEngine.Devices.Substation.substation, VeraGridEngine.Devices.Substation.busbar, VeraGridEngine.Devices.Substation.voltage_level,  VeraGridEngine.Devices.Parents.editable_device
 
 ## Class: Bus
 
