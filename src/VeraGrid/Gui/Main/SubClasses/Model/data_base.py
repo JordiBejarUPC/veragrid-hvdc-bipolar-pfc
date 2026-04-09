@@ -1024,7 +1024,7 @@ class DataBaseTableMain(DiagramsMain):
 
                     elif elm_type == DeviceType.EmtModelTemplateDevice.value:
                         self.rms_model_Editor_window = DynamicBlockEditorGUI(
-                            var_factory=self.circuit.emt_var_factory,
+                            var_factory=self.circuit.var_factory,
                             block=elm.block,
                             api_object=elm,
                             mode=DynamicEditorMode.EMT,

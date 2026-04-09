@@ -172,31 +172,6 @@ class DynamicDevice(PhysicalDevice):
         else:
             raise ValueError(f"VarFactory cannot accept {val}")
 
-    def set_rms_var_factory(self, val: VarFactory) -> None:
-        """
-        Store the RMS variable factory used to clone and bind symbolic blocks.
-
-        :param val: RMS variable factory.
-        :return: None.
-        """
-        if isinstance(val, VarFactory):
-            self._var_factory = val
-        else:
-            raise ValueError(f"VarFactory cannot accept {val}")
-
-    def set_emt_var_factory(self, val: VarFactory) -> None:
-        """
-        Store the shared variable factory through the EMT compatibility entry point.
-
-        :param val: EMT variable factory.
-        :return: None.
-        """
-
-        if isinstance(val, VarFactory):
-            self._var_factory = val
-        else:
-            raise ValueError(f"VarFactory cannot accept {val}")
-
     @property
     def rms_model(self) -> Block:
         """

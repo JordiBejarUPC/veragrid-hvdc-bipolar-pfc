@@ -93,8 +93,8 @@ def _build_load() -> Load:
     """
 
     load = Load(name="Load under test")
-    load.set_rms_var_factory(VarFactory(name="TestRmsFactory"))
-    load.set_emt_var_factory(VarFactory(name="TestEmtFactory"))
+    load.set_var_factory(VarFactory(name="TestRmsFactory"))
+
     return load
 
 
