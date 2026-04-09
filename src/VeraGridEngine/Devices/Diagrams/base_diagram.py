@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from VeraGridEngine.Devices.Fluid.fluid_node import FluidNode
     from VeraGridEngine.Devices.Fluid.fluid_path import FluidPath
     from VeraGridEngine.Devices.Branches.transformer3w import Transformer3W
+    from VeraGridEngine.Devices.Branches.transformerNw import TransformerNW
 
 
 def get_layout_anchor(api_object: ALL_DEV_TYPES) -> ALL_DEV_TYPES:
@@ -39,8 +40,13 @@ def get_layout_anchor(api_object: ALL_DEV_TYPES) -> ALL_DEV_TYPES:
         else:
             anchor = api_object
 
-    # Three-winding transformers are placed using their internal anchor bus.
+    # Multi-winding transformers are placed using their internal anchor bus.
     elif api_object.device_type == DeviceType.Transformer3WDevice:
+        if api_object.bus0 is not None:
+            anchor = api_object.bus0
+        else:
+            anchor = api_object
+    elif api_object.device_type == DeviceType.TransformerNwDevice:
         if api_object.bus0 is not None:
             anchor = api_object.bus0
         else:
@@ -143,7 +149,7 @@ def get_layout_substation_name(api_object: ALL_DEV_TYPES) -> str:
     return substation_name
 
 
-def add_node_layout_data(graph: nx.DiGraph, node_index: int, api_object: ALL_DEV_TYPES) -> None:
+def add_node_layout_data(graph: nx.MultiDiGraph, node_index: int, api_object: ALL_DEV_TYPES) -> None:
     """
     Add one node together with the electrical metadata needed by the schematic layouts.
 
@@ -193,7 +199,7 @@ def get_branch_endpoint_voltages(branch: ALL_DEV_TYPES) -> Tuple[float, float]:
     return source_voltage_kv, target_voltage_kv
 
 
-def add_branch_layout_edge(graph: nx.DiGraph,
+def add_branch_layout_edge(graph: nx.MultiDiGraph,
                            from_idx: int,
                            to_idx: int,
                            branch: ALL_DEV_TYPES,
@@ -219,6 +225,7 @@ def add_branch_layout_edge(graph: nx.DiGraph,
     # and spring-based layouts interpret edge lengths in opposite directions.
     graph.add_edge(from_idx,
                    to_idx,
+                   key=branch.idtag,
                    branch_id=branch.idtag,
                    kind=dev_tpe.value,
                    impedance=impedance,
@@ -620,14 +627,14 @@ class BaseDiagram:
                                     category=category)
             self.data[category] = points_group
 
-    def build_graph(self) -> Tuple[nx.DiGraph, List[Bus | FluidNode | Transformer3W]]:
+    def build_graph(self) -> Tuple[nx.MultiDiGraph, List[Bus | FluidNode | Transformer3W | TransformerNW]]:
         """
-        Returns a networkx DiGraph object of the grid.
-        return DiGraph, List[BusGraphicObject
+        Returns a networkx MultiDiGraph object of the grid.
+        return MultiDiGraph, List[BusGraphicObject
         """
-        graph = nx.DiGraph()
+        graph = nx.MultiDiGraph()
 
-        node_devices = list()  # buses + fluid nodes
+        node_devices = list()  # visible node-like diagram anchors
 
         # Add buses, cn, bus-bars --------------------------------------------------------------------------------------
         node_count = 0
@@ -643,7 +650,7 @@ class BaseDiagram:
                     api_object: ALL_DEV_TYPES = location.api_object
                     skip_internal_bus: bool = dev_tpe == DeviceType.BusDevice and api_object.graphic_type == BusGraphicType.Internal
 
-                    # Internal anchor buses such as Transformer3W.bus0 are not visible nodes in the
+                    # Internal anchor buses such as Transformer3W.bus0 and TransformerNW.bus0 are not visible nodes in the
                     # schematic. They must be skipped here so later remapping can bind their idtag to
                     # the owning visible device instead of leaving an isolated dead node in the graph.
                     if skip_internal_bus:
@@ -671,10 +678,24 @@ class BaseDiagram:
                 node_devices.append(location.api_object)
                 node_count += 1
 
-        # Add 3W-transformers ------------------------------------------------------------------------------------------
+        # Add multi-winding transformers ------------------------------------------------------------------------------
         tr3_groups = self.data.get(DeviceType.Transformer3WDevice.value, None)
         if tr3_groups:
             for i, (idtag, location) in enumerate(tr3_groups.locations.items()):
+                # The internal transformer bus defines the voltage layer for the device symbol.
+                add_node_layout_data(graph=graph, node_index=node_count, api_object=location.api_object)
+                graph_node_dictionary[idtag] = node_count
+
+                if location.api_object.bus0 is not None:
+                    # the electrical bus location is the same
+                    graph_node_dictionary[location.api_object.bus0.idtag] = node_count
+
+                node_devices.append(location.api_object)
+                node_count += 1
+
+        tr_nw_groups = self.data.get(DeviceType.TransformerNwDevice.value, None)
+        if tr_nw_groups:
+            for i, (idtag, location) in enumerate(tr_nw_groups.locations.items()):
                 # The internal transformer bus defines the voltage layer for the device symbol.
                 add_node_layout_data(graph=graph, node_index=node_count, api_object=location.api_object)
                 graph_node_dictionary[idtag] = node_count

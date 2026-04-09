@@ -129,6 +129,7 @@ class Profile:
         Clear the profile
         :return:
         """
+        self._is_sparse = False
         self._sparse_array: Union[SparseArray, None] = None
         self._dense_array: Union[NumericVec, None] = None
         self._initialized: bool = False
@@ -238,12 +239,10 @@ class Profile:
         self._is_sparse = True
 
         try:
-            # try casting the default value, if failing use a proper one
-            if default_value is not None:
-                a = self.dtype(default_value)
             self._sparse_array = SparseArray(data_type=self.dtype, default_value=default_value)
-        except ValueError:
-            self._sparse_array = SparseArray(data_type=self.dtype, default_value=self._sparse_array.default_value)
+        except (TypeError, ValueError):
+            fallback = self._sparse_array.default_value if self._sparse_array is not None else None
+            self._sparse_array = SparseArray(data_type=self.dtype, default_value=fallback)
 
         if map_data is None:
             self._sparse_array.create(size=size, default_value=default_value)

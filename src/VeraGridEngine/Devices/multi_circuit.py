@@ -1382,17 +1382,17 @@ class MultiCircuit(Assets):
         area_names = [a.name for a in self.get_areas()]
         bus_area_indices = np.array([area_dict.get(b.area, 0) for b in self.get_buses()])
 
-        branches = self.get_branches(add_vsc=False, add_hvdc=False, add_switch=True)
-        F: IntVec = np.zeros(len(branches), dtype=int)
-        T: IntVec = np.zeros(len(branches), dtype=int)
-        for k, elm in enumerate(branches):
-            F[k] = bus_dict[elm.bus_from]
-            T[k] = bus_dict[elm.bus_to]
+        nbr = self.get_branch_number(add_vsc=False, add_hvdc=False, add_switch=True)
+        F: IntVec = np.zeros(nbr, dtype=int)
+        T: IntVec = np.zeros(nbr, dtype=int)
+        for k, elm in enumerate(self.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True)):
+            F[k] = bus_dict.get(elm.bus_from, -1)
+            T[k] = bus_dict.get(elm.bus_to, -1)
 
-        hvdc = self.get_hvdc()
-        hvdc_F: IntVec = np.zeros(len(hvdc), dtype=int)
-        hvdc_T: IntVec = np.zeros(len(hvdc), dtype=int)
-        for k, elm in enumerate(hvdc):
+        nhvdc = self.get_hvdc_number()
+        hvdc_F: IntVec = np.zeros(nhvdc, dtype=int)
+        hvdc_T: IntVec = np.zeros(nhvdc, dtype=int)
+        for k, elm in enumerate(self.hvdc_lines):
             hvdc_F[k] = bus_dict[elm.bus_from]
             hvdc_T[k] = bus_dict[elm.bus_to]
 
