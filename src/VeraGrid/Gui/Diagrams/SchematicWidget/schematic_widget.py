@@ -72,7 +72,11 @@ from VeraGrid.Gui.general_dialogues import InputNumberDialogue
 import VeraGrid.Gui.Visualization.visualization as viz
 from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
-from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_auto_layout import calculate_schematic_layout
+from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_auto_layout import (
+    calculate_schematic_layout,
+    should_auto_layout_before_first_draw,
+    apply_initial_auto_layout_to_diagram,
+)
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
@@ -1052,7 +1056,18 @@ class SchematicWidget(BaseDiagramWidget):
         """
         Draw the stored diagram
         """
-        self.draw_additional_diagram(diagram=self.diagram, logger=self.logger)
+        if self.diagram is not None:
+            # A first layout pass on the stored coordinates avoids creating every
+            # Qt item at the origin, which is the expensive case for scene setup.
+            if should_auto_layout_before_first_draw(diagram=self.diagram):
+                apply_initial_auto_layout_to_diagram(diagram=self.diagram,
+                                                     layout_name="power_system_layout")
+            else:
+                pass
+
+            self.draw_additional_diagram(diagram=self.diagram, logger=self.logger)
+        else:
+            pass
 
     def showEvent(self, event) -> None:
         """

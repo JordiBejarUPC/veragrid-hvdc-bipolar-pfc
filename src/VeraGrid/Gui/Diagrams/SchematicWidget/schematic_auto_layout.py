@@ -5,11 +5,91 @@
 from __future__ import annotations
 
 from collections import deque
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, BusGraphicType
+
+if TYPE_CHECKING:
+    from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
+    from VeraGridEngine.Devices.Diagrams.graphic_location import GraphicLocation
+    from VeraGridEngine.Devices.types import ALL_DEV_TYPES
+
+
+def should_auto_layout_before_first_draw(diagram: SchematicDiagram,
+                                         epsilon: float = 1e-6) -> bool:
+    """
+    Determine whether the schematic should be auto-laid out before any graphics are created.
+
+    The check intentionally looks only at visible bus-like anchors. If every visible
+    anchor is still at the origin, drawing all widgets first would stack them at the
+    same scene position and make Qt spend time resolving a pathological geometry state.
+
+    :param diagram: Schematic diagram to inspect.
+    :param epsilon: Tolerance used to compare coordinates against the origin.
+    :return: ``True`` when an initial auto-layout should run before drawing.
+    """
+    visible_bus_count: int = 0
+    category_points_group = diagram.query_by_type(device_type=DeviceType.BusDevice)
+
+    if category_points_group is None:
+        return False
+    else:
+        location: GraphicLocation
+
+    for location in category_points_group.locations.values():
+        api_object: ALL_DEV_TYPES = location.api_object
+
+        if api_object.graphic_type == BusGraphicType.Internal:
+            visible_bus_count = visible_bus_count
+        else:
+            visible_bus_count += 1
+
+            if abs(float(location.x)) <= epsilon and abs(float(location.y)) <= epsilon:
+                visible_bus_count = visible_bus_count
+            else:
+                return False
+
+    if visible_bus_count > 1:
+        return True
+    else:
+        return False
+
+
+def apply_initial_auto_layout_to_diagram(diagram: SchematicDiagram,
+                                         layout_name: str = "power_system_layout",
+                                         position_scale: float = 500.0) -> None:
+    """
+    Apply one automatic layout directly to the stored diagram coordinates.
+
+    This function operates only on the persisted ``GraphicLocation`` records and does
+    not require any Qt graphics objects to exist yet. Running it before scene creation
+    avoids the expensive transient state where all node widgets are initially stacked
+    at the origin.
+
+    :param diagram: Schematic diagram to modify.
+    :param layout_name: Automatic layout mode to evaluate.
+    :param position_scale: Final coordinate scaling factor in pixels.
+    :return: ``None``.
+    """
+    graph: nx.DiGraph
+    node_like_api_objects: List[ALL_DEV_TYPES]
+    graph, node_like_api_objects = diagram.build_graph()
+    calculated_positions: Dict[int, np.ndarray] = calculate_schematic_layout(graph=graph, sel=layout_name)
+    node_idx: int
+    elm: ALL_DEV_TYPES
+
+    for node_idx, elm in enumerate(node_like_api_objects):
+        loc = diagram.query_point(device=elm)
+        pos_vec: np.ndarray | None = calculated_positions.get(node_idx, None)
+
+        if loc is not None and pos_vec is not None:
+            # The diagram record must hold stable coordinates before any widget exists.
+            loc.x = float(pos_vec[0]) * position_scale
+            loc.y = float(pos_vec[1]) * position_scale
+        else:
+            loc = loc
 
 
 def get_layout_graph_node_voltage_kv(graph: nx.Graph, node_idx: int) -> float:
@@ -698,7 +778,7 @@ def refine_component_vertical_positions(graph: nx.Graph,
     return refined_positions
 
 
-def build_hybrid_power_system_layout(graph: nx.DiGraph, position_scale=0.1) -> Dict[int, np.ndarray]:
+def build_hybrid_power_system_layout(graph: nx.DiGraph, position_scale=0.5) -> Dict[int, np.ndarray]:
     """
     Build a hybrid layout for one-line diagrams.
 
@@ -707,6 +787,7 @@ def build_hybrid_power_system_layout(graph: nx.DiGraph, position_scale=0.1) -> D
     2. rooted tree placement using subtree spans,
     3. constrained spring-like vertical refinement with fixed tree-depth columns.
 
+    :param position_scale: Scale of the nodes' separation
     :param graph: Diagram graph with electrical metadata.
     :return: Position by node index.
     """
