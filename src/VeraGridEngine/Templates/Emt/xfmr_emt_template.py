@@ -5,98 +5,14 @@
 
 from __future__ import annotations
 
-from typing import Dict, Tuple
-import math
+from typing import Dict
 import numpy as np
 
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, WindingType, WindingsConnection
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Var, Expr
 import VeraGridEngine.Utils.Symbolic.symbolic as sym
-
-
-def _safe_positive(value: float | None, default: float, floor: float = 1e-9) -> float:
-    if value is None or not math.isfinite(value) or value <= floor:
-        return default
-    return max(float(value), floor)
-
-
-def _parse_connection(trafo: Transformer2W) -> Tuple[WindingType, WindingType]:
-    if isinstance(trafo.conn_f, WindingType) and isinstance(trafo.conn_t, WindingType):
-        return trafo.conn_f, trafo.conn_t
-
-    conn = str(trafo.conn if isinstance(trafo.conn, WindingsConnection) else WindingsConnection.GG)
-    lut = {
-        "G": WindingType.GroundedStar,
-        "S": WindingType.NeutralStar,
-        "D": WindingType.Delta,
-    }
-    return lut[conn[0]], lut[conn[1]]
-
-
-def _connection_matrix(winding_type: WindingType) -> np.ndarray:
-    if winding_type in (WindingType.GroundedStar, WindingType.NeutralStar, WindingType.FloatingStar):
-        return np.eye(3, dtype=float)
-
-    if winding_type == WindingType.Delta:
-        return np.array([
-            [1.0, 0.0, -1.0],
-            [-1.0, 1.0, 0.0],
-            [0.0, -1.0, 1.0],
-        ], dtype=float) / math.sqrt(3.0)
-
-    raise NotImplementedError(f"XFMR EMT template does not support winding type {winding_type}")
-
-
-def _phase_permutation_matrix(clock: int) -> np.ndarray:
-    shift = (int(clock) // 4) % 3
-    if shift == 0:
-        return np.eye(3, dtype=float)
-    if shift == 1:
-        return np.array([
-            [0.0, 1.0, 0.0],
-            [0.0, 0.0, 1.0],
-            [1.0, 0.0, 0.0],
-        ], dtype=float)
-    return np.array([
-        [0.0, 0.0, 1.0],
-        [1.0, 0.0, 0.0],
-        [0.0, 1.0, 0.0],
-    ], dtype=float)
-
-
-def _estimate_core_loss_conductance_pu(trafo: Transformer2W) -> float:
-    if abs(float(trafo.G)) > 1e-12:
-        return max(float(trafo.G), 0.0)
-
-    if float(trafo.Sn) > 1e-12 and float(trafo.Pfe) > 0.0:
-        return max(float(trafo.Pfe) / (1000.0 * float(trafo.Sn)), 0.0)
-
-    return 0.0
-
-
-def _estimate_frolich_coefficients(trafo: Transformer2W) -> Tuple[float, float]:
-    i0_pu = max(float(trafo.I0) / 100.0, 0.005)
-    b_core = 0.5
-    a_core = max(1.0 / i0_pu - b_core, 0.05)
-    return a_core, b_core
-
-
-def _estimate_terminal_capacitance_pu(trafo: Transformer2W, omega_base: float) -> float:
-    if float(trafo.Sn) <= 1e-12:
-        return 0.0
-
-    if abs(float(trafo.B)) > 1e-12:
-        return max(abs(float(trafo.B)) / omega_base, 0.0)
-
-    return 0.0
-
-
-def _frolich_current(lam: Expr, a_coeff: float, b_coeff: float, eps: Expr) -> Expr:
-    return lam / (a_coeff + b_coeff * sym.abs(lam) + eps)
 
 
 def _mat_vec_expr(mat: np.ndarray, vec: list[Expr], c0: Expr) -> list[Expr]:
@@ -113,10 +29,8 @@ def _mat_vec_expr(mat: np.ndarray, vec: list[Expr], c0: Expr) -> list[Expr]:
 
 
 def get_xfmr_emt_template(
-    grid: MultiCircuit,
-    trafo: Transformer2W,
+    vf: VarFactory,
     name: str = "xfmr_emt_template",
-    core_topology: str = "three_legged",
 ) -> EmtModelTemplate:
     """
     Build the local XFMR-style transformer EMT DAE template.
@@ -128,23 +42,19 @@ def get_xfmr_emt_template(
     - core losses remain linear resistive branches,
     - the magnetic return path distinguishes 3-legged and 5-legged stacked cores.
 
-    All user-facing scalar inputs used by this local template are exposed through
-    ``templ.block.event_dict``. Because ``Transformer2W`` only carries a single
-    open-circuit and short-circuit operating point in the current repository, the
-    fully general multi-point XFMR report fit discussed in the paper cannot be
-    wired end-to-end without touching other files. This function therefore
-    implements the largest repository-local correct subset:
+    Static quantities that already exist on ``Transformer2W`` are not sourced from
+    ``event_dict``. They are exposed as dynamic block parameters through
+    ``api_obj_mapping`` so the EMT assembler can assign them from the static
+    transformer object. Only data not stored on ``Transformer2W`` remain in
+    ``event_dict``.
 
-    - full two-winding short-circuit leakage derivation from test-report style data,
-    - single-point open-circuit handling with a physically consistent linear core,
-    - direct event parameters for the fitted core coefficients so callers can still
-      override them without architectural changes,
-    - 3-legged and 5-legged return-path equations using relative geometry.
+    Because ``core_topology`` and the optional relative core geometry are not
+    stored on ``Transformer2W`` in the current repository, they remain local
+    non-mapped block parameters. The default local topology code is ``3.0`` for a
+    three-legged core.
 
-    :param grid: Parent grid object.
-    :param trafo: Transformer whose default report values seed ``event_dict``.
+    :param vf: EMT variable factory.
     :param name: Symbolic model name.
-    :param core_topology: ``three_legged`` or ``five_legged`` local core topology.
     :return: EMT transformer template.
     """
     templ = EmtModelTemplate()
@@ -152,147 +62,13 @@ def get_xfmr_emt_template(
     templ.name = name
     templ.block.name = name
 
-    vf: VarFactory = grid.var_factory
-    omega_base_value: float = 2.0 * math.pi * float(grid.fBase)
-
     c0: Expr = vf.add_const(0.0)
     c_eps: Expr = vf.add_const(1e-9)
 
     # ------------------------------------------------------------------
-    # Build the electrical connection matrices in the same winding/line
-    # coordinates already used by the previous local XFMR template.
-    # ------------------------------------------------------------------
-    conn_f: WindingType
-    conn_t: WindingType
-    conn_f, conn_t = _parse_connection(trafo)
-
-    c_f: np.ndarray = _connection_matrix(conn_f)
-    c_t: np.ndarray = _connection_matrix(conn_t)
-    vector_group_clock: int = int(trafo.vector_group_number)
-    p_t: np.ndarray = _phase_permutation_matrix(vector_group_clock)
-    c_t_eff: np.ndarray = p_t @ c_t
-
-    # ------------------------------------------------------------------
-    # Seed the event parameters from the existing Transformer2W fields.
-    #
-    # Model reason:
-    # The task requires that user-entered transformer data live in event_dict,
-    # but the surrounding VeraGrid repository still stores the available report
-    # values on Transformer2W. To keep the patch local, we translate those
-    # fields into explicit event parameters here.
-    #
-    # Algorithm reason:
-    # Each default below is a safe scalar fallback that can later be replaced by
-    # EMT events without changing callers or the public function signature.
-    # ------------------------------------------------------------------
-    sn_default: float = _safe_positive(float(trafo.Sn), default=1.0)
-    f_hz_default: float = _safe_positive(float(grid.fBase), default=50.0)
-
-    hv_default: float
-    if trafo.HV is None:
-        hv_default = 1.0
-    else:
-        hv_default = _safe_positive(float(trafo.HV), default=1.0)
-
-    lv_default: float
-    if trafo.LV is None:
-        lv_default = 1.0
-    else:
-        lv_default = _safe_positive(float(trafo.LV), default=1.0)
-
-    r_fallback_pu: float = max(float(trafo.R), 0.0)
-    x_fallback_pu: float = max(float(trafo.X), 0.0)
-    z_fallback_pu: float = math.sqrt(max(r_fallback_pu * r_fallback_pu + x_fallback_pu * x_fallback_pu, 0.0))
-
-    sc_voltage_pct_default: float
-    if float(trafo.Vsc) > 0.0:
-        sc_voltage_pct_default = float(trafo.Vsc)
-    else:
-        sc_voltage_pct_default = 100.0 * z_fallback_pu
-
-    sc_resistance_pct_default: float
-    if float(trafo.Pcu) > 0.0:
-        sc_resistance_pct_default = float(trafo.Pcu) / (10.0 * sn_default)
-    else:
-        sc_resistance_pct_default = 100.0 * r_fallback_pu
-
-    sc_loss_kw_default: float
-    if float(trafo.Pcu) > 0.0:
-        sc_loss_kw_default = float(trafo.Pcu)
-    else:
-        sc_loss_kw_default = 10.0 * sn_default * sc_resistance_pct_default
-
-    oc_excitation_pct_default: float = 100.0
-
-    oc_current_pct_default: float
-    if float(trafo.I0) > 0.0:
-        oc_current_pct_default = float(trafo.I0)
-    else:
-        oc_current_pct_default = max(abs(float(trafo.B)) * 100.0, 0.0)
-
-    oc_loss_kw_default: float
-    if float(trafo.Pfe) > 0.0:
-        oc_loss_kw_default = float(trafo.Pfe)
-    else:
-        oc_loss_kw_default = max(float(trafo.G), 0.0) * 1000.0 * sn_default
-
-    yoke_area_default: float = 1.0
-    yoke_length_default: float = 1.0
-    outer_area_default: float = 1.0
-    outer_length_default: float = 1.0
-
-    if core_topology.lower() == "five_legged":
-        yoke_area_default = 0.54
-        yoke_length_default = 1.5
-        outer_area_default = 0.54
-        outer_length_default = 2.5
-        is_five_legged: bool = True
-    else:
-        yoke_area_default = 1.0
-        yoke_length_default = 1.0
-        outer_area_default = 1.0
-        outer_length_default = 1.0
-        is_five_legged = False
-
-    # ------------------------------------------------------------------
-    # Fit the single-point open-circuit subset locally.
-    #
-    # Model reason:
-    # The XFMR paper states that when only one OC point is available, the core
-    # model should be treated as linear rather than forcing a nonlinear fit.
-    #
-    # Algorithm reason:
-    # The present repository exposes only one OC operating point through the
-    # Transformer2W object, so we compute the loss-free magnetizing current from
-    # the measured current and loss, then derive the equivalent linear
-    # lambda/i slope used as the seeded core branch parameter.
-    # ------------------------------------------------------------------
-    oc_loss_pu_default: float = max(oc_loss_kw_default / (1000.0 * sn_default), 0.0)
-    oc_current_pu_default: float = max(oc_current_pct_default / 100.0, 0.0)
-    i_mag_pu_default: float = math.sqrt(max(oc_current_pu_default * oc_current_pu_default - oc_loss_pu_default * oc_loss_pu_default, 0.0))
-    lambda_peak_default: float = math.sqrt(2.0) * max(oc_excitation_pct_default / 100.0, 0.0)
-    current_peak_default: float = math.sqrt(2.0) * i_mag_pu_default
-
-    linear_lm_default: float
-    if current_peak_default > 1e-9:
-        linear_lm_default = lambda_peak_default / current_peak_default
-    else:
-        linear_lm_default = 1e6
-
-    a_prime_default: float = linear_lm_default
-    b_prime_default: float = 0.0
-    use_linear_core_default: float = 1.0
-
-    # ------------------------------------------------------------------
-    # Create explicit event parameters.
-    #
-    # Model reason:
-    # These variables are the local schema for the transformer test-report path:
-    # rating, SC data, OC data, geometry data, and fitted core coefficients.
-    #
-    # Algorithm reason:
-    # Defining them as normal symbolic variables and storing their values in
-    # block.event_dict makes them compatible with VeraGrid's EMT event system.
+    # Create the derivative inputs used by the terminal capacitance path.
+    # These are event-driven because they belong to the instantaneous electrical
+    # coupling contract, not to the static transformer object.
     # ------------------------------------------------------------------
     d_v_f: list[Var] = list([
         vf.add_var(name=f"d_vf_A_{name}", reference=VarPowerFlowRefferenceType.d_v_A_f),
@@ -310,47 +86,123 @@ def get_xfmr_emt_template(
     for d_var in d_v_t:
         templ.block.event_dict[d_var] = vf.add_const(None)
 
+    # ------------------------------------------------------------------
+    # Create mapped XFMR parameters.
+    #
+    # Model reason:
+    # These quantities are sourced from the static transformer object through the
+    # EMT assembler rather than copied into event_dict.
+    #
+    # Algorithm reason:
+    # The variables are registered in api_obj_mapping so the template becomes a
+    # pure symbolic consumer of mapped parameters, in the same architectural
+    # style as the pi-line EMT template.
+    # ------------------------------------------------------------------
+    omega_base: Var = vf.add_var(name=f"omega_base_{name}")
     xfmr_s_rated_mva: Var = vf.add_var(name=f"xfmr_s_rated_mva_{name}")
-    xfmr_f_hz: Var = vf.add_var(name=f"xfmr_f_hz_{name}")
     xfmr_v_hv_ll_kv: Var = vf.add_var(name=f"xfmr_v_hv_ll_kv_{name}")
     xfmr_v_lv_ll_kv: Var = vf.add_var(name=f"xfmr_v_lv_ll_kv_{name}")
     xfmr_vector_group_clock: Var = vf.add_var(name=f"xfmr_vector_group_clock_{name}")
-    xfmr_core_topology_code: Var = vf.add_var(name=f"xfmr_core_topology_code_{name}")
-    xfmr_oc_excitation_pct: Var = vf.add_var(name=f"xfmr_oc_excitation_pct_{name}")
     xfmr_oc_current_pct: Var = vf.add_var(name=f"xfmr_oc_current_pct_{name}")
     xfmr_oc_loss_kw: Var = vf.add_var(name=f"xfmr_oc_loss_kw_{name}")
     xfmr_sc_voltage_pct: Var = vf.add_var(name=f"xfmr_sc_voltage_pct_{name}")
     xfmr_sc_resistance_pct: Var = vf.add_var(name=f"xfmr_sc_resistance_pct_{name}")
     xfmr_sc_loss_kw: Var = vf.add_var(name=f"xfmr_sc_loss_kw_{name}")
+    xfmr_tap_module: Var = vf.add_var(name=f"xfmr_tap_module_{name}")
+    xfmr_c_term: Var = vf.add_var(name=f"xfmr_c_term_{name}")
+    xfmr_core_linear_l_pu: Var = vf.add_var(name=f"xfmr_core_linear_l_pu_{name}")
+    xfmr_core_a_prime: Var = vf.add_var(name=f"xfmr_core_a_prime_{name}")
+    xfmr_core_b_prime: Var = vf.add_var(name=f"xfmr_core_b_prime_{name}")
+    xfmr_use_linear_core: Var = vf.add_var(name=f"xfmr_use_linear_core_{name}")
+
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.omega_base] = omega_base
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_s_rated_mva] = xfmr_s_rated_mva
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_v_hv_ll_kv] = xfmr_v_hv_ll_kv
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_v_lv_ll_kv] = xfmr_v_lv_ll_kv
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_vector_group_clock] = xfmr_vector_group_clock
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_oc_current_pct] = xfmr_oc_current_pct
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_oc_loss_kw] = xfmr_oc_loss_kw
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_sc_voltage_pct] = xfmr_sc_voltage_pct
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_sc_resistance_pct] = xfmr_sc_resistance_pct
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_sc_loss_kw] = xfmr_sc_loss_kw
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_tap_module] = xfmr_tap_module
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_c_term] = xfmr_c_term
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_core_linear_l_pu] = xfmr_core_linear_l_pu
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_core_a_prime] = xfmr_core_a_prime
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_core_b_prime] = xfmr_core_b_prime
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_use_linear_core] = xfmr_use_linear_core
+
+    cf_enums: list[list[ParamPowerFlowRefferenceType]] = list([
+        list([
+            ParamPowerFlowRefferenceType.xfmr_cf_aa,
+            ParamPowerFlowRefferenceType.xfmr_cf_ab,
+            ParamPowerFlowRefferenceType.xfmr_cf_ac,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.xfmr_cf_ba,
+            ParamPowerFlowRefferenceType.xfmr_cf_bb,
+            ParamPowerFlowRefferenceType.xfmr_cf_bc,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.xfmr_cf_ca,
+            ParamPowerFlowRefferenceType.xfmr_cf_cb,
+            ParamPowerFlowRefferenceType.xfmr_cf_cc,
+        ]),
+    ])
+    ct_enums: list[list[ParamPowerFlowRefferenceType]] = list([
+        list([
+            ParamPowerFlowRefferenceType.xfmr_ct_aa,
+            ParamPowerFlowRefferenceType.xfmr_ct_ab,
+            ParamPowerFlowRefferenceType.xfmr_ct_ac,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.xfmr_ct_ba,
+            ParamPowerFlowRefferenceType.xfmr_ct_bb,
+            ParamPowerFlowRefferenceType.xfmr_ct_bc,
+        ]),
+        list([
+            ParamPowerFlowRefferenceType.xfmr_ct_ca,
+            ParamPowerFlowRefferenceType.xfmr_ct_cb,
+            ParamPowerFlowRefferenceType.xfmr_ct_cc,
+        ]),
+    ])
+
+    c_f_vars: list[list[Var]] = list()
+    c_t_eff_vars: list[list[Var]] = list()
+    for i in range(3):
+        c_f_row: list[Var] = list()
+        c_t_row: list[Var] = list()
+        for j in range(3):
+            c_f_var: Var = vf.add_var(name=f"xfmr_cf_{i}_{j}_{name}")
+            c_t_var: Var = vf.add_var(name=f"xfmr_ct_{i}_{j}_{name}")
+            templ.block.api_obj_mapping[cf_enums[i][j]] = c_f_var
+            templ.block.api_obj_mapping[ct_enums[i][j]] = c_t_var
+            c_f_row.append(c_f_var)
+            c_t_row.append(c_t_var)
+        c_f_vars.append(c_f_row)
+        c_t_eff_vars.append(c_t_row)
+
+    # ------------------------------------------------------------------
+    # Create non-mapped local core-topology and geometry parameters.
+    #
+    # Model reason:
+    # The present Transformer2W object does not store this data, so there is no
+    # static source to connect through api_obj_mapping.
+    #
+    # Algorithm reason:
+    # Keeping these few parameters in event_dict preserves local configurability
+    # without creating a duplicate shadow path for data already on Transformer2W.
+    # ------------------------------------------------------------------
+    xfmr_core_topology_code: Var = vf.add_var(name=f"xfmr_core_topology_code_{name}")
     xfmr_yoke_area_rel: Var = vf.add_var(name=f"xfmr_yoke_area_rel_{name}")
     xfmr_yoke_length_rel: Var = vf.add_var(name=f"xfmr_yoke_length_rel_{name}")
     xfmr_outer_leg_area_rel: Var = vf.add_var(name=f"xfmr_outer_leg_area_rel_{name}")
     xfmr_outer_leg_length_rel: Var = vf.add_var(name=f"xfmr_outer_leg_length_rel_{name}")
-    xfmr_core_a_prime: Var = vf.add_var(name=f"xfmr_core_a_prime_{name}")
-    xfmr_core_b_prime: Var = vf.add_var(name=f"xfmr_core_b_prime_{name}")
-    xfmr_core_linear_l_pu: Var = vf.add_var(name=f"xfmr_core_linear_l_pu_{name}")
-    xfmr_use_linear_core: Var = vf.add_var(name=f"xfmr_use_linear_core_{name}")
-
-    templ.block.event_dict[xfmr_s_rated_mva] = vf.add_const(sn_default)
-    templ.block.event_dict[xfmr_f_hz] = vf.add_const(f_hz_default)
-    templ.block.event_dict[xfmr_v_hv_ll_kv] = vf.add_const(hv_default)
-    templ.block.event_dict[xfmr_v_lv_ll_kv] = vf.add_const(lv_default)
-    templ.block.event_dict[xfmr_vector_group_clock] = vf.add_const(float(vector_group_clock))
-    templ.block.event_dict[xfmr_core_topology_code] = vf.add_const(5.0 if is_five_legged else 3.0)
-    templ.block.event_dict[xfmr_oc_excitation_pct] = vf.add_const(oc_excitation_pct_default)
-    templ.block.event_dict[xfmr_oc_current_pct] = vf.add_const(oc_current_pct_default)
-    templ.block.event_dict[xfmr_oc_loss_kw] = vf.add_const(oc_loss_kw_default)
-    templ.block.event_dict[xfmr_sc_voltage_pct] = vf.add_const(sc_voltage_pct_default)
-    templ.block.event_dict[xfmr_sc_resistance_pct] = vf.add_const(sc_resistance_pct_default)
-    templ.block.event_dict[xfmr_sc_loss_kw] = vf.add_const(sc_loss_kw_default)
-    templ.block.event_dict[xfmr_yoke_area_rel] = vf.add_const(yoke_area_default)
-    templ.block.event_dict[xfmr_yoke_length_rel] = vf.add_const(yoke_length_default)
-    templ.block.event_dict[xfmr_outer_leg_area_rel] = vf.add_const(outer_area_default)
-    templ.block.event_dict[xfmr_outer_leg_length_rel] = vf.add_const(outer_length_default)
-    templ.block.event_dict[xfmr_core_a_prime] = vf.add_const(a_prime_default)
-    templ.block.event_dict[xfmr_core_b_prime] = vf.add_const(b_prime_default)
-    templ.block.event_dict[xfmr_core_linear_l_pu] = vf.add_const(linear_lm_default)
-    templ.block.event_dict[xfmr_use_linear_core] = vf.add_const(use_linear_core_default)
+    templ.block.event_dict[xfmr_core_topology_code] = vf.add_const(3.0)
+    templ.block.event_dict[xfmr_yoke_area_rel] = vf.add_const(1.0)
+    templ.block.event_dict[xfmr_yoke_length_rel] = vf.add_const(1.0)
+    templ.block.event_dict[xfmr_outer_leg_area_rel] = vf.add_const(1.0)
+    templ.block.event_dict[xfmr_outer_leg_length_rel] = vf.add_const(1.0)
 
     # ------------------------------------------------------------------
     # Derive the leakage parameters directly from the short-circuit report.
@@ -369,8 +221,7 @@ def get_xfmr_emt_template(
     z_sc_pu: Expr = xfmr_sc_voltage_pct / 100.0
     r_sc_pu: Expr = xfmr_sc_resistance_pct / 100.0
     x_sc_pu: Expr = sym.sqrt(sym.max(z_sc_pu * z_sc_pu - r_sc_pu * r_sc_pu, c0))
-    omega_event: Expr = 2.0 * math.pi * xfmr_f_hz
-    l_sigma: Expr = x_sc_pu / (omega_event + c_eps)
+    l_sigma: Expr = x_sc_pu / (omega_base + c_eps)
     l_inv: Expr = 1.0 / (l_sigma + c_eps)
 
     # ------------------------------------------------------------------
@@ -389,24 +240,20 @@ def get_xfmr_emt_template(
     g_core_leg: Expr = g_core_total / 3.0
 
     # ------------------------------------------------------------------
-    # Preserve the small terminal capacitance path already supported locally.
-    #
-    # Model reason:
-    # Capacitance is not the focus of this task, so the update is intentionally
-    # limited to leakage/core parameterization.
-    #
-    # Algorithm reason:
-    # Reusing the previous local capacitance estimate keeps unrelated EMT
-    # behavior stable while we replace only the transformer magnetic model.
+    # Recover the linear single-point open-circuit core slope from mapped test
+    # report values. This preserves the paper's one-point linear-core fallback
+    # without touching the static transformer object in the template.
     # ------------------------------------------------------------------
-    c_term_value: float = 0.5 * _estimate_terminal_capacitance_pu(trafo, omega_base_value)
-    c_term: Expr = vf.add_const(c_term_value)
+    oc_loss_pu: Expr = (xfmr_oc_loss_kw / 1000.0) / (xfmr_s_rated_mva + c_eps)
+    oc_current_pu: Expr = xfmr_oc_current_pct / 100.0
+    i_mag_pu: Expr = sym.sqrt(sym.max(oc_current_pu * oc_current_pu - oc_loss_pu * oc_loss_pu, c0))
+    lambda_peak: Expr = sym.sqrt(2.0) * 1.0
+    current_peak: Expr = sym.sqrt(2.0) * i_mag_pu
+    linear_lm_expr: Expr = lambda_peak / (current_peak + c_eps)
 
-    n_tap_value: float
-    if abs(float(trafo.tap_module)) > 1e-12:
-        n_tap_value = float(trafo.tap_module)
-    else:
-        n_tap_value = 1.0
+    # Build matrix expressions from the mapped connection coefficients.
+    c_f_expr: list[list[Expr]] = list(c_f_vars)
+    c_t_eff_expr: list[list[Expr]] = list(c_t_eff_vars)
 
     # ------------------------------------------------------------------
     # Create the electrical interface variables.
@@ -465,7 +312,7 @@ def get_xfmr_emt_template(
     # - if_act / it_act are the final terminal currents stamped into network KCL.
     #
     # Algorithm reason:
-    # The Fr"ohlich law is imposed as algebraic constitutive equations, which is
+    # The Frohlich law is imposed as algebraic constitutive equations, which is
     # the cleanest way to keep the model as a symbolic DAE block.
     # ------------------------------------------------------------------
     i_leg_core: list[Var] = list(vf.add_var(name=f"i_leg_core_{ph}_{name}") for ph in ("A", "B", "C"))
@@ -484,13 +331,30 @@ def get_xfmr_emt_template(
     templ.block.diff_vars = di_leak + dlam_leg + dq_f + dq_t
     templ.block.algebraic_vars = i_leg_core + list([i_return_path, i_return_total]) + i_mag + i_loss_leg + i_cap_f + i_cap_t + if_act + it_act
 
-    v_f_w: list[Expr] = _mat_vec_expr(c_f.T, v_f, c0)
-    v_t_perm: list[Expr] = _mat_vec_expr(p_t, v_t, c0)
-    d_v_f_w: list[Expr] = _mat_vec_expr(c_f.T, d_v_f, c0)
-    d_v_t_perm: list[Expr] = _mat_vec_expr(p_t, d_v_t, c0)
-    v_t_w: list[Expr] = _mat_vec_expr(c_t.T, v_t_perm, c0)
-    d_v_t_w: list[Expr] = _mat_vec_expr(c_t.T, d_v_t_perm, c0)
-    v_leak: list[Expr] = list(v_f_w[k] - n_tap_value * v_t_w[k] for k in range(3))
+    c_f_expr_t: list[list[Expr]] = list(list(c_f_expr[j][i] for j in range(3)) for i in range(3))
+    c_t_expr_t: list[list[Expr]] = list(list(c_t_eff_expr[j][i] for j in range(3)) for i in range(3))
+
+    v_f_w: list[Expr] = list()
+    v_t_w: list[Expr] = list()
+    d_v_f_w: list[Expr] = list()
+    d_v_t_w: list[Expr] = list()
+    for i in range(3):
+        expr_vfw: Expr = c0
+        expr_vtw: Expr = c0
+        expr_dvfw: Expr = c0
+        expr_dvtw: Expr = c0
+        for j in range(3):
+            expr_vfw = expr_vfw + c_f_expr_t[i][j] * v_f[j]
+            expr_vtw = expr_vtw + c_t_expr_t[i][j] * v_t[j]
+            expr_dvfw = expr_dvfw + c_f_expr_t[i][j] * d_v_f[j]
+            expr_dvtw = expr_dvtw + c_t_expr_t[i][j] * d_v_t[j]
+        v_f_w.append(expr_vfw)
+        v_t_w.append(expr_vtw)
+        d_v_f_w.append(expr_dvfw)
+        d_v_t_w.append(expr_dvtw)
+
+    n_tap: Expr = xfmr_tap_module
+    v_leak: list[Expr] = list(v_f_w[k] - n_tap * v_t_w[k] for k in range(3))
 
     # Build the leakage-current and flux-linkage differential equations.
     #
@@ -504,7 +368,7 @@ def get_xfmr_emt_template(
     for k in range(3):
         state_eqs.append(l_inv * (v_leak[k] - r_sc_pu * i_leak[k]))
     for k in range(3):
-        state_eqs.append(omega_event * v_f_w[k])
+        state_eqs.append(omega_base * v_f_w[k])
     for k in range(3):
         state_eqs.append(i_cap_f[k])
     for k in range(3):
@@ -526,16 +390,31 @@ def get_xfmr_emt_template(
     # electrical contract of the template.
     # ------------------------------------------------------------------
     lam_return_total: Expr = -(lam_leg[0] + lam_leg[1] + lam_leg[2])
+    five_leg_selector: Expr = sym.heaviside(xfmr_core_topology_code - 4.0)
+    three_leg_selector: Expr = 1.0 - five_leg_selector
 
-    leg_linear_coeff: Expr = xfmr_core_linear_l_pu
-    yoke_linear_coeff: Expr = xfmr_core_linear_l_pu * xfmr_yoke_area_rel / (xfmr_yoke_length_rel + c_eps)
-    outer_linear_coeff: Expr = xfmr_core_linear_l_pu * xfmr_outer_leg_area_rel / (xfmr_outer_leg_length_rel + c_eps)
+    yoke_area_rel: Expr = xfmr_yoke_area_rel
+    yoke_length_rel: Expr = xfmr_yoke_length_rel
+    outer_leg_area_rel: Expr = xfmr_outer_leg_area_rel
+    outer_leg_length_rel: Expr = xfmr_outer_leg_length_rel
 
-    yoke_frolich_lam: Expr = xfmr_yoke_area_rel * i_return_path / (xfmr_core_a_prime * xfmr_yoke_length_rel + xfmr_core_b_prime * sym.abs(i_return_path) + c_eps)
-    outer_frolich_lam: Expr = xfmr_outer_leg_area_rel * i_return_path / (xfmr_core_a_prime * xfmr_outer_leg_length_rel + xfmr_core_b_prime * sym.abs(i_return_path) + c_eps)
+    leg_linear_coeff: Expr = xfmr_use_linear_core * xfmr_core_linear_l_pu + (1.0 - xfmr_use_linear_core) * linear_lm_expr
+    yoke_linear_coeff: Expr = leg_linear_coeff * yoke_area_rel / (yoke_length_rel + c_eps)
+    outer_linear_coeff: Expr = leg_linear_coeff * outer_leg_area_rel / (outer_leg_length_rel + c_eps)
 
-    i_series_from: list[Expr] = _mat_vec_expr(c_f, i_leak, c0)
-    i_series_to: list[Expr] = _mat_vec_expr(c_t_eff, i_leak, c0)
+    yoke_frolich_lam: Expr = yoke_area_rel * i_return_path / (xfmr_core_a_prime * yoke_length_rel + xfmr_core_b_prime * sym.abs(i_return_path) + c_eps)
+    outer_frolich_lam: Expr = outer_leg_area_rel * i_return_path / (xfmr_core_a_prime * outer_leg_length_rel + xfmr_core_b_prime * sym.abs(i_return_path) + c_eps)
+
+    i_series_from: list[Expr] = list()
+    i_series_to: list[Expr] = list()
+    for i in range(3):
+        expr_if: Expr = c0
+        expr_it: Expr = c0
+        for j in range(3):
+            expr_if = expr_if + c_f_expr[i][j] * i_leak[j]
+            expr_it = expr_it + c_t_eff_expr[i][j] * i_leak[j]
+        i_series_from.append(expr_if)
+        i_series_to.append(expr_it)
 
     # Collect algebraic equations in the same order as algebraic_vars.
     alg_eqs: list[Expr] = list()
@@ -546,29 +425,20 @@ def get_xfmr_emt_template(
         # In the single-point default path the law is linear, matching the paper.
         # If callers later override the fitted a' and b' parameters and disable
         # the linear flag, this equation becomes the basic Fr"ohlich law.
-        if use_linear_core_default >= 0.5:
-            alg_eqs.append(lam_leg[k] - leg_linear_coeff * i_leg_core[k])
-        else:
-            alg_eqs.append(lam_leg[k] - i_leg_core[k] / (xfmr_core_a_prime + xfmr_core_b_prime * sym.abs(i_leg_core[k]) + c_eps))
+        linear_leg_eq: Expr = lam_leg[k] - leg_linear_coeff * i_leg_core[k]
+        nonlinear_leg_eq: Expr = lam_leg[k] - i_leg_core[k] / (xfmr_core_a_prime + xfmr_core_b_prime * sym.abs(i_leg_core[k]) + c_eps)
+        alg_eqs.append(xfmr_use_linear_core * linear_leg_eq + (1.0 - xfmr_use_linear_core) * nonlinear_leg_eq)
 
-    if is_five_legged:
-        # Five-legged core:
-        # the total return flux splits equally between two identical side return
-        # paths, so each path carries half the total return flux linkage.
-        if use_linear_core_default >= 0.5:
-            alg_eqs.append(0.5 * lam_return_total - (2.0 * yoke_linear_coeff * i_return_path + outer_linear_coeff * i_return_path))
-        else:
-            alg_eqs.append(0.5 * lam_return_total - (2.0 * yoke_frolich_lam + outer_frolich_lam))
-        alg_eqs.append(i_return_total - 2.0 * i_return_path)
-    else:
-        # Three-legged core:
-        # the return path is represented here by two equal yoke sections in
-        # series, so the same return current flows through the whole path.
-        if use_linear_core_default >= 0.5:
-            alg_eqs.append(lam_return_total - 2.0 * yoke_linear_coeff * i_return_path)
-        else:
-            alg_eqs.append(lam_return_total - 2.0 * yoke_frolich_lam)
-        alg_eqs.append(i_return_total - i_return_path)
+    five_leg_eq_linear: Expr = 0.5 * lam_return_total - (2.0 * yoke_linear_coeff * i_return_path + outer_linear_coeff * i_return_path)
+    five_leg_eq_nonlinear: Expr = 0.5 * lam_return_total - (2.0 * yoke_frolich_lam + outer_frolich_lam)
+    three_leg_eq_linear: Expr = lam_return_total - 2.0 * yoke_linear_coeff * i_return_path
+    three_leg_eq_nonlinear: Expr = lam_return_total - 2.0 * yoke_frolich_lam
+
+    alg_eqs.append(
+        five_leg_selector * (xfmr_use_linear_core * five_leg_eq_linear + (1.0 - xfmr_use_linear_core) * five_leg_eq_nonlinear)
+        + three_leg_selector * (xfmr_use_linear_core * three_leg_eq_linear + (1.0 - xfmr_use_linear_core) * three_leg_eq_nonlinear)
+    )
+    alg_eqs.append(i_return_total - (five_leg_selector * 2.0 * i_return_path + three_leg_selector * i_return_path))
 
     for k in range(3):
         # Convert magnetic branch currents into electrical magnetizing current at
@@ -581,13 +451,13 @@ def get_xfmr_emt_template(
 
     for k in range(3):
         # Capacitor constitutive equations using supplied bus voltage derivatives.
-        alg_eqs.append(i_cap_f[k] - c_term * d_v_f[k])
-        alg_eqs.append(i_cap_t[k] - c_term * d_v_t[k])
+        alg_eqs.append(i_cap_f[k] - xfmr_c_term * d_v_f[k])
+        alg_eqs.append(i_cap_t[k] - xfmr_c_term * d_v_t[k])
 
     for k in range(3):
         # Charge/voltage relations for the retained terminal capacitance states.
-        alg_eqs.append(q_f[k] - c_term * v_f[k])
-        alg_eqs.append(q_t[k] - c_term * v_t[k])
+        alg_eqs.append(q_f[k] - xfmr_c_term * v_f[k])
+        alg_eqs.append(q_t[k] - xfmr_c_term * v_t[k])
 
     for k in range(3):
         # Final terminal current assembly.
@@ -596,7 +466,7 @@ def get_xfmr_emt_template(
         # terminal capacitance currents. To-side current includes the referred
         # leakage current plus the to-side terminal capacitance current.
         alg_eqs.append(if_act[k] - (i_series_from[k] + i_mag[k] + i_loss_leg[k] + i_cap_f[k]))
-        alg_eqs.append(it_act[k] - (-n_tap_value * i_series_to[k] + i_cap_t[k]))
+        alg_eqs.append(it_act[k] - (-n_tap * i_series_to[k] + i_cap_t[k]))
 
     templ.block.algebraic_eqs = alg_eqs
     templ.block.out_vars = if_act + it_act + i_mag
@@ -640,38 +510,24 @@ def get_xfmr_emt_template(
     # ------------------------------------------------------------------
     init_eqs: Dict[Var, Expr] = dict()
     for k in range(3):
-        init_eqs[q_f[k]] = c_term * v_f[k]
-        init_eqs[q_t[k]] = c_term * v_t[k]
-        init_eqs[i_cap_f[k]] = c_term * d_v_f[k]
-        init_eqs[i_cap_t[k]] = c_term * d_v_t[k]
-        init_eqs[lam_leg[k]] = -d_v_f_w[k] / (omega_event + c_eps)
+        init_eqs[q_f[k]] = xfmr_c_term * v_f[k]
+        init_eqs[q_t[k]] = xfmr_c_term * v_t[k]
+        init_eqs[i_cap_f[k]] = xfmr_c_term * d_v_f[k]
+        init_eqs[i_cap_t[k]] = xfmr_c_term * d_v_t[k]
+        init_eqs[lam_leg[k]] = -d_v_f_w[k] / (omega_base + c_eps)
         init_eqs[i_loss_leg[k]] = g_core_leg * v_f_w[k]
 
-    if use_linear_core_default >= 0.5:
-        # Closed-form linear initialization for the return path.
-        init_eqs[i_return_path] = lam_return_total / (2.0 * yoke_linear_coeff + outer_linear_coeff + c_eps) if is_five_legged else lam_return_total / (2.0 * yoke_linear_coeff + c_eps)
-    else:
-        # Conservative nonlinear seed when no closed-form value is enforced.
-        init_eqs[i_return_path] = c0
-
-    if is_five_legged:
-        init_eqs[i_return_total] = 2.0 * i_return_path
-    else:
-        init_eqs[i_return_total] = i_return_path
+    init_eqs[i_return_path] = five_leg_selector * (lam_return_total / (2.0 * yoke_linear_coeff + outer_linear_coeff + c_eps)) + three_leg_selector * (lam_return_total / (2.0 * yoke_linear_coeff + c_eps))
+    init_eqs[i_return_total] = five_leg_selector * 2.0 * i_return_path + three_leg_selector * i_return_path
 
     for k in range(3):
-        if use_linear_core_default >= 0.5:
-            # Linear leg current from lambda = L * i.
-            init_eqs[i_leg_core[k]] = lam_leg[k] / (leg_linear_coeff + c_eps)
-        else:
-            # First-order nonlinear seed using the low-current Fr"ohlich slope.
-            init_eqs[i_leg_core[k]] = lam_leg[k] / (xfmr_core_a_prime + c_eps)
+        init_eqs[i_leg_core[k]] = xfmr_use_linear_core * (lam_leg[k] / (leg_linear_coeff + c_eps)) + (1.0 - xfmr_use_linear_core) * (lam_leg[k] / (xfmr_core_a_prime + c_eps))
         init_eqs[i_mag[k]] = i_leg_core[k] - i_return_total
         # Start leakage at zero because no separate steady-state PF-derived EMT
         # current seed exists for this template path in the current repository.
         init_eqs[i_leak[k]] = c0
         init_eqs[if_act[k]] = i_series_from[k] + i_mag[k] + i_loss_leg[k] + i_cap_f[k]
-        init_eqs[it_act[k]] = -n_tap_value * i_series_to[k] + i_cap_t[k]
+        init_eqs[it_act[k]] = -n_tap * i_series_to[k] + i_cap_t[k]
 
     templ.block.init_eqs = init_eqs
 
@@ -680,7 +536,7 @@ def get_xfmr_emt_template(
     diff_init_eqs: Dict[Var, Expr] = dict()
     for k in range(3):
         diff_init_eqs[di_leak[k]] = l_inv * (v_leak[k] - r_sc_pu * i_leak[k])
-        diff_init_eqs[dlam_leg[k]] = omega_event * v_f_w[k]
+        diff_init_eqs[dlam_leg[k]] = omega_base * v_f_w[k]
         diff_init_eqs[dq_f[k]] = i_cap_f[k]
         diff_init_eqs[dq_t[k]] = i_cap_t[k]
 

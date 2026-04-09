@@ -33,6 +33,7 @@ from VeraGridEngine.enumerations import (
     DeviceType,
     EmtLineTypes,
     ConverterControlType,
+    WindingType,
 )
 from VeraGridEngine.basic_structures import Logger, CxVec
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
@@ -70,6 +71,51 @@ def _toc(t0: float) -> float:
     Returns the elapsed time since t0.
     """
     return time.perf_counter() - t0
+
+
+def _xfmr_connection_matrix(winding_tpe: WindingType) -> np.ndarray:
+    """
+    Return the 3x3 winding connection matrix used by the XFMR EMT template.
+
+    :param winding_tpe: Transformer winding connection type.
+    :return: 3x3 connection matrix in winding coordinates.
+    """
+    if winding_tpe in (WindingType.GroundedStar, WindingType.NeutralStar, WindingType.FloatingStar):
+        return np.eye(3, dtype=float)
+    else:
+        if winding_tpe == WindingType.Delta:
+            return np.array([
+                [1.0, 0.0, -1.0],
+                [-1.0, 1.0, 0.0],
+                [0.0, -1.0, 1.0],
+            ], dtype=float) / np.sqrt(3.0)
+        else:
+            return np.eye(3, dtype=float)
+
+
+def _xfmr_phase_permutation_matrix(clock: int) -> np.ndarray:
+    """
+    Return the phase permutation matrix implied by the transformer vector group.
+
+    :param clock: Transformer vector group clock number.
+    :return: 3x3 phase permutation matrix.
+    """
+    shift: int = (int(clock) // 4) % 3
+    if shift == 0:
+        return np.eye(3, dtype=float)
+    else:
+        if shift == 1:
+            return np.array([
+                [0.0, 1.0, 0.0],
+                [0.0, 0.0, 1.0],
+                [1.0, 0.0, 0.0],
+            ], dtype=float)
+        else:
+            return np.array([
+                [0.0, 0.0, 1.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ], dtype=float)
 
 
 class EmtTopologyError(Exception):
@@ -3737,11 +3783,17 @@ class EmtProblemDae(EmtProblemTemplate):
                 vsc = self.grid.vsc_devices[vsc_index]
 
             p_loss0: float = 0.0
+            p0_vsc: float = 0.0
             if self.power_flow_results is not None:
                 try:
                     p_loss0 = float(self.power_flow_results.losses_vsc[vsc_index])
                 except (AttributeError, IndexError, TypeError, ValueError):
                     p_loss0 = 0.0
+
+                try:
+                    p0_vsc = float(np.real(self.power_flow_results.St_vsc[vsc_index]))
+                except (AttributeError, IndexError, TypeError, ValueError):
+                    p0_vsc = 0.0
 
             control_code_dict: Dict[ConverterControlType | None, float] = {
                 None: 0.0,
@@ -3774,6 +3826,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 ParamPowerFlowRefferenceType.omega_base,
                 2.0 * np.pi * self.grid.fBase,
             )
+            assign_vsc_event_param_if_present(ParamPowerFlowRefferenceType.P0, p0_vsc)
             assign_vsc_event_param_if_present(ParamPowerFlowRefferenceType.P_loss0, p_loss0)
             assign_vsc_event_param_if_present(
                 ParamPowerFlowRefferenceType.control1,
@@ -3798,7 +3851,108 @@ class EmtProblemDae(EmtProblemTemplate):
             return
 
         # -----------------------------
-        # 1. Handle the classical transformer mapping before the line path.
+        # 1. Handle the XFMR EMT transformer mapping before the classical
+        # transformer path and before the line path.
+        # -----------------------------
+        xfmr_keys: list[ParamPowerFlowRefferenceType] = list([
+            ParamPowerFlowRefferenceType.xfmr_s_rated_mva,
+            ParamPowerFlowRefferenceType.xfmr_sc_voltage_pct,
+            ParamPowerFlowRefferenceType.xfmr_sc_resistance_pct,
+            ParamPowerFlowRefferenceType.xfmr_oc_current_pct,
+            ParamPowerFlowRefferenceType.xfmr_oc_loss_kw,
+            ParamPowerFlowRefferenceType.xfmr_tap_module,
+            ParamPowerFlowRefferenceType.xfmr_c_term,
+            ParamPowerFlowRefferenceType.xfmr_cf_aa,
+            ParamPowerFlowRefferenceType.xfmr_ct_aa,
+        ])
+        has_xfmr_mapping: bool = all(key in api_obj_mapping for key in xfmr_keys)
+
+        if has_xfmr_mapping:
+            if isinstance(br, Transformer2W):
+                w0: float = 2.0 * np.pi * float(self.grid.fBase)
+                eps_value: float = 1e-12
+
+                sn_value: float = max(float(br.Sn), 1e-9)
+                hv_value: float = float(br.HV) if br.HV is not None else 1.0
+                lv_value: float = float(br.LV) if br.LV is not None else 1.0
+                vsc_pct_value: float
+                pcu_kw_value: float = max(float(br.Pcu), 0.0)
+                pfe_kw_value: float = max(float(br.Pfe), 0.0)
+                i0_pct_value: float = max(float(br.I0), 0.0)
+                tap_module_value: float = float(br.tap_module) if abs(float(br.tap_module)) > eps_value else 1.0
+
+                if float(br.Vsc) > 0.0:
+                    vsc_pct_value = float(br.Vsc)
+                else:
+                    vsc_pct_value = 100.0 * np.sqrt(max(float(br.R) * float(br.R) + float(br.X) * float(br.X), 0.0))
+
+                sc_resistance_pct_value: float
+                if pcu_kw_value > 0.0:
+                    sc_resistance_pct_value = pcu_kw_value / (10.0 * sn_value)
+                else:
+                    sc_resistance_pct_value = 100.0 * max(float(br.R), 0.0)
+
+                c_term_value: float
+                if sn_value > eps_value and abs(float(br.B)) > eps_value:
+                    c_term_value = 0.5 * max(abs(float(br.B)) / (w0 + eps_value), 0.0)
+                else:
+                    c_term_value = 0.0
+
+                oc_loss_pu_value: float = pfe_kw_value / (1000.0 * sn_value)
+                oc_current_pu_value: float = i0_pct_value / 100.0
+                i_mag_pu_value: float = np.sqrt(max(oc_current_pu_value * oc_current_pu_value - oc_loss_pu_value * oc_loss_pu_value, 0.0))
+                if i_mag_pu_value > eps_value:
+                    linear_lm_value: float = 1.0 / i_mag_pu_value
+                else:
+                    linear_lm_value = 1e6
+
+                c_f_matrix: np.ndarray = _xfmr_connection_matrix(br.conn_f)
+                c_t_matrix: np.ndarray = _xfmr_connection_matrix(br.conn_t)
+                p_t_matrix: np.ndarray = _xfmr_phase_permutation_matrix(int(br.vector_group_number))
+                c_t_eff_matrix: np.ndarray = p_t_matrix @ c_t_matrix
+
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.omega_base, w0)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_s_rated_mva, sn_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_v_hv_ll_kv, hv_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_v_lv_ll_kv, lv_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_vector_group_clock, float(br.vector_group_number))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_oc_current_pct, i0_pct_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_oc_loss_kw, pfe_kw_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_sc_voltage_pct, vsc_pct_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_sc_resistance_pct, sc_resistance_pct_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_sc_loss_kw, pcu_kw_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_tap_module, tap_module_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_c_term, c_term_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_core_linear_l_pu, linear_lm_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_core_a_prime, linear_lm_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_core_b_prime, 0.0)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_use_linear_core, 1.0)
+
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_aa, float(c_f_matrix[0, 0]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_ab, float(c_f_matrix[0, 1]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_ac, float(c_f_matrix[0, 2]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_ba, float(c_f_matrix[1, 0]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_bb, float(c_f_matrix[1, 1]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_bc, float(c_f_matrix[1, 2]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_ca, float(c_f_matrix[2, 0]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_cb, float(c_f_matrix[2, 1]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_cc, float(c_f_matrix[2, 2]))
+
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_aa, float(c_t_eff_matrix[0, 0]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_ab, float(c_t_eff_matrix[0, 1]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_ac, float(c_t_eff_matrix[0, 2]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_ba, float(c_t_eff_matrix[1, 0]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_bb, float(c_t_eff_matrix[1, 1]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_bc, float(c_t_eff_matrix[1, 2]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_ca, float(c_t_eff_matrix[2, 0]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_cb, float(c_t_eff_matrix[2, 1]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_cc, float(c_t_eff_matrix[2, 2]))
+                return
+            else:
+                return
+
+        # -----------------------------
+        # 2. Handle the classical transformer mapping before the line path.
         # The transformer block now exposes only symbolic winding parameters,
         # so the EMT assembler must derive and assign the numerical values here.
         # -----------------------------
@@ -3880,7 +4034,7 @@ class EmtProblemDae(EmtProblemTemplate):
             pass
 
         # -----------------------------
-        # 2. Resolve the physical phase layout from the line connection.
+        # 3. Resolve the physical phase layout from the line connection.
         # This selects the reduced subspace that exists in the physical line,
         # which is the basis for placing values into the global 4x4 NABC map.
         # -----------------------------
@@ -3894,7 +4048,7 @@ class EmtProblemDae(EmtProblemTemplate):
         n_active: int = len(idx_global)
 
         # -----------------------------
-        # 3. Convert the physical line matrices into the EMT per-unit form.
+        # 4. Convert the physical line matrices into the EMT per-unit form.
         # The EMT template is parameterized in per-unit R, L^-1 and C values,
         # so this stage preserves the existing numerical pipeline exactly.
         # -----------------------------
@@ -3919,7 +4073,7 @@ class EmtProblemDae(EmtProblemTemplate):
         c_full: np.ndarray = (bsh_full / (w0 + 1e-20)) / 2.0
 
         # -----------------------------
-        # 4. Validate the reduced matrices before mapping them.
+        # 5. Validate the reduced matrices before mapping them.
         # These checks keep bad topology or singular data from silently
         # corrupting the full API mapping used by the EMT assembly.
         # -----------------------------
@@ -3944,7 +4098,7 @@ class EmtProblemDae(EmtProblemTemplate):
             ) from exc
 
         # -----------------------------
-        # 5. Define the fixed global NABC mapping contract.
+        # 6. Define the fixed global NABC mapping contract.
         # Both the EMT initializer and the EMT template rely on the same enum
         # layout so that active reduced matrices land in deterministic slots.
         # -----------------------------

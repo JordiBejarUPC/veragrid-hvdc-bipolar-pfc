@@ -32,7 +32,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_generator_emt_type_template, get_complete_generator_template_emt, get_generator_sauer_pai_type_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 
@@ -138,7 +138,7 @@ line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = True, phA = Tru
 
 # load
 # load_mdl = get_load_ZIP_3ph_emt_template(grid = grid, load = load).block
-load_mdl = get_shunt_r_3ph_emt_template(vf= grid.var_factory).block
+load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 # load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_3ph", new_value=1.0)
 
 

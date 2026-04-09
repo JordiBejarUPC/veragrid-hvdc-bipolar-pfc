@@ -62,6 +62,7 @@ def _resolve_converter_control_reference_exprs(
     control2: Var,
     control1_val: Var,
     control2_val: Var,
+    p0: Var,
 ) -> Tuple[sym.Expr, sym.Expr, sym.Expr, sym.Expr, sym.Expr]:
     control1_is_vm_dc = _converter_control_match_expr(control1, ConverterControlType.Vm_dc)
     control2_is_vm_dc = _converter_control_match_expr(control2, ConverterControlType.Vm_dc)
@@ -84,10 +85,16 @@ def _resolve_converter_control_reference_exprs(
         + (Const(1.0) - control1_is_qac)
         * (control2_is_qac * control2_val + (Const(1.0) - control2_is_qac) * Const(0.0))
     )
+    # ------------------------------------------------------------------
+    # Preserve the power-flow operating point when neither controller is an
+    # explicit active-power mode. This is required by the EMT scripting cases
+    # that regulate DC voltage and reactive power around a non-zero scheduled
+    # active transfer obtained from the solved power-flow state.
+    # ------------------------------------------------------------------
     p_ref = (
         (control1_is_pac + control1_is_pdc) * control1_val
         + (Const(1.0) - (control1_is_pac + control1_is_pdc))
-        * ((control2_is_pac + control2_is_pdc) * control2_val)
+        * ((control2_is_pac + control2_is_pdc) * control2_val + (Const(1.0) - (control2_is_pac + control2_is_pdc)) * p0)
     )
 
     return p_ref, q_ref, vdc_ref, regulate_vdc, regulate_q
@@ -164,6 +171,7 @@ def get_emt_ideal_converter(
     Q_ref = vf.add_var(name=f"Q_ref_{name}")
     Vdc_ref = vf.add_var(name=f"Vdc_ref_{name}")
     P_loss = vf.add_var(name=f"P_loss_{name}")
+    P0 = vf.add_var(name=f"P0_{name}")
     omega_base = vf.add_var(name=f"omega_base_{name}")
     sbase = vf.add_var(name=f"sbase_{name}")
     control1 = vf.add_var(name=f"control1_{name}")
@@ -182,6 +190,7 @@ def get_emt_ideal_converter(
         control2=control2,
         control1_val=control1_val,
         control2_val=control2_val,
+        p0=P0,
     )
 
     eps = vf.add_const(1e-10)
@@ -191,6 +200,7 @@ def get_emt_ideal_converter(
     sbase_eff = sym.max(sbase, eps)
     event_dict = {
         P_loss: vf.add_const(0.0),
+        P0: vf.add_const(0.0),
         omega_base: vf.add_const(2.0 * np.pi * 50.0),
         sbase: vf.add_const(1.0),
         control1: vf.add_const(float(_converter_control_type_code(None))),
@@ -283,6 +293,7 @@ def get_emt_ideal_converter(
     converter_block.api_obj_mapping = {
         ParamPowerFlowRefferenceType.Sbase: sbase,
         ParamPowerFlowRefferenceType.P_loss0: P_loss,
+        ParamPowerFlowRefferenceType.P0: P0,
         ParamPowerFlowRefferenceType.omega_base: omega_base,
         ParamPowerFlowRefferenceType.control1: control1,
         ParamPowerFlowRefferenceType.control2: control2,

@@ -122,10 +122,11 @@ def get_transformer_emt_template(
     templ.block.algebraic_vars = if_act + it_act
 
     # ------------------------------------------------------------------
-    # Build the coupled winding differential equations. For each phase the block
-    # solves ``L * di/dt = v - R * i`` with a symmetric inductance matrix
-    # ``[[l1, m], [m, l2]]``. The determinant term is kept explicit because the
-    # EMT initializer maps physical values that must produce an invertible matrix.
+    # Build the coupled winding differential equations. Both winding voltages are
+    # written in their own winding coordinates with the same symmetric mutual
+    # inductance matrix. The external two-port sign inversion is handled only in
+    # the terminal-current algebraic equations, which keeps the magnetic model
+    # physically symmetric while still exposing opposite branch-port currents.
     # ------------------------------------------------------------------
     state_eqs_f: list[Expr] = list()
     state_eqs_t: list[Expr] = list()
@@ -144,11 +145,14 @@ def get_transformer_emt_template(
     # Tie the branch terminal currents to the internal winding currents. The
     # magnetizing/core-loss conductance is modeled as a primary-side shunt term,
     # which is the only conductance contribution present in the original block.
+    # The secondary terminal current is the negative of the winding current
+    # because the external port orientation is opposite to the winding current
+    # reference used in the coupled inductance equations.
     # ------------------------------------------------------------------
     alg_eqs: list[Expr] = list()
     for idx in range(3):
         alg_eqs.append(if_act[idx] - (i_f[idx] + gm * vf_vars[idx]))
-        alg_eqs.append(it_act[idx] - i_t[idx])
+        alg_eqs.append(it_act[idx] + i_t[idx])
 
     templ.block.algebraic_eqs = alg_eqs
     templ.block.out_vars = if_act + it_act
@@ -191,7 +195,7 @@ def get_transformer_emt_template(
     init_eqs: Dict[Var, Expr] = dict()
     for idx in range(3):
         init_eqs[i_f[idx]] = if_act[idx] - gm * vf_vars[idx]
-        init_eqs[i_t[idx]] = it_act[idx]
+        init_eqs[i_t[idx]] = -it_act[idx]
 
     templ.block.init_eqs = init_eqs
 
