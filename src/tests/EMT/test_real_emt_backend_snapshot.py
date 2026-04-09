@@ -85,11 +85,11 @@ def build_two_bus_real_emt_case(
         get_bus_emt_template(grid, bus)
 
     gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.var_factory).block
-    line_mdl = get_pi_line_emt_template(vf = grid.var_factory, line = line0).block
+    line_mdl = get_pi_line_emt_template(vf = grid.var_factory).block
     if zip_load:
         load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.var_factory).block
     else:
-        load_mdl = get_shunt_r_3ph_emt_template(vf=grid.var_factory).block
+        load_mdl = get_shunt_r_3ph_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
         z_base = 1.0 / grid.Sbase
         v_phase_pu = 1.0 / np.sqrt(3.0)
         r_a_pu = (v_phase_pu ** 2) / load.Pa / z_base
