@@ -440,32 +440,73 @@ def get_profile_from_dict(profile: Profile,
     :param collection: if the collection is provided, it will be used to convert idtags into objects
     :return: None
     """
-    default_value: Any = data['default']
+    def cast_profile_value(value: Any) -> Any:
+        if value is None:
+            return None
+
+        if collection is not None:
+            return collection.get(value, value)
+
+        if isinstance(profile.dtype, DeviceType):
+            return value
+
+        if isinstance(profile.dtype, EnumType):
+            return profile.dtype(value)
+
+        if profile.dtype == bool:
+            if isinstance(value, str):
+                low = value.strip().lower()
+                if low in {"true", "1"}:
+                    return True
+                if low in {"false", "0"}:
+                    return False
+            return bool(value)
+
+        if profile.dtype == int:
+            return int(value)
+
+        if profile.dtype == float:
+            return float(value)
+
+        if profile.dtype == str:
+            return str(value)
+
+        return value
+
+    raw_default_value = data['default']
     is_sparse = bool(data['is_sparse'])
+    size = int(data['size'])
+
+    try:
+        default_value: Any = cast_profile_value(raw_default_value)
+    except (TypeError, ValueError):
+        default_value = profile.default_value
+
+    if isinstance(profile.dtype, DeviceType) and default_value == "None":
+        default_value = profile.default_value
+
+    if size == 0:
+        profile.clear()
+        return
+
     # profile = Profile(default_value=default_value, is_sparse=bool(data['is_sparse']))
 
     if is_sparse:
         sp_data = data['sparse_data']
 
         if collection is None:
-            map_data = {int(key): val for key, val in sp_data['map'].items()}
-
+            map_data = {int(key): cast_profile_value(val) for key, val in sp_data['map'].items()}
         else:
-            default_value = collection.get(data['default'], default_value)
-            map_data = {int(key): collection.get(val, default_value) for key, val in sp_data['map'].items()}
-
-        if isinstance(profile.dtype, DeviceType):  # manual correction for buses profile incorrect value
-            if default_value == "None":
-                default_value = profile.default_value
+            map_data = {int(key): cast_profile_value(val) for key, val in sp_data['map'].items()}
 
         profile.create_sparse(default_value=default_value,
                               size=data['size'], map_data=map_data)
     else:
 
         if collection is None:
-            arr = data['dense_data']
+            arr = [cast_profile_value(i) for i in data['dense_data']]
         else:
-            arr = [collection.get(i, default_value) for i in data['dense_data']]
+            arr = [cast_profile_value(i) for i in data['dense_data']]
         profile.set(np.array(arr))
 
     # mark as initialized
@@ -1383,6 +1424,20 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
             else:
                 # the object property was not found in the json entry
                 pass
+
+        if template_elm.device_type == DeviceType.Transformer3WDevice:
+            for property_name in ('r12', 'r23', 'r31', 'x12', 'x23', 'x31', 'rate1', 'rate2', 'rate3'):
+                gc_prop = template_elm.registered_properties[property_name]
+                property_value = search_property_into_json(json_entry=json_entry, prop=gc_prop)
+                if property_value is not None:
+                    elm.set_snapshot_value(gc_prop.name, float(property_value))
+
+        if template_elm.device_type == DeviceType.LineDevice:
+            gc_prop = template_elm.registered_properties.get('length', None)
+            if gc_prop is not None:
+                property_value = search_property_into_json(json_entry=json_entry, prop=gc_prop)
+                if property_value is not None and float(property_value) == 0.0:
+                    elm._length = 0.0
 
         # save the element in the dictionary for later
         devices_dict[elm.idtag] = elm

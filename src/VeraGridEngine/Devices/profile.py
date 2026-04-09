@@ -129,6 +129,7 @@ class Profile:
         Clear the profile
         :return:
         """
+        self._is_sparse = False
         self._sparse_array: Union[SparseArray, None] = None
         self._dense_array: Union[NumericVec, None] = None
         self._initialized: bool = False
