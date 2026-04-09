@@ -1,5 +1,7 @@
 
 from typing import Any, Sequence
+
+from VeraGridEngine import get_pi_line_emt_template, get_bergeron_line_emt_template
 from VeraGridEngine.enumerations import BlockType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -103,6 +105,47 @@ def create_block_of_type(var_factory: VarFactory,
     # LINE (line)
     if block_type == BlockType.LINE:
         blk = get_line_rms_template(var_factory).block
+        blk.name = item_name
+        return blk
+
+    # LOAD (line)
+    if block_type == BlockType.LOAD:
+        blk = get_load_rms_template(var_factory).block
+        blk.name = item_name
+        return blk
+
+    else:
+        return None
+
+def create_emt_wizard_block(phase_n: bool, phase_a: bool, phase_b: bool, phase_c: bool, var_factory: VarFactory, block_type: BlockType, item_name: str):
+    """
+
+    :param phase_n:
+    :type phase_n:
+    :param phase_a:
+    :type phase_a:
+    :param phase_b:
+    :type phase_b:
+    :param phase_c:
+    :type phase_c:
+    :param var_factory:
+    :type var_factory:
+    :param block_type:
+    :type block_type:
+    :param item_name:
+    :type item_name:
+    :return:
+    :rtype:
+    """
+    # PI LINE (line)
+    if block_type == BlockType.EMT_PI_LINE:
+        blk = get_pi_line_emt_template(var_factory, phase_n, phase_a, phase_b, phase_c, item_name).block
+        blk.name = item_name
+        return blk
+
+    # BERGERON LINE (line)
+    if block_type == BlockType.EMT_BERGERON_LINE:
+        blk = get_bergeron_line_emt_template(var_factory, phase_n, phase_a, phase_b, phase_c, item_name).block
         blk.name = item_name
         return blk
 
