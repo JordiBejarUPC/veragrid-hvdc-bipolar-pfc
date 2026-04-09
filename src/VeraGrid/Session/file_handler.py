@@ -157,7 +157,8 @@ class FileSaveThread(QThread):
     def __init__(self,
                  circuit: MultiCircuit,
                  file_name: str,
-                 options: FileSavingOptions):
+                 options: FileSavingOptions,
+                 multiverse: MultiVerse | None = None,):
         """
         Constructor
         :param circuit: MultiCircuit instance
@@ -167,6 +168,8 @@ class FileSaveThread(QThread):
         QThread.__init__(self)
 
         self.circuit = circuit
+
+        self.multiverse: MultiVerse | None = multiverse
 
         self.file_name = file_name
 
@@ -223,6 +226,7 @@ class FileSaveThread(QThread):
         file_handler = FileSave(circuit=self.circuit,
                                 file_name=self.file_name,
                                 options=self.options,
+                                multiverse=self.multiverse,
                                 text_func=self.progress_text.emit,
                                 progress_func=self.progress_signal.emit)
         try:

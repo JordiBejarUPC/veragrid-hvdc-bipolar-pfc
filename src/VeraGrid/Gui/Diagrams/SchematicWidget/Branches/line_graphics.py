@@ -14,7 +14,6 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem,
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
-from VeraGrid.Gui.RmsModelEditor.dynamic_device_editor import DynamicDeviceEditorDialog, choose_initial_dynamic_editor_mode
 from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
 from VeraGridEngine.Devices.Branches.line import Line, SequenceLineType
 from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
@@ -123,8 +122,13 @@ class LineGraphicItem(LineGraphicTemplateItem):
                            icon_path=":/Icons/icons/edit.png")
 
             add_menu_entry(menu=menu,
-                           text="Dynamic Editor",
-                           function_ptr=self.edit_dynamic,
+                           text="Rms Editor",
+                           function_ptr=self.edit_rms,
+                           icon_path=":/Icons/icons/edit.png")
+
+            add_menu_entry(menu=menu,
+                           text="Emt Editor",
+                           function_ptr=self.edit_emt,
                            icon_path=":/Icons/icons/edit.png")
 
             add_menu_entry(menu=menu,
@@ -206,21 +210,8 @@ class LineGraphicItem(LineGraphicTemplateItem):
                            icon_path=":/Icons/icons/switch.png")
 
             menu.exec(event.screenPos())
-
-    def edit_dynamic(self):
-        """
-        Open the tabbed dynamic editor for this branch.
-
-        :return: None.
-        """
-
-        self.dynamic_editor_window = DynamicDeviceEditorDialog(
-            circuit=self.editor.circuit,
-            api_object=self.api_object,
-            initial_mode=choose_initial_dynamic_editor_mode(self.api_object),
-            parent=None,
-        )
-        self.dynamic_editor_window.exec()
+        else:
+            pass
 
     def plot_profiles(self) -> None:
         """
@@ -259,35 +250,44 @@ class LineGraphicItem(LineGraphicTemplateItem):
             block=self.api_object.rms_model,
             api_object=self.api_object,
             mode=DynamicEditorMode.RMS,
-            templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
-                self.api_object.device_type,
-                FmuTemplateDomain.RMS,
-            ),
+            templates_list=self.editor.circuit.get_rms_models_by_device_type(self.api_object.device_type),
+            # templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
+            #     self.api_object.device_type,
+            #     FmuTemplateDomain.RMS,
+            # ),
             circuit=self.editor.circuit,
             main_editor=True,
         )
         rms_model_editor.show()
 
     def edit_emt(self):
-        """
-        Open the EMT dynamic model editor for this line.
 
-        :return: None.
-        """
+        # load templates
+        templates = self.editor.circuit.emt_models
 
-        emt_model_editor = DynamicBlockEditorGUI(
-            var_factory=self.editor.circuit.emt_var_factory,
+        # select line templates
+        templ_catalogue = dict()
+        templ_list = []
+        for templ in templates:
+            if templ.tpe == DeviceType.LineDevice:
+                templ_list.append(templ.name)
+                templ_catalogue[templ.name] = templ
+
+        # prompt RmsModelEditorGUI
+        rms_model_editor = DynamicBlockEditorGUI(
+            var_factory=self.editor.circuit.var_factory,
             block=self.api_object.emt_model,
             api_object=self.api_object,
             mode=DynamicEditorMode.EMT,
-            templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
-                self.api_object.device_type,
-                FmuTemplateDomain.EMT,
-            ),
+            templates_list=self.editor.circuit.get_emt_models_by_device_type(self.api_object.device_type),
+            # templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
+            #     self.api_object.device_type,
+            #     FmuTemplateDomain.EMT,
+            # ),
             circuit=self.editor.circuit,
             main_editor=True,
         )
-        emt_model_editor.show()
+        rms_model_editor.show()
 
     def add_to_catalogue(self):
         """

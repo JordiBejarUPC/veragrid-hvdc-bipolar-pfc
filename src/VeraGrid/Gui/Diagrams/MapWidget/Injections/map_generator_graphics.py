@@ -16,7 +16,6 @@ from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics
 from VeraGrid.Gui.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
 from VeraGrid.Gui.WindPowerWizard.wind_power_wizzard import WindFarmWizard
 from VeraGrid.Gui.gui_functions import add_menu_entry
-from VeraGrid.Gui.RmsModelEditor.dynamic_device_editor import DynamicDeviceEditorDialog, choose_initial_dynamic_editor_mode
 from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
 from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
 
@@ -99,21 +98,6 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
                        function_ptr=self.to_battery)
 
         menu.exec(event.screenPos())
-
-    def edit_dynamic(self):
-        """
-        Open the tabbed dynamic editor for this generator.
-
-        :return: None.
-        """
-
-        self.dynamic_editor_window = DynamicDeviceEditorDialog(
-            circuit=self.editor.circuit,
-            api_object=self.api_object,
-            initial_mode=choose_initial_dynamic_editor_mode(self.api_object),
-            parent=None,
-        )
-        self.dynamic_editor_window.exec()
 
     def edit_rms(self):
         """

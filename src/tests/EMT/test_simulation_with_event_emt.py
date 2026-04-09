@@ -17,7 +17,7 @@ from VeraGridEngine.Devices.Aggregation.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.Aggregation import EmtEvent
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
@@ -111,10 +111,10 @@ def test_simulation_with_event_emt():
     gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
 
     # line
-    line_mdl = get_pi_line_emt_template(vf = grid.var_factory, line = line0).block
+    line_mdl = get_pi_line_emt_template(vf = grid.var_factory).block
 
     # load
-    load_mdl = get_shunt_r_3ph_emt_template(vf=grid.var_factory).block
+    load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
     ######################################################################################################
     # Add models to devices

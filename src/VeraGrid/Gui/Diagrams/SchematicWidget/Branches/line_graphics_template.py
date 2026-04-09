@@ -809,6 +809,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
             "from": EndpointAlignmentHandleItem(parent_branch=self, endpoint="from"),
             "to": EndpointAlignmentHandleItem(parent_branch=self, endpoint="to"),
         }
+        self._route_edit_active: bool = False
 
         self.pos1: QPointF = QPointF(0.0, 0.0)
         self.pos2: QPointF = QPointF(0.0, 0.0)
@@ -1068,10 +1069,32 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
 
         :return: ``None``.
         """
-        if self.isSelected():
+        if self.is_route_edit_active():
             self.setZValue(4)
         else:
             self.setZValue(-1)
+
+    def is_route_edit_active(self) -> bool:
+        """
+        Return whether the manual route editor is explicitly active for this branch.
+
+        Plain selection must not show edit handles. Handles only appear after a direct
+        click activates editing on the selected branch.
+
+        :return: ``True`` when route-edit handles should be shown.
+        """
+        return self._route_edit_active and self.isSelected()
+
+    def set_route_edit_active(self, active: bool) -> None:
+        """
+        Set the explicit route-edit activation state.
+
+        :param active: Requested edit activation state.
+        :return: ``None``.
+        """
+        self._route_edit_active = bool(active)
+        self.refresh_z_order()
+        self.refresh_route_handles()
 
     def get_persisted_endpoint_attachment(self, endpoint: str) -> dict[str, object]:
         """
@@ -1351,7 +1374,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
             handle_mid_y = (segment_start[1] + segment_end[1]) * 0.5
             handle.set_segment_index(segment_index=segment_index)
             handle.setPos(handle_mid_x, handle_mid_y)
-            handle.setVisible(self.isSelected() and self.api_object is not None)
+            handle.setVisible(self.is_route_edit_active() and self.api_object is not None)
 
         while len(self._vertex_handles) < len(editable_vertex_indexes):
             self._vertex_handles.append(RouteVertexHandleItem(parent_branch=self, vertex_index=0))
@@ -1368,12 +1391,12 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
             vertex_point = points[vertex_index]
             handle.set_vertex_index(vertex_index=vertex_index)
             handle.setPos(vertex_point[0], vertex_point[1])
-            handle.setVisible(self.isSelected() and self.api_object is not None)
+            handle.setVisible(self.is_route_edit_active() and self.api_object is not None)
 
         for endpoint_key, handle in self._endpoint_handles.items():
             anchor_point = self.get_endpoint_anchor(endpoint=endpoint_key)
             handle.setPos(anchor_point)
-            handle.setVisible(self.isSelected() and self.api_object is not None)
+            handle.setVisible(self.is_route_edit_active() and self.api_object is not None)
 
     def itemChange(self, change, value):
         """
@@ -1386,6 +1409,10 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         result = QGraphicsLineItem.itemChange(self, change, value)
 
         if change == self.GraphicsItemChange.ItemSelectedHasChanged:
+            if bool(value):
+                pass
+            else:
+                self._route_edit_active = False
             self.refresh_z_order()
             self.refresh_route_handles()
         else:
@@ -1553,6 +1580,11 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         """
         if self.api_object is not None:
             self.editor.set_editor_model(api_object=self.api_object)
+        else:
+            pass
+
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.set_route_edit_active(True)
         else:
             pass
 

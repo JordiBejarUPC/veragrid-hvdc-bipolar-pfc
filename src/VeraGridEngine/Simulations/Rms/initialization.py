@@ -6,7 +6,7 @@
 
 import cProfile
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any
 import numpy as np
 from collections import defaultdict, deque
 
@@ -18,6 +18,42 @@ from VeraGridEngine.Utils.Symbolic.symbolic import get_expression_vars
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, find_vars_order
 from VeraGridEngine.basic_structures import Vec
+
+
+
+
+
+def add_items(blk, init_vars, init_event):
+    """
+    adds items from a block to the dictionary
+    :param blk:
+    :type blk:
+    :param init_vars:
+    :param init_event:
+    init_dict
+    :return:
+    :rtype:
+    """
+
+    init_vars.update(blk.init_eqs)
+    init_event.update(blk.event_dict)
+
+def build_init_dict(mdl, init_vars, init_event):
+    """
+    builds initialization dictionary from mdl
+    :param mdl:
+    :type mdl:
+    :param init_vars:
+    :param init_event:
+    :type init_vars:
+    init_dict
+    :return:
+    :rtype:
+    """
+    add_items(mdl, init_vars, init_event)
+    for blk in mdl.children:
+        add_items(blk, init_vars, init_event)
+
 
 
 # ask Maria for usages and delete
@@ -193,12 +229,14 @@ def init_explicit(mdl: Block,
     #         event_params_array[uid2idx_event_params[event_param.uid]] = result
 
     # unify event_dict and init_equations
+    init_vars = dict()
+    init_event = dict()
+    build_init_dict(mdl, init_vars, init_event)
 
-    dic_total = mdl.event_dict.copy()
-    dic_total.update(mdl.init_eqs)
+    init_vars.update(init_event)
 
-
-
+    # init_dict = mdl.event_dict.copy()
+    # init_dict.update(mdl.init_eqs)
 
     # compute and assign missing init_vars and None event parameters
 
@@ -210,10 +248,10 @@ def init_explicit(mdl: Block,
 
     dependencies = {}
 
-    for var, eq in dic_total.items():
+    for var, eq in init_vars.items():
 
         vars_in_eq = get_expression_vars(eq)
-        deps = [v for v in vars_in_eq if v in dic_total]
+        deps = [v for v in vars_in_eq if v in init_vars]
 
         dependencies[var] = deps
 
@@ -238,15 +276,15 @@ def init_explicit(mdl: Block,
             if in_degree[v] == 0:
                 queue.append(v)
 
-    if len(topo_order) != len(dic_total):
+    if len(topo_order) != len(init_vars):
         raise RuntimeError("Cycle detected between different variables")
 
     # evaluate
     for var in topo_order:
-        eq = dic_total[var]
+        eq = init_vars[var]
         vars_list = find_vars_order(eq)
 
-        if var in mdl.event_dict.keys():
+        if var in init_event.keys():
             uid_bindings: Dict[int, float] = {}
             for vr in vars_list:
                 if vr.uid in uid2idx_event_params:

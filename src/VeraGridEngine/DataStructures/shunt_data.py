@@ -100,6 +100,10 @@ class ShuntData:
         data.Y3_delta = self.Y3_delta[elm_idx_4]
         data.Y3_star = self.Y3_star[elm_idx_4]
 
+        data.A_floatingstar = self.A_floatingstar[elm_idx]
+        data.B_floatingstar = self.B_floatingstar[elm_idx]
+        data.C_floatingstar = self.C_floatingstar[elm_idx]
+
         data.qmax = self.qmax[elm_idx]
         data.qmin = self.qmin[elm_idx]
         data.q_share = self.q_share[elm_idx]
@@ -161,6 +165,10 @@ class ShuntData:
         data.Y = self.Y.copy()
         data.Y3_star = self.Y3_star.copy()
         data.Y3_delta = self.Y3_delta.copy()
+
+        data.A_floatingstar = self.A_floatingstar.copy()
+        data.B_floatingstar = self.B_floatingstar.copy()
+        data.C_floatingstar = self.C_floatingstar.copy()
 
         data.qmax = self.qmax.copy()
         data.qmin = self.qmin.copy()
@@ -256,4 +264,3 @@ class ShuntData:
         j = np.arange(self.nelm, dtype=int)
         data = np.ones(self.nelm, dtype=int)
         return coo_matrix((data, (self.bus_idx, j)), shape=(self.nbus, self.nelm), dtype=int).tocsc()
-

@@ -245,7 +245,7 @@ class NonLinearOptimalPfProblem:
                                         device="Bus " + str(i))
                 self.Vm_max[self.id_Vm_max0] = 1.1
 
-        self.pf = nc.generator_data.pf
+        self.pf = nc.generator_data.get_pf()
         self.tanmax = ((1 - self.pf ** 2) ** (1 / 2)) / (self.pf + 1e-15)
 
         self.pv = np.flatnonzero(self.Vm_max == self.Vm_min)

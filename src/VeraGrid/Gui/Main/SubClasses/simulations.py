@@ -278,11 +278,12 @@ class SimulationsMain(TimeEventsMain):
         # dictionaries for available results
         self.available_results_dict: Union[Dict[str, Dict[str, ResultTypes]], None] = dict()
 
-        self.buses_for_storage: Union[List[dev.Bus], None] = None
+        self.buses_for_storage: List[dev.Bus] = list()
 
         # --------------------------------------------------------------------------------------------------------------
 
         self.ui.actionPower_flow.triggered.connect(self.power_flow_dispatcher)
+        self.ui.actionPower_flow_3ph.triggered.connect(self.power_flow_3ph_dispatcher)
         self.ui.actionShort_Circuit.triggered.connect(self.run_short_circuit)
         self.ui.actionVoltage_stability.triggered.connect(self.run_continuation_power_flow)
         self.ui.actionPower_Flow_Time_series.triggered.connect(self.run_power_flow_time_series)
@@ -665,7 +666,7 @@ class SimulationsMain(TimeEventsMain):
         """
         self.session.clear()
 
-        self.buses_for_storage = None
+        self.buses_for_storage = list()
 
         self.calculation_inputs_to_display = None
         self.ui.simulation_data_island_comboBox.clear()
@@ -807,6 +808,7 @@ class SimulationsMain(TimeEventsMain):
 
         icons = {
             SimulationTypes.PowerFlow_run.value: ':/Icons/icons/pf',
+            SimulationTypes.PowerFlow3ph_run.value: ':/Icons/icons/pf3',
             SimulationTypes.PowerFlowTimeSeries_run.value: ':/Icons/icons/pf_ts.png',
             SimulationTypes.OPF_run.value: ':/Icons/icons/dcopf.png',
             SimulationTypes.OPFTimeSeries_run.value: ':/Icons/icons/dcopf_ts.png',
@@ -1052,16 +1054,29 @@ class SimulationsMain(TimeEventsMain):
             self.run_remote(instruction=instruction)
 
         else:
-            if self.ui.pf_three_phase_checkBox.isChecked():
-                if self.ts_flag():
-                    self.show_warning_toast("Time series not available yer for 3-phase formulation :/")
-                else:
-                    self.run_power_flow3ph()
+            if self.ts_flag():
+                self.run_power_flow_time_series()
             else:
-                if self.ts_flag():
-                    self.run_power_flow_time_series()
-                else:
-                    self.run_power_flow()
+                self.run_power_flow()
+
+    def power_flow_3ph_dispatcher(self):
+        """
+        Dispatch the power flow action
+        :return:
+        """
+        if self.server_driver.is_running():
+            if self.ts_flag():
+                instruction = RemoteInstruction(operation=SimulationTypes.PowerFlowTimeSeries_run)
+            else:
+                instruction = RemoteInstruction(operation=SimulationTypes.PowerFlow_run)
+
+            self.run_remote(instruction=instruction)
+
+        else:
+            if self.ts_flag():
+                self.show_warning_toast("Time series not available yer for 3-phase formulation :/")
+            else:
+                self.run_power_flow3ph()
 
     def optimal_power_flow_dispatcher(self):
         """
@@ -1240,16 +1255,51 @@ class SimulationsMain(TimeEventsMain):
 
                 # set power flow object instance
                 engine = self.get_preferred_engine()
-                if self.ui.pf_three_phase_checkBox.isChecked():
-                    drv = sim.PowerFlowDriver3Ph(grid=self.circuit,
-                                                 options=options,
-                                                 opf_results=opf_results,
-                                                 engine=engine)
-                else:
-                    drv = sim.PowerFlowDriver(grid=self.circuit,
-                                              options=options,
-                                              opf_results=opf_results,
-                                              engine=engine)
+                drv = sim.PowerFlowDriver(grid=self.circuit,
+                                          options=options,
+                                          opf_results=opf_results,
+                                          engine=engine)
+
+                self.session.run(drv,
+                                 post_func=self.post_power_flow,
+                                 prog_func=self.ui.progressBar.setValue,
+                                 text_func=self.ui.progress_label.setText)
+
+            else:
+                self.show_warning_toast('Another simulation of the same type is running...')
+        else:
+            pass
+
+    def run_power_flow_3ph(self):
+        """
+        Run a power flow simulation
+        :return:
+        """
+        if self.circuit.valid_for_simulation():
+
+            if not self.session.is_this_running(SimulationTypes.PowerFlow_run):
+
+                self.LOCK()
+
+                self.add_simulation(SimulationTypes.PowerFlow_run)
+
+                self.ui.progress_label.setText('Compiling the grid...')
+                QtGui.QGuiApplication.processEvents()
+
+                # get the power flow options from the GUI
+                options = self.get_selected_power_flow_options()
+
+                opf_results = self.get_opf_results(use_opf=self.ui.actionOpf_to_Power_flow.isChecked())
+
+                self.ui.progress_label.setText('Running power flow...')
+                QtGui.QGuiApplication.processEvents()
+
+                # set power flow object instance
+                engine = self.get_preferred_engine()
+                drv = sim.PowerFlowDriver3Ph(grid=self.circuit,
+                                             options=options,
+                                             opf_results=opf_results,
+                                             engine=engine)
 
                 self.session.run(drv,
                                  post_func=self.post_power_flow,

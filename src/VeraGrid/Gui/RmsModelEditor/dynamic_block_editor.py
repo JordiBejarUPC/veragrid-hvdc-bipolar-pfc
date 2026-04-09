@@ -15,7 +15,7 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
                                QDialog, QVBoxLayout, QDialogButtonBox, QLabel, QListWidget, QWidget,
                                QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QDoubleSpinBox, QTableWidget, QTableWidgetItem,
-                               QColorDialog, QPlainTextEdit)
+                               QColorDialog, QPlainTextEdit, QCheckBox)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter,
                            QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import QAbstractItemModel, QLineF
@@ -41,7 +41,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_t
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import BlockType
-from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block
+from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
 
 BLOCK_BORDER: QColor = QColor("#36536b")
 BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
@@ -516,6 +516,45 @@ class GenericBlockDialog(QDialog):
         return name, state_ins, state_outs, algeb_ins, algeb_outs
 
 
+class EmtTemplateWizardDialog(QDialog):
+    """
+    Dialog to configure EMT template wizard block phases.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Configure EMT Block Phases")
+
+        layout = QVBoxLayout(self)
+
+        label = QLabel("Select the phases for this EMT block:")
+        layout.addWidget(label)
+
+        self.phase_n_check = QCheckBox("phase_n")
+        self.phase_a_check = QCheckBox("phase_a")
+        self.phase_b_check = QCheckBox("phase_b")
+        self.phase_c_check = QCheckBox("phase_c")
+
+        layout.addWidget(self.phase_n_check)
+        layout.addWidget(self.phase_a_check)
+        layout.addWidget(self.phase_b_check)
+        layout.addWidget(self.phase_c_check)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+    def get_values(self):
+        """Return phase selection as a tuple of booleans."""
+        return (
+            self.phase_n_check.isChecked(),
+            self.phase_a_check.isChecked(),
+            self.phase_b_check.isChecked(),
+            self.phase_c_check.isChecked()
+        )
+
+
 class PortItem(QGraphicsEllipseItem):
     """
     Graphical input or output port attached to a block item.
@@ -706,7 +745,10 @@ class ConnectionItem(QGraphicsPathItem):
         self._original_elbows: List[QPointF] = []
 
         if elbow_points:
-            self.custom_elbow_points = [QPointF(x, y) for x, y in elbow_points]
+            self.custom_elbow_points = [
+                QPointF(p.x(), p.y()) if isinstance(p, QPointF) else QPointF(p[0], p[1])
+                for p in elbow_points
+            ]
 
         if self.source_port.connections is None:
             self.source_port.connections = list()
@@ -928,7 +970,10 @@ class ConnectionItem(QGraphicsPathItem):
         :param elbows:
         :return:
         """
-        self.custom_elbow_points = [QPointF(x, y) for x, y in elbows]
+        self.custom_elbow_points = [
+            QPointF(p.x(), p.y()) if isinstance(p, QPointF) else QPointF(p[0], p[1])
+            for p in elbows
+        ]
         self.update_path()
 
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
@@ -3159,9 +3204,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  mode: DynamicEditorMode = DynamicEditorMode.RMS,
                  templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None,
                  circuit: Any | None = None,
-                 embedded: bool = False,
                  main_editor=False,
-                 modal: bool = True):
+                 modal: bool = True
+                 ):
         """
         Initializes a dynamic block editor window used for editing and managing blocks within a graphical model.
 
@@ -3188,15 +3233,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui = Ui_BlockEditorWindow()
         self.ui.setupUi(self)
 
-        if modal and not embedded:
+        if modal:
             self.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
-        else:
-            pass
-
-        if embedded:
-            self.setWindowFlags(QtCore.Qt.WindowType.Widget)
-        else:
-            pass
 
         # set object label
         if api_object is not None:
@@ -3207,6 +3245,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.block_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 300
         self.mime_type: str = "application/x-veragrid-dynamics-block"
 
+        self.setWindowTitle("Dynamic Model Editor")
+
         self.ui.splitter.setStretchFactor(0, 1)
         self.ui.splitter.setStretchFactor(1, 10)
         self.ui.block_editor_actionCheckModel.triggered.connect(self.open_inspect_dialog)
@@ -3215,15 +3255,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.actionZoom_out.triggered.connect(self.zoom_out_view)
 
         self.var_factory = var_factory
+        self.api_object = api_object
         # Todo: is this correct?
         self.original_block: Block = block  # api_object.rms_model
-        self.main_block: Block = clone_block_for_editing(block)
+        if self.api_object.rms_template is not None:
+            self.main_block: Block = Block()
+        else:
+            self.main_block: Block = clone_block_for_editing(block)
 
         self.diagram: BlockDiagram = self.main_block.diagram
-        self.api_object = api_object
         self.circuit = circuit
         self.mode = mode
-        self.embedded = embedded
         self.main_editor = main_editor
         self._emt_bus_fallback_warning_shown: bool = False
         self.setWindowTitle(f"Dynamic Model Editor [{self.mode.name}]")
@@ -3266,7 +3308,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 ],
             }
         elif mode == DynamicEditorMode.EMT:
-            self.tree_structure = dict()
+            self.tree_structure = {
+                "Basic": [
+                    ("Const", BlockType.CONST),
+                    ("Gain", BlockType.GAIN),
+                    ("Sum", BlockType.SUM),
+                    ("Substr", BlockType.SUBSTR),
+                    ("Product", BlockType.PRODUCT),
+                    ("Divide", BlockType.DIVIDE),
+                    ("Abs", BlockType.ABS),
+                ],
+                "Devices": [
+                    ("Emt pi line", BlockType.EMT_PI_LINE),
+                    ("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
+                    ("Emt load", BlockType.EMTLOAD),
+                ],
+            }
         else:
             self.tree_structure = dict()
 
@@ -3344,11 +3401,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.graphicsView.dragMoveEvent = self.graphicsDragMoveEvent
         self.ui.graphicsView.dropEvent = self.graphicsDropEvent
 
-        if self.embedded:
-            self.ui.doItButton.hide()
-        else:
-            pass
-
         self.ui.doItButton.clicked.connect(self.apply_changes)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
         if not self.main_block.diagram.node_data and self.main_editor:
@@ -3356,19 +3408,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.add_external_mapping_block()
             self.add_api_obj_mapping()
         self.rebuild_scene_from_diagram()
-
-        # self.parameters_model = ParametersTreeModel(var_factory=self.var_factory, main_block=self.main_block)
-        # self.ui.parametersTreeView.setModel(self.parameters_model)
-        # self.ui.parametersTreeView.expandAll()
-        #
-        # # Conecta el signal del editor al métod de añadir bloque
-        # self.block_added.connect(self.parameters_model.add_block)
-        #
-        #
-        # self.ui.parametersTreeView.header().setStretchLastSection(True)
-        # header = self.ui.parametersTreeView.header()
-        # header.setStretchLastSection(True)
-        # header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeToContents)
 
     def build_library_tree_model(self,
                                  block_role: int,
@@ -3492,6 +3531,51 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
 
             return item
+        else:
+            return None
+
+    def create_emt_wizard_block_item(self, block_type: BlockType, x_pos, y_pos) -> BlockItem|None:
+        """
+        Create and place a generic block item.
+
+        :param block_type:
+        :param x_pos:
+        :param y_pos:
+        :return:
+        """
+
+        dialog = EmtTemplateWizardDialog(self)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            phase_n, phase_a, phase_b, phase_c = dialog.get_values()
+            count: int = self.block_counters.get(block_type, 0) + 1
+            item_name: str = f"{block_type.name}_{count}"
+            block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
+            block_model = create_emt_wizard_block(phase_n, phase_a, phase_b, phase_c, self.var_factory, block_type=block_type, item_name=item_name)
+
+            if block_model is not None:
+                # The symbolic block has to be attached first so the graphics item can build its ports from it.
+                self.block_counters[block_type] = count
+                block_item.set_subsystem(block_model)
+                block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
+                block_item.build_item()
+
+                # The editor block is the authoritative model container for later save/rebuild steps.
+                self.main_block.add(block_model)
+                self.scene.addItem(block_item)
+                block_item.setPos(QtCore.QPointF(x_pos, y_pos))
+
+                # Keep the diagram synchronized so later features can rebuild from the same data source.
+                self.diagram.add_node(
+                    name=item_name,
+                    x=x_pos,
+                    y=y_pos,
+                    tpe=block_type.name,
+                    device_uid=block_model.uid
+                )
+
+                return block_item
+            else:
+                return None
         else:
             return None
 
@@ -4389,10 +4473,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block.parameters[b] = self.var_factory.add_const(0.0710059)
             self.main_block.parameters[bsh] = self.var_factory.add_const(0.03)
 
-            self.main_block.api_obj_mapping = dict()
-            self.main_block.api_obj_mapping[ParamPowerFlowRefferenceType.g] = g
-            self.main_block.api_obj_mapping[ParamPowerFlowRefferenceType.b] = b
-            self.main_block.api_obj_mapping[ParamPowerFlowRefferenceType.bsh] = bsh
+            self.main_block.api_obj_mapping = {
+                ParamPowerFlowRefferenceType.g: g,
+                ParamPowerFlowRefferenceType.b: b,
+                ParamPowerFlowRefferenceType.bsh: bsh,
+            }
 
     def get_block_from_main_block(self, device_uid: int) -> Block | None:
         """
@@ -4870,22 +4955,21 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return:
         """
-        self.commit_changes(close_window=True)
-
-    def commit_changes(self, close_window: bool) -> None:
-        """
-        Commit the edited working copy back into the original block.
-
-        :param close_window: Close the editor after committing.
-        :return: None.
-        """
-        self._break_domain_template_link()
-        copy_block_state(source_block=self.main_block, target_block=self.original_block)
-        self.changes_applied = True
-        if close_window:
+        if self.mode == DynamicEditorMode.RMS:
+            if self.api_object.rms_template is not None:
+                # Todo: Here are the changes
+                self.api_object.rms_template = None
+            copy_block_state(source_block=self.main_block, target_block=self.original_block)
+            self.changes_applied = True
             self.close()
-        else:
-            pass
+
+        elif self.mode == DynamicEditorMode.EMT:
+            if self.api_object.emt_template is not None:
+                # Todo: Here are the changes
+                self.api_object.emt_template = None
+            copy_block_state(source_block=self.main_block, target_block=self.original_block)
+            self.changes_applied = True
+            self.close()
 
     def open_inspect_dialog(self):
         """
@@ -5073,6 +5157,31 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     x_pos=scene_position.x(),
                     y_pos=scene_position.y()
                 )
+
+            elif isinstance(payload, BlockType) and payload == BlockType.EMT_PI_LINE:
+
+                block_item = self.create_emt_wizard_block_item(
+                    block_type=payload,
+                    x_pos=scene_position.x(),
+                    y_pos=scene_position.y()
+                )
+
+            elif isinstance(payload, BlockType) and payload == BlockType.EMT_BERGERON_LINE:
+
+                block_item = self.create_emt_wizard_block_item(
+                    block_type=payload,
+                    x_pos=scene_position.x(),
+                    y_pos=scene_position.y()
+                )
+
+            elif isinstance(payload, BlockType) and payload == BlockType.EMTLOAD:
+
+                block_item = self.create_emt_wizard_block_item(
+                    block_type=payload,
+                    x_pos=scene_position.x(),
+                    y_pos=scene_position.y()
+                )
+
 
             elif isinstance(payload, BlockType):
                 block_item = self.create_block_item(
