@@ -1387,8 +1387,8 @@ class MultiCircuit(Assets):
         F: IntVec = np.zeros(len(branches), dtype=int)
         T: IntVec = np.zeros(len(branches), dtype=int)
         for k, elm in enumerate(branches):
-            F[k] = bus_dict[elm.bus_from]
-            T[k] = bus_dict[elm.bus_to]
+            F[k] = bus_dict.get(elm.bus_from, -1)
+            T[k] = bus_dict.get(elm.bus_to, -1)
 
         hvdc = self.get_hvdc()
         hvdc_F: IntVec = np.zeros(len(hvdc), dtype=int)

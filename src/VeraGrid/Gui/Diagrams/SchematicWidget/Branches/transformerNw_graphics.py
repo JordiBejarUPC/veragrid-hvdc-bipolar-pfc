@@ -65,11 +65,13 @@ class TransformerNWGraphicItem(GenericDiagramWidget, QGraphicsRectItem):
             self.setPos(pos)
 
         winding_diameter = 36
-        radius_large = min(self.w, self.h) * 0.26
         radius_small = 5
         angle_0 = -90.0
         d_angle = 360.0 / self.n_windings
         center = QPointF(self.w / 2.0, self.h / 2.0)
+        # Keep the winding circles visually tight while still scaling with N.
+        min_non_overlapping_radius = winding_diameter / (2.0 * max(np.sin(np.pi / self.n_windings), 1e-6))
+        radius_large = max(winding_diameter * 0.5, min_non_overlapping_radius * 0.95)
 
         self.winding_circles: List[QGraphicsEllipseItem] = list()
         self.terminals: List[RoundTerminalItem] = list()

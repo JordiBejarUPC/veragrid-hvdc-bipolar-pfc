@@ -1343,7 +1343,8 @@ class Assets:
         if add_middle_bus:
             self.add_bus(obj.bus0)
         for winding in obj.windings:
-            self.add_winding(winding)
+            if winding.bus_to is not None:
+                self.add_winding(winding)
 
     def delete_transformer_nw(self, obj: dev.TransformerNW):
         """
