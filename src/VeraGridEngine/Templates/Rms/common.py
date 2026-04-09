@@ -22,6 +22,7 @@ from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import (get_genqec
                                                                       get_exciter_rms)
 
 
+
 def create_block_of_type(var_factory: VarFactory,
                          block_type: BlockType,
                          item_name: str = "") -> Block | None:
@@ -35,79 +36,79 @@ def create_block_of_type(var_factory: VarFactory,
         return blk
 
     # GAIN (single input -> single output)
-    if block_type == BlockType.GAIN:
+    elif block_type == BlockType.GAIN:
         blk = gain(var_factory, item_name)
         blk.name = item_name
         return blk
 
     # SUM / ADDER (2 inputs)
-    if block_type == BlockType.SUM:
+    elif block_type == BlockType.SUM:
         blk = adder(var_factory, item_name)
         blk.name = item_name
         return blk
 
     # SUBSTRACT (2 inputs)
-    if block_type == BlockType.SUBSTR:
+    elif block_type == BlockType.SUBSTR:
         blk = substract(var_factory, item_name)
         blk.name = item_name
         return blk
 
     # PRODUCT (2 inputs)
-    if block_type == BlockType.PRODUCT:
+    elif block_type == BlockType.PRODUCT:
         blk = product(var_factory, item_name)
         blk.name = item_name
         return blk
 
     # DIVIDE (2 inputs)
-    if block_type == BlockType.DIVIDE:
+    elif block_type == BlockType.DIVIDE:
         blk = divide(var_factory, item_name)
         blk.name = item_name
         return blk
 
     # ABSOLUT (single input -> single output)
-    if block_type == BlockType.ABS:
+    elif block_type == BlockType.ABS:
         blk = absolut(var_factory, item_name)
         blk.name = item_name
         return blk
 
     # GENRAW (simple model)
-    if block_type == BlockType.GENRAW:
+    elif block_type == BlockType.GENRAW:
         blk = get_genrow_rms_template(var_factory).block
         blk.name = item_name
         return blk
 
     # GENQEC (generator with saturation)
-    if block_type == BlockType.GENQEC:
+    elif block_type == BlockType.GENQEC:
         blk = get_genqec_rms(var_factory, item_name).block
         blk.name = item_name
         return blk
 
     # GOVERNOR (governor with control)
-    if block_type == BlockType.GOV:
+    elif block_type == BlockType.GOV:
         blk = get_governor_rms(var_factory, item_name).block
         blk.name = item_name
         return blk
 
     # STABILIZER (stabilizer)
-    if block_type == BlockType.STAB:
+    elif block_type == BlockType.STAB:
         blk = get_stabilizer_rms(var_factory, item_name).block
         blk.name = item_name
         return blk
 
     # EXCITER (exciter)
-    if block_type == BlockType.EXCITER:
+    elif block_type == BlockType.EXCITER:
         blk = get_exciter_rms(var_factory, item_name).block
         blk.name = item_name
         return blk
 
     # LINE (line)
-    if block_type == BlockType.LINE:
+    elif block_type == BlockType.LINE:
         blk = get_line_rms_template(var_factory).block
         blk.name = item_name
         return blk
 
     # LOAD (line)
-    if block_type == BlockType.LOAD:
+    elif block_type == BlockType.LOAD:
         blk = get_load_rms_template(var_factory).block
         blk.name = item_name
         return blk

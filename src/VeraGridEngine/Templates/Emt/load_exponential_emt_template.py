@@ -15,7 +15,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Expr, Var
 from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType, VarPowerFlowRefferenceType
 
 
-def get_exponential_load_3ph_emt(vf: VarFactory, name: str = "EXP_Load_EMT_3ph") -> EmtModelTemplate:
+def get_exponential_load_emt(vf: VarFactory, name: str = "EXP_Load_EMT_3ph") -> EmtModelTemplate:
     """
     Build the three-phase EMT exponential load template.
 

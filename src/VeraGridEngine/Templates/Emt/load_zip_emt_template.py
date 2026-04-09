@@ -8,7 +8,7 @@ from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType, 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 
-def get_load_ZIP_3ph_emt_template(vf: VarFactory,   name: str = "ZIP_Load_EMT_3ph") -> EmtModelTemplate:
+def get_load_ZIP_emt_template(vf: VarFactory, name: str = "ZIP_Load_EMT_3ph") -> EmtModelTemplate:
     """
     ZIP load model template in the abc domain
     :param grid: MultiCircuit

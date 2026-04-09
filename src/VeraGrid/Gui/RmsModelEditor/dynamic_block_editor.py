@@ -3269,7 +3269,24 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 ],
             }
         elif mode == DynamicEditorMode.EMT:
-            self.tree_structure = dict()
+            self.tree_structure = {
+                "Basic": [
+                    ("Const", BlockType.CONST),
+                    ("Gain", BlockType.GAIN),
+                    ("Sum", BlockType.SUM),
+                    ("Substr", BlockType.SUBSTR),
+                    ("Product", BlockType.PRODUCT),
+                    ("Divide", BlockType.DIVIDE),
+                    ("Abs", BlockType.ABS),
+                ],
+                "Devices": [
+                    ("Generator", BlockType.EMT_GENERATOR),
+                    ("Governor", BlockType.GOV),
+                    ("Stabilizer", BlockType.STAB),
+                    ("Exciter", BlockType.EXCITER),
+                    ("Generic", BlockType.GENERIC),
+                ],
+            }
         else:
             self.tree_structure = dict()
 
