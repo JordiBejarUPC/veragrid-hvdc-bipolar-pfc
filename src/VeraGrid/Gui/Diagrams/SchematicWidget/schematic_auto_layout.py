@@ -194,9 +194,9 @@ def get_layout_edge_radius_step(graph: nx.Graph, from_idx: int, to_idx: int, bas
     # Transformer-like and switching devices should cluster the connected buses more tightly
     # than actual network spans represented by lines and similar corridor devices.
     if edge_kind == DeviceType.Transformer2WDevice.value:
-        radius_factor = 0.28
+        radius_factor = 0.16
     elif edge_kind == DeviceType.WindingDevice.value:
-        radius_factor = 0.22
+        radius_factor = 0.12
     elif edge_kind == DeviceType.SwitchDevice.value:
         radius_factor = 0.18
     elif edge_kind == DeviceType.VscDevice.value:
@@ -215,6 +215,135 @@ def get_layout_edge_radius_step(graph: nx.Graph, from_idx: int, to_idx: int, bas
         radius_factor = 1.0
 
     return base_radius_gap * radius_factor
+
+
+def is_layout_edge_transformer_compact_kind(edge_kind: str) -> bool:
+    """
+    Determine whether one edge kind should be aggressively compacted in the schematic.
+
+    Transformer-like couplings do not represent corridor distance. They represent
+    a tight electrical relationship around the same station area, so the connected
+    node symbols should remain visually close.
+
+    :param edge_kind: Edge device type value.
+    :return: ``True`` when the edge should be compacted strongly.
+    """
+    if edge_kind == DeviceType.Transformer2WDevice.value:
+        return True
+    elif edge_kind == DeviceType.WindingDevice.value:
+        return True
+    else:
+        return False
+
+
+def get_layout_edge_max_compact_distance(graph: nx.Graph,
+                                         from_idx: int,
+                                         to_idx: int,
+                                         base_radius_gap: float) -> float:
+    """
+    Get the maximum preferred Euclidean distance for compact transformer couplings.
+
+    The target distance is intentionally much smaller than the normal radial gap.
+    This keeps buses linked through 2-winding transformers or the winding spokes of
+    3-winding and N-winding transformers from spreading apart as the radial sectors
+    expand.
+
+    :param graph: Diagram graph.
+    :param from_idx: Source node index.
+    :param to_idx: Target node index.
+    :param base_radius_gap: Base radial step used for line-like edges.
+    :return: Maximum preferred Euclidean edge length in layout units.
+    """
+    edge_kind: str = get_layout_edge_kind(graph=graph, from_idx=from_idx, to_idx=to_idx)
+
+    if edge_kind == DeviceType.Transformer2WDevice.value:
+        return base_radius_gap * 0.14
+    elif edge_kind == DeviceType.WindingDevice.value:
+        return base_radius_gap * 0.10
+    else:
+        return base_radius_gap
+
+
+def refine_positions_for_transformer_compactness(component_graph: nx.Graph,
+                                                 positions: Dict[int, np.ndarray],
+                                                 base_radius_gap: float,
+                                                 iteration_count: int = 14,
+                                                 blend_factor: float = 0.32) -> Dict[int, np.ndarray]:
+    """
+    Contract transformer-linked nodes after the coarse radial placement.
+
+    The radial tree placement decides the global spider-web geometry, but it can still
+    leave transformer-connected nodes too far apart because their angular sectors may
+    widen with the surrounding subtree. This refinement only contracts compact
+    transformer edges and leaves line corridors untouched.
+
+    :param component_graph: Connected component graph.
+    :param positions: Initial node positions for the component.
+    :param base_radius_gap: Base radial step used for line-like edges.
+    :param iteration_count: Number of contraction iterations.
+    :param blend_factor: Fraction of the excess edge length corrected per iteration.
+    :return: Refined component positions.
+    """
+    refined_positions: Dict[int, np.ndarray] = dict()
+    node_idx: int
+
+    for node_idx, pos_vec in positions.items():
+        refined_positions[node_idx] = np.array([float(pos_vec[0]), float(pos_vec[1])], dtype=float)
+
+    iteration_idx: int
+    for iteration_idx in range(iteration_count):
+        correction_sum_by_node: Dict[int, np.ndarray] = dict()
+        correction_count_by_node: Dict[int, int] = dict()
+        from_idx: int
+        to_idx: int
+        moved_any: bool = False
+
+        for node_idx in refined_positions.keys():
+            correction_sum_by_node[node_idx] = np.zeros(2, dtype=float)
+            correction_count_by_node[node_idx] = 0
+
+        for from_idx, to_idx in component_graph.edges():
+            edge_kind: str = get_layout_edge_kind(graph=component_graph, from_idx=from_idx, to_idx=to_idx)
+
+            if is_layout_edge_transformer_compact_kind(edge_kind=edge_kind):
+                from_pos: np.ndarray = refined_positions[from_idx]
+                to_pos: np.ndarray = refined_positions[to_idx]
+                delta_vec: np.ndarray = to_pos - from_pos
+                distance: float = float(np.linalg.norm(delta_vec))
+                target_distance: float = get_layout_edge_max_compact_distance(graph=component_graph,
+                                                                             from_idx=from_idx,
+                                                                             to_idx=to_idx,
+                                                                             base_radius_gap=base_radius_gap)
+
+                if distance > target_distance and distance > 1e-9:
+                    excess_ratio: float = (distance - target_distance) / distance
+                    correction_vec: np.ndarray = delta_vec * (0.5 * blend_factor * excess_ratio)
+                    correction_sum_by_node[from_idx] = correction_sum_by_node[from_idx] + correction_vec
+                    correction_sum_by_node[to_idx] = correction_sum_by_node[to_idx] - correction_vec
+                    correction_count_by_node[from_idx] += 1
+                    correction_count_by_node[to_idx] += 1
+                    moved_any = True
+                else:
+                    distance = distance
+            else:
+                edge_kind = edge_kind
+
+        for node_idx in refined_positions.keys():
+            correction_count: int = correction_count_by_node[node_idx]
+
+            if correction_count > 0:
+                average_correction: np.ndarray = correction_sum_by_node[node_idx] / float(correction_count)
+                refined_positions[node_idx] = refined_positions[node_idx] + average_correction
+            else:
+                correction_count = correction_count
+
+        if moved_any:
+            moved_any = moved_any
+        else:
+            break
+
+    iteration_idx = iteration_idx
+    return refined_positions
 
 
 def select_power_system_root(graph: nx.Graph, component_nodes: List[int]) -> int:
@@ -933,6 +1062,13 @@ def build_hybrid_power_system_layout(graph: nx.DiGraph, position_scale=0.5) -> D
             x_pos: float = radius * np.cos(theta)
             y_pos: float = radius * np.sin(theta)
             component_positions[node_idx] = np.array([x_pos, y_pos], dtype=float)
+
+        # The radial stage fixes the global island geometry first. A second local pass
+        # then contracts transformer-linked nodes so station equipment does not stretch
+        # apart simply because its surrounding subtree occupies a wide angular sector.
+        component_positions = refine_positions_for_transformer_compactness(component_graph=component_graph,
+                                                                           positions=component_positions,
+                                                                           base_radius_gap=radius_gap)
 
         min_component_x: float = 0.0
         max_component_x: float = 0.0

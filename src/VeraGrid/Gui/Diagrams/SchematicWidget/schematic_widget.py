@@ -1711,7 +1711,8 @@ class SchematicWidget(BaseDiagramWidget):
         for dev_tpe in [DeviceType.BusDevice,
                         DeviceType.BusBarDevice,
                         DeviceType.FluidNodeDevice,
-                        DeviceType.Transformer3WDevice]:
+                        DeviceType.Transformer3WDevice,
+                        DeviceType.TransformerNwDevice]:
 
             graphic_objects_dict = self.graphics_manager.graphic_dict.get(dev_tpe, dict())
 
