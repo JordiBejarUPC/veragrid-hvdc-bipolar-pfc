@@ -179,7 +179,7 @@ class Transformer3W(PhysicalDevice):
     def __init__(self, idtag: Union[str, None] = None,
                  code: str = '',
                  name: str = 'Branch',
-                 bus0: Union[None, Bus] = None,
+                 bus0: Bus | None = None,
                  bus1: Bus = None,
                  bus2: Bus = None,
                  bus3: Bus = None,
@@ -738,41 +738,53 @@ class Transformer3W(PhysicalDevice):
         :param Sbase:
         :return:
         """
-        z_series12, y_shunt12 = get_impedances(VH_bus=max(self.bus1.Vnom, self.bus2.Vnom),
-                                               VL_bus=min(self.bus1.Vnom, self.bus2.Vnom),
-                                               Sn=self.rate1,
-                                               HV=max(self.V1, self.V2),
-                                               LV=min(self.V1, self.V2),
-                                               Pcu=self.Pcu12,
-                                               Pfe=self.Pfe,
-                                               I0=self.I0,
-                                               Vsc=self.Vsc12,
-                                               Sbase=Sbase,
-                                               GR_hv1=0.5)
+        z_series12, y_shunt12 = get_impedances(
+            # VH_bus=max(self.bus1.Vnom, self.bus2.Vnom),
+            # VL_bus=min(self.bus1.Vnom, self.bus2.Vnom),
+            VH_bus=max(self.V1, self.V2),
+            VL_bus=min(self.V1, self.V2),
+            Sn=self.rate1,
+            HV=max(self.V1, self.V2),
+            LV=min(self.V1, self.V2),
+            Pcu=self.Pcu12,
+            Pfe=self.Pfe,
+            I0=self.I0,
+            Vsc=self.Vsc12,
+            Sbase=Sbase,
+            GR_hv1=0.5
+        )
 
-        z_series23, y_shunt23 = get_impedances(VH_bus=max(self.bus2.Vnom, self.bus3.Vnom),
-                                               VL_bus=min(self.bus2.Vnom, self.bus3.Vnom),
-                                               Sn=self.rate2,
-                                               HV=max(self.V2, self.V3),
-                                               LV=min(self.V2, self.V3),
-                                               Pcu=self.Pcu23,
-                                               Pfe=self.Pfe,
-                                               I0=self.I0,
-                                               Vsc=self.Vsc23,
-                                               Sbase=Sbase,
-                                               GR_hv1=0.5)
+        z_series23, y_shunt23 = get_impedances(
+            # VH_bus=max(self.bus2.Vnom, self.bus3.Vnom),
+            # VL_bus=min(self.bus2.Vnom, self.bus3.Vnom),
+            VH_bus=max(self.V2, self.V3),
+            VL_bus=min(self.V2, self.V3),
+            Sn=self.rate2,
+            HV=max(self.V2, self.V3),
+            LV=min(self.V2, self.V3),
+            Pcu=self.Pcu23,
+            Pfe=self.Pfe,
+            I0=self.I0,
+            Vsc=self.Vsc23,
+            Sbase=Sbase,
+            GR_hv1=0.5
+        )
 
-        z_series31, y_shunt31 = get_impedances(VH_bus=max(self.bus3.Vnom, self.bus1.Vnom),
-                                               VL_bus=min(self.bus3.Vnom, self.bus1.Vnom),
-                                               Sn=self.rate3,
-                                               HV=max(self.V3, self.V1),
-                                               LV=min(self.V3, self.V1),
-                                               Pcu=self.Pcu31,
-                                               Pfe=self.Pfe,
-                                               I0=self.I0,
-                                               Vsc=self.Vsc31,
-                                               Sbase=Sbase,
-                                               GR_hv1=0.5)
+        z_series31, y_shunt31 = get_impedances(
+            # VH_bus=max(self.bus3.Vnom, self.bus1.Vnom),
+            # VL_bus=min(self.bus3.Vnom, self.bus1.Vnom),
+            VH_bus=max(self.V3, self.V1),
+            VL_bus=min(self.V3, self.V1),
+            Sn=self.rate3,
+            HV=max(self.V3, self.V1),
+            LV=min(self.V3, self.V1),
+            Pcu=self.Pcu31,
+            Pfe=self.Pfe,
+            I0=self.I0,
+            Vsc=self.Vsc31,
+            Sbase=Sbase,
+            GR_hv1=0.5
+        )
 
         self._r12 = np.round(z_series12.real, 6)
         self._r23 = np.round(z_series23.real, 6)

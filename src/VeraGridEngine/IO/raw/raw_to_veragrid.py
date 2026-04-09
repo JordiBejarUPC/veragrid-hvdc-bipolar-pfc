@@ -1110,7 +1110,7 @@ def psse_to_veragrid(psse_circuit: PsseCircuit,
     :return: MultiCircuit instance
     """
 
-    circuit = MultiCircuit(Sbase=psse_circuit.SBASE)
+    circuit = MultiCircuit(Sbase=psse_circuit.SBASE, fbase=psse_circuit.BASFRQ)
     circuit.comments = 'Converted from a PSS/e .raw file'
 
     circuit.areas = [dev.Area(name=x.ARNAME) for x in psse_circuit.areas]

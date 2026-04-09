@@ -72,6 +72,7 @@ from VeraGrid.Gui.general_dialogues import InputNumberDialogue
 import VeraGrid.Gui.Visualization.visualization as viz
 from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
+from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_auto_layout import calculate_schematic_layout
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
@@ -391,7 +392,6 @@ class SchematicWidget(BaseDiagramWidget):
                  time_index: Union[None, int] = None):
         """
         Creates the Diagram Editor (DiagramEditorWidget)
-        :param circuit: Circuit that is handling
         :param diagram: SchematicDiagram to use (optional)
         :param default_bus_voltage: Default bus voltages (kV)
         :param time_index: time index to represent
@@ -1812,43 +1812,29 @@ class SchematicWidget(BaseDiagramWidget):
         """
 
         nx_graph, node_like_api_objects = self.diagram.build_graph()
+        calculated_positions: Dict[int, np.ndarray] = calculate_schematic_layout(graph=nx_graph, sel=sel)
 
-        layout_algorithms_dict = dict()
-        layout_algorithms_dict['circular_layout'] = nx.circular_layout
-        layout_algorithms_dict['random_layout'] = nx.random_layout
-        layout_algorithms_dict['shell_layout'] = nx.shell_layout
-        layout_algorithms_dict['spring_layout'] = nx.spring_layout
-        layout_algorithms_dict['spectral_layout'] = nx.spectral_layout
-        layout_algorithms_dict['fruchterman_reingold_layout'] = nx.fruchterman_reingold_layout
-        layout_algorithms_dict['kamada_kawai'] = nx.kamada_kawai_layout
+        # Each graph node index matches the position of the API object in node_like_api_objects.
+        # This keeps the layout transfer explicit and avoids special-case remapping logic.
+        node_idx: int
+        elm: Bus | FluidNode | Transformer3W
 
-        if sel == 'random_layout':
-            pos = nx.random_layout(nx_graph)
-        elif sel == 'spring_layout':
-            pos = nx.spring_layout(nx_graph, iterations=100, scale=10)
-        elif sel == 'shell_layout':
-            pos = nx.shell_layout(nx_graph, scale=10)
-        elif sel == 'circular_layout':
-            pos = nx.circular_layout(nx_graph, scale=10)
-        elif sel == 'kamada_kawai':
-            pos = nx.kamada_kawai_layout(nx_graph, scale=10)
-        elif sel == 'fruchterman_reingold_layout':
-            pos = nx.fruchterman_reingold_layout(nx_graph, scale=10)
-        else:
-            pos = nx.spring_layout(nx_graph, iterations=100, scale=10)
-
-        # assign the positions to the graphical objects of the nodes
-        for i, elm in enumerate(node_like_api_objects):
-            loc = self.diagram.query_point(elm)
+        for node_idx, elm in enumerate(node_like_api_objects):
+            loc: GraphicLocation | None = self.diagram.query_point(elm)
             graphic_object = self.graphics_manager.query(elm=elm)
+            pos_vec: np.ndarray | None = calculated_positions.get(node_idx, None)
 
-            if graphic_object is not None:
-                x, y = pos[i] * 500
+            if loc is not None and graphic_object is not None and pos_vec is not None:
+                x_pos: float = float(pos_vec[0]) * 500.0
+                y_pos: float = float(pos_vec[1]) * 500.0
 
-                # apply changes to the API objects
-                loc.x = x
-                loc.y = y
-                graphic_object.set_position(x, y)
+                # The persisted schematic coordinates and the live graphics item
+                # must be updated together so subsequent redraws stay consistent.
+                loc.x = x_pos
+                loc.y = y_pos
+                graphic_object.set_position(x_pos, y_pos)
+            else:
+                loc = loc
 
         self.center_nodes()
 
@@ -5319,7 +5305,7 @@ def add_to_schematic_diagram(diagram: SchematicDiagram,
 
             x = int(bus.x * explode_factor)
             y = int(bus.y * explode_factor)
-            diagram.set_point(device=bus, location=GraphicLocation(x=x, y=y, h=bus.h, w=bus.w))
+            diagram.set_point(device=bus, location=GraphicLocation(x=x, y=y, h=bus.h, w=bus.w, api_object=bus))
 
     def add_devices_list(cls: str, dev_lst: List[ALL_DEV_TYPES]):
         """
@@ -5336,7 +5322,7 @@ def add_to_schematic_diagram(diagram: SchematicDiagram,
             if prog_func is not None:
                 prog_func((i + 1) / nn * 100.0)
 
-            diagram.set_point(device=elm, location=GraphicLocation())
+            diagram.set_point(device=elm, location=GraphicLocation(api_object=elm))
 
     # --------------------------------------------------------------------------------------------------------------
 
