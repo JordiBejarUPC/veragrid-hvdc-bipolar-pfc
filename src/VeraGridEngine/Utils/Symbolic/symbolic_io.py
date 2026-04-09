@@ -659,14 +659,22 @@ def block_deep_copy(block: Block, var_factory: VarFactory):
     return block2
 
 
-def duplicate_var(var_factory: VarFactory, old_to_new_var: Dict[int, Var], var: Var) -> Var:
+def duplicate_var(var_factory: VarFactory, old_to_new_var: Dict[int, Var], var: Var | None) -> Var | None:
     """
+    Duplicate one symbolic variable while preserving UID-based reuse.
 
-    :param var_factory:
-    :param old_to_new_var:
-    :param var:
-    :return:
+    The helper now accepts ``None`` because some FMU/EMT external mappings intentionally
+    leave optional references unresolved. In those cases the missing mapping must stay
+    missing after the block clone.
+
+    :param var_factory: Variable factory used to allocate the cloned variable.
+    :param old_to_new_var: UID-to-variable clone map.
+    :param var: Source variable or ``None``.
+    :return: Cloned variable or ``None``.
     """
+    if var is None:
+        return None
+
     if var.uid in old_to_new_var:
         return old_to_new_var[var.uid]
 

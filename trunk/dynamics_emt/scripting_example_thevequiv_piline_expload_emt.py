@@ -7,26 +7,10 @@
 
 from __future__ import annotations
 
-import os
-import sys
 from typing import Dict, Tuple, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
-
-SCRIPT_DIR: str = os.path.abspath(os.path.dirname(__file__))
-REPO_ROOT: str = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
-SRC_ROOT: str = os.path.join(REPO_ROOT, "src")
-
-if SRC_ROOT not in sys.path:
-    sys.path.insert(0, SRC_ROOT)
-else:
-    sys.path = sys.path
-
-if REPO_ROOT not in sys.path:
-    sys.path.insert(0, REPO_ROOT)
-else:
-    sys.path = sys.path
 
 import VeraGridEngine.api as gce
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
@@ -134,15 +118,15 @@ def attach_emt_models(
         get_bus_emt_template(grid, bus)
 
     gen_mdl: Block = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
-    line_mdl: Block = get_pi_line_emt_template(vf=grid.var_factory, line=line0).block
+    line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = True, phA = True, phB = True, phC = True).block
     load_mdl: Block = get_exponential_load_3ph_emt(vf=grid.var_factory).block
 
     # ``a = 2`` reproduces an impedance-like active-power dependence. This keeps the
     # example aligned with the original resistive load while exercising the new EMT
     # exponential-load initialization chain.
-    load_mdl.set_parameter_in_model(var_name="a_exp_Load_EMT_3ph", new_value=2.0)
-    load_mdl.set_parameter_in_model(var_name="b_exp_Load_EMT_3ph", new_value=2.0)
-    load_mdl.set_parameter_in_model(var_name="V0_exp_Load_EMT_3ph", new_value=float(np.sqrt(2.0)))
+    load_mdl.set_parameter_in_model(var_name="a_EXP_Load_EMT_3ph", new_value=2.0)
+    load_mdl.set_parameter_in_model(var_name="b_EXP_Load_EMT_3ph", new_value=2.0)
+    load_mdl.set_parameter_in_model(var_name="V0_EXP_Load_EMT_3ph", new_value=float(np.sqrt(2.0)))
 
     set_emt_model(device=generator, model=gen_mdl, var_factory=grid.var_factory)
     set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
@@ -323,10 +307,10 @@ def build_plot_data(
     data["i_gen_a"] = get_signal(problem, gen_mdl, "i_A_emt_thevenin_eq_generator_template", y)
     data["i_line_f_a"] = get_signal(problem, line_mdl, "if_Pi_0", y)
     data["i_line_t_a"] = get_signal(problem, line_mdl, "it_Pi_0", y)
-    data["i_load_a"] = -get_signal(problem, load_mdl, "i_A_exp_Load_EMT_3ph", y)
+    data["i_load_a"] = -get_signal(problem, load_mdl, "i_A_EXP_Load_EMT_3ph", y)
 
-    data["p_load_a"] = get_signal(problem, load_mdl, "P_A_exp_Load_EMT_3ph", y)
-    data["q_load_a"] = get_signal(problem, load_mdl, "Q_A_exp_Load_EMT_3ph", y)
+    data["p_load_a"] = get_signal(problem, load_mdl, "P_A_EXP_Load_EMT_3ph", y)
+    data["q_load_a"] = get_signal(problem, load_mdl, "Q_A_EXP_Load_EMT_3ph", y)
 
     return data
 

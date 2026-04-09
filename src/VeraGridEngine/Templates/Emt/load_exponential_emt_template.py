@@ -2,177 +2,226 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+
+"""EMT exponential-load template."""
+
+from typing import Dict
+
 import numpy as np
 
-from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType, VarPowerFlowRefferenceType, DeviceType
-from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Utils.Symbolic.symbolic import Expr, Var
+from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType, VarPowerFlowRefferenceType
+
 
 def get_exponential_load_3ph_emt(vf: VarFactory, name: str = "EXP_Load_EMT_3ph") -> EmtModelTemplate:
     """
-    EMT 3-phase abc exponential load as CURRENT INJECTION.
+    Build the three-phase EMT exponential load template.
 
-      P = P0 * (Vm/V0)^a
-      Q = Q0 * (Vm/V0)^b
+    The load is modeled as a current injection driven by a voltage-dependent
+    active and reactive power law. Positive API powers represent consumption,
+    while EMT injected powers remain negative under the network injection sign
+    convention.
 
-    Same explicit structure as ZIP: all intermediates are algebraic vars with algebraic eqs.
+    :param vf: EMT variable factory.
+    :param name: Symbolic block name.
+    :return: Configured EMT template.
     """
-
-    templ = EmtModelTemplate()
+    templ: EmtModelTemplate = EmtModelTemplate()
     templ.tpe = DeviceType.LoadDevice
     templ.name = name
     templ.block.name = name
 
-    v_A = vf.add_var("v_A_" + name)
-    v_B = vf.add_var("v_B_" + name)
-    v_C = vf.add_var("v_C_" + name)
-    templ.block.in_vars = [v_A, v_B, v_C]
+    c2: Expr = vf.add_const(2.0)
+    c05: Expr = vf.add_const(0.5)
 
-    P0_A = vf.add_var("P0_A_" + name)
-    Q0_A = vf.add_var("Q0_A_" + name)
-    P0_B = vf.add_var("P0_B_" + name)
-    Q0_B = vf.add_var("Q0_B_" + name)
-    P0_C = vf.add_var("P0_C_" + name)
-    Q0_C = vf.add_var("Q0_C_" + name)
+    # The phase voltages must expose PF references so the EMT topology builder can
+    # connect the load to its bus phases automatically.
+    v_a: Var = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowRefferenceType.v_A)
+    v_b: Var = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowRefferenceType.v_B)
+    v_c: Var = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowRefferenceType.v_C)
+    templ.block.in_vars = [v_a, v_b, v_c]
 
-    V0 = vf.add_var("V0_" + name)
-    a  = vf.add_var("a_"  + name)
-    b  = vf.add_var("b_"  + name)
+    # PF-driven voltage derivatives are runtime parameters because they depend on
+    # the solved operating point but remain constant during this example.
+    d_v_a: Var = vf.add_var(name=f"d_v_A_{name}")
+    d_v_b: Var = vf.add_var(name=f"d_v_B_{name}")
+    d_v_c: Var = vf.add_var(name=f"d_v_C_{name}")
 
-    f_nom  = vf.add_var("f_nom_" + name)
-    k_sogi = vf.add_var("k_sogi_" + name)
-    eps    = vf.add_var("eps_" + name)
+    p0_a: Var = vf.add_var(name=f"P0_A_{name}")
+    q0_a: Var = vf.add_var(name=f"Q0_A_{name}")
+    p0_b: Var = vf.add_var(name=f"P0_B_{name}")
+    q0_b: Var = vf.add_var(name=f"Q0_B_{name}")
+    p0_c: Var = vf.add_var(name=f"P0_C_{name}")
+    q0_c: Var = vf.add_var(name=f"Q0_C_{name}")
+    v0: Var = vf.add_var(name=f"V0_{name}")
+    alpha_p: Var = vf.add_var(name=f"a_{name}")
+    alpha_q: Var = vf.add_var(name=f"b_{name}")
+    k_sogi: Var = vf.add_var(name=f"k_sogi_{name}")
+    eps: Var = vf.add_var(name=f"eps_{name}")
+    omega: Var = vf.add_var(name=f"omega_{name}")
 
-    templ.block.event_dict[P0_A] = vf.add_const(-0.0999999/3.0)
-    templ.block.event_dict[Q0_A] = vf.add_const(-0.009999999862208533/3.0)
-    templ.block.event_dict[P0_B] = vf.add_const(-0.0999999/3.0)
-    templ.block.event_dict[Q0_B] = vf.add_const(-0.009999999862208533/3.0)
-    templ.block.event_dict[P0_C] = vf.add_const(-0.0999999/3.0)
-    templ.block.event_dict[Q0_C] = vf.add_const(-0.009999999862208533/3.0)
+    templ.block.event_dict[p0_a] = vf.add_const(0.1 / 3.0)
+    templ.block.event_dict[q0_a] = vf.add_const(0.01 / 3.0)
+    templ.block.event_dict[p0_b] = vf.add_const(0.1 / 3.0)
+    templ.block.event_dict[q0_b] = vf.add_const(0.01 / 3.0)
+    templ.block.event_dict[p0_c] = vf.add_const(0.1 / 3.0)
+    templ.block.event_dict[q0_c] = vf.add_const(0.01 / 3.0)
+    templ.block.event_dict[v0] = vf.add_const(float(np.sqrt(2.0)))
+    templ.block.event_dict[alpha_p] = vf.add_const(2.0)
+    templ.block.event_dict[alpha_q] = vf.add_const(2.0)
+    templ.block.event_dict[k_sogi] = vf.add_const(float(np.sqrt(2.0)))
+    templ.block.event_dict[eps] = vf.add_const(1e-12)
+    templ.block.event_dict[omega] = vf.add_const(2.0 * np.pi * 50.0)
+    templ.block.event_dict[d_v_a] = vf.add_const(None)
+    templ.block.event_dict[d_v_b] = vf.add_const(None)
+    templ.block.event_dict[d_v_c] = vf.add_const(None)
 
-    templ.block.event_dict[V0] = vf.add_const(1.0)
-    templ.block.event_dict[a]  = vf.add_const(5.0)
-    templ.block.event_dict[b]  = vf.add_const(5.0)
+    u_a: Var = vf.add_var(name=f"u_A_{name}")
+    q_a: Var = vf.add_var(name=f"q_A_{name}")
+    u_b: Var = vf.add_var(name=f"u_B_{name}")
+    q_b: Var = vf.add_var(name=f"q_B_{name}")
+    u_c: Var = vf.add_var(name=f"u_C_{name}")
+    q_c: Var = vf.add_var(name=f"q_C_{name}")
+    d_u_a: Var = vf.add_diff_var(name=f"d_u_A_{name}", base_var=u_a)
+    d_q_a: Var = vf.add_diff_var(name=f"d_q_A_{name}", base_var=q_a)
+    d_u_b: Var = vf.add_diff_var(name=f"d_u_B_{name}", base_var=u_b)
+    d_q_b: Var = vf.add_diff_var(name=f"d_q_B_{name}", base_var=q_b)
+    d_u_c: Var = vf.add_diff_var(name=f"d_u_C_{name}", base_var=u_c)
+    d_q_c: Var = vf.add_diff_var(name=f"d_q_C_{name}", base_var=q_c)
 
-    templ.block.event_dict[f_nom]  = vf.add_const(50.0)
-    templ.block.event_dict[k_sogi] = vf.add_const(1.41421356237)
-    templ.block.event_dict[eps]    = vf.add_const(1e-6)
-
-    u_A = vf.add_var("u_A_" + name)
-    q_A = vf.add_var("q_A_" + name)
-    u_B = vf.add_var("u_B_" + name)
-    q_B = vf.add_var("q_B_" + name)
-    u_C = vf.add_var("u_C_" + name)
-    q_C = vf.add_var("q_C_" + name)
-
-    d_u_A = vf.add_diff_var("d_u_A_" + name, base_var=u_A)
-    d_q_A = vf.add_diff_var("d_q_A_" + name, base_var=q_A)
-    d_u_B = vf.add_diff_var("d_u_B_" + name, base_var=u_B)
-    d_q_B = vf.add_diff_var("d_q_B_" + name, base_var=q_B)
-    d_u_C = vf.add_diff_var("d_u_C_" + name, base_var=u_C)
-    d_q_C = vf.add_diff_var("d_q_C_" + name, base_var=q_C)
-
-    templ.block.state_vars = [u_A, q_A, u_B, q_B, u_C, q_C]
-    templ.block.diff_vars  = [d_u_A, d_q_A, d_u_B, d_q_B, d_u_C, d_q_C]
-
+    templ.block.state_vars = [u_a, q_a, u_b, q_b, u_c, q_c]
+    templ.block.diff_vars = [d_u_a, d_q_a, d_u_b, d_q_b, d_u_c, d_q_c]
     templ.block.state_eqs = [
-        d_u_A - (k_sogi * (2 * np.pi * f_nom) * (v_A - u_A) - (2 * np.pi * f_nom) * q_A),
-        d_q_A - ((2 * np.pi * f_nom) * u_A),
-
-        d_u_B - (k_sogi * (2 * np.pi * f_nom) * (v_B - u_B) - (2 * np.pi * f_nom) * q_B),
-        d_q_B - ((2 * np.pi * f_nom) * u_B),
-
-        d_u_C - (k_sogi * (2 * np.pi * f_nom) * (v_C - u_C) - (2 * np.pi * f_nom) * q_C),
-        d_q_C - ((2 * np.pi * f_nom) * u_C),
+        k_sogi * omega * (v_a - u_a) - omega * q_a,
+        omega * u_a,
+        k_sogi * omega * (v_b - u_b) - omega * q_b,
+        omega * u_b,
+        k_sogi * omega * (v_c - u_c) - omega * q_c,
+        omega * u_c,
     ]
 
-    VA2 = vf.add_var("VA2_" + name)
-    VB2 = vf.add_var("VB2_" + name)
-    VC2 = vf.add_var("VC2_" + name)
-    VmA = vf.add_var("VmA_" + name)
-    VmB = vf.add_var("VmB_" + name)
-    VmC = vf.add_var("VmC_" + name)
-    rA  = vf.add_var("rA_"  + name)
-    rB  = vf.add_var("rB_"  + name)
-    rC  = vf.add_var("rC_"  + name)
-
-    P_A = vf.add_var("P_A_" + name)
-    Q_A = vf.add_var("Q_A_" + name)
-    P_B = vf.add_var("P_B_" + name)
-    Q_B = vf.add_var("Q_B_" + name)
-    P_C = vf.add_var("P_C_" + name)
-    Q_C = vf.add_var("Q_C_" + name)
-
-    i_A = vf.add_var("i_A_" + name)
-    i_B = vf.add_var("i_B_" + name)
-    i_C = vf.add_var("i_C_" + name)
+    va2: Var = vf.add_var(name=f"VA2_{name}")
+    vb2: Var = vf.add_var(name=f"VB2_{name}")
+    vc2: Var = vf.add_var(name=f"VC2_{name}")
+    vm_a: Var = vf.add_var(name=f"VmA_{name}")
+    vm_b: Var = vf.add_var(name=f"VmB_{name}")
+    vm_c: Var = vf.add_var(name=f"VmC_{name}")
+    r_a: Var = vf.add_var(name=f"rA_{name}")
+    r_b: Var = vf.add_var(name=f"rB_{name}")
+    r_c: Var = vf.add_var(name=f"rC_{name}")
+    p_a: Var = vf.add_var(name=f"P_A_{name}")
+    q_load_a: Var = vf.add_var(name=f"Q_A_{name}")
+    p_b: Var = vf.add_var(name=f"P_B_{name}")
+    q_load_b: Var = vf.add_var(name=f"Q_B_{name}")
+    p_c: Var = vf.add_var(name=f"P_C_{name}")
+    q_load_c: Var = vf.add_var(name=f"Q_C_{name}")
+    i_a: Var = vf.add_var(name=f"i_A_{name}")
+    i_b: Var = vf.add_var(name=f"i_B_{name}")
+    i_c: Var = vf.add_var(name=f"i_C_{name}")
 
     templ.block.algebraic_vars = [
-        VA2, VB2, VC2, VmA, VmB, VmC, rA, rB, rC,
-        P_A, Q_A, P_B, Q_B, P_C, Q_C,
-        i_A, i_B, i_C
+        va2, vb2, vc2,
+        vm_a, vm_b, vm_c,
+        r_a, r_b, r_c,
+        p_a, q_load_a, p_b, q_load_b, p_c, q_load_c,
+        i_a, i_b, i_c,
     ]
-
     templ.block.algebraic_eqs = [
-        VA2 - (u_A*u_A + q_A*q_A),
-        VB2 - (u_B*u_B + q_B*q_B),
-        VC2 - (u_C*u_C + q_C*q_C),
-
-        VmA - ((VA2 + eps) ** vf.add_const(0.5)),
-        VmB - ((VB2 + eps) ** vf.add_const(0.5)),
-        VmC - ((VC2 + eps) ** vf.add_const(0.5)),
-
-        rA - (VmA / V0),
-        rB - (VmB / V0),
-        rC - (VmC / V0),
-
-        P_A - (P0_A * (rA ** a)),
-        Q_A - (Q0_A * (rA ** b)),
-
-        P_B - (P0_B * (rB ** a)),
-        Q_B - (Q0_B * (rB ** b)),
-
-        P_C - (P0_C * (rC ** a)),
-        Q_C - (Q0_C * (rC ** b)),
-
-        i_A - ((u_A*P_A + q_A*Q_A) / (VA2 + eps)),
-        i_B - ((u_B*P_B + q_B*Q_B) / (VB2 + eps)),
-        i_C - ((u_C*P_C + q_C*Q_C) / (VC2 + eps)),
+        va2 - (u_a * u_a + q_a * q_a),
+        vb2 - (u_b * u_b + q_b * q_b),
+        vc2 - (u_c * u_c + q_c * q_c),
+        vm_a - ((va2 + eps) ** c05),
+        vm_b - ((vb2 + eps) ** c05),
+        vm_c - ((vc2 + eps) ** c05),
+        r_a - (vm_a / v0),
+        r_b - (vm_b / v0),
+        r_c - (vm_c / v0),
+        p_a + (p0_a * (r_a ** alpha_p)),
+        q_load_a + (q0_a * (r_a ** alpha_q)),
+        p_b + (p0_b * (r_b ** alpha_p)),
+        q_load_b + (q0_b * (r_b ** alpha_q)),
+        p_c + (p0_c * (r_c ** alpha_p)),
+        q_load_c + (q0_c * (r_c ** alpha_q)),
+        i_a - (c2 * (u_a * p_a + q_a * q_load_a) / (va2 + eps)),
+        i_b - (c2 * (u_b * p_b + q_b * q_load_b) / (vb2 + eps)),
+        i_c - (c2 * (u_c * p_c + q_c * q_load_c) / (vc2 + eps)),
     ]
 
-    templ.block.init_eqs = {
-        u_A: v_A,
-        q_A: vf.add_const(0.0),
-        u_B: v_B,
-        q_B: vf.add_const(0.0),
-        u_C: v_C,
-        q_C: vf.add_const(0.0),
-    }
+    init_eqs: Dict[Var, Expr] = dict()
+    init_eqs[u_a] = v_a
+    init_eqs[u_b] = v_b
+    init_eqs[u_c] = v_c
+    init_eqs[q_a] = -d_v_a / omega
+    init_eqs[q_b] = -d_v_b / omega
+    init_eqs[q_c] = -d_v_c / omega
+    init_eqs[va2] = u_a * u_a + q_a * q_a
+    init_eqs[vb2] = u_b * u_b + q_b * q_b
+    init_eqs[vc2] = u_c * u_c + q_c * q_c
+    init_eqs[vm_a] = (va2 + eps) ** c05
+    init_eqs[vm_b] = (vb2 + eps) ** c05
+    init_eqs[vm_c] = (vc2 + eps) ** c05
+    init_eqs[r_a] = vm_a / v0
+    init_eqs[r_b] = vm_b / v0
+    init_eqs[r_c] = vm_c / v0
+    init_eqs[p_a] = -(p0_a * (r_a ** alpha_p))
+    init_eqs[q_load_a] = -(q0_a * (r_a ** alpha_q))
+    init_eqs[p_b] = -(p0_b * (r_b ** alpha_p))
+    init_eqs[q_load_b] = -(q0_b * (r_b ** alpha_q))
+    init_eqs[p_c] = -(p0_c * (r_c ** alpha_p))
+    init_eqs[q_load_c] = -(q0_c * (r_c ** alpha_q))
+    init_eqs[i_a] = c2 * (u_a * p_a + q_a * q_load_a) / (va2 + eps)
+    init_eqs[i_b] = c2 * (u_b * p_b + q_b * q_load_b) / (vb2 + eps)
+    init_eqs[i_c] = c2 * (u_c * p_c + q_c * q_load_c) / (vc2 + eps)
+    templ.block.init_eqs = init_eqs
+
+    diff_init_eqs: Dict[Var, Expr] = dict()
+    diff_init_eqs[d_u_a] = d_v_a
+    diff_init_eqs[d_q_a] = omega * u_a
+    diff_init_eqs[d_u_b] = d_v_b
+    diff_init_eqs[d_q_b] = omega * u_b
+    diff_init_eqs[d_u_c] = d_v_c
+    diff_init_eqs[d_q_c] = omega * u_c
+    templ.block.diff_init_eqs = diff_init_eqs
 
     templ.block.external_mapping = {
+        VarPowerFlowRefferenceType.v_N: None,
+        VarPowerFlowRefferenceType.v_A: v_a,
+        VarPowerFlowRefferenceType.v_B: v_b,
+        VarPowerFlowRefferenceType.v_C: v_c,
         VarPowerFlowRefferenceType.P: None,
         VarPowerFlowRefferenceType.Q: None,
         VarPowerFlowRefferenceType.P_N: None,
         VarPowerFlowRefferenceType.Q_N: None,
-        VarPowerFlowRefferenceType.P_A: P_A,
-        VarPowerFlowRefferenceType.Q_A: Q_A,
-        VarPowerFlowRefferenceType.P_B: P_B,
-        VarPowerFlowRefferenceType.Q_B: Q_B,
-        VarPowerFlowRefferenceType.P_C: P_C,
-        VarPowerFlowRefferenceType.Q_C: Q_C,
+        VarPowerFlowRefferenceType.P_A: p_a,
+        VarPowerFlowRefferenceType.Q_A: q_load_a,
+        VarPowerFlowRefferenceType.P_B: p_b,
+        VarPowerFlowRefferenceType.Q_B: q_load_b,
+        VarPowerFlowRefferenceType.P_C: p_c,
+        VarPowerFlowRefferenceType.Q_C: q_load_c,
         VarPowerFlowRefferenceType.i_N: None,
-        VarPowerFlowRefferenceType.i_A: i_A,
-        VarPowerFlowRefferenceType.i_B: i_B,
-        VarPowerFlowRefferenceType.i_C: i_C,
+        VarPowerFlowRefferenceType.i_A: i_a,
+        VarPowerFlowRefferenceType.i_B: i_b,
+        VarPowerFlowRefferenceType.i_C: i_c,
+        VarPowerFlowRefferenceType.phi_v: None,
+        VarPowerFlowRefferenceType.phi: None,
+        VarPowerFlowRefferenceType.Vpk: None,
+        VarPowerFlowRefferenceType.Ipk: None,
+        VarPowerFlowRefferenceType.d_v_N: None,
+        VarPowerFlowRefferenceType.d_v_A: d_v_a,
+        VarPowerFlowRefferenceType.d_v_B: d_v_b,
+        VarPowerFlowRefferenceType.d_v_C: d_v_c,
     }
 
     templ.block.api_obj_mapping = {
-        ParamPowerFlowRefferenceType.Pl0_A: P0_A,
-        ParamPowerFlowRefferenceType.Ql0_A: Q0_A,
-        ParamPowerFlowRefferenceType.Pl0_B: P0_B,
-        ParamPowerFlowRefferenceType.Ql0_B: Q0_B,
-        ParamPowerFlowRefferenceType.Pl0_C: P0_C,
-        ParamPowerFlowRefferenceType.Ql0_C: Q0_C,
+        ParamPowerFlowRefferenceType.omega_base: omega,
+        ParamPowerFlowRefferenceType.Pl0_A: p0_a,
+        ParamPowerFlowRefferenceType.Ql0_A: q0_a,
+        ParamPowerFlowRefferenceType.Pl0_B: p0_b,
+        ParamPowerFlowRefferenceType.Ql0_B: q0_b,
+        ParamPowerFlowRefferenceType.Pl0_C: p0_c,
+        ParamPowerFlowRefferenceType.Ql0_C: q0_c,
     }
 
     return templ

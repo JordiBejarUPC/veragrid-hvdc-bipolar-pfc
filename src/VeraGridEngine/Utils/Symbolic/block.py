@@ -207,12 +207,12 @@ class Block:
             },
 
             "external_mapping": {
-                k: _expr_to_dict(v)
+                k: _expr_to_dict(v) if v is not None else None
                 for k, v in self.external_mapping.items()
             },
 
             "api_obj_mapping": {
-                k.value: _expr_to_dict(v)
+                k.value: _expr_to_dict(v) if v is not None else None
                 for k, v in self.api_obj_mapping.items()
             },
 
@@ -280,11 +280,11 @@ class Block:
             },
             procedural_logic=Block._procedural_logic_from_dict(data.get("procedural_logic", [])),
             external_mapping={
-                VarPowerFlowRefferenceType(k): _dict_to_expr(v)
+                VarPowerFlowRefferenceType(k): (_dict_to_expr(v) if v is not None else None)
                 for k, v in data["external_mapping"].items()
             },
             api_obj_mapping={
-                ParamPowerFlowRefferenceType(k): _dict_to_expr(v)
+                ParamPowerFlowRefferenceType(k): (_dict_to_expr(v) if v is not None else None)
                 for k, v in data["api_obj_mapping"].items()
             },
             name=data["name"],
@@ -526,6 +526,7 @@ class Block:
             mdl_placeholder.diff_vars.extend(b.diff_vars)
             mdl_placeholder.reformulated_vars.extend(b.reformulated_vars)
             mdl_placeholder.external_mapping.update(b.external_mapping)
+            mdl_placeholder.api_obj_mapping.update(b.api_obj_mapping)
             for event_param, eq in b.event_dict.items():
                 mdl_placeholder.event_dict[event_param] = eq
 
@@ -558,6 +559,7 @@ class Block:
         self.diff_init_eqs = mdl_placeholder.diff_init_eqs
         self.reformulated_vars = mdl_placeholder.reformulated_vars
         self.external_mapping = mdl_placeholder.external_mapping
+        self.api_obj_mapping = mdl_placeholder.api_obj_mapping
         self.procedural_logic = mdl_placeholder.procedural_logic
         self.children = list()
 

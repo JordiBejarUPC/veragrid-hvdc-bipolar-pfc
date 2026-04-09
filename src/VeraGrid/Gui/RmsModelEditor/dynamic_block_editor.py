@@ -24,14 +24,17 @@ from PySide6.QtCore import Qt, QPointF, QModelIndex, Signal, QAbstractTableModel
 
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
+from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template, get_bus_emt_algebraic_vars
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.RmsModelEditor.block_editor import Ui_BlockEditorWindow
+from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
                                                     get_symbolic_parser_function_names,
                                                     Expr, Var, Const, Comparison)
@@ -71,6 +74,37 @@ def _new_uid() -> int:
     :return:
     """
     return uuid.uuid4().int
+
+
+class BlockPositionChangedCallback:
+    """
+    Callable wrapper used by graphics items to report block moves without lambdas.
+    """
+
+    __slots__ = ("_editor", "_block_uid")
+
+    def __init__(self, editor: DynamicBlockEditorGUI, block_uid: int) -> None:
+        """
+        Build the callback wrapper.
+
+        :param editor: Owning dynamic editor.
+        :param block_uid: Moved block uid.
+        :return: None.
+        """
+
+        self._editor = editor
+        self._block_uid = block_uid
+
+    def __call__(self, x_pos: float, y_pos: float) -> None:
+        """
+        Forward one position change to the editor.
+
+        :param x_pos: New x coordinate.
+        :param y_pos: New y coordinate.
+        :return: None.
+        """
+
+        self._editor.on_block_position_changed(self._block_uid, x_pos, y_pos)
 
 
 def truncate_port_label(text: str, max_chars: int = PORT_LABEL_MAX_CHARS) -> str:
@@ -208,7 +242,7 @@ def is_supported_library_payload(item_data: object) -> bool:
     """
     if isinstance(item_data, BlockType):
         return True
-    elif isinstance(item_data, (RmsModelTemplate, EmtModelTemplate)):
+    elif isinstance(item_data, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
         return True
     else:
         return False
@@ -3129,7 +3163,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  block: Block,
                  api_object: ALL_DEV_TYPES | None = None,
                  mode: DynamicEditorMode = DynamicEditorMode.RMS,
-                 templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate]] = None,
+                 templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None,
+                 circuit: Any | None = None,
+                 embedded: bool = False,
                  main_editor=False,
                  modal: bool = True):
         """
@@ -3158,8 +3194,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui = Ui_BlockEditorWindow()
         self.ui.setupUi(self)
 
-        if modal:
+        if modal and not embedded:
             self.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
+        else:
+            pass
+
+        if embedded:
+            self.setWindowFlags(QtCore.Qt.WindowType.Widget)
+        else:
+            pass
 
         # set object label
         if api_object is not None:
@@ -3169,8 +3212,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.block_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 300
         self.mime_type: str = "application/x-veragrid-dynamics-block"
-
-        self.setWindowTitle("Dynamic Model Editor")
 
         self.ui.splitter.setStretchFactor(0, 1)
         self.ui.splitter.setStretchFactor(1, 10)
@@ -3189,9 +3230,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block: Block = clone_block_for_editing(block)
 
         self.diagram: BlockDiagram = self.main_block.diagram
-
+        self.circuit = circuit
         self.mode = mode
+        self.embedded = embedded
         self.main_editor = main_editor
+        self._emt_bus_fallback_warning_shown: bool = False
+        self.setWindowTitle(f"Dynamic Model Editor [{self.mode.name}]")
         self.block_counters: Dict[BlockType, int] = dict()
         self.scene: DiagramScene = DiagramScene(self)
         self.changes_applied: bool = False
@@ -3206,7 +3250,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.parameters_toolbar_layout.addWidget(self.remove_selected_button)
         self.parameters_toolbar_layout.addStretch(1)
 
-        self.templates_list: List[RmsModelTemplate | EmtModelTemplate] = templates_list if templates_list is not None else list()
+        self.templates_list: List[RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
 
         if mode == DynamicEditorMode.RMS:
             self.tree_structure = {
@@ -3309,6 +3353,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.graphicsView.dragMoveEvent = self.graphicsDragMoveEvent
         self.ui.graphicsView.dropEvent = self.graphicsDropEvent
 
+        if self.embedded:
+            self.ui.doItButton.hide()
+        else:
+            pass
+
         self.ui.doItButton.clicked.connect(self.apply_changes)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
         if not self.main_block.diagram.node_data and self.main_editor:
@@ -3351,18 +3400,33 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         for category, blocks in self.tree_structure.items():
             cat_item: QtGui.QStandardItem = QtGui.QStandardItem(category)
             cat_item.setEditable(False)
+            category_icon_path: str | None = device_type_icons.get(category, None)
+            if category_icon_path is not None:
+                cat_item.setIcon(QtGui.QIcon(category_icon_path))
+            else:
+                pass
             root_item.appendRow(cat_item)
 
             for label, payload in blocks:
                 item: QtGui.QStandardItem = QtGui.QStandardItem(label)
                 item.setEditable(False)
+                if isinstance(payload, FmuTemplate):
+                    item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.FmuTemplateDevice.value]))
+                else:
+                    if isinstance(payload, RmsModelTemplate):
+                        item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.RmsModelTemplateDevice.value]))
+                    else:
+                        if isinstance(payload, EmtModelTemplate):
+                            item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.EmtModelTemplateDevice.value]))
+                        else:
+                            pass
                 model.register_drag_payload(item, payload)
                 cat_item.appendRow(item)
 
         return model
 
     def get_library_payload_from_mime_data(self,
-                                           mime_data: QtCore.QMimeData) -> BlockType | RmsModelTemplate | EmtModelTemplate | None:
+                                           mime_data: QtCore.QMimeData) -> BlockType | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None:
         """
         Decode the dragged library payload from the tree-view mime payload.
 
@@ -3378,14 +3442,24 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             if isinstance(payload, BlockType):
                 return payload
-            elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate)):
+            elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
                 return payload
             else:
                 return None
         else:
             return None
 
-    def create_generic_block_item(self, block_type: BlockType, x_pos, y_pos) -> BlockItem:
+    def _build_position_changed_callback(self, block_uid: int) -> BlockPositionChangedCallback:
+        """
+        Build the explicit callback object used by graphics items to report movement.
+
+        :param block_uid: Moved block uid.
+        :return: Position change callback wrapper.
+        """
+
+        return BlockPositionChangedCallback(self, block_uid)
+
+    def create_generic_block_item(self, block_type: BlockType, x_pos, y_pos) -> GenericBlockItem|None:
         """
         Create and place a generic block item.
 
@@ -3406,7 +3480,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 subsys=model,
                 api_object=self.api_object,
                 mode=self.mode,
-                position_changed_callback=lambda x, y: self.on_block_position_changed(model.uid, x, y)
+                position_changed_callback=self._build_position_changed_callback(model.uid)
             )
 
             item.setPos(QtCore.QPointF(x_pos, y_pos))
@@ -3452,7 +3526,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             # The symbolic block has to be attached first so the graphics item can build its ports from it.
             self.block_counters[block_type] = count
             block_item.set_subsystem(block_model)
-            block_item.position_changed_callback = lambda x, y: self.on_block_position_changed(block_model.uid, x, y)
+            block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
             block_item.build_item()
 
             # The editor block is the authoritative model container for later save/rebuild steps.
@@ -3476,7 +3550,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return None
 
     def create_template_block_item(self,
-                                   template: RmsModelTemplate | EmtModelTemplate,
+                                   template: RmsModelTemplate | EmtModelTemplate | FmuTemplate,
                                    x_pos: float,
                                    y_pos: float) -> BlockItem | None:
         """
@@ -3497,7 +3571,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             item_name = block_model.name
 
         block_item.set_subsystem(block_model)
-        block_item.position_changed_callback = lambda x, y: self.on_block_position_changed(block_model.uid, x, y)
+        block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
         block_item.build_item()
         self.main_block.add(block_model)
         self.scene.addItem(block_item)
@@ -3657,6 +3731,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         Add a block with bus connection variables to connect the device
         :return:
         """
+        if self.mode == DynamicEditorMode.EMT:
+            self.add_emt_connection_vars()
+            return
+        else:
+            pass
+
         bus_con_item = None
         tpe = BlockType.BUS_CONNECTION
 
@@ -3781,11 +3861,262 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+    def _ensure_emt_bus_model(self, bus: Any) -> None:
+        """
+        Ensure that one bus already owns an EMT model before the editor tries to expose its ports.
+
+        :param bus: Bus API object.
+        :return: None.
+        """
+
+        if bus.emt_model.empty():
+            if self.circuit is None:
+                raise ValueError("The EMT dynamic editor requires the circuit context to initialize bus EMT models.")
+            else:
+                if self._bus_requires_default_emt_shell(bus):
+                    self._show_emt_bus_fallback_warning(bus)
+                else:
+                    pass
+                get_bus_emt_template(self.circuit, bus)
+        else:
+            pass
+
+    def _bus_requires_default_emt_shell(self, bus: Any) -> bool:
+        """
+        Detect whether the editor will have to synthesize the default ABC EMT bus shell.
+
+        The warning matters because the user may expect existing EMT network connectivity,
+        but in an empty or RMS-only network the editor must fabricate a generic bus shell
+        so the EMT model can still be edited.
+
+        :param bus: Bus API object.
+        :return: ``True`` when the editor must synthesize the default EMT bus shell.
+        """
+
+        if bus.is_dc:
+            return False
+        else:
+            if self.circuit is None:
+                return False
+            else:
+                has_connected_branch: bool = False
+                branch = None
+                for branch in self.circuit.get_branches_iter(add_vsc=True, add_switch=True, add_hvdc=True):
+                    if bus == branch.bus_from or bus == branch.bus_to:
+                        has_connected_branch = True
+                    else:
+                        pass
+                return not has_connected_branch
+
+    def _show_emt_bus_fallback_warning(self, bus: Any) -> None:
+        """
+        Show one warning when the editor fabricates the default ABC EMT bus shell.
+
+        :param bus: Bus API object.
+        :return: None.
+        """
+
+        if self._emt_bus_fallback_warning_shown:
+            pass
+        else:
+            application = QtWidgets.QApplication.instance()
+            if application is None:
+                self._emt_bus_fallback_warning_shown = True
+            else:
+                platform_name: str = application.platformName().lower()
+                if platform_name == "offscreen":
+                    self._emt_bus_fallback_warning_shown = True
+                else:
+                    QtWidgets.QMessageBox.information(
+                        self,
+                        "EMT bus shell created",
+                        (
+                            f"The bus '{bus.name}' does not have an EMT bus shell yet.\n\n"
+                            "VeraGrid will create a default ABC EMT bus shell so the EMT model can be edited. "
+                            "If you need the exact EMT network ports, create the EMT network elements first and reopen the editor."
+                        ),
+                    )
+                    self._emt_bus_fallback_warning_shown = True
+
+    def _get_injection_emt_voltage_pairs(self, bus: Any) -> List[tuple[VarPowerFlowRefferenceType, Any]]:
+        """
+        Get the ordered EMT bus-voltage references used by injection models.
+
+        :param bus: Bus API object.
+        :return: Reference-variable pairs.
+        """
+
+        self._ensure_emt_bus_model(bus)
+        if bus.is_dc:
+            v_dc, _, _, _ = get_bus_emt_algebraic_vars(bus.emt_model)
+            return [(VarPowerFlowRefferenceType.Vdc, v_dc)]
+        else:
+            v_n, v_a, v_b, v_c = get_bus_emt_algebraic_vars(bus.emt_model)
+            pairs: List[tuple[VarPowerFlowRefferenceType, Any]] = list()
+            if v_n is not None:
+                pairs.append((VarPowerFlowRefferenceType.v_N, v_n))
+            else:
+                pass
+            if v_a is not None:
+                pairs.append((VarPowerFlowRefferenceType.v_A, v_a))
+            else:
+                pass
+            if v_b is not None:
+                pairs.append((VarPowerFlowRefferenceType.v_B, v_b))
+            else:
+                pass
+            if v_c is not None:
+                pairs.append((VarPowerFlowRefferenceType.v_C, v_c))
+            else:
+                pass
+            return pairs
+
+    def _get_branch_emt_voltage_pairs(self,
+                                      bus: Any,
+                                      side: str) -> List[tuple[VarPowerFlowRefferenceType, Any]]:
+        """
+        Get the ordered EMT bus-voltage references used by branch models.
+
+        :param bus: Bus API object.
+        :param side: Branch side, either ``from`` or ``to``.
+        :return: Reference-variable pairs.
+        """
+
+        self._ensure_emt_bus_model(bus)
+        if bus.is_dc:
+            return list()
+        else:
+            v_n, v_a, v_b, v_c = get_bus_emt_algebraic_vars(bus.emt_model)
+            if side == "from":
+                refs = [
+                    VarPowerFlowRefferenceType.vf_N,
+                    VarPowerFlowRefferenceType.vf_A,
+                    VarPowerFlowRefferenceType.vf_B,
+                    VarPowerFlowRefferenceType.vf_C,
+                ]
+            else:
+                if side == "to":
+                    refs = [
+                        VarPowerFlowRefferenceType.vt_N,
+                        VarPowerFlowRefferenceType.vt_A,
+                        VarPowerFlowRefferenceType.vt_B,
+                        VarPowerFlowRefferenceType.vt_C,
+                    ]
+                else:
+                    raise ValueError(f"Unsupported branch EMT side {side}")
+
+            pairs: List[tuple[VarPowerFlowRefferenceType, Any]] = list()
+            for reference, variable in zip(refs, [v_n, v_a, v_b, v_c]):
+                if variable is not None:
+                    pairs.append((reference, variable))
+                else:
+                    pass
+            return pairs
+
+    def add_emt_connection_vars(self) -> None:
+        """
+        Add the EMT connection blocks that expose network voltages to the edited device model.
+
+        :return: None.
+        """
+
+        tpe = BlockType.BUS_CONNECTION
+        if isinstance(self.api_object, BranchParent):
+            block_specs: tuple[tuple[str, QPointF, Any, str], ...] = (
+                ("Conn From", QPointF(0, 0), self.api_object.bus_from, "from"),
+                ("Conn To", QPointF(0, 100), self.api_object.bus_to, "to"),
+            )
+            name: str
+            position: QPointF
+            bus: Any
+            side: str
+            for name, position, bus, side in block_specs:
+                voltage_pairs = self._get_branch_emt_voltage_pairs(bus, side)
+                if len(voltage_pairs) == 0:
+                    pass
+                else:
+                    connection_item = BlockItem(var_factory=self.var_factory, name=name)
+                    out_vars: List[Any] = list()
+                    reference = None
+                    variable = None
+                    for reference, variable in voltage_pairs:
+                        out_vars.append(variable)
+                    connection_block = Block(
+                        out_vars=out_vars,
+                        name=name,
+                    )
+                    self.main_block.add(connection_block)
+                    connection_item.set_subsystem(connection_block)
+                    connection_item.build_item()
+                    if connection_item.subsys is not None:
+                        connection_item.setPos(position)
+                        self.scene.addItem(connection_item)
+                        self.diagram.add_node(
+                            name=name,
+                            x=position.x(),
+                            y=position.y(),
+                            tpe=tpe.name,
+                            device_uid=connection_item.subsys.uid,
+                        )
+                    else:
+                        pass
+
+                    reference: VarPowerFlowRefferenceType
+                    variable: Any
+                    for reference, variable in voltage_pairs:
+                        self.main_block.external_mapping[reference] = variable
+        else:
+            if isinstance(self.api_object, InjectionParent):
+                voltage_pairs = self._get_injection_emt_voltage_pairs(self.api_object.bus)
+                if len(voltage_pairs) == 0:
+                    pass
+                else:
+                    name = "Conn Bus"
+                    position = QPointF(0, 0)
+                    connection_item = BlockItem(var_factory=self.var_factory, name=name)
+                    out_vars: List[Any] = list()
+                    reference = None
+                    variable = None
+                    for reference, variable in voltage_pairs:
+                        out_vars.append(variable)
+                    connection_block = Block(
+                        out_vars=out_vars,
+                        name=name,
+                    )
+                    self.main_block.add(connection_block)
+                    connection_item.set_subsystem(connection_block)
+                    connection_item.build_item()
+                    if connection_item.subsys is not None:
+                        connection_item.setPos(position)
+                        self.scene.addItem(connection_item)
+                        self.diagram.add_node(
+                            name=name,
+                            x=position.x(),
+                            y=position.y(),
+                            tpe=tpe.name,
+                            device_uid=connection_item.subsys.uid,
+                        )
+                    else:
+                        pass
+
+                    reference = None
+                    variable = None
+                    for reference, variable in voltage_pairs:
+                        self.main_block.external_mapping[reference] = variable
+            else:
+                pass
+
     def add_external_mapping_block(self):
         """
         Add a block with the external mapping vars needed to connect the device to the grid
         :return:
         """
+        if self.mode == DynamicEditorMode.EMT:
+            self.add_emt_external_mapping_block()
+            return
+        else:
+            pass
+
         bus_con_item = None
         tpe = BlockType.EXTERNAL_MAPPING
 
@@ -3893,6 +4224,152 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+    def _build_emt_injection_current_refs(self, bus: Any) -> List[VarPowerFlowRefferenceType]:
+        """
+        Return the ordered EMT current references that should be exposed for one injection device.
+
+        :param bus: Bus API object.
+        :return: EMT current references.
+        """
+
+        if bus.is_dc:
+            current_refs: List[VarPowerFlowRefferenceType] = list()
+            current_refs.append(VarPowerFlowRefferenceType.Idc)
+            return current_refs
+        else:
+            voltage_pairs = self._get_injection_emt_voltage_pairs(bus)
+            current_refs: List[VarPowerFlowRefferenceType] = list()
+            voltage_to_current_map: Dict[VarPowerFlowRefferenceType, VarPowerFlowRefferenceType] = dict()
+            voltage_to_current_map[VarPowerFlowRefferenceType.v_N] = VarPowerFlowRefferenceType.i_N
+            voltage_to_current_map[VarPowerFlowRefferenceType.v_A] = VarPowerFlowRefferenceType.i_A
+            voltage_to_current_map[VarPowerFlowRefferenceType.v_B] = VarPowerFlowRefferenceType.i_B
+            voltage_to_current_map[VarPowerFlowRefferenceType.v_C] = VarPowerFlowRefferenceType.i_C
+            reference: VarPowerFlowRefferenceType
+            for reference, _ in voltage_pairs:
+                mapped_reference = voltage_to_current_map.get(reference, None)
+                if mapped_reference is not None:
+                    current_refs.append(mapped_reference)
+                else:
+                    pass
+            return current_refs
+
+    def _build_emt_branch_current_refs(self, bus: Any, side: str) -> List[VarPowerFlowRefferenceType]:
+        """
+        Return the ordered EMT branch-current references that should be exposed for one branch side.
+
+        :param bus: Terminal bus.
+        :param side: Branch side, either ``from`` or ``to``.
+        :return: EMT branch current references.
+        """
+
+        voltage_pairs = self._get_branch_emt_voltage_pairs(bus, side)
+        if side == "from":
+            voltage_to_current_map: Dict[VarPowerFlowRefferenceType, VarPowerFlowRefferenceType] = dict()
+            voltage_to_current_map[VarPowerFlowRefferenceType.vf_N] = VarPowerFlowRefferenceType.if_N
+            voltage_to_current_map[VarPowerFlowRefferenceType.vf_A] = VarPowerFlowRefferenceType.if_A
+            voltage_to_current_map[VarPowerFlowRefferenceType.vf_B] = VarPowerFlowRefferenceType.if_B
+            voltage_to_current_map[VarPowerFlowRefferenceType.vf_C] = VarPowerFlowRefferenceType.if_C
+        else:
+            if side == "to":
+                voltage_to_current_map = dict()
+                voltage_to_current_map[VarPowerFlowRefferenceType.vt_N] = VarPowerFlowRefferenceType.it_N
+                voltage_to_current_map[VarPowerFlowRefferenceType.vt_A] = VarPowerFlowRefferenceType.it_A
+                voltage_to_current_map[VarPowerFlowRefferenceType.vt_B] = VarPowerFlowRefferenceType.it_B
+                voltage_to_current_map[VarPowerFlowRefferenceType.vt_C] = VarPowerFlowRefferenceType.it_C
+            else:
+                raise ValueError(f"Unsupported branch EMT side {side}")
+
+        current_refs: List[VarPowerFlowRefferenceType] = list()
+        reference: VarPowerFlowRefferenceType
+        for reference, _ in voltage_pairs:
+            mapped_reference = voltage_to_current_map.get(reference, None)
+            if mapped_reference is not None:
+                current_refs.append(mapped_reference)
+            else:
+                pass
+        return current_refs
+
+    def add_emt_external_mapping_block(self) -> None:
+        """
+        Add the EMT network-current mapping blocks needed to connect one device model to the grid.
+
+        :return: None.
+        """
+
+        tpe = BlockType.EXTERNAL_MAPPING
+        if isinstance(self.api_object, BranchParent):
+            block_specs: tuple[tuple[str, QPointF, Any, str], ...] = (
+                ("mapping From", QPointF(200, 200), self.api_object.bus_from, "from"),
+                ("mapping To", QPointF(0, 200), self.api_object.bus_to, "to"),
+            )
+            name: str
+            position: QPointF
+            bus: Any
+            side: str
+            for name, position, bus, side in block_specs:
+                current_refs = self._build_emt_branch_current_refs(bus, side)
+                if len(current_refs) == 0:
+                    pass
+                else:
+                    mapping_item = BlockItem(var_factory=self.var_factory, name=name)
+                    mapping_vars: List[Any] = list()
+                    reference = None
+                    for reference in current_refs:
+                        mapping_vars.append(self.var_factory.add_var(f"network_conn_{reference.value}", reference, True))
+                    mapping_block = Block(in_vars=mapping_vars, name=name)
+                    self.main_block.add(mapping_block)
+                    mapping_item.set_subsystem(mapping_block)
+                    mapping_item.build_item()
+                    if mapping_item.subsys is not None:
+                        self.scene.addItem(mapping_item)
+                        mapping_item.setPos(position)
+                        self.diagram.add_node(
+                            name=name,
+                            x=position.x(),
+                            y=position.y(),
+                            tpe=tpe.name,
+                            device_uid=mapping_item.subsys.uid,
+                        )
+                    else:
+                        pass
+
+                    for reference, variable in zip(current_refs, mapping_vars):
+                        self.main_block.external_mapping[reference] = variable
+        else:
+            if isinstance(self.api_object, InjectionParent):
+                current_refs = self._build_emt_injection_current_refs(self.api_object.bus)
+                if len(current_refs) == 0:
+                    pass
+                else:
+                    name = "mapping Bus"
+                    position = QPointF(0, 0)
+                    mapping_item = BlockItem(var_factory=self.var_factory, name=name)
+                    mapping_vars: List[Any] = list()
+                    reference = None
+                    for reference in current_refs:
+                        mapping_vars.append(self.var_factory.add_var(f"network_conn_{reference.value}", reference, True))
+                    mapping_block = Block(in_vars=mapping_vars, name=name)
+                    self.main_block.add(mapping_block)
+                    mapping_item.set_subsystem(mapping_block)
+                    mapping_item.build_item()
+                    if mapping_item.subsys is not None:
+                        self.scene.addItem(mapping_item)
+                        mapping_item.setPos(position)
+                        self.diagram.add_node(
+                            name=name,
+                            x=position.x(),
+                            y=position.y(),
+                            tpe=tpe.name,
+                            device_uid=mapping_item.subsys.uid,
+                        )
+                    else:
+                        pass
+
+                    for reference, variable in zip(current_refs, mapping_vars):
+                        self.main_block.external_mapping[reference] = variable
+            else:
+                pass
+
     def add_api_obj_mapping(self):
         """
         Adds API object mapping for the main block based on the device type.
@@ -3907,6 +4384,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :raises RuntimeError: Raised if required attributes or methods are missing.
         :return: None
         """
+        if self.mode == DynamicEditorMode.EMT:
+            return
+        else:
+            pass
+
         if isinstance(self.api_object, BranchParent):
             g = self.var_factory.add_var("g")
             b = self.var_factory.add_var("b")
@@ -3916,11 +4398,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.main_block.parameters[b] = self.var_factory.add_const(0.0710059)
             self.main_block.parameters[bsh] = self.var_factory.add_const(0.03)
 
-            self.main_block.api_obj_mapping = {
-                ParamPowerFlowRefferenceType.g: g,
-                ParamPowerFlowRefferenceType.b: b,
-                ParamPowerFlowRefferenceType.bsh: bsh,
-            }
+            self.main_block.api_obj_mapping = dict()
+            self.main_block.api_obj_mapping[ParamPowerFlowRefferenceType.g] = g
+            self.main_block.api_obj_mapping[ParamPowerFlowRefferenceType.b] = b
+            self.main_block.api_obj_mapping[ParamPowerFlowRefferenceType.bsh] = bsh
 
     def get_block_from_main_block(self, device_uid: int) -> Block | None:
         """
@@ -3952,6 +4433,30 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.diagram.node_data[device_uid].x = x
             self.diagram.node_data[device_uid].y = y
             print("")
+
+    def _break_domain_template_link(self) -> None:
+        """
+        Detach the edited device from the reusable template of the current domain.
+
+        Manual edits make the block diverge from the original reusable template, so
+        the device must stop pretending to be a clean template instance after the
+        user confirms the changes.
+
+        :return: None.
+        """
+
+        if isinstance(self.api_object, BranchParent) or isinstance(self.api_object, InjectionParent):
+            if self.mode == DynamicEditorMode.RMS:
+                self.api_object.rms_template = None
+                self.api_object.rms_fmu_template = None
+            else:
+                if self.mode == DynamicEditorMode.EMT:
+                    self.api_object.emt_template = None
+                    self.api_object.emt_fmu_template = None
+                else:
+                    raise ValueError(f"Unsupported dynamic editor mode {self.mode}")
+        else:
+            pass
 
     def get_selected_scene_block(self) -> Block | None:
         """
@@ -4377,9 +4882,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         if self.api_object.rms_template is not None:
             #Todo: Here are the changes
             self.api_object.rms_template = None
+        # self.commit_changes(close_window=True)
+
+    def commit_changes(self, close_window: bool) -> None:
+        """
+        Commit the edited working copy back into the original block.
+
+        :param close_window: Close the editor after committing.
+        :return: None.
+        """
+        self._break_domain_template_link()
         copy_block_state(source_block=self.main_block, target_block=self.original_block)
         self.changes_applied = True
-        self.close()
+        if close_window:
+            self.close()
+        else:
+            pass
 
     def open_inspect_dialog(self):
         """
@@ -4442,7 +4960,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         block=block_model,
                         api_object=self.api_object,
                         mode=self.mode,
-                        position_changed_callback=lambda x, y, uid=block_model.uid: self.on_block_position_changed(uid, x, y)
+                        position_changed_callback=self._build_position_changed_callback(block_model.uid)
                     )
                     self.scene.addItem(generic_item)
                     generic_item.setPos(QPointF(node.x, node.y))
@@ -4456,7 +4974,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 else:
                     block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=node.name)
                     block_item.set_subsystem(block_model)
-                    block_item.position_changed_callback = lambda x, y, uid=block_model.uid: self.on_block_position_changed(uid, x, y)
+                    block_item.position_changed_callback = self._build_position_changed_callback(block_model.uid)
                     block_item.build_item()
                     self.scene.addItem(block_item)
                     block_item.setPos(QPointF(node.x, node.y))
@@ -4515,7 +5033,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | RmsModelTemplate | EmtModelTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
 
@@ -4531,7 +5049,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | RmsModelTemplate | EmtModelTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
 
@@ -4547,7 +5065,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | RmsModelTemplate | EmtModelTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
         scene_position: QtCore.QPointF = self.ui.graphicsView.mapToScene(
@@ -4576,7 +5094,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 )
                 print("")
 
-            elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate)):
+            elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
                 block_item = self.create_template_block_item(
                     template=payload,
                     x_pos=scene_position.x(),

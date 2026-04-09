@@ -347,6 +347,24 @@ class EngineType(Enum):
             return s
 
 
+class FmuTemplateDomain(Enum):
+    """
+    Available VeraGrid domains for reusable FMU templates.
+    """
+
+    RMS = "rms"
+    EMT = "emt"
+
+
+class FmuTemplateMode(Enum):
+    """
+    FMI 2.0 execution modes supported by the FMU template catalogue.
+    """
+
+    CO_SIMULATION = "CoSimulation"
+    MODEL_EXCHANGE = "ModelExchange"
+
+
 class MIPSolvers(Enum):
     """
     MIP solvers enumeration
@@ -1312,6 +1330,7 @@ class DeviceType(Enum):
     DynamicModelHostDevice = "Dynamic Model Host"
 
     RmsModelTemplateDevice = "RMS template"
+    FmuTemplateDevice = "FMU template"
     RmsEventDevice = "Rms Event"
     RmsEventsGroupDevice = "Rms Events Group"
 
@@ -3220,6 +3239,12 @@ class ParamPowerFlowRefferenceType(Enum):
     alpha1 = 'alpha1'
     alpha2 = 'alpha2'
     alpha3 = 'alpha3'    
+
+    P_loss0 = "P_loss0"
+    control1 = "control1"
+    control2 = "control2"
+    control1_val = "control1_val"
+    control2_val = "control2_val"
     
     omega_base = "omega_base" # in rad/s
     Sbase = "Sbase" # in MVA

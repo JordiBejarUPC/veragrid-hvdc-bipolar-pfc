@@ -12,9 +12,10 @@ from PySide6.QtGui import QPolygonF
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.generic_graphics import Polygon
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
+from VeraGrid.Gui.RmsModelEditor.dynamic_device_editor import DynamicDeviceEditorDialog, choose_initial_dynamic_editor_mode
 from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
 from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -97,6 +98,11 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
             api_object=self.api_object,
             mode=DynamicEditorMode.RMS,
             templates_list=self.editor.circuit.get_rms_models_by_device_type(self.api_object.device_type),
+            # templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
+            #     self.api_object.device_type,
+            #     FmuTemplateDomain.RMS,
+            # ),
+            circuit=self.editor.circuit,
             main_editor=True,
         )
         rms_model_editor.show()
@@ -124,6 +130,11 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
             api_object=self.api_object,
             mode=DynamicEditorMode.EMT,
             templates_list=self.editor.circuit.get_emt_models_by_device_type(self.api_object.device_type),
+            # templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
+            #     self.api_object.device_type,
+            #     FmuTemplateDomain.RMS,
+            # ),
+            circuit=self.editor.circuit,
             main_editor=True,
         )
         rms_model_editor.show()

@@ -288,10 +288,13 @@ def small_signal_analysis(show_plt: bool = False, test_mti=False):
 
     print(f"  Found {len(eigenvalues)} finite eigenvalues")
 
+    state_vars_attr = getattr(driver.problem, "get_state_vars", [])
+    state_vars = state_vars_attr() if callable(state_vars_attr) else state_vars_attr
+
     # Display dominant modes
     print(f"\n  Dominant eigenvalues (top 10):")
-    print(f"  {'Mode':<6} {'Real':<15} {'Imag':<15} {'Freq (Hz)':<12} {'Damping':<12} {'Status'}")
-    print(f"  {'-' * 80}")
+    print(f"  {'Mode':<6} {'Real':<15} {'Imag':<15} {'Freq (Hz)':<12} {'Damping':<12} {'Status':<10} {'Dominant State'}")
+    print(f"  {'-' * 130}")
 
     for i in range(min(10, len(eigenvalues))):
         lam = eigenvalues[i]
@@ -308,7 +311,17 @@ def small_signal_analysis(show_plt: bool = False, test_mti=False):
             damping = 0.0
 
         status = "Stable" if real_part < -1e-6 else "UNSTABLE" if real_part > 1e-6 else "Marginal"
-        print(f"  {i + 1:<6} {real_part:<15.6f} {imag_part:<15.6f} {freq:<12.4f} {damping:<12.4f} {status}")
+
+        dominant_state = "N/A"
+        if participation_factors is not None and i < participation_factors.shape[1] and participation_factors.shape[0] > 0:
+            pf = np.abs(participation_factors[:, i])
+            max_pf_idx = np.argmax(pf)
+            dominant_state = str(state_vars[max_pf_idx]) if max_pf_idx < len(state_vars) else f"State {max_pf_idx}"
+
+        print(
+            f"  {i + 1:<6} {real_part:<15.6f} {imag_part:<15.6f} {freq:<12.4f} "
+            f"{damping:<12.4f} {status:<10} {dominant_state}"
+        )
 
     # Check for unstable eigenvalues
     unstable = [(i, ev) for i, ev in enumerate(eigenvalues) if np.real(ev) > 1e-6]
@@ -317,13 +330,10 @@ def small_signal_analysis(show_plt: bool = False, test_mti=False):
         print(f"  {'Mode':<6} {'Real':<15} {'Imag':<15} {'Dominant State'}")
         print(f"  {'-' * 80}")
 
-        # Get state variable names
-        state_vars = driver.problem.get_state_vars
-
         for i, ev in unstable:
             # Find the state with the highest participation for this mode
             if participation_factors is not None and i < participation_factors.shape[1]:
-                pf = participation_factors[:, i]
+                pf = np.abs(participation_factors[:, i])
                 max_pf_idx = np.argmax(pf)
                 dominant_state = str(state_vars[max_pf_idx]) if max_pf_idx < len(state_vars) else f"State {max_pf_idx}"
                 pf_val = pf[max_pf_idx]

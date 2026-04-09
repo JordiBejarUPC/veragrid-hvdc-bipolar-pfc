@@ -206,8 +206,7 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
         Rf:         vf.add_const(0.017),
         R0:         vf.add_const(0.001),
         omega_ref:  vf.add_const(1.0),
-        # init-only value that depends on other values.
-        Lmd:        vf.add_const(None),
+        Lmd: Ld - La,
         # init-only external auxiliary values
         phi_v: vf.add_const(None),
         phi: vf.add_const(None),
@@ -228,7 +227,6 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
     # --------------------------------------------------------------------------------------
 
     templ.block.init_eqs = {
-        Lmd: Ld - La,
         omega: omega_ref,
         delta: sym.atan(
             ( Ra * Ipk * sym.sin(phi) - omega * (Lmq + La) * Ipk * sym.cos(phi)) /
@@ -608,6 +606,10 @@ def get_generator_emt_type_template(vf: VarFactory, name: str = "emt_type_genera
         Mq1q3: vf.add_const(0.08),
         Mq2q3: vf.add_const(0.06),
 
+        Mdf: Ld - La,
+        Lff: Ld + Lf,
+        Lq: Lmq + La,
+
         # --------------------------------------------------------------------------
         # Pole number and bases
         # --------------------------------------------------------------------------
@@ -639,9 +641,7 @@ def get_generator_emt_type_template(vf: VarFactory, name: str = "emt_type_genera
     # STEADY-STATE INITIALIZATION (Init Eqs)
     # ----------------------------------------------------------------------------------
     templ.block.init_eqs = {
-        Mdf: Ld - La,
-        Lff: Ld + Lf,
-        Lq: Lmq + La,
+
 
         w_elec_base: omega_base,
         w_mec_base: omega_base,
@@ -1056,6 +1056,11 @@ def get_generator_sauer_pai_type_emt_template(vf: VarFactory, name: str = "sauer
         D: vf.add_const(0.0),
         omega_s: vf.add_const(1.0),
 
+        gamma_d1: (xdpp - xl) / (xdp - xl),
+        gamma_q1: (xqpp - xl) / (xqp - xl),
+        gamma_d2: (xdp - xdpp) / ((xdp - xl) ** 2),
+        gamma_q2: (xqp - xqpp) / ((xqp - xl) ** 2),
+
         Ipk: vf.add_const(None),
         Vpk: vf.add_const(None),
         phi: vf.add_const(None),
@@ -1084,10 +1089,7 @@ def get_generator_sauer_pai_type_emt_template(vf: VarFactory, name: str = "sauer
     )
 
     templ.block.init_eqs = {
-        gamma_d1: (xdpp - xl) / (xdp - xl),
-        gamma_q1: (xqpp - xl) / (xqp - xl),
-        gamma_d2:(xdp - xdpp) / ((xdp - xl) ** 2),
-        gamma_q2:(xqp - xqpp) / ((xqp - xl) ** 2),
+
         omega: omega_s,
 
         theta_abs: sym.atan(E_im/ E_re),

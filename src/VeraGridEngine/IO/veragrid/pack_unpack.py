@@ -7,6 +7,8 @@ from __future__ import annotations
 import copy
 import json
 import math
+import os
+from pathlib import Path
 from typing import Dict, Union, List, Tuple, Any, Callable
 import pandas as pd
 import numpy as np
@@ -57,6 +59,7 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
 
         'rms_model_template': dev.RmsModelTemplate(),
         'emt_model_template': dev.EmtModelTemplate(),
+        'fmu_template': dev.FmuTemplate(),
 
         'bus': dev.Bus(),
 
@@ -143,6 +146,128 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
         'qg_measurement': dev.QgMeasurement(),
 
     }
+
+
+_FMU_CONFIG_PROPERTY_NAMES: Tuple[str, ...] = (
+    "rms_fmu_import_config",
+    "emt_fmu_import_config",
+    "rms_fmu_me_import_config",
+    "emt_fmu_me_import_config",
+    "serialized_config",
+)
+
+
+def _to_project_relative_fmu_config(config_text: str, project_directory: Path | None) -> str:
+    """
+    Rewrite the stored FMU path in one serialized configuration as a project-relative path.
+
+    :param config_text: Serialized FMU configuration payload.
+    :param project_directory: Directory containing the VeraGrid project file.
+    :return: Serialized configuration with a relative FMU path when possible.
+    """
+
+    if project_directory is None:
+        return config_text
+    else:
+        stripped_text: str = config_text.strip()
+        if len(stripped_text) == 0:
+            return config_text
+        else:
+            payload: dict[str, Any] = json.loads(stripped_text)
+            fmu_path_text = payload.get("fmu_path", None)
+            if isinstance(fmu_path_text, str):
+                fmu_path = Path(fmu_path_text)
+                if fmu_path.is_absolute():
+                    try:
+                        payload["fmu_path"] = os.path.relpath(str(fmu_path), start=str(project_directory))
+                    except ValueError:
+                        payload["fmu_path"] = fmu_path_text
+                else:
+                    pass
+            else:
+                pass
+            return json.dumps(payload, sort_keys=True)
+
+
+def _resolve_project_fmu_config(config_text: str, project_directory: Path | None) -> str:
+    """
+    Rewrite the stored FMU path in one serialized configuration as an absolute runtime path.
+
+    :param config_text: Serialized FMU configuration payload.
+    :param project_directory: Directory containing the VeraGrid project file.
+    :return: Serialized configuration with a resolved absolute FMU path when possible.
+    """
+
+    if project_directory is None:
+        return config_text
+    else:
+        stripped_text: str = config_text.strip()
+        if len(stripped_text) == 0:
+            return config_text
+        else:
+            payload: dict[str, Any] = json.loads(stripped_text)
+            fmu_path_text = payload.get("fmu_path", None)
+            if isinstance(fmu_path_text, str):
+                fmu_path = Path(fmu_path_text)
+                if fmu_path.is_absolute():
+                    pass
+                else:
+                    payload["fmu_path"] = str((project_directory / fmu_path).resolve())
+            else:
+                pass
+            return json.dumps(payload, sort_keys=True)
+
+
+def _resolve_circuit_fmu_paths(circuit: MultiCircuit, project_directory: Path | None) -> None:
+    """
+    Resolve stored FMU configuration paths for every element in the circuit.
+
+    :param circuit: Parsed circuit instance.
+    :param project_directory: Directory containing the VeraGrid project file.
+    :return: None.
+    """
+
+    if project_directory is None:
+        return
+    else:
+        elm: ALL_DEV_TYPES
+        for elm in circuit.get_all_elements_iter():
+            property_name: str
+            for property_name in _FMU_CONFIG_PROPERTY_NAMES:
+                if property_name in elm.registered_properties:
+                    current_value = elm.get_snapshot_value_by_name(property_name)
+                    if isinstance(current_value, str):
+                        elm.set_snapshot_value(property_name, _resolve_project_fmu_config(current_value, project_directory))
+                    else:
+                        pass
+                else:
+                    pass
+
+
+def _to_project_relative_path(path_text: str, project_directory: Path | None) -> str:
+    """
+    Convert one absolute filesystem path into a project-relative path when possible.
+
+    :param path_text: Original path text.
+    :param project_directory: Directory containing the VeraGrid project file.
+    :return: Relative path when conversion is possible.
+    """
+
+    if project_directory is None:
+        return path_text
+    else:
+        normalized_text: str = str(path_text).strip()
+        if len(normalized_text) == 0:
+            return path_text
+        else:
+            candidate = Path(normalized_text)
+            if candidate.is_absolute():
+                try:
+                    return os.path.relpath(str(candidate), start=str(project_directory))
+                except ValueError:
+                    return path_text
+            else:
+                return path_text
 
 
 def get_multiverse_node_metadata(metadata: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
@@ -472,7 +597,9 @@ def get_profile_from_dict(profile: Profile,
     profile.set_initialized()
 
 
-def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict[str, str]:
+def veragrid_object_to_json(elm: ALL_DEV_TYPES,
+                            block_saver: BlockSaver,
+                            project_directory: Path | None = None) -> Dict[str, str]:
     """
 
     :param elm:
@@ -485,7 +612,13 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
         obj = elm.get_snapshot_value(prop=prop)
 
         if prop.tpe in [str, float, int, bool]:
-            data[name] = obj
+            if name in _FMU_CONFIG_PROPERTY_NAMES and isinstance(obj, str):
+                data[name] = _to_project_relative_fmu_config(obj, project_directory)
+            else:
+                if name == "fmu_relative_path" and isinstance(obj, str):
+                    data[name] = _to_project_relative_path(obj, project_directory)
+                else:
+                    data[name] = obj
 
             if prop.has_profile():
                 data[name + '_prof'] = profile_todict(elm.get_profile_by_prop(prop=prop))
@@ -551,7 +684,8 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
     return data
 
 
-def gather_model_as_jsons(circuit: MultiCircuit) -> Dict[str, Dict[str, str | float | List[int]]]:
+def gather_model_as_jsons(circuit: MultiCircuit,
+                          project_directory: Path | None = None) -> Dict[str, Dict[str, str | float | List[int]]]:
     """
     Transform a MultiCircuit into a collection of Json files
     :param circuit:
@@ -580,7 +714,7 @@ def gather_model_as_jsons(circuit: MultiCircuit) -> Dict[str, Dict[str, str | fl
         if len(lists_of_objects) > 0:
 
             for k, elm in enumerate(lists_of_objects):
-                obj_data = veragrid_object_to_json(elm, block_saver=block_saver)
+                obj_data = veragrid_object_to_json(elm, block_saver=block_saver, project_directory=project_directory)
                 object_json.append(obj_data)
 
         data[object_type_name] = object_json
@@ -1445,6 +1579,7 @@ def handle_legacy_jsons(model_data: Dict[str, List],
 
 def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
                         previous_circuit: Union[MultiCircuit, None] = None,
+                        project_directory: str | Path | None = None,
                         text_func: Union[Callable, None] = None,
                         progress_func: Union[Callable, None] = None,
                         logger: Logger = Logger()) -> MultiCircuit:
@@ -1762,6 +1897,13 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
 
     if circuit.has_time_series:
         circuit.ensure_profiles_exist()
+
+    resolved_project_directory: Path | None
+    if project_directory is None:
+        resolved_project_directory = None
+    else:
+        resolved_project_directory = Path(project_directory)
+    _resolve_circuit_fmu_paths(circuit, resolved_project_directory)
 
     # Enable auto updates internally only after everything has been filled
     for elm in circuit.get_all_elements_iter():

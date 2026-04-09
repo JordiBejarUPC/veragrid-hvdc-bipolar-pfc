@@ -32,7 +32,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 
 
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
-from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template,get_dc_load_from_device
+from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
 from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_ideal_converter
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
@@ -165,7 +165,7 @@ vsc_mdl = get_emt_ideal_converter(
 #     name="dc_load_emt"
 # ).block
 
-dc_load_mdl = get_dc_load_from_device(grid = circuit, load = dc_load).block
+dc_load_mdl = get_dc_load_emt_template(vf = circuit.var_factory).block
 
 # =====================================================================
 # ASSIGN MODELS TO DEVICES
@@ -390,10 +390,9 @@ build_solver_backend(CHOSEN_SOLVER, solver, problem)
 boundary_updater = cast(Any, problem)
 t, y, dy = solver.simulate(boundary_updater=boundary_updater)
 
-if hasattr(solver, "get_backend_build_stats"):
-    print("StructuralCompiled backend build stats")
-    for key, value in solver.get_backend_build_stats().items():
-        print(f"  {key}: {value:.6f}s")
+print("StructuralCompiled backend build stats")
+for key, value in solver.get_backend_build_stats().items():
+    print(f"  {key}: {value:.6f}s")
 
 # =====================================================================
 # PROFILING REPORT

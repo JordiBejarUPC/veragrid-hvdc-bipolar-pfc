@@ -377,7 +377,8 @@ class FileOpen:
                                                             logger=self.logger)
                 else:
 
-                    self.circuit = parse_veragrid_data(data=data_dictionary,
+                     self.circuit = parse_veragrid_data(data=data_dictionary,
+                                                       project_directory=os.path.dirname(self.file_name),
                                                        text_func=text_func,
                                                        progress_func=progress_func,
                                                        logger=self.logger)
@@ -405,8 +406,9 @@ class FileOpen:
                                                             logger=self.logger)
                 else:
 
-                    self.circuit = parse_veragrid_data(data=data_dictionary,
+                     self.circuit = parse_veragrid_data(data=data_dictionary,
                                                        previous_circuit=self._previous_circuit,
+                                                       project_directory=os.path.dirname(self.file_name),
                                                        text_func=text_func,
                                                        progress_func=progress_func,
                                                        logger=self.logger)
@@ -436,6 +438,7 @@ class FileOpen:
             data_dictionary = load_from_xls(self.file_name, self.logger)
             if data_dictionary is not None:
                 self.circuit = parse_veragrid_data(data=data_dictionary,
+                                                   project_directory=os.path.dirname(self.file_name),
                                                    text_func=text_func,
                                                    progress_func=progress_func,
                                                    logger=self.logger)
@@ -459,6 +462,7 @@ class FileOpen:
             elif data_dictionary['version'] == 4.0:
                 if data_dictionary is not None:
                     self.circuit = parse_veragrid_data(data=data_dictionary,
+                                                       project_directory=os.path.dirname(self.file_name),
                                                        text_func=text_func,
                                                        progress_func=progress_func,
                                                        logger=self.logger)
@@ -476,7 +480,9 @@ class FileOpen:
                                                            progress_func=progress_func)
             # interpret file content
             if data_dictionary is not None:
-                self.circuit = parse_veragrid_data(data_dictionary, logger=self.logger)
+                self.circuit = parse_veragrid_data(data_dictionary,
+                                                   project_directory=os.path.dirname(self.file_name),
+                                                   logger=self.logger)
             else:
                 self.logger.add("Error while reading the file :(")
                 return None

@@ -131,8 +131,8 @@ for bus in grid.buses:
 gen_mdl = get_generator_thevenin_rl_emt_template(vf= grid.var_factory).block
 
 # line
-line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
-# line_mdl = get_pi_line_emt_template(vf= grid.var_factory).block
+# line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
+line_mdl = get_pi_line_emt_template(vf= grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
 
 # load
 load_mdl = get_shunt_r_3ph_emt_template(vf = grid.var_factory).block
@@ -280,7 +280,7 @@ options = EmtOptions(time_step = 5e-6,
                      simulation_time =  0.01, # s
                      tolerance = 1e-6,
                      solver_type = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
-                     initialization_method = EmtInitializationMethod.Auto,
+                     initialization_method = EmtInitializationMethod.Explicit,
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
                      verbose = 1)
 

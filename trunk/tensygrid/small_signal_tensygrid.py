@@ -8,23 +8,16 @@ Small Signal Analysis for Phasor-based RMS Grid.
 
 This script creates the phasor problem manually and injects it into the SmallSignalStabilityRmsDriver.
 """
-from typing import Tuple, Any
-
-#import sys
-#import numpy as np
+from typing import Tuple, Any, List
+import numpy as np
 from PolynomialMatrixBuilder import PolynomialMatrixBuilder
-#from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 import VeraGridEngine.api as vge
-from VeraGridEngine import to_implicit
-
+from scipy.optimize import linear_sum_assignment
 
 def define_problem():
-
-    # ===================================================================
-    # CREATE GRID (Same as phasor validation)
-    # ===================================================================
+    """Creates the grid, runs the power flow, and returns the phasor problem."""
     print("\n[1] Creating phasor grid...")
-
     Sbase = 100.0
     grid = vge.MultiCircuit(Sbase=Sbase, fbase=50.0)
 
@@ -108,115 +101,206 @@ def define_problem():
 
     return phasor_problem
 
-
-def solve_problem(phasor_problem):
-    # 1. Initialize the builder.
-    # The __init__ will trigger the lifting and register auxiliary symbols.
-    builder: PolynomialMatrixBuilder = PolynomialMatrixBuilder(
-        problem=phasor_problem,
-        verbose=False
-    )
-
-    # --- ESCÁNER DE DEBUG ---
-    print("\n[DEBUG] Buscando el escondite de los parámetros...")
-    atributos = [a for a in dir(phasor_problem) if not a.startswith('_')]
-    print(f"Atributos disponibles en phasor_problem: {atributos}")
-
-    # Vamos a probar los escondites más comunes de las librerías DAE/Phasor
-    for candidato in ['p', 'params', 'parameters', 'sys_params', 'p_val', 'constants']:
-        if hasattr(phasor_problem, candidato):
-            valor = getattr(phasor_problem, candidato)
-            if isinstance(valor, dict) and len(valor) > 0:
-                print(f"¡BINGO! Los parámetros están en el atributo: '{candidato}' (Contiene {len(valor)} elementos)")
-            elif hasattr(valor, '__dict__'):
-                print(f"¡OJO! '{candidato}' es un objeto. Sus atributos son: {list(vars(valor).keys())[:10]}...")
-    print("--------------------------\n")
-
-    # 2. Construct the v_dict (operating point)
-    # Rules: Initialize dict with dict()
+def op_extraction(problem: vge.RmsProblemPhasor) -> dict:
+    """
+    Returns the operating point dictionary from a defined VeraGrid problem.
+    """
     v_dict: dict = dict()
+    def safe_get_value(val):
+        try:
+            return float(val)
+        except:
+            if hasattr(val, 'value'):
+                try:
+                    return float(val.value)
+                except:
+                    pass
+        return None
 
-    # Extract base guesses from phasor_problem.
-    # We assume phasor_problem.init_guess is a dict {id: value}
-    # and phasor_problem.sys_vars is a dict {id: sympy_var_or_obj}
-    base_guesses: dict = getattr(phasor_problem, "init_guess", dict())
-    sys_vars: dict = getattr(phasor_problem, "sys_vars", dict())
+    # 3. EXTRACT x0 (Equilibrium point)
+    try:
+        x0 = problem.get_x0()
+        for i, sym in enumerate(problem.state_and_algebraic_vars):
+            v_dict[str(sym.name)] = float(x0[i])
+    except Exception:
+        pass
 
-    # NUEVO: Intentar extraer los parámetros del sistema
-    sys_params: dict = getattr(phasor_problem, "sys_params", dict())
-    if not sys_params:
-        # El nombre exacto depende de la API de VeraGrid. Cubrimos las opciones más comunes:
-        sys_params = getattr(phasor_problem, "parameters", getattr(phasor_problem, "params", dict()))
+    # 4. EXTRACTION FROM THE PHOTO PATHS
+    if hasattr(problem, '_variable_parameters') and hasattr(problem, '_variable_parameters_values'):
+        names = problem._variable_parameters
+        values = problem._variable_parameters_values
+        if names is not None and values is not None:
+            # If values is a list/array and names contains the symbols
+            for name_obj, val_obj in zip(names, values):
+                s_name = str(name_obj.name) if hasattr(name_obj, 'name') else str(name_obj)
+                val = safe_get_value(val_obj)
+                if val is not None:
+                    v_dict[s_name] = val
 
-    # 1. Map original variables (states/algebraics) to their values using string keys
-    for var_id, value in base_guesses.items():
-        var_obj: any = sys_vars.get(var_id, None)
-        if var_obj is not None:
-            v_dict[str(var_obj)] = float(value)
+    # Backup just in case there are also fixed constants
+    if hasattr(problem, '_constant_parameters') and hasattr(problem, '_constant_params'):
+        for n, v in zip(problem._constant_parameters, problem._constant_params):
+            s_name = str(n.name) if hasattr(n, 'name') else str(n)
+            val = safe_get_value(v)
+            if val is not None:
+                v_dict[s_name] = val
 
-    # 2. NUEVO: Map parameters to their values
-    for param_id, param_val in sys_params.items():
-        param_obj: any = sys_vars.get(param_id, None)
-        if param_obj is not None:
-            v_dict[str(param_obj)] = float(param_val)
-        else:
-            # Si el diccionario de parámetros usa directamente los nombres de las variables como keys
-            v_dict[str(param_id)] = float(param_val)
-
-    # 3. Handle Auxiliary Variables (The "Lifting" variables)
-    # We iterate over all symbols registered in the builder
+    return v_dict
+    # 5. LIFTING SUPPORT AND DEFAULT VALUES
     for sym in builder.all_symbols:
-        s_name: str = sym.name
-
-        # If the symbol is not in our v_dict, it's likely an auxiliary one
+        s_name = str(sym.name)
         if s_name not in v_dict:
-            # Case A: Multiplication Auxiliary (x_mulauxN -> value = x)
-            if "_mulaux" in s_name:
-                parent_name: str = s_name.split("_mulaux")[0]
-                parent_val: float | None = v_dict.get(parent_name, None)
-                if parent_val is not None:
-                    v_dict[s_name] = parent_val
-                else:
-                    pass
-
-            # Case B: Inverse Auxiliary (x_invauxN -> value = 1/x)
-            elif "_invaux" in s_name:
-                parent_name: str = s_name.split("_invaux")[0]
-                parent_val: float | None = v_dict.get(parent_name, None)
-                if parent_val is not None and parent_val != 0.0:
-                    v_dict[s_name] = 1.0 / parent_val
-                elif parent_val == 0.0:
-                    # Avoid division by zero, set a small epsilon or 0.0
-                    v_dict[s_name] = 0.0
-                else:
-                    pass
+            if '_invaux' in s_name:
+                base = s_name.split('_invaux')[0]
+                v_dict[s_name] = (1.0 / v_dict[base]) if base in v_dict and abs(v_dict[base]) > 1e-12 else 1.0
+            elif '_mulaux' in s_name:
+                base = s_name.split('_mulaux')[0]
+                v_dict[s_name] = v_dict[base] if base in v_dict else 1.0
             else:
-                pass
-        else:
-            # Already mapped
-            pass
-    print("\n[DEBUG] Cazando variables perdidas (en 0.0):")
-    ceros_count = 0
-    for sym in builder.all_symbols:
-        s_name = sym.name
-        # Si la variable no está en v_dict, o está pero vale 0.0
-        val = v_dict.get(s_name, 0.0)
-        if abs(val) <= 1e-6:
-            print(f"  Falta o es cero -> {s_name}")
-            ceros_count += 1
+                v_dict[s_name] = 0.0
 
-    print(f"Total de variables en cero: {ceros_count} de {len(builder.all_symbols)}")
+
+
+def solve_problem(problem: Any) -> None:
+    print("\n[4] Rebuilding equations and extracting exact physics...")
+    builder = PolynomialMatrixBuilder(problem=problem, verbose=True)
+    v_dict: dict = op_extraction(problem=problem)
+
+    print("\n[*] Linearizing model with real parameters...")
     builder.linearize(v_dict=v_dict)
-    res: Tuple[Any, Any, Any, Any, bool, float] = builder.compute_stability()
-    stable: bool = res[4]
-    margin: float = res[5]
-    print(margin)
-    pass
+    res = builder.compute_stability()
 
+    eigenvalues = res[0]
+    stable = res[4]
+    margin = res[5] if res[5] is not None else 0.0
+
+    print("\n" + "=" * 80)
+    print("SMALL SIGNAL ANALYSIS COMPLETE - POLYNOMIAL BUILDER")
+    print("=" * 80)
+    print(f"  Found {len(eigenvalues)} finite eigenvalues")
+    print(f"  System is stable: {stable}")
+    print(f"  Stability margin: {margin:.4f}")
+    print("=" * 80)
+    return eigenvalues
 
 if __name__ == "__main__":
-    phasor_problem = define_problem()
-    solve_problem(phasor_problem)
+    problem = define_problem()
+    calculated_evs = []
+    if problem:
+        calculated_evs = solve_problem(problem)
 
 
 
+    reference_evs = [complex(x) for x in
+                     ["(-20.000000001+0j)", "(-10.000000001+0j)", "(-50.00000013636582+0j)", "(-49.9999998638391+0j)",
+                      "(-12.168789431034414+0j)", "(-10.142655446318065+0j)", "(-6.854035294550814+0j)",
+                      "(-5.029702766536969+0j)", "(-3.6156680497265823+0j)", "(0.7258649757244431+0j)",
+                      "(-1.8851882786542178+0j)", "(-1.719135993985083+0.32085026247445086j)",
+                      "(-1.7191359939850832-0.3208502624744508j)", "(-0.49201422052160765+0.8707873679911879j)",
+                      "(-0.49201422052160765-0.870787367991188j)", "(-0.48381848641530006+0.465928959924564j)",
+                      "(-0.48381848641530006-0.46592895992456396j)", "(-0.10000000099999705+0j)",
+                      "(-0.11161483998140341+0j)", "(-0.9999999991690246+0j)", "(-1.0000000028309748+0j)",
+                      "(-0.39635072300328184+0j)", "(-10.00000000099956+0j)", "(-1.0000000000000023e-09+0j)",
+                      "(-9.999999999999996e-10+0j)", "(-9.999999999999992e-10+0j)"]]
+
+
+    # --- LOGICA DE EMPAREJAMIENTO (Hungarian Algorithm) ---
+    finite_evs = calculated_evs[np.isfinite(calculated_evs) & (np.abs(calculated_evs) < 1e6)] if len(
+        calculated_evs) > 0 else []
+
+    tol = 0.06  # Tolerancia para considerar que coinciden
+    matched_calc = []
+    unmatched_calc = []
+    unmatched_ref = list(reference_evs)
+
+    if len(finite_evs) > 0 and len(reference_evs) > 0:
+        # 1. Crear matriz de distancias (costos)
+        cost_matrix = np.zeros((len(finite_evs), len(reference_evs)))
+        for i, c_ev in enumerate(finite_evs):
+            for j, r_ev in enumerate(reference_evs):
+                cost_matrix[i, j] = np.abs(c_ev - r_ev)
+
+        # 2. Asignación óptima
+        row_ind, col_ind = linear_sum_assignment(cost_matrix)
+
+        # 3. Filtrar por tolerancia
+        for i, j in zip(row_ind, col_ind):
+            if cost_matrix[i, j] < tol:
+                matched_calc.append(finite_evs[i])
+                unmatched_ref[j] = None  # Marcamos como encontrado
+            else:
+                unmatched_calc.append(finite_evs[i])
+
+        # 4. Limpiar listas de no emparejados
+        unmatched_ref = [x for x in unmatched_ref if x is not None]
+
+        # Añadir los calculados que ni siquiera entraron en la asignación
+        for i in range(len(finite_evs)):
+            if i not in row_ind:
+                unmatched_calc.append(finite_evs[i])
+    else:
+        unmatched_calc = list(finite_evs)
+
+    n_matches = len(matched_calc)
+    n_unmatched_calc = len(unmatched_calc)
+    n_unmatched_ref = len(unmatched_ref)
+
+    # --- PLOT: Creación de la figura 1x2 ---
+    # Damos más espacio ancho (14) y reservamos más espacio al gráfico de dispersión (ratio 2:1)
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(15, 6), gridspec_kw={'width_ratios': [2.5, 1]})
+
+    # --- SUBPLOT 1: SCATTER (Tu gráfica original adaptada al eje ax1) ---
+    ax1.scatter(np.real(reference_evs), np.imag(reference_evs),
+                color='gray', marker='x', alpha=0.5, label="Pablo's computation")
+
+    if len(finite_evs) > 0:
+        ax1.scatter(np.real(finite_evs), np.imag(finite_evs),
+                    c=(np.real(finite_evs) > 1e-6), cmap='coolwarm',
+                    marker='+', s=100, linewidths=2, label="TenSyGrid's computation")
+
+    ax1.axvline(0, color='k', linestyle='--')
+    ax1.axhline(0, color='k', alpha=0.3)
+    ax1.grid(True, alpha=0.3)
+    ax1.legend(loc='lower left')
+
+    # OJO AQUÍ: Añadida la 'r' antes del string para evitar el SyntaxWarning de '\R' e '\I'
+    ax1.set_xlabel(r'$\Re({\lambda})$', fontsize=12)
+    ax1.set_ylabel(r'$\Im({\lambda})$', fontsize=12)
+    ax1.set_title("Eigenvalue comparison")
+
+    # --- SUBPLOT 2: BARRAS Y RESULTADOS ---
+    labels = ['Matching', 'Exceeding\n(TenSyGrid)', 'Missing\n(Pablo)']
+    counts = [n_matches, n_unmatched_calc, n_unmatched_ref]
+    colors = ['#4CAF50', '#F44336', '#FFC107']  # Verde, Rojo, Amarillo
+
+    bars = ax2.bar(labels, counts, color=colors, edgecolor='black', alpha=0.8)
+    ax2.set_title(f"Coincidence\n(Tolerance: {tol})")
+    ax2.set_ylabel("Amount")
+
+    # Añadir el número encima de cada barra
+    for bar in bars:
+        yval = bar.get_height()
+        ax2.text(bar.get_x() + bar.get_width() / 2, yval + 0.1, int(yval), ha='center', va='bottom', fontweight='bold')
+
+    # Ocultar los bordes de arriba y derecha del gráfico de barras para que quede más limpio
+    ax2.spines['top'].set_visible(False)
+    ax2.spines['right'].set_visible(False)
+
+    plt.tight_layout()
+    plt.savefig("scatter_and_bars.png", dpi=300, bbox_inches='tight')
+    plt.show()
+
+    # --- IMPRESIÓN POR CONSOLA (Para que veas cuáles son exactamente) ---
+    print("=== REPORTE DE EIGENVALUES ===")
+    print(f"Total calculados (TenSyGrid): {len(finite_evs)}")
+    print(f"Total referenciados (Pablo): {len(reference_evs)}")
+    print("-" * 30)
+    print(f"✅ Coincidencias: {n_matches}")
+
+    print(f"\n❌ POLOS SOBRANTES (Calculados por TenSyGrid que Pablo no tiene): {n_unmatched_calc}")
+    for ev in unmatched_calc:
+        print(f"   {ev.real:.4f} + {ev.imag:.4f}j")
+
+    print(f"\n⚠️ POLOS FALTANTES (Referencia de Pablo que TenSyGrid no encontró): {n_unmatched_ref}")
+    for ev in unmatched_ref:
+        print(f"   {ev.real:.4f} + {ev.imag:.4f}j")

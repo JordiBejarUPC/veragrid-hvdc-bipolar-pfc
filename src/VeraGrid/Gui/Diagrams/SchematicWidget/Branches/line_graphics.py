@@ -14,9 +14,10 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem,
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
+from VeraGrid.Gui.RmsModelEditor.dynamic_device_editor import DynamicDeviceEditorDialog, choose_initial_dynamic_editor_mode
 from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
 from VeraGridEngine.Devices.Branches.line import Line, SequenceLineType
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -251,6 +252,11 @@ class LineGraphicItem(LineGraphicTemplateItem):
             api_object=self.api_object,
             mode=DynamicEditorMode.RMS,
             templates_list=self.editor.circuit.get_rms_models_by_device_type(self.api_object.device_type),
+            # templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
+            #     self.api_object.device_type,
+            #     FmuTemplateDomain.RMS,
+            # ),
+            circuit=self.editor.circuit,
             main_editor=True,
         )
         rms_model_editor.show()
@@ -275,6 +281,11 @@ class LineGraphicItem(LineGraphicTemplateItem):
             api_object=self.api_object,
             mode=DynamicEditorMode.EMT,
             templates_list=self.editor.circuit.get_emt_models_by_device_type(self.api_object.device_type),
+            # templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
+            #     self.api_object.device_type,
+            #     FmuTemplateDomain.EMT,
+            # ),
+            circuit=self.editor.circuit,
             main_editor=True,
         )
         rms_model_editor.show()

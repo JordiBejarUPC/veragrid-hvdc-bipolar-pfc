@@ -129,7 +129,7 @@ for bus in circuit.buses:
 # =====================================================================
 
 # Generator model (Thevenin equivalent)
-gen_mdl = get_generator_thevenin_rl_emt_template(grid=circuit, gen=gen1).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf=circuit.emt_var_factory).block
 
 # Transformer model (series RL with ideal transformer)
 trafo_mdl = get_xfmr_emt_template(grid=circuit, trafo=transformer).block
@@ -365,10 +365,9 @@ build_solver_backend(CHOSEN_SOLVER, solver, problem)
 boundary_updater = cast(Any, problem)
 t, y, dy = solver.simulate(boundary_updater=boundary_updater)
 
-if hasattr(solver, "get_backend_build_stats"):
-    print("StructuralCompiled backend build stats")
-    for key, value in solver.get_backend_build_stats().items():
-        print(f"  {key}: {value:.6f}s")
+print("StructuralCompiled backend build stats")
+for key, value in solver.get_backend_build_stats().items():
+    print(f"  {key}: {value:.6f}s")
 
 # =====================================================================
 # PROFILING REPORT

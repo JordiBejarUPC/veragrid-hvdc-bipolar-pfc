@@ -21,6 +21,8 @@ from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.initialization import init_explicit, init_pseudo_transient, init_custom
+# from VeraGridEngine.Simulations.EMT.initialization_emt import init_explicit_common, build_rms_single_equation_compiler
+from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import init_explicit_common, build_rms_single_equation_compiler
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -28,6 +30,16 @@ from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
+from VeraGridEngine.IO.fmu.importer import (
+    advance_rms_fmu_cs_devices,
+    advance_rms_fmu_me_devices,
+    close_rms_fmu_cs_devices,
+    close_rms_fmu_me_devices,
+    initialize_rms_fmu_cs_devices,
+    initialize_rms_fmu_me_devices,
+    register_rms_fmu_cs_device,
+    register_rms_fmu_me_device,
+)
 
 
 def _tic():
@@ -134,7 +146,12 @@ class RmsProblemDae(RmsProblemTemplate):
         self._j22_fn: Callable[[Vec, Vec, Vec, Vec, float], sp.csc_matrix] | None = None
 
         self._variable_parameters_values: Vec | None = None
+        self._last_variable_parameters_values: Vec | None = None
         self._constant_params: Vec | None = None
+        self._fmu_cs_adapters: List[object] = list()
+        self._fmu_cs_initialized: bool = False
+        self._fmu_me_adapters: List[object] = list()
+        self._fmu_me_initialized: bool = False
 
         # --------------------------------------------------------------------------------------------------------------
         # Initialize the RMS problem
@@ -143,6 +160,7 @@ class RmsProblemDae(RmsProblemTemplate):
         ######################### Initialize containers#############################
         total_init_explicit_time: float = 0
         t0 = time.perf_counter()
+        diff_init_guess_common: Dict[int, float] = dict()
 
         # dictionaries to store device-variable ifo
         self._vars_info: Dict[ALL_DEV_TYPES, List[Var]] = dict()
@@ -252,6 +270,8 @@ class RmsProblemDae(RmsProblemTemplate):
 
 
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
+                register_rms_fmu_cs_device(self, elm, elm.rms_model)
+                register_rms_fmu_me_device(self, elm, elm.rms_model)
 
                 # add init values from powerflow to initial guess
                 self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Pf, self.Sf[branch_num].real)
@@ -263,23 +283,58 @@ class RmsProblemDae(RmsProblemTemplate):
                 if isinstance(elm, Transformer2W):
 
                     if self.options.initialization_method == RmsInitializationMethod.Explicit:
-                        init_explicit(
+                        params_array: np.ndarray = np.zeros(len(self._constant_parameters))
+                        diff_sys_vars: Dict[int, Var] = {diff_var.uid: diff_var for diff_var in self._diff_vars}
+                        rms_compiler_init = RMSCompiler(
+                            variables=list(self.sys_vars.values()),
+                            diff_vars=list(diff_sys_vars.values()),
+                            v_params=self._variable_parameters,
+                            c_params=self._constant_parameters,
+                            dt_var=Var("dt"),
+                            compiler_names_dict=self._compiler_names_dict,
+                        )
+                        compile_single_equation = build_rms_single_equation_compiler(rms_compiler_init)
+
+                        for param, const in elm.rms_model.parameters.items():
+                            params_array[self._uid2idx_params[param.uid]] = const.value
+
+                        # OLD init_explicit path kept for reference
+                        # init_explicit(
+                        #     mdl=elm.rms_model,
+                        #     sys_vars=self.sys_vars,
+                        #     variable_parameters=self._variable_parameters,
+                        #     event_parameters_eqs=self._event_parameters_eqs0,
+                        #     constant_parameters=self._constant_parameters,
+                        #     init_guess=self.init_guess,
+                        #     uid2idx_vars=self.uid2idx_vars,
+                        #     uid2idx_params=self._uid2idx_params,
+                        #     uid2idx_event_params=self._uid2idx_event_params,
+                        #     compiler_names_dict=self._compiler_names_dict,
+                        #     alias_names_dict=self._alias_names_dict,
+                        #     VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                        #     TIME_NAME=self.TIME_NAME,
+                        #     VARS_NAME=self.VARS_NAME,
+                        #     DIFF_NAME=self.DIFF_NAME,
+                        #     CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
+                        # )
+
+                        # New init_explicit_common path
+                        self.init_guess, diff_init_guess_common = init_explicit_common(
                             mdl=elm.rms_model,
                             sys_vars=self.sys_vars,
+                            sys_diff_vars=diff_sys_vars,
                             variable_parameters=self._variable_parameters,
                             event_parameters_eqs=self._event_parameters_eqs0,
                             constant_parameters=self._constant_parameters,
                             init_guess=self.init_guess,
+                            diff_init_guess=diff_init_guess_common,
                             uid2idx_vars=self.uid2idx_vars,
+                            uid2idx_diff=self._uid2idx_diff,
                             uid2idx_params=self._uid2idx_params,
                             uid2idx_event_params=self._uid2idx_event_params,
-                            compiler_names_dict=self._compiler_names_dict,
-                            alias_names_dict=self._alias_names_dict,
-                            VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                            TIME_NAME=self.TIME_NAME,
-                            VARS_NAME=self.VARS_NAME,
-                            DIFF_NAME=self.DIFF_NAME,
-                            CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
+                            params_array=params_array,
+                            compile_single_equation=compile_single_equation,
+                            verbose=bool(self.options.verbose > 0),
                         )
 
                 # add model to system block
@@ -376,23 +431,58 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 # find init values for the variables of this model
                 if self.options.initialization_method == RmsInitializationMethod.Explicit:
-                    init_explicit(mdl=elm.rms_model,
-                                  sys_vars=self.sys_vars,
-                                  variable_parameters=self._variable_parameters,
-                                  event_parameters_eqs=self._event_parameters_eqs0,
-                                  constant_parameters=self._constant_parameters,
-                                  init_guess=self.init_guess,
-                                  uid2idx_vars=self.uid2idx_vars,
-                                  uid2idx_params=self._uid2idx_params,
-                                  uid2idx_event_params=self._uid2idx_event_params,
-                                  compiler_names_dict=self._compiler_names_dict,
-                                  alias_names_dict=self._alias_names_dict,
-                                  VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                                  TIME_NAME=self.TIME_NAME,
-                                  VARS_NAME=self.VARS_NAME,
-                                  DIFF_NAME=self.DIFF_NAME,
-                                  CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
-                                  )
+                    params_array: np.ndarray = np.zeros(len(self._constant_parameters))
+                    diff_sys_vars: Dict[int, Var] = {diff_var.uid: diff_var for diff_var in self._diff_vars}
+                    rms_compiler_init = RMSCompiler(
+                        variables=list(self.sys_vars.values()),
+                        diff_vars=list(diff_sys_vars.values()),
+                        v_params=self._variable_parameters,
+                        c_params=self._constant_parameters,
+                        dt_var=Var("dt"),
+                        compiler_names_dict=self._compiler_names_dict,
+                    )
+                    compile_single_equation = build_rms_single_equation_compiler(rms_compiler_init)
+
+                    for param, const in elm.rms_model.parameters.items():
+                        params_array[self._uid2idx_params[param.uid]] = const.value
+
+                    # OLD init_explicit path kept for reference
+                    # init_explicit(mdl=elm.rms_model,
+                    #               sys_vars=self.sys_vars,
+                    #               variable_parameters=self._variable_parameters,
+                    #               event_parameters_eqs=self._event_parameters_eqs0,
+                    #               constant_parameters=self._constant_parameters,
+                    #               init_guess=self.init_guess,
+                    #               uid2idx_vars=self.uid2idx_vars,
+                    #               uid2idx_params=self._uid2idx_params,
+                    #               uid2idx_event_params=self._uid2idx_event_params,
+                    #               compiler_names_dict=self._compiler_names_dict,
+                    #               alias_names_dict=self._alias_names_dict,
+                    #               VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                    #               TIME_NAME=self.TIME_NAME,
+                    #               VARS_NAME=self.VARS_NAME,
+                    #               DIFF_NAME=self.DIFF_NAME,
+                    #               CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
+                    #               )
+
+                    # New init_explicit_common path
+                    self.init_guess, diff_init_guess_common = init_explicit_common(
+                        mdl=elm.rms_model,
+                        sys_vars=self.sys_vars,
+                        sys_diff_vars=diff_sys_vars,
+                        variable_parameters=self._variable_parameters,
+                        event_parameters_eqs=self._event_parameters_eqs0,
+                        constant_parameters=self._constant_parameters,
+                        init_guess=self.init_guess,
+                        diff_init_guess=diff_init_guess_common,
+                        uid2idx_vars=self.uid2idx_vars,
+                        uid2idx_diff=self._uid2idx_diff,
+                        uid2idx_params=self._uid2idx_params,
+                        uid2idx_event_params=self._uid2idx_event_params,
+                        params_array=params_array,
+                        compile_single_equation=compile_single_equation,
+                        verbose=bool(self.options.verbose > 0),
+                    )
 
                 else:
                     raise ValueError("Not implemented initialization method")
@@ -427,8 +517,10 @@ class RmsProblemDae(RmsProblemTemplate):
                     if VarPowerFlowRefferenceType.Vdc in elm.rms_model.external_mapping:
                         elm.rms_model.update_model(
                             elm.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc], Vdc)
-                    
+
                 self.add_variables_to_compilation_dicts(elm, elm.rms_model)
+                register_rms_fmu_cs_device(self, elm, elm.rms_model)
+                register_rms_fmu_me_device(self, elm, elm.rms_model)
 
                 if elm.bus.is_dc:
                     self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.P,
@@ -452,23 +544,58 @@ class RmsProblemDae(RmsProblemTemplate):
                     #     init_custom(elm.rms_model, self.init_guess)
 
                     # else:
-                    init_explicit(
+                    params_array: np.ndarray = np.zeros(len(self._constant_parameters))
+                    diff_sys_vars: Dict[int, Var] = {diff_var.uid: diff_var for diff_var in self._diff_vars}
+                    rms_compiler_init = RMSCompiler(
+                        variables=list(self.sys_vars.values()),
+                        diff_vars=list(diff_sys_vars.values()),
+                        v_params=self._variable_parameters,
+                        c_params=self._constant_parameters,
+                        dt_var=Var("dt"),
+                        compiler_names_dict=self._compiler_names_dict,
+                    )
+                    compile_single_equation = build_rms_single_equation_compiler(rms_compiler_init)
+
+                    for param, const in elm.rms_model.parameters.items():
+                        params_array[self._uid2idx_params[param.uid]] = const.value
+
+                    # OLD init_explicit path kept for reference
+                    # init_explicit(
+                    #     mdl=elm.rms_model,
+                    #     sys_vars=self.sys_vars,
+                    #     variable_parameters=self._variable_parameters,
+                    #     event_parameters_eqs=self._event_parameters_eqs0,
+                    #     constant_parameters=self._constant_parameters,
+                    #     init_guess=self.init_guess,
+                    #     uid2idx_vars=self.uid2idx_vars,
+                    #     uid2idx_params=self._uid2idx_params,
+                    #     uid2idx_event_params=self._uid2idx_event_params,
+                    #     compiler_names_dict=self._compiler_names_dict,
+                    #     alias_names_dict=self._alias_names_dict,
+                    #     VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+                    #     TIME_NAME=self.TIME_NAME,
+                    #     VARS_NAME=self.VARS_NAME,
+                    #     DIFF_NAME=self.DIFF_NAME,
+                    #     CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
+                    # )
+
+                    # New init_explicit_common path
+                    self.init_guess, diff_init_guess_common = init_explicit_common(
                         mdl=elm.rms_model,
                         sys_vars=self.sys_vars,
+                        sys_diff_vars=diff_sys_vars,
                         variable_parameters=self._variable_parameters,
                         event_parameters_eqs=self._event_parameters_eqs0,
                         constant_parameters=self._constant_parameters,
                         init_guess=self.init_guess,
+                        diff_init_guess=diff_init_guess_common,
                         uid2idx_vars=self.uid2idx_vars,
+                        uid2idx_diff=self._uid2idx_diff,
                         uid2idx_params=self._uid2idx_params,
                         uid2idx_event_params=self._uid2idx_event_params,
-                        compiler_names_dict=self._compiler_names_dict,
-                        alias_names_dict=self._alias_names_dict,
-                        VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-                        TIME_NAME=self.TIME_NAME,
-                        VARS_NAME=self.VARS_NAME,
-                        DIFF_NAME=self.DIFF_NAME,
-                        CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
+                        params_array=params_array,
+                        compile_single_equation=compile_single_equation,
+                        verbose=bool(self.options.verbose > 0),
                     )
 
                 elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
@@ -947,6 +1074,88 @@ class RmsProblemDae(RmsProblemTemplate):
             raise ValueError("_event_params_fn is None")
 
         self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
+
+    def initialize_fmu_cs_devices(self, x_snapshot: Vec, t: float = 0.0) -> None:
+        """
+        Initialize imported FMU Co-Simulation devices before the RMS time loop starts.
+
+        :param x_snapshot: Initial accepted state vector.
+        :param t: Initial simulation time.
+        :return: None.
+        """
+
+        if len(self._fmu_cs_adapters) > 0:
+            initialize_rms_fmu_cs_devices(problem=self, x_snapshot=x_snapshot, time_value=t)
+        else:
+            self._fmu_cs_initialized = True
+
+    def advance_fmu_cs_devices(self, t: float, x_snapshot: Vec, h: float) -> None:
+        """
+        Advance imported FMU Co-Simulation devices for one RMS communication step.
+
+        :param t: Current simulation time.
+        :param x_snapshot: Current accepted state vector.
+        :param h: RMS communication step.
+        :return: None.
+        """
+
+        if len(self._fmu_cs_adapters) > 0:
+            advance_rms_fmu_cs_devices(problem=self, time_value=t, x_snapshot=x_snapshot, step_size=h)
+        else:
+            pass
+
+    def close_fmu_cs_devices(self) -> None:
+        """
+        Release imported FMU Co-Simulation devices after the RMS simulation ends.
+
+        :return: None.
+        """
+
+        if len(self._fmu_cs_adapters) > 0:
+            close_rms_fmu_cs_devices(self)
+        else:
+            pass
+
+    def initialize_fmu_me_devices(self, x_snapshot: Vec, t: float = 0.0) -> None:
+        """
+        Initialize imported FMU Model Exchange devices before the RMS time loop starts.
+
+        :param x_snapshot: Initial accepted state vector.
+        :param t: Initial simulation time.
+        :return: None.
+        """
+
+        if len(self._fmu_me_adapters) > 0:
+            initialize_rms_fmu_me_devices(problem=self, x_snapshot=x_snapshot, time_value=t)
+        else:
+            self._fmu_me_initialized = True
+
+    def advance_fmu_me_devices(self, t: float, x_snapshot: Vec, h: float) -> None:
+        """
+        Advance imported FMU Model Exchange devices for one RMS communication step.
+
+        :param t: Current simulation time.
+        :param x_snapshot: Current accepted state vector.
+        :param h: RMS communication step.
+        :return: None.
+        """
+
+        if len(self._fmu_me_adapters) > 0:
+            advance_rms_fmu_me_devices(problem=self, time_value=t, x_snapshot=x_snapshot, step_size=h)
+        else:
+            pass
+
+    def close_fmu_me_devices(self) -> None:
+        """
+        Release imported FMU Model Exchange devices after the RMS simulation ends.
+
+        :return: None.
+        """
+
+        if len(self._fmu_me_adapters) > 0:
+            close_rms_fmu_me_devices(self)
+        else:
+            pass
 
     def get_dx(self, x: Vec, xn: Vec, dx: Vec, h: float) -> Vec:
 

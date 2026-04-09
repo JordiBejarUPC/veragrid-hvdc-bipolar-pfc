@@ -102,7 +102,6 @@ class TestSVSJacobianBackends(unittest.TestCase):
         p_full: np.ndarray = get_full_params(solver)
 
         # Verify clustering detection
-        self.assertTrue(hasattr(solver, 'vec_kernels'))
         self.assertGreater(len(solver.vec_kernels), 0)
 
         J: Any = solver.vec_jacobian(states=x, params=p_full, history=x, d_history=dx, h=1e-6)
