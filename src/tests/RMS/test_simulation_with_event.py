@@ -85,11 +85,11 @@ def test_simulation_with_event():
     # Generators
     gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
                          x1=0.86138701, r1=0.3, freq=50.0,
-                         M=10.0,
-                         D=1.0,
-                         omega_ref=1.0,
-                         Kp=1.0,
-                         Ki=10.0,
+                         # M=10.0,
+                         # D=1.0,
+                         # omega_ref=1.0,
+                         # Kp=1.0,
+                         # Ki=10.0,
                          )
     grid.add_generator(bus=bus0, api_obj=gen0)
 

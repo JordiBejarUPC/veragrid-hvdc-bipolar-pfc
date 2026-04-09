@@ -82,6 +82,7 @@ dependencies = ['setuptools>=41.0.1',
                 "websockets",
                 "brotli",
                 "opencv-python>=4.10.0.84",
+                "fmpy>=0.3.22"
                 ]
 
 extras_require = {

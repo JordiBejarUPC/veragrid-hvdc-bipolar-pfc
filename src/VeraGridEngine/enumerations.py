@@ -2291,6 +2291,9 @@ class ResultTypes(Enum):
     ReliabilityLOLFResults = "LOLF"
     ReliabilityLOLETResults = "LOLET"
     ReliabilityLOLFTResults = "LOLFT"
+    ReliabilitySAIDIResults = "SAIDI"
+    ReliabilitySAIFIResults = "SAIFI"
+    ReliabilityCAIDIResults = "CAIDI"
 
 
 
@@ -3167,6 +3170,51 @@ class ParamPowerFlowRefferenceType(Enum):
     Cca = "Cca"  # C-A line shunt capacitance
     Ccb = "Ccb"  # C-B line shunt capacitance
     Ccc = "Ccc"  # C-C line shunt capacitance
+
+    # Classical transformer EMT mapped parameters
+    xfmr_r1 = "xfmr_r1"  # Primary winding resistance in pu
+    xfmr_r2 = "xfmr_r2"  # Secondary winding resistance in pu
+    xfmr_l1 = "xfmr_l1"  # Primary self inductance in pu*s/rad
+    xfmr_l2 = "xfmr_l2"  # Secondary self inductance in pu*s/rad
+    xfmr_m = "xfmr_m"  # Mutual inductance in pu*s/rad
+    xfmr_gm = "xfmr_gm"  # Primary shunt conductance in pu
+
+    # XFMR EMT mapped parameters
+    xfmr_s_rated_mva = "xfmr_s_rated_mva"
+    xfmr_v_hv_ll_kv = "xfmr_v_hv_ll_kv"
+    xfmr_v_lv_ll_kv = "xfmr_v_lv_ll_kv"
+    xfmr_vector_group_clock = "xfmr_vector_group_clock"
+    xfmr_oc_current_pct = "xfmr_oc_current_pct"
+    xfmr_oc_loss_kw = "xfmr_oc_loss_kw"
+    xfmr_sc_voltage_pct = "xfmr_sc_voltage_pct"
+    xfmr_sc_resistance_pct = "xfmr_sc_resistance_pct"
+    xfmr_sc_loss_kw = "xfmr_sc_loss_kw"
+    xfmr_tap_module = "xfmr_tap_module"
+    xfmr_c_term = "xfmr_c_term"
+    xfmr_core_linear_l_pu = "xfmr_core_linear_l_pu"
+    xfmr_core_a_prime = "xfmr_core_a_prime"
+    xfmr_core_b_prime = "xfmr_core_b_prime"
+    xfmr_use_linear_core = "xfmr_use_linear_core"
+
+    xfmr_cf_aa = "xfmr_cf_aa"
+    xfmr_cf_ab = "xfmr_cf_ab"
+    xfmr_cf_ac = "xfmr_cf_ac"
+    xfmr_cf_ba = "xfmr_cf_ba"
+    xfmr_cf_bb = "xfmr_cf_bb"
+    xfmr_cf_bc = "xfmr_cf_bc"
+    xfmr_cf_ca = "xfmr_cf_ca"
+    xfmr_cf_cb = "xfmr_cf_cb"
+    xfmr_cf_cc = "xfmr_cf_cc"
+
+    xfmr_ct_aa = "xfmr_ct_aa"
+    xfmr_ct_ab = "xfmr_ct_ab"
+    xfmr_ct_ac = "xfmr_ct_ac"
+    xfmr_ct_ba = "xfmr_ct_ba"
+    xfmr_ct_bb = "xfmr_ct_bb"
+    xfmr_ct_bc = "xfmr_ct_bc"
+    xfmr_ct_ca = "xfmr_ct_ca"
+    xfmr_ct_cb = "xfmr_ct_cb"
+    xfmr_ct_cc = "xfmr_ct_cc"
 
 
     # Active phases in a branch

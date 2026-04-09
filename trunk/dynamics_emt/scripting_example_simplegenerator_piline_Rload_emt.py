@@ -32,7 +32,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
@@ -131,7 +131,7 @@ line_mdl = get_pi_line_emt_template(vf=grid.var_factory, phN = True, phA = True,
 # line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
 
 # load
-load_mdl = get_shunt_r_3ph_emt_template(vf = grid.var_factory).block
+load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
 ######################################################################################################
 # Add models to devices

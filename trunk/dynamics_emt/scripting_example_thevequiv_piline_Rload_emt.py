@@ -5,10 +5,21 @@
 import cProfile
 import json
 import pstats
+import os
+import sys
 import numpy as np
 from pathlib import Path
 from time import perf_counter
 from typing import Any, Dict, List, Tuple, cast
+
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+SRC_ROOT = os.path.join(REPO_ROOT, 'src')
+
+if SRC_ROOT not in sys.path:
+    sys.path.insert(0, SRC_ROOT)
+
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 import matplotlib.pyplot as plt
 from trunk.dynamics_emt.support.emt_plot_exports import (
@@ -40,7 +51,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriv
 
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
@@ -135,7 +146,7 @@ gen_mdl = get_generator_thevenin_rl_emt_template(vf= grid.var_factory).block
 line_mdl = get_pi_line_emt_template(vf= grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
 
 # load
-load_mdl = get_shunt_r_3ph_emt_template(vf = grid.var_factory).block
+load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
 load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_3ph", new_value=1.0)
 

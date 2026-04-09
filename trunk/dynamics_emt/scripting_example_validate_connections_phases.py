@@ -33,7 +33,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriv
 
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template, get_shunt_r_1ph_emt_template
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
@@ -125,11 +125,11 @@ for bus in grid.buses:
 gen_mdl = get_generator_thevenin_rl_emt_template(vf= grid.var_factory).block
 
 # line
-line_mdl = get_pi_line_emt_template(vf=grid.var_factory, line = line0).block
+line_mdl = get_pi_line_emt_template(vf=grid.var_factory).block
 # line_mdl = get_pi_line_emt_template(vf= grid.var_factory).block
 
 # load
-load_mdl = get_shunt_r_1ph_emt_template(vf = grid.var_factory).block
+load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=False, phC=False).block
 
 load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_1ph", new_value=1.0)
 

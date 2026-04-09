@@ -425,7 +425,9 @@ class NumericalCircuit:
 
         nc.bus_data = self.bus_data.copy()
         nc.passive_branch_data = self.passive_branch_data.copy()
+        nc.active_branch_data = self.active_branch_data.copy()
         nc.hvdc_data = self.hvdc_data.copy()
+        nc.vsc_data = self.vsc_data.copy()
         nc.load_data = self.load_data.copy()
         nc.shunt_data = self.shunt_data.copy()
         nc.generator_data = self.generator_data.copy()
@@ -435,6 +437,8 @@ class NumericalCircuit:
         nc.fluid_pump_data = self.fluid_pump_data.copy()
         nc.fluid_p2x_data = self.fluid_p2x_data.copy()
         nc.fluid_path_data = self.fluid_path_data.copy()
+        nc._NumericalCircuit__bus_map_arr = self._NumericalCircuit__bus_map_arr.copy()
+        nc._NumericalCircuit__topology_performed = self._NumericalCircuit__topology_performed
         nc.structs_idtag_dict = self.structs_idtag_dict.copy()
         nc.consolidate_information()
 

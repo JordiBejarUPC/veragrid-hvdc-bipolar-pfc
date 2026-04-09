@@ -316,6 +316,7 @@ def get_veragrid_generator(psse_elm: RawGenerator, psse_bus_dict: Dict[int, dev.
                         idtag=None,
                         code=name,
                         P=psse_elm.PG,
+                        Q=psse_elm.QG,
                         vset=psse_elm.VS,
                         Qmin=Qmin,
                         Qmax=Qmax,
@@ -1109,7 +1110,7 @@ def psse_to_veragrid(psse_circuit: PsseCircuit,
     :return: MultiCircuit instance
     """
 
-    circuit = MultiCircuit(Sbase=psse_circuit.SBASE)
+    circuit = MultiCircuit(Sbase=psse_circuit.SBASE, fbase=psse_circuit.BASFRQ)
     circuit.comments = 'Converted from a PSS/e .raw file'
 
     circuit.areas = [dev.Area(name=x.ARNAME) for x in psse_circuit.areas]

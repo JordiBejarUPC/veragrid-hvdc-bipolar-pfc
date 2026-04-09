@@ -8504,10 +8504,7 @@ class Assets:
         :return:
         """
         self.emt_models += [
-            tem.get_shunt_c_3ph_emt_template(vf=self._var_factory),
-            tem.get_shunt_l_3ph_emt_template(vf=self._var_factory),
-            tem.get_shunt_r_1ph_emt_template(vf=self._var_factory),
-            tem.get_shunt_r_3ph_emt_template(vf=self._var_factory),
+
             tem.get_simple_generator_emt_template(vf=self._var_factory),
             tem.get_generator_sauer_pai_type_emt_template(vf=self._var_factory),
             tem.get_governor_emt(vf=self._var_factory),
@@ -8520,8 +8517,13 @@ class Assets:
             tem.get_emt_ideal_converter(vf=self._var_factory),
             tem.get_full_pseudo_emt_converter(vf=self._var_factory),
             tem.get_dc_load_emt_template(vf=self._var_factory),
-            # the following are functions that generate templates depending on the specific object
-            tem.get_pi_line_emt_template(vf=self._var_factory),
+
+
+            # the following are functions that generate templates depending on phases or things
+            tem.get_pi_line_emt_template(vf=self._var_factory, phN=True, phA=True, phB=True, phC=True), # depends on number of phases!
+            tem.get_shunt_c_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),  # depends on number of phases!
+            tem.get_shunt_l_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),  # depends on number of phases!
+            tem.get_shunt_r_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),  # depends on number of phases!
             # tem.get_bergeron_line_emt_template(vf=self._var_factory),
             # tem.get_transformer_emt_template(vf=self._var_factory),
             # tem.get_xfmr_emt_template(vf=self._var_factory)
