@@ -139,7 +139,7 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
         """
 
         emt_model_editor = DynamicBlockEditorGUI(
-            var_factory=self.editor.circuit.emt_var_factory,
+            var_factory=self.editor.circuit.var_factory,
             block=self.api_object.emt_model,
             api_object=self.api_object,
             mode=DynamicEditorMode.EMT,

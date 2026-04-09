@@ -187,7 +187,7 @@ def attach_fmu_to_device(device: Any, grid: Any, request: FmuDeviceAttachmentReq
         if request.mode == FmuInterfaceMode.CO_SIMULATION:
             return attach_rms_fmu_cs_device(
                 device=device,
-                vfactory=grid.rms_var_factory,
+                vfactory=grid.var_factory,
                 config=config,
                 input_bindings=request.input_bindings,
                 output_bindings=request.output_bindings,
@@ -198,7 +198,7 @@ def attach_fmu_to_device(device: Any, grid: Any, request: FmuDeviceAttachmentReq
             if request.mode == FmuInterfaceMode.MODEL_EXCHANGE:
                 return attach_rms_fmu_me_device(
                     device=device,
-                    vfactory=grid.rms_var_factory,
+                    vfactory=grid.var_factory,
                     config=config,
                     input_bindings=request.input_bindings,
                     output_bindings=request.output_bindings,
@@ -213,7 +213,7 @@ def attach_fmu_to_device(device: Any, grid: Any, request: FmuDeviceAttachmentReq
             if request.mode == FmuInterfaceMode.CO_SIMULATION:
                 return attach_emt_fmu_cs_device(
                     device=device,
-                    vfactory=grid.emt_var_factory,
+                    vfactory=grid.var_factory,
                     config=config,
                     input_bindings=request.input_bindings,
                     output_bindings=request.output_bindings,
@@ -224,7 +224,7 @@ def attach_fmu_to_device(device: Any, grid: Any, request: FmuDeviceAttachmentReq
                 if request.mode == FmuInterfaceMode.MODEL_EXCHANGE:
                     return attach_emt_fmu_me_device(
                         device=device,
-                        vfactory=grid.emt_var_factory,
+                        vfactory=grid.var_factory,
                         config=config,
                         input_bindings=request.input_bindings,
                         output_bindings=request.output_bindings,

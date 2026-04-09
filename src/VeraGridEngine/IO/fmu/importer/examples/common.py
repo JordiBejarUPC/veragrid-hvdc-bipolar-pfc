@@ -425,15 +425,15 @@ def _build_rms_demo_grid() -> tuple[MultiCircuit, Load]:
     grid.add_bus(bus_load)
 
     # RMS buses need their symbolic shell before attaching dynamic devices.
-    initialize_bus_rms(bus_slack, vf=grid.rms_var_factory)
-    initialize_bus_rms(bus_load, vf=grid.rms_var_factory)
+    initialize_bus_rms(bus_slack, vf=grid.var_factory)
+    initialize_bus_rms(bus_load, vf=grid.var_factory)
 
     line: Line = Line(name="line_0_1", bus_from=bus_slack, bus_to=bus_load, r=0.03, x=0.07, b=0.03, rate=900.0)
     generator: Generator = Generator(name="Gen0", P=10.0, vset=1.0, Snom=900.0, x1=0.86138701, r1=0.3, freq=50.0, M=10.0, D=1.0, omega_ref=1.0, Kp=1.0, Ki=10.0)
     load: Load = Load(name="ImportedLoad", P=10.0, Q=1.0)
 
-    line.rms_model = get_line_rms_template(grid.rms_var_factory).block
-    generator.rms_model = get_complete_generator_template_rms(grid.rms_var_factory).block
+    line.rms_model = get_line_rms_template(grid.var_factory).block
+    generator.rms_model = get_complete_generator_template_rms(grid.var_factory).block
     grid.add_rms_events_group(RmsEventsGroup(name="default_rms_example_group"))
 
     grid.add_line(line)
@@ -453,7 +453,7 @@ def _build_emt_demo_grid() -> tuple[MultiCircuit, Load]:
     grid.add_bus(bus)
 
     # The example forces a simple ABC bus shell because the demo grid has no EMT branches yet.
-    bus_template = BusEmtTemplate(vf=grid.emt_var_factory, mask=[False, True, True, True], is_dc=bus.is_dc, name=f"{bus.name}_emt_template")
+    bus_template = BusEmtTemplate(vf=grid.var_factory, mask=[False, True, True, True], is_dc=bus.is_dc, name=f"{bus.name}_emt_template")
 
     # The public setter copies the block through symbolic serialization and that path still rejects `None`
     # entries present in EMT bus external mappings. For this controlled example we attach the template directly.
@@ -917,7 +917,7 @@ def run_emt_cs_example(output_dir: Path) -> Path:
     from VeraGridEngine.Devices.Injections.load import Load
     from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 
-    grid = SimpleNamespace(emt_var_factory=VarFactory(name="ExampleEmtCsVarFactory"))
+    grid = SimpleNamespace(var_factory=VarFactory(name="ExampleEmtCsVarFactory"))
     load = Load(name="ImportedLoad", P=0.0, Q=0.0)
     load.device_type = DeviceType.LoadDevice
     bus = Bus(name="ExampleBus", Vnom=10.0)
@@ -988,7 +988,7 @@ def run_emt_me_example(output_dir: Path) -> Path:
     from VeraGridEngine.Devices.Injections.load import Load
     from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 
-    grid = SimpleNamespace(emt_var_factory=VarFactory(name="ExampleEmtMeVarFactory"))
+    grid = SimpleNamespace(var_factory=VarFactory(name="ExampleEmtMeVarFactory"))
     load = Load(name="ImportedLoad", P=0.0, Q=0.0)
     load.device_type = DeviceType.LoadDevice
     bus = Bus(name="ExampleBus", Vnom=10.0)
