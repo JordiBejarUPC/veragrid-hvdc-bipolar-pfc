@@ -225,13 +225,13 @@ def _store_resolved_event_parameter(
     :return: None
     :rtype: None
     """
-    mdl_event_eq: Union[Expr, Const] = mdl.event_dict[var]
+    # mdl_event_eq: Union[Expr, Const] = mdl.event_dict[var]
     resolved_event_eq: Const = Const(result)
 
-    if isinstance(mdl_event_eq, Const):
-        mdl_event_eq.value = result
-    else:
-        mdl.event_dict[var] = resolved_event_eq
+    # if isinstance(mdl_event_eq, Const):
+    #     mdl_event_eq.value = result
+    # else:
+    #     mdl.event_dict[var] = resolved_event_eq
 
     event_parameters_eqs[event_eq_idx] = resolved_event_eq
 
@@ -379,9 +379,40 @@ def _compile_single_explicit_equation(
         raise TypeError("Unsupported explicit initialization single-equation compiler wrapper")
 
 
+def add_items(blk, init_vars, init_event):
+    """
+    adds items from a block to the dictionary
+    :param blk:
+    :type blk:
+    :param init_vars:
+    :param init_event:
+    init_dict
+    :return:
+    :rtype:
+    """
+
+    init_vars.update(blk.init_eqs)
+    init_event.update(blk.event_dict)
+
+def build_init_dict(mdl, init_vars, init_event):
+    """
+    builds initialization dictionary from mdl
+    :param mdl:
+    :type mdl:
+    :param init_vars:
+    :param init_event:
+    :type init_vars:
+    init_dict
+    :return:
+    :rtype:
+    """
+    add_items(mdl, init_vars, init_event)
+    for blk in mdl.children:
+        build_init_dict(blk, init_vars, init_event)
+
 def _build_explicit_init_graph(
         mdl: Block,
-) -> Tuple[Dict[Var, Union[Expr, Const]], Dict[Var, List[Var]], List[Var]]:
+) -> Tuple[Dict[Var, Union[Expr, Const]], Dict[Var, List[Var]], List[Var], Dict[Var, Union[Expr, Const]]]:
     """
     Build the unified dependency graph used by the explicit initializer.
 
@@ -391,20 +422,22 @@ def _build_explicit_init_graph(
     :rtype: Tuple[Dict[Var, Union[Expr, Const]], Dict[Var, List[Var]], List[Var]]
     :raises RuntimeError: If a cross-variable cycle is detected.
     """
-    dic_total: Dict[Var, Union[Expr, Const]] = mdl.event_dict.copy()
-    dic_total.update(mdl.init_eqs)
-    dic_total.update(mdl.diff_init_eqs)
+    init_vars = dict()
+    init_event = dict()
+    build_init_dict(mdl, init_vars, init_event)
+
+    init_vars.update(init_event)
 
     graph: Dict[Var, List[Var]] = defaultdict(list)
     in_degree: Dict[Var, int] = defaultdict(int)
     dependencies: Dict[Var, List[Var]] = dict()
 
-    for var, eq in dic_total.items():
+    for var, eq in init_vars.items():
         vars_in_eq: List[Var] = get_expression_vars(eq)
         deps: List[Var] = list()
 
         for dep in vars_in_eq:
-            if dep in dic_total:
+            if dep in init_vars:
                 deps.append(dep)
             else:
                 deps = deps
@@ -444,10 +477,10 @@ def _build_explicit_init_graph(
             else:
                 queue = queue
 
-    if len(topo_order) != len(dic_total):
+    if len(topo_order) != len(init_vars):
         raise RuntimeError("Cycle detected between different variables")
     else:
-        return dic_total, dependencies, topo_order
+        return init_vars, dependencies, topo_order, init_event
 
 
 def build_symbolic_vector_single_equation_compiler(
@@ -634,38 +667,41 @@ def init_explicit_common(
     for uid, val in init_guess.items():
         if uid in uid2idx_vars:
             x[uid2idx_vars[uid]] = val
-        else:
-            x = x
+        # else:
+        #     x = x
 
     for uid, val in diff_init_guess.items():
         if uid in uid2idx_diff:
             dx[uid2idx_diff[uid]] = val
-        else:
-            dx = dx
+        # else:
+        #     dx = dx
 
     event_params_array: np.ndarray = np.ones(len(variable_parameters))
-    event_uid_to_eq_idx: Dict[int, int] = dict()
 
-    for idx, event_var in enumerate(variable_parameters):
-        event_uid_to_eq_idx[event_var.uid] = idx
-
-    for event_var in variable_parameters:
-        eq_index: int = event_uid_to_eq_idx[event_var.uid]
-        event_eq: Union[Expr, Const] = event_parameters_eqs[eq_index]
-        if isinstance(event_eq, Const) and event_eq.value is not None:
-            event_params_array[uid2idx_event_params[event_var.uid]] = float(event_eq.value)
-        else:
-            event_params_array = event_params_array
-
-    dic_total: Dict[Var, Union[Expr, Const]]
-    dependencies: Dict[Var, List[Var]]
-    topo_order: List[Var]
-    dic_total, dependencies, topo_order = _build_explicit_init_graph(mdl)
+    # dictionary event_param_uid, event_param_idx position in variable_parameters
+    # commented for the moment
+    # event_uid_to_eq_idx: Dict[int, int] = dict()
+    #
+    # for idx, event_var in enumerate(variable_parameters):
+    #     event_uid_to_eq_idx[event_var.uid] = idx
+    #
+    # for event_var in variable_parameters:
+    #     eq_index: int = event_uid_to_eq_idx[event_var.uid]
+    #     event_eq: Union[Expr, Const] = event_parameters_eqs[eq_index]
+    #     if isinstance(event_eq, Const) and event_eq.value is not None:
+    #         event_params_array[uid2idx_event_params[event_var.uid]] = float(event_eq.value)
+    #     else:
+    #         event_params_array = event_params_array
+    #
+    # dic_total: Dict[Var, Union[Expr, Const]]
+    # dependencies: Dict[Var, List[Var]]
+    # topo_order: List[Var]
+    dic_total, dependencies, topo_order, init_event = _build_explicit_init_graph(mdl)
 
     for var in topo_order:
         eq: Union[Expr, Const] = dic_total[var]
 
-        if var in mdl.event_dict:
+        if var in init_event:
             result: float = _evaluate_explicit_init_equation(
                 eq=eq,
                 event_params_array=event_params_array,
@@ -683,7 +719,7 @@ def init_explicit_common(
                 mdl=mdl,
                 var=var,
                 event_parameters_eqs=event_parameters_eqs,
-                event_eq_idx=event_uid_to_eq_idx[var.uid],
+                event_eq_idx=uid2idx_event_params[var.uid],
                 result=result,
             )
 
