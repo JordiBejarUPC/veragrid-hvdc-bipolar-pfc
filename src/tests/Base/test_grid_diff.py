@@ -120,8 +120,10 @@ def test_grid_modifications() -> None:
     #
     assert ok_compare
 
-    os.remove(f1)
-    os.remove(f2)
+    if os.path.exists(f1):
+        os.remove(f1)
+    if os.path.exists(f2):
+        os.remove(f2)
     return
 
 

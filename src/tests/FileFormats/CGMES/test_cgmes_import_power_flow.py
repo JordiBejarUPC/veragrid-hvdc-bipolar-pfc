@@ -6,7 +6,7 @@
 
 import os
 
-import VeraGridEngine.api as gce
+import VeraGridEngine.api as vg
 
 
 def test_load_and_run_pf() -> None:
@@ -16,7 +16,7 @@ def test_load_and_run_pf() -> None:
         os.path.join("data", "grids", "CGMES_2_4_15", "TestConfigurations_packageCASv2.0")
     )
 
-    logger = gce.Logger()
+    logger = vg.Logger()
 
     packs = [
         {"BD": os.path.join(base_folder, "MicroGrid", "BaseCase_BC",
@@ -43,7 +43,7 @@ def test_load_and_run_pf() -> None:
             number_of_cases += 1
 
             try:
-                grid = gce.open_file(filename=file_list)
+                grid = vg.open_cgmes(filenames=file_list)
             except Exception as error:
                 logger.add_error(msg="Failed loading - " + str(error), device=os.path.basename(file_name))
                 grid = None
@@ -51,7 +51,7 @@ def test_load_and_run_pf() -> None:
 
             if grid is not None:
                 try:
-                    gce.power_flow(grid)
+                    vg.power_flow(grid)
                 except Exception as error:
                     logger.add_error(msg="Failed PF - " + str(error), device=os.path.basename(file_name))
                     failures += 1
@@ -60,4 +60,4 @@ def test_load_and_run_pf() -> None:
         logger.print()
         print(f"Failed {failures} out of {number_of_cases}, {failures / number_of_cases * 100:.2f}%")
 
-    assert not logger.has_logs()
+    assert not logger.has_errors()

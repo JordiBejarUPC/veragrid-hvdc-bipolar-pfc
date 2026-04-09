@@ -16,6 +16,7 @@ class GraphicLocation:
     """
 
     def __init__(self,
+                 api_object: ALL_DEV_TYPES,
                  x: float = 0,
                  y: float = 0,
                  h: float = 80,
@@ -23,8 +24,7 @@ class GraphicLocation:
                  r: float = 0,
                  poly_line: Union[None, List[Tuple[int, int]]] = None,
                  layout_metadata: Union[None, Dict[str, Any]] = None,
-                 draw_labels: bool = True,
-                 api_object: ALL_DEV_TYPES = None):
+                 draw_labels: bool = True):
         """
         GraphicLocation
         :param x: x position (px)

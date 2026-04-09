@@ -516,6 +516,7 @@ class MultiCircuit(Assets):
         batt = dev.Battery(name=gen.name,
                            idtag=gen.idtag,
                            P=gen.P,
+                           Q=gen.Q,
                            power_factor=gen.Pf,
                            vset=gen.Vset,
                            is_controlled=gen.is_controlled,
@@ -539,7 +540,7 @@ class MultiCircuit(Assets):
 
         batt.active_prof = gen.active_prof
         batt.P_prof = gen.P_prof
-        batt.Pf_prof = gen.Pf_prof
+        batt.Q_prof = gen.Q_prof
         batt.Vset_prof = gen.Vset_prof
         batt.enabled_dispatch_prof = gen.enabled_dispatch_prof
         batt.must_run_prof = gen.must_run_prof
@@ -859,12 +860,14 @@ class MultiCircuit(Assets):
 
     def set_state(self, t: int):
         """
-        Set the profiles state at the index t as the default values.
+        Set the profiles' state at the index t as the default values.
         """
         self.ensure_profiles_exist()
 
         for device in self.items():
+            device.disable_auto_updates()
             device.set_profile_values(t)
+            device.enable_auto_updates()
 
         self.snapshot_time = self.time_profile[t]
 
