@@ -3475,8 +3475,6 @@ class BlockType(Enum):
     GENERIC = "Generic"
 
     EMT_GENERATOR = "EMT_GENERATOR"
-    EMT_PI_LINE = "EMT_PI_LINE"
-    EMT_BERGERON_LINE = "EMT_BERGERON_LINE"
     R_LOAD = "R_LOAD"
     L_LOAD = "L_LOAD"
     C_LOAD = "C_LOAD"
