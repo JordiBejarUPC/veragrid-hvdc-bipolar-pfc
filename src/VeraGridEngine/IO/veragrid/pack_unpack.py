@@ -446,40 +446,36 @@ def cast_profile_value(
     if value is None:
         return None
 
-        if collection is not None:
-            if value == "None":
-                return None
-            return collection.get(value, None)
+    if collection is not None:
+        if value == "None":
+            return None
+        return collection.get(value, None)
 
-        if isinstance(profile.dtype, DeviceType):
-            return value
-        else:
-            if isinstance(profile.dtype, EnumType):
-                return profile.dtype(value)
-            else:
-                if profile.dtype == bool:
-                    if isinstance(value, str):
-                        low = value.strip().lower()
-                        if low in {"true", "1"}:
-                            return True
-                        else:
-                            if low in {"false", "0"}:
-                                return False
-                            else:
-                                return bool(value)
-                    else:
-                        return bool(value)
-                else:
-                    if profile.dtype == int:
-                        return int(value)
-                    else:
-                        if profile.dtype == float:
-                            return float(value)
-                        else:
-                            if profile.dtype == str:
-                                return str(value)
-                            else:
-                                return value
+    if isinstance(profile.dtype, DeviceType):
+        return value
+
+    if isinstance(profile.dtype, EnumType):
+        return profile.dtype(value)
+
+    if profile.dtype == bool:
+        if isinstance(value, str):
+            low = value.strip().lower()
+            if low in {"true", "1"}:
+                return True
+            if low in {"false", "0"}:
+                return False
+        return bool(value)
+
+    if profile.dtype == int:
+        return int(value)
+
+    if profile.dtype == float:
+        return float(value)
+
+    if profile.dtype == str:
+        return str(value)
+
+    return value
 
 
 def get_profile_from_dict(profile: AnyProfile,
