@@ -28,6 +28,14 @@ from VeraGridEngine.Devices.types import BRANCH_TYPES
 
 
 class ShortCircuitDriver(DriverTemplate):
+    __slots__ = (
+        "pf_results",
+        "pf_results3ph",
+        "pf_options",
+        "opf_results",
+        "options",
+    )
+
     name = 'Short Circuit'
     tpe = SimulationTypes.ShortCircuit_run
 
@@ -500,6 +508,8 @@ class ShortCircuitDriver(DriverTemplate):
 
         for k_sc, sc_definition in enumerate(grid.short_circuit_event):
 
+            self.report_text("Running " + sc_definition.name + "...")
+
             for i, island in enumerate(calculation_inputs):
 
                 # the options give the bus index counting all the grid, however
@@ -520,7 +530,7 @@ class ShortCircuitDriver(DriverTemplate):
                         if self.pf_results is not None:
                             res = self.single_short_circuit_sequences(
                                 nc=island,
-                                Vpf=self.pf_results.voltage[island.bus_data.original_idx],
+                                Vpf=self.pf_results.voltage,  # will be slices inside
                                 Zf=Zf[island.bus_data.original_idx],
                                 island_bus_index=island_bus_index,
                                 fault_type=sc_definition.fault_type
@@ -593,9 +603,11 @@ class ShortCircuitDriver(DriverTemplate):
                     else:
                         raise Exception(f"unknown short circuit method: {sc_definition.method}")
 
+            self.report_progress2(k_sc, len(grid.short_circuit_event))
+
         # expand voltages if there was a bus topology reduction
         if nc.topology_performed:
-            results.voltage = nc.propagate_bus_result(results.voltage)
+            # results.voltage = nc.propagate_bus_result(results.voltage)
             results.voltage1 = nc.propagate_bus_result(results.voltage1)
             results.voltage0 = nc.propagate_bus_result(results.voltage0)
             results.voltage2 = nc.propagate_bus_result(results.voltage2)

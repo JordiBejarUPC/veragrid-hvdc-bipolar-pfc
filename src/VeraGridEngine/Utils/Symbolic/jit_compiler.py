@@ -611,6 +611,7 @@ def _build_matrix_codegen_cache_key(template_eq: Expr,
 # ==============================================================================
 class DiscretizationMethod(ABC):
     """Abstract base class for discretization strategies."""
+    __slots__ = ()
 
     @abstractmethod
     def discretize(self, state_idx: int, h_var: str = 'h') -> str:
@@ -622,6 +623,8 @@ class DiscretizationMethod(ABC):
 
 
 class TrapezoidalMethod(DiscretizationMethod):
+    __slots__ = ()
+
     def discretize(self, state_idx: int, h_var: str = 'h') -> str:
         return f"((2.0/{h_var}) * (states[{state_idx}] - history[{state_idx}]) - d_history[{state_idx}])"
 
@@ -630,6 +633,8 @@ class TrapezoidalMethod(DiscretizationMethod):
 
 
 class BackwardEulerMethod(DiscretizationMethod):
+    __slots__ = ()
+
     def discretize(self, state_idx: int, h_var: str = 'h') -> str:
         return f"((states[{state_idx}] - history[{state_idx}]) / {h_var})"
 
@@ -638,6 +643,8 @@ class BackwardEulerMethod(DiscretizationMethod):
 
 
 class BDF2Method(DiscretizationMethod):
+    __slots__ = ()
+
     def discretize(self, state_idx: int, h_var: str = 'h') -> str:
         return f"((1.5*states[{state_idx}] - 2.0*history[{state_idx}] + 0.5*history2[{state_idx}]) / {h_var})"
 
@@ -646,6 +653,8 @@ class BDF2Method(DiscretizationMethod):
 
 class ContinuousMethod(DiscretizationMethod):
     """Strategy for continuous systems (RMS Small Signal). Does not discretize."""
+    __slots__ = ()
+
     def discretize(self, state_idx: int, h_var: str = 'h') -> str:
         return f"dx[{state_idx}]"
 
@@ -1551,6 +1560,7 @@ class EagerKernelKind(Enum):
     and the Numba signature differ between residual kernels, AD kernels and
     vectorized matrix kernels.
     """
+    __slots__ = ()
 
     Residual = "residual"
     AutomaticDifferentiation = "automatic_differentiation"

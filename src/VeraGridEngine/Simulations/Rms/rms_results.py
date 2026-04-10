@@ -16,6 +16,21 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
 
 class RmsResults(ResultsTemplate):
+    __slots__ = (
+        "nt",
+        "nv",
+        "ng",
+        "rms_events_group_names",
+        "well_initialized",
+        "converged",
+        "variables",
+        "uid2vars_glob_name",
+        "devices_vars_info",
+        "uid2idx",
+        "vars_glob_name2uid",
+        "variable_array",
+        "values",
+    )
 
     def __init__(self,
                  time_array: DateVec,

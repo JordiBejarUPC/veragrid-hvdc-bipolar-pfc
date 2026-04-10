@@ -143,13 +143,11 @@ def test_run_grid_reliability_computes_customer_metrics(monkeypatch: pytest.Monk
     monkeypatch.setattr(reliability_driver_module, "compile_numerical_circuit_at", lambda _: nc)
     monkeypatch.setattr(reliability_driver_module, "generate_states_matrix", lambda **_: next(state_sequence))
 
-    driver = ReliabilityStudyDriver.__new__(ReliabilityStudyDriver)
-    driver.grid = grid
+    driver = ReliabilityStudyDriver(grid=grid)
     driver.n_sim = 1
     driver.results = ReliabilityResults(nsim=1)
     driver.greedy_dispatch_inputs = SimpleNamespace(dt=np.array([1.0, 1.0, 1.0]))
-    driver.report_progress2 = lambda current, total: None
-    driver._ReliabilityStudyDriver__cancel__ = False
+    # driver.report_progress2 = lambda current, total: None
 
     driver.run_grid_reliability()
 

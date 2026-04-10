@@ -12,6 +12,16 @@ from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceTyp
 
 
 class ReliabilityResults(ResultsTemplate):
+    __slots__ = (
+        "LOLE_evolution",
+        "ENS_evolution",
+        "LOLF_evolution",
+        "LOLET_evolution",
+        "LOLFT_evolution",
+        "SAIDI_evolution",
+        "SAIFI_evolution",
+        "CAIDI_evolution",
+    )
 
     def __init__(self, nsim: int):
         """

@@ -23,11 +23,24 @@ from VeraGridEngine.Simulations.driver_template import DriverTemplate
 
 
 class StochasticPowerFlowType(Enum):
+    __slots__ = ()
+
     MonteCarlo = 'Monte Carlo'
     LatinHypercube = 'Latin Hypercube'
 
 
 class StochasticPowerFlowDriver(DriverTemplate):
+    __slots__ = (
+        "options",
+        "opf_time_series_results",
+        "mc_tol",
+        "batch_size",
+        "max_sampling_points",
+        "simulation_type",
+        "pool",
+        "returned_results",
+    )
+
     name = 'Stochastic Power Flow'
     tpe = SimulationTypes.StochasticPowerFlow
 

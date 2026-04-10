@@ -19,6 +19,23 @@ class ContingencyAnalysisTimeSeriesResults(ResultsTemplate):
     """
     Contingency analysis time series results
     """
+    __slots__ = (
+        "nt",
+        "original_time_array",
+        "branch_names",
+        "bus_names",
+        "con_names",
+        "bus_types",
+        "S",
+        "max_flows",
+        "max_loading",
+        "overload_count",
+        "sum_overload",
+        "mean_overload",
+        "std_dev_overload",
+        "srap_used_power",
+        "report",
+    )
 
     def __init__(self,
                  n: int,

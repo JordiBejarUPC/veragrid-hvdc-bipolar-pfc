@@ -69,6 +69,14 @@ def count_device_incidences(active_states: Mat) -> int:
 
 
 class ReliabilityStudyDriver(DriverTemplate):
+    __slots__ = (
+        "pf_options",
+        "reliability_mode",
+        "n_sim",
+        "time_indices",
+        "greedy_dispatch_inputs",
+    )
+
     name = 'Reliability analysis'
     tpe = SimulationTypes.Reliability_run
 
@@ -228,7 +236,7 @@ class ReliabilityStudyDriver(DriverTemplate):
 
         for sim_idx in range(self.n_sim):
 
-            if self.__cancel__:
+            if self.is_cancel():
                 return
 
             gen_actives, gen_n_failures = generate_states_matrix(mttf=nc.generator_data.mttf,
@@ -350,6 +358,3 @@ class ReliabilityStudyDriver(DriverTemplate):
                                                  cumulative_customer_interruptions,
                                                  out=np.zeros(self.n_sim),
                                                  where=cumulative_customer_interruptions > 0)
-
-    def cancel(self):
-        self.__cancel__ = True

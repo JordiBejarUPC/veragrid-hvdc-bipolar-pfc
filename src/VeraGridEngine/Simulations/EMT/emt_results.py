@@ -15,6 +15,23 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
 
 class EmtResults(ResultsTemplate):
+    __slots__ = (
+        "nt",
+        "nv",
+        "ndv",
+        "ng",
+        "emt_events_group_names",
+        "variables",
+        "diff_variables",
+        "uid2vars_glob_name",
+        "devices_vars_info",
+        "uid2idx_vars",
+        "uid2idx_diff",
+        "vars_glob_name2uid",
+        "variable_array",
+        "values",
+        "diff_values",
+    )
 
     def __init__(self,
                  time_array: DateVec,

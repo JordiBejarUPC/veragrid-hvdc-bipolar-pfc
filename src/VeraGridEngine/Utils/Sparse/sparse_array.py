@@ -401,6 +401,10 @@ class SparseObjectArray:
     """
     SparseArray
     """
+    __slots__ = (
+        "_size",
+        "_map",
+    )
 
     def __init__(self, n: int) -> None:
         """

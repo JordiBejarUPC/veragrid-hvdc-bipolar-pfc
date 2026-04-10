@@ -28,6 +28,15 @@ from VeraGridEngine.enumerations import EngineType, SimulationTypes
 
 
 class EmtSimulationDriver(DriverTemplate):
+    __slots__ = (
+        "solvers_dict",
+        "pf_results_3Ph",
+        "pf_results",
+        "options",
+        "problem",
+        "line_states",
+    )
+
     name = 'EMT Simulation'
     tpe = SimulationTypes.EmtDynamic_run
 

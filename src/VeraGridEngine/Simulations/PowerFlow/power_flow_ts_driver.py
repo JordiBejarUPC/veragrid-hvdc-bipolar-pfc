@@ -20,6 +20,11 @@ from VeraGridEngine.enumerations import EngineType, SimulationTypes
 
 
 class PowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
+    __slots__ = (
+        "options",
+        "opf_time_series_results",
+    )
+
     tpe = SimulationTypes.PowerFlowTimeSeries_run
     name = tpe.value
 
@@ -124,7 +129,7 @@ class PowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
             time_series_results.error_values[it] = pf_res.error
             time_series_results.converged_values[it] = pf_res.converged
 
-            if self.__cancel__:
+            if self.is_cancel():
                 return time_series_results
 
         return time_series_results
