@@ -121,7 +121,7 @@ class RmsProblemDae(RmsProblemTemplate):
         self.options: RmsOptions = options
 
         # this is the general init guess that will contain all the variables init value
-        self.init_guess: Dict[int, float] = dict()
+        self.init_guess:  Dict[int, float | int | complex | None] = dict()
         self.sys_block: Block = Block(children=[], in_vars=[])
 
         self._algebraic_vars: List[Var] = list()
@@ -160,7 +160,7 @@ class RmsProblemDae(RmsProblemTemplate):
         ######################### Initialize containers#############################
         total_init_explicit_time: float = 0
         t0 = time.perf_counter()
-        diff_init_guess_common: Dict[int, float] = dict()
+        diff_init_guess_common: Dict[int, float | int | complex | None] = dict()
 
         # dictionaries to store device-variable ifo
         self._vars_info: Dict[ALL_DEV_TYPES, List[Var]] = dict()

@@ -102,7 +102,7 @@ Works for both RMS and EMT simulations since the symbolic block is the same.
 
 
 
-def _evaluate_explicit_init_equation(
+def evaluate_explicit_init_equation(
         eq: Union[Expr, Const],
         event_params_array: np.ndarray,
         x: np.ndarray,
@@ -112,7 +112,7 @@ def _evaluate_explicit_init_equation(
         uid2idx_vars: Dict[int, int],
         uid2idx_params: Dict[int, int],
         uid2idx_diff: Dict[int, int],
-) -> float:
+) -> float | int | complex | None:
     """
     Evaluate one explicit initialization equation using the shared bindings.
 
@@ -139,25 +139,23 @@ def _evaluate_explicit_init_equation(
     :raises RuntimeError: If a constant equation has no concrete value.
     """
     if isinstance(eq, Const):
-        if eq.value is None:
-            raise RuntimeError("Explicit initialization encountered an unresolved constant expression")
-        return float(eq.value)
-
-    uid_bindings: Dict[int, float] = build_uid_bindings(
-        eq=eq,
-        event_params_array=event_params_array,
-        x=x,
-        params_array=params_array,
-        dx=dx,
-        uid2idx_event_params=uid2idx_event_params,
-        uid2idx_vars=uid2idx_vars,
-        uid2idx_params=uid2idx_params,
-        uid2idx_diff=uid2idx_diff,
-    )
-    return float(eq.eval_uid(uid_bindings))
+        return eq.value
+    else:
+        uid_bindings: Dict[int, float] = build_uid_bindings(
+            eq=eq,
+            event_params_array=event_params_array,
+            x=x,
+            params_array=params_array,
+            dx=dx,
+            uid2idx_event_params=uid2idx_event_params,
+            uid2idx_vars=uid2idx_vars,
+            uid2idx_params=uid2idx_params,
+            uid2idx_diff=uid2idx_diff,
+        )
+        return eq.eval_uid(uid_bindings)
 
 
-def _evaluate_single_equation_fn(
+def evaluate_single_equation_fn(
         eq_fn: Callable[[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Union[np.ndarray, float]],
         x: np.ndarray,
         dx: np.ndarray,
@@ -191,26 +189,13 @@ def _evaluate_single_equation_fn(
         return float(result)
 
 
-def _store_resolved_event_parameter(
-        mdl: Block,
-        var: Var,
+def store_resolved_event_parameter(
         event_parameters_eqs: List[Union[Expr, Const]],
         event_eq_idx: int,
-        result: float,
+        result: float | int | complex | None,
 ) -> None:
     """
-    Store one resolved runtime parameter while preserving shared ``Const`` objects.
-
-    EMT keeps two relevant representations for runtime parameters during the
-    initialization stage:
-
-    - the original block ``event_dict`` objects, which are also reused by the
-      runtime-parameter source buffers rebuilt later in the workflow,
-    - the working ``event_parameters_eqs`` list passed into the explicit
-      initializer.
-
-    To preserve both views, the block object is updated in place when possible,
-    while the working list receives a fresh ``Const`` at the requested index.
+  Store the calculated value in the equations array
 
     :param mdl: Model block owning the runtime parameter.
     :type mdl: Block
@@ -225,13 +210,7 @@ def _store_resolved_event_parameter(
     :return: None
     :rtype: None
     """
-    # mdl_event_eq: Union[Expr, Const] = mdl.event_dict[var]
     resolved_event_eq: Const = Const(result)
-
-    # if isinstance(mdl_event_eq, Const):
-    #     mdl_event_eq.value = result
-    # else:
-    #     mdl.event_dict[var] = resolved_event_eq
 
     event_parameters_eqs[event_eq_idx] = resolved_event_eq
 
@@ -353,7 +332,7 @@ class RmsSingleEquationCompiler:
             return compiled_eq
 
 
-def _compile_single_explicit_equation(
+def compile_single_explicit_equation(
         compile_single_equation: Union[SymbolicVectorSingleEquationCompiler, RmsSingleEquationCompiler],
         eq: Union[Expr, Const],
 ) -> Callable[[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Union[np.ndarray, float]]:
@@ -410,7 +389,7 @@ def build_init_dict(mdl, init_vars, init_event):
     for blk in mdl.children:
         build_init_dict(blk, init_vars, init_event)
 
-def _build_explicit_init_graph(
+def build_explicit_init_graph(
         mdl: Block,
 ) -> Tuple[Dict[Var, Union[Expr, Const]], Dict[Var, List[Var]], List[Var], Dict[Var, Union[Expr, Const]]]:
     """
@@ -587,10 +566,10 @@ def solve_self_implicit(
 
     for _ in range(max_iter):
         target_array[target_idx] = x0
-        f0: float = _evaluate_single_equation_fn(eq_fn, x, dx, event_params_array, params_array) - x0
+        f0: float = evaluate_single_equation_fn(eq_fn, x, dx, event_params_array, params_array) - x0
 
         target_array[target_idx] = x1
-        f1: float = _evaluate_single_equation_fn(eq_fn, x, dx, event_params_array, params_array) - x1
+        f1: float = evaluate_single_equation_fn(eq_fn, x, dx, event_params_array, params_array) - x1
 
         if abs(f1) < tol:
             return x1
@@ -613,8 +592,8 @@ def init_explicit_common(
         variable_parameters: List[Var],
         event_parameters_eqs: List[Union[Expr, Const]],
         constant_parameters: List[Var],
-        init_guess: Dict[int, float],
-        diff_init_guess: Dict[int, float],
+        init_guess: Dict[int, float | int | complex | None],
+        diff_init_guess: Dict[int, float | int | complex | None],
         uid2idx_vars: Dict[int, int],
         uid2idx_diff: Dict[int, int],
         uid2idx_params: Dict[int, int],
@@ -622,10 +601,14 @@ def init_explicit_common(
         params_array: np.ndarray,
         compile_single_equation: Union[SymbolicVectorSingleEquationCompiler, RmsSingleEquationCompiler],
         verbose: bool = False,
-) -> Tuple[Dict[int, float], Dict[int, float]]:
+) -> Tuple[Dict[int, float | int | complex | None], Dict[int, float | int | complex | None]]:
     """
     Run the universal explicit initialization core shared by RMS and EMT flows.
 
+    :param sys_diff_vars:
+    :type sys_diff_vars:
+    :param sys_vars:
+    :type sys_vars:
     :param mdl: Symbolic model block.
     :type mdl: Block
     :param variable_parameters: Runtime or event parameters.
@@ -660,6 +643,7 @@ def init_explicit_common(
     # initialize array for model variables
     x: np.ndarray = np.ones(len(sys_vars))
     dx: np.ndarray = np.zeros(len(sys_diff_vars))
+    event_params_array: np.ndarray = np.ones(len(variable_parameters))
 
     # Seed the working vectors with the guesses already assembled before the
     # explicit stage. The problem relies on those PF-driven values and on previously
@@ -667,42 +651,19 @@ def init_explicit_common(
     for uid, val in init_guess.items():
         if uid in uid2idx_vars:
             x[uid2idx_vars[uid]] = val
-        # else:
-        #     x = x
 
     for uid, val in diff_init_guess.items():
         if uid in uid2idx_diff:
             dx[uid2idx_diff[uid]] = val
-        # else:
-        #     dx = dx
 
-    event_params_array: np.ndarray = np.ones(len(variable_parameters))
 
-    # dictionary event_param_uid, event_param_idx position in variable_parameters
-    # commented for the moment
-    # event_uid_to_eq_idx: Dict[int, int] = dict()
-    #
-    # for idx, event_var in enumerate(variable_parameters):
-    #     event_uid_to_eq_idx[event_var.uid] = idx
-    #
-    # for event_var in variable_parameters:
-    #     eq_index: int = event_uid_to_eq_idx[event_var.uid]
-    #     event_eq: Union[Expr, Const] = event_parameters_eqs[eq_index]
-    #     if isinstance(event_eq, Const) and event_eq.value is not None:
-    #         event_params_array[uid2idx_event_params[event_var.uid]] = float(event_eq.value)
-    #     else:
-    #         event_params_array = event_params_array
-    #
-    # dic_total: Dict[Var, Union[Expr, Const]]
-    # dependencies: Dict[Var, List[Var]]
-    # topo_order: List[Var]
-    dic_total, dependencies, topo_order, init_event = _build_explicit_init_graph(mdl)
+    dic_total, dependencies, topo_order, init_event = build_explicit_init_graph(mdl)
 
     for var in topo_order:
         eq: Union[Expr, Const] = dic_total[var]
 
         if var in init_event:
-            result: float = _evaluate_explicit_init_equation(
+            result = evaluate_explicit_init_equation(
                 eq=eq,
                 event_params_array=event_params_array,
                 x=x,
@@ -713,11 +674,8 @@ def init_explicit_common(
                 uid2idx_params=uid2idx_params,
                 uid2idx_diff=uid2idx_diff,
             )
-            event_idx: int = uid2idx_event_params[var.uid]
-            event_params_array[event_idx] = result
-            _store_resolved_event_parameter(
-                mdl=mdl,
-                var=var,
+            event_params_array[uid2idx_event_params[var.uid]] = result
+            store_resolved_event_parameter(
                 event_parameters_eqs=event_parameters_eqs,
                 event_eq_idx=uid2idx_event_params[var.uid],
                 result=result,
@@ -727,11 +685,32 @@ def init_explicit_common(
                 print(f"event_param:{var.name} initialized with: {result}")
 
         else:
-            is_self_implicit: bool = var in dependencies[var]
+            if not var in dependencies[var]:
+                result = evaluate_explicit_init_equation(
+                    eq=eq,
+                    event_params_array=event_params_array,
+                    x=x,
+                    params_array=params_array,
+                    dx=dx,
+                    uid2idx_event_params=uid2idx_event_params,
+                    uid2idx_vars=uid2idx_vars,
+                    uid2idx_params=uid2idx_params,
+                    uid2idx_diff=uid2idx_diff,
+                )
 
-            if is_self_implicit:
+                if var.uid in uid2idx_vars:
+                    x[uid2idx_vars[var.uid]] = result
+                    init_guess[var.uid] = result
+                elif var.uid in uid2idx_diff:
+                    dx[uid2idx_diff[var.uid]] = result
+                    diff_init_guess[var.uid] = result
+                else:
+                    raise RuntimeError(f"Unable to classify explicit variable {var.name}")
+
+            else:
+                # Todo: refactor this to use compile_rhs function already built in jit_compiler
                 eq_fn: Callable[[np.ndarray, np.ndarray, np.ndarray, np.ndarray], Union[np.ndarray, float]] \
-                    = _compile_single_explicit_equation(compile_single_equation, eq)
+                    = compile_single_explicit_equation(compile_single_equation, eq)
 
                 if var.uid in uid2idx_vars:
                     target_idx: int = uid2idx_vars[var.uid]
@@ -761,27 +740,6 @@ def init_explicit_common(
                     diff_init_guess[var.uid] = result
                 else:
                     raise RuntimeError(f"Unable to classify self-implicit variable {var.name}")
-            else:
-                result = _evaluate_explicit_init_equation(
-                    eq=eq,
-                    event_params_array=event_params_array,
-                    x=x,
-                    params_array=params_array,
-                    dx=dx,
-                    uid2idx_event_params=uid2idx_event_params,
-                    uid2idx_vars=uid2idx_vars,
-                    uid2idx_params=uid2idx_params,
-                    uid2idx_diff=uid2idx_diff,
-                )
-
-                if var.uid in uid2idx_vars:
-                    x[uid2idx_vars[var.uid]] = result
-                    init_guess[var.uid] = result
-                elif var.uid in uid2idx_diff:
-                    dx[uid2idx_diff[var.uid]] = result
-                    diff_init_guess[var.uid] = result
-                else:
-                    raise RuntimeError(f"Unable to classify explicit variable {var.name}")
 
             if verbose:
                 print(f"explicit_init:{var.name} = {result}")
