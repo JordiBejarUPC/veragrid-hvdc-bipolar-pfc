@@ -22,8 +22,11 @@ from VeraGridEngine.enumerations import (DeviceType, TimeFrame, BuildStatus, Win
                                          BranchImpedanceMode, FaultType, TapChangerTypes, ContingencyOperationTypes,
                                          WindingType, MethodShortCircuit, PhasesShortCircuit, ShuntConnectionType,
                                          BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod, OpfDispatchMode,
-                                         EmtLineTypes, EmtProblemTypes, EmtInitializationMethod, SmallSignalEmtBuildTypes,
-                                         EraSvdSolverType, ShuntControlMode, RmsProblemTypes,)
+                                         EmtLineTypes, EmtProblemTypes, EmtInitializationMethod,
+                                         SmallSignalEmtBuildTypes, FmuTemplateDomain,
+                                         EraSvdSolverType, ShuntControlMode, RmsProblemTypes, FmuTemplateMode, )
+
+
 
 AnyProfile = Union[ProfileFloat, ProfileInt, ProfileBool, ProfileDevice, ProfileEnum]
 PROFILE_INSTANCE_TYPES = (ProfileFloat, ProfileInt, ProfileBool, ProfileDevice, ProfileEnum)
@@ -411,8 +414,8 @@ class EditableDeviceMeta(type):
 
         return cls
 
-class PropertyChanges:
 
+class PropertyChanges:
 
     def __init__(self):
         # This per-instance map stores merge toggles to avoid mutating shared schema objects.
