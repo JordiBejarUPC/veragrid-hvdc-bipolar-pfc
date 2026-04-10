@@ -435,7 +435,7 @@ class BlockSaver:
 
         for dyn_var_type, var in blk.external_mapping.items():
             if var is not None:
-                if var.uid not in self.var_factory.get_vars_dict():
+                if var.uid not in self.var_factory.get_vars_dict() and var.uid not in self.var_factory.get_diff_var_dict():
                     raise ValueError(f"variable {var.name} not added to vars factory")
 
         # save diagram

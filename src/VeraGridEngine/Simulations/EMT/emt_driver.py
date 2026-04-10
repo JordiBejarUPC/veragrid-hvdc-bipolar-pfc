@@ -39,14 +39,15 @@ class EmtSimulationDriver(DriverTemplate):
     def __init__(self,
                  grid: MultiCircuit,
                  options: EmtOptions,
-                 pf_results_3Ph: PowerFlowResults3Ph | None = None,
+                 pf_results_3ph: PowerFlowResults3Ph | None = None,
                  pf_results: PowerFlowResults | None = None,
                  engine: EngineType = EngineType.VeraGrid):
         """
         DynamicDriver class constructor
         :param grid: MultiCircuit instance
         :param options: EmtOptions instance (optional)
-        :param pf_results: PowerFlowResults3ph
+        :param pf_results_3ph: PowerFlowResults3ph
+        :param pf_results: PowerFlowResults
         :param engine: EngineType (i.e., EngineType.VeraGrid) (optional)
         """
 
@@ -60,7 +61,7 @@ class EmtSimulationDriver(DriverTemplate):
 
         self.grid = grid
 
-        self.pf_results_3Ph: PowerFlowResults3Ph | None = pf_results_3Ph
+        self.pf_results_3Ph: PowerFlowResults3Ph | None = pf_results_3ph
 
         self.pf_results: PowerFlowResults | None = pf_results
 
@@ -105,7 +106,7 @@ class EmtSimulationDriver(DriverTemplate):
             grid=self.grid,
             options=self.options,
             pf_results=self.pf_results,
-            pf_results_3Ph=self.pf_results_3Ph,
+            pf_results_3ph=self.pf_results_3Ph,
             progress_signal=self.progress_signal,
         )
         self.problem = problem

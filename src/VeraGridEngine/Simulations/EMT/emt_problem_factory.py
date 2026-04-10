@@ -21,7 +21,7 @@ EMT_PROBLEM_CLASS_MAP = {
 def build_emt_problem(grid: MultiCircuit,
                       options: EmtOptions,
                       pf_results: PowerFlowResults | None = None,
-                      pf_results_3Ph: PowerFlowResults3Ph | None = None,
+                      pf_results_3ph: PowerFlowResults3Ph | None = None,
                       progress_signal: DummySignal | None = None):
     if options.problem_type in EMT_PROBLEM_CLASS_MAP:
         problem_cls = EMT_PROBLEM_CLASS_MAP[options.problem_type]
@@ -32,6 +32,6 @@ def build_emt_problem(grid: MultiCircuit,
         grid=grid,
         options=options,
         pf_results=pf_results,
-        pf_results_3Ph =pf_results_3Ph,
+        pf_results_3ph =pf_results_3ph,
         progress_signal=progress_signal,
     )

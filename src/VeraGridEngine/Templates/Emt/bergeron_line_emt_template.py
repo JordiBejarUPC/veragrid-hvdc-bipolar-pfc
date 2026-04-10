@@ -16,7 +16,7 @@ def get_bergeron_line_emt_template(
     phA: bool = True,
     phB: bool = True,
     phC: bool = True,
-    name: str | None = EmtLineTypes.Bergeron) -> EmtModelTemplate:
+    name: str | None = "Bergeron") -> EmtModelTemplate:
     """
     Create the symbolic EMT template for a Bergeron line.
 
@@ -28,7 +28,6 @@ def get_bergeron_line_emt_template(
     :param phB: Bool. True if the line has phase B, else False.
     :param phC: Bool. True if the line has phase C, else False.
     :param name: Symbolic model name.
-    :param line: Optional legacy argument kept for caller compatibility.
     :return: EMT bergeron-line model template.
     """
     templ = EmtModelTemplate()

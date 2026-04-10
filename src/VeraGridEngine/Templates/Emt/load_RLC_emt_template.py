@@ -255,7 +255,7 @@ def get_shunt_r_emt_template(
     phA: bool = True,
     phB: bool = True,
     phC: bool = True,
-    name: str | None = None,
+    name: str = "R_shunt",
 ) -> EmtModelTemplate:
     """Build a phase-selective shunt resistor EMT template.
 
@@ -336,7 +336,7 @@ def get_shunt_l_emt_template(
     phA: bool,
     phB: bool,
     phC: bool,
-    name: str | None,
+    name: str = "L_shunt",
 ) -> EmtModelTemplate:
     """Build a phase-selective shunt inductor EMT template.
 
@@ -418,7 +418,7 @@ def get_shunt_c_emt_template(
     phA: bool,
     phB: bool,
     phC: bool,
-    name: str | None,
+    name: str = "C_shunt",
 ) -> EmtModelTemplate:
     """Build a phase-selective shunt capacitor EMT template.
 

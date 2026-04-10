@@ -72,6 +72,7 @@ class BusEmtTemplate(EmtModelTemplate):
             )
 
             self._block.external_mapping = {
+                VarPowerFlowRefferenceType.Vdc: None,
                 VarPowerFlowRefferenceType.v_N: self.v_N,
                 VarPowerFlowRefferenceType.v_A: self.v_A,
                 VarPowerFlowRefferenceType.v_B: self.v_B,
@@ -169,18 +170,18 @@ def get_bus_emt_algebraic_vars(bus_emt_model: Block) -> Tuple[
     :param bus_emt_model: EMT bus block
     :return: Tuple with four positions to preserve a stable API
     """
-    mapping = bus_emt_model.external_mapping
+    external_mapping = bus_emt_model.external_mapping
 
     # DC bus
-    vdc = mapping.get(VarPowerFlowRefferenceType.Vdc, None)
+    vdc = external_mapping.get(VarPowerFlowRefferenceType.Vdc, None)
     if vdc is not None:
         return vdc, None, None, None
 
     # AC bus
-    v_n = mapping.get(VarPowerFlowRefferenceType.v_N, None)
-    v_a = mapping.get(VarPowerFlowRefferenceType.v_A, None)
-    v_b = mapping.get(VarPowerFlowRefferenceType.v_B, None)
-    v_c = mapping.get(VarPowerFlowRefferenceType.v_C, None)
+    v_n = external_mapping.get(VarPowerFlowRefferenceType.v_N, None)
+    v_a = external_mapping.get(VarPowerFlowRefferenceType.v_A, None)
+    v_b = external_mapping.get(VarPowerFlowRefferenceType.v_B, None)
+    v_c = external_mapping.get(VarPowerFlowRefferenceType.v_C, None)
 
     if v_n is None and v_a is None and v_b is None and v_c is None:
         raise ValueError("Invalid EMT bus model: no voltage algebraic variables found")
