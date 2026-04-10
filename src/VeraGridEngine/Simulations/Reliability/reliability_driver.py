@@ -35,9 +35,9 @@ def get_gen_pmax(nt: int, k: int, Snom: float, P_array: Vec, active_array: BoolV
     gen_pmax = np.zeros(nt)
     for t in range(nt):
         if dispatchable_array[t]:
-            gen_pmax[t, k] = Snom * active_array[t]
+            gen_pmax[t] = Snom * active_array[t]
         else:
-            gen_pmax[t, k] = P_array[t] * active_array[t]
+            gen_pmax[t] = P_array[t] * active_array[t]
 
     return gen_pmax
 
