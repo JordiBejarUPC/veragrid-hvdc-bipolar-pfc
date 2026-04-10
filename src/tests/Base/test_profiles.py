@@ -5,176 +5,324 @@
 import math
 import os
 import numpy as np
-import VeraGridEngine.api as gce
-from VeraGridEngine.Devices.profile import Profile, SparseArray, check_if_sparse
+from VeraGridEngine.Devices.Profiles import check_if_sparse
+from VeraGridEngine.Devices.Profiles.profile_bool import ProfileBool
+from VeraGridEngine.Devices.Profiles.profile_device import ProfileDevice
+from VeraGridEngine.Devices.Profiles.profile_enum import ProfileEnum
+from VeraGridEngine.Devices.Profiles.profile_float import ProfileFloat
+from VeraGridEngine.Devices.Profiles.profile_int import ProfileInt
+from VeraGridEngine.Devices.Profiles.sparse_array_bool import SparseArrayBool
+from VeraGridEngine.Devices.Profiles.sparse_array_device import SparseArrayDevice
+from VeraGridEngine.Devices.Profiles.sparse_array_enum import SparseArrayEnum
+from VeraGridEngine.Devices.Profiles.sparse_array_float import SparseArrayFloat
+from VeraGridEngine.Devices.Profiles.sparse_array_int import SparseArrayInt
+from VeraGridEngine.enumerations import DeviceType, TapPhaseControl
 
 
-def test_sparse_array1():
+class DummyDevice:
     """
-    Test that dense arrays translate properly
-    :return:
+    Lightweight editable-device stand-in used by unit tests.
     """
-    n = 10
-    x = np.sin(np.arange(n) + 1.0)
 
-    s = SparseArray(data_type=float, default_value=0.0)
+    __slots__ = ("idtag", "name")
+
+    def __init__(self, idtag: str, name: str) -> None:
+        """
+        Build a deterministic dummy device.
+
+        :param idtag: Stable identifier.
+        :param name: Human-readable device name.
+        :return: ``None``.
+        """
+        self.idtag: str = idtag
+        self.name: str = name
+
+
+def test_sparse_array_float_dense_roundtrip() -> None:
+    """
+    Test that float sparse arrays preserve dense input values.
+
+    :return: ``None``.
+    """
+    n: int = 10
+    x: np.ndarray = np.sin(np.arange(n) + 1.0)
+
+    s: SparseArrayFloat = SparseArrayFloat(default_value=0.0)
     s.create_from_array(x, default_value=0.0)
 
-    all_ok = True
-    for i in range(n):
-        if x[i] != s[i]:
-            all_ok = False
-
-    assert all_ok
-
-    # x is fully dense, there should be internally the same as x
-    assert len(s._map) == n
+    assert np.allclose(s.toarray(), x)
+    assert len(s.get_map()) == n
 
 
-def test_sparse_array2():
+def test_sparse_array_float_sparse_roundtrip() -> None:
     """
-    Test that sparse arrays translate properly
-    :return:
+    Test that float sparse arrays keep sparse maps compact.
+
+    :return: ``None``.
     """
-    n = 100
-    x = np.zeros(n)
+    n: int = 100
+    x: np.ndarray = np.zeros(n)
     for i in range(10, 30):
         x[i] = math.sin(i)
 
-    s = SparseArray(data_type=float, default_value=0.0)
+    s: SparseArrayFloat = SparseArrayFloat(default_value=0.0)
     s.create_from_array(x, default_value=0.0)
 
-    all_ok = True
-    for i in range(n):
-        if x[i] != s[i]:
-            all_ok = False
-
-    assert all_ok
-
-    # x is fully sparse, there are only 20 different values
-    assert len(s._map) == 20  # 30 - 10 -> 20
+    assert np.allclose(s.toarray(), x)
+    assert len(s.get_map()) == 20
 
 
-def test_sparse_array3():
+def test_sparse_array_int_sparse_roundtrip() -> None:
     """
-    Test that sparse arrays translate properly
-    :return:
+    Test that integer sparse arrays preserve sparse integer data.
+
+    :return: ``None``.
     """
-    n = 100
-    x = np.full(n, 15)
+    n: int = 100
+    x: np.ndarray = np.full(n, 15)
     x[20] = 30
 
+    is_sparse: bool
+    most_frequent: int
     is_sparse, most_frequent = check_if_sparse(arr=x)
 
-    assert is_sparse  # should be sparse
+    assert is_sparse
 
-    s = SparseArray(data_type=int, default_value=0.0)
+    s: SparseArrayInt = SparseArrayInt(default_value=0)
     s.create_from_array(x, default_value=most_frequent)
 
-    all_ok = True
-    for i in range(n):
-        if x[i] != s[i]:
-            all_ok = False
-
-    assert all_ok
-
-    # x is fully sparse, the size should be 1
-    assert len(s._map) == 1  # only one value is different
+    assert np.array_equal(s.toarray(), x)
+    assert len(s.get_map()) == 1
 
 
-def test_sparse_array4():
+def test_sparse_array_float_resample() -> None:
     """
-    Test that sparse arrays translate properly
-    :return:
+    Test that float sparse arrays resample without changing represented values.
+
+    :return: ``None``.
     """
-    n = 100
-    x = np.zeros(n)
+    n: int = 100
+    x: np.ndarray = np.zeros(n)
     for i in range(10, 30):
         x[i] = math.sin(i)
 
-    s = SparseArray(data_type=int, default_value=0.0)
+    s: SparseArrayFloat = SparseArrayFloat(default_value=0.0)
     s.create_from_array(x, default_value=0)
 
-    # generate rando indices
-    indices = np.random.randint(low=0, high=n, size=n)
+    rng: np.random.Generator = np.random.default_rng(seed=1234)
+    indices: np.ndarray = rng.integers(low=0, high=n, size=n)
 
-    # resample the sparse array
     s.resample(indices=indices)
+    x2: np.ndarray = x[indices]
 
-    # resample the numpy array
-    x2 = x[indices]
-
-    all_ok = True
-    for i in range(n):
-        if x2[i] != s[i]:
-            all_ok = False
-
-    assert all_ok
-
-    # x is fully sparse
-    assert len(s._map) == len(x2[x2 != 0])  # should be 17
+    assert np.allclose(s.toarray(), x2)
+    assert len(s.get_map()) == len(x2[x2 != 0.0])
 
 
-def test_profile1():
+def test_sparse_array_bool_roundtrip() -> None:
     """
-    Test that sparse arrays translate properly
-    :return:
+    Test that boolean sparse arrays preserve their logical values.
+
+    :return: ``None``.
     """
-    n = 100
-    x = np.zeros(n)
-    for i in range(10, 30):  # 20 out of 100 has values (expected 80% sparsity)
+    x: np.ndarray = np.array([True, True, False, True, False, False], dtype=bool)
+    s: SparseArrayBool = SparseArrayBool(default_value=False)
+    s.create_from_array(x, default_value=False)
+
+    assert np.array_equal(s.toarray(), x)
+    assert s.dtype == bool
+    assert len(s.get_map()) == 3
+
+
+def test_sparse_array_enum_roundtrip() -> None:
+    """
+    Test that enum sparse arrays preserve enum values.
+
+    :return: ``None``.
+    """
+    x: np.ndarray = np.array(
+        [
+            TapPhaseControl.fixed,
+            TapPhaseControl.fixed,
+            TapPhaseControl.Pf,
+            TapPhaseControl.fixed,
+        ],
+        dtype=object,
+    )
+    s: SparseArrayEnum = SparseArrayEnum(default_value=TapPhaseControl.fixed, enum_type=TapPhaseControl)
+    s.create_from_array(x, default_value=TapPhaseControl.fixed)
+
+    assert s.dtype == TapPhaseControl
+    assert s.toarray().tolist() == x.tolist()
+    assert len(s.get_map()) == 1
+
+
+def test_sparse_array_device_roundtrip() -> None:
+    """
+    Test that device sparse arrays preserve editable-device references.
+
+    :return: ``None``.
+    """
+    device_a: DummyDevice = DummyDevice(idtag="bus_a", name="Bus A")
+    device_b: DummyDevice = DummyDevice(idtag="bus_b", name="Bus B")
+    x: np.ndarray = np.array([device_a, device_a, device_b, None], dtype=object)
+    s: SparseArrayDevice = SparseArrayDevice(default_value=device_a, device_type=DeviceType.BusOrBranch)
+    s.create_from_array(x, default_value=device_a)
+
+    assert s.dtype == DeviceType.BusOrBranch
+    assert s.toarray().tolist() == x.tolist()
+    assert len(s.get_map()) == 2
+
+
+def test_profile_float_dense_and_sparse_threshold() -> None:
+    """
+    Test that float profiles switch storage according to the sparsity threshold.
+
+    :return: ``None``.
+    """
+    n: int = 100
+    x: np.ndarray = np.zeros(n)
+    for i in range(10, 30):
         x[i] = math.sin(i)
 
-    # we set the threshold to 90% sparsity, hence the profile will be considered dense
-    profile = Profile(default_value=0.0, arr=x, sparsity_threshold=0.9, data_type=float)
+    dense_profile: ProfileFloat = ProfileFloat(default_value=0.0, arr=x, sparsity_threshold=0.9)
+    sparse_profile: ProfileFloat = ProfileFloat(default_value=0.0, arr=x, sparsity_threshold=0.75)
 
-    assert not profile.is_sparse
+    assert not dense_profile.is_sparse
+    assert np.allclose(dense_profile.toarray(), x)
 
-    all_ok = True
-    for i in range(n):
-        if x[i] != profile[i]:
-            all_ok = False
-
-    assert all_ok
-
-    # now we set the threshold to 75% sparsity, hence the array will be considered sparse
-    profile = Profile(default_value=0.0, arr=x, sparsity_threshold=0.75, data_type=float)
-    assert profile.is_sparse
-
-    # x is fully sparse, there are only 20 different values
-    assert len(profile._sparse_array._map) == 20  # 30 - 10 -> 20
+    assert sparse_profile.is_sparse
+    assert np.allclose(sparse_profile.toarray(), x)
+    assert len(sparse_profile.get_sparse_map()) == 20
 
 
-def test_profile2():
+def test_profile_int_sparse_roundtrip() -> None:
     """
-    Test that sparse arrays translate properly
-    :return:
+    Test that integer profiles preserve sparse integer data.
+
+    :return: ``None``.
     """
-    n = 100
-    x = np.full(n, 15)
+    n: int = 100
+    x: np.ndarray = np.full(n, 15)
     x[20] = 30
 
-    profile = Profile(default_value=15, arr=x, data_type=int)
+    profile: ProfileInt = ProfileInt(default_value=15, arr=x)
 
     assert profile.is_sparse
-
-    all_ok = True
-    for i in range(n):
-        if x[i] != profile[i]:
-            all_ok = False
-
-    assert all_ok
-
-    # x is fully sparse, the size should be 1
-    assert len(profile._sparse_array._map) == 1  # only one value is different
+    assert np.array_equal(profile.toarray(), x)
+    assert len(profile.get_sparse_map()) == 1
 
 
-def test_grid_profile_initialization():
+def test_profile_bool_sparse_roundtrip() -> None:
+    """
+    Test that boolean profiles preserve logical values through sparse conversion.
+
+    :return: ``None``.
+    """
+    x: np.ndarray = np.array([True, True, True, False], dtype=bool)
+    profile: ProfileBool = ProfileBool(default_value=True, arr=x, sparsity_threshold=0.75)
+
+    assert profile.is_sparse
+    assert profile.dtype == bool
+    assert np.array_equal(profile.toarray(), x)
+    assert len(profile.get_sparse_map()) == 1
+
+
+def test_profile_enum_sparse_roundtrip() -> None:
+    """
+    Test that enum profiles keep enum values through sparse conversion.
+
+    :return: ``None``.
+    """
+    x: np.ndarray = np.array(
+        [
+            TapPhaseControl.fixed,
+            TapPhaseControl.fixed,
+            TapPhaseControl.fixed,
+            TapPhaseControl.Pf,
+        ],
+        dtype=object,
+    )
+
+    profile: ProfileEnum = ProfileEnum(
+        default_value=TapPhaseControl.fixed,
+        enum_type=TapPhaseControl,
+        arr=x,
+        sparsity_threshold=0.75,
+    )
+
+    assert profile.is_sparse
+    assert profile.default_value == TapPhaseControl.fixed
+    assert profile[3] == TapPhaseControl.Pf
+    assert profile.toarray().tolist() == x.tolist()
+    assert len(profile.get_sparse_map()) == 1
+
+
+def test_profile_device_sparse_roundtrip() -> None:
+    """
+    Test that device profiles keep editable-device references through sparse conversion.
+
+    :return: ``None``.
+    """
+    device_a: DummyDevice = DummyDevice(idtag="bus_a", name="Bus A")
+    device_b: DummyDevice = DummyDevice(idtag="bus_b", name="Bus B")
+    x: np.ndarray = np.array([device_a, device_a, device_b, device_a], dtype=object)
+
+    profile: ProfileDevice = ProfileDevice(
+        default_value=device_a,
+        device_type=DeviceType.BusOrBranch,
+        arr=x,
+        sparsity_threshold=0.75,
+    )
+
+    assert profile.is_sparse
+    assert profile.default_value is device_a
+    assert profile[2] is device_b
+    assert profile.toarray().tolist() == x.tolist()
+    assert len(profile.get_sparse_map()) == 1
+
+
+def test_typed_profile_and_sparse_array_construction() -> None:
+    """
+    Test that every concrete profile and sparse-array class exposes the expected type.
+
+    :return: ``None``.
+    """
+    profile_float: ProfileFloat = ProfileFloat(default_value=0.0)
+    profile_int: ProfileInt = ProfileInt(default_value=1)
+    profile_bool: ProfileBool = ProfileBool(default_value=True)
+    profile_enum: ProfileEnum = ProfileEnum(default_value=TapPhaseControl.fixed, enum_type=TapPhaseControl)
+    profile_device: ProfileDevice = ProfileDevice(default_value=None, device_type=DeviceType.BusOrBranch)
+
+    sparse_float: SparseArrayFloat = SparseArrayFloat(default_value=0.0)
+    sparse_int: SparseArrayInt = SparseArrayInt(default_value=0)
+    sparse_bool: SparseArrayBool = SparseArrayBool(default_value=False)
+    sparse_enum: SparseArrayEnum = SparseArrayEnum(default_value=TapPhaseControl.fixed, enum_type=TapPhaseControl)
+    sparse_device: SparseArrayDevice = SparseArrayDevice(default_value=None, device_type=DeviceType.BusOrBranch)
+
+    assert profile_float.dtype == float
+    assert profile_int.dtype == int
+    assert profile_bool.dtype == bool
+    assert profile_enum.dtype == TapPhaseControl
+    assert profile_device.dtype == DeviceType.BusOrBranch
+
+    assert sparse_float.dtype == float
+    assert sparse_int.dtype == int
+    assert sparse_bool.dtype == bool
+    assert sparse_enum.dtype == TapPhaseControl
+    assert sparse_device.dtype == DeviceType.BusOrBranch
+
+
+def test_grid_profile_initialization() -> None:
     """
     This test checks that when creating a profile, the profile slices are identical to the snapshot
+
+    :return: ``None``.
     """
-    fname1 = os.path.join('data', 'grids', 'Matpower', 'case14.matpower')
-    fname2 = os.path.join('data', 'grids', 'ACTIVSg2000.gridcal')
+    import VeraGridEngine.api as gce
+
+    fname1: str = os.path.join('data', 'grids', 'Matpower', 'case14.matpower')
+    fname2: str = os.path.join('data', 'grids', 'ACTIVSg2000.gridcal')
 
     for fname in [fname1, fname2]:
         grid = gce.open_file(fname)

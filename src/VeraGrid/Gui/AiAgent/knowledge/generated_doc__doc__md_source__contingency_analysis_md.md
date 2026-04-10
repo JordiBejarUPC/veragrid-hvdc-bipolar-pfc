@@ -3,10 +3,6 @@
 - Original source path: `doc/md_source/contingency_analysis.md`
 - Knowledge kind: official documentation
 
-## Document Content
-
-from trunk.ai.ai_iterable_example import grid_
-
 # 💥 Contingency analysis
 
 

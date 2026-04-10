@@ -8,7 +8,7 @@ import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
 from typing import List, Tuple, TYPE_CHECKING
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileDevice, ProfileEnum, ProfileFloat
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import BuildStatus, ConverterControlType
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
@@ -231,22 +231,22 @@ class VSC(BranchParent):
         self.alpha3 = float(alpha3)
 
         self._control1: ConverterControlType = control1
-        self._control1_prof: Profile = Profile(default_value=control1, data_type=ConverterControlType)
+        self._control1_prof: ProfileEnum = ProfileEnum(default_value=control1, enum_type=ConverterControlType)
 
         self._control2: ConverterControlType = control2
-        self._control2_prof: Profile = Profile(default_value=control2, data_type=ConverterControlType)
+        self._control2_prof: ProfileEnum = ProfileEnum(default_value=control2, enum_type=ConverterControlType)
 
         self._control1_dev: Bus | BRANCH_TYPES | None = control1_dev
-        self._control1_dev_prof: Profile = Profile(default_value=control1_dev, data_type=DeviceType.BusOrBranch)
+        self._control1_dev_prof: ProfileDevice = ProfileDevice(default_value=control1_dev, device_type=DeviceType.BusOrBranch)
 
         self._control2_dev: Bus | BRANCH_TYPES | None = control2_dev
-        self._control2_dev_prof: Profile = Profile(default_value=control2_dev, data_type=DeviceType.BusOrBranch)
+        self._control2_dev_prof: ProfileDevice = ProfileDevice(default_value=control2_dev, device_type=DeviceType.BusOrBranch)
 
         self._control1_val = float(control1_val)
-        self._control1_val_prof: Profile = Profile(default_value=self._control1_val, data_type=float)
+        self._control1_val_prof: ProfileFloat = ProfileFloat(default_value=self._control1_val)
 
         self._control2_val = float(control2_val)
-        self._control2_val_prof: Profile = Profile(default_value=self._control2_val, data_type=float)
+        self._control2_val_prof: ProfileFloat = ProfileFloat(default_value=self._control2_val)
 
         self.min_ac_voltage = float(min_ac_voltage)
 
@@ -355,7 +355,7 @@ class VSC(BranchParent):
             self._control1 = value
 
     @property
-    def control1_prof(self) -> Profile:
+    def control1_prof(self) -> ProfileEnum:
         """
         Cost profile
         :return: Profile
@@ -363,8 +363,8 @@ class VSC(BranchParent):
         return self._control1_prof
 
     @control1_prof.setter
-    def control1_prof(self, val: Profile | np.ndarray):
-        if isinstance(val, Profile):
+    def control1_prof(self, val: ProfileEnum | np.ndarray):
+        if isinstance(val, ProfileEnum):
             self._control1_prof = val
         elif isinstance(val, np.ndarray):
             self._control1_prof.set(arr=val)
@@ -400,7 +400,7 @@ class VSC(BranchParent):
             self._control2 = value
 
     @property
-    def control2_prof(self) -> Profile:
+    def control2_prof(self) -> ProfileEnum:
         """
         Cost profile
         :return: Profile
@@ -408,8 +408,8 @@ class VSC(BranchParent):
         return self._control2_prof
 
     @control2_prof.setter
-    def control2_prof(self, val: Profile | np.ndarray):
-        if isinstance(val, Profile):
+    def control2_prof(self, val: ProfileEnum | np.ndarray):
+        if isinstance(val, ProfileEnum):
             self._control2_prof = val
         elif isinstance(val, np.ndarray):
             self._control2_prof.set(arr=val)
@@ -437,7 +437,7 @@ class VSC(BranchParent):
         self._control1_val = value
 
     @property
-    def control1_val_prof(self) -> Profile:
+    def control1_val_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -445,8 +445,8 @@ class VSC(BranchParent):
         return self._control1_val_prof
 
     @control1_val_prof.setter
-    def control1_val_prof(self, val: Profile | np.ndarray):
-        if isinstance(val, Profile):
+    def control1_val_prof(self, val: ProfileFloat | np.ndarray):
+        if isinstance(val, ProfileFloat):
             self._control1_val_prof = val
         elif isinstance(val, np.ndarray):
             self._control1_val_prof.set(arr=val)
@@ -474,7 +474,7 @@ class VSC(BranchParent):
         self._control2_val = value
 
     @property
-    def control2_val_prof(self) -> Profile:
+    def control2_val_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -482,8 +482,8 @@ class VSC(BranchParent):
         return self._control2_val_prof
 
     @control2_val_prof.setter
-    def control2_val_prof(self, val: Profile | np.ndarray):
-        if isinstance(val, Profile):
+    def control2_val_prof(self, val: ProfileFloat | np.ndarray):
+        if isinstance(val, ProfileFloat):
             self._control2_val_prof = val
         elif isinstance(val, np.ndarray):
             self._control2_val_prof.set(arr=val)
@@ -510,7 +510,7 @@ class VSC(BranchParent):
         self._control1_dev = value
 
     @property
-    def control1_dev_prof(self) -> Profile:
+    def control1_dev_prof(self) -> ProfileDevice:
         """
         Cost profile
         :return: Profile
@@ -518,8 +518,8 @@ class VSC(BranchParent):
         return self._control1_dev_prof
 
     @control1_dev_prof.setter
-    def control1_dev_prof(self, val: Profile | np.ndarray):
-        if isinstance(val, Profile):
+    def control1_dev_prof(self, val: ProfileDevice | np.ndarray):
+        if isinstance(val, ProfileDevice):
             self._control1_dev_prof = val
         elif isinstance(val, np.ndarray):
             self._control1_dev_prof.set(arr=val)
@@ -546,7 +546,7 @@ class VSC(BranchParent):
         self._control2_dev = value
 
     @property
-    def control2_dev_prof(self) -> Profile:
+    def control2_dev_prof(self) -> ProfileDevice:
         """
         Cost profile
         :return: Profile
@@ -554,8 +554,8 @@ class VSC(BranchParent):
         return self._control2_dev_prof
 
     @control2_dev_prof.setter
-    def control2_dev_prof(self, val: Profile | np.ndarray):
-        if isinstance(val, Profile):
+    def control2_dev_prof(self, val: ProfileDevice | np.ndarray):
+        if isinstance(val, ProfileDevice):
             self._control2_dev_prof = val
         elif isinstance(val, np.ndarray):
             self._control2_dev_prof.set(arr=val)

@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 1
 - Top-level function count: 2
-- Representative imports: typing, numpy, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.Devices.Parents.physical_device, VeraGridEngine.Devices.Branches.winding, VeraGridEngine.Devices.Branches.transformer_type, VeraGridEngine.Devices.profile, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.editable_device
+- Representative imports: typing, numpy, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.Devices.Parents.physical_device, VeraGridEngine.Devices.Branches.winding, VeraGridEngine.Devices.Branches.transformer_type,  VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.editable_device
 
 ## Function: delta_to_star(z12, z23, z31)
 
