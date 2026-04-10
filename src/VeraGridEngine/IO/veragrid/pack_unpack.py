@@ -445,7 +445,9 @@ def get_profile_from_dict(profile: Profile,
             return None
 
         if collection is not None:
-            return collection.get(value, value)
+            if value == "None":
+                return None
+            return collection.get(value, None)
 
         if isinstance(profile.dtype, DeviceType):
             return value
@@ -475,7 +477,6 @@ def get_profile_from_dict(profile: Profile,
 
     raw_default_value = data['default']
     is_sparse = bool(data['is_sparse'])
-    size = int(data['size'])
 
     try:
         default_value: Any = cast_profile_value(raw_default_value)
@@ -484,12 +485,6 @@ def get_profile_from_dict(profile: Profile,
 
     if isinstance(profile.dtype, DeviceType) and default_value == "None":
         default_value = profile.default_value
-
-    if size == 0:
-        profile.clear()
-        return
-
-    # profile = Profile(default_value=default_value, is_sparse=bool(data['is_sparse']))
 
     if is_sparse:
         sp_data = data['sparse_data']
