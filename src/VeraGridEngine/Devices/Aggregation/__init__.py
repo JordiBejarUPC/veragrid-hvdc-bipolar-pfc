@@ -3,10 +3,6 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from VeraGridEngine.Devices.Aggregation.contingency import Contingency
-from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
-from VeraGridEngine.Devices.Aggregation.remedial_action import RemedialAction
-from VeraGridEngine.Devices.Aggregation.remedial_action_group import RemedialActionGroup
 from VeraGridEngine.Devices.Aggregation.investment import Investment
 from VeraGridEngine.Devices.Aggregation.investments_group import InvestmentsGroup
 from VeraGridEngine.Devices.Aggregation.area import Area
@@ -19,10 +15,3 @@ from VeraGridEngine.Devices.Aggregation.branch_group import BranchGroup
 from VeraGridEngine.Devices.Aggregation.modelling_authority import ModellingAuthority
 from VeraGridEngine.Devices.Aggregation.inter_aggregation_info import InterAggregationInfo
 from VeraGridEngine.Devices.Aggregation.facility import Facility
-from VeraGridEngine.Devices.Aggregation.rms_event import RmsEvent
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
-from VeraGridEngine.Devices.Aggregation.short_cirtcuit_event import ShortCircuitEvent
-from VeraGridEngine.Devices.Aggregation.emt_event import EmtEvent
-from VeraGridEngine.Devices.Aggregation.emt_events_group import EmtEventsGroup
-from VeraGridEngine.Devices.Aggregation.dynamic_plot import DynamicPlot
-from VeraGridEngine.Devices.Aggregation.dynamic_plot_entry import DynamicPlotEntry

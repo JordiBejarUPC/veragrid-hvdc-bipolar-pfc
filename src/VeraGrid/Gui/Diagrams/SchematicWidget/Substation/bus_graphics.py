@@ -44,7 +44,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.slot_geometry import (Schema
 from VeraGridEngine.enumerations import DeviceType, BusGraphicType, SchematicBranchEndpoint
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 from VeraGridEngine.Devices.Substation import Bus
-from VeraGridEngine.Devices.Aggregation.short_cirtcuit_event import ShortCircuitEvent
+from VeraGridEngine.Devices.Events.short_cirtcuit_event import ShortCircuitEvent
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem

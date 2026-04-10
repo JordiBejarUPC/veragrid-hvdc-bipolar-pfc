@@ -34,7 +34,7 @@ from VeraGridEngine.DataStructures.fluid_pump_data import FluidPumpData
 from VeraGridEngine.DataStructures.fluid_p2x_data import FluidP2XData
 from VeraGridEngine.DataStructures.fluid_path_data import FluidPathData
 from VeraGridEngine.Devices.Aggregation.investment import Investment
-from VeraGridEngine.Devices.Aggregation.contingency import Contingency
+from VeraGridEngine.Devices.Events.contingency import Contingency
 
 ALL_STRUCTS = Union[
     BusData,

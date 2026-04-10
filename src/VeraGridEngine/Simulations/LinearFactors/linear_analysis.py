@@ -17,8 +17,8 @@ from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.basic_structures import Logger, Vec, IntVec, CxVec, Mat, ObjVec, CxMat, BoolVec, IntMat, Vector
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.Compilers.circuit_to_data import compile_numerical_circuit_at
-from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
-from VeraGridEngine.Devices.Aggregation.contingency import Contingency
+from VeraGridEngine.Devices.Events.contingency_group import ContingencyGroup
+from VeraGridEngine.Devices.Events.contingency import Contingency
 from VeraGridEngine.Simulations.Derivatives.ac_jacobian import AC_jacobian
 from VeraGridEngine.Simulations.Derivatives.csc_derivatives import dSf_dV_csc
 from VeraGridEngine.Utils.Sparse.csc import dense_to_csc
