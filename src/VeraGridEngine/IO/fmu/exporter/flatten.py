@@ -1,12 +1,16 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Iterable, List
 
 from .compat import Block, Const, Var
 from .snapshot import reconstruct_block
 
 
-def _extend_unique_vars(target: list[Var], source: Iterable[Var]) -> None:
+def _extend_unique_vars(target: List[Var], source: Iterable[Var]) -> None:
     seen = {var.uid for var in target}
     for var in source:
         if var.uid not in seen:
@@ -14,7 +18,7 @@ def _extend_unique_vars(target: list[Var], source: Iterable[Var]) -> None:
             seen.add(var.uid)
 
 
-def _validate_no_duplicate_names(vars_list: list[Var], label: str) -> None:
+def _validate_no_duplicate_names(vars_list: List[Var], label: str) -> None:
     names = [var.name for var in vars_list]
     duplicates = sorted({name for name in names if names.count(name) > 1})
     if duplicates:
