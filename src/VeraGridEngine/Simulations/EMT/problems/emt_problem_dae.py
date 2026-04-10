@@ -38,11 +38,9 @@ from VeraGridEngine.enumerations import (
 from VeraGridEngine.basic_structures import Logger, CxVec
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import BergeronHistoryRuntime
-from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, init_explicit_emt,run_emt_native_initialization
-# from VeraGridEngine.Simulations.EMT.initialization_emt import init_explicit_common, build_symbolic_vector_single_equation_compiler
+from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationReport, run_emt_native_initialization
 from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import init_explicit_common, build_symbolic_vector_single_equation_compiler
 from VeraGridEngine.Utils.Symbolic.compiled_functions import get_compiled_functions_cache_stats
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_algebraic_vars
@@ -452,7 +450,6 @@ class EmtProblemDae(EmtProblemTemplate):
         t_phase_start: float = t_build
         cache_stats_before: Dict[str, float] = get_compiled_functions_cache_stats()
 
-        self._validate_emt_models_exist()
         validate_models_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
 
@@ -656,86 +653,10 @@ class EmtProblemDae(EmtProblemTemplate):
                 self._models_with_diff_init_eqs_seen.add(mid)
                 self._models_with_diff_init_eqs.append(mdl)
 
-    # def _run_explicit_initialization_old(self)-> None:
-    #     """
-    #     Run explicit initialization for every block that defines initialization equations.
-    #
-    #     The routine may modify runtime parameter expressions, so runtime parameter
-    #     buffers are rebuilt afterwards.
-    #
-    #     :return: None
-    #     """
-    #
-    #     if len(self._models_with_init_eqs) == 0 and len(self._models_with_diff_init_eqs) == 0:
-    #         return
-    #
-    #     # sys_vars dict (uid -> Var), size = n_vars
-    #     sys_vars: Dict[int, Var] = {v.uid: v for v in (self._state_vars + self._algebraic_vars)}
-    #     sys_diff_vars: Dict[int, Var] = {dv.uid: dv for dv in self._diff_vars}
-    #
-    #     seen_blocks: set[int] = set()
-    #
-    #     for mdl in chain(self._models_with_init_eqs, self._models_with_diff_init_eqs):
-    #         mdl_id = id(mdl)
-    #
-    #         if mdl_id not in seen_blocks:
-    #             seen_blocks.add(mdl_id)
-    #
-    #             try:
-    #                 init_explicit_emt(
-    #                     mdl=mdl,
-    #                     sys_vars=sys_vars,
-    #                     sys_diff_vars=sys_diff_vars,
-    #                     variable_parameters=self._variable_parameters,
-    #                     event_parameters_eqs=self._event_parameters_eqs,
-    #                     constant_parameters=self._constant_parameters,
-    #                     init_guess=self.init_guess,
-    #                     diff_init_guess=self.diff_init_guess,
-    #                     uid2idx_vars=self.uid2idx_vars,
-    #                     uid2idx_diff=self.uid2idx_diff,
-    #                     uid2idx_params=self.uid2idx_params,
-    #                     uid2idx_event_params=self.uid2idx_event_params,
-    #                     compiler_names_dict=self._compiler_names_dict,
-    #                     alias_names_dict=self._alias_names_dict,
-    #                     VARIABLE_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-    #                     # TIME_NAME=self.TIME_NAME,
-    #                     VARS_NAME=self.VARS_NAME,
-    #                     DIFF_NAME=self.DIFF_NAME,
-    #                     CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME,
-    #                     verbose=bool(self.options.verbose > 0),
-    #                 )
-    #             except Exception as e:
-    #                 block_name: str = _get_block_name(mdl)
-    #                 error_detail = f"{type(e).__name__}: {str(e)}"
-    #
-    #                 self.logger.add_warning(
-    #                     msg="EMT explicit initialization failed for block.",
-    #                     device=block_name,
-    #                     value=error_detail,
-    #                     expected_value="Successful explicit initialization",
-    #                     device_class="EMT",
-    #                     device_property="init_explicit"
-    #                 )
-    #
-    #                 if self.options.verbose > 0:
-    #                     self.logger.add_debug(
-    #                         f"[EMT][init_explicit] failed for block '{block_name}'. Error: {error_detail}"
-    #                     )
-    #
-    #                     print(
-    #                         f"EMT explicit initialization failed for block {block_name}. "
-    #                         f"Error detail: {error_detail}"
-    #                     )
-    #
-    #
-    #     self._build_runtime_param_vectors()
-
     def _run_explicit_initialization(self)-> None:
         """
         Run explicit initialization for every block that defines initialization equations.
 
-        The routine may modify runtime parameter expressions, so runtime parameter
-        buffers are rebuilt afterwards.
 
         :return: None
         """
@@ -826,42 +747,6 @@ class EmtProblemDae(EmtProblemTemplate):
 
 
         self._build_runtime_param_vectors()
-
-    def _validate_emt_models_exist(self) -> None:
-        """
-        Validate that all devices have their emt_model properly assigned before building.
-
-        This check prevents cryptic KeyError exceptions during _build_structure_and_collect
-        when a device's emt_model is empty (not initialized via set_emt_model).
-
-        :raises EmtTopologyError: If any device is missing its emt_model.
-        """
-        missing_models: List[Tuple[str, str, str]] = []
-
-        for br in self.grid.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-            if br.emt_model.empty():
-                missing_models.append((br.name, "branch", f"bus_from={br.bus_from.name}, bus_to={br.bus_to.name}"))
-
-        for inj in self.grid.get_injection_devices_iter():
-            if inj.emt_model.empty():
-                try:
-                    inj_bus_name = inj.bus.name
-                except AttributeError:
-                    inj_bus_name = '?'
-
-                try:
-                    inj_type = inj.device_type.value
-                except AttributeError:
-                    inj_type = "injection"
-
-                missing_models.append((inj.name, inj_type, f"bus={inj_bus_name}"))
-
-        if missing_models:
-            errors = []
-            for dev_name, dev_type, details in missing_models:
-                errors.append(f"  - Device '{dev_name}' ({dev_type}) {details} has no emt_model assigned (emt_model is empty)")
-            error_msg = "TopologyError: Some devices are missing their emt_model. Assign EMT models before creating EmtProblemDae:\n" + "\n".join(errors)
-            raise EmtTopologyError(error_msg)
 
     def _validate_connections(self) -> None:
         """
@@ -3757,6 +3642,20 @@ class EmtProblemDae(EmtProblemTemplate):
 
         return df
 
+    def _assign_vsc_event_param_if_present(self, vsc: Any , key: ParamPowerFlowRefferenceType, value: Any) -> None:
+        api_obj_mapping_local: Any = vsc.emt_model.api_obj_mapping
+        if isinstance(api_obj_mapping_local, dict):
+            target_local: Any | None = api_obj_mapping_local.get(key, None)
+            if target_local is not None:
+                if target_local in vsc.emt_model.event_dict:
+                    vsc.emt_model.event_dict[target_local] = self._to_const(value)
+                else:
+                    vsc.emt_model.parameters[target_local] = self._to_const(value)
+            else:
+                pass
+        else:
+            pass
+        
     def _assign_api_obj_mapping_branch(self,
                                        br: Any,
                                        is_vsc: bool,
@@ -3803,43 +3702,19 @@ class EmtProblemDae(EmtProblemTemplate):
                 ConverterControlType.Imax: 8.0,
             }
 
-            def assign_vsc_event_param_if_present(key: ParamPowerFlowRefferenceType, value: Any) -> None:
-                api_obj_mapping_local: Any = vsc.emt_model.api_obj_mapping
-                if isinstance(api_obj_mapping_local, dict):
-                    target_local: Any | None = api_obj_mapping_local.get(key, None)
-                    if target_local is not None:
-                        if target_local in vsc.emt_model.event_dict:
-                            vsc.emt_model.event_dict[target_local] = self._to_const(value)
-                        else:
-                            vsc.emt_model.parameters[target_local] = self._to_const(value)
-                    else:
-                        pass
-                else:
-                    pass
-
-            assign_vsc_event_param_if_present(ParamPowerFlowRefferenceType.Sbase, self.grid.Sbase)
-            assign_vsc_event_param_if_present(
-                ParamPowerFlowRefferenceType.omega_base,
-                2.0 * np.pi * self.grid.fBase,
-            )
-            assign_vsc_event_param_if_present(ParamPowerFlowRefferenceType.P0, p0_vsc)
-            assign_vsc_event_param_if_present(ParamPowerFlowRefferenceType.P_loss0, p_loss0)
-            assign_vsc_event_param_if_present(
-                ParamPowerFlowRefferenceType.control1,
-                control_code_dict[vsc.control1],
-            )
-            assign_vsc_event_param_if_present(
-                ParamPowerFlowRefferenceType.control2,
-                control_code_dict[vsc.control2],
-            )
-            assign_vsc_event_param_if_present(
-                ParamPowerFlowRefferenceType.control1_val,
-                vsc.control1_val,
-            )
-            assign_vsc_event_param_if_present(
-                ParamPowerFlowRefferenceType.control2_val,
-                vsc.control2_val,
-            )
+            self._assign_vsc_event_param_if_present(vsc=vsc, key=ParamPowerFlowRefferenceType.Sbase, value=self.grid.Sbase)
+            self._assign_vsc_event_param_if_present(vsc=vsc, key=ParamPowerFlowRefferenceType.omega_base,
+                                                    value= 2.0 * np.pi * self.grid.fBase)
+            self._assign_vsc_event_param_if_present(vsc=vsc, key=ParamPowerFlowRefferenceType.P0, value=p0_vsc)
+            self._assign_vsc_event_param_if_present(vsc=vsc, key=ParamPowerFlowRefferenceType.P_loss0, value=p_loss0)
+            self._assign_vsc_event_param_if_present(vsc=vsc, key=ParamPowerFlowRefferenceType.control1,
+                value=control_code_dict[vsc.control1])
+            self._assign_vsc_event_param_if_present(vsc=vsc, key=ParamPowerFlowRefferenceType.control2,
+                value=control_code_dict[vsc.control2])
+            self._assign_vsc_event_param_if_present(vsc=vsc, key=ParamPowerFlowRefferenceType.control1_val,
+                value=vsc.control1_val)
+            self._assign_vsc_event_param_if_present(vsc=vsc, key=ParamPowerFlowRefferenceType.control2_val,
+                value=vsc.control2_val)
             return
 
         api_obj_mapping: Any = br.emt_model.api_obj_mapping
