@@ -3416,6 +3416,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.doItButton.clicked.connect(self.apply_changes)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
         if not self.main_block.diagram.node_data and self.main_editor:
+            # here we should look for the in and out vars and construct blocks and blockitems accordingly
             self.add_connection_vars()
             self.add_external_mapping_block()
             self.add_api_obj_mapping()
