@@ -39,7 +39,7 @@ def get_pi_line_emt_template(vf: VarFactory,
     templ.tpe = DeviceType.LineDevice
     templ.name = name
 
-    templ.block.name = EmtLineTypes.PI
+    templ.block.name = EmtLineTypes.PI.value
 
     c0 = vf.add_const(0.0)
 

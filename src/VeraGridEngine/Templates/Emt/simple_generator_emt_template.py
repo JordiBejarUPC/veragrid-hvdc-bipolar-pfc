@@ -458,6 +458,7 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
         ],
         in_vars=inputs,
         out_vars=[i_A, i_B, i_C, omega],
+        # out_vars=[i_A, i_B, i_C],
     )
 
     templ.block.diff_vars = [d_psi_d, d_psi_q, d_psi_0, d_psi_f, d_theta, d_omega, d_et]
@@ -516,7 +517,15 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
         phi: vf.add_const(None),
         Vpk: vf.add_const(None),
         Ipk: vf.add_const(None),
-        delta: vf.add_const(None),
+        # delta: vf.add_const(None),
+        # delta: sym.atan(
+        #     (Ra * Ipk * sym.sin(phi) - omega * (Lmq + La) * Ipk * sym.cos(phi)) /
+        #     (Vpk + Ra * Ipk * sym.cos(phi) + omega * (Lmq + La) * Ipk * sym.sin(phi))
+        # ),
+        delta: sym.atan(
+            (Ra * Ipk * sym.sin(phi) - omega_ref * (Lmq + La) * Ipk * sym.cos(phi)) /
+            (Vpk + Ra * Ipk * sym.cos(phi) + omega_ref * (Lmq + La) * Ipk * sym.sin(phi))
+        ),
     }
     templ.block.api_obj_mapping = {
         ParamPowerFlowRefferenceType.omega_base : omega_base,
@@ -525,7 +534,6 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
         ParamPowerFlowRefferenceType.X0: L0,
     }
 
-
     # --------------------------------------------------------------------------------------
     # INIT EQUATIONS
     # --------------------------------------------------------------------------------------
@@ -533,10 +541,7 @@ def get_simple_generator_emt_template(vf: VarFactory, name: str = "simple_emt_ty
     templ.block.init_eqs = {
         et: vf.add_const(0.0),
         omega: omega_ref,
-        delta: sym.atan(
-            ( Ra * Ipk * sym.sin(phi) - omega * (Lmq + La) * Ipk * sym.cos(phi)) /
-            (Vpk + Ra * Ipk * sym.cos(phi) + omega * (Lmq + La) * Ipk * sym.sin(phi))
-        ),
+
         theta: phi_v + delta,
 
         v_d: 2 / 3 * (sym.sin(theta) * inputs[0] +

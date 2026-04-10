@@ -815,7 +815,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 except AttributeError:
                     pass
                 else:
-                    is_bergeron = br_emt_model.name == EmtLineTypes.Bergeron
+                    is_bergeron = br_emt_model.name == EmtLineTypes.Bergeron.value
 
                     if is_bergeron:
                         try:
@@ -1136,7 +1136,7 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl: Block = self._process_device_model(br, sys_block, grid, glob_time)
 
 
-            is_bergeron: bool = br.emt_model.name == EmtLineTypes.Bergeron
+            is_bergeron: bool = br.emt_model.name == EmtLineTypes.Bergeron.value
             is_vsc: bool = br.device_type == DeviceType.VscDevice
             vsc_index: int = vsc_idx_dict.get(br.idtag, -1)
 
@@ -1273,7 +1273,6 @@ class EmtProblemDae(EmtProblemTemplate):
                                     pass
                         else:
                             pass
-
 
 
                 if self.power_flow_results_3ph is not None:

@@ -131,7 +131,7 @@ def test_pi_line_rload_emt_passes_validation():
     gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
     line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
     load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
-    load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_3ph", new_value=1.0)
+
 
     set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.var_factory)
     set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
@@ -187,7 +187,7 @@ def test_bergeron_line_rload_emt_passes_validation():
     gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
     line_mdl = get_bergeron_line_emt_template(vf=grid.var_factory).block
     load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
-    load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_3ph", new_value=1.0)
+
 
     set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.var_factory)
     set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
@@ -297,7 +297,7 @@ def test_floating_phases_raises_emt_topology_error():
     line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
     # Using 1-phase template on 3-phase bus causes floating phases
     load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=False, phC=False).block
-    load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_1ph", new_value=1.0)
+
 
     set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.var_factory)
     set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)

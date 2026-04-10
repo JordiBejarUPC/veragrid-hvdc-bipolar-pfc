@@ -147,7 +147,7 @@ line_mdl = get_pi_line_emt_template(vf= grid.var_factory, phN = False, phA = Tru
 # load
 load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
-load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_3ph", new_value=1.0)
+
 
 ######################################################################################################
 # Add models to devices
@@ -443,9 +443,9 @@ def export_demo_plots(
     bus1_voltages: np.ndarray = extract_three_phase_matrix(problem, y_values, bus1.emt_model.out_vars)
     generator_currents: np.ndarray = extract_three_phase_matrix(problem, y_values, gen_mdl.out_vars)
     load_current_triplet: Tuple[Any, Any, Any] = (
-        find_name_in_block("i_A_Shunt_R_3ph", load_mdl),
-        find_name_in_block("i_B_Shunt_R_3ph", load_mdl),
-        find_name_in_block("i_C_Shunt_R_3ph", load_mdl),
+        find_name_in_block("i_A_R_shunt_3ph", load_mdl),
+        find_name_in_block("i_B_R_shunt_3ph", load_mdl),
+        find_name_in_block("i_C_R_shunt_3ph", load_mdl),
     )
     load_currents: np.ndarray = -extract_three_phase_matrix(problem, y_values, load_current_triplet)
     theta_var: Any = find_name_in_block("theta_emt_thevenin_eq_generator_template", gen_mdl)
