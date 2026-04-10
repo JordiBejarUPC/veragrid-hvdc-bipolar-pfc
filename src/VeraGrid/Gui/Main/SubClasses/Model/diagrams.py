@@ -31,6 +31,7 @@ from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 import VeraGridEngine.Devices as dev
 import VeraGridEngine.Simulations as sim
 import VeraGrid.Gui.gui_functions as gf
+import VeraGrid.Gui.Visualization.visualization as viz
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import (SchematicWidget,
                                                                     BusGraphicItem,
                                                                     generate_schematic_diagram,
@@ -1360,6 +1361,29 @@ class DiagramsMain(CompiledArraysMain):
                                              max_bus_width=max_bus_width,
                                              cmap=cmap)
 
+    def node_group_colouring(self,
+                             results: sim.NodeGroupsResults,
+                             diagram_widget: ALL_EDITORS):
+        """
+
+        :param results:
+        :param diagram_widget:
+        :return:
+        """
+        colours = viz.get_n_colours(n=len(results.groups_by_index))
+
+        bus_graphics_dict = diagram_widget.graphics_manager.get_device_type_dict(DeviceType.BusDevice)
+        for c, group in enumerate(results.groups_by_index):
+            for i in group:
+                bus = self.circuit.buses[i]
+                bus_graphic: BusGraphicItem = bus_graphics_dict.get(bus.idtag, None)
+                if bus_graphic is not None:
+                    r, g, b, a = colours[c]
+                    color = QtGui.QColor(r * 255, g * 255, b * 255, a * 255)
+                    bus_graphic.set_tile_color(brush=color)
+                    bus_graphic.setToolTip('Group ' + str(c))
+
+
     def default_colouring(self, t_idx: int | None,
                           diagram_widget: ALL_EDITORS,
                           cmap: Colormaps,
@@ -1739,6 +1763,17 @@ class DiagramsMain(CompiledArraysMain):
                                    max_branch_width=max_branch_width,
                                    min_bus_width=min_bus_width,
                                    max_bus_width=max_bus_width)
+
+        elif current_study == SimulationTypes.NodeGrouping_run.value:
+            if t_idx is None:
+                results: sim.OptimalNetTransferCapacityResults = self.session.get_results(
+                    SimulationTypes.NodeGrouping_run
+                )
+                self.node_group_colouring(diagram_widget=diagram_widget,
+                                          results=results)
+            else:
+                if allow_popups:
+                    self.show_warning_toast(f"{current_study} only has values for the snapshot")
 
         elif current_study == 'Transient stability':
             raise Exception('Not implemented :(')
@@ -3351,4 +3386,4 @@ class DiagramsMain(CompiledArraysMain):
         diagram = self.get_selected_diagram_widget()
 
         if isinstance(diagram, SchematicWidget):
-                diagram.set_all_branch_drawing_styles(SchematicAutoRouteStyle.STRAIGHT)
+            diagram.set_all_branch_drawing_styles(SchematicAutoRouteStyle.STRAIGHT)
