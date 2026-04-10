@@ -3654,7 +3654,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 pass
         else:
             pass
-        
+
     def _assign_api_obj_mapping_branch(self,
                                        br: Any,
                                        is_vsc: bool,

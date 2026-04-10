@@ -19,6 +19,12 @@ if TYPE_CHECKING:
 
 
 class BusRmsTemplate(RmsModelTemplate):
+    __slots__ = (
+        "tpe",
+        "_block",
+        "Vm",
+        "Va",
+    )
 
     def __init__(self, vf: VarFactory, is_dc:bool=False, name: str = "rms_bus_template"):
         """

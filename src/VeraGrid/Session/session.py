@@ -117,7 +117,7 @@ class GcThread(QThread):
         Cancel the simulation
         """
         self.__cancel__ = True
-        self.driver.__cancel__ = True
+        self.driver.cancel()
 
 
 class SimulationSession:

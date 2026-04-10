@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 1
 - Top-level function count: 0
-- Representative imports: __future__, pandas, numpy, matplotlib, typing, VeraGridEngine.Devices.profile, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.branch_parent, VeraGridEngine.Devices.Parents.editable_device, VeraGridEngine.Devices.Parents.editable_device
+- Representative imports: __future__, pandas, numpy, matplotlib, typing,  VeraGridEngine.Devices.Substation.bus, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.branch_parent, VeraGridEngine.Devices.Parents.editable_device, VeraGridEngine.Devices.Parents.editable_device
 
 ## Class: VSC
 

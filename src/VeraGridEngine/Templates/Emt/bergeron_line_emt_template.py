@@ -61,6 +61,37 @@ class BergeronHistoryRuntime:
     """
     Runtime companion for a Bergeron line in reduced active-phase space.
     """
+    __slots__ = (
+        "line",
+        "block",
+        "h",
+        "hist_if",
+        "hist_it",
+        "hist_Ih_f",
+        "hist_Ih_t",
+        "hist_Ih_f_next",
+        "hist_Ih_t_next",
+        "ph_labels",
+        "ph_mask",
+        "phase_idx",
+        "active_ph",
+        "m",
+        "Ih_f",
+        "Ih_t",
+        "Gc_red",
+        "H_red",
+        "n_delay",
+        "buf_vf",
+        "buf_vt",
+        "buf_if",
+        "buf_it",
+        "v_f_vars",
+        "v_t_vars",
+        "idx_vf",
+        "idx_vt",
+        "idx_p_hf",
+        "idx_p_ht",
+    )
 
     def __init__(self, line: Any, line_block: Block, h: float, sbase: float, fbase: float) -> None:
         self.line = line

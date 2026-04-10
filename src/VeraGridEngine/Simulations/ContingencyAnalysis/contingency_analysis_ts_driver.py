@@ -61,6 +61,12 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
     """
     Contingency Analysis Time Series
     """
+    __slots__ = (
+        "options",
+        "opf_time_series_results",
+        "branch_names",
+    )
+
     name = 'Contingency analysis time series'
     tpe = SimulationTypes.ContingencyAnalysisTS_run
 
@@ -214,7 +220,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             # TODO: think what to do about this
             # results.report.merge(res_t.report)
 
-            if self.__cancel__:
+            if self.is_cancel():
                 return results
 
         # compute the mean
@@ -324,7 +330,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             # TODO: think what to do about this
             # results.report.merge(res_t.report)
 
-            if self.__cancel__:
+            if self.is_cancel():
                 return results
 
         # compute the mean
@@ -429,7 +435,7 @@ class ContingencyAnalysisTimeSeriesDriver(TimeSeriesDriverTemplate):
             # TODO: think what to do about this
             # results.report.merge(res_t.report)
 
-            if self.__cancel__:
+            if self.is_cancel():
                 return results
 
         # compute the mean

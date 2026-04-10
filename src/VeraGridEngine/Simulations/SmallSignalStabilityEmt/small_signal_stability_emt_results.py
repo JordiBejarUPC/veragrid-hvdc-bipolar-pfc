@@ -29,6 +29,18 @@ class SmallSignalStabilityEmtResults(ResultsTemplate):
     :param period: Cycle period T (s)
     :param stat_vars: List of state variables
     """
+    __slots__ = (
+        "multipliers",
+        "right_vecs",
+        "left_vecs",
+        "period",
+        "stat_vars",
+        "eigenvalues",
+        "damping_ratios",
+        "conjugate_frequencies",
+        "participation_factors",
+        "stat_vars_array",
+    )
 
     def __init__(self,
                  multipliers: CxVec,

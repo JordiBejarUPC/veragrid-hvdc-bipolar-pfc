@@ -11,7 +11,7 @@ from VeraGridEngine.Devices.Associations.association import Associations
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import BuildStatus, DeviceType, SubObjectType, ShuntConnectionType
 from VeraGridEngine.basic_structures import CxVec
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileFloat
 from VeraGridEngine.Devices.Aggregation.facility import Facility
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
@@ -122,7 +122,7 @@ class InjectionParent(DynamicDevice):
         self._bus = bus
 
         self.active = bool(active)
-        self._active_prof = Profile(default_value=self.active, data_type=bool)
+        self._active_prof = ProfileBool(default_value=self.active)
 
         self.mttf = mttf
 
@@ -130,7 +130,7 @@ class InjectionParent(DynamicDevice):
 
         self.Cost = float(Cost)
 
-        self._Cost_prof = Profile(default_value=self.Cost, data_type=float)
+        self._Cost_prof = ProfileFloat(default_value=self.Cost)
 
         self.capex = capex
 
@@ -143,7 +143,7 @@ class InjectionParent(DynamicDevice):
         self.scalable: bool = True
 
         self.shift_key: float = 1.0
-        self._shift_key_prof = Profile(default_value=self.shift_key, data_type=float)
+        self._shift_key_prof = ProfileFloat(default_value=self.shift_key)
 
         self.longitude = float(longitude)
         self.latitude = float(latitude)
@@ -177,7 +177,7 @@ class InjectionParent(DynamicDevice):
                 raise Exception(str(type(val)) + 'not supported to be set into a bus')
 
     @property
-    def active_prof(self) -> Profile:
+    def active_prof(self) -> ProfileBool:
         """
         Cost profile
         :return: Profile
@@ -185,8 +185,8 @@ class InjectionParent(DynamicDevice):
         return self._active_prof
 
     @active_prof.setter
-    def active_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def active_prof(self, val: Union[ProfileBool, np.ndarray]):
+        if isinstance(val, ProfileBool):
             self._active_prof = val
         elif isinstance(val, np.ndarray):
             self._active_prof.set(arr=val)
@@ -201,7 +201,7 @@ class InjectionParent(DynamicDevice):
         return get_at(self.active, self.active_prof, t)
 
     @property
-    def Cost_prof(self) -> Profile:
+    def Cost_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -209,8 +209,8 @@ class InjectionParent(DynamicDevice):
         return self._Cost_prof
 
     @Cost_prof.setter
-    def Cost_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Cost_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Cost_prof = val
         elif isinstance(val, np.ndarray):
             self._Cost_prof.set(arr=val)
@@ -225,7 +225,7 @@ class InjectionParent(DynamicDevice):
         return get_at(self.Cost, self.Cost_prof, t)
 
     @property
-    def shift_key_prof(self) -> Profile:
+    def shift_key_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -233,8 +233,8 @@ class InjectionParent(DynamicDevice):
         return self._shift_key_prof
 
     @shift_key_prof.setter
-    def shift_key_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def shift_key_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._shift_key_prof = val
         elif isinstance(val, np.ndarray):
             self._shift_key_prof.set(arr=val)

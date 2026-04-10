@@ -10,21 +10,24 @@ import numpy as np
 import pandas as pd
 
 from VeraGridEngine import RmsInitializationMethod, EmtSolverTypes
-from VeraGridEngine.Devices.profile import Profile
 from typing import List, Dict, AnyStr, Any, Union, Type, Tuple
 from VeraGridEngine.basic_structures import Logger, IntVec
+from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileDevice, ProfileEnum, ProfileFloat, ProfileInt
 from VeraGridEngine.enumerations import (DeviceType, TimeFrame, BuildStatus, WindingsConnection,
-                                          TapModuleControl, TapPhaseControl, SubObjectType, ConverterControlType,
-                                          HvdcControlType, ActionType, AvailableTransferMode, ContingencyMethod,
-                                          CpfParametrization, CpfStopAt, InvestmentEvaluationMethod, SolverType,
-                                          InvestmentsEvaluationObjectives, NodalCapacityMethod, TimeGrouping,
-                                          ZonalGrouping, MIPSolvers, AcOpfMode, VoltageLevelTypes, BranchGroupTypes,
-                                          BranchImpedanceMode, FaultType, TapChangerTypes, ContingencyOperationTypes,
-                                          WindingType, MethodShortCircuit, PhasesShortCircuit, ShuntConnectionType,
-                                          BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod, OpfDispatchMode,
-                                          EmtLineTypes, EmtProblemTypes, EmtInitializationMethod, SmallSignalEmtBuildTypes,
-                                          EraSvdSolverType, ShuntControlMode, RmsProblemTypes, FmuTemplateDomain,
-                                          FmuTemplateMode)
+                                         TapModuleControl, TapPhaseControl, SubObjectType, ConverterControlType,
+                                         HvdcControlType, ActionType, AvailableTransferMode, ContingencyMethod,
+                                         CpfParametrization, CpfStopAt, InvestmentEvaluationMethod, SolverType,
+                                         InvestmentsEvaluationObjectives, NodalCapacityMethod, TimeGrouping,
+                                         ZonalGrouping, MIPSolvers, AcOpfMode, VoltageLevelTypes, BranchGroupTypes,
+                                         BranchImpedanceMode, FaultType, TapChangerTypes, ContingencyOperationTypes,
+                                         WindingType, MethodShortCircuit, PhasesShortCircuit, ShuntConnectionType,
+                                         BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod, OpfDispatchMode,
+                                         EmtLineTypes, EmtProblemTypes, EmtInitializationMethod, SmallSignalEmtBuildTypes,
+                                         EraSvdSolverType, ShuntControlMode, RmsProblemTypes,)
+
+AnyProfile = Union[ProfileFloat, ProfileInt, ProfileBool, ProfileDevice, ProfileEnum]
+PROFILE_INSTANCE_TYPES = (ProfileFloat, ProfileInt, ProfileBool, ProfileDevice, ProfileEnum)
+
 # types that can be assigned to a VeraGrid property
 GCPROP_TYPES = Union[
     Type[int],
@@ -339,7 +342,7 @@ def get_action_symbol(action: ActionType):
 
 
 def get_at(snapshot_val: GCPROP_TYPES | float | int,
-           profile: Profile,
+           profile: AnyProfile,
            t: int | None) -> GCPROP_TYPES | float | int:
     """
     Get a GCPROP_TYPES value from a snapshot or a profile
@@ -929,29 +932,29 @@ class EditableDevice(metaclass=EditableDeviceMeta):
         prop = self.property_list[property_idx]
         return self.get_property_value(prop=prop, t_idx=t_idx)
 
-    def set_profile(self, prop: GCProp, arr: Union[Profile, np.ndarray]) -> None:
+    def set_profile(self, prop: GCProp, arr: Union[AnyProfile, np.ndarray]) -> None:
         """
         Set the profile from eithr an array or an actual profile object
         :param prop: GCProp instance
         :param arr: Profile object or numpy array object
         """
         if isinstance(arr, np.ndarray):
-            profile: Profile = getattr(self, prop.profile_name)
+            profile: AnyProfile = getattr(self, prop.profile_name)
             profile.set(arr)
-        elif isinstance(arr, Profile):
+        elif isinstance(arr, PROFILE_INSTANCE_TYPES):
             setattr(self, prop.profile_name, arr)
         else:
             raise Exception("profile type not supported")
 
-    def set_profile_array(self, magnitude, arr: Union[Profile, np.ndarray]) -> None:
+    def set_profile_array(self, magnitude, arr: Union[AnyProfile, np.ndarray]) -> None:
         """
-        Set the profile from eithr an array or an actual profile object
+        Set the profile from either an array or an actual profile object
         :param magnitude: snapshot magnitude
         :param arr: Profile object or numpy array object
         """
         if isinstance(arr, np.ndarray):
             prof_name = self.properties_with_profile[magnitude]
-            profile: Profile = getattr(self, prof_name)
+            profile: AnyProfile = getattr(self, prof_name)
             profile.set(arr)
         else:
             raise Exception("profile type not supported")
@@ -1007,7 +1010,7 @@ class EditableDevice(metaclass=EditableDeviceMeta):
         else:
             if prop.has_profile():
                 # get the profile value
-                prof: Profile = getattr(self, prop.profile_name)
+                prof: AnyProfile = getattr(self, prop.profile_name)
                 prof[t_idx] = value  # assign the value
             else:
                 # return the normal property
@@ -1056,7 +1059,7 @@ class EditableDevice(metaclass=EditableDeviceMeta):
         snapshot_value = getattr(self, magnitude)
 
         # get the already existing profile
-        prof: Profile = self.get_profile(magnitude=magnitude)
+        prof: AnyProfile = self.get_profile(magnitude=magnitude)
 
         if prof is None:
             print("The profile is none, this is a bug!")
@@ -1122,10 +1125,10 @@ class EditableDevice(metaclass=EditableDeviceMeta):
         :param t: time index (integer)
         """
         for property_name, profile_name in self.properties_with_profile.items():
-            profile: Profile = getattr(self, profile_name)
+            profile: AnyProfile = getattr(self, profile_name)
             setattr(self, property_name, profile[t])
 
-    def get_profile(self, magnitude: str) -> Union[Profile, None]:
+    def get_profile(self, magnitude: str) -> Union[AnyProfile, None]:
         """
         Get the profile of a property name
         :param magnitude: name of the property
@@ -1140,7 +1143,7 @@ class EditableDevice(metaclass=EditableDeviceMeta):
         else:
             return getattr(self, profile_name)
 
-    def get_profile_by_prop(self, prop: GCProp) -> Union[Profile, None]:
+    def get_profile_by_prop(self, prop: GCProp) -> Union[AnyProfile, None]:
         """
         Get the profile of a property name
         :param prop: GCProp

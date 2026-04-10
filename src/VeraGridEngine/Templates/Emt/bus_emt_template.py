@@ -17,6 +17,15 @@ if TYPE_CHECKING:
 
 
 class BusEmtTemplate(EmtModelTemplate):
+    __slots__ = (
+        "tpe",
+        "_block",
+        "v_DC",
+        "v_N",
+        "v_A",
+        "v_B",
+        "v_C",
+    )
 
     def __init__(self,
                  vf: VarFactory,

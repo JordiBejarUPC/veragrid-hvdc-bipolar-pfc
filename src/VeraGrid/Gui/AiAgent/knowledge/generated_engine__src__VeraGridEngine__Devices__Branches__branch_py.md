@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 2
 - Top-level function count: 1
-- Representative imports: typing, pandas, numpy, matplotlib, enum, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.branch_parent, VeraGridEngine.Devices.Branches.tap_changer, VeraGridEngine.Devices.Branches.transformer, VeraGridEngine.Devices.Branches.line, VeraGridEngine.Devices.profile, VeraGridEngine.Devices.Parents.editable_device
+- Representative imports: typing, pandas, numpy, matplotlib, enum, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.branch_parent, VeraGridEngine.Devices.Branches.tap_changer, VeraGridEngine.Devices.Branches.transformer, VeraGridEngine.Devices.Branches.line, VeraGridEngine.Devices.Parents.editable_device
 
 ## Class: BranchType
 

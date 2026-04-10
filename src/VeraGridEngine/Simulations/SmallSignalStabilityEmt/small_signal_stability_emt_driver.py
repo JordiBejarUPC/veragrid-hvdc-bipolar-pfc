@@ -68,6 +68,17 @@ class RobustBlockArnoldiEngine:
     2. DGKS/Kahan Re-orthogonalization ("Twice is Enough").
     3. Rank-Revealing SVD for Block Deflation.
     """
+    __slots__ = (
+        "monodromy_op",
+        "n",
+        "p_init",
+        "max_iters",
+        "tol_deflation",
+        "V",
+        "H",
+        "p_active",
+        "block_indices",
+    )
 
     def __init__(self, monodromy_op: BlockEmtFloquetOperator, n_states:int,
                  p_init: int, max_iters:int, tol_deflation:float=1e-12):
@@ -224,6 +235,13 @@ class RobustBlockArnoldiEngine:
 
 class BestPack:
     """Data structure to hold the best Ritz pairs found during restarts."""
+    __slots__ = (
+        "mu_sel",
+        "U_sel",
+        "rel",
+        "max_rr",
+    )
+
     def __init__(self):
         self.mu_sel: CxVec | None = None
         self.U_sel: CxVec | None = None
@@ -236,6 +254,11 @@ class SmallSignalStabilityEmtDriver(DriverTemplate):
     Base class for EMT Floquet stability analysis.
     Orchestrates the entire limit cycle capture and Krylov subspace generation workflow.
     """
+    __slots__ = (
+        "problem",
+        "emt_options",
+        "options",
+    )
 
     def __init__(self,
                  grid: MultiCircuit,

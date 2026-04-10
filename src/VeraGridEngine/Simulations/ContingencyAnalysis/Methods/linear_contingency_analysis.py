@@ -146,7 +146,7 @@ def linear_contingency_analysis(nc: NumericalCircuit,
             if is_cancel():
                 return results
 
-    results.lodf = linear_analysis.LODF
+    # results.lodf = linear_analysis.LODF
 
     return results
 

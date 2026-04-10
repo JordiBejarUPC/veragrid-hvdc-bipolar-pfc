@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
-from typing import Union, List, Tuple
+from typing import Union, Tuple
 import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -12,9 +12,8 @@ from matplotlib import pyplot as plt
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.enumerations import DeviceType, BuildStatus
 from VeraGridEngine.Devices.Parents.load_parent import LoadParent
-from VeraGridEngine.Devices.profile import Profile
-from VeraGridEngine.Utils.Symbolic.block import Block, Var, Const, VarPowerFlowRefferenceType
-from VeraGridEngine.Utils.Symbolic.symbolic import piecewise
+from VeraGridEngine.Devices.Profiles import ProfileFloat, ProfileInt
+from VeraGridEngine.Utils.Symbolic.block import VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 
@@ -191,31 +190,31 @@ class Load(LoadParent):
         self.Ii2 = float(Ii2)
         self.Ii3 = float(Ii3)
 
-        self._G_prof = Profile(default_value=self.G, data_type=float)
-        self._G1_prof = Profile(default_value=self.G1, data_type=float)
-        self._G2_prof = Profile(default_value=self.G2, data_type=float)
-        self._G3_prof = Profile(default_value=self.G3, data_type=float)
-        self._B_prof = Profile(default_value=self.B, data_type=float)
-        self._B1_prof = Profile(default_value=self.B1, data_type=float)
-        self._B2_prof = Profile(default_value=self.B2, data_type=float)
-        self._B3_prof = Profile(default_value=self.B3, data_type=float)
-        self._Ir_prof = Profile(default_value=self.Ir, data_type=float)
-        self._Ir1_prof = Profile(default_value=self.Ir1, data_type=float)
-        self._Ir2_prof = Profile(default_value=self.Ir2, data_type=float)
-        self._Ir3_prof = Profile(default_value=self.Ir3, data_type=float)
-        self._Ii_prof = Profile(default_value=self.Ii, data_type=float)
-        self._Ii1_prof = Profile(default_value=self.Ii1, data_type=float)
-        self._Ii2_prof = Profile(default_value=self.Ii2, data_type=float)
-        self._Ii3_prof = Profile(default_value=self.Ii3, data_type=float)
+        self._G_prof = ProfileFloat(default_value=self.G)
+        self._G1_prof = ProfileFloat(default_value=self.G1)
+        self._G2_prof = ProfileFloat(default_value=self.G2)
+        self._G3_prof = ProfileFloat(default_value=self.G3)
+        self._B_prof = ProfileFloat(default_value=self.B)
+        self._B1_prof = ProfileFloat(default_value=self.B1)
+        self._B2_prof = ProfileFloat(default_value=self.B2)
+        self._B3_prof = ProfileFloat(default_value=self.B3)
+        self._Ir_prof = ProfileFloat(default_value=self.Ir)
+        self._Ir1_prof = ProfileFloat(default_value=self.Ir1)
+        self._Ir2_prof = ProfileFloat(default_value=self.Ir2)
+        self._Ir3_prof = ProfileFloat(default_value=self.Ir3)
+        self._Ii_prof = ProfileFloat(default_value=self.Ii)
+        self._Ii1_prof = ProfileFloat(default_value=self.Ii1)
+        self._Ii2_prof = ProfileFloat(default_value=self.Ii2)
+        self._Ii3_prof = ProfileFloat(default_value=self.Ii3)
 
         self._n_customers: int = n_customers
-        self._n_customers_prof = Profile(default_value=self._n_customers, data_type=int)
+        self._n_customers_prof = ProfileInt(default_value=self._n_customers)
 
         self._contract_power: float = contracted_power
 
 
     @property
-    def Ir_prof(self) -> Profile:
+    def Ir_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -223,8 +222,8 @@ class Load(LoadParent):
         return self._Ir_prof
 
     @Ir_prof.setter
-    def Ir_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ir_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ir_prof = val
         elif isinstance(val, np.ndarray):
             self._Ir_prof.set(arr=val)
@@ -239,7 +238,7 @@ class Load(LoadParent):
         return get_at(self.Ir, self.Ir_prof, t)
 
     @property
-    def Ir1_prof(self) -> Profile:
+    def Ir1_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -247,8 +246,8 @@ class Load(LoadParent):
         return self._Ir1_prof
 
     @Ir1_prof.setter
-    def Ir1_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ir1_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ir1_prof = val
         elif isinstance(val, np.ndarray):
             self._Ir1_prof.set(arr=val)
@@ -263,7 +262,7 @@ class Load(LoadParent):
         return get_at(self.Ir1, self.Ir1_prof, t)
 
     @property
-    def Ir2_prof(self) -> Profile:
+    def Ir2_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -271,8 +270,8 @@ class Load(LoadParent):
         return self._Ir2_prof
 
     @Ir2_prof.setter
-    def Ir2_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ir2_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ir2_prof = val
         elif isinstance(val, np.ndarray):
             self._Ir2_prof.set(arr=val)
@@ -287,7 +286,7 @@ class Load(LoadParent):
         return get_at(self.Ir2, self.Ir2_prof, t)
 
     @property
-    def Ir3_prof(self) -> Profile:
+    def Ir3_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -295,8 +294,8 @@ class Load(LoadParent):
         return self._Ir3_prof
 
     @Ir3_prof.setter
-    def Ir3_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ir3_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ir3_prof = val
         elif isinstance(val, np.ndarray):
             self._Ir3_prof.set(arr=val)
@@ -311,7 +310,7 @@ class Load(LoadParent):
         return get_at(self.Ir3, self.Ir3_prof, t)
 
     @property
-    def Ii_prof(self) -> Profile:
+    def Ii_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -319,8 +318,8 @@ class Load(LoadParent):
         return self._Ii_prof
 
     @Ii_prof.setter
-    def Ii_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ii_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ii_prof = val
         elif isinstance(val, np.ndarray):
             self._Ii_prof.set(arr=val)
@@ -335,7 +334,7 @@ class Load(LoadParent):
         return get_at(self.Ii, self.Ii_prof, t)
 
     @property
-    def Ii1_prof(self) -> Profile:
+    def Ii1_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -343,8 +342,8 @@ class Load(LoadParent):
         return self._Ii1_prof
 
     @Ii1_prof.setter
-    def Ii1_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ii1_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ii1_prof = val
         elif isinstance(val, np.ndarray):
             self._Ii1_prof.set(arr=val)
@@ -359,7 +358,7 @@ class Load(LoadParent):
         return get_at(self.Ii1, self.Ii1_prof, t)
 
     @property
-    def Ii2_prof(self) -> Profile:
+    def Ii2_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -367,8 +366,8 @@ class Load(LoadParent):
         return self._Ii2_prof
 
     @Ii2_prof.setter
-    def Ii2_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ii2_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ii2_prof = val
         elif isinstance(val, np.ndarray):
             self._Ii2_prof.set(arr=val)
@@ -383,7 +382,7 @@ class Load(LoadParent):
         return get_at(self.Ii2, self.Ii2_prof, t)
 
     @property
-    def Ii3_prof(self) -> Profile:
+    def Ii3_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -391,8 +390,8 @@ class Load(LoadParent):
         return self._Ii3_prof
 
     @Ii3_prof.setter
-    def Ii3_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Ii3_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Ii3_prof = val
         elif isinstance(val, np.ndarray):
             self._Ii3_prof.set(arr=val)
@@ -407,7 +406,7 @@ class Load(LoadParent):
         return get_at(self.Ii3, self.Ii3_prof, t)
 
     @property
-    def G_prof(self) -> Profile:
+    def G_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -415,8 +414,8 @@ class Load(LoadParent):
         return self._G_prof
 
     @G_prof.setter
-    def G_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def G_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._G_prof = val
         elif isinstance(val, np.ndarray):
             self._G_prof.set(arr=val)
@@ -431,7 +430,7 @@ class Load(LoadParent):
         return get_at(self.G, self.G_prof, t)
 
     @property
-    def G1_prof(self) -> Profile:
+    def G1_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -439,8 +438,8 @@ class Load(LoadParent):
         return self._G1_prof
 
     @G1_prof.setter
-    def G1_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def G1_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._G1_prof = val
         elif isinstance(val, np.ndarray):
             self._G1_prof.set(arr=val)
@@ -455,7 +454,7 @@ class Load(LoadParent):
         return get_at(self.G1, self.G1_prof, t)
 
     @property
-    def G2_prof(self) -> Profile:
+    def G2_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -463,8 +462,8 @@ class Load(LoadParent):
         return self._G2_prof
 
     @G2_prof.setter
-    def G2_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def G2_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._G2_prof = val
         elif isinstance(val, np.ndarray):
             self._G2_prof.set(arr=val)
@@ -479,7 +478,7 @@ class Load(LoadParent):
         return get_at(self.G2, self.G2_prof, t)
 
     @property
-    def G3_prof(self) -> Profile:
+    def G3_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -487,8 +486,8 @@ class Load(LoadParent):
         return self._G3_prof
 
     @G3_prof.setter
-    def G3_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def G3_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._G3_prof = val
         elif isinstance(val, np.ndarray):
             self._G3_prof.set(arr=val)
@@ -503,7 +502,7 @@ class Load(LoadParent):
         return get_at(self.G3, self.G3_prof, t)
 
     @property
-    def B_prof(self) -> Profile:
+    def B_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -511,8 +510,8 @@ class Load(LoadParent):
         return self._B_prof
 
     @B_prof.setter
-    def B_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def B_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._B_prof = val
         elif isinstance(val, np.ndarray):
             self._B_prof.set(arr=val)
@@ -527,7 +526,7 @@ class Load(LoadParent):
         return get_at(self.B, self.B_prof, t)
 
     @property
-    def B1_prof(self) -> Profile:
+    def B1_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -535,8 +534,8 @@ class Load(LoadParent):
         return self._B1_prof
 
     @B1_prof.setter
-    def B1_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def B1_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._B1_prof = val
         elif isinstance(val, np.ndarray):
             self._B1_prof.set(arr=val)
@@ -551,7 +550,7 @@ class Load(LoadParent):
         return get_at(self.B1, self.B1_prof, t)
 
     @property
-    def B2_prof(self) -> Profile:
+    def B2_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -559,8 +558,8 @@ class Load(LoadParent):
         return self._B2_prof
 
     @B2_prof.setter
-    def B2_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def B2_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._B2_prof = val
         elif isinstance(val, np.ndarray):
             self._B2_prof.set(arr=val)
@@ -575,7 +574,7 @@ class Load(LoadParent):
         return get_at(self.B2, self.B2_prof, t)
 
     @property
-    def B3_prof(self) -> Profile:
+    def B3_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -583,8 +582,8 @@ class Load(LoadParent):
         return self._B3_prof
 
     @B3_prof.setter
-    def B3_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def B3_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._B3_prof = val
         elif isinstance(val, np.ndarray):
             self._B3_prof.set(arr=val)
@@ -730,7 +729,7 @@ class Load(LoadParent):
             print(e)
 
     @property
-    def n_customers_prof(self) -> Profile:
+    def n_customers_prof(self) -> ProfileInt:
         """
         Cost profile
         :return: Profile
@@ -738,8 +737,8 @@ class Load(LoadParent):
         return self._n_customers_prof
 
     @n_customers_prof.setter
-    def n_customers_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def n_customers_prof(self, val: Union[ProfileInt, np.ndarray]):
+        if isinstance(val, ProfileInt):
             self._n_customers_prof = val
         elif isinstance(val, np.ndarray):
             self._n_customers_prof.set(arr=val)

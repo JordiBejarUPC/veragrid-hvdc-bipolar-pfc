@@ -260,6 +260,11 @@ def parse_expr_list(lst: List[Dict[str, Any]],
 
 
 class BlockSaver:
+    __slots__ = (
+        "var_factory",
+        "main_block_uids",
+        "blocks",
+    )
 
     def __init__(self, var_factory: VarFactory):
         self.var_factory = var_factory
@@ -498,6 +503,10 @@ class BlockSaver:
 
 
 class BlockParser:
+    __slots__ = (
+        "var_factory",
+        "block_dict",
+    )
 
     def __init__(self, var_factory: VarFactory):
         self.var_factory = var_factory
