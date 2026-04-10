@@ -16,7 +16,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise)
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector, SymbolicDerivative
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializationMethod
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializationMethod, DeviceType
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
@@ -198,13 +198,31 @@ class RmsProblemDae(RmsProblemTemplate):
         self._n_event_params = 0
         self._n_diff = 0
 
+        # dictionary to relate injection devices connected to a certain bus
+        injection_dev_dict = self.grid.get_injection_devices_grouped_by_bus()
+
+
         ######################################## Initialize devices ########################################
 
         # initialize buses
         bus_dict: Dict[Bus, int] = dict()
+        inj_tot_cap_dict: Dict[tuple[Bus, DeviceType], float] = dict()
+
         for bus_num, elm in enumerate(self.grid.buses):
             # Todo: missing default initialization for the model
             bus_dict[elm] = bus_num
+
+            inj_dev = injection_dev_dict[elm]
+
+            if DeviceType.GeneratorDevice in inj_dev:
+                generators = inj_dev[DeviceType.GeneratorDevice]
+
+                gen_total_cap = 0
+                for generator in generators:
+                    gen_total_cap += generator.Snom
+                inj_tot_cap_dict[(elm, DeviceType.GeneratorDevice)] = gen_total_cap
+
+
 
             # default initialization
             if elm.rms_model.empty():
@@ -493,6 +511,10 @@ class RmsProblemDae(RmsProblemTemplate):
                 self.sys_block.add(elm.rms_model)
 
         for elm in grid.get_injection_devices_iter():
+            power_flow_part_fact = 1
+            if elm.device_type == DeviceType.GeneratorDevice:
+                power_flow_part_fact = elm.Snom/inj_tot_cap_dict[(elm.bus, elm.device_type)]
+
 
             if elm.rms_model.empty():
                 self.logger.add_error("No RMS model",
@@ -508,6 +530,7 @@ class RmsProblemDae(RmsProblemTemplate):
                     initialize_bus_rms(elm.bus, self.grid.var_factory)
 
                 if not elm.bus.is_dc:
+                    # not necessary anymore, models are already connected with the buses
                     Vm, Va = get_bus_rms_algebraic_vars(elm.bus.rms_model)
                     if VarPowerFlowRefferenceType.Vm in elm.rms_model.external_mapping:
                         elm.rms_model.update_model(
@@ -527,12 +550,12 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 if elm.bus.is_dc:
                     self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.P,
-                                        np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+                                        power_flow_part_fact * np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
                 else:
                     self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.P,
-                                        np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+                                        power_flow_part_fact * np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
                     self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Q,
-                                        np.imag(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+                                        power_flow_part_fact * np.imag(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
 
                 k = bus_dict[elm.bus]
                 if VarPowerFlowRefferenceType.P in elm.rms_model.external_mapping:
