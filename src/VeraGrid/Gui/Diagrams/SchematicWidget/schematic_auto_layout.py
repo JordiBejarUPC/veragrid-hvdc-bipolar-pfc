@@ -73,7 +73,7 @@ def apply_initial_auto_layout_to_diagram(diagram: SchematicDiagram,
     :param position_scale: Final coordinate scaling factor in pixels.
     :return: ``None``.
     """
-    graph: nx.DiGraph
+    graph: nx.MultiDiGraph
     node_like_api_objects: List[ALL_DEV_TYPES]
     graph, node_like_api_objects = diagram.build_graph()
     calculated_positions: Dict[int, np.ndarray] = calculate_schematic_layout(graph=graph, sel=layout_name)
@@ -148,37 +148,105 @@ def get_layout_graph_node_name(graph: nx.Graph, node_idx: int) -> str:
     return node_name
 
 
-def get_layout_edge_strength(graph: nx.Graph, from_idx: int, to_idx: int) -> float:
+def get_layout_edge_device_tpe_from_data(edge_data: Dict[str, Any]) -> DeviceType | None:
     """
-    Read the spring strength associated with one edge.
+    Read the device type attached to one branch edge.
 
-    :param graph: Diagram graph.
-    :param from_idx: Source node index.
-    :param to_idx: Target node index.
+    :param edge_data: Edge metadata dictionary.
+    :return: Edge device type or ``None`` when it cannot be mapped.
+    """
+    edge_kind_raw: Any = edge_data.get("kind", "")
+    edge_kind: str = str(edge_kind_raw)
+    device_tpe: DeviceType | None = None
+    candidate_tpe: DeviceType
+
+    # Edge metadata is serialized as text when the graph is built. The layout stage
+    # converts that text back to the enum immediately so all downstream logic compares
+    # explicit device types instead of free-form strings.
+    for candidate_tpe in DeviceType:
+        if candidate_tpe.value == edge_kind:
+            device_tpe = candidate_tpe
+        else:
+            candidate_tpe = candidate_tpe
+
+    return device_tpe
+
+
+def get_layout_edge_strength_from_data(edge_data: Dict[str, Any]) -> float:
+    """
+    Read the spring strength associated with one branch edge.
+
+    :param edge_data: Edge metadata dictionary.
     :return: Positive spring strength.
     """
-    edge_data: Dict[str, Any] = graph.edges[from_idx, to_idx]
     strength_raw: Any = edge_data.get("strength", 1.0)
     strength: float = max(float(strength_raw), 1e-6)
     return strength
 
 
-def get_layout_edge_kind(graph: nx.Graph, from_idx: int, to_idx: int) -> str:
+def get_layout_edge_impedance_from_data(edge_data: Dict[str, Any]) -> float:
     """
-    Read the device kind attached to one graph edge.
+    Read the impedance surrogate associated with one branch edge.
+
+    :param edge_data: Edge metadata dictionary.
+    :return: Positive impedance surrogate.
+    """
+    impedance_raw: Any = edge_data.get("impedance", 1.0)
+    impedance: float = max(float(impedance_raw), 1e-6)
+    return impedance
+
+
+def get_layout_representative_branch_edge_data(graph: nx.Graph | nx.MultiGraph,
+                                               from_idx: int,
+                                               to_idx: int) -> Dict[str, Any]:
+    """
+    Select one representative branch between two nodes for pair-based layout decisions.
+
+    The full multigraph keeps every physical branch so parallel branches are preserved.
+    Some layout steps still need a single representative relation between two nodes.
+    In that case the strongest branch is selected, with impedance as a tie-breaker.
 
     :param graph: Diagram graph.
     :param from_idx: Source node index.
     :param to_idx: Target node index.
-    :return: Edge device type value.
+    :return: Representative edge metadata dictionary.
     """
-    edge_data: Dict[str, Any] = graph.edges[from_idx, to_idx]
-    edge_kind_raw: Any = edge_data.get("kind", "")
-    edge_kind: str = str(edge_kind_raw)
-    return edge_kind
+    selected_edge_data: Dict[str, Any] = dict()
+
+    if graph.is_multigraph():
+        parallel_edge_data = graph.get_edge_data(from_idx, to_idx, default=dict())
+        best_strength: float = -1.0
+        best_impedance: float = float("inf")
+        edge_key: Any
+
+        for edge_key, candidate_edge_data in parallel_edge_data.items():
+            candidate_strength: float = get_layout_edge_strength_from_data(edge_data=candidate_edge_data)
+            candidate_impedance: float = get_layout_edge_impedance_from_data(edge_data=candidate_edge_data)
+            use_candidate: bool = False
+
+            if candidate_strength > best_strength:
+                use_candidate = True
+            elif candidate_strength == best_strength and candidate_impedance < best_impedance:
+                use_candidate = True
+            else:
+                use_candidate = False
+
+            if use_candidate:
+                selected_edge_data = candidate_edge_data
+                best_strength = candidate_strength
+                best_impedance = candidate_impedance
+            else:
+                edge_key = edge_key
+    else:
+        selected_edge_data = graph.edges[from_idx, to_idx]
+
+    return selected_edge_data
 
 
-def get_layout_edge_radius_step(graph: nx.Graph, from_idx: int, to_idx: int, base_radius_gap: float) -> float:
+def get_layout_edge_radius_step(graph: nx.Graph | nx.MultiGraph,
+                                from_idx: int,
+                                to_idx: int,
+                                base_radius_gap: float) -> float:
     """
     Compute the radial step contributed by one backbone edge.
 
@@ -188,33 +256,191 @@ def get_layout_edge_radius_step(graph: nx.Graph, from_idx: int, to_idx: int, bas
     :param base_radius_gap: Base radial step used for line-like edges.
     :return: Radial increment for the edge.
     """
-    edge_kind: str = get_layout_edge_kind(graph=graph, from_idx=from_idx, to_idx=to_idx)
+    edge_data: Dict[str, Any] = get_layout_representative_branch_edge_data(graph=graph,
+                                                                           from_idx=from_idx,
+                                                                           to_idx=to_idx)
+    edge_device_tpe: DeviceType | None = get_layout_edge_device_tpe_from_data(edge_data=edge_data)
     radius_factor: float = 1.0
 
     # Transformer-like and switching devices should cluster the connected buses more tightly
     # than actual network spans represented by lines and similar corridor devices.
-    if edge_kind == DeviceType.Transformer2WDevice.value:
-        radius_factor = 0.28
-    elif edge_kind == DeviceType.WindingDevice.value:
-        radius_factor = 0.22
-    elif edge_kind == DeviceType.SwitchDevice.value:
+    if edge_device_tpe == DeviceType.Transformer2WDevice:
+        radius_factor = 0.16
+    elif edge_device_tpe == DeviceType.WindingDevice:
+        radius_factor = 0.12
+    elif edge_device_tpe == DeviceType.SwitchDevice:
         radius_factor = 0.18
-    elif edge_kind == DeviceType.VscDevice.value:
+    elif edge_device_tpe == DeviceType.VscDevice:
         radius_factor = 0.22
-    elif edge_kind == DeviceType.UpfcDevice.value:
+    elif edge_device_tpe == DeviceType.UpfcDevice:
         radius_factor = 0.25
-    elif edge_kind == DeviceType.SeriesReactanceDevice.value:
+    elif edge_device_tpe == DeviceType.SeriesReactanceDevice:
         radius_factor = 0.35
-    elif edge_kind == DeviceType.HVDCLineDevice.value:
+    elif edge_device_tpe == DeviceType.HVDCLineDevice:
         radius_factor = 0.75
-    elif edge_kind == DeviceType.DCLineDevice.value:
+    elif edge_device_tpe == DeviceType.DCLineDevice:
         radius_factor = 0.85
-    elif edge_kind == DeviceType.FluidPathDevice.value:
+    elif edge_device_tpe == DeviceType.FluidPathDevice:
         radius_factor = 0.90
     else:
         radius_factor = 1.0
 
     return base_radius_gap * radius_factor
+
+
+def is_layout_edge_transformer_compact_kind(edge_device_tpe: DeviceType | None) -> bool:
+    """
+    Determine whether one edge device type should be aggressively compacted in the schematic.
+
+    Transformer-like couplings do not represent corridor distance. They represent
+    a tight electrical relationship around the same station area, so the connected
+    node symbols should remain visually close.
+
+    :param edge_device_tpe: Edge device type.
+    :return: ``True`` when the edge should be compacted strongly.
+    """
+    if edge_device_tpe == DeviceType.Transformer2WDevice:
+        return True
+    elif edge_device_tpe == DeviceType.WindingDevice:
+        return True
+    else:
+        return False
+
+
+def get_layout_edge_max_compact_distance(edge_data: Dict[str, Any],
+                                         base_radius_gap: float) -> float:
+    """
+    Get the maximum preferred Euclidean distance for one compact branch edge.
+
+    The target distance is intentionally much smaller than the normal radial gap.
+    This keeps buses linked through 2-winding transformers or the winding spokes of
+    3-winding and N-winding transformers from spreading apart as the radial sectors
+    expand.
+
+    :param edge_data: Branch edge metadata.
+    :param base_radius_gap: Base radial step used for line-like edges.
+    :return: Maximum preferred Euclidean edge length in layout units.
+    """
+    edge_device_tpe: DeviceType | None = get_layout_edge_device_tpe_from_data(edge_data=edge_data)
+
+    if edge_device_tpe == DeviceType.Transformer2WDevice:
+        return base_radius_gap * 0.14
+    elif edge_device_tpe == DeviceType.WindingDevice:
+        return base_radius_gap * 0.10
+    else:
+        return base_radius_gap
+
+
+def refine_positions_for_transformer_compactness(component_graph: nx.Graph | nx.MultiGraph,
+                                                 positions: Dict[int, np.ndarray],
+                                                 base_radius_gap: float,
+                                                 iteration_count: int = 14,
+                                                 blend_factor: float = 0.32) -> Dict[int, np.ndarray]:
+    """
+    Contract transformer-linked nodes after the coarse radial placement.
+
+    The radial tree placement decides the global spider-web geometry, but it can still
+    leave transformer-connected nodes too far apart because their angular sectors may
+    widen with the surrounding subtree. This refinement only contracts compact
+    transformer edges and leaves line corridors untouched.
+
+    :param component_graph: Connected component graph.
+    :param positions: Initial node positions for the component.
+    :param base_radius_gap: Base radial step used for line-like edges.
+    :param iteration_count: Number of contraction iterations.
+    :param blend_factor: Fraction of the excess edge length corrected per iteration.
+    :return: Refined component positions.
+    """
+    refined_positions: Dict[int, np.ndarray] = dict()
+    node_idx: int
+
+    for node_idx, pos_vec in positions.items():
+        refined_positions[node_idx] = np.array([float(pos_vec[0]), float(pos_vec[1])], dtype=float)
+
+    iteration_idx: int
+    for iteration_idx in range(iteration_count):
+        correction_sum_by_node: Dict[int, np.ndarray] = dict()
+        correction_count_by_node: Dict[int, int] = dict()
+        from_idx: int
+        to_idx: int
+        moved_any: bool = False
+
+        for node_idx in refined_positions.keys():
+            correction_sum_by_node[node_idx] = np.zeros(2, dtype=float)
+            correction_count_by_node[node_idx] = 0
+
+        if component_graph.is_multigraph():
+            edge_key: Any
+            edge_data: Dict[str, Any]
+
+            for from_idx, to_idx, edge_key, edge_data in component_graph.edges(keys=True, data=True):
+                edge_device_tpe: DeviceType | None = get_layout_edge_device_tpe_from_data(edge_data=edge_data)
+
+                if is_layout_edge_transformer_compact_kind(edge_device_tpe=edge_device_tpe):
+                    from_pos: np.ndarray = refined_positions[from_idx]
+                    to_pos: np.ndarray = refined_positions[to_idx]
+                    delta_vec: np.ndarray = to_pos - from_pos
+                    distance: float = float(np.linalg.norm(delta_vec))
+                    target_distance: float = get_layout_edge_max_compact_distance(edge_data=edge_data,
+                                                                                 base_radius_gap=base_radius_gap)
+
+                    if distance > target_distance and distance > 1e-9:
+                        excess_ratio: float = (distance - target_distance) / distance
+                        correction_vec: np.ndarray = delta_vec * (0.5 * blend_factor * excess_ratio)
+                        correction_sum_by_node[from_idx] = correction_sum_by_node[from_idx] + correction_vec
+                        correction_sum_by_node[to_idx] = correction_sum_by_node[to_idx] - correction_vec
+                        correction_count_by_node[from_idx] += 1
+                        correction_count_by_node[to_idx] += 1
+                        moved_any = True
+                    else:
+                        distance = distance
+                else:
+                    edge_key = edge_key
+            else:
+                pass
+        else:
+            edge_data: Dict[str, Any]
+
+            for from_idx, to_idx, edge_data in component_graph.edges(data=True):
+                edge_device_tpe: DeviceType | None = get_layout_edge_device_tpe_from_data(edge_data=edge_data)
+
+                if is_layout_edge_transformer_compact_kind(edge_device_tpe=edge_device_tpe):
+                    from_pos: np.ndarray = refined_positions[from_idx]
+                    to_pos: np.ndarray = refined_positions[to_idx]
+                    delta_vec: np.ndarray = to_pos - from_pos
+                    distance: float = float(np.linalg.norm(delta_vec))
+                    target_distance: float = get_layout_edge_max_compact_distance(edge_data=edge_data,
+                                                                                 base_radius_gap=base_radius_gap)
+
+                    if distance > target_distance and distance > 1e-9:
+                        excess_ratio: float = (distance - target_distance) / distance
+                        correction_vec: np.ndarray = delta_vec * (0.5 * blend_factor * excess_ratio)
+                        correction_sum_by_node[from_idx] = correction_sum_by_node[from_idx] + correction_vec
+                        correction_sum_by_node[to_idx] = correction_sum_by_node[to_idx] - correction_vec
+                        correction_count_by_node[from_idx] += 1
+                        correction_count_by_node[to_idx] += 1
+                        moved_any = True
+                    else:
+                        distance = distance
+                else:
+                    edge_data = edge_data
+
+        for node_idx in refined_positions.keys():
+            correction_count: int = correction_count_by_node[node_idx]
+
+            if correction_count > 0:
+                average_correction: np.ndarray = correction_sum_by_node[node_idx] / float(correction_count)
+                refined_positions[node_idx] = refined_positions[node_idx] + average_correction
+            else:
+                correction_count = correction_count
+
+        if moved_any:
+            moved_any = moved_any
+        else:
+            break
+
+    iteration_idx = iteration_idx
+    return refined_positions
 
 
 def select_power_system_root(graph: nx.Graph, component_nodes: List[int]) -> int:
@@ -475,7 +701,12 @@ def compute_layer_barycenter(graph: nx.Graph,
                     neighbour_layer_idx = neighbour_layer_idx
 
             if neighbour_layer_idx == reference_layer_idx:
-                edge_strength: float = get_layout_edge_strength(graph=graph, from_idx=node_idx, to_idx=neighbour_idx)
+                representative_edge_data: Dict[str, Any] = get_layout_representative_branch_edge_data(
+                    graph=graph,
+                    from_idx=node_idx,
+                    to_idx=neighbour_idx
+                )
+                edge_strength: float = get_layout_edge_strength_from_data(edge_data=representative_edge_data)
                 neighbour_order: float = order_by_node.get(neighbour_idx, 0.0)
                 weighted_sum += edge_strength * neighbour_order
                 weighted_count += edge_strength
@@ -635,7 +866,12 @@ def compute_vertical_targets(graph: nx.Graph,
         neighbour_idx: int
 
         for neighbour_idx in graph.neighbors(node_idx):
-            edge_strength: float = get_layout_edge_strength(graph=graph, from_idx=node_idx, to_idx=neighbour_idx)
+            representative_edge_data: Dict[str, Any] = get_layout_representative_branch_edge_data(
+                graph=graph,
+                from_idx=node_idx,
+                to_idx=neighbour_idx
+            )
+            edge_strength: float = get_layout_edge_strength_from_data(edge_data=representative_edge_data)
             neighbour_pos: np.ndarray | None = current_positions.get(neighbour_idx, None)
 
             if neighbour_pos is not None:
@@ -778,7 +1014,7 @@ def refine_component_vertical_positions(graph: nx.Graph,
     return refined_positions
 
 
-def build_hybrid_power_system_layout(graph: nx.DiGraph, position_scale=0.5) -> Dict[int, np.ndarray]:
+def build_hybrid_power_system_layout(graph: nx.MultiDiGraph, position_scale=0.5) -> Dict[int, np.ndarray]:
     """
     Build a hybrid layout for one-line diagrams.
 
@@ -796,7 +1032,7 @@ def build_hybrid_power_system_layout(graph: nx.DiGraph, position_scale=0.5) -> D
     if graph.number_of_nodes() == 0:
         return positions
     else:
-        undirected_graph: nx.Graph = graph.to_undirected()
+        undirected_graph: nx.MultiGraph = graph.to_undirected()
 
     component_origin_x: float = 0.0
     radius_gap: float = 3.8
@@ -806,8 +1042,8 @@ def build_hybrid_power_system_layout(graph: nx.DiGraph, position_scale=0.5) -> D
     for component_nodes_set in nx.connected_components(undirected_graph):
         component_nodes: List[int] = sorted(list(component_nodes_set))
         root_node: int = select_power_system_root(graph=graph, component_nodes=component_nodes)
-        component_graph: nx.Graph = undirected_graph.subgraph(component_nodes).copy()
-        backbone_tree: nx.Graph = nx.maximum_spanning_tree(component_graph, weight="strength")
+        component_graph: nx.MultiGraph = undirected_graph.subgraph(component_nodes).copy()
+        backbone_tree: nx.MultiGraph = nx.maximum_spanning_tree(component_graph, weight="strength")
         parent_by_node: Dict[int, int | None] = dict()
         children_by_parent: Dict[int, List[int]] = dict()
         depth_by_node: Dict[int, int] = dict()
@@ -841,9 +1077,12 @@ def build_hybrid_power_system_layout(graph: nx.DiGraph, position_scale=0.5) -> D
                     pending_nodes.append(child_idx)
 
                     # Child ordering tries to keep strong branches and higher-voltage descendants together.
-                    sortable_entries.append((-get_layout_edge_strength(graph=component_graph,
-                                                                       from_idx=node_idx,
-                                                                       to_idx=child_idx),
+                    representative_edge_data: Dict[str, Any] = get_layout_representative_branch_edge_data(
+                        graph=component_graph,
+                        from_idx=node_idx,
+                        to_idx=child_idx
+                    )
+                    sortable_entries.append((-get_layout_edge_strength_from_data(edge_data=representative_edge_data),
                                              -get_layout_graph_node_voltage_kv(graph=graph, node_idx=child_idx),
                                              -int(component_graph.degree(child_idx)),
                                              get_layout_graph_node_substation(graph=graph, node_idx=child_idx),
@@ -934,6 +1173,13 @@ def build_hybrid_power_system_layout(graph: nx.DiGraph, position_scale=0.5) -> D
             y_pos: float = radius * np.sin(theta)
             component_positions[node_idx] = np.array([x_pos, y_pos], dtype=float)
 
+        # The radial stage fixes the global island geometry first. A second local pass
+        # then contracts transformer-linked nodes so station equipment does not stretch
+        # apart simply because its surrounding subtree occupies a wide angular sector.
+        component_positions = refine_positions_for_transformer_compactness(component_graph=component_graph,
+                                                                           positions=component_positions,
+                                                                           base_radius_gap=radius_gap)
+
         min_component_x: float = 0.0
         max_component_x: float = 0.0
         min_component_y: float = 0.0
@@ -969,14 +1215,14 @@ def build_hybrid_power_system_layout(graph: nx.DiGraph, position_scale=0.5) -> D
     return positions
 
 
-def apply_multipartite_subsets(graph: nx.DiGraph) -> nx.Graph:
+def apply_multipartite_subsets(graph: nx.MultiDiGraph) -> nx.MultiGraph:
     """
     Create a graph copy carrying the subset attribute required by ``multipartite_layout``.
 
     :param graph: Diagram graph with electrical metadata.
     :return: Undirected graph copy with subset assignments.
     """
-    multipartite_graph: nx.Graph = graph.to_undirected()
+    multipartite_graph: nx.MultiGraph = graph.to_undirected()
     component_nodes_set: set[int]
 
     for component_nodes_set in nx.connected_components(multipartite_graph):
@@ -992,7 +1238,7 @@ def apply_multipartite_subsets(graph: nx.DiGraph) -> nx.Graph:
     return multipartite_graph
 
 
-def build_bipartite_top_nodes(graph: nx.DiGraph) -> set[int]:
+def build_bipartite_top_nodes(graph: nx.MultiDiGraph) -> set[int]:
     """
     Build the ``top_nodes`` set required by ``bipartite_layout``.
 
@@ -1000,7 +1246,7 @@ def build_bipartite_top_nodes(graph: nx.DiGraph) -> set[int]:
     :return: Nodes assigned to the top bipartite partition.
     """
     top_nodes: set[int] = set()
-    undirected_graph: nx.Graph = graph.to_undirected()
+    undirected_graph: nx.MultiGraph = graph.to_undirected()
     component_nodes_set: set[int]
 
     for component_nodes_set in nx.connected_components(undirected_graph):
@@ -1019,20 +1265,20 @@ def build_bipartite_top_nodes(graph: nx.DiGraph) -> set[int]:
     return top_nodes
 
 
-def build_kamada_kawai_distances(graph: nx.DiGraph) -> Dict[int, Dict[int, float]]:
+def build_kamada_kawai_distances(graph: nx.MultiDiGraph) -> Dict[int, Dict[int, float]]:
     """
     Build the electrical distance map for ``kamada_kawai_layout``.
 
     :param graph: Diagram graph with impedance metadata.
     :return: Nested distance dictionary accepted by NetworkX.
     """
-    undirected_graph: nx.Graph = graph.to_undirected()
+    undirected_graph: nx.MultiGraph = graph.to_undirected()
     distances: Dict[int, Dict[int, float]] = dict(nx.all_pairs_dijkstra_path_length(undirected_graph,
                                                                                     weight="impedance"))
     return distances
 
 
-def calculate_schematic_layout(graph: nx.DiGraph, sel: str) -> Dict[int, np.ndarray]:
+def calculate_schematic_layout(graph: nx.MultiDiGraph, sel: str) -> Dict[int, np.ndarray]:
     """
     Calculate one automatic schematic layout explicitly for every supported mode.
 
@@ -1041,7 +1287,7 @@ def calculate_schematic_layout(graph: nx.DiGraph, sel: str) -> Dict[int, np.ndar
     :return: Position by node index.
     """
     calculated_positions: Dict[int, np.ndarray]
-    undirected_graph: nx.Graph = graph.to_undirected()
+    undirected_graph: nx.MultiGraph = graph.to_undirected()
 
     if sel == "power_system_layout":
         calculated_positions = build_hybrid_power_system_layout(graph=graph)

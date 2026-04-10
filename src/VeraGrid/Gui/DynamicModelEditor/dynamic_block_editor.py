@@ -33,7 +33,8 @@ from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGrid.Gui.RmsModelEditor.block_editor import Ui_BlockEditorWindow
+from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_block_of_type, create_generic_block, create_emt_wizard_block
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
                                                     get_symbolic_parser_function_names,
@@ -41,7 +42,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_t
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import BlockType
-from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
+# from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
 
 BLOCK_BORDER: QColor = QColor("#36536b")
 BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
@@ -3299,11 +3300,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 "Devices": [
                     ("Generator basic", BlockType.GENRAW),
                     ("Generator QEC", BlockType.GENQEC),
-                    ("Governor", BlockType.GOV),
-                    ("Stabilizer", BlockType.STAB),
-                    ("Exciter", BlockType.EXCITER),
-                    ("Line", BlockType.LINE),
-                    ("Load", BlockType.LOAD),
+                    ("Governor", BlockType.GOV_RMS),
+                    ("Stabilizer", BlockType.STAB_RMS),
+                    ("Exciter", BlockType.EXCITER_RMS),
+                    ("Line", BlockType.LINE_RMS),
+                    ("Load", BlockType.LOAD_RMS),
                     ("Generic", BlockType.GENERIC),
                 ],
             }
@@ -3320,13 +3321,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 ],
                 "Devices": [
                     ("Generator", BlockType.EMT_GENERATOR),
-                    ("Governor", BlockType.GOV),
-                    ("Stabilizer", BlockType.STAB),
-                    ("Exciter", BlockType.EXCITER),
+                    ("Thevenin eq. generator", BlockType.EMT_THEVENIN),
+                    ("Governor", BlockType.GOV_EMT),
+                    ("Stabilizer", BlockType.STAB_EMT),
+                    ("Exciter", BlockType.EXCITER_EMT),
                     ("Generic", BlockType.GENERIC),
                     ("Emt pi line", BlockType.EMT_PI_LINE),
                     ("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
-                    ("Emt load", BlockType.EMTLOAD),
+                    ("R load", BlockType.R_LOAD_EMT),
+                    ("L load", BlockType.L_LOAD_EMT),
+                    ("C load", BlockType.C_LOAD_EMT),
+                    ("Exponential load", BlockType.EXP_LOAD_EMT),
+                    ("ZIP load", BlockType.ZIP_LOAD_EMT),
+                    ("DC load", BlockType.DC_LOAD_EMT),
                 ],
             }
         else:
@@ -5180,7 +5187,39 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     y_pos=scene_position.y()
                 )
 
-            elif isinstance(payload, BlockType) and payload == BlockType.EMTLOAD:
+            elif isinstance(payload, BlockType) and payload == BlockType.R_LOAD_EMT:
+
+                block_item = self.create_emt_wizard_block_item(
+                    block_type=payload,
+                    x_pos=scene_position.x(),
+                    y_pos=scene_position.y()
+                )
+
+            elif isinstance(payload, BlockType) and payload == BlockType.L_LOAD_EMT:
+
+                block_item = self.create_emt_wizard_block_item(
+                    block_type=payload,
+                    x_pos=scene_position.x(),
+                    y_pos=scene_position.y()
+                )
+
+            elif isinstance(payload, BlockType) and payload == BlockType.C_LOAD_EMT:
+
+                block_item = self.create_emt_wizard_block_item(
+                    block_type=payload,
+                    x_pos=scene_position.x(),
+                    y_pos=scene_position.y()
+                )
+
+            elif isinstance(payload, BlockType) and payload == BlockType.EXP_LOAD_EMT:
+
+                block_item = self.create_emt_wizard_block_item(
+                    block_type=payload,
+                    x_pos=scene_position.x(),
+                    y_pos=scene_position.y()
+                )
+
+            elif isinstance(payload, BlockType) and payload == BlockType.ZIP_LOAD_EMT:
 
                 block_item = self.create_emt_wizard_block_item(
                     block_type=payload,

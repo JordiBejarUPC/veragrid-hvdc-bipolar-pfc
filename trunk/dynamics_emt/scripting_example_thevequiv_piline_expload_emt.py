@@ -119,7 +119,7 @@ def attach_emt_models(
 
     gen_mdl: Block = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
     line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = True, phA = True, phB = True, phC = True).block
-    load_mdl: Block = get_exponential_load_emt(vf=grid.var_factory).block
+    load_mdl: Block = get_exponential_load_emt(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
     # ``a = 2`` reproduces an impedance-like active-power dependence. This keeps the
     # example aligned with the original resistive load while exercising the new EMT

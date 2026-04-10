@@ -36,6 +36,7 @@ device_type_icons = {
     DeviceType.Transformer2WDevice.value: ":/Icons/icons/to_transformer.png",
     DeviceType.WindingDevice.value: ":/Icons/icons/winding.png",
     DeviceType.Transformer3WDevice.value: ":/Icons/icons/transformer3w.png",
+    DeviceType.TransformerNwDevice.value: ":/Icons/icons/transformerNw.png",
     DeviceType.SeriesReactanceDevice.value: ":/Icons/icons/reactance.png",
     DeviceType.HVDCLineDevice.value: ":/Icons/icons/to_hvdc.png",
     DeviceType.VscDevice.value: ":/Icons/icons/vsc.png",

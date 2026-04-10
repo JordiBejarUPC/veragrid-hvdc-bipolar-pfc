@@ -19,6 +19,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.upfc_graphics import UpfcGra
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.series_reactance_graphics import SeriesReactanceGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformer3w_graphics import Transformer3WGraphicItem
+from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformerNw_graphics import TransformerNWGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.generator_graphics import GeneratorGraphicItem
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_line_container import MapLineContainer
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.voltage_level_graphic_item import VoltageLevelGraphicItem
@@ -45,6 +46,7 @@ ALL_BUS_BRACH_GRAPHICS = Union[
     SeriesReactanceGraphicItem,
     LineGraphicTemplateItem,
     Transformer3WGraphicItem,
+    TransformerNWGraphicItem,
     GeneratorGraphicItem,
 ]
 

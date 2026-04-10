@@ -324,6 +324,7 @@ def _build_resistor_template(
     templ.block.in_vars = in_vars
     templ.block.algebraic_vars = algebraic_vars
     templ.block.algebraic_eqs = algebraic_eqs
+    templ.block.out_vars = list(current_vars[phase_label] for phase_label in active_phases)
     templ.block.external_mapping = _build_external_mapping(voltage_vars=voltage_vars, current_vars=current_vars)
     templ.block.api_obj_mapping = _build_resistor_api_mapping(pl0_vars=pl0_vars)
 
@@ -405,6 +406,7 @@ def _build_inductor_template(
     templ.block.state_vars = state_vars
     templ.block.diff_vars = diff_vars
     templ.block.state_eqs = state_eqs
+    templ.block.out_vars = list(current_vars[phase_label] for phase_label in active_phases)
     templ.block.external_mapping = _build_external_mapping(voltage_vars=voltage_vars, current_vars=current_vars)
     templ.block.api_obj_mapping = _build_reactive_api_mapping(omega_base_var=omega_base_var, ql0_vars=ql0_vars)
 
@@ -495,6 +497,7 @@ def _build_capacitor_template(
     templ.block.diff_vars = diff_vars
     templ.block.algebraic_vars = algebraic_vars
     templ.block.algebraic_eqs = algebraic_eqs
+    templ.block.out_vars = list(current_vars[phase_label] for phase_label in active_phases)
     templ.block.external_mapping = _build_external_mapping(voltage_vars=voltage_vars, current_vars=current_vars)
     templ.block.api_obj_mapping = _build_reactive_api_mapping(omega_base_var=omega_base_var, ql0_vars=ql0_vars)
 

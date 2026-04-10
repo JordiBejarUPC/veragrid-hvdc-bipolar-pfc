@@ -1227,6 +1227,7 @@ class DeviceType(Enum):
     LineTypeDevice = 'Line Template'
     Transformer2WDevice = 'Transformer'
     Transformer3WDevice = 'Transformer3W'
+    TransformerNwDevice = 'TransformerNw'
     WindingDevice = 'Winding'
     SeriesReactanceDevice = 'Series reactance'
     HVDCLineDevice = 'HVDC Line'
@@ -3457,6 +3458,7 @@ class BlockType(Enum):
     """
     this class contains the existing types of blocks
     """
+    # common
     CONST = "CONST"
     GAIN = "GAIN"
     SUM = "SUM"
@@ -3465,29 +3467,36 @@ class BlockType(Enum):
     DIVIDE = "Divide"
     ABS = "Abs"
 
-    GENRAW = "GENRAW"
-    GENQEC = "GENQEC"
-    GOV = "Gov"
-    STAB = "Stab"
-    EXCITER = "Exciter"
-    LINE = "Line"
-    LOAD = "Load"
     GENERIC = "Generic"
 
+    # RMS
+    GENRAW = "GENRAW"
+    GENQEC = "GENQEC"
+    GOV_RMS = "GOVERNOR_RMS"
+    STAB_RMS = "STABILIZER_RMS"
+    EXCITER_RMS = "EXCITER_RMS"
+    LINE_RMS = "Line_RMS"
+    LOAD_RMS = "Load_RMS"
+
+
+    # EMT
     EMT_GENERATOR = "EMT_GENERATOR"
-    R_LOAD = "R_LOAD"
-    L_LOAD = "L_LOAD"
-    C_LOAD = "C_LOAD"
-    EXP_LOAD = "EXP_LOAD"
-    ZIP_LOAD = "ZIP_LOAD"
-    DC_LOAD = "DC_LOAD"
-    EMT_THEVENIN = "EMT_THEVENIN"
+    GOV_EMT = "GOVERNOR_EMT"
+    STAB_EMT = "STABILIZER_EMT"
+    EXCITER_EMT = "EXCITER_EMT"
+    EMT_PI_LINE = "EMT_PI_LINE"
+    EMT_BERGERON_LINE = "EMT_BERGERON_LINE"
+    R_LOAD_EMT = "R_LOAD_EMT"
+    L_LOAD_EMT = "L_LOAD_EMT"
+    C_LOAD_EMT = "C_LOAD_EMT"
+    EXP_LOAD_EMT = "EXP_LOAD_EMT"
+    ZIP_LOAD_EMT = "ZIP_LOAD_EMT"
+    DC_LOAD_EMT = "DC_LOAD_EMT"
+    EMT_THEVENIN = "EMT_THEVENIN_EMT"
 
     BUS_CONNECTION = "Bus Connection"
     EXTERNAL_MAPPING = "EXTERNAL_MAPPING"
 
-    EMT_PI_LINE = "EMT_PI_LINE"
-    EMT_BERGERON_LINE = "EMT_BERGERON_LINE"
     EMTLOAD = "EMT_LOAD"
 
     def __str__(self):
