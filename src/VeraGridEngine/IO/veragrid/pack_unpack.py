@@ -443,12 +443,10 @@ def cast_profile_value(
     :param collection: Optional idtag-to-object dictionary for device references.
     :return: Converted value.
     """
-    if value is None:
+    if value is None or value == "None":
         return None
 
     if collection is not None:
-        if value == "None":
-            return None
         return collection.get(value, None)
 
     if isinstance(profile.dtype, DeviceType):
