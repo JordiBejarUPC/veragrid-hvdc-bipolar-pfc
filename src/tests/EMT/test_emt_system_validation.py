@@ -138,7 +138,7 @@ def test_pi_line_rload_emt_passes_validation():
     set_emt_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
     # Should NOT raise EmtTopologyError - this is a valid topology
-    problem = EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3Ph=pf_res_3ph)
+    problem = EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3ph=pf_res_3ph)
     assert problem is not None
 
 
@@ -194,7 +194,7 @@ def test_bergeron_line_rload_emt_passes_validation():
     set_emt_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
     # Should NOT raise EmtTopologyError - this is a valid topology
-    problem = EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3Ph=pf_res_3ph)
+    problem = EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3ph=pf_res_3ph)
     assert problem is not None
 
 
@@ -247,7 +247,7 @@ def test_vsc_emt_passes_validation():
     set_emt_model(device=dc_load, model=dc_load_mdl, var_factory=grid.var_factory)
 
     # Should NOT raise EmtTopologyError - this is a valid topology
-    problem = EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3Ph=pf_res_3ph)
+    problem = EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3ph=pf_res_3ph)
     assert problem is not None
 
 
@@ -305,4 +305,4 @@ def test_floating_phases_raises_emt_topology_error():
 
     # Should raise EmtTopologyError about floating phases
     with pytest.raises(EmtTopologyError, match="Floating bus phases detected"):
-        EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3Ph=pf_res_3ph)
+        EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3ph=pf_res_3ph)

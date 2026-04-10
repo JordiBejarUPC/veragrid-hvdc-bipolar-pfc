@@ -318,7 +318,7 @@ def build_two_bus_real_emt_case(
         initialization_method=initialization_method,
         verbose=0,
     )
-    problem = EmtProblemDae(grid=grid, options=options, pf_results_3Ph=pf_results, pf_results=None)
+    problem = EmtProblemDae(grid=grid, options=options, pf_results_3ph=pf_results, pf_results=None)
 
     context = TwoBusRealEmtContext(
         grid=grid,

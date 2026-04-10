@@ -209,9 +209,9 @@ def test_simulation_with_event_emt():
                          verbose=1)
 
     problem = EmtProblemDae(grid=grid,
-                                  options=options,
-                                  pf_results_3Ph=res,
-                                  pf_results=None)
+                            options=options,
+                            pf_results_3ph=res,
+                            pf_results=None)
 
     problem.set_events_group(events_group)
 

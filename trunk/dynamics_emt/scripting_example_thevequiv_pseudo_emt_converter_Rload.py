@@ -227,7 +227,7 @@ def build_problem(grid: gce.MultiCircuit, pf_results: PowerFlowResults) -> EmtPr
         integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
         verbose=1,
     )
-    return EmtProblemDae(grid=grid, options=options, pf_results_3Ph=None, pf_results=pf_results)
+    return EmtProblemDae(grid=grid, options=options, pf_results_3ph=None, pf_results=pf_results)
 
 
 def build_solver(problem: EmtProblemDae) -> StructuralCompiledSolver:

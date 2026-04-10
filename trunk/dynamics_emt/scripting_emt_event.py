@@ -275,7 +275,7 @@ options = EmtOptions(time_step = 5e-6,
 def create_problem() -> EmtProblemDae:
     local_problem = EmtProblemDae(grid=grid,
                                   options=options,
-                                  pf_results_3Ph=res,
+                                  pf_results_3ph=res,
                                   pf_results= None)
 
     if ENABLE_NEWTON_TRACE:

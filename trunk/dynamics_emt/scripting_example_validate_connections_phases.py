@@ -286,7 +286,7 @@ def create_problem() -> EmtProblemDae:
     #                               pf_results= res)
     local_problem = EmtProblemDae(grid=grid,
                                   options=options,
-                                  pf_results_3Ph=None,
+                                  pf_results_3ph=None,
                                   pf_results=res)
 
     if ENABLE_NEWTON_TRACE:

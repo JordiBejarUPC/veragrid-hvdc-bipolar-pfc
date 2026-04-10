@@ -118,7 +118,7 @@ def attach_emt_models(
         get_bus_emt_template(grid, bus)
 
     gen_mdl: Block = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
-    line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = True, phA = True, phB = True, phC = True).block
+    line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True, name = "Pi").block
     load_mdl: Block = get_exponential_load_emt(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
     # ``a = 2`` reproduces an impedance-like active-power dependence. This keeps the
@@ -201,7 +201,7 @@ def build_problem(grid: gce.MultiCircuit, pf_results: PowerFlowResults3Ph) -> Em
         integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
         verbose=1,
     )
-    return EmtProblemDae(grid=grid, options=options, pf_results_3Ph=pf_results, pf_results=None)
+    return EmtProblemDae(grid=grid, options=options, pf_results_3ph=pf_results, pf_results=None)
 
 
 def build_solver(problem: EmtProblemDae) -> StructuralCompiledSolver:
@@ -305,8 +305,8 @@ def build_plot_data(
     data["v_bus1_c"] = get_signal(problem, bus1.emt_model, "v_C_Bus1_emt_template", y)
 
     data["i_gen_a"] = get_signal(problem, gen_mdl, "i_A_emt_thevenin_eq_generator_template", y)
-    data["i_line_f_a"] = get_signal(problem, line_mdl, "if_Pi_0", y)
-    data["i_line_t_a"] = get_signal(problem, line_mdl, "it_Pi_0", y)
+    data["i_line_f_a"] = get_signal(problem, line_mdl, "if_Pi_A", y)
+    data["i_line_t_a"] = get_signal(problem, line_mdl, "it_Pi_A", y)
     data["i_load_a"] = -get_signal(problem, load_mdl, "i_A_EXP_Load_EMT_3ph", y)
 
     data["p_load_a"] = get_signal(problem, load_mdl, "P_A_EXP_Load_EMT_3ph", y)

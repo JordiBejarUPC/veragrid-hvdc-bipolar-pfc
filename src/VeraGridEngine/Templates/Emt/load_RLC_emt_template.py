@@ -250,21 +250,21 @@ def _build_reactive_api_mapping(
     return mapping
 
 
-def _build_resistor_template(
+def get_shunt_r_emt_template(
     vf: VarFactory,
-    phA: bool,
-    phB: bool,
-    phC: bool,
-    name: str | None,
+    phA: bool = True,
+    phB: bool = True,
+    phC: bool = True,
+    name: str | None = None,
 ) -> EmtModelTemplate:
     """Build a phase-selective shunt resistor EMT template.
 
     :param vf: EMT variable factory.
-    :param phA: True when phase A is active.
-    :param phB: True when phase B is active.
-    :param phC: True when phase C is active.
+    :param phA: Bool. True if the load has phase A, else False.
+    :param phB: Bool. True if the load has phase B, else False.
+    :param phC: Bool. True if the load has phase C, else False.
     :param name: Optional symbolic model name.
-    :return: Configured resistor EMT template.
+    :return: EMT shunt resistor template sized to the active phases.
     """
     # The template must derive every symbolic structure from the active phase set
     # so EmtProblem can remain unchanged and consume a coherent block directly.
@@ -331,7 +331,7 @@ def _build_resistor_template(
     return templ
 
 
-def _build_inductor_template(
+def get_shunt_l_emt_template(
     vf: VarFactory,
     phA: bool,
     phB: bool,
@@ -413,7 +413,7 @@ def _build_inductor_template(
     return templ
 
 
-def _build_capacitor_template(
+def get_shunt_c_emt_template(
     vf: VarFactory,
     phA: bool,
     phB: bool,
@@ -502,71 +502,3 @@ def _build_capacitor_template(
     templ.block.api_obj_mapping = _build_reactive_api_mapping(omega_base_var=omega_base_var, ql0_vars=ql0_vars)
 
     return templ
-
-
-def get_shunt_r_emt_template(
-    vf: VarFactory,
-    phA: bool = True,
-    phB: bool = True,
-    phC: bool = True,
-    name: str | None = None,
-) -> EmtModelTemplate:
-    """Build a phase-selective shunt resistor EMT template.
-
-    :param vf: EMT variable factory.
-    :param phA: Bool. True if the load has phase A, else False.
-    :param phB: Bool. True if the load has phase B, else False.
-    :param phC: Bool. True if the load has phase C, else False.
-    :param name: Optional symbolic model name.
-    :return: EMT shunt resistor template sized to the active phases.
-    """
-    # The legacy public function name is preserved for callers, while the actual
-    # internal template name now tracks the active phase count explicitly.
-    template: EmtModelTemplate = _build_resistor_template(vf=vf, phA=phA, phB=phB, phC=phC, name=name)
-    return template
-
-
-
-
-def get_shunt_l_emt_template(
-    vf: VarFactory,
-    phA: bool = True,
-    phB: bool = True,
-    phC: bool = True,
-    name: str | None = None,
-) -> EmtModelTemplate:
-    """Build a phase-selective shunt inductor EMT template.
-
-    :param vf: EMT variable factory.
-    :param phA: Bool. True if the load has phase A, else False.
-    :param phB: Bool. True if the load has phase B, else False.
-    :param phC: Bool. True if the load has phase C, else False.
-    :param name: Optional symbolic model name.
-    :return: EMT shunt inductor template sized to the active phases.
-    """
-    # The public API stays stable while the generated symbolic system now shrinks
-    # to the selected phase subset before it reaches the solver assembly.
-    template: EmtModelTemplate = _build_inductor_template(vf=vf, phA=phA, phB=phB, phC=phC, name=name)
-    return template
-
-
-def get_shunt_c_emt_template(
-    vf: VarFactory,
-    phA: bool = True,
-    phB: bool = True,
-    phC: bool = True,
-    name: str | None = None,
-) -> EmtModelTemplate:
-    """Build a phase-selective shunt capacitor EMT template.
-
-    :param vf: EMT variable factory.
-    :param phA: Bool. True if the load has phase A, else False.
-    :param phB: Bool. True if the load has phase B, else False.
-    :param phC: Bool. True if the load has phase C, else False.
-    :param name: Optional symbolic model name.
-    :return: EMT shunt capacitor template sized to the active phases.
-    """
-    # The capacitor path uses the same phase-selection contract so all shunt R/L/C
-    # templates now behave consistently for 1-phase, 2-phase, and 3-phase cases.
-    template: EmtModelTemplate = _build_capacitor_template(vf=vf, phA=phA, phB=phB, phC=phC, name=name)
-    return template

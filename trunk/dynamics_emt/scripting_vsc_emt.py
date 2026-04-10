@@ -281,7 +281,7 @@ def create_problem() -> EmtProblemDae:
     local_problem = EmtProblemDae(
         grid=circuit,
         options=options,
-        pf_results_3Ph=None,
+        pf_results_3ph=None,
         pf_results=pf_results
     )
     # local_problem = EmtProblemDae(
