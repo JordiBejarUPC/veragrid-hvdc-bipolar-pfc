@@ -185,7 +185,7 @@ grid.add_emt_event(event_R_B)
 event_R_C = EmtEvent(device=load, parameter=R_C, time=0.04, value=6.0, group=events_group)
 grid.add_emt_event(event_R_C)
 
-rms_events_group_names = np.array(0)
+emt_events_group_names = np.array(0)
 
 
 pf_options = PowerFlowOptions(
@@ -242,7 +242,7 @@ print(res.get_branch_df())
 # ==============================================================================
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")
 # ==============================================================================
-CHOSEN_SOLVER = "SYMBOLIC"
+CHOSEN_SOLVER = "COMPILED"
 RUN_ALL_SOLVERS = False
 BENCHMARK_ALL_SOLVERS_COLD_WARM = False
 ENABLE_PLOTS = True
@@ -439,9 +439,9 @@ def export_demo_plots(
     bus0_voltages: np.ndarray = extract_three_phase_matrix(problem, y_values, bus0.emt_model.out_vars)
     bus1_voltages: np.ndarray = extract_three_phase_matrix(problem, y_values, bus1.emt_model.out_vars)
     load_current_triplet: Tuple[Any, Any, Any] = (
-        find_name_in_block("i_A_Shunt_R_3ph", load_mdl),
-        find_name_in_block("i_B_Shunt_R_3ph", load_mdl),
-        find_name_in_block("i_C_Shunt_R_3ph", load_mdl),
+        find_name_in_block("i_A_R_shunt_3ph", load_mdl),
+        find_name_in_block("i_B_R_shunt_3ph", load_mdl),
+        find_name_in_block("i_C_R_shunt_3ph", load_mdl),
     )
     load_currents: np.ndarray = -extract_three_phase_matrix(problem, y_values, load_current_triplet)
     generator_currents: np.ndarray = extract_three_phase_matrix(problem, y_values, gen_mdl.out_vars)

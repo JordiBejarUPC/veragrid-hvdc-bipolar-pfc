@@ -239,6 +239,8 @@ class DynamicDevice(PhysicalDevice):
             self._clear_emt_fmu_config()
 
             if self.auto_update_enabled:
+                val.block.unify_blocks()
+
                 self.emt_model = duplicate_block(val.block, self._var_factory)
         elif val is None:
             self._emt_template = None

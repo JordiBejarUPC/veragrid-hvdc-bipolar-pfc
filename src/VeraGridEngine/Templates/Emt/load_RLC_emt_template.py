@@ -271,6 +271,10 @@ def get_shunt_r_emt_template(
     active_phases: List[str] = _get_active_phases(phA=phA, phB=phB, phC=phC)
     phase_count: int = len(active_phases)
     resolved_name: str = _get_phase_count_name("Shunt_R", phase_count, name)
+    if name == "R_shunt":
+        event_name: str = _get_phase_count_name("Shunt_R", phase_count, None)
+    else:
+        event_name = resolved_name
 
     templ: EmtModelTemplate = EmtModelTemplate()
     templ.tpe = DeviceType.LoadDevice
@@ -288,7 +292,7 @@ def get_shunt_r_emt_template(
 
     # The nominal voltage is shared across the active phases exactly as in the
     # previous 3-phase model, so the balanced 3-phase case keeps the same form.
-    vnom_var: Var = vf.add_var("Vnom_" + resolved_name)
+    vnom_var: Var = vf.add_var("Vnom_" + event_name)
     templ.block.event_dict[vnom_var] = vf.add_const(1.0)
 
     for phase_label in active_phases:
@@ -300,7 +304,7 @@ def get_shunt_r_emt_template(
         in_vars.append(voltage_var)
         voltage_vars[phase_label] = voltage_var
 
-        resistance_var: Var = vf.add_var(f"R_{phase_label}_{resolved_name}")
+        resistance_var: Var = vf.add_var(f"R_{phase_label}_{event_name}")
         templ.block.event_dict[resistance_var] = vf.add_const(None)
         resistance_vars[phase_label] = resistance_var
 
