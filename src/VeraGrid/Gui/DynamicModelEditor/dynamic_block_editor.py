@@ -3415,10 +3415,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.ui.doItButton.clicked.connect(self.apply_changes)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
-        if not self.main_block.diagram.node_data and self.main_editor:
+        if not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
-            self.add_connection_vars()
-            self.add_api_obj_mapping()
+            if self.main_editor:
+                self.add_connection_vars()
+                self.add_api_obj_mapping()
             self.add_connection_items()
         self.rebuild_scene_from_diagram()
 
