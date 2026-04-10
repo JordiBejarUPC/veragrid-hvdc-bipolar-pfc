@@ -85,7 +85,7 @@ def build_two_bus_real_emt_case(
         get_bus_emt_template(grid, bus)
 
     gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.var_factory).block
-    line_mdl = get_pi_line_emt_template(vf = grid.var_factory).block
+    line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
     if zip_load:
         load_mdl = get_load_ZIP_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
     else:

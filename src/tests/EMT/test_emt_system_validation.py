@@ -129,7 +129,7 @@ def test_pi_line_rload_emt_passes_validation():
     pf_results, pf_res_3ph = run_power_flow(grid)
 
     gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
-    line_mdl = get_pi_line_emt_template(vf = grid.var_factory).block
+    line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
     load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
     load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_3ph", new_value=1.0)
 
@@ -294,7 +294,7 @@ def test_floating_phases_raises_emt_topology_error():
     pf_results, pf_res_3ph = run_power_flow(grid)
 
     gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
-    line_mdl = get_pi_line_emt_template(vf = grid.var_factory).block
+    line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
     # Using 1-phase template on 3-phase bus causes floating phases
     load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=False, phC=False).block
     load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_1ph", new_value=1.0)
