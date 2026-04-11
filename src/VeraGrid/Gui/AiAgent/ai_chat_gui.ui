@@ -520,8 +520,46 @@
           <string>Remote AI</string>
          </property>
          <layout class="QGridLayout" name="gridLayout_3">
-          <item row="2" column="1" colspan="2">
-           <widget class="QComboBox" name="api_provider_combo_box"/>
+          <item row="5" column="1" colspan="2">
+           <widget class="QComboBox" name="api_model_combo_box">
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+            <property name="insertPolicy">
+             <enum>QComboBox::InsertPolicy::NoInsert</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="api_provider_label">
+            <property name="text">
+             <string>API provider</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1" colspan="2">
+           <widget class="QLineEdit" name="api_api_key_line_edit">
+            <property name="echoMode">
+             <enum>QLineEdit::EchoMode::Password</enum>
+            </property>
+            <property name="placeholderText">
+             <string>Leave empty for unauthenticated endpoints</string>
+            </property>
+           </widget>
+          </item>
+          <item row="7" column="0">
+           <widget class="QLabel" name="api_timeout_label">
+            <property name="text">
+             <string>Timeout [s]</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0" colspan="2">
+           <widget class="QRadioButton" name="api_ai_radioButton">
+            <property name="text">
+             <string>API AI settings</string>
+            </property>
+           </widget>
           </item>
           <item row="7" column="1" colspan="2">
            <widget class="QDoubleSpinBox" name="api_timeout_double_spin_box">
@@ -542,58 +580,20 @@
             </property>
            </widget>
           </item>
-          <item row="4" column="1" colspan="2">
-           <widget class="QLineEdit" name="api_api_key_line_edit">
-            <property name="echoMode">
-             <enum>QLineEdit::EchoMode::Password</enum>
-            </property>
+          <item row="3" column="1" colspan="2">
+           <widget class="QLineEdit" name="api_base_url_line_edit">
             <property name="placeholderText">
-             <string>Leave empty for unauthenticated endpoints</string>
+             <string>https://api.example.com/v1</string>
             </property>
            </widget>
           </item>
-          <item row="5" column="1" colspan="2">
-           <widget class="QComboBox" name="api_model_combo_box">
-            <property name="editable">
-             <bool>true</bool>
-            </property>
-            <property name="insertPolicy">
-             <enum>QComboBox::InsertPolicy::NoInsert</enum>
-            </property>
-           </widget>
+          <item row="2" column="1" colspan="2">
+           <widget class="QComboBox" name="api_provider_combo_box"/>
           </item>
-          <item row="0" column="0" colspan="2">
-           <widget class="QRadioButton" name="api_ai_radioButton">
+          <item row="6" column="1" colspan="2">
+           <widget class="QPushButton" name="api_refresh_models_button">
             <property name="text">
-             <string>API AI settings</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="api_provider_label">
-            <property name="text">
-             <string>API provider</string>
-            </property>
-           </widget>
-          </item>
-          <item row="7" column="0">
-           <widget class="QLabel" name="api_timeout_label">
-            <property name="text">
-             <string>Timeout [s]</string>
-            </property>
-           </widget>
-          </item>
-          <item row="4" column="0">
-           <widget class="QLabel" name="api_api_key_label">
-            <property name="text">
-             <string>API key</string>
-            </property>
-           </widget>
-          </item>
-          <item row="3" column="0">
-           <widget class="QLabel" name="api_base_url_label">
-            <property name="text">
-             <string>Base URL</string>
+             <string>Refresh</string>
             </property>
            </widget>
           </item>
@@ -604,19 +604,32 @@
             </property>
            </widget>
           </item>
-          <item row="3" column="1" colspan="2">
-           <widget class="QLineEdit" name="api_base_url_line_edit">
-            <property name="placeholderText">
-             <string>https://api.example.com/v1</string>
+          <item row="3" column="0">
+           <widget class="QLabel" name="api_base_url_label">
+            <property name="text">
+             <string>Base URL</string>
             </property>
            </widget>
           </item>
-          <item row="6" column="1" colspan="2">
-           <widget class="QPushButton" name="api_refresh_models_button">
+          <item row="4" column="0">
+           <widget class="QLabel" name="api_api_key_label">
             <property name="text">
-             <string>Refresh</string>
+             <string>API key</string>
             </property>
            </widget>
+          </item>
+          <item row="8" column="1">
+           <spacer name="verticalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Orientation::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
+            </property>
+           </spacer>
           </item>
          </layout>
         </widget>

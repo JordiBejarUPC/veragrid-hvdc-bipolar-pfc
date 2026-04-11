@@ -295,10 +295,33 @@ class Ui_AiChatDialog(object):
         self.groupBox_2.setMinimumSize(QSize(300, 0))
         self.gridLayout_3 = QGridLayout(self.groupBox_2)
         self.gridLayout_3.setObjectName(u"gridLayout_3")
-        self.api_provider_combo_box = QComboBox(self.groupBox_2)
-        self.api_provider_combo_box.setObjectName(u"api_provider_combo_box")
+        self.api_model_combo_box = QComboBox(self.groupBox_2)
+        self.api_model_combo_box.setObjectName(u"api_model_combo_box")
+        self.api_model_combo_box.setEditable(True)
+        self.api_model_combo_box.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
 
-        self.gridLayout_3.addWidget(self.api_provider_combo_box, 2, 1, 1, 2)
+        self.gridLayout_3.addWidget(self.api_model_combo_box, 5, 1, 1, 2)
+
+        self.api_provider_label = QLabel(self.groupBox_2)
+        self.api_provider_label.setObjectName(u"api_provider_label")
+
+        self.gridLayout_3.addWidget(self.api_provider_label, 2, 0, 1, 1)
+
+        self.api_api_key_line_edit = QLineEdit(self.groupBox_2)
+        self.api_api_key_line_edit.setObjectName(u"api_api_key_line_edit")
+        self.api_api_key_line_edit.setEchoMode(QLineEdit.EchoMode.Password)
+
+        self.gridLayout_3.addWidget(self.api_api_key_line_edit, 4, 1, 1, 2)
+
+        self.api_timeout_label = QLabel(self.groupBox_2)
+        self.api_timeout_label.setObjectName(u"api_timeout_label")
+
+        self.gridLayout_3.addWidget(self.api_timeout_label, 7, 0, 1, 1)
+
+        self.api_ai_radioButton = QRadioButton(self.groupBox_2)
+        self.api_ai_radioButton.setObjectName(u"api_ai_radioButton")
+
+        self.gridLayout_3.addWidget(self.api_ai_radioButton, 0, 0, 1, 2)
 
         self.api_timeout_double_spin_box = QDoubleSpinBox(self.groupBox_2)
         self.api_timeout_double_spin_box.setObjectName(u"api_timeout_double_spin_box")
@@ -310,58 +333,39 @@ class Ui_AiChatDialog(object):
 
         self.gridLayout_3.addWidget(self.api_timeout_double_spin_box, 7, 1, 1, 2)
 
-        self.api_api_key_line_edit = QLineEdit(self.groupBox_2)
-        self.api_api_key_line_edit.setObjectName(u"api_api_key_line_edit")
-        self.api_api_key_line_edit.setEchoMode(QLineEdit.EchoMode.Password)
+        self.api_base_url_line_edit = QLineEdit(self.groupBox_2)
+        self.api_base_url_line_edit.setObjectName(u"api_base_url_line_edit")
 
-        self.gridLayout_3.addWidget(self.api_api_key_line_edit, 4, 1, 1, 2)
+        self.gridLayout_3.addWidget(self.api_base_url_line_edit, 3, 1, 1, 2)
 
-        self.api_model_combo_box = QComboBox(self.groupBox_2)
-        self.api_model_combo_box.setObjectName(u"api_model_combo_box")
-        self.api_model_combo_box.setEditable(True)
-        self.api_model_combo_box.setInsertPolicy(QComboBox.InsertPolicy.NoInsert)
+        self.api_provider_combo_box = QComboBox(self.groupBox_2)
+        self.api_provider_combo_box.setObjectName(u"api_provider_combo_box")
 
-        self.gridLayout_3.addWidget(self.api_model_combo_box, 5, 1, 1, 2)
+        self.gridLayout_3.addWidget(self.api_provider_combo_box, 2, 1, 1, 2)
 
-        self.api_ai_radioButton = QRadioButton(self.groupBox_2)
-        self.api_ai_radioButton.setObjectName(u"api_ai_radioButton")
+        self.api_refresh_models_button = QPushButton(self.groupBox_2)
+        self.api_refresh_models_button.setObjectName(u"api_refresh_models_button")
 
-        self.gridLayout_3.addWidget(self.api_ai_radioButton, 0, 0, 1, 2)
-
-        self.api_provider_label = QLabel(self.groupBox_2)
-        self.api_provider_label.setObjectName(u"api_provider_label")
-
-        self.gridLayout_3.addWidget(self.api_provider_label, 2, 0, 1, 1)
-
-        self.api_timeout_label = QLabel(self.groupBox_2)
-        self.api_timeout_label.setObjectName(u"api_timeout_label")
-
-        self.gridLayout_3.addWidget(self.api_timeout_label, 7, 0, 1, 1)
-
-        self.api_api_key_label = QLabel(self.groupBox_2)
-        self.api_api_key_label.setObjectName(u"api_api_key_label")
-
-        self.gridLayout_3.addWidget(self.api_api_key_label, 4, 0, 1, 1)
-
-        self.api_base_url_label = QLabel(self.groupBox_2)
-        self.api_base_url_label.setObjectName(u"api_base_url_label")
-
-        self.gridLayout_3.addWidget(self.api_base_url_label, 3, 0, 1, 1)
+        self.gridLayout_3.addWidget(self.api_refresh_models_button, 6, 1, 1, 2)
 
         self.api_model_label = QLabel(self.groupBox_2)
         self.api_model_label.setObjectName(u"api_model_label")
 
         self.gridLayout_3.addWidget(self.api_model_label, 5, 0, 1, 1)
 
-        self.api_base_url_line_edit = QLineEdit(self.groupBox_2)
-        self.api_base_url_line_edit.setObjectName(u"api_base_url_line_edit")
+        self.api_base_url_label = QLabel(self.groupBox_2)
+        self.api_base_url_label.setObjectName(u"api_base_url_label")
 
-        self.gridLayout_3.addWidget(self.api_base_url_line_edit, 3, 1, 1, 2)
+        self.gridLayout_3.addWidget(self.api_base_url_label, 3, 0, 1, 1)
 
-        self.api_refresh_models_button = QPushButton(self.groupBox_2)
-        self.api_refresh_models_button.setObjectName(u"api_refresh_models_button")
+        self.api_api_key_label = QLabel(self.groupBox_2)
+        self.api_api_key_label.setObjectName(u"api_api_key_label")
 
-        self.gridLayout_3.addWidget(self.api_refresh_models_button, 6, 1, 1, 2)
+        self.gridLayout_3.addWidget(self.api_api_key_label, 4, 0, 1, 1)
+
+        self.verticalSpacer_2 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+
+        self.gridLayout_3.addItem(self.verticalSpacer_2, 8, 1, 1, 1)
 
 
         self.gridLayout.addWidget(self.groupBox_2, 0, 2, 1, 1)
@@ -402,15 +406,15 @@ class Ui_AiChatDialog(object):
         self.local_history_chars_label.setText(QCoreApplication.translate("AiChatDialog", u"History chars", None))
         self.local_grounding_chars_label.setText(QCoreApplication.translate("AiChatDialog", u"Grounding chars", None))
         self.groupBox_2.setTitle(QCoreApplication.translate("AiChatDialog", u"Remote AI", None))
-        self.api_api_key_line_edit.setPlaceholderText(QCoreApplication.translate("AiChatDialog", u"Leave empty for unauthenticated endpoints", None))
-        self.api_ai_radioButton.setText(QCoreApplication.translate("AiChatDialog", u"API AI settings", None))
         self.api_provider_label.setText(QCoreApplication.translate("AiChatDialog", u"API provider", None))
+        self.api_api_key_line_edit.setPlaceholderText(QCoreApplication.translate("AiChatDialog", u"Leave empty for unauthenticated endpoints", None))
         self.api_timeout_label.setText(QCoreApplication.translate("AiChatDialog", u"Timeout [s]", None))
-        self.api_api_key_label.setText(QCoreApplication.translate("AiChatDialog", u"API key", None))
-        self.api_base_url_label.setText(QCoreApplication.translate("AiChatDialog", u"Base URL", None))
-        self.api_model_label.setText(QCoreApplication.translate("AiChatDialog", u"Model", None))
+        self.api_ai_radioButton.setText(QCoreApplication.translate("AiChatDialog", u"API AI settings", None))
         self.api_base_url_line_edit.setPlaceholderText(QCoreApplication.translate("AiChatDialog", u"https://api.example.com/v1", None))
         self.api_refresh_models_button.setText(QCoreApplication.translate("AiChatDialog", u"Refresh", None))
+        self.api_model_label.setText(QCoreApplication.translate("AiChatDialog", u"Model", None))
+        self.api_base_url_label.setText(QCoreApplication.translate("AiChatDialog", u"Base URL", None))
+        self.api_api_key_label.setText(QCoreApplication.translate("AiChatDialog", u"API key", None))
         self.tabWidget.setTabText(self.tabWidget.indexOf(self.tab_2), QCoreApplication.translate("AiChatDialog", u"Settings", None))
     # retranslateUi
 

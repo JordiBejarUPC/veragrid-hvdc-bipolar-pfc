@@ -3532,6 +3532,19 @@ def build_provider_presets() -> list[ProviderPreset]:
     presets[-1].typical_model_names.append("qwen2.5")
     presets[-1].typical_model_names.append("mistral-small")
 
+    # Gemini uses an OpenAI-compatible surface.
+    presets.append(
+        ProviderPreset(
+            provider_tpe=ProviderType.GEMINI,
+            display_name="Gemini coding assistant",
+            typical_model_names=list(),
+            default_base_url="https://generativelanguage.googleapis.com/v1beta/openai",
+        )
+    )
+    presets[-1].typical_model_names.append("gemini-2.5-pro")
+    presets[-1].typical_model_names.append("gemini-2.5-flash")
+    presets[-1].typical_model_names.append("gemini-2.0-flash")
+
     return presets
 
 
@@ -4939,6 +4952,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         self.ui.setupUi(self)
         self.setWindowTitle("VeraGrid AI dialogue")
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, False)
+        self.ui.message_plain_text_edit.installEventFilter(self)
         if self.ui.local_model_combo_box.lineEdit() is not None:
             self.ui.local_model_combo_box.lineEdit().setPlaceholderText("Pick or type a GGUF file name")
         else:
@@ -5338,6 +5352,37 @@ class AiChatDialogue(QtWidgets.QDialog):
         # The main action path is explicit: send a turn.
         self.ui.send_button.clicked.connect(self._handle_send_button_clicked)
 
+    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        """
+        Intercept Enter in the chat textbox to trigger send.
+
+        Shift+Enter keeps inserting a newline.
+
+        :param watched: Event source object.
+        :param event: Qt event.
+        :returns: True when the event is consumed.
+        """
+        if watched == self.ui.message_plain_text_edit:
+            if event.type() == QtCore.QEvent.Type.KeyPress:
+                if isinstance(event, QtGui.QKeyEvent):
+                    if event.key() in (
+                        QtCore.Qt.Key.Key_Return,
+                        QtCore.Qt.Key.Key_Enter,
+                    ):
+                        if event.modifiers() == QtCore.Qt.KeyboardModifier.NoModifier:
+                            self._handle_send_button_clicked()
+                            return True
+                        else:
+                            pass
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
+
+        return QtWidgets.QDialog.eventFilter(self, watched, event)
+
     def _handle_backend_mode_changed(self, checked: bool) -> None:
         """
         Reconfigure the active backend when the radio-button selection changes.
@@ -5502,6 +5547,7 @@ class AiChatDialogue(QtWidgets.QDialog):
             self.ui.api_refresh_models_button.setEnabled(True)
             self.ui.api_timeout_label.setEnabled(True)
             self.ui.api_timeout_double_spin_box.setEnabled(True)
+            self.ui.api_api_key_label.setText("API key")
             self.ui.api_api_key_line_edit.setPlaceholderText(
                 "Leave empty for unauthenticated endpoints"
             )
