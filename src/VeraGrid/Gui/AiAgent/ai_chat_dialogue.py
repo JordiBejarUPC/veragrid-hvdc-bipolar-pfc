@@ -16,6 +16,7 @@ configuration, live app-derived context and a visible transcript.
 import html
 import json
 import os
+import re
 import time
 from enum import Enum
 from typing import Any, Optional, TYPE_CHECKING
@@ -729,10 +730,12 @@ def is_direct_grid_diagnostics_request(message_text: str) -> bool:
     diagnosis_phrases: list[str] = list()
     issue_markers: list[str] = list()
     grid_markers: list[str] = list()
+    contextual_markers: list[str] = list()
     index: int = 0
     marker_index: int = 0
     has_issue_marker: bool = False
     has_grid_marker: bool = False
+    has_contextual_marker: bool = False
 
     diagnosis_phrases.append("what is wrong with the grid")
     diagnosis_phrases.append("what's wrong with the grid")
@@ -753,6 +756,11 @@ def is_direct_grid_diagnostics_request(message_text: str) -> bool:
     diagnosis_phrases.append("analyse the grid issues")
     diagnosis_phrases.append("grid diagnostics")
     diagnosis_phrases.append("grid diagnosis")
+    diagnosis_phrases.append("what is wrong with it")
+    diagnosis_phrases.append("what's wrong with it")
+    diagnosis_phrases.append("diagnose it")
+    diagnosis_phrases.append("analyze it")
+    diagnosis_phrases.append("analyse it")
     issue_markers.append("issue")
     issue_markers.append("issues")
     issue_markers.append("problem")
@@ -766,6 +774,11 @@ def is_direct_grid_diagnostics_request(message_text: str) -> bool:
     grid_markers.append("grid")
     grid_markers.append("network")
     grid_markers.append("model")
+    contextual_markers.append("loaded")
+    contextual_markers.append("current")
+    contextual_markers.append("given")
+    contextual_markers.append("this")
+    contextual_markers.append("it")
 
     while index < len(diagnosis_phrases):
         if diagnosis_phrases[index] in normalized_text:
@@ -789,10 +802,21 @@ def is_direct_grid_diagnostics_request(message_text: str) -> bool:
             pass
         marker_index += 1
 
+    marker_index = 0
+    while marker_index < len(contextual_markers):
+        if contextual_markers[marker_index] in normalized_text:
+            has_contextual_marker = True
+        else:
+            pass
+        marker_index += 1
+
     if has_issue_marker and has_grid_marker:
         return True
     else:
-        pass
+        if has_issue_marker and has_contextual_marker:
+            return True
+        else:
+            pass
 
     return False
 
@@ -2920,7 +2944,8 @@ class AiTurnExecutionRequest:
     :param provider_config: Provider configuration.
     :param system_prompt: System prompt.
     :param tool_registry: Snapshotted tool registry.
-    :param base_history: Transcript before the current user turn.
+    :param base_history: Full transcript before the current user turn.
+    :param llm_history: Compacted transcript used only as model input.
     :param user_message: User message.
     :param approved_tool_name: Approved tool name if any.
     :param approved_arguments_json: Approved tool arguments if any.
@@ -2932,6 +2957,7 @@ class AiTurnExecutionRequest:
         "grounding_context_text",
         "tool_registry",
         "base_history",
+        "llm_history",
         "user_message",
         "approved_tool_name",
         "approved_arguments_json",
@@ -2944,6 +2970,7 @@ class AiTurnExecutionRequest:
         grounding_context_text: str,
         tool_registry: ToolRegistry,
         base_history: list[ChatMessage],
+        llm_history: list[ChatMessage],
         user_message: str,
         approved_tool_name: Optional[str],
         approved_arguments_json: Optional[str],
@@ -2955,7 +2982,8 @@ class AiTurnExecutionRequest:
         :param system_prompt: System prompt.
         :param grounding_context_text: Deterministic grounding context for the current turn.
         :param tool_registry: Snapshotted tool registry.
-        :param base_history: Transcript before the current user turn.
+        :param base_history: Full transcript before the current user turn.
+        :param llm_history: Compacted transcript used only as model input.
         :param user_message: User message.
         :param approved_tool_name: Approved tool name if any.
         :param approved_arguments_json: Approved tool arguments if any.
@@ -2965,6 +2993,7 @@ class AiTurnExecutionRequest:
         self.grounding_context_text: str = grounding_context_text
         self.tool_registry: ToolRegistry = tool_registry
         self.base_history: list[ChatMessage] = base_history
+        self.llm_history: list[ChatMessage] = llm_history
         self.user_message: str = user_message
         self.approved_tool_name: Optional[str] = approved_tool_name
         self.approved_arguments_json: Optional[str] = approved_arguments_json
@@ -3204,7 +3233,7 @@ class AiTurnWorker(QtCore.QObject):
                 system_prompt=request.system_prompt,
                 user_message=request.user_message,
                 grounding_context_text=request.grounding_context_text,
-                history=request.base_history,
+                history=request.llm_history,
                 approved_tool_name=request.approved_tool_name,
                 approved_arguments_json=request.approved_arguments_json,
                 text_delta_callback=self.partial_text_received.emit,
@@ -4932,6 +4961,9 @@ class AiChatDialogue(QtWidgets.QDialog):
         "_turn_cancel_requested",
         "_active_turn_base_history",
         "_active_turn_user_message",
+        "_code_snippets_by_id",
+        "_next_code_snippet_id",
+        "_last_rendered_history_size",
     )
 
     def __init__(
@@ -4952,6 +4984,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         self.ui.setupUi(self)
         self.setWindowTitle("VeraGrid AI dialogue")
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, False)
+        self.ui.conversation_text_browser.setOpenExternalLinks(False)
         self.ui.message_plain_text_edit.installEventFilter(self)
         if self.ui.local_model_combo_box.lineEdit() is not None:
             self.ui.local_model_combo_box.lineEdit().setPlaceholderText("Pick or type a GGUF file name")
@@ -5012,6 +5045,9 @@ class AiChatDialogue(QtWidgets.QDialog):
         self._turn_cancel_requested: bool = False
         self._active_turn_base_history: list[ChatMessage] = list()
         self._active_turn_user_message: str = ""
+        self._code_snippets_by_id: dict[str, str] = dict()
+        self._next_code_snippet_id: int = 0
+        self._last_rendered_history_size: int = 0
         self._waiting_animation_timer.setInterval(140)
         self._waiting_animation_timer.timeout.connect(self._advance_waiting_animation)
         self._stream_update_timer.timeout.connect(self._flush_pending_stream_text_delta)
@@ -5032,8 +5068,8 @@ class AiChatDialogue(QtWidgets.QDialog):
         self._refresh_pending_approval_widgets()
         self._render_transcript()
 
-        self.ui.splitter.setStretchFactor(0, 90)
-        self.ui.splitter.setStretchFactor(1, 10)
+        self.ui.splitter.setStretchFactor(0, 0.99)
+        self.ui.splitter.setStretchFactor(1, 0.01)
 
     def _configure_transcript_browser(self) -> None:
         """
@@ -5098,7 +5134,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         :returns: CSS color value.
         """
         if self._is_dark_transcript_theme():
-            return "#001f18"
+            return "#0f1115"
         else:
             return "#f7f7f8"
 
@@ -5109,7 +5145,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         :returns: CSS color value.
         """
         if self._is_dark_transcript_theme():
-            return "#003d30"
+            return "#171b22"
         else:
             return "#ffffff"
 
@@ -5120,7 +5156,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         :returns: CSS color value.
         """
         if self._is_dark_transcript_theme():
-            return "#e5e7eb"
+            return "#e7ebf3"
         else:
             return "#1f2937"
 
@@ -5131,7 +5167,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         :returns: CSS color value.
         """
         if self._is_dark_transcript_theme():
-            return "#94a3b8"
+            return "#9aa4b5"
         else:
             return "#6b7280"
 
@@ -5142,7 +5178,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         :returns: CSS color value.
         """
         if self._is_dark_transcript_theme():
-            return "#334155"
+            return "#2a3140"
         else:
             return "#e5e7eb"
 
@@ -5153,7 +5189,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         :returns: CSS color value.
         """
         if self._is_dark_transcript_theme():
-            return "#93c5fd"
+            return "#8fb7ff"
         else:
             return "#2563eb"
 
@@ -5164,7 +5200,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         :returns: CSS color value.
         """
         if self._is_dark_transcript_theme():
-            return "#2563eb"
+            return "#315da8"
         else:
             return "#c9defe"
 
@@ -5175,7 +5211,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         :returns: CSS color value.
         """
         if self._is_dark_transcript_theme():
-            return "#f8fafc"
+            return "#f3f6fc"
         else:
             return "#111827"
 
@@ -5348,6 +5384,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         self.ui.local_refresh_models_button.clicked.connect(self.refresh_available_models)
         self.ui.api_refresh_models_button.clicked.connect(self.refresh_available_models)
         self.ui.clear_chat_button.clicked.connect(self.clear_chat)
+        self.ui.conversation_text_browser.anchorClicked.connect(self._handle_transcript_anchor_clicked)
 
         # The main action path is explicit: send a turn.
         self.ui.send_button.clicked.connect(self._handle_send_button_clicked)
@@ -5986,6 +6023,25 @@ class AiChatDialogue(QtWidgets.QDialog):
             pass
 
         if is_direct_grid_diagnostics_request(message_text):
+            bus_count: int = int(self._app.circuit.get_bus_number())
+            if bus_count <= 0:
+                self._history.append(ChatMessage(role="user", content=message_text, name=None))
+                self._history.append(
+                    ChatMessage(
+                        role="assistant",
+                        content=(
+                            "I can run grid diagnostics, but the current model has no buses loaded. "
+                            "Load a project first, then try again."
+                        ),
+                        name=None,
+                    )
+                )
+                self._set_status_message("No loaded buses were found in the current model.")
+                self._render_transcript()
+                return True
+            else:
+                pass
+
             result = LiveGridDiagnosticsTool(self._app).execute(
                 {
                     "analyze_time_series": True,
@@ -6206,7 +6262,8 @@ class AiChatDialogue(QtWidgets.QDialog):
                     system_prompt=compacted_system_prompt,
                     grounding_context_text=compacted_grounding_text,
                     tool_registry=tool_registry,
-                    base_history=compacted_base_history,
+                    base_history=copy_chat_history(base_history),
+                    llm_history=compacted_base_history,
                     user_message=user_message,
                     approved_tool_name=approved_tool_name,
                     approved_arguments_json=approved_arguments_json,
@@ -6544,6 +6601,33 @@ class AiChatDialogue(QtWidgets.QDialog):
         """
         self.ui.status_label.setText(text)
 
+    def _handle_transcript_anchor_clicked(self, link: QtCore.QUrl) -> None:
+        """
+        Handle transcript links, including local copy-code actions.
+
+        :param link: Clicked anchor URL.
+        :returns: Nothing.
+        """
+        if link.scheme() == "copy-code":
+            snippet_id: str = link.host().strip()
+            if len(snippet_id) == 0:
+                snippet_id = link.path().lstrip("/").strip()
+            else:
+                pass
+
+            snippet_text: Optional[str] = self._code_snippets_by_id.get(snippet_id, None)
+            if snippet_text is None:
+                self._set_status_message("Code snippet is no longer available.")
+            else:
+                clipboard: Optional[QtGui.QClipboard] = QtWidgets.QApplication.clipboard()
+                if clipboard is None:
+                    self._set_status_message("Clipboard is not available.")
+                else:
+                    clipboard.setText(snippet_text)
+                    self._set_status_message("Code snippet copied to clipboard.")
+        else:
+            QtGui.QDesktopServices.openUrl(link)
+
     def _render_transcript(self) -> None:
         """
         Render the current transcript into the chat browser.
@@ -6555,26 +6639,116 @@ class AiChatDialogue(QtWidgets.QDialog):
         wrapper_html: str
         page_background_color: str = self._get_transcript_page_background_color()
         base_text_color: str = self._get_transcript_base_text_color()
+        muted_text_color: str = self._get_transcript_muted_text_color()
+        link_color: str = self._get_transcript_link_color()
+
+        markdown_code_bg: str
+        markdown_inline_code_bg: str
+        markdown_code_border: str
+        markdown_quote_bg: str
+        markdown_quote_border: str
+        markdown_table_border: str
+        markdown_hr_color: str
+        animate_last_assistant: bool = (
+            (len(self._history) > self._last_rendered_history_size)
+            and (len(self._history) > 0)
+            and (self._history[-1].role == "assistant")
+        )
+        self._code_snippets_by_id = dict()
+        self._next_code_snippet_id = 0
 
         # Render an initial help state when there is still no conversation content.
         if len(self._history) == 0:
             html_parts.append(self._build_empty_state_html())
         else:
             while index < len(self._history):
-                html_parts.append(self._format_message_html(self._history[index]))
+                html_parts.append(
+                    self._format_message_html(
+                        self._history[index],
+                        index=index,
+                        animate=(animate_last_assistant and (index == (len(self._history) - 1))),
+                    )
+                )
                 index += 1
 
+        if self._is_dark_transcript_theme():
+            markdown_code_bg = "#111827"
+            markdown_inline_code_bg = "#1a202c"
+            markdown_code_border = "#2f3a4d"
+            markdown_quote_bg = "#151b24"
+            markdown_quote_border = "#3a475f"
+            markdown_table_border = "#2f3a4d"
+            markdown_hr_color = "#2f3a4d"
+        else:
+            markdown_code_bg = "#f8fafc"
+            markdown_inline_code_bg = "#f3f4f6"
+            markdown_code_border = "#d1d5db"
+            markdown_quote_bg = "#f9fafb"
+            markdown_quote_border = "#d1d5db"
+            markdown_table_border = "#d1d5db"
+            markdown_hr_color = "#e5e7eb"
+
         wrapper_html = (
-            f"<html><body style='margin:0;background-color:{page_background_color};'>"
-            "<div style='max-width:880px;margin:0 auto;padding:24px 20px 40px 20px;"
-            "font-family:\"Segoe UI\", \"Noto Sans\", sans-serif;font-size:11pt;"
-            f"line-height:1.6;color:{base_text_color};'>"
+            "<html><head><style>"
+            "body { margin: 0; }"
+            ".transcript-root { "
+            "max-width: 960px; margin: 0 auto; padding: 28px 22px 44px 22px; "
+            "font-family: \"IBM Plex Sans\", \"Segoe UI\", \"Noto Sans\", sans-serif; "
+            "font-size: 11pt; line-height: 1.65; "
+            "}"
+            ".transcript-root p { margin: 0 0 0.7em 0; }"
+            ".transcript-root p:last-child { margin-bottom: 0; }"
+            ".transcript-root h1, .transcript-root h2, .transcript-root h3, .transcript-root h4 { "
+            "margin: 0.1em 0 0.45em 0; line-height: 1.25; font-weight: 650; "
+            "}"
+            ".message-content.message-new { animation: messageFadeIn 180ms ease-out; }"
+            "@keyframes messageFadeIn { "
+            "0% { opacity: 0.20; transform: translateY(5px); } "
+            "100% { opacity: 1; transform: translateY(0px); } "
+            "}"
+            ".transcript-root ul, .transcript-root ol { margin: 0.2em 0 0.8em 1.35em; }"
+            ".transcript-root li { margin: 0.1em 0; }"
+            ".transcript-root blockquote { "
+            f"margin: 0.5em 0; padding: 0.42em 0.8em; border-left: 4px solid {markdown_quote_border}; "
+            f"background: {markdown_quote_bg}; border-radius: 0 8px 8px 0; "
+            f"color: {muted_text_color}; "
+            "}"
+            ".transcript-root pre { "
+            f"margin: 0.55em 0 0.85em 0; padding: 11px 12px; border: 1px solid {markdown_code_border}; "
+            f"background: {markdown_code_bg}; border-radius: 10px; "
+            "overflow-x: auto; "
+            "font-family: \"JetBrains Mono\", \"Fira Code\", Consolas, \"Courier New\", monospace; "
+            "font-size: 9.4pt; line-height: 1.45; "
+            "}"
+            ".transcript-root pre code { background: transparent; border: none; padding: 0; }"
+            ".transcript-root code { "
+            f"background: {markdown_inline_code_bg}; border: 1px solid {markdown_code_border}; "
+            "border-radius: 6px; padding: 0.08em 0.35em; "
+            "font-family: \"JetBrains Mono\", \"Fira Code\", Consolas, \"Courier New\", monospace; "
+            "font-size: 0.92em; "
+            "}"
+            ".transcript-root table { border-collapse: collapse; width: 100%; margin: 0.5em 0 0.85em 0; }"
+            ".transcript-root th, .transcript-root td { "
+            f"border: 1px solid {markdown_table_border}; padding: 6px 8px; text-align: left; "
+            "}"
+            ".transcript-root .code-block-wrap { margin: 0.6em 0 0.85em 0; }"
+            ".transcript-root .code-toolbar { display: flex; justify-content: space-between; align-items: center; "
+            f"margin: 0 0 4px 2px; color: {muted_text_color}; font-size: 8.5pt; "
+            "text-transform: uppercase; letter-spacing: 0.04em; }"
+            ".transcript-root .code-toolbar .copy-link { text-decoration: none; font-weight: 600; }"
+            ".transcript-root .code-toolbar .code-lang { font-weight: 600; opacity: 0.86; }"
+            f".transcript-root a {{ color: {link_color}; text-decoration: underline; }}"
+            f".transcript-root hr {{ border: none; border-top: 1px solid {markdown_hr_color}; margin: 0.95em 0; }}"
+            "</style></head>"
+            f"<body style='background-color:{page_background_color};'>"
+            f"<div class='transcript-root' style='color:{base_text_color};'>"
             + "".join(html_parts)
             + "</div></body></html>"
         )
 
         self.ui.conversation_text_browser.setHtml(wrapper_html)
         self.ui.conversation_text_browser.moveCursor(QtGui.QTextCursor.MoveOperation.End)
+        self._last_rendered_history_size = len(self._history)
 
     def _build_empty_state_html(self) -> str:
         """
@@ -6668,13 +6842,72 @@ class AiChatDialogue(QtWidgets.QDialog):
             "</div>"
         )
 
-    def _format_message_html(self, message: ChatMessage) -> str:
+    def _infer_code_language_label(self, block_html: str) -> str:
+        """
+        Infer a language label from a rendered code block.
+
+        :param block_html: HTML for one code block.
+        :returns: Upper-case short language label.
+        """
+        class_match: Optional[re.Match[str]] = re.search(r'class\s*=\s*"([^"]+)"', block_html)
+        if class_match is None:
+            return "CODE"
+
+        classes_text: str = class_match.group(1)
+        token_items: list[str] = classes_text.split()
+        index: int = 0
+        while index < len(token_items):
+            token: str = token_items[index].strip()
+            if token.startswith("language-") and len(token) > len("language-"):
+                return token[len("language-"):].upper()
+            index += 1
+
+        return "CODE"
+
+    def _decorate_markdown_html_for_display(self, html_fragment: str) -> str:
+        """
+        Decorate markdown HTML with copy controls for fenced code blocks.
+
+        :param html_fragment: Raw markdown HTML fragment.
+        :returns: Decorated HTML fragment.
+        """
+        block_pattern: re.Pattern[str] = re.compile(
+            r"<pre[^>]*><code[^>]*>.*?</code></pre>",
+            re.DOTALL,
+        )
+
+        def replace_block(match: re.Match[str]) -> str:
+            block_html: str = match.group(0)
+            code_text_doc: QtGui.QTextDocument = QtGui.QTextDocument()
+            code_text_doc.setHtml(block_html)
+            snippet_text: str = code_text_doc.toPlainText()
+            snippet_id: str = f"s{self._next_code_snippet_id}"
+            self._next_code_snippet_id += 1
+            self._code_snippets_by_id[snippet_id] = snippet_text
+            language_label: str = self._infer_code_language_label(block_html)
+
+            return (
+                "<div class='code-block-wrap'>"
+                "<div class='code-toolbar'>"
+                f"<span class='code-lang'>{html.escape(language_label)}</span>"
+                f"<a class='copy-link' href='copy-code://{snippet_id}'>Copy</a>"
+                "</div>"
+                f"{block_html}"
+                "</div>"
+            )
+
+        return block_pattern.sub(replace_block, html_fragment)
+
+    def _format_message_html(self, message: ChatMessage, index: int, animate: bool) -> str:
         """
         Format one transcript message as HTML.
 
         :param message: Transcript message.
+        :param index: Transcript message index.
+        :param animate: Whether to animate this message on render.
         :returns: Message HTML block.
         """
+        del index
         role_label: str = self._get_role_label(message.role)
         background_color: str = self._get_role_background_color(message.role)
         border_color: str = self._get_role_border_color(message.role)
@@ -6682,7 +6915,15 @@ class AiChatDialogue(QtWidgets.QDialog):
         role_color: str = self._get_role_label_color(message.role)
         row_alignment: str = self._get_role_row_alignment(message.role)
         message_width: str = self._get_role_message_width(message.role)
-        content_text: str = convert_markdown_to_html(message.content)
+        content_text: str = self._decorate_markdown_html_for_display(
+            convert_markdown_to_html(message.content)
+        )
+        message_classes: str = "message-content"
+
+        if animate:
+            message_classes += " message-new"
+        else:
+            pass
 
         return (
             f"<div style='display:flex;justify-content:{row_alignment};margin-bottom:20px;'>"
@@ -6690,7 +6931,7 @@ class AiChatDialogue(QtWidgets.QDialog):
             f"<div style='font-size:8.5pt;font-weight:600;letter-spacing:0.03em;"
             f"text-transform:uppercase;color:{role_color};margin-bottom:6px;'>"
             f"{html.escape(role_label)}</div>"
-            "<div style='padding:14px 16px;border-radius:18px;"
+            f"<div class='{message_classes}' style='padding:14px 16px;border-radius:18px;"
             f"background-color:{background_color};border:1px solid {border_color};"
             f"color:{content_color};box-shadow:{self._get_transcript_box_shadow()};'>"
             f"{content_text}</div>"
@@ -6705,7 +6946,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         :returns: CSS box-shadow value.
         """
         if self._is_dark_transcript_theme():
-            return "0 1px 2px rgba(2, 6, 23, 0.32)"
+            return "0 2px 8px rgba(2, 6, 23, 0.24)"
         else:
             return "0 1px 2px rgba(15, 23, 42, 0.04)"
 
@@ -6742,15 +6983,15 @@ class AiChatDialogue(QtWidgets.QDialog):
 
         if self._is_dark_transcript_theme():
             if role == "user":
-                background_color = "#1d4ed8"
+                background_color = "#274d93"
             else:
                 if role == "assistant":
-                    background_color = "#111827"
+                    background_color = "#171c24"
                 else:
                     if role == "tool":
-                        background_color = "#1f2937"
+                        background_color = "#1d232e"
                     else:
-                        background_color = "#3f2f12"
+                        background_color = "#3a2a21"
         else:
             if role == "user":
                 background_color = "#dbeafe"
@@ -6776,15 +7017,15 @@ class AiChatDialogue(QtWidgets.QDialog):
 
         if self._is_dark_transcript_theme():
             if role == "user":
-                border_color = "#3b82f6"
+                border_color = "#3d6ec8"
             else:
                 if role == "assistant":
-                    border_color = "#334155"
+                    border_color = "#2a3240"
                 else:
                     if role == "tool":
-                        border_color = "#475569"
+                        border_color = "#334055"
                     else:
-                        border_color = "#e1a63b"
+                        border_color = "#7d4b35"
         else:
             if role == "user":
                 border_color = "#bfdbfe"
@@ -6810,15 +7051,15 @@ class AiChatDialogue(QtWidgets.QDialog):
 
         if self._is_dark_transcript_theme():
             if role == "user":
-                content_color = "#eff6ff"
+                content_color = "#eaf2ff"
             else:
                 if role == "assistant":
-                    content_color = "#e5e7eb"
+                    content_color = "#e7ebf3"
                 else:
                     if role == "tool":
-                        content_color = "#e2e8f0"
+                        content_color = "#dfe6f2"
                     else:
-                        content_color = "#ffedd5"
+                        content_color = "#ffe8d6"
         else:
             if role == "user":
                 content_color = "#0f172a"
@@ -6844,15 +7085,15 @@ class AiChatDialogue(QtWidgets.QDialog):
 
         if self._is_dark_transcript_theme():
             if role == "user":
-                label_color = "#93c5fd"
+                label_color = "#9ec1ff"
             else:
                 if role == "assistant":
-                    label_color = "#94a3b8"
+                    label_color = "#a3adbc"
                 else:
                     if role == "tool":
-                        label_color = "#cbd5e1"
+                        label_color = "#b8c6dd"
                     else:
-                        label_color = "#fdba74"
+                        label_color = "#e6b294"
         else:
             if role == "user":
                 label_color = "#2563eb"

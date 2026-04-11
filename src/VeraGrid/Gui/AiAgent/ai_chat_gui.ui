@@ -36,6 +36,18 @@
        <string>Dialogue</string>
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayout_2">
+       <property name="leftMargin">
+        <number>4</number>
+       </property>
+       <property name="topMargin">
+        <number>4</number>
+       </property>
+       <property name="rightMargin">
+        <number>4</number>
+       </property>
+       <property name="bottomMargin">
+        <number>4</number>
+       </property>
        <item>
         <widget class="QSplitter" name="splitter">
          <property name="orientation">
@@ -101,6 +113,12 @@
            </property>
            <item>
             <widget class="QPlainTextEdit" name="message_plain_text_edit">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="minimumSize">
               <size>
                <width>0</width>
@@ -158,6 +176,12 @@
           </item>
           <item>
            <widget class="QLabel" name="status_label">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
             <property name="text">
              <string>Ready.</string>
             </property>
@@ -165,19 +189,6 @@
              <bool>true</bool>
             </property>
            </widget>
-          </item>
-          <item>
-           <spacer name="footer_spacer">
-            <property name="orientation">
-             <enum>Qt::Orientation::Horizontal</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>40</width>
-              <height>20</height>
-             </size>
-            </property>
-           </spacer>
           </item>
           <item>
            <widget class="QPushButton" name="send_button">
@@ -196,19 +207,6 @@
        <string>Settings</string>
       </attribute>
       <layout class="QGridLayout" name="gridLayout">
-       <item row="2" column="0">
-        <spacer name="controls_spacer">
-         <property name="orientation">
-          <enum>Qt::Orientation::Vertical</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>20</width>
-           <height>40</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
        <item row="0" column="0" colspan="2">
         <widget class="QGroupBox" name="groupBox">
          <property name="minimumSize">
@@ -495,19 +493,6 @@
          </layout>
         </widget>
        </item>
-       <item row="0" column="3">
-        <spacer name="horizontalSpacer">
-         <property name="orientation">
-          <enum>Qt::Orientation::Horizontal</enum>
-         </property>
-         <property name="sizeHint" stdset="0">
-          <size>
-           <width>40</width>
-           <height>20</height>
-          </size>
-         </property>
-        </spacer>
-       </item>
        <item row="0" column="2">
         <widget class="QGroupBox" name="groupBox_2">
          <property name="minimumSize">
@@ -520,48 +505,27 @@
           <string>Remote AI</string>
          </property>
          <layout class="QGridLayout" name="gridLayout_3">
-          <item row="5" column="1" colspan="2">
-           <widget class="QComboBox" name="api_model_combo_box">
-            <property name="editable">
-             <bool>true</bool>
-            </property>
-            <property name="insertPolicy">
-             <enum>QComboBox::InsertPolicy::NoInsert</enum>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="QLabel" name="api_provider_label">
+          <item row="6" column="0">
+           <widget class="QLabel" name="api_api_key_label">
             <property name="text">
-             <string>API provider</string>
+             <string>API key</string>
             </property>
            </widget>
           </item>
-          <item row="4" column="1" colspan="2">
-           <widget class="QLineEdit" name="api_api_key_line_edit">
-            <property name="echoMode">
-             <enum>QLineEdit::EchoMode::Password</enum>
+          <item row="12" column="1">
+           <spacer name="verticalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Orientation::Vertical</enum>
             </property>
-            <property name="placeholderText">
-             <string>Leave empty for unauthenticated endpoints</string>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>40</height>
+             </size>
             </property>
-           </widget>
+           </spacer>
           </item>
-          <item row="7" column="0">
-           <widget class="QLabel" name="api_timeout_label">
-            <property name="text">
-             <string>Timeout [s]</string>
-            </property>
-           </widget>
-          </item>
-          <item row="0" column="0" colspan="2">
-           <widget class="QRadioButton" name="api_ai_radioButton">
-            <property name="text">
-             <string>API AI settings</string>
-            </property>
-           </widget>
-          </item>
-          <item row="7" column="1" colspan="2">
+          <item row="11" column="1" colspan="2">
            <widget class="QDoubleSpinBox" name="api_timeout_double_spin_box">
             <property name="decimals">
              <number>1</number>
@@ -580,59 +544,106 @@
             </property>
            </widget>
           </item>
-          <item row="3" column="1" colspan="2">
+          <item row="5" column="0" colspan="3">
            <widget class="QLineEdit" name="api_base_url_line_edit">
             <property name="placeholderText">
              <string>https://api.example.com/v1</string>
             </property>
            </widget>
           </item>
-          <item row="2" column="1" colspan="2">
-           <widget class="QComboBox" name="api_provider_combo_box"/>
-          </item>
-          <item row="6" column="1" colspan="2">
-           <widget class="QPushButton" name="api_refresh_models_button">
-            <property name="text">
-             <string>Refresh</string>
+          <item row="7" column="0" colspan="3">
+           <widget class="QLineEdit" name="api_api_key_line_edit">
+            <property name="echoMode">
+             <enum>QLineEdit::EchoMode::Password</enum>
+            </property>
+            <property name="placeholderText">
+             <string>Leave empty for unauthenticated endpoints</string>
             </property>
            </widget>
           </item>
-          <item row="5" column="0">
+          <item row="11" column="0">
+           <widget class="QLabel" name="api_timeout_label">
+            <property name="text">
+             <string>Timeout [s]</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="api_provider_label">
+            <property name="text">
+             <string>API provider</string>
+            </property>
+           </widget>
+          </item>
+          <item row="8" column="0">
            <widget class="QLabel" name="api_model_label">
             <property name="text">
              <string>Model</string>
             </property>
            </widget>
           </item>
-          <item row="3" column="0">
+          <item row="9" column="0" colspan="3">
+           <widget class="QComboBox" name="api_model_combo_box">
+            <property name="editable">
+             <bool>true</bool>
+            </property>
+            <property name="insertPolicy">
+             <enum>QComboBox::InsertPolicy::NoInsert</enum>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="0" colspan="2">
+           <widget class="QRadioButton" name="api_ai_radioButton">
+            <property name="text">
+             <string>API AI settings</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
            <widget class="QLabel" name="api_base_url_label">
             <property name="text">
              <string>Base URL</string>
             </property>
            </widget>
           </item>
-          <item row="4" column="0">
-           <widget class="QLabel" name="api_api_key_label">
+          <item row="3" column="0" colspan="3">
+           <widget class="QComboBox" name="api_provider_combo_box"/>
+          </item>
+          <item row="8" column="2">
+           <widget class="QPushButton" name="api_refresh_models_button">
             <property name="text">
-             <string>API key</string>
+             <string>Refresh</string>
             </property>
            </widget>
           </item>
-          <item row="8" column="1">
-           <spacer name="verticalSpacer_2">
-            <property name="orientation">
-             <enum>Qt::Orientation::Vertical</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>20</width>
-              <height>40</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
          </layout>
         </widget>
+       </item>
+       <item row="2" column="0">
+        <spacer name="controls_spacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item row="0" column="3">
+        <spacer name="horizontalSpacer">
+         <property name="orientation">
+          <enum>Qt::Orientation::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
      </widget>
