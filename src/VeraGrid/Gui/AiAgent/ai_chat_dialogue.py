@@ -5084,7 +5084,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         :returns: CSS color value.
         """
         if self._is_dark_transcript_theme():
-            return "#0f172a"
+            return "#001f18"
         else:
             return "#f7f7f8"
 
@@ -5095,7 +5095,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         :returns: CSS color value.
         """
         if self._is_dark_transcript_theme():
-            return "#111827"
+            return "#003d30"
         else:
             return "#ffffff"
 
