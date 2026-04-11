@@ -48,8 +48,9 @@ from VeraGrid.Gui.Diagrams.MapWidget.Tiles.TileProviders.cartodb import CartoDbT
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
 from VeraGrid.Gui.rms_events_editor_dialog import RmsEventDialogue, RmsEventsGroupsDialog
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
-from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue, InputSearchDialogue,
-                                            InputNumberDialogue, LogsDialogue, ShortCircuitSelector)
+from VeraGrid.Gui.ShortCircuitEditor.short_circuit_selector import ShortCircuitSelector
+from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue,
+                                            InputNumberDialogue, LogsDialogue)
 
 ALL_EDITORS = Union[SchematicWidget, GridMapWidget, BaseDiagramWidget]
 ALL_EDITORS_NONE = Union[None, SchematicWidget, GridMapWidget]
@@ -216,7 +217,7 @@ class DiagramsMain(CompiledArraysMain):
         # task watcher for video export
         self.video_thread: VideoExportWorker | None = None
 
-        self.sc_selector_dialogue: ShortCircuitSelector | None = None
+        self.sc_selector_dialogue: ShortCircuitSelector = ShortCircuitSelector()
 
         # --------------------------------------------------------------------------------------------------------------
         self.ui.actionTakePicture.triggered.connect(self.take_picture)
@@ -1382,7 +1383,6 @@ class DiagramsMain(CompiledArraysMain):
                     color = QtGui.QColor(r * 255, g * 255, b * 255, a * 255)
                     bus_graphic.set_tile_color(brush=color)
                     bus_graphic.setToolTip('Group ' + str(c))
-
 
     def default_colouring(self, t_idx: int | None,
                           diagram_widget: ALL_EDITORS,
@@ -2845,18 +2845,22 @@ class DiagramsMain(CompiledArraysMain):
 
             if len(selected) > 0:
 
-                self.sc_selector_dialogue = ShortCircuitSelector()
+                self.sc_selector_dialogue: ShortCircuitSelector = ShortCircuitSelector()
                 self.sc_selector_dialogue.exec()
 
                 if self.sc_selector_dialogue.was_accepted:
 
                     for _, bus, _ in selected:
+                        z_pu: complex = self.sc_selector_dialogue.get_impedance_pu(Sbase=self.circuit.Sbase,
+                                                                                   Vbase=bus.Vnom)
                         sc = dev.ShortCircuitEvent(
                             name=f"{bus.name} {self.sc_selector_dialogue.fault.value}",
                             device=bus,
                             fault_type=self.sc_selector_dialogue.fault,
                             method=self.sc_selector_dialogue.method,
-                            phases=self.sc_selector_dialogue.phases
+                            phases=self.sc_selector_dialogue.phases,
+                            r_fault=z_pu.real,
+                            x_fault=z_pu.imag
                         )
 
                         self.circuit.add_short_circuit_event(sc)

@@ -14,7 +14,7 @@ from PySide6.QtWidgets import QMenu, QGraphicsSceneMouseEvent, QGraphicsItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGrid.Gui.gui_functions import add_menu_entry
-from VeraGrid.Gui.general_dialogues import ShortCircuitSelector
+from VeraGrid.Gui.ShortCircuitEditor.short_circuit_selector import ShortCircuitSelector
 from VeraGrid.Gui.Diagrams.generic_graphics import (GenericDiagramWidget, ACTIVE, DEACTIVATED,
                                                     FONT_SCALE, TRANSPARENT)
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, HandleItem, RoundTerminalItem
@@ -965,12 +965,16 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
         self.w.exec()
 
         if self.w.was_accepted:
+            z_pu: complex = self.w.get_impedance_pu(Sbase=self.editor.circuit.Sbase,
+                                                    Vbase=self.api_object.Vnom)
             sc = ShortCircuitEvent(
                 name=f"{self.api_object.name} {self.w.fault.value}",
                 device=self.api_object,
                 fault_type=self.w.fault,
                 method=self.w.method,
-                phases=self.w.phases
+                phases=self.w.phases,
+                r_fault=z_pu.real,
+                x_fault=z_pu.imag
             )
 
             self.editor.circuit.add_short_circuit_event(sc)
