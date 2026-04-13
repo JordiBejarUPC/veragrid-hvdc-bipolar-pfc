@@ -227,19 +227,6 @@ def op_extraction(problem: vge.RmsProblemPhasor) -> dict:
                 v_dict[s_name] = val
 
     return v_dict
-    # 5. LIFTING SUPPORT AND DEFAULT VALUES
-    for sym in builder.all_symbols:
-        s_name = str(sym.name)
-        if s_name not in v_dict:
-            if '_invaux' in s_name:
-                base = s_name.split('_invaux')[0]
-                v_dict[s_name] = (1.0 / v_dict[base]) if base in v_dict and abs(v_dict[base]) > 1e-12 else 1.0
-            elif '_mulaux' in s_name:
-                base = s_name.split('_mulaux')[0]
-                v_dict[s_name] = v_dict[base] if base in v_dict else 1.0
-            else:
-                v_dict[s_name] = 0.0
-
 
 
 def solve_problem(problem: Any) -> Any:
