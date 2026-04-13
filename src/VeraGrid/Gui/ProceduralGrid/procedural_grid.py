@@ -15,6 +15,7 @@ from VeraGrid.Gui.gui_functions import get_list_model, enums_to_model
 from VeraGridEngine.enumerations import ProceduralGridMethods
 from VeraGridEngine.Topology.Procedural.procedural_grid_engine import ProceduralGridComputationEngine
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import make_diagram_from_buses, SchematicWidget
+from VeraGrid.Gui.ProceduralGrid.voltage_warning import VoltageWarningDialog
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.simulations import SimulationsMain
@@ -101,6 +102,25 @@ class ProceduralGridWindow(QtWidgets.QDialog):
                 [se_graphic.api_object for se_graphic in self.candidate_list]
             ))
 
+    def _check_substation_voltages(self, substations):
+        """
+        Returns offenders and valid voltages.
+        Offenders are (substation_name, voltage) pairs for any bus
+        whose Vnom does not appear on any branch in the existing grid.
+        """
+        known_voltages = set()
+        for branch in self.app.circuit.get_branches(add_vsc=True, add_hvdc=True, add_switch=True):
+            known_voltages.add(branch.bus_from.Vnom)
+            known_voltages.add(branch.bus_to.Vnom)
+
+        offenders = []
+        for sg in substations:
+            for bus in self.app.circuit.get_substation_buses(sg):
+                if bus.Vnom not in known_voltages:
+                    offenders.append((sg.name, bus.Vnom))
+
+        return offenders, sorted(known_voltages)
+
     def compute(self):
         """
         Computation
@@ -113,7 +133,14 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         target_objects = [se.api_object for se in self.connection_substations_graphics_list]
         candidate_objects = [se.api_object for se in self.candidate_list]
 
-        # 3. Instantiate your engine with the required inputs
+        # 3. Validate that all substation voltages exist in the grid
+        offenders, valid_voltages = self._check_substation_voltages(target_objects + candidate_objects)
+        if offenders:
+            dlg = VoltageWarningDialog(offenders=offenders, valid_voltages=valid_voltages, parent=self)
+            dlg.exec()
+            return
+
+        # 4. Instantiate your engine with the required inputs
         engine = ProceduralGridComputationEngine(
             grid=self.app.circuit,
             method=method,

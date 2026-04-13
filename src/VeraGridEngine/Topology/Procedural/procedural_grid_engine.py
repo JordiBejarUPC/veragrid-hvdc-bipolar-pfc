@@ -21,6 +21,8 @@ from VeraGridEngine.Topology.Procedural.procedural_grid_debugger import Procedur
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 
+# TODO: Save all prints in Logger class
+# TODO: Add pop up window preventing to add voltages that don't have a template
 
 def coord_calc(current_bus_lon: float, current_bus_lat: float, length: float, coord_out: Vec):
     """
