@@ -3458,7 +3458,15 @@ class BlockType(Enum):
     """
     this class contains the existing types of blocks
     """
-    # common
+
+    # inputs and outputs
+    INPUT_CONN = "Bus Connection"
+    OUTPUT_CONN = "EXTERNAL_MAPPING"
+
+    # generic
+    GENERIC = "Generic"
+
+    # common basic maths
     CONST = "CONST"
     GAIN = "GAIN"
     SUM = "SUM"
@@ -3466,8 +3474,6 @@ class BlockType(Enum):
     PRODUCT = "PRODUCT"
     DIVIDE = "Divide"
     ABS = "Abs"
-
-    GENERIC = "Generic"
 
     # RMS
     GENRAW = "GENRAW"
@@ -3493,11 +3499,8 @@ class BlockType(Enum):
     ZIP_LOAD_EMT = "ZIP_LOAD_EMT"
     DC_LOAD_EMT = "DC_LOAD_EMT"
     EMT_THEVENIN = "EMT_THEVENIN_EMT"
-
-    BUS_CONNECTION = "Bus Connection"
-    EXTERNAL_MAPPING = "EXTERNAL_MAPPING"
-
     EMTLOAD = "EMT_LOAD"
+
 
     def __str__(self):
         return self.value
