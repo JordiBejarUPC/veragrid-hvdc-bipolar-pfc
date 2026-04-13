@@ -76,6 +76,12 @@ def instantiate_branch_from_template(template_branch,
 
 
 class TransitionMatrix:
+    __slots__ = (
+        "voltages_sorted",
+        "voltages_dict",
+        "transition_matrix",
+        "template_dict",
+    )
 
     def __init__(self, grid: MultiCircuit):
 
@@ -176,6 +182,15 @@ class TransitionMatrix:
 
 
 class Node:
+    __slots__ = (
+        "tpe",
+        "id_number",
+        "x",
+        "y",
+        "load",
+        "voltage",
+        "is_DC",
+    )
 
     def __init__(self, tpe: str, id_number: int, x: float, y: float, load: float, voltage: int, is_DC: bool):
         """
@@ -201,6 +216,10 @@ class Node:
 
 
 class Edge:
+    __slots__ = (
+        "start_node",
+        "end_node",
+    )
 
     def __init__(self, start_node: Node, end_node: Node):
         """
@@ -213,6 +232,22 @@ class Edge:
 
 
 class ProceduralGridGraph:
+    __slots__ = (
+        "target_buses",
+        "candidate_buses",
+        "max_iterations",
+        "n_target",
+        "n_candidate",
+        "n_steiner",
+        "coord_candidate",
+        "coord_target",
+        "min_lon",
+        "min_lat",
+        "max_lon",
+        "max_lat",
+        "base_coords",
+        "base_voltages",
+    )
 
     def __init__(self,
                  target_buses: List[dev.Bus],
@@ -377,6 +412,14 @@ class Topology:
     Represents the physical layout using domain objects.
     Contains a Graph instance via composition.
     """
+    __slots__ = (
+        "edges",
+        "all_buses",
+        "grid",
+        "transition_matrix",
+        "discretization",
+        "intermediate_buses",
+    )
 
     def __init__(self,
                  edges: list[tuple[int, int]],
@@ -588,6 +631,18 @@ class ProceduralGridComputationEngine:
     """
     Core engine for procedural grid expansion calculations.
     """
+    __slots__ = (
+        "grid",
+        "method",
+        "targets_substations",
+        "candidates_substations",
+        "target_buses",
+        "candidate_buses",
+        "steiner_buses",
+        "intermediate_buses",
+        "debugger",
+        "transition_matrix",
+    )
 
     def __init__(self,
                  grid: MultiCircuit,

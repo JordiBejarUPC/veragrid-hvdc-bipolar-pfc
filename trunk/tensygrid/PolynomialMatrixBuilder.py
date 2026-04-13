@@ -3,8 +3,7 @@ import numpy as np
 from scipy import sparse, linalg
 from enum import Enum
 from typing import Optional, Any, Tuple
-import re
-
+import re, math
 
 # ------------------------------------------------------------------
 # Enums for Options
@@ -25,25 +24,25 @@ class ConstraintType(Enum):
 
 def _sort_symbol(sym: sp.Symbol) -> tuple:
     """
-        Evaluates a SymPy symbol to determine if it represents a derivative or a standard state variable,
-        generating a sorting key tuple.
+    Evaluates a SymPy symbol to determine if it represents a derivative or a standard state variable,
+    generating a sorting key tuple.
 
-        From an algorithmic perspective, this function acts as a custom sorting key. In symbolic system
-        formulation, it is strictly necessary to segregate time-derivatives from standard algebraic variables
-        to properly structure Differential Algebraic Equations (DAEs) or state-space representations.
+    From an algorithmic perspective, this function acts as a custom sorting key. In symbolic system
+    formulation, it is strictly necessary to segregate time-derivatives from standard algebraic variables
+    to properly structure Differential Algebraic Equations (DAEs) or state-space representations.
 
-        The function extracts the string name of the symbol and checks it against standard derivative
-        prefixes ('dx', 'xp', 'd_', 'dt_'). By returning a tuple of `(integer_priority, name)`, it forces
-        Python sorting algorithms to group all derivatives first (priority 0) and standard variables second
-        (priority 1). The inclusion of the string name in the tuple ensures that within those two categories,
-        the symbols are sorted alphabetically.
+    The function extracts the string name of the symbol and checks it against standard derivative
+    prefixes ('dx', 'xp', 'd_', 'dt_'). By returning a tuple of `(integer_priority, name)`, it forces
+    Python sorting algorithms to group all derivatives first (priority 0) and standard variables second
+    (priority 1). The inclusion of the string name in the tuple ensures that within those two categories,
+    the symbols are sorted alphabetically.
 
-        :param sym: The symbolic variable to be evaluated and categorized.
-        :type sym: sp.Symbol
-        :return: A tuple used for sorting, containing the priority integer (0 if it is a derivative,
-                 1 otherwise) and the string name of the symbol.
-        :rtype: tuple
-        """
+    :param sym: The symbolic variable to be evaluated and categorized.
+    :type sym: sp.Symbol
+    :return: A tuple used for sorting, containing the priority integer (0 if it is a derivative,
+             1 otherwise) and the string name of the symbol.
+    :rtype: tuple
+    """
     name: str = sym.name
     if name.startswith('dx') or name.startswith('xp') or name.startswith('d_') or name.startswith('dt_'):
         return 0, name
@@ -184,31 +183,31 @@ class PolynomialMatrixBuilder:
 
         def clean_name_fn(n):
             """
-                Standardizes the string representation of a symbolic variable name by normalizing
-                various time-derivative prefixes into a single canonical format.
+            Standardizes the string representation of a symbolic variable name by normalizing
+            various time-derivative prefixes into a single canonical format.
 
-                From an algorithmic perspective, different symbolic operations, external libraries,
-                or intermediate parsing steps may generate inconsistent first-derivative prefixes
-                (such as 'dt_1_', 'd_1_', or simply 'd_'). This cleaning step is critical in the
-                broader algorithm because downstream processes—such as state-space formulation,
-                variable mapping, or the previous sorting logic—rely on strict, predictable string
-                matching to correctly identify and manipulate time derivatives.
+            From an algorithmic perspective, different symbolic operations, external libraries,
+            or intermediate parsing steps may generate inconsistent first-derivative prefixes
+            (such as 'dt_1_', 'd_1_', or simply 'd_'). This cleaning step is critical in the
+            broader algorithm because downstream processes—such as state-space formulation,
+            variable mapping, or the previous sorting logic—rely on strict, predictable string
+            matching to correctly identify and manipulate time derivatives.
 
-                The function executes the following sequence:
-                1. Casts the input to a string to guarantee that string manipulation methods are available,
-                   allowing it to gracefully handle SymPy symbols or raw strings.
-                2. Explicitly replaces known anomalous first-derivative notations ('dt_1_' and 'd_1_')
-                   with the standard 'dt_' prefix.
-                3. Utilizes a regular expression to find word-boundary instances of 'd_' (matching the
-                   start of the string) and replaces them with 'dt_'. The word boundary is essential to
-                   prevent the accidental replacement of 'd_' if it occurs in the middle or end of a
-                   variable's base name.
+            The function executes the following sequence:
+            1. Casts the input to a string to guarantee that string manipulation methods are available,
+               allowing it to gracefully handle SymPy symbols or raw strings.
+            2. Explicitly replaces known anomalous first-derivative notations ('dt_1_' and 'd_1_')
+               with the standard 'dt_' prefix.
+            3. Utilizes a regular expression to find word-boundary instances of 'd_' (matching the
+               start of the string) and replaces them with 'dt_'. The word boundary is essential to
+               prevent the accidental replacement of 'd_' if it occurs in the middle or end of a
+               variable's base name.
 
-                :param n: The variable or object whose name requires standardizing.
-                :type n: Any (typically str or sp.Symbol)
-                :return: The cleaned and standardized string name with a unified 'dt_' derivative prefix.
-                :rtype: str
-                """
+            :param n: The variable or object whose name requires standardizing.
+            :type n: Any (typically str or sp.Symbol)
+            :return: The cleaned and standardized string name with a unified 'dt_' derivative prefix.
+            :rtype: str
+            """
             c = str(n)
             c = c.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
             c = re.sub(r'\bd_', 'dt_', c)
@@ -216,20 +215,20 @@ class PolynomialMatrixBuilder:
 
         def _extract_mappings(var_list: list) -> None:
             """
-                Extracts and maps base variables to their explicit time-derivative counterparts
-                from a list of variable objects.
+            Extracts and maps base variables to their explicit time-derivative counterparts
+            from a list of variable objects.
 
-                From an algorithmic perspective, this function builds a required lookup table
-                (`self._explicit_deriv_map`) linking state variables to their corresponding derivatives.
-                It iterates over the provided list, bypassing raw strings, and inspects objects for
-                `diff_var` or `base_var` properties. By applying `clean_name_fn` to the extracted names,
-                it guarantees standardized string matching for downstream differential equation assembly.
+            From an algorithmic perspective, this function builds a required lookup table
+            (`self._explicit_deriv_map`) linking state variables to their corresponding derivatives.
+            It iterates over the provided list, bypassing raw strings, and inspects objects for
+            `diff_var` or `base_var` properties. By applying `clean_name_fn` to the extracted names,
+            it guarantees standardized string matching for downstream differential equation assembly.
 
-                :param var_list: A collection of variable objects to inspect for derivative relationships.
-                :type var_list: list
-                :return: Modifies the internal `_explicit_deriv_map` in place.
-                :rtype: None
-                """
+            :param var_list: A collection of variable objects to inspect for derivative relationships.
+            :type var_list: list
+            :return: Modifies the internal `_explicit_deriv_map` in place.
+            :rtype: None
+            """
             if not var_list: return
             for var_obj in var_list:
                 if not isinstance(var_obj, str):
@@ -322,15 +321,15 @@ class PolynomialMatrixBuilder:
         S_H_sp, Phi_H_sp = self.matrix_creation(self.eqs)
         S_W_sp, Phi_W_sp = self.matrix_creation(self.ineqs)
 
-        self.S_H: np.ndarray = S_H_sp.toarray()
-        self.Phi_H: np.ndarray = Phi_H_sp.toarray()
-        self.S_W: np.ndarray = S_W_sp.toarray()
-        self.Phi_W: np.ndarray = Phi_W_sp.toarray()
+        self.S_H: sparse.csc_matrix = S_H_sp
+        self.Phi_H: sparse.csr_matrix = Phi_H_sp
+        self.S_W: sparse.csc_matrix = S_W_sp
+        self.Phi_W: sparse.csr_matrix = Phi_W_sp
 
-        self.E: Optional[np.ndarray] = None
-        self.A: Optional[np.ndarray] = None
-        self.B: Optional[np.ndarray] = None
-        self.EABC: Optional[np.ndarray] = None
+        self.E: Optional[sparse.csr_matrix] = None
+        self.A: Optional[sparse.csr_matrix] = None
+        self.B: Optional[sparse.csr_matrix] = None
+        self.EABC: Optional[sparse.csr_matrix] = None
 
     # ------------------------------------------------------------------
     # Symbol extraction
@@ -340,20 +339,20 @@ class PolynomialMatrixBuilder:
 
     def extract_symbols(self, all_exprs: list, predefined: list | None = None) -> list:
         """
-            Extracts and sorts unique symbolic variables from a list of equations.
+        Extracts and sorts unique symbolic variables from a list of equations.
 
-            Algorithmically, this function builds the definitive sequence of state variables.
-            It uses a set for O(1) deduplication, appending `predefined` symbols first.
-            Then, it extracts `free_symbols` from all expressions, actively filtering out
-            protected parameters. Finally, it applies the derivative-first sorting logic
-            to guarantee a deterministic variable order for matrix and state-space assembly.
+        Algorithmically, this function builds the definitive sequence of state variables.
+        It uses a set for O(1) deduplication, appending `predefined` symbols first.
+        Then, it extracts `free_symbols` from all expressions, actively filtering out
+        protected parameters. Finally, it applies the derivative-first sorting logic
+        to guarantee a deterministic variable order for matrix and state-space assembly.
 
-            :param all_exprs: List of symbolic expressions or equations to parse.
-            :type all_exprs: list
-            :param predefined: Optional list of symbols to force-include first.
-            :type predefined: list | None
-            :return: A sorted list of all unique, non-protected symbols.
-            :rtype: list
+        :param all_exprs: List of symbolic expressions or equations to parse.
+        :type all_exprs: list
+        :param predefined: Optional list of symbols to force-include first.
+        :type predefined: list | None
+        :return: A sorted list of all unique, non-protected symbols.
+        :rtype: list
         """
         seen: set = set()
         extracted_symbols: list = list()
@@ -379,73 +378,81 @@ class PolynomialMatrixBuilder:
     # ------------------------------------------------------------------
     def matrix_creation(self, all_exprs: list) -> tuple:
         """
-            Assembles the sparse structural matrices S (monomial definitions) and Phi (coefficients)
-            from a list of symbolic expressions.
+        Assembles the sparse structural matrices S (monomial definitions) and Phi (coefficients)
+        from a list of symbolic expressions.
 
-            Algorithmically, this translates symbolic equations into a vectorized numeric format
-            required for high-performance evaluation. It parses each equation into terms, extracts
-            unique monomials to avoid redundancies, and maps their respective coefficients. To optimize
-            memory and conform to sparse operations, it outputs S in CSC format and Phi in CSR format.
+        Algorithmically, this translates symbolic equations into a vectorized numeric format
+        required for high-performance evaluation. It parses each equation into terms, extracts
+        unique monomials to avoid redundancies, and maps their respective coefficients.
+        To optimize memory and conform to pure sparse operations from the ground up, it natively
+        constructs Coordinate (COO) arrays before compiling S in CSC format and Phi in CSR format.
 
-            :param all_exprs: A list of symbolic expressions representing the system equations.
-            :type all_exprs: list
-            :return: A tuple containing the (S, Phi) sparse matrices.
-            :rtype: tuple
+        :param all_exprs: A list of symbolic expressions representing the system equations.
+        :type all_exprs: list
+        :return: A tuple containing the (S, Phi) sparse matrices.
+        :rtype: tuple
         """
-        S_list: list = list()
-        Phi_data: list = list()
+        S_cols: list = []
+        Phi_data: list = []
         monom_to_idx: dict = dict()
 
-        eq_idx: int = 0
         for eq in all_exprs:
             terms = list(eq.args) if eq.is_Add else [eq]
             current_eq_coeffs: dict = dict()
             for term in terms:
-                current_eq_coeffs = self._get_monomial_weights(term, S_list, monom_to_idx, current_eq_coeffs)
+                current_eq_coeffs = self._get_monomial_weights(term, S_cols, monom_to_idx, current_eq_coeffs)
             Phi_data.append(current_eq_coeffs)
-            eq_idx += 1
 
-        if len(S_list) > 0:
-            S_raw: np.ndarray = np.vstack(S_list).T.astype(float)
-            S = sparse.csc_matrix(S_raw)
-            num_cols: int = S_raw.shape[1]
-            phi_rows: list = list()
+        n_vars = len(self.all_symbols)
+        n_monoms = len(S_cols)
+        n_eqs = len(all_exprs)
 
-            for eq_dict in Phi_data:
-                row: np.ndarray = np.zeros(num_cols)
+        if n_monoms > 0:
+            s_row, s_col, s_val = [], [], []
+            for col_idx, sparse_col in enumerate(S_cols):
+                for row_idx, val in sparse_col:
+                    s_row.append(row_idx)
+                    s_col.append(col_idx)
+                    s_val.append(val)
+
+            S = sparse.csc_matrix((s_val, (s_row, s_col)), shape=(n_vars, n_monoms))
+
+            p_row, p_col, p_val = [], [], []
+            for row_idx, eq_dict in enumerate(Phi_data):
                 for col_idx, val in eq_dict.items():
-                    row[col_idx] = val
-                phi_rows.append(row)
+                    p_row.append(row_idx)
+                    p_col.append(col_idx)
+                    p_val.append(val)
 
-            Phi = sparse.csr_matrix(np.vstack(phi_rows))
+            Phi = sparse.csr_matrix((p_val, (p_row, p_col)), shape=(n_eqs, n_monoms))
         else:
-            S = sparse.csc_matrix((len(self.all_symbols), 0))
-            Phi = sparse.csr_matrix((len(all_exprs), 0))
+            S = sparse.csc_matrix((n_vars, 0))
+            Phi = sparse.csr_matrix((n_eqs, 0))
 
         return S, Phi
 
-    def _get_monomial_weights(self, term: sp.Expr, S_list: list, monom_to_idx: dict, current_eq_coeffs: dict) -> dict:
+    def _get_monomial_weights(self, term: sp.Expr, S_cols: list, monom_to_idx: dict, current_eq_coeffs: dict) -> dict:
         """
-            Parses a symbolic term to extract its structural weights for the S matrix and
-            its scalar coefficient for the Phi matrix.
+        Parses a symbolic term to extract its structural weights for the S matrix and
+        its scalar coefficient for the Phi matrix.
 
-            Algorithmically, this function is the core algebraic reducer for the TenSyGrid engine.
-            It breaks down complex terms into standardized multilinear monomials. If it detects
-            higher-order degrees, inverses, or square roots, it dynamically generates and injects
-            auxiliary variables (`mulaux`, `invaux`, `sqrtaux`) to linearize the term's structure.
-            During this process, it updates the global symbol registry and recursively pads
-            existing structural arrays (`S_list`) on the fly to maintain matrix dimensionality.
+        Algorithmically, this function is the core algebraic reducer for the TenSyGrid engine.
+        It breaks down complex terms into standardized multilinear monomials. If it detects
+        higher-order degrees, inverses, or square roots, it dynamically generates and injects
+        auxiliary variables (`mulaux`, `invaux`, `sqrtaux`) to linearize the term's structure.
+        During this process, it updates the global symbol registry and recursively builds
+        sparse coordinate tuples to instantly accommodate growing matrix dimensions without dense padding.
 
-            :param term: The specific symbolic algebraic term to be evaluated.
-            :type term: sp.Expr
-            :param S_list: List of numerical arrays representing the structural footprint of known monomials.
-            :type S_list: list
-            :param monom_to_idx: Dictionary mapping unique monomial structures to their column index.
-            :type monom_to_idx: dict
-            :param current_eq_coeffs: Dictionary accumulating the coefficient values for the current equation.
-            :type current_eq_coeffs: dict
-            :return: The updated dictionary of coefficients mapping monomial indices to their values.
-            :rtype: dict
+        :param term: The specific symbolic algebraic term to be evaluated.
+        :type term: sp.Expr
+        :param S_cols: List of sparse tuples representing the structural footprint of known monomials.
+        :type S_cols: list
+        :param monom_to_idx: Dictionary mapping unique monomial structures to their column index.
+        :type monom_to_idx: dict
+        :param current_eq_coeffs: Dictionary accumulating the coefficient values for the current equation.
+        :type current_eq_coeffs: dict
+        :return: The updated dictionary of coefficients mapping monomial indices to their values.
+        :rtype: dict
         """
         coeff_sym, symbolic_part = term.as_coeff_mul()
         factors: tuple = sp.Mul.make_args(sp.Mul(*symbolic_part))
@@ -462,12 +469,12 @@ class PolynomialMatrixBuilder:
                 raise ValueError(f"Irreducible non-linear term detected: {term}")
 
             for sub_t in expanded_sub_terms:
-                current_eq_coeffs = self._get_monomial_weights(sub_t, S_list, monom_to_idx, current_eq_coeffs)
+                current_eq_coeffs = self._get_monomial_weights(sub_t, S_cols, monom_to_idx, current_eq_coeffs)
             return current_eq_coeffs
 
         else:
             global_phi: float = float(coeff_sym)
-            weights: list = [0.0] * len(self.all_symbols)
+            sparse_weights: dict = {}
 
             for f in factors:
                 f_vars_inner = list(f.free_symbols)
@@ -487,7 +494,7 @@ class PolynomialMatrixBuilder:
                             prefix: str = "mulaux" if is_positive else "invaux"
 
                             new_vars_names = [f"{s.name}_{prefix}{i_aux}" for i_aux in range(num_aux)]
-                            new_symbols_list, vars_added = [], False
+                            new_symbols_list = []
 
                             for v_name in new_vars_names:
                                 if v_name not in self.sym_to_idx:
@@ -495,27 +502,19 @@ class PolynomialMatrixBuilder:
                                     self.all_symbols.append(new_sym_obj)
                                     self.sym_to_idx[v_name] = len(self.all_symbols) - 1
                                     new_symbols_list.append(new_sym_obj)
-                                    vars_added = True
                                 else:
                                     new_symbols_list.append(self.all_symbols[self.sym_to_idx[v_name]])
-
-                            if vars_added:
-                                new_size = len(self.all_symbols)
-                                for i_p in range(len(S_list)):
-                                    padding = new_size - S_list[i_p].shape[0]
-                                    if padding > 0:
-                                        S_list[i_p] = np.concatenate([S_list[i_p], np.zeros(padding)])
 
                             multilinear_f = s
                             for sym_aux in new_symbols_list:
                                 multilinear_f = multilinear_f * sym_aux
 
                             new_term = (term / f) * multilinear_f
-                            return self._get_monomial_weights(new_term, S_list, monom_to_idx, current_eq_coeffs)
+                            return self._get_monomial_weights(new_term, S_cols, monom_to_idx, current_eq_coeffs)
 
                         elif is_sqrt and not is_protected:
                             new_vars_names_sqrt = [f"{s.name}_sqrtaux0", f"{s.name}_sqrtaux1"]
-                            new_symbols_list_sqrt, vars_added_sqrt = [], False
+                            new_symbols_list_sqrt = []
 
                             for v_name_sqrt in new_vars_names_sqrt:
                                 if v_name_sqrt not in self.sym_to_idx:
@@ -523,39 +522,31 @@ class PolynomialMatrixBuilder:
                                     self.all_symbols.append(new_sym_obj_sqrt)
                                     self.sym_to_idx[v_name_sqrt] = len(self.all_symbols) - 1
                                     new_symbols_list_sqrt.append(new_sym_obj_sqrt)
-                                    vars_added_sqrt = True
                                 else:
                                     new_symbols_list_sqrt.append(self.all_symbols[self.sym_to_idx[v_name_sqrt]])
 
-                            if vars_added_sqrt:
-                                new_size = len(self.all_symbols)
-                                for i_p in range(len(S_list)):
-                                    padding = new_size - S_list[i_p].shape[0]
-                                    if padding > 0:
-                                        S_list[i_p] = np.concatenate([S_list[i_p], np.zeros(padding)])
-
                             multilinear_f_sqrt = new_symbols_list_sqrt[0]
                             new_term_sqrt = (term / f) * multilinear_f_sqrt
-                            return self._get_monomial_weights(new_term_sqrt, S_list, monom_to_idx, current_eq_coeffs)
+                            return self._get_monomial_weights(new_term_sqrt, S_cols, monom_to_idx, current_eq_coeffs)
 
                         b_val = float(b_val_sym)
                         a_val = float(f.subs(s, 0))
                         scale = abs(a_val) + abs(b_val)
                         if scale == 0.0: scale = 1.0
 
-                        weights[idx_val] = b_val / scale
+                        sparse_weights[idx_val] = b_val / scale
                         global_phi *= scale
 
                 elif len(f_vars_inner) == 0:
                     global_phi *= float(f)
 
-            monom_tuple = tuple(weights)
+            monom_tuple = tuple(sorted(sparse_weights.items()))
             existing_idx = monom_to_idx.get(monom_tuple, None)
 
             if existing_idx is None:
-                final_idx = len(S_list)
+                final_idx = len(S_cols)
                 monom_to_idx[monom_tuple] = final_idx
-                S_list.append(np.array(monom_tuple))
+                S_cols.append(monom_tuple)
             else:
                 final_idx = existing_idx
 
@@ -564,18 +555,18 @@ class PolynomialMatrixBuilder:
 
     def _apply_automatic_trig_lifting(self) -> None:
         """
-            Applies automatic trigonometric lifting to eliminate transcendental functions
-            by replacing them with polynomial proxy variables.
+        Applies automatic trigonometric lifting to eliminate transcendental functions
+        by replacing them with polynomial proxy variables.
 
-            Algorithmically, this step converts transcendental non-linearities into a purely
-            polynomial Differential Algebraic Equation (DAE) system. It searches for sine and
-            cosine operations, replaces them with auxiliary state variables (e.g., `x_sin_arg`),
-            and automatically appends their analytical time-derivative constraints to the system
-            equations. This is strictly required to ensure all terms can be subsequently parsed
-            into standard multilinear monomial matrices.
+        Algorithmically, this step converts transcendental non-linearities into a purely
+        polynomial Differential Algebraic Equation (DAE) system. It searches for sine and
+        cosine operations, replaces them with auxiliary state variables (e.g., `x_sin_arg`),
+        and automatically appends their analytical time-derivative constraints to the system
+        equations. This is strictly required to ensure all terms can be subsequently parsed
+        into standard multilinear monomial matrices.
 
-            :return: Modifies the internal `eqs` and `all_symbols` lists in place.
-            :rtype: None
+        :return: Modifies the internal `eqs` and `all_symbols` lists in place.
+        :rtype: None
         """
         new_eqs, subs_dict, processed_args = [], {}, set()
 
@@ -613,20 +604,20 @@ class PolynomialMatrixBuilder:
 
     def _generate_lifting_equations(self, problem) -> None:
         """
-            Generates and appends exact algebraic constraint equations for auxiliary variables
-            introduced during the structural reduction phase.
+        Generates and appends exact algebraic constraint equations for auxiliary variables
+        introduced during the structural reduction phase.
 
-            Algorithmically, prior steps inject proxy variables (`_mulaux`, `_invaux`, `_sqrtaux`)
-            to convert non-linearities (such as inverses and square roots) into purely multilinear terms.
-            To ensure the resulting Differential Algebraic Equation (DAE) system remains mathematically
-            closed and well-posed, this function automatically formulates their structural polynomial
-            definitions (e.g., enforcing `base * invaux - 1 = 0` or `base - sqrtaux**2 = 0`) and
-            appends them to the global system equations.
+        Algorithmically, prior steps inject proxy variables (`_mulaux`, `_invaux`, `_sqrtaux`)
+        to convert non-linearities (such as inverses and square roots) into purely multilinear terms.
+        To ensure the resulting Differential Algebraic Equation (DAE) system remains mathematically
+        closed and well-posed, this function automatically formulates their structural polynomial
+        definitions (e.g., enforcing `base * invaux - 1 = 0` or `base - sqrtaux**2 = 0`) and
+        appends them to the global system equations.
 
-            :param problem: The overarching problem instance, used to filter out predefined variable parameters.
-            :type problem: Any
-            :return: Modifies the internal `eqs` list in place with the new algebraic constraints.
-            :rtype: None
+        :param problem: The overarching problem instance, used to filter out predefined variable parameters.
+        :type problem: Any
+        :return: Modifies the internal `eqs` list in place with the new algebraic constraints.
+        :rtype: None
         """
         new_constraints = []
         for sym in self.all_symbols:
@@ -654,17 +645,17 @@ class PolynomialMatrixBuilder:
 
     def _flatten_nonlinear_arguments(self) -> None:
         """
-            Flattens complex expressions inside non-integer powers by introducing proxy state variables.
+        Flattens complex expressions inside non-integer powers by introducing proxy state variables.
 
-            Algorithmically, downstream structural parsers require the bases of fractional powers
-            (e.g., square roots) to be single state variables rather than composite polynomials.
-            This function scans all equations and inequalities for non-integer exponents applied
-            to complex expressions. It replaces the complex base with an auxiliary variable (`argaux`)
-            and automatically appends its explicit structural definition (`argaux - base_expr = 0`)
-            to the global system constraints.
+        Algorithmically, downstream structural parsers require the bases of fractional powers
+        (e.g., square roots) to be single state variables rather than composite polynomials.
+        This function scans all equations and inequalities for non-integer exponents applied
+        to complex expressions. It replaces the complex base with an auxiliary variable (`argaux`)
+        and automatically appends its explicit structural definition (`argaux - base_expr = 0`)
+        to the global system constraints.
 
-            :return: Modifies the internal `eqs`, `ineqs`, and `all_symbols` lists in place.
-            :rtype: None
+        :return: Modifies the internal `eqs`, `ineqs`, and `all_symbols` lists in place.
+        :rtype: None
         """
         new_constraints, arg_counter = [], 0
         for eq_list in [self.eqs, self.ineqs]:
@@ -687,26 +678,25 @@ class PolynomialMatrixBuilder:
     # ------------------------------------------------------------------
     # Linearization – public entry point
     # ------------------------------------------------------------------
-    def linearize(self, v_dict: dict, c_type: ConstraintType = ConstraintType.EQUALITY) -> np.ndarray:
+    def linearize(self, v_dict: dict, c_type: ConstraintType = ConstraintType.EQUALITY) -> sparse.csr_matrix:
         """
-            Evaluates the numerical linearization of the system around a specified operating point
-            to extract the linear state-space matrices (E, A, B).
+        Evaluates the numerical linearization of the system around a specified operating point
+        to extract the linear state-space matrices (E, A, B).
 
-            Algorithmically, this function dynamically injects the exact numerical values for
-            trigonometric proxy states to guarantee consistency at the operating point. It then
-            computes the analytical Jacobian (F) of the target structural matrix (S) evaluated
-            at the state vector. By projecting this Jacobian through the coefficient matrix (Phi),
-            it algebraically computes the global linear state-space block `EABC` (Phi @ F^T),
-            which dictates the local dynamic behavior of the system.
+        Algorithmically, this function dynamically injects the exact numerical values for
+        trigonometric proxy states to guarantee consistency at the operating point. It then
+        computes the analytical Jacobian (F) of the target structural matrix (S) evaluated
+        at the state vector. By projecting this Jacobian through the coefficient matrix (Phi),
+        it algebraically computes the global linear state-space block `EABC` (Phi @ F^T),
+        which dictates the local dynamic behavior of the system.
 
-            :param v_dict: Dictionary containing the numerical values defining the operating point.
-            :type v_dict: dict
-            :param c_type: Specifies whether to linearize equality or inequality constraints.
-            :type c_type: ConstraintType
-            :return: The combined, linearized state-space matrix block EABC.
-            :rtype: np.ndarray
+        :param v_dict: Dictionary containing the numerical values defining the operating point.
+        :type v_dict: dict
+        :param c_type: Specifies whether to linearize equality or inequality constraints.
+        :type c_type: ConstraintType
+        :return: The combined, linearized state-space matrix block EABC.
+        :rtype: np.ndarray
         """
-        import math
         for key in list(v_dict.keys()):
             if key.startswith('x') and 'p' not in key:
                 val = float(v_dict[key])
@@ -717,7 +707,7 @@ class PolynomialMatrixBuilder:
 
         S, Phi = (self.S_W, self.Phi_W) if c_type == ConstraintType.INEQUALITY else (self.S_H, self.Phi_H)
         v = self._build_v_vector(v_dict)
-        F = self._compute_jacobian(S, v)
+        F = self._compute_jacobian_sparse(S, v)
 
         self.EABC = Phi @ F.T
         self.E, self.A, self.B = self._split_EABC(self.EABC)
@@ -726,20 +716,20 @@ class PolynomialMatrixBuilder:
 
     def _build_v_vector(self, v_dict_local: dict) -> np.ndarray:
         """
-            Constructs the complete dense numerical state vector from a dictionary of operating point values.
+        Constructs the complete dense numerical state vector from a dictionary of operating point values.
 
-            Algorithmically, this function maps user-defined inputs to the strict internal array layout
-            required for Jacobian evaluation. It executes three critical completion passes: First, it applies
-            a robust bridging logic to mirror derivative values across different canonical prefixes
-            ('xp', 'dx', 'dt_', 'd_'). Second, it numerically evaluates complex base expressions to populate
-            'argaux' proxy variables. Finally, it calculates the exact states of structural auxiliary variables
-            ('mulaux', 'invaux', 'sqrtaux') directly from their parent values, ensuring the final vector
-            is mathematically closed and fully consistent for matrix operations.
+        Algorithmically, this function maps user-defined inputs to the strict internal array layout
+        required for Jacobian evaluation. It executes three critical completion passes: First, it applies
+        a robust bridging logic to mirror derivative values across different canonical prefixes
+        ('xp', 'dx', 'dt_', 'd_'). Second, it numerically evaluates complex base expressions to populate
+        'argaux' proxy variables. Finally, it calculates the exact states of structural auxiliary variables
+        ('mulaux', 'invaux', 'sqrtaux') directly from their parent values, ensuring the final vector
+        is mathematically closed and fully consistent for matrix operations.
 
-            :param v_dict_local: Dictionary mapping symbolic variable names to their scalar numerical values.
-            :type v_dict_local: dict
-            :return: A 1D NumPy array representing the fully populated state vector.
-            :rtype: np.ndarray
+        :param v_dict_local: Dictionary mapping symbolic variable names to their scalar numerical values.
+        :type v_dict_local: dict
+        :return: A 1D NumPy array representing the fully populated state vector.
+        :rtype: np.ndarray
         """
         v = np.zeros(len(self.all_symbols), dtype=float)
         for k, val in v_dict_local.items():
@@ -793,22 +783,22 @@ class PolynomialMatrixBuilder:
 
     def _compute_jacobian(self, S: np.ndarray, v: np.ndarray) -> np.ndarray:
         """
-            Computes the analytical Jacobian matrix of the system's structural monomials evaluated
-            at a specific state vector.
+        Computes the analytical Jacobian matrix of the system's structural monomials evaluated
+        at a specific state vector.
 
-            Algorithmically, this function exploits the purely multilinear nature of the TenSyGrid
-            formulation. It calculates all partial derivatives simultaneously using a highly optimized,
-            vectorized inverse-product rule (where the derivative of a product is the product divided
-            by the target variable). Crucially, it implements an algebraic safeguard for zero-crossings:
-            if exactly one variable in a monomial evaluates to zero, it bypasses the resulting 0/0
-            singularity by directly computing the product of the remaining non-zero factors.
+        Algorithmically, this function exploits the purely multilinear nature of the TenSyGrid
+        formulation. It calculates all partial derivatives simultaneously using a highly optimized,
+        vectorized inverse-product rule (where the derivative of a product is the product divided
+        by the target variable). Crucially, it implements an algebraic safeguard for zero-crossings:
+        if exactly one variable in a monomial evaluates to zero, it bypasses the resulting 0/0
+        singularity by directly computing the product of the remaining non-zero factors.
 
-            :param S: The structural matrix defining the variable compositions of each monomial.
-            :type S: np.ndarray
-            :param v: The 1D numerical array representing the populated state vector.
-            :type v: np.ndarray
-            :return: The numerically evaluated dense Jacobian matrix F.
-            :rtype: np.ndarray
+        :param S: The structural matrix defining the variable compositions of each monomial.
+        :type S: np.ndarray
+        :param v: The 1D numerical array representing the populated state vector.
+        :type v: np.ndarray
+        :return: The numerically evaluated dense Jacobian matrix F.
+        :rtype: np.ndarray
         """
         X = (S.T * v) + (1.0 - np.abs(S.T))
         Y = np.prod(X, axis=1)
@@ -829,23 +819,111 @@ class PolynomialMatrixBuilder:
 
         return F
 
-    def _split_EABC(self, EABC: np.ndarray) -> tuple:
+    def _compute_jacobian_sparse(self, S: sparse.csc_matrix, v: np.ndarray) -> sparse.csc_matrix:
         """
-            Partitions the combined linearized Jacobian block matrix into the canonical
-            descriptor state-space matrices E, A, and B.
+        Computes the analytical Jacobian matrix of the system's structural monomials evaluated
+        at a specific state vector.
 
-            Algorithmically, this function maps the global Jacobian back to the standard
-            differential algebraic form (E*dx/dt = A*x + B*u). It scans all system symbols
-            to classify the columns into states, time-derivatives, and control inputs. State
-            columns directly populate the A matrix, while input columns form the B matrix.
-            Crucially, it executes a rigorous heuristic and mapped search to pair each state
-            variable with its exact explicit derivative; the negated columns of these derivatives
-            are then assigned to the E (mass) matrix.
+        Algorithmically, this function exploits the purely multilinear nature of the TenSyGrid
+        formulation using a highly efficient Sparse Compressed Column (CSC) traversal.
+        It accurately evaluates the iMTI / CPN structured contracted product exclusively on the
+        non-zero structural elements. Crucially, it implements an algebraic safeguard for
+        zero-crossings: if exactly one variable in a monomial evaluates to zero, it bypasses
+        the resulting 0/0 singularity by directly computing the product of the remaining
+        non-zero factors.
 
-            :param EABC: The combined structural matrix representing the full system Jacobian.
-            :type EABC: np.ndarray
-            :return: A tuple containing the (E, A, B) numerical state-space matrices.
-            :rtype: tuple
+        :param S: The structural matrix defining the variable compositions of each monomial.
+        :type S: sparse.csc_matrix
+        :param v: The 1D numerical array representing the populated state vector.
+        :type v: np.ndarray
+        :return: The numerically evaluated sparse Jacobian matrix F.
+        :rtype: sparse.csc_matrix
+        """
+        n_vars, n_monom = S.shape
+
+        # Pre-allocate sparse matrix arrays
+        F_data = []
+        F_indices = []
+        F_indptr = [0]
+
+        # Iterate over monomials (columns r)
+        for r in range(n_monom):
+            col_start = S.indptr[r]
+            col_end = S.indptr[r + 1]
+
+            row_indices = S.indices[col_start:col_end]
+            S_values = S.data[col_start:col_end]
+
+            prod_val = 1.0
+            zero_count = 0
+            zero_idx = -1
+
+            # ---------------------------------------------------------
+            # 1. Evaluate the structured contracted product s_r(v)
+            # ---------------------------------------------------------
+            X_vals = []
+            for idx, i in enumerate(row_indices):
+                S_ir = S_values[idx]
+
+                # Exactly matches: (1 - |S_ir| + S_ir * v_i)
+                X_i = (1.0 - abs(S_ir)) + (S_ir * v[i])
+                X_vals.append(X_i)
+
+                # Check for zero-crossings
+                if abs(X_i) < 1e-12:
+                    zero_count += 1
+                    zero_idx = i
+                else:
+                    prod_val *= X_i
+
+            # ---------------------------------------------------------
+            # 2. Compute the D_ir elements and build the Jacobian
+            # ---------------------------------------------------------
+            for idx, i in enumerate(row_indices):
+                S_ir = S_values[idx]
+
+                if zero_count > 1:
+                    # D_ir = 0 (More than one zero term kills the derivative)
+                    d_val = 0.0
+
+                elif zero_count == 1:
+                    # D_ir = S_ir iff (1 - |S_ir| + S_ir*v_i) = 0
+                    if i == zero_idx:
+                        d_val = S_ir * prod_val
+                    else:
+                        d_val = 0.0
+
+                else:
+                    # D_ir = S_ir / (1 - |S_ir| + S_ir*v_i)
+                    # Multiplied by full product (inverse product rule)
+                    d_val = S_ir * (prod_val / X_vals[idx])
+
+                F_indices.append(i)
+                F_data.append(d_val)
+
+            F_indptr.append(len(F_data))
+
+        # Construct and return sparse matrix F
+        return sparse.csc_matrix((F_data, F_indices, F_indptr), shape=(n_vars, n_monom))
+
+    def _split_EABC(self, EABC: sparse.csr_matrix) -> tuple:
+        """
+        Partitions the combined linearized Jacobian block matrix into the canonical
+        descriptor state-space matrices E, A, and B.
+
+        Algorithmically, this function maps the global Jacobian back to the standard
+        differential algebraic form (E*dx/dt = A*x + B*u). It scans all system symbols
+        to classify the columns into states, time-derivatives, and control inputs. State
+        columns directly populate the A matrix, while input columns form the B matrix.
+        Crucially, it executes a rigorous heuristic and mapped search to pair each state
+        variable with its exact explicit derivative; the negated columns of these derivatives
+        are then assigned to the E (mass) matrix. The entire operation leverages fast
+        mutations using SciPy LIL format before finalizing into strict CSR matrices.
+
+        :param EABC: The combined structural matrix representing the full system Jacobian.
+        :type EABC: sps.csr_matrix
+        :return: A tuple containing the (E, A, B) numerical sparse state-space matrices.
+        :rtype: tuple
         """
         idx_dx, idx_vars, idx_u = [], [], []
 
@@ -863,16 +941,17 @@ class PolynomialMatrixBuilder:
         cols_to_take = len(idx_vars)
         dim = max(n_eqs, cols_to_take)
 
-        E = np.zeros((dim, dim))
-        A = np.zeros((dim, dim))
+        # Initialize as LIL sparse matrices (allows fast assignment and slicing)
+        E = sparse.lil_matrix((dim, dim))
+        A = sparse.lil_matrix((dim, dim))
 
+        # Safely assign the CSR slice into the LIL sparse matrix
         A[:n_eqs, :cols_to_take] = EABC[:, idx_vars[:cols_to_take]]
 
         for i in range(cols_to_take):
             state_sym = self.all_symbols[idx_vars[i]]
             state_name = state_sym.name
 
-            # Critical FIX: Strictly isolate xp and dx to only apply to "x" state arrays
             deriv_names = []
             if state_name.startswith('x'):
                 deriv_names.extend([f"xp{state_name[1:]}", f"dx{state_name[1:]}"])
@@ -899,63 +978,85 @@ class PolynomialMatrixBuilder:
                         break
 
             if deriv_idx != -1 and deriv_idx in idx_dx:
+                # Assign the negated derivative column
                 E[:n_eqs, i] = -EABC[:, deriv_idx]
 
-        B = EABC[:, idx_u] if len(idx_u) > 0 else np.zeros((dim, 0))
-        return E, A, B
+        # Handle B matrix sparsely
+        if len(idx_u) > 0:
+            B = sparse.lil_matrix((dim, len(idx_u)))
+            B[:n_eqs, :] = EABC[:, idx_u]
+            B = B.tocsr()
+        else:
+            B = sparse.csr_matrix((dim, 0))
+
+        # Convert E and A to CSR format for fast eigenvalue computation later
+        return E.tocsr(), A.tocsr(), B
 
     def compute_stability(self) -> Tuple[
         Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], bool, Optional[float]]:
         """
-            Computes the generalized eigenvalues, eigenvectors, and participation factors
-            to evaluate the small-signal stability of the linearized system.
+        Computes the generalized eigenvalues, eigenvectors, and participation factors
+        to evaluate the small-signal stability of the linearized system.
 
-            Algorithmically, this function evaluates the generalized eigenvalue problem (A*v = lambda*E*v).
-            Before calling the QZ algorithm, it performs 'Singular Pencil Patching' by scanning for completely
-            empty rows and columns in both the E and A matrices, placing a -1.0 on the A diagonal for those
-            indices. This critical regularization step neutralizes structural null-spaces, preventing numerical
-            divergence during the decomposition. After extracting the finite physical modes, it computes the
-            participation matrix (using the normalized Hadamard product of the left and right eigenvectors'
-            magnitudes) to map the interaction between physical states and dynamic modes. Finally, it determines
-            absolute stability by checking if the right-most eigenvalue resides in the left-half complex plane.
-
-            :return: A tuple containing:
-                     - evals (np.ndarray): The finite complex eigenvalues.
-                     - evecs_left (np.ndarray): The left eigenvectors.
-                     - evecs_right (np.ndarray): The right eigenvectors.
-                     - participation_matrix (np.ndarray): State-to-mode participation factors.
-                     - is_stable (bool): True if the maximum real part of the eigenvalues is strictly < 1e-6.
-                     - max_real (float): The value of the maximum real part of the eigenvalues.
-                     Returns (None, None, None, None, False, None) if computation fails or matrices are missing.
-            :rtype: Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], bool, Optional[float]]
+        Algorithmically, this function evaluates the generalized eigenvalue problem (A*v = lambda*E*v).
+        Before calling the QZ algorithm, it performs 'Singular Pencil Patching' strictly using
+        sparse Coordinate data to neutralize structural null-spaces. Empty rows and columns
+        are patched with a -1.0 on the A diagonal to prevent numerical divergence.
+        After extracting the finite physical modes, it computes the participation matrix.
         """
         current_a, current_e = self.A, self.E
         if current_a is None or current_e is None: return None, None, None, None, False, None
 
         try:
-            A_dense = current_a.toarray() if hasattr(current_a, 'toarray') else np.array(current_a)
-            E_dense = current_e.toarray() if hasattr(current_e, 'toarray') else np.array(current_e)
-
-            n_dims = A_dense.shape[0]
+            n_dims = current_a.shape[0]
             patched_rows, patched_cols = 0, 0
 
-            # --- SINGULAR PENCIL PATCHING (NULL SPACE ELIMINATION) ---
-            # 1. Patch empty rows
+            # --- SPARSE SINGULAR PENCIL PATCHING ---
+            # Use LIL format for fast diagonal mutation
+            A_patched = current_a.tolil()
+
+            # 1. Fast Sparse Row Check (using CSR format)
+            A_csr = current_a.tocsr()
+            E_csr = current_e.tocsr()
+
             for i in range(n_dims):
-                if np.max(np.abs(A_dense[i, :])) < 1e-10 and np.max(np.abs(E_dense[i, :])) < 1e-10:
-                    A_dense[i, i] = -1.0
+                # Extract non-zero data for row i
+                a_data = A_csr.data[A_csr.indptr[i]:A_csr.indptr[i + 1]]
+                e_data = E_csr.data[E_csr.indptr[i]:E_csr.indptr[i + 1]]
+
+                a_max = np.max(np.abs(a_data)) if len(a_data) > 0 else 0.0
+                e_max = np.max(np.abs(e_data)) if len(e_data) > 0 else 0.0
+
+                if a_max < 1e-10 and e_max < 1e-10:
+                    A_patched[i, i] = -1.0
                     patched_rows += 1
 
-            # 2. Patch empty columns
+            # 2. Fast Sparse Column Check (using CSC format)
+            A_csc = current_a.tocsc()
+            E_csc = current_e.tocsc()
+
             for j in range(n_dims):
-                if np.max(np.abs(A_dense[:, j])) < 1e-10 and np.max(np.abs(E_dense[:, j])) < 1e-10:
-                    A_dense[j, j] = -1.0
+                # Extract non-zero data for column j
+                a_data = A_csc.data[A_csc.indptr[j]:A_csc.indptr[j + 1]]
+                e_data = E_csc.data[E_csc.indptr[j]:E_csc.indptr[j + 1]]
+
+                a_max = np.max(np.abs(a_data)) if len(a_data) > 0 else 0.0
+                e_max = np.max(np.abs(e_data)) if len(e_data) > 0 else 0.0
+
+                if a_max < 1e-10 and e_max < 1e-10:
+                    A_patched[j, j] = -1.0
                     patched_cols += 1
 
             if self.verbose and (patched_rows > 0 or patched_cols > 0):
                 print(
-                    f"\n[+] QZ Matrix Pre-conditioning: Neutralized {patched_rows} empty rows and {patched_cols} empty columns.")
+                    f"\n[+] Sparse QZ Pre-conditioning: Neutralized {patched_rows} empty rows and {patched_cols} empty columns.")
 
+            # Convert to dense ONLY for the final QZ eigenvalue decomposition
+            # (scipy.linalg.eig is required to get ALL modes and left eigenvectors simultaneously)
+            A_dense = A_patched.toarray()
+            E_dense = current_e.toarray()
+
+            # Note: Must be linalg.eig (dense SciPy), NOT sparse.eig
             evals, evecs_left_raw, evecs_right_raw = linalg.eig(A_dense, b=E_dense, left=True, right=True)
 
             valid_idx = np.isfinite(evals)
@@ -1030,28 +1131,28 @@ class PolynomialMatrixBuilder:
 
     def report(self, eigenvalues=None, is_stable=False, max_real=None, print_matrices=True, save_path=None):
         """
-            Outputs or exports the internal structural matrices and eigenvalue results
-            for diagnostic inspection and external validation.
+        Outputs or exports the internal structural matrices and eigenvalue results
+        for diagnostic inspection and external validation.
 
-            Algorithmically, this function provides observability into the compiled Differential
-            Algebraic Equation (DAE) system. It sequentially extracts and formats the sparse
-            matrices (S, Phi, E, A, B). If eigenvalues are provided, it actively filters for
-            finite values and sorts them by their real parts in descending order, immediately
-            highlighting the most dynamically critical (or unstable) modes. It optionally serializes
-            this system state to a specified file path for persistent logging.
+        Algorithmically, this function provides observability into the compiled Differential
+        Algebraic Equation (DAE) system. It sequentially extracts and formats the sparse
+        matrices (S, Phi, E, A, B). If eigenvalues are provided, it actively filters for
+        finite values and sorts them by their real parts in descending order, immediately
+        highlighting the most dynamically critical (or unstable) modes. It optionally serializes
+        this system state to a specified file path for persistent logging.
 
-            :param eigenvalues: Array of computed system eigenvalues.
-            :type eigenvalues: np.ndarray | None
-            :param is_stable: Boolean flag indicating if the system is stable.
-            :type is_stable: bool
-            :param max_real: The maximum real part found among the eigenvalues.
-            :type max_real: float | None
-            :param print_matrices: Flag to enable console printing of the matrices.
-            :type print_matrices: bool
-            :param save_path: Absolute or relative file path to save the exported text report.
-            :type save_path: str | None
-            :return: Modifies no state; performs I/O operations.
-            :rtype: None
+        :param eigenvalues: Array of computed system eigenvalues.
+        :type eigenvalues: np.ndarray | None
+        :param is_stable: Boolean flag indicating if the system is stable.
+        :type is_stable: bool
+        :param max_real: The maximum real part found among the eigenvalues.
+        :type max_real: float | None
+        :param print_matrices: Flag to enable console printing of the matrices.
+        :type print_matrices: bool
+        :param save_path: Absolute or relative file path to save the exported text report.
+        :type save_path: str | None
+        :return: Modifies no state; performs I/O operations.
+        :rtype: None
         """
         if print_matrices:
             for label, mat in [("S", self.S_H), ("Phi", self.Phi_H), ("E", self.E), ("A", self.A), ("B", self.B)]:

@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
 from pathlib import Path
@@ -7,7 +11,6 @@ import sys
 import types
 import uuid
 
-import VeraGridEngine
 import numpy as np
 
 
@@ -86,27 +89,21 @@ def _ensure_package(name: str, path: Path) -> None:
         pass
 
 
-_ensure_package("VeraGridEngine.Simulations", engine_root / "Simulations")
-_ensure_package("VeraGridEngine.Simulations.Rms", engine_root / "Simulations" / "Rms")
-_ensure_package("VeraGridEngine.Simulations.Rms.numerical", engine_root / "Simulations" / "Rms" / "numerical")
-_ensure_package("VeraGridEngine.Simulations.Rms.problems", engine_root / "Simulations" / "Rms" / "problems")
-_ensure_package("VeraGridEngine.Simulations.PowerFlow", engine_root / "Simulations" / "PowerFlow")
-_ensure_package("VeraGridEngine.Simulations.PowerFlow.NumericalMethods", engine_root / "Simulations" / "PowerFlow" / "NumericalMethods")
-_ensure_package("VeraGridEngine.Simulations.EMT", engine_root / "Simulations" / "EMT")
-_ensure_package("VeraGridEngine.Simulations.EMT.problems", engine_root / "Simulations" / "EMT" / "problems")
-_ensure_package("VeraGridEngine.Simulations.EMT.solvers", engine_root / "Simulations" / "EMT" / "solvers")
-_ensure_package("VeraGridEngine.Simulations.Clustering", engine_root / "Simulations" / "Clustering")
-_ensure_package("VeraGridEngine.Simulations.Stochastic", engine_root / "Simulations" / "Stochastic")
-_ensure_package("VeraGridEngine.IO", engine_root / "IO")
-_ensure_package("VeraGridEngine.IO.others", engine_root / "IO" / "others")
+# _ensure_package("VeraGridEngine.Simulations", engine_root / "Simulations")
+# _ensure_package("VeraGridEngine.Simulations.Rms", engine_root / "Simulations" / "Rms")
+# _ensure_package("VeraGridEngine.Simulations.Rms.numerical", engine_root / "Simulations" / "Rms" / "numerical")
+# _ensure_package("VeraGridEngine.Simulations.Rms.problems", engine_root / "Simulations" / "Rms" / "problems")
+# _ensure_package("VeraGridEngine.Simulations.PowerFlow", engine_root / "Simulations" / "PowerFlow")
+# _ensure_package("VeraGridEngine.Simulations.PowerFlow.NumericalMethods", engine_root / "Simulations" / "PowerFlow" / "NumericalMethods")
+# _ensure_package("VeraGridEngine.Simulations.EMT", engine_root / "Simulations" / "EMT")
+# _ensure_package("VeraGridEngine.Simulations.EMT.problems", engine_root / "Simulations" / "EMT" / "problems")
+# _ensure_package("VeraGridEngine.Simulations.EMT.solvers", engine_root / "Simulations" / "EMT" / "solvers")
+# _ensure_package("VeraGridEngine.Simulations.Clustering", engine_root / "Simulations" / "Clustering")
+# _ensure_package("VeraGridEngine.Simulations.Stochastic", engine_root / "Simulations" / "Stochastic")
+# _ensure_package("VeraGridEngine.IO", engine_root / "IO")
+# _ensure_package("VeraGridEngine.IO.others", engine_root / "IO" / "others")
 
-if hasattr(VeraGridEngine, "MultiCircuit"):
-    pass
-else:
-    from VeraGridEngine.Devices.multi_circuit import MultiCircuit as VeraGridMultiCircuit
-
-    setattr(VeraGridEngine, "MultiCircuit", VeraGridMultiCircuit)
-
+from VeraGridEngine.Devices.multi_circuit import MultiCircuit as VeraGridMultiCircuit
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Injections.generator import Generator
@@ -429,7 +426,7 @@ def _build_rms_demo_grid() -> tuple[MultiCircuit, Load]:
     initialize_bus_rms(bus_load, vf=grid.var_factory)
 
     line: Line = Line(name="line_0_1", bus_from=bus_slack, bus_to=bus_load, r=0.03, x=0.07, b=0.03, rate=900.0)
-    generator: Generator = Generator(name="Gen0", P=10.0, vset=1.0, Snom=900.0, x1=0.86138701, r1=0.3, freq=50.0, M=10.0, D=1.0, omega_ref=1.0, Kp=1.0, Ki=10.0)
+    generator: Generator = Generator(name="Gen0", P=10.0, vset=1.0, Snom=900.0, x1=0.86138701, r1=0.3, freq=50.0)
     load: Load = Load(name="ImportedLoad", P=10.0, Q=1.0)
 
     line.rms_model = get_line_rms_template(grid.var_factory).block

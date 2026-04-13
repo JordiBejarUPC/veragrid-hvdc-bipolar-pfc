@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 1
 - Top-level function count: 2
-- Representative imports: pandas, numpy, typing, matplotlib, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.branch_parent, VeraGridEngine.enumerations, VeraGridEngine.Devices.profile, VeraGridEngine.Devices.Parents.editable_device, VeraGridEngine.Devices.Branches.line_locations
+- Representative imports: pandas, numpy, typing, matplotlib, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.branch_parent, VeraGridEngine.enumerations,  VeraGridEngine.Devices.Parents.editable_device, VeraGridEngine.Devices.Branches.line_locations
 
 ## Function: firing_angles_to_reactive_limits(P, alphamin, alphamax)
 

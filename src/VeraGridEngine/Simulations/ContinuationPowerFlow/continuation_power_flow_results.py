@@ -14,6 +14,20 @@ class ContinuationPowerFlowResults(ResultsTemplate):
     """
     ContinuationPowerFlowResults
     """
+    __slots__ = (
+        "bus_names",
+        "branch_names",
+        "bus_types",
+        "voltages",
+        "lambdas",
+        "error",
+        "converged",
+        "Sf",
+        "St",
+        "loading",
+        "losses",
+        "Sbus",
+    )
 
     def __init__(self, nval, nbus, nbr, bus_names, branch_names, bus_types, area_names: StrVec = None):
         """

@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,6 +19,12 @@ from .xml_writer import write_model_description
 
 
 def export_fmu(model: object, cfg: ExportConfig) -> Path:
+    """
+
+    :param model:
+    :param cfg:
+    :return:
+    """
     if not cfg.compile_binary:
         raise ValueError("Source-only FMU packaging is not implemented yet; compile_binary must be True for a standards-compliant FMU")
 

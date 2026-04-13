@@ -17,6 +17,16 @@ class NodeGroupsDriver(DriverTemplate):
     """
     NodeGroupsDriver
     """
+    __slots__ = (
+        "sigmas",
+        "min_group_size",
+        "use_ptdf",
+        "ptdf_results",
+        "X_train",
+        "sigma",
+        "groups_by_name",
+        "groups_by_index",
+    )
 
     name = 'Node groups'
     tpe = SimulationTypes.NodeGrouping_run

@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 1
 - Top-level function count: 0
-- Representative imports: __future__, typing, numpy, VeraGridEngine.Devices.Parents.dynamic_parent, VeraGridEngine.Devices.Associations.association, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.enumerations, VeraGridEngine.basic_structures, VeraGridEngine.Devices.profile, VeraGridEngine.Devices.Aggregation.facility, VeraGridEngine.Devices.Parents.editable_device
+- Representative imports: __future__, typing, numpy, VeraGridEngine.Devices.Parents.dynamic_parent, VeraGridEngine.Devices.Associations.association, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.enumerations, VeraGridEngine.basic_structures, VeraGridEngine.Devices.Aggregation.facility, VeraGridEngine.Devices.Parents.editable_device
 
 ## Class: InjectionParent
 

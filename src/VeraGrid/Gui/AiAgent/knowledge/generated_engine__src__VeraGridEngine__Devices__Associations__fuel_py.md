@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 1
 - Top-level function count: 0
-- Representative imports: typing, numpy, VeraGridEngine.Devices.profile, VeraGridEngine.Devices.Parents.editable_device
+- Representative imports: typing, numpy, VeraGridEngine.Devices.Parents.editable_device
 
 ## Class: Fuel
 

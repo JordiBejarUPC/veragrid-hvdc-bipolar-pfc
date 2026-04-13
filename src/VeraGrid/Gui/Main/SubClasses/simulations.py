@@ -3470,14 +3470,14 @@ class SimulationsMain(TimeEventsMain):
 
     def run_emt(self):
         """
-        Run rms simulation
+        Run emt simulation
         :return:
         """
         if self.circuit.valid_for_simulation():
 
             if not self.session.is_this_running(SimulationTypes.EmtDynamic_run):
 
-                logger = self.circuit.check_rms_models()
+                logger = self.circuit.check_emt_models()
                 if logger.has_errors():
                     # Show dialogue
                     dlg = LogsDialogue(name="EMT pre simulation check",
@@ -3489,12 +3489,30 @@ class SimulationsMain(TimeEventsMain):
 
                     self.remove_simulation(SimulationTypes.EmtDynamic_run)
 
-                    _, pf_results = self.session.power_flow_3ph
+                    _, pf_results_3ph = self.session.power_flow_3ph
 
-                    if pf_results is not None:
+                    _, pf_results = self.session.power_flow
+
+                    if pf_results_3ph is not None:
 
                         # self.add_simulation(SimulationTypes.RmsDynamic_run)
-                        self.ui.progress_label.setText('Running rms simulation...')
+                        self.ui.progress_label.setText('Running emt simulation...')
+                        QtGui.QGuiApplication.processEvents()
+                        self.LOCK()
+
+                        drv = sim.EmtSimulationDriver(grid=self.circuit,
+                                                      options=self.get_selected_emt_simulation_options(),
+                                                      pf_results_3ph=pf_results_3ph)
+
+                        self.session.run(drv,
+                                         post_func=self.post_rms,
+                                         prog_func=self.ui.progressBar.setValue,
+                                         text_func=self.ui.progress_label.setText)
+
+                    elif pf_results is not None:
+
+                        # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                        self.ui.progress_label.setText('Running rms simulation from balanced power flow results ...')
                         QtGui.QGuiApplication.processEvents()
                         self.LOCK()
 

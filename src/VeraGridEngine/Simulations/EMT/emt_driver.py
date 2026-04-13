@@ -24,11 +24,21 @@ from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import St
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
 from VeraGridEngine.IO.fmu.importer import build_emt_boundary_updater
 from VeraGridEngine.basic_structures import Vec, StrVec
+from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 
 
 class EmtSimulationDriver(DriverTemplate):
+    __slots__ = (
+        "solvers_dict",
+        "pf_results_3Ph",
+        "pf_results",
+        "options",
+        "problem",
+        "line_states",
+    )
+
     name = 'EMT Simulation'
     tpe = SimulationTypes.EmtDynamic_run
 
@@ -39,14 +49,15 @@ class EmtSimulationDriver(DriverTemplate):
     def __init__(self,
                  grid: MultiCircuit,
                  options: EmtOptions,
-                 pf_results_3Ph: PowerFlowResults3Ph | None = None,
+                 pf_results_3ph: PowerFlowResults3Ph | None = None,
                  pf_results: PowerFlowResults | None = None,
                  engine: EngineType = EngineType.VeraGrid):
         """
         DynamicDriver class constructor
         :param grid: MultiCircuit instance
         :param options: EmtOptions instance (optional)
-        :param pf_results: PowerFlowResults3ph
+        :param pf_results_3ph: PowerFlowResults3ph
+        :param pf_results: PowerFlowResults
         :param engine: EngineType (i.e., EngineType.VeraGrid) (optional)
         """
 
@@ -60,7 +71,7 @@ class EmtSimulationDriver(DriverTemplate):
 
         self.grid = grid
 
-        self.pf_results_3Ph: PowerFlowResults3Ph | None = pf_results_3Ph
+        self.pf_results_3Ph: PowerFlowResults3Ph | None = pf_results_3ph
 
         self.pf_results: PowerFlowResults | None = pf_results
 
@@ -101,11 +112,14 @@ class EmtSimulationDriver(DriverTemplate):
         steps = int(np.ceil((self.options.simulation_time - 0) / self.options.time_step))
         t: Vec = np.arange(steps + 1) * self.options.time_step
 
+        for bus in self.grid.buses:
+            get_bus_emt_template(self.grid, bus)
+
         problem = build_emt_problem(
             grid=self.grid,
             options=self.options,
             pf_results=self.pf_results,
-            pf_results_3Ph=self.pf_results_3Ph,
+            pf_results_3ph=self.pf_results_3Ph,
             progress_signal=self.progress_signal,
         )
         self.problem = problem

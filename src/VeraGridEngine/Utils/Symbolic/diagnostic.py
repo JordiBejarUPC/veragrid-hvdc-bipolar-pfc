@@ -516,6 +516,7 @@ class NewtonTraceCollector:
     Collects numerical diagnostics during a simulation run.
     Designed for post-analysis and research purposes.
     """
+    __slots__ = ("records",)
 
     def __init__(self) -> None:
         """

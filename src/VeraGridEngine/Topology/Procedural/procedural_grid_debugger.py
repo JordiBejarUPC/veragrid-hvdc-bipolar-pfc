@@ -14,6 +14,7 @@ class ProceduralGridDebugger:
     This class should only contain debug/inspection utilities and must not
     modify the production objects.
     """
+    __slots__ = ("enabled",)
 
     def __init__(self, enabled: bool = True):
         """

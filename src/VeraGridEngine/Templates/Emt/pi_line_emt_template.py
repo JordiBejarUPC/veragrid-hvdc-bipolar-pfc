@@ -17,7 +17,7 @@ def get_pi_line_emt_template(vf: VarFactory,
                              phA: bool = True,
                              phB: bool = True,
                              phC: bool = True,
-                             name: str = EmtLineTypes.PI) -> EmtModelTemplate:
+                             name: str = "Pi") -> EmtModelTemplate:
     """
     Build the EMT pi-line template with explicit API-mapped parameters.
 
@@ -37,7 +37,9 @@ def get_pi_line_emt_template(vf: VarFactory,
     """
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LineDevice
-    templ.name = EmtLineTypes.PI
+    templ.name = name
+
+    templ.block.name = EmtLineTypes.PI.value
 
     c0 = vf.add_const(0.0)
 
@@ -183,8 +185,8 @@ def get_pi_line_emt_template(vf: VarFactory,
         "C": VarPowerFlowRefferenceType.vt_C,
     })
 
-    vf_vars = [vf.add_var(f"vf_{ph_label}_{name}", reference=vf_keys[ph_label]) for ph_label in active_ph]
-    vt_vars = [vf.add_var(f"vt_{ph_label}_{name}", reference=vt_keys[ph_label]) for ph_label in active_ph]
+    vf_vars = [vf.add_var(name=f"vf_{ph_label}_{name}", reference=vf_keys[ph_label]) for ph_label in active_ph]
+    vt_vars = [vf.add_var(name=f"vt_{ph_label}_{name}", reference=vt_keys[ph_label]) for ph_label in active_ph]
 
     d_vf_vars = [vf.add_diff_var(name=f"d_vf_{ph_label}_{name}", base_var=v_base) for ph_label, v_base in zip(active_ph, vf_vars)]
     d_vt_vars = [vf.add_diff_var(name=f"d_vt_{ph_label}_{name}", base_var=v_base) for ph_label, v_base in zip(active_ph, vt_vars)]
@@ -193,18 +195,18 @@ def get_pi_line_emt_template(vf: VarFactory,
     # -----------------------------
     # Create model vars
     # -----------------------------
-    i_ser = [vf.add_var(f"i_ser_{name}_{k}") for k in range(m)]
-    q_f = [vf.add_var(f"q_f_{name}_{k}") for k in range(m)]
-    q_t = [vf.add_var(f"q_t_{name}_{k}") for k in range(m)]
+    i_ser = [vf.add_var(name=f"i_ser_{name}_{ph_label}") for ph_label in active_ph]
+    q_f = [vf.add_var(name=f"q_f_{name}_{ph_label}") for ph_label in active_ph]
+    q_t = [vf.add_var(name=f"q_t_{name}_{ph_label}") for ph_label in active_ph]
 
-    di_ser = [vf.add_diff_var(name=f"di_ser_{name}_{k}", base_var=i_ser[k]) for k in range(m)]
-    dq_f = [vf.add_diff_var(name=f"dq_f_{name}_{k}", base_var=q_f[k]) for k in range(m)]
-    dq_t = [vf.add_diff_var(name=f"dq_t_{name}_{k}", base_var=q_t[k]) for k in range(m)]
+    di_ser = [vf.add_diff_var(name=f"di_ser_{name}_{ph_label}", base_var=i_ser[k]) for k, ph_label  in enumerate(active_ph)]
+    dq_f = [vf.add_diff_var(name=f"dq_f_{name}_{ph_label}", base_var=q_f[k]) for k, ph_label  in enumerate(active_ph)]
+    dq_t = [vf.add_diff_var(name=f"dq_t_{name}_{ph_label}", base_var=q_t[k]) for k, ph_label  in enumerate(active_ph)]
 
-    i_cap_f = [vf.add_var(f"i_cap_f_{name}_{k}") for k in range(m)]
-    i_cap_t = [vf.add_var(f"i_cap_t_{name}_{k}") for k in range(m)]
-    if_act = [vf.add_var(f"if_{name}_{k}") for k in range(m)]
-    it_act = [vf.add_var(f"it_{name}_{k}") for k in range(m)]
+    i_cap_f = [vf.add_var(name=f"i_cap_f_{name}_{ph_label}") for ph_label in active_ph]
+    i_cap_t = [vf.add_var(name=f"i_cap_t_{name}_{ph_label}") for ph_label in active_ph]
+    if_act = [vf.add_var(name=f"if_{name}_{ph_label}") for ph_label in active_ph]
+    it_act = [vf.add_var(name=f"it_{name}_{ph_label}") for ph_label in active_ph]
 
     # -----------------------------
     # Build block

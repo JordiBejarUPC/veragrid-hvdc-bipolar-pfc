@@ -53,6 +53,7 @@ from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.enumerations import (BranchImpedanceMode, DynamicIntegrationMethod, EmtInitializationMethod,
                                          EmtSolverTypes, ShuntConnectionType, SolverType,
                                          VarPowerFlowRefferenceType)
+from VeraGridEngine.Templates.templates_common_functions import set_emt_model
 
 ###########################################################################################################################
 # Build VeraGrid object
@@ -129,37 +130,41 @@ for bus in grid.buses:
 gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
 
 # line
-line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = True, phA = True, phB = True, phC = True).block
+line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
 
 # load
 load_mdl = get_load_ZIP_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
-# connection with buses
-gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
-gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # v_B
-gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # v_C
+set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.var_factory)
+set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
+set_emt_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
-
-line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # line vf_A
-line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # line vf_B
-line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # line vf_C
-
-line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.out_vars[0]]) # line vt_A
-line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.out_vars[1]]) # line vt_B
-line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.out_vars[2]]) # line vt_C
-
-# u_gov = find_name_in_block("u_gov1", gov1_mdl)
-
-load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]]) # v_A
-load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]]) # v_B
-load_mdl.connect([load_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]]) # v_C
-
-# attach emt models to VeraGrid objects.
-# The generator must stay attached as an injection model so the topology
-# validator counts its voltage inputs at the slack bus.
-line0.emt_model = line_mdl
-load.emt_model = load_mdl
-gen0.emt_model = gen_mdl
+# # connection with buses
+# gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
+# gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # v_B
+# gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # v_C
+#
+#
+# line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # line vf_A
+# line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # line vf_B
+# line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # line vf_C
+#
+# line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.out_vars[0]]) # line vt_A
+# line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.out_vars[1]]) # line vt_B
+# line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.out_vars[2]]) # line vt_C
+#
+# # u_gov = find_name_in_block("u_gov1", gov1_mdl)
+#
+# load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]]) # v_A
+# load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]]) # v_B
+# load_mdl.connect([load_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]]) # v_C
+#
+# # attach emt models to VeraGrid objects.
+# # The generator must stay attached as an injection model so the topology
+# # validator counts its voltage inputs at the slack bus.
+# line0.emt_model = line_mdl
+# load.emt_model = load_mdl
+# gen0.emt_model = gen_mdl
 
 pf_options = PowerFlowOptions(
     solver_type=SolverType.NR,
@@ -779,7 +784,7 @@ def create_problem(enable_trace: bool = False) -> EmtProblemDae:
     """
     local_problem: EmtProblemDae = EmtProblemDae(grid=grid,
                                                  options=options,
-                                                 pf_results_3Ph=res,
+                                                 pf_results_3ph=res,
                                                  pf_results=None)
 
     if enable_trace:

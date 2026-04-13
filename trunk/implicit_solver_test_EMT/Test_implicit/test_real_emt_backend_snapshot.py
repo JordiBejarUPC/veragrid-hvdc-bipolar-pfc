@@ -143,7 +143,7 @@ def build_two_bus_real_emt_case(
         initialization_method=initialization_method,
         verbose=0,
     )
-    problem = EmtProblemDae(grid=grid, options=options, pf_results_3Ph=res)
+    problem = EmtProblemDae(grid=grid, options=options, pf_results_3ph=res)
 
     return problem, {
         "grid": grid,

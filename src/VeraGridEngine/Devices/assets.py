@@ -8579,20 +8579,22 @@ class Assets:
             tem.get_stabilizer_emt(vf=self._var_factory),
             tem.get_exciter_emt(vf=self._var_factory),
             tem.get_complete_generator_template_emt(vf=self._var_factory),
-            tem.get_exponential_load_emt(vf=self._var_factory, phA=True, phB=True, phC=True),
-            tem.get_load_ZIP_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+
             tem.get_generator_thevenin_rl_emt_template(vf=self._var_factory),
             tem.get_emt_ideal_converter(vf=self._var_factory),
-            # tem.get_full_pseudo_emt_converter(vf=self._var_factory),
+            # tem.get_full_pseudo_emt_converter(vf=self._var_factory), # TODO: it gives error when running VeraGrid!?
             tem.get_dc_load_emt_template(vf=self._var_factory),
 
 
             # the following are functions that generate templates depending on phases or things
-            tem.get_pi_line_emt_template(vf=self._var_factory, phN=True, phA=True, phB=True, phC=True), # depends on number of phases!
-            tem.get_shunt_c_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),  # depends on number of phases!
-            tem.get_shunt_l_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),  # depends on number of phases!
-            tem.get_shunt_r_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),  # depends on number of phases!
-            tem.get_bergeron_line_emt_template(vf=self._var_factory),
+
+            tem.get_shunt_c_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_shunt_l_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_shunt_r_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_exponential_load_emt(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_load_ZIP_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_pi_line_emt_template(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True),
+            tem.get_bergeron_line_emt_template(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True),
             # tem.get_transformer_emt_template(vf=self._var_factory),
             # tem.get_xfmr_emt_template(vf=self._var_factory)
         ]

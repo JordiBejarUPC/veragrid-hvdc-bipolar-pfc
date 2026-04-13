@@ -28,6 +28,18 @@ class BusComplexRmsTemplate(RmsModelTemplate):
     For compilation purposes, the complex variable is split into real and imaginary
     parts, but symbolically it remains a single complex entity.
     """
+    __slots__ = (
+        "tpe",
+        "_block",
+        "V_complex",
+        "Vr",
+        "Vi",
+        "P",
+        "Q",
+        "I_complex",
+        "Ir",
+        "Ii",
+    )
 
     def __init__(self, vf: VarFactory, is_dc: bool = False, name: str = "rms_bus_complex_template"):
         """

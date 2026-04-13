@@ -34,6 +34,12 @@ class ContingencyAnalysisDriver(DriverTemplate):
     """
     Contingency analysis driver
     """
+    __slots__ = (
+        "options",
+        "opf_results",
+        "linear_multiple_contingencies",
+    )
+
     name = 'Contingency Analysis'
     tpe = SimulationTypes.ContingencyAnalysis_run
 

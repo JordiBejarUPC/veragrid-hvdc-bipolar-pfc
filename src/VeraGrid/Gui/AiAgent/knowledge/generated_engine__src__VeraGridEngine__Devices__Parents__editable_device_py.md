@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 4
 - Top-level function count: 5
-- Representative imports: __future__, random, uuid, numpy, pandas, VeraGridEngine, VeraGridEngine.Devices.profile, typing, VeraGridEngine.basic_structures, VeraGridEngine.enumerations
+- Representative imports: __future__, random, uuid, numpy, pandas, VeraGridEngine,  typing, VeraGridEngine.basic_structures, VeraGridEngine.enumerations
 
 ## Function: uuid2idtag(val)
 

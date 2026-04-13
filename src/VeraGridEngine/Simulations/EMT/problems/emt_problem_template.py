@@ -530,6 +530,13 @@ class EmtProblemTemplate(ABC):
             for uid, idx in self._uid2idx_params.items():
                 uid_bindings[uid] = float(self._parameters_values[idx].value)
 
+            #TODO is this okkkk?
+            # for uid, idx in self._uid2idx_vars.items():
+            #     uid_bindings[uid] = float(self.init_guess[uid])
+            #
+            # for uid, idx in self._uid2idx_diff.items():
+            #     uid_bindings[uid] = float(self.diff_init_guess[uid])
+
             uid_bindings[self._glob_time.uid] = float(tm)
             for var in expression.get_vars():
                 if var.name in {"time", self.TIME_NAME}:

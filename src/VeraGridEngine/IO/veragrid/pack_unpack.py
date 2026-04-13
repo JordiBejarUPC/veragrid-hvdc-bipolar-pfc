@@ -17,7 +17,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles import AnyProfile
 from VeraGridEngine.Utils.Symbolic.symbolic_io import BlockSaver, BlockParser, Block
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, VERAGRID_FILE_TYPE
 from VeraGridEngine.enumerations import (DiagramType, DeviceType, SubObjectType, TapPhaseControl, TapModuleControl,
@@ -456,7 +456,7 @@ def gather_model_as_data_frames(circuit: MultiCircuit,
     return dfs
 
 
-def profile_todict(profile: Profile) -> Dict[str, str | bool]:
+def profile_todict(profile: AnyProfile) -> Dict[str, str | bool]:
     """
     Get a dictionary representation of the profile
     :return:
@@ -491,7 +491,7 @@ def profile_todict(profile: Profile) -> Dict[str, str | bool]:
         }
 
 
-def profile_todict_idtag(profile: Profile) -> Dict[str, str]:
+def profile_todict_idtag(profile: AnyProfile) -> Dict[str, str]:
     """
     Get a dictionary representation of the profile
     :return:
@@ -519,7 +519,7 @@ def profile_todict_idtag(profile: Profile) -> Dict[str, str]:
         }
 
 
-def profile_todict_str(profile: Profile) -> Dict[str, str]:
+def profile_todict_str(profile: AnyProfile) -> Dict[str, str]:
     """
     Get a dictionary representation of the profile
     :return:
@@ -555,7 +555,53 @@ def profile_todict_str(profile: Profile) -> Dict[str, str]:
         }
 
 
-def get_profile_from_dict(profile: Profile,
+def cast_profile_value(
+    profile: AnyProfile,
+    value: Any,
+    collection: Union[None, Dict[str, Any]] = None,
+) -> Any:
+    """
+    Convert serialized profile payloads into the concrete type required by ``profile``.
+
+    :param profile: Typed profile that will receive the value.
+    :param value: Serialized raw value.
+    :param collection: Optional idtag-to-object dictionary for device references.
+    :return: Converted value.
+    """
+    if value is None or value == "None":
+        return None
+
+    if collection is not None:
+        return collection.get(value, None)
+
+    if isinstance(profile.dtype, DeviceType):
+        return value
+
+    if isinstance(profile.dtype, EnumType):
+        return profile.dtype(value)
+
+    if profile.dtype == bool:
+        if isinstance(value, str):
+            low = value.strip().lower()
+            if low in {"true", "1"}:
+                return True
+            if low in {"false", "0"}:
+                return False
+        return bool(value)
+
+    if profile.dtype == int:
+        return int(value)
+
+    if profile.dtype == float:
+        return float(value)
+
+    if profile.dtype == str:
+        return str(value)
+
+    return value
+
+
+def get_profile_from_dict(profile: AnyProfile,
                           data: Dict[str, Any | Dict[str, Any]],
                           collection: Union[None, Dict[str, Any]] = None):
     """
@@ -565,73 +611,39 @@ def get_profile_from_dict(profile: Profile,
     :param collection: if the collection is provided, it will be used to convert idtags into objects
     :return: None
     """
-    def cast_profile_value(value: Any) -> Any:
-        if value is None:
-            return None
-
-        if collection is not None:
-            return collection.get(value, value)
-
-        if isinstance(profile.dtype, DeviceType):
-            return value
-
-        if isinstance(profile.dtype, EnumType):
-            return profile.dtype(value)
-
-        if profile.dtype == bool:
-            if isinstance(value, str):
-                low = value.strip().lower()
-                if low in {"true", "1"}:
-                    return True
-                if low in {"false", "0"}:
-                    return False
-            return bool(value)
-
-        if profile.dtype == int:
-            return int(value)
-
-        if profile.dtype == float:
-            return float(value)
-
-        if profile.dtype == str:
-            return str(value)
-
-        return value
-
     raw_default_value = data['default']
     is_sparse = bool(data['is_sparse'])
-    size = int(data['size'])
 
     try:
-        default_value: Any = cast_profile_value(raw_default_value)
+        default_value: Any = cast_profile_value(profile=profile, value=raw_default_value, collection=collection)
     except (TypeError, ValueError):
         default_value = profile.default_value
 
     if isinstance(profile.dtype, DeviceType) and default_value == "None":
         default_value = profile.default_value
 
-    if size == 0:
-        profile.clear()
-        return
-
-    # profile = Profile(default_value=default_value, is_sparse=bool(data['is_sparse']))
-
     if is_sparse:
         sp_data = data['sparse_data']
 
         if collection is None:
-            map_data = {int(key): cast_profile_value(val) for key, val in sp_data['map'].items()}
+            map_data = {
+                int(key): cast_profile_value(profile=profile, value=val, collection=collection)
+                for key, val in sp_data['map'].items()
+            }
         else:
-            map_data = {int(key): cast_profile_value(val) for key, val in sp_data['map'].items()}
+            map_data = {
+                int(key): cast_profile_value(profile=profile, value=val, collection=collection)
+                for key, val in sp_data['map'].items()
+            }
 
         profile.create_sparse(default_value=default_value,
                               size=data['size'], map_data=map_data)
     else:
 
         if collection is None:
-            arr = [cast_profile_value(i) for i in data['dense_data']]
+            arr = [cast_profile_value(profile=profile, value=i, collection=collection) for i in data['dense_data']]
         else:
-            arr = [cast_profile_value(i) for i in data['dense_data']]
+            arr = [cast_profile_value(profile=profile, value=i, collection=collection) for i in data['dense_data']]
         profile.set(np.array(arr))
 
     # mark as initialized
@@ -1272,7 +1284,7 @@ def search_and_apply_json_profile(json_entry: Dict[str, Dict[str, Union[str, Uni
         # search the profile in the json
         json_profile = json_entry.get(gc_prop.profile_name, None)
 
-        profile: Profile = elm.get_profile(magnitude=gc_prop.name)
+        profile: AnyProfile = elm.get_profile(magnitude=gc_prop.name)
 
         if json_profile is None:
             # the profile was not found, so we fill it with the default stuff
