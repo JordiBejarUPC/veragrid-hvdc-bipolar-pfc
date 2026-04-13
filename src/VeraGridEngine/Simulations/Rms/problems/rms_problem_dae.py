@@ -209,18 +209,20 @@ class RmsProblemDae(RmsProblemTemplate):
         inj_tot_cap_dict: Dict[tuple[Bus, DeviceType], float] = dict()
 
         for bus_num, elm in enumerate(self.grid.buses):
-            # Todo: missing default initialization for the model
+
             bus_dict[elm] = bus_num
 
-            inj_dev = injection_dev_dict[elm]
+            # calculate sum of injections capacity
+            if elm in injection_dev_dict:
+                inj_dev = injection_dev_dict[elm]
 
-            if DeviceType.GeneratorDevice in inj_dev:
-                generators = inj_dev[DeviceType.GeneratorDevice]
+                if DeviceType.GeneratorDevice in inj_dev:
+                    generators = inj_dev[DeviceType.GeneratorDevice]
 
-                gen_total_cap = 0
-                for generator in generators:
-                    gen_total_cap += generator.Snom
-                inj_tot_cap_dict[(elm, DeviceType.GeneratorDevice)] = gen_total_cap
+                    gen_total_cap = 0
+                    for generator in generators:
+                        gen_total_cap += generator.Snom
+                    inj_tot_cap_dict[(elm, DeviceType.GeneratorDevice)] = gen_total_cap
 
 
 

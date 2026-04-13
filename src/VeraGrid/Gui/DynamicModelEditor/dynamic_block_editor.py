@@ -625,32 +625,36 @@ class PortItem(QGraphicsEllipseItem):
 
 class BranchingItem(QGraphicsEllipseItem):
     """
-    Graphical branching point attached to a connection item.
+    Graphical branching point that can have one input and multiple outputs.
+    Created when splitting a connection via double-click.
     """
 
     def __init__(self,
-                 connection: ConnectionItem,
+                 source_connection: ConnectionItem,
                  radius: int = 6):
         """
         Build a connection branching point.
 
-        :param connection:
+        :param source_connection: The connection to branch from.
         :param radius:
         """
-        super().__init__(-radius, -radius, 2 * radius, 2 * radius, connection)
-        fill_color: QColor =  OUTPUT_PORT_FILL
+        super().__init__(-radius, -radius, 2 * radius, 2 * radius)
+        fill_color: QColor = OUTPUT_PORT_FILL
         self.setBrush(QBrush(fill_color))
         self.setPen(QPen(PORT_BORDER, 1.5))
         self.setZValue(3)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
+        self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
         self.setAcceptHoverEvents(True)
-        self.connection: ConnectionItem = connection
-        self.subsystem: BlockItem = connection.source_port.subsystem
+        self.source_connection: ConnectionItem = source_connection
+        self.subsystem: BlockItem = source_connection.source_port.subsystem
         self.connections: List["ConnectionItem"] | None = None
-        self.index: int =  len(connection.branching_points)
         self.base_var: Var | None = None
 
-        total_branching_points: int = len(connection.branching_points) + 1
-        self.path_ratio: float = (self.index + 1) / (total_branching_points + 1)
+        self.input_port: PortItem = PortItem(self, True, 0, 1, radius=5)
+        self.output_port: PortItem = PortItem(self, False, 0, 1, radius=5)
+        self.input_port.connections = None
+        self.output_port.connections = None
 
         self.update_position()
 
@@ -658,7 +662,7 @@ class BranchingItem(QGraphicsEllipseItem):
         """
         Recalculate position along the connection path based on stored ratio.
         """
-        path_points: List[QPointF] = self.connection._get_path_points()
+        path_points: List[QPointF] = self.source_connection._get_path_points()
         total_length: float = 0.0
         segment_lengths: List[float] = []
         for i in range(len(path_points) - 1):
@@ -666,14 +670,14 @@ class BranchingItem(QGraphicsEllipseItem):
             segment_lengths.append(segment_length)
             total_length += segment_length
 
-        target_distance: float = total_length * self.path_ratio
+        mid_distance: float = total_length * 0.5
 
         accumulated: float = 0.0
         x_pos: float = 0.0
         y_pos: float = 0.0
         for seg_idx, segment_length in enumerate(segment_lengths):
-            if accumulated + segment_length >= target_distance:
-                ratio: float = (target_distance - accumulated) / segment_length if segment_length > 0 else 0.0
+            if accumulated + segment_length >= mid_distance:
+                ratio: float = (mid_distance - accumulated) / segment_length if segment_length > 0 else 0.0
                 p1: QPointF = path_points[seg_idx]
                 p2: QPointF = path_points[seg_idx + 1]
                 x_pos = p1.x() + (p2.x() - p1.x()) * ratio
@@ -681,8 +685,7 @@ class BranchingItem(QGraphicsEllipseItem):
                 break
             accumulated += segment_length
 
-        connection_pos: QPointF = self.connection.scenePos()
-        self.setPos(x_pos - connection_pos.x(), y_pos - connection_pos.y())
+        self.setPos(x_pos, y_pos)
 
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         """
@@ -719,7 +722,7 @@ class ConnectionItem(QGraphicsPathItem):
     Orthogonal graphical connection between two ports.
     """
 
-    def __init__(self, source_port: PortItem, target_port: PortItem,
+    def __init__(self, source_port: PortItem | BranchingItem, target_port: PortItem | BranchingItem,
                  diagram=None, con_uid=None, elbow_points=None, uid=None):
         """
         Build the connection item.
@@ -735,11 +738,10 @@ class ConnectionItem(QGraphicsPathItem):
         self.uid: int = uid if uid is not None else _new_uid()
         self.setZValue(-1)
         self.source_port: PortItem | BranchingItem = source_port
-        self.target_port: PortItem = target_port
+        self.target_port: PortItem | BranchingItem = target_port
         self.diagram = diagram
         self.con_uid = con_uid if con_uid is not None else self.uid
         self.custom_elbow_points: List[QPointF] = []
-        self.branching_points: List[BranchingItem] = list()
         self._dragging: bool = False
         self._drag_type: str = None  # 'horizontal' or 'vertical'
         self._drag_segment_idx: int = -1
@@ -782,8 +784,6 @@ class ConnectionItem(QGraphicsPathItem):
             path = build_orthogonal_connection_path(start, end)
         self.setPath(path)
 
-        for branching_point in self.branching_points:
-            branching_point.update_position()
 
     def _build_path_with_elbows(self, start: QPointF, end: QPointF, elbows: List[QPointF]) -> QPainterPath:
         """
@@ -941,16 +941,6 @@ class ConnectionItem(QGraphicsPathItem):
         self._original_elbows = []
         super().mouseReleaseEvent(event)
 
-    def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
-        """
-        Doubleclick in a connection to create a branching point.
-
-        :param event:
-        :return:
-        """
-        self.branching_points.append(BranchingItem(self))
-
-        super().mouseDoubleClickEvent(event)
 
     def _update_diagram(self) -> None:
         """
@@ -3014,6 +3004,73 @@ class DiagramScene(QGraphicsScene):
             self.source_port = None
         else:
             super().mouseReleaseEvent(event)
+
+    def mouseDoubleClickEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
+        """
+        Handle double-click on the scene.
+        If the click is on a ConnectionItem, create a BranchingItem and two new connections.
+
+        :param event:
+        :return:
+        """
+        item: QGraphicsItem
+
+        for item in self.items(event.scenePos()):
+            if isinstance(item, ConnectionItem):
+                connection: ConnectionItem = item
+                source_port: PortItem = connection.source_port
+                target_port: PortItem = connection.target_port
+
+                branching_item: BranchingItem = BranchingItem(connection)
+                self.addItem(branching_item, branching_item.input_port)
+
+                self.connect_ports(source_port, )
+
+                conn1: ConnectionItem = ConnectionItem(
+                    source_port, branching_item.input_port,
+                    diagram=self.editor.diagram
+                )
+                self.addItem(conn1)
+
+                conn2: ConnectionItem = ConnectionItem(
+                    branching_item.output_port, target_port,
+                    diagram=self.editor.diagram
+                )
+                self.addItem(conn2)
+
+                self.editor.diagram.add_branch(
+                    connectionitem_uid=conn1.uid,
+                    device_uid_from=source_port.subsystem.subsys.uid,
+                    device_uid_to=branching_item.subsystem.uid,
+                    port_number_from=source_port.index,
+                    port_number_to=0,
+                    color=conn1.pen().color().name()
+                )
+
+                self.editor.diagram.add_branch(
+                    connectionitem_uid=conn2.uid,
+                    device_uid_from=branching_item.subsystem.uid,
+                    device_uid_to=target_port.subsystem.subsys.uid,
+                    port_number_from=0,
+                    port_number_to=target_port.index,
+                    color=conn2.pen().color().name()
+                )
+
+                if source_port.connections is not None and connection in source_port.connections:
+                    source_port.connections.remove(connection)
+
+                if target_port.connections is not None and connection in target_port.connections:
+                    target_port.connections.remove(connection)
+
+                if connection.uid in self.editor.diagram.con_data:
+                    del self.editor.diagram.con_data[connection.uid]
+
+                branching_item.source_connection = None
+
+                self.removeItem(connection)
+                return
+
+        super().mouseDoubleClickEvent(event)
 
     def connect_ports(self, source_port: PortItem, target_port: PortItem) -> None:
         """
