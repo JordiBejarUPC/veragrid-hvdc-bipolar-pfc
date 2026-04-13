@@ -7124,18 +7124,28 @@ class Assets:
         :param logger: Logger
         """
         if device_type == DeviceType.LoadDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._loads = devices
 
         elif device_type == DeviceType.StaticGeneratorDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._static_generators = devices
 
         elif device_type == DeviceType.GeneratorDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._generators = devices
 
         elif device_type == DeviceType.BatteryDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._batteries = devices
 
         elif device_type == DeviceType.ShuntDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._shunts = devices
 
         elif device_type == DeviceType.ExternalGridDevice:
@@ -7185,9 +7195,13 @@ class Assets:
             self._buses = ListSet(devices)
 
         elif device_type == DeviceType.OverheadLineTypeDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._overhead_line_types = devices
 
         elif device_type == DeviceType.TransformerTypeDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._transformer_types = devices
 
         elif device_type == DeviceType.UnderGroundLineDevice:

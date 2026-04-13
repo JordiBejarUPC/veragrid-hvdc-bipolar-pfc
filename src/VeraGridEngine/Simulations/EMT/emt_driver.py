@@ -5,7 +5,6 @@
 
 import numpy as np
 import pandas as pd
-from typing import Any, cast
 
 from VeraGridEngine import EmtSolverTypes
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
@@ -127,12 +126,12 @@ class EmtSimulationDriver(DriverTemplate):
         self.results = EmtResults(
             time_array=pd.DatetimeIndex(pd.to_datetime(t * 1e9)),
             emt_events_group_names=emt_events_group_names,
-            variables=problem.state_and_algebraic_vars,
-            diff_variables=problem.diff_vars,
-            uid2idx_vars=problem.uid2idx_vars,
-            uid2idx_diff=problem.uid2idx_diff,
-            vars_glob_name2uid=problem.vars_glob_name2uid,
-            devices_vars_info=problem.get_device_vars_dict()
+            variables=self.problem.state_and_algebraic_vars(),
+            diff_variables=self.problem.get_diff_vars(),
+            uid2idx_vars=self.problem.uid2idx_vars,
+            uid2idx_diff=self.problem.uid2idx_diff,
+            vars_glob_name2uid=self.problem.vars_glob_name2uid,
+            devices_vars_info=self.problem.get_device_vars_dict()
         )
 
         newton_diag_config = NewtonDiagnosticsConfig(
@@ -178,10 +177,6 @@ class EmtSimulationDriver(DriverTemplate):
             boundary_updater = build_emt_boundary_updater(problem)
             t, y, dy = solver.simulate(boundary_updater=boundary_updater)
 
-            #TODO: add converged and well initialized to results?
-
-            # self.results.converged[group_idx] = converged
-            # self.results.well_initialized[group_idx] = well_initialized
             self.results.values[:, :, group_idx] = y
             self.results.diff_values[:, :, group_idx] = dy
 
