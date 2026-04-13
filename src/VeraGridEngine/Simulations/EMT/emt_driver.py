@@ -24,6 +24,7 @@ from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import St
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
 from VeraGridEngine.IO.fmu.importer import build_emt_boundary_updater
 from VeraGridEngine.basic_structures import Vec, StrVec
+from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 
@@ -110,6 +111,9 @@ class EmtSimulationDriver(DriverTemplate):
 
         steps = int(np.ceil((self.options.simulation_time - 0) / self.options.time_step))
         t: Vec = np.arange(steps + 1) * self.options.time_step
+
+        for bus in self.grid.buses:
+            get_bus_emt_template(self.grid, bus)
 
         problem = build_emt_problem(
             grid=self.grid,
