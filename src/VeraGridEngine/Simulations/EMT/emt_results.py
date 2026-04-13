@@ -51,7 +51,7 @@ class EmtResults(ResultsTemplate):
         :param uid2idx_vars: Var uid to var index in values variables
         :param uid2idx_diff: Var uid to var index in values diff vars
         :param vars_glob_name2uid: dictionary relating var names to uid (WTF?)
-        :param devices_vars_info: dictionary relating the devices with a list of their simulation vars
+        :param devices_vars_info: dictionary relating the devices with a list of their simulation vars and diffvars
         """
         ResultsTemplate.__init__(
             self,
