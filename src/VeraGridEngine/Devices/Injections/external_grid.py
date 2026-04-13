@@ -10,7 +10,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from VeraGridEngine.enumerations import DeviceType, BuildStatus, ExternalGridMode
 from VeraGridEngine.Devices.Parents.load_parent import LoadParent
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileFloat
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 
@@ -87,12 +87,12 @@ class ExternalGrid(LoadParent):
         # Impedance in equivalent MVA
         self.Vm = float(Vm)
         self.Va = float(Va)
-        self._Vm_prof = Profile(default_value=self.Vm, data_type=float)
-        self._Va_prof = Profile(default_value=self.Va, data_type=float)
+        self._Vm_prof = ProfileFloat(default_value=self.Vm)
+        self._Va_prof = ProfileFloat(default_value=self.Va)
 
 
     @property
-    def Vm_prof(self) -> Profile:
+    def Vm_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -100,8 +100,8 @@ class ExternalGrid(LoadParent):
         return self._Vm_prof
 
     @Vm_prof.setter
-    def Vm_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Vm_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Vm_prof = val
         elif isinstance(val, np.ndarray):
             self._Vm_prof.set(arr=val)
@@ -116,7 +116,7 @@ class ExternalGrid(LoadParent):
         return get_at(self.Vm, self.Vm_prof, t)
 
     @property
-    def Va_prof(self) -> Profile:
+    def Va_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -124,8 +124,8 @@ class ExternalGrid(LoadParent):
         return self._Va_prof
 
     @Va_prof.setter
-    def Va_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Va_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Va_prof = val
         elif isinstance(val, np.ndarray):
             self._Va_prof.set(arr=val)

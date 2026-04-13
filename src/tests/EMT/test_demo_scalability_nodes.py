@@ -6,6 +6,7 @@
 import importlib.util
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -157,17 +158,19 @@ def test_run_backend_ad_uses_the_measured_simulation_output_for_metrics(
 
     perf_values = iter([10.0, 13.0, 20.0, 24.0])
 
-    monkeypatch.setattr(demo_module, "JitAdSolver", FakeAdSolver)
-    monkeypatch.setattr(demo_module.time, "perf_counter", lambda: next(perf_values))
-
-    result = demo_module.run_backend(
-        label="LIN",
-        n_nodes=5,
-        vectorized=False,
-        t_end=1.1e-3,
-        h=2.0e-4,
-        verbose=False,
-    )
+    with patch.object(demo_module, "JitAdSolver", FakeAdSolver), patch.object(
+        demo_module.time,
+        "perf_counter",
+        lambda: next(perf_values),
+    ):
+        result = demo_module.run_backend(
+            label="LIN",
+            n_nodes=5,
+            vectorized=False,
+            t_end=1.1e-3,
+            h=2.0e-4,
+            verbose=False,
+        )
 
     solver = FakeAdSolver.instances[-1]
     measured_y = np.array([[1.0, -2.0], [3.0, -4.0]], dtype=np.float64)
@@ -225,17 +228,19 @@ def test_run_backend_vectorized_uses_solver_pure_loop_time_and_configures_vector
 
     perf_values = iter([100.0, 106.0, 200.0])
 
-    monkeypatch.setattr(demo_module, "StructuralVectorizedSolver", FakeVectorizedSolver)
-    monkeypatch.setattr(demo_module.time, "perf_counter", lambda: next(perf_values))
-
-    result = demo_module.run_backend(
-        label="LIN",
-        n_nodes=8,
-        vectorized=True,
-        t_end=9.0e-4,
-        h=2.0e-4,
-        verbose=False,
-    )
+    with patch.object(demo_module, "StructuralVectorizedSolver", FakeVectorizedSolver), patch.object(
+        demo_module.time,
+        "perf_counter",
+        lambda: next(perf_values),
+    ):
+        result = demo_module.run_backend(
+            label="LIN",
+            n_nodes=8,
+            vectorized=True,
+            t_end=9.0e-4,
+            h=2.0e-4,
+            verbose=False,
+        )
 
     solver = FakeVectorizedSolver.instances[-1]
     measured_y = np.array([[-2.0, 6.0], [4.0, -8.0]], dtype=np.float64)
@@ -292,10 +297,12 @@ def test_main_executes_the_exact_experiment_matrix(demo_module: Any, monkeypatch
     def fake_print_case_summary(case_name: str, ad: dict[str, Any], vec: dict[str, Any]) -> None:
         summaries.append({"case_name": case_name, "ad": ad, "vec": vec})
 
-    monkeypatch.setattr(demo_module, "run_backend", fake_run_backend)
-    monkeypatch.setattr(demo_module, "print_case_summary", fake_print_case_summary)
-
-    demo_module.main()
+    with patch.object(demo_module, "run_backend", fake_run_backend), patch.object(
+        demo_module,
+        "print_case_summary",
+        fake_print_case_summary,
+    ):
+        demo_module.main()
 
     expected_experiments = [
         {"h": 1e-7, "t_end": 1e-4, "name": "1k steps"},

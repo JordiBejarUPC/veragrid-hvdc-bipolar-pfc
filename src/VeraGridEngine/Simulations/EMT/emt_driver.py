@@ -22,13 +22,22 @@ from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
-# from trunk.veragrid_fmu_import import build_emt_boundary_updater # TODO: not from trunk!
+from VeraGridEngine.IO.fmu.importer import build_emt_boundary_updater
 from VeraGridEngine.basic_structures import Vec, StrVec
 
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 
 
 class EmtSimulationDriver(DriverTemplate):
+    __slots__ = (
+        "solvers_dict",
+        "pf_results_3Ph",
+        "pf_results",
+        "options",
+        "problem",
+        "line_states",
+    )
+
     name = 'EMT Simulation'
     tpe = SimulationTypes.EmtDynamic_run
 
@@ -39,14 +48,15 @@ class EmtSimulationDriver(DriverTemplate):
     def __init__(self,
                  grid: MultiCircuit,
                  options: EmtOptions,
-                 pf_results_3Ph: PowerFlowResults3Ph | None = None,
+                 pf_results_3ph: PowerFlowResults3Ph | None = None,
                  pf_results: PowerFlowResults | None = None,
                  engine: EngineType = EngineType.VeraGrid):
         """
         DynamicDriver class constructor
         :param grid: MultiCircuit instance
         :param options: EmtOptions instance (optional)
-        :param pf_results: PowerFlowResults3ph
+        :param pf_results_3ph: PowerFlowResults3ph
+        :param pf_results: PowerFlowResults
         :param engine: EngineType (i.e., EngineType.VeraGrid) (optional)
         """
 
@@ -60,7 +70,7 @@ class EmtSimulationDriver(DriverTemplate):
 
         self.grid = grid
 
-        self.pf_results_3Ph: PowerFlowResults3Ph | None = pf_results_3Ph
+        self.pf_results_3Ph: PowerFlowResults3Ph | None = pf_results_3ph
 
         self.pf_results: PowerFlowResults | None = pf_results
 
@@ -105,7 +115,7 @@ class EmtSimulationDriver(DriverTemplate):
             grid=self.grid,
             options=self.options,
             pf_results=self.pf_results,
-            pf_results_3Ph=self.pf_results_3Ph,
+            pf_results_3ph=self.pf_results_3Ph,
             progress_signal=self.progress_signal,
         )
         self.problem = problem
@@ -161,7 +171,8 @@ class EmtSimulationDriver(DriverTemplate):
                 newton_diag_config=newton_diag_config,
             )
 
-            t, y, dy = solver.simulate()
+            boundary_updater = build_emt_boundary_updater(problem)
+            t, y, dy = solver.simulate(boundary_updater=boundary_updater)
 
             #TODO: add converged and well initialized to results?
 

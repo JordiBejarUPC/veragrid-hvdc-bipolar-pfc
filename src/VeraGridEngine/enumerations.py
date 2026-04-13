@@ -347,6 +347,24 @@ class EngineType(Enum):
             return s
 
 
+class FmuTemplateDomain(Enum):
+    """
+    Available VeraGrid domains for reusable FMU templates.
+    """
+
+    RMS = "rms"
+    EMT = "emt"
+
+
+class FmuTemplateMode(Enum):
+    """
+    FMI 2.0 execution modes supported by the FMU template catalogue.
+    """
+
+    CO_SIMULATION = "CoSimulation"
+    MODEL_EXCHANGE = "ModelExchange"
+
+
 class MIPSolvers(Enum):
     """
     MIP solvers enumeration
@@ -1209,6 +1227,7 @@ class DeviceType(Enum):
     LineTypeDevice = 'Line Template'
     Transformer2WDevice = 'Transformer'
     Transformer3WDevice = 'Transformer3W'
+    TransformerNwDevice = 'TransformerNw'
     WindingDevice = 'Winding'
     SeriesReactanceDevice = 'Series reactance'
     HVDCLineDevice = 'HVDC Line'
@@ -1312,6 +1331,7 @@ class DeviceType(Enum):
     DynamicModelHostDevice = "Dynamic Model Host"
 
     RmsModelTemplateDevice = "RMS template"
+    FmuTemplateDevice = "FMU template"
     RmsEventDevice = "Rms Event"
     RmsEventsGroupDevice = "Rms Events Group"
 
@@ -1492,6 +1512,7 @@ class StudyResultsType(Enum):
     InvestmentEvaluations = 'InvestmentEvaluations'
     NetTransferCapacity = 'NetTransferCapacity'
     NetTransferCapacityTimeSeries = 'NetTransferCapacityTimeSeries'
+    NodeGroups = 'NodeGroups'
     StochasticPowerFlow = 'StochasticPowerFlow'
     RmsSimulation = "RmsSimulation"
     EmtSimulation = "EmtSimulation"
@@ -2272,6 +2293,9 @@ class ResultTypes(Enum):
     ReliabilityLOLFResults = "LOLF"
     ReliabilityLOLETResults = "LOLET"
     ReliabilityLOLFTResults = "LOLFT"
+    ReliabilitySAIDIResults = "SAIDI"
+    ReliabilitySAIFIResults = "SAIFI"
+    ReliabilityCAIDIResults = "CAIDI"
 
 
 
@@ -3149,6 +3173,51 @@ class ParamPowerFlowRefferenceType(Enum):
     Ccb = "Ccb"  # C-B line shunt capacitance
     Ccc = "Ccc"  # C-C line shunt capacitance
 
+    # Classical transformer EMT mapped parameters
+    xfmr_r1 = "xfmr_r1"  # Primary winding resistance in pu
+    xfmr_r2 = "xfmr_r2"  # Secondary winding resistance in pu
+    xfmr_l1 = "xfmr_l1"  # Primary self inductance in pu*s/rad
+    xfmr_l2 = "xfmr_l2"  # Secondary self inductance in pu*s/rad
+    xfmr_m = "xfmr_m"  # Mutual inductance in pu*s/rad
+    xfmr_gm = "xfmr_gm"  # Primary shunt conductance in pu
+
+    # XFMR EMT mapped parameters
+    xfmr_s_rated_mva = "xfmr_s_rated_mva"
+    xfmr_v_hv_ll_kv = "xfmr_v_hv_ll_kv"
+    xfmr_v_lv_ll_kv = "xfmr_v_lv_ll_kv"
+    xfmr_vector_group_clock = "xfmr_vector_group_clock"
+    xfmr_oc_current_pct = "xfmr_oc_current_pct"
+    xfmr_oc_loss_kw = "xfmr_oc_loss_kw"
+    xfmr_sc_voltage_pct = "xfmr_sc_voltage_pct"
+    xfmr_sc_resistance_pct = "xfmr_sc_resistance_pct"
+    xfmr_sc_loss_kw = "xfmr_sc_loss_kw"
+    xfmr_tap_module = "xfmr_tap_module"
+    xfmr_c_term = "xfmr_c_term"
+    xfmr_core_linear_l_pu = "xfmr_core_linear_l_pu"
+    xfmr_core_a_prime = "xfmr_core_a_prime"
+    xfmr_core_b_prime = "xfmr_core_b_prime"
+    xfmr_use_linear_core = "xfmr_use_linear_core"
+
+    xfmr_cf_aa = "xfmr_cf_aa"
+    xfmr_cf_ab = "xfmr_cf_ab"
+    xfmr_cf_ac = "xfmr_cf_ac"
+    xfmr_cf_ba = "xfmr_cf_ba"
+    xfmr_cf_bb = "xfmr_cf_bb"
+    xfmr_cf_bc = "xfmr_cf_bc"
+    xfmr_cf_ca = "xfmr_cf_ca"
+    xfmr_cf_cb = "xfmr_cf_cb"
+    xfmr_cf_cc = "xfmr_cf_cc"
+
+    xfmr_ct_aa = "xfmr_ct_aa"
+    xfmr_ct_ab = "xfmr_ct_ab"
+    xfmr_ct_ac = "xfmr_ct_ac"
+    xfmr_ct_ba = "xfmr_ct_ba"
+    xfmr_ct_bb = "xfmr_ct_bb"
+    xfmr_ct_bc = "xfmr_ct_bc"
+    xfmr_ct_ca = "xfmr_ct_ca"
+    xfmr_ct_cb = "xfmr_ct_cb"
+    xfmr_ct_cc = "xfmr_ct_cc"
+
 
     # Active phases in a branch
     phN = "phN" # 1 if the N wire is active, else 0.
@@ -3220,6 +3289,12 @@ class ParamPowerFlowRefferenceType(Enum):
     alpha1 = 'alpha1'
     alpha2 = 'alpha2'
     alpha3 = 'alpha3'    
+
+    P_loss0 = "P_loss0"
+    control1 = "control1"
+    control2 = "control2"
+    control1_val = "control1_val"
+    control2_val = "control2_val"
     
     omega_base = "omega_base" # in rad/s
     Sbase = "Sbase" # in MVA
@@ -3384,6 +3459,7 @@ class BlockType(Enum):
     """
     this class contains the existing types of blocks
     """
+    # common
     CONST = "CONST"
     GAIN = "GAIN"
     SUM = "SUM"
@@ -3391,16 +3467,38 @@ class BlockType(Enum):
     PRODUCT = "PRODUCT"
     DIVIDE = "Divide"
     ABS = "Abs"
+
+    GENERIC = "Generic"
+
+    # RMS
     GENRAW = "GENRAW"
     GENQEC = "GENQEC"
-    GOV = "Gov"
-    STAB = "Stab"
-    EXCITER = "Exciter"
-    LINE = "Line"
-    LOAD = "Load"
-    GENERIC = "Generic"
+    GOV_RMS = "GOVERNOR_RMS"
+    STAB_RMS = "STABILIZER_RMS"
+    EXCITER_RMS = "EXCITER_RMS"
+    LINE_RMS = "Line_RMS"
+    LOAD_RMS = "Load_RMS"
+
+
+    # EMT
+    EMT_GENERATOR = "EMT_GENERATOR"
+    GOV_EMT = "GOVERNOR_EMT"
+    STAB_EMT = "STABILIZER_EMT"
+    EXCITER_EMT = "EXCITER_EMT"
+    EMT_PI_LINE = "EMT_PI_LINE"
+    EMT_BERGERON_LINE = "EMT_BERGERON_LINE"
+    R_LOAD_EMT = "R_LOAD_EMT"
+    L_LOAD_EMT = "L_LOAD_EMT"
+    C_LOAD_EMT = "C_LOAD_EMT"
+    EXP_LOAD_EMT = "EXP_LOAD_EMT"
+    ZIP_LOAD_EMT = "ZIP_LOAD_EMT"
+    DC_LOAD_EMT = "DC_LOAD_EMT"
+    EMT_THEVENIN = "EMT_THEVENIN_EMT"
+
     BUS_CONNECTION = "Bus Connection"
     EXTERNAL_MAPPING = "EXTERNAL_MAPPING"
+
+    EMTLOAD = "EMT_LOAD"
 
     def __str__(self):
         return self.value

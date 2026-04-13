@@ -13,11 +13,10 @@ from VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation import (pg, build_stat
                                                                   group_type_dict, contingency_ops_type_dict,
                                                                   contingency_method_dict, converter_control_type_dict,
                                                                   bus_type_dict,
-                                                                  GSLV_AVAILABLE, GSLV_VERSION,
-                                                                  GSLV_RECOMMENDED_VERSION)
+                                                                  GSLV_AVAILABLE, GSLV_RECOMMENDED_VERSION, GSLV_VERSION)
 from VeraGridEngine.DataStructures.branch_parent_data import BranchParentData
 from VeraGridEngine.basic_structures import IntVec, Vec, ConvergenceReport
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles import AnyProfile
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
@@ -31,9 +30,7 @@ from VeraGridEngine.basic_structures import Logger
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGridEngine.Simulations.OPF.opf_results import OptimalPowerFlowResults
     from VeraGridEngine.Simulations.OPF.opf_options import OptimalPowerFlowOptions
-    from VeraGridEngine.Simulations.LinearFactors.linear_analysis_options import LinearAnalysisOptions
     from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_options import ContingencyAnalysisOptions
-    from VeraGridEngine.Simulations.ContingencyAnalysis.contingency_analysis_results import ContingencyAnalysisResults
 
 
 def get_gslv_mip_solvers_list() -> List[str]:
@@ -84,7 +81,7 @@ def convert_tap_phase_control_mode_lst(data: List[TapPhaseControl]) -> List["pg.
 
 
 def fill_profile(gslv_profile: "pg.Profiledouble|pg.Profilebool|pg.Profileint|pg.Profileuint",
-                 gc_profile: Profile,
+                 gc_profile: AnyProfile,
                  use_time_series: bool,
                  time_indices: Union[IntVec, None],
                  n_time: int = 1,
@@ -2995,7 +2992,7 @@ def compare_nc(nc_gslv: "pg.NumericalCircuit", nc_gc: NumericalCircuit, tol: flo
     errors += CheckArrEq(nc_gslv.generator_data.bus_idx, nc_gc.generator_data.bus_idx, 'GenData', 'bus_idx')
     errors += CheckArrEq(nc_gslv.generator_data.active, nc_gc.generator_data.active, 'GenData', 'active')
     errors += CheckArr(nc_gslv.generator_data.p, nc_gc.generator_data.p, tol, 'GenData', 'P')
-    errors += CheckArr(nc_gslv.generator_data.pf, nc_gc.generator_data.pf, tol, 'GenData', 'Pf')
+    # errors += CheckArr(nc_gslv.generator_data.pf, nc_gc.generator_data.pf, tol, 'GenData', 'Pf')
     errors += CheckArr(nc_gslv.generator_data.v, nc_gc.generator_data.v, tol, 'GenData', 'v')
     errors += CheckArr(nc_gslv.generator_data.qmin, nc_gc.generator_data.qmin, tol, 'GenData', 'qmin')
     errors += CheckArr(nc_gslv.generator_data.qmax, nc_gc.generator_data.qmax, tol, 'GenData', 'qmax')

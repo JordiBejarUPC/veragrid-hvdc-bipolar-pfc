@@ -1,11 +1,10 @@
 import sympy as sp
 import numpy as np
-from numpy import dtype, ndarray
 from scipy import sparse, linalg
-from sympy.parsing.sympy_parser import parse_expr
 from enum import Enum
-from typing import Optional, Any, List, Tuple
-import warnings
+from typing import Optional, Any, Tuple
+import re
+
 
 # ------------------------------------------------------------------
 # Enums for Options
@@ -20,78 +19,41 @@ class ConstraintType(Enum):
     INEQUALITY = 2
 
 
-
 # ------------------------------------------------------------------
 # Helper Functions (Replacing Lambdas and Nested Functions)
 # ------------------------------------------------------------------
 
-def _get_symbol_name(sym: sp.Symbol) -> str:
-    """
-    Returns the name of a sympy symbol to act as a sorting key.
-
-    :param sym: SymPy Symbol object.
-    :type sym: sp.Symbol
-    :return: The string name of the symbol.
-    :rtype: str
-    """
-    return sym.name
-
-
 def _sort_symbol(sym: sp.Symbol) -> tuple:
     """
-    Provides the sorting key tuple for symbols based on TenSyGrid rules.
+        Evaluates a SymPy symbol to determine if it represents a derivative or a standard state variable,
+        generating a sorting key tuple.
 
-    :param sym: SymPy Symbol object.
-    :type sym: sp.Symbol
-    :return: A tuple containing the priority integer and the symbol name.
-    :rtype: tuple
-    """
+        From an algorithmic perspective, this function acts as a custom sorting key. In symbolic system
+        formulation, it is strictly necessary to segregate time-derivatives from standard algebraic variables
+        to properly structure Differential Algebraic Equations (DAEs) or state-space representations.
+
+        The function extracts the string name of the symbol and checks it against standard derivative
+        prefixes ('dx', 'xp', 'd_', 'dt_'). By returning a tuple of `(integer_priority, name)`, it forces
+        Python sorting algorithms to group all derivatives first (priority 0) and standard variables second
+        (priority 1). The inclusion of the string name in the tuple ensures that within those two categories,
+        the symbols are sorted alphabetically.
+
+        :param sym: The symbolic variable to be evaluated and categorized.
+        :type sym: sp.Symbol
+        :return: A tuple used for sorting, containing the priority integer (0 if it is a derivative,
+                 1 otherwise) and the string name of the symbol.
+        :rtype: tuple
+        """
     name: str = sym.name
-
     if name.startswith('dx') or name.startswith('xp') or name.startswith('d_') or name.startswith('dt_'):
         return 0, name
-    elif name.startswith('x') and not name.startswith('xp'):
-        return 1, name
-    elif name.startswith('u'):
-        return 2, name
-    elif name.startswith('y'):
-        return 3, name
-    elif name.startswith('z'):
-        return 4, name
     else:
-        return 5, name
+        return 1, name
 
 
 def _get_real_part(val: complex) -> float:
-    """
-    Returns the real part of a complex number to act as a sorting key.
-
-    :param val: Complex number.
-    :type val: complex
-    :return: Real part of the complex number.
-    :rtype: float
-    """
     return float(val.real)
 
-
-def _section(title: str, content: str) -> str:
-    """
-    Formats text into a standardized section for reporting.
-
-    :param title: Section title.
-    :type title: str
-    :param content: Section body content.
-    :type content: str
-    :return: Formatted section block.
-    :rtype: str
-    """
-    bar: str = "=" * (len(title) + 4)
-    return f"{bar}\n  {title}\n{bar}\n{content}\n"
-
-
-# ------------------------------------------------------------------
-# Main Class
-# ------------------------------------------------------------------
 
 class PolynomialMatrixBuilder:
     """
@@ -99,13 +61,6 @@ class PolynomialMatrixBuilder:
     polynomial equations, and performs analytic linearization using the
     iMTI / CPN representation described in the TenSyGrid papers.
     """
-
-    # Finalizing the class to prevent dynamic attribute assignment and save memory
-    # __slots__ = ['verbose', 'eqs', 'ineqs', 'all_symbols', 'sym_to_idx','S_H', 'Phi_H', 'S_W', 'Phi_W', 'E', 'A', 'B', 'EABC''state_vars', 'algebraic_vars']
-
-    # ------------------------------------------------------------------
-    # Construction
-    # ------------------------------------------------------------------
 
     def __init__(
             self,
@@ -118,30 +73,103 @@ class PolynomialMatrixBuilder:
     ) -> None:
 
         self.verbose: bool = verbose
-
         self.eqs: list = list()
         self.ineqs: list = list()
         self.state_vars: list = list()
         self.algebraic_vars: list = list()
+        self.has_problem: bool = problem is not None
 
-        processed_eqs: list = list()
-        processed_ineqs: list = list()
-        processed_state_vars: list = list()
-        processed_algebraic_vars: list = list()
+        # --- 0. RESOLVE DUPLICATE VARIABLE NAMES DYNAMICALLY ---
+        # This prevents SymPy from physically fusing distinct limiters together.
+        if self.has_problem:
+            seen_vars = set()
+            name_counters = {}
+            all_vg_vars = []
+
+            if hasattr(problem, '_state_vars') and problem._state_vars is not None:
+                all_vg_vars.extend(problem._state_vars)
+            if hasattr(problem, '_algebraic_vars') and problem._algebraic_vars is not None:
+                all_vg_vars.extend(problem._algebraic_vars)
+
+            for var in all_vg_vars:
+                if hasattr(var, 'name'):
+                    vid = id(var)
+
+                    if vid not in seen_vars:
+                        seen_vars.add(vid)
+                        base_name = getattr(var, 'name')
+
+                        if base_name not in name_counters:
+                            name_counters[base_name] = 0
+                        else:
+                            name_counters[base_name] += 1
+                            new_name = f"{base_name}_{name_counters[base_name]}"
+                            try:
+                                var.name = new_name
+                            except Exception as e:
+                                print("Exception on for var in all_vg_vars", e)
+                                pass
+
+                            # Also rename the corresponding derivative variable to avoid mapping breaks
+                            if hasattr(var, 'diff_var') and var.diff_var is not None:
+                                d_var = var.diff_var
+                                d_vid = id(d_var)
+                                if d_vid not in seen_vars and hasattr(d_var, 'name'):
+                                    seen_vars.add(d_vid)
+                                    d_base = getattr(d_var, 'name')
+                                    d_new = d_base.replace(base_name, new_name)
+                                    if d_new == d_base:
+                                        d_new = f"{d_base}_{name_counters[base_name]}"
+                                    try:
+                                        d_var.name = d_new
+                                    except Exception as e:
+                                        print("Exception in hasattrib")
+                                        pass
+
+        # 1. PARAMETER EXTRACTION
+        self._param_map: dict = {}
+        self._protected_params: list = []
+
+        if self.has_problem:
+            """TODO: Change _variable_parameters with a getter in the main class"""
+            if hasattr(problem, '_variable_parameters') and problem._variable_parameters is not None:
+                self._protected_params.extend([getattr(vp, 'name', str(vp)) for vp in problem._variable_parameters])
+
+            if hasattr(problem, '_variable_parameters') and hasattr(problem, '_variable_parameters_values'):
+                for i, vp in enumerate(problem._variable_parameters):
+                    p_name = getattr(vp, 'name', str(vp))
+                    if i < len(problem._variable_parameters_values):
+                        self._param_map[p_name] = problem._variable_parameters_values[i]
+            elif hasattr(problem, '_variable_parameters') and hasattr(problem, '_variable_parameter_values'):
+                for i, vp in enumerate(problem._variable_parameters):
+                    p_name = getattr(vp, 'name', str(vp))
+                    if i < len(problem._variable_parameter_values):
+                        self._param_map[p_name] = problem._variable_parameter_values[i]
+
+            if hasattr(problem, '_constant_parameters') and hasattr(problem, '_constant_params'):
+                self._protected_params.extend([getattr(cp, 'name', str(cp)) for cp in problem._constant_parameters])
+                for i, cp in enumerate(problem._constant_parameters):
+                    p_name = getattr(cp, 'name', str(cp))
+                    if i < len(problem._constant_params):
+                        self._param_map[p_name] = problem._constant_params[i]
+
+        processed_eqs = list()
+        processed_ineqs = list()
+        processed_state_vars = list()
+        processed_algebraic_vars = list()
 
         def _safe_to_string(item: Any) -> str:
+            """TODO: Remove hasattr"""
             if hasattr(item, 'expr'):
                 return str(getattr(item, 'expr'))
             elif hasattr(item, 'to_string'):
                 return item.to_string()
             return str(item)
 
-        # Checks whether the input is a VG problem or example eqs
-        has_problem: bool = problem is not None
-
         if eqs is not None:
             processed_eqs = list(eqs)
-        elif has_problem:
+        elif self.has_problem:
+            """TODO: Remove hasattr"""
             if hasattr(problem, '_state_eqs'):
                 for s_eq in problem._state_eqs:
                     processed_eqs.append(_safe_to_string(s_eq))
@@ -152,21 +180,91 @@ class PolynomialMatrixBuilder:
         if ineqs is not None:
             processed_ineqs = list(ineqs)
 
+        self._explicit_deriv_map: dict = dict()
+
+        def clean_name_fn(n):
+            """
+                Standardizes the string representation of a symbolic variable name by normalizing
+                various time-derivative prefixes into a single canonical format.
+
+                From an algorithmic perspective, different symbolic operations, external libraries,
+                or intermediate parsing steps may generate inconsistent first-derivative prefixes
+                (such as 'dt_1_', 'd_1_', or simply 'd_'). This cleaning step is critical in the
+                broader algorithm because downstream processes—such as state-space formulation,
+                variable mapping, or the previous sorting logic—rely on strict, predictable string
+                matching to correctly identify and manipulate time derivatives.
+
+                The function executes the following sequence:
+                1. Casts the input to a string to guarantee that string manipulation methods are available,
+                   allowing it to gracefully handle SymPy symbols or raw strings.
+                2. Explicitly replaces known anomalous first-derivative notations ('dt_1_' and 'd_1_')
+                   with the standard 'dt_' prefix.
+                3. Utilizes a regular expression to find word-boundary instances of 'd_' (matching the
+                   start of the string) and replaces them with 'dt_'. The word boundary is essential to
+                   prevent the accidental replacement of 'd_' if it occurs in the middle or end of a
+                   variable's base name.
+
+                :param n: The variable or object whose name requires standardizing.
+                :type n: Any (typically str or sp.Symbol)
+                :return: The cleaned and standardized string name with a unified 'dt_' derivative prefix.
+                :rtype: str
+                """
+            c = str(n)
+            c = c.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
+            c = re.sub(r'\bd_', 'dt_', c)
+            return c
+
+        def _extract_mappings(var_list: list) -> None:
+            """
+                Extracts and maps base variables to their explicit time-derivative counterparts
+                from a list of variable objects.
+
+                From an algorithmic perspective, this function builds a required lookup table
+                (`self._explicit_deriv_map`) linking state variables to their corresponding derivatives.
+                It iterates over the provided list, bypassing raw strings, and inspects objects for
+                `diff_var` or `base_var` properties. By applying `clean_name_fn` to the extracted names,
+                it guarantees standardized string matching for downstream differential equation assembly.
+
+                :param var_list: A collection of variable objects to inspect for derivative relationships.
+                :type var_list: list
+                :return: Modifies the internal `_explicit_deriv_map` in place.
+                :rtype: None
+                """
+            if not var_list: return
+            for var_obj in var_list:
+                if not isinstance(var_obj, str):
+                    base_name_mappings = getattr(var_obj, 'name', None)
+                    diff_var = getattr(var_obj, 'diff_var', None)
+                    if diff_var is not None:
+                        diff_name = getattr(diff_var, 'name', None)
+                        if base_name_mappings and diff_name:
+                            self._explicit_deriv_map[clean_name_fn(base_name_mappings)] = clean_name_fn(diff_name)
+
+                    base_var = getattr(var_obj, 'base_var', None)
+                    if base_var is not None:
+                        base_var_name = getattr(base_var, 'name', None)
+                        if base_var_name and base_name_mappings:
+                            self._explicit_deriv_map[clean_name_fn(base_var_name)] = clean_name_fn(base_name_mappings)
+
         if state_vars is not None:
-            processed_state_vars = list(state_vars)
-        elif has_problem:
+            _extract_mappings(state_vars)
+            processed_state_vars = [_safe_to_string(v) for v in state_vars]
+        elif self.has_problem:
             if hasattr(problem, '_state_vars'):
+                _extract_mappings(problem._state_vars)
                 for s_var in problem._state_vars:
                     processed_state_vars.append(_safe_to_string(s_var))
 
         if algebraic_vars is not None:
-            processed_algebraic_vars = list(algebraic_vars)
-        elif has_problem:
+            _extract_mappings(algebraic_vars)
+            processed_algebraic_vars = [_safe_to_string(v) for v in algebraic_vars]
+        elif self.has_problem:
             if hasattr(problem, '_algebraic_vars'):
+                _extract_mappings(problem._algebraic_vars)
                 for a_var in problem._algebraic_vars:
                     processed_algebraic_vars.append(_safe_to_string(a_var))
 
-        parsing_context: dict = dict()
+        parsing_context = dict()
         parsing_context['cos'] = sp.cos
         parsing_context['sin'] = sp.sin
         parsing_context['tan'] = sp.tan
@@ -174,77 +272,54 @@ class PolynomialMatrixBuilder:
         parsing_context['sqrt'] = sp.sqrt
         parsing_context['pi'] = sp.pi
 
-        parsing_context['Id'] = sp.Symbol('Id')
-        parsing_context['Iq'] = sp.Symbol('Iq')
-        parsing_context['I'] = sp.Symbol('I')
-        parsing_context['E'] = sp.Symbol('E')
-        parsing_context['Q'] = sp.Symbol('Q')
-        parsing_context['N'] = sp.Symbol('N')
-        parsing_context['O'] = sp.Symbol('O')
-        parsing_context['S'] = sp.Symbol('S')
+        parsed_predefined: list[sp.Symbol] = []
 
-        parsed_predefined: list = list()
+        # 2. Symbols Extraction
+        for names, target_list in [(processed_state_vars, self.state_vars),
+                                   (processed_algebraic_vars, self.algebraic_vars)]:
+            for name in names:
+                clean_name = name.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
+                clean_name = re.sub(r'\bd_', 'dt_', clean_name)
 
-        for s_name in processed_state_vars:
-            new_sym: sp.Symbol = sp.Symbol(s_name)
-            parsing_context[s_name] = new_sym
-            parsed_predefined.append(new_sym)
-            self.state_vars.append(new_sym)
+                if clean_name not in parsing_context:
+                    sym = sp.Symbol(clean_name)
+                    parsing_context[clean_name] = sym
+                    target_list.append(sym)
+                    parsed_predefined.append(sym)
 
-        for a_name in processed_algebraic_vars:
-            new_sym: sp.Symbol = sp.Symbol(a_name)
-            parsing_context[a_name] = new_sym
-            parsed_predefined.append(new_sym)
-            self.algebraic_vars.append(new_sym)
+        # 3. Expression parsing
+        for raw_exprs, target_list in [(processed_eqs, self.eqs), (processed_ineqs, self.ineqs)]:
+            for raw in raw_exprs:
+                s = raw if isinstance(raw, str) else str(raw)
+                s = s.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
+                s = re.sub(r'\bd_', 'dt_', s)
 
-        for raw_eq in processed_eqs:
-            eq_str: str = raw_eq if isinstance(raw_eq, str) else str(raw_eq)
-            parsed_eq: sp.Expr = parse_expr(eq_str, local_dict=parsing_context, evaluate=True)
-            self.eqs.append(parsed_eq)
+                expr = sp.parsing.sympy_parser.parse_expr(s, local_dict=parsing_context, evaluate=False)
 
-        for raw_ineq in processed_ineqs:
-            ineq_str: str = raw_ineq if isinstance(raw_ineq, str) else str(raw_ineq)
-            parsed_ineq: sp.Expr = parse_expr(ineq_str, local_dict=parsing_context, evaluate=True)
-            self.ineqs.append(parsed_ineq)
+                if self._param_map:
+                    expr = expr.subs(self._param_map)
 
-        self.all_symbols: list = list()
-        self.sym_to_idx: dict = dict()
+                target_list.append(expr)
 
-        combined_exprs: list = list()
-        for parsed_e in self.eqs:
-            combined_exprs.append(parsed_e)
-        for parsed_i in self.ineqs:
-            combined_exprs.append(parsed_i)
+        # 4. Symbols' inizialization
+        self.all_symbols = []
+        self.sym_to_idx = {}
+        self.extract_symbols(self.eqs + self.ineqs, predefined=parsed_predefined)
+        self._argaux_map = dict()
 
-
-        self.extract_symbols(combined_exprs, predefined=parsed_predefined)
-
-        # --- FIX: AUTOMATIC FLATTENING & GLOBAL SORTING ---
-        self._argaux_map: dict = dict()
-
-        # LINEARIZATION: \propto x^n, n\in\mathbb{R}
         self._flatten_nonlinear_arguments()
-
-        # LINEARIZATION: \propto \cos(x), \propto \sin(x)
         self._apply_automatic_trig_lifting()
-        self.all_symbols.sort(key=_sort_symbol)
 
+        self.all_symbols.sort(key=_sort_symbol)
         self.sym_to_idx.clear()
-        idx: int = 0
-        for sym in self.all_symbols:
+        for idx, sym in enumerate(self.all_symbols):
             self.sym_to_idx[sym.name] = idx
-            idx = idx + 1
 
         # --- ALGORITHM: TWO-PASS COMPILATION FOR AUTOMATIC LIFTING ---
         self.matrix_creation(self.eqs)
-        self._generate_lifting_equations()
+        self._generate_lifting_equations(problem)
 
-        S_H_sp: sparse.csc_matrix
-        Phi_H_sp: sparse.csr_matrix
         S_H_sp, Phi_H_sp = self.matrix_creation(self.eqs)
-
-        S_W_sp: sparse.csc_matrix
-        Phi_W_sp: sparse.csr_matrix
         S_W_sp, Phi_W_sp = self.matrix_creation(self.ineqs)
 
         self.S_H: np.ndarray = S_H_sp.toarray()
@@ -260,107 +335,75 @@ class PolynomialMatrixBuilder:
     # ------------------------------------------------------------------
     # Symbol extraction
     # ------------------------------------------------------------------
+    def _is_protected_param(self, var_name: str) -> bool:
+        return hasattr(self, '_protected_params') and var_name in self._protected_params
 
     def extract_symbols(self, all_exprs: list, predefined: list | None = None) -> list:
         """
-        Extracts and sorts symbols from a list of SymPy expressions, incorporating
-        any predefined state and algebraic symbols passed by the user.
+            Extracts and sorts unique symbolic variables from a list of equations.
 
-        :param all_exprs: SymPy expressions to scan.
-        :type all_exprs: list
-        :param predefined: Optional list of pre-parsed SymPy symbols to include.
-        :type predefined: list | None
-        :return: Sorted list of unique symbols.
-        :rtype: list
+            Algorithmically, this function builds the definitive sequence of state variables.
+            It uses a set for O(1) deduplication, appending `predefined` symbols first.
+            Then, it extracts `free_symbols` from all expressions, actively filtering out
+            protected parameters. Finally, it applies the derivative-first sorting logic
+            to guarantee a deterministic variable order for matrix and state-space assembly.
+
+            :param all_exprs: List of symbolic expressions or equations to parse.
+            :type all_exprs: list
+            :param predefined: Optional list of symbols to force-include first.
+            :type predefined: list | None
+            :return: A sorted list of all unique, non-protected symbols.
+            :rtype: list
         """
         seen: set = set()
         extracted_symbols: list = list()
 
-        # Explicitly inject predefined symbols first
         if predefined is not None:
-            sym_p: sp.Symbol
             for sym_p in predefined:
                 if sym_p not in seen:
                     seen.add(sym_p)
                     extracted_symbols.append(sym_p)
-                else:
-                    pass
-        else:
-            pass
 
-        # Scan expressions for any additional symbols not predefined
         for eq in all_exprs:
-            eq_symbols: list = list(eq.free_symbols)
-            eq_symbols.sort(key=_get_symbol_name)
-
-            for sym in eq_symbols:
-                if sym not in seen:
+            for sym in list(eq.free_symbols):
+                if sym not in seen and not self._is_protected_param(sym.name):
                     seen.add(sym)
                     extracted_symbols.append(sym)
-                else:
-                    pass
 
-        # Apply priority sorting strictly to all gathered symbols
         extracted_symbols.sort(key=_sort_symbol)
-
-        if self.verbose:
-            print(f"Unified symbols order: {extracted_symbols}\n")
-        else:
-            pass
-
         self.all_symbols = extracted_symbols
         return extracted_symbols
 
     # ------------------------------------------------------------------
     # Matrix creation
     # ------------------------------------------------------------------
-
     def matrix_creation(self, all_exprs: list) -> tuple:
         """
-        Creates the S and Phi sparse matrices with automatic L1 normalisation.
+            Assembles the sparse structural matrices S (monomial definitions) and Phi (coefficients)
+            from a list of symbolic expressions.
 
-        :param all_exprs: SymPy expressions to encode.
-        :type all_exprs: list
-        :return: Tuple containing S (csc_matrix) and Phi (csr_matrix).
-        :rtype: tuple
+            Algorithmically, this translates symbolic equations into a vectorized numeric format
+            required for high-performance evaluation. It parses each equation into terms, extracts
+            unique monomials to avoid redundancies, and maps their respective coefficients. To optimize
+            memory and conform to sparse operations, it outputs S in CSC format and Phi in CSR format.
+
+            :param all_exprs: A list of symbolic expressions representing the system equations.
+            :type all_exprs: list
+            :return: A tuple containing the (S, Phi) sparse matrices.
+            :rtype: tuple
         """
         S_list: list = list()
         Phi_data: list = list()
         monom_to_idx: dict = dict()
 
-        if self.verbose:
-            print("--- Analyzing Expressions for Matrices ---")
-        else:
-            pass
-
         eq_idx: int = 0
         for eq in all_exprs:
-            if self.verbose:
-                print(f"\nEquation {eq_idx + 1}: {eq}")
-            else:
-                pass
-
-            # We split the equation into the different terms
-            terms: list
-            if eq.is_Add:
-                terms = list(eq.args)
-            else:
-                terms = [eq]
-
+            terms = list(eq.args) if eq.is_Add else [eq]
             current_eq_coeffs: dict = dict()
-
-            # It gets the factors of each term that go in S and Phi
             for term in terms:
-                current_eq_coeffs = self._get_monomial_weights(
-                    term, S_list, monom_to_idx, current_eq_coeffs
-                )
-
+                current_eq_coeffs = self._get_monomial_weights(term, S_list, monom_to_idx, current_eq_coeffs)
             Phi_data.append(current_eq_coeffs)
-            eq_idx = eq_idx + 1
-
-        # Assemble sparse matrices
-        S: sparse.csc_matrix
-        Phi: sparse.csr_matrix
+            eq_idx += 1
 
         if len(S_list) > 0:
             S_raw: np.ndarray = np.vstack(S_list).T.astype(float)
@@ -370,254 +413,144 @@ class PolynomialMatrixBuilder:
 
             for eq_dict in Phi_data:
                 row: np.ndarray = np.zeros(num_cols)
-                # Dictionary iteration is safe here as it represents matrix columns
                 for col_idx, val in eq_dict.items():
                     row[col_idx] = val
                 phi_rows.append(row)
 
             Phi = sparse.csr_matrix(np.vstack(phi_rows))
         else:
-            # Matrices are empty, use correct shapes
             S = sparse.csc_matrix((len(self.all_symbols), 0))
             Phi = sparse.csr_matrix((len(all_exprs), 0))
 
         return S, Phi
 
-    def _get_monomial_weights(
-            self,
-            term: sp.Expr,
-            S_list: list,
-            monom_to_idx: dict,
-            current_eq_coeffs: dict
-    ) -> dict:
+    def _get_monomial_weights(self, term: sp.Expr, S_list: list, monom_to_idx: dict, current_eq_coeffs: dict) -> dict:
         """
-        Processes a term to extract its global coefficients and internal weights.
-        If the term contains multi-variable factors, it expands it recursively.
+            Parses a symbolic term to extract its structural weights for the S matrix and
+            its scalar coefficient for the Phi matrix.
 
-        :param term: The mathematical term to be processed.
-        :type term: sp.Expr
-        :param S_list: The collection of unique monomial weight arrays.
-        :type S_list: list
-        :param monom_to_idx: Dictionary mapping a monomial weight tuple to its matrix index.
-        :type monom_to_idx: dict
-        :param current_eq_coeffs: Dictionary of global coefficients for the current equation.
-        :type current_eq_coeffs: dict
-        :return: The updated dictionary of global coefficients for the current equation.
-        :rtype: dict
+            Algorithmically, this function is the core algebraic reducer for the TenSyGrid engine.
+            It breaks down complex terms into standardized multilinear monomials. If it detects
+            higher-order degrees, inverses, or square roots, it dynamically generates and injects
+            auxiliary variables (`mulaux`, `invaux`, `sqrtaux`) to linearize the term's structure.
+            During this process, it updates the global symbol registry and recursively pads
+            existing structural arrays (`S_list`) on the fly to maintain matrix dimensionality.
+
+            :param term: The specific symbolic algebraic term to be evaluated.
+            :type term: sp.Expr
+            :param S_list: List of numerical arrays representing the structural footprint of known monomials.
+            :type S_list: list
+            :param monom_to_idx: Dictionary mapping unique monomial structures to their column index.
+            :type monom_to_idx: dict
+            :param current_eq_coeffs: Dictionary accumulating the coefficient values for the current equation.
+            :type current_eq_coeffs: dict
+            :return: The updated dictionary of coefficients mapping monomial indices to their values.
+            :rtype: dict
         """
-        coeff_sym: sp.Expr
-        symbolic_part: tuple
         coeff_sym, symbolic_part = term.as_coeff_mul()
-
         factors: tuple = sp.Mul.make_args(sp.Mul(*symbolic_part))
         requires_expansion: bool = False
 
-        # Checks if the term is of the form k(a+y_i)x or k(a+y_i+y_j)x => Later requires expansion
         for f in factors:
-            f_vars: list = list(f.free_symbols)
-            if len(f_vars) > 1:
+            if len(list(f.free_symbols)) > 1:
                 requires_expansion = True
-            else:
-                pass
 
         if requires_expansion:
-            if self.verbose:
-                print(f"   Expanding complex term: {term}")
-            else:
-                pass
-
             expanded_expr: sp.Expr = term.expand()
             expanded_sub_terms: tuple = sp.Add.make_args(expanded_expr)
+            if len(expanded_sub_terms) == 1 and expanded_sub_terms[0] == term:
+                raise ValueError(f"Irreducible non-linear term detected: {term}")
 
-            # --- ALGORITHM: PREVENT INFINITE RECURSION ---
-            # If expanding the term returns the exact same single term, it means
-            # it is an irreducible multi-variable non-polynomial (e.g., sqrt(x**2 + y**2)).
-            # iMTI requires intermediate variables for such cases.
-            if len(expanded_sub_terms) == 1:
-                if expanded_sub_terms[0] == term:
-                    raise ValueError(
-                        f"Irreducible multi-variable non-linear term detected: {term}. "
-                        "The iMTI CPN methodology requires non-polynomial functions to be "
-                        "applied to single variables. Please define an intermediate "
-                        "algebraic variable (e.g., z1 = x1**2 + x2**2) in your equations."
-                    )
-                else:
-                    pass
-            else:
-                pass
-
-            sub_t: sp.Expr
             for sub_t in expanded_sub_terms:
-                current_eq_coeffs = self._get_monomial_weights(
-                    sub_t, S_list, monom_to_idx, current_eq_coeffs
-                )
+                current_eq_coeffs = self._get_monomial_weights(sub_t, S_list, monom_to_idx, current_eq_coeffs)
             return current_eq_coeffs
 
         else:
             global_phi: float = float(coeff_sym)
-            weights: list = list()
-
-            for _ in range(len(self.all_symbols)):
-                weights.append(0.0)
+            weights: list = [0.0] * len(self.all_symbols)
 
             for f in factors:
-                f_vars_inner: list = list(f.free_symbols)
-
+                f_vars_inner = list(f.free_symbols)
                 if len(f_vars_inner) == 1:
                     s: sp.Symbol = f_vars_inner[0]
                     idx_val: int | None = self.sym_to_idx.get(s.name, None)
 
                     if idx_val is not None:
                         b_val_sym: sp.Expr = sp.diff(f, s)
-
-                        # --- MULTILINEARITY CHECK (Lifting) ---
-                        # ALGORITHM: Extract degree as float to prevent truncating 0.5 to 0
-                        deg: float = 1.0
-                        if isinstance(f, sp.Pow):
-                            deg = float(f.exp)
-                        else:
-                            deg = float(sp.degree(f, s))
-
-                        # Floating point comparison for safety
+                        deg: float = float(f.exp) if isinstance(f, sp.Pow) else float(sp.degree(f, s))
                         is_sqrt: bool = abs(deg - 0.5) < 1e-6
+                        is_protected = self._is_protected_param(s.name)
 
-                        if (deg > 1.0 or deg < 0.0) and not is_sqrt:
-                            # 1. Determine lifting type and number of variables
+                        if (deg > 1.0 or deg < 0.0) and not is_sqrt and not is_protected:
                             is_positive: bool = deg > 1.0
                             num_aux: int = int(deg - 1.0) if is_positive else int(-deg + 1.0)
                             prefix: str = "mulaux" if is_positive else "invaux"
 
-                            # Rule: Explicit loop instead of list comprehension
-                            new_vars_names: list = list()
-                            i_aux: int
-                            for i_aux in range(num_aux):
-                                new_vars_names.append(str(f"{s.name}_{prefix}{i_aux}"))
+                            new_vars_names = [f"{s.name}_{prefix}{i_aux}" for i_aux in range(num_aux)]
+                            new_symbols_list, vars_added = [], False
 
-                            new_symbols_list: list = list()
-                            vars_added: bool = False
-
-                            # 2. Register variables in the global state
-                            v_name: str
                             for v_name in new_vars_names:
                                 if v_name not in self.sym_to_idx:
-                                    new_sym_obj: sp.Symbol = sp.Symbol(v_name)
+                                    new_sym_obj = sp.Symbol(v_name)
                                     self.all_symbols.append(new_sym_obj)
                                     self.sym_to_idx[v_name] = len(self.all_symbols) - 1
                                     new_symbols_list.append(new_sym_obj)
                                     vars_added = True
                                 else:
-                                    # Retrieve existing symbol object
-                                    idx_existing: int = self.sym_to_idx[v_name]
-                                    new_symbols_list.append(self.all_symbols[idx_existing])
+                                    new_symbols_list.append(self.all_symbols[self.sym_to_idx[v_name]])
 
-                            # 3. CRITICAL: If variables were added, pad S_list
                             if vars_added:
-                                new_total_size: int = len(self.all_symbols)
-                                i_p: int
+                                new_size = len(self.all_symbols)
                                 for i_p in range(len(S_list)):
-                                    current_vec: np.ndarray = S_list[i_p]
-                                    padding_size: int = new_total_size - current_vec.shape[0]
-                                    if padding_size > 0:
-                                        # Use np.concatenate for zero overhead padding
-                                        S_list[i_p] = np.concatenate([current_vec, np.zeros(padding_size)])
-                                    else:
-                                        pass
-                            else:
-                                pass
+                                    padding = new_size - S_list[i_p].shape[0]
+                                    if padding > 0:
+                                        S_list[i_p] = np.concatenate([S_list[i_p], np.zeros(padding)])
 
-                            # 4. Create the multilinear equivalent expression
-                            multilinear_f: sp.Expr = s
-                            sym_aux: sp.Symbol
+                            multilinear_f = s
                             for sym_aux in new_symbols_list:
                                 multilinear_f = multilinear_f * sym_aux
 
-                            if self.verbose:
-                                print(f"LIFTING: {f} -> {multilinear_f}")
-                            else:
-                                pass
+                            new_term = (term / f) * multilinear_f
+                            return self._get_monomial_weights(new_term, S_list, monom_to_idx, current_eq_coeffs)
 
-                            # 5. RE-CALL: Re-process the term with the new multilinear form
-                            new_term: sp.Expr = (term / f) * multilinear_f
-                            return self._get_monomial_weights(
-                                new_term, S_list, monom_to_idx, current_eq_coeffs
-                            )
+                        elif is_sqrt and not is_protected:
+                            new_vars_names_sqrt = [f"{s.name}_sqrtaux0", f"{s.name}_sqrtaux1"]
+                            new_symbols_list_sqrt, vars_added_sqrt = [], False
 
-                        elif is_sqrt:
-                            # 1. Determine lifting type: sqrt(s) -> s_sqrtaux0, s_sqrtaux1
-                            # We MUST use TWO variables to maintain the strict multilinear basis
-                            new_vars_names_sqrt: list = list([str(f"{s.name}_sqrtaux0"), str(f"{s.name}_sqrtaux1")])
-                            new_symbols_list_sqrt: list = list()
-                            vars_added_sqrt: bool = False
-
-                            # 2. Register variables in the global state
-                            v_name_sqrt: str
                             for v_name_sqrt in new_vars_names_sqrt:
                                 if v_name_sqrt not in self.sym_to_idx:
-                                    new_sym_obj_sqrt: sp.Symbol = sp.Symbol(v_name_sqrt)
+                                    new_sym_obj_sqrt = sp.Symbol(v_name_sqrt)
                                     self.all_symbols.append(new_sym_obj_sqrt)
                                     self.sym_to_idx[v_name_sqrt] = len(self.all_symbols) - 1
                                     new_symbols_list_sqrt.append(new_sym_obj_sqrt)
                                     vars_added_sqrt = True
                                 else:
-                                    # Retrieve existing symbol object explicitly from registry
-                                    idx_existing_sqrt: int = self.sym_to_idx[v_name_sqrt]
-                                    new_symbols_list_sqrt.append(self.all_symbols[idx_existing_sqrt])
+                                    new_symbols_list_sqrt.append(self.all_symbols[self.sym_to_idx[v_name_sqrt]])
 
-                            # 3. CRITICAL: Pad previous monoms in S_list
                             if vars_added_sqrt:
-                                new_total_size_sqrt: int = len(self.all_symbols)
-                                i_p_sqrt: int
-                                for i_p_sqrt in range(len(S_list)):
-                                    current_vec_sqrt: np.ndarray = S_list[i_p_sqrt]
-                                    padding_size_sqrt: int = new_total_size_sqrt - current_vec_sqrt.shape[0]
-                                    if padding_size_sqrt > 0:
-                                        # Zero overhead padding
-                                        S_list[i_p_sqrt] = np.concatenate(
-                                            [current_vec_sqrt, np.zeros(padding_size_sqrt)])
-                                    else:
-                                        pass
-                            else:
-                                pass
+                                new_size = len(self.all_symbols)
+                                for i_p in range(len(S_list)):
+                                    padding = new_size - S_list[i_p].shape[0]
+                                    if padding > 0:
+                                        S_list[i_p] = np.concatenate([S_list[i_p], np.zeros(padding)])
 
-                            # 4. Create the multilinear equivalent expression
-                            # The term itself is replaced by the first auxiliary symbol
-                            multilinear_f_sqrt: sp.Expr = new_symbols_list_sqrt[0]
+                            multilinear_f_sqrt = new_symbols_list_sqrt[0]
+                            new_term_sqrt = (term / f) * multilinear_f_sqrt
+                            return self._get_monomial_weights(new_term_sqrt, S_list, monom_to_idx, current_eq_coeffs)
 
-                            if self.verbose:
-                                print(f"LIFTING SQRT: {f} -> {multilinear_f_sqrt} (with multilinear constraints)")
-                            else:
-                                pass
-
-                            # 5. RE-CALL: Re-process the term with the new form
-                            new_term_sqrt: sp.Expr = (term / f) * multilinear_f_sqrt
-                            return self._get_monomial_weights(
-                                new_term_sqrt, S_list, monom_to_idx, current_eq_coeffs
-                            )
-                        else:
-                            pass
-
-                        b_val: float = float(b_val_sym)
-                        a_val: float = float(f.subs(s, 0))
-
-                        scale: float = abs(a_val) + abs(b_val)
-                        if scale == 0.0:
-                            scale = 1.0
-                        else:
-                            pass
+                        b_val = float(b_val_sym)
+                        a_val = float(f.subs(s, 0))
+                        scale = abs(a_val) + abs(b_val)
+                        if scale == 0.0: scale = 1.0
 
                         weights[idx_val] = b_val / scale
-                        global_phi = global_phi * scale
-                    else:
-                        pass
+                        global_phi *= scale
 
                 elif len(f_vars_inner) == 0:
-                    global_phi = global_phi * float(f)
-                else:
-                    pass
+                    global_phi *= float(f)
 
-            monom_tuple: tuple = tuple(weights)
-            existing_idx: int | None = monom_to_idx.get(monom_tuple, None)
-            final_idx: int = 0
+            monom_tuple = tuple(weights)
+            existing_idx = monom_to_idx.get(monom_tuple, None)
 
             if existing_idx is None:
                 final_idx = len(S_list)
@@ -626,694 +559,515 @@ class PolynomialMatrixBuilder:
             else:
                 final_idx = existing_idx
 
-            current_val: float | None = current_eq_coeffs.get(final_idx, None)
-
-            if current_val is None:
-                current_eq_coeffs[final_idx] = global_phi
-            else:
-                current_eq_coeffs[final_idx] = current_val + global_phi
-
+            current_eq_coeffs[final_idx] = current_eq_coeffs.get(final_idx, 0.0) + global_phi
             return current_eq_coeffs
 
     def _apply_automatic_trig_lifting(self) -> None:
         """
-        ALGORITHM: Automatic Multilinear Lifting via Lie-Bäcklund Isomorphism.
-        Transforms trigonometric non-linearities into extended polynomial states.
-        Registers the new variables globally to ensure matrix column allocation.
-        """
+            Applies automatic trigonometric lifting to eliminate transcendental functions
+            by replacing them with polynomial proxy variables.
 
-        new_eqs: list = list()
-        subs_dict: dict = dict()
-        processed_args: set = set()
+            Algorithmically, this step converts transcendental non-linearities into a purely
+            polynomial Differential Algebraic Equation (DAE) system. It searches for sine and
+            cosine operations, replaces them with auxiliary state variables (e.g., `x_sin_arg`),
+            and automatically appends their analytical time-derivative constraints to the system
+            equations. This is strictly required to ensure all terms can be subsequently parsed
+            into standard multilinear monomial matrices.
+
+            :return: Modifies the internal `eqs` and `all_symbols` lists in place.
+            :rtype: None
+        """
+        new_eqs, subs_dict, processed_args = [], {}, set()
 
         for eq in self.eqs:
-            trig_terms = eq.atoms(sp.sin, sp.cos)
-
-            for term in trig_terms:
+            for term in eq.atoms(sp.sin, sp.cos):
                 arg = term.args[0]
-
                 if arg not in processed_args:
-                    # 1. Define extended state and derivative variables using native prefixes
+                    arg_name = arg.name
+                    if self._is_protected_param(arg_name): continue
+
                     s_var = sp.Symbol(f"x_sin_{arg.name}")
                     c_var = sp.Symbol(f"x_cos_{arg.name}")
-
                     sp_var = sp.Symbol(f"xp_sin_{arg.name}")
                     cp_var = sp.Symbol(f"xp_cos_{arg.name}")
 
-                    # Assume the derivative of the argument replaces 'x' with 'xp'
-                    arg_p = sp.Symbol(arg.name.replace('x', 'xp'))
+                    arg_p = sp.Symbol(self._explicit_deriv_map.get(arg_name, arg_name.replace('x', 'xp')))
 
-                    # 2. Formulate the differential equations for the tangent space
-                    eq_ds = sp_var - (c_var * arg_p)
-                    eq_dc = cp_var + (s_var * arg_p)
-
-                    new_eqs.extend([eq_ds, eq_dc])
-
-                    # 3. Store the substitution mapping
+                    new_eqs.extend([sp_var - (c_var * arg_p), cp_var + (s_var * arg_p)])
                     subs_dict[sp.sin(arg)] = s_var
                     subs_dict[sp.cos(arg)] = c_var
 
-                    # --- ARCHITECTURE FIX: REGISTER IN GLOBAL STATE ---
-                    # We must tell the Builder that these new variables exist
-                    # before it calls self.all_symbols.sort() in __init__
                     for new_sym in [s_var, c_var, sp_var, cp_var]:
                         if new_sym not in self.all_symbols:
                             self.all_symbols.append(new_sym)
 
                     processed_args.add(arg)
 
-        # 4. Apply substitutions and append the new differential equations
-        lifted_original_eqs: list = [eq.subs(subs_dict) for eq in self.eqs]
-        self.eqs = lifted_original_eqs + new_eqs
+        self.eqs = [eq.subs(subs_dict) for eq in self.eqs] + new_eqs
 
-        if self.verbose:
-            print(f"[LIFTING] Applied Lie-Bäcklund isomorphism to {len(processed_args)} angular variables.")
-
-    def _generate_lifting_equations(self) -> None:
-        """
-        Automatically generates and appends the algebraic constraint equations
-        for all internally generated auxiliary variables (lifting).
-        This ensures the system matrix remains square and mathematically valid.
-
-        :return: None
-        :rtype: None
-        """
-        # Rule: Explicit lists
-        new_constraints: list = list()
-
-        sym: sp.Symbol
-        for sym in self.all_symbols:
-            s_name: str = sym.name
-
-            # --- ALGORITHM: LIFTING DETECTION ---
-            is_mul: bool = "_mulaux" in s_name
-            is_inv: bool = "_invaux" in s_name
-            is_sqrt: bool = "_sqrtaux" in s_name
-
-            if is_mul:
-                # Generate x_base - x_aux = 0
-                base_name_m: str = s_name.split("_mulaux")[0]
-                base_sym_m: Optional[sp.Symbol] = self._get_symbol_by_name(base_name_m)
-
-                if base_sym_m is not None:
-                    constraint_m: sp.Expr = base_sym_m - sym
-                    # Prevent duplicates if method is called safely multiple times
-                    if constraint_m not in self.eqs:
-                        new_constraints.append(constraint_m)
-                    else:
-                        pass
-                else:
-                    pass
-
-            elif is_inv:
-                # Generate x_base * x_aux - 1.0 = 0
-                base_name_i: str = s_name.split("_invaux")[0]
-                base_sym_i: Optional[sp.Symbol] = self._get_symbol_by_name(base_name_i)
-
-                if base_sym_i is not None:
-                    constraint_i: sp.Expr = base_sym_i * sym - 1.0
-                    if constraint_i not in self.eqs:
-                        new_constraints.append(constraint_i)
-                    else:
-                        pass
-                else:
-                    pass
-
-
-            elif is_sqrt:
-                # We need to find both aux variables to form the multilinear constraints
-                if s_name.endswith("_sqrtaux0"):
-                    base_name_s: str = s_name.split("_sqrtaux0")[0]
-                    base_sym_s: Optional[sp.Symbol] = self._get_symbol_by_name(base_name_s)
-                    sym_aux1: Optional[sp.Symbol] = self._get_symbol_by_name(f"{base_name_s}_sqrtaux1")
-                    if base_sym_s is not None and sym_aux1 is not None:
-                        # Constraint 1: base - z0*z1 = 0 (Strict multilinear square)
-                        constraint_s1: sp.Expr = base_sym_s - (sym * sym_aux1)
-                        if constraint_s1 not in self.eqs:
-                            new_constraints.append(constraint_s1)
-                        else:
-                            pass
-                        # Constraint 2: z0 - z1 = 0 (Equality enforcement)
-                        constraint_s2: sp.Expr = sym - sym_aux1
-                        if constraint_s2 not in self.eqs:
-                            new_constraints.append(constraint_s2)
-                        else:
-                            pass
-                    else:
-                        pass
-                else:
-                    # _sqrtaux1 is handled when the loop processes _sqrtaux0
-                    pass
-
-        # --- ALGORITHM: MATRIX AUGMENTATION ---
-        # Append the new structural equations directly to the core list
-        if len(new_constraints) > 0:
-            if self.verbose:
-                print(f"Adding {len(new_constraints)} lifting constraints to the system.")
-            else:
-                pass
-
-            constraint_eq: sp.Expr
-            for constraint_eq in new_constraints:
-                self.eqs.append(constraint_eq)
-        else:
-            pass
 
     def _get_symbol_by_name(self, name: str) -> Optional[sp.Symbol]:
-        """
-        Helper method to retrieve a sympy Symbol safely.
-
-        :param name: The string name of the symbol to find.
-        :type name: str
-        :return: The sympy Symbol if found, None otherwise.
-        :rtype: Optional[sp.Symbol]
-        """
-        target_sym: sp.Symbol
         for target_sym in self.all_symbols:
-            if target_sym.name == name:
-                return target_sym
-            else:
-                pass
+            if target_sym.name == name: return target_sym
         return None
+
+    def _generate_lifting_equations(self, problem) -> None:
+        """
+            Generates and appends exact algebraic constraint equations for auxiliary variables
+            introduced during the structural reduction phase.
+
+            Algorithmically, prior steps inject proxy variables (`_mulaux`, `_invaux`, `_sqrtaux`)
+            to convert non-linearities (such as inverses and square roots) into purely multilinear terms.
+            To ensure the resulting Differential Algebraic Equation (DAE) system remains mathematically
+            closed and well-posed, this function automatically formulates their structural polynomial
+            definitions (e.g., enforcing `base * invaux - 1 = 0` or `base - sqrtaux**2 = 0`) and
+            appends them to the global system equations.
+
+            :param problem: The overarching problem instance, used to filter out predefined variable parameters.
+            :type problem: Any
+            :return: Modifies the internal `eqs` list in place with the new algebraic constraints.
+            :rtype: None
+        """
+        new_constraints = []
+        for sym in self.all_symbols:
+            if sym not in (problem._variable_parameters if hasattr(problem,
+                                                                   '_variable_parameters') and problem._variable_parameters else []):
+                s_name = sym.name
+                if "_mulaux" in s_name:
+                    base_sym = self._get_symbol_by_name(s_name.split("_mulaux")[0])
+                    if base_sym and (base_sym - sym) not in self.eqs:
+                        new_constraints.append(base_sym - sym)
+                elif "_invaux" in s_name:
+                    base_sym = self._get_symbol_by_name(s_name.split("_invaux")[0])
+                    if base_sym and (base_sym * sym - 1.0) not in self.eqs:
+                        new_constraints.append(base_sym * sym - 1.0)
+                elif s_name.endswith("_sqrtaux0"):
+                    base_sym = self._get_symbol_by_name(s_name.split("_sqrtaux0")[0])
+                    sym_aux1 = self._get_symbol_by_name(f"{s_name.split('_sqrtaux0')[0]}_sqrtaux1")
+                    if base_sym and sym_aux1:
+                        if (base_sym - (sym * sym_aux1)) not in self.eqs:
+                            new_constraints.append(base_sym - (sym * sym_aux1))
+                        if (sym - sym_aux1) not in self.eqs:
+                            new_constraints.append(sym - sym_aux1)
+
+        self.eqs.extend(new_constraints)
 
     def _flatten_nonlinear_arguments(self) -> None:
         """
-        ALGORITHM: Automatic Argument Lifting (Flattening).
-        Scans all equations for non-linear functions (like fractional powers)
-        that have complex multi-variable expressions as arguments.
-        Automatically generates intermediate algebraic variables (nodes)
-        to satisfy the iMTI CPN requirements transparently to the user.
+            Flattens complex expressions inside non-integer powers by introducing proxy state variables.
+
+            Algorithmically, downstream structural parsers require the bases of fractional powers
+            (e.g., square roots) to be single state variables rather than composite polynomials.
+            This function scans all equations and inequalities for non-integer exponents applied
+            to complex expressions. It replaces the complex base with an auxiliary variable (`argaux`)
+            and automatically appends its explicit structural definition (`argaux - base_expr = 0`)
+            to the global system constraints.
+
+            :return: Modifies the internal `eqs`, `ineqs`, and `all_symbols` lists in place.
+            :rtype: None
         """
-        new_constraints: list = list()
-        arg_counter: int = 0
-
-        lists_to_process: list = [self.eqs, self.ineqs]
-
-        eq_list: list
-        for eq_list in lists_to_process:
-            i: int
+        new_constraints, arg_counter = [], 0
+        for eq_list in [self.eqs, self.ineqs]:
             for i in range(len(eq_list)):
-                current_eq: sp.Expr = eq_list[i]
-
-                # Find all power operations (sqrt is interpreted as Pow(base, 0.5))
-                powers: set = current_eq.find(sp.Pow)
-
-                p: sp.Pow
-                for p in powers:
-                    exp_val: sp.Expr = p.exp
-
-                    # Check if it is a non-linear (fractional) power
-                    is_fractional: bool = False
-                    if not exp_val.is_integer:
-                        is_fractional = True
-                    else:
-                        pass
-
-                    if is_fractional:
-                        base_expr: sp.Expr = p.base
-
-                        # Check if the base is a complex expression (not a single symbol)
+                current_eq = eq_list[i]
+                for p in current_eq.find(sp.Pow):
+                    if not p.exp.is_integer:
+                        base_expr = p.base
+                        if isinstance(base_expr, sp.Symbol) and self._is_protected_param(base_expr.name): continue
                         if not isinstance(base_expr, sp.Symbol):
-                            aux_name: str = str(f"argaux{arg_counter}")
-                            arg_counter = arg_counter + 1
-
-                            new_sym: sp.Symbol = sp.Symbol(aux_name)
-                            if new_sym not in self.all_symbols:
-                                self.all_symbols.append(new_sym)
-                            else:
-                                pass
-
-                            # Save the exact mathematical mapping for operating point synchronization
+                            new_sym = sp.Symbol(f"argaux{arg_counter}")
+                            arg_counter += 1
+                            if new_sym not in self.all_symbols: self.all_symbols.append(new_sym)
                             self._argaux_map[new_sym] = base_expr
-
-                            # Replace the complex base with the new single symbol in the equation
-                            new_p: sp.Expr = new_sym ** exp_val
-                            current_eq = current_eq.subs(p, new_p)
-
-                            # Create the structural constraint: argaux - (x1**2 + x2**2) = 0
-                            constraint: sp.Expr = new_sym - base_expr
-                            new_constraints.append(constraint)
-                        else:
-                            pass
-                    else:
-                        pass
-
-                # Apply the flattened equation back to the list
+                            current_eq = current_eq.subs(p, new_sym ** p.exp)
+                            new_constraints.append(new_sym - base_expr)
                 eq_list[i] = current_eq
-
-        # Append all new structural constraints to the system equations
-        c: sp.Expr
-        for c in new_constraints:
-            self.eqs.append(c)
+        self.eqs.extend(new_constraints)
 
     # ------------------------------------------------------------------
     # Linearization – public entry point
     # ------------------------------------------------------------------
-    # This may be deleted
-    def linearize_with_problem(self, problem: Any, v_dict_override: Optional[dict] = None) -> np.ndarray:
-        warnings.warn("This will be deleted in a week from now if nobody complains.", DeprecationWarning)
-        """
-        Syncs the MTI_Problem's internal state (including dxOP) with the builder
-        to ensure nonlinear terms are linearized at the correct operating point.
-        """
-        # Start with the problem's full initial guess (x, y, dx, u, etc.)
-        full_v = problem.init_guess.copy()
-
-        # Override with any specific values from your test's v_dict
-        if v_dict_override:
-            full_v.update(v_dict_override)
-
-        # Call the standard linearization
-        return self.linearize(full_v)
-
     def linearize(self, v_dict: dict, c_type: ConstraintType = ConstraintType.EQUALITY) -> np.ndarray:
         """
-        Analytic linearization for iMTI models (CPN representation).
-        Automatically computes the operating points for lifted trigonometric variables
-        before evaluating the Jacobian matrix.
+            Evaluates the numerical linearization of the system around a specified operating point
+            to extract the linear state-space matrices (E, A, B).
+
+            Algorithmically, this function dynamically injects the exact numerical values for
+            trigonometric proxy states to guarantee consistency at the operating point. It then
+            computes the analytical Jacobian (F) of the target structural matrix (S) evaluated
+            at the state vector. By projecting this Jacobian through the coefficient matrix (Phi),
+            it algebraically computes the global linear state-space block `EABC` (Phi @ F^T),
+            which dictates the local dynamic behavior of the system.
+
+            :param v_dict: Dictionary containing the numerical values defining the operating point.
+            :type v_dict: dict
+            :param c_type: Specifies whether to linearize equality or inequality constraints.
+            :type c_type: ConstraintType
+            :return: The combined, linearized state-space matrix block EABC.
+            :rtype: np.ndarray
         """
         import math
-
-        keys_to_check: list = list(v_dict.keys())
-        key: str
-        for key in keys_to_check:
+        for key in list(v_dict.keys()):
             if key.startswith('x') and 'p' not in key:
-                val: float = float(v_dict[key])
-
-                # --- ARCHITECTURE FIX: EXACT PREFIX MATCHING ---
-                # These keys MUST match the sp.Symbol names generated in the lifting method
+                val = float(v_dict[key])
                 v_dict[f"x_sin_{key}"] = math.sin(val)
                 v_dict[f"x_cos_{key}"] = math.cos(val)
-
                 v_dict[f"xp_sin_{key}"] = 0.0
                 v_dict[f"xp_cos_{key}"] = 0.0
 
-        S: np.ndarray
-        Phi: np.ndarray
-        S, Phi = self._get_matrices(c_type)
-
-        v: np.ndarray = self._build_v_vector(v_dict)
-        F: np.ndarray = self._compute_jacobian(S, v)
+        S, Phi = (self.S_W, self.Phi_W) if c_type == ConstraintType.INEQUALITY else (self.S_H, self.Phi_H)
+        v = self._build_v_vector(v_dict)
+        F = self._compute_jacobian(S, v)
 
         self.EABC = Phi @ F.T
         self.E, self.A, self.B = self._split_EABC(self.EABC)
 
         return self.EABC
 
-    # ------------------------------------------------------------------
-    # Linearisation – private helpers
-    # ------------------------------------------------------------------
-
-    def _get_matrices(self, c_type: ConstraintType) -> tuple:
-        """
-        Return the (S, Phi) pair for equations or inequalities based on Enum.
-
-        :param c_type: Type of constraint matrix to retrieve.
-        :type c_type: ConstraintType
-        :return: S and Phi arrays.
-        :rtype: tuple
-        """
-        if c_type == ConstraintType.INEQUALITY:
-            return self.S_W, self.Phi_W
-        else:
-            return self.S_H, self.Phi_H
-
     def _build_v_vector(self, v_dict_local: dict) -> np.ndarray:
         """
-        Builds the numerical state vector ensuring all iMTI lifted
-        variables (argaux, sqrtaux, mulaux) are strictly synchronized
-        to prevent singular Jacobians during evaluation.
-        """
-        n_vars: int = len(self.all_symbols)
-        v: np.ndarray = np.zeros(n_vars, dtype=float)
+            Constructs the complete dense numerical state vector from a dictionary of operating point values.
 
-        # 1. Fill standard variables from user dictionary
-        k: str
-        val: float
+            Algorithmically, this function maps user-defined inputs to the strict internal array layout
+            required for Jacobian evaluation. It executes three critical completion passes: First, it applies
+            a robust bridging logic to mirror derivative values across different canonical prefixes
+            ('xp', 'dx', 'dt_', 'd_'). Second, it numerically evaluates complex base expressions to populate
+            'argaux' proxy variables. Finally, it calculates the exact states of structural auxiliary variables
+            ('mulaux', 'invaux', 'sqrtaux') directly from their parent values, ensuring the final vector
+            is mathematically closed and fully consistent for matrix operations.
+
+            :param v_dict_local: Dictionary mapping symbolic variable names to their scalar numerical values.
+            :type v_dict_local: dict
+            :return: A 1D NumPy array representing the fully populated state vector.
+            :rtype: np.ndarray
+        """
+        v = np.zeros(len(self.all_symbols), dtype=float)
         for k, val in v_dict_local.items():
             if k in self.sym_to_idx:
                 v[self.sym_to_idx[k]] = float(val)
-            else:
-                pass
 
-        # 2. ALGORITHM: COMPLEX ARGUMENT SYNCHRONIZATION
-        # Evaluate argaux variables first, as other lifted variables depend on them
-        sym_arg: sp.Symbol
+            # Robust Bridge: Ensures manual derivative inputs are mirrored properly across models
+            if k.startswith('xp'):
+                base = k[2:]
+                for alt in [f'dx{base}', f'dt_{base}', f'd_{base}']:
+                    if alt in self.sym_to_idx: v[self.sym_to_idx[alt]] = float(val)
+            elif k.startswith('dx'):
+                base = k[2:]
+                for alt in [f'xp{base}', f'dt_{base}', f'd_{base}']:
+                    if alt in self.sym_to_idx: v[self.sym_to_idx[alt]] = float(val)
+            elif k.startswith('dt_'):
+                base = k[3:]
+                for alt in [f'xp{base}', f'dx{base}', f'd_{base}']:
+                    if alt in self.sym_to_idx: v[self.sym_to_idx[alt]] = float(val)
+            elif k.startswith('d_'):
+                base = k[2:]
+                for alt in [f'xp{base}', f'dx{base}', f'dt_{base}']:
+                    if alt in self.sym_to_idx: v[self.sym_to_idx[alt]] = float(val)
+
         for sym_arg in self.all_symbols:
             if sym_arg in self._argaux_map:
-                base_expr: sp.Expr = self._argaux_map[sym_arg]
+                base_expr = self._argaux_map[sym_arg]
+                subs_dict = {s: float(v[self.sym_to_idx[s.name]]) for s in base_expr.free_symbols if
+                             s.name in self.sym_to_idx}
+                if sym_arg.name in self.sym_to_idx:
+                    v[self.sym_to_idx[sym_arg.name]] = float(base_expr.subs(subs_dict))
 
-                subs_dict: dict = dict()
-                s_free: sp.Symbol
-                for s_free in base_expr.free_symbols:
-                    idx_free: Optional[int] = self.sym_to_idx.get(s_free.name, None)
-                    if idx_free is not None:
-                        subs_dict[s_free] = float(v[idx_free])
-                    else:
-                        pass
-
-                idx_arg: Optional[int] = self.sym_to_idx.get(sym_arg.name, None)
-                if idx_arg is not None:
-                    v[idx_arg] = float(base_expr.subs(subs_dict))
-                else:
-                    pass
-
-        # 3. ALGORITHM: STANDARD LIFTING VARIABLES SYNCHRONIZATION
-        sym: sp.Symbol
         for sym in self.all_symbols:
-            s_name: str = sym.name
+            s_name = sym.name
             if s_name not in v_dict_local:
-                idx_current: int = self.sym_to_idx[s_name]
-
-                # Multiplicative auxiliary variables
+                idx_current = self.sym_to_idx[s_name]
                 if "_mulaux" in s_name:
-                    base_name_m: str = s_name.split("_mulaux")[0]
-                    base_idx_m: Optional[int] = self.sym_to_idx.get(base_name_m, None)
-                    if base_idx_m is not None:
-                        v[idx_current] = v[base_idx_m]
-                    else:
-                        pass
-
-                # Square root auxiliary variables
+                    base_idx = self.sym_to_idx.get(s_name.split("_mulaux")[0])
+                    if base_idx is not None: v[idx_current] = v[base_idx]
+                elif "_invaux" in s_name:
+                    base_idx = self.sym_to_idx.get(s_name.split("_invaux")[0])
+                    if base_idx is not None:
+                        val_base = float(v[base_idx])
+                        v[idx_current] = 1.0 / val_base if abs(val_base) > 1e-12 else 1.0
                 elif "_sqrtaux" in s_name:
-                    base_name_s: str = s_name.split("_sqrtaux")[0]
-                    base_idx_s: Optional[int] = self.sym_to_idx.get(base_name_s, None)
-                    if base_idx_s is not None:
-                        val_base_s: float = float(v[base_idx_s])
-                        if val_base_s > 0.0:
-                            v[idx_current] = float(np.sqrt(val_base_s))
-                        else:
-                            pass
-                    else:
-                        pass
-                else:
-                    pass
+                    base_idx = self.sym_to_idx.get(s_name.split("_sqrtaux")[0])
+                    if base_idx is not None and float(v[base_idx]) > 0.0:
+                        v[idx_current] = float(np.sqrt(float(v[base_idx])))
 
         return v
 
     def _compute_jacobian(self, S: np.ndarray, v: np.ndarray) -> np.ndarray:
         """
-        Compute the analytic Jacobian of the monomial basis at point *v*.
+            Computes the analytical Jacobian matrix of the system's structural monomials evaluated
+            at a specific state vector.
 
-        :param S: Weight matrix (n_vars x n_monomials).
-        :type S: np.ndarray
-        :param v: Operating-point vector (n_vars,).
-        :type v: np.ndarray
-        :return: Jacobian F (n_vars x n_monomials).
-        :rtype: np.ndarray
+            Algorithmically, this function exploits the purely multilinear nature of the TenSyGrid
+            formulation. It calculates all partial derivatives simultaneously using a highly optimized,
+            vectorized inverse-product rule (where the derivative of a product is the product divided
+            by the target variable). Crucially, it implements an algebraic safeguard for zero-crossings:
+            if exactly one variable in a monomial evaluates to zero, it bypasses the resulting 0/0
+            singularity by directly computing the product of the remaining non-zero factors.
+
+            :param S: The structural matrix defining the variable compositions of each monomial.
+            :type S: np.ndarray
+            :param v: The 1D numerical array representing the populated state vector.
+            :type v: np.ndarray
+            :return: The numerically evaluated dense Jacobian matrix F.
+            :rtype: np.ndarray
         """
-        X: np.ndarray = (S.T * v) + (1.0 - np.abs(S.T))
-        Y: np.ndarray = np.prod(X, axis=1)
+        X = (S.T * v) + (1.0 - np.abs(S.T))
+        Y = np.prod(X, axis=1)
 
         with np.errstate(divide='ignore', invalid='ignore'):
-            invX: np.ndarray = np.where(np.abs(X) > 1e-12, 1.0 / X, 0.0)
-            F: np.ndarray = S * (Y[:, np.newaxis] * invX).T
-
-            zeros_per_col: np.ndarray = np.sum(np.abs(X) < 1e-12, axis=1)
-            single_zero_cols: tuple = np.where(zeros_per_col == 1)
+            invX = np.where(np.abs(X) > 1e-12, 1.0 / X, 0.0)
+            F = S * (Y[:, np.newaxis] * invX).T
+            zeros_per_col = np.sum(np.abs(X) < 1e-12, axis=1)
+            single_zero_cols = np.where(zeros_per_col == 1)
 
             for col in single_zero_cols[0]:
-                zero_row_tuple: tuple = np.where(np.abs(X[col, :]) < 1e-12)
-                zero_row: int = int(zero_row_tuple[0][0])
-                other_factors: np.ndarray = np.delete(X[col, :], zero_row)
-                F[zero_row, col] = S[zero_row, col] * np.prod(other_factors)
+                zero_row = int(np.where(np.abs(X[col, :]) < 1e-12)[0][0])
+                other_factors = np.delete(X[col, :], zero_row)
+                prod_val: float = float(np.prod(other_factors))
+                s_val: float = float(S[zero_row, col])
+
+                F[zero_row, col] = s_val * prod_val
 
         return F
 
     def _split_EABC(self, EABC: np.ndarray) -> tuple:
         """
-        Splits the EABC matrix into E, A, and B descriptor matrices.
-        ALGORITHM: Strictly aligns derivative variables in E with their
-        corresponding state variables in A to prevent matrix dislocation.
+            Partitions the combined linearized Jacobian block matrix into the canonical
+            descriptor state-space matrices E, A, and B.
 
-        :param EABC: Full Jacobian matrix.
-        :type EABC: np.ndarray
-        :return: Tuple containing E, A, and B matrices.
-        :rtype: tuple
+            Algorithmically, this function maps the global Jacobian back to the standard
+            differential algebraic form (E*dx/dt = A*x + B*u). It scans all system symbols
+            to classify the columns into states, time-derivatives, and control inputs. State
+            columns directly populate the A matrix, while input columns form the B matrix.
+            Crucially, it executes a rigorous heuristic and mapped search to pair each state
+            variable with its exact explicit derivative; the negated columns of these derivatives
+            are then assigned to the E (mass) matrix.
+
+            :param EABC: The combined structural matrix representing the full system Jacobian.
+            :type EABC: np.ndarray
+            :return: A tuple containing the (E, A, B) numerical state-space matrices.
+            :rtype: tuple
         """
-        idx_dx: list = list()
-        idx_vars: list = list()
-        idx_u: list = list()
+        idx_dx, idx_vars, idx_u = [], [], []
 
-        # 1. Categorize indices
-        idx_counter: int = 0
-        s: sp.Symbol
-        for s in self.all_symbols:
-            s_name: str = s.name
+        for idx_counter, s in enumerate(self.all_symbols):
+            s_name = s.name
             if s_name.startswith('dx') or s_name.startswith('xp') or s_name.startswith('d_') or s_name.startswith(
-                'dt_'):
+                    'dt_'):
                 idx_dx.append(idx_counter)
             elif s_name.startswith('u') and not s_name.startswith('u_'):
                 idx_u.append(idx_counter)
             else:
-                # All other variables (x, y, z, argaux, sqrtaux) belong to the state vector
                 idx_vars.append(idx_counter)
 
-            idx_counter = idx_counter + 1
-        #print(f"\n[DEBUG] Derivadas detectadas en la lista: {[self.all_symbols[idx].name for idx in idx_dx]}")
-        n_eqs: int = int(EABC.shape[0])
-        E: np.ndarray = np.zeros((n_eqs, n_eqs))
-        A: np.ndarray = np.zeros((n_eqs, n_eqs))
+        n_eqs = int(EABC.shape[0])
+        cols_to_take = len(idx_vars)
+        dim = max(n_eqs, cols_to_take)
 
-        cols_to_take: int = len(idx_vars)
-        if cols_to_take > n_eqs:
-            cols_to_take = n_eqs
-        else:
-            pass
+        E = np.zeros((dim, dim))
+        A = np.zeros((dim, dim))
 
-        # 2. Build A matrix (State variables)
-        A[:, :cols_to_take] = EABC[:, idx_vars[:cols_to_take]]
+        A[:n_eqs, :cols_to_take] = EABC[:, idx_vars[:cols_to_take]]
 
-        # 3. Build E matrix (Derivatives strictly aligned to state variables)
-        i: int
         for i in range(cols_to_take):
-            state_idx: int = idx_vars[i]
-            state_sym: sp.Symbol = self.all_symbols[state_idx]
-            state_name: str = state_sym.name
+            state_sym = self.all_symbols[idx_vars[i]]
+            state_name = state_sym.name
 
-            # Identify expected derivative names
-            deriv_names: list = list()
+            # Critical FIX: Strictly isolate xp and dx to only apply to "x" state arrays
+            deriv_names = []
             if state_name.startswith('x'):
-                deriv_names.append(str("xp" + state_name[1:]))
-                deriv_names.append(str("dx" + state_name[1:]))
+                deriv_names.extend([f"xp{state_name[1:]}", f"dx{state_name[1:]}"])
+            deriv_names.extend([f"dt_{state_name}", f"d_{state_name}"])
 
-            deriv_names.append(str("dt_" + state_name))
-            deriv_names.append(str("d_" + state_name))
+            deriv_idx = -1
 
-            # 1. Búsqueda exacta (Ej: d_u_cos -> u_cos)
-            deriv_idx: int = -1
-            d_name: str
-            for d_name in deriv_names:
-                if d_name in self.sym_to_idx:
-                    deriv_idx = self.sym_to_idx[d_name]
-                    break
+            if hasattr(self, '_explicit_deriv_map') and state_name in self._explicit_deriv_map:
+                exact_d_name = self._explicit_deriv_map[state_name]
+                if exact_d_name in self.sym_to_idx:
+                    deriv_idx = self.sym_to_idx[exact_d_name]
 
-            # 2. Búsqueda flexible para prefijos de componentes (Ej: dt_1_Vf -> Vf)
+            if deriv_idx == -1:
+                for d_name in deriv_names:
+                    if d_name in self.sym_to_idx:
+                        deriv_idx = self.sym_to_idx[d_name]
+                        break
+
             if deriv_idx == -1:
                 for dx_idx in idx_dx:
                     dx_name = self.all_symbols[dx_idx].name
-                    # Si la derivada termina en "_Vf" y el estado es "Vf", es la suya
                     if dx_name.endswith(f"_{state_name}") and (dx_name.startswith("dt_") or dx_name.startswith("d_")):
                         deriv_idx = dx_idx
                         break
 
-            # If a derivative exists, place it in the EXACT SAME column as the state
             if deriv_idx != -1 and deriv_idx in idx_dx:
-                E[:, i] = -EABC[:, deriv_idx]
+                E[:n_eqs, i] = -EABC[:, deriv_idx]
 
-        B: np.ndarray = EABC[:, idx_u]
-
+        B = EABC[:, idx_u] if len(idx_u) > 0 else np.zeros((dim, 0))
         return E, A, B
-
-    # ------------------------------------------------------------------
-    # Stability analysis
-    # ------------------------------------------------------------------
 
     def compute_stability(self) -> Tuple[
         Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], bool, Optional[float]]:
         """
-        Compute generalised eigenvalues for the descriptor pair (A, E).
+            Computes the generalized eigenvalues, eigenvectors, and participation factors
+            to evaluate the small-signal stability of the linearized system.
 
-        :return: tuple of (eigenvalues, left_evecs, right_evecs, participation, is_stable, max_real)
-        :rtype: Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], bool, Optional[float]]
+            Algorithmically, this function evaluates the generalized eigenvalue problem (A*v = lambda*E*v).
+            Before calling the QZ algorithm, it performs 'Singular Pencil Patching' by scanning for completely
+            empty rows and columns in both the E and A matrices, placing a -1.0 on the A diagonal for those
+            indices. This critical regularization step neutralizes structural null-spaces, preventing numerical
+            divergence during the decomposition. After extracting the finite physical modes, it computes the
+            participation matrix (using the normalized Hadamard product of the left and right eigenvectors'
+            magnitudes) to map the interaction between physical states and dynamic modes. Finally, it determines
+            absolute stability by checking if the right-most eigenvalue resides in the left-half complex plane.
+
+            :return: A tuple containing:
+                     - evals (np.ndarray): The finite complex eigenvalues.
+                     - evecs_left (np.ndarray): The left eigenvectors.
+                     - evecs_right (np.ndarray): The right eigenvectors.
+                     - participation_matrix (np.ndarray): State-to-mode participation factors.
+                     - is_stable (bool): True if the maximum real part of the eigenvalues is strictly < 1e-6.
+                     - max_real (float): The value of the maximum real part of the eigenvalues.
+                     Returns (None, None, None, None, False, None) if computation fails or matrices are missing.
+            :rtype: Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], bool, Optional[float]]
         """
-        current_a: np.ndarray | None = self.A
-        current_e: np.ndarray | None = self.E
-
-        if current_a is None or current_e is None:
-            return None, None, None, None, False, None
-        else:
-            pass
+        current_a, current_e = self.A, self.E
+        if current_a is None or current_e is None: return None, None, None, None, False, None
 
         try:
-            evals: np.ndarray
-            evecs_left_raw: np.ndarray
-            evecs_right_raw: np.ndarray
-            evals, evecs_left_raw, evecs_right_raw = linalg.eig(current_a, current_e, left=True, right=True)
+            A_dense = current_a.toarray() if hasattr(current_a, 'toarray') else np.array(current_a)
+            E_dense = current_e.toarray() if hasattr(current_e, 'toarray') else np.array(current_e)
 
-            # --- ALGORITHM: INFINITE AND NAN FILTERING ---
-            # 1. Identify which indices correspond to valid finite values
-            valid_idx: np.ndarray = np.isfinite(evals)
+            n_dims = A_dense.shape[0]
+            patched_rows, patched_cols = 0, 0
 
-            # 2. Keep only the valid finite eigenvalues
+            # --- SINGULAR PENCIL PATCHING (NULL SPACE ELIMINATION) ---
+            # 1. Patch empty rows
+            for i in range(n_dims):
+                if np.max(np.abs(A_dense[i, :])) < 1e-10 and np.max(np.abs(E_dense[i, :])) < 1e-10:
+                    A_dense[i, i] = -1.0
+                    patched_rows += 1
+
+            # 2. Patch empty columns
+            for j in range(n_dims):
+                if np.max(np.abs(A_dense[:, j])) < 1e-10 and np.max(np.abs(E_dense[:, j])) < 1e-10:
+                    A_dense[j, j] = -1.0
+                    patched_cols += 1
+
+            if self.verbose and (patched_rows > 0 or patched_cols > 0):
+                print(
+                    f"\n[+] QZ Matrix Pre-conditioning: Neutralized {patched_rows} empty rows and {patched_cols} empty columns.")
+
+            evals, evecs_left_raw, evecs_right_raw = linalg.eig(A_dense, b=E_dense, left=True, right=True)
+
+            valid_idx = np.isfinite(evals)
             evals = evals[valid_idx]
+            evecs_left = evecs_left_raw[:, valid_idx].astype(complex)
+            evecs_right = evecs_right_raw[:, valid_idx].astype(complex)
 
-            # --- ALGORITHM: MEMORY SPACE PROTECTION ---
-            # 3. Filter eigenvector columns to match valid eigenvalues, and cast to
-            #    complex to prevent TypeError during complex normalization.
-            evecs_left: np.ndarray = evecs_left_raw[:, valid_idx].astype(complex)
-            evecs_right: np.ndarray = evecs_right_raw[:, valid_idx].astype(complex)
+            if len(evals) == 0: return evals, evecs_left, evecs_right, None, True, -np.inf
 
-            if len(evals) == 0:
-                return evals, evecs_left, evecs_right, None, True, -np.inf
-            else:
-                pass
+            n_states, n_modes = evecs_right.shape
+            participation_matrix = np.zeros((n_states, n_modes), dtype=float)
 
-            # --- ALGORITHM: PARTICIPATION MATRIX NORMALIZATION ---
-            n_states: int = int(evecs_right.shape[1])
-            i: int
-            for i in range(n_states):
-                # 1. Calculate the normalization scalar
-                scaling_val: complex = complex(np.vdot(evecs_left[:, i], evecs_right[:, i]))
-                scaling_mag: float = float(np.abs(scaling_val))
+            for m in range(n_modes):
+                mag_product = np.abs(evecs_left[:, m]) * np.abs(evecs_right[:, m])
+                total_mag = np.sum(mag_product)
+                if total_mag > 1e-12: participation_matrix[:, m] = mag_product / total_mag
 
-                # 2. Safety check against division by zero AND NaN propagation
-                is_invalid: bool = False
-                if np.isnan(scaling_mag):
-                    is_invalid = True
-                elif scaling_mag < 1e-12:
-                    is_invalid = True
-                else:
-                    pass
+            max_real = float(np.max(np.real(evals)))
+            is_stable = max_real < 1e-6
 
-                if is_invalid:
-                    # If the mode is singular or defective, zeroing the left eigenvector
-                    # forces its participation to 0.0, avoiding NaN propagation.
-                    evecs_left[:, i] = 0.0 + 0.0j
-                else:
-                    # 3. Normalization
-                    evecs_left[:, i] = evecs_left[:, i] / scaling_val
-
-            # 4. Element-wise matrix multiplication to compute participation factors
-            participation_matrix: np.ndarray = np.abs(evecs_right) * np.abs(evecs_left)
-
-            max_real: float = float(np.max(np.real(evals)))
-            is_stable: bool = False
-
-            if max_real < 0.0:
-                is_stable = True
-            else:
-                pass
+            if self.verbose:
+                print("\n[6] Analysis complete!")
+                print(f"  Found {len(evals)} finite eigenvalues (Physical Modes)\n")
 
             return evals, evecs_left, evecs_right, participation_matrix, is_stable, max_real
 
         except linalg.LinAlgError as e:
-            # We catch strictly LinAlgError because Scipy internally throws this on convergence failure
             print(f"Error computing eigenvalues: {e}")
-            if self.verbose:
-                det_val: float = float(linalg.det(current_e - current_a))
-                print(f"det(E - A) = {det_val}")
-            else:
-                pass
             return None, None, None, None, False, None
 
-    # ------------------------------------------------------------------
-    # Reporting
-    # ------------------------------------------------------------------
-
-    def report(
-            self,
-            eigenvalues: np.ndarray | None = None,
-            is_stable: bool = False,
-            max_real: float | None = None,
-            print_matrices: bool = True,
-            save_path: str | None = None,
-    ) -> None:
+    def get_participation_mapping(self, evals: np.ndarray, participation_matrix: np.ndarray,
+                                  threshold: float = 0.05) -> dict:
         """
-        Print and/or save all matrices and stability results.
+        Maps the raw participation matrix to the exact physical state variables for each dynamic mode.
+        Filters out derivative and input tokens to match the true dimensions of the state-space.
+        """
+        mapping: dict = dict()
+        if participation_matrix is None or evals is None: return mapping
 
-        :param eigenvalues: Array of eigenvalues.
-        :type eigenvalues: np.ndarray | None
-        :param is_stable: Boolean flag indicating if the system is stable.
-        :type is_stable: bool
-        :param max_real: Maximum real part among the eigenvalues.
-        :type max_real: float | None
-        :param print_matrices: Flag to trigger stdout printing.
-        :type print_matrices: bool
-        :param save_path: Absolute or relative file path for writing outputs.
-        :type save_path: str | None
-        :return: None
-        :rtype: None
+        # 1. Dynamically rebuild the exact physical-state order (ignoring dx, xp, u)
+        state_symbols: list = list()
+        for s in self.all_symbols:
+            s_name: str = s.name
+            is_deriv: bool = s_name.startswith('dx') or s_name.startswith('xp') or s_name.startswith(
+                'd_') or s_name.startswith('dt_')
+            is_input: bool = s_name.startswith('u') and not s_name.startswith('u_')
+
+            if not is_deriv and not is_input:
+                state_symbols.append(s)
+
+        n_modes: int = int(participation_matrix.shape[1])
+        n_states: int = int(participation_matrix.shape[0])
+
+        # 2. Map matrix participation factors to the filtered list
+        for m in range(n_modes):
+            mode_eval: complex = evals[m]
+            mode_pfs: list = list()
+
+            # Iterate up to n_states (in case Singular Pencil Patching / extra padding was applied)
+            limit: int = min(n_states, len(state_symbols))
+            for i in range(limit):
+                pf_val: float = float(participation_matrix[i, m])
+                if pf_val >= threshold:
+                    mode_pfs.append((state_symbols[i].name, pf_val))
+
+            # Sort variables by dominance level for this specific mode
+            mode_pfs.sort(key=lambda x: x[1], reverse=True)
+            mapping[mode_eval] = mode_pfs
+
+        return mapping
+
+
+    def report(self, eigenvalues=None, is_stable=False, max_real=None, print_matrices=True, save_path=None):
+        """
+            Outputs or exports the internal structural matrices and eigenvalue results
+            for diagnostic inspection and external validation.
+
+            Algorithmically, this function provides observability into the compiled Differential
+            Algebraic Equation (DAE) system. It sequentially extracts and formats the sparse
+            matrices (S, Phi, E, A, B). If eigenvalues are provided, it actively filters for
+            finite values and sorts them by their real parts in descending order, immediately
+            highlighting the most dynamically critical (or unstable) modes. It optionally serializes
+            this system state to a specified file path for persistent logging.
+
+            :param eigenvalues: Array of computed system eigenvalues.
+            :type eigenvalues: np.ndarray | None
+            :param is_stable: Boolean flag indicating if the system is stable.
+            :type is_stable: bool
+            :param max_real: The maximum real part found among the eigenvalues.
+            :type max_real: float | None
+            :param print_matrices: Flag to enable console printing of the matrices.
+            :type print_matrices: bool
+            :param save_path: Absolute or relative file path to save the exported text report.
+            :type save_path: str | None
+            :return: Modifies no state; performs I/O operations.
+            :rtype: None
         """
         if print_matrices:
-            # Replaced comprehension with explicit loop of tuples
-            matrix_refs: list = [
-                ("S", self.S_H),
-                ("Phi", self.Phi_H),
-                ("E", self.E),
-                ("A", self.A),
-                ("B", self.B),
-            ]
-
-            for label, mat in matrix_refs:
+            for label, mat in [("S", self.S_H), ("Phi", self.Phi_H), ("E", self.E), ("A", self.A), ("B", self.B)]:
                 if mat is not None:
                     print(f"\n--- {label} Matrix ---")
                     print(sparse.csc_matrix(mat))
-                else:
-                    pass
-
-            print("\n--- Stability Analysis ---")
-            print(f"Is stable:     {is_stable}")
-            print(f"Max Real Part: {max_real}")
-
             if eigenvalues is not None:
-                valid_evs: list = list(eigenvalues[np.isfinite(eigenvalues)])
-                sorted_evs: list = sorted(valid_evs, key=_get_real_part, reverse=True)
-                print("Eigenvalues:")
-                for ev in sorted_evs:
+                for ev in sorted(list(eigenvalues[np.isfinite(eigenvalues)]), key=_get_real_part, reverse=True):
                     print(f"  {ev.real:.6f} + {ev.imag:.6f}j")
-            else:
-                pass
-        else:
-            pass
 
         if save_path is not None:
             import os
             os.makedirs(os.path.dirname(os.path.abspath(save_path)), exist_ok=True)
-
-            # Using an explicit file writer structure
             with open(save_path, "w", encoding="utf-8") as f:
-
-                matrix_write_refs: list = [
-                    ("S Matrix", self.S_H),
-                    ("Phi Matrix", self.Phi_H),
-                    ("E Matrix", self.E),
-                    ("A Matrix", self.A),
-                    ("B Matrix", self.B),
-                ]
-
-                stability_txt: str = (
-                    f"Is stable:     {is_stable}\n"
-                    f"Max Real Part: {max_real}\n"
-                )
-
-                if eigenvalues is not None:
-                    evs_str_list: list = list()
-                    for ev in eigenvalues:
-                        evs_str_list.append(f"  {ev}")
-
-                    # Using a simple loop instead of join with comprehension
-                    evs_txt: str = ""
-                    for s_ev in evs_str_list:
-                        evs_txt = evs_txt + s_ev + "\n"
-
-                    stability_txt = stability_txt + f"Eigenvalues:\n{evs_txt}\n"
-                else:
-                    pass
-
-                final_section: str = _section("Stability Analysis", stability_txt)
-                f.write(final_section)
-
-            print(f"\nMatrices saved to: {save_path}")
-        else:
-            pass
+                for label, mat in [("S Matrix", self.S_H), ("Phi Matrix", self.Phi_H), ("E Matrix", self.E),
+                                   ("A Matrix", self.A)]:
+                    if mat is not None:
+                        f.write(f"\n--- {label} ---\n")
+                        f.write(str(sparse.csc_matrix(mat)) + "\n")

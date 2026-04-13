@@ -1,227 +1,215 @@
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
-# file, You can see it at https://mozilla.org/MPL/2.0/.
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
+from typing import Dict
 
-
-from typing import Dict, Any
-import numpy as np
-
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import (
+    DeviceType,
+    ParamPowerFlowRefferenceType,
+    VarPowerFlowRefferenceType,
+)
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Utils.Symbolic.block import Var, Expr
 
-"""
-EMT Transformer template.
-
-Models a two-winding transformer as a series RL branch with an ideal transformer
-ratio. The model includes:
-- Series resistance (R) and inductance (L) referred to the primary side
-- Magnetizing branch (optional): represented as Gm (iron losses) and Bm (magnetizing susceptance)
-- Ideal transformer turns ratio: n = V1/V2
-
-For a simple transformer model, we use:
-- Lumped parameters referred to the "from" bus side
-- Magnetizing branch neglected (Gm = Bm = 0) for simplicity
-"""
 
 def get_transformer_emt_template(
-    grid: MultiCircuit,
-    trafo: Transformer2W,
-    name: str = "transformer_emt_template"
+    vf: VarFactory,
+    name: str = "transformer_emt_template",
 ) -> EmtModelTemplate:
     """
-    Build an EMT transformer model.
+    Build the classical EMT transformer template using mapped winding data.
 
-    The transformer is modeled as:
-    - Series RL branch between from and to terminals
-    - Magnetizing branch (Gm, Bm) at the from terminal
-    - Ideal transformer ratio n
+    The template models each phase as two coupled windings with the state
+    variables chosen as the winding currents. All static electrical constants
+    are exposed through ``api_obj_mapping`` so the EMT assembler can inject the
+    values from the static transformer API object without the template touching
+    the grid or the transformer instance directly.
 
-    Args:
-        grid: Multicircuit
-        trafo: Transformer2W device
-        name: Name for the model
-
-    Returns:
-        EmtModelTemplate with the transformer block
+    :param vf: EMT variable factory.
+    :param name: Symbolic model name.
+    :return: EMT transformer model template.
     """
-    templ = EmtModelTemplate()
+    templ: EmtModelTemplate = EmtModelTemplate()
     templ.tpe = DeviceType.TransformerTypeDevice
     templ.name = name
     templ.block.name = name
 
-    vf: VarFactory = grid.emt_var_factory
-    fbase: float = grid.fBase
+    c_eps = vf.add_const(1e-12)
 
-    c0 = vf.add_const(0.0)
+    # ------------------------------------------------------------------
+    # Publish every static transformer quantity needed by the coupled DAE.
+    # The EMT problem later writes numerical values into these symbolic
+    # variables, which keeps the template architecture aligned with pi-line EMT.
+    # ------------------------------------------------------------------
+    r1: Var = vf.add_var(name=f"xfmr_r1_{name}")
+    r2: Var = vf.add_var(name=f"xfmr_r2_{name}")
+    l1: Var = vf.add_var(name=f"xfmr_l1_{name}")
+    l2: Var = vf.add_var(name=f"xfmr_l2_{name}")
+    m12: Var = vf.add_var(name=f"xfmr_m_{name}")
+    gm: Var = vf.add_var(name=f"xfmr_gm_{name}")
 
-    # ============================================================
-    # Parameters from the transformer device
-    # ============================================================
-    R = trafo.R  # p.u.
-    X = trafo.X  # p.u.
-    L = X / (2.0 * np.pi * float(fbase))  # H (converted from p.u.)
-    G = trafo.G  # p.u. (magnetizing conductance)
-    B = trafo.B  # p.u. (magnetizing susceptance)
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_r1] = r1
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_r2] = r2
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_l1] = l1
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_l2] = l2
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_m] = m12
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_gm] = gm
 
-    # Ideal transformer turns ratio
-    n = trafo.tap_module if trafo.tap_module != 0.0 else 1.0
+    # ------------------------------------------------------------------
+    # Create the terminal voltage inputs. These are the electrical interface to
+    # the network and therefore remain power-flow referenced block inputs.
+    # ------------------------------------------------------------------
+    vf_vars: list[Var] = list([
+        vf.add_var(name=f"vf_A_{name}", reference=VarPowerFlowRefferenceType.vf_A),
+        vf.add_var(name=f"vf_B_{name}", reference=VarPowerFlowRefferenceType.vf_B),
+        vf.add_var(name=f"vf_C_{name}", reference=VarPowerFlowRefferenceType.vf_C),
+    ])
+    vt_vars: list[Var] = list([
+        vf.add_var(name=f"vt_A_{name}", reference=VarPowerFlowRefferenceType.vt_A),
+        vf.add_var(name=f"vt_B_{name}", reference=VarPowerFlowRefferenceType.vt_B),
+        vf.add_var(name=f"vt_C_{name}", reference=VarPowerFlowRefferenceType.vt_C),
+    ])
 
-    # ============================================================
-    # Terminal voltage inputs (from bus and to bus)
-    # ============================================================
-    v_A_f = vf.add_var(name=f"vf_A_{name}", reference=VarPowerFlowRefferenceType.vf_A)
-    v_B_f = vf.add_var(name=f"vf_B_{name}", reference=VarPowerFlowRefferenceType.vf_B)
-    v_C_f = vf.add_var(name=f"vf_C_{name}", reference=VarPowerFlowRefferenceType.vf_C)
+    # ------------------------------------------------------------------
+    # Create one primary and one secondary current state per phase. This state
+    # choice makes the coupled RL equations explicit and keeps the inductance
+    # matrix validation local to the template equations.
+    # ------------------------------------------------------------------
+    i_f: list[Var] = list([
+        vf.add_var(name=f"i_f_A_{name}"),
+        vf.add_var(name=f"i_f_B_{name}"),
+        vf.add_var(name=f"i_f_C_{name}"),
+    ])
+    i_t: list[Var] = list([
+        vf.add_var(name=f"i_t_A_{name}"),
+        vf.add_var(name=f"i_t_B_{name}"),
+        vf.add_var(name=f"i_t_C_{name}"),
+    ])
 
-    v_A_t = vf.add_var(name=f"vt_A_{name}", reference=VarPowerFlowRefferenceType.vt_A)
-    v_B_t = vf.add_var(name=f"vt_B_{name}", reference=VarPowerFlowRefferenceType.vt_B)
-    v_C_t = vf.add_var(name=f"vt_C_{name}", reference=VarPowerFlowRefferenceType.vt_C)
+    di_f: list[Var] = list([
+        vf.add_diff_var(name=f"di_f_A_{name}", base_var=i_f[0]),
+        vf.add_diff_var(name=f"di_f_B_{name}", base_var=i_f[1]),
+        vf.add_diff_var(name=f"di_f_C_{name}", base_var=i_f[2]),
+    ])
+    di_t: list[Var] = list([
+        vf.add_diff_var(name=f"di_t_A_{name}", base_var=i_t[0]),
+        vf.add_diff_var(name=f"di_t_B_{name}", base_var=i_t[1]),
+        vf.add_diff_var(name=f"di_t_C_{name}", base_var=i_t[2]),
+    ])
 
-    vf_vars = [v_A_f, v_B_f, v_C_f]
-    vt_vars = [v_A_t, v_B_t, v_C_t]
+    # ------------------------------------------------------------------
+    # Create terminal current algebraic variables. They expose the branch
+    # injections to the network KCL assembly while remaining consistent with the
+    # winding-current state choice inside the transformer block.
+    # ------------------------------------------------------------------
+    if_act: list[Var] = list([
+        vf.add_var(name=f"if_{name}_A"),
+        vf.add_var(name=f"if_{name}_B"),
+        vf.add_var(name=f"if_{name}_C"),
+    ])
+    it_act: list[Var] = list([
+        vf.add_var(name=f"it_{name}_A"),
+        vf.add_var(name=f"it_{name}_B"),
+        vf.add_var(name=f"it_{name}_C"),
+    ])
 
-    # ============================================================
-    # State variables: series currents (one per phase)
-    # ============================================================
-    i_ser_A = vf.add_var(name=f"i_ser_A_{name}")
-    i_ser_B = vf.add_var(name=f"i_ser_B_{name}")
-    i_ser_C = vf.add_var(name=f"i_ser_C_{name}")
-    i_ser = [i_ser_A, i_ser_B, i_ser_C]
-
-    # Differential variables for series currents
-    di_ser_A = vf.add_diff_var(name=f"di_ser_A_{name}", base_var=i_ser_A)
-    di_ser_B = vf.add_diff_var(name=f"di_ser_B_{name}", base_var=i_ser_B)
-    di_ser_C = vf.add_diff_var(name=f"di_ser_C_{name}", base_var=i_ser_C)
-    di_ser = [di_ser_A, di_ser_B, di_ser_C]
-
-    # ============================================================
-    # Algebraic variables: terminal currents
-    # ============================================================
-    if_A = vf.add_var(name=f"if_{name}_A")
-    if_B = vf.add_var(name=f"if_{name}_B")
-    if_C = vf.add_var(name=f"if_{name}_C")
-    if_act = [if_A, if_B, if_C]
-
-    it_A = vf.add_var(name=f"it_{name}_A")
-    it_B = vf.add_var(name=f"it_{name}_B")
-    it_C = vf.add_var(name=f"it_{name}_C")
-    it_act = [it_A, it_B, it_C]
-
-    # ============================================================
-    # Build block structure
-    # ============================================================
     templ.block.in_vars = vf_vars + vt_vars
-    templ.block.state_vars = i_ser
-    templ.block.diff_vars = di_ser
+    templ.block.state_vars = i_f + i_t
+    templ.block.diff_vars = di_f + di_t
     templ.block.algebraic_vars = if_act + it_act
 
-    # ============================================================
-    # State equations: L * di_ser/dt + R * i_ser = (vf - n*vt)
-    # ============================================================
-    state_eqs = []
-    for k in range(3):
-        # Voltage drop across series impedance: R*i_ser + L*di_ser/dt
-        # At the from side: vf = n*vt + R*i_ser + L*di_ser/dt
-        # At the to side: n*vt = vf - R*i_ser - L*di_ser/dt
-        # For transformer: di_ser/dt = (vf - n*vt - R*i_ser) / L
-        state_eqs.append((vf_vars[k] - n * vt_vars[k] - R * i_ser[k]) / L)
-    templ.block.state_eqs = state_eqs
+    # ------------------------------------------------------------------
+    # Build the coupled winding differential equations. Both winding voltages are
+    # written in their own winding coordinates with the same symmetric mutual
+    # inductance matrix. The external two-port sign inversion is handled only in
+    # the terminal-current algebraic equations, which keeps the magnetic model
+    # physically symmetric while still exposing opposite branch-port currents.
+    # ------------------------------------------------------------------
+    state_eqs_f: list[Expr] = list()
+    state_eqs_t: list[Expr] = list()
+    det_l: Expr = l1 * l2 - m12 * m12
 
-    # ============================================================
-    # Algebraic equations: KCL at each terminal
-    # ============================================================
-    alg_eqs = []
+    for idx in range(3):
+        primary_rhs: Expr = vf_vars[idx] - r1 * i_f[idx]
+        secondary_rhs: Expr = vt_vars[idx] - r2 * i_t[idx]
 
-    # From side: if = i_ser + G*vf (magnetizing current)
-    for k in range(3):
-        alg_eqs.append(if_act[k] - (i_ser[k] + G * vf_vars[k]))
+        state_eqs_f.append((l2 * primary_rhs - m12 * secondary_rhs) / (det_l + c_eps))
+        state_eqs_t.append((l1 * secondary_rhs - m12 * primary_rhs) / (det_l + c_eps))
 
-    # To side: it = -i_ser + G*n*vf_t (magnetizing current at to side)
-    for k in range(3):
-        alg_eqs.append(it_act[k] - (-i_ser[k] + G * n * vt_vars[k]))
+    templ.block.state_eqs = state_eqs_f + state_eqs_t
+
+    # ------------------------------------------------------------------
+    # Tie the branch terminal currents to the internal winding currents. The
+    # magnetizing/core-loss conductance is modeled as a primary-side shunt term,
+    # which is the only conductance contribution present in the original block.
+    # The secondary terminal current is the negative of the winding current
+    # because the external port orientation is opposite to the winding current
+    # reference used in the coupled inductance equations.
+    # ------------------------------------------------------------------
+    alg_eqs: list[Expr] = list()
+    for idx in range(3):
+        alg_eqs.append(if_act[idx] - (i_f[idx] + gm * vf_vars[idx]))
+        alg_eqs.append(it_act[idx] + i_t[idx])
 
     templ.block.algebraic_eqs = alg_eqs
-
-    # ============================================================
-    # Output variables
-    # ============================================================
     templ.block.out_vars = if_act + it_act
 
-    # ============================================================
-    # External mapping for KCL stamping in EmtProblemDae
-    # ============================================================
-    if_keys = {
-        "N": VarPowerFlowRefferenceType.if_N,
-        "A": VarPowerFlowRefferenceType.if_A,
-        "B": VarPowerFlowRefferenceType.if_B,
-        "C": VarPowerFlowRefferenceType.if_C,
-    }
-    it_keys = {
-        "N": VarPowerFlowRefferenceType.it_N,
-        "A": VarPowerFlowRefferenceType.it_A,
-        "B": VarPowerFlowRefferenceType.it_B,
-        "C": VarPowerFlowRefferenceType.it_C,
-    }
-    sf_keys = {
-        "A": VarPowerFlowRefferenceType.Sf_A,
-        "B": VarPowerFlowRefferenceType.Sf_B,
-        "C": VarPowerFlowRefferenceType.Sf_C,
-    }
-    st_keys = {
-        "A": VarPowerFlowRefferenceType.St_A,
-        "B": VarPowerFlowRefferenceType.St_B,
-        "C": VarPowerFlowRefferenceType.St_C,
-    }
-    d_vf_keys = {
-        "N": VarPowerFlowRefferenceType.d_v_N_f,
-        "A": VarPowerFlowRefferenceType.d_v_A_f,
-        "B": VarPowerFlowRefferenceType.d_v_B_f,
-        "C": VarPowerFlowRefferenceType.d_v_C_f,
-    }
-    d_vt_keys = {
-        "N": VarPowerFlowRefferenceType.d_v_N_t,
-        "A": VarPowerFlowRefferenceType.d_v_A_t,
-        "B": VarPowerFlowRefferenceType.d_v_B_t,
-        "C": VarPowerFlowRefferenceType.d_v_C_t,
-    }
+    # ------------------------------------------------------------------
+    # Publish the terminal-current mapping used by the EMT network stamping.
+    # The transformer has no neutral leg in this classical template, so the
+    # neutral and derivative slots remain explicitly empty.
+    # ------------------------------------------------------------------
+    templ.block.external_mapping = dict({
+        VarPowerFlowRefferenceType.if_N: None,
+        VarPowerFlowRefferenceType.if_A: if_act[0],
+        VarPowerFlowRefferenceType.if_B: if_act[1],
+        VarPowerFlowRefferenceType.if_C: if_act[2],
+        VarPowerFlowRefferenceType.it_N: None,
+        VarPowerFlowRefferenceType.it_A: it_act[0],
+        VarPowerFlowRefferenceType.it_B: it_act[1],
+        VarPowerFlowRefferenceType.it_C: it_act[2],
+        VarPowerFlowRefferenceType.Sf_A: None,
+        VarPowerFlowRefferenceType.Sf_B: None,
+        VarPowerFlowRefferenceType.Sf_C: None,
+        VarPowerFlowRefferenceType.St_A: None,
+        VarPowerFlowRefferenceType.St_B: None,
+        VarPowerFlowRefferenceType.St_C: None,
+        VarPowerFlowRefferenceType.d_v_N_f: None,
+        VarPowerFlowRefferenceType.d_v_A_f: None,
+        VarPowerFlowRefferenceType.d_v_B_f: None,
+        VarPowerFlowRefferenceType.d_v_C_f: None,
+        VarPowerFlowRefferenceType.d_v_N_t: None,
+        VarPowerFlowRefferenceType.d_v_A_t: None,
+        VarPowerFlowRefferenceType.d_v_B_t: None,
+        VarPowerFlowRefferenceType.d_v_C_t: None,
+    })
 
-    mapping: Dict[VarPowerFlowRefferenceType, Var | None] = {
-        if_keys["N"]: None, if_keys["A"]: if_A, if_keys["B"]: if_B, if_keys["C"]: if_C,
-        it_keys["N"]: None, it_keys["A"]: it_A, it_keys["B"]: it_B, it_keys["C"]: it_C,
-        sf_keys["A"]: None, sf_keys["B"]: None, sf_keys["C"]: None,
-        st_keys["A"]: None, st_keys["B"]: None, st_keys["C"]: None,
-        d_vf_keys["N"]: None, d_vf_keys["A"]: None, d_vf_keys["B"]: None, d_vf_keys["C"]: None,
-        d_vt_keys["N"]: None, d_vt_keys["A"]: None, d_vt_keys["B"]: None, d_vt_keys["C"]: None,
-    }
-
-    templ.block.external_mapping = mapping
-
-    # ============================================================
-    # Initialization equations
-    # ============================================================
-    init_eqs: Dict[Var, Expr] = {}
-
-    # Initialize series currents to zero
-    init_eqs[i_ser_A] = if_A
-    init_eqs[i_ser_B] = if_B
-    init_eqs[i_ser_C] = if_C
+    # ------------------------------------------------------------------
+    # Initialize the winding currents from the terminal-current algebraic view.
+    # This keeps every internal state explicitly seeded while leaving the power-
+    # flow driven network inputs to the global EMT initializer.
+    # ------------------------------------------------------------------
+    init_eqs: Dict[Var, Expr] = dict()
+    for idx in range(3):
+        init_eqs[i_f[idx]] = if_act[idx] - gm * vf_vars[idx]
+        init_eqs[i_t[idx]] = -it_act[idx]
 
     templ.block.init_eqs = init_eqs
 
-    # ============================================================
-    # Derivative initialization
-    # ============================================================
-    diff_init_eqs: Dict[Var, Expr] = {}
+    # ------------------------------------------------------------------
+    # Initialize the current derivatives with the exact same coupled equations
+    # used in the runtime DAE. This keeps startup and runtime dynamics aligned.
+    # ------------------------------------------------------------------
+    diff_init_eqs: Dict[Var, Expr] = dict()
+    for idx in range(3):
+        primary_rhs = vf_vars[idx] - r1 * i_f[idx]
+        secondary_rhs = vt_vars[idx] - r2 * i_t[idx]
 
-    # Initialize di_ser from steady-state: di_ser/dt = (vf - n*vt - R*i_ser) / L
-    for k in range(3):
-        diff_init_eqs[di_ser[k]] = (vf_vars[k] - n * vt_vars[k] - R * i_ser[k]) / L
+        diff_init_eqs[di_f[idx]] = (l2 * primary_rhs - m12 * secondary_rhs) / (det_l + c_eps)
+        diff_init_eqs[di_t[idx]] = (l1 * secondary_rhs - m12 * primary_rhs) / (det_l + c_eps)
 
     templ.block.diff_init_eqs = diff_init_eqs
 

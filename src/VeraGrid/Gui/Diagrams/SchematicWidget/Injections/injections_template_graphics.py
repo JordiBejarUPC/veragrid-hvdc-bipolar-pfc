@@ -158,6 +158,12 @@ class InjectionNexusPathItem(QGraphicsPathItem):
         """
         self.owner_item.setSelected(False)
         self.owner_item.editor.set_editor_model(api_object=self.owner_item.api_object)
+
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.owner_item.set_nexus_edit_active(True)
+        else:
+            pass
+
         QGraphicsPathItem.mousePressEvent(self, event)
 
     def itemChange(self, change: QGraphicsItem.GraphicsItemChange, value: Any) -> Any:
@@ -171,6 +177,7 @@ class InjectionNexusPathItem(QGraphicsPathItem):
         result = QGraphicsPathItem.itemChange(self, change, value)
 
         if change == QGraphicsItem.GraphicsItemChange.ItemSelectedHasChanged:
+            self.owner_item.clear_nexus_edit_if_fully_deselected()
             self.owner_item.refresh_nexus_z_order()
             self.owner_item.refresh_nexus_handles()
         else:
@@ -428,6 +435,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
             "child": NexusEndpointHandleItem(parent_item=self, parent_graphic=self.nexus, endpoint="child"),
             "parent": NexusEndpointHandleItem(parent_item=self, parent_graphic=self.nexus, endpoint="parent"),
         }
+        self._nexus_edit_active: bool = False
         self._nexus_edit_locks_applied: bool = False
         self._owner_movable_before_nexus_edit: bool = True
         self._parent_movable_before_nexus_edit: bool = True
@@ -594,6 +602,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
                 self.nexus.setSelected(False)
             else:
                 pass
+            self.clear_nexus_edit_if_fully_deselected()
             self.refresh_nexus_z_order()
             self.refresh_nexus_handles()
             return value
@@ -696,10 +705,23 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         dock = self.get_dock_metadata()
         alignment: float = self.get_manual_dock_alignment()
         offset: float = self.get_manual_dock_offset()
-        parent_anchor_local_point: QPointF = self.get_parent_anchor_local_point_from_child_position()
-        child_anchor_local_point: QPointF = self.get_child_anchor_local_point_from_parent_scene_anchor(
-            parent_scene_anchor=self.parent.get_connection_scene_point_from_local_point(parent_anchor_local_point)
-        )
+        anchor_x: Any = dock.get("anchor_x", None)
+        anchor_y: Any = dock.get("anchor_y", None)
+        child_anchor_x: Any = dock.get("child_anchor_x", None)
+        child_anchor_y: Any = dock.get("child_anchor_y", None)
+        anchor_auto: bool = bool(dock.get("anchor_auto", True))
+
+        if anchor_auto or anchor_x is None or anchor_y is None:
+            parent_anchor_local_point: QPointF = self.get_parent_anchor_local_point_from_child_position()
+        else:
+            parent_anchor_local_point = QPointF(float(anchor_x), float(anchor_y))
+
+        if child_anchor_x is None or child_anchor_y is None:
+            child_anchor_local_point: QPointF = self.get_child_anchor_local_point_from_parent_scene_anchor(
+                parent_scene_anchor=self.parent.get_connection_scene_point_from_local_point(parent_anchor_local_point)
+            )
+        else:
+            child_anchor_local_point = QPointF(float(child_anchor_x), float(child_anchor_y))
 
         dock["alignment"] = alignment
         dock["offset"] = offset
@@ -710,6 +732,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         dock["child_anchor_x"] = float(child_anchor_local_point.x())
         dock["child_anchor_y"] = float(child_anchor_local_point.y())
         self.set_dock_metadata(dock)
+        self.update_nexus(self.scenePos())
 
         self.editor.update_diagram_element(device=self.api_object,
                                            x=self.scenePos().x(),
@@ -920,7 +943,44 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
 
         :return: ``True`` when nexus handles should be visible.
         """
-        return self.isSelected() or self.nexus.isSelected()
+        return self._nexus_edit_active and (self.isSelected() or self.nexus.isSelected())
+
+    def set_nexus_edit_active(self, active: bool) -> None:
+        """
+        Set the explicit nexus-edit activation state.
+
+        Plain selection must not surface nexus edit handles. Only a direct click on the
+        injection glyph or nexus path enables the editor.
+
+        :param active: Requested activation state.
+        :return: ``None``.
+        """
+        self._nexus_edit_active = bool(active)
+        self.refresh_nexus_z_order()
+        self.refresh_nexus_handles()
+
+    def clear_nexus_edit_if_fully_deselected(self) -> None:
+        """
+        Clear nexus editing when neither the glyph nor the nexus path remains selected.
+
+        :return: ``None``.
+        """
+        if self.isSelected() or self.nexus.isSelected():
+            return
+        else:
+            self._nexus_edit_active = False
+
+    def prepare_for_glyph_interaction(self) -> None:
+        """
+        Leave nexus edit mode before normal glyph interaction starts.
+
+        Clicking the injection glyph must preserve normal selection and dragging.
+        Nexus editing is only entered through the nexus path itself.
+
+        :return: ``None``.
+        """
+        self.nexus.setSelected(False)
+        self.set_nexus_edit_active(False)
 
     def refresh_nexus_edit_locks(self) -> None:
         """
@@ -928,7 +988,7 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
 
         :return: ``None``.
         """
-        nexus_selected = self.nexus.isSelected()
+        nexus_selected = self.is_nexus_edit_active()
 
         if nexus_selected and not self._nexus_edit_locks_applied:
             self._owner_movable_before_nexus_edit = bool(self.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
@@ -1035,8 +1095,9 @@ class InjectionTemplateGraphicItem(GenericDiagramWidget, QGraphicsItemGroup):
         :param QGraphicsSceneMouseEvent:
         :return:
         """
-        self.nexus.setSelected(False)
+        self.prepare_for_glyph_interaction()
         self._editor.set_editor_model(api_object=self.api_object)
+
         QGraphicsItemGroup.mousePressEvent(self, QGraphicsSceneMouseEvent)
 
     def change_bus(self):

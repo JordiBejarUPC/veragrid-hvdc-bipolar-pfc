@@ -260,6 +260,11 @@ def parse_expr_list(lst: List[Dict[str, Any]],
 
 
 class BlockSaver:
+    __slots__ = (
+        "var_factory",
+        "main_block_uids",
+        "blocks",
+    )
 
     def __init__(self, var_factory: VarFactory):
         self.var_factory = var_factory
@@ -429,13 +434,17 @@ class BlockSaver:
 
         # diff_vars: List[DiffVar] = list()
         for diff_var in blk.diff_vars:
-            if diff_var.uid not in self.var_factory.get_diff_var_dict():
+            found_var = self.var_factory.get_diff_var(diff_var.uid)
+            if found_var is None:
                 raise ValueError(f"variable {diff_var.name} not added to vars factory")
 
         for dyn_var_type, var in blk.external_mapping.items():
             if var is not None:
-                if var.uid not in self.var_factory.get_vars_dict():
-                    raise ValueError(f"variable {var.name} not added to vars factory")
+                var_in_varfactory = self.var_factory.find_var_or_diff_var(var_uid=var.uid)
+                # if var is not in VarFactory "2"find_var_or_diff_var" will also raise an error
+
+                # if var.uid not in self.var_factory.get_vars_dict() and var.uid not in self.var_factory.get_diff_var_dict():
+                #     raise ValueError(f"variable {var.name} not added to vars factory")
 
         # save diagram
         diagram = blk.diagram.to_dict()
@@ -494,6 +503,10 @@ class BlockSaver:
 
 
 class BlockParser:
+    __slots__ = (
+        "var_factory",
+        "block_dict",
+    )
 
     def __init__(self, var_factory: VarFactory):
         self.var_factory = var_factory
@@ -596,7 +609,9 @@ class BlockParser:
         external_mapping: Dict[VarPowerFlowRefferenceType, Var] = dict()
         for key_str, var_uid in data["external_mapping"].items():
             key = VarPowerFlowRefferenceType(key_str)
-            external_mapping[key] = self.var_factory.get_var(var_uid)
+            var_in_varfactory = self.var_factory.find_var_or_diff_var(var_uid)
+            if var_in_varfactory is not None:
+                external_mapping[key] = var_in_varfactory
 
         api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] = dict()
         for key_str, var_uid in data["api_obj_mapping"].items():
@@ -658,14 +673,22 @@ def block_deep_copy(block: Block, var_factory: VarFactory):
     return block2
 
 
-def duplicate_var(var_factory: VarFactory, old_to_new_var: Dict[int, Var], var: Var) -> Var:
+def duplicate_var(var_factory: VarFactory, old_to_new_var: Dict[int, Var], var: Var | None) -> Var | None:
     """
+    Duplicate one symbolic variable while preserving UID-based reuse.
 
-    :param var_factory:
-    :param old_to_new_var:
-    :param var:
-    :return:
+    The helper now accepts ``None`` because some FMU/EMT external mappings intentionally
+    leave optional references unresolved. In those cases the missing mapping must stay
+    missing after the block clone.
+
+    :param var_factory: Variable factory used to allocate the cloned variable.
+    :param old_to_new_var: UID-to-variable clone map.
+    :param var: Source variable or ``None``.
+    :return: Cloned variable or ``None``.
     """
+    if var is None:
+        return None
+
     if var.uid in old_to_new_var:
         return old_to_new_var[var.uid]
 
@@ -745,7 +768,7 @@ def duplicate_expr(var_factory: VarFactory,
     return expr
 
 
-def duplicate_block(block: Block, var_factory: VarFactory) -> Block:
+def duplicate_block(block: Block, var_factory: VarFactory | None) -> Block:
     """
     Create a duplicate of this block with new variable UIDs.
     The new block contains variables with the same names but different UIDs,

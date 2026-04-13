@@ -19,7 +19,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, EmtSolverTypes, ShuntConnectionType, EmtInitializationMethod, EmtLineTypes, ConverterControlType, SolverType
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.bergeron_line_emt_template import get_bergeron_line_emt_template
-from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template, get_shunt_r_1ph_emt_template
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.transformer_emt_template import get_transformer_emt_template
@@ -128,17 +128,17 @@ def test_pi_line_rload_emt_passes_validation():
 
     pf_results, pf_res_3ph = run_power_flow(grid)
 
-    gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
-    line_mdl = get_pi_line_emt_template(grid=grid, line=line0).block
-    load_mdl = get_shunt_r_3ph_emt_template(vf=grid.emt_var_factory).block
-    load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_3ph", new_value=1.0)
+    gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
+    load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
-    set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=line0, model=line_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=load, model=load_mdl, var_factory=grid.emt_var_factory)
+
+    set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
     # Should NOT raise EmtTopologyError - this is a valid topology
-    problem = EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3Ph=pf_res_3ph)
+    problem = EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3ph=pf_res_3ph)
     assert problem is not None
 
 
@@ -184,17 +184,17 @@ def test_bergeron_line_rload_emt_passes_validation():
 
     pf_results, pf_res_3ph = run_power_flow(grid)
 
-    gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
-    line_mdl = get_bergeron_line_emt_template(vf=grid.emt_var_factory, line=line0, name=EmtLineTypes.Bergeron).block
-    load_mdl = get_shunt_r_3ph_emt_template(vf=grid.emt_var_factory).block
-    load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_3ph", new_value=1.0)
+    gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    line_mdl = get_bergeron_line_emt_template(vf=grid.var_factory).block
+    load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
-    set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=line0, model=line_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=load, model=load_mdl, var_factory=grid.emt_var_factory)
+
+    set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
     # Should NOT raise EmtTopologyError - this is a valid topology
-    problem = EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3Ph=pf_res_3ph)
+    problem = EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3ph=pf_res_3ph)
     assert problem is not None
 
 
@@ -233,31 +233,21 @@ def test_vsc_emt_passes_validation():
 
     pf_results, pf_res_3ph = run_power_flow(grid)
 
-    gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
-    trafo_mdl = get_transformer_emt_template(grid=grid, trafo=transformer, name=transformer.name).block
+    gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    trafo_mdl = get_transformer_emt_template(vf=grid.var_factory, name=transformer.name).block
     vsc_mdl = get_emt_ideal_converter(
-        vf=grid.emt_var_factory,
+        vf=grid.var_factory,
         name=vsc.name,
-        sbase=grid.Sbase,
-        fbase=grid.fBase,
-        P_ref0=p_transfer_mw,
-        Q_ref0=q_transfer_mvar,
-        P_loss0=float(pf_results.losses_vsc[grid.get_vsc().index(vsc)]),
-        control1=ConverterControlType.Qac,
-        control2=ConverterControlType.Vm_dc,
-        control1_val=q_transfer_mvar,
-        control2_val=p_transfer_mw,
     ).block
-    dc_load_r_pu = grid.Sbase / p_transfer_mw
-    dc_load_mdl = get_dc_load_emt_template(grid=grid, P_dc=dc_load.P, R_dc=dc_load_r_pu, name="dc_load_emt").block
+    dc_load_mdl = get_dc_load_emt_template(vf=grid.var_factory, name="dc_load_emt").block
 
-    set_emt_model(device=gen1, model=gen_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=transformer, model=trafo_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=vsc, model=vsc_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=dc_load, model=dc_load_mdl, var_factory=grid.emt_var_factory)
+    set_emt_model(device=gen1, model=gen_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=transformer, model=trafo_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=vsc, model=vsc_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=dc_load, model=dc_load_mdl, var_factory=grid.var_factory)
 
     # Should NOT raise EmtTopologyError - this is a valid topology
-    problem = EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3Ph=pf_res_3ph)
+    problem = EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3ph=pf_res_3ph)
     assert problem is not None
 
 
@@ -303,16 +293,16 @@ def test_floating_phases_raises_emt_topology_error():
 
     pf_results, pf_res_3ph = run_power_flow(grid)
 
-    gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
-    line_mdl = get_pi_line_emt_template(grid=grid, line=line0).block
+    gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
     # Using 1-phase template on 3-phase bus causes floating phases
-    load_mdl = get_shunt_r_1ph_emt_template(vf=grid.emt_var_factory).block
-    load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_1ph", new_value=1.0)
+    load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=False, phC=False).block
 
-    set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=line0, model=line_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=load, model=load_mdl, var_factory=grid.emt_var_factory)
+
+    set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
     # Should raise EmtTopologyError about floating phases
     with pytest.raises(EmtTopologyError, match="Floating bus phases detected"):
-        EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3Ph=pf_res_3ph)
+        EmtProblemDae(grid=grid, options=get_default_emt_options(), pf_results=pf_results, pf_results_3ph=pf_res_3ph)

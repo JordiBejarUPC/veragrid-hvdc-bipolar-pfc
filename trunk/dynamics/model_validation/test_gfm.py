@@ -2,9 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import math
-import cProfile as profile
-import numpy as np
 from matplotlib import pyplot as plt
 
 import sys
@@ -12,12 +9,10 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.vsc_template import PVCellBuild
 from VeraGridEngine.Templates.Rms.vsc_gfm import VscGfmBuild
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource
 from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
@@ -28,7 +23,7 @@ from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImpl
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Devices.Aggregation import RmsEvent
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.enumerations import ConverterControlType
 import VeraGridEngine.api as gce
 
@@ -73,7 +68,7 @@ grid.add_bus(bus2)
 grid.add_bus(bus3)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.rms_var_factory)
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 grid.add_line(line12)
 grid.add_vsc(vsc1)
@@ -90,11 +85,11 @@ print('PF Voltage magnitudes (p.u.): ', abs(res.voltage))
 
 
 # Initialize the RMS
-line12_mdl = block_deep_copy(get_line_rms_template(grid.rms_var_factory).block)
-load_mdl = block_deep_copy(ZIPLoadBuild(grid.rms_var_factory, Pl0 =-0.005, Ql0 =-0.001).block)
-genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.rms_var_factory).block)
-vsc_mdl = block_deep_copy(VscGfmBuild(grid.rms_var_factory).block)
-dc_source = block_deep_copy(DCVoltageSource(grid.rms_var_factory, bus3.rms_model.out_vars[0]).block)
+line12_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+load_mdl = block_deep_copy(ZIPLoadBuild(grid.var_factory, Pl0 =-0.005, Ql0 =-0.001).block)
+genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.var_factory).block)
+vsc_mdl = block_deep_copy(VscGfmBuild(grid.var_factory).block)
+dc_source = block_deep_copy(DCVoltageSource(grid.var_factory, bus3.rms_model.out_vars[0]).block)
 
 # Connections
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])

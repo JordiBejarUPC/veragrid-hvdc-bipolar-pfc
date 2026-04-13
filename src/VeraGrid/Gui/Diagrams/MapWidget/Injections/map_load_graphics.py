@@ -12,9 +12,9 @@ from PySide6.QtGui import QPolygonF
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.generic_graphics import Polygon
 from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics import MapInjectionTemplateGraphicItem
-from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
 from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget
@@ -56,8 +56,8 @@ class MapLoadGraphicItem(MapInjectionTemplateGraphicItem):
             menu.addSection("Load")
 
             add_menu_entry(menu=menu,
-                           text="Rms Editor",
-                           function_ptr=self.edit_rms,
+                           text="Dynamic Editor",
+                           function_ptr=self.edit_dynamic,
                            icon_path=":/Icons/icons/edit.png")
 
             menu.exec(event.screenPos())
@@ -82,11 +82,36 @@ class MapLoadGraphicItem(MapInjectionTemplateGraphicItem):
 
         # prompt RmsModelEditorGUI
         rms_model_editor = DynamicBlockEditorGUI(
-            var_factory=self.editor.circuit.rms_var_factory,
+            var_factory=self.editor.circuit.var_factory,
             block=self.api_object.rms_model,
             api_object=self.api_object,
             mode=DynamicEditorMode.RMS,
-            templates_list=self.editor.circuit.get_rms_models_by_device_type(self.api_object.device_type),
+            templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
+                self.api_object.device_type,
+                FmuTemplateDomain.RMS,
+            ),
+            circuit=self.editor.circuit,
             main_editor=True,
         )
         rms_model_editor.show()
+
+    def edit_emt(self):
+        """
+        Open the EMT dynamic model editor for this load.
+
+        :return: None.
+        """
+
+        emt_model_editor = DynamicBlockEditorGUI(
+            var_factory=self.editor.circuit.var_factory,
+            block=self.api_object.emt_model,
+            api_object=self.api_object,
+            mode=DynamicEditorMode.EMT,
+            templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
+                self.api_object.device_type,
+                FmuTemplateDomain.EMT,
+            ),
+            circuit=self.editor.circuit,
+            main_editor=True,
+        )
+        emt_model_editor.show()

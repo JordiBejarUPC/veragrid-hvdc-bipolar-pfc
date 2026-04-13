@@ -173,11 +173,11 @@ class RmsProblemComplex(RmsProblemTemplate):
             bus_dict[elm] = bus_num
 
             # Initialize complex phasor-based bus model
-            initialize_bus_complex_rms(bus=elm, vf=grid.rms_var_factory)
+            initialize_bus_complex_rms(bus=elm, vf=grid.var_factory)
 
             # Flatten model
             elm.rms_model.unify_blocks()
-            mdl = block_deep_copy(elm.rms_model, grid.rms_var_factory)
+            mdl = block_deep_copy(elm.rms_model, grid.var_factory)
 
             self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -215,7 +215,7 @@ class RmsProblemComplex(RmsProblemTemplate):
                     elm.rms_model = DynamicModelHost()
                 
                 elm.rms_model = get_line_complex_rms_template(
-                    vfactory=grid.rms_var_factory,
+                    vfactory=grid.var_factory,
                     name=f"Line_complex_{elm.name}"
                 ).block
                 
@@ -350,7 +350,7 @@ class RmsProblemComplex(RmsProblemTemplate):
                 bus_index = bus_dict[elm.bus]
 
                 elm.rms_model.unify_blocks()
-                mdl = block_deep_copy(elm.rms_model, self.grid.rms_var_factory)
+                mdl = block_deep_copy(elm.rms_model, self.grid.var_factory)
 
                 self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -417,7 +417,7 @@ class RmsProblemComplex(RmsProblemTemplate):
 
         # Add the nodal balance equations
         for i, elm in enumerate(self.grid.buses):
-            mdl = block_deep_copy(elm.rms_model, grid.rms_var_factory)
+            mdl = block_deep_copy(elm.rms_model, grid.var_factory)
             if len(mdl.algebraic_eqs) == 0:
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)

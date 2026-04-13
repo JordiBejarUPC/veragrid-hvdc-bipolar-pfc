@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Dict, List, Tuple, Union, Optional
+from typing import Callable, Dict, List, Tuple, Union, Optional
 import numpy as np
 import numba as nb
 import math
@@ -16,10 +16,13 @@ import warnings
 import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
+from collections import defaultdict, deque
+
 from VeraGridEngine.enumerations import EmtInitializationMethod, EmtInitializationStatus
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian, SymbolicVector
+from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 from VeraGridEngine.Utils.Symbolic.symbolic import expression2numba, get_expression_vars
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, find_vars_order
@@ -1035,7 +1038,6 @@ def init_explicit_emt(
         DIFF_NAME: str,
         CONSTANT_PARAMS_NAME: str,
         verbose: bool = False) -> Optional[Tuple[Dict[int, float], Dict[int, float]]]:
-# ) -> Union[None, Tuple[Dict[int, float], Block]]:
     """
     Initializes the EMT model by solving initialization and differential equations.
 

@@ -274,41 +274,7 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
             VarPowerFlowRefferenceType.Va: inputs[1],
         },
 
-        api_obj_mapping={
-            ParamPowerFlowRefferenceType.fn: fn,
-            ParamPowerFlowRefferenceType.ws: ws,
-            ParamPowerFlowRefferenceType.M: M,
-            ParamPowerFlowRefferenceType.D: D,
-            ParamPowerFlowRefferenceType.Rs: Rs,
-            ParamPowerFlowRefferenceType.Ra: Ra,
-
-            # Reactances
-            ParamPowerFlowRefferenceType.Xd: Xd,
-            ParamPowerFlowRefferenceType.Xq: Xq,
-            ParamPowerFlowRefferenceType.Xd_prime: Xd_prime,
-            ParamPowerFlowRefferenceType.Xq_prime: Xq_prime,
-            ParamPowerFlowRefferenceType.Xd_2prime: Xd_2prime,
-            ParamPowerFlowRefferenceType.Xq_2prime: Xq_2prime,
-            ParamPowerFlowRefferenceType.Xl: Xl,
-
-            # Time constants
-            ParamPowerFlowRefferenceType.Td0_prime: Td0_prime,
-            ParamPowerFlowRefferenceType.Tq0_prime: Tq0_prime,
-            ParamPowerFlowRefferenceType.Td0_2prime: Td0_2prime,
-            ParamPowerFlowRefferenceType.Tq0_2prime: Tq0_2prime,
-
-            ParamPowerFlowRefferenceType.Xd_prime_minus_Xl: Xd_prime_minus_Xl,
-            ParamPowerFlowRefferenceType.Xq_prime_minus_Xl: Xq_prime_minus_Xl,
-            ParamPowerFlowRefferenceType.Xdaux: Xdaux,
-            ParamPowerFlowRefferenceType.Xdaux2: Xdaux2,
-            ParamPowerFlowRefferenceType.Xdaux3: Xdaux3,
-            ParamPowerFlowRefferenceType.Xqaux: Xqaux,
-            ParamPowerFlowRefferenceType.Xqaux2: Xqaux2,
-            ParamPowerFlowRefferenceType.Xqaux3: Xqaux3,
-
-            ParamPowerFlowRefferenceType.A: A,
-            ParamPowerFlowRefferenceType.B: B,
-        },
+        api_obj_mapping={  },
 
         out_vars=[Pg, Qg, omega, IRPu, Te],
         in_vars=inputs,

@@ -363,8 +363,7 @@ class MultiCircuit(Assets):
                 'if_measurements',
                 'modelling_authorities',
                 'diagrams',
-                'rms_var_factory',
-                'emt_var_factory',
+                'var_factory',
                 'rms_models',
                 'emt_models',
                 'rms_events',
@@ -517,6 +516,7 @@ class MultiCircuit(Assets):
         batt = dev.Battery(name=gen.name,
                            idtag=gen.idtag,
                            P=gen.P,
+                           Q=gen.Q,
                            power_factor=gen.Pf,
                            vset=gen.Vset,
                            is_controlled=gen.is_controlled,
@@ -540,7 +540,7 @@ class MultiCircuit(Assets):
 
         batt.active_prof = gen.active_prof
         batt.P_prof = gen.P_prof
-        batt.Pf_prof = gen.Pf_prof
+        batt.Q_prof = gen.Q_prof
         batt.Vset_prof = gen.Vset_prof
         batt.enabled_dispatch_prof = gen.enabled_dispatch_prof
         batt.must_run_prof = gen.must_run_prof
@@ -860,12 +860,14 @@ class MultiCircuit(Assets):
 
     def set_state(self, t: int):
         """
-        Set the profiles state at the index t as the default values.
+        Set the profiles' state at the index t as the default values.
         """
         self.ensure_profiles_exist()
 
         for device in self.items():
+            device.disable_auto_updates()
             device.set_profile_values(t)
+            device.enable_auto_updates()
 
         self.snapshot_time = self.time_profile[t]
 
@@ -1380,17 +1382,17 @@ class MultiCircuit(Assets):
         area_names = [a.name for a in self.get_areas()]
         bus_area_indices = np.array([area_dict.get(b.area, 0) for b in self.get_buses()])
 
-        branches = self.get_branches(add_vsc=False, add_hvdc=False, add_switch=True)
-        F: IntVec = np.zeros(len(branches), dtype=int)
-        T: IntVec = np.zeros(len(branches), dtype=int)
-        for k, elm in enumerate(branches):
-            F[k] = bus_dict[elm.bus_from]
-            T[k] = bus_dict[elm.bus_to]
+        nbr = self.get_branch_number(add_vsc=False, add_hvdc=False, add_switch=True)
+        F: IntVec = np.zeros(nbr, dtype=int)
+        T: IntVec = np.zeros(nbr, dtype=int)
+        for k, elm in enumerate(self.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True)):
+            F[k] = bus_dict.get(elm.bus_from, -1)
+            T[k] = bus_dict.get(elm.bus_to, -1)
 
-        hvdc = self.get_hvdc()
-        hvdc_F: IntVec = np.zeros(len(hvdc), dtype=int)
-        hvdc_T: IntVec = np.zeros(len(hvdc), dtype=int)
-        for k, elm in enumerate(hvdc):
+        nhvdc = self.get_hvdc_number()
+        hvdc_F: IntVec = np.zeros(nhvdc, dtype=int)
+        hvdc_T: IntVec = np.zeros(nhvdc, dtype=int)
+        for k, elm in enumerate(self.hvdc_lines):
             hvdc_F[k] = bus_dict[elm.bus_from]
             hvdc_T[k] = bus_dict[elm.bus_to]
 
@@ -2234,7 +2236,7 @@ class MultiCircuit(Assets):
                                             expected_value=v1)
 
                             elif prop.tpe == SubObjectType.DaeBlockType:
-                                if not compare_blocks(v1, v2, self.rms_var_factory, grid2.rms_var_factory):
+                                if not compare_blocks(v1, v2, self.var_factory, grid2.var_factory):
                                     logger.add_error(msg="Different snapshot values",
                                                      device_class=template_elm.device_type.value,
                                                      device_property=prop.name,
@@ -2957,6 +2959,7 @@ class MultiCircuit(Assets):
 
         self.rms_models += data.rms_models
         self.emt_models += data.emt_models
+        self.fmu_templates += data.fmu_templates
 
     def set_opf_ts_results(self, results: OptimalPowerFlowTimeSeriesResults):
         """

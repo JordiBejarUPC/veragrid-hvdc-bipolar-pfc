@@ -34,7 +34,7 @@ from VeraGridEngine.DataStructures.fluid_pump_data import FluidPumpData
 from VeraGridEngine.DataStructures.fluid_p2x_data import FluidP2XData
 from VeraGridEngine.DataStructures.fluid_path_data import FluidPathData
 from VeraGridEngine.Devices.Aggregation.investment import Investment
-from VeraGridEngine.Devices.Aggregation.contingency import Contingency
+from VeraGridEngine.Devices.Events.contingency import Contingency
 
 ALL_STRUCTS = Union[
     BusData,
@@ -437,8 +437,8 @@ class NumericalCircuit:
         nc.fluid_pump_data = self.fluid_pump_data.copy()
         nc.fluid_p2x_data = self.fluid_p2x_data.copy()
         nc.fluid_path_data = self.fluid_path_data.copy()
-        nc._NumericalCircuit__bus_map_arr = self._NumericalCircuit__bus_map_arr.copy()
-        nc._NumericalCircuit__topology_performed = self._NumericalCircuit__topology_performed
+        nc.__bus_map_arr = self.__bus_map_arr.copy()
+        nc.__topology_performed = self.__topology_performed
         nc.structs_idtag_dict = self.structs_idtag_dict.copy()
         nc.consolidate_information()
 

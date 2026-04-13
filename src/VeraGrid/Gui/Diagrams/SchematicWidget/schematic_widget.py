@@ -36,6 +36,7 @@ from VeraGridEngine.Devices.Branches.switch import Switch
 from VeraGridEngine.Devices.Branches.series_reactance import SeriesReactance
 from VeraGridEngine.Devices.Branches.hvdc_line import HvdcLine
 from VeraGridEngine.Devices.Branches.transformer3w import Transformer3W, Winding
+from VeraGridEngine.Devices.Branches.transformerNw import TransformerNW
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Fluid import FluidNode, FluidPath
 from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
@@ -65,6 +66,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.upfc_graphics import UpfcGra
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.series_reactance_graphics import SeriesReactanceGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.switch_graphics import SwitchGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformer3w_graphics import Transformer3WGraphicItem
+from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformerNw_graphics import TransformerNWGraphicItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.generator_graphics import GeneratorGraphicItem
 from VeraGrid.Gui.Diagrams.generic_graphics import ACTIVE, GenericDiagramWidget
 from VeraGrid.Gui.Diagrams.base_diagram_widget import BaseDiagramWidget
@@ -72,6 +74,11 @@ from VeraGrid.Gui.general_dialogues import InputNumberDialogue
 import VeraGrid.Gui.Visualization.visualization as viz
 from VeraGrid.Gui.messages import error_msg, warning_msg, yes_no_question
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
+from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_auto_layout import (
+    calculate_schematic_layout,
+    should_auto_layout_before_first_draw,
+    apply_initial_auto_layout_to_diagram,
+)
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
@@ -122,12 +129,14 @@ class SchematicLibraryModel(QStandardItemModel):
         self.bus_name = "Bus"
         self.cn_name = "Connectivity bus"
         self.transformer3w_name = "3W-Transformer"
+        self.transformer_nw_name = "NW-Transformer"
         self.fluid_node_name = "Fluid-node"
         self.vsc_name = "VSC"  # Add VSC name
 
         self.add(name=self.bus_name, icon_name="bus_icon")
         self.add(name=self.cn_name, icon_name="cn_icon")
         self.add(name=self.transformer3w_name, icon_name="transformer3w")
+        self.add(name=self.transformer_nw_name, icon_name="transformerNw")
         self.add(name=self.fluid_node_name, icon_name="dam")
         self.add(name=self.vsc_name, icon_name="to_vsc")
 
@@ -169,6 +178,13 @@ class SchematicLibraryModel(QStandardItemModel):
         :return:
         """
         return self.to_bytes_array(self.transformer3w_name)
+
+    def get_nw_transformer_mime_data(self) -> QByteArray:
+        """
+
+        :return:
+        """
+        return self.to_bytes_array(self.transformer_nw_name)
 
     def get_fluid_node_mime_data(self) -> QByteArray:
         """
@@ -350,7 +366,7 @@ def is_tr3_terminal(arriving_widget: Union[BarTerminalItem, RoundTerminalItem, Q
     :param arriving_widget:
     :return: True / False
     """
-    return isinstance(arriving_widget.parent, Transformer3WGraphicItem)
+    return isinstance(arriving_widget.parent, (Transformer3WGraphicItem, TransformerNWGraphicItem))
 
 
 def is_vsc3_terminal(arriving_widget: Union[BarTerminalItem, RoundTerminalItem, QGraphicsItem]) -> bool:
@@ -391,7 +407,6 @@ class SchematicWidget(BaseDiagramWidget):
                  time_index: Union[None, int] = None):
         """
         Creates the Diagram Editor (DiagramEditorWidget)
-        :param circuit: Circuit that is handling
         :param diagram: SchematicDiagram to use (optional)
         :param default_bus_voltage: Default bus voltages (kV)
         :param time_index: time index to represent
@@ -506,6 +521,23 @@ class SchematicWidget(BaseDiagramWidget):
                 graphic_object = self.create_transformer_3w_graphics(elm=obj, x=x0, y=y0)
                 self.circuit.add_transformer3w(obj)
 
+            elif obj_type == self.library_model.get_nw_transformer_mime_data():
+                dlg = InputNumberDialogue(min_value=3,
+                                          max_value=20,
+                                          default_value=4,
+                                          is_int=True,
+                                          title='NW transformer',
+                                          text='Select the number of windings')
+                dlg.exec()
+
+                if not dlg.is_accepted:
+                    return
+
+                obj = TransformerNW(name=f"Transformer NW {len(self.circuit.transformers_nw)}",
+                                    winding_count=dlg.value)
+                graphic_object = self.create_transformer_nw_graphics(elm=obj, x=x0, y=y0)
+                self.circuit.add_transformer_nw(obj)
+
             elif obj_type == self.library_model.get_fluid_node_mime_data():
                 obj = FluidNode(name=f"Fluid node {self.circuit.get_fluid_nodes_number()}")
                 graphic_object = self.create_fluid_node_graphics(node=obj, x=x0, y=y0, h=20, w=80)
@@ -603,6 +635,18 @@ class SchematicWidget(BaseDiagramWidget):
         :return: Transformer3WGraphicItem
         """
         graphic_object = Transformer3WGraphicItem(editor=self, elm=elm)
+        graphic_object.setPos(QPointF(x, y))
+        return graphic_object
+
+    def create_transformer_nw_graphics(self, elm: TransformerNW, x: float, y: float) -> TransformerNWGraphicItem:
+        """
+        Add TransformerNW to the graphics
+        :param elm: TransformerNW
+        :param x: x coordinate
+        :param y: y coordinate
+        :return: TransformerNWGraphicItem
+        """
+        graphic_object = TransformerNWGraphicItem(editor=self, elm=elm)
         graphic_object.setPos(QPointF(x, y))
         return graphic_object
 
@@ -812,6 +856,39 @@ class SchematicWidget(BaseDiagramWidget):
                         graphic_object.change_size(h=location.h, w=location.w)
 
                         # graphic_object.update_conn()
+                        self.graphics_manager.add_device(elm=elm, graphic=graphic_object)
+
+            elif category == DeviceType.TransformerNwDevice.value:
+
+                location_items = list(points_group.locations.items())
+
+                for idtag, location in location_items:
+
+                    graphic_object = self.graphics_manager.query(elm=location.api_object)
+
+                    if graphic_object is None:
+                        elm: TransformerNW = location.api_object
+
+                        graphic_object = self.create_transformer_nw_graphics(elm=elm,
+                                                                             x=location.x,
+                                                                             y=location.y)
+                        self.graphics_manager.add_device(elm=elm, graphic=graphic_object)
+                        self.add_to_scene(graphic_object=graphic_object)
+
+                        for i, winding in enumerate(elm.windings[:graphic_object.n_windings]):
+                            winding_graphics = self.add_api_winding(
+                                branch=winding,
+                                from_port=graphic_object.terminals[i],
+                                draw_labels=location.draw_labels,
+                                logger=logger
+                            )
+                            if winding_graphics is not None:
+                                self.graphics_manager.add_device(elm=winding, graphic=winding_graphics)
+                                graphic_object.connection_lines[i] = winding_graphics
+                                graphic_object.slot_windings[i] = winding
+
+                        graphic_object.set_position(x=location.x, y=location.y)
+                        graphic_object.change_size(h=location.h, w=location.w)
                         self.graphics_manager.add_device(elm=elm, graphic=graphic_object)
 
         # add the rest of the branches
@@ -1052,7 +1129,18 @@ class SchematicWidget(BaseDiagramWidget):
         """
         Draw the stored diagram
         """
-        self.draw_additional_diagram(diagram=self.diagram, logger=self.logger)
+        if self.diagram is not None:
+            # A first layout pass on the stored coordinates avoids creating every
+            # Qt item at the origin, which is the expensive case for scene setup.
+            if should_auto_layout_before_first_draw(diagram=self.diagram):
+                apply_initial_auto_layout_to_diagram(diagram=self.diagram,
+                                                     layout_name="power_system_layout")
+            else:
+                pass
+
+            self.draw_additional_diagram(diagram=self.diagram, logger=self.logger)
+        else:
+            pass
 
     def showEvent(self, event) -> None:
         """
@@ -1623,7 +1711,8 @@ class SchematicWidget(BaseDiagramWidget):
         for dev_tpe in [DeviceType.BusDevice,
                         DeviceType.BusBarDevice,
                         DeviceType.FluidNodeDevice,
-                        DeviceType.Transformer3WDevice]:
+                        DeviceType.Transformer3WDevice,
+                        DeviceType.TransformerNwDevice]:
 
             graphic_objects_dict = self.graphics_manager.graphic_dict.get(dev_tpe, dict())
 
@@ -1719,7 +1808,8 @@ class SchematicWidget(BaseDiagramWidget):
             for item in self.diagram_scene.items():
                 if isinstance(item, (BusGraphicItem,
                                      FluidNodeGraphicItem,
-                                     Transformer3WGraphicItem)):
+                                     Transformer3WGraphicItem,
+                                     TransformerNWGraphicItem)):
                     x = item.pos().x()
                     y = item.pos().y()
 
@@ -1734,7 +1824,8 @@ class SchematicWidget(BaseDiagramWidget):
             for item in self.diagram_scene.items():
                 if isinstance(item, (BusGraphicItem,
                                      FluidNodeGraphicItem,
-                                     Transformer3WGraphicItem)):
+                                     Transformer3WGraphicItem,
+                                     TransformerNWGraphicItem)):
 
                     if item.api_object in elements_s:
                         x = item.pos().x()
@@ -1812,43 +1903,29 @@ class SchematicWidget(BaseDiagramWidget):
         """
 
         nx_graph, node_like_api_objects = self.diagram.build_graph()
+        calculated_positions: Dict[int, np.ndarray] = calculate_schematic_layout(graph=nx_graph, sel=sel)
 
-        layout_algorithms_dict = dict()
-        layout_algorithms_dict['circular_layout'] = nx.circular_layout
-        layout_algorithms_dict['random_layout'] = nx.random_layout
-        layout_algorithms_dict['shell_layout'] = nx.shell_layout
-        layout_algorithms_dict['spring_layout'] = nx.spring_layout
-        layout_algorithms_dict['spectral_layout'] = nx.spectral_layout
-        layout_algorithms_dict['fruchterman_reingold_layout'] = nx.fruchterman_reingold_layout
-        layout_algorithms_dict['kamada_kawai'] = nx.kamada_kawai_layout
+        # Each graph node index matches the position of the API object in node_like_api_objects.
+        # This keeps the layout transfer explicit and avoids special-case remapping logic.
+        node_idx: int
+        elm: Bus | FluidNode | Transformer3W
 
-        if sel == 'random_layout':
-            pos = nx.random_layout(nx_graph)
-        elif sel == 'spring_layout':
-            pos = nx.spring_layout(nx_graph, iterations=100, scale=10)
-        elif sel == 'shell_layout':
-            pos = nx.shell_layout(nx_graph, scale=10)
-        elif sel == 'circular_layout':
-            pos = nx.circular_layout(nx_graph, scale=10)
-        elif sel == 'kamada_kawai':
-            pos = nx.kamada_kawai_layout(nx_graph, scale=10)
-        elif sel == 'fruchterman_reingold_layout':
-            pos = nx.fruchterman_reingold_layout(nx_graph, scale=10)
-        else:
-            pos = nx.spring_layout(nx_graph, iterations=100, scale=10)
-
-        # assign the positions to the graphical objects of the nodes
-        for i, elm in enumerate(node_like_api_objects):
-            loc = self.diagram.query_point(elm)
+        for node_idx, elm in enumerate(node_like_api_objects):
+            loc: GraphicLocation | None = self.diagram.query_point(elm)
             graphic_object = self.graphics_manager.query(elm=elm)
+            pos_vec: np.ndarray | None = calculated_positions.get(node_idx, None)
 
-            if graphic_object is not None:
-                x, y = pos[i] * 500
+            if loc is not None and graphic_object is not None and pos_vec is not None:
+                x_pos: float = float(pos_vec[0]) * 500.0
+                y_pos: float = float(pos_vec[1]) * 500.0
 
-                # apply changes to the API objects
-                loc.x = x
-                loc.y = y
-                graphic_object.set_position(x, y)
+                # The persisted schematic coordinates and the live graphics item
+                # must be updated together so subsequent redraws stay consistent.
+                loc.x = x_pos
+                loc.y = y_pos
+                graphic_object.set_position(x_pos, y_pos)
+            else:
+                loc = loc
 
         self.center_nodes()
 
@@ -2347,8 +2424,7 @@ class SchematicWidget(BaseDiagramWidget):
                     # Add connection line to scene
                     self.add_to_scene(conn_line_dcn)
 
-                graphic_object.setRotation(r)
-                graphic_object.update_conn()
+                graphic_object.set_rotation_angle(angle_degrees=r, persist=False)
 
                 # Update diagram element
                 self.update_diagram_element(device=elm,
@@ -2540,6 +2616,37 @@ class SchematicWidget(BaseDiagramWidget):
         self.update_diagram_element(device=conn3._api_object, graphic_object=conn3)
 
         return tr3_graphic_object
+
+    def add_api_transformer_nw(self, elm: TransformerNW, set_voltage: bool = False):
+        """
+        Add API TransformerNW to the Scene
+        :param elm: TransformerNW instance
+        :param set_voltage:
+        """
+
+        trn_graphic_object = self.create_transformer_nw_graphics(elm=elm, x=elm.x, y=elm.y)
+
+        for i, winding in enumerate(elm.windings[:trn_graphic_object.n_windings]):
+            port = self.find_port(bus=winding.bus_to)
+            if port is None:
+                continue
+
+            conn = WindingGraphicItem(from_port=trn_graphic_object.terminals[i],
+                                      to_port=port,
+                                      editor=self)
+            trn_graphic_object.set_connection(i=i, bus=winding.bus_to, conn=conn, set_voltage=set_voltage)
+            self.update_diagram_element(device=conn._api_object, graphic_object=conn)
+
+        self.update_diagram_element(device=elm,
+                                    x=elm.x,
+                                    y=elm.y,
+                                    w=80,
+                                    h=80,
+                                    r=0,
+                                    draw_labels=True,
+                                    graphic_object=trn_graphic_object)
+
+        return trn_graphic_object
 
     def add_api_fluid_node(self, node: FluidNode,
                            injections_by_tpe: Dict[DeviceType, List[ALL_DEV_TYPES]]):
@@ -2900,6 +3007,9 @@ class SchematicWidget(BaseDiagramWidget):
             elif isinstance(elm, Transformer3W):
                 graphic_obj = self.add_api_transformer_3w(elm, set_voltage=False)
 
+            elif isinstance(elm, TransformerNW):
+                graphic_obj = self.add_api_transformer_nw(elm, set_voltage=False)
+
             elif isinstance(elm, HvdcLine):
                 graphic_obj = self.add_api_hvdc(elm)
 
@@ -2934,6 +3044,7 @@ class SchematicWidget(BaseDiagramWidget):
                                   dc_lines: List[DcLine],
                                   transformers2w: List[Transformer2W],
                                   transformers3w: List[Transformer3W],
+                                  transformers_nw: List[TransformerNW],
                                   hvdc_lines: List[HvdcLine],
                                   vsc_devices: List[VSC],
                                   upfc_devices: List[UPFC],
@@ -2952,6 +3063,7 @@ class SchematicWidget(BaseDiagramWidget):
         :param dc_lines: list of DcLine objects
         :param transformers2w: list of Transformer Objects
         :param transformers3w: list of Transformer3W Objects
+        :param transformers_nw: list of TransformerNW Objects
         :param hvdc_lines: list of HvdcLine objects
         :param vsc_devices: list Vsc objects
         :param upfc_devices: List of UPFC devices
@@ -3048,6 +3160,19 @@ class SchematicWidget(BaseDiagramWidget):
                 prog_func((i + 1) / nn * 100.0)
 
             graphic_obj = self.add_api_transformer_3w(elm, set_voltage=False)
+            self.add_to_scene(graphic_obj)
+
+        # --------------------------------------------------------------------------------------------------------------
+        if text_func is not None:
+            text_func('Creating schematic transformerNW devices')
+
+        nn = len(transformers_nw)
+        for i, elm in enumerate(transformers_nw):
+
+            if prog_func is not None:
+                prog_func((i + 1) / nn * 100.0)
+
+            graphic_obj = self.add_api_transformer_nw(elm, set_voltage=False)
             self.add_to_scene(graphic_obj)
 
         # --------------------------------------------------------------------------------------------------------------
@@ -3261,6 +3386,378 @@ class SchematicWidget(BaseDiagramWidget):
             ACTIVE['background'] = QColor(255, 255, 255, 255)  # white
             self.recolour_mode()
 
+    def _sync_multiwinding_transformer_result_colours(self) -> None:
+        """
+        Propagate winding branch colours to the corresponding winding circles in
+        multi-winding transformer graphics.
+        """
+        for transformer in self.circuit.transformers3w:
+            graphic_object: Transformer3WGraphicItem | None = self.graphics_manager.query(transformer)
+            if graphic_object is None:
+                continue
+
+            for i, conn in enumerate(graphic_object.connection_lines):
+                if conn is None:
+                    graphic_object.set_winding_color(i, graphic_object.color)
+                else:
+                    graphic_object.set_winding_color(i, conn._route_item.pen().color())
+
+        for transformer in self.circuit.transformers_nw:
+            graphic_object: TransformerNWGraphicItem | None = self.graphics_manager.query(transformer)
+            if graphic_object is None:
+                continue
+
+            for i, conn in enumerate(graphic_object.connection_lines):
+                if conn is None:
+                    graphic_object.set_winding_color(i, graphic_object.color)
+                else:
+                    graphic_object.set_winding_color(i, conn._route_item.pen().color())
+
+    def _get_voltage_result_color(self,
+                                  value: float,
+                                  cmap: palettes.Colormaps | None,
+                                  voltage_cmap: Callable) -> QColor:
+        a = 255
+        if cmap == palettes.Colormaps.Green2Red:
+            b, g, r = palettes.green_to_red_bgr(value)
+        elif cmap == palettes.Colormaps.Heatmap:
+            b, g, r = palettes.heatmap_palette_bgr(value)
+        elif cmap == palettes.Colormaps.TSO:
+            b, g, r = palettes.tso_substation_palette_bgr(value)
+        else:
+            r, g, b, a = voltage_cmap(value)
+            r *= 255
+            g *= 255
+            b *= 255
+            a *= 255
+        return QColor(r, g, b, a)
+
+    def _get_branch_result_color(self,
+                                 value: float,
+                                 cmap: palettes.Colormaps | None,
+                                 loading_cmap: Callable,
+                                 nominal_voltage: float) -> QColor:
+        a = 255
+        if cmap == palettes.Colormaps.Green2Red:
+            b, g, r = palettes.green_to_red_bgr(value)
+        elif cmap == palettes.Colormaps.Heatmap:
+            b, g, r = palettes.heatmap_palette_bgr(value)
+        elif cmap == palettes.Colormaps.TSO:
+            b, g, r = palettes.tso_line_palette_bgr(nominal_voltage, value)
+        else:
+            r, g, b, a = loading_cmap(value)
+            r *= 255
+            g *= 255
+            b *= 255
+            a *= 255
+        return QColor(r, g, b, a)
+
+    def _colour_bus_results(self,
+                            Sbus: CxVec,
+                            bus_active: IntVec,
+                            vabs: Vec,
+                            vang: Vec,
+                            vnorm: Vec,
+                            types: IntVec | None,
+                            bus_types: list[str],
+                            voltage_cmap: Callable,
+                            cmap: palettes.Colormaps | None,
+                            use_flow_based_width: bool) -> None:
+        nbus = self.circuit.get_bus_number()
+        if nbus != len(vnorm):
+            error_msg("Bus results length differs from the number of Bus results. \n"
+                      "Did you change the number of devices? If so, re-run the simulation.")
+            return
+
+        for i, bus in enumerate(self.circuit.buses):
+            graphic_object: BusGraphicItem | None = self.graphics_manager.query(bus)
+            if graphic_object is None:
+                continue
+
+            if bus_active[i]:
+                graphic_object.set_values(i=i,
+                                          Vm=vabs[i],
+                                          Va=vang[i],
+                                          P=Sbus[i].real if Sbus is not None else None,
+                                          Q=Sbus[i].imag if Sbus is not None else None,
+                                          tpe=bus_types[int(types[i])] if types is not None else None)
+                graphic_object.set_tile_color(self._get_voltage_result_color(vnorm[i], cmap, voltage_cmap))
+                if use_flow_based_width:
+                    graphic_object.change_size(w=graphic_object.w)
+            else:
+                graphic_object.set_tile_color(QColor(115, 115, 115, 255))
+                graphic_object.clear_label()
+
+    def _colour_branch_results(self,
+                               Sf: CxVec | None,
+                               St: CxVec | None,
+                               loadings: CxVec,
+                               losses: CxVec | None,
+                               br_active: IntVec,
+                               hvdc_Pf: Vec | None,
+                               loading_label: str,
+                               use_flow_based_width: bool,
+                               min_branch_width: int,
+                               max_branch_width: int,
+                               loading_cmap: Callable,
+                               cmap: palettes.Colormaps | None,
+                               ma: Vec | None,
+                               tau: Vec | None,
+                               is_three_phase: bool = False) -> float | None:
+        if Sf is None or len(Sf) == 0:
+            return 1.0
+
+        lnorm = np.abs(loadings)
+        lnorm[lnorm == np.inf] = 0
+        sf_abs = np.abs(Sf)
+        max_flow = sf_abs.max()
+
+        if hvdc_Pf is not None and len(hvdc_Pf) > 0:
+            max_flow = max(max_flow, np.abs(hvdc_Pf).max())
+
+        nbr = self.circuit.get_branch_number(add_vsc=False, add_hvdc=False, add_switch=True)
+        if not ((nbr == len(Sf) and not is_three_phase) or (is_three_phase and 3 * nbr == len(Sf))):
+            error_msg("Branch results length differs from the number of branch results. \n"
+                      "Did you change the number of devices? If so, re-run the simulation.")
+            return None
+
+        ph = np.array([0, 1, 2])
+        for i, branch in enumerate(self.circuit.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True)):
+            graphic_object: BRANCH_GRAPHICS | None = self.graphics_manager.query(branch)
+            if graphic_object is None:
+                continue
+
+            if br_active[i]:
+                if is_three_phase:
+                    k_idx = 3 * i + ph
+                    l_color_val = max(lnorm[k_idx])
+                    tooltip = str(i) + ': ' + branch.name
+
+                    for ph_idx, pname in enumerate(['a', 'b', 'c']):
+                        k = 3 * i + ph_idx
+                        tooltip += f'\n{loading_label} {pname}: {lnorm[k] * 100:10.4f} [%]'
+                        tooltip += f'\nPf {pname}:\t{Sf[k]:10.4f} [MVA]'
+                        if St is not None:
+                            tooltip += f'\nPt {pname}:\t{St[k]:10.4f} [MVA]'
+                        if losses is not None:
+                            tooltip += f'\nLoss {pname}:\t{losses[k]:10.4f} [MVA]'
+                        if branch.device_type == DeviceType.Transformer2WDevice:
+                            if ma is not None:
+                                tooltip += f'\nPf {pname}:\t{ma[k]:10.4f}'
+                            if tau is not None:
+                                tooltip += f'\nPf {pname}:\t{tau[k]:10.4f} [rad]'
+                        tooltip += "\n"
+                    sf_norm = max(sf_abs[k_idx]) / max(max_flow, 1e-20)
+                    arrow_sf = Sf[k_idx].sum()
+                    arrow_st = St[k_idx].sum() if St is not None else None
+                else:
+                    l_color_val = lnorm[i]
+                    tooltip = str(i) + ': ' + branch.name
+                    tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(lnorm[i] * 100) + ' [%]'
+                    tooltip += '\nPower (from):\t' + "{:10.4f}".format(Sf[i]) + ' [MVA]'
+                    if St is not None:
+                        tooltip += '\nPower (to):\t' + "{:10.4f}".format(St[i]) + ' [MVA]'
+                    if losses is not None:
+                        tooltip += '\nLosses:\t\t' + "{:10.4f}".format(losses[i]) + ' [MVA]'
+                    if branch.device_type == DeviceType.Transformer2WDevice:
+                        if ma is not None:
+                            tooltip += '\ntap module:\t' + "{:10.4f}".format(ma[i])
+                        if tau is not None:
+                            tooltip += '\ntap angle:\t' + "{:10.4f}".format(tau[i]) + ' rad'
+                    sf_norm = sf_abs[i] / max(max_flow, 1e-20)
+                    arrow_sf = Sf[i]
+                    arrow_st = St[i] if St is not None else None
+
+                width = int(np.floor(min_branch_width + sf_norm * (max_branch_width - min_branch_width))) \
+                    if use_flow_based_width else graphic_object.pen_width
+                color = self._get_branch_result_color(l_color_val,
+                                                      cmap,
+                                                      loading_cmap,
+                                                      branch.get_max_bus_nominal_voltage())
+                graphic_object.setToolTipText(tooltip)
+                graphic_object.set_colour(color, width, Qt.PenStyle.SolidLine)
+                if hasattr(graphic_object, 'set_arrows_with_power'):
+                    graphic_object.set_arrows_with_power(Sf=arrow_sf, St=arrow_st)
+            else:
+                width = graphic_object.pen_width
+                graphic_object.set_pen(QPen(QColor(115, 115, 115, 255), width, Qt.PenStyle.DashLine))
+                graphic_object.setToolTipText("")
+                if hasattr(graphic_object, 'set_arrows_with_power'):
+                    graphic_object.set_arrows_with_power(Sf=None, St=None)
+
+        self._sync_multiwinding_transformer_result_colours()
+        return max_flow
+
+    def _colour_vsc_results(self,
+                            vsc_Pf: Vec | None,
+                            vsc_Pt: Vec | None,
+                            vsc_Qt: Vec | None,
+                            vsc_losses: Vec | None,
+                            vsc_loading: Vec | None,
+                            vsc_active: IntVec | None,
+                            loading_label: str,
+                            use_flow_based_width: bool,
+                            min_branch_width: int,
+                            max_branch_width: int,
+                            loading_cmap: Callable,
+                            cmap: palettes.Colormaps | None,
+                            max_flow: float) -> None:
+        if vsc_Pf is None:
+            return
+
+        vsc_sending_power_norm = np.abs(vsc_Pt if vsc_Qt is None else vsc_Pt + 1j * vsc_Qt) / (max_flow + 1e-20)
+        if self.circuit.get_vsc_number() != len(vsc_Pf):
+            error_msg("VSC results length differs from the number of VSC results. \n"
+                      "Did you change the number of devices? If so, re-run the simulation.")
+            return
+
+        for i, elm in enumerate(self.circuit.vsc_devices):
+            graphic_object: VscGraphicItem | None = self.graphics_manager.query(elm)
+            if graphic_object is None:
+                continue
+
+            if vsc_active[i]:
+                width = int(np.floor(min_branch_width + vsc_sending_power_norm[i] *
+                                     (max_branch_width - min_branch_width))) \
+                    if use_flow_based_width else graphic_object.pen_width
+                style = Qt.PenStyle.SolidLine if elm.active else Qt.PenStyle.DashLine
+                color = self._get_branch_result_color(abs(vsc_loading[i]),
+                                                      cmap,
+                                                      loading_cmap,
+                                                      elm.get_max_bus_nominal_voltage()) \
+                    if elm.active else QColor(115, 115, 115, 255)
+
+                tooltip = str(i) + ': ' + elm.name
+                tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(abs(vsc_loading[i]) * 100) + ' [%]'
+                tooltip += '\nPower (from):\t' + "{:10.4f}".format(vsc_Pf[i]) + ' [MW]'
+
+                if vsc_Qt is None:
+                    if vsc_losses is not None:
+                        tooltip += '\nPower (to):\t' + "{:10.4f}".format(vsc_Pt[i]) + ' [MW]'
+                        tooltip += '\nLosses: \t\t' + "{:10.4f}".format(vsc_losses[i]) + ' [MW]'
+                        graphic_object.set_arrows_with_power_vsc(Pf=vsc_Pf[i], Pt=vsc_Pt[i], Qt=0.0)
+                    else:
+                        graphic_object.set_arrows_with_power_vsc(Pf=vsc_Pf[i], Pt=-vsc_Pf[i], Qt=0.0)
+                else:
+                    if vsc_losses is not None:
+                        tooltip += '\nPower (to):\t' + "{:10.4f}".format(vsc_Pt[i]) + ' [MW]'
+                        tooltip += '\nPower (to):\t' + "{:10.4f}".format(vsc_Qt[i]) + ' [Mvar]'
+                        tooltip += '\nLosses: \t\t' + "{:10.4f}".format(vsc_losses[i]) + ' [MW]'
+                        graphic_object.set_arrows_with_power_vsc(Pf=vsc_Pf[i], Pt=vsc_Pt[i], Qt=vsc_Qt[i])
+                    else:
+                        graphic_object.set_arrows_with_power_vsc(Pf=vsc_Pf[i], Pt=-vsc_Pf[i], Qt=vsc_Qt[i])
+
+                graphic_object.setToolTipText(tooltip)
+                graphic_object.set_colour(color, width, style)
+            else:
+                graphic_object.set_pen(QPen(QColor(115, 115, 115, 255),
+                                            graphic_object.pen_width,
+                                            Qt.PenStyle.DashLine))
+
+    def _colour_hvdc_results(self,
+                             hvdc_Pf: Vec | None,
+                             hvdc_Pt: Vec | None,
+                             hvdc_losses: Vec | None,
+                             hvdc_loading: Vec | None,
+                             hvdc_active: IntVec | None,
+                             loading_label: str,
+                             use_flow_based_width: bool,
+                             min_branch_width: int,
+                             max_branch_width: int,
+                             loading_cmap: Callable,
+                             cmap: palettes.Colormaps | None,
+                             max_flow: float) -> None:
+        if hvdc_Pf is None:
+            return
+
+        hvdc_sending_power_norm = np.abs(hvdc_Pf) / (max_flow + 1e-20)
+        if self.circuit.get_hvdc_number() != len(hvdc_Pf):
+            error_msg("HVDC results length differs from the number of HVDC results. \n"
+                      "Did you change the number of devices? If so, re-run the simulation.")
+            return
+
+        for i, elm in enumerate(self.circuit.hvdc_lines):
+            graphic_object: HvdcGraphicItem | None = self.graphics_manager.query(elm)
+            if graphic_object is None:
+                continue
+
+            if hvdc_active[i]:
+                width = int(np.floor(min_branch_width + hvdc_sending_power_norm[i] *
+                                     (max_branch_width - min_branch_width))) \
+                    if use_flow_based_width else graphic_object.pen_width
+                style = Qt.PenStyle.SolidLine if elm.active else Qt.PenStyle.DashLine
+                color = self._get_branch_result_color(abs(hvdc_loading[i]),
+                                                      cmap,
+                                                      loading_cmap,
+                                                      elm.get_max_bus_nominal_voltage()) \
+                    if elm.active else QColor(115, 115, 115, 255)
+
+                tooltip = str(i) + ': ' + elm.name
+                tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(abs(hvdc_loading[i]) * 100) + ' [%]'
+                tooltip += '\nPower (from):\t' + "{:10.4f}".format(hvdc_Pf[i]) + ' [MW]'
+
+                if hvdc_losses is not None:
+                    tooltip += '\nPower (to):\t' + "{:10.4f}".format(hvdc_Pt[i]) + ' [MW]'
+                    tooltip += '\nLosses: \t\t' + "{:10.4f}".format(hvdc_losses[i]) + ' [MW]'
+                    graphic_object.set_arrows_with_hvdc_power(Pf=hvdc_Pf[i], Pt=hvdc_Pt[i])
+                else:
+                    graphic_object.set_arrows_with_hvdc_power(Pf=hvdc_Pf[i], Pt=-hvdc_Pf[i])
+
+                graphic_object.setToolTipText(tooltip)
+                graphic_object.set_colour(color, width, style)
+            else:
+                graphic_object.set_pen(QPen(QColor(115, 115, 115, 255),
+                                            graphic_object.pen_width,
+                                            Qt.PenStyle.DashLine))
+
+    def _colour_fluid_path_results(self, fluid_path_flow: Vec | None) -> None:
+        if fluid_path_flow is None:
+            return
+
+        if self.circuit.get_fluid_paths_number() != len(fluid_path_flow):
+            return
+
+        for i, elm in enumerate(self.circuit.fluid_paths):
+            graphic_object: FluidPathGraphicItem | None = self.graphics_manager.query(elm)
+            if graphic_object is not None:
+                graphic_object.set_api_object_color()
+                graphic_object.set_arrows_with_fluid_flow(flow=fluid_path_flow[i])
+
+    def _colour_fluid_node_results(self,
+                                   vabs: Vec,
+                                   vang: Vec,
+                                   Sbus: CxVec,
+                                   types: IntVec | None,
+                                   bus_types: list[str],
+                                   fluid_node_p2x_flow: Vec | None,
+                                   fluid_node_current_level: Vec | None,
+                                   fluid_node_spillage: Vec | None,
+                                   fluid_node_flow_in: Vec | None,
+                                   fluid_node_flow_out: Vec | None) -> None:
+        if fluid_node_current_level is None:
+            return
+
+        if self.circuit.get_fluid_nodes_number() != len(fluid_node_current_level):
+            return
+
+        for i, elm in enumerate(self.circuit.fluid_nodes):
+            graphic_object: FluidNodeGraphicItem | None = self.graphics_manager.query(elm)
+            if graphic_object is not None:
+                graphic_object.set_api_object_color()
+                graphic_object.set_fluid_values(
+                    i=i,
+                    Vm=vabs[i],
+                    Va=vang[i],
+                    P=Sbus[i].real if Sbus is not None else None,
+                    Q=Sbus[i].imag if Sbus is not None else None,
+                    tpe=bus_types[int(types[i])] if types is not None else None,
+                    fluid_node_p2x_flow=fluid_node_p2x_flow[i] if fluid_node_p2x_flow is not None else None,
+                    fluid_node_current_level=fluid_node_current_level[i] if fluid_node_current_level is not None else None,
+                    fluid_node_spillage=fluid_node_spillage[i] if fluid_node_spillage is not None else None,
+                    fluid_node_flow_in=fluid_node_flow_in[i] if fluid_node_flow_in is not None else None,
+                    fluid_node_flow_out=fluid_node_flow_out[i] if fluid_node_flow_out is not None else None,
+                )
+
     def colour_results(self,
                        Sbus: CxVec,
                        bus_active: IntVec,
@@ -3300,467 +3797,248 @@ class SchematicWidget(BaseDiagramWidget):
                        cmap: palettes.Colormaps = None,
                        is_three_phase: bool = False):
         """
-        Color objects based on the results passed
-        :param Sbus: Buses power (MVA)
-        :param bus_active: Bus active status
-        :param Sf: Branches power from the "from" bus (MVA)
-        :param St: Branches power from the "to" bus (MVA)
-        :param voltages: Buses voltage
-        :param loadings: Branches load (%)
-        :param types: Buses type [PQ: 1, PV: 2, REF: 3, NONE: 4, STO_DISPATCH: 5, PVB: 6]
-        :param losses: Branches losses [%]
-        :param br_active: Branches active status
-        :param hvdc_Pf: HVDC branch flows "from" [MW]
-        :param hvdc_Pt: HVDC branch flows "to" [MW]
-        :param hvdc_losses: HVDC branch losses [MW]
-        :param hvdc_loading: HVDC Branch loading [%]
-        :param hvdc_active: HVDC Branch status
-        :param vsc_Pf: VSC branch flows "from" [MW]
-        :param vsc_Pt: VSC branch flows "to" [MW]
-        :param vsc_Qt: VSC branch flows "to" [Mvar]
-        :param vsc_losses: VSC branch losses [MW]
-        :param vsc_loading: VSC Branch loading [%]
-        :param vsc_active: VSC Branch status
-        :param loading_label: String saying whatever the loading label means
-        :param ma: branch phase shift angle (rad)
-        :param tau: branch tap module (p.u.)
-        :param fluid_node_p2x_flow: P2X flow rate (m3)
-        :param fluid_node_current_level: Current level (m3)
-        :param fluid_node_spillage: Spillage (m3)
-        :param fluid_node_flow_in: Flow rate (m3)
-        :param fluid_node_flow_out: Flow rate (m3)
-        :param fluid_injection_flow: Injection rate (m3)
-        :param fluid_path_flow: fluid flow (m3)
-        :param use_flow_based_width: use branch width based on the actual flow?
-        :param min_branch_width: Minimum branch width [px]
-        :param max_branch_width: Maximum branch width [px]
-        :param min_bus_width: Minimum bus width [px]
-        :param max_bus_width: Maximum bus width [px]
-        :param cmap: Color map [palettes.Colormaps]
-        :param is_three_phase: the results are three-phase
+        Color objects based on the results passed.
         """
-
-        # color nodes
         vmin = 0
         vmax = 1.2
         vrng = vmax - vmin
         vabs = np.abs(voltages)
         vang = np.angle(voltages, deg=True)
         vnorm = (vabs - vmin) / vrng
-        nbus = self.circuit.get_bus_number()
-        nbr = self.circuit.get_branch_number(add_vsc=False, add_hvdc=False, add_switch=True)
-
         voltage_cmap = viz.get_voltage_color_map()
         loading_cmap = viz.get_loading_color_map()
-
-        """
-        class BusMode(Enum):
-        PQ = 1,
-        PV = 2,
-        REF = 3,
-        NONE = 4,
-        STO_DISPATCH = 5
-        PVB = 6
-        """
-
         bus_types = ['', 'PQ', 'PV', 'Slack', 'PQV', 'P']
-        max_flow = 1
-        ph = np.array([0, 1, 2])
 
-        if nbus == len(vnorm):
-            for i, bus in enumerate(self.circuit.buses):
+        self._colour_bus_results(Sbus=Sbus,
+                                 bus_active=bus_active,
+                                 vabs=vabs,
+                                 vang=vang,
+                                 vnorm=vnorm,
+                                 types=types,
+                                 bus_types=bus_types,
+                                 voltage_cmap=voltage_cmap,
+                                 cmap=cmap,
+                                 use_flow_based_width=use_flow_based_width)
 
-                # try to find the diagram object of the DB object
-                graphic_object: BusGraphicItem = self.graphics_manager.query(bus)
+        max_flow = self._colour_branch_results(Sf=Sf,
+                                               St=St,
+                                               loadings=loadings,
+                                               losses=losses,
+                                               br_active=br_active,
+                                               hvdc_Pf=hvdc_Pf,
+                                               loading_label=loading_label,
+                                               use_flow_based_width=use_flow_based_width,
+                                               min_branch_width=min_branch_width,
+                                               max_branch_width=max_branch_width,
+                                               loading_cmap=loading_cmap,
+                                               cmap=cmap,
+                                               ma=ma,
+                                               tau=tau,
+                                               is_three_phase=is_three_phase)
+        if max_flow is None:
+            return
 
-                if graphic_object is not None:
-                    if bus_active[i]:
+        self._colour_vsc_results(vsc_Pf=vsc_Pf,
+                                 vsc_Pt=vsc_Pt,
+                                 vsc_Qt=vsc_Qt,
+                                 vsc_losses=vsc_losses,
+                                 vsc_loading=vsc_loading,
+                                 vsc_active=vsc_active,
+                                 loading_label=loading_label,
+                                 use_flow_based_width=use_flow_based_width,
+                                 min_branch_width=min_branch_width,
+                                 max_branch_width=max_branch_width,
+                                 loading_cmap=loading_cmap,
+                                 cmap=cmap,
+                                 max_flow=max_flow)
 
-                        if is_three_phase:
-                            i3 = 3 * i + ph
-                            graphic_object.set_values(i=i,
-                                                      Vm=vabs[i3],
-                                                      Va=vang[i3],
-                                                      P=Sbus[i3].real if Sbus is not None else None,
-                                                      Q=Sbus[i3].imag if Sbus is not None else None,
-                                                      tpe=bus_types[int(types[i])] if types is not None else None)
+        self._colour_hvdc_results(hvdc_Pf=hvdc_Pf,
+                                  hvdc_Pt=hvdc_Pt,
+                                  hvdc_losses=hvdc_losses,
+                                  hvdc_loading=hvdc_loading,
+                                  hvdc_active=hvdc_active,
+                                  loading_label=loading_label,
+                                  use_flow_based_width=use_flow_based_width,
+                                  min_branch_width=min_branch_width,
+                                  max_branch_width=max_branch_width,
+                                  loading_cmap=loading_cmap,
+                                  cmap=cmap,
+                                  max_flow=max_flow)
 
-                            v_to_colour = max(vnorm[i3])
-                        else:
-                            graphic_object.set_values(i=i,
-                                                      Vm=vabs[i],
-                                                      Va=vang[i],
-                                                      P=Sbus[i].real if Sbus is not None else None,
-                                                      Q=Sbus[i].imag if Sbus is not None else None,
-                                                      tpe=bus_types[int(types[i])] if types is not None else None)
+        self._colour_fluid_path_results(fluid_path_flow=fluid_path_flow)
+        self._colour_fluid_node_results(vabs=vabs,
+                                        vang=vang,
+                                        Sbus=Sbus,
+                                        types=types,
+                                        bus_types=bus_types,
+                                        fluid_node_p2x_flow=fluid_node_p2x_flow,
+                                        fluid_node_current_level=fluid_node_current_level,
+                                        fluid_node_spillage=fluid_node_spillage,
+                                        fluid_node_flow_in=fluid_node_flow_in,
+                                        fluid_node_flow_out=fluid_node_flow_out)
 
-                            v_to_colour = vnorm[i]
-
-                        a = 255
-                        if cmap == palettes.Colormaps.Green2Red:
-                            b, g, r = palettes.green_to_red_bgr(v_to_colour)
-
-                        elif cmap == palettes.Colormaps.Heatmap:
-                            b, g, r = palettes.heatmap_palette_bgr(v_to_colour)
-
-                        elif cmap == palettes.Colormaps.TSO:
-                            b, g, r = palettes.tso_substation_palette_bgr(v_to_colour)
-
-                        else:
-                            r, g, b, a = voltage_cmap(v_to_colour)
-                            r *= 255
-                            g *= 255
-                            b *= 255
-                            a *= 255
-
-                        graphic_object.set_tile_color(QColor(r, g, b, a))
-
-                        if use_flow_based_width:
-                            graphic_object.change_size(w=graphic_object.w)
-
-                    else:
-                        graphic_object.set_tile_color(QColor(115, 115, 115, 255))  # gray
-                        graphic_object.clear_label()
-                else:
-                    pass  # the graphic is None
-
-        else:
+    def _colour_bus_results_3ph(self,
+                                VmA: Vec,
+                                VmB: Vec,
+                                VmC: Vec,
+                                VaA: Vec,
+                                VaB: Vec,
+                                VaC: Vec,
+                                bus_active: IntVec,
+                                types: IntVec,
+                                bus_types: list[str],
+                                voltage_cmap: Callable,
+                                cmap: palettes.Colormaps | None,
+                                use_flow_based_width: bool) -> None:
+        nbus = self.circuit.get_bus_number()
+        if nbus != len(VmA):
             error_msg("Bus results length differs from the number of Bus results. \n"
                       "Did you change the number of devices? If so, re-run the simulation.")
+            return
 
-        # color Branches
-        if Sf is not None:
-            if len(Sf) > 0:
-                lnorm = np.abs(loadings)
-                lnorm[lnorm == np.inf] = 0
-                Sfabs = np.abs(Sf)
-                max_flow = Sfabs.max()
+        vmin = 0.0
+        vmax = 1.2
+        vrng = vmax - vmin
 
-                if hvdc_Pf is not None:
-                    if len(hvdc_Pf) > 0:
-                        max_flow = max(max_flow, np.abs(hvdc_Pf).max())
+        for i, bus in enumerate(self.circuit.buses):
+            graphic_object: BusGraphicItem | None = self.graphics_manager.query(bus)
+            if graphic_object is None:
+                continue
 
-                if max_flow != 0:
-                    Sfnorm = Sfabs / max_flow
+            if bus_active[i]:
+                graphic_object.set_values_3ph(i=i,
+                                              VmA=VmA[i], VmB=VmB[i], VmC=VmC[i],
+                                              VaA=VaA[i], VaB=VaB[i], VaC=VaC[i],
+                                              tpe=bus_types[int(types[i])])
+                vals_nz = [v for v in [VmA[i], VmB[i], VmC[i]] if v != 0.0]
+                if vals_nz:
+                    worst_umax = max(vals_nz)
+                    worst_umin = min(vals_nz)
+                    worst_u = worst_umax if abs(worst_umax - 1.0) > abs(1.0 - worst_umin) else worst_umin
                 else:
-                    Sfnorm = Sfabs
+                    worst_u = 0.0
+                graphic_object.set_tile_color(
+                    self._get_voltage_result_color((worst_u - vmin) / vrng, cmap, voltage_cmap)
+                )
+                if use_flow_based_width:
+                    graphic_object.change_size(w=graphic_object.w)
+            else:
+                graphic_object.set_tile_color(QColor(115, 115, 115, 255))
+                graphic_object.clear_label()
 
-                if (nbr == len(Sf) and not is_three_phase) or (is_three_phase and 3 * nbr == len(Sf)):
+    def _colour_vsc_results_3ph(self,
+                                vsc_Pf: Vec | None,
+                                vsc_PtA: Vec,
+                                vsc_PtB: Vec,
+                                vsc_PtC: Vec,
+                                vsc_QtA: Vec,
+                                vsc_QtB: Vec,
+                                vsc_QtC: Vec,
+                                vsc_losses: Vec,
+                                vsc_loading: Vec,
+                                vsc_active: IntVec,
+                                loading_label: str,
+                                use_flow_based_width: bool,
+                                min_branch_width: int,
+                                max_branch_width: int,
+                                loading_cmap: Callable,
+                                cmap: palettes.Colormaps | None,
+                                max_flow: float) -> None:
+        if vsc_Pf is None:
+            return
 
-                    for i, branch in enumerate(self.circuit.get_branches_iter(add_vsc=False,
-                                                                              add_hvdc=False,
-                                                                              add_switch=True)):
+        if self.circuit.get_vsc_number() != len(vsc_Pf):
+            error_msg("VSC results length differs from the number of VSC results. \n"
+                      "Did you change the number of devices? If so, re-run the simulation.")
+            return
 
-                        # try to find the diagram object of the DB object
-                        graphic_object: BRANCH_GRAPHICS = self.graphics_manager.query(branch)
+        vsc_sending_power_norm = np.abs(vsc_PtA + 1j * vsc_QtA) / (max_flow + 1e-20)
+        for i, elm in enumerate(self.circuit.vsc_devices):
+            graphic_object: VscGraphicItem | None = self.graphics_manager.query(elm)
+            if graphic_object is None:
+                continue
 
-                        if graphic_object is not None:
+            if vsc_active[i]:
+                width = int(np.floor(min_branch_width + vsc_sending_power_norm[i] *
+                                     (max_branch_width - min_branch_width))) \
+                    if use_flow_based_width else graphic_object.pen_width
+                style = Qt.PenStyle.SolidLine if elm.active else Qt.PenStyle.DashLine
+                color = self._get_branch_result_color(abs(vsc_loading[i]),
+                                                      cmap,
+                                                      loading_cmap,
+                                                      elm.get_max_bus_nominal_voltage()) \
+                    if elm.active else QColor(115, 115, 115, 255)
+                tooltip = str(i) + ': ' + elm.name
+                tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(abs(vsc_loading[i]) * 100) + ' [%]'
+                tooltip += '\nPower DC (from):\t' + "{:10.4f}".format(vsc_Pf[i]) + ' [MW]'
+                tooltip += '\nPower A (to):\t' + "{:10.4f}".format(vsc_PtA[i]) + ' [MW]'
+                tooltip += '\nPower B (to):\t' + "{:10.4f}".format(vsc_PtB[i]) + ' [MW]'
+                tooltip += '\nPower C (to):\t' + "{:10.4f}".format(vsc_PtC[i]) + ' [MW]'
+                tooltip += '\nPower A (to):\t' + "{:10.4f}".format(vsc_QtA[i]) + ' [Mvar]'
+                tooltip += '\nPower B (to):\t' + "{:10.4f}".format(vsc_QtB[i]) + ' [Mvar]'
+                tooltip += '\nPower C (to):\t' + "{:10.4f}".format(vsc_QtC[i]) + ' [Mvar]'
+                tooltip += '\nLosses: \t\t' + "{:10.4f}".format(vsc_losses[i]) + ' [MW]'
+                graphic_object.set_arrows_with_power(Sf=vsc_Pf[i] + 1j * 0.0,
+                                                     St=vsc_PtA[i] + 1j * vsc_QtA[i])
+                graphic_object.setToolTipText(tooltip)
+                graphic_object.set_colour(color, width, style)
+            else:
+                graphic_object.set_pen(QPen(QColor(115, 115, 115, 255),
+                                            graphic_object.pen_width,
+                                            Qt.PenStyle.DashLine))
 
-                            if br_active[i]:
+    def _colour_hvdc_results_3ph(self,
+                                 hvdc_PfA: Vec,
+                                 hvdc_PtA: Vec,
+                                 hvdc_losses: Vec,
+                                 hvdc_loading: Vec,
+                                 hvdc_active: IntVec,
+                                 loading_label: str,
+                                 use_flow_based_width: bool,
+                                 min_branch_width: int,
+                                 max_branch_width: int,
+                                 loading_cmap: Callable,
+                                 cmap: palettes.Colormaps | None,
+                                 max_flow: float) -> None:
+        if len(hvdc_PfA) == 0:
+            return
 
-                                if is_three_phase:
-                                    l_color_val = max(lnorm[3 * i + ph])
-                                    tooltip = str(i) + ': ' + branch.name
+        if self.circuit.get_hvdc_number() != len(hvdc_PfA):
+            error_msg("HVDC results length differs from the number of HVDC results. \n"
+                      "Did you change the number of devices? If so, re-run the simulation.")
+            return
 
-                                    for ph_idx, pname in enumerate(['a', 'b', 'c']):
-                                        k = 3 * i + ph_idx
+        hvdc_sending_power_norm = np.abs(hvdc_PfA) / (max_flow + 1e-20)
+        for i, elm in enumerate(self.circuit.hvdc_lines):
+            graphic_object: HvdcGraphicItem | None = self.graphics_manager.query(elm)
+            if graphic_object is None:
+                continue
 
-                                        tooltip += f'\n{loading_label} {pname}: {lnorm[k] * 100:10.4f} [%]'
-
-                                        tooltip += f'\nPf {pname}:\t{Sf[k]:10.4f} [MVA]'
-
-                                        if St is not None:
-                                            tooltip += f'\nPt {pname}:\t{St[k]:10.4f} [MVA]'
-
-                                        if losses is not None:
-                                            tooltip += f'\nLoss {pname}:\t{losses[k]:10.4f} [MVA]'
-
-                                        if branch.device_type == DeviceType.Transformer2WDevice:
-                                            if ma is not None:
-                                                tooltip += f'\nPf {pname}:\t{ma[k]:10.4f}'
-
-                                            if tau is not None:
-                                                tooltip += f'\nPf {pname}:\t{tau[k]:10.4f} [rad]'
-
-                                        # line break
-                                        tooltip += "\n"
-
-                                else:
-                                    l_color_val = lnorm[i]
-                                    tooltip = str(i) + ': ' + branch.name
-                                    tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(
-                                        lnorm[i] * 100) + ' [%]'
-
-                                    tooltip += '\nPower (from):\t' + "{:10.4f}".format(Sf[i]) + ' [MVA]'
-
-                                    if St is not None:
-                                        tooltip += '\nPower (to):\t' + "{:10.4f}".format(St[i]) + ' [MVA]'
-
-                                    if losses is not None:
-                                        tooltip += '\nLosses:\t\t' + "{:10.4f}".format(losses[i]) + ' [MVA]'
-
-                                    if branch.device_type == DeviceType.Transformer2WDevice:
-                                        if ma is not None:
-                                            tooltip += '\ntap module:\t' + "{:10.4f}".format(ma[i])
-
-                                        if tau is not None:
-                                            tooltip += '\ntap angle:\t' + "{:10.4f}".format(tau[i]) + ' rad'
-
-                                if use_flow_based_width:
-                                    w = int((np.floor(min_branch_width
-                                                      + Sfnorm[i] * (max_branch_width - min_branch_width))))
-                                else:
-                                    w = graphic_object.pen_width
-
-                                style = Qt.PenStyle.SolidLine
-
-                                a = 255
-                                if cmap == palettes.Colormaps.Green2Red:
-                                    b, g, r = palettes.green_to_red_bgr(l_color_val)
-
-                                elif cmap == palettes.Colormaps.Heatmap:
-                                    b, g, r = palettes.heatmap_palette_bgr(l_color_val)
-
-                                elif cmap == palettes.Colormaps.TSO:
-                                    b, g, r = palettes.tso_line_palette_bgr(branch.get_max_bus_nominal_voltage(),
-                                                                            l_color_val)
-
-                                else:
-                                    r, g, b, a = loading_cmap(l_color_val)
-                                    r *= 255
-                                    g *= 255
-                                    b *= 255
-                                    a *= 255
-
-                                color = QColor(r, g, b, a)
-
-                                graphic_object.setToolTipText(tooltip)
-                                graphic_object.set_colour(color, w, style)
-
-                                if hasattr(graphic_object, 'set_arrows_with_power'):
-                                    graphic_object.set_arrows_with_power(
-                                        Sf=Sf[i] if Sf is not None else None,
-                                        St=St[i] if St is not None else None
-                                    )
-                            else:
-                                w = graphic_object.pen_width
-                                style = Qt.PenStyle.DashLine
-                                color = QColor(115, 115, 115, 255)  # gray
-                                graphic_object.set_pen(QPen(color, w, style))
-                                graphic_object.setToolTipText("")
-                                if hasattr(graphic_object, 'set_arrows_with_power'):
-                                    graphic_object.set_arrows_with_power(
-                                        Sf=None, St=None
-                                    )
-
-                        else:
-                            # No diagram object
-                            pass
+            if hvdc_active[i]:
+                width = int(np.floor(min_branch_width + hvdc_sending_power_norm[i] *
+                                     (max_branch_width - min_branch_width))) \
+                    if use_flow_based_width else graphic_object.pen_width
+                style = Qt.PenStyle.SolidLine if elm.active else Qt.PenStyle.DashLine
+                color = self._get_branch_result_color(abs(hvdc_loading[i]),
+                                                      cmap,
+                                                      loading_cmap,
+                                                      elm.get_max_bus_nominal_voltage()) \
+                    if elm.active else QColor(115, 115, 115, 255)
+                tooltip = str(i) + ': ' + elm.name
+                tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(abs(hvdc_loading[i]) * 100) + ' [%]'
+                tooltip += '\nPower (from):\t' + "{:10.4f}".format(hvdc_PfA[i]) + ' [MW]'
+                if hvdc_losses is not None:
+                    tooltip += '\nPower (to):\t' + "{:10.4f}".format(hvdc_PtA[i]) + ' [MW]'
+                    tooltip += '\nLosses: \t\t' + "{:10.4f}".format(hvdc_losses[i]) + ' [MW]'
+                    graphic_object.set_arrows_with_hvdc_power(Pf=hvdc_PfA[i], Pt=hvdc_PtA[i])
                 else:
-                    error_msg("Branch results length differs from the number of branch results. \n"
-                              "Did you change the number of devices? If so, re-run the simulation.")
-                    return
-
-        # VSC lines
-        if vsc_Pf is not None:
-
-            if vsc_Qt is None:
-                vsc_sending_power_norm = np.abs(vsc_Pt) / (max_flow + 1e-20)
+                    graphic_object.set_arrows_with_hvdc_power(Pf=hvdc_PfA[i], Pt=-hvdc_PfA[i])
+                graphic_object.setToolTipText(tooltip)
+                graphic_object.set_colour(color, width, style)
             else:
-                vsc_sending_power_norm = np.abs(vsc_Pt + 1j * vsc_Qt) / (max_flow + 1e-20)
-
-            if self.circuit.get_vsc_number() == len(vsc_Pf):
-                for i, elm in enumerate(self.circuit.vsc_devices):
-
-                    # try to find the diagram object of the DB object
-                    graphic_object: VscGraphicItem = self.graphics_manager.query(elm)
-
-                    if graphic_object is not None:
-
-                        if vsc_active[i]:
-
-                            if use_flow_based_width:
-                                w = int(np.floor(
-                                    min_branch_width + vsc_sending_power_norm[i] * (
-                                            max_branch_width - min_branch_width)))
-                            else:
-                                w = graphic_object.pen_width
-
-                            if elm.active:
-                                style = Qt.PenStyle.SolidLine
-
-                                a = 1
-                                if cmap == palettes.Colormaps.Green2Red:
-                                    b, g, r = palettes.green_to_red_bgr(abs(vsc_loading[i]))
-
-                                elif cmap == palettes.Colormaps.Heatmap:
-                                    b, g, r = palettes.heatmap_palette_bgr(abs(vsc_loading[i]))
-
-                                elif cmap == palettes.Colormaps.TSO:
-                                    b, g, r = palettes.tso_line_palette_bgr(elm.get_max_bus_nominal_voltage(),
-                                                                            abs(vsc_loading[i]))
-
-                                else:
-                                    r, g, b, a = loading_cmap(abs(vsc_loading[i]))
-                                    r *= 255
-                                    g *= 255
-                                    b *= 255
-                                    a *= 255
-
-                                color = QColor(r, g, b, a)
-                            else:
-                                style = Qt.PenStyle.DashLine
-                                color = QColor(115, 115, 115, 255)  # gray
-
-                            tooltip = str(i) + ': ' + elm.name
-                            tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(
-                                abs(vsc_loading[i]) * 100) + ' [%]'
-
-                            tooltip += '\nPower (from):\t' + "{:10.4f}".format(vsc_Pf[i]) + ' [MW]'
-
-                            if vsc_Qt is None:
-                                if vsc_losses is not None:
-                                    tooltip += '\nPower (to):\t' + "{:10.4f}".format(vsc_Pt[i]) + ' [MW]'
-                                    tooltip += '\nLosses: \t\t' + "{:10.4f}".format(vsc_losses[i]) + ' [MW]'
-                                    graphic_object.set_arrows_with_power_vsc(Pf=vsc_Pf[i], Pt=vsc_Pt[i], Qt=0.0)
-                                else:
-                                    graphic_object.set_arrows_with_power_vsc(Pf=vsc_Pf[i], Pt=-vsc_Pf[i], Qt=0.0)
-                            else:
-                                if vsc_losses is not None:
-                                    tooltip += '\nPower (to):\t' + "{:10.4f}".format(vsc_Pt[i]) + ' [MW]'
-                                    tooltip += '\nPower (to):\t' + "{:10.4f}".format(vsc_Qt[i]) + ' [Mvar]'
-                                    tooltip += '\nLosses: \t\t' + "{:10.4f}".format(vsc_losses[i]) + ' [MW]'
-                                    graphic_object.set_arrows_with_power_vsc(Pf=vsc_Pf[i], Pt=vsc_Pt[i], Qt=vsc_Qt[i])
-                                else:
-                                    graphic_object.set_arrows_with_power_vsc(Pf=vsc_Pf[i], Pt=-vsc_Pf[i], Qt=vsc_Qt[i])
-
-                            graphic_object.setToolTipText(tooltip)
-                            graphic_object.set_colour(color, w, style)
-                        else:
-                            w = graphic_object.pen_width
-                            style = Qt.PenStyle.DashLine
-                            color = QColor(115, 115, 115, 255)  # gray
-                            graphic_object.set_pen(QPen(color, w, style))
-                    else:
-                        # No diagram object
-                        pass
-            else:
-                error_msg("VSC results length differs from the number of VSC results. \n"
-                          "Did you change the number of devices? If so, re-run the simulation.")
-
-        # HVDC lines
-        if hvdc_Pf is not None:
-
-            hvdc_sending_power_norm = np.abs(hvdc_Pf) / (max_flow + 1e-20)
-
-            if self.circuit.get_hvdc_number() == len(hvdc_Pf):
-                for i, elm in enumerate(self.circuit.hvdc_lines):
-
-                    # try to find the diagram object of the DB object
-                    graphic_object: HvdcGraphicItem = self.graphics_manager.query(elm)
-
-                    if graphic_object is not None:
-
-                        if hvdc_active[i]:
-
-                            if use_flow_based_width:
-                                w = int(np.floor(
-                                    min_branch_width + hvdc_sending_power_norm[i] * (
-                                            max_branch_width - min_branch_width)))
-                            else:
-                                w = graphic_object.pen_width
-
-                            if elm.active:
-                                style = Qt.PenStyle.SolidLine
-
-                                a = 1
-                                if cmap == palettes.Colormaps.Green2Red:
-                                    b, g, r = palettes.green_to_red_bgr(abs(hvdc_loading[i]))
-
-                                elif cmap == palettes.Colormaps.Heatmap:
-                                    b, g, r = palettes.heatmap_palette_bgr(abs(hvdc_loading[i]))
-
-                                elif cmap == palettes.Colormaps.TSO:
-                                    b, g, r = palettes.tso_line_palette_bgr(elm.get_max_bus_nominal_voltage(),
-                                                                            abs(hvdc_loading[i]))
-
-                                else:
-                                    r, g, b, a = loading_cmap(abs(hvdc_loading[i]))
-                                    r *= 255
-                                    g *= 255
-                                    b *= 255
-                                    a *= 255
-
-                                color = QColor(r, g, b, a)
-                            else:
-                                style = Qt.PenStyle.DashLine
-                                color = QColor(115, 115, 115, 255)  # gray
-
-                            tooltip = str(i) + ': ' + elm.name
-                            tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(
-                                abs(hvdc_loading[i]) * 100) + ' [%]'
-
-                            tooltip += '\nPower (from):\t' + "{:10.4f}".format(hvdc_Pf[i]) + ' [MW]'
-
-                            if hvdc_losses is not None:
-                                tooltip += '\nPower (to):\t' + "{:10.4f}".format(hvdc_Pt[i]) + ' [MW]'
-                                tooltip += '\nLosses: \t\t' + "{:10.4f}".format(hvdc_losses[i]) + ' [MW]'
-                                graphic_object.set_arrows_with_hvdc_power(Pf=hvdc_Pf[i], Pt=hvdc_Pt[i])
-                            else:
-                                graphic_object.set_arrows_with_hvdc_power(Pf=hvdc_Pf[i], Pt=-hvdc_Pf[i])
-
-                            graphic_object.setToolTipText(tooltip)
-                            graphic_object.set_colour(color, w, style)
-                        else:
-                            w = graphic_object.pen_width
-                            style = Qt.PenStyle.DashLine
-                            color = QColor(115, 115, 115, 255)  # gray
-                            graphic_object.set_pen(QPen(color, w, style))
-                    else:
-                        # No diagram object
-                        pass
-            else:
-                error_msg("HVDC results length differs from the number of HVDC results. \n"
-                          "Did you change the number of devices? If so, re-run the simulation.")
-
-        # fluid paths
-        if fluid_path_flow is not None:
-
-            if self.circuit.get_fluid_paths_number() == len(fluid_path_flow):
-                for i, elm in enumerate(self.circuit.fluid_paths):
-
-                    # try to find the diagram object of the DB object
-                    graphic_object: FluidPathGraphicItem = self.graphics_manager.query(elm)
-
-                    if graphic_object is not None:
-                        graphic_object.set_api_object_color()
-                        graphic_object.set_arrows_with_fluid_flow(flow=fluid_path_flow[i])
-
-        # fluid nodes
-        if fluid_node_current_level is not None:
-
-            if self.circuit.get_fluid_nodes_number() == len(fluid_node_current_level):
-                for i, elm in enumerate(self.circuit.fluid_nodes):
-
-                    # try to find the diagram object of the DB object
-                    graphic_object: FluidNodeGraphicItem = self.graphics_manager.query(elm)
-
-                    if graphic_object is not None:
-                        graphic_object.set_api_object_color()
-                        graphic_object.set_fluid_values(
-                            i=i,
-                            Vm=vabs[i],
-                            Va=vang[i],
-                            P=Sbus[i].real if Sbus is not None else None,
-                            Q=Sbus[i].imag if Sbus is not None else None,
-                            tpe=bus_types[int(types[i])] if types is not None else None,
-                            fluid_node_p2x_flow=fluid_node_p2x_flow[i] if fluid_node_p2x_flow is not None else None,
-                            fluid_node_current_level=fluid_node_current_level[
-                                i] if fluid_node_current_level is not None else None,
-                            fluid_node_spillage=fluid_node_spillage[i] if fluid_node_spillage is not None else None,
-                            fluid_node_flow_in=fluid_node_flow_in[i] if fluid_node_flow_in is not None else None,
-                            fluid_node_flow_out=fluid_node_flow_out[i] if fluid_node_flow_out is not None else None,
-                        )
+                graphic_object.set_pen(QPen(QColor(115, 115, 115, 255),
+                                            graphic_object.pen_width,
+                                            Qt.PenStyle.DashLine))
 
     def colour_results_3ph(self,
                            SbusA: CxVec,
@@ -3814,395 +4092,94 @@ class SchematicWidget(BaseDiagramWidget):
                            tau: Vec | None = None,
                            ):
         """
-        Color objects based on the results passed
-        :param Sbus: Buses power (MVA)
-        :param bus_active: Bus active status
-        :param Sf: Branches power from the "from" bus (MVA)
-        :param St: Branches power from the "to" bus (MVA)
-        :param voltages: Buses voltage
-        :param loadings: Branches load (%)
-        :param types: Buses type [PQ: 1, PV: 2, REF: 3, NONE: 4, STO_DISPATCH: 5, PVB: 6]
-        :param losses: Branches losses [%]
-        :param br_active: Branches active status
-        :param hvdc_Pf: HVDC branch flows "from" [MW]
-        :param hvdc_Pt: HVDC branch flows "to" [MW]
-        :param hvdc_losses: HVDC branch losses [MW]
-        :param hvdc_loading: HVDC Branch loading [%]
-        :param hvdc_active: HVDC Branch status
-        :param vsc_Pf: VSC branch flows "from" [MW]
-        :param vsc_Pt: VSC branch flows "to" [MW]
-        :param vsc_Qt: VSC branch flows "to" [Mvar]
-        :param vsc_losses: VSC branch losses [MW]
-        :param vsc_loading: VSC Branch loading [%]
-        :param vsc_active: VSC Branch status
-        :param loading_label: String saying whatever the loading label means
-        :param ma: branch phase shift angle (rad)
-        :param tau: branch tap module (p.u.)
-        :param use_flow_based_width: use branch width based on the actual flow?
-        :param min_branch_width: Minimum branch width [px]
-        :param max_branch_width: Maximum branch width [px]
-        :param min_bus_width: Minimum bus width [px]
-        :param max_bus_width: Maximum bus width [px]
-        :param cmap: Color map [palettes.Colormaps]
+        Color objects based on the three-phase results passed.
         """
-
-        # color nodes
-        vmin = 0
-        vmax = 1.2
-        vrng = vmax - vmin
         VmA = np.abs(voltagesA)
         VmB = np.abs(voltagesB)
         VmC = np.abs(voltagesC)
         VaA = np.angle(voltagesA, deg=True)
         VaB = np.angle(voltagesB, deg=True)
         VaC = np.angle(voltagesC, deg=True)
-        vnorm = (VmA - vmin) / vrng
-
-        nbus = self.circuit.get_bus_number()
-        nbr = self.circuit.get_branch_number(add_vsc=False, add_hvdc=False, add_switch=True)
-
         voltage_cmap = viz.get_voltage_color_map()
         loading_cmap = viz.get_loading_color_map()
-
-        """
-        class BusMode(Enum):
-        PQ = 1,
-        PV = 2,
-        REF = 3,
-        NONE = 4,
-        STO_DISPATCH = 5
-        PVB = 6
-        """
-
         bus_types = ['', 'PQ', 'PV', 'Slack', 'PQV', 'P']
-        max_flow = 1
-        ph = np.array([0, 1, 2])
 
-        if nbus == len(vnorm):
-            for i, bus in enumerate(self.circuit.buses):
+        self._colour_bus_results_3ph(VmA=VmA,
+                                     VmB=VmB,
+                                     VmC=VmC,
+                                     VaA=VaA,
+                                     VaB=VaB,
+                                     VaC=VaC,
+                                     bus_active=bus_active,
+                                     types=types,
+                                     bus_types=bus_types,
+                                     voltage_cmap=voltage_cmap,
+                                     cmap=cmap,
+                                     use_flow_based_width=use_flow_based_width)
 
-                # try to find the diagram object of the DB object
-                graphic_object: BusGraphicItem = self.graphics_manager.query(bus)
-
-                if graphic_object is not None:
-                    if bus_active[i]:
-
-                        graphic_object.set_values_3ph(i=i,
-                                                      VmA=VmA[i], VmB=VmB[i], VmC=VmC[i],
-                                                      VaA=VaA[i], VaB=VaB[i], VaC=VaC[i],
-                                                      tpe=bus_types[int(types[i])])
-
-                        vals = [VmA[i], VmB[i], VmC[i]]
-                        vals_nz = [v for v in vals if v != 0.0]  # ignore exact zeros
-
-                        if vals_nz:  # at least one phase is not zero
-                            worst_Umax = max(vals_nz)
-                            worst_Umin = min(vals_nz)
-                            if abs(worst_Umax - 1.0) > abs(1.0 - worst_Umin):
-                                worst_U = worst_Umax
-                            else:
-                                worst_U = worst_Umin
-                        else:
-                            # the three-phases are zero
-                            worst_U = 0.0
-
-                        v_to_colour = (worst_U - vmin) / vrng
-
-                        a = 255
-                        if cmap == palettes.Colormaps.Green2Red:
-                            b, g, r = palettes.green_to_red_bgr(v_to_colour)
-
-                        elif cmap == palettes.Colormaps.Heatmap:
-                            b, g, r = palettes.heatmap_palette_bgr(v_to_colour)
-
-                        elif cmap == palettes.Colormaps.TSO:
-                            b, g, r = palettes.tso_substation_palette_bgr(v_to_colour)
-
-                        else:
-                            r, g, b, a = voltage_cmap(v_to_colour)
-                            r *= 255
-                            g *= 255
-                            b *= 255
-                            a *= 255
-
-                        graphic_object.set_tile_color(QColor(r, g, b, a))
-
-                        if use_flow_based_width:
-                            graphic_object.change_size(w=graphic_object.w)
-
-                    else:
-                        graphic_object.set_tile_color(QColor(115, 115, 115, 255))  # gray
-                        graphic_object.clear_label()
-                else:
-                    pass  # the graphic is None
-
-        else:
-            error_msg("Bus results length differs from the number of Bus results. \n"
-                      "Did you change the number of devices? If so, re-run the simulation.")
-
-        # color Branches
+        Sf = np.empty(0, dtype=complex)
+        St = np.empty(0, dtype=complex)
+        loadings = np.empty(0, dtype=complex)
+        losses = np.empty(0, dtype=complex)
         if len(SfA) > 0:
-            lnormA = np.abs(loadingsA)
-            lnormA[lnormA == np.inf] = 0
-            SfA_abs = np.abs(SfA)
+            Sf = np.empty(3 * len(SfA), dtype=complex)
+            St = np.empty(3 * len(StA), dtype=complex)
+            loadings = np.empty(3 * len(loadingsA), dtype=complex)
+            losses = np.empty(3 * len(lossesA), dtype=complex)
+            Sf[0::3], Sf[1::3], Sf[2::3] = SfA, SfB, SfC
+            St[0::3], St[1::3], St[2::3] = StA, StB, StC
+            loadings[0::3], loadings[1::3], loadings[2::3] = loadingsA, loadingsB, loadingsC
+            losses[0::3], losses[1::3], losses[2::3] = lossesA, lossesB, lossesC
 
-            lnormB = np.abs(loadingsB)
-            lnormB[lnormB == np.inf] = 0
-            SfB_abs = np.abs(SfB)
+        hvdc_pf = np.maximum(np.maximum(np.abs(hvdc_PfA), np.abs(hvdc_PfB)), np.abs(hvdc_PfC))
+        max_flow = self._colour_branch_results(Sf=Sf,
+                                               St=St,
+                                               loadings=loadings,
+                                               losses=losses,
+                                               br_active=br_active,
+                                               hvdc_Pf=hvdc_pf,
+                                               loading_label=loading_label,
+                                               use_flow_based_width=use_flow_based_width,
+                                               min_branch_width=min_branch_width,
+                                               max_branch_width=max_branch_width,
+                                               loading_cmap=loading_cmap,
+                                               cmap=cmap,
+                                               ma=ma,
+                                               tau=tau,
+                                               is_three_phase=True)
+        if max_flow is None:
+            return
 
-            lnormC = np.abs(loadingsC)
-            lnormC[lnormC == np.inf] = 0
-            SfC_abs = np.abs(SfC)
+        self._colour_vsc_results_3ph(vsc_Pf=vsc_Pf,
+                                     vsc_PtA=vsc_PtA,
+                                     vsc_PtB=vsc_PtB,
+                                     vsc_PtC=vsc_PtC,
+                                     vsc_QtA=vsc_QtA,
+                                     vsc_QtB=vsc_QtB,
+                                     vsc_QtC=vsc_QtC,
+                                     vsc_losses=vsc_losses,
+                                     vsc_loading=vsc_loading,
+                                     vsc_active=vsc_active,
+                                     loading_label=loading_label,
+                                     use_flow_based_width=use_flow_based_width,
+                                     min_branch_width=min_branch_width,
+                                     max_branch_width=max_branch_width,
+                                     loading_cmap=loading_cmap,
+                                     cmap=cmap,
+                                     max_flow=max_flow)
 
-            max_flow = np.max([SfA_abs.max() if len(SfA_abs) > 0 else 0,
-                               SfB_abs.max() if len(SfB_abs) > 0 else 0,
-                               SfC_abs.max() if len(SfC_abs) > 0 else 0,
-                               np.abs(hvdc_PfA).max() if len(hvdc_PfA) > 0 else 0,
-                               np.abs(hvdc_PfB).max() if len(hvdc_PfB) > 0 else 0,
-                               np.abs(hvdc_PfC).max() if len(hvdc_PfC) > 0 else 0])
-
-            if max_flow != 0:
-                Sfnorm = np.maximum(np.maximum(SfA_abs, SfB_abs), SfC_abs) / max_flow
-            else:
-                Sfnorm = np.maximum(np.maximum(SfA_abs, SfB_abs), SfC_abs)
-
-            for i, branch in enumerate(self.circuit.get_branches_iter(add_vsc=False,
-                                                                      add_hvdc=False,
-                                                                      add_switch=True)):
-
-                # try to find the diagram object of the DB object
-                graphic_object: BRANCH_GRAPHICS = self.graphics_manager.query(branch)
-
-                if graphic_object is not None:
-
-                    if br_active[i]:
-
-                        l_color_val = max(lnormA[i], lnormB[i], lnormC[i])
-                        tooltip = str(i) + ': ' + branch.name
-                        tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(lnormA[i] * 100) + ' [%]'
-                        tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(lnormB[i] * 100) + ' [%]'
-                        tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(lnormC[i] * 100) + ' [%]'
-
-                        tooltip += '\nPower A (from):\t' + "{:10.4f}".format(SfA[i]) + ' [MVA]'
-                        tooltip += '\nPower B (from):\t' + "{:10.4f}".format(SfB[i]) + ' [MVA]'
-                        tooltip += '\nPower C (from):\t' + "{:10.4f}".format(SfC[i]) + ' [MVA]'
-
-                        tooltip += '\nPower A (to):\t' + "{:10.4f}".format(StA[i]) + ' [MVA]'
-                        tooltip += '\nPower B (to):\t' + "{:10.4f}".format(StB[i]) + ' [MVA]'
-                        tooltip += '\nPower C (to):\t' + "{:10.4f}".format(StC[i]) + ' [MVA]'
-
-                        tooltip += '\nLoss A:\t\t' + "{:10.4f}".format(lossesA[i]) + ' [MVA]'
-                        tooltip += '\nLoss B:\t\t' + "{:10.4f}".format(lossesB[i]) + ' [MVA]'
-                        tooltip += '\nLoss C:\t\t' + "{:10.4f}".format(lossesC[i]) + ' [MVA]'
-
-                        if branch.device_type == DeviceType.Transformer2WDevice:
-                            if ma is not None:
-                                tooltip += '\ntap module:\t' + "{:10.4f}".format(ma[i])
-                            if tau is not None:
-                                tooltip += '\ntap angle:\t' + "{:10.4f}".format(tau[i]) + ' rad'
-
-                        if use_flow_based_width:
-                            w = int((np.floor(min_branch_width + Sfnorm[i] * (max_branch_width - min_branch_width))))
-                        else:
-                            w = graphic_object.pen_width
-
-                        style = Qt.PenStyle.SolidLine
-
-                        a = 255
-                        if cmap == palettes.Colormaps.Green2Red:
-                            b, g, r = palettes.green_to_red_bgr(l_color_val)
-
-                        elif cmap == palettes.Colormaps.Heatmap:
-                            b, g, r = palettes.heatmap_palette_bgr(l_color_val)
-
-                        elif cmap == palettes.Colormaps.TSO:
-                            b, g, r = palettes.tso_line_palette_bgr(branch.get_max_bus_nominal_voltage(),
-                                                                    l_color_val)
-
-                        else:
-                            r, g, b, a = loading_cmap(l_color_val)
-                            r *= 255
-                            g *= 255
-                            b *= 255
-                            a *= 255
-
-                        color = QColor(r, g, b, a)
-
-                        graphic_object.setToolTipText(tooltip)
-                        graphic_object.set_colour(color, w, style)
-
-                        if hasattr(graphic_object, 'set_arrows_with_power'):
-                            graphic_object.set_arrows_with_power(
-                                Sf=SfA[i] + SfB[i] + SfC[i],
-                                St=StA[i] + StB[i] + StC[i]
-                            )
-                    else:
-                        w = graphic_object.pen_width
-                        style = Qt.PenStyle.DashLine
-                        color = QColor(115, 115, 115, 255)  # gray
-                        graphic_object.set_pen(QPen(color, w, style))
-                        graphic_object.setToolTipText("")
-                        if hasattr(graphic_object, 'set_arrows_with_power'):
-                            graphic_object.set_arrows_with_power(Sf=None, St=None)
-
-                else:
-                    # No diagram object
-                    pass
-
-        # VSC lines
-        if vsc_Pf is not None:
-
-            vsc_sending_power_norm = np.abs(vsc_PtA + 1j * vsc_QtA) / (max_flow + 1e-20)
-
-            if self.circuit.get_vsc_number() == len(vsc_Pf):
-                for i, elm in enumerate(self.circuit.vsc_devices):
-
-                    # try to find the diagram object of the DB object
-                    graphic_object: VscGraphicItem = self.graphics_manager.query(elm)
-
-                    if graphic_object is not None:
-
-                        if vsc_active[i]:
-
-                            if use_flow_based_width:
-                                w = int(np.floor(
-                                    min_branch_width + vsc_sending_power_norm[i] * (
-                                            max_branch_width - min_branch_width)))
-                            else:
-                                w = graphic_object.pen_width
-
-                            if elm.active:
-                                style = Qt.PenStyle.SolidLine
-
-                                a = 1
-                                if cmap == palettes.Colormaps.Green2Red:
-                                    b, g, r = palettes.green_to_red_bgr(abs(vsc_loading[i]))
-
-                                elif cmap == palettes.Colormaps.Heatmap:
-                                    b, g, r = palettes.heatmap_palette_bgr(abs(vsc_loading[i]))
-
-                                elif cmap == palettes.Colormaps.TSO:
-                                    b, g, r = palettes.tso_line_palette_bgr(elm.get_max_bus_nominal_voltage(),
-                                                                            abs(vsc_loading[i]))
-
-                                else:
-                                    r, g, b, a = loading_cmap(abs(vsc_loading[i]))
-                                    r *= 255
-                                    g *= 255
-                                    b *= 255
-                                    a *= 255
-
-                                color = QColor(r, g, b, a)
-                            else:
-                                style = Qt.PenStyle.DashLine
-                                color = QColor(115, 115, 115, 255)  # gray
-
-                            tooltip = str(i) + ': ' + elm.name
-                            tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(
-                                abs(vsc_loading[i]) * 100) + ' [%]'
-
-                            tooltip += '\nPower DC (from):\t' + "{:10.4f}".format(vsc_Pf[i]) + ' [MW]'
-
-                            tooltip += '\nPower A (to):\t' + "{:10.4f}".format(vsc_PtA[i]) + ' [MW]'
-                            tooltip += '\nPower B (to):\t' + "{:10.4f}".format(vsc_PtB[i]) + ' [MW]'
-                            tooltip += '\nPower C (to):\t' + "{:10.4f}".format(vsc_PtC[i]) + ' [MW]'
-
-                            tooltip += '\nPower A (to):\t' + "{:10.4f}".format(vsc_QtA[i]) + ' [Mvar]'
-                            tooltip += '\nPower B (to):\t' + "{:10.4f}".format(vsc_QtB[i]) + ' [Mvar]'
-                            tooltip += '\nPower C (to):\t' + "{:10.4f}".format(vsc_QtC[i]) + ' [Mvar]'
-
-                            tooltip += '\nLosses: \t\t' + "{:10.4f}".format(vsc_losses[i]) + ' [MW]'
-                            graphic_object.set_arrows_with_power(Sf=vsc_Pf[i] + 1j * 0.0,
-                                                                 St=vsc_PtA[i] + 1j * vsc_QtA[i])
-
-                            graphic_object.setToolTipText(tooltip)
-                            graphic_object.set_colour(color, w, style)
-                        else:
-                            w = graphic_object.pen_width
-                            style = Qt.PenStyle.DashLine
-                            color = QColor(115, 115, 115, 255)  # gray
-                            graphic_object.set_pen(QPen(color, w, style))
-                    else:
-                        # No diagram object
-                        pass
-            else:
-                error_msg("VSC results length differs from the number of VSC results. \n"
-                          "Did you change the number of devices? If so, re-run the simulation.")
-
-        # HVDC lines
-        if len(hvdc_PfA) > 0:
-
-            hvdc_sending_power_norm = np.abs(hvdc_PfA) / (max_flow + 1e-20)
-
-            if self.circuit.get_hvdc_number() == len(hvdc_PfA):
-                for i, elm in enumerate(self.circuit.hvdc_lines):
-
-                    # try to find the diagram object of the DB object
-                    graphic_object: HvdcGraphicItem = self.graphics_manager.query(elm)
-
-                    if graphic_object is not None:
-
-                        if hvdc_active[i]:
-
-                            if use_flow_based_width:
-                                w = int(np.floor(
-                                    min_branch_width + hvdc_sending_power_norm[i] * (
-                                            max_branch_width - min_branch_width)))
-                            else:
-                                w = graphic_object.pen_width
-
-                            if elm.active:
-                                style = Qt.PenStyle.SolidLine
-
-                                a = 1
-                                if cmap == palettes.Colormaps.Green2Red:
-                                    b, g, r = palettes.green_to_red_bgr(abs(hvdc_loading[i]))
-
-                                elif cmap == palettes.Colormaps.Heatmap:
-                                    b, g, r = palettes.heatmap_palette_bgr(abs(hvdc_loading[i]))
-
-                                elif cmap == palettes.Colormaps.TSO:
-                                    b, g, r = palettes.tso_line_palette_bgr(elm.get_max_bus_nominal_voltage(),
-                                                                            abs(hvdc_loading[i]))
-
-                                else:
-                                    r, g, b, a = loading_cmap(abs(hvdc_loading[i]))
-                                    r *= 255
-                                    g *= 255
-                                    b *= 255
-                                    a *= 255
-
-                                color = QColor(r, g, b, a)
-                            else:
-                                style = Qt.PenStyle.DashLine
-                                color = QColor(115, 115, 115, 255)  # gray
-
-                            tooltip = str(i) + ': ' + elm.name
-                            tooltip += '\n' + loading_label + ': ' + "{:10.4f}".format(
-                                abs(hvdc_loading[i]) * 100) + ' [%]'
-
-                            tooltip += '\nPower (from):\t' + "{:10.4f}".format(hvdc_PfA[i]) + ' [MW]'
-
-                            if hvdc_losses is not None:
-                                tooltip += '\nPower (to):\t' + "{:10.4f}".format(hvdc_PtA[i]) + ' [MW]'
-                                tooltip += '\nLosses: \t\t' + "{:10.4f}".format(hvdc_losses[i]) + ' [MW]'
-                                graphic_object.set_arrows_with_hvdc_power(Pf=hvdc_PfA[i], Pt=hvdc_PtA[i])
-                            else:
-                                graphic_object.set_arrows_with_hvdc_power(Pf=hvdc_PfA[i], Pt=-hvdc_PfA[i])
-
-                            graphic_object.setToolTipText(tooltip)
-                            graphic_object.set_colour(color, w, style)
-                        else:
-                            w = graphic_object.pen_width
-                            style = Qt.PenStyle.DashLine
-                            color = QColor(115, 115, 115, 255)  # gray
-                            graphic_object.set_pen(QPen(color, w, style))
-                    else:
-                        # No diagram object
-                        pass
-            else:
-                error_msg("HVDC results length differs from the number of HVDC results. \n"
-                          "Did you change the number of devices? If so, re-run the simulation.")
+        self._colour_hvdc_results_3ph(hvdc_PfA=hvdc_PfA,
+                                      hvdc_PtA=hvdc_PtA,
+                                      hvdc_losses=hvdc_losses,
+                                      hvdc_loading=hvdc_loading,
+                                      hvdc_active=hvdc_active,
+                                      loading_label=loading_label,
+                                      use_flow_based_width=use_flow_based_width,
+                                      min_branch_width=min_branch_width,
+                                      max_branch_width=max_branch_width,
+                                      loading_cmap=loading_cmap,
+                                      cmap=cmap,
+                                      max_flow=max_flow)
 
     def recolour(self, use_api_color: bool):
         """
@@ -4889,7 +4866,7 @@ class SchematicWidget(BaseDiagramWidget):
 
         (buses,
          lines, dc_lines, transformers2w,
-         transformers3w, windings, hvdc_lines,
+         transformers3w, transformers_nw, windings, hvdc_lines,
          vsc_converters, upfc_devices,
          series_reactances, switches,
          fluid_nodes, fluid_paths) = get_devices_to_expand(circuit=self.circuit, buses=buses, max_level=1)
@@ -4900,6 +4877,7 @@ class SchematicWidget(BaseDiagramWidget):
                                              dc_lines=dc_lines,
                                              transformers2w=transformers2w,
                                              transformers3w=transformers3w,
+                                             transformers_nw=transformers_nw,
                                              windings=windings,
                                              hvdc_lines=hvdc_lines,
                                              vsc_devices=vsc_converters,
@@ -4925,7 +4903,7 @@ class SchematicWidget(BaseDiagramWidget):
 
         (buses,
          lines, dc_lines, transformers2w,
-         transformers3w, windings, hvdc_lines,
+         transformers3w, transformers_nw, windings, hvdc_lines,
          vsc_converters, upfc_devices,
          series_reactances, switches,
          fluid_nodes, fluid_paths) = get_devices_to_expand(circuit=self.circuit,
@@ -4939,6 +4917,7 @@ class SchematicWidget(BaseDiagramWidget):
                                              dc_lines=dc_lines,
                                              transformers2w=transformers2w,
                                              transformers3w=transformers3w,
+                                             transformers_nw=transformers_nw,
                                              windings=windings,
                                              hvdc_lines=hvdc_lines,
                                              vsc_devices=vsc_converters,
@@ -5205,6 +5184,7 @@ def generate_schematic_diagram(buses: List[Bus],
                                dc_lines: List[DcLine],
                                transformers2w: List[Transformer2W],
                                transformers3w: List[Transformer3W],
+                               transformers_nw: List[TransformerNW],
                                windings: List[Winding],
                                hvdc_lines: List[HvdcLine],
                                vsc_devices: List[VSC],
@@ -5224,6 +5204,7 @@ def generate_schematic_diagram(buses: List[Bus],
     :param dc_lines: list of DcLine objects
     :param transformers2w: list of Transformer Objects
     :param transformers3w: list of Transformer3W Objects
+    :param transformers_nw: list of TransformerNW Objects
     :param windings: list of Winding objects
     :param hvdc_lines: list of HvdcLine objects
     :param vsc_devices: list Vsc objects
@@ -5246,6 +5227,7 @@ def generate_schematic_diagram(buses: List[Bus],
                              dc_lines=dc_lines,
                              transformers2w=transformers2w,
                              transformers3w=transformers3w,
+                             transformers_nw=transformers_nw,
                              windings=windings,
                              hvdc_lines=hvdc_lines,
                              vsc_devices=vsc_devices,
@@ -5267,6 +5249,7 @@ def add_to_schematic_diagram(diagram: SchematicDiagram,
                              dc_lines: List[DcLine],
                              transformers2w: List[Transformer2W],
                              transformers3w: List[Transformer3W],
+                             transformers_nw: List[TransformerNW],
                              windings: List[Winding],
                              hvdc_lines: List[HvdcLine],
                              vsc_devices: List[VSC],
@@ -5286,6 +5269,7 @@ def add_to_schematic_diagram(diagram: SchematicDiagram,
     :param dc_lines: list of DcLine objects
     :param transformers2w: list of Transformer Objects
     :param transformers3w: list of Transformer3W Objects
+    :param transformers_nw: list of TransformerNW Objects
     :param windings: list of Winding objects
     :param hvdc_lines: list of HvdcLine objects
     :param vsc_devices: list Vsc objects
@@ -5319,7 +5303,7 @@ def add_to_schematic_diagram(diagram: SchematicDiagram,
 
             x = int(bus.x * explode_factor)
             y = int(bus.y * explode_factor)
-            diagram.set_point(device=bus, location=GraphicLocation(x=x, y=y, h=bus.h, w=bus.w))
+            diagram.set_point(device=bus, location=GraphicLocation(x=x, y=y, h=bus.h, w=bus.w, api_object=bus))
 
     def add_devices_list(cls: str, dev_lst: List[ALL_DEV_TYPES]):
         """
@@ -5336,12 +5320,13 @@ def add_to_schematic_diagram(diagram: SchematicDiagram,
             if prog_func is not None:
                 prog_func((i + 1) / nn * 100.0)
 
-            diagram.set_point(device=elm, location=GraphicLocation())
+            diagram.set_point(device=elm, location=GraphicLocation(api_object=elm))
 
     # --------------------------------------------------------------------------------------------------------------
 
     add_devices_list(cls="fluid_nodes", dev_lst=fluid_nodes)
     add_devices_list(cls="transformers3w", dev_lst=transformers3w)
+    add_devices_list(cls="transformers_nw", dev_lst=transformers_nw)
 
     add_devices_list(cls="lines", dev_lst=lines)
     add_devices_list(cls="dc_lines", dev_lst=dc_lines)
@@ -5395,6 +5380,7 @@ def generate_grid_diagram(circuit: MultiCircuit,
                                       dc_lines=circuit.get_dc_lines(),
                                       transformers2w=circuit.get_transformers2w(),
                                       transformers3w=circuit.get_transformers3w(),
+                                      transformers_nw=circuit.get_transformers_nw(),
                                       windings=circuit.get_windings(),
                                       hvdc_lines=circuit.get_hvdc(),
                                       vsc_devices=circuit.get_vsc(),
@@ -5417,6 +5403,7 @@ List[Line],
 List[DcLine],
 List[Transformer2W],
 List[Transformer3W],
+List[TransformerNW],
 List[Winding],
 List[HvdcLine],
 List[VSC],
@@ -5462,14 +5449,20 @@ List[FluidPath]]:
     for b in buses:
         bus_pool.append((b, 0))
 
-    # create a map of the tr3 that own the windings
+    # create maps of the multi-winding transformers that own the windings
     windings2tr3 = dict()
+    windings2tr_nw = dict()
 
     for tr3 in circuit.transformers3w:
         windings2tr3[tr3.winding1] = tr3
         windings2tr3[tr3.winding2] = tr3
         windings2tr3[tr3.winding3] = tr3
         tr3.bus0.graphic_type = BusGraphicType.Internal  # make sure these don't show up
+
+    for tr_nw in circuit.transformers_nw:
+        tr_nw.bus0.graphic_type = BusGraphicType.Internal
+        for winding in tr_nw.windings:
+            windings2tr_nw[winding] = tr_nw
 
     buses = set()
     fluid_nodes = set()
@@ -5521,6 +5514,7 @@ List[FluidPath]]:
     dc_lines: List[DcLine] = list()
     transformers2w: List[Transformer2W] = list()
     transformers3w: Set[Transformer3W] = set()
+    transformers_nw: Set[TransformerNW] = set()
     windings: List[Winding] = list()
     hvdc_lines: List[HvdcLine] = list()
     vsc_converters: List[VSC] = list()
@@ -5545,10 +5539,13 @@ List[FluidPath]]:
         elif obj.device_type == DeviceType.WindingDevice:
             windings.append(obj)
 
-            # for each winding, we add the tr3
+            # For each winding, add its owning multi-winding transformer container.
             tr3 = windings2tr3.get(obj, None)
             if tr3 is not None:
                 transformers3w.add(tr3)
+            tr_nw = windings2tr_nw.get(obj, None)
+            if tr_nw is not None:
+                transformers_nw.add(tr_nw)
 
         elif obj.device_type == DeviceType.HVDCLineDevice:
             hvdc_lines.append(obj)
@@ -5585,7 +5582,17 @@ List[FluidPath]]:
     for b in buses_tr3:
         buses.add(b)
 
-    return (list(buses), lines, dc_lines, transformers2w, list(transformers3w),
+    buses_tr_nw = set()
+    for tr_nw in transformers_nw:
+        if any(bus in buses for bus in tr_nw.buses if bus is not None):
+            for bus in tr_nw.buses:
+                if bus is not None:
+                    buses_tr_nw.add(bus)
+
+    for b in buses_tr_nw:
+        buses.add(b)
+
+    return (list(buses), lines, dc_lines, transformers2w, list(transformers3w), list(transformers_nw),
             windings, hvdc_lines, vsc_converters, upfc_devices, series_reactances, switches,
             list(fluid_nodes), fluid_paths)
 
@@ -5609,7 +5616,7 @@ def make_vicinity_diagram(circuit: MultiCircuit,
 
     (buses,
      lines, dc_lines, transformers2w,
-     transformers3w, windings, hvdc_lines,
+     transformers3w, transformers_nw, windings, hvdc_lines,
      vsc_converters, upfc_devices,
      series_reactances, switches,
      fluid_nodes, fluid_paths) = get_devices_to_expand(circuit=circuit, buses=[root_bus], max_level=max_level)
@@ -5621,6 +5628,7 @@ def make_vicinity_diagram(circuit: MultiCircuit,
         dc_lines=dc_lines,
         transformers2w=transformers2w,
         transformers3w=transformers3w,
+        transformers_nw=transformers_nw,
         windings=windings,
         hvdc_lines=hvdc_lines,
         vsc_devices=vsc_converters,
@@ -5655,7 +5663,7 @@ def make_diagram_from_buses(circuit: MultiCircuit,
 
     (buses,
      lines, dc_lines, transformers2w,
-     transformers3w, windings, hvdc_lines,
+     transformers3w, transformers_nw, windings, hvdc_lines,
      vsc_converters, upfc_devices,
      series_reactances, switches,
      fluid_nodes, fluid_paths) = get_devices_to_expand(circuit=circuit, buses=buses, max_level=1)
@@ -5666,6 +5674,7 @@ def make_diagram_from_buses(circuit: MultiCircuit,
                                          dc_lines=dc_lines,
                                          transformers2w=transformers2w,
                                          transformers3w=transformers3w,
+                                         transformers_nw=transformers_nw,
                                          windings=windings,
                                          hvdc_lines=hvdc_lines,
                                          vsc_devices=vsc_converters,

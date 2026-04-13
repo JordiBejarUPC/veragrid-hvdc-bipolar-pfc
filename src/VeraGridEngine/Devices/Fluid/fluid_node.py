@@ -10,7 +10,7 @@ import numpy as np
 from VeraGridEngine.Devices.Parents.physical_device import PhysicalDevice
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import BuildStatus, DeviceType
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileFloat
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 
@@ -102,11 +102,11 @@ class FluidNode(PhysicalDevice):
 
         self.color = color if color is not None else "#00aad4"  # nice blue color
 
-        self._inflow_prof = Profile(default_value=self.inflow, data_type=float)  # m3/s
-        self._spillage_cost_prof = Profile(default_value=self.spillage_cost, data_type=float)  # e/(m3/s)
+        self._inflow_prof = ProfileFloat(default_value=self.inflow)  # m3/s
+        self._spillage_cost_prof = ProfileFloat(default_value=self.spillage_cost)  # e/(m3/s)
 
-        self._max_soc_prof = Profile(default_value=self.max_soc, data_type=float)  # p.u.
-        self._min_soc_prof = Profile(default_value=self.min_soc, data_type=float)  # p.u.
+        self._max_soc_prof = ProfileFloat(default_value=self.max_soc)  # p.u.
+        self._min_soc_prof = ProfileFloat(default_value=self.min_soc)  # p.u.
 
 
 
@@ -118,7 +118,7 @@ class FluidNode(PhysicalDevice):
 
 
     @property
-    def spillage_cost_prof(self) -> Profile:
+    def spillage_cost_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -126,8 +126,8 @@ class FluidNode(PhysicalDevice):
         return self._spillage_cost_prof
 
     @spillage_cost_prof.setter
-    def spillage_cost_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def spillage_cost_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._spillage_cost_prof = val
         elif isinstance(val, np.ndarray):
             self._spillage_cost_prof.set(arr=val)
@@ -142,7 +142,7 @@ class FluidNode(PhysicalDevice):
         return get_at(self.spillage_cost, self.spillage_cost_prof, t)
 
     @property
-    def inflow_prof(self) -> Profile:
+    def inflow_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -150,8 +150,8 @@ class FluidNode(PhysicalDevice):
         return self._inflow_prof
 
     @inflow_prof.setter
-    def inflow_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def inflow_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._inflow_prof = val
         elif isinstance(val, np.ndarray):
             self._inflow_prof.set(arr=val)
@@ -166,7 +166,7 @@ class FluidNode(PhysicalDevice):
         return get_at(self.inflow, self.inflow_prof, t)
 
     @property
-    def max_soc_prof(self) -> Profile:
+    def max_soc_prof(self) -> ProfileFloat:
         """
         Max soc profile
         :return: Profile
@@ -174,8 +174,8 @@ class FluidNode(PhysicalDevice):
         return self._max_soc_prof
 
     @max_soc_prof.setter
-    def max_soc_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def max_soc_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._max_soc_prof = val
         elif isinstance(val, np.ndarray):
             self._max_soc_prof.set(arr=val)
@@ -190,7 +190,7 @@ class FluidNode(PhysicalDevice):
         return get_at(self.max_soc, self.max_soc_prof, t)
 
     @property
-    def min_soc_prof(self) -> Profile:
+    def min_soc_prof(self) -> ProfileFloat:
         """
         Min soc profile
         :return: Profile
@@ -198,8 +198,8 @@ class FluidNode(PhysicalDevice):
         return self._min_soc_prof
 
     @min_soc_prof.setter
-    def min_soc_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def min_soc_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._min_soc_prof = val
         elif isinstance(val, np.ndarray):
             self._min_soc_prof.set(arr=val)

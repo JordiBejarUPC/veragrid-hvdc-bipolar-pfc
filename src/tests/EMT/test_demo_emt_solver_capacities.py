@@ -73,7 +73,8 @@ class GenericEmtProblem(EmtProblemTemplate):
                 CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
             )
         except Exception as e:
-            print(f"[EMT][init_explicit] failed for block '{getattr(self.sys_block, 'name', 'unknown')}'. Error: {e}")
+            block_name = self.sys_block.name if isinstance(self.sys_block, Block) else "unknown"
+            print(f"[EMT][init_explicit] failed for block '{block_name}'. Error: {e}")
 
         self._build_runtime_param_vectors()
 
@@ -124,7 +125,7 @@ class GenericEmtProblem(EmtProblemTemplate):
                     keep_row = False
 
                 if keep_row:
-                    alias = self._alias_names_dict.get(uid, None) if hasattr(self, "_alias_names_dict") else None
+                    alias = self._alias_names_dict.get(uid, None)
 
                     rows.append({
                         "uid": uid,

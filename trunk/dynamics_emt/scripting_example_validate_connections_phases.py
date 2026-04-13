@@ -33,7 +33,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriv
 
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template, get_shunt_r_1ph_emt_template
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
@@ -122,14 +122,14 @@ for bus in grid.buses:
 ######################################################################################################
 
 # generator
-gen_mdl = get_generator_thevenin_rl_emt_template(vf= grid.emt_var_factory).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf= grid.var_factory).block
 
 # line
-line_mdl = get_pi_line_emt_template(vf=grid.emt_var_factory, line = line0).block
-# line_mdl = get_pi_line_emt_template(vf= grid.emt_var_factory).block
+line_mdl = get_pi_line_emt_template(vf=grid.var_factory).block
+# line_mdl = get_pi_line_emt_template(vf= grid.var_factory).block
 
 # load
-load_mdl = get_shunt_r_1ph_emt_template(vf = grid.emt_var_factory).block
+load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=False, phC=False).block
 
 load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_1ph", new_value=1.0)
 
@@ -137,11 +137,11 @@ load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_1ph", new_value=1.0)
 # Add models to devices
 ######################################################################################################
 
-set_emt_model(device=gen0, model=gen_mdl, var_factory= grid.emt_var_factory)
+set_emt_model(device=gen0, model=gen_mdl, var_factory= grid.var_factory)
 
-set_emt_model(device=line0, model=line_mdl, var_factory= grid.emt_var_factory)
+set_emt_model(device=line0, model=line_mdl, var_factory= grid.var_factory)
 
-set_emt_model(device=load, model=load_mdl, var_factory= grid.emt_var_factory)
+set_emt_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 
 #
 # # connection with buses
@@ -286,7 +286,7 @@ def create_problem() -> EmtProblemDae:
     #                               pf_results= res)
     local_problem = EmtProblemDae(grid=grid,
                                   options=options,
-                                  pf_results_3Ph=None,
+                                  pf_results_3ph=None,
                                   pf_results=res)
 
     if ENABLE_NEWTON_TRACE:
@@ -405,8 +405,8 @@ def benchmark_all_solvers() -> None:
         else:
             max_abs_diff = float(np.max(np.abs(y_arr - reference_y)))
 
-        loop_time = getattr(solver, "_last_sim_loop_time", np.nan)
-        build_stats_fn = getattr(solver, "get_backend_build_stats", None)
+        loop_time = solver.get_last_sim_loop_time()
+        build_stats = solver.get_backend_build_stats()
 
         results.append({
             "solver": solver_key,
@@ -417,7 +417,7 @@ def benchmark_all_solvers() -> None:
             "solver_total_s": solver_init_s + solver_build_s + simulate_s,
             "loop_s": float(loop_time) if loop_time == loop_time else np.nan,
             "max_abs_diff": max_abs_diff,
-            "build_stats": build_stats_fn() if callable(build_stats_fn) else dict(),
+            "build_stats": build_stats,
             "steps": len(t_arr) - 1,
             "shape": y_arr.shape,
             "dy_shape": dy_arr.shape,
@@ -468,10 +468,9 @@ build_solver_backend(CHOSEN_SOLVER, solver, problem)
 boundary_updater = cast(Any, problem)
 t, y, dy = solver.simulate(boundary_updater=boundary_updater)
 
-if hasattr(solver, "get_backend_build_stats"):
-    print("StructuralCompiled backend build stats")
-    for key, value in solver.get_backend_build_stats().items():
-        print(f"  {key}: {value:.6f}s")
+print("StructuralCompiled backend build stats")
+for key, value in solver.get_backend_build_stats().items():
+    print(f"  {key}: {value:.6f}s")
 
 
 collector = problem.get_newton_trace_collector()

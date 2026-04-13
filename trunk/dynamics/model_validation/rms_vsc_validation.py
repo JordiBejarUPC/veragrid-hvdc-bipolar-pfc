@@ -17,14 +17,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'sr
 import numpy as np
 import matplotlib.pyplot as plt
 import VeraGridEngine.api as vge
-from VeraGridEngine.enumerations import ConverterControlType, TapModuleControl, TapPhaseControl, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
+from VeraGridEngine.enumerations import ConverterControlType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 from VeraGridEngine.Templates.Rms.vsc_gfl import VscGflBuild
 from VeraGridEngine.Templates.Rms.transformer_rms_template import initialize_trafo_rms
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCPVSourceAveraged
-from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
@@ -257,7 +256,7 @@ def initialize_grid2_rms_models(grid2, pf_results):
     print("-" * 70)
     
     # Use the grid's built-in RMS VarFactory
-    vf = grid2.rms_var_factory
+    vf = grid2.var_factory
     
     for trafo in grid2.transformers2w:
         print(f"  Initializing Transformer '{trafo.name}' with initialize_trafo_rms...")
@@ -344,7 +343,7 @@ def initialize_grid2_rms_models(grid2, pf_results):
             # DC source - use averaged PV + MPPT model
             print(f"  Initializing DC Generator '{gen.name}' at DC bus '{bus.name}' as PV source...")
             if bus.rms_model.empty():
-                initialize_bus_rms(bus, grid2.rms_var_factory)
+                initialize_bus_rms(bus, grid2.var_factory)
             # Get the Vdc variable from the bus RMS model
             if hasattr(bus, 'rms_model') and bus.rms_model is not None:
                 # Access Vdc through external_mapping
@@ -360,9 +359,9 @@ def initialize_grid2_rms_models(grid2, pf_results):
             # AC generator - use Genrow model
             print(f"  Initializing AC Generator '{gen.name}' at AC bus '{bus.name}'...")
             if bus.rms_model.empty():
-                initialize_bus_rms(bus, grid2.rms_var_factory)
+                initialize_bus_rms(bus, grid2.var_factory)
             gen_model = get_complete_generator_template(vfactory=vf, name=gen.name).block
-            set_rms_model(device = gen, model=gen_model, var_factory=grid2.rms_var_factory)
+            set_rms_model(device = gen, model=gen_model, var_factory=grid2.var_factory)
 
     
     # Add missing reactive balance at AC virtual bus (bus_to of VSC)

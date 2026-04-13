@@ -228,20 +228,17 @@ def compute_generators(bus_idx: IntVec,
                        bus_lookup: IntVec,
                        V: CxVec,
                        P: CxVec,
-                       PF: CxVec,
+                       Q: CxVec,
                        is_controlled) -> CxVec:
 
     n = len(V)
     nelm = len(bus_idx)
     Igen = np.zeros(n, dtype=complex)
-    Q = np.zeros_like(P)
 
     for k in range(nelm):
 
         if is_controlled[k]:
             Q[k] = 0.0
-        else:
-            Q[k] = P[k] * np.tan(np.acos(PF[k]))
 
         f = bus_idx[k]
 
@@ -1005,7 +1002,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                   bus_lookup=self.bus_lookup,
                                   V=V,
                                   P=self.nc.generator_data.p,
-                                  PF=self.nc.generator_data.pf,
+                                  Q=self.nc.generator_data.q,
                                   is_controlled=self.nc.generator_data.controllable)
 
         (Ipower,
@@ -1062,7 +1059,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                   bus_lookup=self.bus_lookup,
                                   V=V,
                                   P=self.nc.generator_data.p,
-                                  PF=self.nc.generator_data.pf,
+                                  Q=self.nc.generator_data.q,
                                   is_controlled=self.nc.generator_data.controllable)
 
         (Ipower,
@@ -1118,7 +1115,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                   bus_lookup=self.bus_lookup,
                                   V=self.V,
                                   P=self.nc.generator_data.p,
-                                  PF=self.nc.generator_data.pf,
+                                  Q=self.nc.generator_data.q,
                                   is_controlled=self.nc.generator_data.controllable)
 
         (Ipower,
@@ -1215,7 +1212,7 @@ class PfBasicFormulation3Ph(PfFormulationTemplate):
                                   bus_lookup=self.bus_lookup,
                                   V=self.V,
                                   P=self.nc.generator_data.p,
-                                  PF=self.nc.generator_data.pf,
+                                  Q=self.nc.generator_data.q,
                                   is_controlled=self.nc.generator_data.controllable)
 
         Ipower, Y_power_linear, self.Un_floating_power = compute_power_loads(bus_idx=self.nc.load_data.bus_idx,

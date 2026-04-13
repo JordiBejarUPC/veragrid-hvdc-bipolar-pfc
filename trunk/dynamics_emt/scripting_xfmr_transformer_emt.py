@@ -34,7 +34,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 from VeraGridEngine.Templates.Emt.xfmr_emt_template import get_xfmr_emt_template
 from VeraGridEngine.Templates.Emt.dc_load_emt_template import get_dc_load_emt_template
 from VeraGridEngine.Templates.Emt.converter_emt_template import get_emt_ideal_converter
-from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
@@ -129,21 +129,21 @@ for bus in circuit.buses:
 # =====================================================================
 
 # Generator model (Thevenin equivalent)
-gen_mdl = get_generator_thevenin_rl_emt_template(grid=circuit, gen=gen1).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf=circuit.var_factory).block
 
 # Transformer model (series RL with ideal transformer)
-trafo_mdl = get_xfmr_emt_template(grid=circuit, trafo=transformer).block
+trafo_mdl = get_xfmr_emt_template(vf= circuit.var_factory).block
 
 # DC Load model (constant power load)
-load_mdl = get_shunt_r_3ph_emt_template(vf = circuit.emt_var_factory).block
+load_mdl = get_shunt_r_emt_template(vf=circuit.var_factory, phA=True, phB=True, phC=True).block
 
 # =====================================================================
 # ASSIGN MODELS TO DEVICES
 # =====================================================================
 
-set_emt_model(device=gen1, model=gen_mdl, var_factory=circuit.emt_var_factory)
-set_emt_model(device=transformer, model=trafo_mdl, var_factory=circuit.emt_var_factory)
-set_emt_model(device=load, model=load_mdl, var_factory=circuit.emt_var_factory)
+set_emt_model(device=gen1, model=gen_mdl, var_factory=circuit.var_factory)
+set_emt_model(device=transformer, model=trafo_mdl, var_factory=circuit.var_factory)
+set_emt_model(device=load, model=load_mdl, var_factory=circuit.var_factory)
 
 ###########################################################################################################################
 # POWER FLOW (for DC initialization)
@@ -246,7 +246,7 @@ def create_problem() -> EmtProblemDae:
     local_problem = EmtProblemDae(
         grid=circuit,
         options=options,
-        pf_results_3Ph=pf_res_3ph,
+        pf_results_3ph=pf_res_3ph,
         pf_results=None
     )
     # local_problem = EmtProblemDae(
@@ -365,10 +365,9 @@ build_solver_backend(CHOSEN_SOLVER, solver, problem)
 boundary_updater = cast(Any, problem)
 t, y, dy = solver.simulate(boundary_updater=boundary_updater)
 
-if hasattr(solver, "get_backend_build_stats"):
-    print("StructuralCompiled backend build stats")
-    for key, value in solver.get_backend_build_stats().items():
-        print(f"  {key}: {value:.6f}s")
+print("StructuralCompiled backend build stats")
+for key, value in solver.get_backend_build_stats().items():
+    print(f"  {key}: {value:.6f}s")
 
 # =====================================================================
 # PROFILING REPORT

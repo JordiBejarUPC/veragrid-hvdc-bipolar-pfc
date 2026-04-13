@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Dict, List, Tuple
+from typing import Dict, List
 import time
 import numpy as np
 import pandas as pd
@@ -20,12 +20,10 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResu
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.initialization import init_explicit, init_pseudo_transient
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
-from VeraGridEngine.Templates.Rms.bus_phasor_rms_template import initialize_bus_phasor_rms, polar_to_phasor
-from VeraGridEngine.Templates.Rms.line_phasor_rms_template import get_line_phasor_rms_template
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Simulations.driver_template import DummySignal
 
@@ -501,7 +499,7 @@ class RmsProblemPhasor(RmsProblemTemplate):
 
         # add the nodal balance equations (current balance for phasor formulation)
         for i, elm in enumerate(self.grid.buses):
-            mdl = block_deep_copy(elm.rms_model, grid.rms_var_factory)
+            mdl = block_deep_copy(elm.rms_model, grid.var_factory)
             if len(mdl.algebraic_eqs) == 0:
                 if not Ir_used[i] and not Ii_used[i]:
                     self.logger.add_error("Isolated bus", value=i)
@@ -564,7 +562,7 @@ class RmsProblemPhasor(RmsProblemTemplate):
         for i, var in enumerate(diff_vars_from_states):
             state_var = self._state_vars[i]
             if var is None:
-                diff_vars_from_states[i] = self.grid.rms_var_factory.add_diff_var(name = 'aux', base_var=state_var)
+                diff_vars_from_states[i] = self.grid.var_factory.add_diff_var(name = 'aux', base_var=state_var)
         diff_vars_from_algebraic = [var.diff_var for var in self._algebraic_vars if var.diff_var is not None]
         self._diff_vars = diff_vars_from_states + diff_vars_from_algebraic
 
@@ -826,7 +824,7 @@ class RmsProblemPhasor(RmsProblemTemplate):
         xdot = list() 
         # for var in self._state_vars:
         #     if var.diff_var is None:
-        #         diff_var = self.grid.rms_var_factory.add_diff_var(name = '', base_var=var)
+        #         diff_var = self.grid.var_factory.add_diff_var(name = '', base_var=var)
         #         xdot.append(diff_var)
         #     else:
         #         xdot.append(var.diff_var)

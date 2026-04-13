@@ -15,7 +15,7 @@ import VeraGridEngine.Devices as dev
 import VeraGridEngine.Templates as tem
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, BRANCH_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES
 from VeraGridEngine.Devices.Parents.editable_device import GCPROP_TYPES
-from VeraGridEngine.enumerations import DeviceType, ActionType
+from VeraGridEngine.enumerations import DeviceType, ActionType, FmuTemplateDomain
 from VeraGridEngine.basic_structures import Logger, ListSet
 from VeraGridEngine.data_logger import DataLogger
 
@@ -52,6 +52,7 @@ class Assets:
         '_upfc_devices',
         '_switch_devices',
         '_transformers3w',
+        '_transformers_nw',
         '_windings',
         '_series_reactances',
         '_buses',
@@ -111,6 +112,7 @@ class Assets:
         '_diagrams',
         '_rms_models',
         '_emt_models',
+        '_fmu_templates',
         'template_objects_dict',
         'profile_magnitudes',
         'device_type_name_dict',
@@ -121,8 +123,7 @@ class Assets:
         '_emt_events_groups',
         '_dynamic_plots',
         '_dynamic_plot_entries',
-        '_rms_var_factory',
-        '_emt_var_factory'
+        '_var_factory',
     )
 
     def __init__(self):
@@ -148,6 +149,8 @@ class Assets:
         self._switch_devices: List[dev.Switch] = list()
 
         self._transformers3w: List[dev.Transformer3W] = list()
+
+        self._transformers_nw: List[dev.TransformerNW] = list()
 
         self._windings: List[dev.Winding] = list()
 
@@ -314,12 +317,14 @@ class Assets:
         # list of EMT models
         self._emt_models: List[dev.EmtModelTemplate] = list()
 
+        # list of reusable FMU templates
+        self._fmu_templates: List[dev.FmuTemplate] = list()
+
         # list of declared diagrams
         self._diagrams: List[Union[dev.MapDiagram, dev.SchematicDiagram]] = list()
 
         # Class to handle the dynamic Vars and Consts
-        self._rms_var_factory: dev.VarFactory = dev.VarFactory()
-        self._emt_var_factory: dev.VarFactory = dev.VarFactory()
+        self._var_factory: dev.VarFactory = dev.VarFactory()
 
         # objects with profiles
         self.template_objects_dict = {
@@ -359,6 +364,7 @@ class Assets:
                 dev.Winding(),
                 dev.Transformer2W(),
                 dev.Transformer3W(),
+                dev.TransformerNW(),
                 dev.SeriesReactance(),
                 dev.HvdcLine(),
                 dev.VSC(),
@@ -396,14 +402,17 @@ class Assets:
                 # dev.DynamicPlotEntry()
                 # dev.DynamicPlot(),
             ],
+            "Templates": [
+                dev.RmsModelTemplate(),
+                dev.EmtModelTemplate(),
+                dev.FmuTemplate(),
+            ],
             "Catalogue": [
                 dev.Wire(),
                 dev.OverheadLineType(),
                 dev.UndergroundLineType(),
                 dev.SequenceLineType(),
                 dev.TransformerType(),
-                dev.RmsModelTemplate(),
-                dev.EmtModelTemplate()
             ],
             "Measurements": [
                 dev.PiMeasurement(),
@@ -757,29 +766,16 @@ class Assets:
     # Var Factory
     # ------------------------------------------------------------------------------------------------------------------
     @property
-    def rms_var_factory(self) -> dev.VarFactory:
+    def var_factory(self) -> dev.VarFactory:
         """
         Get the RMS VarFactory object
         :return: VarFactory
         """
-        return self._rms_var_factory
+        return self._var_factory
 
-    @rms_var_factory.setter
-    def rms_var_factory(self, value: dev.VarFactory):
-        self._rms_var_factory = value
-
-
-    @property
-    def emt_var_factory(self) -> dev.VarFactory:
-        """
-        Get the EMT VarFactory object
-        :return: VarFactory
-        """
-        return self._emt_var_factory
-
-    @emt_var_factory.setter
-    def emt_var_factory(self, value: dev.VarFactory):
-        self._emt_var_factory = value
+    @var_factory.setter
+    def var_factory(self, value: dev.VarFactory):
+        self._var_factory = value
 
     # ------------------------------------------------------------------------------------------------------------------
     # AC line
@@ -825,8 +821,7 @@ class Assets:
                 obj.ensure_profiles_exist(self.time_profile)
             self._lines.append(obj)
 
-        obj.set_rms_var_factory(self._rms_var_factory)
-        obj.set_emt_var_factory(self._emt_var_factory)
+        obj.set_var_factory(self._var_factory)
 
         return obj
 
@@ -934,8 +929,7 @@ class Assets:
             obj.ensure_profiles_exist(self.time_profile)
 
         self._transformers2w.append(obj)
-        obj.set_rms_var_factory(self._rms_var_factory)
-        obj.set_emt_var_factory(self._emt_var_factory)
+        obj.set_var_factory(self._var_factory)
 
         return obj
 
@@ -1006,8 +1000,7 @@ class Assets:
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
 
-        obj.set_rms_var_factory(self._rms_var_factory)
-        obj.set_emt_var_factory(self._emt_var_factory)
+        obj.set_var_factory(self._var_factory)
         self._hvdc_lines.append(obj)
 
     def delete_hvdc_line(self, obj: dev.HvdcLine):
@@ -1091,8 +1084,7 @@ class Assets:
             obj.ensure_profiles_exist(self.time_profile)
 
         self._vsc_devices.append(obj)
-        obj.set_rms_var_factory(self._rms_var_factory)
-        obj.set_emt_var_factory(self._emt_var_factory)
+        obj.set_var_factory(self._var_factory)
 
     def delete_vsc_converter(self, obj: dev.VSC):
         """
@@ -1151,8 +1143,7 @@ class Assets:
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
 
-        obj.set_rms_var_factory(self._rms_var_factory)
-        obj.set_emt_var_factory(self._emt_var_factory)
+        obj.set_var_factory(self._var_factory)
         self._upfc_devices.append(obj)
 
     def delete_upfc_converter(self, obj: dev.UPFC):
@@ -1205,8 +1196,7 @@ class Assets:
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
         self._switch_devices.append(obj)
-        obj.set_rms_var_factory(self._rms_var_factory)
-        obj.set_emt_var_factory(self._emt_var_factory)
+        obj.set_var_factory(self._var_factory)
 
         return obj
 
@@ -1290,6 +1280,72 @@ class Assets:
         self.delete_bus(obj.bus0, delete_associated=True)  # also delete the middle bus
 
     # ------------------------------------------------------------------------------------------------------------------
+    # Transformer NW
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def transformers_nw(self) -> List[dev.TransformerNW]:
+        """
+        Get list of N-winding transformers
+        :return:
+        """
+        return self._transformers_nw
+
+    @transformers_nw.setter
+    def transformers_nw(self, value: List[dev.TransformerNW]):
+        self._transformers_nw = value
+
+    def get_transformers_nw(self) -> List[dev.TransformerNW]:
+        """
+
+        :return:
+        """
+        return self._transformers_nw
+
+    def get_transformers_nw_number(self) -> int:
+        """
+
+        :return:
+        """
+        return len(self._transformers_nw)
+
+    def get_transformers_nw_names(self) -> List[str]:
+        """
+
+        :return:
+        """
+        return [elm.name for elm in self._transformers_nw]
+
+    def add_transformer_nw(self, obj: dev.TransformerNW, add_middle_bus: bool = True):
+        """
+        Add an N-winding transformer object
+        :param obj: TransformerNW instance
+        :param add_middle_bus: Add the internal star bus?
+        """
+
+        if self.time_profile is not None:
+            obj.ensure_profiles_exist(self.time_profile)
+        self._transformers_nw.append(obj)
+        if add_middle_bus:
+            self.add_bus(obj.bus0)
+        for winding in obj.windings:
+            if winding.bus_to is not None:
+                self.add_winding(winding)
+
+    def delete_transformer_nw(self, obj: dev.TransformerNW):
+        """
+        Delete N-winding transformer
+        :param obj: TransformerNW instance
+        """
+        for winding in list(obj.windings):
+            self.delete_winding(winding)
+        self.delete_bus(obj.bus0, delete_associated=True)
+        try:
+            self._transformers_nw.remove(obj)
+        except ValueError:
+            pass
+
+    # ------------------------------------------------------------------------------------------------------------------
     # Windings
     # ------------------------------------------------------------------------------------------------------------------
 
@@ -1335,8 +1391,7 @@ class Assets:
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
 
-        obj.set_rms_var_factory(self._rms_var_factory)
-        obj.set_emt_var_factory(self._emt_var_factory)
+        obj.set_var_factory(self._var_factory)
 
         self._windings.append(obj)
 
@@ -1355,6 +1410,12 @@ class Assets:
 
             if obj == tr3.winding3:
                 tr3.bus3 = None
+
+        for tr_nw in self._transformers_nw:
+            for i, winding in enumerate(tr_nw.windings):
+                if obj == winding:
+                    tr_nw.delete_winding(i)
+                    break
 
         try:
             self._windings.remove(obj)
@@ -1416,8 +1477,7 @@ class Assets:
         if self.time_profile is not None:
             obj.ensure_profiles_exist(self.time_profile)
 
-        obj.set_rms_var_factory(self._rms_var_factory)
-        obj.set_emt_var_factory(self._emt_var_factory)
+        obj.set_var_factory(self._var_factory)
         self._series_reactances.append(obj)
 
     def delete_series_reactance(self, obj: dev.SeriesReactance) -> None:
@@ -1525,8 +1585,7 @@ class Assets:
 
         self._buses.append(obj)
 
-        obj.set_rms_var_factory(self._rms_var_factory)
-        obj.set_emt_var_factory(self._emt_var_factory)
+        obj.set_var_factory(self._var_factory)
 
         return obj
 
@@ -1923,8 +1982,7 @@ class Assets:
 
         self._loads.append(api_obj)
 
-        api_obj.set_rms_var_factory(self._rms_var_factory)
-        api_obj.set_emt_var_factory(self._emt_var_factory)
+        api_obj.set_var_factory(self._var_factory)
 
         return api_obj
 
@@ -1997,8 +2055,7 @@ class Assets:
 
         self._generators.append(api_obj)
 
-        api_obj.set_rms_var_factory(self._rms_var_factory)
-        api_obj.set_emt_var_factory(self._emt_var_factory)
+        api_obj.set_var_factory(self._var_factory)
 
         return api_obj
 
@@ -2100,8 +2157,7 @@ class Assets:
                 api_obj.name += '@' + bus.name
 
         self._external_grids.append(api_obj)
-        api_obj.set_rms_var_factory(self._rms_var_factory)
-        api_obj.set_emt_var_factory(self._emt_var_factory)
+        api_obj.set_var_factory(self._var_factory)
 
         return api_obj
 
@@ -2174,8 +2230,7 @@ class Assets:
                 api_obj.name += '@' + bus.name
 
         self._shunts.append(api_obj)
-        api_obj.set_rms_var_factory(self._rms_var_factory)
-        api_obj.set_emt_var_factory(self._emt_var_factory)
+        api_obj.set_var_factory(self._var_factory)
 
         return api_obj
 
@@ -2252,9 +2307,7 @@ class Assets:
 
         self._batteries.append(api_obj)
 
-        api_obj.set_rms_var_factory(self._rms_var_factory)
-        api_obj.set_emt_var_factory(self._emt_var_factory)
-
+        api_obj.set_var_factory(self._var_factory)
         return api_obj
 
     def delete_battery(self, obj: dev.Battery):
@@ -2336,8 +2389,7 @@ class Assets:
 
         self._static_generators.append(api_obj)
 
-        api_obj.set_rms_var_factory(self._rms_var_factory)
-        api_obj.set_emt_var_factory(self._emt_var_factory)
+        api_obj.set_var_factory(self._var_factory)
 
         return api_obj
 
@@ -2418,8 +2470,7 @@ class Assets:
             api_obj.name += '@' + bus.name
 
         self._current_injections.append(api_obj)
-        api_obj.set_rms_var_factory(self._rms_var_factory)
-        api_obj.set_emt_var_factory(self._emt_var_factory)
+        api_obj.set_var_factory(self._var_factory)
 
         return api_obj
 
@@ -2500,8 +2551,7 @@ class Assets:
                 api_obj.name += '@' + bus.name
 
         self._controllable_shunts.append(api_obj)
-        api_obj.set_rms_var_factory(self._rms_var_factory)
-        api_obj.set_emt_var_factory(self._emt_var_factory)
+        api_obj.set_var_factory(self._var_factory)
 
         return api_obj
 
@@ -3316,8 +3366,7 @@ class Assets:
         if obj is not None:
             if isinstance(obj, dev.OverheadLineType):
                 self._overhead_line_types.append(obj)
-                obj.set_rms_var_factory(self._rms_var_factory)
-                obj.set_emt_var_factory(self._emt_var_factory)
+                obj.set_var_factory(self._var_factory)
             else:
                 print('The template is not an overhead line!')
 
@@ -3409,8 +3458,7 @@ class Assets:
         if obj is not None:
             if isinstance(obj, dev.UndergroundLineType):
                 self._underground_cable_types.append(obj)
-                obj.set_rms_var_factory(self._rms_var_factory)
-                obj.set_emt_var_factory(self._emt_var_factory)
+                obj.set_var_factory(self._var_factory)
             else:
                 print('The template is not an underground line!')
 
@@ -3450,8 +3498,7 @@ class Assets:
         if obj is not None:
             if isinstance(obj, dev.SequenceLineType):
                 self._sequence_line_types.append(obj)
-                obj.set_rms_var_factory(self._rms_var_factory)
-                obj.set_emt_var_factory(self._emt_var_factory)
+                obj.set_var_factory(self._var_factory)
             else:
                 print('The template is not a sequence line!')
 
@@ -3491,8 +3538,7 @@ class Assets:
         if obj is not None:
             if isinstance(obj, dev.TransformerType):
                 self._transformer_types.append(obj)
-                obj.set_rms_var_factory(self._rms_var_factory)
-                obj.set_emt_var_factory(self._emt_var_factory)
+                obj.set_var_factory(self._var_factory)
             else:
                 print('The template is not a transformer!')
 
@@ -6051,6 +6097,175 @@ class Assets:
         """
         return [elm for elm in self.emt_models if elm.tpe == tpe]
 
+    @property
+    def fmu_templates(self) -> List[dev.FmuTemplate]:
+        """
+        List of reusable FMU templates.
+
+        :return: FMU templates.
+        """
+
+        return self._fmu_templates
+
+    @fmu_templates.setter
+    def fmu_templates(self, value: List[dev.FmuTemplate]) -> None:
+        """
+        Replace the complete FMU template catalogue.
+
+        :param value: FMU template list.
+        :return: None.
+        """
+
+        self._fmu_templates = value
+
+    def get_fmu_templates_number(self) -> int:
+        """
+        Return the number of reusable FMU templates.
+
+        :return: Number of FMU templates.
+        """
+
+        return len(self._fmu_templates)
+
+    def add_fmu_template(self, obj: dev.FmuTemplate) -> None:
+        """
+        Add one reusable FMU template to the catalogue.
+
+        :param obj: FMU template instance.
+        :return: None.
+        """
+
+        if obj is not None:
+            if isinstance(obj, dev.FmuTemplate):
+                self._fmu_templates.append(obj)
+            else:
+                print('The template is not a FmuTemplate!')
+        else:
+            pass
+
+    def delete_fmu_template(self, obj: dev.FmuTemplate) -> None:
+        """
+        Delete one reusable FMU template from the catalogue.
+
+        :param obj: FMU template instance.
+        :return: None.
+        """
+
+        for elm in self.buses:
+            if elm.rms_fmu_template == obj:
+                elm.rms_fmu_template = None
+            else:
+                pass
+
+            if elm.emt_fmu_template == obj:
+                elm.emt_fmu_template = None
+            else:
+                pass
+
+        for elm in self.get_injection_devices_iter():
+            if elm.rms_fmu_template == obj:
+                elm.rms_fmu_template = None
+            else:
+                pass
+
+            if elm.emt_fmu_template == obj:
+                elm.emt_fmu_template = None
+            else:
+                pass
+
+        for elm in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
+            if elm.rms_fmu_template == obj:
+                elm.rms_fmu_template = None
+            else:
+                pass
+
+            if elm.emt_fmu_template == obj:
+                elm.emt_fmu_template = None
+            else:
+                pass
+
+        try:
+            self._fmu_templates.remove(obj)
+        except ValueError:
+            pass
+
+    def get_fmu_templates_by_device_type(self, tpe: DeviceType) -> List[dev.FmuTemplate]:
+        """
+        Get FMU templates filtered by supported device type.
+
+        :param tpe: Supported VeraGrid device type.
+        :return: Matching FMU templates.
+        """
+
+        return [elm for elm in self.fmu_templates if elm.tpe == tpe]
+
+    def get_fmu_templates_by_device_type_and_domain(self,
+                                                    tpe: DeviceType,
+                                                    domain: FmuTemplateDomain) -> List[dev.FmuTemplate]:
+        """
+        Get FMU templates filtered by supported device type and simulation domain.
+
+        :param tpe: Supported VeraGrid device type.
+        :param domain: Supported FMU simulation domain.
+        :return: Matching FMU templates.
+        """
+
+        return [elm for elm in self.fmu_templates if elm.tpe == tpe and elm.domain == domain]
+
+    def get_dynamic_templates_by_device_type_and_domain(self,
+                                                        tpe: DeviceType,
+                                                        domain: FmuTemplateDomain) -> List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate]:
+        """
+        Get all reusable templates for one device type and one simulation domain.
+
+        Native templates and FMU templates are both returned because the block editor
+        library must expose both under the same ``Templates`` category.
+
+        :param tpe: Supported VeraGrid device type.
+        :param domain: Simulation domain used by the editor.
+        :return: Matching native and FMU templates.
+        """
+
+        if domain == FmuTemplateDomain.RMS:
+            native_templates: List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate] = list(
+                self.get_rms_models_by_device_type(tpe)
+            )
+        else:
+            if domain == FmuTemplateDomain.EMT:
+                native_templates = list(self.get_emt_models_by_device_type(tpe))
+            else:
+                raise ValueError(f"Unsupported dynamic template domain {domain}")
+
+        native_templates.extend(self.get_fmu_templates_by_device_type_and_domain(tpe, domain))
+        return native_templates
+
+    def get_dynamic_templates_by_domain(self,
+                                        domain: FmuTemplateDomain) -> List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate]:
+        """
+        Get all reusable templates registered for one simulation domain.
+
+        :param domain: Simulation domain used by the editor.
+        :return: Matching native and FMU templates.
+        """
+
+        templates: List[dev.RmsModelTemplate | dev.EmtModelTemplate | dev.FmuTemplate] = list()
+        if domain == FmuTemplateDomain.RMS:
+            templates.extend(self.rms_models)
+        else:
+            if domain == FmuTemplateDomain.EMT:
+                templates.extend(self.emt_models)
+            else:
+                raise ValueError(f"Unsupported dynamic template domain {domain}")
+
+        fmu_template: dev.FmuTemplate
+        for fmu_template in self.fmu_templates:
+            if fmu_template.domain == domain:
+                templates.append(fmu_template)
+            else:
+                pass
+
+        return templates
+
     # ------------------------------------------------------------------------------------------------------------------
     #
     #
@@ -6686,6 +6901,9 @@ class Assets:
         elif device_type == DeviceType.Transformer3WDevice:
             return self._transformers3w
 
+        elif device_type == DeviceType.TransformerNwDevice:
+            return self._transformers_nw
+
         elif device_type == DeviceType.WindingDevice:
             return self._windings
 
@@ -6872,6 +7090,9 @@ class Assets:
         elif device_type == DeviceType.EmtModelTemplateDevice:
             return self.emt_models
 
+        elif device_type == DeviceType.FmuTemplateDevice:
+            return self.fmu_templates
+
         elif device_type == DeviceType.RmsEventDevice:
             return self.rms_events
 
@@ -6936,6 +7157,9 @@ class Assets:
 
         elif device_type == DeviceType.Transformer3WDevice:
             self._transformers3w = devices
+
+        elif device_type == DeviceType.TransformerNwDevice:
+            self._transformers_nw = devices
 
         elif device_type == DeviceType.WindingDevice:
             self._windings = devices
@@ -7108,6 +7332,9 @@ class Assets:
         elif device_type == DeviceType.EmtModelTemplateDevice:
             self._emt_models = devices
 
+        elif device_type == DeviceType.FmuTemplateDevice:
+            self._fmu_templates = devices
+
         elif device_type == DeviceType.RmsEventDevice:
             self._rms_events = devices
 
@@ -7168,6 +7395,9 @@ class Assets:
 
         elif obj.device_type == DeviceType.Transformer3WDevice:
             self.add_transformer3w(obj=obj)
+
+        elif obj.device_type == DeviceType.TransformerNwDevice:
+            self.add_transformer_nw(obj=obj)
 
         elif obj.device_type == DeviceType.WindingDevice:
             self.add_winding(obj=obj)
@@ -7328,6 +7558,9 @@ class Assets:
         elif obj.device_type == DeviceType.EmtModelTemplateDevice:
             self.add_emt_model(obj=obj)
 
+        elif obj.device_type == DeviceType.FmuTemplateDevice:
+            self.add_fmu_template(obj=obj)
+
         elif obj.device_type == DeviceType.RmsEventDevice:
             self.add_rms_event(obj=obj)
 
@@ -7390,6 +7623,9 @@ class Assets:
 
         elif obj.device_type == DeviceType.Transformer3WDevice:
             self.delete_transformer3w(obj)
+
+        elif obj.device_type == DeviceType.TransformerNwDevice:
+            self.delete_transformer_nw(obj)
 
         elif obj.device_type == DeviceType.WindingDevice:
             self.delete_winding(obj)
@@ -7558,6 +7794,9 @@ class Assets:
 
         elif obj.device_type == DeviceType.EmtModelTemplateDevice:
             self.delete_emt_model(obj=obj)
+
+        elif obj.device_type == DeviceType.FmuTemplateDevice:
+            self.delete_fmu_template(obj=obj)
 
         elif obj.device_type == DeviceType.RmsEventDevice:
             self.delete_rms_event(obj=obj)
@@ -7932,6 +8171,14 @@ class Assets:
                 # DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
+        elif elm_type == DeviceType.TransformerNwDevice:
+            elm = dev.TransformerNW()
+            dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
+                DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.BusDevice: self.buses,
+            }
+
         elif elm_type == DeviceType.HVDCLineDevice:
             elm = dev.HvdcLine()
             dictionary_of_lists = {
@@ -8165,6 +8412,10 @@ class Assets:
             elm = dev.EmtModelTemplate()
             dictionary_of_lists = dict()
 
+        elif elm_type == DeviceType.FmuTemplateDevice:
+            elm = dev.FmuTemplate()
+            dictionary_of_lists = dict()
+
         elif elm_type == DeviceType.RmsEventDevice:
             elm = dev.RmsEvent()
             dictionary_of_lists = {DeviceType.RmsEventsGroupDevice: self.rms_events_groups}
@@ -8243,6 +8494,19 @@ class Assets:
         else:
             raise Exception(f'elm_type not understood: {elm_type.value}')
 
+        if (DeviceType.RmsModelTemplateDevice in dictionary_of_lists) or (DeviceType.EmtModelTemplateDevice in dictionary_of_lists):
+            dictionary_of_lists[DeviceType.FmuTemplateDevice] = self.get_fmu_templates_by_device_type(elm_type)
+            dictionary_of_lists[("rms_fmu_template", DeviceType.FmuTemplateDevice)] = self.get_fmu_templates_by_device_type_and_domain(
+                elm_type,
+                FmuTemplateDomain.RMS,
+            )
+            dictionary_of_lists[("emt_fmu_template", DeviceType.FmuTemplateDevice)] = self.get_fmu_templates_by_device_type_and_domain(
+                elm_type,
+                FmuTemplateDomain.EMT,
+            )
+        else:
+            pass
+
         return elm, dictionary_of_lists
 
     def new_idtags(self) -> None:
@@ -8292,14 +8556,14 @@ class Assets:
         :return:
         """
         self.rms_models += [
-            tem.get_genqec_rms(vfactory=self._rms_var_factory),
-            tem.get_governor_rms(vfactory=self._rms_var_factory),
-            tem.get_stabilizer_rms(vfactory=self._rms_var_factory),
-            tem.get_exciter_rms(vfactory=self._rms_var_factory),
-            tem.get_complete_generator_template_rms(vfactory=self._rms_var_factory),
-            tem.get_genrow_rms_template(vfactory=self._rms_var_factory),
-            tem.get_line_rms_template(vfactory=self._rms_var_factory),
-            tem.get_load_rms_template(vfactory=self._rms_var_factory)
+            tem.get_genqec_rms(vfactory=self._var_factory),
+            tem.get_governor_rms(vfactory=self._var_factory),
+            tem.get_stabilizer_rms(vfactory=self._var_factory),
+            tem.get_exciter_rms(vfactory=self._var_factory),
+            tem.get_complete_generator_template_rms(vfactory=self._var_factory),
+            tem.get_genrow_rms_template(vfactory=self._var_factory),
+            tem.get_line_rms_template(vfactory=self._var_factory),
+            tem.get_load_rms_template(vfactory=self._var_factory)
         ]
 
     def add_emt_model_catalogue(self):
@@ -8308,23 +8572,29 @@ class Assets:
         :return:
         """
         self.emt_models += [
-            tem.get_shunt_c_3ph_emt_template(vf=self.emt_var_factory),
-            tem.get_shunt_l_3ph_emt_template(vf=self.emt_var_factory),
-            tem.get_shunt_r_1ph_emt_template(vf=self.emt_var_factory),
-            tem.get_shunt_r_3ph_emt_template(vf=self.emt_var_factory),
-            tem.get_simple_generator_emt_template(vf=self.emt_var_factory),
-            tem.get_generator_sauer_pai_type_emt_template(vf=self.emt_var_factory),
-            tem.get_governor_emt(vf=self.emt_var_factory),
-            tem.get_stabilizer_emt(vf=self.emt_var_factory),
-            tem.get_exciter_emt(vf=self.emt_var_factory),
-            tem.get_complete_generator_template_emt(vf=self.emt_var_factory),
-            tem.get_exponential_load_3ph_emt(vf=self.emt_var_factory),
-            tem.get_load_ZIP_3ph_emt_template(vf=self.emt_var_factory),
-            tem.get_generator_thevenin_rl_emt_template(vf=self.emt_var_factory),
-            # the following are functions that generate templates depending on the specific object
-            # tem.get_pi_line_emt_template(vf=self.emt_var_factory, line=line),
-            # tem.get_bergeron_line_emt_template(vf=self.emt_var_factory, line=line),
-            # tem.get_emt_ideal_converter(vf=self.emt_var_factory),
-            # tem.get_transformer_emt_template(vf=self.emt_var_factory),
-            # tem.get_xfmr_emt_template(vf=self.emt_var_factory)
+
+            tem.get_simple_generator_emt_template(vf=self._var_factory),
+            tem.get_generator_sauer_pai_type_emt_template(vf=self._var_factory),
+            tem.get_governor_emt(vf=self._var_factory),
+            tem.get_stabilizer_emt(vf=self._var_factory),
+            tem.get_exciter_emt(vf=self._var_factory),
+            tem.get_complete_generator_template_emt(vf=self._var_factory),
+
+            tem.get_generator_thevenin_rl_emt_template(vf=self._var_factory),
+            tem.get_emt_ideal_converter(vf=self._var_factory),
+            # tem.get_full_pseudo_emt_converter(vf=self._var_factory), # TODO: it gives error when running VeraGrid!?
+            tem.get_dc_load_emt_template(vf=self._var_factory),
+
+
+            # the following are functions that generate templates depending on phases or things
+
+            tem.get_shunt_c_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_shunt_l_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_shunt_r_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_exponential_load_emt(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_load_ZIP_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_pi_line_emt_template(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True),
+            tem.get_bergeron_line_emt_template(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True),
+            # tem.get_transformer_emt_template(vf=self._var_factory),
+            # tem.get_xfmr_emt_template(vf=self._var_factory)
         ]

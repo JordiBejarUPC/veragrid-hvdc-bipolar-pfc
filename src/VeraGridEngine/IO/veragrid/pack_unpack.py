@@ -7,6 +7,8 @@ from __future__ import annotations
 import copy
 import json
 import math
+import os
+from pathlib import Path
 from typing import Dict, Union, List, Tuple, Any, Callable
 import pandas as pd
 import numpy as np
@@ -15,7 +17,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles import AnyProfile
 from VeraGridEngine.Utils.Symbolic.symbolic_io import BlockSaver, BlockParser, Block
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, VERAGRID_FILE_TYPE
 from VeraGridEngine.enumerations import (DiagramType, DeviceType, SubObjectType, TapPhaseControl, TapModuleControl,
@@ -57,6 +59,7 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
 
         'rms_model_template': dev.RmsModelTemplate(),
         'emt_model_template': dev.EmtModelTemplate(),
+        'fmu_template': dev.FmuTemplate(),
 
         'bus': dev.Bus(),
 
@@ -91,6 +94,7 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
 
         'windings': dev.Winding(),
         'transformer3w': dev.Transformer3W(),
+        'transformernw': dev.TransformerNW(),
 
         'line': dev.Line(),
         'dc_line': dev.DcLine(),
@@ -141,8 +145,129 @@ def get_objects_dictionary() -> Dict[str, ALL_DEV_TYPES]:
         'va_measurement': dev.VaMeasurement(),
         'pg_measurement': dev.PgMeasurement(),
         'qg_measurement': dev.QgMeasurement(),
-
     }
+
+
+_FMU_CONFIG_PROPERTY_NAMES: Tuple[str, ...] = (
+    "rms_fmu_import_config",
+    "emt_fmu_import_config",
+    "rms_fmu_me_import_config",
+    "emt_fmu_me_import_config",
+    "serialized_config",
+)
+
+
+def _to_project_relative_fmu_config(config_text: str, project_directory: Path | None) -> str:
+    """
+    Rewrite the stored FMU path in one serialized configuration as a project-relative path.
+
+    :param config_text: Serialized FMU configuration payload.
+    :param project_directory: Directory containing the VeraGrid project file.
+    :return: Serialized configuration with a relative FMU path when possible.
+    """
+
+    if project_directory is None:
+        return config_text
+    else:
+        stripped_text: str = config_text.strip()
+        if len(stripped_text) == 0:
+            return config_text
+        else:
+            payload: dict[str, Any] = json.loads(stripped_text)
+            fmu_path_text = payload.get("fmu_path", None)
+            if isinstance(fmu_path_text, str):
+                fmu_path = Path(fmu_path_text)
+                if fmu_path.is_absolute():
+                    try:
+                        payload["fmu_path"] = os.path.relpath(str(fmu_path), start=str(project_directory))
+                    except ValueError:
+                        payload["fmu_path"] = fmu_path_text
+                else:
+                    pass
+            else:
+                pass
+            return json.dumps(payload, sort_keys=True)
+
+
+def _resolve_project_fmu_config(config_text: str, project_directory: Path | None) -> str:
+    """
+    Rewrite the stored FMU path in one serialized configuration as an absolute runtime path.
+
+    :param config_text: Serialized FMU configuration payload.
+    :param project_directory: Directory containing the VeraGrid project file.
+    :return: Serialized configuration with a resolved absolute FMU path when possible.
+    """
+
+    if project_directory is None:
+        return config_text
+    else:
+        stripped_text: str = config_text.strip()
+        if len(stripped_text) == 0:
+            return config_text
+        else:
+            payload: dict[str, Any] = json.loads(stripped_text)
+            fmu_path_text = payload.get("fmu_path", None)
+            if isinstance(fmu_path_text, str):
+                fmu_path = Path(fmu_path_text)
+                if fmu_path.is_absolute():
+                    pass
+                else:
+                    payload["fmu_path"] = str((project_directory / fmu_path).resolve())
+            else:
+                pass
+            return json.dumps(payload, sort_keys=True)
+
+
+def _resolve_circuit_fmu_paths(circuit: MultiCircuit, project_directory: Path | None) -> None:
+    """
+    Resolve stored FMU configuration paths for every element in the circuit.
+
+    :param circuit: Parsed circuit instance.
+    :param project_directory: Directory containing the VeraGrid project file.
+    :return: None.
+    """
+
+    if project_directory is None:
+        return
+    else:
+        elm: ALL_DEV_TYPES
+        for elm in circuit.get_all_elements_iter():
+            property_name: str
+            for property_name in _FMU_CONFIG_PROPERTY_NAMES:
+                if property_name in elm.registered_properties:
+                    current_value = elm.get_snapshot_value_by_name(property_name)
+                    if isinstance(current_value, str):
+                        elm.set_snapshot_value(property_name, _resolve_project_fmu_config(current_value, project_directory))
+                    else:
+                        pass
+                else:
+                    pass
+
+
+def _to_project_relative_path(path_text: str, project_directory: Path | None) -> str:
+    """
+    Convert one absolute filesystem path into a project-relative path when possible.
+
+    :param path_text: Original path text.
+    :param project_directory: Directory containing the VeraGrid project file.
+    :return: Relative path when conversion is possible.
+    """
+
+    if project_directory is None:
+        return path_text
+    else:
+        normalized_text: str = str(path_text).strip()
+        if len(normalized_text) == 0:
+            return path_text
+        else:
+            candidate = Path(normalized_text)
+            if candidate.is_absolute():
+                try:
+                    return os.path.relpath(str(candidate), start=str(project_directory))
+                except ValueError:
+                    return path_text
+            else:
+                return path_text
 
 
 def get_multiverse_node_metadata(metadata: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
@@ -331,7 +456,7 @@ def gather_model_as_data_frames(circuit: MultiCircuit,
     return dfs
 
 
-def profile_todict(profile: Profile) -> Dict[str, str | bool]:
+def profile_todict(profile: AnyProfile) -> Dict[str, str | bool]:
     """
     Get a dictionary representation of the profile
     :return:
@@ -366,7 +491,7 @@ def profile_todict(profile: Profile) -> Dict[str, str | bool]:
         }
 
 
-def profile_todict_idtag(profile: Profile) -> Dict[str, str]:
+def profile_todict_idtag(profile: AnyProfile) -> Dict[str, str]:
     """
     Get a dictionary representation of the profile
     :return:
@@ -394,7 +519,7 @@ def profile_todict_idtag(profile: Profile) -> Dict[str, str]:
         }
 
 
-def profile_todict_str(profile: Profile) -> Dict[str, str]:
+def profile_todict_str(profile: AnyProfile) -> Dict[str, str]:
     """
     Get a dictionary representation of the profile
     :return:
@@ -430,8 +555,54 @@ def profile_todict_str(profile: Profile) -> Dict[str, str]:
         }
 
 
-def get_profile_from_dict(profile: Profile,
-                          data: Dict[str, Union[str, Union[Any, Dict[str, Any]]]],
+def cast_profile_value(
+    profile: AnyProfile,
+    value: Any,
+    collection: Union[None, Dict[str, Any]] = None,
+) -> Any:
+    """
+    Convert serialized profile payloads into the concrete type required by ``profile``.
+
+    :param profile: Typed profile that will receive the value.
+    :param value: Serialized raw value.
+    :param collection: Optional idtag-to-object dictionary for device references.
+    :return: Converted value.
+    """
+    if value is None or value == "None":
+        return None
+
+    if collection is not None:
+        return collection.get(value, None)
+
+    if isinstance(profile.dtype, DeviceType):
+        return value
+
+    if isinstance(profile.dtype, EnumType):
+        return profile.dtype(value)
+
+    if profile.dtype == bool:
+        if isinstance(value, str):
+            low = value.strip().lower()
+            if low in {"true", "1"}:
+                return True
+            if low in {"false", "0"}:
+                return False
+        return bool(value)
+
+    if profile.dtype == int:
+        return int(value)
+
+    if profile.dtype == float:
+        return float(value)
+
+    if profile.dtype == str:
+        return str(value)
+
+    return value
+
+
+def get_profile_from_dict(profile: AnyProfile,
+                          data: Dict[str, Any | Dict[str, Any]],
                           collection: Union[None, Dict[str, Any]] = None):
     """
     Create a profile from json dict data
@@ -440,39 +611,48 @@ def get_profile_from_dict(profile: Profile,
     :param collection: if the collection is provided, it will be used to convert idtags into objects
     :return: None
     """
-    default_value = data['default']
+    raw_default_value = data['default']
     is_sparse = bool(data['is_sparse'])
-    # profile = Profile(default_value=default_value, is_sparse=bool(data['is_sparse']))
+
+    try:
+        default_value: Any = cast_profile_value(profile=profile, value=raw_default_value, collection=collection)
+    except (TypeError, ValueError):
+        default_value = profile.default_value
+
+    if isinstance(profile.dtype, DeviceType) and default_value == "None":
+        default_value = profile.default_value
 
     if is_sparse:
         sp_data = data['sparse_data']
 
         if collection is None:
-            map_data = {int(key): val for key, val in sp_data['map'].items()}
-
+            map_data = {
+                int(key): cast_profile_value(profile=profile, value=val, collection=collection)
+                for key, val in sp_data['map'].items()
+            }
         else:
-            default_value = collection.get(data['default'], default_value)
-            map_data = {int(key): collection.get(val, default_value) for key, val in sp_data['map'].items()}
-
-        if isinstance(profile.dtype, DeviceType):  # manual correction for buses profile incorrect value
-            if default_value == "None":
-                default_value = profile.default_value
+            map_data = {
+                int(key): cast_profile_value(profile=profile, value=val, collection=collection)
+                for key, val in sp_data['map'].items()
+            }
 
         profile.create_sparse(default_value=default_value,
                               size=data['size'], map_data=map_data)
     else:
 
         if collection is None:
-            arr = data['dense_data']
+            arr = [cast_profile_value(profile=profile, value=i, collection=collection) for i in data['dense_data']]
         else:
-            arr = [collection.get(i, default_value) for i in data['dense_data']]
+            arr = [cast_profile_value(profile=profile, value=i, collection=collection) for i in data['dense_data']]
         profile.set(np.array(arr))
 
     # mark as initialized
     profile.set_initialized()
 
 
-def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict[str, str]:
+def veragrid_object_to_json(elm: ALL_DEV_TYPES,
+                            block_saver: BlockSaver,
+                            project_directory: Path | None = None) -> Dict[str, str]:
     """
 
     :param elm:
@@ -485,7 +665,13 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
         obj = elm.get_snapshot_value(prop=prop)
 
         if prop.tpe in [str, float, int, bool]:
-            data[name] = obj
+            if name in _FMU_CONFIG_PROPERTY_NAMES and isinstance(obj, str):
+                data[name] = _to_project_relative_fmu_config(obj, project_directory)
+            else:
+                if name == "fmu_relative_path" and isinstance(obj, str):
+                    data[name] = _to_project_relative_path(obj, project_directory)
+                else:
+                    data[name] = obj
 
             if prop.has_profile():
                 data[name + '_prof'] = profile_todict(elm.get_profile_by_prop(prop=prop))
@@ -551,7 +737,8 @@ def veragrid_object_to_json(elm: ALL_DEV_TYPES, block_saver: BlockSaver) -> Dict
     return data
 
 
-def gather_model_as_jsons(circuit: MultiCircuit) -> Dict[str, Dict[str, str | float | List[int]]]:
+def gather_model_as_jsons(circuit: MultiCircuit,
+                          project_directory: Path | None = None) -> Dict[str, Dict[str, str | float | List[int]]]:
     """
     Transform a MultiCircuit into a collection of Json files
     :param circuit:
@@ -563,7 +750,7 @@ def gather_model_as_jsons(circuit: MultiCircuit) -> Dict[str, Dict[str, str | fl
 
     data: Dict[str, Union[Dict[str, str], List[Dict[str, str]]]] = dict()
 
-    block_saver = BlockSaver(circuit.rms_var_factory)
+    block_saver = BlockSaver(circuit.var_factory)
 
     # declare objects to iterate  name: [sample object, list of objects, headers]
     object_types = get_objects_dictionary()
@@ -580,7 +767,7 @@ def gather_model_as_jsons(circuit: MultiCircuit) -> Dict[str, Dict[str, str | fl
         if len(lists_of_objects) > 0:
 
             for k, elm in enumerate(lists_of_objects):
-                obj_data = veragrid_object_to_json(elm, block_saver=block_saver)
+                obj_data = veragrid_object_to_json(elm, block_saver=block_saver, project_directory=project_directory)
                 object_json.append(obj_data)
 
         data[object_type_name] = object_json
@@ -1097,7 +1284,7 @@ def search_and_apply_json_profile(json_entry: Dict[str, Dict[str, Union[str, Uni
         # search the profile in the json
         json_profile = json_entry.get(gc_prop.profile_name, None)
 
-        profile: Profile = elm.get_profile(magnitude=gc_prop.name)
+        profile: AnyProfile = elm.get_profile(magnitude=gc_prop.name)
 
         if json_profile is None:
             # the profile was not found, so we fill it with the default stuff
@@ -1384,6 +1571,20 @@ def parse_object_type_from_json(template_elm: ALL_DEV_TYPES,
                 # the object property was not found in the json entry
                 pass
 
+        if template_elm.device_type == DeviceType.Transformer3WDevice:
+            for property_name in ('r12', 'r23', 'r31', 'x12', 'x23', 'x31', 'rate1', 'rate2', 'rate3'):
+                gc_prop = template_elm.registered_properties[property_name]
+                property_value = search_property_into_json(json_entry=json_entry, prop=gc_prop)
+                if property_value is not None:
+                    elm.set_snapshot_value(gc_prop.name, float(property_value))
+
+        if template_elm.device_type == DeviceType.LineDevice:
+            gc_prop = template_elm.registered_properties.get('length', None)
+            if gc_prop is not None:
+                property_value = search_property_into_json(json_entry=json_entry, prop=gc_prop)
+                if property_value is not None and float(property_value) == 0.0:
+                    elm._length = 0.0
+
         # save the element in the dictionary for later
         devices_dict[elm.idtag] = elm
         devices.append(elm)
@@ -1445,6 +1646,7 @@ def handle_legacy_jsons(model_data: Dict[str, List],
 
 def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
                         previous_circuit: Union[MultiCircuit, None] = None,
+                        project_directory: str | Path | None = None,
                         text_func: Union[Callable, None] = None,
                         progress_func: Union[Callable, None] = None,
                         logger: Logger = Logger()) -> MultiCircuit:
@@ -1576,7 +1778,7 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
     # New way of parsing information from .model files (Json files)
     # These files are just .json stored in the model_data inside the zip file
 
-    block_parser = BlockParser(circuit.rms_var_factory)
+    block_parser = BlockParser(circuit.var_factory)
     symbolic_data = data.get('symbolic_data', None)
     if symbolic_data is not None:
         if len(symbolic_data) > 0:
@@ -1762,6 +1964,13 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
 
     if circuit.has_time_series:
         circuit.ensure_profiles_exist()
+
+    resolved_project_directory: Path | None
+    if project_directory is None:
+        resolved_project_directory = None
+    else:
+        resolved_project_directory = Path(project_directory)
+    _resolve_circuit_fmu_paths(circuit, resolved_project_directory)
 
     # Enable auto updates internally only after everything has been filled
     for elm in circuit.get_all_elements_iter():

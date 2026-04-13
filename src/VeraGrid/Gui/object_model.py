@@ -8,7 +8,7 @@ import datetime
 import math
 
 import numpy as np
-from typing import Dict, List, Union
+from typing import Any, Dict, List, Union
 from PySide6 import QtCore, QtWidgets, QtGui
 from enum import EnumMeta
 from VeraGrid.Gui.gui_functions import (IntDelegate, ComboDelegate, TextDelegate, FloatDelegate, ColorPickerDelegate,
@@ -35,7 +35,7 @@ class ObjectsModel(WrappableTableModel):
                  editable=False,
                  transposed=False,
                  check_unique: Union[None, List[str]] = None,
-                 dictionary_of_lists: Union[None, Dict[DeviceType, List[ALL_DEV_TYPES]]] = None):
+                 dictionary_of_lists: Union[None, Dict[Any, List[ALL_DEV_TYPES]]] = None):
         """
 
         :param objects: list of objects associated to the editor
@@ -155,9 +155,9 @@ class ObjectsModel(WrappableTableModel):
                     delegate = ComboDelegate(self.parent, objects, values)
                     F(i, delegate)
 
-                elif tpe in self.dictionary_of_lists:
+                elif self._get_delegate_objects(i) is not None:
                     # foreign key objects drop-down
-                    objs = self.dictionary_of_lists[tpe]
+                    objs = self._get_delegate_objects(i)
                     delegate = ComboDelegate(parent=self.parent,
                                              objects=[None] + objs,
                                              object_names=['None'] + [x.name for x in objs])
@@ -165,6 +165,32 @@ class ObjectsModel(WrappableTableModel):
 
                 else:
                     F(i, None)
+
+    def _get_delegate_objects(self, attr_idx: int) -> List[ALL_DEV_TYPES] | None:
+        """
+        Return the object list used by one foreign-key delegate.
+
+        The GUI first looks for a property-specific list and then falls back to the
+        generic list keyed by the registered property type.
+
+        :param attr_idx: Property index inside the visible table model.
+        :return: Delegate object list when available.
+        """
+
+        prop_name = self.attributes[attr_idx]
+        tpe = self.attribute_types[attr_idx]
+        specific_key = (prop_name, tpe)
+
+        if specific_key in self.dictionary_of_lists:
+            return self.dictionary_of_lists[specific_key]
+        else:
+            if prop_name in self.dictionary_of_lists:
+                return self.dictionary_of_lists[prop_name]
+            else:
+                if tpe in self.dictionary_of_lists:
+                    return self.dictionary_of_lists[tpe]
+                else:
+                    return None
 
     def update(self):
         """

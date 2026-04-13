@@ -4,20 +4,20 @@
 # SPDX-License-Identifier: MPL-2.0
 import cProfile
 import pstats
+import os
+import sys
 import numpy as np
 from typing import Any, cast
 
-# import sys
-# import os
+SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
+REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, '..', '..'))
+SRC_ROOT = os.path.join(REPO_ROOT, 'src')
 
-# REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
-# SRC_ROOT = os.path.join(REPO_ROOT, 'src')
-#
-# if SRC_ROOT not in sys.path:
-#     sys.path.insert(0, SRC_ROOT)
-#
-# if REPO_ROOT not in sys.path:
-#     sys.path.insert(0, REPO_ROOT)
+if SRC_ROOT not in sys.path:
+    sys.path.insert(0, SRC_ROOT)
+
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 import matplotlib.pyplot as plt
 
@@ -152,6 +152,11 @@ pf_options = gce.PowerFlowOptions(
 
 pf_results = gce.power_flow(grid=circuit, options=pf_options)
 
+vsc.control1 = emt_control1
+vsc.control2 = emt_control2
+vsc.control1_val = p_transfer_mw
+vsc.control2_val = q_transfer_mvar
+
 print("="*60)
 print("POWER FLOW RESULTS")
 print("="*60)
@@ -175,42 +180,31 @@ for bus in circuit.buses:
 # =====================================================================
 
 # Generator model (Thevenin equivalent)
-gen_mdl = get_generator_thevenin_rl_emt_template(vf = circuit.emt_var_factory).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf = circuit.var_factory).block
 
 # Transformer model (series RL with ideal transformer)
-trafo_mdl = get_transformer_emt_template(vf = circuit.emt_var_factory, grid=circuit, trafo=transformer, name=transformer.name).block
+# trafo_mdl = get_transformer_emt_template(vf=circuit.var_factory, name=transformer.name).block
+trafo_mdl = get_transformer_emt_template(vf=circuit.var_factory, name=transformer.name).block
 
 # VSC model (standard converter: DC -> AC with power balance)
 vsc_mdl = get_emt_ideal_converter(
-    vf=circuit.emt_var_factory,
+    vf=circuit.var_factory,
     name=vsc.name,
-    sbase=circuit.Sbase,
-    fbase=circuit.fBase,
-    P_ref0=p_transfer_mw,
-    Q_ref0=q_transfer_mvar,
-    P_loss0=float(pf_results.losses_vsc[circuit.get_vsc().index(vsc)]),
-    control1=emt_control1,
-    control2=emt_control2,
-    control1_val=p_transfer_mw,
-    control2_val=q_transfer_mvar,
 ).block
 
 # DC Load model (constant resistance load around the PF point)
-dc_load_r_pu = circuit.Sbase / p_transfer_mw
 dc_load_mdl = get_dc_load_emt_template(
-    grid=circuit,
-    P_dc=dc_load.P,
-    R_dc=dc_load_r_pu,
+    vf=circuit.var_factory,
     name="dc_load_emt"
 ).block
 
 # =====================================================================
 # ASSIGN MODELS TO DEVICES
 # =====================================================================
-set_emt_model(device=gen1, model=gen_mdl, var_factory=circuit.emt_var_factory)
-set_emt_model(device=transformer, model=trafo_mdl, var_factory=circuit.emt_var_factory)
-set_emt_model(device=vsc, model=vsc_mdl, var_factory=circuit.emt_var_factory)
-set_emt_model(device=dc_load, model=dc_load_mdl, var_factory=circuit.emt_var_factory)
+set_emt_model(device=gen1, model=gen_mdl, var_factory=circuit.var_factory)
+set_emt_model(device=transformer, model=trafo_mdl, var_factory=circuit.var_factory)
+set_emt_model(device=vsc, model=vsc_mdl, var_factory=circuit.var_factory)
+set_emt_model(device=dc_load, model=dc_load_mdl, var_factory=circuit.var_factory)
 
 ###########################################################################################################################
 # 3ph POWER FLOW (for EMT initialization)
@@ -259,12 +253,12 @@ if pf_res_3ph.converged:
 ###########################################################################################################################
 
 # Solver configuration
-CHOSEN_SOLVER = "SYMBOLIC"
+CHOSEN_SOLVER = "COMPILED"
 RUN_ALL_SOLVERS = False
-ENABLE_PLOTS = True
+ENABLE_PLOTS = False
 ENABLE_NEWTON_TRACE = False
 DENSE_THRESHOLD = 0
-SOLVER_VERBOSE = True
+SOLVER_VERBOSE = False
 
 SOLVER_TYPE_MAP = {
     "SYMBOLIC": EmtSolverTypes.Symbolic,
@@ -287,7 +281,7 @@ def create_problem() -> EmtProblemDae:
     local_problem = EmtProblemDae(
         grid=circuit,
         options=options,
-        pf_results_3Ph=None,
+        pf_results_3ph=None,
         pf_results=pf_results
     )
     # local_problem = EmtProblemDae(
@@ -406,10 +400,9 @@ build_solver_backend(CHOSEN_SOLVER, solver, problem)
 boundary_updater = cast(Any, problem)
 t, y, dy = solver.simulate(boundary_updater=boundary_updater)
 
-if hasattr(solver, "get_backend_build_stats"):
-    print("StructuralCompiled backend build stats")
-    for key, value in solver.get_backend_build_stats().items():
-        print(f"  {key}: {value:.6f}s")
+print("StructuralCompiled backend build stats")
+for key, value in solver.get_backend_build_stats().items():
+    print(f"  {key}: {value:.6f}s")
 
 # =====================================================================
 # PROFILING REPORT

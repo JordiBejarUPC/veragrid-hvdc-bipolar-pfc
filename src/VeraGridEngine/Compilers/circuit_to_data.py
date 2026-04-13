@@ -1038,8 +1038,9 @@ def fill_generator_parent(
     data.scalable[k] = elm.scalable
 
     data.p[k] = elm.get_P_at(t_idx)
+    data.q[k] = elm.get_Q_at(t_idx)
     data.active[k] = elm.get_active_at(t_idx)
-    data.pf[k] = elm.get_Pf_at(t_idx)
+
     data.v[k] = elm.get_Vset_at(t_idx)
     data.pmax[k] = elm.get_Pmax_at(t_idx)
     data.pmin[k] = elm.get_Pmin_at(t_idx)

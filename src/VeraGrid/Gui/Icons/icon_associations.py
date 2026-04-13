@@ -36,6 +36,7 @@ device_type_icons = {
     DeviceType.Transformer2WDevice.value: ":/Icons/icons/to_transformer.png",
     DeviceType.WindingDevice.value: ":/Icons/icons/winding.png",
     DeviceType.Transformer3WDevice.value: ":/Icons/icons/transformer3w.png",
+    DeviceType.TransformerNwDevice.value: ":/Icons/icons/transformerNw.png",
     DeviceType.SeriesReactanceDevice.value: ":/Icons/icons/reactance.png",
     DeviceType.HVDCLineDevice.value: ":/Icons/icons/to_hvdc.png",
     DeviceType.VscDevice.value: ":/Icons/icons/vsc.png",
@@ -70,6 +71,8 @@ device_type_icons = {
     DeviceType.EmtEventsGroupDevice.value: ":/Icons/icons/dyn_gray.png",
     DeviceType.EmtEventDevice.value: ":/Icons/icons/dyn_gray.png",
 
+    "Templates": ":/Icons/icons/dyn_gray.png",
+
     "Associations": ":/Icons/icons/associations.png",
     DeviceType.Technology.value: ":/Icons/icons/technology.png",
     DeviceType.FuelDevice.value: ":/Icons/icons/fuel.png",
@@ -98,5 +101,6 @@ device_type_icons = {
     DeviceType.TransformerTypeDevice.value: ":/Icons/icons/to_transformer.png",
     DeviceType.RmsModelTemplateDevice.value: ":/Icons/icons/dyn_gray.png",
     DeviceType.EmtModelTemplateDevice.value: ":/Icons/icons/dyn_gray.png",
+    DeviceType.FmuTemplateDevice.value: ":/Icons/icons/dyn_gray.png",
     DeviceType.DynamicModelHostDevice.value: ":/Icons/icons/dyn_gray.png",
 }

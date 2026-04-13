@@ -89,13 +89,16 @@ class VarFactory(EditableDevice):
         self._var_dict[v.uid] = v
         return v
 
-    def get_var(self, uid: int) -> Var:
+    def get_var(self, uid: int) -> Var | None:
         """
         Gets a Var from the class
         :param uid:
         :return:
         """
-        return self._var_dict[uid]
+        if uid is not None:
+            return self._var_dict[uid]
+        else:
+            return None
 
     def add_diff_var(self,
                      name: str,
@@ -265,3 +268,13 @@ class VarFactory(EditableDevice):
             self._vars_info[dev] = [var]
         else:
             var_list.append(var)
+
+    def find_var_or_diff_var(self, var_uid: int|None):
+        if var_uid in self.get_vars_dict():
+            return self.get_var(var_uid)
+        elif var_uid in self.get_diff_var_dict():
+            return self.get_diff_var(var_uid)
+        elif var_uid == None:
+            return None
+        else:
+            raise ValueError(f"Var with uid:{var_uid} not added in VarFactory as var or diff_var.")
