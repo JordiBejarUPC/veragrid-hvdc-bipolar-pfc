@@ -2,50 +2,46 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from __future__ import annotations
 
 from typing import Union, Tuple
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCProp
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
+from VeraGridEngine.Devices.Events.remedial_action_group import RemedialActionGroup
 from VeraGridEngine.enumerations import ContingencyOperationTypes, DeviceType
-from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
 
 
-class Contingency(PointerDeviceParent):
+class RemedialAction(PointerDeviceParent):
     """
-    The Contingency object
+    The RemedialAction object
     """
-    __slots__ = (
-        '_prop',
-        '_value',
-        '_group',
-    )
+    __slots__ = ('_prop', '_value', '_group')
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
         GCProp(key='prop', units='', tpe=ContingencyOperationTypes,
                       definition=f'Object property to change'),
         GCProp(key='value', units='', tpe=float, definition='Property value'),
-        GCProp(key='group', units='', tpe=DeviceType.ContingencyGroupDevice, definition='Contingency group'),
+        GCProp(key='group', units='', tpe=DeviceType.RemedialActionGroupDevice,
+                      definition='Remedial action group'),
     )
 
     def __init__(self,
                  device: EditableDevice | None = None,
                  idtag: Union[str, None] = None,
-                 name="Contingency",
+                 name="Remedial action",
                  code='',
                  prop: ContingencyOperationTypes = ContingencyOperationTypes.Active,
                  value=0.0,
-                 group: Union[None, ContingencyGroup] = None,
+                 group: Union[None, RemedialActionGroup] = None,
                  comment: str = ""):
         """
-        Contingency
+        RemedialAction
         :param device: Some device to point at
         :param idtag: String. Element unique identifier
         :param name: String. Contingency name
         :param code: String. Contingency code name
         :param prop: String. Property to modify when contingency is triggered out
         :param value: Float. Property value to apply when contingency happens
-        :param group: ContingencyGroup. Contingency group
+        :param group: RemedialActionGroup. RemedialAction group
         """
 
         PointerDeviceParent.__init__(self,
@@ -53,13 +49,13 @@ class Contingency(PointerDeviceParent):
                                      device=device,
                                      code=code,
                                      name=name,
-                                     device_type=DeviceType.ContingencyDevice,
+                                     device_type=DeviceType.RemedialActionDevice,
                                      comment=comment)
 
         # Contingency type
         self._prop: ContingencyOperationTypes = prop
         self._value = value
-        self._group: ContingencyGroup = group
+        self._group: RemedialActionGroup = group
 
 
     @property
@@ -95,10 +91,11 @@ class Contingency(PointerDeviceParent):
 
     @value.setter
     def value(self, val: float):
-        self._value = float(val)
+        val = float(val)
+        self._value = val
 
     @property
-    def group(self) -> ContingencyGroup:
+    def group(self) -> RemedialActionGroup:
         """
         Contingency group
         :return:
@@ -106,7 +103,7 @@ class Contingency(PointerDeviceParent):
         return self._group
 
     @group.setter
-    def group(self, val: ContingencyGroup):
+    def group(self, val: RemedialActionGroup):
         self._group = val
 
     @property

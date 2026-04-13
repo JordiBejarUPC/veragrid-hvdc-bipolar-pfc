@@ -4,12 +4,11 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from typing import Union, Any, Tuple
-import numpy as np
 
 from VeraGridEngine import SubObjectType
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCProp
 from VeraGridEngine.Devices.Parents.pointer_device_parent import PointerDeviceParent
-from VeraGridEngine.Devices.Aggregation.emt_events_group import EmtEventsGroup
+from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import DeviceType
 

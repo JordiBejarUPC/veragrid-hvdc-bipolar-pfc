@@ -39,7 +39,9 @@ def test_short_circuit():
             device=main_circuit.buses[16],
             fault_type=FaultType.LLLG,
             method=MethodShortCircuit.sequences,
-            phases=PhasesShortCircuit.abc
+            phases=PhasesShortCircuit.abc,
+            r_fault=0.0,
+            x_fault=0.0
         )
     )
 

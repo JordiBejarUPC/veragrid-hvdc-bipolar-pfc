@@ -35,7 +35,7 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
-from VeraGridEngine.Devices.Aggregation.emt_events_group import EmtEventsGroup
+from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.Aggregation import EmtEvent
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template

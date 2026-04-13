@@ -11,7 +11,6 @@ import numpy as np
 from pathlib import Path
 from time import perf_counter
 from typing import Any, Dict, List, Tuple, cast
-import pandas as pd
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
 SRC_ROOT = os.path.join(REPO_ROOT, 'src')
@@ -22,7 +21,6 @@ if SRC_ROOT not in sys.path:
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
-import matplotlib.pyplot as plt
 from trunk.dynamics_emt.support.emt_plot_exports import (
     extract_three_phase_matrix,
     get_plot_results_directory,
@@ -61,7 +59,7 @@ from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 
-from VeraGridEngine.Devices.Aggregation.emt_events_group import EmtEventsGroup
+from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.Aggregation import EmtEvent
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector

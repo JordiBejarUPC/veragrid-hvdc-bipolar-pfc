@@ -10,14 +10,12 @@ This script validates the phasor-based approach using complete generator models
 (genqec + exciter + governor + stabilizer) with Vr, Vi inputs instead of Vm, Va.
 """
 
-import numpy as np
 import sys, os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
 
 from matplotlib import pyplot as plt
 
 import VeraGridEngine.api as gce
-from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor import RmsProblemPhasor
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
@@ -27,14 +25,13 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.line_phasor_rms_template import get_line_phasor_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.load_phasor_current_rms_template import get_load_phasor_current_rms_template
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms, get_genqec_rms
-from VeraGridEngine.Templates.Rms.genqec_phasor_rms_template import get_genqec_phasor, get_complete_generator_template_phasor
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
+from VeraGridEngine.Templates.Rms.genqec_phasor_rms_template import get_complete_generator_template_phasor
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 from VeraGridEngine.Devices.Aggregation import RmsEvent
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowRefferenceType
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
 from VeraGridEngine.Utils.Symbolic.block import Block
-import VeraGridEngine.api as vge
 
 
 def find_name_in_block(name: str, block: Block):

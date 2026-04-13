@@ -11,7 +11,6 @@ import os
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src'))
 
-import numpy as np
 import VeraGridEngine.api as vge
 from VeraGridEngine.enumerations import ConverterControlType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
@@ -22,7 +21,7 @@ from VeraGridEngine.Templates.Rms.dc_voltage_source import DCCurrentSource
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Aggregation import RmsEvent
 from VeraGridEngine.Utils.Symbolic.block import Block
 

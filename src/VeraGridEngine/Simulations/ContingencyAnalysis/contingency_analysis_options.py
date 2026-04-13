@@ -6,7 +6,7 @@ from typing import List, Union, Tuple
 from VeraGridEngine.enumerations import ContingencyMethod, SubObjectType, DeviceType
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions, SolverType
 from VeraGridEngine.Simulations.LinearFactors.linear_analysis_options import LinearAnalysisOptions
-from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
+from VeraGridEngine.Devices.Events.contingency_group import ContingencyGroup
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 

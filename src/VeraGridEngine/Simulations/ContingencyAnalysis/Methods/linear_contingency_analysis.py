@@ -102,7 +102,9 @@ def linear_contingency_analysis(nc: NumericalCircuit,
                 injections = None
 
             c_flow = multi_contingency.get_contingency_flows(base_branches_flow=flows_n, injections=injections)
-            c_loading = c_flow / (nc.passive_branch_data.contingency_rates + 1e-9)
+
+            # NOTE: this is accounted for to be in the normal rate base in the analyze method
+            c_loading = c_flow / (nc.passive_branch_data.rates + 1e-9)
 
             results.Sf[ic, :] = c_flow  # already in MW
             results.Sbus[ic, :] = Pbus

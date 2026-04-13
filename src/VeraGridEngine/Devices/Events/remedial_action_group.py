@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import Union, Tuple
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, DeviceType, GCProp
-from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
+from VeraGridEngine.Devices.Events.contingency_group import ContingencyGroup
 
 
 class RemedialActionGroup(EditableDevice):
