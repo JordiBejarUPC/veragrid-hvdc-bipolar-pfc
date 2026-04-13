@@ -17,7 +17,7 @@ from scipy.sparse import csc_matrix
 from VeraGridEngine.IO.file_system import opf_file_path
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.Aggregation.inter_aggregation_info import InterAggregationInfo
-from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
+from VeraGridEngine.Devices.Events.contingency_group import ContingencyGroup
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Fluid.fluid_node import FluidNode

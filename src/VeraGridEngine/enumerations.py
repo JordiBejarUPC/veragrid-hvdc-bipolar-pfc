@@ -1512,6 +1512,7 @@ class StudyResultsType(Enum):
     InvestmentEvaluations = 'InvestmentEvaluations'
     NetTransferCapacity = 'NetTransferCapacity'
     NetTransferCapacityTimeSeries = 'NetTransferCapacityTimeSeries'
+    NodeGroups = 'NodeGroups'
     StochasticPowerFlow = 'StochasticPowerFlow'
     RmsSimulation = "RmsSimulation"
     EmtSimulation = "EmtSimulation"

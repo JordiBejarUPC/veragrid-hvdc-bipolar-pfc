@@ -15,7 +15,7 @@ def test_short_circuit_vsc_3buses():
     bus_dc = vge.Bus(name='Bus DC', xpos=0, ypos=0, is_dc=True)
     grid.add_bus(obj=bus_dc)
 
-    bus_ac = vge.Bus(name='Bus AC', xpos=0, ypos=300, r_fault=0.2)
+    bus_ac = vge.Bus(name='Bus AC', xpos=0, ypos=300)
     grid.add_bus(obj=bus_ac)
 
     bus_slack = vge.Bus(name='Bus Slack', xpos=0, ypos=600, is_slack=True)
@@ -80,7 +80,8 @@ def test_short_circuit_vsc_3buses():
     grid.add_short_circuit_event(
         vge.ShortCircuitEvent(
             device=grid.buses[1],
-            method=MethodShortCircuit.sequences_vsc
+            method=MethodShortCircuit.sequences_vsc,
+            r_fault=0.2
         )
     )
 

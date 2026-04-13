@@ -6,8 +6,8 @@
 from typing import Union, Any, Tuple
 # from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice, GCProp
-from VeraGridEngine.Devices.Aggregation.dynamic_plot import DynamicPlot
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.dynamic_plot import DynamicPlot
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import DeviceType, SubObjectType
 

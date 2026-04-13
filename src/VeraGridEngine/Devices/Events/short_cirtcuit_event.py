@@ -20,6 +20,8 @@ class ShortCircuitEvent(PointerDeviceParent):
         '_method',
         '_phases',
         '_active',
+        '_r_fault',
+        '_x_fault',
     )
 
     LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
@@ -27,7 +29,11 @@ class ShortCircuitEvent(PointerDeviceParent):
         GCProp(key='method', units='', tpe=MethodShortCircuit, definition='Method of short circuit'),
         GCProp(key='phases', units='', tpe=PhasesShortCircuit, definition='Phases involved'),
         GCProp(key='active', units='', tpe=bool,
-                      definition='If true the short-circuit activates when calculated, otherwise is deactivated.'),
+               definition='If true the short-circuit activates when calculated, otherwise is deactivated.'),
+        GCProp(key='r_fault', units='p.u.', tpe=float,
+               definition='Resistance of the fault.This is used for short circuit studies.', profile_name=''),
+        GCProp(key='x_fault', units='p.u.', tpe=float,
+               definition='Reactance of the fault.This is used for short circuit studies.', profile_name=''),
     )
 
     def __init__(self,
@@ -39,15 +45,22 @@ class ShortCircuitEvent(PointerDeviceParent):
                  fault_type: FaultType = FaultType.LLLG,
                  method: MethodShortCircuit = MethodShortCircuit.sequences,
                  phases: PhasesShortCircuit = PhasesShortCircuit.abc,
+                 r_fault=0.0,
+                 x_fault=0.0,
                  comment: str = ""):
         """
-        Investment
+        Short circuit event
         :param device: Some device to point at
         :param idtag: String. Element unique identifier
         :param name: String. Contingency name
         :param code: String. Contingency code name
         :param active: If true the investment activates when applied, otherwise is deactivated
+        :param fault_type: FaultType
+        :param method: MethodShortCircuit
+        :param phases: PhasesShortCircuit
         :param comment: Comment
+        :param r_fault: Resistance of the fault in per unit (SC only)
+        :param x_fault: Reactance of the fault in per unit (SC only)
         """
 
         PointerDeviceParent.__init__(self,
@@ -62,7 +75,9 @@ class ShortCircuitEvent(PointerDeviceParent):
         self._method: MethodShortCircuit = method
         self._phases: PhasesShortCircuit = phases
         self.active: bool = active
-
+        # short circuit impedance
+        self._r_fault = float(r_fault)
+        self._x_fault = float(x_fault)
 
     def _check(self):
 
@@ -138,3 +153,48 @@ class ShortCircuitEvent(PointerDeviceParent):
         :return: None
         """
         self._active = bool(val)
+
+    @property
+    def r_fault(self) -> float:
+        """
+        Get ``r_fault``.
+
+        :return: float
+        """
+        return self._r_fault
+
+    @r_fault.setter
+    def r_fault(self, val: float) -> None:
+        """
+        Set ``r_fault``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._r_fault = float(val)
+
+    @property
+    def x_fault(self) -> float:
+        """
+        Get ``x_fault``.
+
+        :return: float
+        """
+        return self._x_fault
+
+    @x_fault.setter
+    def x_fault(self, val: float) -> None:
+        """
+        Set ``x_fault``.
+
+        :param val: Value to assign.
+        :return: None
+        """
+        self._x_fault = float(val)
+
+    def get_fault_impedance(self) -> complex:
+        """
+        Get the fault impedance
+        :return: complex value of fault impedance
+        """
+        return complex(self.r_fault, self.x_fault)
