@@ -999,10 +999,13 @@ class PolynomialMatrixBuilder:
         to evaluate the small-signal stability of the linearized system.
 
         Algorithmically, this function evaluates the generalized eigenvalue problem (A*v = lambda*E*v).
-        Before calling the QZ algorithm, it performs 'Singular Pencil Patching' strictly using
-        sparse Coordinate data to neutralize structural null-spaces. Empty rows and columns
-        are patched with a -1.0 on the A diagonal to prevent numerical divergence.
-        After extracting the finite physical modes, it computes the participation matrix.
+        Before calling the solver, it performs 'Singular Pencil Patching' strictly using
+        sparse Coordinate data to neutralize structural null-spaces.
+
+        It natively uses ARPACK sparse eigenvalue decomposition (`eigs`) to find the most
+        dominant modes for large systems. For small systems (or strictly singular DAEs where
+        ARPACK fails), it seamlessly drops down to dense QZ decomposition to guarantee the
+        complete eigenvalue spectrum is found.
         """
         current_a, current_e = self.A, self.E
         if current_a is None or current_e is None: return None, None, None, None, False, None
@@ -1012,37 +1015,28 @@ class PolynomialMatrixBuilder:
             patched_rows, patched_cols = 0, 0
 
             # --- SPARSE SINGULAR PENCIL PATCHING ---
-            # Use LIL format for fast diagonal mutation
             A_patched = current_a.tolil()
-
-            # 1. Fast Sparse Row Check (using CSR format)
             A_csr = current_a.tocsr()
             E_csr = current_e.tocsr()
 
+            # 1. Fast Sparse Row Check
             for i in range(n_dims):
-                # Extract non-zero data for row i
                 a_data = A_csr.data[A_csr.indptr[i]:A_csr.indptr[i + 1]]
                 e_data = E_csr.data[E_csr.indptr[i]:E_csr.indptr[i + 1]]
-
                 a_max = np.max(np.abs(a_data)) if len(a_data) > 0 else 0.0
                 e_max = np.max(np.abs(e_data)) if len(e_data) > 0 else 0.0
-
                 if a_max < 1e-10 and e_max < 1e-10:
                     A_patched[i, i] = -1.0
                     patched_rows += 1
 
-            # 2. Fast Sparse Column Check (using CSC format)
+            # 2. Fast Sparse Column Check
             A_csc = current_a.tocsc()
             E_csc = current_e.tocsc()
-
             for j in range(n_dims):
-                # Extract non-zero data for column j
                 a_data = A_csc.data[A_csc.indptr[j]:A_csc.indptr[j + 1]]
                 e_data = E_csc.data[E_csc.indptr[j]:E_csc.indptr[j + 1]]
-
                 a_max = np.max(np.abs(a_data)) if len(a_data) > 0 else 0.0
                 e_max = np.max(np.abs(e_data)) if len(e_data) > 0 else 0.0
-
                 if a_max < 1e-10 and e_max < 1e-10:
                     A_patched[j, j] = -1.0
                     patched_cols += 1
@@ -1051,14 +1045,43 @@ class PolynomialMatrixBuilder:
                 print(
                     f"\n[+] Sparse QZ Pre-conditioning: Neutralized {patched_rows} empty rows and {patched_cols} empty columns.")
 
-            # Convert to dense ONLY for the final QZ eigenvalue decomposition
-            # (scipy.linalg.eig is required to get ALL modes and left eigenvectors simultaneously)
-            A_dense = A_patched.toarray()
-            E_dense = current_e.toarray()
+            # --- EIGENVALUE DECOMPOSITION ROUTING ---
+            # Threshold: If N < 150, dense is practically instantaneous and returns ALL poles.
+            # If N >= 150, sparse ARPACK is used to prevent OOM/slowdown, returning Top 50 poles.
+            SPARSE_THRESHOLD = 150
+            used_sparse = False
 
-            # Note: Must be linalg.eig (dense SciPy), NOT sparse.eig
-            evals, evecs_left_raw, evecs_right_raw = linalg.eig(A_dense, b=E_dense, left=True, right=True)
+            if n_dims >= SPARSE_THRESHOLD:
+                k_modes = min(50, n_dims - 2)
+                if k_modes > 0:
+                    try:
+                        # 1. Compute Right Eigenvectors
+                        evals_r, evecs_r = sparse.linalg.eigs(A_patched, k=k_modes, M=current_e, which='LR')
 
+                        # 2. Compute Left Eigenvectors (solve transposed system)
+                        evals_l, evecs_l = sparse.linalg.eigs(A_patched.T, k=k_modes, M=current_e.T, which='LR')
+
+                        # 3. Sort geometrically to align left and right sets
+                        idx_r = np.argsort(evals_r)
+                        idx_l = np.argsort(evals_l)
+
+                        evals = evals_r[idx_r]
+                        evecs_right_raw = evecs_r[:, idx_r]
+                        evecs_left_raw = evecs_l[:, idx_l]
+
+                        used_sparse = True
+                    except Exception as sparse_err:
+                        if self.verbose:
+                            print(f"[*] Sparse ARPACK failed (strict DAE singularity). Fallback to dense QZ...")
+                        used_sparse = False
+
+            if not used_sparse:
+                # Dense SciPy computes the complete un-truncated spectrum natively
+                A_dense = A_patched.toarray()
+                E_dense = current_e.toarray()
+                evals, evecs_left_raw, evecs_right_raw = linalg.eig(A_dense, b=E_dense, left=True, right=True)
+
+            # --- MODE FILTERING AND PARTICIPATION ---
             valid_idx = np.isfinite(evals)
             evals = evals[valid_idx]
             evecs_left = evecs_left_raw[:, valid_idx].astype(complex)
