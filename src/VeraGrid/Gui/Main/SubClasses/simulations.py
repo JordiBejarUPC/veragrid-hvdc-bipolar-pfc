@@ -3505,14 +3505,14 @@ class SimulationsMain(TimeEventsMain):
                                                       pf_results_3ph=pf_results_3ph)
 
                         self.session.run(drv,
-                                         post_func=self.post_rms,
+                                         post_func=self.post_emt,
                                          prog_func=self.ui.progressBar.setValue,
                                          text_func=self.ui.progress_label.setText)
 
                     elif pf_results is not None:
 
                         # self.add_simulation(SimulationTypes.RmsDynamic_run)
-                        self.ui.progress_label.setText('Running rms simulation from balanced power flow results ...')
+                        self.ui.progress_label.setText('Running emt simulation from balanced power flow results ...')
                         QtGui.QGuiApplication.processEvents()
                         self.LOCK()
 
@@ -3521,7 +3521,7 @@ class SimulationsMain(TimeEventsMain):
                                                       pf_results=pf_results)
 
                         self.session.run(drv,
-                                         post_func=self.post_rms,
+                                         post_func=self.post_emt,
                                          prog_func=self.ui.progressBar.setValue,
                                          text_func=self.ui.progress_label.setText)
 
@@ -3539,7 +3539,7 @@ class SimulationsMain(TimeEventsMain):
 
         :return:
         """
-        _, results = self.session.rms_dynamic_simulation
+        _, results = self.session.emt_dynamic_simulation
 
         if results is not None:
 
@@ -3548,7 +3548,7 @@ class SimulationsMain(TimeEventsMain):
             self.update_available_results()
 
         else:
-            warning_msg('There are no rms simulation results.', 'Rms simulation')
+            warning_msg('There are no emt simulation results.', 'Rms simulation')
 
         if not self.session.is_anything_running():
             self.UNLOCK()
