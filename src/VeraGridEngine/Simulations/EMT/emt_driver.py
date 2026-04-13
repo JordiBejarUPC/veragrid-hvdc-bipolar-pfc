@@ -16,10 +16,6 @@ from VeraGridEngine.Simulations.EMT.emt_solver_factory import build_emt_solver
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
-from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
-from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
-from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
-from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
 from VeraGridEngine.IO.fmu.importer import build_emt_boundary_updater
 from VeraGridEngine.basic_structures import Vec, StrVec
@@ -30,7 +26,6 @@ from VeraGridEngine.enumerations import EngineType, SimulationTypes
 
 class EmtSimulationDriver(DriverTemplate):
     __slots__ = (
-        "solvers_dict",
         "pf_results_3Ph",
         "pf_results",
         "options",
@@ -61,12 +56,6 @@ class EmtSimulationDriver(DriverTemplate):
         """
 
         DriverTemplate.__init__(self, grid=grid, engine=engine)
-
-        self.solvers_dict = {EmtSolverTypes.Symbolic: JitSymbolicSolver,
-                             EmtSolverTypes.Automatic: JitAdSolver,
-                             EmtSolverTypes.StructuralAD: StructuralVectorizedSolver,
-                             EmtSolverTypes.StructuralCompiled: StructuralCompiledSolver
-                             }
 
         self.grid = grid
 
@@ -102,6 +91,7 @@ class EmtSimulationDriver(DriverTemplate):
 
         self.progress_signal.emit(0)
 
+        # set emt events groups
         emt_events_groups = (self.grid.emt_events_groups
                              if self.grid.emt_events_groups is None
                              else self.grid.emt_events_groups)
@@ -111,9 +101,11 @@ class EmtSimulationDriver(DriverTemplate):
         steps = int(np.ceil((self.options.simulation_time - 0) / self.options.time_step))
         t: Vec = np.arange(steps + 1) * self.options.time_step
 
+        # initialize buses
         for bus in self.grid.buses:
             get_bus_emt_template(self.grid, bus)
 
+        # create the problem
         problem = build_emt_problem(
             grid=self.grid,
             options=self.options,
@@ -123,6 +115,7 @@ class EmtSimulationDriver(DriverTemplate):
         )
         self.problem = problem
 
+        # create the results
         self.results = EmtResults(
             time_array=pd.DatetimeIndex(pd.to_datetime(t * 1e9)),
             emt_events_group_names=emt_events_group_names,
@@ -179,12 +172,6 @@ class EmtSimulationDriver(DriverTemplate):
 
             self.results.values[:, :, group_idx] = y
             self.results.diff_values[:, :, group_idx] = dy
-
-            # if not well_initialized:
-            #     self.logger.add_warning("Not well initialized", device=rms_events_group.name)
-            #
-            # if not converged:
-            #     self.logger.add_warning("Not converged", device=rms_events_group.name)
 
             self.progress_signal.emit(90)
 

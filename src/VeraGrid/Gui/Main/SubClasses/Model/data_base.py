@@ -1010,10 +1010,19 @@ class DataBaseTableMain(DiagramsMain):
                             pass
 
                     elif elm_type == DeviceType.RmsModelTemplateDevice.value:
+                        # self.rms_model_Editor_window = DynamicBlockEditorGUI(
+                        #     var_factory=self.circuit.var_factory,
+                        #     block=elm.block,
+                        #     api_object=elm,
+                        #     mode=DynamicEditorMode.RMS,
+                        #     templates_list=self.circuit.get_dynamic_templates_by_domain(FmuTemplateDomain.RMS),
+                        #     circuit=self.circuit,
+                        #     main_editor=True,
+                        # )
                         self.rms_model_Editor_window = DynamicBlockEditorGUI(
                             var_factory=self.circuit.var_factory,
                             block=elm.block,
-                            api_object=elm,
+                            api_object=None,
                             mode=DynamicEditorMode.RMS,
                             templates_list=self.circuit.get_dynamic_templates_by_domain(FmuTemplateDomain.RMS),
                             circuit=self.circuit,
@@ -1023,10 +1032,19 @@ class DataBaseTableMain(DiagramsMain):
                             elm.block = self.rms_model_Editor_window.main_block
 
                     elif elm_type == DeviceType.EmtModelTemplateDevice.value:
+                        # self.rms_model_Editor_window = DynamicBlockEditorGUI(
+                        #     var_factory=self.circuit.var_factory,
+                        #     block=elm.block,
+                        #     api_object=elm,
+                        #     mode=DynamicEditorMode.EMT,
+                        #     templates_list=self.circuit.get_dynamic_templates_by_domain(FmuTemplateDomain.EMT),
+                        #     circuit=self.circuit,
+                        #     main_editor=True,
+                        # )
                         self.rms_model_Editor_window = DynamicBlockEditorGUI(
                             var_factory=self.circuit.var_factory,
                             block=elm.block,
-                            api_object=elm,
+                            api_object=None,
                             mode=DynamicEditorMode.EMT,
                             templates_list=self.circuit.get_dynamic_templates_by_domain(FmuTemplateDomain.EMT),
                             circuit=self.circuit,
