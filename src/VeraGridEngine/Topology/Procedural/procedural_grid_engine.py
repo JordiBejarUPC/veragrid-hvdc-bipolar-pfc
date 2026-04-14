@@ -8,7 +8,7 @@ import random
 import numpy as np
 import VeraGridEngine.Devices as dev
 from VeraGridEngine.enumerations import ProceduralGridMethods
-from VeraGridEngine.basic_structures import Mat, Vec
+from VeraGridEngine.basic_structures import Mat, Vec, Logger
 from scipy.spatial.distance import cdist
 from scipy.sparse.csgraph import minimum_spanning_tree
 from scipy.special import gammaincinv
@@ -21,8 +21,6 @@ from VeraGridEngine.Topology.Procedural.procedural_grid_debugger import Procedur
 if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 
-# TODO: Save all prints in Logger class
-# TODO: Add pop up window preventing to add voltages that don't have a template
 
 def coord_calc(current_bus_lon: float, current_bus_lat: float, length: float, coord_out: Vec):
     """
@@ -188,7 +186,8 @@ class ProceduralGridGraph:
     def __init__(self,
                  target_buses: List[dev.Bus],
                  candidate_buses: List[dev.Bus],
-                 max_iterations: int = 1000, ):
+                 max_iterations: int = 1000,
+                 logger: Logger | None = None):
         """
 
         :param target_buses:
@@ -198,6 +197,7 @@ class ProceduralGridGraph:
         self.target_buses: List[dev.Bus] = target_buses
         self.candidate_buses: List[dev.Bus] = candidate_buses
         self.max_iterations: int = max_iterations
+        self.logger: Logger = Logger() if logger is None else logger
 
         self.n_target = len(self.target_buses)
         self.n_candidate = len(self.candidate_buses)
@@ -283,7 +283,6 @@ class ProceduralGridGraph:
         radius_max = np.sqrt((self.max_lat - self.min_lat) ** 2 + (self.max_lon - self.min_lon) ** 2) / 2.0
         x_param = 0.1
 
-        # print("Running VSA...\n")
         for k in range(self.max_iterations):
             a_t = 1.0 - (k / self.max_iterations)
             a_t = max(a_t, 0.0001)
@@ -339,7 +338,7 @@ class ProceduralGridGraph:
             if len(useful_indices) == len(current_steiner):
                 break
 
-            print(f"Pruning... Removed {len(current_steiner) - len(useful_indices)} nodes.\n")
+            self.logger.add_info(f"Pruning... Removed {len(current_steiner) - len(useful_indices)} nodes.")
             current_steiner = current_steiner[useful_indices, :]
 
         return current_steiner
@@ -394,13 +393,15 @@ class Topology:
                  all_buses: List[dev.Bus],
                  grid: MultiCircuit,
                  transition_matrix: TransitionMatrix,
-                 discretization: float = 25.0):
+                 discretization: float = 25.0,
+                 logger: Logger | None = None):
 
         self.edges = edges
         self.all_buses = all_buses
         self.grid = grid
         self.transition_matrix = transition_matrix
         self.discretization = discretization  # km between buses
+        self.logger: Logger = Logger() if logger is None else logger
 
         self.intermediate_buses: List[dev.Bus] = list()  # buses generated in the markov process
 
@@ -458,23 +459,14 @@ class Topology:
                 if is_last_conn:
                     next_bus = output_bus
 
-                    # If statement to discard transitions that are not allowed by the transition matrix
-                    if next_bus.Vnom not in self.transition_matrix.voltages_sorted:
-                        print(
-                            f"The voltage level from the end substation "
-                            f"{next_bus.Vnom}kV does not appear in the existing grid.\n"
-                            f"Modifying the end substation level to {current_bus.Vnom}kV.")
-
-                        next_bus.Vnom = current_bus.Vnom
-                        next_bus.name = f"Modified_{next_bus.name}"
-
-                    elif current_bus.Vnom != next_bus.Vnom:
+                    if current_bus.Vnom != next_bus.Vnom:
                         # Any voltage change at the last slot: use last_bus_fix so that a
                         # line covers the geographic distance and the transformer is placed
                         # at the endpoint, regardless of whether a direct template exists.
-                        print(
-                            f"Voltage change from {current_bus.Vnom}kV to {next_bus.Vnom}kV. "
-                            f"Creating voltage bridge near the output bus."
+                        self.logger.add_info(
+                            msg=f"Voltage change from {current_bus.Vnom}kV to {next_bus.Vnom}kV. "
+                                f"Creating voltage bridge near the output bus.",
+                            device=f"edge {edge}"
                         )
 
                         next_bus, intermediate_bus_counter = self.last_bus_fix(
@@ -521,7 +513,10 @@ class Topology:
                 template_options = self.transition_matrix.template_dict.get(transition_key, list())
 
                 if not template_options:
-                    print(f"Combo failed due to lack of template branches for transition {transition_key}.")
+                    self.logger.add_warning(
+                        msg=f"No template branches for transition {transition_key}. Skipping edge {edge}.",
+                        device=f"edge {edge}"
+                    )
                     break
 
                 template_branches = [item[0] for item in template_options]
@@ -535,14 +530,18 @@ class Topology:
                     length=lengths[conn_counter],
                 )
 
-                print(
-                    f"edge={edge}, type={type(new_branch).__name__}, "
-                    f"accumulated_length={accumulated_length}, distance={distance}, "
-                    f"conn_counter={conn_counter}"
+                self.logger.add_info(
+                    msg=f"Branch type={type(new_branch).__name__}, "
+                        f"accumulated_length={accumulated_length:.1f}, distance={distance:.1f}, "
+                        f"conn_counter={conn_counter}",
+                    device=f"edge {edge}"
                 )
 
                 if new_branch is None:
-                    print(f"Could not instantiate branch for transition {transition_key}.")
+                    self.logger.add_warning(
+                        msg=f"Could not instantiate branch for transition {transition_key}. Skipping edge {edge}.",
+                        device=f"edge {edge}"
+                    )
                     break
 
                 self.add_branch_to_grid(branch=new_branch)
@@ -749,7 +748,8 @@ class ProceduralGridComputationEngine:
                  grid: MultiCircuit,
                  method: ProceduralGridMethods,
                  targets: List[dev.Substation],
-                 candidates: List[dev.Substation]):
+                 candidates: List[dev.Substation],
+                 logger: Logger | None = None):
         """
 
         :param grid: MultiCircuit instance
@@ -761,6 +761,7 @@ class ProceduralGridComputationEngine:
         self.method = method
         self.targets_substations = targets
         self.candidates_substations = candidates
+        self.logger: Logger = Logger() if logger is None else logger
 
         self.target_buses: List[dev.Bus] = list()
         self.candidate_buses: List[dev.Bus] = list()
@@ -822,13 +823,12 @@ class ProceduralGridComputationEngine:
         # 2A. Run VSA: Create an initial radial topology with a Steiner tree approach
         network = ProceduralGridGraph(target_buses=self.target_buses,
                                       candidate_buses=self.candidate_buses,
-                                      max_iterations=15000)
+                                      max_iterations=15000,
+                                      logger=self.logger)
 
         initial_steiner_points, history = network.run_vsa()
-        print("Passed VSA.\n")
         # 2B. Prune redundant nodes
         final_steiner_pts = network.prune_redundant_nodes(initial_steiner_points)
-        print("Passed pruning.\n")
         # 2C. Get edges of the final network
         coords_final_network = np.r_[network.base_coords, final_steiner_pts]
         dist_matrix = cdist(coords_final_network, coords_final_network, metric='euclidean')
@@ -843,17 +843,9 @@ class ProceduralGridComputationEngine:
             n_fixed=n_fixed,
         )
 
-        print("Passed MST.\n")
         # generate edges
         rows, cols = np.where(final_mst > 0)
         edges = list(zip(rows, cols))
-
-        self.debugger.validate_edge_indices(
-            edges=edges,
-            n_nodes=coords_final_network.shape[0],
-        )
-
-        self.debugger.print_edges(edges=edges)
 
         self.debugger.plot_mst_graph(
             coords_final_network=coords_final_network,
@@ -863,7 +855,6 @@ class ProceduralGridComputationEngine:
             final_steiner_pts=final_steiner_pts,
         )
 
-        print("Passed edges.\n")
         # 2E. Assign voltages to Steiner Points
         distances = np.zeros(network.base_coords.shape[0])
         closest_voltage = np.zeros(final_steiner_pts.shape[0])
@@ -893,7 +884,6 @@ class ProceduralGridComputationEngine:
             self.steiner_buses.append(sp_bus)
             self.grid.add_bus(obj=sp_bus)
 
-        print("Passed bus creation.\n")
         all_buses = self.candidate_buses + self.target_buses + self.steiner_buses
 
         # 3. Create Topology from Graph
@@ -905,13 +895,12 @@ class ProceduralGridComputationEngine:
         #     500: {132: 0, 220: 0.15, 380: 0.15, 500: 0.7}
         # }
 
-        self.debugger.print_template_dictionary(self.transition_matrix.template_dict)
-
         topology = Topology(edges,
                             all_buses,
                             self.grid,
                             transition_matrix=self.transition_matrix,
-                            discretization=25.0)
+                            discretization=25.0,
+                            logger=self.logger)
 
         before_names = self.debugger.snapshot_grid_element_names(self.grid)
 
@@ -922,11 +911,8 @@ class ProceduralGridComputationEngine:
             previous_names=before_names,
         )
 
-        print("Added elements:")
         for name in added_names:
-            print(name)
-
-        print("Finished run_steiner_alone().")
+            self.logger.add_info(msg="Added element", device=name)
 
         return self.grid
 
@@ -962,7 +948,6 @@ class ProceduralGridComputationEngine:
         """
         Executes the Steiner Tree algorithm followed by an optimization pass.
         """
-        print("Running Steiner Tree plus Optimization")
         # Add your Steiner Tree plus Optimization logic here
 
         return None

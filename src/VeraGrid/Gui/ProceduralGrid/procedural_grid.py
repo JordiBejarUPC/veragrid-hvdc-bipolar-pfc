@@ -14,8 +14,10 @@ from VeraGrid.Gui.ProceduralGrid.procedural_grid_ui import Ui_Dialog
 from VeraGrid.Gui.gui_functions import get_list_model, enums_to_model
 from VeraGridEngine.enumerations import ProceduralGridMethods
 from VeraGridEngine.Topology.Procedural.procedural_grid_engine import ProceduralGridComputationEngine
+from VeraGridEngine.basic_structures import Logger
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import make_diagram_from_buses, SchematicWidget
 from VeraGrid.Gui.ProceduralGrid.voltage_warning import VoltageWarningDialog
+from VeraGrid.Gui.general_dialogues import LogsDialogue
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.simulations import SimulationsMain
@@ -141,11 +143,13 @@ class ProceduralGridWindow(QtWidgets.QDialog):
             return
 
         # 4. Instantiate your engine with the required inputs
+        logger = Logger()
         engine = ProceduralGridComputationEngine(
             grid=self.app.circuit,
             method=method,
             targets=target_objects,
-            candidates=candidate_objects
+            candidates=candidate_objects,
+            logger=logger
         )
 
         if method == ProceduralGridMethods.SteinerAlone:
@@ -180,6 +184,11 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         self.app.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
                                                 diagram=expanded_grid_schematic)
         self.app.set_diagrams_list_view()
+
+        # Show logger if there are any entries
+        if logger.has_logs():
+            dlg = LogsDialogue('Procedural grid expansion log', logger)
+            dlg.exec()
 
         # Exit
         self.close()
