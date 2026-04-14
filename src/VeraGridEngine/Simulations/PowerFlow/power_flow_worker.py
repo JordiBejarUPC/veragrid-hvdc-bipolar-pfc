@@ -66,6 +66,13 @@ def __split_reactive_power_into_devices(nc: NumericalCircuit, Qbus: Vec, results
     results.battery_q = Qvar[bus_idx_bat] * batt_q_share
     results.shunt_q = Qvar[bus_idx_sh] * sh_q_share
 
+    # For non-controlled generators, their Q is fixed based on power factor
+    # The sharing mechanism gives them 0 since their q_share = 0, so we must set their Q explicitly
+    _, idx_non_ctrl = nc.generator_data.get_controllable_and_not_controllable_indices()
+    if len(idx_non_ctrl) > 0:
+        # Only set for active generators
+        results.gen_q[idx_non_ctrl] = nc.generator_data.q[idx_non_ctrl] * nc.generator_data.active[idx_non_ctrl]
+
 
 def __solve_island_complete_support(nc: NumericalCircuit,
                                     indices: SimulationIndices,
@@ -121,7 +128,7 @@ def __solve_island_complete_support(nc: NumericalCircuit,
                                            It=np.zeros(nc.nbr, dtype=complex),
                                            loading=np.zeros(nc.nbr, dtype=complex),
                                            losses=np.zeros(nc.nbr, dtype=complex),
-                                           Pf_vsc=np.zeros(nc.nvsc, dtype=float),
+                                           Pfp_vsc=np.zeros(nc.nvsc, dtype=float),
                                            St_vsc=np.zeros(nc.nvsc, dtype=complex),
                                            If_vsc=np.zeros(nc.nvsc, dtype=float),
                                            It_vsc=np.zeros(nc.nvsc, dtype=complex),
@@ -155,7 +162,8 @@ def __solve_island_complete_support(nc: NumericalCircuit,
                                                  It=np.zeros(nc.nbr, dtype=complex),
                                                  loading=np.zeros(nc.nbr, dtype=complex),
                                                  losses=np.zeros(nc.nbr, dtype=complex),
-                                                 Pf_vsc=np.zeros(nc.nvsc, dtype=float),
+                                                 Pfp_vsc=np.zeros(nc.nvsc, dtype=float),
+                                                 Pfn_vsc=np.zeros(nc.nvsc, dtype=float),
                                                  St_vsc=np.zeros(nc.nvsc, dtype=complex),
                                                  If_vsc=np.zeros(nc.nvsc, dtype=float),
                                                  It_vsc=np.zeros(nc.nvsc, dtype=complex),
@@ -362,7 +370,7 @@ def __solve_island_limited_support(island: NumericalCircuit,
                                            It=np.zeros(island.nbr, dtype=complex),
                                            loading=np.zeros(island.nbr, dtype=complex),
                                            losses=np.zeros(island.nbr, dtype=complex),
-                                           Pf_vsc=np.zeros(island.nvsc, dtype=float),
+                                           Pfp_vsc=np.zeros(island.nvsc, dtype=float),
                                            St_vsc=np.zeros(island.nvsc, dtype=complex),
                                            If_vsc=np.zeros(island.nvsc, dtype=float),
                                            It_vsc=np.zeros(island.nvsc, dtype=complex),
@@ -398,7 +406,8 @@ def __solve_island_limited_support(island: NumericalCircuit,
                                                  It=np.zeros(island.nbr, dtype=complex),
                                                  loading=np.zeros(island.nbr, dtype=complex),
                                                  losses=np.zeros(island.nbr, dtype=complex),
-                                                 Pf_vsc=np.zeros(island.nvsc, dtype=float),
+                                                 Pfp_vsc=np.zeros(island.nvsc, dtype=float),
+                                                 Pfn_vsc=np.zeros(island.nvsc, dtype=float),
                                                  St_vsc=np.zeros(island.nvsc, dtype=complex),
                                                  If_vsc=np.zeros(island.nvsc, dtype=float),
                                                  It_vsc=np.zeros(island.nvsc, dtype=complex),
@@ -504,6 +513,10 @@ def __solve_island_limited_support(island: NumericalCircuit,
                                                   pq=indices.pq,
                                                   pv=indices.pv)
 
+                if solver_idx > 0:
+                    # if we get to this solver, the converged tag should not tell me it worked
+                    solution.converged = solution.norm_f <= options.tolerance
+
             # LAC PF
             elif solver_type == SolverType.LACPF:
                 adms = island.get_series_admittance_matrices()
@@ -517,7 +530,8 @@ def __solve_island_limited_support(island: NumericalCircuit,
                                       V0=V0,
                                       pq=indices.pq,
                                       pv=indices.pv,
-                                      vd=indices.vd)
+                                      vd=indices.vd,
+                                      logger=logger)
                 if options.distributed_slack:
                     ok, delta = compute_slack_distribution(Scalc=solution.Scalc,
                                                            vd=indices.vd,
@@ -533,7 +547,11 @@ def __solve_island_limited_support(island: NumericalCircuit,
                                               V0=V0,
                                               pq=indices.pq,
                                               pv=indices.pv,
-                                              vd=indices.vd)
+                                              vd=indices.vd,
+                                              logger=logger)
+                if solver_idx > 0:
+                    # if we get to this solver, the converged tag should not tell me it worked
+                    solution.converged = solution.norm_f <= options.tolerance
 
             # Gauss-Seidel
             elif solver_type == SolverType.GAUSS:

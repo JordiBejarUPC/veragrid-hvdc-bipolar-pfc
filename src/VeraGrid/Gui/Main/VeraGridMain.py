@@ -115,6 +115,7 @@ class VeraGridMainGUI(ScriptingMain):
         """
         self.save_gui_config()
         self.save_server_config()
+        self.save_ai_config()
 
     def load_all_config(self) -> None:
         """
@@ -122,6 +123,7 @@ class VeraGridMainGUI(ScriptingMain):
         """
         self.load_gui_config()
         self.load_server_config()
+        self.load_ai_config()
         self.add_plugins()
 
         # apply the theme selected by the settings
@@ -142,6 +144,7 @@ class VeraGridMainGUI(ScriptingMain):
             if reply == QtWidgets.QMessageBox.StandardButton.Yes:
                 # save config regardless
                 self.save_all_config()
+                self.shutdown_ai_dialogue_if_available()
                 self.stop_all_threads()
                 event.accept()
             else:
@@ -152,6 +155,7 @@ class VeraGridMainGUI(ScriptingMain):
             # no buses so exit
             # save config regardless
             self.save_all_config()
+            self.shutdown_ai_dialogue_if_available()
             self.stop_all_threads()
             event.accept()
 
@@ -168,7 +172,7 @@ def create_linux_desktop_entry(app_name: str, qrc_icon_path: str):
         Path to the icon inside the .qrc (e.g. ':/icons/app_icon.svg')
     """
     if not sys.platform.startswith("linux"):
-        print("[INFO] Not running on Linux, skipping .desktop creation.")
+        # print("[INFO] Not running on Linux, skipping .desktop creation.")
         return None
 
     # Extract icon from Qt resource to a real file

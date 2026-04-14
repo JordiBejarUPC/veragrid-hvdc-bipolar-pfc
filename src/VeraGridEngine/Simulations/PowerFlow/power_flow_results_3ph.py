@@ -160,7 +160,8 @@ class PowerFlowResults3Ph(ResultsTemplate):
                 ],
 
                 ResultTypes.VscResults: [
-                    ResultTypes.VscPowerFrom,
+                    ResultTypes.VscPowerFromPositive,
+                    ResultTypes.VscPowerFromNegative,
 
                     ResultTypes.VscPowerToA,
                     ResultTypes.VscPowerToB,
@@ -278,7 +279,7 @@ class PowerFlowResults3Ph(ResultsTemplate):
         self.loading_hvdc: Vec = np.zeros(n_hvdc)
 
         # VSC
-        self.Pf_vsc = np.zeros(n_vsc, dtype=float)  # DC
+        self.Pfp_vsc = np.zeros(n_vsc, dtype=float)  # DC
 
         self.St_vsc_A = np.zeros(n_vsc, dtype=complex)
         self.St_vsc_B = np.zeros(n_vsc, dtype=complex)
@@ -388,7 +389,7 @@ class PowerFlowResults3Ph(ResultsTemplate):
 
         self.register(name='losses_vsc', tpe=Vec)
 
-        self.register(name='Pf_vsc', tpe=Vec)
+        self.register(name='Pfp_vsc', tpe=Vec)
 
         self.register(name='St_vsc_A', tpe=CxVec)
         self.register(name='St_vsc_B', tpe=CxVec)
@@ -533,7 +534,7 @@ class PowerFlowResults3Ph(ResultsTemplate):
         self.loading_hvdc[hvdc_idx] = results.loading_hvdc.real
 
         # VSC
-        self.Pf_vsc[vsc_idx] = results.Pf_vsc
+        self.Pfp_vsc[vsc_idx] = results.Pfp_vsc
 
         self.St_vsc_A[vsc_idx] = results.St_vsc[vsc_a]
         self.St_vsc_B[vsc_idx] = results.St_vsc[vsc_b]
@@ -632,14 +633,14 @@ class PowerFlowResults3Ph(ResultsTemplate):
         :return: DataFrame
         """
         df = pd.DataFrame(data={
-            'Vm_N': np.abs(self.voltage_N).round(5),
-            'Vm_A': np.abs(self.voltage_A).round(5),
-            'Vm_B': np.abs(self.voltage_B).round(5),
-            'Vm_C': np.abs(self.voltage_C).round(5),
-            'Va_N': np.angle(self.voltage_N, deg=True).round(1),
-            'Va_A': np.angle(self.voltage_A, deg=True).round(1),
-            'Va_B': np.angle(self.voltage_B, deg=True).round(1),
-            'Va_C': np.angle(self.voltage_C, deg=True).round(1)
+            'Um_N': np.abs(self.voltage_N).round(5),
+            'Um_A': np.abs(self.voltage_A).round(5),
+            'Um_B': np.abs(self.voltage_B).round(5),
+            'Um_C': np.abs(self.voltage_C).round(5),
+            'Ua_N': np.angle(self.voltage_N, deg=True).round(5),
+            'Ua_A': np.angle(self.voltage_A, deg=True).round(5),
+            'Ua_B': np.angle(self.voltage_B, deg=True).round(5),
+            'Ua_C': np.angle(self.voltage_C, deg=True).round(5)
         }, index=self.bus_names)
 
         return df
@@ -1548,7 +1549,7 @@ class PowerFlowResults3Ph(ResultsTemplate):
 
         elif result_type == ResultTypes.VscPowerFrom:
 
-            return ResultsTable(data=self.Pf_vsc,
+            return ResultsTable(data=self.Pfp_vsc,
                                 index=self.vsc_names,
                                 idx_device_type=DeviceType.VscDevice,
                                 columns=np.array([result_type.value]),

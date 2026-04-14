@@ -4,16 +4,23 @@
 # SPDX-License-Identifier: MPL-2.0
 
 
+from typing import Tuple
+
 from VeraGridEngine.enumerations import BuildStatus, DeviceType
 from VeraGridEngine.Devices.Parents.load_parent import LoadParent
+from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 
 class StaticGenerator(LoadParent):
-    __slots__ = ()
+    __slots__ = "_Snom"
+
+    LOCAL_PROPERTY_DECLARATIONS: Tuple[GCProp, ...] = (
+        GCProp(key='Snom', units='MVA', tpe=float, definition='Nominal power.'),
+    )
 
     def __init__(self, name='StaticGen', idtag=None, code='', P=0.0, Q=0.0, active=True,
                  P1=0.0, P2=0.0, P3=0.0, Q1=0.0, Q2=0.0, Q3=0.0,
-                 mttf=0.0, mttr=0.0, Cost=1200.0,
+                 mttf=0.0, mttr=0.0, Cost=1200.0, Snom=0,
                  capex=0, opex=0, build_status: BuildStatus = BuildStatus.Commissioned):
         """
 
@@ -58,3 +65,24 @@ class StaticGenerator(LoadParent):
                             opex=opex,
                             build_status=build_status,
                             device_type=DeviceType.StaticGeneratorDevice)
+
+        # Nominal power in MVA (also the machine base)
+        self._Snom = float(Snom)
+
+    @property
+    def Snom(self):
+        """
+        Return the reactive power lower limit
+        :return: value
+        """
+        return self._Snom
+
+    @Snom.setter
+    def Snom(self, val):
+        """
+        Set the generator nominal power
+        if the reactive power curve was generated automatically, then it is refreshed
+        :param val: float value
+        """
+        val = float(val)
+        self._Snom = val

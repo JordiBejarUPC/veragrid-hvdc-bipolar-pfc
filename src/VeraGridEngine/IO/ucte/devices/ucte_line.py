@@ -2,7 +2,17 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from VeraGridEngine.IO.ucte.devices.ucte_base import sub_int, sub_str, sub_float, try_float, try_int
+import math
+
+from VeraGridEngine.IO.ucte.devices.ucte_base import (
+    sub_int,
+    sub_optional_float,
+    sub_str,
+    try_float,
+    try_int,
+    try_optional_float,
+    ucte_split,
+)
 from VeraGridEngine.basic_structures import Logger
 
 
@@ -21,10 +31,10 @@ class UcteLine:
         self.resistance = 0.0  # 22-27: Resistance (Ω)
         self.reactance = 0.0  # 29-34: Reactance (Ω)
         self.susceptance = 0.0  # 36-43: Susceptance (µS)
-        self.current_limit = 0  # 45-50: Current limit (A)
+        self.current_limit = math.nan  # 45-50: Current limit (A)
         self.name = ""
 
-    def is_active_and_reducible(self) -> tuple[bool, bool]:
+    def is_active_and_reducible(self, logger: Logger) -> tuple[bool, bool]:
         """
         Returns if this line is active and/or reducible
         :return: active, reducible
@@ -51,6 +61,12 @@ class UcteLine:
             return True, True
         elif self.status == 7:
             return False, True
+        else:
+            logger.add_error(msg="Unrecognized status",
+                             value=str(self.status),
+                             expected_value="0, 1, 2, 7, 8, 9",
+                             device_class="Line")
+            return True, False
 
     def parse(self, line: str, logger: Logger):
         """
@@ -62,7 +78,7 @@ class UcteLine:
 
         device = "Line"
         if len(line) == 66:
-            # cannonical parsing
+            # canonical parsing
             self.node1 = sub_str(line, 0, 8, device, "node1", logger)
             self.node2 = sub_str(line, 9, 17, device, "node2", logger)
             self.order_code = sub_str(line, 18, 19, device, "", logger)
@@ -70,7 +86,7 @@ class UcteLine:
             self.resistance = sub_float(line, 22, 28, device, "resistance", logger)
             self.reactance = sub_float(line, 29, 35, device, "reactance", logger)
             self.susceptance = sub_float(line, 36, 44, device, "susceptance", logger)
-            self.current_limit = sub_float(line, 45, 51, device, "current_limit", logger, 9999.0)
+            self.current_limit = sub_optional_float(line, 45, 51, device, "current_limit", logger)
             self.name = sub_str(line, 53, len(line), device, "name", logger)
         else:
             logger.add_warning("Non canonical line length",
@@ -78,42 +94,35 @@ class UcteLine:
                                value=len(line),
                                expected_value=66)
 
-            chunks = line.split()
+            chunks = ucte_split(line, prefix_lengths=(8, 8, 1), total_fields=9, greedy_tail=True,
+                                skip_all_separators=True)
+
+            if len(chunks) >= 1:
+                self.node1 = chunks[0].strip()
+
+            if len(chunks) >= 2:
+                self.node2 = chunks[1].strip()
+
+            if len(chunks) >= 3:
+                self.order_code = chunks[2].strip()
+
+            if len(chunks) >= 4:
+                self.status = try_int(chunks[3].strip(), device, "status", logger)
+
+            if len(chunks) >= 5:
+                self.resistance = try_float(chunks[4].strip(), device, "resistance", logger)
+
+            if len(chunks) >= 6:
+                self.reactance = try_float(chunks[5].strip(), device, "reactance", logger)
+
+            if len(chunks) >= 7:
+                self.susceptance = try_float(chunks[6].strip(), device, "susceptance", logger)
+
+            if len(chunks) >= 8:
+                self.current_limit = try_optional_float(chunks[7].strip(), device, "current_limit", logger)
 
             if len(chunks) >= 9:
-
-                self.node1 = chunks[0].strip()
-                self.node2 = chunks[1].strip()
-                self.order_code = chunks[2].strip()
-                self.status = try_int(chunks[3].strip(), device, "status", logger)
-                self.resistance = try_float(chunks[4].strip(), device, "resistance", logger)
-                self.reactance = try_float(chunks[5].strip(), device, "reactance", logger)
-                self.susceptance = try_float(chunks[6].strip(), device, "susceptance", logger)
-                self.current_limit = try_float(chunks[7].strip(), device, "current_limit", logger, 9999.0)
                 self.name = chunks[8].strip()
 
-            elif len(chunks) == 8:
-
-                self.node1 = chunks[0].strip()
-                self.node2 = chunks[1].strip()
-                self.order_code = chunks[2].strip()
-                self.status = try_int(chunks[3].strip(), device, "status", logger)
-                self.resistance = try_float(chunks[4].strip(), device, "resistance", logger)
-                self.reactance = try_float(chunks[5].strip(), device, "reactance", logger)
-                self.susceptance = try_float(chunks[6].strip(), device, "susceptance", logger)
-                self.current_limit = try_float(chunks[7].strip(), device, "current_limit", logger, 9999.0)
-                self.name = "No name provided"
-
-                logger.add_warning("Incorrect number of parameters",
-                                   device_class=device,
-                                   value=len(chunks),
-                                   expected_value=9)
-
-            else:
-                logger.add_error("Incorrect number of parameters",
-                                 device_class=device,
-                                 value=len(chunks),
-                                 expected_value=9)
-
-        if self.current_limit < 0:
-            self.current_limit = 9999.0
+        if math.isfinite(self.current_limit) and self.current_limit < 0:
+            self.current_limit = math.nan

@@ -11,6 +11,7 @@ from VeraGridEngine.basic_structures import IntVec, Vec
 from VeraGridEngine.basic_structures import Logger, Mat
 from VeraGridEngine.enumerations import EngineType, SimulationTypes
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
+from VeraGridEngine.Simulations.results_template import ResultsTemplate
 
 if TYPE_CHECKING:
     from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
@@ -20,6 +21,7 @@ class DummySignal:
     """
     Qt signal placeholder to not to import QT in the engine
     """
+    __slots__ = ("tpe",)
 
     def __init__(self, tpe: type = str) -> None:
         self.tpe = tpe
@@ -35,10 +37,53 @@ class DummySignal:
         pass
 
 
+class DriverToSave:
+    """
+    Wrapper to save a driver
+    """
+    __slots__ = (
+        "name",
+        "tpe",
+        "results",
+        "logger",
+    )
+
+    def __init__(self,
+                 name: str,
+                 tpe: SimulationTypes,
+                 results: ResultsTemplate,
+                 logger: Logger):
+        """
+
+        :param name:
+        :param tpe:
+        :param results:
+        :param logger:
+        """
+        self.name = name
+        self.tpe: SimulationTypes = tpe
+        self.results: ResultsTemplate = results
+        self.logger: Logger = logger
+
+
 class DriverTemplate:
     """
     Base driver template
     """
+    __slots__ = (
+        "progress_signal",
+        "progress_text",
+        "done_signal",
+        "grid",
+        "results",
+        "engine",
+        "elapsed",
+        "logger",
+        "__cancel__",
+        "_is_running",
+        "_DriverTemplate__start",
+    )
+
     tpe = SimulationTypes.TemplateDriver
     name = 'Template'
 
@@ -167,11 +212,28 @@ class DriverTemplate:
         """
         return self._is_running
 
+    def get_save_data(self) -> DriverToSave:
+        """
+        Get save data representation of this driver
+        :return: DriverToSave
+        """
+        return DriverToSave(name=self.name,
+                            tpe=self.tpe,
+                            results=self.results,
+                            logger=self.logger)
+
 
 class TimeSeriesDriverTemplate(DriverTemplate):
     """
     Time series driver template
     """
+    __slots__ = (
+        "clustering_results",
+        "using_clusters",
+        "time_indices",
+        "sampled_probabilities",
+        "original_sample_idx",
+    )
 
     def __init__(
             self,

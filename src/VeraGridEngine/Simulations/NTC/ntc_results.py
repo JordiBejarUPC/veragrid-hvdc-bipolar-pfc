@@ -24,6 +24,45 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
         **losses**: branch losses
         **converged**: converged?
     """
+    __slots__ = (
+        "bus_names",
+        "branch_names",
+        "hvdc_names",
+        "vsc_names",
+        "contingency_group_names",
+        "bus_types",
+        "voltage",
+        "Sbus",
+        "dSbus",
+        "bus_shadow_prices",
+        "load_shedding",
+        "nodal_balance",
+        "Sf",
+        "St",
+        "overloads",
+        "loading",
+        "losses",
+        "phase_shift",
+        "rates",
+        "contingency_rates",
+        "alpha",
+        "monitor_logic",
+        "hvdc_Pf",
+        "hvdc_loading",
+        "hvdc_losses",
+        "vsc_Pf",
+        "vsc_loading",
+        "vsc_losses",
+        "sending_bus_idx",
+        "receiving_bus_idx",
+        "inter_space_branches",
+        "inter_space_hvdc",
+        "inter_space_vsc",
+        "contingency_flows_list",
+        "converged",
+        "inter_area_flows",
+        "structural_inter_area_flows",
+    )
 
     def __init__(self,
                  bus_names: StrVec,
@@ -58,7 +97,8 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
                                          ResultTypes.HvdcPowerFrom,
                                      ],
                                      ResultTypes.VscResults: [
-                                         ResultTypes.VscPowerFrom,
+                                         ResultTypes.VscPowerFromPositive,
+                                         ResultTypes.VscPowerFromNegative,
                                      ],
                                      ResultTypes.FlowReports: [
                                          ResultTypes.ContingencyFlowsReport,
@@ -305,7 +345,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
                 idx_device_type=DeviceType.HVDCLineDevice
             )
 
-        elif result_type == ResultTypes.VscPowerFrom:
+        elif result_type == ResultTypes.VscPowerFromPositive:
             return ResultsTable(
                 data=self.vsc_Pf,
                 index=self.vsc_names,

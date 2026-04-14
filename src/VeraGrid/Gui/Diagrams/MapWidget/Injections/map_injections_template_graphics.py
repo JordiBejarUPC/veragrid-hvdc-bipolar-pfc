@@ -4,15 +4,15 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, List, Union
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPen, QCursor, QColor, QBrush
+from typing import TYPE_CHECKING
+from PySide6.QtCore import Qt, QPointF
+from PySide6.QtGui import QCursor, QColor, QBrush
 from PySide6.QtWidgets import (QGraphicsEllipseItem, QMenu,
                                QGraphicsSceneContextMenuEvent,
                                QGraphicsSceneMouseEvent)
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.node_template import NodeTemplate
-
+from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.Devices.types import INJECTION_DEVICE_TYPES
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
@@ -100,12 +100,43 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
 
         return color
 
+    def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
+        """
+        Event handler for mouse press events.
+        """
+        super().mousePressEvent(event)
+        # selected_items = self.editor.map.view.selected_items()
+        # if len(selected_items) < 2:
+        self.setSelected(True)
+
+        event.setAccepted(True)
+        self.editor.map.view.disable_move = True
+
+        if self.api_object is not None:
+            self.editor.set_editor_model(api_object=self.api_object)
+
+    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent):
+        """
+        Event handler for mouse release events.
+        """
+        # super().mouseReleaseEvent(event)
+        self.editor.disableMove = True
+        self.update_position_at_the_diagram()  # always update
+
+    def mouseMoveEvent(self, event: QGraphicsSceneMouseEvent) -> None:
+        """
+        Event handler for mouse move events.
+        """
+
+        pos = self.mapToScene(event.pos())
+        self.refresh(pos=pos)
+
     def update_position_at_the_diagram(self) -> None:
         """
         Updates the element position in the diagram (to save)
         :return:
         """
-        lat, long = self.editor.to_lat_lon(self.rect().x(), self.rect().y())
+        lat, long = self.editor.to_lat_lon(self.get_xc(), self.get_yc())
 
         self.lat = lat
         self.lon = long
@@ -114,6 +145,21 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
                                            latitude=lat,
                                            longitude=long,
                                            graphic_object=self)
+
+    def refresh(self, pos: QPointF):
+        """
+        This function refreshes the x, y coordinates of the graphic item
+        Returns:
+
+        """
+
+        x = pos.x() - self.rect().width() / 2
+        y = pos.y() - self.rect().height() / 2
+        self.setRect(x, y, self.rect().width(), self.rect().height())
+        self.set_callbacks(pos.x(), pos.y())
+
+
+        self.update_position_at_the_diagram()  # always update
 
     def set_size(self, r: float):
         """
@@ -162,22 +208,6 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
         # plot the profiles
         self.api_object.plot_profiles(time=ts)
 
-    def mousePressEvent(self, event: QGraphicsSceneMouseEvent):
-        """
-        mouse press: display the editor
-        :param event:
-        :return:
-        """
-        super().mousePressEvent(event)
-        self._editor.set_editor_model(api_object=self.api_object)
-
-    def mouseReleaseEvent(self, event: QGraphicsSceneMouseEvent):
-        """
-        Event handler for mouse release events.
-        """
-        super().mouseReleaseEvent(event)
-        # self.editor.disableMove = True
-        self.update_position_at_the_diagram()  # always update
 
     def mouseDoubleClickEvent(self, event, /):
         """
@@ -202,8 +232,9 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
 
         add_menu_entry(menu=menu,
                        text="Consolidate coordinates",
-                       function_ptr=self.consolidate_coordinates,
+                       function_ptr=self.editor.consolidate_object_coordinates,
                        icon_path=":/Icons/icons/assign_to_profile.png")
+
 
         menu.addSeparator()
 
@@ -211,6 +242,26 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
                        text="Delete",
                        function_ptr=self.delete,
                        icon_path=":/Icons/icons/delete_schematic.png")
+
+
+        ss_counter = 0
+        gen_counter = 0
+
+        for graphic_obj in self.editor._get_selected():
+            if hasattr(graphic_obj, 'api_object'):
+                if hasattr(graphic_obj.api_object, 'device_type'):
+                    if graphic_obj.api_object.device_type == DeviceType.SubstationDevice:
+                        has_substation = True
+                        ss_counter += 1
+                    elif graphic_obj.api_object.device_type == DeviceType.GeneratorDevice:
+                        gen_counter += 1
+        if ss_counter == 1 and gen_counter > 0:
+            menu.addSeparator()
+
+            add_menu_entry(menu=menu,
+                           text="Change bus connection for the generator",
+                           function_ptr=self.editor.change_generator_bus_connection,
+                           icon_path=":/Icons/icons/move_bus.png")
 
         return menu
 
@@ -223,11 +274,18 @@ class MapInjectionTemplateGraphicItem(NodeTemplate, QGraphicsEllipseItem):
         menu = self.get_base_context_menu()
         menu.exec(event.screenPos())
 
+    def get_xc(self) -> float:
+        return self.rect().x() + self.size/2
+
+    def get_yc(self) -> float:
+        return self.rect().y() + self.size/2
+
     def consolidate_coordinates(self):
         """
         Consolidate coordinates in to the DB
         """
-        lat, long = self.editor.to_lat_lon(self.rect().x(), self.rect().y())
+        lat, long = self.editor.to_lat_lon(self.get_xc(), self.get_yc())
         self.api_object.latitude = lat
         self.api_object.longitude = long
         self.editor.gui.show_info_toast("Coordinates consolidated!")
+
