@@ -125,6 +125,7 @@ def truncate_port_label(text: str, max_chars: int = PORT_LABEL_MAX_CHARS) -> str
 def build_orthogonal_connection_path(start: QPointF, end: QPointF) -> QPainterPath:
     """
     Build an orthogonal wire path with elbow segments.
+    Only adds elbows when the path changes direction.
 
     :param start:
     :param end:
@@ -132,6 +133,16 @@ def build_orthogonal_connection_path(start: QPointF, end: QPointF) -> QPainterPa
     """
     path: QPainterPath = QPainterPath(start)
     delta_x: float = end.x() - start.x()
+    delta_y: float = end.y() - start.y()
+
+    if abs(delta_y) < 1:
+        path.lineTo(end)
+        return path
+
+    if abs(delta_x) < 1:
+        path.lineTo(end)
+        return path
+
     offset: float = min(WIRE_ELBOW_OFFSET, abs(delta_x) / 2.0) if delta_x != 0 else WIRE_ELBOW_OFFSET
     start_elbow_x: float = start.x() + offset
     end_elbow_x: float = end.x() - offset
@@ -774,6 +785,9 @@ class ConnectionItem(QGraphicsPathItem):
         current = start
 
         for elbow in elbows:
+            if abs(elbow.y() - current.y()) < 1 and abs(elbow.x() - current.x()) < 1:
+                current = elbow
+                continue
             if abs(elbow.y() - current.y()) < 1:
                 path.lineTo(elbow)
                 current = elbow
@@ -785,10 +799,32 @@ class ConnectionItem(QGraphicsPathItem):
                 path.lineTo(aligned)
                 current = aligned
 
-        if abs(current.y() - end.y()) > 1 and abs(current.x() - end.x()) > 1:
-            intermediate = QPointF(end.x(), current.y())
-            path.lineTo(intermediate)
-            current = intermediate
+        if abs(current.y() - end.y()) < 1:
+            path.lineTo(end)
+            return path
+
+        if abs(current.x() - end.x()) < 1:
+            path.lineTo(end)
+            return path
+
+        last_elbow = elbows[-1] if elbows else None
+        if last_elbow:
+            if abs(last_elbow.y() - end.y()) < 1:
+                path.lineTo(end)
+                return path
+            if abs(last_elbow.x() - end.x()) < 1:
+                path.lineTo(end)
+                return path
+
+        x_diff = abs(current.x() - end.x())
+        y_diff = abs(current.y() - end.y())
+
+        if x_diff < 1 and y_diff > 1:
+            path.lineTo(end.x(), current.y())
+        elif y_diff < 1 and x_diff > 1:
+            path.lineTo(current.x(), end.y())
+        else:
+            path.lineTo(end.x(), current.y())
 
         path.lineTo(end)
         return path
@@ -817,6 +853,14 @@ class ConnectionItem(QGraphicsPathItem):
         :return:
         """
         delta_x: float = end.x() - start.x()
+        delta_y: float = end.y() - start.y()
+
+        if abs(delta_y) < 1:
+            return [start, end]
+
+        if abs(delta_x) < 1:
+            return [start, end]
+
         offset: float = min(WIRE_ELBOW_OFFSET, abs(delta_x) / 2.0) if delta_x != 0 else WIRE_ELBOW_OFFSET
         start_elbow_x: float = start.x() + offset
 
@@ -871,7 +915,16 @@ class ConnectionItem(QGraphicsPathItem):
             if not self.custom_elbow_points:
                 start = self.source_port.scenePos()
                 end = self.target_port.scenePos()
-                self.custom_elbow_points = [QPointF(p) for p in self._get_default_elbows(start, end)[1:-1]]
+                default_elbows = self._get_default_elbows(start, end)[1:-1]
+                if not default_elbows:
+                    mid_x = (start.x() + end.x()) / 2.0
+                    mid_y = (start.y() + end.y()) / 2.0
+                    if self._drag_type == 'horizontal':
+                        self.custom_elbow_points = [QPointF(mid_x, start.y())]
+                    else:
+                        self.custom_elbow_points = [QPointF(start.x(), mid_y)]
+                else:
+                    self.custom_elbow_points = [QPointF(p) for p in default_elbows]
 
             self._original_elbows_abs = [QPointF(p) for p in self.custom_elbow_points]
 
@@ -896,15 +949,17 @@ class ConnectionItem(QGraphicsPathItem):
                 if self._drag_type == 'horizontal':
                     delta_y = pos.y() - self._original_elbows_abs[elbow_idx].y()
                     for i in range(elbow_idx, len(self.custom_elbow_points)):
+                        new_y = self._original_elbows_abs[i].y() + delta_y
                         self.custom_elbow_points[i] = QPointF(
                             self._original_elbows_abs[i].x(),
-                            self._original_elbows_abs[i].y() + delta_y
+                            new_y
                         )
                 else:
                     delta_x = pos.x() - self._original_elbows_abs[elbow_idx].x()
                     for i in range(elbow_idx, len(self.custom_elbow_points)):
+                        new_x = self._original_elbows_abs[i].x() + delta_x
                         self.custom_elbow_points[i] = QPointF(
-                            self._original_elbows_abs[i].x() + delta_x,
+                            new_x,
                             self._original_elbows_abs[i].y()
                         )
 
@@ -3281,10 +3336,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         # set object label
         self.ui.deviceLabel.setText(api_object.name)
-        # if api_object is not None:
-        #     self.ui.deviceLabel.setText(api_object.name)
-        # else:
-        #     self.ui.deviceLabel.setText("")
 
         self.block_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 300
         self.mime_type: str = "application/x-veragrid-dynamics-block"
@@ -3303,13 +3354,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         # Todo: is this correct?
         self.original_block: Block = block  # api_object.rms_model
-
-        # if mode == DynamicEditorMode.RMS and self.api_object.rms_template is not None:
-        #     self.main_block: Block = Block()
-        # elif mode == DynamicEditorMode.EMT and self.api_object.emt_template is not None:
-        #     self.main_block: Block = Block()
-        # else:
-        #     self.main_block: Block = clone_block_for_editing(block)
 
         try:
             if mode == DynamicEditorMode.RMS and self.api_object.rms_template is not None:

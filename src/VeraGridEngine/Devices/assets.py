@@ -838,6 +838,15 @@ class Assets:
         except ValueError:
             pass
 
+        elms_to_del = list()
+        for lst in [self._rms_events, self._emt_events]:
+            for elm in lst:
+                if elm.device_idtag == obj.idtag:
+                    elms_to_del.append(elm)
+
+        for elm in elms_to_del:
+            self.delete_element(elm)
+
     # ------------------------------------------------------------------------------------------------------------------
     # DC Line
     # ------------------------------------------------------------------------------------------------------------------
@@ -881,6 +890,15 @@ class Assets:
             self.delete_groupings_with_object(obj=obj)
         except ValueError:
             pass
+
+        elms_to_del = list()
+        for lst in [self._rms_events, self._emt_events]:
+            for elm in lst:
+                if elm.device_idtag == obj.idtag:
+                    elms_to_del.append(elm)
+
+        for elm in elms_to_del:
+            self.delete_element(elm)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Transformer 2W
@@ -943,6 +961,15 @@ class Assets:
             self.delete_groupings_with_object(obj=obj)
         except ValueError:
             pass
+
+        elms_to_del = list()
+        for lst in [self._rms_events, self._emt_events]:
+            for elm in lst:
+                if elm.device_idtag == obj.idtag:
+                    elms_to_del.append(elm)
+
+        for elm in elms_to_del:
+            self.delete_element(elm)
 
     # ------------------------------------------------------------------------------------------------------------------
     # HVDC
@@ -1013,6 +1040,15 @@ class Assets:
             self.delete_groupings_with_object(obj=obj)
         except ValueError:
             pass
+
+        elms_to_del = list()
+        for lst in [self._rms_events, self._emt_events]:
+            for elm in lst:
+                if elm.device_idtag == obj.idtag:
+                    elms_to_del.append(elm)
+
+        for elm in elms_to_del:
+            self.delete_element(elm)
 
     def get_hvdc_dict(self) -> Dict[str, dev.HvdcLine]:
         """
@@ -1097,6 +1133,15 @@ class Assets:
         except ValueError:
             pass
 
+        elms_to_del = list()
+        for lst in [self._rms_events, self._emt_events]:
+            for elm in lst:
+                if elm.device_idtag == obj.idtag:
+                    elms_to_del.append(elm)
+
+        for elm in elms_to_del:
+            self.delete_element(elm)
+
     def get_vsc_dict(self) -> Dict[str, dev.VSC]:
         """
         Get dictionary of VSC converters
@@ -1157,6 +1202,15 @@ class Assets:
         except ValueError:
             pass
 
+        elms_to_del = list()
+        for lst in [self._rms_events, self._emt_events]:
+            for elm in lst:
+                if elm.device_idtag == obj.idtag:
+                    elms_to_del.append(elm)
+
+        for elm in elms_to_del:
+            self.delete_element(elm)
+
     # ------------------------------------------------------------------------------------------------------------------
     # Switches
     # ------------------------------------------------------------------------------------------------------------------
@@ -1210,6 +1264,15 @@ class Assets:
             self.delete_groupings_with_object(obj=obj)
         except ValueError:
             pass
+
+        elms_to_del = list()
+        for lst in [self._rms_events, self._emt_events]:
+            for elm in lst:
+                if elm.device_idtag == obj.idtag:
+                    elms_to_del.append(elm)
+
+        for elm in elms_to_del:
+            self.delete_element(elm)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Transformer 3W
@@ -1279,6 +1342,15 @@ class Assets:
         self.delete_winding(obj.winding3)
         self.delete_bus(obj.bus0, delete_associated=True)  # also delete the middle bus
 
+        elms_to_del = list()
+        for lst in [self._rms_events, self._emt_events]:
+            for elm in lst:
+                if elm.device_idtag == obj.idtag:
+                    elms_to_del.append(elm)
+
+        for elm in elms_to_del:
+            self.delete_element(elm)
+
     # ------------------------------------------------------------------------------------------------------------------
     # Transformer NW
     # ------------------------------------------------------------------------------------------------------------------
@@ -1344,6 +1416,15 @@ class Assets:
             self._transformers_nw.remove(obj)
         except ValueError:
             pass
+
+        elms_to_del = list()
+        for lst in [self._rms_events, self._emt_events]:
+            for elm in lst:
+                if elm.device_idtag == obj.idtag:
+                    elms_to_del.append(elm)
+
+        for elm in elms_to_del:
+            self.delete_element(elm)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Windings
@@ -1422,6 +1503,15 @@ class Assets:
             self.delete_groupings_with_object(obj=obj)
         except ValueError:
             pass
+
+        elms_to_del = list()
+        for lst in [self._rms_events, self._emt_events]:
+            for elm in lst:
+                if elm.device_idtag == obj.idtag:
+                    elms_to_del.append(elm)
+
+        for elm in elms_to_del:
+            self.delete_element(elm)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Series reactance
@@ -1997,6 +2087,15 @@ class Assets:
         except ValueError:
             pass
 
+        elms_to_del = list()
+        for lst in [self._rms_events, self._emt_events]:
+            for elm in lst:
+                if elm.device_idtag == obj.idtag:
+                    elms_to_del.append(elm)
+
+        for elm in elms_to_del:
+            self.delete_element(elm)
+
     # ------------------------------------------------------------------------------------------------------------------
     # Generator
     # ------------------------------------------------------------------------------------------------------------------
@@ -2067,11 +2166,12 @@ class Assets:
         """
         try:
             self._generators.remove(obj)
+            print("")
         except ValueError:
             pass
 
         elms_to_del = list()
-        for lst in [self._contingencies, self._remedial_actions]:
+        for lst in [self._contingencies, self._remedial_actions, self._rms_events, self._emt_events]:
             for elm in lst:
                 if elm.device_idtag == obj.idtag:
                     elms_to_del.append(elm)
@@ -2245,6 +2345,15 @@ class Assets:
         except ValueError:
             pass
 
+        elms_to_del = list()
+        for lst in [self._rms_events, self._emt_events]:
+            for elm in lst:
+                if elm.device_idtag == obj.idtag:
+                    elms_to_del.append(elm)
+
+        for elm in elms_to_del:
+            self.delete_element(elm)
+
     # ------------------------------------------------------------------------------------------------------------------
     # Batteries
     # ------------------------------------------------------------------------------------------------------------------
@@ -2404,6 +2513,15 @@ class Assets:
         except ValueError:
             pass
 
+        elms_to_del = list()
+        for lst in [self._rms_events, self._emt_events]:
+            for elm in lst:
+                if elm.device_idtag == obj.idtag:
+                    elms_to_del.append(elm)
+
+        for elm in elms_to_del:
+            self.delete_element(elm)
+
     # ------------------------------------------------------------------------------------------------------------------
     # Current injection
     # ------------------------------------------------------------------------------------------------------------------
@@ -2483,6 +2601,15 @@ class Assets:
             self._current_injections.remove(obj)
         except ValueError:
             pass
+
+        elms_to_del = list()
+        for lst in [self._rms_events, self._emt_events]:
+            for elm in lst:
+                if elm.device_idtag == obj.idtag:
+                    elms_to_del.append(elm)
+
+        for elm in elms_to_del:
+            self.delete_element(elm)
 
     # ------------------------------------------------------------------------------------------------------------------
     # Controllable shunt
@@ -2564,6 +2691,15 @@ class Assets:
             self._controllable_shunts.remove(obj)
         except ValueError:
             pass
+
+        elms_to_del = list()
+        for lst in [self._rms_events, self._emt_events]:
+            for elm in lst:
+                if elm.device_idtag == obj.idtag:
+                    elms_to_del.append(elm)
+
+        for elm in elms_to_del:
+            self.delete_element(elm)
 
     # ------------------------------------------------------------------------------------------------------------------
     # P_i measurement
