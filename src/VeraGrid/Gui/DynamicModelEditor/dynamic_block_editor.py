@@ -816,7 +816,16 @@ class ConnectionItem(QGraphicsPathItem):
                 path.lineTo(end)
                 return path
 
-        path.lineTo(end.x(), current.y())
+        x_diff = abs(current.x() - end.x())
+        y_diff = abs(current.y() - end.y())
+
+        if x_diff < 1 and y_diff > 1:
+            path.lineTo(end.x(), current.y())
+        elif y_diff < 1 and x_diff > 1:
+            path.lineTo(current.x(), end.y())
+        else:
+            path.lineTo(end.x(), current.y())
+
         path.lineTo(end)
         return path
 

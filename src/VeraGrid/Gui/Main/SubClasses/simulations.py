@@ -3407,7 +3407,7 @@ class SimulationsMain(TimeEventsMain):
 
                     _, pf_results = self.session.power_flow
 
-                    if not len(self.circuit.emt_events_groups) == 0:
+                    if not len(self.circuit.rms_events_groups) == 0:
 
                         if pf_results is not None:
 
