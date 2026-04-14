@@ -8,6 +8,8 @@ Small Signal Analysis for Phasor-based RMS Grid.
 
 This script creates the phasor problem manually and injects it into the SmallSignalStabilityRmsDriver.
 """
+import sys
+import time
 from typing import Tuple, Any, List
 import numpy as np
 #from cryptography.x509 import name
@@ -23,15 +25,15 @@ from phasor_diagnostics import (
     debug_exciter_equations,
     check_generator_current_residuals as compare_generator_bus_currents,
 )
-#from scipy.optimize import linear_sum_assignment
+from scipy.optimize import linear_sum_assignment
 
 
 FAST_MODE = True
 FAST_GRID_PATH = 'trunk/tensygrid/grids/IEEE_14-2.gridcal'
-FULL_GRID_PATH = 'trunk/tensygrid/grids/IEEE118_opf.gridcal'
-PRINT_ALL_BUSES = not FAST_MODE
-ENABLE_POST_COMPARE_PLOT = not FAST_MODE
-RUN_DYNAMIC_STEP = True
+FULL_GRID_PATH = 'Grids_and_profiles/grids/IEEE118_opf.gridcal'
+PRINT_ALL_BUSES = False # not FAST_MODE
+ENABLE_POST_COMPARE_PLOT = False # not FAST_MODE
+RUN_DYNAMIC_STEP = False
 RUN_CONSISTENCY_CHECK = False
 RUN_PF_LINE_EQ_CHECK = False
 RUN_EXCITER_DIAGNOSTICS = False
@@ -50,8 +52,9 @@ def define_problem_with_path(grid_path):
     ## BUSES:
     for bus in grid.buses:
         busec = vge.initialize_bus_phasor_rms(bus, vf=grid.var_factory)
+
     ## -GENERATORS
-    for igen, gen in enumerate(grid.generators):    
+    for igen, gen in enumerate(grid.generators):
         genqec = vge.get_complete_generator_template_phasor(grid.var_factory, name=f"Gen{igen}").block
         genqec.connect([genqec.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
         genqec.connect([genqec.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
@@ -81,6 +84,8 @@ def define_problem_with_path(grid_path):
         trafoec = vge.to_implicit(trafoec, grid.var_factory)
         vge.set_rms_model(device=trafo, model=trafoec, var_factory=grid.var_factory)
 
+    ## -TRANSFORMERS 3w
+        # TODO: Check if there's 3w transformers
 
     print("  ✓ Grid with path loaded")
 
@@ -119,9 +124,11 @@ def define_problem_with_path(grid_path):
         tolerance=1e-6,
         max_iter=20,
     )
+    start_time= time.perf_counter()
     phasor_problem = vge.RmsProblemPhasor(grid=grid, options=rms_options, pf_results=pf_results)
+    end_time= time.perf_counter()
+    print(f"\n[3.1.0] ⏰ Func phasor_problem took {end_time - start_time:.2f} seconds")
     print(f"  ✓ Phasor problem created with {phasor_problem.get_states_number()} states")
-
     if RUN_CONSISTENCY_CHECK:
         check_equation_consistency(phasor_problem)
     if RUN_EXCITER_DIAGNOSTICS:
@@ -131,7 +138,7 @@ def define_problem_with_path(grid_path):
     # DYNAMIC VALIDATION
     # ===================================================================
     if RUN_DYNAMIC_STEP:
-        print("\n[3.1] Running dynamic simulation...")
+        print("\n[3.1.1] Running dynamic simulation...")
         dyn_t_end = DYNAMIC_SIM_TIME_FAST if FAST_MODE else DYNAMIC_SIM_TIME_FULL
         solver = BackEulerImplicitIntegration(
             problem=phasor_problem,
@@ -146,7 +153,6 @@ def define_problem_with_path(grid_path):
             f"well_initialized={well_initialized}, converged={converged}, "
             f"final|x|={np.linalg.norm(y_dyn[-1, :]):.4e}"
         )
-
     return phasor_problem
 
 def define_problem():
@@ -328,6 +334,9 @@ def solve_problem(problem: Any) -> Any:
     return eigenvalues
 
 if __name__ == "__main__":
+    # --- START CHRONO ---
+    start_time = time.perf_counter()
+
     # problem = define_problem()
     grid_path = FAST_GRID_PATH if FAST_MODE else FULL_GRID_PATH
     print(f"[FAST_MODE={FAST_MODE}] Using grid: {grid_path}")
@@ -335,6 +344,14 @@ if __name__ == "__main__":
     calculated_evs = []
     if problem:
         calculated_evs = solve_problem(problem)
+
+    # --- END CHRONO ---
+    end_time = time.perf_counter()
+    total_duration = end_time - start_time
+
+    print("\n" + "=" * 40)
+    print(f"EXECUTION TIME: {total_duration:.4f} seconds")
+    print("=" * 40 + "\n")
 
     if not ENABLE_POST_COMPARE_PLOT:
         print("[FAST_MODE] Skipping eigenvalue reference matching and plotting")
@@ -456,3 +473,4 @@ if __name__ == "__main__":
     print(f"\n⚠️ MISSING POLES (In Pablo's reference, not found by TenSyGrid): {n_unmatched_ref}")
     for ev in unmatched_ref:
         print(f"   {ev.real:.4f} + {ev.imag:.4f}j")
+
