@@ -179,7 +179,7 @@ class PolynomialMatrixBuilder:
 
             try:
                 c_params = problem._constant_parameters or []
-                c_vals = problem._constant_params or []
+                c_vals = problem._constant_params if problem._constant_params is not None else []
                 for i, cp in enumerate(c_params):
                     try:
                         p_name = cp.name
