@@ -61,6 +61,13 @@ class PolynomialMatrixBuilder:
     iMTI / CPN representation described in the TenSyGrid papers.
     """
 
+    __slots__ = (
+        "verbose", "eqs", "ineqs", "state_vars", "algebraic_vars", "has_problem",
+        "_param_map", "_protected_params", "_explicit_deriv_map", "all_symbols",
+        "sym_to_idx", "_argaux_map", "S_H", "Phi_H", "S_W", "Phi_W",
+        "E", "A", "B", "EABC"
+    )
+
     def __init__(
             self,
             problem: Optional[Any] = None,
@@ -657,7 +664,8 @@ class PolynomialMatrixBuilder:
         :return: Modifies the internal `eqs`, `ineqs`, and `all_symbols` lists in place.
         :rtype: None
         """
-        new_constraints, arg_counter = [], 0
+        new_constraints, arg_counter = 0, 0
+        new_constraints = [] # reset from original syntax structure to keep it clean
         for eq_list in [self.eqs, self.ineqs]:
             for i in range(len(eq_list)):
                 current_eq = eq_list[i]
