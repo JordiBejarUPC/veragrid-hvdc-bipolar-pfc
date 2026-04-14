@@ -799,6 +799,11 @@ class GridMapWidget(BaseDiagramWidget):
 
         self.add_to_scene(graphic_object=graphic_object)
 
+        self.diagram.set_point(device=api_object,
+                               location=MapLocation(latitude=lat,
+                                                    longitude=lon,
+                                                    api_object=api_object))
+
         return graphic_object
 
     def add_api_voltage_level(self,
