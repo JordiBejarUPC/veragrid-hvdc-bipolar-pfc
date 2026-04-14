@@ -29,13 +29,11 @@ from scipy.optimize import linear_sum_assignment
 
 
 FAST_MODE = True
-# FAST_GRID_PATH = 'trunk/tensygrid/grids/IEEE_14-2.gridcal'
-#FAST_GRID_PATH = 'Grids_and_profiles/grids/IEEE14_from_raw.gridcal'
-FAST_GRID_PATH = 'Grids_and_profiles/grids/IEEE118_opf.gridcal'
+FAST_GRID_PATH = 'trunk/tensygrid/grids/IEEE_14-2.gridcal'
 FULL_GRID_PATH = 'Grids_and_profiles/grids/IEEE118_opf.gridcal'
 PRINT_ALL_BUSES = False # not FAST_MODE
 ENABLE_POST_COMPARE_PLOT = False # not FAST_MODE
-RUN_DYNAMIC_STEP = True
+RUN_DYNAMIC_STEP = False
 RUN_CONSISTENCY_CHECK = False
 RUN_PF_LINE_EQ_CHECK = False
 RUN_EXCITER_DIAGNOSTICS = False
@@ -126,9 +124,11 @@ def define_problem_with_path(grid_path):
         tolerance=1e-6,
         max_iter=20,
     )
+    start_time= time.perf_counter()
     phasor_problem = vge.RmsProblemPhasor(grid=grid, options=rms_options, pf_results=pf_results)
+    end_time= time.perf_counter()
+    print(f"\n[3.1.0] ⏰ Func phasor_problem took {end_time - start_time:.2f} seconds")
     print(f"  ✓ Phasor problem created with {phasor_problem.get_states_number()} states")
-
     if RUN_CONSISTENCY_CHECK:
         check_equation_consistency(phasor_problem)
     if RUN_EXCITER_DIAGNOSTICS:
@@ -138,7 +138,7 @@ def define_problem_with_path(grid_path):
     # DYNAMIC VALIDATION
     # ===================================================================
     if RUN_DYNAMIC_STEP:
-        print("\n[3.1] Running dynamic simulation...")
+        print("\n[3.1.1] Running dynamic simulation...")
         dyn_t_end = DYNAMIC_SIM_TIME_FAST if FAST_MODE else DYNAMIC_SIM_TIME_FULL
         solver = BackEulerImplicitIntegration(
             problem=phasor_problem,
@@ -153,7 +153,6 @@ def define_problem_with_path(grid_path):
             f"well_initialized={well_initialized}, converged={converged}, "
             f"final|x|={np.linalg.norm(y_dyn[-1, :]):.4e}"
         )
-
     return phasor_problem
 
 def define_problem():
@@ -474,3 +473,4 @@ if __name__ == "__main__":
     print(f"\n⚠️ MISSING POLES (In Pablo's reference, not found by TenSyGrid): {n_unmatched_ref}")
     for ev in unmatched_ref:
         print(f"   {ev.real:.4f} + {ev.imag:.4f}j")
+
