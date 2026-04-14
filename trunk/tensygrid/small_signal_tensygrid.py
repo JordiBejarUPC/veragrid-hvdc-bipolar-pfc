@@ -8,6 +8,7 @@ Small Signal Analysis for Phasor-based RMS Grid.
 
 This script creates the phasor problem manually and injects it into the SmallSignalStabilityRmsDriver.
 """
+import sys
 import time
 from typing import Tuple, Any, List
 import numpy as np
@@ -28,10 +29,12 @@ from scipy.optimize import linear_sum_assignment
 
 
 FAST_MODE = True
-FAST_GRID_PATH = 'trunk/tensygrid/grids/IEEE_14-2.gridcal'
-FULL_GRID_PATH = 'trunk/tensygrid/grids/IEEE118_opf.gridcal'
-PRINT_ALL_BUSES = not FAST_MODE
-ENABLE_POST_COMPARE_PLOT = not FAST_MODE
+# FAST_GRID_PATH = 'trunk/tensygrid/grids/IEEE_14-2.gridcal'
+#FAST_GRID_PATH = 'Grids_and_profiles/grids/IEEE14_from_raw.gridcal'
+FAST_GRID_PATH = 'Grids_and_profiles/grids/IEEE118_opf.gridcal'
+FULL_GRID_PATH = 'Grids_and_profiles/grids/IEEE118_opf.gridcal'
+PRINT_ALL_BUSES = False # not FAST_MODE
+ENABLE_POST_COMPARE_PLOT = False # not FAST_MODE
 RUN_DYNAMIC_STEP = True
 RUN_CONSISTENCY_CHECK = False
 RUN_PF_LINE_EQ_CHECK = False
@@ -51,8 +54,9 @@ def define_problem_with_path(grid_path):
     ## BUSES:
     for bus in grid.buses:
         busec = vge.initialize_bus_phasor_rms(bus, vf=grid.var_factory)
+
     ## -GENERATORS
-    for igen, gen in enumerate(grid.generators):    
+    for igen, gen in enumerate(grid.generators):
         genqec = vge.get_complete_generator_template_phasor(grid.var_factory, name=f"Gen{igen}").block
         genqec.connect([genqec.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
         genqec.connect([genqec.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
@@ -82,6 +86,8 @@ def define_problem_with_path(grid_path):
         trafoec = vge.to_implicit(trafoec, grid.var_factory)
         vge.set_rms_model(device=trafo, model=trafoec, var_factory=grid.var_factory)
 
+    ## -TRANSFORMERS 3w
+        # TODO: Check if there's 3w transformers
 
     print("  ✓ Grid with path loaded")
 
