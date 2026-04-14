@@ -3336,10 +3336,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         # set object label
         self.ui.deviceLabel.setText(api_object.name)
-        # if api_object is not None:
-        #     self.ui.deviceLabel.setText(api_object.name)
-        # else:
-        #     self.ui.deviceLabel.setText("")
 
         self.block_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 300
         self.mime_type: str = "application/x-veragrid-dynamics-block"
@@ -3358,13 +3354,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         # Todo: is this correct?
         self.original_block: Block = block  # api_object.rms_model
-
-        # if mode == DynamicEditorMode.RMS and self.api_object.rms_template is not None:
-        #     self.main_block: Block = Block()
-        # elif mode == DynamicEditorMode.EMT and self.api_object.emt_template is not None:
-        #     self.main_block: Block = Block()
-        # else:
-        #     self.main_block: Block = clone_block_for_editing(block)
 
         try:
             if mode == DynamicEditorMode.RMS and self.api_object.rms_template is not None:
