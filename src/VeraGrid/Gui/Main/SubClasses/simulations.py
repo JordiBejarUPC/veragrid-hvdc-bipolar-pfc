@@ -13,7 +13,6 @@ from PySide6 import QtGui
 from matplotlib.colors import LinearSegmentedColormap
 
 import VeraGrid.Gui.gui_functions as gf
-import VeraGrid.Gui.Visualization.visualization as viz
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import MapWidget
@@ -2334,7 +2333,7 @@ class SimulationsMain(TimeEventsMain):
 
             if not self.session.is_this_running(SimulationTypes.MonteCarlo_run):
 
-                if self.circuit.time_profile is not None:
+                if self.valid_time_series():
 
                     self.LOCK()
 
@@ -2361,7 +2360,7 @@ class SimulationsMain(TimeEventsMain):
                                      prog_func=self.ui.progressBar.setValue,
                                      text_func=self.ui.progress_label.setText)
                 else:
-                    self.show_warning_toast('There are no time series.')
+                    self.show_warning_toast('Stochastic power flow needs at least one time-series sample.')
 
             else:
                 self.show_warning_toast('Another Monte Carlo simulation is running...')
@@ -2865,28 +2864,15 @@ class SimulationsMain(TimeEventsMain):
         self.UNLOCK()
         print('\nGroups:')
 
-        drv, _ = self.session.node_groups_driver
+        _, results = self.session.node_groups_driver
 
-        if drv is not None:
+        if results is not None:
+            self.remove_simulation(SimulationTypes.InputsAnalysis_run)
+            self.update_available_results()
+            self.colour_diagrams()
 
-            for group in drv.groups_by_name:
-                print(group)
-
-            colours = viz.get_n_colours(n=len(drv.groups_by_index))
-
-            bus_colours = np.empty(len(self.circuit.buses), dtype=object)
-            tool_tips = [""] * len(self.circuit.buses)
-            for c, group in enumerate(drv.groups_by_index):
-                for i in group:
-                    bus = self.circuit.buses[i]
-                    if bus.active:
-                        r, g, b, a = colours[c]
-                        bus_colours[i] = QtGui.QColor(r * 255, g * 255, b * 255, a * 255)
-                        tool_tips[i] = 'Group ' + str(c)
-
-            self.set_big_bus_marker_colours(buses=self.circuit.buses,
-                                            colors=bus_colours,
-                                            tool_tips=tool_tips)
+        if not self.session.is_anything_running():
+            self.UNLOCK()
 
     def run_inputs_analysis(self):
         """
@@ -2967,7 +2953,7 @@ class SimulationsMain(TimeEventsMain):
 
                         for i, freq in zip(idx, frequencies):
 
-                            bus = self.circuit.buses[i]
+                            bus: dev.Bus = self.circuit.buses[i]
                             batts = batt_by_bus.get(bus, None)
 
                             # add a marker to the bus if there are no batteries in it

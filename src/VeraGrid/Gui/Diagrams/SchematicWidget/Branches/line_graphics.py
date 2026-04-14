@@ -122,14 +122,14 @@ class LineGraphicItem(LineGraphicTemplateItem):
                            icon_path=":/Icons/icons/edit.png")
 
             add_menu_entry(menu=menu,
-                           text="Rms Editor",
+                           text="RMS Editor",
                            function_ptr=self.edit_rms,
-                           icon_path=":/Icons/icons/edit.png")
+                           icon_path=":/Icons/icons/dyn_gray.png")
 
             add_menu_entry(menu=menu,
-                           text="Emt Editor",
+                           text="EMT Editor",
                            function_ptr=self.edit_emt,
-                           icon_path=":/Icons/icons/edit.png")
+                           icon_path=":/Icons/icons/dyn_gray.png")
 
             add_menu_entry(menu=menu,
                            text="Change bus",

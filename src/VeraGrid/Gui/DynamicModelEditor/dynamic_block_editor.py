@@ -3299,11 +3299,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.var_factory = var_factory
         self.api_object = api_object
+
         # Todo: is this correct?
         self.original_block: Block = block  # api_object.rms_model
-        if self.api_object.rms_template is not None:
-            self.main_block: Block = Block()
-        else:
+
+        if self.api_object is not None:
+            if mode == DynamicEditorMode.RMS and self.api_object.rms_template is not None:
+                self.main_block: Block = Block()
+            elif mode == DynamicEditorMode.EMT and self.api_object.emt_template is not None:
+                self.main_block: Block = Block()
+            else:
+                self.main_block: Block = clone_block_for_editing(block)
+        else: # when editing a template from the dataset (not connected to a device)
             self.main_block: Block = clone_block_for_editing(block)
 
         self.diagram: BlockDiagram = self.main_block.diagram

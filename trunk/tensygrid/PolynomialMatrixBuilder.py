@@ -5,6 +5,7 @@ from enum import Enum
 from typing import Optional, Any, Tuple
 import re, math
 
+
 # ------------------------------------------------------------------
 # Enums for Options
 # ------------------------------------------------------------------
@@ -19,7 +20,7 @@ class ConstraintType(Enum):
 
 
 # ------------------------------------------------------------------
-# Helper Functions (Replacing Lambdas and Nested Functions)
+# Helper Functions
 # ------------------------------------------------------------------
 
 def _sort_symbol(sym: sp.Symbol) -> tuple:
@@ -61,6 +62,13 @@ class PolynomialMatrixBuilder:
     iMTI / CPN representation described in the TenSyGrid papers.
     """
 
+    __slots__ = (
+        "verbose", "eqs", "ineqs", "state_vars", "algebraic_vars", "has_problem",
+        "_param_map", "_protected_params", "_explicit_deriv_map", "all_symbols",
+        "sym_to_idx", "_argaux_map", "S_H", "Phi_H", "S_W", "Phi_W",
+        "E", "A", "B", "EABC"
+    )
+
     def __init__(
             self,
             problem: Optional[Any] = None,
@@ -78,6 +86,11 @@ class PolynomialMatrixBuilder:
         self.algebraic_vars: list = list()
         self.has_problem: bool = problem is not None
 
+        # Unconditional initialization
+        self._param_map: dict = {}
+        self._protected_params: list = []
+        self._explicit_deriv_map: dict = {}
+
         # --- 0. RESOLVE DUPLICATE VARIABLE NAMES DYNAMICALLY ---
         # This prevents SymPy from physically fusing distinct limiters together.
         if self.has_problem:
@@ -85,72 +98,99 @@ class PolynomialMatrixBuilder:
             name_counters = {}
             all_vg_vars = []
 
-            if hasattr(problem, '_state_vars') and problem._state_vars is not None:
-                all_vg_vars.extend(problem._state_vars)
-            if hasattr(problem, '_algebraic_vars') and problem._algebraic_vars is not None:
-                all_vg_vars.extend(problem._algebraic_vars)
+            try:
+                if problem._state_vars is not None:
+                    all_vg_vars.extend(problem._state_vars)
+            except AttributeError:
+                pass
+
+            try:
+                if problem._algebraic_vars is not None:
+                    all_vg_vars.extend(problem._algebraic_vars)
+            except AttributeError:
+                pass
 
             for var in all_vg_vars:
-                if hasattr(var, 'name'):
-                    vid = id(var)
+                try:
+                    base_name = var.name
+                except AttributeError:
+                    continue  # Skip if it has no name
 
-                    if vid not in seen_vars:
-                        seen_vars.add(vid)
-                        base_name = getattr(var, 'name')
+                vid = id(var)
+                if vid not in seen_vars:
+                    seen_vars.add(vid)
 
-                        if base_name not in name_counters:
-                            name_counters[base_name] = 0
-                        else:
-                            name_counters[base_name] += 1
-                            new_name = f"{base_name}_{name_counters[base_name]}"
-                            try:
-                                var.name = new_name
-                            except Exception as e:
-                                print("Exception on for var in all_vg_vars", e)
-                                pass
+                    if base_name not in name_counters:
+                        name_counters[base_name] = 0
+                    else:
+                        name_counters[base_name] += 1
+                        new_name = f"{base_name}_{name_counters[base_name]}"
+                        try:
+                            var.name = new_name
+                        except Exception as e:
+                            print("Exception on for var in all_vg_vars", e)
+                            pass
 
-                            # Also rename the corresponding derivative variable to avoid mapping breaks
-                            if hasattr(var, 'diff_var') and var.diff_var is not None:
-                                d_var = var.diff_var
+                        # Also rename the corresponding derivative variable to avoid mapping breaks
+                        try:
+                            d_var = var.diff_var
+                            if d_var is not None:
                                 d_vid = id(d_var)
-                                if d_vid not in seen_vars and hasattr(d_var, 'name'):
-                                    seen_vars.add(d_vid)
-                                    d_base = getattr(d_var, 'name')
-                                    d_new = d_base.replace(base_name, new_name)
-                                    if d_new == d_base:
-                                        d_new = f"{d_base}_{name_counters[base_name]}"
+                                if d_vid not in seen_vars:
                                     try:
-                                        d_var.name = d_new
-                                    except Exception as e:
-                                        print("Exception in hasattrib")
+                                        d_base = d_var.name
+                                        seen_vars.add(d_vid)
+                                        d_new = d_base.replace(base_name, new_name)
+                                        if d_new == d_base:
+                                            d_new = f"{d_base}_{name_counters[base_name]}"
+                                        try:
+                                            d_var.name = d_new
+                                        except Exception:
+                                            pass
+                                    except AttributeError:
                                         pass
+                        except AttributeError:
+                            pass
 
         # 1. PARAMETER EXTRACTION
-        self._param_map: dict = {}
-        self._protected_params: list = []
-
         if self.has_problem:
-            """TODO: Change _variable_parameters with a getter in the main class"""
-            if hasattr(problem, '_variable_parameters') and problem._variable_parameters is not None:
-                self._protected_params.extend([getattr(vp, 'name', str(vp)) for vp in problem._variable_parameters])
+            try:
+                v_params = problem._variable_parameters or []
+            except AttributeError:
+                v_params = []
 
-            if hasattr(problem, '_variable_parameters') and hasattr(problem, '_variable_parameters_values'):
-                for i, vp in enumerate(problem._variable_parameters):
-                    p_name = getattr(vp, 'name', str(vp))
-                    if i < len(problem._variable_parameters_values):
-                        self._param_map[p_name] = problem._variable_parameters_values[i]
-            elif hasattr(problem, '_variable_parameters') and hasattr(problem, '_variable_parameter_values'):
-                for i, vp in enumerate(problem._variable_parameters):
-                    p_name = getattr(vp, 'name', str(vp))
-                    if i < len(problem._variable_parameter_values):
-                        self._param_map[p_name] = problem._variable_parameter_values[i]
+            try:
+                v_param_vals = problem._variable_parameters_values
+            except AttributeError:
+                try:
+                    v_param_vals = problem._variable_parameter_values
+                except AttributeError:
+                    v_param_vals = []
 
-            if hasattr(problem, '_constant_parameters') and hasattr(problem, '_constant_params'):
-                self._protected_params.extend([getattr(cp, 'name', str(cp)) for cp in problem._constant_parameters])
-                for i, cp in enumerate(problem._constant_parameters):
-                    p_name = getattr(cp, 'name', str(cp))
-                    if i < len(problem._constant_params):
-                        self._param_map[p_name] = problem._constant_params[i]
+            for i, vp in enumerate(v_params):
+                try:
+                    p_name = vp.name
+                except AttributeError:
+                    p_name = str(vp)
+
+                self._protected_params.append(p_name)
+                if i < len(v_param_vals):
+                    self._param_map[p_name] = v_param_vals[i]
+
+            try:
+                c_params = problem._constant_parameters or []
+                c_vals = problem._constant_params or []
+                for i, cp in enumerate(c_params):
+                    try:
+                        p_name = cp.name
+                    except AttributeError:
+                        p_name = str(cp)
+
+                    self._protected_params.append(p_name)
+                    if i < len(c_vals):
+                        self._param_map[p_name] = c_vals[i]
+            except AttributeError:
+                pass
 
         processed_eqs = list()
         processed_ineqs = list()
@@ -158,28 +198,31 @@ class PolynomialMatrixBuilder:
         processed_algebraic_vars = list()
 
         def _safe_to_string(item: Any) -> str:
-            """TODO: Remove hasattr"""
-            if hasattr(item, 'expr'):
-                return str(getattr(item, 'expr'))
-            elif hasattr(item, 'to_string'):
-                return item.to_string()
-            return str(item)
+            """ Safely extracts string representation without getattr/hasattr """
+            try:
+                return str(item.expr)
+            except AttributeError:
+                try:
+                    return item.to_string()
+                except AttributeError:
+                    return str(item)
 
         if eqs is not None:
             processed_eqs = list(eqs)
         elif self.has_problem:
-            """TODO: Remove hasattr"""
-            if hasattr(problem, '_state_eqs'):
+            try:
                 for s_eq in problem._state_eqs:
                     processed_eqs.append(_safe_to_string(s_eq))
-            if hasattr(problem, '_algebraic_eqs'):
+            except AttributeError:
+                pass
+            try:
                 for a_eq in problem._algebraic_eqs:
                     processed_eqs.append(_safe_to_string(a_eq))
+            except AttributeError:
+                pass
 
         if ineqs is not None:
             processed_ineqs = list(ineqs)
-
-        self._explicit_deriv_map: dict = dict()
 
         def clean_name_fn(n):
             """
@@ -231,37 +274,57 @@ class PolynomialMatrixBuilder:
             """
             if not var_list: return
             for var_obj in var_list:
-                if not isinstance(var_obj, str):
-                    base_name_mappings = getattr(var_obj, 'name', None)
-                    diff_var = getattr(var_obj, 'diff_var', None)
-                    if diff_var is not None:
-                        diff_name = getattr(diff_var, 'name', None)
-                        if base_name_mappings and diff_name:
-                            self._explicit_deriv_map[clean_name_fn(base_name_mappings)] = clean_name_fn(diff_name)
+                if isinstance(var_obj, str):
+                    continue
 
-                    base_var = getattr(var_obj, 'base_var', None)
+                try:
+                    base_name_mappings = var_obj.name
+                except AttributeError:
+                    continue  # We need a name to map it
+
+                try:
+                    diff_var = var_obj.diff_var
+                    if diff_var is not None:
+                        try:
+                            self._explicit_deriv_map[clean_name_fn(base_name_mappings)] = clean_name_fn(diff_var.name)
+                        except AttributeError:
+                            pass
+                except AttributeError:
+                    pass
+
+                try:
+                    base_var = var_obj.base_var
                     if base_var is not None:
-                        base_var_name = getattr(base_var, 'name', None)
-                        if base_var_name and base_name_mappings:
-                            self._explicit_deriv_map[clean_name_fn(base_var_name)] = clean_name_fn(base_name_mappings)
+                        try:
+                            self._explicit_deriv_map[clean_name_fn(base_var.name)] = clean_name_fn(base_name_mappings)
+                        except AttributeError:
+                            pass
+                except AttributeError:
+                    pass
 
         if state_vars is not None:
             _extract_mappings(state_vars)
             processed_state_vars = [_safe_to_string(v) for v in state_vars]
         elif self.has_problem:
-            if hasattr(problem, '_state_vars'):
-                _extract_mappings(problem._state_vars)
-                for s_var in problem._state_vars:
+            try:
+                prob_state_vars = problem._state_vars
+                _extract_mappings(prob_state_vars)
+                for s_var in prob_state_vars:
                     processed_state_vars.append(_safe_to_string(s_var))
+            except AttributeError:
+                pass
 
         if algebraic_vars is not None:
             _extract_mappings(algebraic_vars)
             processed_algebraic_vars = [_safe_to_string(v) for v in algebraic_vars]
         elif self.has_problem:
-            if hasattr(problem, '_algebraic_vars'):
-                _extract_mappings(problem._algebraic_vars)
-                for a_var in problem._algebraic_vars:
+            try:
+                prob_alg_vars = problem._algebraic_vars
+                _extract_mappings(prob_alg_vars)
+                for a_var in prob_alg_vars:
                     processed_algebraic_vars.append(_safe_to_string(a_var))
+            except AttributeError:
+                pass
 
         parsing_context = dict()
         parsing_context['cos'] = sp.cos
@@ -335,7 +398,7 @@ class PolynomialMatrixBuilder:
     # Symbol extraction
     # ------------------------------------------------------------------
     def _is_protected_param(self, var_name: str) -> bool:
-        return hasattr(self, '_protected_params') and var_name in self._protected_params
+        return var_name in self._protected_params
 
     def extract_symbols(self, all_exprs: list, predefined: list | None = None) -> list:
         """
@@ -596,7 +659,6 @@ class PolynomialMatrixBuilder:
 
         self.eqs = [eq.subs(subs_dict) for eq in self.eqs] + new_eqs
 
-
     def _get_symbol_by_name(self, name: str) -> Optional[sp.Symbol]:
         for target_sym in self.all_symbols:
             if target_sym.name == name: return target_sym
@@ -620,9 +682,14 @@ class PolynomialMatrixBuilder:
         :rtype: None
         """
         new_constraints = []
+
+        try:
+            prob_v_params = problem._variable_parameters if problem._variable_parameters else []
+        except AttributeError:
+            prob_v_params = []
+
         for sym in self.all_symbols:
-            if sym not in (problem._variable_parameters if hasattr(problem,
-                                                                   '_variable_parameters') and problem._variable_parameters else []):
+            if sym not in prob_v_params:
                 s_name = sym.name
                 if "_mulaux" in s_name:
                     base_sym = self._get_symbol_by_name(s_name.split("_mulaux")[0])
@@ -841,12 +908,10 @@ class PolynomialMatrixBuilder:
         """
         n_vars, n_monom = S.shape
 
-        # Pre-allocate sparse matrix arrays
         F_data = []
         F_indices = []
         F_indptr = [0]
 
-        # Iterate over monomials (columns r)
         for r in range(n_monom):
             col_start = S.indptr[r]
             col_end = S.indptr[r + 1]
@@ -858,44 +923,30 @@ class PolynomialMatrixBuilder:
             zero_count = 0
             zero_idx = -1
 
-            # ---------------------------------------------------------
-            # 1. Evaluate the structured contracted product s_r(v)
-            # ---------------------------------------------------------
             X_vals = []
             for idx, i in enumerate(row_indices):
                 S_ir = S_values[idx]
 
-                # Exactly matches: (1 - |S_ir| + S_ir * v_i)
                 X_i = (1.0 - abs(S_ir)) + (S_ir * v[i])
                 X_vals.append(X_i)
 
-                # Check for zero-crossings
                 if abs(X_i) < 1e-12:
                     zero_count += 1
                     zero_idx = i
                 else:
                     prod_val *= X_i
 
-            # ---------------------------------------------------------
-            # 2. Compute the D_ir elements and build the Jacobian
-            # ---------------------------------------------------------
             for idx, i in enumerate(row_indices):
                 S_ir = S_values[idx]
 
                 if zero_count > 1:
-                    # D_ir = 0 (More than one zero term kills the derivative)
                     d_val = 0.0
-
                 elif zero_count == 1:
-                    # D_ir = S_ir iff (1 - |S_ir| + S_ir*v_i) = 0
                     if i == zero_idx:
                         d_val = S_ir * prod_val
                     else:
                         d_val = 0.0
-
                 else:
-                    # D_ir = S_ir / (1 - |S_ir| + S_ir*v_i)
-                    # Multiplied by full product (inverse product rule)
                     d_val = S_ir * (prod_val / X_vals[idx])
 
                 F_indices.append(i)
@@ -903,7 +954,6 @@ class PolynomialMatrixBuilder:
 
             F_indptr.append(len(F_data))
 
-        # Construct and return sparse matrix F
         return sparse.csc_matrix((F_data, F_indices, F_indptr), shape=(n_vars, n_monom))
 
     def _split_EABC(self, EABC: sparse.csr_matrix) -> tuple:
@@ -941,11 +991,9 @@ class PolynomialMatrixBuilder:
         cols_to_take = len(idx_vars)
         dim = max(n_eqs, cols_to_take)
 
-        # Initialize as LIL sparse matrices (allows fast assignment and slicing)
         E = sparse.lil_matrix((dim, dim))
         A = sparse.lil_matrix((dim, dim))
 
-        # Safely assign the CSR slice into the LIL sparse matrix
         A[:n_eqs, :cols_to_take] = EABC[:, idx_vars[:cols_to_take]]
 
         for i in range(cols_to_take):
@@ -959,7 +1007,7 @@ class PolynomialMatrixBuilder:
 
             deriv_idx = -1
 
-            if hasattr(self, '_explicit_deriv_map') and state_name in self._explicit_deriv_map:
+            if state_name in self._explicit_deriv_map:
                 exact_d_name = self._explicit_deriv_map[state_name]
                 if exact_d_name in self.sym_to_idx:
                     deriv_idx = self.sym_to_idx[exact_d_name]
@@ -978,10 +1026,8 @@ class PolynomialMatrixBuilder:
                         break
 
             if deriv_idx != -1 and deriv_idx in idx_dx:
-                # Assign the negated derivative column
                 E[:n_eqs, i] = -EABC[:, deriv_idx]
 
-        # Handle B matrix sparsely
         if len(idx_u) > 0:
             B = sparse.lil_matrix((dim, len(idx_u)))
             B[:n_eqs, :] = EABC[:, idx_u]
@@ -989,7 +1035,6 @@ class PolynomialMatrixBuilder:
         else:
             B = sparse.csr_matrix((dim, 0))
 
-        # Convert E and A to CSR format for fast eigenvalue computation later
         return E.tocsr(), A.tocsr(), B
 
     def compute_stability(self) -> Tuple[
@@ -1007,6 +1052,7 @@ class PolynomialMatrixBuilder:
         ARPACK fails), it seamlessly drops down to dense QZ decomposition to guarantee the
         complete eigenvalue spectrum is found.
         """
+        global evals, evecs_left_raw, evecs_right_raw
         current_a, current_e = self.A, self.E
         if current_a is None or current_e is None: return None, None, None, None, False, None
 
@@ -1014,12 +1060,10 @@ class PolynomialMatrixBuilder:
             n_dims = current_a.shape[0]
             patched_rows, patched_cols = 0, 0
 
-            # --- SPARSE SINGULAR PENCIL PATCHING ---
             A_patched = current_a.tolil()
             A_csr = current_a.tocsr()
             E_csr = current_e.tocsr()
 
-            # 1. Fast Sparse Row Check
             for i in range(n_dims):
                 a_data = A_csr.data[A_csr.indptr[i]:A_csr.indptr[i + 1]]
                 e_data = E_csr.data[E_csr.indptr[i]:E_csr.indptr[i + 1]]
@@ -1029,7 +1073,6 @@ class PolynomialMatrixBuilder:
                     A_patched[i, i] = -1.0
                     patched_rows += 1
 
-            # 2. Fast Sparse Column Check
             A_csc = current_a.tocsc()
             E_csc = current_e.tocsc()
             for j in range(n_dims):
@@ -1045,9 +1088,6 @@ class PolynomialMatrixBuilder:
                 print(
                     f"\n[+] Sparse QZ Pre-conditioning: Neutralized {patched_rows} empty rows and {patched_cols} empty columns.")
 
-            # --- EIGENVALUE DECOMPOSITION ROUTING ---
-            # Threshold: If N < 150, dense is practically instantaneous and returns ALL poles.
-            # If N >= 150, sparse ARPACK is used to prevent OOM/slowdown, returning Top 50 poles.
             SPARSE_THRESHOLD = 150
             used_sparse = False
 
@@ -1055,13 +1095,9 @@ class PolynomialMatrixBuilder:
                 k_modes = min(50, n_dims - 2)
                 if k_modes > 0:
                     try:
-                        # 1. Compute Right Eigenvectors
                         evals_r, evecs_r = sparse.linalg.eigs(A_patched, k=k_modes, M=current_e, which='LR')
-
-                        # 2. Compute Left Eigenvectors (solve transposed system)
                         evals_l, evecs_l = sparse.linalg.eigs(A_patched.T, k=k_modes, M=current_e.T, which='LR')
 
-                        # 3. Sort geometrically to align left and right sets
                         idx_r = np.argsort(evals_r)
                         idx_l = np.argsort(evals_l)
 
@@ -1076,12 +1112,10 @@ class PolynomialMatrixBuilder:
                         used_sparse = False
 
             if not used_sparse:
-                # Dense SciPy computes the complete un-truncated spectrum natively
                 A_dense = A_patched.toarray()
                 E_dense = current_e.toarray()
                 evals, evecs_left_raw, evecs_right_raw = linalg.eig(A_dense, b=E_dense, left=True, right=True)
 
-            # --- MODE FILTERING AND PARTICIPATION ---
             valid_idx = np.isfinite(evals)
             evals = evals[valid_idx]
             evecs_left = evecs_left_raw[:, valid_idx].astype(complex)
@@ -1119,7 +1153,6 @@ class PolynomialMatrixBuilder:
         mapping: dict = dict()
         if participation_matrix is None or evals is None: return mapping
 
-        # 1. Dynamically rebuild the exact physical-state order (ignoring dx, xp, u)
         state_symbols: list = list()
         for s in self.all_symbols:
             s_name: str = s.name
@@ -1133,24 +1166,20 @@ class PolynomialMatrixBuilder:
         n_modes: int = int(participation_matrix.shape[1])
         n_states: int = int(participation_matrix.shape[0])
 
-        # 2. Map matrix participation factors to the filtered list
         for m in range(n_modes):
             mode_eval: complex = evals[m]
             mode_pfs: list = list()
 
-            # Iterate up to n_states (in case Singular Pencil Patching / extra padding was applied)
             limit: int = min(n_states, len(state_symbols))
             for i in range(limit):
                 pf_val: float = float(participation_matrix[i, m])
                 if pf_val >= threshold:
                     mode_pfs.append((state_symbols[i].name, pf_val))
 
-            # Sort variables by dominance level for this specific mode
             mode_pfs.sort(key=lambda x: x[1], reverse=True)
             mapping[mode_eval] = mode_pfs
 
         return mapping
-
 
     def report(self, eigenvalues=None, is_stable=False, max_real=None, print_matrices=True, save_path=None):
         """
