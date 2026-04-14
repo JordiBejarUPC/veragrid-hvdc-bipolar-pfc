@@ -18,6 +18,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlo
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
 from VeraGridEngine.IO.fmu.importer import build_emt_boundary_updater
+from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.basic_structures import Vec, StrVec
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 
@@ -96,6 +97,12 @@ class EmtSimulationDriver(DriverTemplate):
                              if self.grid.emt_events_groups is None
                              else self.grid.emt_events_groups)
 
+        # if self.grid.emt_events_groups is None:
+        #     emt_events_groups = EmtEventsGroup(name="simulation1")
+        #     self.grid.add_emt_events_group(emt_events_groups)
+        # else:
+        #     emt_events_groups = self.grid.emt_events_groups
+
         emt_events_group_names: StrVec = np.array([elm.name for elm in emt_events_groups])
 
         steps = int(np.ceil((self.options.simulation_time - 0) / self.options.time_step))
@@ -114,6 +121,7 @@ class EmtSimulationDriver(DriverTemplate):
             progress_signal=self.progress_signal,
         )
         self.problem = problem
+
 
         # create the results
         self.results = EmtResults(
@@ -169,6 +177,12 @@ class EmtSimulationDriver(DriverTemplate):
 
             boundary_updater = build_emt_boundary_updater(problem)
             t, y, dy = solver.simulate(boundary_updater=boundary_updater)
+
+            print(f"Event group {emt_events_group} successfully simulated.")
+            self.report_text(
+                f"Event group {emt_events_group} successfully simulated.")
+
+            print(f"results = {y}")
 
             self.results.values[:, :, group_idx] = y
             self.results.diff_values[:, :, group_idx] = dy

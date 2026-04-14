@@ -3407,28 +3407,32 @@ class SimulationsMain(TimeEventsMain):
 
                     _, pf_results = self.session.power_flow
 
-                    if pf_results is not None:
+                    if not len(self.circuit.emt_events_groups) == 0:
 
-                        # self.add_simulation(SimulationTypes.RmsDynamic_run)
-                        self.ui.progress_label.setText('Running rms simulation...')
-                        QtGui.QGuiApplication.processEvents()
-                        self.LOCK()
+                        if pf_results is not None:
 
-                        drv = sim.RmsSimulationDriver(grid=self.circuit,
-                                                      options=self.get_selected_rms_simulation_options(),
-                                                      pf_results=pf_results)
+                            # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                            self.ui.progress_label.setText('Running rms simulation...')
+                            QtGui.QGuiApplication.processEvents()
+                            self.LOCK()
 
-                        self.session.run(drv,
-                                         post_func=self.post_rms,
-                                         prog_func=self.ui.progressBar.setValue,
-                                         text_func=self.ui.progress_label.setText)
+                            drv = sim.RmsSimulationDriver(grid=self.circuit,
+                                                          options=self.get_selected_rms_simulation_options(),
+                                                          pf_results=pf_results)
 
+                            self.session.run(drv,
+                                             post_func=self.post_rms,
+                                             prog_func=self.ui.progressBar.setValue,
+                                             text_func=self.ui.progress_label.setText)
 
-
+                        else:
+                            info_msg('Run a power flow simulation first.\n'
+                                     'The results are needed to initialize this simulation.')
 
                     else:
-                        info_msg('Run a power flow simulation first.\n'
-                                 'The results are needed to initialize this simulation.')
+                        info_msg('Add a RMS Events Group even if it is empty.\n'
+                                 'Go to database -> RMS Events Group to add it.')
+
             else:
                 self.show_warning_toast('Another rms simulation is running already...')
 
@@ -3479,41 +3483,47 @@ class SimulationsMain(TimeEventsMain):
 
                     _, pf_results = self.session.power_flow
 
-                    if pf_results_3ph is not None:
+                    if not len(self.circuit.emt_events_groups) == 0:
+                        if pf_results_3ph is not None:
+                            # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                            self.ui.progress_label.setText('Running emt simulation...')
+                            QtGui.QGuiApplication.processEvents()
+                            self.LOCK()
 
-                        # self.add_simulation(SimulationTypes.RmsDynamic_run)
-                        self.ui.progress_label.setText('Running emt simulation...')
-                        QtGui.QGuiApplication.processEvents()
-                        self.LOCK()
+                            drv = sim.EmtSimulationDriver(grid=self.circuit,
+                                                          options=self.get_selected_emt_simulation_options(),
+                                                          pf_results_3ph=pf_results_3ph)
 
-                        drv = sim.EmtSimulationDriver(grid=self.circuit,
-                                                      options=self.get_selected_emt_simulation_options(),
-                                                      pf_results_3ph=pf_results_3ph)
+                            self.session.run(drv,
+                                             post_func=self.post_emt,
+                                             prog_func=self.ui.progressBar.setValue,
+                                             text_func=self.ui.progress_label.setText)
 
-                        self.session.run(drv,
-                                         post_func=self.post_emt,
-                                         prog_func=self.ui.progressBar.setValue,
-                                         text_func=self.ui.progress_label.setText)
+                        elif pf_results is not None:
 
-                    elif pf_results is not None:
+                            # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                            self.ui.progress_label.setText('Running emt simulation from balanced power flow results ...')
+                            QtGui.QGuiApplication.processEvents()
+                            self.LOCK()
 
-                        # self.add_simulation(SimulationTypes.RmsDynamic_run)
-                        self.ui.progress_label.setText('Running emt simulation from balanced power flow results ...')
-                        QtGui.QGuiApplication.processEvents()
-                        self.LOCK()
+                            drv = sim.EmtSimulationDriver(grid=self.circuit,
+                                                          options=self.get_selected_emt_simulation_options(),
+                                                          pf_results=pf_results)
 
-                        drv = sim.EmtSimulationDriver(grid=self.circuit,
-                                                      options=self.get_selected_emt_simulation_options(),
-                                                      pf_results=pf_results)
+                            self.session.run(drv,
+                                             post_func=self.post_emt,
+                                             prog_func=self.ui.progressBar.setValue,
+                                             text_func=self.ui.progress_label.setText)
 
-                        self.session.run(drv,
-                                         post_func=self.post_emt,
-                                         prog_func=self.ui.progressBar.setValue,
-                                         text_func=self.ui.progress_label.setText)
+                        else:
+                            info_msg('Run a power flow simulation first.\n'
+                                     'The results are needed to initialize this simulation.')
 
                     else:
-                        info_msg('Run a power flow simulation first.\n'
-                                 'The results are needed to initialize this simulation.')
+                        info_msg('Add an EMT Events Group even if it is empty.\n'
+                                 'Go to database -> EMT Events Group to add it.')
+
+
             else:
                 self.show_warning_toast('Another EMT simulation is running already...')
 
