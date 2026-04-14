@@ -23,6 +23,11 @@ import VeraGridEngine.Compilers.circuit_to_gslv as gslv
 
 
 class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
+    __slots__ = (
+        "options",
+        "all_solved",
+    )
+
     name = 'Optimal power flow time series'
     tpe = SimulationTypes.OPFTimeSeries_run
 
@@ -357,7 +362,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
             self.results.hvdc_loading[it, :] = res.hvdc_loading
             self.results.converged[it] = res.converged
 
-            if self.__cancel__:
+            if self.is_cancel():
                 return None
 
         # Compute the emissions, fuel costs and energy used
@@ -416,7 +421,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
             self.results.hvdc_loading[it, :] = res.hvdc_loading
             self.results.converged[it] = res.converged
 
-            if self.__cancel__:
+            if self.is_cancel():
                 return None
 
         return None
@@ -471,7 +476,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
         energy_0: Union[Vec, None] = None  # at the beginning
         fluid_level_0: Union[Vec, None] = None
 
-        while i < n and not self.__cancel__:
+        while i < n and not self.is_cancel():
             start_ = groups[i - 1]
             end_ = groups[i]
 
@@ -517,7 +522,7 @@ class OptimalPowerFlowTimeSeriesDriver(TimeSeriesDriverTemplate):
             # update progress bar
             self.report_progress2(i, len(groups))
 
-            if self.__cancel__:
+            if self.is_cancel():
                 return None
 
             i += 1

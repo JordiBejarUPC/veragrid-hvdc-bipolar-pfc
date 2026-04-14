@@ -77,6 +77,13 @@ class SymbolicJacobian:
     """
        Class to store and evaluate a symbolic jacobian
        """
+    __slots__ = (
+        "nvar",
+        "J",
+        "namespace",
+        "block_offsets",
+        "funcs",
+    )
 
     def __init__(self,
                  eqs: list,
@@ -197,6 +204,11 @@ class SymbolicVector:
     """
     SymbolicFunction
     """
+    __slots__ = (
+        "func",
+        "namespace",
+        "data",
+    )
 
     def __init__(self,
                  eqs: List[Expr],
@@ -292,6 +304,11 @@ class SymbolicParamsVector:
     """
     SymbolicFunction
     """
+    __slots__ = (
+        "func",
+        "namespace",
+        "data",
+    )
 
     def __init__(self, eqs: Sequence[Expr],
                  compiler_names_dict: Dict[int, str],
@@ -360,6 +377,12 @@ class SymbolicDerivative:
     """
     SymbolicFunction
     """
+    __slots__ = (
+        "func",
+        "data",
+        "index_map",
+        "namespace",
+    )
 
     def __init__(self,
                  vars: Sequence[Var],
@@ -425,6 +448,11 @@ class SymbolicParamsVectorInit:
     """
     SymbolicFunction
     """
+    __slots__ = (
+        "func",
+        "namespace",
+        "data",
+    )
 
     def __init__(self, eqs: Sequence[Expr],
                  compiler_names_dict: Dict[int, str],

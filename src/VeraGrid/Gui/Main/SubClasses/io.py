@@ -586,6 +586,7 @@ class IoMain(ScenariosMain):
                                                                      dc_lines=new_circuit.dc_lines,
                                                                      transformers2w=new_circuit.transformers2w,
                                                                      transformers3w=new_circuit.transformers3w,
+                                                                     transformers_nw=new_circuit.transformers_nw,
                                                                      hvdc_lines=new_circuit.hvdc_lines,
                                                                      vsc_devices=new_circuit.vsc_devices,
                                                                      upfc_devices=new_circuit.upfc_devices,
@@ -1006,8 +1007,15 @@ class IoMain(ScenariosMain):
 
         if not self.circuit.rms_models:
             self.circuit.add_rms_model_catalogue()
+        else:
+            self.circuit.rms_models = list()
+            self.circuit.add_rms_model_catalogue()
+
 
         if not self.circuit.emt_models:
+            self.circuit.add_emt_model_catalogue()
+        else:
+            self.circuit.emt_models = list()
             self.circuit.add_emt_model_catalogue()
 
         self.show_info_toast("Catalogue added!")

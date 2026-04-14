@@ -16,7 +16,7 @@ def get_bergeron_line_emt_template(
     phA: bool = True,
     phB: bool = True,
     phC: bool = True,
-    name: str | None = EmtLineTypes.Bergeron) -> EmtModelTemplate:
+    name: str | None = "Bergeron") -> EmtModelTemplate:
     """
     Create the symbolic EMT template for a Bergeron line.
 
@@ -28,14 +28,13 @@ def get_bergeron_line_emt_template(
     :param phB: Bool. True if the line has phase B, else False.
     :param phC: Bool. True if the line has phase C, else False.
     :param name: Symbolic model name.
-    :param line: Optional legacy argument kept for caller compatibility.
     :return: EMT bergeron-line model template.
     """
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LineDevice
     templ.name = name
 
-    templ.block.name = EmtLineTypes.Bergeron
+    templ.block.name = EmtLineTypes.Bergeron.value
 
 
     ph_labels = ["N", "A", "B", "C"]
@@ -62,6 +61,37 @@ class BergeronHistoryRuntime:
     """
     Runtime companion for a Bergeron line in reduced active-phase space.
     """
+    __slots__ = (
+        "line",
+        "block",
+        "h",
+        "hist_if",
+        "hist_it",
+        "hist_Ih_f",
+        "hist_Ih_t",
+        "hist_Ih_f_next",
+        "hist_Ih_t_next",
+        "ph_labels",
+        "ph_mask",
+        "phase_idx",
+        "active_ph",
+        "m",
+        "Ih_f",
+        "Ih_t",
+        "Gc_red",
+        "H_red",
+        "n_delay",
+        "buf_vf",
+        "buf_vt",
+        "buf_if",
+        "buf_it",
+        "v_f_vars",
+        "v_t_vars",
+        "idx_vf",
+        "idx_vt",
+        "idx_p_hf",
+        "idx_p_ht",
+    )
 
     def __init__(self, line: Any, line_block: Block, h: float, sbase: float, fbase: float) -> None:
         self.line = line

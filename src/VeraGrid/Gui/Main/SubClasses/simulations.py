@@ -13,7 +13,6 @@ from PySide6 import QtGui
 from matplotlib.colors import LinearSegmentedColormap
 
 import VeraGrid.Gui.gui_functions as gf
-import VeraGrid.Gui.Visualization.visualization as viz
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import MapWidget
@@ -2334,7 +2333,7 @@ class SimulationsMain(TimeEventsMain):
 
             if not self.session.is_this_running(SimulationTypes.MonteCarlo_run):
 
-                if self.circuit.time_profile is not None:
+                if self.valid_time_series():
 
                     self.LOCK()
 
@@ -2361,7 +2360,7 @@ class SimulationsMain(TimeEventsMain):
                                      prog_func=self.ui.progressBar.setValue,
                                      text_func=self.ui.progress_label.setText)
                 else:
-                    self.show_warning_toast('There are no time series.')
+                    self.show_warning_toast('Stochastic power flow needs at least one time-series sample.')
 
             else:
                 self.show_warning_toast('Another Monte Carlo simulation is running...')
@@ -2865,28 +2864,15 @@ class SimulationsMain(TimeEventsMain):
         self.UNLOCK()
         print('\nGroups:')
 
-        drv, _ = self.session.node_groups_driver
+        _, results = self.session.node_groups_driver
 
-        if drv is not None:
+        if results is not None:
+            self.remove_simulation(SimulationTypes.InputsAnalysis_run)
+            self.update_available_results()
+            self.colour_diagrams()
 
-            for group in drv.groups_by_name:
-                print(group)
-
-            colours = viz.get_n_colours(n=len(drv.groups_by_index))
-
-            bus_colours = np.empty(len(self.circuit.buses), dtype=object)
-            tool_tips = [""] * len(self.circuit.buses)
-            for c, group in enumerate(drv.groups_by_index):
-                for i in group:
-                    bus = self.circuit.buses[i]
-                    if bus.active:
-                        r, g, b, a = colours[c]
-                        bus_colours[i] = QtGui.QColor(r * 255, g * 255, b * 255, a * 255)
-                        tool_tips[i] = 'Group ' + str(c)
-
-            self.set_big_bus_marker_colours(buses=self.circuit.buses,
-                                            colors=bus_colours,
-                                            tool_tips=tool_tips)
+        if not self.session.is_anything_running():
+            self.UNLOCK()
 
     def run_inputs_analysis(self):
         """
@@ -2967,7 +2953,7 @@ class SimulationsMain(TimeEventsMain):
 
                         for i, freq in zip(idx, frequencies):
 
-                            bus = self.circuit.buses[i]
+                            bus: dev.Bus = self.circuit.buses[i]
                             batts = batt_by_bus.get(bus, None)
 
                             # add a marker to the bus if there are no batteries in it
@@ -3421,28 +3407,32 @@ class SimulationsMain(TimeEventsMain):
 
                     _, pf_results = self.session.power_flow
 
-                    if pf_results is not None:
+                    if not len(self.circuit.emt_events_groups) == 0:
 
-                        # self.add_simulation(SimulationTypes.RmsDynamic_run)
-                        self.ui.progress_label.setText('Running rms simulation...')
-                        QtGui.QGuiApplication.processEvents()
-                        self.LOCK()
+                        if pf_results is not None:
 
-                        drv = sim.RmsSimulationDriver(grid=self.circuit,
-                                                      options=self.get_selected_rms_simulation_options(),
-                                                      pf_results=pf_results)
+                            # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                            self.ui.progress_label.setText('Running rms simulation...')
+                            QtGui.QGuiApplication.processEvents()
+                            self.LOCK()
 
-                        self.session.run(drv,
-                                         post_func=self.post_rms,
-                                         prog_func=self.ui.progressBar.setValue,
-                                         text_func=self.ui.progress_label.setText)
+                            drv = sim.RmsSimulationDriver(grid=self.circuit,
+                                                          options=self.get_selected_rms_simulation_options(),
+                                                          pf_results=pf_results)
 
+                            self.session.run(drv,
+                                             post_func=self.post_rms,
+                                             prog_func=self.ui.progressBar.setValue,
+                                             text_func=self.ui.progress_label.setText)
 
-
+                        else:
+                            info_msg('Run a power flow simulation first.\n'
+                                     'The results are needed to initialize this simulation.')
 
                     else:
-                        info_msg('Run a power flow simulation first.\n'
-                                 'The results are needed to initialize this simulation.')
+                        info_msg('Add a RMS Events Group even if it is empty.\n'
+                                 'Go to database -> RMS Events Group to add it.')
+
             else:
                 self.show_warning_toast('Another rms simulation is running already...')
 
@@ -3470,14 +3460,14 @@ class SimulationsMain(TimeEventsMain):
 
     def run_emt(self):
         """
-        Run rms simulation
+        Run emt simulation
         :return:
         """
         if self.circuit.valid_for_simulation():
 
             if not self.session.is_this_running(SimulationTypes.EmtDynamic_run):
 
-                logger = self.circuit.check_rms_models()
+                logger = self.circuit.check_emt_models()
                 if logger.has_errors():
                     # Show dialogue
                     dlg = LogsDialogue(name="EMT pre simulation check",
@@ -3489,27 +3479,51 @@ class SimulationsMain(TimeEventsMain):
 
                     self.remove_simulation(SimulationTypes.EmtDynamic_run)
 
-                    _, pf_results = self.session.power_flow_3ph
+                    _, pf_results_3ph = self.session.power_flow_3ph
 
-                    if pf_results is not None:
+                    _, pf_results = self.session.power_flow
 
-                        # self.add_simulation(SimulationTypes.RmsDynamic_run)
-                        self.ui.progress_label.setText('Running rms simulation...')
-                        QtGui.QGuiApplication.processEvents()
-                        self.LOCK()
+                    if not len(self.circuit.emt_events_groups) == 0:
+                        if pf_results_3ph is not None:
+                            # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                            self.ui.progress_label.setText('Running emt simulation...')
+                            QtGui.QGuiApplication.processEvents()
+                            self.LOCK()
 
-                        drv = sim.EmtSimulationDriver(grid=self.circuit,
-                                                      options=self.get_selected_emt_simulation_options(),
-                                                      pf_results=pf_results)
+                            drv = sim.EmtSimulationDriver(grid=self.circuit,
+                                                          options=self.get_selected_emt_simulation_options(),
+                                                          pf_results_3ph=pf_results_3ph)
 
-                        self.session.run(drv,
-                                         post_func=self.post_rms,
-                                         prog_func=self.ui.progressBar.setValue,
-                                         text_func=self.ui.progress_label.setText)
+                            self.session.run(drv,
+                                             post_func=self.post_emt,
+                                             prog_func=self.ui.progressBar.setValue,
+                                             text_func=self.ui.progress_label.setText)
+
+                        elif pf_results is not None:
+
+                            # self.add_simulation(SimulationTypes.RmsDynamic_run)
+                            self.ui.progress_label.setText('Running emt simulation from balanced power flow results ...')
+                            QtGui.QGuiApplication.processEvents()
+                            self.LOCK()
+
+                            drv = sim.EmtSimulationDriver(grid=self.circuit,
+                                                          options=self.get_selected_emt_simulation_options(),
+                                                          pf_results=pf_results)
+
+                            self.session.run(drv,
+                                             post_func=self.post_emt,
+                                             prog_func=self.ui.progressBar.setValue,
+                                             text_func=self.ui.progress_label.setText)
+
+                        else:
+                            info_msg('Run a power flow simulation first.\n'
+                                     'The results are needed to initialize this simulation.')
 
                     else:
-                        info_msg('Run a power flow simulation first.\n'
-                                 'The results are needed to initialize this simulation.')
+                        info_msg('Add an EMT Events Group even if it is empty.\n'
+                                 'Go to database -> EMT Events Group to add it.')
+
+
             else:
                 self.show_warning_toast('Another EMT simulation is running already...')
 
@@ -3521,7 +3535,7 @@ class SimulationsMain(TimeEventsMain):
 
         :return:
         """
-        _, results = self.session.rms_dynamic_simulation
+        _, results = self.session.emt_dynamic_simulation
 
         if results is not None:
 
@@ -3530,7 +3544,7 @@ class SimulationsMain(TimeEventsMain):
             self.update_available_results()
 
         else:
-            warning_msg('There are no rms simulation results.', 'Rms simulation')
+            warning_msg('There are no emt simulation results.', 'Rms simulation')
 
         if not self.session.is_anything_running():
             self.UNLOCK()

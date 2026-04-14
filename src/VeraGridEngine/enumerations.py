@@ -1227,6 +1227,7 @@ class DeviceType(Enum):
     LineTypeDevice = 'Line Template'
     Transformer2WDevice = 'Transformer'
     Transformer3WDevice = 'Transformer3W'
+    TransformerNwDevice = 'TransformerNw'
     WindingDevice = 'Winding'
     SeriesReactanceDevice = 'Series reactance'
     HVDCLineDevice = 'HVDC Line'
@@ -1511,6 +1512,7 @@ class StudyResultsType(Enum):
     InvestmentEvaluations = 'InvestmentEvaluations'
     NetTransferCapacity = 'NetTransferCapacity'
     NetTransferCapacityTimeSeries = 'NetTransferCapacityTimeSeries'
+    NodeGroups = 'NodeGroups'
     StochasticPowerFlow = 'StochasticPowerFlow'
     RmsSimulation = "RmsSimulation"
     EmtSimulation = "EmtSimulation"
@@ -3459,6 +3461,15 @@ class BlockType(Enum):
     """
     this class contains the existing types of blocks
     """
+
+    # inputs and outputs
+    INPUT_CONN = "Bus Connection"
+    OUTPUT_CONN = "EXTERNAL_MAPPING"
+
+    # generic
+    GENERIC = "Generic"
+
+    # common basic maths
     CONST = "CONST"
     GAIN = "GAIN"
     SUM = "SUM"
@@ -3466,20 +3477,33 @@ class BlockType(Enum):
     PRODUCT = "PRODUCT"
     DIVIDE = "Divide"
     ABS = "Abs"
+
+    # RMS
     GENRAW = "GENRAW"
     GENQEC = "GENQEC"
-    GOV = "Gov"
-    STAB = "Stab"
-    EXCITER = "Exciter"
-    LINE = "Line"
-    LOAD = "Load"
-    GENERIC = "Generic"
-    BUS_CONNECTION = "Bus Connection"
-    EXTERNAL_MAPPING = "EXTERNAL_MAPPING"
+    GOV_RMS = "GOVERNOR_RMS"
+    STAB_RMS = "STABILIZER_RMS"
+    EXCITER_RMS = "EXCITER_RMS"
+    LINE_RMS = "Line_RMS"
+    LOAD_RMS = "Load_RMS"
 
+
+    # EMT
+    EMT_GENERATOR = "EMT_GENERATOR"
+    GOV_EMT = "GOVERNOR_EMT"
+    STAB_EMT = "STABILIZER_EMT"
+    EXCITER_EMT = "EXCITER_EMT"
     EMT_PI_LINE = "EMT_PI_LINE"
     EMT_BERGERON_LINE = "EMT_BERGERON_LINE"
+    R_LOAD_EMT = "R_LOAD_EMT"
+    L_LOAD_EMT = "L_LOAD_EMT"
+    C_LOAD_EMT = "C_LOAD_EMT"
+    EXP_LOAD_EMT = "EXP_LOAD_EMT"
+    ZIP_LOAD_EMT = "ZIP_LOAD_EMT"
+    DC_LOAD_EMT = "DC_LOAD_EMT"
+    EMT_THEVENIN = "EMT_THEVENIN_EMT"
     EMTLOAD = "EMT_LOAD"
+
 
     def __str__(self):
         return self.value

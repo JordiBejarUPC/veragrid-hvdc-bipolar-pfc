@@ -20,7 +20,7 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_3ph_emt_template
+from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.enumerations import (
@@ -85,9 +85,9 @@ def build_two_bus_real_emt_case(
         get_bus_emt_template(grid, bus)
 
     gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.var_factory).block
-    line_mdl = get_pi_line_emt_template(vf = grid.var_factory).block
+    line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
     if zip_load:
-        load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.var_factory).block
+        load_mdl = get_load_ZIP_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
     else:
         load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
         z_base = 1.0 / grid.Sbase
@@ -147,7 +147,7 @@ def build_two_bus_real_emt_case(
         initialization_method=initialization_method,
         verbose=0,
     )
-    problem = EmtProblemDae(grid=grid, options=options, pf_results_3Ph=res)
+    problem = EmtProblemDae(grid=grid, options=options, pf_results_3ph=res)
 
     return problem, {
         "grid": grid,

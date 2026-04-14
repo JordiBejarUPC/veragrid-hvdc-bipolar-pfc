@@ -20,6 +20,12 @@ from VeraGridEngine.basic_structures import Vec, StrVec
 
 
 class RmsSimulationDriver(DriverTemplate):
+    __slots__ = (
+        "pf_results",
+        "options",
+        "problem",
+    )
+
     name = 'Rms Simulation'
     tpe = SimulationTypes.RmsDynamic_run
 

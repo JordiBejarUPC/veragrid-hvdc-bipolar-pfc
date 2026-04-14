@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
 import numpy as np
-from typing import TYPE_CHECKING, List, Union, cast
+from typing import TYPE_CHECKING, List, Union, cast, Any
 from PySide6.QtCore import Qt, QPoint, QRectF, QPointF
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QPen, QBrush, QColor, QCursor, QTransform, QFont
 from PySide6.QtWidgets import QMenu, QGraphicsItem, QGraphicsRectItem, QGraphicsSceneMouseEvent
@@ -14,8 +14,11 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import RoundTerminalIte
 from VeraGrid.Gui.Diagrams.generic_graphics import GenericDiagramWidget, ACTIVE, DEACTIVATED
 from VeraGridEngine.Devices.Branches.vsc import VSC
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.enumerations import DeviceType, ConverterControlType, \
-    TerminalType  # Assuming VSC controls might be relevant later
+from VeraGridEngine.enumerations import (DeviceType,
+                                         ConverterControlType,
+                                         SchematicAutoRouteStyle,
+                                         SchematicRouteKind,
+                                         TerminalType)  # Assuming VSC controls might be relevant later
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -57,6 +60,7 @@ class VscGraphicItem3Term(GenericDiagramWidget, QGraphicsRectItem):
 
         # Color and style based on active state
         self.pen_width = 2.2
+        self.r: float = 0.0
         if self.api_object.active:
             self.color = ACTIVE['color']
             self.style = ACTIVE['style']
@@ -70,6 +74,7 @@ class VscGraphicItem3Term(GenericDiagramWidget, QGraphicsRectItem):
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
         self.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.setTransformOriginPoint(self.get_rotation_origin_local_point())
 
         if pos is not None:
             self.setPos(pos)
@@ -117,6 +122,64 @@ class VscGraphicItem3Term(GenericDiagramWidget, QGraphicsRectItem):
         self.set_terminal_tooltips()
 
         # self.setRotation(180)
+
+    def get_rotation_origin_local_point(self) -> QPointF:
+        """
+        Return the local rotation origin used for this three-terminal VSC.
+
+        The symbol and its three round terminals must rotate as one rigid body
+        around the geometric center of the square.
+
+        :return: Local rotation origin.
+        """
+        return self.rect().center()
+
+    def apply_rotation_state(self, refresh_connections: bool) -> None:
+        """
+        Apply the persisted rotation angle to the live graphics item.
+
+        :param refresh_connections: Refresh connected routes afterwards.
+        :return: ``None``.
+        """
+        self.setTransformOriginPoint(self.get_rotation_origin_local_point())
+        self.setRotation(self.r)
+
+        if refresh_connections:
+            self.update_conn()
+        else:
+            pass
+
+    def set_rotation_angle(self, angle_degrees: float, persist: bool) -> None:
+        """
+        Set one persisted rotation angle for this VSC symbol.
+
+        :param angle_degrees: Rotation angle in degrees.
+        :param persist: Update the backing diagram element.
+        :return: ``None``.
+        """
+        normalized_angle: float = float(angle_degrees) % 360.0
+        self.r = normalized_angle
+        self.apply_rotation_state(refresh_connections=True)
+
+        if persist:
+            self.editor.update_diagram_element(device=self.api_object,
+                                               x=self.pos().x(),
+                                               y=self.pos().y(),
+                                               w=self.w,
+                                               h=self.h,
+                                               r=self.r,
+                                               draw_labels=self.draw_labels,
+                                               graphic_object=self)
+        else:
+            pass
+
+    def rotate_90(self) -> None:
+        """
+        Rotate the VSC by ninety degrees and persist the change.
+
+        :return: ``None``.
+        """
+        self.set_rotation_angle(angle_degrees=self.r + 90.0, persist=True)
 
     def _body_fill_color(self) -> QColor:
         """
@@ -204,6 +267,257 @@ class VscGraphicItem3Term(GenericDiagramWidget, QGraphicsRectItem):
     def get_associated_widgets(self) -> List[LineGraphicTemplateItem]:
         """Return the graphical line items connected to this VSC."""
         return [self.conn_line_ac, self.conn_line_dc_p, self.conn_line_dc_n]
+
+    def get_connection_layout_key(self, conn_line: "LineGraphicTemplateItem") -> str | None:
+        """
+        Resolve one persisted terminal-connection key for a connector line.
+
+        :param conn_line: Connector line item.
+        :return: Connection key or ``None`` when the line is unrelated.
+        """
+        terminal_item: RoundTerminalItem | None = None
+
+        if conn_line.get_terminal_from_parent() is self:
+            terminal_item = cast(RoundTerminalItem | None, conn_line.get_terminal_from())
+        elif conn_line.get_terminal_to_parent() is self:
+            terminal_item = cast(RoundTerminalItem | None, conn_line.get_terminal_to())
+        else:
+            return None
+
+        if terminal_item is None:
+            return None
+        elif terminal_item.terminal_type == TerminalType.AC:
+            return "ac"
+        elif terminal_item.terminal_type == TerminalType.DC_P:
+            return "dc_p"
+        elif terminal_item.terminal_type == TerminalType.DC_N:
+            return "dc_n"
+        else:
+            return None
+
+    def _get_or_create_connection_layout_metadata(self, connection_key: str) -> dict[str, Any]:
+        """
+        Return one mutable persisted metadata record for a terminal connector.
+
+        :param connection_key: Connection key.
+        :return: Connector metadata dictionary.
+        """
+        location = self.editor.diagram.query_point(self.api_object)
+
+        if location is None:
+            location = self.editor.diagram.update_graphic_location(api_object=self.api_object,
+                                                                   x=self.pos().x(),
+                                                                   y=self.pos().y(),
+                                                                   w=self.w,
+                                                                   h=self.h,
+                                                                   r=self.r,
+                                                                   draw_labels=self.draw_labels)
+        else:
+            pass
+
+        terminal_connections: Any = location.layout_metadata.get("vsc_terminal_connections", None)
+
+        if isinstance(terminal_connections, dict):
+            pass
+        else:
+            terminal_connections = dict()
+            location.layout_metadata["vsc_terminal_connections"] = terminal_connections
+
+        connection_metadata: Any = terminal_connections.get(connection_key, None)
+
+        if isinstance(connection_metadata, dict):
+            return connection_metadata
+        else:
+            connection_metadata = dict()
+            terminal_connections[connection_key] = connection_metadata
+            return connection_metadata
+
+    def get_connection_route_points(self, conn_line: "LineGraphicTemplateItem") -> list[tuple[float, float]]:
+        """
+        Return persisted route points for one VSC terminal connector.
+
+        :param conn_line: Connector line item.
+        :return: Route points.
+        """
+        connection_key = self.get_connection_layout_key(conn_line=conn_line)
+
+        if connection_key is None:
+            return list()
+        else:
+            pass
+
+        connection_metadata = self._get_or_create_connection_layout_metadata(connection_key=connection_key)
+        route_points: Any = connection_metadata.get("points", list())
+
+        if isinstance(route_points, list):
+            return list(route_points)
+        else:
+            return list()
+
+    def should_preserve_connection_route_shape(self, conn_line: "LineGraphicTemplateItem") -> bool:
+        """
+        Return whether one VSC terminal connector should preserve saved elbows.
+
+        :param conn_line: Connector line item.
+        :return: Preservation flag.
+        """
+        connection_key = self.get_connection_layout_key(conn_line=conn_line)
+
+        if connection_key is None:
+            return False
+        else:
+            pass
+
+        connection_metadata = self._get_or_create_connection_layout_metadata(connection_key=connection_key)
+        route_kind_text: str = str(connection_metadata.get("kind", ""))
+        locked: bool = bool(connection_metadata.get("locked", False))
+
+        if locked:
+            return True
+        elif route_kind_text == SchematicRouteKind.MANUAL_POLYLINE.value:
+            return True
+        elif route_kind_text == SchematicRouteKind.MANUAL_ORTHOGONAL.value:
+            return True
+        else:
+            return False
+
+    def get_connection_auto_route_style(self, conn_line: "LineGraphicTemplateItem") -> SchematicAutoRouteStyle:
+        """
+        Return the automatic route style for one VSC terminal connector.
+
+        :param conn_line: Connector line item.
+        :return: Route-style enum.
+        """
+        connection_key = self.get_connection_layout_key(conn_line=conn_line)
+
+        if connection_key is None:
+            return SchematicAutoRouteStyle.RETICULAR
+        else:
+            pass
+
+        connection_metadata = self._get_or_create_connection_layout_metadata(connection_key=connection_key)
+        route_style_text: str = str(connection_metadata.get("route_style", SchematicAutoRouteStyle.RETICULAR.value))
+
+        if route_style_text == SchematicAutoRouteStyle.STRAIGHT.value:
+            return SchematicAutoRouteStyle.STRAIGHT
+        else:
+            return SchematicAutoRouteStyle.RETICULAR
+
+    def set_connection_auto_route_style(self,
+                                        conn_line: "LineGraphicTemplateItem",
+                                        route_style: SchematicAutoRouteStyle) -> None:
+        """
+        Persist one automatic route style for a VSC terminal connector.
+
+        :param conn_line: Connector line item.
+        :param route_style: Requested route style.
+        :return: ``None``.
+        """
+        connection_key = self.get_connection_layout_key(conn_line=conn_line)
+
+        if connection_key is None:
+            return
+        else:
+            pass
+
+        connection_metadata = self._get_or_create_connection_layout_metadata(connection_key=connection_key)
+        connection_metadata["route_style"] = route_style.value
+        connection_metadata["kind"] = SchematicRouteKind.AUTO_POLYLINE.value
+        connection_metadata["locked"] = False
+
+    def set_connection_route_points(self,
+                                    conn_line: "LineGraphicTemplateItem",
+                                    points: list[tuple[float, float]],
+                                    kind: SchematicRouteKind,
+                                    locked: bool = False) -> None:
+        """
+        Persist one manual or automatic route for a VSC terminal connector.
+
+        :param conn_line: Connector line item.
+        :param points: Route points.
+        :param kind: Route kind.
+        :param locked: Lock flag.
+        :return: ``None``.
+        """
+        connection_key = self.get_connection_layout_key(conn_line=conn_line)
+
+        if connection_key is None:
+            return
+        else:
+            pass
+
+        connection_metadata = self._get_or_create_connection_layout_metadata(connection_key=connection_key)
+        connection_metadata["points"] = list(points)
+        connection_metadata["kind"] = kind.value
+        connection_metadata["locked"] = bool(locked)
+
+        if "route_style" not in connection_metadata:
+            connection_metadata["route_style"] = SchematicAutoRouteStyle.RETICULAR.value
+        else:
+            pass
+
+    def get_connection_attachment(self,
+                                  conn_line: "LineGraphicTemplateItem",
+                                  endpoint: str) -> dict[str, Any]:
+        """
+        Return persisted endpoint-anchor metadata for one connector endpoint.
+
+        :param conn_line: Connector line item.
+        :param endpoint: Endpoint key.
+        :return: Attachment metadata.
+        """
+        connection_key = self.get_connection_layout_key(conn_line=conn_line)
+
+        if connection_key is None:
+            return dict()
+        else:
+            pass
+
+        connection_metadata = self._get_or_create_connection_layout_metadata(connection_key=connection_key)
+        attachments: Any = connection_metadata.get("attachments", None)
+
+        if isinstance(attachments, dict):
+            pass
+        else:
+            attachments = dict()
+            connection_metadata["attachments"] = attachments
+
+        attachment: Any = attachments.get(endpoint, None)
+
+        if isinstance(attachment, dict):
+            return dict(attachment)
+        else:
+            return dict()
+
+    def set_connection_attachment(self,
+                                  conn_line: "LineGraphicTemplateItem",
+                                  endpoint: str,
+                                  attachment: dict[str, Any]) -> None:
+        """
+        Persist endpoint-anchor metadata for one connector endpoint.
+
+        :param conn_line: Connector line item.
+        :param endpoint: Endpoint key.
+        :param attachment: Attachment metadata.
+        :return: ``None``.
+        """
+        connection_key = self.get_connection_layout_key(conn_line=conn_line)
+
+        if connection_key is None:
+            return
+        else:
+            pass
+
+        connection_metadata = self._get_or_create_connection_layout_metadata(connection_key=connection_key)
+        attachments: Any = connection_metadata.get("attachments", None)
+
+        if isinstance(attachments, dict):
+            pass
+        else:
+            attachments = dict()
+            connection_metadata["attachments"] = attachments
+
+        attachments[endpoint] = dict(attachment)
 
     def get_extra_graphics(self):
         """Return terminals associated with this widget."""
@@ -343,11 +657,12 @@ class VscGraphicItem3Term(GenericDiagramWidget, QGraphicsRectItem):
             center = (self.terminal_ac.pos() + (
                         self.terminal_dc_p.pos() + self.terminal_dc_n.pos()) * 0.5) * 0.5 - QPointF(a, b)
 
-            transform = QTransform()
-            transform.translate(center.x(), center.y())
-            transform.rotate(np.rad2deg(ang))
-            self.setTransform(transform)
+            # Keep auto-placement separate from user-editable rotation so redraw
+            # never wipes a saved orientation restored from the diagram.
+            self.setPos(center)
+            self.set_rotation_angle(angle_degrees=self.r + np.rad2deg(ang), persist=False)
         # If we're not near the origin, preserve the current position (likely loaded from file)
+        self.update_conn()
 
     def remove_connection(self, conn_line: LineGraphicTemplateItem):
         """Remove a connection from a specific terminal."""
@@ -411,6 +726,11 @@ class VscGraphicItem3Term(GenericDiagramWidget, QGraphicsRectItem):
                            icon_path=":/Icons/icons/edit.png")
 
             menu.addSeparator()
+
+            add_menu_entry(menu=menu,
+                           text="Rotate 90",
+                           function_ptr=self.rotate_90,
+                           icon_path=":/Icons/icons/rotate.svg")
 
             ra6 = menu.addAction('Plot profiles')
             plot_icon = QIcon()

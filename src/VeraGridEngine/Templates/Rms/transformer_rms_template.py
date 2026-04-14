@@ -47,6 +47,10 @@ def parse_windings_connection(conn: WindingsConnection) -> tuple[WindingType, Wi
 
 
 class TrafoRmsTemplate(RmsModelTemplate):
+    __slots__ = (
+        "tpe",
+        "_block",
+    )
 
     def __init__(self, trafo:Transformer2W, vf: VarFactory, Sbase:float = 100, name: str = "rms_bus_template"):
         """

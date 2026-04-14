@@ -14,7 +14,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem,
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
-from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
 from VeraGridEngine.Devices.Branches.line import Line, SequenceLineType
 from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
 
@@ -122,14 +122,14 @@ class LineGraphicItem(LineGraphicTemplateItem):
                            icon_path=":/Icons/icons/edit.png")
 
             add_menu_entry(menu=menu,
-                           text="Rms Editor",
+                           text="RMS Editor",
                            function_ptr=self.edit_rms,
-                           icon_path=":/Icons/icons/edit.png")
+                           icon_path=":/Icons/icons/dyn_gray.png")
 
             add_menu_entry(menu=menu,
-                           text="Emt Editor",
+                           text="EMT Editor",
                            function_ptr=self.edit_emt,
-                           icon_path=":/Icons/icons/edit.png")
+                           icon_path=":/Icons/icons/dyn_gray.png")
 
             add_menu_entry(menu=menu,
                            text="Change bus",

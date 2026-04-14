@@ -25,6 +25,33 @@ class Block:
     """
     Class representing a Block
     """
+    __slots__ = (
+        "name",
+        "uid",
+        "vars_glob_name2uid",
+        "state_vars",
+        "state_eqs",
+        "algebraic_vars",
+        "algebraic_eqs",
+        "diff_vars",
+        "reformulated_vars",
+        "differential_eqs",
+        "init_eqs",
+        "diff_init_eqs",
+        "children",
+        "in_vars",
+        "out_vars",
+        "parameters",
+        "discrete_eqs",
+        "external_mapping",
+        "api_obj_mapping",
+        "init_values",
+        "var_mapping",
+        "event_dict",
+        "mode_dict",
+        "procedural_logic",
+        "_diagram",
+    )
 
     def __init__(self,
                  state_vars: List[Var] | None = None,

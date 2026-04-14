@@ -14,7 +14,7 @@ from VeraGridEngine.Devices.Aggregation import Area, Zone, Country
 from VeraGridEngine.Devices.Substation.substation import Substation
 from VeraGridEngine.Devices.Substation.busbar import BusBar
 from VeraGridEngine.Devices.Substation.voltage_level import VoltageLevel
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileFloat
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 
 
@@ -36,8 +36,7 @@ class Bus(DynamicDevice):
         '_angle_cost',
         'Qmin_sum',
         'Qmax_sum',
-        '_r_fault',
-        '_x_fault',
+
         'country',
         'area',
         'zone',
@@ -79,10 +78,6 @@ class Bus(DynamicDevice):
                profile_name=''),
         GCProp(key='angle_cost', units='e/unit', tpe=float, definition='Cost of over and under angles',
                old_names=['voltage_angle_cost']),
-        GCProp(key='r_fault', units='p.u.', tpe=float,
-               definition='Resistance of the fault.This is used for short circuit studies.', profile_name=''),
-        GCProp(key='x_fault', units='p.u.', tpe=float,
-               definition='Reactance of the fault.This is used for short circuit studies.', profile_name=''),
         GCProp(key='x', units='px', tpe=float, definition='x position in pixels.', profile_name='',
                editable=False),
         GCProp(key='y', units='px', tpe=float, definition='y position in pixels.', profile_name='',
@@ -116,8 +111,6 @@ class Bus(DynamicDevice):
                  vmax=1.1,
                  angle_min=-6.28,
                  angle_max=6.28,
-                 r_fault=0.0,
-                 x_fault=0.0,
                  xpos=0,
                  ypos=0,
                  height=0,
@@ -152,8 +145,7 @@ class Bus(DynamicDevice):
         :param vmax: Maximum per unit voltage (p.u.)
         :param angle_min: Minimum voltage angle (rad)
         :param angle_max: Maximum voltage angle (rad)
-        :param r_fault: Resistance of the fault in per unit (SC only)
-        :param x_fault: Reactance of the fault in per unit (SC only)
+
         :param xpos: X position in pixels (GUI only)
         :param ypos: Y position in pixels (GUI only)
         :param height: Height of the graphic object (GUI only)
@@ -184,7 +176,7 @@ class Bus(DynamicDevice):
                                build_status=build_status)
 
         self.active = bool(active)
-        self._active_prof = Profile(default_value=self.active, data_type=bool)
+        self._active_prof = ProfileBool(default_value=self.active)
 
         # Nominal voltage (kV)
         self.Vnom = float(Vnom)
@@ -200,8 +192,8 @@ class Bus(DynamicDevice):
 
         self.Va0 = float(Va0)
 
-        self._Vmin_prof = Profile(default_value=vmin, data_type=float)
-        self._Vmax_prof = Profile(default_value=vmax, data_type=float)
+        self._Vmin_prof = ProfileFloat(default_value=vmin)
+        self._Vmax_prof = ProfileFloat(default_value=vmax)
 
         self.angle_min = float(angle_min)
 
@@ -215,9 +207,7 @@ class Bus(DynamicDevice):
         # summation of upper reactive power limits connected
         self.Qmax_sum = 0
 
-        # short circuit impedance
-        self.r_fault = float(r_fault)
-        self.x_fault = float(x_fault)
+
 
         self.country: Country | None = country
 
@@ -276,7 +266,7 @@ class Bus(DynamicDevice):
         self.color = color if color is not None else "#000000"
 
     @property
-    def active_prof(self) -> Profile:
+    def active_prof(self) -> ProfileBool:
         """
         Cost profile
         :return: Profile
@@ -284,8 +274,8 @@ class Bus(DynamicDevice):
         return self._active_prof
 
     @active_prof.setter
-    def active_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def active_prof(self, val: Union[ProfileBool, np.ndarray]):
+        if isinstance(val, ProfileBool):
             self._active_prof = val
         elif isinstance(val, np.ndarray):
             self._active_prof.set(arr=val)
@@ -300,7 +290,7 @@ class Bus(DynamicDevice):
         return get_at(self.active, self.active_prof, t)
 
     @property
-    def Vmin_prof(self) -> Profile:
+    def Vmin_prof(self) -> ProfileFloat:
         """
         Pmin profile
         :return: Profile
@@ -308,8 +298,8 @@ class Bus(DynamicDevice):
         return self._Vmin_prof
 
     @Vmin_prof.setter
-    def Vmin_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Vmin_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Vmin_prof = val
         elif isinstance(val, np.ndarray):
             self._Vmin_prof.set(arr=val)
@@ -324,7 +314,7 @@ class Bus(DynamicDevice):
         return get_at(self.Vmin, self.Vmin_prof, t)
 
     @property
-    def Vmax_prof(self) -> Profile:
+    def Vmax_prof(self) -> ProfileFloat:
         """
         Pmin profile
         :return: Profile
@@ -332,8 +322,8 @@ class Bus(DynamicDevice):
         return self._Vmax_prof
 
     @Vmax_prof.setter
-    def Vmax_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Vmax_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Vmax_prof = val
         elif isinstance(val, np.ndarray):
             self._Vmax_prof.set(arr=val)
@@ -445,13 +435,6 @@ class Bus(DynamicDevice):
 
         if show_fig:
             plt.show()
-
-    def get_fault_impedance(self) -> complex:
-        """
-        Get the fault impedance
-        :return: complex value of fault impedance
-        """
-        return complex(self.r_fault, self.x_fault)
 
     def get_coordinates(self) -> Tuple[float, float]:
         """
@@ -733,43 +716,7 @@ class Bus(DynamicDevice):
         """
         self._angle_cost = float(val)
 
-    @property
-    def r_fault(self) -> float:
-        """
-        Get ``r_fault``.
 
-        :return: float
-        """
-        return self._r_fault
-
-    @r_fault.setter
-    def r_fault(self, val: float) -> None:
-        """
-        Set ``r_fault``.
-
-        :param val: Value to assign.
-        :return: None
-        """
-        self._r_fault = float(val)
-
-    @property
-    def x_fault(self) -> float:
-        """
-        Get ``x_fault``.
-
-        :return: float
-        """
-        return self._x_fault
-
-    @x_fault.setter
-    def x_fault(self, val: float) -> None:
-        """
-        Set ``x_fault``.
-
-        :param val: Value to assign.
-        :return: None
-        """
-        self._x_fault = float(val)
 
     @property
     def x(self) -> float:

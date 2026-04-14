@@ -1249,6 +1249,38 @@ def test_injection_nexus_parent_endpoint_move_persists_parent_anchor_coordinates
     assert parent_anchor.y() == 45.0
 
 
+def test_moving_injection_preserves_manual_child_nexus_anchor() -> None:
+    """
+    Moving the injection glyph must not overwrite one manually aligned child nexus anchor.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    bus: Bus = Bus(name="B1")
+    load: Load = Load(name="LD1")
+    load.bus = bus
+    bus_graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    load_graphic: LoadGraphicItem = LoadGraphicItem(parent=bus_graphic, api_obj=load, editor=editor)
+
+    load_graphic.move_nexus_endpoint_alignment(endpoint="child", scene_pos=QPointF(10.0, 120.0))
+    dock_before = editor.diagram.get_dock(load)
+    child_anchor_x_before: float = float(dock_before["child_anchor_x"])
+    child_anchor_y_before: float = float(dock_before["child_anchor_y"])
+
+    load_graphic.setPos(40.0, 110.0)
+    load_graphic.sync_manual_dock_metadata_from_position()
+
+    dock_after = editor.diagram.get_dock(load)
+    child_anchor_scene = load_graphic.get_child_nexus_anchor()
+    nexus_path = load_graphic.nexus.path()
+    nexus_start = nexus_path.elementAt(0)
+
+    assert dock_after["child_anchor_x"] == child_anchor_x_before
+    assert dock_after["child_anchor_y"] == child_anchor_y_before
+    assert child_anchor_scene == load_graphic.mapToScene(QPointF(child_anchor_x_before, child_anchor_y_before))
+    assert float(nexus_start.x) == child_anchor_scene.x()
+    assert float(nexus_start.y) == child_anchor_scene.y()
+
+
 def test_injection_base_context_menu_only_exposes_rotate_not_dock_move() -> None:
     """
     Injection base menus should remove dock/move actions and expose only rotation.
@@ -1910,3 +1942,30 @@ def test_plain_injection_selection_does_not_activate_nexus_handles() -> None:
 
     assert load_graphic._nexus_endpoint_handles["child"].isVisible()
     assert load_graphic._nexus_endpoint_handles["parent"].isVisible()
+
+
+def test_glyph_interaction_clears_nexus_edit_and_restores_movement() -> None:
+    """
+    Starting a normal glyph interaction must leave nexus edit mode so the
+    injection remains draggable.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    scene: QtWidgets.QGraphicsScene = QtWidgets.QGraphicsScene()
+    bus: Bus = Bus(name="B1")
+    load: Load = Load(name="L1")
+    bus_graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    load_graphic: LoadGraphicItem = LoadGraphicItem(parent=bus_graphic, api_obj=load, editor=editor)
+
+    scene.addItem(bus_graphic)
+    scene.addItem(load_graphic.nexus)
+    load_graphic.setSelected(True)
+    load_graphic.set_nexus_edit_active(True)
+
+    assert load_graphic.is_nexus_edit_active()
+    assert not bool(load_graphic.flags() & QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
+
+    load_graphic.prepare_for_glyph_interaction()
+
+    assert not load_graphic.is_nexus_edit_active()
+    assert bool(load_graphic.flags() & QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsMovable)

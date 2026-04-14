@@ -3,30 +3,24 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-import cProfile
-import copy
-
-import time
 import sys, os
 import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'src')))
-import pandas as pd
 from matplotlib import pyplot as plt
 
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
-from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 import VeraGridEngine.api as gce
 
 ###########################################################################################################################
@@ -45,6 +39,86 @@ def find_name_in_block(name: str, block: Block):
             return res
 
 
+# ###########################################################################################################################
+# # Build VeraGrid object
+#
+# grid = gce.MultiCircuit(Sbase=100, fbase=50.0)
+#
+# # Buses
+# bus0 = gce.Bus(name="Bus0", Vnom=10, is_slack=True)
+# bus1 = gce.Bus(name="Bus1", Vnom=10)
+#
+# grid.add_bus(bus0)
+# grid.add_bus(bus1)
+#
+# for bus in grid.buses:
+#     initialize_bus_rms(bus, vf=grid.var_factory)
+#
+# # Lines
+# line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
+#                  rate=900.0)
+#
+# # load
+# load = gce.Load(P=9.999999, Q=0.999999)
+#
+# # Generators
+# gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
+#                      x1=0.86138701, r1=0.3, freq=50.0
+#                      )
+#
+# ######################################################################################################
+# # Build Rms models
+# ######################################################################################################
+#
+# # generator
+# genqec_mdl = get_complete_generator_template_rms(grid.var_factory).block
+#
+# # line
+# line_mdl = get_line_rms_template(grid.var_factory).block
+#
+# # load
+# load_mdl = get_load_rms_template(grid.var_factory).block
+#
+# # connection with buses
+#
+# genqec_mdl.connect([genqec_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+# genqec_mdl.connect([genqec_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
+#
+# line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
+# line_mdl.connect([line_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
+#
+# line_mdl.connect([line_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
+# line_mdl.connect([line_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
+#
+# # u_gov = find_name_in_block("u_gov1", gov1_mdl)
+#
+# load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
+# load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
+#
+# # external mapping
+#
+# big_gen1 = Block(children=[genqec_mdl])
+#
+# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.P: genqec_mdl.out_vars[0]})
+# big_gen1.external_mapping.update({VarPowerFlowRefferenceType.Q: genqec_mdl.out_vars[1]})
+#
+# # add models to dyn_host
+# line0.rms_model = line_mdl
+# load.rms_model = load_mdl
+# gen0.rms_model = big_gen1
+#
+# # apply event
+# Pl0 = find_name_in_block('Pl0', load_mdl)
+# events_group = RmsEventsGroup("simulation1")
+# event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.09, group=events_group)
+# grid.add_rms_event(event)
+#
+# grid.add_line(line0)
+# grid.add_load(bus=bus1, api_obj=load)
+# grid.add_generator(bus=bus0, api_obj=gen0)
+#
+#
+# #
 #####################################################################################
 #                    Grid
 #####################################################################################
@@ -78,12 +152,7 @@ grid.add_load(bus=bus1, api_obj=load)
 
 # Generators
 gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
-                     x1=0.86138701, r1=0.3, freq=50.0,
-                     #M=10.0,
-                     #D=1.0,
-                     #omega_ref=1.0,
-                     #Kp=1.0,
-                     #Ki=10.0,
+                     x1=0.86138701, r1=0.3, freq=50.0
                      )
 grid.add_generator(bus=bus0, api_obj=gen0)
 
@@ -126,9 +195,9 @@ grid.add_rms_events_group(events_group)
 event = RmsEvent(device=load, parameter=Pl0, time=0.1, value=-0.098, group=events_group)
 grid.add_rms_event(event)
 
-#gce.save_file(grid=grid, filename="saved_grid_1.veragrid")
+# gce.save_file(grid=grid, filename="saved_grid_1.veragrid")
 # grid_opened = gce.open_file("saved_grid_1.veragrid")
-
+#
 # equal, logger = grid.compare_circuits(grid_opened, detailed_profile_comparison=True)
 # if not equal:
 #     logger.print()

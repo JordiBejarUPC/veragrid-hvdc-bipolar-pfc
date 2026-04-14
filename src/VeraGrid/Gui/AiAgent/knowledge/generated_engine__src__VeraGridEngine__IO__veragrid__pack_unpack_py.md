@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 1
 - Top-level function count: 21
-- Representative imports: __future__, copy, json, math, typing, pandas, numpy, enum, VeraGridEngine.basic_structures, VeraGridEngine.Devices.multi_circuit, VeraGridEngine.Devices, VeraGridEngine.Devices.Parents.editable_device, VeraGridEngine.Devices.profile, VeraGridEngine.Utils.Symbolic.symbolic_io, VeraGridEngine.Devices.types, VeraGridEngine.enumerations
+- Representative imports: __future__, copy, json, math, typing, pandas, numpy, enum, VeraGridEngine.basic_structures, VeraGridEngine.Devices.multi_circuit, VeraGridEngine.Devices, VeraGridEngine.Devices.Parents.editable_device,  VeraGridEngine.Utils.Symbolic.symbolic_io, VeraGridEngine.Devices.types, VeraGridEngine.enumerations
 
 ## Function: get_objects_dictionary()
 

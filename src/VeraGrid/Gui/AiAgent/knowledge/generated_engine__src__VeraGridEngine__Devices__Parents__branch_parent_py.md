@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 1
 - Top-level function count: 0
-- Representative imports: __future__, numpy, typing, VeraGridEngine.basic_structures, VeraGridEngine.Devices.Substation.substation, VeraGridEngine.Devices.Substation.voltage_level, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.dynamic_parent, VeraGridEngine.Devices.Aggregation.branch_group, VeraGridEngine.Devices.profile, VeraGridEngine.Devices.Parents.editable_device
+- Representative imports: __future__, numpy, typing, VeraGridEngine.basic_structures, VeraGridEngine.Devices.Substation.substation, VeraGridEngine.Devices.Substation.voltage_level, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.enumerations, VeraGridEngine.Devices.Parents.dynamic_parent, VeraGridEngine.Devices.Aggregation.branch_group,  VeraGridEngine.Devices.Parents.editable_device
 
 ## Class: BranchParent
 

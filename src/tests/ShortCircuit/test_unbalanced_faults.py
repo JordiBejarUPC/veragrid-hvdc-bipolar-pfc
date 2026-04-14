@@ -35,7 +35,8 @@ def test_unbalanced_short_circuit():
             device=grid.buses[2],
             fault_type=FaultType.LG,
             method=MethodShortCircuit.sequences,
-            phases=PhasesShortCircuit.a
+            phases=PhasesShortCircuit.a,
+            x_fault=0.1
         )
     )
 

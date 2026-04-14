@@ -12,6 +12,7 @@ from VeraGridEngine.Devices.Substation import *
 from VeraGridEngine.Devices.Fluid import *
 from VeraGridEngine.Devices.measurement import *
 from VeraGridEngine.Devices.Dynamic import *
+from VeraGridEngine.Devices.Events import *
 from VeraGridEngine.Templates.Rms import *
 
 INJECTION_DEVICE_TYPES = Union[
@@ -91,6 +92,7 @@ ALL_DEV_TYPES = Union[
         # MEASUREMENT_TYPES,
     AREA_TYPES,
     Transformer3W,
+    TransformerNW,
     OverheadLineType,
     Wire,
     Area,

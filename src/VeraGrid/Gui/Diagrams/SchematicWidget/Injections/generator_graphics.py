@@ -15,7 +15,7 @@ from VeraGrid.Gui.Diagrams.Editors.generator_editor import GeneratorQCurveEditor
 from VeraGrid.Gui.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
 from VeraGrid.Gui.WindPowerWizard.wind_power_wizzard import WindFarmWizard
 from VeraGrid.Gui.gui_functions import add_menu_entry
-from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
 from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
@@ -69,14 +69,14 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
                        function_ptr=self.set_regulation_bus)
 
         add_menu_entry(menu=menu,
-                       text="Rms Editor",
+                       text="RMS Editor",
                        function_ptr=self.edit_rms,
-                       icon_path=":/Icons/icons/edit.png")
+                       icon_path=":/Icons/icons/dyn_gray.png")
 
         add_menu_entry(menu=menu,
-                       text="Emt Editor",
+                       text="EMT Editor",
                        function_ptr=self.edit_emt,
-                       icon_path=":/Icons/icons/edit.png")
+                       icon_path=":/Icons/icons/dyn_gray.png")
 
         add_menu_entry(menu=menu,
                        text="Qcurve edit",

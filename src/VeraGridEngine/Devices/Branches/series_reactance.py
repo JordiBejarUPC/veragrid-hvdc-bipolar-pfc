@@ -4,12 +4,11 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import numpy as np
-from typing import Union, Tuple
+from typing import Tuple
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.enumerations import BuildStatus, DeviceType
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
-from VeraGridEngine.Devices.profile import Profile
 from VeraGridEngine.Devices.Parents.editable_device import GCProp
 
 

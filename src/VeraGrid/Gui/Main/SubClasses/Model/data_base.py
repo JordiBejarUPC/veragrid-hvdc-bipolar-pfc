@@ -29,7 +29,7 @@ from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
-from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
 from VeraGrid.Gui.FmuTemplateEditor.fmu_template_editor import FmuTemplateEditorDialog
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, generate_map_diagram
@@ -978,7 +978,7 @@ class DataBaseTableMain(DiagramsMain):
                         self.tower_builder_window.exec()
 
                     elif elm_type == DeviceType.DynamicModelHostDevice.value:
-
+                        # TODO: what happens when the mode is EMT? how can it be distinguished?
                         self.rms_model_Editor_window = DynamicBlockEditorGUI(
                             var_factory=self.circuit.var_factory,
                             block=elm.rms_model,
@@ -1019,12 +1019,21 @@ class DataBaseTableMain(DiagramsMain):
                             circuit=self.circuit,
                             main_editor=True,
                         )
+                        # self.rms_model_Editor_window = DynamicBlockEditorGUI(
+                        #     var_factory=self.circuit.var_factory,
+                        #     block=elm.block,
+                        #     api_object=None,
+                        #     mode=DynamicEditorMode.RMS,
+                        #     templates_list=self.circuit.get_dynamic_templates_by_domain(FmuTemplateDomain.RMS),
+                        #     circuit=self.circuit,
+                        #     main_editor=True,
+                        # )
                         if self.rms_model_Editor_window.show():
                             elm.block = self.rms_model_Editor_window.main_block
 
                     elif elm_type == DeviceType.EmtModelTemplateDevice.value:
                         self.rms_model_Editor_window = DynamicBlockEditorGUI(
-                            var_factory=self.circuit.emt_var_factory,
+                            var_factory=self.circuit.var_factory,
                             block=elm.block,
                             api_object=elm,
                             mode=DynamicEditorMode.EMT,
@@ -1032,6 +1041,15 @@ class DataBaseTableMain(DiagramsMain):
                             circuit=self.circuit,
                             main_editor=True,
                         )
+                        # self.rms_model_Editor_window = DynamicBlockEditorGUI(
+                        #     var_factory=self.circuit.var_factory,
+                        #     block=elm.block,
+                        #     api_object=None,
+                        #     mode=DynamicEditorMode.EMT,
+                        #     templates_list=self.circuit.get_dynamic_templates_by_domain(FmuTemplateDomain.EMT),
+                        #     circuit=self.circuit,
+                        #     main_editor=True,
+                        # )
 
                         if self.rms_model_Editor_window.show():
                             elm.block = self.rms_model_Editor_window.main_block

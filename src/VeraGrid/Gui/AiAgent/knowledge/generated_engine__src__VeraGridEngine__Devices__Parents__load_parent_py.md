@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 1
 - Top-level function count: 0
-- Representative imports: __future__, typing, numpy, pandas, matplotlib, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.enumerations, VeraGridEngine.basic_structures, VeraGridEngine.Devices.profile, VeraGridEngine.Devices.Parents.injection_parent, VeraGridEngine.Devices.Parents.editable_device
+- Representative imports: __future__, typing, numpy, pandas, matplotlib, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.enumerations, VeraGridEngine.basic_structures,  VeraGridEngine.Devices.Parents.injection_parent, VeraGridEngine.Devices.Parents.editable_device
 
 ## Class: LoadParent
 

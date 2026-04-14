@@ -52,6 +52,7 @@ class Assets:
         '_upfc_devices',
         '_switch_devices',
         '_transformers3w',
+        '_transformers_nw',
         '_windings',
         '_series_reactances',
         '_buses',
@@ -148,6 +149,8 @@ class Assets:
         self._switch_devices: List[dev.Switch] = list()
 
         self._transformers3w: List[dev.Transformer3W] = list()
+
+        self._transformers_nw: List[dev.TransformerNW] = list()
 
         self._windings: List[dev.Winding] = list()
 
@@ -361,6 +364,7 @@ class Assets:
                 dev.Winding(),
                 dev.Transformer2W(),
                 dev.Transformer3W(),
+                dev.TransformerNW(),
                 dev.SeriesReactance(),
                 dev.HvdcLine(),
                 dev.VSC(),
@@ -772,34 +776,6 @@ class Assets:
     @var_factory.setter
     def var_factory(self, value: dev.VarFactory):
         self._var_factory = value
-
-    @property
-    def rms_var_factory(self) -> dev.VarFactory:
-        """
-        Return the shared symbolic variable factory through the RMS-specific alias.
-
-        The FMU and dynamic-editor integrations distinguish RMS and EMT conceptually,
-        but the current engine still stores a single shared factory. This alias keeps
-        that contract explicit for RMS callers without duplicating the factory state.
-
-        :return: Shared variable factory.
-        """
-
-        return self._var_factory
-
-    @property
-    def emt_var_factory(self) -> dev.VarFactory:
-        """
-        Return the shared symbolic variable factory through the EMT-specific alias.
-
-        The FMU and dynamic-editor integrations distinguish RMS and EMT conceptually,
-        but the current engine still stores a single shared factory. This alias keeps
-        that contract explicit for EMT callers without duplicating the factory state.
-
-        :return: Shared variable factory.
-        """
-
-        return self._var_factory
 
     # ------------------------------------------------------------------------------------------------------------------
     # AC line
@@ -1304,6 +1280,72 @@ class Assets:
         self.delete_bus(obj.bus0, delete_associated=True)  # also delete the middle bus
 
     # ------------------------------------------------------------------------------------------------------------------
+    # Transformer NW
+    # ------------------------------------------------------------------------------------------------------------------
+
+    @property
+    def transformers_nw(self) -> List[dev.TransformerNW]:
+        """
+        Get list of N-winding transformers
+        :return:
+        """
+        return self._transformers_nw
+
+    @transformers_nw.setter
+    def transformers_nw(self, value: List[dev.TransformerNW]):
+        self._transformers_nw = value
+
+    def get_transformers_nw(self) -> List[dev.TransformerNW]:
+        """
+
+        :return:
+        """
+        return self._transformers_nw
+
+    def get_transformers_nw_number(self) -> int:
+        """
+
+        :return:
+        """
+        return len(self._transformers_nw)
+
+    def get_transformers_nw_names(self) -> List[str]:
+        """
+
+        :return:
+        """
+        return [elm.name for elm in self._transformers_nw]
+
+    def add_transformer_nw(self, obj: dev.TransformerNW, add_middle_bus: bool = True):
+        """
+        Add an N-winding transformer object
+        :param obj: TransformerNW instance
+        :param add_middle_bus: Add the internal star bus?
+        """
+
+        if self.time_profile is not None:
+            obj.ensure_profiles_exist(self.time_profile)
+        self._transformers_nw.append(obj)
+        if add_middle_bus:
+            self.add_bus(obj.bus0)
+        for winding in obj.windings:
+            if winding.bus_to is not None:
+                self.add_winding(winding)
+
+    def delete_transformer_nw(self, obj: dev.TransformerNW):
+        """
+        Delete N-winding transformer
+        :param obj: TransformerNW instance
+        """
+        for winding in list(obj.windings):
+            self.delete_winding(winding)
+        self.delete_bus(obj.bus0, delete_associated=True)
+        try:
+            self._transformers_nw.remove(obj)
+        except ValueError:
+            pass
+
+    # ------------------------------------------------------------------------------------------------------------------
     # Windings
     # ------------------------------------------------------------------------------------------------------------------
 
@@ -1368,6 +1410,12 @@ class Assets:
 
             if obj == tr3.winding3:
                 tr3.bus3 = None
+
+        for tr_nw in self._transformers_nw:
+            for i, winding in enumerate(tr_nw.windings):
+                if obj == winding:
+                    tr_nw.delete_winding(i)
+                    break
 
         try:
             self._windings.remove(obj)
@@ -6853,6 +6901,9 @@ class Assets:
         elif device_type == DeviceType.Transformer3WDevice:
             return self._transformers3w
 
+        elif device_type == DeviceType.TransformerNwDevice:
+            return self._transformers_nw
+
         elif device_type == DeviceType.WindingDevice:
             return self._windings
 
@@ -7073,18 +7124,28 @@ class Assets:
         :param logger: Logger
         """
         if device_type == DeviceType.LoadDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._loads = devices
 
         elif device_type == DeviceType.StaticGeneratorDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._static_generators = devices
 
         elif device_type == DeviceType.GeneratorDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._generators = devices
 
         elif device_type == DeviceType.BatteryDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._batteries = devices
 
         elif device_type == DeviceType.ShuntDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._shunts = devices
 
         elif device_type == DeviceType.ExternalGridDevice:
@@ -7106,6 +7167,9 @@ class Assets:
 
         elif device_type == DeviceType.Transformer3WDevice:
             self._transformers3w = devices
+
+        elif device_type == DeviceType.TransformerNwDevice:
+            self._transformers_nw = devices
 
         elif device_type == DeviceType.WindingDevice:
             self._windings = devices
@@ -7131,9 +7195,13 @@ class Assets:
             self._buses = ListSet(devices)
 
         elif device_type == DeviceType.OverheadLineTypeDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._overhead_line_types = devices
 
         elif device_type == DeviceType.TransformerTypeDevice:
+            for d in devices:
+                d.set_var_factory(self._var_factory)
             self._transformer_types = devices
 
         elif device_type == DeviceType.UnderGroundLineDevice:
@@ -7341,6 +7409,9 @@ class Assets:
 
         elif obj.device_type == DeviceType.Transformer3WDevice:
             self.add_transformer3w(obj=obj)
+
+        elif obj.device_type == DeviceType.TransformerNwDevice:
+            self.add_transformer_nw(obj=obj)
 
         elif obj.device_type == DeviceType.WindingDevice:
             self.add_winding(obj=obj)
@@ -7566,6 +7637,9 @@ class Assets:
 
         elif obj.device_type == DeviceType.Transformer3WDevice:
             self.delete_transformer3w(obj)
+
+        elif obj.device_type == DeviceType.TransformerNwDevice:
+            self.delete_transformer_nw(obj)
 
         elif obj.device_type == DeviceType.WindingDevice:
             self.delete_winding(obj)
@@ -8111,6 +8185,14 @@ class Assets:
                 # DeviceType.EmtModelTemplateDevice: self.get_emt_models_by_device_type(elm_type),
             }
 
+        elif elm_type == DeviceType.TransformerNwDevice:
+            elm = dev.TransformerNW()
+            dictionary_of_lists = {
+                DeviceType.Owner: self.owners,
+                DeviceType.ModellingAuthority: self.modelling_authorities,
+                DeviceType.BusDevice: self.buses,
+            }
+
         elif elm_type == DeviceType.HVDCLineDevice:
             elm = dev.HvdcLine()
             dictionary_of_lists = {
@@ -8511,20 +8593,22 @@ class Assets:
             tem.get_stabilizer_emt(vf=self._var_factory),
             tem.get_exciter_emt(vf=self._var_factory),
             tem.get_complete_generator_template_emt(vf=self._var_factory),
-            tem.get_exponential_load_3ph_emt(vf=self._var_factory),
-            tem.get_load_ZIP_3ph_emt_template(vf=self._var_factory),
+
             tem.get_generator_thevenin_rl_emt_template(vf=self._var_factory),
             tem.get_emt_ideal_converter(vf=self._var_factory),
-            # tem.get_full_pseudo_emt_converter(vf=self._var_factory),
+            tem.get_full_pseudo_emt_converter(vf=self._var_factory),
             tem.get_dc_load_emt_template(vf=self._var_factory),
 
 
             # the following are functions that generate templates depending on phases or things
-            tem.get_pi_line_emt_template(vf=self._var_factory, phN=True, phA=True, phB=True, phC=True), # depends on number of phases!
-            tem.get_shunt_c_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),  # depends on number of phases!
-            tem.get_shunt_l_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),  # depends on number of phases!
-            tem.get_shunt_r_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),  # depends on number of phases!
-            tem.get_bergeron_line_emt_template(vf=self._var_factory),
+
+            tem.get_shunt_c_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_shunt_l_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_shunt_r_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_exponential_load_emt(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_load_ZIP_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
+            tem.get_pi_line_emt_template(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True),
+            tem.get_bergeron_line_emt_template(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True),
             # tem.get_transformer_emt_template(vf=self._var_factory),
             # tem.get_xfmr_emt_template(vf=self._var_factory)
         ]

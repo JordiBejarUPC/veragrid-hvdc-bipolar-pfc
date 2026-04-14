@@ -3,15 +3,13 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-import re
+from typing import List, Dict
 
-from typing import List, Dict, Union
-
-from PySide6 import QtWidgets, QtCore, QtGui
+from PySide6 import QtWidgets, QtCore
 
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 
 
 class EventRow:
@@ -79,7 +77,7 @@ class EventRow:
         self.group_combo.addItem(group.name, group)
 
 
-class RmsEventDialogue(QtWidgets.QDialog):
+class DynamicEventDialogue(QtWidgets.QDialog):
 
     def __init__(
         self,
@@ -215,7 +213,7 @@ class RmsEventDialogue(QtWidgets.QDialog):
     def create_event_group(self):
         """Open dialog to create a new RMS events group."""
 
-        dialog = RmsEventsGroupsDialog(self)
+        dialog = DynamicEventsGroupsDialog(self)
 
         if dialog.exec():
             name = dialog.get_name()
@@ -278,7 +276,7 @@ class RmsEventDialogue(QtWidgets.QDialog):
         """Return collected data."""
         return self.data
 
-class RmsEventsGroupsDialog(QtWidgets.QDialog):
+class DynamicEventsGroupsDialog(QtWidgets.QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)

@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 13
 - Top-level function count: 1
-- Representative imports: __future__, typing, numpy, VeraGridEngine.Devices.Parents.editable_device, VeraGridEngine.Devices.Parents.pointer_device_parent, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.Devices.Branches.line, VeraGridEngine.Devices.Branches.dc_line, VeraGridEngine.Devices.Branches.transformer, VeraGridEngine.Devices.Branches.winding, VeraGridEngine.Devices.Branches.switch, VeraGridEngine.Devices.Branches.series_reactance, VeraGridEngine.Devices.Branches.upfc, VeraGridEngine.Devices.Injections.generator, VeraGridEngine.Devices.profile, VeraGridEngine.enumerations
+- Representative imports: __future__, typing, numpy, VeraGridEngine.Devices.Parents.editable_device, VeraGridEngine.Devices.Parents.pointer_device_parent, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.Devices.Branches.line, VeraGridEngine.Devices.Branches.dc_line, VeraGridEngine.Devices.Branches.transformer, VeraGridEngine.Devices.Branches.winding, VeraGridEngine.Devices.Branches.switch, VeraGridEngine.Devices.Branches.series_reactance, VeraGridEngine.Devices.Branches.upfc, VeraGridEngine.Devices.Injections.generator,  VeraGridEngine.enumerations
 
 ## Class: MeasurementTemplate
 

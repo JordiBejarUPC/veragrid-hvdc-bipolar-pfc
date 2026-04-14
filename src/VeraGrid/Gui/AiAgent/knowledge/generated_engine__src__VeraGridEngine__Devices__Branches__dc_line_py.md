@@ -11,7 +11,7 @@ No docstring provided.
 
 - Class count: 1
 - Top-level function count: 0
-- Representative imports: pandas, typing, matplotlib, numpy, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.Devices.Parents.branch_parent, VeraGridEngine.Devices.profile, VeraGridEngine.enumerations, VeraGridEngine.Devices.Branches.line_locations, VeraGridEngine.Devices.Parents.editable_device
+- Representative imports: pandas, typing, matplotlib, numpy, VeraGridEngine.Devices.Substation.bus, VeraGridEngine.Devices.Parents.branch_parent,  VeraGridEngine.enumerations, VeraGridEngine.Devices.Branches.line_locations, VeraGridEngine.Devices.Parents.editable_device
 
 ## Class: DcLine
 

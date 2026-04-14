@@ -260,6 +260,11 @@ def parse_expr_list(lst: List[Dict[str, Any]],
 
 
 class BlockSaver:
+    __slots__ = (
+        "var_factory",
+        "main_block_uids",
+        "blocks",
+    )
 
     def __init__(self, var_factory: VarFactory):
         self.var_factory = var_factory
@@ -435,8 +440,11 @@ class BlockSaver:
 
         for dyn_var_type, var in blk.external_mapping.items():
             if var is not None:
-                if var.uid not in self.var_factory.get_vars_dict():
-                    raise ValueError(f"variable {var.name} not added to vars factory")
+                var_in_varfactory = self.var_factory.find_var_or_diff_var(var_uid=var.uid)
+                # if var is not in VarFactory "2"find_var_or_diff_var" will also raise an error
+
+                # if var.uid not in self.var_factory.get_vars_dict() and var.uid not in self.var_factory.get_diff_var_dict():
+                #     raise ValueError(f"variable {var.name} not added to vars factory")
 
         # save diagram
         diagram = blk.diagram.to_dict()
@@ -495,6 +503,10 @@ class BlockSaver:
 
 
 class BlockParser:
+    __slots__ = (
+        "var_factory",
+        "block_dict",
+    )
 
     def __init__(self, var_factory: VarFactory):
         self.var_factory = var_factory
@@ -597,7 +609,9 @@ class BlockParser:
         external_mapping: Dict[VarPowerFlowRefferenceType, Var] = dict()
         for key_str, var_uid in data["external_mapping"].items():
             key = VarPowerFlowRefferenceType(key_str)
-            external_mapping[key] = self.var_factory.get_var(var_uid)
+            var_in_varfactory = self.var_factory.find_var_or_diff_var(var_uid)
+            if var_in_varfactory is not None:
+                external_mapping[key] = var_in_varfactory
 
         api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] = dict()
         for key_str, var_uid in data["api_obj_mapping"].items():

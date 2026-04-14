@@ -62,6 +62,8 @@ class CmpOp(Enum):
     """
     comparisons
     """
+    __slots__ = ()
+
     LE = "≤"  # ≤
     GE = "≥"  # ≥
     LT = "<"
@@ -279,6 +281,10 @@ class Expr:
 
 
 class Const(Expr):
+    __slots__ = (
+        "value",
+        "name",
+    )
 
     # class to represent constants symbolically
 
@@ -347,6 +353,8 @@ class Const(Expr):
 
 
 class VarType(Enum):
+    __slots__ = ()
+
     Parameter = "parameter"
     State = "state"
     Algebraic = "algebraic"

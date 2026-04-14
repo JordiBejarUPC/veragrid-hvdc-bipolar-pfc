@@ -16,6 +16,8 @@ from VeraGridEngine.Simulations.CleanRoom.clean_room import HierarchicalZipSpec,
 
 
 class CleanRoomDriver(DriverTemplate):
+    __slots__ = ("artifact",)
+
     name = 'Clean room'
     tpe = SimulationTypes.CleanRoom_run
 
@@ -27,7 +29,6 @@ class CleanRoomDriver(DriverTemplate):
         DriverTemplate.__init__(self, grid=grid)
 
         self.artifact: HierarchicalZipArtifact | None = None
-
 
     def run(self):
         """
@@ -68,4 +69,3 @@ class CleanRoomDriver(DriverTemplate):
         )
 
         self.toc()
-

@@ -20,6 +20,10 @@ class HvdcRmsTemplate(RmsModelTemplate):
     """
     RMS Template for HVDC Line with fixed power setpoint control.
     """
+    __slots__ = (
+        "tpe",
+        "_block",
+    )
 
     def __init__(self, nc: NumericalCircuit, hvdc: HvdcLine, hvdc_idx: int, vf: VarFactory, name: str = "hvdc_rms_template"):
         """

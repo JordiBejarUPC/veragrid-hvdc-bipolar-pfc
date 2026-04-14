@@ -12,7 +12,7 @@ from PySide6.QtGui import QPolygonF
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.generic_graphics import Polygon
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
-from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
 
@@ -61,14 +61,14 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
             menu.addSection("Load")
 
             add_menu_entry(menu=menu,
-                           text="Rms Editor",
+                           text="RMS Editor",
                            function_ptr=self.edit_rms,
-                           icon_path=":/Icons/icons/edit.png")
+                           icon_path=":/Icons/icons/dyn_gray.png")
 
             add_menu_entry(menu=menu,
-                           text="Emt Editor",
+                           text="EMT Editor",
                            function_ptr=self.edit_emt,
-                           icon_path=":/Icons/icons/edit.png")
+                           icon_path=":/Icons/icons/dyn_gray.png")
 
             menu.exec(event.screenPos())
         else:

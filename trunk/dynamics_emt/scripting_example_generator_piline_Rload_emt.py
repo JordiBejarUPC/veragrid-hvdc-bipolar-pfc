@@ -134,7 +134,7 @@ gen_mdl = get_complete_generator_template_emt(vf= grid.var_factory).block
 
 # line
 # line_mdl = get_pi_line_emt_template(vf=grid.var_factory, line = line0).block
-line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = True, phA = True, phB = True, phC = True).block
+line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
 
 # load
 # load_mdl = get_load_ZIP_3ph_emt_template(grid = grid, load = load).block
@@ -267,7 +267,7 @@ options = EmtOptions(time_step = 5e-6, # 5e-7,
 def create_problem() -> EmtProblemDae:
     local_problem = EmtProblemDae(grid=grid,
                                   options=options,
-                                  pf_results_3Ph=res,
+                                  pf_results_3ph=res,
                                   pf_results=None)
 
     if ENABLE_NEWTON_TRACE:

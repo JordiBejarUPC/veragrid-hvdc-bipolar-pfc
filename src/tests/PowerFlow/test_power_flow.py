@@ -207,6 +207,7 @@ def test_voltage_local_control_with_generation() -> None:
     # control local bus with generator 4
     gen = grid.generators[4]
     gen.is_controlled = True
+    gen.Q = 0  # otherwise the raw will assign a Q that is controlling V...
     bus_dict = grid.get_bus_index_dict()
     bus_i = bus_dict[gen.bus]
 

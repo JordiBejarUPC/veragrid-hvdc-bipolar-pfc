@@ -31,6 +31,7 @@ from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 import VeraGridEngine.Devices as dev
 import VeraGridEngine.Simulations as sim
 import VeraGrid.Gui.gui_functions as gf
+import VeraGrid.Gui.Visualization.visualization as viz
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import (SchematicWidget,
                                                                     BusGraphicItem,
                                                                     generate_schematic_diagram,
@@ -45,10 +46,11 @@ from VeraGrid.Gui.Main.SubClasses.Model.compiled_arrays import CompiledArraysMai
 from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow, ListSelectWindow
 from VeraGrid.Gui.Diagrams.MapWidget.Tiles.TileProviders.cartodb import CartoDbTiles
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
-from VeraGrid.Gui.rms_events_editor_dialog import RmsEventDialogue, RmsEventsGroupsDialog
+from VeraGrid.Gui.rms_events_editor_dialog import DynamicEventDialogue, DynamicEventsGroupsDialog
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
-from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue, InputSearchDialogue,
-                                            InputNumberDialogue, LogsDialogue, ShortCircuitSelector)
+from VeraGrid.Gui.ShortCircuitEditor.short_circuit_selector import ShortCircuitSelector
+from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue,
+                                            InputNumberDialogue, LogsDialogue)
 
 ALL_EDITORS = Union[SchematicWidget, GridMapWidget, BaseDiagramWidget]
 ALL_EDITORS_NONE = Union[None, SchematicWidget, GridMapWidget]
@@ -215,7 +217,7 @@ class DiagramsMain(CompiledArraysMain):
         # task watcher for video export
         self.video_thread: VideoExportWorker | None = None
 
-        self.sc_selector_dialogue: ShortCircuitSelector | None = None
+        self.sc_selector_dialogue: ShortCircuitSelector = ShortCircuitSelector()
 
         # --------------------------------------------------------------------------------------------------------------
         self.ui.actionTakePicture.triggered.connect(self.take_picture)
@@ -1360,6 +1362,28 @@ class DiagramsMain(CompiledArraysMain):
                                              max_bus_width=max_bus_width,
                                              cmap=cmap)
 
+    def node_group_colouring(self,
+                             results: sim.NodeGroupsResults,
+                             diagram_widget: ALL_EDITORS):
+        """
+
+        :param results:
+        :param diagram_widget:
+        :return:
+        """
+        colours = viz.get_n_colours(n=len(results.groups_by_index))
+
+        bus_graphics_dict = diagram_widget.graphics_manager.get_device_type_dict(DeviceType.BusDevice)
+        for c, group in enumerate(results.groups_by_index):
+            for i in group:
+                bus = self.circuit.buses[i]
+                bus_graphic: BusGraphicItem = bus_graphics_dict.get(bus.idtag, None)
+                if bus_graphic is not None:
+                    r, g, b, a = colours[c]
+                    color = QtGui.QColor(r * 255, g * 255, b * 255, a * 255)
+                    bus_graphic.set_tile_color(brush=color)
+                    bus_graphic.setToolTip('Group ' + str(c))
+
     def default_colouring(self, t_idx: int | None,
                           diagram_widget: ALL_EDITORS,
                           cmap: Colormaps,
@@ -1740,6 +1764,17 @@ class DiagramsMain(CompiledArraysMain):
                                    min_bus_width=min_bus_width,
                                    max_bus_width=max_bus_width)
 
+        elif current_study == SimulationTypes.NodeGrouping_run.value:
+            if t_idx is None:
+                results: sim.OptimalNetTransferCapacityResults = self.session.get_results(
+                    SimulationTypes.NodeGrouping_run
+                )
+                self.node_group_colouring(diagram_widget=diagram_widget,
+                                          results=results)
+            else:
+                if allow_popups:
+                    self.show_warning_toast(f"{current_study} only has values for the snapshot")
+
         elif current_study == 'Transient stability':
             raise Exception('Not implemented :(')
 
@@ -1841,6 +1876,7 @@ class DiagramsMain(CompiledArraysMain):
                                                      dc_lines=self.circuit.get_dc_lines(),
                                                      transformers2w=self.circuit.get_transformers2w(),
                                                      transformers3w=self.circuit.get_transformers3w(),
+                                                     transformers_nw=self.circuit.get_transformers_nw(),
                                                      windings=self.circuit.get_windings(),
                                                      hvdc_lines=self.circuit.get_hvdc(),
                                                      vsc_devices=self.circuit.get_vsc(),
@@ -1878,6 +1914,7 @@ class DiagramsMain(CompiledArraysMain):
                                              dc_lines=self.circuit.get_dc_lines(),
                                              transformers2w=self.circuit.get_transformers2w(),
                                              transformers3w=self.circuit.get_transformers3w(),
+                                             transformers_nw=self.circuit.get_transformers_nw(),
                                              windings=self.circuit.get_windings(),
                                              hvdc_lines=self.circuit.get_hvdc(),
                                              vsc_devices=self.circuit.get_vsc(),
@@ -1963,6 +2000,9 @@ class DiagramsMain(CompiledArraysMain):
                 root_bus = sel_obj.bus_from
 
             elif isinstance(sel_obj, dev.Transformer3W):
+                root_bus = sel_obj.bus0
+
+            elif isinstance(sel_obj, dev.TransformerNW):
                 root_bus = sel_obj.bus0
 
             elif isinstance(sel_obj, dev.VoltageLevel):
@@ -2758,10 +2798,10 @@ class DiagramsMain(CompiledArraysMain):
                     QtWidgets.QMessageBox.information(
                         self,
                         "No RMS Events Group",
-                        "No Rms Events Group found, please create one before adding an event."
+                        "No RMS Events Group found, please create one before adding an event."
                     )
 
-                    dialog = RmsEventsGroupsDialog(self)
+                    dialog = DynamicEventsGroupsDialog(self)
                     if dialog.exec():
                         name = dialog.get_name()
                         # build group
@@ -2771,10 +2811,10 @@ class DiagramsMain(CompiledArraysMain):
 
 
                 else:
-                    rms_events_dialog = RmsEventDialogue(circuit=self.circuit,
-                                                         parameters_list=[var for var in
+                    rms_events_dialog = DynamicEventDialogue(circuit=self.circuit,
+                                                             parameters_list=[var for var in
                                                                           target_device.rms_model.event_dict.keys()],
-                                                         target_device_name=target_device.type_name + ": " + target_device.name)
+                                                             target_device_name=target_device.type_name + ": " + target_device.name)
 
                     if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
 
@@ -2782,6 +2822,61 @@ class DiagramsMain(CompiledArraysMain):
                         events_list = []
                         for i, event in enumerate(events_data["parameters"]):
                             events_list.append(dev.RmsEvent(device=target_device,
+                                                            parameter=events_data["parameters"][i],
+                                                            time=float(events_data["target_times"][i]),
+                                                            value=float(events_data["values"][i]),
+                                                            group=events_data["groups"][i]))
+
+                        for event in events_list:
+                            self.circuit.add_rms_event(event)
+
+            else:
+                raise ValueError(f"Select one and only one device to add event to")
+
+    def add_emt_event_to_selected(self) -> None:
+        """
+        Add EMT event to a selected device
+        """
+        if self.circuit.valid_for_simulation():
+
+            # get the selected device to apply event to
+            target_devices = self.get_selected_devices()
+
+            if len(target_devices) == 1:
+
+                target_device = target_devices[0]
+                # launch emt event editor dialogue
+
+                events_groups = self.circuit.emt_events_groups
+                if len(events_groups) == 0:
+
+                    QtWidgets.QMessageBox.information(
+                        self,
+                        "No EMT Events Group",
+                        "No EMT Events Group found, please create one before adding an event."
+                    )
+
+                    dialog = DynamicEventsGroupsDialog(self)
+                    if dialog.exec():
+                        name = dialog.get_name()
+                        # build group
+                        if name:
+                            self.circuit.add_emt_events_group(dev.EmtEventsGroup(idtag=None,
+                                                                                 name=name))
+
+
+                else:
+                    emt_events_dialog = DynamicEventDialogue(circuit=self.circuit,
+                                                         parameters_list=[var for var in
+                                                                          target_device.emt_model.event_dict.keys()],
+                                                         target_device_name=target_device.type_name + ": " + target_device.name)
+
+                    if emt_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
+
+                        events_data = emt_events_dialog.get_data()
+                        events_list = []
+                        for i, event in enumerate(events_data["parameters"]):
+                            events_list.append(dev.EmtEvent(device=target_device,
                                                             parameter=events_data["parameters"][i],
                                                             time=float(events_data["target_times"][i]),
                                                             value=float(events_data["values"][i]),
@@ -2805,18 +2900,22 @@ class DiagramsMain(CompiledArraysMain):
 
             if len(selected) > 0:
 
-                self.sc_selector_dialogue = ShortCircuitSelector()
+                self.sc_selector_dialogue: ShortCircuitSelector = ShortCircuitSelector()
                 self.sc_selector_dialogue.exec()
 
                 if self.sc_selector_dialogue.was_accepted:
 
                     for _, bus, _ in selected:
+                        z_pu: complex = self.sc_selector_dialogue.get_impedance_pu(Sbase=self.circuit.Sbase,
+                                                                                   Vbase=bus.Vnom)
                         sc = dev.ShortCircuitEvent(
                             name=f"{bus.name} {self.sc_selector_dialogue.fault.value}",
                             device=bus,
                             fault_type=self.sc_selector_dialogue.fault,
                             method=self.sc_selector_dialogue.method,
-                            phases=self.sc_selector_dialogue.phases
+                            phases=self.sc_selector_dialogue.phases,
+                            r_fault=z_pu.real,
+                            x_fault=z_pu.imag
                         )
 
                         self.circuit.add_short_circuit_event(sc)
@@ -3346,4 +3445,4 @@ class DiagramsMain(CompiledArraysMain):
         diagram = self.get_selected_diagram_widget()
 
         if isinstance(diagram, SchematicWidget):
-                diagram.set_all_branch_drawing_styles(SchematicAutoRouteStyle.STRAIGHT)
+            diagram.set_all_branch_drawing_styles(SchematicAutoRouteStyle.STRAIGHT)
