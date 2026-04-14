@@ -10,7 +10,7 @@ This script creates the phasor problem manually and injects it into the SmallSig
 """
 from typing import Tuple, Any, List
 import numpy as np
-from cryptography.x509 import name
+#from cryptography.x509 import name
 
 from PolynomialMatrixBuilder import PolynomialMatrixBuilder
 from matplotlib import pyplot as plt
@@ -50,8 +50,6 @@ def define_problem_with_path(grid_path):
     ## BUSES:
     for bus in grid.buses:
         busec = vge.initialize_bus_phasor_rms(bus, vf=grid.var_factory)
-        busec = vge.to_implicit(busec, grid.var_factory)
-        vge.set_rms_model(device=busec, model=busec, var_factory=grid.var_factory)
     ## -GENERATORS
     for igen, gen in enumerate(grid.generators):    
         genqec = vge.get_complete_generator_template_phasor(grid.var_factory, name=f"Gen{igen}").block
