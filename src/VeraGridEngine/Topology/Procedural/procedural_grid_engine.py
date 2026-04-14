@@ -27,13 +27,15 @@ if TYPE_CHECKING:
 def coord_calc(current_bus_lon: float, current_bus_lat: float, length: float, coord_out: Vec):
     """
     Calculate the coordinates of the next bus based on the current bus,
-    the length to be covered, and the output coordinates.
-    Note: to simplify, we compute the coordinates using the euclidian distance, not the haversine one
+    the length to be covered (in km), and the output coordinates (in degrees).
     """
     line_angle = np.arctan2(coord_out[1] - current_bus_lat, coord_out[0] - current_bus_lon)
-    delta_x = np.cos(line_angle) * length
-    delta_y = np.sin(line_angle) * length
-    new_coord = np.array([current_bus_lon + delta_x, current_bus_lat + delta_y])
+    # Convert length from km to degrees (1 degree lat ≈ 111 km; lon depends on latitude)
+    km_per_deg_lat = 111.0
+    km_per_deg_lon = 111.0 * np.cos(np.radians(current_bus_lat))
+    delta_lon = np.cos(line_angle) * length / km_per_deg_lon
+    delta_lat = np.sin(line_angle) * length / km_per_deg_lat
+    new_coord = np.array([current_bus_lon + delta_lon, current_bus_lat + delta_lat])
 
     return new_coord
 
@@ -466,9 +468,12 @@ class Topology:
                         next_bus.Vnom = current_bus.Vnom
                         next_bus.name = f"Modified_{next_bus.name}"
 
-                    elif self.transition_matrix.at(current_bus.Vnom, next_bus.Vnom) == 0:
+                    elif current_bus.Vnom != next_bus.Vnom:
+                        # Any voltage change at the last slot: use last_bus_fix so that a
+                        # line covers the geographic distance and the transformer is placed
+                        # at the endpoint, regardless of whether a direct template exists.
                         print(
-                            f"No direct transition from {current_bus.Vnom}kV to {next_bus.Vnom}kV. "
+                            f"Voltage change from {current_bus.Vnom}kV to {next_bus.Vnom}kV. "
                             f"Creating voltage bridge near the output bus."
                         )
 
@@ -477,10 +482,9 @@ class Topology:
                             output_bus=output_bus,
                             edge=edge,
                             intermediate_bus_counter=intermediate_bus_counter,
-
                         )
                     else:
-                        # Do nothing, the bus already exists in the original grid so no need to add it
+                        # Same voltage: direct line connection, no bridge needed
                         None
 
                 else:

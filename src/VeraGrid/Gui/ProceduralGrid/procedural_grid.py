@@ -157,6 +157,12 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         else:
             raise NotImplementedError(f"Method {method} not implemented")
 
+        # Map geographic coordinates to schematic canvas coordinates
+        _SCALE = 1000.0
+        for bus in expanded_grid.buses:
+            bus.x = bus.longitude * _SCALE
+            bus.y = -bus.latitude * _SCALE
+
         # create the diagram
         expanded_grid_schematic = make_diagram_from_buses(circuit=expanded_grid,
                                                           buses=engine.get_buses(),
