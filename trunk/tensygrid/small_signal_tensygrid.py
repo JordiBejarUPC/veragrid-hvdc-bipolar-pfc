@@ -8,6 +8,7 @@ Small Signal Analysis for Phasor-based RMS Grid.
 
 This script creates the phasor problem manually and injects it into the SmallSignalStabilityRmsDriver.
 """
+import time
 from typing import Tuple, Any, List
 import numpy as np
 #from cryptography.x509 import name
@@ -23,7 +24,7 @@ from phasor_diagnostics import (
     debug_exciter_equations,
     check_generator_current_residuals as compare_generator_bus_currents,
 )
-#from scipy.optimize import linear_sum_assignment
+from scipy.optimize import linear_sum_assignment
 
 
 FAST_MODE = True
@@ -328,6 +329,9 @@ def solve_problem(problem: Any) -> Any:
     return eigenvalues
 
 if __name__ == "__main__":
+    # --- START CHRONO ---
+    start_time = time.perf_counter()
+
     # problem = define_problem()
     grid_path = FAST_GRID_PATH if FAST_MODE else FULL_GRID_PATH
     print(f"[FAST_MODE={FAST_MODE}] Using grid: {grid_path}")
@@ -335,6 +339,14 @@ if __name__ == "__main__":
     calculated_evs = []
     if problem:
         calculated_evs = solve_problem(problem)
+
+    # --- END CHRONO ---
+    end_time = time.perf_counter()
+    total_duration = end_time - start_time
+
+    print("\n" + "=" * 40)
+    print(f"EXECUTION TIME: {total_duration:.4f} seconds")
+    print("=" * 40 + "\n")
 
     if not ENABLE_POST_COMPARE_PLOT:
         print("[FAST_MODE] Skipping eigenvalue reference matching and plotting")
