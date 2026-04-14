@@ -630,7 +630,8 @@ class BranchingItem(QGraphicsEllipseItem):
     """
 
     def __init__(self,
-                 subsys: Block,
+                 subsystem: BlockItem,
+                 index: int,
                  radius: int = 6):
         """
         Build a connection branching point.
@@ -646,14 +647,18 @@ class BranchingItem(QGraphicsEllipseItem):
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
         self.setAcceptHoverEvents(True)
-        self.subsys: BlockItem = subsys
+        self.subsystem: BlockItem = subsystem
+        self.index: int = index
         self.connections: List["ConnectionItem"] | None = None
+
         self.base_var: Var | None = None
 
-        self.input_port: PortItem = PortItem(self, True, 0, 1, radius=5)
-        self.output_port: PortItem = PortItem(self, False, 0, 1, radius=5)
-        self.input_port.connections = None
-        self.output_port.connections = None
+        # self.input_port: PortItem = PortItem(self, True, 0, 1, radius=5)
+        # self.output_port: PortItem = PortItem(self, False, 0, 1, radius=5)
+        # self.input_port.connections = None
+        # self.output_port.connections = None
+
+
 
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         """
@@ -699,7 +704,7 @@ class ConnectionItem(QGraphicsPathItem):
         :param target_port:
         :param diagram: BlockDiagram reference to update on elbow change
         :param con_uid: Connection uid in the diagram
-        :param elbow_points: Custom elbow points (list of QPointF)
+        :param elbow_points: Custom elbow points (list of QPointF or list of (is_horizontal, fixed_coord))
         :param uid: Optional specific uid to use
         """
         super().__init__()
@@ -711,9 +716,9 @@ class ConnectionItem(QGraphicsPathItem):
         self.con_uid = con_uid if con_uid is not None else self.uid
         self.custom_elbow_points: List[QPointF] = []
         self._dragging: bool = False
-        self._drag_type: str = None  # 'horizontal' or 'vertical'
+        self._drag_type: str = None
         self._drag_segment_idx: int = -1
-        self._original_elbows: List[QPointF] = []
+        self._original_elbows_abs: List[QPointF] = []
 
         if elbow_points:
             self.custom_elbow_points = [
@@ -752,19 +757,39 @@ class ConnectionItem(QGraphicsPathItem):
             path = build_orthogonal_connection_path(start, end)
         self.setPath(path)
 
-
     def _build_path_with_elbows(self, start: QPointF, end: QPointF, elbows: List[QPointF]) -> QPainterPath:
         """
-        Build a path through the given elbow points.
+        Build an orthogonal path through the given elbow points.
+        Adjusts elbows to ensure all segments are horizontal or vertical.
 
         :param start:
         :param end:
-        :param elbows:
+        :param elbows: List of elbow positions
         :return:
         """
+        if not elbows:
+            return build_orthogonal_connection_path(start, end)
+
         path: QPainterPath = QPainterPath(start)
+        current = start
+
         for elbow in elbows:
-            path.lineTo(elbow)
+            if abs(elbow.y() - current.y()) < 1:
+                path.lineTo(elbow)
+                current = elbow
+            elif abs(elbow.x() - current.x()) < 1:
+                path.lineTo(elbow)
+                current = elbow
+            else:
+                aligned = QPointF(elbow.x(), current.y())
+                path.lineTo(aligned)
+                current = aligned
+
+        if abs(current.y() - end.y()) > 1 and abs(current.x() - end.x()) > 1:
+            intermediate = QPointF(end.x(), current.y())
+            path.lineTo(intermediate)
+            current = intermediate
+
         path.lineTo(end)
         return path
 
@@ -794,7 +819,6 @@ class ConnectionItem(QGraphicsPathItem):
         delta_x: float = end.x() - start.x()
         offset: float = min(WIRE_ELBOW_OFFSET, abs(delta_x) / 2.0) if delta_x != 0 else WIRE_ELBOW_OFFSET
         start_elbow_x: float = start.x() + offset
-        end_elbow_x: float = end.x() - offset
 
         if end.x() >= start.x():
             mid1 = QPointF(start_elbow_x, start.y())
@@ -845,17 +869,13 @@ class ConnectionItem(QGraphicsPathItem):
             self._drag_segment_idx, self._drag_type, p1, p2 = segment_info
 
             if not self.custom_elbow_points:
-                self.custom_elbow_points = [QPointF(p) for p in self._get_default_elbows(
-                    self.source_port.scenePos(), self.target_port.scenePos()
-                )][1:-1]
+                start = self.source_port.scenePos()
+                end = self.target_port.scenePos()
+                self.custom_elbow_points = [QPointF(p) for p in self._get_default_elbows(start, end)[1:-1]]
 
-            elbow_idx = self._drag_segment_idx - 1
-            if elbow_idx < 0 or elbow_idx >= len(self.custom_elbow_points):
-                super().mousePressEvent(event)
-                return
+            self._original_elbows_abs = [QPointF(p) for p in self.custom_elbow_points]
 
             self._dragging = True
-            self._original_elbows = [QPointF(p) for p in self.custom_elbow_points]
             event.accept()
         else:
             super().mousePressEvent(event)
@@ -869,26 +889,24 @@ class ConnectionItem(QGraphicsPathItem):
         """
         if self._dragging:
             pos = event.scenePos()
+
             elbow_idx = self._drag_segment_idx - 1
 
-            if self._drag_type == 'horizontal':
-                new_y = pos.y()
-                self.custom_elbow_points[elbow_idx] = QPointF(
-                    self.custom_elbow_points[elbow_idx].x(), new_y
-                )
-                if elbow_idx + 1 < len(self.custom_elbow_points):
-                    self.custom_elbow_points[elbow_idx + 1] = QPointF(
-                        self.custom_elbow_points[elbow_idx + 1].x(), new_y
-                    )
-            else:
-                new_x = pos.x()
-                self.custom_elbow_points[elbow_idx] = QPointF(
-                    new_x, self.custom_elbow_points[elbow_idx].y()
-                )
-                if elbow_idx + 1 < len(self.custom_elbow_points):
-                    self.custom_elbow_points[elbow_idx + 1] = QPointF(
-                        new_x, self.custom_elbow_points[elbow_idx + 1].y()
-                    )
+            if elbow_idx >= 0 and elbow_idx < len(self.custom_elbow_points):
+                if self._drag_type == 'horizontal':
+                    delta_y = pos.y() - self._original_elbows_abs[elbow_idx].y()
+                    for i in range(elbow_idx, len(self.custom_elbow_points)):
+                        self.custom_elbow_points[i] = QPointF(
+                            self._original_elbows_abs[i].x(),
+                            self._original_elbows_abs[i].y() + delta_y
+                        )
+                else:
+                    delta_x = pos.x() - self._original_elbows_abs[elbow_idx].x()
+                    for i in range(elbow_idx, len(self.custom_elbow_points)):
+                        self.custom_elbow_points[i] = QPointF(
+                            self._original_elbows_abs[i].x() + delta_x,
+                            self._original_elbows_abs[i].y()
+                        )
 
             self.update_path()
             self._update_diagram()
@@ -906,7 +924,7 @@ class ConnectionItem(QGraphicsPathItem):
         self._dragging = False
         self._drag_segment_idx = -1
         self._drag_type = None
-        self._original_elbows = []
+        self._original_elbows_abs = []
         super().mouseReleaseEvent(event)
 
 
@@ -926,13 +944,10 @@ class ConnectionItem(QGraphicsPathItem):
         """
         Set custom elbow points and update the path.
 
-        :param elbows:
+        :param elbows: List of QPointF elbow positions
         :return:
         """
-        self.custom_elbow_points = [
-            QPointF(p.x(), p.y()) if isinstance(p, QPointF) else QPointF(p[0], p[1])
-            for p in elbows
-        ]
+        self.custom_elbow_points = [QPointF(p.x(), p.y()) if isinstance(p, QPointF) else QPointF(p[0], p[1]) for p in elbows]
         self.update_path()
 
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
@@ -2994,18 +3009,18 @@ class DiagramScene(QGraphicsScene):
                 source_port: PortItem = connection.source_port
                 target_port: PortItem = connection.target_port
 
-                branching_item: BranchingItem = BranchingItem(connection.source_port.subsystem.subsys)
+                branching_item: BranchingItem = BranchingItem(connection.source_port.subsystem, connection.source_port.index)
                 branching_item.setPos(event.scenePos())
                 self.addItem(branching_item)
 
                 conn1: ConnectionItem = ConnectionItem(
-                    source_port, branching_item.input_port,
+                    source_port, branching_item,
                     diagram=self.editor.diagram
                 )
                 self.addItem(conn1)
 
                 conn2: ConnectionItem = ConnectionItem(
-                    branching_item.output_port, target_port,
+                    branching_item, target_port,
                     diagram=self.editor.diagram
                 )
                 self.addItem(conn2)
@@ -3013,7 +3028,7 @@ class DiagramScene(QGraphicsScene):
                 self.editor.diagram.add_branch(
                     connectionitem_uid=conn1.uid,
                     device_uid_from=source_port.subsystem.subsys.uid,
-                    device_uid_to=branching_item.subsys.uid,
+                    device_uid_to=branching_item.subsystem.subsys.uid,
                     port_number_from=source_port.index,
                     port_number_to=0,
                     color=conn1.pen().color().name()
@@ -3021,7 +3036,7 @@ class DiagramScene(QGraphicsScene):
 
                 self.editor.diagram.add_branch(
                     connectionitem_uid=conn2.uid,
-                    device_uid_from=branching_item.subsys.uid,
+                    device_uid_from=branching_item.subsystem.subsys.uid,
                     device_uid_to=target_port.subsystem.subsys.uid,
                     port_number_from=0,
                     port_number_to=target_port.index,
@@ -3042,7 +3057,7 @@ class DiagramScene(QGraphicsScene):
 
         super().mouseDoubleClickEvent(event)
 
-    def connect_ports(self, source_port: PortItem, target_port: PortItem) -> None:
+    def connect_ports(self, source_port: PortItem | BranchingItem, target_port: PortItem) -> None:
         """
         Connect two ports and update the symbolic model.
 
