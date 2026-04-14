@@ -3104,6 +3104,8 @@ class ParamPowerFlowRefferenceType(Enum):
     g = "g"  # Branch resistance in per unit
     b = "b"  # Branch reactance in per unit
     bsh = "bsh"  # Branch shunt susceptance in per unit
+    vtap_f = "vtap_f"  # Virtual tap at from-side
+    vtap_t = "vtap_t"  # Virtual tap at to-side
     Pl0 = "Pl0"  # Load active power
     Ql0 = "Ql0"  # Load reactive power
     
