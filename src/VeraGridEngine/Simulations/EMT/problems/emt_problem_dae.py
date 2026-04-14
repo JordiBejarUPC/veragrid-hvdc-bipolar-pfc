@@ -23,7 +23,7 @@ from itertools import chain
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Simulations.driver_template import DummySignal
-from VeraGridEngine.Devices.Aggregation.emt_events_group import EmtEventsGroup
+from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise, Const
 from VeraGridEngine.Utils.Symbolic.block import Block

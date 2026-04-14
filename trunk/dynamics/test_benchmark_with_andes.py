@@ -5,16 +5,13 @@
 
 import andes
 import time
-import matplotlib
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from VeraGridEngine.Devices.Aggregation.rms_event import RmsEvent
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 import VeraGridEngine.api as gce
 

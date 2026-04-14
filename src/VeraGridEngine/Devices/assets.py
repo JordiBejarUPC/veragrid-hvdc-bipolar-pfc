@@ -8596,7 +8596,7 @@ class Assets:
 
             tem.get_generator_thevenin_rl_emt_template(vf=self._var_factory),
             tem.get_emt_ideal_converter(vf=self._var_factory),
-            # tem.get_full_pseudo_emt_converter(vf=self._var_factory), # TODO: it gives error when running VeraGrid!?
+            tem.get_full_pseudo_emt_converter(vf=self._var_factory),
             tem.get_dc_load_emt_template(vf=self._var_factory),
 
 

@@ -103,18 +103,14 @@ def _ensure_package(name: str, path: Path) -> None:
 # _ensure_package("VeraGridEngine.IO", engine_root / "IO")
 # _ensure_package("VeraGridEngine.IO.others", engine_root / "IO" / "others")
 
-from VeraGridEngine.Devices.multi_circuit import MultiCircuit as VeraGridMultiCircuit
-from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Injections.generator import Generator
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.Devices.Branches.line import Line
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.EMT.emt_driver import EmtSimulationDriver
-from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriver
-from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
 from VeraGridEngine.Simulations.Rms.rms_driver import RmsSimulationDriver
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
@@ -125,10 +121,7 @@ from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complet
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.enumerations import (
     BranchImpedanceMode,
-    DeviceType,
     DynamicIntegrationMethod,
-    EmtInitializationMethod,
-    EmtSolverTypes,
     SolverType,
     VarPowerFlowRefferenceType,
 )

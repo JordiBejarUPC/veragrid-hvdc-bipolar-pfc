@@ -54,6 +54,7 @@ from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver impo
 from VeraGridEngine.Simulations.Rms.rms_driver import RmsSimulationDriver, RmsResults
 from VeraGridEngine.Simulations.EMT.emt_driver import EmtSimulationDriver, EmtResults
 from VeraGridEngine.Simulations.Topology.node_groups_driver import NodeGroupsDriver
+from VeraGridEngine.Simulations.Topology.node_groups_results import NodeGroupsResults
 from VeraGridEngine.Simulations.driver_template import DriverTemplate, DriverToSave
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import ResultTypes, SimulationTypes
@@ -253,7 +254,8 @@ class SimulationSession:
 
     def get_driver_results(
             self,
-            driver_type: SimulationTypes) -> Tuple[Union[None, DRIVER_OBJECTS], Union[None, RESULTS_OBJECTS]]:
+            driver_type: SimulationTypes
+    ) -> Tuple[Union[None, DRIVER_OBJECTS], Union[None, RESULTS_OBJECTS]]:
         """
         Get the results of the driver
         :param driver_type: driver type
@@ -647,13 +649,13 @@ class SimulationSession:
         return drv, results
 
     @property
-    def node_groups_driver(self) -> Tuple[NodeGroupsDriver, None]:
+    def node_groups_driver(self) -> Tuple[NodeGroupsDriver, NodeGroupsResults | None]:
         """
 
         :return:
         """
         drv, results = self.get_driver_results(SimulationTypes.NodeGrouping_run)
-        return drv, None
+        return drv, results
 
     @property
     def small_signal_stability_simulation(self) -> Tuple[SmallSignalStabilityRmsDriver, SmallSignalStabilityRmsResults]:

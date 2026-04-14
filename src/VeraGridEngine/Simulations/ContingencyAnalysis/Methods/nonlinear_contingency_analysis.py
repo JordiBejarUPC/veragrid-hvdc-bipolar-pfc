@@ -109,7 +109,9 @@ def nonlinear_contingency_analysis(nc: NumericalCircuit,
         results.loading[ic, :] = con_pf_res.loading
         results.voltage[ic, :] = con_pf_res.voltage
         multi_contingency = linear_multiple_contingencies.multi_contingencies[ic] if options.use_srap else None
-        contingency_loadings = np.abs(con_pf_res.Sf / (nc.passive_branch_data.contingency_rates + 1e-9))
+
+        # NOTE: this is accounted for to be in the normal rate base in the analyze method
+        contingency_loadings = np.abs(con_pf_res.Sf / (nc.passive_branch_data.rates + 1e-9))
 
         results.report.analyze(t=t_idx,
                                t_prob=t_prob,

@@ -71,7 +71,7 @@ device_type_icons = {
     DeviceType.EmtEventsGroupDevice.value: ":/Icons/icons/dyn_gray.png",
     DeviceType.EmtEventDevice.value: ":/Icons/icons/dyn_gray.png",
 
-    "Templates": ":/Icons/icons/dyn.png",
+    "Templates": ":/Icons/icons/dyn_gray.png",
 
     "Associations": ":/Icons/icons/associations.png",
     DeviceType.Technology.value: ":/Icons/icons/technology.png",
@@ -101,6 +101,6 @@ device_type_icons = {
     DeviceType.TransformerTypeDevice.value: ":/Icons/icons/to_transformer.png",
     DeviceType.RmsModelTemplateDevice.value: ":/Icons/icons/dyn_gray.png",
     DeviceType.EmtModelTemplateDevice.value: ":/Icons/icons/dyn_gray.png",
-    DeviceType.FmuTemplateDevice.value: ":/Icons/icons/dyn.png",
+    DeviceType.FmuTemplateDevice.value: ":/Icons/icons/dyn_gray.png",
     DeviceType.DynamicModelHostDevice.value: ":/Icons/icons/dyn_gray.png",
 }

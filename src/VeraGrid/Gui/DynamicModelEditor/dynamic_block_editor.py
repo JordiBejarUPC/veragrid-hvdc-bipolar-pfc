@@ -630,7 +630,7 @@ class BranchingItem(QGraphicsEllipseItem):
     """
 
     def __init__(self,
-                 source_connection: ConnectionItem,
+                 subsys: Block,
                  radius: int = 6):
         """
         Build a connection branching point.
@@ -646,8 +646,7 @@ class BranchingItem(QGraphicsEllipseItem):
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
         self.setFlag(QGraphicsItem.GraphicsItemFlag.ItemIsSelectable)
         self.setAcceptHoverEvents(True)
-        self.source_connection: ConnectionItem = source_connection
-        self.subsystem: BlockItem = source_connection.source_port.subsystem
+        self.subsys: BlockItem = subsys
         self.connections: List["ConnectionItem"] | None = None
         self.base_var: Var | None = None
 
@@ -655,37 +654,6 @@ class BranchingItem(QGraphicsEllipseItem):
         self.output_port: PortItem = PortItem(self, False, 0, 1, radius=5)
         self.input_port.connections = None
         self.output_port.connections = None
-
-        self.update_position()
-
-    def update_position(self) -> None:
-        """
-        Recalculate position along the connection path based on stored ratio.
-        """
-        path_points: List[QPointF] = self.source_connection._get_path_points()
-        total_length: float = 0.0
-        segment_lengths: List[float] = []
-        for i in range(len(path_points) - 1):
-            segment_length: float = QLineF(path_points[i], path_points[i + 1]).length()
-            segment_lengths.append(segment_length)
-            total_length += segment_length
-
-        mid_distance: float = total_length * 0.5
-
-        accumulated: float = 0.0
-        x_pos: float = 0.0
-        y_pos: float = 0.0
-        for seg_idx, segment_length in enumerate(segment_lengths):
-            if accumulated + segment_length >= mid_distance:
-                ratio: float = (mid_distance - accumulated) / segment_length if segment_length > 0 else 0.0
-                p1: QPointF = path_points[seg_idx]
-                p2: QPointF = path_points[seg_idx + 1]
-                x_pos = p1.x() + (p2.x() - p1.x()) * ratio
-                y_pos = p1.y() + (p2.y() - p1.y()) * ratio
-                break
-            accumulated += segment_length
-
-        self.setPos(x_pos, y_pos)
 
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         """
@@ -3015,16 +2983,20 @@ class DiagramScene(QGraphicsScene):
         """
         item: QGraphicsItem
 
+        # scene_position: QtCore.QPointF = self.editor.ui.graphicsView.mapToScene(
+        #     int(event.position().x()),
+        #     int(event.position().y())
+        # )
+
         for item in self.items(event.scenePos()):
             if isinstance(item, ConnectionItem):
                 connection: ConnectionItem = item
                 source_port: PortItem = connection.source_port
                 target_port: PortItem = connection.target_port
 
-                branching_item: BranchingItem = BranchingItem(connection)
-                self.addItem(branching_item, branching_item.input_port)
-
-                self.connect_ports(source_port, )
+                branching_item: BranchingItem = BranchingItem(connection.source_port.subsystem.subsys)
+                branching_item.setPos(event.scenePos())
+                self.addItem(branching_item)
 
                 conn1: ConnectionItem = ConnectionItem(
                     source_port, branching_item.input_port,
@@ -3041,7 +3013,7 @@ class DiagramScene(QGraphicsScene):
                 self.editor.diagram.add_branch(
                     connectionitem_uid=conn1.uid,
                     device_uid_from=source_port.subsystem.subsys.uid,
-                    device_uid_to=branching_item.subsystem.uid,
+                    device_uid_to=branching_item.subsys.uid,
                     port_number_from=source_port.index,
                     port_number_to=0,
                     color=conn1.pen().color().name()
@@ -3049,7 +3021,7 @@ class DiagramScene(QGraphicsScene):
 
                 self.editor.diagram.add_branch(
                     connectionitem_uid=conn2.uid,
-                    device_uid_from=branching_item.subsystem.uid,
+                    device_uid_from=branching_item.subsys.uid,
                     device_uid_to=target_port.subsystem.subsys.uid,
                     port_number_from=0,
                     port_number_to=target_port.index,
@@ -3064,8 +3036,6 @@ class DiagramScene(QGraphicsScene):
 
                 if connection.uid in self.editor.diagram.con_data:
                     del self.editor.diagram.con_data[connection.uid]
-
-                branching_item.source_connection = None
 
                 self.removeItem(connection)
                 return
@@ -3314,11 +3284,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.var_factory = var_factory
         self.api_object = api_object
+
         # Todo: is this correct?
         self.original_block: Block = block  # api_object.rms_model
-        if self.api_object.rms_template is not None:
-            self.main_block: Block = Block()
-        else:
+
+        if self.api_object is not None:
+            if mode == DynamicEditorMode.RMS and self.api_object.rms_template is not None:
+                self.main_block: Block = Block()
+            elif mode == DynamicEditorMode.EMT and self.api_object.emt_template is not None:
+                self.main_block: Block = Block()
+            else:
+                self.main_block: Block = clone_block_for_editing(block)
+        else: # when editing a template from the dataset (not connected to a device)
             self.main_block: Block = clone_block_for_editing(block)
 
         self.diagram: BlockDiagram = self.main_block.diagram
