@@ -3304,22 +3304,23 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         # Todo: is this correct?
         self.original_block: Block = block  # api_object.rms_model
 
-        if mode == DynamicEditorMode.RMS and self.api_object.rms_template is not None:
-            self.main_block: Block = Block()
-        elif mode == DynamicEditorMode.EMT and self.api_object.emt_template is not None:
-            self.main_block: Block = Block()
-        else:
-            self.main_block: Block = clone_block_for_editing(block)
-
-        # if self.api_object is not None:
-        #     if mode == DynamicEditorMode.RMS and self.api_object.rms_template is not None:
-        #         self.main_block: Block = Block()
-        #     elif mode == DynamicEditorMode.EMT and self.api_object.emt_template is not None:
-        #         self.main_block: Block = Block()
-        #     else:
-        #         self.main_block: Block = clone_block_for_editing(block)
-        # else: # when editing a template from the dataset (not connected to a device)
+        # if mode == DynamicEditorMode.RMS and self.api_object.rms_template is not None:
+        #     self.main_block: Block = Block()
+        # elif mode == DynamicEditorMode.EMT and self.api_object.emt_template is not None:
+        #     self.main_block: Block = Block()
+        # else:
         #     self.main_block: Block = clone_block_for_editing(block)
+
+        try:
+            if mode == DynamicEditorMode.RMS and self.api_object.rms_template is not None:
+                self.main_block: Block = Block()
+            elif mode == DynamicEditorMode.EMT and self.api_object.emt_template is not None:
+                self.main_block: Block = Block()
+            else:
+                self.main_block: Block = clone_block_for_editing(block)
+
+        except AttributeError: # happens when editing templates from database (they are not connected to any physical device)
+            self.main_block: Block = clone_block_for_editing(block)
 
         self.diagram: BlockDiagram = self.main_block.diagram
         self.circuit = circuit
