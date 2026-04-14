@@ -1764,4 +1764,5 @@ def build_boundary_updater_from_block(problem: EmtProblemTemplate) -> Optional[B
     entries: List[ProceduralLogicBase] = problem.sys_block.procedural_logic
     if len(entries) == 0:
         return None
-    return BlockProceduralLogicUpdater(problem, entries)
+    return BlockProceduralLogicUpdater(problem=problem,
+                                       logic_entries=entries)
