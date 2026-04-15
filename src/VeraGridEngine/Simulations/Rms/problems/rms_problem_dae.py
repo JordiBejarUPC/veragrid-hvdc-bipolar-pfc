@@ -189,6 +189,8 @@ class RmsProblemDae(RmsProblemTemplate):
         Q: ObjVec = np.zeros(n, dtype=object)
         P_used: BoolVec = np.zeros(n, dtype=bool)
         Q_used: BoolVec = np.zeros(n, dtype=bool)
+        branch_bus_p = np.zeros(n, dtype=float)
+        branch_bus_q = np.zeros(n, dtype=float)
 
         # general indexes for variables and parameters
         self._n_vars = 0
@@ -196,31 +198,14 @@ class RmsProblemDae(RmsProblemTemplate):
         self._n_event_params = 0
         self._n_diff = 0
 
-        # dictionary to relate injection devices connected to a certain bus
-        injection_dev_dict = self.grid.get_injection_devices_grouped_by_bus()
-
-
         ######################################## Initialize devices ########################################
 
         # initialize buses
         bus_dict: Dict[Bus, int] = dict()
-        inj_tot_cap_dict: Dict[tuple[Bus, DeviceType], float] = dict()
 
         for bus_num, elm in enumerate(self.grid.buses):
 
             bus_dict[elm] = bus_num
-
-            # calculate sum of injections capacity
-            if elm in injection_dev_dict:
-                inj_dev = injection_dev_dict[elm]
-
-                if DeviceType.GeneratorDevice in inj_dev:
-                    generators = inj_dev[DeviceType.GeneratorDevice]
-
-                    gen_total_cap = 0
-                    for generator in generators:
-                        gen_total_cap += generator.Snom
-                    inj_tot_cap_dict[(elm, DeviceType.GeneratorDevice)] = gen_total_cap
 
 
 
@@ -295,6 +280,13 @@ class RmsProblemDae(RmsProblemTemplate):
                 self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Qf, self.Sf[branch_num].imag)
                 self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Pt, self.St[branch_num].real)
                 self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Qt, self.St[branch_num].imag)
+
+                f_idx = bus_dict[elm.bus_from]
+                t_idx = bus_dict[elm.bus_to]
+                branch_bus_p[f_idx] += self.Sf[branch_num].real
+                branch_bus_q[f_idx] += self.Sf[branch_num].imag
+                branch_bus_p[t_idx] += self.St[branch_num].real
+                branch_bus_q[t_idx] += self.St[branch_num].imag
 
                 # Run explicit initialization for branches to solve algebraic equations
                 if isinstance(elm, Transformer2W):
@@ -510,10 +502,56 @@ class RmsProblemDae(RmsProblemTemplate):
                 # add model to system block
                 self.sys_block.add(elm.rms_model)
 
+        gen_idx_map = {elm.idtag: i for i, elm in enumerate(grid.generators)}
+        batt_idx_map = {elm.idtag: i for i, elm in enumerate(grid.batteries)}
+        shunt_idx_map = {elm.idtag: i for i, elm in enumerate(grid.shunts)}
+        loads_idx_map = {elm.idtag: i for i, elm in enumerate(grid.loads)}
+
+        fixed_inj_p = np.zeros(n, dtype=float)
+        fixed_inj_q = np.zeros(n, dtype=float)
+        slack_gen_count = np.zeros(n, dtype=int)
+        slack_gen_snom = np.zeros(n, dtype=float)
+
+        for dev in grid.get_injection_devices_iter():
+            if dev.rms_model.empty():
+                continue
+            bidx = bus_dict[dev.bus]
+            if dev.bus.is_dc:
+                continue
+
+            if dev.idtag in gen_idx_map and dev.bus.is_slack:
+                slack_gen_count[bidx] += 1
+                snom = float(getattr(dev, "Snom", 0.0))
+                if snom <= 0.0:
+                    snom = 1.0
+                slack_gen_snom[bidx] += snom
+                continue
+
+            Vbus_pf = self.power_flow_results.voltage[bidx]
+            if dev.idtag in gen_idx_map:
+                gidx = gen_idx_map[dev.idtag]
+                Sdev_pf = complex(float(dev.P), float(self.power_flow_results.gen_q[gidx])) / grid.Sbase
+            elif dev.idtag in batt_idx_map:
+                bdid = batt_idx_map[dev.idtag]
+                Sdev_pf = complex(float(dev.P), float(self.power_flow_results.battery_q[bdid])) / grid.Sbase
+            elif dev.idtag in shunt_idx_map:
+                g_sh = float(dev.G) / grid.Sbase
+                b_sh = float(dev.B) / grid.Sbase
+                Sdev_pf = complex(g_sh * (abs(Vbus_pf) ** 2), -b_sh * (abs(Vbus_pf) ** 2))
+            elif dev.idtag in loads_idx_map:
+                Sdev_pf = complex(-float(dev.P), -float(dev.Q)) / grid.Sbase
+            else:
+                Sdev_pf = complex(0.0, 0.0)
+
+            fixed_inj_p[bidx] += Sdev_pf.real
+            fixed_inj_q[bidx] += Sdev_pf.imag
+
+        residual_p = branch_bus_p - fixed_inj_p
+        residual_q = branch_bus_q - fixed_inj_q
+        remaining_slack_gen = slack_gen_count.copy()
+        remaining_slack_gen_snom = slack_gen_snom.copy()
+
         for elm in grid.get_injection_devices_iter():
-            power_flow_part_fact = 1
-            if elm.device_type == DeviceType.GeneratorDevice:
-                power_flow_part_fact = elm.Snom/inj_tot_cap_dict[(elm.bus, elm.device_type)]
 
 
             if elm.rms_model.empty():
@@ -550,12 +588,50 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 if elm.bus.is_dc:
                     self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.P,
-                                        power_flow_part_fact * np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+                                        np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
                 else:
+                    Vbus = self.power_flow_results.voltage[bus_index]
+                    if elm.idtag in gen_idx_map:
+                        if elm.bus.is_slack and remaining_slack_gen[bus_index] > 0:
+                            elm_snom = float(getattr(elm, "Snom", 0.0))
+                            if elm_snom <= 0.0:
+                                elm_snom = 1.0
+
+                            if remaining_slack_gen[bus_index] == 1:
+                                share = 1.0
+                            else:
+                                snom_den = remaining_slack_gen_snom[bus_index]
+                                if snom_den <= 0.0:
+                                    share = 1.0 / remaining_slack_gen[bus_index]
+                                else:
+                                    share = elm_snom / snom_den
+
+                            P_val = residual_p[bus_index] * share
+                            Q_val = residual_q[bus_index] * share
+                            remaining_slack_gen[bus_index] -= 1
+                            remaining_slack_gen_snom[bus_index] -= elm_snom
+                            residual_p[bus_index] -= P_val
+                            residual_q[bus_index] -= Q_val
+                            Sdev = complex(P_val, Q_val)
+                        else:
+                            gidx = gen_idx_map[elm.idtag]
+                            Sdev = complex(float(elm.P), float(self.power_flow_results.gen_q[gidx])) / grid.Sbase
+                    elif elm.idtag in batt_idx_map:
+                        bidx = batt_idx_map[elm.idtag]
+                        Sdev = complex(float(elm.P), float(self.power_flow_results.battery_q[bidx])) / grid.Sbase
+                    elif elm.idtag in shunt_idx_map:
+                        g_sh = float(elm.G) / grid.Sbase
+                        b_sh = float(elm.B) / grid.Sbase
+                        Sdev = complex(g_sh * (abs(Vbus) ** 2), -b_sh * (abs(Vbus) ** 2))
+                    elif elm.idtag in loads_idx_map:
+                        Sdev = complex(-float(elm.P), -float(elm.Q)) / grid.Sbase
+                    else:
+                        Sdev = self.power_flow_results.Sbus[bus_index] / grid.Sbase
+
                     self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.P,
-                                        power_flow_part_fact * np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+                                        Sdev.real)
                     self.set_init_guess(elm.rms_model, VarPowerFlowRefferenceType.Q,
-                                        power_flow_part_fact * np.imag(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
+                                        Sdev.imag)
 
                 k = bus_dict[elm.bus]
                 if VarPowerFlowRefferenceType.P in elm.rms_model.external_mapping:
@@ -740,15 +816,6 @@ class RmsProblemDae(RmsProblemTemplate):
             if isinstance(eq, Const) and eq.value is None:
                 raise Exception(f' Event parameter {self._variable_parameters[it]} has None Value')
 
-        # Substitute in algebraic eqs
-        self._stability_eqs = list()
-
-        # fill stability equations by putting algebraic equations equal zero
-        for it, eq in enumerate(self._algebraic_eqs):
-            for diff_var in self._diff_vars:
-                eq = eq.subs({diff_var: Const(0)})
-                eq = eq.simplify()
-            self._stability_eqs.append(eq)
 
 
     def set_events_group(self, rms_events_group: RmsEventsGroup):
@@ -786,25 +853,6 @@ class RmsProblemDae(RmsProblemTemplate):
         timings = dict()
         # print("Compiling RMS using JIT Native Compiler...")
         t0 = _tic()
-        self._derivative_fn = SymbolicDerivative(
-            vars=self._state_algeb_vars,
-            uid2idx_vars=self._uid2idx_vars,
-            diff_vars=self._diff_vars,
-            compiler_names_dict=self._compiler_names_dict
-        )
-        timings["SymbolicDerivative"] = _toc(t0)
-
-        t0 = _tic()
-        self._event_params_fn = SymbolicParamsVector(
-            eqs=self._event_parameters_eqs,
-            compiler_names_dict=self._compiler_names_dict,
-            alias_names_dict=self._alias_names_dict,
-            EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
-            TIME_NAME=self.TIME_NAME,
-        )
-        timings["Event parameters"] = _toc(t0)
-
-        t0 = _tic()
         rms_compiler = RMSCompiler(
             variables=self._state_algeb_vars,
             diff_vars=self._diff_vars,
@@ -814,6 +862,19 @@ class RmsProblemDae(RmsProblemTemplate):
             compiler_names_dict=self._compiler_names_dict
         )
         timings["Compiler Setup"] = _toc(t0)
+
+        t0 = _tic()
+        self._derivative_fn = rms_compiler.compile_derivative_fn(self._uid2idx_vars)
+        timings["SymbolicDerivative"] = _toc(t0)
+
+        t0 = _tic()
+        self._event_params_fn = rms_compiler.compile_event_params_fn(
+            eqs=self._event_parameters_eqs,
+            alias_names_dict=self._alias_names_dict,
+            EVENT_PARAMS_NAME=self.VARIABLE_PARAMS_NAME,
+            TIME_NAME=self.TIME_NAME,
+        )
+        timings["Event parameters"] = _toc(t0)
 
         t0 = _tic()
         self._rhs_algeb_fn = rms_compiler.compile_rhs(self._algebraic_eqs, "rhs_algeb")
