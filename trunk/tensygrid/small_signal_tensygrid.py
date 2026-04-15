@@ -29,7 +29,7 @@ from scipy.optimize import linear_sum_assignment
 
 
 FAST_MODE = True
-FAST_GRID_PATH = 'trunk/tensygrid/grids/IEEE_14-2.gridcal'
+FAST_GRID_PATH = 'grids/IEEE118_opf.gridcal' #'trunk/tensygrid/grids/IEEE_14-2.gridcal'
 FULL_GRID_PATH = 'Grids_and_profiles/grids/IEEE118_opf.gridcal'
 PRINT_ALL_BUSES = False # not FAST_MODE
 ENABLE_POST_COMPARE_PLOT = False # not FAST_MODE
@@ -292,9 +292,10 @@ def solve_problem(problem: Any) -> Any:
     print("\n[4] Rebuilding equations and extracting exact physics...")
     builder = PolynomialMatrixBuilder(problem=problem, verbose=True)
     v_dict: dict = op_extraction(problem=problem)
-
     print("\n[*] Linearizing model with real parameters...")
     builder.linearize(v_dict=v_dict)
+
+    builder.save_state_space("precomputed_matrices/ieee118_grid")
     res = builder.compute_stability()
 
     eigenvalues = res[0]
