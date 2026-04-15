@@ -22,11 +22,14 @@ from phasor_diagnostics import (
     check_equation_consistency,
     debug_exciter_equations,
     check_generator_current_residuals as compare_generator_bus_currents,
+    check_shunt_pf_currents,
+    print_buses_with_many_injections,
+    print_bus_current_balance,
 )
 #from scipy.optimize import linear_sum_assignment
 
 
-FAST_MODE = True
+FAST_MODE = False
 FAST_GRID_PATH = 'trunk/tensygrid/grids/IEEE_14-2.gridcal'
 FULL_GRID_PATH = 'trunk/tensygrid/grids/IEEE118_opf.gridcal'
 PRINT_ALL_BUSES = not FAST_MODE
@@ -70,6 +73,7 @@ def define_problem_with_path(grid_path):
         loadec = vge.get_load_phasor_current_rms_template(grid.var_factory, name=load.name).block
         loadec.connect([loadec.in_vars[0]], [load.bus.rms_model.out_vars[0]])
         loadec.connect([loadec.in_vars[1]], [load.bus.rms_model.out_vars[1]])
+        #loadec = vge.to_implicit(loadec, grid.var_factory)
         vge.set_rms_model(device=load, model=loadec, var_factory=grid.var_factory)
     ## -TRANSFORMERS 2w:
     for trafo in grid.transformers2w:
@@ -80,7 +84,13 @@ def define_problem_with_path(grid_path):
         trafoec.connect([trafoec.in_vars[3]], [trafo.bus_to.rms_model.out_vars[1]])
         trafoec = vge.to_implicit(trafoec, grid.var_factory)
         vge.set_rms_model(device=trafo, model=trafoec, var_factory=grid.var_factory)
-
+    ## -SHUNTS (load like):
+    for shunt in grid.shunts:
+        shuntec = vge.get_shunt_template(grid.var_factory, name=shunt.name, phasor=True).block
+        shuntec.connect([shuntec.in_vars[0]], [shunt.bus.rms_model.out_vars[0]])
+        shuntec.connect([shuntec.in_vars[1]], [shunt.bus.rms_model.out_vars[1]])
+        shuntec = vge.to_implicit(shuntec, grid.var_factory)
+        vge.set_rms_model(device=shunt, model=shuntec, var_factory=grid.var_factory)
 
     print("  ✓ Grid with path loaded")
 
@@ -89,7 +99,7 @@ def define_problem_with_path(grid_path):
     # ===================================================================
 
     print("\n[2] Running power flow...")
-    pf_options = vge.PowerFlowOptions()
+    pf_options = vge.PowerFlowOptions(tolerance=1e-13)
     pf_results = vge.power_flow(grid, pf_options)
 
     if pf_results.converged:
@@ -108,6 +118,10 @@ def define_problem_with_path(grid_path):
     if RUN_PF_LINE_EQ_CHECK:
         check_pf_line_equations(grid=grid, pf_results=pf_results)
 
+    check_shunt_pf_currents(grid=grid, pf_results=pf_results)
+    print("\n[2.7] Buses with multiple injection devices...")
+    print_buses_with_many_injections(grid=grid)
+    print_bus_current_balance(grid=grid, pf_results=pf_results)
     # ===================================================================
     # CREATE PHASOR PROBLEM
     # ===================================================================
@@ -118,6 +132,7 @@ def define_problem_with_path(grid_path):
         simulation_time=1.0,
         tolerance=1e-6,
         max_iter=20,
+        verbose=True,
     )
     phasor_problem = vge.RmsProblemPhasor(grid=grid, options=rms_options, pf_results=pf_results)
     print(f"  ✓ Phasor problem created with {phasor_problem.get_states_number()} states")
@@ -127,6 +142,8 @@ def define_problem_with_path(grid_path):
     if RUN_EXCITER_DIAGNOSTICS:
         debug_exciter_equations(phasor_problem)
         compare_generator_bus_currents(grid=grid, problem=phasor_problem, pf_results=pf_results)
+    print("\n[3.0] Exciter diagnostics...")
+    #debug_exciter_equations(problem=phasor_problem)
     # ===================================================================
     # DYNAMIC VALIDATION
     # ===================================================================
@@ -138,7 +155,8 @@ def define_problem_with_path(grid_path):
             t0=0,
             t_end=dyn_t_end,
             h=rms_options.time_step,
-            max_iter=rms_options.max_iter
+            max_iter=rms_options.max_iter,
+            tolerance=rms_options.tolerance,
         )
         t_dyn, y_dyn, well_initialized, converged = solver.simulate()
         print(
@@ -422,7 +440,7 @@ if __name__ == "__main__":
     # --- SUBPLOT 2: BARS AND RESULTS ---
     labels = ['Matching', 'Exceeding\n(TenSyGrid)', 'Missing\n(Pablo)']
     counts = [n_matches, n_unmatched_calc, n_unmatched_ref]
-    colors = ['#4CAF50', '#F44336', '#FFC107']  # Green, Red, Yellow
+    colors = ["#439C46", '#F44336', '#FFC107']  # Green, Red, Yellow
 
     bars = ax2.bar(labels, counts, color=colors, edgecolor='black', alpha=0.8)
     ax2.set_title(f"Coincidence\n(Tolerance: {tol})")
