@@ -160,6 +160,236 @@ def build_orthogonal_connection_path(start: QPointF, end: QPointF) -> QPainterPa
     return path
 
 
+class OrthogonalRouter:
+    """
+    Global orthogonal router for connection paths.
+    Uses A* pathfinding on a grid to compute Manhattan-style paths avoiding obstacles.
+    """
+
+    GRID_SIZE: float = 10.0
+    BASE_COST: int = 1
+    TURN_COST: int = 10
+    BLOCKED_COST: int = 1000000
+
+    class GridNode:
+        def __init__(self, x: int, y: int):
+            self.x = x
+            self.y = y
+            self.g_cost: int = 0
+            self.h_cost: int = 0
+            self.f_cost: int = 0
+            self.parent: "OrthogonalRouter.GridNode | None" = None
+            self.direction: str | None = None
+
+        def __hash__(self):
+            return hash((self.x, self.y))
+
+        def __eq__(self, other):
+            return self.x == other.x and self.y == other.y
+
+    @staticmethod
+    def _pos_to_grid(pos: QPointF) -> tuple[int, int]:
+        return (int(pos.x() / OrthogonalRouter.GRID_SIZE),
+                int(pos.y() / OrthogonalRouter.GRID_SIZE))
+
+    @staticmethod
+    def _grid_to_pos(gx: int, gy: int) -> QPointF:
+        return QPointF(gx * OrthogonalRouter.GRID_SIZE, gy * OrthogonalRouter.GRID_SIZE)
+
+    @staticmethod
+    def _get_neighbors(node: "OrthogonalRouter.GridNode") -> List[tuple]:
+        return [
+            (node.x + 1, node.y, 'right'),
+            (node.x - 1, node.y, 'left'),
+            (node.x, node.y + 1, 'down'),
+            (node.x, node.y - 1, 'up')
+        ]
+
+    @staticmethod
+    def _heuristic(x1: int, y1: int, x2: int, y2: int) -> int:
+        return abs(x2 - x1) + abs(y2 - y1)
+
+    @staticmethod
+    def _is_blocked(gx: int, gy: int, scene: "QGraphicsScene | None",
+                    source_port: "PortItem | BranchingItem | None",
+                    target_port: "PortItem | BranchingItem | None") -> bool:
+        if scene is None:
+            return False
+
+        pos = QPointF(gx * OrthogonalRouter.GRID_SIZE, gy * OrthogonalRouter.GRID_SIZE)
+        rect = QtCore.QRectF(pos.x() - OrthogonalRouter.GRID_SIZE / 2,
+                            pos.y() - OrthogonalRouter.GRID_SIZE / 2,
+                            OrthogonalRouter.GRID_SIZE, OrthogonalRouter.GRID_SIZE)
+
+        items = scene.items(rect)
+        for item in items:
+            if isinstance(item, (ConnectionItem,)):
+                continue
+            if isinstance(item, (PortItem,)):
+                continue
+            if isinstance(item, BranchingItem):
+                continue
+            if item.flags() & QGraphicsItem.GraphicsItemFlag.ItemIsMovable:
+                if source_port and item == source_port.subsystem:
+                    continue
+                if target_port and item == target_port.subsystem:
+                    continue
+                return True
+        return False
+
+    @staticmethod
+    def compute_path(source_pos: QPointF, target_pos: QPointF,
+                    source_port: "PortItem | BranchingItem | None" = None,
+                    target_port: "PortItem | BranchingItem | None" = None,
+                    scene: "QGraphicsScene | None" = None) -> QPainterPath:
+        """
+        Compute an orthogonal path using A* pathfinding on a grid.
+
+        :param source_pos: Start point
+        :param target_pos: End point
+        :param source_port: Source port for context
+        :param target_port: Target port for context
+        :param scene: Graphics scene for obstacle detection
+        :return: QPainterPath with orthogonal segments avoiding obstacles
+        """
+        if scene is None:
+            return build_orthogonal_connection_path(source_pos, target_pos)
+
+        start_gx, start_gy = OrthogonalRouter._pos_to_grid(source_pos)
+        end_gx, end_gy = OrthogonalRouter._pos_to_grid(target_pos)
+
+        open_set: List[OrthogonalRouter.GridNode] = []
+        closed_set: set = set()
+
+        start_node = OrthogonalRouter.GridNode(start_gx, start_gy)
+        start_node.g_cost = 0
+        start_node.h_cost = OrthogonalRouter._heuristic(start_gx, start_gy, end_gx, end_gy)
+        start_node.f_cost = start_node.g_cost + start_node.h_cost
+        start_node.direction = None
+
+        open_set.append(start_node)
+
+        while open_set:
+            open_set.sort(key=lambda n: n.f_cost)
+            current = open_set.pop(0)
+
+            if current.x == end_gx and current.y == end_gy:
+                path_points = OrthogonalRouter._reconstruct_path(current)
+                return OrthogonalRouter._build_qpainterpath(path_points, source_pos, target_pos)
+
+            closed_set.add((current.x, current.y))
+
+            for gx, gy, direction in OrthogonalRouter._get_neighbors(current):
+                if (gx, gy) in closed_set:
+                    continue
+
+                if OrthogonalRouter._is_blocked(gx, gy, scene, source_port, target_port):
+                    continue
+
+                g_cost = current.g_cost + OrthogonalRouter.BASE_COST
+
+                if current.direction is not None and current.direction != direction:
+                    g_cost += OrthogonalRouter.TURN_COST
+
+                neighbor = OrthogonalRouter.GridNode(gx, gy)
+
+                in_open = False
+                for node in open_set:
+                    if node.x == gx and node.y == gy:
+                        in_open = True
+                        if g_cost < node.g_cost:
+                            node.g_cost = g_cost
+                            node.f_cost = node.g_cost + node.h_cost
+                            node.parent = current
+                            node.direction = direction
+                        break
+
+                if not in_open:
+                    neighbor.g_cost = g_cost
+                    neighbor.h_cost = OrthogonalRouter._heuristic(gx, gy, end_gx, end_gy)
+                    neighbor.f_cost = neighbor.g_cost + neighbor.h_cost
+                    neighbor.parent = current
+                    neighbor.direction = direction
+                    open_set.append(neighbor)
+
+        fallback_path = build_orthogonal_connection_path(source_pos, target_pos)
+        return fallback_path
+
+    @staticmethod
+    def _reconstruct_path(end_node: "OrthogonalRouter.GridNode") -> List[QPointF]:
+        path = []
+        current = end_node
+        while current is not None:
+            path.append(OrthogonalRouter._grid_to_pos(current.x, current.y))
+            current = current.parent
+        path.reverse()
+        return path
+
+    @staticmethod
+    def _build_qpainterpath(grid_path: List[QPointF], source_pos: QPointF, target_pos: QPointF) -> QPainterPath:
+        if len(grid_path) < 2:
+            path = QPainterPath(source_pos)
+            path.lineTo(target_pos)
+            return path
+
+        path = QPainterPath(source_pos)
+        path.lineTo(grid_path[0])
+
+        simplified = OrthogonalRouter._simplify_path(grid_path)
+
+        for point in simplified:
+            path.lineTo(point)
+
+        path.lineTo(target_pos)
+        return path
+
+    @staticmethod
+    def _simplify_path(points: List[QPointF]) -> List[QPointF]:
+        if len(points) < 3:
+            return points
+
+        simplified = [points[0]]
+        prev_dir = None
+
+        for i in range(1, len(points) - 1):
+            if i == 0:
+                continue
+
+            dx1 = points[i].x() - points[i-1].x()
+            dy1 = points[i].y() - points[i-1].y()
+            dx2 = points[i+1].x() - points[i].x()
+            dy2 = points[i+1].y() - points[i].y()
+
+            dir1 = None
+            if abs(dx1) > abs(dy1):
+                dir1 = 'h'
+            else:
+                dir1 = 'v'
+
+            dir2 = None
+            if abs(dx2) > abs(dy2):
+                dir2 = 'h'
+            else:
+                dir2 = 'v'
+
+            if dir1 != dir2:
+                simplified.append(points[i])
+
+        simplified.append(points[-1])
+        return simplified
+
+    @staticmethod
+    def compute_path_simple(source_pos: QPointF, target_pos: QPointF) -> QPainterPath:
+        """
+        Compute a simple orthogonal path without obstacle avoidance.
+
+        :param source_pos: Start point
+        :param target_pos: End point
+        :return: QPainterPath with orthogonal segments
+        """
+        return build_orthogonal_connection_path(source_pos, target_pos)
+
+
 
 def remap_serialized_uids(data: Any, uid_map: Dict[int, int]) -> Any:
     """
@@ -704,18 +934,18 @@ class BranchingItem(QGraphicsEllipseItem):
 class ConnectionItem(QGraphicsPathItem):
     """
     Orthogonal graphical connection between two ports.
+    Uses global OrthogonalRouter for path computation.
     """
 
     def __init__(self, source_port: PortItem | BranchingItem, target_port: PortItem | BranchingItem,
-                 diagram=None, con_uid=None, elbow_points=None, uid=None):
+                 diagram=None, con_uid=None, uid=None):
         """
         Build the connection item.
 
         :param source_port:
         :param target_port:
-        :param diagram: BlockDiagram reference to update on elbow change
+        :param diagram: BlockDiagram reference
         :param con_uid: Connection uid in the diagram
-        :param elbow_points: Custom elbow points (list of QPointF or list of (is_horizontal, fixed_coord))
         :param uid: Optional specific uid to use
         """
         super().__init__()
@@ -725,17 +955,6 @@ class ConnectionItem(QGraphicsPathItem):
         self.target_port: PortItem | BranchingItem = target_port
         self.diagram = diagram
         self.con_uid = con_uid if con_uid is not None else self.uid
-        self.custom_elbow_points: List[QPointF] = []
-        self._dragging: bool = False
-        self._drag_type: str = None
-        self._drag_segment_idx: int = -1
-        self._original_elbows_abs: List[QPointF] = []
-
-        if elbow_points:
-            self.custom_elbow_points = [
-                QPointF(p.x(), p.y()) if isinstance(p, QPointF) else QPointF(p[0], p[1])
-                for p in elbow_points
-            ]
 
         if self.source_port.connections is None:
             self.source_port.connections = list()
@@ -754,256 +973,19 @@ class ConnectionItem(QGraphicsPathItem):
 
     def update_path(self) -> None:
         """
-        Recompute the orthogonal path from current port positions.
-        Uses custom elbow points if available, otherwise builds default path.
+        Recompute the orthogonal path from current port positions using the global router.
 
         :return:
         """
-        start: QPointF = self.source_port.scenePos()
-        end: QPointF = self.target_port.scenePos()
-
-        if self.custom_elbow_points:
-            path: QPainterPath = self._build_path_with_elbows(start, end, self.custom_elbow_points)
-        else:
-            path = build_orthogonal_connection_path(start, end)
+        scene = self.source_port.scene()
+        path = OrthogonalRouter.compute_path(
+            self.source_port.scenePos(),
+            self.target_port.scenePos(),
+            source_port=self.source_port,
+            target_port=self.target_port,
+            scene=scene
+        )
         self.setPath(path)
-
-    def _build_path_with_elbows(self, start: QPointF, end: QPointF, elbows: List[QPointF]) -> QPainterPath:
-        """
-        Build an orthogonal path through the given elbow points.
-        Adjusts elbows to ensure all segments are horizontal or vertical.
-
-        :param start:
-        :param end:
-        :param elbows: List of elbow positions
-        :return:
-        """
-        if not elbows:
-            return build_orthogonal_connection_path(start, end)
-
-        path: QPainterPath = QPainterPath(start)
-        current = start
-
-        for elbow in elbows:
-            if abs(elbow.y() - current.y()) < 1 and abs(elbow.x() - current.x()) < 1:
-                current = elbow
-                continue
-            if abs(elbow.y() - current.y()) < 1:
-                path.lineTo(elbow)
-                current = elbow
-            elif abs(elbow.x() - current.x()) < 1:
-                path.lineTo(elbow)
-                current = elbow
-            else:
-                aligned = QPointF(elbow.x(), current.y())
-                path.lineTo(aligned)
-                current = aligned
-
-        if abs(current.y() - end.y()) < 1:
-            path.lineTo(end)
-            return path
-
-        if abs(current.x() - end.x()) < 1:
-            path.lineTo(end)
-            return path
-
-        last_elbow = elbows[-1] if elbows else None
-        if last_elbow:
-            if abs(last_elbow.y() - end.y()) < 1:
-                path.lineTo(end)
-                return path
-            if abs(last_elbow.x() - end.x()) < 1:
-                path.lineTo(end)
-                return path
-
-        x_diff = abs(current.x() - end.x())
-        y_diff = abs(current.y() - end.y())
-
-        if x_diff < 1 and y_diff > 1:
-            path.lineTo(end.x(), current.y())
-        elif y_diff < 1 and x_diff > 1:
-            path.lineTo(current.x(), end.y())
-        else:
-            path.lineTo(end.x(), current.y())
-
-        path.lineTo(end)
-        return path
-
-    def _get_path_points(self) -> List[QPointF]:
-        """
-        Get all points that define the path (start, elbows, end).
-
-        :return: List of QPointF
-        """
-        start: QPointF = self.source_port.scenePos()
-        end: QPointF = self.target_port.scenePos()
-
-        if self.custom_elbow_points:
-            points = [start] + list(self.custom_elbow_points) + [end]
-        else:
-            points = self._get_default_elbows(start, end)
-        return points
-
-    def _get_default_elbows(self, start: QPointF, end: QPointF) -> List[QPointF]:
-        """
-        Get default elbow points for the path.
-
-        :param start:
-        :param end:
-        :return:
-        """
-        delta_x: float = end.x() - start.x()
-        delta_y: float = end.y() - start.y()
-
-        if abs(delta_y) < 1:
-            return [start, end]
-
-        if abs(delta_x) < 1:
-            return [start, end]
-
-        offset: float = min(WIRE_ELBOW_OFFSET, abs(delta_x) / 2.0) if delta_x != 0 else WIRE_ELBOW_OFFSET
-        start_elbow_x: float = start.x() + offset
-
-        if end.x() >= start.x():
-            mid1 = QPointF(start_elbow_x, start.y())
-            mid2 = QPointF(start_elbow_x, end.y())
-        else:
-            middle_x: float = start.x() + max(WIRE_ELBOW_OFFSET, abs(delta_x) / 2.0)
-            mid1 = QPointF(middle_x, start.y())
-            mid2 = QPointF(middle_x, end.y())
-
-        return [start, mid1, mid2, end]
-
-    def _find_segment_at_point(self, pos: QPointF) -> tuple[int, str, QPointF, QPointF] | None:
-        """
-        Find which segment contains the given point.
-
-        :param pos: Point to check
-        :return: (segment_index, segment_direction, segment_start, segment_end) or None
-        """
-        points = self._get_path_points()
-        threshold = 15.0
-
-        for i in range(len(points) - 1):
-            p1 = points[i]
-            p2 = points[i + 1]
-
-            if abs(p1.y() - p2.y()) < 1:
-                min_x, max_x = min(p1.x(), p2.x()), max(p1.x(), p2.x())
-                if min_x - threshold <= pos.x() <= max_x + threshold and abs(pos.y() - p1.y()) <= threshold:
-                    return (i, 'horizontal', p1, p2)
-            elif abs(p1.x() - p2.x()) < 1:
-                min_y, max_y = min(p1.y(), p2.y()), max(p1.y(), p2.y())
-                if min_y - threshold <= pos.y() <= max_y + threshold and abs(pos.x() - p1.x()) <= threshold:
-                    return (i, 'vertical', p1, p2)
-
-        return None
-
-    def mousePressEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
-        """
-        Handle mouse press to start dragging a segment.
-
-        :param event:
-        :return:
-        """
-        pos = event.scenePos()
-        segment_info = self._find_segment_at_point(pos)
-
-        if segment_info is not None:
-            self._drag_segment_idx, self._drag_type, p1, p2 = segment_info
-
-            if not self.custom_elbow_points:
-                start = self.source_port.scenePos()
-                end = self.target_port.scenePos()
-                default_elbows = self._get_default_elbows(start, end)[1:-1]
-                if not default_elbows:
-                    mid_x = (start.x() + end.x()) / 2.0
-                    mid_y = (start.y() + end.y()) / 2.0
-                    if self._drag_type == 'horizontal':
-                        self.custom_elbow_points = [QPointF(mid_x, start.y())]
-                    else:
-                        self.custom_elbow_points = [QPointF(start.x(), mid_y)]
-                else:
-                    self.custom_elbow_points = [QPointF(p) for p in default_elbows]
-
-            self._original_elbows_abs = [QPointF(p) for p in self.custom_elbow_points]
-
-            self._dragging = True
-            event.accept()
-        else:
-            super().mousePressEvent(event)
-
-    def mouseMoveEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
-        """
-        Handle mouse move to drag a segment.
-
-        :param event:
-        :return:
-        """
-        if self._dragging:
-            pos = event.scenePos()
-
-            elbow_idx = self._drag_segment_idx - 1
-
-            if elbow_idx >= 0 and elbow_idx < len(self.custom_elbow_points):
-                if self._drag_type == 'horizontal':
-                    delta_y = pos.y() - self._original_elbows_abs[elbow_idx].y()
-                    for i in range(elbow_idx, len(self.custom_elbow_points)):
-                        new_y = self._original_elbows_abs[i].y() + delta_y
-                        self.custom_elbow_points[i] = QPointF(
-                            self._original_elbows_abs[i].x(),
-                            new_y
-                        )
-                else:
-                    delta_x = pos.x() - self._original_elbows_abs[elbow_idx].x()
-                    for i in range(elbow_idx, len(self.custom_elbow_points)):
-                        new_x = self._original_elbows_abs[i].x() + delta_x
-                        self.custom_elbow_points[i] = QPointF(
-                            new_x,
-                            self._original_elbows_abs[i].y()
-                        )
-
-            self.update_path()
-            self._update_diagram()
-            event.accept()
-        else:
-            super().mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event: QtWidgets.QGraphicsSceneMouseEvent) -> None:
-        """
-        Handle mouse release to stop dragging.
-
-        :param event:
-        :return:
-        """
-        self._dragging = False
-        self._drag_segment_idx = -1
-        self._drag_type = None
-        self._original_elbows_abs = []
-        super().mouseReleaseEvent(event)
-
-
-    def _update_diagram(self) -> None:
-        """
-        Update the diagram's connection data with new elbow points.
-
-        :return:
-        """
-        if self.diagram is not None and self.con_uid is not None:
-            if self.con_uid in self.diagram.con_data:
-                self.diagram.con_data[self.con_uid].elbow_points = [
-                    (p.x(), p.y()) for p in self.custom_elbow_points
-                ]
-
-    def set_elbow_points(self, elbows: List[QPointF]) -> None:
-        """
-        Set custom elbow points and update the path.
-
-        :param elbows: List of QPointF elbow positions
-        :return:
-        """
-        self.custom_elbow_points = [QPointF(p.x(), p.y()) if isinstance(p, QPointF) else QPointF(p[0], p[1]) for p in elbows]
-        self.update_path()
 
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         """
@@ -5104,8 +5086,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 connection: ConnectionItem = ConnectionItem(
                     src_port, dst_port,
                     diagram=self.diagram,
-                    con_uid=uid,
-                    elbow_points=elbow_points
+                    con_uid=uid
                 )
 
                 pen: QPen = connection.pen()

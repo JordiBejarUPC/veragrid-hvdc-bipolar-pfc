@@ -177,6 +177,8 @@ class EmtSimulationDriver(DriverTemplate):
 
             boundary_updater = build_emt_boundary_updater(problem)
             t, y, dy = solver.simulate(boundary_updater=boundary_updater)
+            #uncomment when convergence and well initialized is reported
+            # t, y, dy, well_initialized, converged = solver.simulate(boundary_updater=boundary_updater)
 
             print(f"Event group {emt_events_group} successfully simulated.")
             self.report_text(
