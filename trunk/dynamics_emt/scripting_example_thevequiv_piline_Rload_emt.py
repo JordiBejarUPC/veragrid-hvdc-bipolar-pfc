@@ -93,8 +93,6 @@ grid.add_bus(bus1)
 
 # Lines
 line0 = Line(name="line0", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
-
-
 # physical configuration (Overhead line tower)
 tower = OverheadLineType(name="Tower", Vnom=vnom)
 wire = Wire(name="Panther 30/7 ACSR",
@@ -107,9 +105,12 @@ tower.add_wire_relationship(wire=wire, xpos=-12.65, ypos=27.5, phase=1)
 tower.add_wire_relationship(wire=wire, xpos=0.0, ypos=27.5, phase=2)
 tower.add_wire_relationship(wire=wire, xpos=12.65, ypos=27.5, phase=3)
 tower.compute()
-
-# Aplicar física a la línea
+# Apply line physics
 line0.apply_template(tower, grid.Sbase, grid.fBase)
+
+# line0 = Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
+#                  rate=900.0)
+
 
 # load
 # P=1.0

@@ -3933,17 +3933,43 @@ class EmtProblemDae(EmtProblemTemplate):
         z_base: float = (v_base * v_base) / s_base_va
         y_base: float = 1.0 / z_base
 
-        z_phys: np.ndarray = br.template.z_nabc * br.length
-        y_phys: np.ndarray = br.template.y_nabc * br.length
+        # z_phys: np.ndarray = br.template.z_nabc * br.length
+        # y_phys: np.ndarray = br.template.y_nabc * br.length
+        #
+        # z_pu: np.ndarray = z_phys / z_base
+        # y_pu: np.ndarray = y_phys / y_base
+        #
+        # r_full: np.ndarray = np.real(z_pu)
+        # x_full: np.ndarray = np.imag(z_pu)
+        # l_full: np.ndarray = x_full / (w0 + 1e-20)
+        # bsh_full: np.ndarray = np.imag(y_pu)
+        # c_full: np.ndarray = (bsh_full / (w0 + 1e-20)) / 2.0
 
-        z_pu: np.ndarray = z_phys / z_base
-        y_pu: np.ndarray = y_phys / y_base
+        try:
+            # if a tower is set to the branch it has the full matrix
+            z_phys: np.ndarray = br.template.z_nabc * br.length
+            y_phys: np.ndarray = br.template.y_nabc * br.length
 
-        r_full: np.ndarray = np.real(z_pu)
-        x_full: np.ndarray = np.imag(z_pu)
-        l_full: np.ndarray = x_full / (w0 + 1e-20)
-        bsh_full: np.ndarray = np.imag(y_pu)
-        c_full: np.ndarray = (bsh_full / (w0 + 1e-20)) / 2.0
+            z_pu: np.ndarray = z_phys / z_base
+            y_pu: np.ndarray = y_phys / y_base
+
+            r_full: np.ndarray = np.real(z_pu)
+            x_full: np.ndarray = np.imag(z_pu)
+            l_full: np.ndarray = x_full / (w0 + 1e-20)
+            bsh_full: np.ndarray = np.imag(y_pu)
+            c_full: np.ndarray = (bsh_full / (w0 + 1e-20)) / 2.0
+        except:
+            # if the result is running from balanced powerflow the user can not set a tower template to the line, then the line becomes uncoupled
+            R: int = br.R
+            X: int = br.B
+            B: int = br.X
+
+            r_full: np.ndarray = np.array([[R, 0.0, 0.0],[0.0, R, 0.0],[0.0, 0.0, R]])
+            x_full: np.ndarray = np.array([[X, 0.0, 0.0],[0.0, X, 0.0],[0.0, 0.0, X]])
+            l_full: np.ndarray = x_full / (w0 + 1e-20)
+            bsh_full: np.ndarray = np.array([[B, 0.0, 0.0],[0.0, B, 0.0],[0.0, 0.0, B]])
+            c_full: np.ndarray = (bsh_full / (w0 + 1e-20)) / 2.0
+
 
         # -----------------------------
         # 5. Validate the reduced matrices before mapping them.
