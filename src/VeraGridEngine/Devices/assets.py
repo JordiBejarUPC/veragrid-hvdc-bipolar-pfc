@@ -6145,17 +6145,14 @@ class Assets:
         Delete RMS model from the collection
         :param obj: DynamicModel object
         """
-        for elm in self.buses:
-            if elm.rms_model.template == obj:
-                elm.rms_model.template = None
 
         for elm in self.get_injection_devices_iter():
-            if elm.rms_model.template == obj:
-                elm.rms_model.template = None
+            if elm.rms_template == obj:
+                elm.rms_template = None
 
         for elm in self.get_branches_iter(add_vsc=True, add_hvdc=True, add_switch=True):
-            if elm.rms_model.template == obj:
-                elm.rms_model.template = None
+            if elm.rms_template == obj:
+                elm.rms_template = None
 
         try:
             self._rms_models.remove(obj)
