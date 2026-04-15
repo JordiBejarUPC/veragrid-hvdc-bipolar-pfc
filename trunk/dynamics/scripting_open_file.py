@@ -45,9 +45,15 @@ def find_name_in_block(name: str, block: Block):
 # fname = get_grid_path('genqec_load_grid_load_event.veragrid')
 fname = os.path.join('genqec_load_grid_load_event.veragrid')
 
-grid = gce.FileOpen(fname).open()
+# 1 way
+# options_fileopen = gce.FileOpenOptions(
+#                                        )
+# grid = gce.FileOpen(fname).open()
 
-# grid = gce.open_file(fname)
+# other way
+grid = gce.open_file(fname)
+
+# either way when it opens the circuit is none so that's why it can't be opened correctly!
 
 events_group = grid._rms_events_groups
 
