@@ -4,6 +4,41 @@ from scipy import sparse, linalg
 from enum import Enum
 from typing import Optional, Any, Tuple
 import re, math
+import threading
+import time
+import sys
+import itertools
+import concurrent.futures
+import time
+import numpy as np
+
+from scipy.sparse.linalg import splu, LinearOperator, eigs
+
+class LoadingSpinner:
+    """A threaded terminal spinner to show activity during blocking C/Fortran calls."""
+    def __init__(self, message="Computing"):
+        self.spinner = itertools.cycle(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'])
+        self.message = message
+        self.stop_event = threading.Event()
+        self.thread = threading.Thread(target=self._spin, daemon=True)
+        self.start_time = 0.0
+
+    def start(self):
+        self.start_time = time.time()
+        self.thread.start()
+
+    def stop(self):
+        self.stop_event.set()
+        self.thread.join()
+        sys.stdout.write('\r' + ' ' * (len(self.message) + 15) + '\r') # Clear line
+        sys.stdout.flush()
+        return time.time() - self.start_time
+
+    def _spin(self):
+        while not self.stop_event.is_set():
+            sys.stdout.write(f'\r{self.message} {next(self.spinner)} ')
+            sys.stdout.flush()
+            time.sleep(0.1)
 
 
 # ------------------------------------------------------------------
@@ -1037,6 +1072,30 @@ class PolynomialMatrixBuilder:
 
         return E.tocsr(), A.tocsr(), B
 
+    def save_state_space(self, file_prefix: str = "system") -> None:
+        """
+        Serializes the compiled sparse state-space matrices (A and E) to disk.
+        This allows for instant loading and eigenvalue analysis in future sessions
+        without re-running the power flow or symbolic linearizer.
+
+        :param file_prefix: The base name for the saved files.
+        """
+        if self.A is not None and self.E is not None:
+            sparse.save_npz(f"{file_prefix}_A.npz", self.A)
+            sparse.save_npz(f"{file_prefix}_E.npz", self.E)
+
+            # Optional: Save the symbol names so you know what the columns mean!
+            if hasattr(self, 'all_symbols'):
+                import json
+                symbol_names = [s.name for s in self.all_symbols]
+                with open(f"{file_prefix}_symbols.json", "w") as f:
+                    json.dump(symbol_names, f)
+
+            if self.verbose:
+                print(f"[+] Sparse state-space saved to {file_prefix}_A.npz and {file_prefix}_E.npz")
+        else:
+            print("[-] Cannot save matrices: Linearization has not been performed yet.")
+
     def compute_stability(self) -> Tuple[
         Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray], bool, Optional[float]]:
         """
@@ -1052,7 +1111,7 @@ class PolynomialMatrixBuilder:
         ARPACK fails), it seamlessly drops down to dense QZ decomposition to guarantee the
         complete eigenvalue spectrum is found.
         """
-        global evals, evecs_left_raw, evecs_right_raw
+
         current_a, current_e = self.A, self.E
         if current_a is None or current_e is None: return None, None, None, None, False, None
 
@@ -1060,6 +1119,7 @@ class PolynomialMatrixBuilder:
             n_dims = current_a.shape[0]
             patched_rows, patched_cols = 0, 0
 
+            # --- SPARSE SINGULAR PENCIL PATCHING ---
             A_patched = current_a.tolil()
             A_csr = current_a.tocsr()
             E_csr = current_e.tocsr()
@@ -1088,34 +1148,45 @@ class PolynomialMatrixBuilder:
                 print(
                     f"\n[+] Sparse QZ Pre-conditioning: Neutralized {patched_rows} empty rows and {patched_cols} empty columns.")
 
-            SPARSE_THRESHOLD = 150
+            # --- EIGENVALUE DECOMPOSITION ROUTING ---
+            SPARSE_THRESHOLD = 2000
             used_sparse = False
 
+            # Automatically route large systems through the dedicated sparse routine.
             if n_dims >= SPARSE_THRESHOLD:
-                k_modes = min(50, n_dims - 2)
+                k_modes = min(100, n_dims - 2)
                 if k_modes > 0:
-                    try:
-                        evals_r, evecs_r = sparse.linalg.eigs(A_patched, k=k_modes, M=current_e, which='LR')
-                        evals_l, evecs_l = sparse.linalg.eigs(A_patched.T, k=k_modes, M=current_e.T, which='LR')
+                    sparse_res = self.compute_stability_sparse(sigma=2.0, k_modes=k_modes)
+                    evals_s, evecs_right_s, evecs_left_s, p_s, stable_s, margin_s = sparse_res
 
-                        idx_r = np.argsort(evals_r)
-                        idx_l = np.argsort(evals_l)
+                    # Treat non-empty vectors as successful sparse solve.
+                    if (
+                        evals_s is not None
+                        and evecs_right_s is not None
+                        and evecs_left_s is not None
+                        and len(evals_s) > 0
+                    ):
+                        return evals_s, evecs_left_s, evecs_right_s, p_s, stable_s, margin_s
 
-                        evals = evals_r[idx_r]
-                        evecs_right_raw = evecs_r[:, idx_r]
-                        evecs_left_raw = evecs_l[:, idx_l]
-
-                        used_sparse = True
-                    except Exception as sparse_err:
-                        if self.verbose:
-                            print(f"[*] Sparse ARPACK failed (strict DAE singularity). Fallback to dense QZ...")
-                        used_sparse = False
+                    if self.verbose:
+                        print("[*] Dedicated sparse solve failed. Falling back to dense QZ...")
 
             if not used_sparse:
                 A_dense = A_patched.toarray()
                 E_dense = current_e.toarray()
+
+                if self.verbose:
+                    spinner = LoadingSpinner(f"[*] Diagonalizing Dense Matrix (N={n_dims})")
+                    spinner.start()
+
+                # OpenBLAS / MKL handles threading automatically in C here
                 evals, evecs_left_raw, evecs_right_raw = linalg.eig(A_dense, b=E_dense, left=True, right=True)
 
+                if self.verbose:
+                    elapsed = spinner.stop()
+                    print(f"[+] Dense QZ Diagonalization finished in {elapsed:.2f} seconds.")
+
+            # --- MODE FILTERING AND PARTICIPATION ---
             valid_idx = np.isfinite(evals)
             evals = evals[valid_idx]
             evecs_left = evecs_left_raw[:, valid_idx].astype(complex)
@@ -1135,14 +1206,112 @@ class PolynomialMatrixBuilder:
             is_stable = max_real < 1e-6
 
             if self.verbose:
-                print("\n[6] Analysis complete!")
                 print(f"  Found {len(evals)} finite eigenvalues (Physical Modes)\n")
 
             return evals, evecs_left, evecs_right, participation_matrix, is_stable, max_real
 
         except linalg.LinAlgError as e:
+            if self.verbose and 'spinner' in locals(): spinner.stop()
             print(f"Error computing eigenvalues: {e}")
             return None, None, None, None, False, None
+
+    def compute_stability_sparse(self, sigma=2.0, k_modes=200):
+        """
+        Calcula los autovalores para sistemas inmensos usando ARPACK (Shift-and-Invert).
+        Incluye la recuperación de autovectores izquierdos para Factores de Participación.
+        """
+        print(f"\n[+] Starting sparse ARPACK analysis (Shift-and-Invert, sigma={sigma}, k={k_modes})...")
+        start = time.time()
+
+        A_csr = sparse.csr_matrix(self.A)
+        E_csr = sparse.csr_matrix(self.E)
+        n_dims = A_csr.shape[0]
+
+        print(f"    State-space dimension: {n_dims}")
+
+        M_shift = A_csr - sigma * E_csr
+        M_shift_lil = M_shift.tolil()
+
+        # Structural regularization
+        row_norms = np.array(np.abs(M_shift).max(axis=1).todense()).flatten()
+        col_norms = np.array(np.abs(M_shift).max(axis=0).todense()).flatten()
+
+        zero_rows = np.where(row_norms < 1e-10)[0]
+        zero_cols = np.where(col_norms < 1e-10)[0]
+
+        if len(zero_rows) > 0 or len(zero_cols) > 0:
+            print(f"    Patching {len(zero_rows)} empty rows and {len(zero_cols)} empty columns...")
+            for r in zero_rows: M_shift_lil[r, r] = -1.0
+            for c in zero_cols: M_shift_lil[c, c] = -1.0
+
+        # 1. LU factorization (the heavy step)
+        print(f"    Factoring (A - {sigma}*E) using SuperLU...")
+        try:
+            lu_solver = splu(M_shift_lil.tocsc())
+        except Exception as e:
+            print(f"    [!] SuperLU factorization error: {e}")
+            return [], None, None, None, False, 0.0
+
+        # 2. Right operator (V eigenvectors)
+        def matvec_right(v):
+            y = E_csr.dot(v)
+            return lu_solver.solve(y.real) + 1j * lu_solver.solve(y.imag)
+
+        OP_R = LinearOperator((n_dims, n_dims), matvec=matvec_right, dtype=complex)
+
+        print(f"    Solving right/left modes in parallel...")
+
+        def matvec_left(v):
+            y = E_csr.T.dot(v)
+            # Use trans='T' to solve the transposed system almost for free
+            return lu_solver.solve(y.real, trans='T') + 1j * lu_solver.solve(y.imag, trans='T')
+
+        OP_L = LinearOperator((n_dims, n_dims), matvec=matvec_left, dtype=complex)
+
+        try:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+                future_r = executor.submit(eigs, OP_R, k=k_modes, which='LM')
+                future_l = executor.submit(eigs, OP_L, k=k_modes, which='LM')
+                evals_nu_R, evecs_right_raw = future_r.result()
+                evals_nu_L, evecs_left_raw = future_l.result()
+        except Exception as e:
+            print(f"    [!] Parallel ARPACK solve failed: {e}")
+            return [], None, None, None, False, 0.0
+
+        evals_R = sigma + (1.0 / evals_nu_R)
+        evals_L = sigma + (1.0 / evals_nu_L)
+
+        # 4. Mode matching
+        # ARPACK can return modes in a different order. Use the Hungarian algorithm to align them.
+        from scipy.optimize import linear_sum_assignment
+        dist_matrix = np.abs(evals_R[:, None] - evals_L[None, :])
+        row_ind, col_ind = linear_sum_assignment(dist_matrix)
+
+        evecs_left_matched = evecs_left_raw[:, col_ind]
+
+        # 5. Transform and filter to physical poles
+        valid_nu = np.abs(evals_nu_R) > 1e-10
+        evals = evals_R[valid_nu]
+        V = evecs_right_raw[:, valid_nu]
+        W = evecs_left_matched[:, valid_nu]
+
+        finite_mask = np.isfinite(evals)
+        evals = evals[finite_mask]
+        V = V[:, finite_mask]
+        W = W[:, finite_mask]
+
+        # 6. Participation matrix calculation: P_ji = (W_ji * V_ji) / (W_i^T * V_i)
+        dot_products = np.sum(W * V, axis=0)
+        participation_matrix = (W * V) / dot_products
+
+        # 7. Stability evaluation
+        margin = float(np.max(evals.real)) if len(evals) > 0 else 0.0
+        stable = margin <= 1e-5
+
+        print(f"[+] Sparse ARPACK completed in {time.time() - start:.2f} seconds.")
+        print(f"    Found {len(evals)} physical poles with their participation factors.")
+
+        return evals, V, W, participation_matrix, stable, margin
 
     def get_participation_mapping(self, evals: np.ndarray, participation_matrix: np.ndarray,
                                   threshold: float = 0.05) -> dict:
@@ -1172,7 +1341,7 @@ class PolynomialMatrixBuilder:
 
             limit: int = min(n_states, len(state_symbols))
             for i in range(limit):
-                pf_val: float = float(participation_matrix[i, m])
+                pf_val: float = float(abs(participation_matrix[i, m]))
                 if pf_val >= threshold:
                     mode_pfs.append((state_symbols[i].name, pf_val))
 
