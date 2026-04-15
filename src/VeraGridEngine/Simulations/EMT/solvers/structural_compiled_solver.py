@@ -6,7 +6,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Any, Callable, Dict, List, Set, Tuple
+from typing import Any, Callable, Dict, List, Set, Tuple, Optional
 import hashlib
 import time
 
@@ -2517,11 +2517,11 @@ class StructuralCompiledSolver:
 
     def simulate(
             self,
-            x0: Vec | None = None,
-            dx0: Vec | None = None,
-            params0: Vec | None = None,
+            x0: Optional[Vec] = None,
+            dx0: Optional[Vec] = None,
+            params0: Optional[Vec] = None,
             boundary_updater: EmtBoundaryUpdateProtocol | None = None,
-    ) -> Tuple[Vec, Mat, Mat]:
+    ) -> Tuple[Vec, Mat, Mat, bool, bool]:
         """
         Run the implicit EMT simulation with eager structural kernels.
 
@@ -2536,6 +2536,9 @@ class StructuralCompiledSolver:
         :return: Time vector, state trajectory and differential trajectory.
         :rtype: Tuple[Vec, Mat, Mat]
         """
+        converged: bool = True
+        well_initialized: bool = True
+
         if self._vectorized_ready:
             pass
         else:
@@ -2748,6 +2751,7 @@ class StructuralCompiledSolver:
                 else:
                     pass
 
+                substep_converged: bool = False
                 newton_index: int = 0
                 while newton_index < 15:
                     ctx: NewtonSolveContext | None = None
@@ -2764,6 +2768,7 @@ class StructuralCompiledSolver:
                     res_norm: float = _max_abs_value(self._residual_buffer)
 
                     if res_norm < 1e-6:
+                        substep_converged = True
                         break
                     else:
                         pass
@@ -2882,6 +2887,11 @@ class StructuralCompiledSolver:
                     last_res_norm = res_norm
                     newton_index += 1
 
+                if not substep_converged:
+                    converged = False
+                    if step_index == 0 and is_first_local_step:
+                        well_initialized = False
+
                 # Differential history is updated according to the selected integration rule.
                 self._last_macro_newton_iterations = int(newton_index)
 
@@ -2910,6 +2920,7 @@ class StructuralCompiledSolver:
                 x_prev[:] = x_iter
                 t_local_prev = t_curr
                 is_first_local_step = False
+
 
             y[step_index + 1, :] = x_prev
             dy[step_index + 1, :] = dx_prev
@@ -2952,4 +2963,4 @@ class StructuralCompiledSolver:
             ),
         }
 
-        return t, y, dy
+        return t, y, dy,well_initialized, converged

@@ -360,7 +360,7 @@ def benchmark_all_solvers() -> None:
 
         boundary_updater = cast(Any, local_problem)
         t_sim_0 = perf_counter()
-        t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=boundary_updater)
+        t_arr, y_arr, dy_arr, _, _  = solver.simulate(boundary_updater=boundary_updater)
         simulate_s = perf_counter() - t_sim_0
 
         if reference_y is None:
@@ -430,7 +430,7 @@ build_solver_backend(CHOSEN_SOLVER, solver, problem)
 # RUN SIMULATION
 # ==============================================================================
 boundary_updater = cast(Any, problem)
-t, y, dy = solver.simulate(boundary_updater=boundary_updater)
+t, y, dy, _, _  = solver.simulate(boundary_updater=boundary_updater)
 
 print("StructuralCompiled backend build stats")
 for key, value in solver.get_backend_build_stats().items():

@@ -380,7 +380,7 @@ def run_single_solver_trajectory(solver_key: str, enable_trace: bool) -> Tuple[E
     t_arr: np.ndarray
     y_arr: np.ndarray
     dy_arr: np.ndarray
-    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, dy_arr, _, _ = solver.simulate(boundary_updater=boundary_updater)
     return local_problem, solver, t_arr, y_arr, dy_arr
 
 
