@@ -9,7 +9,7 @@ Small Signal Analysis for Phasor-based RMS Grid.
 This script creates the phasor problem manually and injects it into the SmallSignalStabilityRmsDriver.
 """
 import sys
-import time
+import time, pickle, os
 from typing import Tuple, Any, List
 import numpy as np
 #from cryptography.x509 import name
@@ -24,16 +24,27 @@ from phasor_diagnostics import (
     check_equation_consistency,
     debug_exciter_equations,
     check_generator_current_residuals as compare_generator_bus_currents,
+    check_shunt_pf_currents,
+    print_buses_with_many_injections,
+    print_bus_current_balance,
 )
 from scipy.optimize import linear_sum_assignment
 
+USE_CACHED_BUILDER = True
+BUILDER_CACHE_FILE = 'precomputed_builds/IEEE118_opf.pkl'
 
 FAST_MODE = True
-FAST_GRID_PATH = 'trunk/tensygrid/grids/IEEE_14-2.gridcal'
+FAST_GRID_PATH = 'grids/IEEE118_opf.gridcal' #'trunk/tensygrid/grids/IEEE_14-2.gridcal'
 FULL_GRID_PATH = 'Grids_and_profiles/grids/IEEE118_opf.gridcal'
 PRINT_ALL_BUSES = False # not FAST_MODE
 ENABLE_POST_COMPARE_PLOT = False # not FAST_MODE
 RUN_DYNAMIC_STEP = False
+FAST_MODE = False
+FAST_GRID_PATH = 'trunk/tensygrid/grids/IEEE_14-2.gridcal'
+FULL_GRID_PATH = 'trunk/tensygrid/grids/IEEE118_opf.gridcal'
+PRINT_ALL_BUSES = not FAST_MODE
+ENABLE_POST_COMPARE_PLOT = not FAST_MODE
+RUN_DYNAMIC_STEP = True
 RUN_CONSISTENCY_CHECK = False
 RUN_PF_LINE_EQ_CHECK = False
 RUN_EXCITER_DIAGNOSTICS = False
@@ -47,7 +58,7 @@ def define_problem_with_path(grid_path):
     grid = vge.open_file(grid_path)
 
     # Build RMS models
-    # Coses que hem d'afegir: bus, branches, generators, trafos, loads, shunts
+    # Things we need to add: buses, branches, generators, transformers, loads, shunts
 
     ## BUSES:
     for bus in grid.buses:
@@ -73,6 +84,7 @@ def define_problem_with_path(grid_path):
         loadec = vge.get_load_phasor_current_rms_template(grid.var_factory, name=load.name).block
         loadec.connect([loadec.in_vars[0]], [load.bus.rms_model.out_vars[0]])
         loadec.connect([loadec.in_vars[1]], [load.bus.rms_model.out_vars[1]])
+        #loadec = vge.to_implicit(loadec, grid.var_factory)
         vge.set_rms_model(device=load, model=loadec, var_factory=grid.var_factory)
     ## -TRANSFORMERS 2w:
     for trafo in grid.transformers2w:
@@ -83,9 +95,15 @@ def define_problem_with_path(grid_path):
         trafoec.connect([trafoec.in_vars[3]], [trafo.bus_to.rms_model.out_vars[1]])
         trafoec = vge.to_implicit(trafoec, grid.var_factory)
         vge.set_rms_model(device=trafo, model=trafoec, var_factory=grid.var_factory)
-
-    ## -TRANSFORMERS 3w
-        # TODO: Check if there's 3w transformers
+    ## -SHUNTS (load like):
+    for shunt in grid.shunts:
+        shuntec = vge.get_shunt_template(grid.var_factory, name=shunt.name, phasor=True).block
+        shuntec.connect([shuntec.in_vars[0]], [shunt.bus.rms_model.out_vars[0]])
+        shuntec.connect([shuntec.in_vars[1]], [shunt.bus.rms_model.out_vars[1]])
+        shuntec = vge.to_implicit(shuntec, grid.var_factory)
+        vge.set_rms_model(device=shunt, model=shuntec, var_factory=grid.var_factory)
+    
+    # TRANSFORMERS 3W: Not present in existing grids and not supported
 
     print("  ✓ Grid with path loaded")
 
@@ -94,7 +112,7 @@ def define_problem_with_path(grid_path):
     # ===================================================================
 
     print("\n[2] Running power flow...")
-    pf_options = vge.PowerFlowOptions()
+    pf_options = vge.PowerFlowOptions(tolerance=1e-13)
     pf_results = vge.power_flow(grid, pf_options)
 
     if pf_results.converged:
@@ -113,6 +131,10 @@ def define_problem_with_path(grid_path):
     if RUN_PF_LINE_EQ_CHECK:
         check_pf_line_equations(grid=grid, pf_results=pf_results)
 
+    check_shunt_pf_currents(grid=grid, pf_results=pf_results)
+    print("\n[2.7] Buses with multiple injection devices...")
+    print_buses_with_many_injections(grid=grid)
+    print_bus_current_balance(grid=grid, pf_results=pf_results)
     # ===================================================================
     # CREATE PHASOR PROBLEM
     # ===================================================================
@@ -123,6 +145,7 @@ def define_problem_with_path(grid_path):
         simulation_time=1.0,
         tolerance=1e-6,
         max_iter=20,
+        verbose=True,
     )
     start_time= time.perf_counter()
     phasor_problem = vge.RmsProblemPhasor(grid=grid, options=rms_options, pf_results=pf_results)
@@ -134,6 +157,8 @@ def define_problem_with_path(grid_path):
     if RUN_EXCITER_DIAGNOSTICS:
         debug_exciter_equations(phasor_problem)
         compare_generator_bus_currents(grid=grid, problem=phasor_problem, pf_results=pf_results)
+    print("\n[3.0] Exciter diagnostics...")
+    #debug_exciter_equations(problem=phasor_problem)
     # ===================================================================
     # DYNAMIC VALIDATION
     # ===================================================================
@@ -145,7 +170,8 @@ def define_problem_with_path(grid_path):
             t0=0,
             t_end=dyn_t_end,
             h=rms_options.time_step,
-            max_iter=rms_options.max_iter
+            max_iter=rms_options.max_iter,
+            tolerance=rms_options.tolerance,
         )
         t_dyn, y_dyn, well_initialized, converged = solver.simulate()
         print(
@@ -288,13 +314,52 @@ def op_extraction(problem: vge.RmsProblemPhasor) -> dict:
     return v_dict
 
 
-def solve_problem(problem: Any) -> Any:
-    print("\n[4] Rebuilding equations and extracting exact physics...")
-    builder = PolynomialMatrixBuilder(problem=problem, verbose=True)
-    v_dict: dict = op_extraction(problem=problem)
+def solve_problem(problem: Any = None) -> Any:
+    builder = None
 
-    print("\n[*] Linearizing model with real parameters...")
-    builder.linearize(v_dict=v_dict)
+    if USE_CACHED_BUILDER and os.path.exists(BUILDER_CACHE_FILE):
+        print(f"\n[📦] Loading builder object from '{BUILDER_CACHE_FILE}'...")
+        with open(BUILDER_CACHE_FILE, 'rb') as f:
+            builder = pickle.load(f)
+
+        # Reassign the problem we just created/loaded in the main script
+        print("  ✓ Builder restored successfully (skipping linearization)")
+
+    else:
+        print("\n[4] Rebuilding equations and extracting exact physics...")
+        builder = PolynomialMatrixBuilder(problem=problem, verbose=True)
+        v_dict: dict = op_extraction(problem=problem)
+
+        print("\n[*] Linearizing model with real parameters...")
+        builder.linearize(v_dict=v_dict)
+
+        builder.save_state_space("precomputed_matrices/IEEE118_opf")
+
+        if USE_CACHED_BUILDER and os.path.exists(BUILDER_CACHE_FILE):
+            print(f"\n[📦] Loading full builder object from '{BUILDER_CACHE_FILE}'...")
+            with open(BUILDER_CACHE_FILE, 'rb') as f:
+                builder = pickle.load(f)
+            print("  ✓ Builder loaded successfully (skipping build and linearization)")
+
+            # 2. If it does not exist, build it from scratch and save it
+        else:
+            print("\n[4] Rebuilding equations and extracting exact physics...")
+            builder = PolynomialMatrixBuilder(problem=problem, verbose=True)
+            v_dict: dict = op_extraction(problem=problem)
+
+            print("\n[*] Linearizing model with real parameters...")
+            builder.linearize(v_dict=v_dict)
+
+            builder.save_state_space("precomputed_matrices/IEEE118_opf")
+
+            if USE_CACHED_BUILDER:
+                print(f"\n[📦] Saving full builder object to '{BUILDER_CACHE_FILE}'...")
+                with open(BUILDER_CACHE_FILE, 'wb') as f:
+                    pickle.dump(builder, f)
+                print("  ✓ Builder saved successfully")
+
+    # Continue with the normal stability analysis
+    # Use automatic routing: sparse for large systems, dense fallback otherwise.
     res = builder.compute_stability()
 
     eigenvalues = res[0]
@@ -333,25 +398,37 @@ def solve_problem(problem: Any) -> Any:
 
     return eigenvalues
 
+
 if __name__ == "__main__":
     # --- START CHRONO ---
     start_time = time.perf_counter()
 
-    # problem = define_problem()
     grid_path = FAST_GRID_PATH if FAST_MODE else FULL_GRID_PATH
     print(f"[FAST_MODE={FAST_MODE}] Using grid: {grid_path}")
-    problem = define_problem_with_path(grid_path)
+
+    problem = None
     calculated_evs = []
-    if problem:
-        calculated_evs = solve_problem(problem)
+
+    # 1. Check whether the builder cache exists BEFORE creating the problem
+    if USE_CACHED_BUILDER and os.path.exists(BUILDER_CACHE_FILE):
+        print(f"\n[⏩] File '{BUILDER_CACHE_FILE}' found.")
+        print("[⏩] Skipping Phasor Problem creation (saving ~365s)...")
+        # Keep problem as None. solve_problem will load the .pkl internally.
+        calculated_evs = solve_problem()
+    else:
+        # 2. If there is no cache, run the normal heavy simulation
+        problem = define_problem_with_path(grid_path)
+        if problem:
+            # Pass the newly created problem so it can be linearized and cached
+            calculated_evs = solve_problem(problem)
 
     # --- END CHRONO ---
     end_time = time.perf_counter()
     total_duration = end_time - start_time
 
-    print("\n" + "=" * 40)
+    print(f"\n========================================")
     print(f"EXECUTION TIME: {total_duration:.4f} seconds")
-    print("=" * 40 + "\n")
+    print(f"========================================")
 
     if not ENABLE_POST_COMPARE_PLOT:
         print("[FAST_MODE] Skipping eigenvalue reference matching and plotting")
@@ -439,7 +516,7 @@ if __name__ == "__main__":
     # --- SUBPLOT 2: BARS AND RESULTS ---
     labels = ['Matching', 'Exceeding\n(TenSyGrid)', 'Missing\n(Pablo)']
     counts = [n_matches, n_unmatched_calc, n_unmatched_ref]
-    colors = ['#4CAF50', '#F44336', '#FFC107']  # Green, Red, Yellow
+    colors = ["#439C46", '#F44336', '#FFC107']  # Green, Red, Yellow
 
     bars = ax2.bar(labels, counts, color=colors, edgecolor='black', alpha=0.8)
     ax2.set_title(f"Coincidence\n(Tolerance: {tol})")

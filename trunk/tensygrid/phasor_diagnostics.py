@@ -3,6 +3,7 @@ from __future__ import annotations
 import numpy as np
 
 import VeraGridEngine.api as vge
+from VeraGridEngine.Utils.Symbolic.block import find_name_in_block
 
 
 def _pf_to_current(S: complex, V: complex) -> tuple[float, float]:
@@ -211,17 +212,47 @@ def debug_exciter_equations(problem: vge.RmsProblemPhasor, max_report: int = 120
     for i, err, eq_str in matches[:n]:
         print(f"    [{i:4d}] err={err: .6e} :: {eq_str}")
 
-    key_names = ["Efe", "Vf", "f_input", "f_output", "y_subexciter1", "u_subexciter1", "In_aux", "Psi_sqrt1", "Psi_sqrt2"]
-    vars_dump = []
-    for name in key_names:
-        for uid in name_to_uids.get(name, []):
-            idx = problem.get_uid_to_idx_dict().get(uid, None)
+    efe_vals = []
+    vf_vals = []
+    vemax_vals = []
+    idx_map = problem.uid2idx_vars
+    for var in all_vars:
+        if var.name == "Efe":
+            idx = idx_map.get(var.uid, None)
             if idx is not None:
-                vars_dump.append((name, uid, x0[idx]))
+                efe_vals.append((var.uid, x0[idx]))
+        if var.name == "Vf":
+            idx = idx_map.get(var.uid, None)
+            if idx is not None:
+                vf_vals.append((var.uid, x0[idx]))
+        if var.name == "VeMaxPu":
+            idx = idx_map.get(var.uid, None)
+            if idx is not None:
+                vemax_vals.append((var.uid, x0[idx]))
+    for uid, val in efe_vals:
+        print(f"  Efe (uid={uid}) = {val: .6e}")
+    for uid, val in vf_vals:
+        print(f"  Vf (uid={uid}) = {val: .6e}")
+    for uid, val in vemax_vals:
+        print(f"  VeMaxPu (uid={uid}) = {val: .6e}")
 
-    print(f"  Key variable values: {len(vars_dump)}")
-    for name, uid, val in vars_dump:
-        print(f"    {name} (uid={uid}) = {val: .6e}")
+    print("  Targeted Gen29/Gen36 values:")
+    for gen_idx, gen in enumerate(problem.grid.generators):
+        if gen.rms_model is None:
+            continue
+        if gen_idx not in {27, 29, 36}:
+            continue
+
+        print(f"    Gen{gen_idx} -> {gen.name} @ {gen.bus.name}:")
+        for key in ("VeMaxPu" ,"Vf", "y_subexciter1", "f_output", "Efe", "Vf"):
+            var = find_name_in_block(key, gen.rms_model)
+            if var is None:
+                continue
+            idx = idx_map.get(var.uid, None)
+            if idx is not None:
+                print(f"      {key} = {x0[idx]: .6e}")
+
+
 
 
 def check_generator_current_residuals(problem: vge.RmsProblemPhasor, pf_results) -> None:
@@ -253,3 +284,162 @@ def check_generator_current_residuals(problem: vge.RmsProblemPhasor, pf_results)
             print(
                 f"  gen {gen.name} @ {bus.name}: Iinit=({x0[r_idx]:.6e},{x0[i_idx]:.6e})"
             )
+
+
+def check_shunt_pf_currents(grid: vge.MultiCircuit, pf_results, tol: float = 1e-8, max_report: int = 50) -> bool:
+    if len(grid.shunts) == 0:
+        return True
+
+    bus_idx = {bus: i for i, bus in enumerate(grid.buses)}
+    shunt_q = getattr(pf_results, "shunt_q", None)
+    rows = []
+    max_err = 0.0
+
+    for idx, sh in enumerate(grid.shunts):
+        if sh.bus is None:
+            continue
+
+        bi = bus_idx[sh.bus]
+        V = pf_results.voltage[bi]
+        Y = complex(float(sh.G) / grid.Sbase, float(sh.B) / grid.Sbase)
+        I = Y * V
+        S = V * np.conj(I)
+
+        q_pf = float(shunt_q[idx]) / grid.Sbase if shunt_q is not None else 0.0
+        i_q_r, i_q_i = _pf_to_current(complex(0.0, q_pf), V)
+
+        er = I.real - i_q_r
+        ei = I.imag - i_q_i
+        es = S.imag - q_pf
+        e = max(abs(er), abs(ei), abs(es))
+        max_err = max(max_err, e)
+        rows.append((sh.name, sh.bus.name, V, I, S, er, ei, es, e))
+
+    rows.sort(key=lambda r: abs(r[-1]), reverse=True)
+    ok = max_err <= tol
+
+    print("\n[2.6] Shunt PF current consistency check...")
+    print(f"  Checked shunts: {len(rows)}, tol={tol:.1e}, max|err|={max_err:.6e}, ok={ok}")
+    for name, bus_name, V, I, S, er, ei, es, e in rows[:max_report]:
+        print(
+            f"  {name} @ {bus_name}: V={V.real:.6e}+j{V.imag:.6e}, "
+            f"I={I.real:.6e}+j{I.imag:.6e}, errI=({er:.6e},{ei:.6e}), errQ={es:.6e}"
+        )
+
+    return ok
+
+
+def print_buses_with_many_injections(grid: vge.MultiCircuit, min_devices: int = 3) -> None:
+    bus_to_devices = {bus: [] for bus in grid.buses}
+    for dev in grid.get_injection_devices_iter():
+        if dev.bus is not None:
+            bus_to_devices[dev.bus].append(dev)
+
+    found = False
+    for bus, devices in bus_to_devices.items():
+        if len(devices) >= min_devices:
+            found = True
+            names = ", ".join(f"{dev.device_type.value}:{dev.name}" for dev in devices)
+            print(f"  {bus.name}: {len(devices)} injection devices -> {names}")
+
+    if not found:
+        print(f"  No buses with >= {min_devices} injection devices found.")
+
+
+def print_bus_current_balance(grid: vge.MultiCircuit, pf_results, tol: float = 1e-8, max_report: int = 50) -> None:
+    bus_idx = {bus: i for i, bus in enumerate(grid.buses)}
+    n_bus = len(grid.buses)
+    branch_sum = np.zeros(n_bus, dtype=complex)
+    gen_sum = np.zeros(n_bus, dtype=complex)
+    batt_sum = np.zeros(n_bus, dtype=complex)
+    load_sum = np.zeros(n_bus, dtype=complex)
+    shunt_sum = np.zeros(n_bus, dtype=complex)
+    slack_sum = np.zeros(n_bus, dtype=complex)
+
+    all_branches = list(grid.get_branches(add_hvdc=False, add_vsc=False, add_switch=True))
+    for br, if_, it_ in zip(all_branches, pf_results.If, pf_results.It):
+        if br.bus_from is not None:
+            branch_sum[bus_idx[br.bus_from]] += if_
+        if br.bus_to is not None:
+            branch_sum[bus_idx[br.bus_to]] += it_
+
+    gen_idx_map = {elm.idtag: i for i, elm in enumerate(grid.generators)}
+    batt_idx_map = {elm.idtag: i for i, elm in enumerate(grid.batteries)}
+    shunt_idx_map = {elm.idtag: i for i, elm in enumerate(grid.shunts)}
+    loads_idx_map = {elm.idtag: i for i, elm in enumerate(grid.loads)}
+
+    fixed_sum = np.zeros(n_bus, dtype=complex)
+    slack_gen_count = np.zeros(n_bus, dtype=int)
+
+    for dev in grid.get_injection_devices_iter():
+        if dev.bus is None or dev.bus.is_dc:
+            continue
+
+        bi = bus_idx[dev.bus]
+        v = pf_results.voltage[bi]
+
+        if dev.idtag in gen_idx_map:
+            if dev.bus.is_slack:
+                slack_gen_count[bi] += 1
+                continue
+            gidx = gen_idx_map[dev.idtag]
+            s = complex(float(dev.P), float(pf_results.gen_q[gidx])) / grid.Sbase
+            i = np.conj(s / v)
+            gen_sum[bi] += i
+            fixed_sum[bi] += i
+        elif dev.idtag in batt_idx_map:
+            bidx = batt_idx_map[dev.idtag]
+            s = complex(float(dev.P), float(pf_results.battery_q[bidx])) / grid.Sbase
+            i = np.conj(s / v)
+            batt_sum[bi] += i
+            fixed_sum[bi] += i
+        elif dev.idtag in shunt_idx_map:
+            y = complex(float(dev.G) / grid.Sbase, float(dev.B) / grid.Sbase)
+            # Sign convention: shunt template behaves as load-like current sink.
+            i = -y * v
+            shunt_sum[bi] += i
+            fixed_sum[bi] += i
+        elif dev.idtag in loads_idx_map:
+            s = complex(-float(dev.P), -float(dev.Q)) / grid.Sbase
+            i = np.conj(s / v)
+            load_sum[bi] += i
+            fixed_sum[bi] += i
+
+    residual = branch_sum - fixed_sum
+    for bi in range(n_bus):
+        if slack_gen_count[bi] > 0:
+            slack_sum[bi] = residual[bi]
+
+    inj_sum = fixed_sum + slack_sum
+
+    rows = []
+    for bi, bus in enumerate(grid.buses):
+        total = branch_sum[bi] - inj_sum[bi]
+        err = abs(total)
+        if err > tol:
+            rows.append((
+                err,
+                bus.name,
+                branch_sum[bi],
+                gen_sum[bi],
+                batt_sum[bi],
+                load_sum[bi],
+                shunt_sum[bi],
+                slack_sum[bi],
+                total,
+            ))
+
+    rows.sort(key=lambda r: r[0], reverse=True)
+    print("\n[2.8] Bus current balance report...")
+    print(f"  buses over tol={tol:.1e}: {len(rows)}")
+    for err, bus_name, b, g, bt, l, s, sl, total in rows[:max_report]:
+        print(
+            f"  {bus_name:<12} |err|={err:.6e} "
+            f"Br=({b.real:.3e},{b.imag:.3e}) "
+            f"G=({g.real:.3e},{g.imag:.3e}) "
+            f"Bt=({bt.real:.3e},{bt.imag:.3e}) "
+            f"L=({l.real:.3e},{l.imag:.3e}) "
+            f"Sh=({s.real:.3e},{s.imag:.3e}) "
+            f"Sl=({sl.real:.3e},{sl.imag:.3e}) "
+            f"R=({total.real:.3e},{total.imag:.3e})"
+        )
