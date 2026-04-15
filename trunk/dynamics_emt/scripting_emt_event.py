@@ -60,7 +60,7 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
-from VeraGridEngine.Devices.Aggregation import EmtEvent
+from VeraGridEngine.Devices.Events.emt_event import EmtEvent
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.enumerations import (BranchImpedanceMode, DynamicIntegrationMethod, EmtInitializationMethod,
