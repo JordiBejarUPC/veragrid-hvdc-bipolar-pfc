@@ -21,6 +21,8 @@ class EmtResults(ResultsTemplate):
         "ndv",
         "ng",
         "emt_events_group_names",
+        "well_initialized",
+        "converged",
         "variables",
         "diff_variables",
         "uid2vars_glob_name",
@@ -70,9 +72,8 @@ class EmtResults(ResultsTemplate):
 
         self.emt_events_group_names = emt_events_group_names
 
-        #TODO: add them?
-        # self.well_initialized = np.zeros(self.ng, dtype=bool)
-        # self.converged = np.zeros(self.ng, dtype=bool)
+        self.well_initialized = np.zeros(self.ng, dtype=bool)
+        self.converged = np.zeros(self.ng, dtype=bool)
 
         self.variables = variables
         self.diff_variables = diff_variables

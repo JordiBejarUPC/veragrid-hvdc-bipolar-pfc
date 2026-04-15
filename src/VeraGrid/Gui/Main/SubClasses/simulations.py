@@ -3559,6 +3559,23 @@ class SimulationsMain(TimeEventsMain):
             self.remove_simulation(SimulationTypes.EmtDynamic_run)
             self.update_available_results()
 
+            # uncomment when convergence and well initialized is reported
+            # # report convergence and initialization
+            # indices = [i for i, v in enumerate(results.well_initialized) if not v]
+            # if indices:
+            #     for index in indices:
+            #         self.show_warning_toast(f"Simulation bad initialized for {results.emt_events_group_names[index]}:/")
+            # else:
+            #     self.show_info_toast("Simulation well initialized for all simulation groups :)")
+            #
+            # indices = [i for i, v in enumerate(results.converged) if not v]
+            # if indices:
+            #     for index in indices:
+            #         self.show_warning_toast(
+            #             f"Simulation not converged for {results.emt_events_group_names[index]}:/")
+            # else:
+            #     self.show_info_toast("Simulation converged for all simulation groups :)")
+
         else:
             warning_msg('There are no emt simulation results.', 'Rms simulation')
 
