@@ -217,7 +217,7 @@ class ResultsMain(SimulationsMain):
 
     def dynamic_results_tree_view_click(self, index: QtCore.QModelIndex) -> Var | None:
         """
-        Resolve the clicked dynamics tree node into an RMS variable.
+        Resolve the clicked dynamics tree node into an RMS/EMT variable.
 
         :param index: Clicked tree index.
         """
@@ -531,8 +531,35 @@ class ResultsMain(SimulationsMain):
                                                        QtWidgets.QMessageBox.StandardButton.No)
 
                 if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
+                    if study_name == SimulationTypes.RmsDynamic_run.value or study_name == SimulationTypes.EmtDynamic_run.value:
+                        # Delete dynamic results handler
+                        self.clear_dynamic_results_view()
+
                     self.session.delete_driver_by_name(study_name)
                     self.update_available_results()
+
+    def clear_dynamic_results_view(self):
+        """
+        Clear the dynamic-results UI from the screen.
+        """
+        self.dynamic_results_handler = None
+
+        # Remove tree models so the views become empty and non-interactive
+        self.ui.dynamicsDeviceTreeView.setModel(None)
+        self.ui.dynamicsPlotsTreeView.setModel(None)
+        self.ui.dynamicsTableView.setModel(None)
+
+        # Clear selections
+        self.ui.dynamicsDeviceTreeView.clearSelection()
+        self.ui.dynamicsPlotsTreeView.clearSelection()
+
+        # Clear related controls
+        self.ui.search_dynamic_objects_lineEdit.clear()
+        self.ui.eventsGroupComboBox.clear()
+
+        # Leave the dynamics tab and go back to the normal results table tab
+        self.ui.resultsTabWidget.setCurrentIndex(0)
+
 
     def copy_opf_to_profiles(self):
         """

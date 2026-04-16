@@ -531,9 +531,9 @@ class DynamicsResultsHandler:
         self.tree_data: Dict[DeviceType, Dict[ALL_DEV_TYPES, List[Var]]] = self.results.get_devices_dict_tree()
 
         # The device tree model is the source tree for the left-hand dynamics browser.
-        self.tree_model: DynamicsDeviceTreeModel = build_dynamics_tree_model(tree_data=self.tree_data,
-                                                                             var_role=self.var_role,
-                                                                             mime_type=self.drag_mime_type)
+        self.tree_model: DynamicsDeviceTreeModel|None = build_dynamics_tree_model(tree_data=self.tree_data,
+                                                                                  var_role=self.var_role,
+                                                                                  mime_type=self.drag_mime_type)
 
         # The proxy model owns the reversible filtering state used by the device tree view.
         self.proxy_model: QtCore.QSortFilterProxyModel = QtCore.QSortFilterProxyModel()
@@ -630,7 +630,6 @@ class DynamicsResultsHandler:
     def get_plot_group_name_from_index(self, index: QtCore.QModelIndex) -> str | None:
         """
         Get the plot-group name represented by a plots-tree index.
-
         :param index: Index from the plots tree.
         :return: Group name, or ``None`` when the index does not belong to any group.
         """
@@ -882,6 +881,8 @@ class DynamicsResultsHandler:
                 return self.plot_group(plot_group_name=plot_group_name, rms_group_name=rms_group_name)
             else:
                 return False
+
+
 
     def get_data_from_plot_index(self, index: QtCore.QModelIndex, rms_group_name: str) -> ResultsModel | None:
         """
