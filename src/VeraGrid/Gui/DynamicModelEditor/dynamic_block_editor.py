@@ -3378,7 +3378,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.setWindowTitle("Dynamic Model Editor")
 
-        self.ui.splitter.setStretchFactor(0, 1)
+        self.ui.splitter.setStretchFactor(0, 6)
         self.ui.splitter.setStretchFactor(1, 10)
         self.ui.block_editor_actionCheckModel.triggered.connect(self.open_inspect_dialog)
         self.ui.actionCenter.triggered.connect(self.center_view_on_items)
@@ -3411,19 +3411,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.block_counters: Dict[BlockType, int] = dict()
         self.scene: DiagramScene = DiagramScene(self)
         self.changes_applied: bool = False
-        self.parameters_toolbar_widget: QWidget = QWidget(self.ui.tab_2)
-        self.parameters_toolbar_layout: QHBoxLayout = QHBoxLayout(self.parameters_toolbar_widget)
-        self.parameters_toolbar_layout.setContentsMargins(0, 0, 0, 0)
-        self.add_symbol_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Add Variable",
-                                                                              self.parameters_toolbar_widget)
-        self.add_equation_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Add Equation",
-                                                                                self.parameters_toolbar_widget)
-        self.remove_selected_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Remove Selected",
-                                                                                   self.parameters_toolbar_widget)
-        self.parameters_toolbar_layout.addWidget(self.add_symbol_button)
-        self.parameters_toolbar_layout.addWidget(self.add_equation_button)
-        self.parameters_toolbar_layout.addWidget(self.remove_selected_button)
-        self.parameters_toolbar_layout.addStretch(1)
 
         self.templates_list: List[
             RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
@@ -3497,8 +3484,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.libraryTreeView.setDragEnabled(True)
         self.ui.libraryTreeView.setHeaderHidden(False)
 
-        self.ui.verticalLayout_2.insertWidget(0, self.parameters_toolbar_widget)
-
         self.variables_table_model = VariablesTableModel(
             var_factory=self.var_factory,
             parent=self.ui.variablesTableView
@@ -3509,6 +3494,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.variablesTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.ui.variablesTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self.ui.variablesTableView.doubleClicked.connect(self.on_variables_table_double_clicked)
+        self.ui.variablesTableView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.ui.variablesTableView.customContextMenuRequested.connect(self.show_variables_table_context_menu)
 
         self.parameters_table_model = ParametersTableModel(
             var_factory=self.var_factory,
@@ -3520,6 +3507,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.parametersTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.ui.parametersTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self.ui.parametersTableView.doubleClicked.connect(self.on_parameters_table_double_clicked)
+        self.ui.parametersTableView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.ui.parametersTableView.customContextMenuRequested.connect(self.show_parameters_table_context_menu)
 
         self.equations_table_model = EquationsTableModel(
             var_factory=self.var_factory,
@@ -3531,15 +3520,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.equationsTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.ui.equationsTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
         self.ui.equationsTableView.doubleClicked.connect(self.on_parameters_table_double_clicked)
+        self.ui.equationsTableView.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.ui.equationsTableView.customContextMenuRequested.connect(self.show_equations_table_context_menu)
 
-        self.add_symbol_button.clicked.connect(self.open_add_variable_dialog)
-        self.add_equation_button.clicked.connect(self.open_add_equation_dialog)
-        self.remove_selected_button.clicked.connect(self.remove_selected_items)
         self.parameters_table_model.block_updated.connect(self.on_parameters_model_block_updated)
         self.variables_table_model.block_updated.connect(self.on_parameters_model_block_updated)
-        self.add_symbol_button.setEnabled(False)
-        self.add_equation_button.setEnabled(False)
-        self.remove_selected_button.setEnabled(False)
 
         self.view: GraphicsView = GraphicsView(self.scene)
         self.ui.verticalLayout_3.removeWidget(self.ui.graphicsView)
@@ -4739,6 +4724,110 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                         str(exc)
                     )
 
+    def select_table_context_row(self,
+                                 table_view: QtWidgets.QTableView,
+                                 position: QtCore.QPoint) -> None:
+        """
+        Select the row under a table context menu request when it is not already selected.
+
+        :param table_view:
+        :param position:
+        :return:
+        """
+        index: QtCore.QModelIndex = table_view.indexAt(position)
+
+        if index.isValid() and not table_view.selectionModel().isRowSelected(index.row(), QtCore.QModelIndex()):
+            table_view.selectRow(index.row())
+        else:
+            pass
+
+    def show_variables_table_context_menu(self, position: QtCore.QPoint) -> None:
+        """
+        Show the variables table context menu.
+
+        :param position:
+        :return:
+        """
+        table_view: QtWidgets.QTableView = self.ui.variablesTableView
+        self.select_table_context_row(table_view=table_view, position=position)
+
+        selected_block: Block | None = self.get_selected_scene_block()
+        has_selected_rows: bool = bool(table_view.selectionModel().selectedRows())
+
+        menu: QMenu = QMenu(table_view)
+        add_variable_action: QAction = menu.addAction("Add Variable")
+        remove_selected_action: QAction = menu.addAction("Remove Selected")
+
+        add_variable_action.setEnabled(selected_block is not None)
+        remove_selected_action.setEnabled(selected_block is not None and has_selected_rows)
+
+        selected_action: QAction | None = menu.exec(table_view.viewport().mapToGlobal(position))
+
+        if selected_action == add_variable_action:
+            self.open_add_variable_dialog()
+        elif selected_action == remove_selected_action:
+            self.remove_selected_variables()
+        else:
+            pass
+
+    def show_parameters_table_context_menu(self, position: QtCore.QPoint) -> None:
+        """
+        Show the parameters table context menu.
+
+        :param position:
+        :return:
+        """
+        table_view: QtWidgets.QTableView = self.ui.parametersTableView
+        self.select_table_context_row(table_view=table_view, position=position)
+
+        selected_block: Block | None = self.get_selected_scene_block()
+        has_selected_rows: bool = bool(table_view.selectionModel().selectedRows())
+
+        menu: QMenu = QMenu(table_view)
+        add_variable_action: QAction = menu.addAction("Add Variable")
+        remove_selected_action: QAction = menu.addAction("Remove Selected")
+
+        add_variable_action.setEnabled(selected_block is not None)
+        remove_selected_action.setEnabled(selected_block is not None and has_selected_rows)
+
+        selected_action: QAction | None = menu.exec(table_view.viewport().mapToGlobal(position))
+
+        if selected_action == add_variable_action:
+            self.open_add_variable_dialog()
+        elif selected_action == remove_selected_action:
+            self.remove_selected_parameters()
+        else:
+            pass
+
+    def show_equations_table_context_menu(self, position: QtCore.QPoint) -> None:
+        """
+        Show the equations table context menu.
+
+        :param position:
+        :return:
+        """
+        table_view: QtWidgets.QTableView = self.ui.equationsTableView
+        self.select_table_context_row(table_view=table_view, position=position)
+
+        selected_block: Block | None = self.get_selected_scene_block()
+        has_selected_rows: bool = bool(table_view.selectionModel().selectedRows())
+
+        menu: QMenu = QMenu(table_view)
+        add_equation_action: QAction = menu.addAction("Add Equation")
+        remove_selected_action: QAction = menu.addAction("Remove Selected")
+
+        add_equation_action.setEnabled(selected_block is not None)
+        remove_selected_action.setEnabled(selected_block is not None and has_selected_rows)
+
+        selected_action: QAction | None = menu.exec(table_view.viewport().mapToGlobal(position))
+
+        if selected_action == add_equation_action:
+            self.open_add_equation_dialog()
+        elif selected_action == remove_selected_action:
+            self.remove_selected_equations()
+        else:
+            pass
+
     def open_add_variable_dialog(self) -> None:
         """
         Open the dialog used to add a new block symbol.
@@ -4814,10 +4903,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-    def remove_selected_items(self) -> None:
+    def remove_selected_variables(self) -> None:
         """
-        Remove selected items from the active table (Variables, Parameters, or Equations).
-        Uses the table's selection model to get selected rows.
+        Remove selected variables from the selected block.
 
         :return:
         """
@@ -4826,69 +4914,94 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return
 
         vars_model = self.variables_table_model
-        params_model = self.parameters_table_model
-        equations_model = self.equations_table_model
-
         vars_selected = [idx.row() for idx in self.ui.variablesTableView.selectionModel().selectedRows()]
+        if not vars_selected:
+            return
+
+        vars_to_remove_from_state = []
+        vars_to_remove_from_algebraic = []
+        init_keys_to_remove = []
+        for row_idx in vars_selected:
+            row_data = vars_model.rows[row_idx]
+            var = row_data.key_var
+            if row_data.kind == BlockParameterKind.STATE_VAR:
+                if var in block.state_vars:
+                    vars_to_remove_from_state.append(var)
+                    if var in block.init_values:
+                        init_keys_to_remove.append(var)
+            elif row_data.kind == BlockParameterKind.ALGEBRAIC_VAR:
+                if var in block.algebraic_vars:
+                    vars_to_remove_from_algebraic.append(var)
+
+        block.state_vars = [v for v in block.state_vars if v not in set(vars_to_remove_from_state)]
+        block.algebraic_vars = [v for v in block.algebraic_vars if v not in set(vars_to_remove_from_algebraic)]
+        for key in init_keys_to_remove:
+            if key in block.init_values:
+                del block.init_values[key]
+
+        vars_model.set_block(block)
+        vars_model.block_updated.emit(block.uid)
+
+    def remove_selected_parameters(self) -> None:
+        """
+        Remove selected parameters from the selected block.
+
+        :return:
+        """
+        block = self.get_selected_scene_block()
+        if block is None:
+            return
+
+        params_model = self.parameters_table_model
         params_selected = [idx.row() for idx in self.ui.parametersTableView.selectionModel().selectedRows()]
+        if not params_selected:
+            return
+
+        for row_idx in params_selected:
+            row_data = params_model.rows[row_idx]
+            var = row_data.key_var
+            if row_data.kind == BlockParameterKind.EVENT_PARAMETER:
+                if var in block.event_dict:
+                    del block.event_dict[var]
+            elif row_data.kind == BlockParameterKind.FIXED_PARAMETER:
+                if var in block.parameters:
+                    del block.parameters[var]
+
+        params_model.set_block(block)
+        params_model.block_updated.emit(block.uid)
+
+    def remove_selected_equations(self) -> None:
+        """
+        Remove selected equations from the selected block.
+
+        :return:
+        """
+        block = self.get_selected_scene_block()
+        if block is None:
+            return
+
+        equations_model = self.equations_table_model
         equations_selected = [idx.row() for idx in self.ui.equationsTableView.selectionModel().selectedRows()]
+        if not equations_selected:
+            return
 
-        if vars_selected:
-            vars_to_remove_from_state = []
-            vars_to_remove_from_algebraic = []
-            init_keys_to_remove = []
-            for row_idx in vars_selected:
-                row_data = vars_model.rows[row_idx]
-                var = row_data.key_var
-                if row_data.kind == BlockParameterKind.STATE_VAR:
-                    if var in block.state_vars:
-                        vars_to_remove_from_state.append(var)
-                        if var in block.init_values:
-                            init_keys_to_remove.append(var)
-                elif row_data.kind == BlockParameterKind.ALGEBRAIC_VAR:
-                    if var in block.algebraic_vars:
-                        vars_to_remove_from_algebraic.append(var)
+        state_indices_to_remove = set()
+        alg_indices_to_remove = set()
+        for row_idx in equations_selected:
+            row_data = equations_model.rows[row_idx]
+            if row_data.item_index is not None:
+                if row_data.kind == BlockParameterKind.STATE_EQUATION:
+                    state_indices_to_remove.add(row_data.item_index)
+                elif row_data.kind == BlockParameterKind.ALGEBRAIC_EQUATION:
+                    alg_indices_to_remove.add(row_data.item_index)
 
-            block.state_vars = [v for v in block.state_vars if v not in set(vars_to_remove_from_state)]
-            block.algebraic_vars = [v for v in block.algebraic_vars if v not in set(vars_to_remove_from_algebraic)]
-            for key in init_keys_to_remove:
-                if key in block.init_values:
-                    del block.init_values[key]
+        new_state_eqs = [eq for idx, eq in enumerate(block.state_eqs) if idx not in state_indices_to_remove]
+        new_algebraic_eqs = [eq for idx, eq in enumerate(block.algebraic_eqs) if idx not in alg_indices_to_remove]
+        block.state_eqs = new_state_eqs
+        block.algebraic_eqs = new_algebraic_eqs
 
-            vars_model.set_block(block)
-            vars_model.block_updated.emit(block.uid)
-
-        elif params_selected:
-            for row_idx in params_selected:
-                row_data = params_model.rows[row_idx]
-                var = row_data.key_var
-                if row_data.kind == BlockParameterKind.EVENT_PARAMETER:
-                    if var in block.event_dict:
-                        del block.event_dict[var]
-                elif row_data.kind == BlockParameterKind.FIXED_PARAMETER:
-                    if var in block.parameters:
-                        del block.parameters[var]
-            params_model.set_block(block)
-            params_model.block_updated.emit(block.uid)
-
-        elif equations_selected:
-            state_indices_to_remove = set()
-            alg_indices_to_remove = set()
-            for row_idx in equations_selected:
-                row_data = equations_model.rows[row_idx]
-                if row_data.item_index is not None:
-                    if row_data.kind == BlockParameterKind.STATE_EQUATION:
-                        state_indices_to_remove.add(row_data.item_index)
-                    elif row_data.kind == BlockParameterKind.ALGEBRAIC_EQUATION:
-                        alg_indices_to_remove.add(row_data.item_index)
-
-            new_state_eqs = [eq for idx, eq in enumerate(block.state_eqs) if idx not in state_indices_to_remove]
-            new_algebraic_eqs = [eq for idx, eq in enumerate(block.algebraic_eqs) if idx not in alg_indices_to_remove]
-            block.state_eqs = new_state_eqs
-            block.algebraic_eqs = new_algebraic_eqs
-
-            equations_model.set_block(block)
-            equations_model.block_updated.emit(block.uid)
+        equations_model.set_block(block)
+        equations_model.block_updated.emit(block.uid)
 
     def open_expression_row_editor(self, row_index: int) -> None:
         """
@@ -4973,9 +5086,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.variables_table_model.set_block(selected_block)
         self.parameters_table_model.set_block(selected_block)
         self.equations_table_model.set_block(selected_block)
-        self.add_symbol_button.setEnabled(selected_block is not None)
-        self.add_equation_button.setEnabled(selected_block is not None)
-        self.remove_selected_button.setEnabled(selected_block is not None)
 
     def get_scene_item_by_block_uid(self, block_uid: int) -> BlockItem | GenericBlockItem | None:
         """
