@@ -37,8 +37,8 @@ USE_CACHED_BUILDER = True
 BUILDER_CACHE_FILE = f'precomputed_builds/{GRID}.pkl'
 
 FAST_MODE = True
-FAST_GRID_PATH = f"C:\\Users\\Usuario\Desktop\git\VeraGrid\Grids_and_profiles\grids\\{GRID}.gridcal" #f'Grids_and_profiles/grids/{GRID}.gridcal' #'trunk/tensygrid/grids/IEEE_14-2.gridcal'
-FULL_GRID_PATH = f'Grids_and_profiles/grids/{GRID}.gridcal'
+FAST_GRID_PATH = f'../../Grids_and_profiles/grids/{GRID}.gridcal' #'trunk/tensygrid/grids/IEEE_14-2.gridcal'
+FULL_GRID_PATH = f'../../Grids_and_profiles/grids/{GRID}.gridcal'
 PRINT_ALL_BUSES = False # not FAST_MODE
 ENABLE_POST_COMPARE_PLOT = False # not FAST_MODE
 RUN_DYNAMIC_STEP = False
