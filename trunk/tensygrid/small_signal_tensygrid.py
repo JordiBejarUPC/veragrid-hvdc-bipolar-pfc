@@ -36,7 +36,7 @@ GRID = "IEEE 9 Bus"
 EXTENSIONS = [".xlsx", ".gridcal", ".json"]
 
 USE_CACHED_BUILDER = True
-BUILDER_CACHE_FILE = f'precomputed_builds/{GRID}.pkl'
+BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
 FAST_MODE = True
 FAST_GRID_PATH = f'Grids_and_profiles/grids/{GRID}{EXTENSIONS[1]}' #'trunk/tensygrid/grids/IEEE_14-2.gridcal'
@@ -338,7 +338,7 @@ def solve_problem(problem: Any = None) -> Any:
         print("\n[*] Linearizing model with real parameters...")
         builder.linearize(v_dict=v_dict)
 
-        builder.save_state_space(f"precomputed_matrices/{GRID}")
+        builder.save_state_space(f"trunk/tensygrid/precomputed_matrices/{GRID}")
 
         if USE_CACHED_BUILDER and os.path.exists(BUILDER_CACHE_FILE):
             print(f"\n[📦] Loading full builder object from '{BUILDER_CACHE_FILE}'...")
@@ -355,7 +355,7 @@ def solve_problem(problem: Any = None) -> Any:
             print("\n[*] Linearizing model with real parameters...")
             builder.linearize(v_dict=v_dict)
 
-            builder.save_state_space(f"precomputed_matrices/{GRID}")
+            builder.save_state_space(f"trunk/tensygrid/precomputed_matrices/{GRID}")
 
             if USE_CACHED_BUILDER:
                 print(f"\n[📦] Saving full builder object to '{BUILDER_CACHE_FILE}'...")
