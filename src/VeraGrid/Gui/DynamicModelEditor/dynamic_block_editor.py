@@ -4265,22 +4265,27 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return pairs
 
     def add_emt_connection_vars(self) -> None:
-        # connect bus variables
-        voltage_pairs = None
+        """
+        Add EMT connection voltage variables for the edited device.
+        For branch devices, both terminal buses must be exposed.
+        """
         if isinstance(self.api_object, BranchParent):
-            block_specs: tuple[tuple[str, QPointF, Any, str], ...] = (
-                ("Conn From", QPointF(0, 0), self.api_object.bus_from, "from"),
-                ("Conn To", QPointF(0, 100), self.api_object.bus_to, "to"),
+            voltage_pairs: List[tuple[VarPowerFlowRefferenceType, Any]] = list()
+
+            voltage_pairs.extend(
+                self.get_branch_emt_voltage_pairs(self.api_object.bus_from, "from")
             )
-            for name, position, bus, side in block_specs:
-                voltage_pairs = self.get_branch_emt_voltage_pairs(bus, side)
-            if voltage_pairs is not None:
-                for reference, variable in voltage_pairs:
-                    self.main_block.in_vars.append(variable)
-                    self.main_block.external_mapping[reference] = variable
+            voltage_pairs.extend(
+                self.get_branch_emt_voltage_pairs(self.api_object.bus_to, "to")
+            )
+
+            for reference, variable in voltage_pairs:
+                self.main_block.in_vars.append(variable)
+                self.main_block.external_mapping[reference] = variable
 
         elif isinstance(self.api_object, InjectionParent):
             voltage_pairs = self.get_injection_emt_voltage_pairs(self.api_object.bus)
+
             if voltage_pairs is not None:
                 for reference, variable in voltage_pairs:
                     self.main_block.in_vars.append(variable)
@@ -4485,27 +4490,32 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         return current_refs
 
     def add_emt_external_mapping_vars(self) -> None:
-        current_refs = None
+        """
+        Add EMT current output variables for the edited device.
+        For branch devices, currents for both terminals must be exposed.
+        """
         if isinstance(self.api_object, BranchParent):
-            block_specs: tuple[tuple[str, QPointF, Any, str], ...] = (
-                ("mapping From", QPointF(200, 200), self.api_object.bus_from, "from"),
-                ("mapping To", QPointF(0, 200), self.api_object.bus_to, "to"),
-            )
-            for name, position, bus, side in block_specs:
-                current_refs = self._build_emt_branch_current_refs(bus, side)
-            if current_refs is not None:
-                for reference in current_refs:
-                    var = self.var_factory.add_var(f"network_conn_{reference.value}", reference, True)
-                    self.main_block.out_vars.append(var)
-                    self.main_block.external_mapping.update({reference: var})
+            current_refs: List[VarPowerFlowRefferenceType] = list()
 
-        if isinstance(self.api_object, InjectionParent):
+            current_refs.extend(
+                self._build_emt_branch_current_refs(self.api_object.bus_from, "from")
+            )
+            current_refs.extend(
+                self._build_emt_branch_current_refs(self.api_object.bus_to, "to")
+            )
+
+            for reference in current_refs:
+                var = self.var_factory.add_var(f"network_conn_{reference.value}", reference, True)
+                self.main_block.out_vars.append(var)
+                self.main_block.external_mapping[reference] = var
+
+        elif isinstance(self.api_object, InjectionParent):
             current_refs = self.build_emt_injection_current_refs(self.api_object.bus)
 
             for reference in current_refs:
                 var = self.var_factory.add_var(f"network_conn_{reference.value}", reference, True)
                 self.main_block.out_vars.append(var)
-                self.main_block.external_mapping.update({reference: var})
+                self.main_block.external_mapping[reference] = var
 
     def add_api_obj_mapping(self):
         """
