@@ -3424,6 +3424,10 @@ class EmtLineTypes(Enum):
         except KeyError:
             return s
 
+class DynamicSimulationMode(Enum):
+    RMS = "RMS",
+    EMT = "EMT",
+
 class BlockScopeMode(Enum):
     """
     Block extraction scope modes for DGS block parsing.

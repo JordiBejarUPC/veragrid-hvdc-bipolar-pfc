@@ -25,7 +25,7 @@ from VeraGridEngine.Simulations.StateEstimation.state_estimation_results import 
 from VeraGridEngine.Utils.progress_bar import print_progress_bar
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import (SimulationTypes, Colormaps, DeviceType, MethodShortCircuit,
-                                         SchematicAutoRouteStyle)
+                                         SchematicAutoRouteStyle, DynamicSimulationMode)
 from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 
 import VeraGridEngine.Devices as dev
@@ -46,7 +46,7 @@ from VeraGrid.Gui.Main.SubClasses.Model.compiled_arrays import CompiledArraysMai
 from VeraGrid.Gui.Main.object_select_window import ObjectSelectWindow, ListSelectWindow
 from VeraGrid.Gui.Diagrams.MapWidget.Tiles.TileProviders.cartodb import CartoDbTiles
 from VeraGrid.Gui.object_proxy_model import ObjectModelFilterProxy
-from VeraGrid.Gui.rms_events_editor_dialog import DynamicEventDialogue, DynamicEventsGroupsDialog
+from VeraGrid.Gui.dynamic_events_editor_dialog import DynamicEventDialogue, DynamicEventsGroupsDialog
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
 from VeraGrid.Gui.ShortCircuitEditor.short_circuit_selector import ShortCircuitSelector
 from VeraGrid.Gui.general_dialogues import (CheckListDialogue, StartEndSelectionDialogue,
@@ -237,6 +237,7 @@ class DiagramsMain(CompiledArraysMain):
         self.ui.actionAdd_selected_as_remedial_action.triggered.connect(self.add_selected_to_remedial_action)
         self.ui.actionAdd_selected_as_new_investment.triggered.connect(self.add_selected_to_investment)
         self.ui.actionAdd_rms_event_to_selected.triggered.connect(self.add_rms_event_to_selected)
+        # self.ui.actionAdd_emt_event_to_selected.triggered.connect(self.add_emt_event_to_selected) ############
         self.ui.actionAdd_short_circuit_events.triggered.connect(self.add_short_circuit_events)
 
         self.ui.actionZoom_in.triggered.connect(self.zoom_in)
@@ -2780,8 +2781,9 @@ class DiagramsMain(CompiledArraysMain):
 
     def add_rms_event_to_selected(self) -> None:
         """
-        Add rms event to a selected device
+        Add RMS event to a selected device
         """
+        mode = DynamicSimulationMode.RMS
         if self.circuit.valid_for_simulation():
 
             # get the selected device to apply event to
@@ -2801,7 +2803,8 @@ class DiagramsMain(CompiledArraysMain):
                         "No RMS Events Group found, please create one before adding an event."
                     )
 
-                    dialog = DynamicEventsGroupsDialog(self)
+                    dialog = DynamicEventsGroupsDialog(mode=mode,
+                                                       parent=self)
                     if dialog.exec():
                         name = dialog.get_name()
                         # build group
@@ -2814,7 +2817,8 @@ class DiagramsMain(CompiledArraysMain):
                     rms_events_dialog = DynamicEventDialogue(circuit=self.circuit,
                                                              parameters_list=[var for var in
                                                                           target_device.rms_model.event_dict.keys()],
-                                                             target_device_name=target_device.type_name + ": " + target_device.name)
+                                                             target_device_name=target_device.type_name + ": " + target_device.name,
+                                                             mode=mode)
 
                     if rms_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
 
@@ -2837,6 +2841,7 @@ class DiagramsMain(CompiledArraysMain):
         """
         Add EMT event to a selected device
         """
+        mode = DynamicSimulationMode.EMT
         if self.circuit.valid_for_simulation():
 
             # get the selected device to apply event to
@@ -2856,7 +2861,8 @@ class DiagramsMain(CompiledArraysMain):
                         "No EMT Events Group found, please create one before adding an event."
                     )
 
-                    dialog = DynamicEventsGroupsDialog(self)
+                    dialog = DynamicEventsGroupsDialog(parent=self,
+                                                       mode=mode)
                     if dialog.exec():
                         name = dialog.get_name()
                         # build group
@@ -2867,9 +2873,10 @@ class DiagramsMain(CompiledArraysMain):
 
                 else:
                     emt_events_dialog = DynamicEventDialogue(circuit=self.circuit,
-                                                         parameters_list=[var for var in
+                                                             parameters_list=[var for var in
                                                                           target_device.emt_model.event_dict.keys()],
-                                                         target_device_name=target_device.type_name + ": " + target_device.name)
+                                                             target_device_name=target_device.type_name + ": " + target_device.name,
+                                                             mode=mode)
 
                     if emt_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
 
@@ -2883,7 +2890,7 @@ class DiagramsMain(CompiledArraysMain):
                                                             group=events_data["groups"][i]))
 
                         for event in events_list:
-                            self.circuit.add_rms_event(event)
+                            self.circuit.add_emt_event(event)
 
             else:
                 raise ValueError(f"Select one and only one device to add event to")

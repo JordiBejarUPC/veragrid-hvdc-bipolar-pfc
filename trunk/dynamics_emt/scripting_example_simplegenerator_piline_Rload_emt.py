@@ -439,7 +439,10 @@ build_solver_backend(CHOSEN_SOLVER, solver, problem)
 # RUN SIMULATION
 # ==============================================================================
 boundary_updater = cast(Any, problem)
-t, y, dy, _, _  = solver.simulate(boundary_updater=boundary_updater)
+t, y, dy, well_initialized , converged  = solver.simulate(boundary_updater=boundary_updater)
+
+print(f"well_initialized = {well_initialized}")
+print(f"converged = {converged}")
 
 print("StructuralCompiled backend build stats")
 for key, value in solver.get_backend_build_stats().items():

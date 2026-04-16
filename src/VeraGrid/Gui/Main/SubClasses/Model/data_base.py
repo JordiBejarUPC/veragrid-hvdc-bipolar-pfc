@@ -29,7 +29,7 @@ from VeraGrid.Gui.messages import yes_no_question, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.diagrams import DiagramsMain
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.TowerBuilder.LineBuilderDialogue import TowerBuilderGUI
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicSimulationMode
 from VeraGrid.Gui.FmuTemplateEditor.fmu_template_editor import FmuTemplateEditorDialog
 from VeraGrid.Gui.SystemScaler.system_scaler import SystemScaler
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget, generate_map_diagram
@@ -1002,7 +1002,7 @@ class DataBaseTableMain(DiagramsMain):
                             var_factory=self.circuit.var_factory,
                             block=elm.block,
                             api_object=elm,
-                            mode=DynamicEditorMode.RMS,
+                            mode=DynamicSimulationMode.RMS,
                             templates_list=self.circuit.get_dynamic_templates_by_domain(FmuTemplateDomain.RMS),
                             circuit=self.circuit,
                             main_editor=True,
@@ -1024,7 +1024,7 @@ class DataBaseTableMain(DiagramsMain):
                             var_factory=self.circuit.var_factory,
                             block=elm.block,
                             api_object=elm,
-                            mode=DynamicEditorMode.EMT,
+                            mode=DynamicSimulationMode.EMT,
                             templates_list=self.circuit.get_dynamic_templates_by_domain(FmuTemplateDomain.EMT),
                             circuit=self.circuit,
                             main_editor=True,

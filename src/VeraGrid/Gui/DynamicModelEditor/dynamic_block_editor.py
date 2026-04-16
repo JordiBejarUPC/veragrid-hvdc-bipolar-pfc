@@ -24,7 +24,7 @@ from PySide6.QtCore import Qt, QPointF, QModelIndex, Signal, QAbstractTableModel
 
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, DynamicSimulationMode
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template, get_bus_emt_algebraic_vars
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -2099,7 +2099,7 @@ class GenericBlockItem(QGraphicsRectItem):
                  var_factory: VarFactory,
                  subsys: Block,
                  api_object,
-                 mode: DynamicEditorMode,
+                 mode: DynamicSimulationMode,
                  position_changed_callback=None
                  ):
         """
@@ -3264,12 +3264,6 @@ class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
 
         return mime_data
 
-
-class DynamicEditorMode(Enum):
-    RMS = "rms",
-    EMT = "emt",
-
-
 class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
     RmsModelEditorGUI
@@ -3281,7 +3275,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  var_factory: VarFactory,
                  block: Block,
                  api_object: ALL_DEV_TYPES | None = None,
-                 mode: DynamicEditorMode = DynamicEditorMode.RMS,
+                 mode: DynamicSimulationMode = DynamicSimulationMode.RMS,
                  templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None,
                  circuit: Any | None = None,
                  main_editor=False,
@@ -3302,7 +3296,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param api_object: Optional API object associated with the dynamic model.
         :type api_object: ALL_DEV_TYPES | None
         :param mode: Specifies the editor mode, either RMS or EMT.
-        :type mode: DynamicEditorMode
+        :type mode: DynamicSimulationMode
         :param main_editor: Indicates whether this instance is the main editor for the block.
         :type main_editor: bool
         :param modal: Specifies whether the editor window should be modal.
@@ -3338,9 +3332,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.original_block: Block = block  # api_object.rms_model
 
         try:
-            if mode == DynamicEditorMode.RMS and self.api_object.rms_template is not None:
+            if mode == DynamicSimulationMode.RMS and self.api_object.rms_template is not None:
                 self.main_block: Block = Block()
-            elif mode == DynamicEditorMode.EMT and self.api_object.emt_template is not None:
+            elif mode == DynamicSimulationMode.EMT and self.api_object.emt_template is not None:
                 self.main_block: Block = Block()
             else:
                 self.main_block: Block = clone_block_for_editing(block)
@@ -3370,7 +3364,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.templates_list: List[RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
 
-        if mode == DynamicEditorMode.RMS:
+        if mode == DynamicSimulationMode.RMS:
             self.tree_structure = {
                 "Basic": [
                     ("Const", BlockType.CONST),
@@ -3392,7 +3386,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     ("Generic", BlockType.GENERIC),
                 ],
             }
-        elif mode == DynamicEditorMode.EMT:
+        elif mode == DynamicSimulationMode.EMT:
             self.tree_structure = {
                 "Basic": [
                     ("Const", BlockType.CONST),
@@ -3954,12 +3948,12 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         Add a block with bus connection variables to connect the device
         :return:
         """
-        if self.mode == DynamicEditorMode.EMT:
+        if self.mode == DynamicSimulationMode.EMT:
             self.add_emt_connection_vars()
             self.add_emt_external_mapping_vars()
             return
 
-        elif self.mode == DynamicEditorMode.RMS:
+        elif self.mode == DynamicSimulationMode.RMS:
 
             if isinstance(self.api_object, BranchParent):
 
@@ -4236,7 +4230,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         Add a block with the external mapping vars needed to connect the device to the grid
         :return:
         """
-        if self.mode == DynamicEditorMode.EMT:
+        if self.mode == DynamicSimulationMode.EMT:
             self.add_emt_external_mapping_vars()
             return
         else:
@@ -4467,7 +4461,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :raises RuntimeError: Raised if required attributes or methods are missing.
         :return: None
         """
-        if self.mode == DynamicEditorMode.EMT:
+        if self.mode == DynamicSimulationMode.EMT:
             return
         else:
             pass
@@ -4530,11 +4524,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
 
         if isinstance(self.api_object, BranchParent) or isinstance(self.api_object, InjectionParent):
-            if self.mode == DynamicEditorMode.RMS:
+            if self.mode == DynamicSimulationMode.RMS:
                 self.api_object.rms_template = None
                 self.api_object.rms_fmu_template = None
             else:
-                if self.mode == DynamicEditorMode.EMT:
+                if self.mode == DynamicSimulationMode.EMT:
                     self.api_object.emt_template = None
                     self.api_object.emt_fmu_template = None
                 else:
@@ -4963,7 +4957,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         :return:
         """
-        if self.mode == DynamicEditorMode.RMS:
+        if self.mode == DynamicSimulationMode.RMS:
             if self.api_object.rms_template is not None:
                 # Todo: Here are the changes
                 self.api_object.rms_template = None
@@ -4971,7 +4965,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.changes_applied = True
             self.close()
 
-        elif self.mode == DynamicEditorMode.EMT:
+        elif self.mode == DynamicSimulationMode.EMT:
             if self.api_object.emt_template is not None:
                 # Todo: Here are the changes
                 self.api_object.emt_template = None

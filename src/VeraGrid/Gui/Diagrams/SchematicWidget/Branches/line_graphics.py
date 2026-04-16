@@ -14,7 +14,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem,
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicSimulationMode
 from VeraGridEngine.Devices.Branches.line import Line, SequenceLineType
 from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
 
@@ -249,7 +249,7 @@ class LineGraphicItem(LineGraphicTemplateItem):
             var_factory=self.editor.circuit.var_factory,
             block=self.api_object.rms_model,
             api_object=self.api_object,
-            mode=DynamicEditorMode.RMS,
+            mode=DynamicSimulationMode.RMS,
             templates_list=self.editor.circuit.get_rms_models_by_device_type(self.api_object.device_type),
             # templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
             #     self.api_object.device_type,
@@ -278,7 +278,7 @@ class LineGraphicItem(LineGraphicTemplateItem):
             var_factory=self.editor.circuit.var_factory,
             block=self.api_object.emt_model,
             api_object=self.api_object,
-            mode=DynamicEditorMode.EMT,
+            mode=DynamicSimulationMode.EMT,
             templates_list=self.editor.circuit.get_emt_models_by_device_type(self.api_object.device_type),
             # templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
             #     self.api_object.device_type,
