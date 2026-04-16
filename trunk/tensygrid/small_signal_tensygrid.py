@@ -31,14 +31,16 @@ from phasor_diagnostics import (
 from scipy.optimize import linear_sum_assignment
 
 
-GRID = "Texas 2000 + VSC"
+#GRID = "Texas 2000 + VSC"
+GRID = "IEEE 118"
+EXTENSIONS = [".xlsx", ".gridcal", ".json"]
 
 USE_CACHED_BUILDER = True
 BUILDER_CACHE_FILE = f'precomputed_builds/{GRID}.pkl'
 
 FAST_MODE = True
-FAST_GRID_PATH = f'../../Grids_and_profiles/grids/{GRID}.gridcal' #'trunk/tensygrid/grids/IEEE_14-2.gridcal'
-FULL_GRID_PATH = f'../../Grids_and_profiles/grids/{GRID}.gridcal'
+FAST_GRID_PATH = f'Grids_and_profiles/grids/{GRID}{EXTENSIONS[0]}' #'trunk/tensygrid/grids/IEEE_14-2.gridcal'
+FULL_GRID_PATH = f'Grids_and_profiles/grids/{GRID}{EXTENSIONS[0]}'
 PRINT_ALL_BUSES = False # not FAST_MODE
 ENABLE_POST_COMPARE_PLOT = False # not FAST_MODE
 RUN_DYNAMIC_STEP = False
@@ -336,7 +338,7 @@ def solve_problem(problem: Any = None) -> Any:
         print("\n[*] Linearizing model with real parameters...")
         builder.linearize(v_dict=v_dict)
 
-        builder.save_state_space(f"precomputed_matrices/{GRID}.pkl")
+        builder.save_state_space(f"precomputed_matrices/{GRID}")
 
         if USE_CACHED_BUILDER and os.path.exists(BUILDER_CACHE_FILE):
             print(f"\n[📦] Loading full builder object from '{BUILDER_CACHE_FILE}'...")
