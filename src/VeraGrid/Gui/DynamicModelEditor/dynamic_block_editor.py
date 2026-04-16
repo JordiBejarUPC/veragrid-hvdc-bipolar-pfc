@@ -14,17 +14,18 @@ from PySide6 import QtWidgets, QtGui, QtCore
 from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraphicsView, QGraphicsItem,
                                QGraphicsRectItem, QGraphicsEllipseItem, QGraphicsTextItem, QMenu, QGraphicsPathItem,
                                QDialog, QVBoxLayout, QDialogButtonBox, QLabel, QListWidget, QWidget,
-                               QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QDoubleSpinBox, QTableWidget, QTableWidgetItem,
+                               QListWidgetItem, QFormLayout, QSpinBox, QLineEdit, QDoubleSpinBox, QTableWidget,
+                               QTableWidgetItem,
                                QColorDialog, QPlainTextEdit, QCheckBox)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter,
                            QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
 from PySide6.QtCore import QAbstractItemModel, QLineF
 from PySide6.QtCore import Qt, QPointF, QModelIndex, Signal, QAbstractTableModel
 
-
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
-from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, DynamicSimulationMode
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, \
+    DynamicSimulationMode
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template, get_bus_emt_algebraic_vars
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -34,7 +35,8 @@ from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_block_of_type, create_generic_block, create_emt_wizard_block
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_block_of_type, create_generic_block, \
+    create_emt_wizard_block
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
                                                     get_symbolic_parser_function_names,
@@ -42,6 +44,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_t
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import BlockType
+
 # from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
 
 BLOCK_BORDER: QColor = QColor("#36536b")
@@ -218,8 +221,8 @@ class OrthogonalRouter:
 
         pos = QPointF(gx * OrthogonalRouter.GRID_SIZE, gy * OrthogonalRouter.GRID_SIZE)
         rect = QtCore.QRectF(pos.x() - OrthogonalRouter.GRID_SIZE / 2,
-                            pos.y() - OrthogonalRouter.GRID_SIZE / 2,
-                            OrthogonalRouter.GRID_SIZE, OrthogonalRouter.GRID_SIZE)
+                             pos.y() - OrthogonalRouter.GRID_SIZE / 2,
+                             OrthogonalRouter.GRID_SIZE, OrthogonalRouter.GRID_SIZE)
 
         items = scene.items(rect)
         for item in items:
@@ -239,9 +242,9 @@ class OrthogonalRouter:
 
     @staticmethod
     def compute_path(source_pos: QPointF, target_pos: QPointF,
-                    source_port: "PortItem | BranchingItem | None" = None,
-                    target_port: "PortItem | BranchingItem | None" = None,
-                    scene: "QGraphicsScene | None" = None) -> QPainterPath:
+                     source_port: "PortItem | BranchingItem | None" = None,
+                     target_port: "PortItem | BranchingItem | None" = None,
+                     scene: "QGraphicsScene | None" = None) -> QPainterPath:
         """
         Compute an orthogonal path using A* pathfinding on a grid.
 
@@ -355,10 +358,10 @@ class OrthogonalRouter:
             if i == 0:
                 continue
 
-            dx1 = points[i].x() - points[i-1].x()
-            dy1 = points[i].y() - points[i-1].y()
-            dx2 = points[i+1].x() - points[i].x()
-            dy2 = points[i+1].y() - points[i].y()
+            dx1 = points[i].x() - points[i - 1].x()
+            dy1 = points[i].y() - points[i - 1].y()
+            dx2 = points[i + 1].x() - points[i].x()
+            dy2 = points[i + 1].y() - points[i].y()
 
             dir1 = None
             if abs(dx1) > abs(dy1):
@@ -388,7 +391,6 @@ class OrthogonalRouter:
         :return: QPainterPath with orthogonal segments
         """
         return build_orthogonal_connection_path(source_pos, target_pos)
-
 
 
 def remap_serialized_uids(data: Any, uid_map: Dict[int, int]) -> Any:
@@ -627,6 +629,7 @@ def add_variable_to_block(block: Block,
     else:
         raise ValueError(f"Unknown var_type {var_type}")
 
+
 def build_block_tree(block: Block):
     root = Node(block.name)
 
@@ -653,6 +656,7 @@ def build_block_tree(block: Block):
 
     return root
 
+
 class Node:
     def __init__(self, name, data=None, parent=None):
         self.name = name
@@ -664,12 +668,13 @@ class Node:
         self.children.append(node)
         node.parent = self
 
+
 class ResizeHandle(QGraphicsRectItem):
     """
     Interactive resize handle attached to a block item.
     """
 
-    def __init__(self, block_item: BlockItem | GenericBlockItem , size: int = 10):
+    def __init__(self, block_item: BlockItem | GenericBlockItem, size: int = 10):
         """
         Build the resize handle.
 
@@ -864,6 +869,7 @@ class PortItem(QGraphicsEllipseItem):
         else:
             return False
 
+
 class BranchingItem(QGraphicsEllipseItem):
     """
     Graphical branching point that can have one input and multiple outputs.
@@ -898,8 +904,6 @@ class BranchingItem(QGraphicsEllipseItem):
         # self.output_port: PortItem = PortItem(self, False, 0, 1, radius=5)
         # self.input_port.connections = None
         # self.output_port.connections = None
-
-
 
     def hoverEnterEvent(self, event: QtWidgets.QGraphicsSceneHoverEvent) -> None:
         """
@@ -1012,7 +1016,6 @@ class ConnectionItem(QGraphicsPathItem):
         pen.setColor(WIRE_COLOR)
         pen.setWidthF(2.5)
         self.setPen(pen)
-
 
 
 class ExpressionTextEditorDialog(QDialog):
@@ -1273,6 +1276,7 @@ class AddEquationDialog(QDialog):
             self.validation_label.setStyleSheet("color: #b42318;")
             self.ok_button.setEnabled(False)
 
+
 class ExpressionValidationHighlighter(QtGui.QSyntaxHighlighter):
     """
     Syntax highlighter that validates symbolic identifiers against the selected block namespace.
@@ -1415,7 +1419,8 @@ class BlockParameterRow:
     Row description for the selected block editor table.
     """
 
-    __slots__ = ("name", "kind", "key_var", "value", "editable_name", "editable_value", "value_type", "item_index", "init_eq", "source_dict_name")
+    __slots__ = ("name", "kind", "key_var", "value", "editable_name", "editable_value", "value_type", "item_index",
+                 "init_eq", "source_dict_name")
 
     def __init__(self,
                  name: str,
@@ -1885,6 +1890,11 @@ class EquationsTableModel(QtCore.QAbstractTableModel):
     equation_edited = Signal(int, object)
 
     def __init__(self, var_factory: VarFactory, parent: Optional[QtCore.QObject] = None):
+        """
+
+        :param var_factory:
+        :param parent:
+        """
         super().__init__(parent)
         self.var_factory = var_factory
         self.block = None
@@ -1892,12 +1902,21 @@ class EquationsTableModel(QtCore.QAbstractTableModel):
         self.headers = ["Type", "Equation"]
 
     def set_block(self, block: Block | None) -> None:
+        """
+
+        :param block:
+        :return:
+        """
         self.beginResetModel()
         self.block = block
         self.rows = self._build_rows()
         self.endResetModel()
 
     def _build_rows(self) -> List[BlockParameterRow]:
+        """
+
+        :return:
+        """
         rows = []
         if self.block is None:
             return rows
@@ -1929,12 +1948,28 @@ class EquationsTableModel(QtCore.QAbstractTableModel):
         return rows
 
     def rowCount(self, parent=QtCore.QModelIndex()) -> int:
+        """
+
+        :param parent:
+        :return:
+        """
         return len(self.rows)
 
     def columnCount(self, parent=QtCore.QModelIndex()) -> int:
+        """
+
+        :param parent:
+        :return:
+        """
         return 2
 
     def data(self, index, role=QtCore.Qt.ItemDataRole.DisplayRole):
+        """
+
+        :param index:
+        :param role:
+        :return:
+        """
         if not index.isValid() or self.block is None:
             return None
         row = self.rows[index.row()]
@@ -1955,6 +1990,13 @@ class EquationsTableModel(QtCore.QAbstractTableModel):
         return None
 
     def setData(self, index, value, role=QtCore.Qt.ItemDataRole.EditRole):
+        """
+
+        :param index:
+        :param value:
+        :param role:
+        :return:
+        """
         if not index.isValid():
             return False
         row = self.rows[index.row()]
@@ -1977,11 +2019,23 @@ class EquationsTableModel(QtCore.QAbstractTableModel):
         return False
 
     def headerData(self, section, orientation, role=QtCore.Qt.ItemDataRole.DisplayRole):
+        """
+
+        :param section:
+        :param orientation:
+        :param role:
+        :return:
+        """
         if role == QtCore.Qt.ItemDataRole.DisplayRole and orientation == QtCore.Qt.Orientation.Horizontal:
             return self.headers[section]
         return None
 
     def flags(self, index):
+        """
+
+        :param index:
+        :return:
+        """
         if not index.isValid():
             return QtCore.Qt.ItemFlag.NoItemFlags
         flags = QtCore.Qt.ItemFlag.ItemIsEnabled | QtCore.Qt.ItemFlag.ItemIsSelectable
@@ -1990,9 +2044,15 @@ class EquationsTableModel(QtCore.QAbstractTableModel):
         return flags
 
     def get_row(self, row_index: int) -> BlockParameterRow | None:
+        """
+
+        :param row_index:
+        :return:
+        """
         if 0 <= row_index < len(self.rows):
             return self.rows[row_index]
         return None
+
 
 class InspectModel(QWidget):
     """
@@ -2100,8 +2160,7 @@ class GenericBlockItem(QGraphicsRectItem):
                  subsys: Block,
                  api_object,
                  mode: DynamicSimulationMode,
-                 position_changed_callback=None
-                 ):
+                 position_changed_callback=None):
         """
 
         :param var_factory:
@@ -2569,7 +2628,6 @@ class BlockItem(QGraphicsRectItem):
         :return:
         """
         super().mouseDoubleClickEvent(event)
-
 
     def resize_block(self, width: float, height: float) -> None:
         """
@@ -3046,7 +3104,8 @@ class DiagramScene(QGraphicsScene):
                 source_port: PortItem = connection.source_port
                 target_port: PortItem = connection.target_port
 
-                branching_item: BranchingItem = BranchingItem(connection.source_port.subsystem, connection.source_port.index)
+                branching_item: BranchingItem = BranchingItem(connection.source_port.subsystem,
+                                                              connection.source_port.index)
                 branching_item.setPos(event.scenePos())
                 self.addItem(branching_item)
 
@@ -3131,7 +3190,7 @@ class DiagramScene(QGraphicsScene):
 
 
             else:
-            # The destination model must substitute its local input placeholder with the source variable.
+                # The destination model must substitute its local input placeholder with the source variable.
                 target_block.subsys.update_model(target_input_var, dst_var)
 
                 for key, value in self.editor.main_block.external_mapping.items():
@@ -3264,6 +3323,7 @@ class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
 
         return mime_data
 
+
 class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
     RmsModelEditorGUI
@@ -3339,7 +3399,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 self.main_block: Block = clone_block_for_editing(block)
 
-        except AttributeError: # happens when editing templates from database (they are not connected to any physical device)
+        except AttributeError:  # happens when editing templates from database (they are not connected to any physical device)
             self.main_block: Block = clone_block_for_editing(block)
 
         self.diagram: BlockDiagram = self.main_block.diagram
@@ -3354,15 +3414,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.parameters_toolbar_widget: QWidget = QWidget(self.ui.tab_2)
         self.parameters_toolbar_layout: QHBoxLayout = QHBoxLayout(self.parameters_toolbar_widget)
         self.parameters_toolbar_layout.setContentsMargins(0, 0, 0, 0)
-        self.add_symbol_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Add Variable", self.parameters_toolbar_widget)
-        self.add_equation_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Add Equation", self.parameters_toolbar_widget)
-        self.remove_selected_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Remove Selected", self.parameters_toolbar_widget)
+        self.add_symbol_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Add Variable",
+                                                                              self.parameters_toolbar_widget)
+        self.add_equation_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Add Equation",
+                                                                                self.parameters_toolbar_widget)
+        self.remove_selected_button: QtWidgets.QPushButton = QtWidgets.QPushButton("Remove Selected",
+                                                                                   self.parameters_toolbar_widget)
         self.parameters_toolbar_layout.addWidget(self.add_symbol_button)
         self.parameters_toolbar_layout.addWidget(self.add_equation_button)
         self.parameters_toolbar_layout.addWidget(self.remove_selected_button)
         self.parameters_toolbar_layout.addStretch(1)
 
-        self.templates_list: List[RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
+        self.templates_list: List[
+            RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
 
         if mode == DynamicSimulationMode.RMS:
             self.tree_structure = {
@@ -3433,7 +3497,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.libraryTreeView.setDragEnabled(True)
         self.ui.libraryTreeView.setHeaderHidden(False)
 
-
         self.ui.verticalLayout_2.insertWidget(0, self.parameters_toolbar_widget)
 
         self.variables_table_model = VariablesTableModel(
@@ -3502,7 +3565,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.rebuild_scene_from_diagram()
 
         # for every in variable and our variable in the main block of the editor we build a block item to connect these variables
-
 
     def build_library_tree_model(self,
                                  block_role: int,
@@ -3584,7 +3646,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return BlockPositionChangedCallback(self, block_uid)
 
-    def create_generic_block_item(self, block_type: BlockType, x_pos, y_pos) -> GenericBlockItem|None:
+    def create_generic_block_item(self, block_type: BlockType, x_pos, y_pos) -> GenericBlockItem | None:
         """
         Create and place a generic block item.
 
@@ -3624,12 +3686,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 subdiagram=model.diagram
             )
 
-
             return item
         else:
             return None
 
-    def create_emt_wizard_block_item(self, block_type: BlockType, x_pos, y_pos) -> BlockItem|None:
+    def create_emt_wizard_block_item(self, block_type: BlockType, x_pos, y_pos) -> BlockItem | None:
         """
         Create and place a generic block item.
 
@@ -3645,7 +3706,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             count: int = self.block_counters.get(block_type, 0) + 1
             item_name: str = f"{block_type.name}_{count}"
             block_item: BlockItem = BlockItem(var_factory=self.var_factory, name=item_name)
-            block_model = create_emt_wizard_block(phase_n, phase_a, phase_b, phase_c, self.var_factory, block_type=block_type, item_name=item_name)
+            block_model = create_emt_wizard_block(phase_n, phase_a, phase_b, phase_c, self.var_factory,
+                                                  block_type=block_type, item_name=item_name)
 
             if block_model is not None:
                 # The symbolic block has to be attached first so the graphics item can build its ports from it.
@@ -3719,7 +3781,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             return None
 
-    def create_connection_block_item(self, var: Var, block_type: BlockType, x_pos: float, y_pos: float) -> BlockItem | None:
+    def create_connection_block_item(self, var: Var, block_type: BlockType, x_pos: float,
+                                     y_pos: float) -> BlockItem | None:
         """
         Create and place a block item in the canvas scene.
 
@@ -3844,7 +3907,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             pass
 
         self.scene.removeItem(item)
-
 
         if source_port.subsystem.subsys is not None:
             dst_var: Var = source_port.subsystem.subsys.out_vars[source_port.index]
@@ -4049,7 +4111,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         self.scene.setSceneRect(0, 0, SCENE_WIDTH, SCENE_HEIGHT)
         self.view.fitInView(self.scene.sceneRect(), QtCore.Qt.AspectRatioMode.KeepAspectRatio)
-
 
     def _ensure_emt_bus_model(self, bus: Any) -> None:
         """
@@ -4337,7 +4398,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             )
 
             self.main_block.add(bus_mapping_blk)
-
 
             bus_mapping_item.set_subsystem(bus_mapping_blk)
             bus_mapping_item.build_item()
@@ -4854,7 +4914,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                             expression_value = parsed_expression
 
                         index = self.equations_table_model.index(row_index, 1)
-                        self.equations_table_model.setData(index, symbolic_to_string(expression_value), QtCore.Qt.ItemDataRole.EditRole)
+                        self.equations_table_model.setData(index, symbolic_to_string(expression_value),
+                                                           QtCore.Qt.ItemDataRole.EditRole)
                     except Exception as exc:
                         QtWidgets.QMessageBox.warning(
                             self,
