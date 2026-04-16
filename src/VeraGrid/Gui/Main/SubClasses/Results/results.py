@@ -5,7 +5,7 @@
 import numpy as np
 from PySide6 import QtCore, QtWidgets, QtGui
 from matplotlib import pyplot as plt
-from typing import Union
+from typing import Union, Dict
 
 from VeraGrid.Gui.Main.dynamics_results_handler import DynamicsResultsHandler
 from VeraGrid.Gui.table_view_header_wrap import HeaderViewWithWordWrap
@@ -39,6 +39,7 @@ class ResultsMain(SimulationsMain):
         self.current_results_logger: Union[None, Logger] = None
 
         self.dynamic_results_handler: DynamicsResultsHandler | None = None
+        self.dynamic_results_handlers: Dict[str, DynamicsResultsHandler] = dict()
 
         # --------------------------------------------------------------------------------------------------------------
         self.ui.actionSet_OPF_generation_to_profiles.triggered.connect(self.copy_opf_to_profiles)
@@ -113,44 +114,38 @@ class ResultsMain(SimulationsMain):
 
             # set the dynamics model handler
             if driver.tpe == SimulationTypes.RmsDynamic_run:
-                self.dynamic_results_handler = DynamicsResultsHandler(results=driver.results)
-
-                # set the groups combobox
+                self.dynamic_results_handler = self.get_or_create_dynamic_results_handler(
+                    study_name=study_name,
+                    results=driver.results
+                )
                 self.ui.eventsGroupComboBox.setModel(gf.get_list_model(
-                    self.dynamic_results_handler.results.rms_events_group_names
-                ))
+                    self.dynamic_results_handler.results.rms_events_group_names))
 
-                # Both tree views are owned by the handler because the handler owns the underlying state.
                 self.ui.dynamicsDeviceTreeView.setModel(self.dynamic_results_handler.get_view_model())
                 self.ui.dynamicsPlotsTreeView.setModel(self.dynamic_results_handler.get_plots_model())
-                self.dynamic_results_handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
-                # self.ui.dynamicsDeviceTreeView.expandAll()
                 self.ui.dynamicsPlotsTreeView.expandAll()
 
-                # Go to the Dynamics tab
                 self.ui.resultsTabWidget.setCurrentIndex(1)
 
+
             elif driver.tpe == SimulationTypes.EmtDynamic_run:
-                self.dynamic_results_handler = DynamicsResultsHandler(results=driver.results)
 
-                # set the groups combobox
+                self.dynamic_results_handler = self.get_or_create_dynamic_results_handler(
+                    study_name=study_name,
+                    results=driver.results
+                )
                 self.ui.eventsGroupComboBox.setModel(gf.get_list_model(
-                    self.dynamic_results_handler.results.emt_events_group_names
-                ))
+                    self.dynamic_results_handler.results.emt_events_group_names))
 
-                # Both tree views are owned by the handler because the handler owns the underlying state.
                 self.ui.dynamicsDeviceTreeView.setModel(self.dynamic_results_handler.get_view_model())
                 self.ui.dynamicsPlotsTreeView.setModel(self.dynamic_results_handler.get_plots_model())
-                self.dynamic_results_handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
-                # self.ui.dynamicsDeviceTreeView.expandAll()
                 self.ui.dynamicsPlotsTreeView.expandAll()
-
-                # Go to the Dynamics tab
                 self.ui.resultsTabWidget.setCurrentIndex(1)
 
             else:
                 # Go to the Table tab
                 self.ui.resultsTabWidget.setCurrentIndex(0)
+                self.clear_dynamic_results_view()
 
             if len(path) > 1:
 
@@ -378,6 +373,32 @@ class ResultsMain(SimulationsMain):
         else:
             pass
 
+    def get_or_create_dynamic_results_handler(self,
+                                              study_name: str,
+                                              results: RmsResults|EmtResults) -> DynamicsResultsHandler:
+        """
+        Get a cached dynamic-results handler for the given study, or create it.
+
+        :param study_name: Study name shown in the results tree.
+        :param results: Dynamic results object associated with the study.
+        :return: Cached or newly created dynamics-results handler.
+        """
+        handler = self.dynamic_results_handlers.get(study_name, None)
+
+        if handler is None:
+            handler = DynamicsResultsHandler(results=results)
+            self.dynamic_results_handlers[study_name] = handler
+            handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
+            return handler
+        else:
+            if handler.results is results:
+                return handler
+            else:
+                handler = DynamicsResultsHandler(results=results)
+                self.dynamic_results_handlers[study_name] = handler
+                handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
+                return handler
+
     def plot_results(self):
         """
         Plot the results
@@ -532,7 +553,8 @@ class ResultsMain(SimulationsMain):
 
                 if reply == QtWidgets.QMessageBox.StandardButton.Yes.value:
                     if study_name == SimulationTypes.RmsDynamic_run.value or study_name == SimulationTypes.EmtDynamic_run.value:
-                        # Delete dynamic results handler
+                        if study_name in self.dynamic_results_handlers:
+                            del self.dynamic_results_handlers[study_name]
                         self.clear_dynamic_results_view()
 
                     self.session.delete_driver_by_name(study_name)
