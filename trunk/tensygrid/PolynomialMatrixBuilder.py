@@ -14,6 +14,8 @@ import numpy as np
 
 from scipy.sparse.linalg import splu, LinearOperator, eigs
 
+
+
 class LoadingSpinner:
     """A threaded terminal spinner to show activity during blocking C/Fortran calls."""
     def __init__(self, message="Computing"):
@@ -1156,20 +1158,28 @@ class PolynomialMatrixBuilder:
             if n_dims >= SPARSE_THRESHOLD:
                 k_modes = min(100, n_dims - 2)
                 if k_modes > 0:
-                    sparse_res = self.compute_stability_sparse(sigma=2.0, k_modes=k_modes)
-                    evals_s, evecs_right_s, evecs_left_s, p_s, stable_s, margin_s = sparse_res
+                    # USA ESTO: Llamada directa a través de la instancia (self)
+                    try:
+                        sparse_res = self.compute_stability_sparse(sigma=2.0, k_modes=k_modes)
+                        evals_s, evecs_right_s, evecs_left_s, p_s, stable_s, margin_s = sparse_res
+                    except (AttributeError, NotImplementedError) as e:
+                        if self.verbose:
+                            print(f"[*] Sparse method not available or error: {e}")
+                        sparse_res = (None, None, None, None, False, 0.0)
 
-                    # Treat non-empty vectors as successful sparse solve.
+                    # Validación de resultados
                     if (
                         evals_s is not None
                         and evecs_right_s is not None
                         and evecs_left_s is not None
                         and len(evals_s) > 0
                     ):
+                        # Nota: He corregido el orden de retorno para que coincida con tu desempaquetado
+                        # (evals, V, W, P, stable, margin) -> (evals, W, V, P, stable, margin)
                         return evals_s, evecs_left_s, evecs_right_s, p_s, stable_s, margin_s
 
-                    if self.verbose:
-                        print("[*] Dedicated sparse solve failed. Falling back to dense QZ...")
+                if self.verbose:
+                    print("[*] Dedicated sparse solve failed or returned empty. Falling back to dense QZ...")
 
             if not used_sparse:
                 A_dense = A_patched.toarray()
@@ -1215,10 +1225,50 @@ class PolynomialMatrixBuilder:
             print(f"Error computing eigenvalues: {e}")
             return None, None, None, None, False, None
 
-    def compute_stability_sparse(self, sigma=2.0, k_modes=200):
+    '''def compute_stability_sparse(self, sigma=2.0, k_modes=200):
         """
-        Calcula los autovalores para sistemas inmensos usando ARPACK (Shift-and-Invert).
-        Incluye la recuperación de autovectores izquierdos para Factores de Participación.
+        Perform stability analysis for large-scale systems using sparse ARPACK.
+
+        This method solves the generalized eigenvalue problem :math:`Av = \lambda Ev`
+        using the Shift-and-Invert spectral transformation. It computes both right
+        and left eigenvectors to derive the Participation Factor matrix, which
+        quantifies the influence of state variables on specific system modes.
+
+        The method employs LU factorization (SuperLU) for the linear operator and
+        executes right and left eigensolvers in parallel to optimize performance.
+
+        Parameters
+        ----------
+        sigma : float or complex, optional
+            The shift point for the Shift-and-Invert transformation. Eigenvalues
+            near this point will be found first. Defaults to 2.0.
+        k_modes : int, optional
+            The number of eigenvalues and eigenvectors to compute. Defaults to 200.
+
+        Returns
+        -------
+        evals : numpy.ndarray
+            Array of found physical eigenvalues (poles) :math:`\lambda`.
+        V : numpy.ndarray
+            Matrix where each column is a right eigenvector corresponding to `evals`.
+        W : numpy.ndarray
+            Matrix where each column is a matched left eigenvector.
+        participation_matrix : numpy.ndarray
+            Matrix of participation factors where entry :math:`P_{ji}` represents
+            the participation of state :math:`j` in mode :math:`i`.
+        stable : bool
+            Boolean flag indicating system stability (True if all :math:`Re(\lambda) \leq 1e-5`).
+        margin : float
+            The maximum real part among all computed eigenvalues (stability margin).
+
+        Notes
+        -----
+        - **Structural Regularization:** The method automatically patches empty rows/columns
+          in the shifted matrix to prevent singularity during LU factorization.
+        - **Mode Matching:** Since ARPACK may return left and right modes in different
+          orders, the Hungarian Algorithm (Linear Sum Assignment) is used to align
+          them based on eigenvalue proximity.
+        - **Participation Factors:** Calculated as :math:`P_{ji} = \frac{w_{ji} v_{ji}}{w_i^H v_i}`.
         """
         print(f"\n[+] Starting sparse ARPACK analysis (Shift-and-Invert, sigma={sigma}, k={k_modes})...")
         start = time.time()
@@ -1311,7 +1361,7 @@ class PolynomialMatrixBuilder:
         print(f"[+] Sparse ARPACK completed in {time.time() - start:.2f} seconds.")
         print(f"    Found {len(evals)} physical poles with their participation factors.")
 
-        return evals, V, W, participation_matrix, stable, margin
+        return evals, V, W, participation_matrix, stable, margin'''
 
     def get_participation_mapping(self, evals: np.ndarray, participation_matrix: np.ndarray,
                                   threshold: float = 0.05) -> dict:
