@@ -32,15 +32,15 @@ from scipy.optimize import linear_sum_assignment
 
 
 #GRID = "Texas 2000 + VSC"
-GRID = "IEEE 118"
+GRID = "IEEE 9 Bus"
 EXTENSIONS = [".xlsx", ".gridcal", ".json"]
 
 USE_CACHED_BUILDER = True
 BUILDER_CACHE_FILE = f'precomputed_builds/{GRID}.pkl'
 
 FAST_MODE = True
-FAST_GRID_PATH = f'Grids_and_profiles/grids/{GRID}{EXTENSIONS[0]}' #'trunk/tensygrid/grids/IEEE_14-2.gridcal'
-FULL_GRID_PATH = f'Grids_and_profiles/grids/{GRID}{EXTENSIONS[0]}'
+FAST_GRID_PATH = f'Grids_and_profiles/grids/{GRID}{EXTENSIONS[1]}' #'trunk/tensygrid/grids/IEEE_14-2.gridcal'
+FULL_GRID_PATH = f'Grids_and_profiles/grids/{GRID}{EXTENSIONS[1]}'
 PRINT_ALL_BUSES = False # not FAST_MODE
 ENABLE_POST_COMPARE_PLOT = False # not FAST_MODE
 RUN_DYNAMIC_STEP = False
