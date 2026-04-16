@@ -1225,7 +1225,7 @@ class PolynomialMatrixBuilder:
             print(f"Error computing eigenvalues: {e}")
             return None, None, None, None, False, None
 
-    '''def compute_stability_sparse(self, sigma=2.0, k_modes=200):
+    def compute_stability_sparse(self, sigma=2.0, k_modes=200):
         """
         Perform stability analysis for large-scale systems using sparse ARPACK.
 
@@ -1361,7 +1361,7 @@ class PolynomialMatrixBuilder:
         print(f"[+] Sparse ARPACK completed in {time.time() - start:.2f} seconds.")
         print(f"    Found {len(evals)} physical poles with their participation factors.")
 
-        return evals, V, W, participation_matrix, stable, margin'''
+        return evals, V, W, participation_matrix, stable, margin
 
     def get_participation_mapping(self, evals: np.ndarray, participation_matrix: np.ndarray,
                                   threshold: float = 0.05) -> dict:
