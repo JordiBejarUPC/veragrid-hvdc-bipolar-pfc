@@ -30,21 +30,24 @@ from phasor_diagnostics import (
 )
 from scipy.optimize import linear_sum_assignment
 
+
+GRID = "Texas 2000 + VSC"
+
 USE_CACHED_BUILDER = True
-BUILDER_CACHE_FILE = 'precomputed_builds/IEEE118_opf.pkl'
+BUILDER_CACHE_FILE = f'precomputed_builds/{GRID}.pkl'
 
 FAST_MODE = True
-FAST_GRID_PATH = 'grids/IEEE118_opf.gridcal' #'trunk/tensygrid/grids/IEEE_14-2.gridcal'
-FULL_GRID_PATH = 'Grids_and_profiles/grids/IEEE118_opf.gridcal'
+FAST_GRID_PATH = f"C:\\Users\\Usuario\Desktop\git\VeraGrid\Grids_and_profiles\grids\\{GRID}.gridcal" #f'Grids_and_profiles/grids/{GRID}.gridcal' #'trunk/tensygrid/grids/IEEE_14-2.gridcal'
+FULL_GRID_PATH = f'Grids_and_profiles/grids/{GRID}.gridcal'
 PRINT_ALL_BUSES = False # not FAST_MODE
 ENABLE_POST_COMPARE_PLOT = False # not FAST_MODE
 RUN_DYNAMIC_STEP = False
-FAST_MODE = False
+"""FAST_MODE = False
 FAST_GRID_PATH = 'trunk/tensygrid/grids/IEEE_14-2.gridcal'
 FULL_GRID_PATH = 'trunk/tensygrid/grids/IEEE118_opf.gridcal'
 PRINT_ALL_BUSES = not FAST_MODE
 ENABLE_POST_COMPARE_PLOT = not FAST_MODE
-RUN_DYNAMIC_STEP = True
+RUN_DYNAMIC_STEP = True"""
 RUN_CONSISTENCY_CHECK = False
 RUN_PF_LINE_EQ_CHECK = False
 RUN_EXCITER_DIAGNOSTICS = False
@@ -333,7 +336,7 @@ def solve_problem(problem: Any = None) -> Any:
         print("\n[*] Linearizing model with real parameters...")
         builder.linearize(v_dict=v_dict)
 
-        builder.save_state_space("precomputed_matrices/IEEE118_opf")
+        builder.save_state_space(f"precomputed_matrices/{GRID}.pkl")
 
         if USE_CACHED_BUILDER and os.path.exists(BUILDER_CACHE_FILE):
             print(f"\n[📦] Loading full builder object from '{BUILDER_CACHE_FILE}'...")
@@ -350,7 +353,7 @@ def solve_problem(problem: Any = None) -> Any:
             print("\n[*] Linearizing model with real parameters...")
             builder.linearize(v_dict=v_dict)
 
-            builder.save_state_space("precomputed_matrices/IEEE118_opf")
+            builder.save_state_space(f"precomputed_matrices/{GRID}")
 
             if USE_CACHED_BUILDER:
                 print(f"\n[📦] Saving full builder object to '{BUILDER_CACHE_FILE}'...")
