@@ -18,6 +18,8 @@ import VeraGridEngine.Utils.Filtering as flt
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.enumerations import ResultTypes, SimulationTypes
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
+from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
+from VeraGridEngine.Simulations.EMT.emt_results import EmtResults
 
 
 class ResultsMain(SimulationsMain):
@@ -377,7 +379,7 @@ class ResultsMain(SimulationsMain):
                                               study_name: str,
                                               results: RmsResults|EmtResults) -> DynamicsResultsHandler:
         """
-        Get a cached dynamic-results handler for the given study, or create it.
+        Get a cached dynamic-results handler for the given study, or create/update it.
 
         :param study_name: Study name shown in the results tree.
         :param results: Dynamic results object associated with the study.
@@ -390,14 +392,19 @@ class ResultsMain(SimulationsMain):
             self.dynamic_results_handlers[study_name] = handler
             handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
             return handler
+
+        elif handler.results is results:
+            return handler
+
+        elif handler.can_reuse_with_results(results=results):
+            handler.update_results(results=results)
+            return handler
         else:
-            if handler.results is results:
-                return handler
-            else:
-                handler = DynamicsResultsHandler(results=results)
-                self.dynamic_results_handlers[study_name] = handler
-                handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
-                return handler
+
+            handler = DynamicsResultsHandler(results=results)
+            self.dynamic_results_handlers[study_name] = handler
+            handler.get_plots_model().rowsInserted.connect(self.expand_dynamic_plots_tree)
+            return handler
 
     def plot_results(self):
         """
