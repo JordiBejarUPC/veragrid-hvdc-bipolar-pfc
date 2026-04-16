@@ -32,7 +32,7 @@ from scipy.optimize import linear_sum_assignment
 
 
 #GRID = "Texas 2000 + VSC"
-GRID = "Texas 2000 + VSC.gridcal"
+GRID = "IEEE_14-2.gridcal"
 USE_CACHED_BUILDER = True
 BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
@@ -336,8 +336,6 @@ def solve_problem(problem: Any = None) -> Any:
         print("\n[*] Linearizing model with real parameters...")
         builder.linearize(v_dict=v_dict)
 
-        builder.save_state_space(f"trunk/tensygrid/precomputed_matrices/{GRID}")
-
         if USE_CACHED_BUILDER and os.path.exists(BUILDER_CACHE_FILE):
             print(f"\n[📦] Loading full builder object from '{BUILDER_CACHE_FILE}'...")
             with open(BUILDER_CACHE_FILE, 'rb') as f:
@@ -415,7 +413,7 @@ if __name__ == "__main__":
     # 1. Check whether the builder cache exists BEFORE creating the problem
     if USE_CACHED_BUILDER and os.path.exists(BUILDER_CACHE_FILE):
         print(f"\n[⏩] File '{BUILDER_CACHE_FILE}' found.")
-        print("[⏩] Skipping Phasor Problem creation (saving ~365s)...")
+        print("[⏩] Skipping Phasor Problem creation...")
         # Keep problem as None. solve_problem will load the .pkl internally.
         calculated_evs = solve_problem()
     else:
