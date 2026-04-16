@@ -3427,6 +3427,30 @@ class DynamicSimulationMode(Enum):
     RMS = "RMS",
     EMT = "EMT",
 
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return DynamicSimulationMode[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
+
 class BlockScopeMode(Enum):
     """
     Block extraction scope modes for DGS block parsing.
