@@ -179,10 +179,8 @@ class BackEulerImplicitIntegration:
                     converged = residual < tol
                     Jf = self._jacobian_implicit(x_new, dx, self.h)
 
-                    ### print info ###
+                    # Step-0 diagnostic logging
                     if step_idx == 0:
-                        Jf = self._jacobian_implicit(x_new, dx, self.h)
-                        delta = sp.linalg.spsolve(Jf, -rhs)
                         if converged:
                             print("System well initialized.")
                             print(f"x is {x_new}")
@@ -197,7 +195,6 @@ class BackEulerImplicitIntegration:
                                 for i in non_zero_indexes:
                                     eq = all_eq[i]
                                     print(f"eq {eq} with error {rhs[i]}")
-                                exit()
                             else:
                                 pass
 
