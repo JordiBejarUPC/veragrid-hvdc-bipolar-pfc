@@ -3080,6 +3080,8 @@ class DiagramScene(QGraphicsScene):
             self.removeItem(self.temp_line)
             self.temp_line = None
             self.source_port = None
+
+            self.editor.mark_unapplied_changes()
         else:
             super().mouseReleaseEvent(event)
 
@@ -3411,6 +3413,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.block_counters: Dict[BlockType, int] = dict()
         self.scene: DiagramScene = DiagramScene(self)
         self.changes_applied: bool = False
+        self.has_unapplied_changes: bool = False
 
         self.templates_list: List[
             RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
@@ -3671,6 +3674,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 subdiagram=model.diagram
             )
 
+            self.mark_unapplied_changes()
+
             return item
         else:
             return None
@@ -3714,6 +3719,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     tpe=block_type.name,
                     device_uid=block_model.uid
                 )
+
+                self.mark_unapplied_changes()
 
                 return block_item
             else:
@@ -3761,6 +3768,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             )
 
             # self.block_added.emit(block_item.subsys)
+
+            self.mark_unapplied_changes()
 
             return block_item
         else:
@@ -3848,6 +3857,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             tpe=TEMPLATE_NODE_TYPE,
             device_uid=block_model.uid
         )
+
+        self.mark_unapplied_changes()
+
         return block_item
 
     def remove_connection_item(self, item: ConnectionItem) -> None:
@@ -3899,8 +3911,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if dst_var.network_conn:
 
                 target_var: Var
-                i: int
-                eq: Expr
+                # i: int
+                # eq: Expr
 
                 if source_port.base_var is not None:
                     target_var = source_port.base_var
@@ -3985,8 +3997,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         if isinstance(item, ConnectionItem):
             self.remove_connection_item(item)
+            self.mark_unapplied_changes()
         elif isinstance(item, (BlockItem, GenericBlockItem)):
             self.remove_block_item(item)
+            self.mark_unapplied_changes()
         else:
             pass
 
@@ -4281,138 +4295,138 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     self.main_block.in_vars.append(variable)
                     self.main_block.external_mapping[reference] = variable
 
-    def add_external_mapping_block(self):
-        """
-        Add a block with the external mapping vars needed to connect the device to the grid
-        :return:
-        """
-        if self.mode == DynamicSimulationMode.EMT:
-            self.add_emt_external_mapping_vars()
-            return
-        else:
-            pass
-
-        bus_con_item = None
-        tpe = BlockType.EXTERNAL_MAPPING
-
-        if isinstance(self.api_object, BranchParent):
-
-            # add mapping bus from
-            x0, y0 = 200, 200
-            name = "mapping From"
-            bus_from_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
-
-            Pf = self.var_factory.add_var('network_conn_Pf', VarPowerFlowRefferenceType.Pf, True)
-            Qf = self.var_factory.add_var('network_conn_Qf', VarPowerFlowRefferenceType.Qf, True)
-
-            bus_from_mapping_blk = Block(
-                in_vars=[Pf, Qf],
-                name=name
-            )
-
-            self.main_block.add(bus_from_mapping_blk)
-
-            bus_from_mapping_item.set_subsystem(bus_from_mapping_blk)
-            bus_from_mapping_item.build_item()
-
-            if bus_from_mapping_item.subsys is not None:
-                self.scene.addItem(bus_from_mapping_item)
-                bus_from_mapping_item.setPos(x0, y0)
-                # save nodes in diagram
-                self.diagram.add_node(
-                    name=name,
-                    x=x0,
-                    y=y0,
-                    tpe=tpe.name,
-                    device_uid=bus_from_mapping_item.subsys.uid,
-                )
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pf: bus_from_mapping_blk.in_vars[0]})
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qf: bus_from_mapping_blk.in_vars[1]})
-
-            # add con bus to
-            name = "mapping To"
-            x0, y0 = 0, 200
-
-            bus_to_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
-
-            bus_to_mapping_blk = Block(
-                in_vars=[
-                    self.var_factory.add_var('network_conn_Pt', VarPowerFlowRefferenceType.Pt, True),  # Pt
-                    self.var_factory.add_var('network_conn_Qt', VarPowerFlowRefferenceType.Qt, True)  # Qt
-                ],
-                name=name
-            )
-            self.main_block.add(bus_to_mapping_blk)
-
-            bus_to_mapping_item.set_subsystem(bus_to_mapping_blk)
-            bus_to_mapping_item.build_item()
-
-            # Add to scene
-            bus_to_mapping_item.setPos(QPointF(x0, y0))
-            if bus_to_mapping_item.subsys is not None:
-                self.scene.addItem(bus_to_mapping_item)
-                bus_to_mapping_item.setPos(QPointF(x0, y0))
-                # save nodes in diagram
-                self.diagram.add_node(
-                    name=name,
-                    x=x0,
-                    y=y0,
-                    tpe=tpe.name,
-                    device_uid=bus_to_mapping_item.subsys.uid,
-                )
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pt: bus_to_mapping_blk.in_vars[0]})
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qt: bus_to_mapping_blk.in_vars[1]})
-
-        elif isinstance(self.api_object, InjectionParent):
-
-            P = self.var_factory.add_var('net_conn_P', VarPowerFlowRefferenceType.P, True)
-            Q = self.var_factory.add_var('net_conn_Q', VarPowerFlowRefferenceType.Q, True)
-
-            self.main_block.in_vars.append(P)
-            self.main_block.in_vars.append(Q)
-
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: P})
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Q})
-
-
-        # we will use this to build the blocks
-        elif isinstance(self.api_object, InjectionParent):
-            x0, y0 = 0, 0
-            name = "mapping Bus"
-
-            bus_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
-            P = self.var_factory.add_var('net_conn_P', VarPowerFlowRefferenceType.P, True)
-            Q = self.var_factory.add_var('net_conn_Q', VarPowerFlowRefferenceType.Q, True)
-
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: P})
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Q})
-
-            bus_mapping_blk = Block(
-                in_vars=[P, Q],
-                name=name
-            )
-
-            self.main_block.add(bus_mapping_blk)
-
-            bus_mapping_item.set_subsystem(bus_mapping_blk)
-            bus_mapping_item.build_item()
-
-            if bus_mapping_item.subsys is not None:
-                self.scene.addItem(bus_mapping_item)
-                bus_mapping_item.setPos(x0, y0)
-                # save nodes in diagram
-                self.diagram.add_node(
-                    name=name,
-                    x=x0,
-                    y=y0,
-                    tpe=tpe.name,
-                    device_uid=bus_mapping_item.subsys.uid,
-                )
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: bus_mapping_blk.in_vars[0]})
-            self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: bus_mapping_blk.in_vars[1]})
-
-        else:
-            pass
+    # def add_external_mapping_block(self):
+    #     """
+    #     Add a block with the external mapping vars needed to connect the device to the grid
+    #     :return:
+    #     """
+    #     if self.mode == DynamicSimulationMode.EMT:
+    #         self.add_emt_external_mapping_vars()
+    #         return
+    #     else:
+    #         pass
+    #
+    #     bus_con_item = None
+    #     tpe = BlockType.EXTERNAL_MAPPING
+    #
+    #     if isinstance(self.api_object, BranchParent):
+    #
+    #         # add mapping bus from
+    #         x0, y0 = 200, 200
+    #         name = "mapping From"
+    #         bus_from_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
+    #
+    #         Pf = self.var_factory.add_var('network_conn_Pf', VarPowerFlowRefferenceType.Pf, True)
+    #         Qf = self.var_factory.add_var('network_conn_Qf', VarPowerFlowRefferenceType.Qf, True)
+    #
+    #         bus_from_mapping_blk = Block(
+    #             in_vars=[Pf, Qf],
+    #             name=name
+    #         )
+    #
+    #         self.main_block.add(bus_from_mapping_blk)
+    #
+    #         bus_from_mapping_item.set_subsystem(bus_from_mapping_blk)
+    #         bus_from_mapping_item.build_item()
+    #
+    #         if bus_from_mapping_item.subsys is not None:
+    #             self.scene.addItem(bus_from_mapping_item)
+    #             bus_from_mapping_item.setPos(x0, y0)
+    #             # save nodes in diagram
+    #             self.diagram.add_node(
+    #                 name=name,
+    #                 x=x0,
+    #                 y=y0,
+    #                 tpe=tpe.name,
+    #                 device_uid=bus_from_mapping_item.subsys.uid,
+    #             )
+    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pf: bus_from_mapping_blk.in_vars[0]})
+    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qf: bus_from_mapping_blk.in_vars[1]})
+    #
+    #         # add con bus to
+    #         name = "mapping To"
+    #         x0, y0 = 0, 200
+    #
+    #         bus_to_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
+    #
+    #         bus_to_mapping_blk = Block(
+    #             in_vars=[
+    #                 self.var_factory.add_var('network_conn_Pt', VarPowerFlowRefferenceType.Pt, True),  # Pt
+    #                 self.var_factory.add_var('network_conn_Qt', VarPowerFlowRefferenceType.Qt, True)  # Qt
+    #             ],
+    #             name=name
+    #         )
+    #         self.main_block.add(bus_to_mapping_blk)
+    #
+    #         bus_to_mapping_item.set_subsystem(bus_to_mapping_blk)
+    #         bus_to_mapping_item.build_item()
+    #
+    #         # Add to scene
+    #         bus_to_mapping_item.setPos(QPointF(x0, y0))
+    #         if bus_to_mapping_item.subsys is not None:
+    #             self.scene.addItem(bus_to_mapping_item)
+    #             bus_to_mapping_item.setPos(QPointF(x0, y0))
+    #             # save nodes in diagram
+    #             self.diagram.add_node(
+    #                 name=name,
+    #                 x=x0,
+    #                 y=y0,
+    #                 tpe=tpe.name,
+    #                 device_uid=bus_to_mapping_item.subsys.uid,
+    #             )
+    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Pt: bus_to_mapping_blk.in_vars[0]})
+    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Qt: bus_to_mapping_blk.in_vars[1]})
+    #
+    #     elif isinstance(self.api_object, InjectionParent):
+    #
+    #         P = self.var_factory.add_var('net_conn_P', VarPowerFlowRefferenceType.P, True)
+    #         Q = self.var_factory.add_var('net_conn_Q', VarPowerFlowRefferenceType.Q, True)
+    #
+    #         self.main_block.in_vars.append(P)
+    #         self.main_block.in_vars.append(Q)
+    #
+    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: P})
+    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Q})
+    #
+    #
+    #     # we will use this to build the blocks
+    #     elif isinstance(self.api_object, InjectionParent):
+    #         x0, y0 = 0, 0
+    #         name = "mapping Bus"
+    #
+    #         bus_mapping_item = BlockItem(var_factory=self.var_factory, name=name)
+    #         P = self.var_factory.add_var('net_conn_P', VarPowerFlowRefferenceType.P, True)
+    #         Q = self.var_factory.add_var('net_conn_Q', VarPowerFlowRefferenceType.Q, True)
+    #
+    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: P})
+    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Q})
+    #
+    #         bus_mapping_blk = Block(
+    #             in_vars=[P, Q],
+    #             name=name
+    #         )
+    #
+    #         self.main_block.add(bus_mapping_blk)
+    #
+    #         bus_mapping_item.set_subsystem(bus_mapping_blk)
+    #         bus_mapping_item.build_item()
+    #
+    #         if bus_mapping_item.subsys is not None:
+    #             self.scene.addItem(bus_mapping_item)
+    #             bus_mapping_item.setPos(x0, y0)
+    #             # save nodes in diagram
+    #             self.diagram.add_node(
+    #                 name=name,
+    #                 x=x0,
+    #                 y=y0,
+    #                 tpe=tpe.name,
+    #                 device_uid=bus_mapping_item.subsys.uid,
+    #             )
+    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: bus_mapping_blk.in_vars[0]})
+    #         self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: bus_mapping_blk.in_vars[1]})
+    #
+    #     else:
+    #         pass
 
     def _build_emt_branch_voltage_input_specs(self,
                                               bus: Any,
@@ -4644,29 +4658,29 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.diagram.node_data[device_uid].y = y
             print("")
 
-    def _break_domain_template_link(self) -> None:
-        """
-        Detach the edited device from the reusable template of the current domain.
-
-        Manual edits make the block diverge from the original reusable template, so
-        the device must stop pretending to be a clean template instance after the
-        user confirms the changes.
-
-        :return: None.
-        """
-
-        if isinstance(self.api_object, BranchParent) or isinstance(self.api_object, InjectionParent):
-            if self.mode == DynamicSimulationMode.RMS:
-                self.api_object.rms_template = None
-                self.api_object.rms_fmu_template = None
-            else:
-                if self.mode == DynamicSimulationMode.EMT:
-                    self.api_object.emt_template = None
-                    self.api_object.emt_fmu_template = None
-                else:
-                    raise ValueError(f"Unsupported dynamic editor mode {self.mode}")
-        else:
-            pass
+    # def _break_domain_template_link(self) -> None:
+    #     """
+    #     Detach the edited device from the reusable template of the current domain.
+    #
+    #     Manual edits make the block diverge from the original reusable template, so
+    #     the device must stop pretending to be a clean template instance after the
+    #     user confirms the changes.
+    #
+    #     :return: None.
+    #     """
+    #
+    #     if isinstance(self.api_object, BranchParent) or isinstance(self.api_object, InjectionParent):
+    #         if self.mode == DynamicSimulationMode.RMS:
+    #             self.api_object.rms_template = None
+    #             self.api_object.rms_fmu_template = None
+    #         else:
+    #             if self.mode == DynamicSimulationMode.EMT:
+    #                 self.api_object.emt_template = None
+    #                 self.api_object.emt_fmu_template = None
+    #             else:
+    #                 raise ValueError(f"Unsupported dynamic editor mode {self.mode}")
+    #     else:
+    #         pass
 
     def get_selected_scene_block(self) -> Block | None:
         """
@@ -5206,6 +5220,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param block_uid:
         :return:
         """
+        self.mark_unapplied_changes()
         self.rebuild_scene_from_diagram()
         self.select_block_by_uid(block_uid)
 
@@ -5220,6 +5235,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 # Todo: Here are the changes
                 self.api_object.rms_template = None
             copy_block_state(source_block=self.main_block, target_block=self.original_block)
+            self.has_unapplied_changes = False
             self.changes_applied = True
             self.close()
 
@@ -5228,6 +5244,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 # Todo: Here are the changes
                 self.api_object.emt_template = None
             copy_block_state(source_block=self.main_block, target_block=self.original_block)
+            self.has_unapplied_changes = False
             self.changes_applied = True
             self.close()
 
@@ -5348,14 +5365,37 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
 
+    def mark_unapplied_changes(self) -> None:
+        """
+        Mark the editor state as modified with unapplied changes.
+
+        :return:
+        """
+        self.has_unapplied_changes = True
+        self.changes_applied = False
+
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         """
-        Close the editor. Unapplied changes are discarded by design.
+        Close the editor. Ask for confirmation when there are unapplied changes.
 
         :param event:
         :return:
         """
-        event.accept()
+        if self.has_unapplied_changes:
+            reply = QtWidgets.QMessageBox.question(
+                self,
+                "Unsaved changes",
+                "There are unapplied changes. Do you want to close without applying them?",
+                QtWidgets.QMessageBox.StandardButton.Yes,
+                QtWidgets.QMessageBox.StandardButton.No
+            )
+
+            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
+                event.accept()
+            else:
+                event.ignore()
+        else:
+            event.accept()
 
     def graphicsDragEnterEvent(self, event: QDragEnterEvent) -> None:
         """
