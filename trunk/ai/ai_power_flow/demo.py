@@ -239,7 +239,7 @@ def run_external_same_grid_experiment_demo() -> AiPowerFlowWorkflowResult:
 
     :returns: workflow result for the external same-grid experiment demo
     """
-    grid_file_name: str = "/home/santi/Git/eRoots/VeraGrid/Grids_and_profiles/grids/IEEE39_1W.gridcal"
+    grid_file_name: str = "files/IEEE39_1W.gridcal"
     file_split: AiPowerFlowFileSplit = AiPowerFlowFileSplit(
         train_file_names=[grid_file_name],
         validation_file_names=[grid_file_name],
@@ -285,7 +285,7 @@ def run_external_same_grid_hybrid_demo() -> AiPowerFlowWorkflowResult:
 
     :returns: workflow result for the external same-grid hybrid demo
     """
-    grid_file_name: str = "/home/santi/Git/eRoots/VeraGrid/Grids_and_profiles/grids/IEEE39_1W.gridcal"
+    grid_file_name: str = "files/IEEE39_1W.gridcal"
     file_split: AiPowerFlowFileSplit = AiPowerFlowFileSplit(
         train_file_names=[grid_file_name],
         test_file_names=[grid_file_name],
@@ -331,4 +331,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # main()
+    run_matpower_hybrid_demo()
