@@ -396,9 +396,10 @@ class ResultsMain(SimulationsMain):
         elif handler.results is results:
             return handler
 
-        elif handler.can_reuse_with_results(results=results):
-            handler.update_results(results=results)
-            return handler
+        # elif handler.can_reuse_with_results(results=results): # NOT WORKING!
+        # # Re-use already created dynamic plots for the same simulation but with some changes (events,etc) -> not working because uid changes
+        #     handler.update_results(results=results)
+        #     return handler
         else:
 
             handler = DynamicsResultsHandler(results=results)

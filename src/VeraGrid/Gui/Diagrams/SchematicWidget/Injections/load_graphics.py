@@ -80,7 +80,7 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
         :return:
         """
         # load templates
-        templates = self.editor.circuit.emt_models
+        templates = self.editor.circuit.rms_models
 
         # select line templates
         templ_catalogue = dict()
@@ -93,7 +93,7 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
         # prompt RmsModelEditorGUI
         rms_model_editor = DynamicBlockEditorGUI(
             var_factory=self.editor.circuit.var_factory,
-            block=self.api_object.emt_model,
+            block=self.api_object.rms_model,
             api_object=self.api_object,
             mode=DynamicSimulationMode.RMS,
             templates_list=self.editor.circuit.get_rms_models_by_device_type(self.api_object.device_type),
@@ -112,7 +112,7 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
         :return:
         """
         # load templates
-        templates = self.editor.circuit.rms_models
+        templates = self.editor.circuit.emt_models
 
         # select line templates
         templ_catalogue = dict()
@@ -125,7 +125,7 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
         # prompt RmsModelEditorGUI
         rms_model_editor = DynamicBlockEditorGUI(
             var_factory=self.editor.circuit.var_factory,
-            block=self.api_object.rms_model,
+            block=self.api_object.emt_model,
             api_object=self.api_object,
             mode=DynamicSimulationMode.EMT,
             templates_list=self.editor.circuit.get_emt_models_by_device_type(self.api_object.device_type),
