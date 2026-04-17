@@ -21,7 +21,7 @@ from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import BoundaryU
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.Utils.Symbolic.symbolic import Comparison, Const, Expr, Var
-from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block, picdro
+from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block, picdro, procedural_logic_from_dict
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
 
@@ -236,7 +236,8 @@ def _run_case_once(
     vars_map: Dict[str, Var],
     logic_snapshot: List[dict],
 ) -> Dict[str, object]:
-    problem.sys_block.procedural_logic = Block._procedural_logic_from_dict(logic_snapshot)
+    # problem.sys_block.procedural_logic = Block._procedural_logic_from_dict(logic_snapshot)
+    problem.sys_block.procedural_logic = procedural_logic_from_dict(logic_snapshot)
 
     collector = NewtonTraceCollector()
     problem.set_newton_trace_collector(collector)
@@ -251,7 +252,7 @@ def _run_case_once(
         updater = mode_trace
 
     t_start = time.perf_counter()
-    t, y_hist, _ = solver.simulate(
+    t, y_hist, _, _, _ = solver.simulate(
         params0=problem.event_params_values.copy(),
         boundary_updater=updater,
     )

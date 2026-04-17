@@ -437,7 +437,7 @@ def main() -> None:
     validate_initialization(problem)
 
     solver: StructuralCompiledSolver = build_solver(problem)
-    t, y, _ = solver.simulate(boundary_updater=cast(object, problem))
+    t, y, _, _, _ = solver.simulate(boundary_updater=cast(object, problem))
 
     plot_data: Dict[str, np.ndarray] = build_plot_data(
         problem=problem,

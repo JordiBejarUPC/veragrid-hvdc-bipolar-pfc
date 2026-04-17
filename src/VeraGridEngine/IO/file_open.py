@@ -5,6 +5,7 @@
 from __future__ import annotations
 import os
 import json
+import pathlib
 
 from collections.abc import Callable
 from typing import Union, List, Tuple
@@ -204,7 +205,8 @@ def determine_file_type(file_name: List[str] | str) -> FileType | None:
 
         looks_like_ucte = False
         for f in file_name:
-            _, file_extension = os.path.splitext(f)
+            # _, file_extension = os.path.splitext(f)
+            file_extension = ''.join(pathlib.Path(f).suffixes)
             if file_extension.lower() in ['.xml', '.zip']:
                 looks_like_ucte = False
 
@@ -223,7 +225,8 @@ def determine_file_type(file_name: List[str] | str) -> FileType | None:
 
     else:
 
-        name, file_extension = os.path.splitext(file_name)
+        # name, file_extension = os.path.splitext(file_name)
+        file_extension = ''.join(pathlib.Path(file_name).suffixes)
         # print(name, file_extension)
         if file_extension.lower() in ['.xls', '.xlsx']:
 
@@ -290,7 +293,9 @@ def determine_file_type(file_name: List[str] | str) -> FileType | None:
         elif file_extension.lower() == '.uct' or file_extension.lower() == '.ucte':
             return FileType.UCTE
 
-        elif file_extension.lower() == '.iidm' or file_extension.lower() == '.xiidm':
+        elif (file_extension.lower() == '.iidm'
+              or file_extension.lower() == '.xiidm'
+              or file_extension.lower() == '.xiidm.bz2'):
             return FileType.Iidm
         else:
             return None
@@ -376,6 +381,7 @@ class FileOpen:
                                                                 text_func=text_func,
                                                                 progress_func=progress_func,
                                                                 logger=self.logger)
+                        self.circuit = self.multiverse.current_model
                     else:
 
                         self.circuit = parse_veragrid_data(data=data_dictionary,
@@ -408,6 +414,7 @@ class FileOpen:
                                                                 text_func=text_func,
                                                                 progress_func=progress_func,
                                                                 logger=self.logger)
+                        self.circuit = self.multiverse.current_model
                     else:
 
                         self.circuit = parse_veragrid_data(data=data_dictionary,

@@ -363,7 +363,7 @@ solver = create_solver(CHOSEN_SOLVER, problem)
 build_solver_backend(CHOSEN_SOLVER, solver, problem)
 
 boundary_updater = cast(Any, problem)
-t, y, dy = solver.simulate(boundary_updater=boundary_updater)
+t, y, dy, _, _  = solver.simulate(boundary_updater=boundary_updater)
 
 print("StructuralCompiled backend build stats")
 for key, value in solver.get_backend_build_stats().items():

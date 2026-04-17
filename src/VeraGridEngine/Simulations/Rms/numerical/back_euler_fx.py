@@ -19,7 +19,8 @@ class BackEulerImplicitIntegration:
                  t0: float,
                  t_end: float,
                  h: float,
-                 max_iter: int):
+                 max_iter: int,
+                 tolerance: float = 1e-7):
         """
         Initializes an object to solve a given DAE (Differential-Algebraic Equation) problem using numerical
         methods. This constructor sets up the time grid and prepares storage for results.
@@ -47,6 +48,7 @@ class BackEulerImplicitIntegration:
         self.steps = int(np.ceil((t_end - t0) / h))
         self.t: Vec = np.empty(self.steps + 1)
         self.y: Mat = np.empty((self.steps + 1, self.problem.get_all_vars_number()))
+        self.tol = tolerance
 
     def _rhs_implicit(self,
                       x: Vec,
@@ -154,7 +156,7 @@ class BackEulerImplicitIntegration:
                 xn = self.y[step_idx, :]
                 self.problem.advance_fmu_cs_devices(t=current_time, x_snapshot=xn, h=self.h)
                 self.problem.advance_fmu_me_devices(t=current_time, x_snapshot=xn, h=self.h)
-                tol = 1e-7
+                tol = self.tol
 
                 # Report progress
                 self.problem.report_progress2(step_idx, self.steps)
@@ -186,7 +188,7 @@ class BackEulerImplicitIntegration:
                             print(f"x is {x_new}")
                         else:
                             well_initialized = False
-                            if residual > 1e-4:
+                            if residual > tol:
                                 print(f"System requires iterative initialization. Initial DAE residual is {residual}.")
                                 print(f'rhs is {rhs}')
                                 non_zero_indexes = np.where(np.abs(rhs) > 1e-7)[0]
@@ -195,6 +197,7 @@ class BackEulerImplicitIntegration:
                                 for i in non_zero_indexes:
                                     eq = all_eq[i]
                                     print(f"eq {eq} with error {rhs[i]}")
+                                exit()
                             else:
                                 pass
 

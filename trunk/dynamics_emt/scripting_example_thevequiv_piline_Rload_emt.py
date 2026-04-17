@@ -93,8 +93,6 @@ grid.add_bus(bus1)
 
 # Lines
 line0 = Line(name="line0", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
-
-
 # physical configuration (Overhead line tower)
 tower = OverheadLineType(name="Tower", Vnom=vnom)
 wire = Wire(name="Panther 30/7 ACSR",
@@ -107,9 +105,12 @@ tower.add_wire_relationship(wire=wire, xpos=-12.65, ypos=27.5, phase=1)
 tower.add_wire_relationship(wire=wire, xpos=0.0, ypos=27.5, phase=2)
 tower.add_wire_relationship(wire=wire, xpos=12.65, ypos=27.5, phase=3)
 tower.compute()
-
-# Aplicar física a la línea
+# Apply line physics
 line0.apply_template(tower, grid.Sbase, grid.fBase)
+
+# line0 = Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
+#                  rate=900.0)
+
 
 # load
 # P=1.0
@@ -409,7 +410,7 @@ def run_single_solver_trajectory(solver_key: str, enable_trace: bool) -> Tuple[E
     t_arr: np.ndarray
     y_arr: np.ndarray
     dy_arr: np.ndarray
-    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, dy_arr, _, _  = solver.simulate(boundary_updater=boundary_updater)
     return local_problem, solver, t_arr, y_arr, dy_arr
 
 
@@ -691,14 +692,14 @@ def run_single_solver_cold_warm_benchmark(solver_key: str) -> Dict[str, object]:
     _cold_t: np.ndarray
     cold_y: np.ndarray
     _cold_dy: np.ndarray
-    _cold_t, cold_y, _cold_dy = solver.simulate(boundary_updater=boundary_updater)
+    _cold_t, cold_y, _cold_dy, _, _  = solver.simulate(boundary_updater=boundary_updater)
     cold_sim_s: float = perf_counter() - cold_sim_t0
 
     warm_sim_t0: float = perf_counter()
     _warm_t: np.ndarray
     warm_y: np.ndarray
     _warm_dy: np.ndarray
-    _warm_t, warm_y, _warm_dy = solver.simulate(boundary_updater=boundary_updater)
+    _warm_t, warm_y, _warm_dy, _, _  = solver.simulate(boundary_updater=boundary_updater)
     warm_sim_s: float = perf_counter() - warm_sim_t0
 
     if warm_sim_s > 0.0:
@@ -749,7 +750,7 @@ def run_single_solver_benchmark(solver_key: str, reference_y: np.ndarray | None)
     t_arr: np.ndarray
     y_arr: np.ndarray
     dy_arr: np.ndarray
-    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, dy_arr, _, _  = solver.simulate(boundary_updater=boundary_updater)
     simulate_s: float = perf_counter() - t_sim_0
 
     if reference_y is None:
@@ -890,7 +891,7 @@ def main() -> None:
     # ==============================================================================
     boundary_updater = cast(Any, problem)
     profiler.enable()
-    t_arr, y_arr, _dy = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, _dy, _, _  = solver.simulate(boundary_updater=boundary_updater)
 
     if isinstance(solver, StructuralCompiledSolver):
         print("StructuralCompiled backend build stats")

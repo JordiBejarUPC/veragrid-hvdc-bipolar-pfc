@@ -60,7 +60,7 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
-from VeraGridEngine.Devices.Aggregation import EmtEvent
+from VeraGridEngine.Devices.Events.emt_event import EmtEvent
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.enumerations import (BranchImpedanceMode, DynamicIntegrationMethod, EmtInitializationMethod,
@@ -380,7 +380,7 @@ def run_single_solver_trajectory(solver_key: str, enable_trace: bool) -> Tuple[E
     t_arr: np.ndarray
     y_arr: np.ndarray
     dy_arr: np.ndarray
-    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, dy_arr, _, _ = solver.simulate(boundary_updater=boundary_updater)
     return local_problem, solver, t_arr, y_arr, dy_arr
 
 
