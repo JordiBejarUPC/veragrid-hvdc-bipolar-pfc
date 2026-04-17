@@ -10836,7 +10836,7 @@ QProgressBar::chunk{
      <x>0</x>
      <y>0</y>
      <width>1198</width>
-     <height>23</height>
+     <height>21</height>
     </rect>
    </property>
    <property name="font">
@@ -11041,6 +11041,7 @@ QProgressBar::chunk{
     <addaction name="actionAdd_selected_as_remedial_action"/>
     <addaction name="actionAdd_rms_event_to_selected"/>
     <addaction name="actionAdd_short_circuit_events"/>
+    <addaction name="actionAdd_emt_event_to_selected"/>
    </widget>
    <addaction name="menuProject"/>
    <addaction name="menuActions"/>
@@ -12831,6 +12832,18 @@ QProgressBar::chunk{
    </property>
    <property name="menuRole">
     <enum>QAction::MenuRole::TextHeuristicRole</enum>
+   </property>
+  </action>
+  <action name="actionAdd_emt_event_to_selected">
+   <property name="icon">
+    <iconset resource="../Icons/icons.qrc">
+     <normaloff>:/Icons/icons/dyn_emt_add.png</normaloff>:/Icons/icons/dyn_emt_add.png</iconset>
+   </property>
+   <property name="text">
+    <string>Add emt event to selected</string>
+   </property>
+   <property name="toolTip">
+    <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Add EMT event&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Create a new EMT event to the schematic selection&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
    </property>
   </action>
  </widget>

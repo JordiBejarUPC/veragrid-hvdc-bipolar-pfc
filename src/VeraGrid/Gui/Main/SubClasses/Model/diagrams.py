@@ -237,7 +237,7 @@ class DiagramsMain(CompiledArraysMain):
         self.ui.actionAdd_selected_as_remedial_action.triggered.connect(self.add_selected_to_remedial_action)
         self.ui.actionAdd_selected_as_new_investment.triggered.connect(self.add_selected_to_investment)
         self.ui.actionAdd_rms_event_to_selected.triggered.connect(self.add_rms_event_to_selected)
-        # self.ui.actionAdd_emt_event_to_selected.triggered.connect(self.add_emt_event_to_selected) ############
+        self.ui.actionAdd_emt_event_to_selected.triggered.connect(self.add_emt_event_to_selected)
         self.ui.actionAdd_short_circuit_events.triggered.connect(self.add_short_circuit_events)
 
         self.ui.actionZoom_in.triggered.connect(self.zoom_in)
