@@ -4255,23 +4255,28 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         For branch devices, both terminal buses must be exposed.
         """
         if isinstance(self.api_object, BranchParent):
-            voltage_pairs: List[tuple[VarPowerFlowRefferenceType, Any]] = list()
+            voltage_specs: List[tuple[VarPowerFlowRefferenceType, str]] = list()
 
-            voltage_pairs.extend(
-                self.get_branch_emt_voltage_pairs(self.api_object.bus_from, "from")
+            voltage_specs.extend(
+                self._build_emt_branch_voltage_input_specs(self.api_object.bus_from, "from")
             )
-            voltage_pairs.extend(
-                self.get_branch_emt_voltage_pairs(self.api_object.bus_to, "to")
+            voltage_specs.extend(
+                self._build_emt_branch_voltage_input_specs(self.api_object.bus_to, "to")
             )
 
-            for reference, variable in voltage_pairs:
-                self.main_block.in_vars.append(variable)
-                self.main_block.external_mapping[reference] = variable
+            reference: VarPowerFlowRefferenceType
+            visible_name: str
+            for reference, visible_name in voltage_specs:
+                var = self.var_factory.add_var(visible_name, reference, True)
+                self.main_block.in_vars.append(var)
+                self.main_block.external_mapping[reference] = var
 
         elif isinstance(self.api_object, InjectionParent):
             voltage_pairs = self.get_injection_emt_voltage_pairs(self.api_object.bus)
 
             if voltage_pairs is not None:
+                reference: VarPowerFlowRefferenceType
+                variable: Any
                 for reference, variable in voltage_pairs:
                     self.main_block.in_vars.append(variable)
                     self.main_block.external_mapping[reference] = variable
@@ -4409,6 +4414,67 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
+    def _build_emt_branch_voltage_input_specs(self,
+                                              bus: Any,
+                                              side: str) -> List[tuple[VarPowerFlowRefferenceType, str]]:
+        """
+        Build the EMT branch voltage references together with the user-visible variable names.
+
+        The internal references keep the from/to semantics required by the network coupling,
+        but the visible names mimic the bus-voltage naming shown in injection devices.
+
+        :param bus: Terminal bus.
+        :param side: Branch side, either ``from`` or ``to``.
+        :return: List of (reference, visible_name).
+        """
+        voltage_pairs = self.get_branch_emt_voltage_pairs(bus, side)
+        specs: List[tuple[VarPowerFlowRefferenceType, str]] = list()
+
+        reference: VarPowerFlowRefferenceType
+        variable: Any
+        for reference, variable in voltage_pairs:
+            specs.append((reference, str(variable.name)))
+
+        return specs
+
+    def _build_emt_branch_current_output_specs(self,
+                                               bus: Any,
+                                               side: str) -> List[tuple[VarPowerFlowRefferenceType, str]]:
+        """
+        Build the EMT branch current references together with the user-visible variable names.
+
+        Internal references keep the from/to semantics, but the visible names follow
+        the same naming style used by injection devices and add the terminal bus name.
+
+        :param bus: Terminal bus.
+        :param side: Branch side, either ``from`` or ``to``.
+        :return: List of (reference, visible_name).
+        """
+        current_refs = self._build_emt_branch_current_refs(bus, side)
+        safe_bus_name: str = self._get_safe_bus_name(bus)
+        specs: List[tuple[VarPowerFlowRefferenceType, str]] = list()
+
+        visible_prefix_map: Dict[VarPowerFlowRefferenceType, str] = {
+            VarPowerFlowRefferenceType.if_N: "network_conn_i_N",
+            VarPowerFlowRefferenceType.if_A: "network_conn_i_A",
+            VarPowerFlowRefferenceType.if_B: "network_conn_i_B",
+            VarPowerFlowRefferenceType.if_C: "network_conn_i_C",
+            VarPowerFlowRefferenceType.it_N: "network_conn_i_N",
+            VarPowerFlowRefferenceType.it_A: "network_conn_i_A",
+            VarPowerFlowRefferenceType.it_B: "network_conn_i_B",
+            VarPowerFlowRefferenceType.it_C: "network_conn_i_C",
+        }
+
+        reference: VarPowerFlowRefferenceType
+        for reference in current_refs:
+            visible_prefix: str | None = visible_prefix_map.get(reference, None)
+            if visible_prefix is not None:
+                specs.append((reference, f"{visible_prefix}_{safe_bus_name}"))
+            else:
+                pass
+
+        return specs
+
     def build_emt_injection_current_refs(self, bus: Any) -> List[VarPowerFlowRefferenceType]:
         """
         Return the ordered EMT current references that should be exposed for one injection device.
@@ -4476,21 +4542,23 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     def add_emt_external_mapping_vars(self) -> None:
         """
-        Add EMT current output variables for the edited device.
-        For branch devices, currents for both terminals must be exposed.
+        Add EMT current-output variables for the edited device.
+        For branch devices, currents of both terminal buses are exposed with bus-based names.
         """
         if isinstance(self.api_object, BranchParent):
-            current_refs: List[VarPowerFlowRefferenceType] = list()
+            current_specs: List[tuple[VarPowerFlowRefferenceType, str]] = list()
 
-            current_refs.extend(
-                self._build_emt_branch_current_refs(self.api_object.bus_from, "from")
+            current_specs.extend(
+                self._build_emt_branch_current_output_specs(self.api_object.bus_from, "from")
             )
-            current_refs.extend(
-                self._build_emt_branch_current_refs(self.api_object.bus_to, "to")
+            current_specs.extend(
+                self._build_emt_branch_current_output_specs(self.api_object.bus_to, "to")
             )
 
-            for reference in current_refs:
-                var = self.var_factory.add_var(f"network_conn_{reference.value}", reference, True)
+            reference: VarPowerFlowRefferenceType
+            visible_name: str
+            for reference, visible_name in current_specs:
+                var = self.var_factory.add_var(visible_name, reference, True)
                 self.main_block.out_vars.append(var)
                 self.main_block.external_mapping[reference] = var
 
@@ -4501,6 +4569,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 var = self.var_factory.add_var(f"network_conn_{reference.value}", reference, True)
                 self.main_block.out_vars.append(var)
                 self.main_block.external_mapping[reference] = var
+
+    def _get_safe_bus_name(self, bus: Any) -> str:
+        """
+        Build a safe bus-name suffix for editor-visible connection variables.
+
+        :param bus: Bus API object.
+        :return: Bus name with spaces replaced by underscores.
+        """
+        return bus.name.replace(" ", "_")
 
     def add_api_obj_mapping(self):
         """
