@@ -118,7 +118,7 @@ class BackEulerImplicitIntegration:
         :return:
         """
         converged: bool = False
-        well_initialized: bool  = True
+        well_initialized: bool = True
 
         x0: Vec = self.problem.get_x0()
 
@@ -198,10 +198,7 @@ class BackEulerImplicitIntegration:
                             else:
                                 pass
 
-
                     if not converged:
-
-                        solved = False
                         linear_start = time.time()
                         delta = sp.linalg.spsolve(Jf, -rhs)
                         linear_end = time.time()
@@ -220,8 +217,7 @@ class BackEulerImplicitIntegration:
                                 print(f"\nSingular direction {i}, σ={s[i]:.3e}")
                                 for j in dominant_idx:
                                     if j < self.problem.get_algebraic_var_number():
-                                        algeb_vars = self.problem.get_algebraic_vars
-                                        var_name = algeb_vars[j].name
+                                        var_name = self.problem.algebraic_vars[j].name
                                         print(f"  {var_name:20s} {v[j]:+.3e}")
                             print("Using LSQR")
                             print(f"residual is {residual} for timestep {step_idx}")
@@ -242,7 +238,6 @@ class BackEulerImplicitIntegration:
                         if not solved:
                             print("Failed to solve linear system even with regularization.")
                             break
-
 
                         x_new += delta
                         n_iter += 1

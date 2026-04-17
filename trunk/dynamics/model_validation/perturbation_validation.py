@@ -93,7 +93,7 @@ def perturbation_validation():
     print(f"\nSystem has {phasor_problem.get_states_number()} states")
     
     # Get state variable names
-    state_vars = phasor_problem.get_state_vars
+    state_vars = phasor_problem.state_vars
     
     # Compute state matrix and eigenvalues
     from VeraGridEngine.Simulations.SmallSignalStabilityRms.small_signal_driver import compute_state_matrix

@@ -86,7 +86,7 @@ def validate_eigenvalues():
     eigenvalues, eigenvectors = np.linalg.eig(A)
     
     # Get state variable names
-    state_vars = phasor_problem.get_state_vars
+    state_vars = phasor_problem.state_vars
     
     # Sort by real part (most positive first)
     sorted_indices = np.argsort(np.real(eigenvalues))[::-1]
