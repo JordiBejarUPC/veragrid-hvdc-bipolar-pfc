@@ -26,14 +26,16 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Simulations.driver_template import DummySignal
-from VeraGridEngine.IO.fmu.importer import (
+from VeraGridEngine.IO.fmu.importer.experimental_cs import (
     advance_rms_fmu_cs_devices,
-    advance_rms_fmu_me_devices,
     close_rms_fmu_cs_devices,
-    close_rms_fmu_me_devices,
     initialize_rms_fmu_cs_devices,
-    initialize_rms_fmu_me_devices,
     register_rms_fmu_cs_device,
+)
+from VeraGridEngine.IO.fmu.importer.experimental_me import (
+    advance_rms_fmu_me_devices,
+    close_rms_fmu_me_devices,
+    initialize_rms_fmu_me_devices,
     register_rms_fmu_me_device,
 )
 
