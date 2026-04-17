@@ -283,7 +283,7 @@ def small_signal_analysis():
         print(f"  {'-'*80}")
         
         # Get state variable names
-        state_vars = driver.problem.get_state_vars
+        state_vars = driver.problem.state_vars
         
         for i, ev in unstable:
             # Find the state with highest participation for this mode

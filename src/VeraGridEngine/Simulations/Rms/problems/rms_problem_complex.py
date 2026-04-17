@@ -668,7 +668,7 @@ class RmsProblemComplex(RmsProblemTemplate):
         return self._uid2idx_vars
 
     @property
-    def get_algebraic_vars(self):
+    def algebraic_vars(self):
         return self._algebraic_vars
 
     @property
@@ -681,7 +681,7 @@ class RmsProblemComplex(RmsProblemTemplate):
         return variables
 
     @property
-    def get_state_vars(self):
+    def state_vars(self):
         return self._state_vars
 
     def get_all_vars_number(self) -> int:

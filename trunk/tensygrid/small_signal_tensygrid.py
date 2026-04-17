@@ -30,21 +30,25 @@ from phasor_diagnostics import (
 )
 from scipy.optimize import linear_sum_assignment
 
+
+#GRID = "Texas 2000 + VSC"
+#GRID = "IEEE 14.xlsx"
+GRID = "case_ACTIVSg2000.matpower"
 USE_CACHED_BUILDER = True
-BUILDER_CACHE_FILE = 'precomputed_builds/IEEE118_opf.pkl'
+BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
 FAST_MODE = True
-FAST_GRID_PATH = 'grids/IEEE118_opf.gridcal' #'trunk/tensygrid/grids/IEEE_14-2.gridcal'
-FULL_GRID_PATH = 'Grids_and_profiles/grids/IEEE118_opf.gridcal'
+FAST_GRID_PATH = f'Grids_and_profiles/grids/{GRID}' #'trunk/tensygrid/grids/IEEE_14-2.gridcal'
+FULL_GRID_PATH = f'Grids_and_profiles/grids/{GRID}'
 PRINT_ALL_BUSES = False # not FAST_MODE
 ENABLE_POST_COMPARE_PLOT = False # not FAST_MODE
 RUN_DYNAMIC_STEP = False
-FAST_MODE = False
+"""FAST_MODE = False
 FAST_GRID_PATH = 'trunk/tensygrid/grids/IEEE_14-2.gridcal'
 FULL_GRID_PATH = 'trunk/tensygrid/grids/IEEE118_opf.gridcal'
 PRINT_ALL_BUSES = not FAST_MODE
 ENABLE_POST_COMPARE_PLOT = not FAST_MODE
-RUN_DYNAMIC_STEP = True
+RUN_DYNAMIC_STEP = True"""
 RUN_CONSISTENCY_CHECK = False
 RUN_PF_LINE_EQ_CHECK = False
 RUN_EXCITER_DIAGNOSTICS = False
@@ -67,9 +71,13 @@ def define_problem_with_path(grid_path):
     ## -GENERATORS
     for igen, gen in enumerate(grid.generators):
         genqec = vge.get_complete_generator_template_phasor(grid.var_factory, name=f"Gen{igen}").block
+
+
         genqec.connect([genqec.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
+
         genqec.connect([genqec.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
         vge.set_rms_model(device=gen, model=genqec, var_factory=grid.var_factory)
+
     ## -LINES:
     for line in grid.lines:
         lineec = vge.get_line_phasor_rms_template(grid.var_factory, name=line.name).block
@@ -112,7 +120,8 @@ def define_problem_with_path(grid_path):
     # ===================================================================
 
     print("\n[2] Running power flow...")
-    pf_options = vge.PowerFlowOptions(tolerance=1e-13)
+    #pf_options = vge.PowerFlowOptions(tolerance=1e-13)
+    pf_options = vge.PowerFlowOptions(tolerance=1e-5)
     pf_results = vge.power_flow(grid, pf_options)
 
     if pf_results.converged:
@@ -333,8 +342,6 @@ def solve_problem(problem: Any = None) -> Any:
         print("\n[*] Linearizing model with real parameters...")
         builder.linearize(v_dict=v_dict)
 
-        builder.save_state_space("precomputed_matrices/IEEE118_opf")
-
         if USE_CACHED_BUILDER and os.path.exists(BUILDER_CACHE_FILE):
             print(f"\n[📦] Loading full builder object from '{BUILDER_CACHE_FILE}'...")
             with open(BUILDER_CACHE_FILE, 'rb') as f:
@@ -350,7 +357,7 @@ def solve_problem(problem: Any = None) -> Any:
             print("\n[*] Linearizing model with real parameters...")
             builder.linearize(v_dict=v_dict)
 
-            builder.save_state_space("precomputed_matrices/IEEE118_opf")
+            builder.save_state_space(f"trunk/tensygrid/precomputed_matrices/{GRID}")
 
             if USE_CACHED_BUILDER:
                 print(f"\n[📦] Saving full builder object to '{BUILDER_CACHE_FILE}'...")
@@ -412,7 +419,7 @@ if __name__ == "__main__":
     # 1. Check whether the builder cache exists BEFORE creating the problem
     if USE_CACHED_BUILDER and os.path.exists(BUILDER_CACHE_FILE):
         print(f"\n[⏩] File '{BUILDER_CACHE_FILE}' found.")
-        print("[⏩] Skipping Phasor Problem creation (saving ~365s)...")
+        print("[⏩] Skipping Phasor Problem creation...")
         # Keep problem as None. solve_problem will load the .pkl internally.
         calculated_evs = solve_problem()
     else:

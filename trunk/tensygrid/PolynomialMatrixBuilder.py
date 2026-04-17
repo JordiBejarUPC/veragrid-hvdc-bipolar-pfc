@@ -1,11 +1,9 @@
 import sympy as sp
-import numpy as np
 from scipy import sparse, linalg
 from enum import Enum
 from typing import Optional, Any, Tuple
 import re, math
 import threading
-import time
 import sys
 import itertools
 import concurrent.futures
@@ -13,6 +11,8 @@ import time
 import numpy as np
 
 from scipy.sparse.linalg import splu, LinearOperator, eigs
+
+
 
 class LoadingSpinner:
     """A threaded terminal spinner to show activity during blocking C/Fortran calls."""
@@ -85,10 +85,52 @@ def _sort_symbol(sym: sp.Symbol) -> tuple:
     else:
         return 1, name
 
+def _clean_name_fn(n):
+    """
+    Standardizes the string representation of a symbolic variable name by normalizing
+    various time-derivative prefixes into a single canonical format.
+
+    From an algorithmic perspective, different symbolic operations, external libraries,
+    or intermediate parsing steps may generate inconsistent first-derivative prefixes
+    (such as 'dt_1_', 'd_1_', or simply 'd_'). This cleaning step is critical in the
+    broader algorithm because downstream processes—such as state-space formulation,
+    variable mapping, or the previous sorting logic—rely on strict, predictable string
+    matching to correctly identify and manipulate time derivatives.
+
+    The function executes the following sequence:
+    1. Casts the input to a string to guarantee that string manipulation methods are available,
+       allowing it to gracefully handle SymPy symbols or raw strings.
+    2. Explicitly replaces known anomalous first-derivative notations ('dt_1_' and 'd_1_')
+       with the standard 'dt_' prefix.
+    3. Utilizes a regular expression to find word-boundary instances of 'd_' (matching the
+       start of the string) and replaces them with 'dt_'. The word boundary is essential to
+       prevent the accidental replacement of 'd_' if it occurs in the middle or end of a
+       variable's base name.
+
+    :param n: The variable or object whose name requires standardizing.
+    :type n: Any (typically str or sp.Symbol)
+    :return: The cleaned and standardized string name with a unified 'dt_' derivative prefix.
+    :rtype: str
+    """
+    c = str(n)
+    c = c.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
+    c = re.sub(r'\bd_', 'dt_', c)
+    return c
+
 
 def _get_real_part(val: complex) -> float:
     return float(val.real)
 
+
+def _safe_to_string(item: Any) -> str:
+    """ Safely extracts string representation without getattr/hasattr """
+    try:
+        return str(item.expr)
+    except AttributeError:
+        try:
+            return item.to_string()
+        except AttributeError:
+            return str(item)
 
 class PolynomialMatrixBuilder:
     """
@@ -232,16 +274,6 @@ class PolynomialMatrixBuilder:
         processed_state_vars = list()
         processed_algebraic_vars = list()
 
-        def _safe_to_string(item: Any) -> str:
-            """ Safely extracts string representation without getattr/hasattr """
-            try:
-                return str(item.expr)
-            except AttributeError:
-                try:
-                    return item.to_string()
-                except AttributeError:
-                    return str(item)
-
         if eqs is not None:
             processed_eqs = list(eqs)
         elif self.has_problem:
@@ -259,37 +291,7 @@ class PolynomialMatrixBuilder:
         if ineqs is not None:
             processed_ineqs = list(ineqs)
 
-        def clean_name_fn(n):
-            """
-            Standardizes the string representation of a symbolic variable name by normalizing
-            various time-derivative prefixes into a single canonical format.
 
-            From an algorithmic perspective, different symbolic operations, external libraries,
-            or intermediate parsing steps may generate inconsistent first-derivative prefixes
-            (such as 'dt_1_', 'd_1_', or simply 'd_'). This cleaning step is critical in the
-            broader algorithm because downstream processes—such as state-space formulation,
-            variable mapping, or the previous sorting logic—rely on strict, predictable string
-            matching to correctly identify and manipulate time derivatives.
-
-            The function executes the following sequence:
-            1. Casts the input to a string to guarantee that string manipulation methods are available,
-               allowing it to gracefully handle SymPy symbols or raw strings.
-            2. Explicitly replaces known anomalous first-derivative notations ('dt_1_' and 'd_1_')
-               with the standard 'dt_' prefix.
-            3. Utilizes a regular expression to find word-boundary instances of 'd_' (matching the
-               start of the string) and replaces them with 'dt_'. The word boundary is essential to
-               prevent the accidental replacement of 'd_' if it occurs in the middle or end of a
-               variable's base name.
-
-            :param n: The variable or object whose name requires standardizing.
-            :type n: Any (typically str or sp.Symbol)
-            :return: The cleaned and standardized string name with a unified 'dt_' derivative prefix.
-            :rtype: str
-            """
-            c = str(n)
-            c = c.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
-            c = re.sub(r'\bd_', 'dt_', c)
-            return c
 
         def _extract_mappings(var_list: list) -> None:
             """
@@ -299,7 +301,7 @@ class PolynomialMatrixBuilder:
             From an algorithmic perspective, this function builds a required lookup table
             (`self._explicit_deriv_map`) linking state variables to their corresponding derivatives.
             It iterates over the provided list, bypassing raw strings, and inspects objects for
-            `diff_var` or `base_var` properties. By applying `clean_name_fn` to the extracted names,
+            `diff_var` or `base_var` properties. By applying `_clean_name_fn` to the extracted names,
             it guarantees standardized string matching for downstream differential equation assembly.
 
             :param var_list: A collection of variable objects to inspect for derivative relationships.
@@ -321,7 +323,7 @@ class PolynomialMatrixBuilder:
                     diff_var = var_obj.diff_var
                     if diff_var is not None:
                         try:
-                            self._explicit_deriv_map[clean_name_fn(base_name_mappings)] = clean_name_fn(diff_var.name)
+                            self._explicit_deriv_map[_clean_name_fn(base_name_mappings)] = _clean_name_fn(diff_var.name)
                         except AttributeError:
                             pass
                 except AttributeError:
@@ -331,7 +333,7 @@ class PolynomialMatrixBuilder:
                     base_var = var_obj.base_var
                     if base_var is not None:
                         try:
-                            self._explicit_deriv_map[clean_name_fn(base_var.name)] = clean_name_fn(base_name_mappings)
+                            self._explicit_deriv_map[_clean_name_fn(base_var.name)] = _clean_name_fn(base_name_mappings)
                         except AttributeError:
                             pass
                 except AttributeError:
@@ -1156,20 +1158,28 @@ class PolynomialMatrixBuilder:
             if n_dims >= SPARSE_THRESHOLD:
                 k_modes = min(100, n_dims - 2)
                 if k_modes > 0:
-                    sparse_res = self.compute_stability_sparse(sigma=2.0, k_modes=k_modes)
-                    evals_s, evecs_right_s, evecs_left_s, p_s, stable_s, margin_s = sparse_res
+                    # USA ESTO: Llamada directa a través de la instancia (self)
+                    try:
+                        sparse_res = self.compute_stability_sparse(sigma=2.0, k_modes=k_modes)
+                        evals_s, evecs_right_s, evecs_left_s, p_s, stable_s, margin_s = sparse_res
+                    except (AttributeError, NotImplementedError) as e:
+                        if self.verbose:
+                            print(f"[*] Sparse method not available or error: {e}")
+                        sparse_res = (None, None, None, None, False, 0.0)
 
-                    # Treat non-empty vectors as successful sparse solve.
+                    # Validación de resultados
                     if (
                         evals_s is not None
                         and evecs_right_s is not None
                         and evecs_left_s is not None
                         and len(evals_s) > 0
                     ):
+                        # Nota: He corregido el orden de retorno para que coincida con tu desempaquetado
+                        # (evals, V, W, P, stable, margin) -> (evals, W, V, P, stable, margin)
                         return evals_s, evecs_left_s, evecs_right_s, p_s, stable_s, margin_s
 
-                    if self.verbose:
-                        print("[*] Dedicated sparse solve failed. Falling back to dense QZ...")
+                if self.verbose:
+                    print("[*] Dedicated sparse solve failed or returned empty. Falling back to dense QZ...")
 
             if not used_sparse:
                 A_dense = A_patched.toarray()
@@ -1216,10 +1226,50 @@ class PolynomialMatrixBuilder:
             return None, None, None, None, False, None
 
     def compute_stability_sparse(self, sigma=2.0, k_modes=200):
-        """
-        Calcula los autovalores para sistemas inmensos usando ARPACK (Shift-and-Invert).
-        Incluye la recuperación de autovectores izquierdos para Factores de Participación.
-        """
+        '''
+        Perform stability analysis for large-scale systems using sparse ARPACK.
+
+        This method solves the generalized eigenvalue problem :math:`Av = \\lambda Ev`
+        using the Shift-and-Invert spectral transformation. It computes both right
+        and left eigenvectors to derive the Participation Factor matrix, which
+        quantifies the influence of state variables on specific system modes.
+
+        The method employs LU factorization (SuperLU) for the linear operator and
+        executes right and left eigensolvers in parallel to optimize performance.
+
+        Parameters
+        ----------
+        sigma : float or complex, optional
+            The shift point for the Shift-and-Invert transformation. Eigenvalues
+            near this point will be found first. Defaults to 2.0.
+        k_modes : int, optional
+            The number of eigenvalues and eigenvectors to compute. Defaults to 200.
+
+        Returns
+        -------
+        evals : numpy.ndarray
+            Array of found physical eigenvalues (poles) :math:`\\lambda`.
+        V : numpy.ndarray
+            Matrix where each column is a right eigenvector corresponding to `evals`.
+        W : numpy.ndarray
+            Matrix where each column is a matched left eigenvector.
+        participation_matrix : numpy.ndarray
+            Matrix of participation factors where entry :math:`P_{ji}` represents
+            the participation of state :math:`j` in mode :math:`i`.
+        stable : bool
+            Boolean flag indicating system stability (True if all :math:`Re(\\lambda) \\leq 1e-5`).
+        margin : float
+            The maximum real part among all computed eigenvalues (stability margin).
+
+        Notes
+        -----
+        - **Structural Regularization:** The method automatically patches empty rows/columns
+          in the shifted matrix to prevent singularity during LU factorization.
+        - **Mode Matching:** Since ARPACK may return left and right modes in different
+          orders, the Hungarian Algorithm (Linear Sum Assignment) is used to align
+          them based on eigenvalue proximity.
+        - **Participation Factors:** Calculated as :math:`P_{ji} = \frac{w_{ji} v_{ji}}{w_i^H v_i}`.
+        '''
         print(f"\n[+] Starting sparse ARPACK analysis (Shift-and-Invert, sigma={sigma}, k={k_modes})...")
         start = time.time()
 
@@ -1269,6 +1319,7 @@ class PolynomialMatrixBuilder:
         OP_L = LinearOperator((n_dims, n_dims), matvec=matvec_left, dtype=complex)
 
         try:
+            print("****************Starting parallel ARPACK solves...")
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                 future_r = executor.submit(eigs, OP_R, k=k_modes, which='LM')
                 future_l = executor.submit(eigs, OP_L, k=k_modes, which='LM')
@@ -1350,7 +1401,7 @@ class PolynomialMatrixBuilder:
 
         return mapping
 
-    def report(self, eigenvalues=None, is_stable=False, max_real=None, print_matrices=True, save_path=None):
+    '''def report(self, eigenvalues=None, is_stable=False, max_real=None, print_matrices=True, save_path=None):
         """
         Outputs or exports the internal structural matrices and eigenvalue results
         for diagnostic inspection and external validation.
@@ -1392,4 +1443,4 @@ class PolynomialMatrixBuilder:
                                    ("A Matrix", self.A)]:
                     if mat is not None:
                         f.write(f"\n--- {label} ---\n")
-                        f.write(str(sparse.csc_matrix(mat)) + "\n")
+                        f.write(str(sparse.csc_matrix(mat)) + "\n")'''

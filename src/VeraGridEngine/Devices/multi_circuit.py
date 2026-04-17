@@ -366,16 +366,41 @@ class MultiCircuit(Assets):
                 'var_factory',
                 'rms_models',
                 'emt_models',
+                'fmu_templates',
                 'rms_events',
                 'emt_events',
                 'rms_events_groups',
                 'emt_events_groups',
                 ]
 
+        copy_memo = dict()
         for pr in ppts:
-            setattr(cpy, pr, copy.deepcopy(getattr(self, pr)))
+            if pr != 'diagrams':
+                setattr(cpy, pr, copy.deepcopy(getattr(self, pr), copy_memo))
+
+        cpy.rebind_internal_device_references()
+
+        obj_dict = cpy.get_all_elements_dict_by_type(add_locations=True)
+        cpy.diagrams = [diagram.copy(obj_dict=obj_dict) for diagram in self.diagrams]
 
         return cpy
+
+    def rebind_internal_device_references(self) -> None:
+        """
+        Rebind copied device-pointer properties to the canonical objects in this circuit.
+
+        ``MultiCircuit.copy()`` copies device lists independently for historical compatibility.
+        Any pointer crossing from one list to another must therefore be repaired by idtag after
+        all lists have been copied.
+        """
+        objects_by_idtag, _ = self.get_all_elements_dict()
+
+        for elm in self.get_all_elements_iter():
+            set_var_factory = getattr(elm, "set_var_factory", None)
+            if callable(set_var_factory):
+                set_var_factory(self.var_factory)
+
+            elm.rebind_device_references(objects_by_idtag=objects_by_idtag)
 
     def build_graph(self) -> nx.MultiDiGraph:
         """
@@ -3418,7 +3443,3 @@ class MultiCircuit(Assets):
     #         ).block
     #     else:
     #         pass
-
-
-
-

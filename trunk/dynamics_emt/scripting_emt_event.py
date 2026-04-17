@@ -380,7 +380,9 @@ def run_single_solver_trajectory(solver_key: str, enable_trace: bool) -> Tuple[E
     t_arr: np.ndarray
     y_arr: np.ndarray
     dy_arr: np.ndarray
-    t_arr, y_arr, dy_arr, _, _ = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, dy_arr, well_initialized, converged = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     return local_problem, solver, t_arr, y_arr, dy_arr
 
 
@@ -685,14 +687,18 @@ def run_single_solver_cold_warm_benchmark(solver_key: str) -> Dict[str, object]:
     _cold_t: np.ndarray
     cold_y: np.ndarray
     _cold_dy: np.ndarray
-    _cold_t, cold_y, _cold_dy = solver.simulate(boundary_updater=boundary_updater)
+    _cold_t, cold_y, _cold_dy, well_initialized, converged  = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     cold_sim_s: float = perf_counter() - cold_sim_t0
 
     warm_sim_t0: float = perf_counter()
     _warm_t: np.ndarray
     warm_y: np.ndarray
     _warm_dy: np.ndarray
-    _warm_t, warm_y, _warm_dy = solver.simulate(boundary_updater=boundary_updater)
+    _warm_t, warm_y, _warm_dy, well_initialized, converged  = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     warm_sim_s: float = perf_counter() - warm_sim_t0
 
     if warm_sim_s > 0.0:
@@ -743,7 +749,9 @@ def run_single_solver_benchmark(solver_key: str, reference_y: np.ndarray | None)
     t_arr: np.ndarray
     y_arr: np.ndarray
     dy_arr: np.ndarray
-    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, dy_arr, well_initialized, converged  = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     simulate_s: float = perf_counter() - t_sim_0
 
     if reference_y is None:
@@ -885,7 +893,9 @@ def main() -> None:
     # ==============================================================================
     boundary_updater = cast(Any, problem)
     profiler.enable()
-    _t, _y, _dy = solver.simulate(boundary_updater=boundary_updater)
+    _t, _y, _dy, well_initialized, converged  = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
 
     if isinstance(solver, StructuralCompiledSolver):
         print("StructuralCompiled backend build stats")

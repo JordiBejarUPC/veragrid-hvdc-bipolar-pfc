@@ -376,7 +376,9 @@ def main() -> None:
     validate_initialization(problem)
 
     solver: StructuralCompiledSolver = build_solver(problem)
-    t, y, _, _, _  = solver.simulate(boundary_updater=cast(object, problem))
+    t, y, _, well_initialized , converged = solver.simulate(boundary_updater=cast(object, problem))
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
 
     plot_data: Dict[str, np.ndarray] = build_plot_data(
         problem=problem,
