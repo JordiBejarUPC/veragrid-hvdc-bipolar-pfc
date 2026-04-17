@@ -3338,7 +3338,7 @@ class ConnectionVarSpec:
 
 class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
-    RmsModelEditorGUI
+    DynamicModelEditorGUI
     """
 
     # block_added = Signal(object)
