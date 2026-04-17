@@ -6,7 +6,7 @@
 import numpy as np
 import pandas as pd
 
-from VeraGridEngine import EmtSolverTypes
+from VeraGridEngine.enumerations import EmtSolverTypes
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions

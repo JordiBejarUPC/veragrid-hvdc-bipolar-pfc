@@ -1809,7 +1809,7 @@ class StructuralCompiledSparseADJacobian:
         if eager_machine_code:
             return _safe_njit(py_func, signature_tpe=signature_tpe, fastmath=True, cache=True)
         else:
-            return _safe_njit(py_func, signature_tpe=None, fastmath=True, cache=True)
+            return py_func
 
     def evaluate(
             self,
@@ -2284,7 +2284,7 @@ class StructuralCompiledSolver:
         grouping_s: float = time.perf_counter() - t_grouping_start
 
         if self._verbose:
-            print(f"--- [STRUCT-COMPILED] Detected {len(groups)} structural groups ---")
+            print(f"--- [STRUCT-COMPILED] Detected {len(groups)} structural groups ---", flush=True)
         else:
             pass
 
@@ -2311,9 +2311,21 @@ class StructuralCompiledSolver:
         )
         residual_use_cse: bool = True
         jacobian_use_cse: bool = True
-        eager_machine_code: bool = True
+        # Short runs should avoid paying the full Numba compilation cost up front. In those cases the
+        # generated Python kernels are fast enough and keep the structural backend usable.
+        eager_machine_code: bool = full_warmup_enabled
         kernel_specs: List[StructuralCompiledVectorKernel] = list()
         group_key_index: int = 0
+
+        if self._verbose:
+            print(
+                f"--- [STRUCT-COMPILED] Grouping ready in {grouping_s:.4f}s | "
+                f"n_vars={self._n_vars} | n_eqs={len(full_eqs)} | "
+                f"direct_residual={use_direct_residual} | warmup={self._warmup_policy.value} ---",
+                flush=True,
+            )
+        else:
+            pass
 
         t_vec_kernel_compile_start: float = time.perf_counter()
 
@@ -2329,7 +2341,7 @@ class StructuralCompiledSolver:
             if eager_machine_code:
                 compiled_residual = _safe_njit(py_func, signature_tpe=signature_tpe, fastmath=True, cache=True)
             else:
-                compiled_residual = _safe_njit(py_func, signature_tpe=None, fastmath=True, cache=True)
+                compiled_residual = py_func
         else:
             while group_key_index < len(group_keys):
                 group_key: str = group_keys[group_key_index]
@@ -2357,12 +2369,17 @@ class StructuralCompiledSolver:
                 if eager_machine_code:
                     compiled_kernel = _safe_njit(py_func, signature_tpe=signature_tpe, fastmath=True, cache=True)
                 else:
-                    compiled_kernel = _safe_njit(py_func, signature_tpe=None, fastmath=True, cache=True)
+                    compiled_kernel = py_func
                 kernel_specs.append(StructuralCompiledVectorKernel(compiled_kernel, indices, target_rows))
 
                 group_key_index += 1
 
         vec_kernel_compile_s: float = time.perf_counter() - t_vec_kernel_compile_start
+
+        if self._verbose:
+            print(f"--- [STRUCT-COMPILED] Residual kernels ready in {vec_kernel_compile_s:.4f}s ---", flush=True)
+        else:
+            pass
 
         # The residual assembler owns the reusable grouped work buffers.
         t_residual_assembler_start: float = time.perf_counter()
@@ -2371,6 +2388,11 @@ class StructuralCompiledSolver:
         else:
             self._residual_assembler = StructuralCompiledResidualAssembler(kernel_specs, backend_cache_token)
         residual_assembler_s: float = time.perf_counter() - t_residual_assembler_start
+
+        if self._verbose:
+            print(f"--- [STRUCT-COMPILED] Residual assembler ready in {residual_assembler_s:.4f}s ---", flush=True)
+        else:
+            pass
 
         # The sparse Jacobian evaluator owns the reusable CSC numeric storage.
         t_jacobian_evaluator_start: float = time.perf_counter()
@@ -2391,6 +2413,11 @@ class StructuralCompiledSolver:
             self._jacobian_data_buffer,
             self._sparse_solver_backend_provider,
         )
+
+        if self._verbose:
+            print(f"--- [STRUCT-COMPILED] Jacobian evaluator ready in {jacobian_evaluator_s:.4f}s ---", flush=True)
+        else:
+            pass
 
         # The helper kernels are always warmed because they are tiny and their
         # first-use compilation would otherwise show up as jitter inside the loop.
@@ -2425,6 +2452,16 @@ class StructuralCompiledSolver:
 
         warmup_s: float = helper_warmup_s + residual_warmup_s + jacobian_warmup_s
 
+        if self._verbose:
+            print(
+                f"--- [STRUCT-COMPILED] Warmup ready in {warmup_s:.4f}s | "
+                f"helpers={helper_warmup_s:.4f}s | residual={residual_warmup_s:.4f}s | "
+                f"jacobian={jacobian_warmup_s:.4f}s ---",
+                flush=True,
+            )
+        else:
+            pass
+
         self._vectorized_ready = True
         self._backend_warmup_done = full_warmup_enabled
 
@@ -2457,7 +2494,7 @@ class StructuralCompiledSolver:
 
         if self._verbose:
             elapsed: float = self._backend_build_stats["total_s"]
-            print(f"--- [STRUCT-COMPILED] Backend ready in {elapsed:.4f}s ---")
+            print(f"--- [STRUCT-COMPILED] Backend ready in {elapsed:.4f}s ---", flush=True)
         else:
             pass
 
