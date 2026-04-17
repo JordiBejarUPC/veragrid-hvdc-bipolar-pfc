@@ -44,6 +44,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_t
 from VeraGridEngine.Utils.Symbolic.symbolic_io import duplicate_block
 from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import BlockType
+from dataclasses import dataclass
 
 # from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
 
@@ -3325,6 +3326,15 @@ class DynamicsLibraryTreeModel(QtGui.QStandardItemModel):
 
         return mime_data
 
+@dataclass
+class ConnectionVarSpec:
+    """
+    Specification of one connection variable exposed by the block editor.
+    """
+
+    direction: str
+    reference: VarPowerFlowRefferenceType
+    visible_name: str
 
 class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     """
@@ -4004,70 +4014,99 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         else:
             pass
 
-    def add_connection_vars(self):
+    def add_connection_vars(self) -> None:
         """
-        Add a block with bus connection variables to connect the device
+        Add the connection variables required to couple the edited device with the grid.
+
         :return:
         """
-        if self.mode == DynamicSimulationMode.EMT:
-            self.add_emt_connection_vars()
-            self.add_emt_external_mapping_vars()
-            return
+        specs: List[ConnectionVarSpec]
 
-        elif self.mode == DynamicSimulationMode.RMS:
-
+        if self.mode == DynamicSimulationMode.RMS:
             if isinstance(self.api_object, BranchParent):
-
-                # connect bus variables
-                if self.api_object.bus_from.rms_model.empty():
-                    initialize_bus_rms(self.api_object.bus_from, self.var_factory)
-
-                Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
-
-                if self.api_object.bus_to.rms_model.empty():
-                    initialize_bus_rms(self.api_object.bus_to, self.var_factory)
-
-                Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
-
-                self.main_block.in_vars.append(Vmf)
-                self.main_block.in_vars.append(Vaf)
-                self.main_block.in_vars.append(Vmt)
-                self.main_block.in_vars.append(Vat)
-
-                self.main_block.external_mapping.update(
-                    {VarPowerFlowRefferenceType.Vmf: Vmf})
-                self.main_block.external_mapping.update(
-                    {VarPowerFlowRefferenceType.Vaf: Vaf})
-
-                self.main_block.external_mapping.update(
-                    {VarPowerFlowRefferenceType.Vmt: Vmt})
-                self.main_block.external_mapping.update(
-                    {VarPowerFlowRefferenceType.Vat: Vat})
-
+                specs = self._build_rms_branch_connection_specs()
             elif isinstance(self.api_object, InjectionParent):
+                specs = self._build_rms_injection_connection_specs()
+            else:
+                specs = list()
 
-                # connect bus variables
-                if self.api_object.bus.rms_model.empty():
-                    initialize_bus_rms(self.api_object.bus, self.var_factory)
+        elif self.mode == DynamicSimulationMode.EMT:
+            if isinstance(self.api_object, BranchParent):
+                specs = self._build_emt_branch_connection_specs()
+            elif isinstance(self.api_object, InjectionParent):
+                specs = self._build_emt_injection_connection_specs()
+            else:
+                specs = list()
 
-                Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
-                self.main_block.in_vars.append(Vm)
-                self.main_block.in_vars.append(Va)
+        else:
+            raise ValueError(f"Unsupported dynamic editor mode {self.mode}")
 
-                self.main_block.external_mapping.update(
-                    {VarPowerFlowRefferenceType.Vm: Vm})
-                self.main_block.external_mapping.update(
-                    {VarPowerFlowRefferenceType.Va: Va})
+        self._materialize_connection_specs(specs)
 
-                # add connection variables
-                P = self.var_factory.add_var('net_conn_P', VarPowerFlowRefferenceType.P, True)
-                Q = self.var_factory.add_var('net_conn_Q', VarPowerFlowRefferenceType.Q, True)
-
-                self.main_block.out_vars.append(P)
-                self.main_block.out_vars.append(Q)
-
-                self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: P})
-                self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Q})
+    # def add_connection_vars(self):
+    #     """
+    #     Add a block with bus connection variables to connect the device
+    #     :return:
+    #     """
+    #     if self.mode == DynamicSimulationMode.EMT:
+    #         self.add_emt_connection_vars()
+    #         self.add_emt_external_mapping_vars()
+    #         return
+    #
+    #     elif self.mode == DynamicSimulationMode.RMS:
+    #
+    #         if isinstance(self.api_object, BranchParent):
+    #
+    #             # connect bus variables
+    #             if self.api_object.bus_from.rms_model.empty():
+    #                 initialize_bus_rms(self.api_object.bus_from, self.var_factory)
+    #
+    #             Vmf, Vaf = get_bus_rms_algebraic_vars(self.api_object.bus_from.rms_model)
+    #
+    #             if self.api_object.bus_to.rms_model.empty():
+    #                 initialize_bus_rms(self.api_object.bus_to, self.var_factory)
+    #
+    #             Vmt, Vat = get_bus_rms_algebraic_vars(self.api_object.bus_to.rms_model)
+    #
+    #             self.main_block.in_vars.append(Vmf)
+    #             self.main_block.in_vars.append(Vaf)
+    #             self.main_block.in_vars.append(Vmt)
+    #             self.main_block.in_vars.append(Vat)
+    #
+    #             self.main_block.external_mapping.update(
+    #                 {VarPowerFlowRefferenceType.Vmf: Vmf})
+    #             self.main_block.external_mapping.update(
+    #                 {VarPowerFlowRefferenceType.Vaf: Vaf})
+    #
+    #             self.main_block.external_mapping.update(
+    #                 {VarPowerFlowRefferenceType.Vmt: Vmt})
+    #             self.main_block.external_mapping.update(
+    #                 {VarPowerFlowRefferenceType.Vat: Vat})
+    #
+    #         elif isinstance(self.api_object, InjectionParent):
+    #
+    #             # connect bus variables
+    #             if self.api_object.bus.rms_model.empty():
+    #                 initialize_bus_rms(self.api_object.bus, self.var_factory)
+    #
+    #             Vm, Va = get_bus_rms_algebraic_vars(self.api_object.bus.rms_model)
+    #             self.main_block.in_vars.append(Vm)
+    #             self.main_block.in_vars.append(Va)
+    #
+    #             self.main_block.external_mapping.update(
+    #                 {VarPowerFlowRefferenceType.Vm: Vm})
+    #             self.main_block.external_mapping.update(
+    #                 {VarPowerFlowRefferenceType.Va: Va})
+    #
+    #             # add connection variables
+    #             P = self.var_factory.add_var('net_conn_P', VarPowerFlowRefferenceType.P, True)
+    #             Q = self.var_factory.add_var('net_conn_Q', VarPowerFlowRefferenceType.Q, True)
+    #
+    #             self.main_block.out_vars.append(P)
+    #             self.main_block.out_vars.append(Q)
+    #
+    #             self.main_block.external_mapping.update({VarPowerFlowRefferenceType.P: P})
+    #             self.main_block.external_mapping.update({VarPowerFlowRefferenceType.Q: Q})
 
     def add_connection_items(self):
         """
@@ -4263,38 +4302,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                     pass
             return pairs
 
-    def add_emt_connection_vars(self) -> None:
-        """
-        Add EMT connection voltage variables for the edited device.
-        For branch devices, both terminal buses must be exposed.
-        """
-        if isinstance(self.api_object, BranchParent):
-            voltage_specs: List[tuple[VarPowerFlowRefferenceType, str]] = list()
-
-            voltage_specs.extend(
-                self._build_emt_branch_voltage_input_specs(self.api_object.bus_from, "from")
-            )
-            voltage_specs.extend(
-                self._build_emt_branch_voltage_input_specs(self.api_object.bus_to, "to")
-            )
-
-            reference: VarPowerFlowRefferenceType
-            visible_name: str
-            for reference, visible_name in voltage_specs:
-                var = self.var_factory.add_var(visible_name, reference, True)
-                self.main_block.in_vars.append(var)
-                self.main_block.external_mapping[reference] = var
-
-        elif isinstance(self.api_object, InjectionParent):
-            voltage_pairs = self.get_injection_emt_voltage_pairs(self.api_object.bus)
-
-            if voltage_pairs is not None:
-                reference: VarPowerFlowRefferenceType
-                variable: Any
-                for reference, variable in voltage_pairs:
-                    self.main_block.in_vars.append(variable)
-                    self.main_block.external_mapping[reference] = variable
-
     # def add_external_mapping_block(self):
     #     """
     #     Add a block with the external mapping vars needed to connect the device to the grid
@@ -4428,64 +4435,146 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     #     else:
     #         pass
 
-    def _build_emt_branch_voltage_input_specs(self,
-                                              bus: Any,
-                                              side: str) -> List[tuple[VarPowerFlowRefferenceType, str]]:
+    def _materialize_connection_specs(self, specs: List[ConnectionVarSpec]) -> None:
         """
-        Build the EMT branch voltage references together with the user-visible variable names.
+        Create all connection variables described by the given specs and attach them to the main block.
 
-        The internal references keep the from/to semantics required by the network coupling,
-        but the visible names mimic the bus-voltage naming shown in injection devices.
-
-        :param bus: Terminal bus.
-        :param side: Branch side, either ``from`` or ``to``.
-        :return: List of (reference, visible_name).
+        :param specs:
+        :return:
         """
-        voltage_pairs = self.get_branch_emt_voltage_pairs(bus, side)
-        specs: List[tuple[VarPowerFlowRefferenceType, str]] = list()
+        spec: ConnectionVarSpec
+        for spec in specs:
+            var = self.var_factory.add_var(spec.visible_name, spec.reference, True)
+
+            if spec.direction == "input":
+                self.main_block.in_vars.append(var)
+            elif spec.direction == "output":
+                self.main_block.out_vars.append(var)
+            else:
+                raise ValueError(f"Unsupported connection direction {spec.direction}")
+
+            self.main_block.external_mapping[spec.reference] = var
+
+    def _build_rms_injection_connection_specs(self) -> List[ConnectionVarSpec]:
+        """
+        Build all RMS connection-variable specs for an injection device.
+
+        :return:
+        """
+        if self.api_object.bus.rms_model.empty():
+            initialize_bus_rms(self.api_object.bus, self.var_factory)
+
+        safe_bus_name: str = self._get_safe_bus_name(self.api_object.bus)
+
+        specs: List[ConnectionVarSpec] = list()
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vm, f"Vm_{safe_bus_name}"))
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Va, f"Va_{safe_bus_name}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.P, f"net_conn_P_{safe_bus_name}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Q, f"net_conn_Q_{safe_bus_name}"))
+
+        return specs
+
+    def _build_rms_branch_connection_specs(self) -> List[ConnectionVarSpec]:
+        """
+        Build all RMS connection-variable specs for a branch device.
+
+        :return:
+        """
+        if self.api_object.bus_from.rms_model.empty():
+            initialize_bus_rms(self.api_object.bus_from, self.var_factory)
+
+        if self.api_object.bus_to.rms_model.empty():
+            initialize_bus_rms(self.api_object.bus_to, self.var_factory)
+
+        safe_bus_from: str = self._get_safe_bus_name(self.api_object.bus_from)
+        safe_bus_to: str = self._get_safe_bus_name(self.api_object.bus_to)
+
+        specs: List[ConnectionVarSpec] = list()
+
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vmf, f"Vm_{safe_bus_from}"))
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vaf, f"Va_{safe_bus_from}"))
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vmt, f"Vm_{safe_bus_to}"))
+        specs.append(ConnectionVarSpec("input", VarPowerFlowRefferenceType.Vat, f"Va_{safe_bus_to}"))
+
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Pf, f"net_conn_P_{safe_bus_from}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Qf, f"net_conn_Q_{safe_bus_from}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Pt, f"net_conn_P_{safe_bus_to}"))
+        specs.append(ConnectionVarSpec("output", VarPowerFlowRefferenceType.Qt, f"net_conn_Q_{safe_bus_to}"))
+
+        return specs
+
+    def _build_emt_injection_connection_specs(self) -> List[ConnectionVarSpec]:
+        """
+        Build all EMT connection-variable specs for an injection device.
+
+        :return:
+        """
+        voltage_pairs = self.get_injection_emt_voltage_pairs(self.api_object.bus)
+        specs: List[ConnectionVarSpec] = list()
 
         reference: VarPowerFlowRefferenceType
         variable: Any
         for reference, variable in voltage_pairs:
-            specs.append((reference, str(variable.name)))
+            specs.append(ConnectionVarSpec("input", reference, str(variable.name)))
+
+        current_refs = self.build_emt_injection_current_refs(self.api_object.bus)
+        for reference in current_refs:
+            specs.append(ConnectionVarSpec("output", reference, f"network_conn_{reference.value}"))
 
         return specs
 
-    def _build_emt_branch_current_output_specs(self,
-                                               bus: Any,
-                                               side: str) -> List[tuple[VarPowerFlowRefferenceType, str]]:
+    def _build_emt_branch_connection_specs(self) -> List[ConnectionVarSpec]:
         """
-        Build the EMT branch current references together with the user-visible variable names.
+        Build all EMT connection-variable specs for a branch device.
 
-        Internal references keep the from/to semantics, but the visible names follow
-        the same naming style used by injection devices and add the terminal bus name.
+        Inputs expose the voltages of both terminal buses.
+        Outputs expose the currents of both terminal buses using the same visible-name
+        pattern as injection devices plus the bus-name suffix.
 
-        :param bus: Terminal bus.
-        :param side: Branch side, either ``from`` or ``to``.
-        :return: List of (reference, visible_name).
+        :return:
         """
-        current_refs = self._build_emt_branch_current_refs(bus, side)
-        safe_bus_name: str = self._get_safe_bus_name(bus)
-        specs: List[tuple[VarPowerFlowRefferenceType, str]] = list()
+        specs: List[ConnectionVarSpec] = list()
 
-        visible_prefix_map: Dict[VarPowerFlowRefferenceType, str] = {
-            VarPowerFlowRefferenceType.if_N: "network_conn_i_N",
-            VarPowerFlowRefferenceType.if_A: "network_conn_i_A",
-            VarPowerFlowRefferenceType.if_B: "network_conn_i_B",
-            VarPowerFlowRefferenceType.if_C: "network_conn_i_C",
-            VarPowerFlowRefferenceType.it_N: "network_conn_i_N",
-            VarPowerFlowRefferenceType.it_A: "network_conn_i_A",
-            VarPowerFlowRefferenceType.it_B: "network_conn_i_B",
-            VarPowerFlowRefferenceType.it_C: "network_conn_i_C",
-        }
+        voltage_pairs_from = self.get_branch_emt_voltage_pairs(self.api_object.bus_from, "from")
+        voltage_pairs_to = self.get_branch_emt_voltage_pairs(self.api_object.bus_to, "to")
 
         reference: VarPowerFlowRefferenceType
-        for reference in current_refs:
-            visible_prefix: str | None = visible_prefix_map.get(reference, None)
-            if visible_prefix is not None:
-                specs.append((reference, f"{visible_prefix}_{safe_bus_name}"))
-            else:
-                pass
+        variable: Any
+        for reference, variable in voltage_pairs_from:
+            specs.append(ConnectionVarSpec("input", reference, str(variable.name)))
+
+        for reference, variable in voltage_pairs_to:
+            specs.append(ConnectionVarSpec("input", reference, str(variable.name)))
+
+        safe_bus_from = self._get_safe_bus_name(self.api_object.bus_from)
+        safe_bus_to = self._get_safe_bus_name(self.api_object.bus_to)
+
+        current_name_map_from: Dict[VarPowerFlowRefferenceType, str] = {
+            VarPowerFlowRefferenceType.if_N: f"network_conn_i_N_{safe_bus_from}",
+            VarPowerFlowRefferenceType.if_A: f"network_conn_i_A_{safe_bus_from}",
+            VarPowerFlowRefferenceType.if_B: f"network_conn_i_B_{safe_bus_from}",
+            VarPowerFlowRefferenceType.if_C: f"network_conn_i_C_{safe_bus_from}",
+        }
+
+        current_name_map_to: Dict[VarPowerFlowRefferenceType, str] = {
+            VarPowerFlowRefferenceType.it_N: f"network_conn_i_N_{safe_bus_to}",
+            VarPowerFlowRefferenceType.it_A: f"network_conn_i_A_{safe_bus_to}",
+            VarPowerFlowRefferenceType.it_B: f"network_conn_i_B_{safe_bus_to}",
+            VarPowerFlowRefferenceType.it_C: f"network_conn_i_C_{safe_bus_to}",
+        }
+
+        current_refs_from = self._build_emt_branch_current_refs(self.api_object.bus_from, "from")
+        current_refs_to = self._build_emt_branch_current_refs(self.api_object.bus_to, "to")
+
+        for reference in current_refs_from:
+            visible_name = current_name_map_from.get(reference, None)
+            if visible_name is not None:
+                specs.append(ConnectionVarSpec("output", reference, visible_name))
+
+        for reference in current_refs_to:
+            visible_name = current_name_map_to.get(reference, None)
+            if visible_name is not None:
+                specs.append(ConnectionVarSpec("output", reference, visible_name))
 
         return specs
 
@@ -4553,36 +4642,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 pass
         return current_refs
-
-    def add_emt_external_mapping_vars(self) -> None:
-        """
-        Add EMT current-output variables for the edited device.
-        For branch devices, currents of both terminal buses are exposed with bus-based names.
-        """
-        if isinstance(self.api_object, BranchParent):
-            current_specs: List[tuple[VarPowerFlowRefferenceType, str]] = list()
-
-            current_specs.extend(
-                self._build_emt_branch_current_output_specs(self.api_object.bus_from, "from")
-            )
-            current_specs.extend(
-                self._build_emt_branch_current_output_specs(self.api_object.bus_to, "to")
-            )
-
-            reference: VarPowerFlowRefferenceType
-            visible_name: str
-            for reference, visible_name in current_specs:
-                var = self.var_factory.add_var(visible_name, reference, True)
-                self.main_block.out_vars.append(var)
-                self.main_block.external_mapping[reference] = var
-
-        elif isinstance(self.api_object, InjectionParent):
-            current_refs = self.build_emt_injection_current_refs(self.api_object.bus)
-
-            for reference in current_refs:
-                var = self.var_factory.add_var(f"network_conn_{reference.value}", reference, True)
-                self.main_block.out_vars.append(var)
-                self.main_block.external_mapping[reference] = var
 
     def _get_safe_bus_name(self, bus: Any) -> str:
         """
@@ -4657,30 +4716,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.diagram.node_data[device_uid].x = x
             self.diagram.node_data[device_uid].y = y
             print("")
-
-    # def _break_domain_template_link(self) -> None:
-    #     """
-    #     Detach the edited device from the reusable template of the current domain.
-    #
-    #     Manual edits make the block diverge from the original reusable template, so
-    #     the device must stop pretending to be a clean template instance after the
-    #     user confirms the changes.
-    #
-    #     :return: None.
-    #     """
-    #
-    #     if isinstance(self.api_object, BranchParent) or isinstance(self.api_object, InjectionParent):
-    #         if self.mode == DynamicSimulationMode.RMS:
-    #             self.api_object.rms_template = None
-    #             self.api_object.rms_fmu_template = None
-    #         else:
-    #             if self.mode == DynamicSimulationMode.EMT:
-    #                 self.api_object.emt_template = None
-    #                 self.api_object.emt_fmu_template = None
-    #             else:
-    #                 raise ValueError(f"Unsupported dynamic editor mode {self.mode}")
-    #     else:
-    #         pass
 
     def get_selected_scene_block(self) -> Block | None:
         """
