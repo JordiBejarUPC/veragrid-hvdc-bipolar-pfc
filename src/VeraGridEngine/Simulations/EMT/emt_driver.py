@@ -17,7 +17,7 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDa
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonDiagnosticsConfig
-from VeraGridEngine.IO.fmu.importer import build_emt_boundary_updater
+from VeraGridEngine.IO.fmu.importer.emt_boundary import build_emt_boundary_updater
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.basic_structures import Vec, StrVec
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
@@ -192,5 +192,4 @@ class EmtSimulationDriver(DriverTemplate):
             self.progress_signal.emit(90)
 
         self.progress_signal.emit(100)
-
 
