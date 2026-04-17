@@ -126,6 +126,7 @@ class TransitionMatrix:
 
     @staticmethod
     def template_dictionary(grid: MultiCircuit) -> Dict[tuple[float, float], List[tuple[object, float]]]:
+        # TODO: Key of the dict should be a float, not a tuple.
         """
         Build a dictionary of branch templates grouped by voltage transition.
 

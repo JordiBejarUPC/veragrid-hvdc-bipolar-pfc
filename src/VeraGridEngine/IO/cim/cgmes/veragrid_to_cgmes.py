@@ -46,7 +46,7 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.enumerations import (TapChangerTypes, TapPhaseControl, TapModuleControl, CGMESVersions,
-                                         ExternalGridMode, ShuntControlMode)
+                                         ExternalGridMode, ShuntControlMode, ConverterControlType)
 
 
 def set_declared_cgmes_property(cgmes_object: CGMES_ASSETS,
