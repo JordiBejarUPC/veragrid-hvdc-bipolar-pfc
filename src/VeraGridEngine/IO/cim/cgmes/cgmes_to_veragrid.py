@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import Dict, List, Tuple, Union
 import numpy as np
 import VeraGridEngine.IO.cim.cgmes.cgmes_enums as cgmes_enums
-from VeraGridEngine import ShuntControlMode
+from VeraGridEngine.enumerations import ShuntControlMode
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import CGMESVersions, CgmesTopologyMode, ConverterControlType, ExternalGridMode
 import VeraGridEngine.Devices as gcdev

@@ -6,7 +6,7 @@
 from __future__ import annotations
 import numpy as np
 
-from VeraGridEngine import ShuntConnectionType
+from VeraGridEngine.enumerations import ShuntConnectionType
 from VeraGridEngine.DataStructures.branch_parent_data import BranchParentData
 from VeraGridEngine.enumerations import WindingsConnection
 from VeraGridEngine.Utils.Sparse.sparse_array import SparseObjectArray

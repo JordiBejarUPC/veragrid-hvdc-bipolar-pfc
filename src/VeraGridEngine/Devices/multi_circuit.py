@@ -15,7 +15,7 @@ import networkx as nx
 from matplotlib import pyplot as plt
 from scipy.sparse import csc_matrix, lil_matrix
 
-from VeraGridEngine import BusGraphicType
+from VeraGridEngine.enumerations import BusGraphicType
 from VeraGridEngine.Devices.assets import Assets
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.basic_structures import IntVec, Vec, Mat, CxVec, IntMat, CxMat, BoolVec

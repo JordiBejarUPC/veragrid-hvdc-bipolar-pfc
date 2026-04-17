@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-from VeraGridEngine import ParamPowerFlowRefferenceType
+from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise)

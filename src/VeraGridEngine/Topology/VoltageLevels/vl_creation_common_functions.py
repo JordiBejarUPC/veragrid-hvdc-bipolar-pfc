@@ -5,7 +5,7 @@
 from __future__ import annotations
 from typing import Tuple, List, Dict
 import VeraGridEngine.Devices as dev
-from VeraGridEngine import BusGraphicType
+from VeraGridEngine.enumerations import BusGraphicType
 from VeraGridEngine.enumerations import SwitchGraphicType
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Devices.types import BRANCH_TYPES, INJECTION_DEVICE_TYPES
