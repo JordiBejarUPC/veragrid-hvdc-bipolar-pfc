@@ -9,7 +9,9 @@ import numpy as np
 from PySide6 import QtWidgets
 
 from VeraGrid.Gui.Diagrams.MapWidget.Substation.substation_graphic_item import SubstationGraphicItem
-from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import haversine_distance
+from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import haversine_distance, GridMapWidget
+from VeraGridEngine.Devices.Diagrams.map_location import MapLocation
+import VeraGridEngine.Devices as dev
 from VeraGrid.Gui.ProceduralGrid.procedural_grid_ui import Ui_Dialog
 from VeraGrid.Gui.gui_functions import get_list_model, enums_to_model
 from VeraGridEngine.enumerations import ProceduralGridMethods
@@ -94,7 +96,9 @@ class ProceduralGridWindow(QtWidgets.QDialog):
             sorted_indices = np.argsort(distances2, axis=0)
 
             self.candidate_list.clear()
-            for i in sorted_indices[:top_n]:
+            for i in sorted_indices:
+                if len(self.candidate_list) >= top_n:
+                    break
                 candidate = self.all_substations_graphics_in_diagram_list[i]
                 if candidate not in self.connection_substations_graphics_list:
                     self.candidate_list.append(candidate)
@@ -160,6 +164,30 @@ class ProceduralGridWindow(QtWidgets.QDialog):
 
         else:
             raise NotImplementedError(f"Method {method} not implemented")
+
+        # Create substations for new buses so map lines can reference them
+        for bus in engine.get_new_buses():
+            if bus.substation is None:
+                substation = dev.Substation(
+                    name=bus.name,
+                    latitude=bus.latitude,
+                    longitude=bus.longitude,
+                )
+                bus.substation = substation
+                self.app.circuit.add_substation(substation)
+
+        # Draw new elements on all open map widgets
+        for map_widget in self.app.diagram_widgets_list:
+            if isinstance(map_widget, GridMapWidget):
+                for bus in engine.get_new_buses():
+                    if map_widget.graphics_manager.query(elm=bus.substation) is None:
+                        map_widget.add_api_substation(api_object=bus.substation,
+                                                      lat=bus.latitude,
+                                                      lon=bus.longitude)
+                for line in engine.get_new_lines():
+                    if map_widget.graphics_manager.query(elm=line) is None:
+                        map_widget.diagram.set_point(device=line, location=MapLocation())
+                        map_widget.add_api_line(api_object=line)
 
         # Map geographic coordinates to schematic canvas coordinates
         _SCALE = 1000.0

@@ -404,6 +404,7 @@ class Topology:
         self.logger: Logger = Logger() if logger is None else logger
 
         self.intermediate_buses: List[dev.Bus] = list()  # buses generated in the markov process
+        self.new_lines: List[dev.Line] = list()  # lines created during topology generation
 
     def generate_markov(self):
         """
@@ -561,6 +562,7 @@ class Topology:
         """
         if isinstance(branch, dev.Line):
             self.grid.add_line(obj=branch)
+            self.new_lines.append(branch)
             return
 
         if isinstance(branch, dev.Transformer2W):
@@ -767,6 +769,7 @@ class ProceduralGridComputationEngine:
         self.candidate_buses: List[dev.Bus] = list()
         self.steiner_buses: List[dev.Bus] = list()  # this is a result
         self.intermediate_buses: List[dev.Bus] = list()  # buses generated in the markov process
+        self.new_lines: List[dev.Line] = list()  # lines created during topology generation
 
         self.debugger = ProceduralGridDebugger(enabled=True)
 
@@ -814,6 +817,21 @@ class ProceduralGridComputationEngine:
         :return:
         """
         return self.target_buses + self.candidate_buses + self.steiner_buses + self.intermediate_buses
+
+    def get_new_buses(self) -> List[dev.Bus]:
+        """
+        Get only the newly created buses (Steiner points + Markov intermediate buses).
+        These have no substation assigned and need one for map rendering.
+        :return:
+        """
+        return self.steiner_buses + self.intermediate_buses
+
+    def get_new_lines(self) -> List[dev.Line]:
+        """
+        Get only the newly created Line objects added during topology generation.
+        :return:
+        """
+        return self.new_lines
 
     def run_steiner_alone(self):
         """
@@ -905,6 +923,7 @@ class ProceduralGridComputationEngine:
         before_names = self.debugger.snapshot_grid_element_names(self.grid)
 
         self.intermediate_buses = topology.generate_markov()
+        self.new_lines = topology.new_lines
 
         added_names = self.debugger.get_added_element_names(
             grid=self.grid,
