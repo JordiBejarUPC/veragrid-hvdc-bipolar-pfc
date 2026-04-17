@@ -32,8 +32,8 @@ from scipy.optimize import linear_sum_assignment
 
 
 #GRID = "Texas 2000 + VSC"
-GRID = "IEEE 14.xlsx"
-#GRID = "case_ACTIVSg2000.matpower"
+#GRID = "IEEE 14.xlsx"
+GRID = "case_ACTIVSg2000.matpower"
 USE_CACHED_BUILDER = True
 BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
