@@ -1,11 +1,9 @@
 import sympy as sp
-import numpy as np
 from scipy import sparse, linalg
 from enum import Enum
 from typing import Optional, Any, Tuple
 import re, math
 import threading
-import time
 import sys
 import itertools
 import concurrent.futures
