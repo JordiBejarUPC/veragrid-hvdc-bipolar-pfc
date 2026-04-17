@@ -32,7 +32,8 @@ from scipy.optimize import linear_sum_assignment
 
 
 #GRID = "Texas 2000 + VSC"
-GRID = "IEEE25.gridcal"
+#GRID = "IEEE 14.xlsx"
+GRID = "case_ACTIVSg2000.matpower"
 USE_CACHED_BUILDER = True
 BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
@@ -70,9 +71,13 @@ def define_problem_with_path(grid_path):
     ## -GENERATORS
     for igen, gen in enumerate(grid.generators):
         genqec = vge.get_complete_generator_template_phasor(grid.var_factory, name=f"Gen{igen}").block
+
+
         genqec.connect([genqec.in_vars[0]], [gen.bus.rms_model.out_vars[0]])
+
         genqec.connect([genqec.in_vars[1]], [gen.bus.rms_model.out_vars[1]])
         vge.set_rms_model(device=gen, model=genqec, var_factory=grid.var_factory)
+
     ## -LINES:
     for line in grid.lines:
         lineec = vge.get_line_phasor_rms_template(grid.var_factory, name=line.name).block
@@ -115,7 +120,8 @@ def define_problem_with_path(grid_path):
     # ===================================================================
 
     print("\n[2] Running power flow...")
-    pf_options = vge.PowerFlowOptions(tolerance=1e-13)
+    #pf_options = vge.PowerFlowOptions(tolerance=1e-13)
+    pf_options = vge.PowerFlowOptions(tolerance=1e-5)
     pf_results = vge.power_flow(grid, pf_options)
 
     if pf_results.converged:
