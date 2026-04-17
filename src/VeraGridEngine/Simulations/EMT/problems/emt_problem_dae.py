@@ -24,7 +24,7 @@ from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Devices.Branches.dc_line import DcLine
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Simulations.driver_template import DummySignal
-from VeraGridEngine.Devices.Aggregation.emt_events_group import EmtEventsGroup
+from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise, Const
 from VeraGridEngine.Utils.Symbolic.block import Block, find_name_in_block
@@ -570,6 +570,7 @@ class EmtProblemDae(EmtProblemTemplate):
                  grid: MultiCircuit,
                  options: EmtOptions,
                  pf_results_3Ph: PowerFlowResults3Ph | None = None,
+                 pf_results_3ph: PowerFlowResults3Ph | None = None,
                  pf_results: PowerFlowResults | None = None,
                  progress_signal: DummySignal | None = None,
                  progress_text: DummySignal | None = None, )-> None:
@@ -584,7 +585,10 @@ class EmtProblemDae(EmtProblemTemplate):
         self.logger = Logger()
         self.grid = grid
         self.options = options
-        self.power_flow_results_3ph = pf_results_3Ph
+        if pf_results_3ph is None:
+            self.power_flow_results_3ph = pf_results_3Ph
+        else:
+            self.power_flow_results_3ph = pf_results_3ph
         self.power_flow_results = pf_results
 
         self._vars_info: Dict[ALL_DEV_TYPES, List[Var]] = dict()
@@ -1109,7 +1113,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 except AttributeError:
                     pass
                 else:
-                    is_bergeron = br_emt_model.name == EmtLineTypes.Bergeron
+                    is_bergeron = br_emt_model.name == EmtLineTypes.Bergeron or br_emt_model.name == EmtLineTypes.Bergeron.value
 
                     if is_bergeron:
                         try:
@@ -1431,7 +1435,7 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl: Block = self._process_device_model(br, sys_block, grid, glob_time)
 
             is_bergeron: bool = False
-            if br.emt_model.name == EmtLineTypes.Bergeron:
+            if br.emt_model.name == EmtLineTypes.Bergeron or br.emt_model.name == EmtLineTypes.Bergeron.value:
                 is_bergeron = True
             else:
                 pass
@@ -4726,21 +4730,21 @@ class EmtProblemDae(EmtProblemTemplate):
                 2.0 * np.pi * self.grid.fBase,
             )
             assign_vsc_event_param_if_present(ParamPowerFlowRefferenceType.P0, p0_vsc)
-            assign_vsc_event_param_if_present(ParamPowerFlowRefferenceType.P_loss0, p_loss0)
+            assign_vsc_event_param_if_present(ParamPowerFlowRefferenceType.converter_loss_power_0, p_loss0)
             assign_vsc_event_param_if_present(
-                ParamPowerFlowRefferenceType.control1,
+                ParamPowerFlowRefferenceType.converter_control_mode_1,
                 control_code_dict[vsc.control1],
             )
             assign_vsc_event_param_if_present(
-                ParamPowerFlowRefferenceType.control2,
+                ParamPowerFlowRefferenceType.converter_control_mode_2,
                 control_code_dict[vsc.control2],
             )
             assign_vsc_event_param_if_present(
-                ParamPowerFlowRefferenceType.control1_val,
+                ParamPowerFlowRefferenceType.converter_control_target_1,
                 vsc.control1_val,
             )
             assign_vsc_event_param_if_present(
-                ParamPowerFlowRefferenceType.control2_val,
+                ParamPowerFlowRefferenceType.converter_control_target_2,
                 vsc.control2_val,
             )
             return
@@ -4763,15 +4767,15 @@ class EmtProblemDae(EmtProblemTemplate):
         # transformer path and before the line path.
         # -----------------------------
         xfmr_keys: list[ParamPowerFlowRefferenceType] = list([
-            ParamPowerFlowRefferenceType.xfmr_s_rated_mva,
-            ParamPowerFlowRefferenceType.xfmr_sc_voltage_pct,
-            ParamPowerFlowRefferenceType.xfmr_sc_resistance_pct,
-            ParamPowerFlowRefferenceType.xfmr_oc_current_pct,
-            ParamPowerFlowRefferenceType.xfmr_oc_loss_kw,
-            ParamPowerFlowRefferenceType.xfmr_tap_module,
-            ParamPowerFlowRefferenceType.xfmr_c_term,
-            ParamPowerFlowRefferenceType.xfmr_cf_aa,
-            ParamPowerFlowRefferenceType.xfmr_ct_aa,
+            ParamPowerFlowRefferenceType.transformer_rated_power_mva,
+            ParamPowerFlowRefferenceType.transformer_short_circuit_voltage_pct,
+            ParamPowerFlowRefferenceType.transformer_short_circuit_resistance_pct,
+            ParamPowerFlowRefferenceType.transformer_open_circuit_current_pct,
+            ParamPowerFlowRefferenceType.transformer_open_circuit_loss_kw,
+            ParamPowerFlowRefferenceType.transformer_tap_ratio,
+            ParamPowerFlowRefferenceType.transformer_terminal_capacitance_pu_s,
+            ParamPowerFlowRefferenceType.transformer_from_connection_aa,
+            ParamPowerFlowRefferenceType.transformer_to_connection_aa,
         ])
         has_xfmr_mapping: bool = all(key in api_obj_mapping for key in xfmr_keys)
 
@@ -4820,41 +4824,41 @@ class EmtProblemDae(EmtProblemTemplate):
                 c_t_eff_matrix: np.ndarray = p_t_matrix @ c_t_matrix
 
                 self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.omega_base, w0)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_s_rated_mva, sn_value)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_v_hv_ll_kv, hv_value)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_v_lv_ll_kv, lv_value)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_vector_group_clock, float(br.vector_group_number))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_oc_current_pct, i0_pct_value)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_oc_loss_kw, pfe_kw_value)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_sc_voltage_pct, vsc_pct_value)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_sc_resistance_pct, sc_resistance_pct_value)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_sc_loss_kw, pcu_kw_value)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_tap_module, tap_module_value)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_c_term, c_term_value)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_core_linear_l_pu, linear_lm_value)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_core_a_prime, linear_lm_value)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_core_b_prime, 0.0)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_use_linear_core, 1.0)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_rated_power_mva, sn_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_winding1_rated_voltage_ll_kv, hv_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_winding2_rated_voltage_ll_kv, lv_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_connection_clock, float(br.vector_group_number))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_open_circuit_current_pct, i0_pct_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_open_circuit_loss_kw, pfe_kw_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_short_circuit_voltage_pct, vsc_pct_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_short_circuit_resistance_pct, sc_resistance_pct_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_short_circuit_loss_kw, pcu_kw_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_tap_ratio, tap_module_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_terminal_capacitance_pu_s, c_term_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_linear_core_inductance_pu_s, linear_lm_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_core_curve_a_prime, linear_lm_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_core_curve_b_prime, 0.0)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_use_linear_core, 1.0)
 
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_aa, float(c_f_matrix[0, 0]))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_ab, float(c_f_matrix[0, 1]))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_ac, float(c_f_matrix[0, 2]))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_ba, float(c_f_matrix[1, 0]))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_bb, float(c_f_matrix[1, 1]))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_bc, float(c_f_matrix[1, 2]))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_ca, float(c_f_matrix[2, 0]))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_cb, float(c_f_matrix[2, 1]))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_cf_cc, float(c_f_matrix[2, 2]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_from_connection_aa, float(c_f_matrix[0, 0]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_from_connection_ab, float(c_f_matrix[0, 1]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_from_connection_ac, float(c_f_matrix[0, 2]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_from_connection_ba, float(c_f_matrix[1, 0]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_from_connection_bb, float(c_f_matrix[1, 1]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_from_connection_bc, float(c_f_matrix[1, 2]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_from_connection_ca, float(c_f_matrix[2, 0]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_from_connection_cb, float(c_f_matrix[2, 1]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_from_connection_cc, float(c_f_matrix[2, 2]))
 
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_aa, float(c_t_eff_matrix[0, 0]))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_ab, float(c_t_eff_matrix[0, 1]))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_ac, float(c_t_eff_matrix[0, 2]))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_ba, float(c_t_eff_matrix[1, 0]))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_bb, float(c_t_eff_matrix[1, 1]))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_bc, float(c_t_eff_matrix[1, 2]))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_ca, float(c_t_eff_matrix[2, 0]))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_cb, float(c_t_eff_matrix[2, 1]))
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_ct_cc, float(c_t_eff_matrix[2, 2]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_to_connection_aa, float(c_t_eff_matrix[0, 0]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_to_connection_ab, float(c_t_eff_matrix[0, 1]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_to_connection_ac, float(c_t_eff_matrix[0, 2]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_to_connection_ba, float(c_t_eff_matrix[1, 0]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_to_connection_bb, float(c_t_eff_matrix[1, 1]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_to_connection_bc, float(c_t_eff_matrix[1, 2]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_to_connection_ca, float(c_t_eff_matrix[2, 0]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_to_connection_cb, float(c_t_eff_matrix[2, 1]))
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_to_connection_cc, float(c_t_eff_matrix[2, 2]))
                 return
             else:
                 return
@@ -4865,12 +4869,12 @@ class EmtProblemDae(EmtProblemTemplate):
         # so the EMT assembler must derive and assign the numerical values here.
         # -----------------------------
         transformer_keys: list[ParamPowerFlowRefferenceType] = list([
-            ParamPowerFlowRefferenceType.xfmr_r1,
-            ParamPowerFlowRefferenceType.xfmr_r2,
-            ParamPowerFlowRefferenceType.xfmr_l1,
-            ParamPowerFlowRefferenceType.xfmr_l2,
-            ParamPowerFlowRefferenceType.xfmr_m,
-            ParamPowerFlowRefferenceType.xfmr_gm,
+            ParamPowerFlowRefferenceType.transformer_winding1_resistance_pu,
+            ParamPowerFlowRefferenceType.transformer_winding2_resistance_pu,
+            ParamPowerFlowRefferenceType.transformer_winding1_inductance_pu_s,
+            ParamPowerFlowRefferenceType.transformer_winding2_inductance_pu_s,
+            ParamPowerFlowRefferenceType.transformer_mutual_inductance_pu_s,
+            ParamPowerFlowRefferenceType.transformer_magnetizing_conductance_pu,
         ])
         has_transformer_mapping: bool = all(key in api_obj_mapping for key in transformer_keys)
 
@@ -4926,12 +4930,12 @@ class EmtProblemDae(EmtProblemTemplate):
                 else:
                     pass
 
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_r1, r1_value)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_r2, r2_value)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_l1, l1_value)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_l2, l2_value)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_m, mutual_inductance)
-                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.xfmr_gm, g_core)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_winding1_resistance_pu, r1_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_winding2_resistance_pu, r2_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_winding1_inductance_pu_s, l1_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_winding2_inductance_pu_s, l2_value)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_mutual_inductance_pu_s, mutual_inductance)
+                self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.transformer_magnetizing_conductance_pu, g_core)
                 return
             else:
                 return

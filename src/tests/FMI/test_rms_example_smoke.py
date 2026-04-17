@@ -20,6 +20,7 @@ def test_rms_fmu_example_runs_end_to_end(tmp_path: Path) -> None:
     from VeraGridEngine.IO.fmu.importer.examples.common import run_rms_cs_example
 
     report_path = run_rms_cs_example(tmp_path)
+
     report_text = report_path.read_text(encoding="utf-8")
 
     assert report_path.exists()

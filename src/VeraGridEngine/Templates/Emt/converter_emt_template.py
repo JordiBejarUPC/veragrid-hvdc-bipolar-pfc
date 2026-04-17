@@ -292,13 +292,13 @@ def get_emt_ideal_converter(
     )
     converter_block.api_obj_mapping = {
         ParamPowerFlowRefferenceType.Sbase: sbase,
-        ParamPowerFlowRefferenceType.P_loss0: P_loss,
+        ParamPowerFlowRefferenceType.converter_loss_power_0: P_loss,
         ParamPowerFlowRefferenceType.P0: P0,
         ParamPowerFlowRefferenceType.omega_base: omega_base,
-        ParamPowerFlowRefferenceType.control1: control1,
-        ParamPowerFlowRefferenceType.control2: control2,
-        ParamPowerFlowRefferenceType.control1_val: control1_val,
-        ParamPowerFlowRefferenceType.control2_val: control2_val,
+        ParamPowerFlowRefferenceType.converter_control_mode_1: control1,
+        ParamPowerFlowRefferenceType.converter_control_mode_2: control2,
+        ParamPowerFlowRefferenceType.converter_control_target_1: control1_val,
+        ParamPowerFlowRefferenceType.converter_control_target_2: control2_val,
     }
 
     # =================================================================
@@ -536,12 +536,12 @@ def _build_pseudo_emt_converter_vsc_block(
     block.api_obj_mapping = {
         ParamPowerFlowRefferenceType.Sbase: sbase,
         ParamPowerFlowRefferenceType.P0: P0_sched,
-        ParamPowerFlowRefferenceType.P_loss0: P_loss0,
+        ParamPowerFlowRefferenceType.converter_loss_power_0: P_loss0,
         ParamPowerFlowRefferenceType.omega_base: omega_base,
-        ParamPowerFlowRefferenceType.control1: control1,
-        ParamPowerFlowRefferenceType.control2: control2,
-        ParamPowerFlowRefferenceType.control1_val: control1_val,
-        ParamPowerFlowRefferenceType.control2_val: control2_val,
+        ParamPowerFlowRefferenceType.converter_control_mode_1: control1,
+        ParamPowerFlowRefferenceType.converter_control_mode_2: control2,
+        ParamPowerFlowRefferenceType.converter_control_target_1: control1_val,
+        ParamPowerFlowRefferenceType.converter_control_target_2: control2_val,
     }
     return block
 def _build_pseudo_emt_converter_pll_block(vf: VarFactory, name: str) -> Block:

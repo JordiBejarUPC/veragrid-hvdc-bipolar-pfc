@@ -1157,7 +1157,8 @@ def test_dc_line_runtime_case_responds_to_load_step() -> None:
         final_value_pu=0.45,
     )
 
-    time_s, state_traj, _ = solver.simulate(boundary_updater=boundary_updater)
+    simulation_output = solver.simulate(boundary_updater=boundary_updater)
+    time_s, state_traj = simulation_output[0], simulation_output[1]
 
     current_trace = _extract_trace(problem, state_traj, dc_branch.emt_model.E(VarPowerFlowRefferenceType.If_dc))
     from_voltage_trace = _extract_trace(problem, state_traj, bus_dc_from.emt_model.E(VarPowerFlowRefferenceType.Vdc))
@@ -1288,7 +1289,8 @@ def test_standalone_diode_case_charges_forward_and_stays_latched() -> None:
         dense_threshold=0,
         verbose=False,
     )
-    time_s, state_traj, _ = solver.simulate(boundary_updater=boundary_updater)
+    simulation_output = solver.simulate(boundary_updater=boundary_updater)
+    time_s, state_traj = simulation_output[0], simulation_output[1]
     v_load_trace = np.array(state_traj[:, problem.get_var_idx(tracked_vars["v_load"])], copy=True)
     i_branch_trace = np.array(state_traj[:, problem.get_var_idx(tracked_vars["i_branch"])], copy=True)
     mode_trace = boundary_updater.get_record_mode()
@@ -1322,7 +1324,8 @@ def test_standalone_igbt_case_turns_on_and_off_cleanly() -> None:
         dense_threshold=0,
         verbose=False,
     )
-    time_s, state_traj, _ = solver.simulate(boundary_updater=boundary_updater)
+    simulation_output = solver.simulate(boundary_updater=boundary_updater)
+    time_s, state_traj = simulation_output[0], simulation_output[1]
     v_load_trace = np.array(state_traj[:, problem.get_var_idx(tracked_vars["v_load"])], copy=True)
     i_branch_trace = np.array(state_traj[:, problem.get_var_idx(tracked_vars["i_branch"])], copy=True)
     mode_trace = boundary_updater.get_record_mode()
@@ -1366,7 +1369,8 @@ def test_standalone_thyristor_case_latches_after_the_gate_pulse() -> None:
         dense_threshold=0,
         verbose=False,
     )
-    time_s, state_traj, _ = solver.simulate(boundary_updater=boundary_updater)
+    simulation_output = solver.simulate(boundary_updater=boundary_updater)
+    time_s, state_traj = simulation_output[0], simulation_output[1]
     v_load_trace = np.array(state_traj[:, problem.get_var_idx(tracked_vars["v_load"])], copy=True)
     mode_trace = boundary_updater.get_record_mode()
     control_time_s = boundary_updater.get_record_time_s()

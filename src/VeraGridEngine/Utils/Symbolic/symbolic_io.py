@@ -440,17 +440,9 @@ class BlockSaver:
 
         for dyn_var_type, var in blk.external_mapping.items():
             if var is not None:
-<<<<<<< HEAD
-                var_in_varfactory = self.var_factory.find_var_or_diff_var(var_uid=var.uid)
-                # if var is not in VarFactory "2"find_var_or_diff_var" will also raise an error
-
-                # if var.uid not in self.var_factory.get_vars_dict() and var.uid not in self.var_factory.get_diff_var_dict():
-                #     raise ValueError(f"variable {var.name} not added to vars factory")
-=======
                 self._ensure_var_registered(var)
             else:
                 pass
->>>>>>> cefa93a60 (fix init import chains and unify FMU var factory)
 
         # save diagram
         diagram = blk.diagram.to_dict()
