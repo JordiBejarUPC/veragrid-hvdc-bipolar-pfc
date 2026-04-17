@@ -235,10 +235,6 @@ class BackEulerImplicitIntegration:
                                 f"NaNs found at indices {nan_indices.tolist()} in equations:\n{nan_eqs}",
                             )
 
-                        if not solved:
-                            print("Failed to solve linear system even with regularization.")
-                            break
-
                         x_new += delta
                         n_iter += 1
 
