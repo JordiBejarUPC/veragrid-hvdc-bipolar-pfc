@@ -32,7 +32,7 @@ from scipy.optimize import linear_sum_assignment
 
 
 #GRID = "Texas 2000 + VSC"
-GRID = "IEEE118_rate_load15.xlsx"
+GRID = "IEEE25.gridcal"
 USE_CACHED_BUILDER = True
 BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
