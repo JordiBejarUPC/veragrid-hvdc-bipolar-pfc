@@ -4830,11 +4830,10 @@ class SchematicWidget(BaseDiagramWidget):
         Deep copy of this widget
         :return: SchematicWidget
         """
-        d_copy = SchematicDiagram(name=self.diagram.name + '_copy')
-        j_data = json.dumps(self.diagram.get_data_dict(), indent=4)
-        d_copy.parse_data(data=json.loads(j_data),
-                          obj_dict=self.circuit.get_all_elements_dict_by_type(add_locations=True),
-                          logger=self.logger)
+        d_copy: SchematicDiagram = self.diagram.copy(
+            obj_dict=self.circuit.get_all_elements_dict_by_type(add_locations=True)
+        )
+        d_copy.name = self.diagram.name + '_copy'
 
         return SchematicWidget(
             gui=self.gui,
