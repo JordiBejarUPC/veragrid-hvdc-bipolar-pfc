@@ -729,26 +729,19 @@ class GenericBlockDialog(QDialog):
 
         layout = QFormLayout(self)
 
-        # --- New: name field ---
         self.name_edit = QLineEdit()
         layout.addRow("Block name:", self.name_edit)
 
-        # --- Existing fields ---
-        self.state_inputs_spin = QSpinBox()
-        self.state_inputs_spin.setMinimum(0)
-        layout.addRow("Number of state inputs:", self.state_inputs_spin)
+        self.inputs_spin = QSpinBox()
+        self.inputs_spin.setMinimum(1)
+        self.inputs_spin.setValue(1)
+        layout.addRow("Number of inputs:", self.inputs_spin)
 
-        self.state_outputs_edit = QLineEdit()
-        layout.addRow("State outputs (comma separated):", self.state_outputs_edit)
+        self.outputs_spin = QSpinBox()
+        self.outputs_spin.setMinimum(1)
+        self.outputs_spin.setValue(1)
+        layout.addRow("Number of outputs:", self.outputs_spin)
 
-        self.algeb_inputs_spin = QSpinBox()
-        self.algeb_inputs_spin.setMinimum(0)
-        layout.addRow("Number of algebraic inputs:", self.algeb_inputs_spin)
-
-        self.algeb_outputs_edit = QLineEdit()
-        layout.addRow("Algebraic outputs (comma separated):", self.algeb_outputs_edit)
-
-        # --- Buttons ---
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
@@ -756,12 +749,10 @@ class GenericBlockDialog(QDialog):
 
     def get_values(self):
         """Return all dialog values."""
-        name = self.name_edit.text().strip()
-        state_ins = self.state_inputs_spin.value()
-        state_outs = [s.strip() for s in self.state_outputs_edit.text().split(",") if s.strip()]
-        algeb_ins = self.algeb_inputs_spin.value()
-        algeb_outs = [s.strip() for s in self.algeb_outputs_edit.text().split(",") if s.strip()]
-        return name, state_ins, state_outs, algeb_ins, algeb_outs
+        name = self.name_edit.text().strip() or "generic"
+        inputs = self.inputs_spin.value()
+        outputs = self.outputs_spin.value()
+        return name, inputs, outputs
 
 
 class EmtTemplateWizardDialog(QDialog):
@@ -2169,7 +2160,7 @@ class GenericBlockItem(QGraphicsRectItem):
         :param api_object:
         :param position_changed_callback:
         """
-        super().__init__(0, 0, 50, 30)
+        super().__init__(0, 0, 100, 60)
 
         # ------------------------
         # API
@@ -2206,7 +2197,7 @@ class GenericBlockItem(QGraphicsRectItem):
         self.setAcceptHoverEvents(True)
 
         self.name_item.setDefaultTextColor(BLOCK_TITLE)
-        name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 6)
+        name_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
         name_font.setBold(True)
         self.name_item.setFont(name_font)
         self.name_item.setPos(6, 4)
@@ -2306,17 +2297,17 @@ class GenericBlockItem(QGraphicsRectItem):
         :return:
         """
         port_rows: int = max(len(self.inputs), len(self.outputs), 1)
-        min_height: float = 30 + port_rows * 14
+        min_height: float = 50 + port_rows * 18
 
-        name_width = len(self.subsys.name) * 5
+        name_width = len(self.subsys.name) * 7
         max_label_length = 0
         for var in self.subsys.in_vars:
             max_label_length = max(max_label_length, len(var.name))
         for var in self.subsys.out_vars:
             max_label_length = max(max_label_length, len(var.name))
 
-        port_width = max_label_length * 5
-        min_width = max(50, name_width + 10, port_width + 20)
+        port_width = max_label_length * 7
+        min_width = max(100, name_width + 14, port_width + 30)
 
         return min_width, min_height
 
@@ -2341,7 +2332,7 @@ class GenericBlockItem(QGraphicsRectItem):
         :return:
         """
         label_item: QGraphicsTextItem = QGraphicsTextItem("", self)
-        label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 7)
+        label_font: QtGui.QFont = QtGui.QFont("DejaVu Sans", 9)
         label_item.setFont(label_font)
         label_item.setDefaultTextColor(PORT_LABEL_COLOR)
         label_item.setZValue(4)
@@ -3656,9 +3647,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         dialog = GenericBlockDialog(self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            name, state_ins, state_outs, algeb_ins, algeb_outs = dialog.get_values()
+            name, inputs, outputs = dialog.get_values()
 
-            model = create_generic_block(self.var_factory, state_ins, state_outs, algeb_ins, algeb_outs)
+            model = create_generic_block(self.var_factory, inputs, outputs, name)
             self.main_block.add(model)
             item = GenericBlockItem(
                 var_factory=self.var_factory,
@@ -3677,10 +3668,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 y=y_pos,
                 device_uid=model.uid,
                 tpe=block_type.name,
-                state_ins=state_ins,
-                state_outs=state_outs,
-                algeb_ins=algeb_ins,
-                algeb_outs=algeb_outs,
+                state_ins=inputs,
+                state_outs=[],
+                algeb_ins=0,
+                algeb_outs=[],
                 subdiagram=model.diagram
             )
 
