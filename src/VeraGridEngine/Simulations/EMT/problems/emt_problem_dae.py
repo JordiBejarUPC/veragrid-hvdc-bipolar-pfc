@@ -44,12 +44,8 @@ from VeraGridEngine.Simulations.EMT.initialization_emt import EmtInitializationR
 from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import init_explicit_common, build_symbolic_vector_single_equation_compiler
 from VeraGridEngine.Utils.Symbolic.compiled_functions import get_compiled_functions_cache_stats
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_algebraic_vars
-from VeraGridEngine.IO.fmu.importer import (
-    finalize_emt_fmu_cs_devices,
-    finalize_emt_fmu_me_devices,
-    queue_emt_fmu_cs_device,
-    queue_emt_fmu_me_device,
-)
+from VeraGridEngine.IO.fmu.importer.experimental_cs import finalize_emt_fmu_cs_devices, queue_emt_fmu_cs_device
+from VeraGridEngine.IO.fmu.importer.experimental_me import finalize_emt_fmu_me_devices, queue_emt_fmu_me_device
 
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     EmtBoundaryUpdateProtocol,
@@ -4183,5 +4179,4 @@ class EmtProblemDae(EmtProblemTemplate):
         self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.R1, gen.R1)
         self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.X1, gen.X1)
         self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.X0, gen.X0)
-
 

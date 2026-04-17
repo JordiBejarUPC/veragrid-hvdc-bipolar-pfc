@@ -121,7 +121,7 @@ class MultiAgentTrainingConfig:
         entropy_weight: float = 0.01,
         hidden_size: int = 256,
         checkpoint_interval: int = 25,
-        checkpoint_dir: str = "trunk/ai/ai_operator/checkpoints_multi_agent",
+        checkpoint_dir: str = "checkpoints_multi_agent",
         attacker_aggression_enabled: bool = True,
         initial_attacker_aggression: float = 1.0,
         minimum_attacker_aggression: float = 0.25,
