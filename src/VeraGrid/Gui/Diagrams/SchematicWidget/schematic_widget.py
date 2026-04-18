@@ -4228,7 +4228,9 @@ class SchematicWidget(BaseDiagramWidget):
         Get a list of the API objects from the selection
         :return: List[EditableDevice]
         """
-        return [e.api_object for e in self._get_selected()]
+        # selectedItems() includes child QGraphicsItems (labels, handles) that are not
+        # GenericDiagramWidget and have no api_object; filter them out to avoid AttributeError
+        return [e.api_object for e in self._get_selected() if isinstance(e, GenericDiagramWidget)]
 
     def create_schematic_from_selection(self) -> SchematicDiagram:
         """
