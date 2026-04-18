@@ -247,7 +247,8 @@ class GridMapWidget(BaseDiagramWidget):
         :param diagram: Diagram instance (optional)
         """
         is_new_diagram = diagram is None
-        render_level = 6 if tile_src.level_in_range(6) else max(tile_src.min_level, min(start_level, tile_src.max_level))
+        render_level = 6 if tile_src.level_in_range(6) else max(tile_src.min_level,
+                                                                min(start_level, tile_src.max_level))
 
         super().__init__(
             gui=gui,
@@ -281,17 +282,18 @@ class GridMapWidget(BaseDiagramWidget):
         self.zoom_pixel_step: float = 240.0
         self.zoom_max_event_steps: float = 1.0
 
-        # Draw the diagram. New diagrams are auto-centered from their graphics;
+        # Draw the diagram. New diagrams are auto-centered from their graphics after the map viewport is initialized;
         # loaded diagrams must preserve their persisted viewport.
         self.draw()
+
         if is_new_diagram:
+            if self.diagram.start_level != self.map.level:
+                self.map.apply_zoom_level(level=self.diagram.start_level)
+
+            self.map.go_to_position(longitude=self.diagram.longitude,
+                                    latitude=self.diagram.latitude)
+        else:
             self.center()
-
-        if self.diagram.start_level != self.map.level:
-            self.map.apply_zoom_level(level=self.diagram.start_level)
-
-        self.map.go_to_position(longitude=self.diagram.longitude,
-                                latitude=self.diagram.latitude)
 
     def set_diagram(self, diagram: MapDiagram):
         """
@@ -359,9 +361,9 @@ class GridMapWidget(BaseDiagramWidget):
         """
         return [e.api_object for e in self._get_selected()]
 
-    def get_selected_line_segments_tup(self) -> List[Tuple[Line, (MapAcLine,
-                                                                  MapDcLine,
-                                                                  MapHvdcLine,
+    def get_selected_line_segments_tup(self) -> List[Tuple[Line, (MapAcLine |
+                                                                  MapDcLine |
+                                                                  MapHvdcLine |
                                                                   MapFluidPathLine)]]:
         """
         Get only selected line segments from the scene
@@ -625,7 +627,8 @@ class GridMapWidget(BaseDiagramWidget):
         """
         lst: List[Tuple[int, Substation, Union[SubstationGraphicItem, None]]] = list()
         substation_graphics_dict = self.graphics_manager.get_device_type_dict(DeviceType.SubstationDevice)
-        substations_dict: Dict[str: Tuple[int, Bus]] = {b.idtag: (i, b) for i, b in enumerate(self.circuit.substations)}
+        substations_dict: Dict[str, Tuple[int, Substation]] = {b.idtag: (i, b)
+                                                               for i, b in enumerate(self.circuit.substations)}
 
         for bus_idtag, graphic_object in substation_graphics_dict.items():
             idx, substation = substations_dict[bus_idtag]
@@ -2887,7 +2890,7 @@ class GridMapWidget(BaseDiagramWidget):
                                contingency_factor=line_api.contingency_factor,
                                protection_rating_factor=line_api.protection_rating_factor,
                                circuit_idx=line_api.circuit_idx,
-                               active = line_api.active)
+                               active=line_api.active)
 
         if line_api.template is not None:
             connection_line.apply_template(line_api.template, Sbase=self.circuit.Sbase, freq=self.circuit.fBase)
@@ -3244,7 +3247,7 @@ def generate_map_diagram2(circuit: MultiCircuit):
         external_grids=circuit.external_grids,
         static_generators=circuit.static_generators,
         loads=circuit.loads,
-        batteries=circuit.batteries ,
+        batteries=circuit.batteries,
         generators=circuit.generators,
         prog_func=None,
         text_func=None,
