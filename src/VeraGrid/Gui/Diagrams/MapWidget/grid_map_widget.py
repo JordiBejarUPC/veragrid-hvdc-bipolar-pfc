@@ -280,7 +280,6 @@ class GridMapWidget(BaseDiagramWidget):
         self.zoom_angle_step: float = 120.0
         self.zoom_pixel_step: float = 240.0
         self.zoom_max_event_steps: float = 1.0
-        self._wheel_zoom_remainder: float = 0.0
 
         # Draw the diagram. New diagrams are auto-centered from their graphics;
         # loaded diagrams must preserve their persisted viewport.
@@ -522,32 +521,6 @@ class GridMapWidget(BaseDiagramWidget):
                 normalized_zoom_steps = zoom_steps
 
         return normalized_zoom_steps
-
-    def get_wheel_zoom_level_delta(self, event: QWheelEvent) -> int:
-        """
-        Convert wheel movement into an integer map zoom-level delta.
-
-        Map tiles are loaded at integer zoom levels, so touchpad fractional movement is accumulated until it reaches a
-        full level. This preserves the existing mouse-wheel behavior and prevents high-resolution touchpad events from
-        jumping through many map levels.
-
-        :param event: Wheel event coming from the map view.
-        :return: Integer zoom-level delta.
-        """
-        zoom_steps: float = self.get_wheel_zoom_steps(event=event)
-        self._wheel_zoom_remainder += zoom_steps
-
-        if self._wheel_zoom_remainder >= 1.0:
-            zoom_level_delta: int = int(self._wheel_zoom_remainder)
-            self._wheel_zoom_remainder -= float(zoom_level_delta)
-        else:
-            if self._wheel_zoom_remainder <= -1.0:
-                zoom_level_delta = int(self._wheel_zoom_remainder)
-                self._wheel_zoom_remainder -= float(zoom_level_delta)
-            else:
-                zoom_level_delta = 0
-
-        return zoom_level_delta
 
     def to_lat_lon(self, x: float, y: float) -> Tuple[float, float]:
         """
