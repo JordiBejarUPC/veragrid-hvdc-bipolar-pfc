@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 from PySide6.QtWidgets import QGraphicsItem, QMessageBox, QDialog, QVBoxLayout, QLabel, QPushButton
 from collections.abc import Callable
 from PySide6.QtCore import (Qt, QMimeData, QIODevice, QByteArray, QDataStream, QModelIndex, QRunnable, QThreadPool)
-from PySide6.QtGui import (QIcon, QPixmap, QImage, QStandardItemModel, QStandardItem, QColor, QDropEvent)
+from PySide6.QtGui import (QIcon, QPixmap, QImage, QStandardItemModel, QStandardItem, QColor, QDropEvent, QWheelEvent)
 
 from VeraGrid.Gui.Diagrams.MapWidget.Branches.map_line_container import MapLineContainer
 from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics import MapInjectionTemplateGraphicItem
@@ -277,6 +277,10 @@ class GridMapWidget(BaseDiagramWidget):
         # pool of runnable tasks that work best done asynch with a runnable
         self.thread_pool = QThreadPool()
         self.wheel_move_task: QRunnable | None = None
+        self.zoom_angle_step: float = 120.0
+        self.zoom_pixel_step: float = 240.0
+        self.zoom_max_event_steps: float = 1.0
+        self._wheel_zoom_remainder: float = 0.0
 
         # Draw the diagram. New diagrams are auto-centered from their graphics;
         # loaded diagrams must preserve their persisted viewport.
@@ -476,19 +480,74 @@ class GridMapWidget(BaseDiagramWidget):
         self.diagram.latitude = latitude
         self.diagram.longitude = longitude
 
-    def zoom_in(self):
+    def zoom_in(self) -> None:
         """
         Zoom in
         """
         if self.map.level + 1 <= self.map.max_level:
             self.map.apply_zoom_level(level=self.map.level + 1)
 
-    def zoom_out(self):
+    def zoom_out(self) -> None:
         """
         Zoom out
         """
         if self.map.level - 1 >= self.map.min_level:
             self.map.apply_zoom_level(level=self.map.level - 1)
+
+    def get_wheel_zoom_steps(self, event: QWheelEvent) -> float:
+        """
+        Convert a wheel event into a normalized zoom step count.
+
+        A mouse wheel commonly emits an angle delta of 120 units per notch, while laptop touchpads emit many smaller
+        high-resolution events and may provide pixel deltas. Normalizing by the event magnitude keeps mouse-wheel zoom
+        unchanged and lets touchpad gestures accumulate progressively instead of changing one map level per event.
+
+        :param event: Wheel event coming from the map view.
+        :return: Signed zoom step count.
+        """
+        pixel_delta_y: int = event.pixelDelta().y()
+        angle_delta_y: int = event.angleDelta().y()
+
+        if pixel_delta_y != 0:
+            zoom_steps: float = float(pixel_delta_y) / self.zoom_pixel_step
+        else:
+            zoom_steps = float(angle_delta_y) / self.zoom_angle_step
+
+        if zoom_steps > self.zoom_max_event_steps:
+            normalized_zoom_steps: float = self.zoom_max_event_steps
+        else:
+            if zoom_steps < -self.zoom_max_event_steps:
+                normalized_zoom_steps = -self.zoom_max_event_steps
+            else:
+                normalized_zoom_steps = zoom_steps
+
+        return normalized_zoom_steps
+
+    def get_wheel_zoom_level_delta(self, event: QWheelEvent) -> int:
+        """
+        Convert wheel movement into an integer map zoom-level delta.
+
+        Map tiles are loaded at integer zoom levels, so touchpad fractional movement is accumulated until it reaches a
+        full level. This preserves the existing mouse-wheel behavior and prevents high-resolution touchpad events from
+        jumping through many map levels.
+
+        :param event: Wheel event coming from the map view.
+        :return: Integer zoom-level delta.
+        """
+        zoom_steps: float = self.get_wheel_zoom_steps(event=event)
+        self._wheel_zoom_remainder += zoom_steps
+
+        if self._wheel_zoom_remainder >= 1.0:
+            zoom_level_delta: int = int(self._wheel_zoom_remainder)
+            self._wheel_zoom_remainder -= float(zoom_level_delta)
+        else:
+            if self._wheel_zoom_remainder <= -1.0:
+                zoom_level_delta = int(self._wheel_zoom_remainder)
+                self._wheel_zoom_remainder -= float(zoom_level_delta)
+            else:
+                zoom_level_delta = 0
+
+        return zoom_level_delta
 
     def to_lat_lon(self, x: float, y: float) -> Tuple[float, float]:
         """

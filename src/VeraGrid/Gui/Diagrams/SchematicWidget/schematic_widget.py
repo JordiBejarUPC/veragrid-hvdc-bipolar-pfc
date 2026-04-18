@@ -443,6 +443,9 @@ class SchematicWidget(BaseDiagramWidget):
 
         # Scale the view / do the zoom
         self.scale_factor = 1.15  # 1.15
+        self.zoom_angle_step: float = 120.0
+        self.zoom_pixel_step: float = 240.0
+        self.zoom_max_event_steps: float = 1.0
 
         # Zoom indicator
         self._zoom = 0
@@ -574,14 +577,52 @@ class SchematicWidget(BaseDiagramWidget):
         """
         self.editor_graphics_view.setTransformationAnchor(QGraphicsView.ViewportAnchor.AnchorUnderMouse)
 
-        # print(event.angleDelta().x(), event.angleDelta().y(), event.angleDelta().manhattanLength() )
-        if event.angleDelta().y() > 0:
-            # Zoom in
-            self.zoom_in()
-
+        zoom_steps: float = self.get_wheel_zoom_steps(event=event)
+        if zoom_steps != 0.0:
+            # Use the wheel magnitude so high-resolution touchpad events produce small smooth zoom increments.
+            self.zoom_by_steps(steps=zoom_steps)
+            event.accept()
         else:
-            # Zooming out
-            self.zoom_out()
+            event.ignore()
+
+    def get_wheel_zoom_steps(self, event: QWheelEvent) -> float:
+        """
+        Convert a wheel event into a normalized zoom step count.
+
+        A mouse wheel commonly emits an angle delta of 120 units per notch, while laptop touchpads emit many smaller
+        high-resolution events and may provide pixel deltas. Normalizing by the event magnitude keeps mouse-wheel zoom
+        unchanged and makes touchpad zoom proportional to the gesture instead of applying one full zoom step per event.
+
+        :param event: Wheel event coming from the graphics view.
+        :return: Signed zoom step count.
+        """
+        pixel_delta_y: int = event.pixelDelta().y()
+        angle_delta_y: int = event.angleDelta().y()
+
+        if pixel_delta_y != 0:
+            zoom_steps: float = float(pixel_delta_y) / self.zoom_pixel_step
+        else:
+            zoom_steps = float(angle_delta_y) / self.zoom_angle_step
+
+        if zoom_steps > self.zoom_max_event_steps:
+            normalized_zoom_steps: float = self.zoom_max_event_steps
+        else:
+            if zoom_steps < -self.zoom_max_event_steps:
+                normalized_zoom_steps = -self.zoom_max_event_steps
+            else:
+                normalized_zoom_steps = zoom_steps
+
+        return normalized_zoom_steps
+
+    def zoom_by_steps(self, steps: float) -> None:
+        """
+        Apply zoom using a normalized number of mouse-wheel steps.
+
+        :param steps: Signed zoom step count. One positive step matches one traditional mouse-wheel zoom-in notch.
+        :return: None.
+        """
+        zoom_factor: float = self.scale_factor ** steps
+        self.editor_graphics_view.scale(zoom_factor, zoom_factor)
 
     def graphicsKeyPressEvent(self, event: QKeyEvent):
         """

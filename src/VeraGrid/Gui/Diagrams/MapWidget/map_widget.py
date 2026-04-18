@@ -267,27 +267,29 @@ class MapView(QGraphicsView):
         """
         self.map_widget.keyReleaseEvent(event)
 
-    def wheelEvent(self, event: QWheelEvent):
+    def wheelEvent(self, event: QWheelEvent) -> None:
         """
 
         :param event:
         :return:
         """
-        zoom_0 = self.map_widget.level
+        zoom_0: int = self.map_widget.level
 
         self.mouse_x = event.position().x()
         self.mouse_y = event.position().y()
 
-        if event.angleDelta().y() > 0:
-            new_level = zoom_0 + 1
+        zoom_level_delta: int = self.map_widget.editor.get_wheel_zoom_level_delta(event=event)
+        if zoom_level_delta == 0:
+            event.accept()
+            return
         else:
-            new_level = zoom_0 - 1
+            new_level: int = zoom_0 + zoom_level_delta
 
         if self.map_widget.tile_src.level_in_range(new_level):
 
-            val = self.map_widget.apply_zoom_level(level=new_level,
-                                                   view_x=self.mouse_x,
-                                                   view_y=self.mouse_y)
+            val: bool = self.map_widget.apply_zoom_level(level=new_level,
+                                                         view_x=self.mouse_x,
+                                                         view_y=self.mouse_y)
 
             if not val:
                 # revert to the previous zoom
