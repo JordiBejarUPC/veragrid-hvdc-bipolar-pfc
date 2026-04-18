@@ -125,50 +125,50 @@ class TransitionMatrix:
         return self.transition_matrix[i1, i2]
 
     @staticmethod
-    def template_dictionary(grid: MultiCircuit) -> Dict[tuple[float, float], List[tuple[object, float]]]:
-        # TODO: Key of the dict should be a float, not a tuple.
+    def template_dictionary(grid: MultiCircuit) -> Dict[float, Dict[float, List[tuple[object, float]]]]:
         """
-        Build a dictionary of branch templates grouped by voltage transition.
+        Build a nested dictionary of branch templates grouped by voltage transition.
 
-        The dictionary keys are voltage transition tuples (V1, V2), always sorted so
-        that (132.0, 220.0) and (220.0, 132.0) are treated as the same transition.
+        The outer key is the lower voltage (kV) and the inner key is the higher voltage
+        (kV), so (132 kV → 220 kV) is stored as template_dict[132.0][220.0].
+        Both voltages are sorted so that (132, 220) and (220, 132) map to the same entry.
 
-        The dictionary values are lists of tuples:
-            (branch_name, probability)
-
-        The probability is assigned uniformly among all branch elements that belong
-        to the same voltage transition.
+        The values are lists of (branch_object, probability) tuples where probability
+        is assigned uniformly among all branches that share the same voltage transition.
 
         :param grid: MultiCircuit instance
-        :return: Dictionary with keys (V1, V2) and values [(element_name, probability), ...]
+        :return: Nested dict {v_lo: {v_hi: [(branch_object, probability), ...]}}
         """
-        grouped_elements: Dict[tuple[float, float], List[object]] = dict()
+        grouped_elements: Dict[float, Dict[float, List[object]]] = dict()
 
         for branch in grid.get_branches(add_vsc=True, add_hvdc=True, add_switch=True):
 
-            v_from = branch.bus_from.Vnom
-            v_to = branch.bus_to.Vnom
+            v1 = float(branch.bus_from.Vnom)
+            v2 = float(branch.bus_to.Vnom)
+            v_lo = min(v1, v2)
+            v_hi = max(v1, v2)
 
-            v1 = float(v_from)
-            v2 = float(v_to)
-            transition_key = (min(v1, v2), max(v1, v2))
+            if v_lo not in grouped_elements:
+                grouped_elements[v_lo] = dict()
 
-            if transition_key not in grouped_elements:
-                grouped_elements[transition_key] = list()
+            if v_hi not in grouped_elements[v_lo]:
+                grouped_elements[v_lo][v_hi] = list()
 
-            grouped_elements[transition_key].append(branch)
+            grouped_elements[v_lo][v_hi].append(branch)
 
-        template_dict: Dict[tuple[float, float], List[tuple[object, float]]] = dict()
+        template_dict: Dict[float, Dict[float, List[tuple[object, float]]]] = dict()
 
-        for transition_key, branch_objects in grouped_elements.items():
-            n_el = len(branch_objects)
+        for v_lo, inner in grouped_elements.items():
+            template_dict[v_lo] = dict()
+            for v_hi, branch_objects in inner.items():
+                n_el = len(branch_objects)
 
-            if n_el == 0:
-                template_dict[transition_key] = list()
-                continue
+                if n_el == 0:
+                    template_dict[v_lo][v_hi] = list()
+                    continue
 
-            probability = 1.0 / n_el
-            template_dict[transition_key] = [(branch_object, probability) for branch_object in branch_objects]
+                probability = 1.0 / n_el
+                template_dict[v_lo][v_hi] = [(branch_object, probability) for branch_object in branch_objects]
 
         return template_dict
 
@@ -510,13 +510,14 @@ class Topology:
 
                 v1 = float(current_bus.Vnom)
                 v2 = float(next_bus.Vnom)
-                transition_key = (min(v1, v2), max(v1, v2))
+                v_lo = min(v1, v2)
+                v_hi = max(v1, v2)
 
-                template_options = self.transition_matrix.template_dict.get(transition_key, list())
+                template_options = self.transition_matrix.template_dict.get(v_lo, dict()).get(v_hi, list())
 
                 if not template_options:
                     self.logger.add_warning(
-                        msg=f"No template branches for transition {transition_key}. Skipping edge {edge}.",
+                        msg=f"No template branches for transition {v_lo}kV-{v_hi}kV. Skipping edge {edge}.",
                         device=f"edge {edge}"
                     )
                     break
@@ -541,7 +542,7 @@ class Topology:
 
                 if new_branch is None:
                     self.logger.add_warning(
-                        msg=f"Could not instantiate branch for transition {transition_key}. Skipping edge {edge}.",
+                        msg=f"Could not instantiate branch for transition {v_lo}kV-{v_hi}kV. Skipping edge {edge}.",
                         device=f"edge {edge}"
                     )
                     break
@@ -589,17 +590,18 @@ class Topology:
 
         adjacency: dict[float, set[float]] = dict()
 
-        for (v1, v2), template_options in self.transition_matrix.template_dict.items():
-            if len(template_options) == 0:
-                continue
+        for v_lo, inner in self.transition_matrix.template_dict.items():
+            for v_hi, template_options in inner.items():
+                if len(template_options) == 0:
+                    continue
 
-            if v1 not in adjacency:
-                adjacency[v1] = set()
-            if v2 not in adjacency:
-                adjacency[v2] = set()
+                if v_lo not in adjacency:
+                    adjacency[v_lo] = set()
+                if v_hi not in adjacency:
+                    adjacency[v_hi] = set()
 
-            adjacency[v1].add(v2)
-            adjacency[v2].add(v1)
+                adjacency[v_lo].add(v_hi)
+                adjacency[v_hi].add(v_lo)
 
         if start_v not in adjacency or end_v not in adjacency:
             return None
@@ -710,12 +712,13 @@ class Topology:
 
             v1 = float(previous_bus.Vnom)
             v2 = float(next_bus.Vnom)
-            transition_key = (min(v1, v2), max(v1, v2))
+            v_lo = min(v1, v2)
+            v_hi = max(v1, v2)
 
-            template_options = self.transition_matrix.template_dict.get(transition_key, list())
+            template_options = self.transition_matrix.template_dict.get(v_lo, dict()).get(v_hi, list())
             if len(template_options) == 0:
                 raise RuntimeError(
-                    f"No template branches available for transition {transition_key} "
+                    f"No template branches available for transition {v_lo}kV-{v_hi}kV "
                     f"while fixing edge {edge}."
                 )
 
@@ -732,7 +735,7 @@ class Topology:
 
             if new_branch is None:
                 raise RuntimeError(
-                    f"Could not instantiate branch for transition {transition_key} "
+                    f"Could not instantiate branch for transition {v_lo}kV-{v_hi}kV "
                     f"while fixing edge {edge}."
                 )
 
