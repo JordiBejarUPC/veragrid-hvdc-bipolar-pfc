@@ -272,6 +272,6 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
                         self.api_object.P_prof.set(dlg.P)
                         self.plot()
                     else:
-                        raise Exception("Wrong length from the solar photovoltaic wizard")
+                        raise Exception("Wrong length from the wind farm wizard")
         else:
             info_msg("You need to have time profiles for this function")
