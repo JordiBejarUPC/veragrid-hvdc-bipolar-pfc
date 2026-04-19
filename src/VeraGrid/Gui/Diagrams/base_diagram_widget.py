@@ -147,8 +147,9 @@ class BaseDiagramWidget(QSplitter):
                  time_index: Union[None, int] = None):
         """
         Constructor
-        :param circuit:
+        :param gui:
         :param diagram:
+        :param library_model:
         :param time_index:
         """
         QSplitter.__init__(self)

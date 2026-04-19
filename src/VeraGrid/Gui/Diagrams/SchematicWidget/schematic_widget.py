@@ -402,7 +402,7 @@ class SchematicWidget(BaseDiagramWidget):
 
     def __init__(self,
                  gui: VeraGridMainGUI | DiagramsMain,
-                 diagram: Union[SchematicDiagram, None],
+                 diagram: SchematicDiagram,
                  default_bus_voltage: float = 10.0,
                  time_index: Union[None, int] = None):
         """
@@ -4269,7 +4269,7 @@ class SchematicWidget(BaseDiagramWidget):
         Get a list of the API objects from the selection
         :return: List[EditableDevice]
         """
-        return [e.api_object for e in self._get_selected()]
+        return [e.api_object for e in self._get_selected() if hasattr(e, 'api_object')]
 
     def create_schematic_from_selection(self) -> SchematicDiagram:
         """
