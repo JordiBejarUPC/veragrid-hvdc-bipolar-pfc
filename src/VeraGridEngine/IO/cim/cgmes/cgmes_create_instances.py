@@ -1022,7 +1022,6 @@ def create_cgmes_dc_converter_unit(cgmes_model: CgmesCircuit,
     else:
         raise NotImplemented()
 
-    dc_cu.Substation = None  # TODO
     dc_cu.operationMode = DCConverterOperatingModeKind.monopolarGroundReturn
 
     cgmes_model.add(dc_cu)

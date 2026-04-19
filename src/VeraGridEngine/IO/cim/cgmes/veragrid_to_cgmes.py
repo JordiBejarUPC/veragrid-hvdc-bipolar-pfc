@@ -529,6 +529,15 @@ def convert_vsc_devices_to_cgmes(multicircuit_model: MultiCircuit,
             logger=logger
         )
 
+        if gc_vsc.bus_to.substation is not None:
+            substation = find_object_by_uuid(
+                cgmes_model=cgmes_model,
+                object_list=cgmes_model.cgmes_assets.Substation_list,
+                target_uuid=gc_vsc.bus_to.substation.idtag
+            )
+            if isinstance(substation, cgmes_model.assets.Substation):
+                dc_conv_unit.Substation = substation
+
         dc_tp = get_or_create_dc_topological_node(cgmes_model, gc_vsc.bus_from, ver, logger)
         dc_node = get_or_create_dc_node(cgmes_model, gc_vsc.bus_from, dc_tp, dc_conv_unit, ver, logger)
 
@@ -1403,7 +1412,7 @@ def get_cgmes_generators(multicircuit_model: MultiCircuit,
         else:
             cgmes_syn.controlEnabled = False
 
-        # Todo cgmes_syn.ratedPowerFactor = 1.0
+        cgmes_syn.ratedPowerFactor = max(0.0, min(1.0, mc_elm.Pf))
         cgmes_syn.ratedS = mc_elm.Snom
         cgmes_syn.GeneratingUnit = cgmes_gen  # linking them together
         cgmes_gen.RotatingMachine = cgmes_syn  # linking them together
@@ -1412,7 +1421,8 @@ def get_cgmes_generators(multicircuit_model: MultiCircuit,
         cgmes_syn.r = mc_elm.R1 if mc_elm.R1 != 1e-20 else None  # default value not exported
         cgmes_syn.p = -mc_elm.P  # negative sign!
         cgmes_syn.q = -mc_elm.Q
-        # TODO cgmes_syn.qPercent =
+        if mc_elm.Snom > 0.0:
+            cgmes_syn.qPercent = (mc_elm.Qmax / mc_elm.Snom) * 100.0
         if mc_elm.q_curve is not None:
             pMin = mc_elm.q_curve.get_Pmin()
         else:
@@ -1427,8 +1437,9 @@ def get_cgmes_generators(multicircuit_model: MultiCircuit,
                 cgmes_syn.type = SynchronousMachineKind.generator
         elif cgmes_syn.p == 0:
             cgmes_syn.operatingMode = SynchronousMachineOperatingMode.condenser
-            if pMin < 0:  # TODO We don't have all the types
-                cgmes_syn.type = SynchronousMachineKind.motorOrCondenser
+            if pMin < 0:
+                # pMin < 0 means the machine can also motor; currently condensing → all three modes possible
+                cgmes_syn.type = SynchronousMachineKind.generatorOrCondenserOrMotor
             elif pMin == 0:
                 cgmes_syn.type = SynchronousMachineKind.generatorOrCondenser
             else:
@@ -1795,11 +1806,22 @@ def get_cgmes_power_transformers(grid: MultiCircuit,
             if isinstance(substation, cgmes_model.assets.Substation):
                 cm_transformer.EquipmentContainer = substation
 
-        # TODO tr3w rates?
-        # current_rate = mc_elm.rate * 1e3 / (mc_elm.get_max_bus_nominal_voltage() * 1.73205080756888)
-        # current_rate = np.round(current_rate, 4)
-        # create_cgmes_current_limit(cm_transformer.Terminals[0], current_rate, cgmes_model, logger)
-        # create_cgmes_current_limit(cm_transformer.Terminals[1], current_rate, cgmes_model, logger)
+        # Current limits per winding — each winding has its own rated current
+        patl, tatl_900, tatl_60 = op_lim_types
+        winding_terminals: list[tuple] = [
+            (cm_transformer.Terminals[0], mc_elm.winding1),
+            (cm_transformer.Terminals[1], mc_elm.winding2),
+            (cm_transformer.Terminals[2], mc_elm.winding3),
+        ]
+        for terminal, winding in winding_terminals:
+            if winding.rate != 0.0:
+                create_cgmes_current_limit(terminal, winding.rate, patl, cgmes_model, ver, logger)
+            contingency_rate: float = winding.contingency_factor * winding.rate
+            if contingency_rate != 0.0:
+                create_cgmes_current_limit(terminal, contingency_rate, tatl_900, cgmes_model, ver, logger)
+            protection_rate: float = winding.protection_rating_factor * winding.rate
+            if protection_rate != 0.0:
+                create_cgmes_current_limit(terminal, protection_rate, tatl_60, cgmes_model, ver, logger)
 
         cm_transformer.PowerTransformerEnd = []
         if ver == CGMESVersions.v2_4_15:
