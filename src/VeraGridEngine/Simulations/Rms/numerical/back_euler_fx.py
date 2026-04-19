@@ -151,7 +151,7 @@ class BackEulerImplicitIntegration:
                 n_iter = 0
                 current_time = self.t[step_idx]
                 dx_last = dx
-                self.problem.update_variable_params(t=current_time)
+                self.problem.update_variable_params(t=current_time, x_snapshot=self.y[step_idx, :])
 
                 xn = self.y[step_idx, :]
                 self.problem.advance_fmu_cs_devices(t=current_time, x_snapshot=xn, h=self.h)

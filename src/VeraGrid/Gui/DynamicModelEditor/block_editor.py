@@ -17,10 +17,10 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
 from PySide6.QtWidgets import (QApplication, QFrame, QGraphicsView, QHBoxLayout,
-    QHeaderView, QLabel, QMainWindow, QMenuBar,
-    QPushButton, QSizePolicy, QSpacerItem, QSplitter,
-    QTableView, QToolBar, QToolBox, QTreeView,
-    QVBoxLayout, QWidget)
+    QHeaderView, QLabel, QLineEdit, QMainWindow,
+    QMenuBar, QPushButton, QSizePolicy, QSpacerItem,
+    QSplitter, QTableView, QToolBar, QToolBox,
+    QToolButton, QTreeView, QVBoxLayout, QWidget)
 from VeraGrid.Gui.Icons.icons_rc import *
 
 class Ui_BlockEditorWindow(object):
@@ -81,6 +81,26 @@ class Ui_BlockEditorWindow(object):
         self.verticalLayout_13 = QVBoxLayout(self.page_7)
         self.verticalLayout_13.setObjectName(u"verticalLayout_13")
         self.verticalLayout_13.setContentsMargins(0, 0, 0, 0)
+        self.libraryHeaderFrame = QFrame(self.page_7)
+        self.libraryHeaderFrame.setObjectName(u"libraryHeaderFrame")
+        self.libraryHeaderFrame.setFrameShape(QFrame.Shape.NoFrame)
+        self.libraryHeaderFrame.setFrameShadow(QFrame.Shadow.Raised)
+        self.horizontalLayout_5 = QHBoxLayout(self.libraryHeaderFrame)
+        self.horizontalLayout_5.setObjectName(u"horizontalLayout_5")
+        self.horizontalLayout_5.setContentsMargins(0, 0, 0, 0)
+        self.librarySearchButton = QToolButton(self.libraryHeaderFrame)
+        self.librarySearchButton.setObjectName(u"librarySearchButton")
+
+        self.horizontalLayout_5.addWidget(self.librarySearchButton)
+
+        self.librarySearchLineEdit = QLineEdit(self.libraryHeaderFrame)
+        self.librarySearchLineEdit.setObjectName(u"librarySearchLineEdit")
+
+        self.horizontalLayout_5.addWidget(self.librarySearchLineEdit)
+
+
+        self.verticalLayout_13.addWidget(self.libraryHeaderFrame)
+
         self.libraryTreeView = QTreeView(self.page_7)
         self.libraryTreeView.setObjectName(u"libraryTreeView")
         self.libraryTreeView.setFrameShape(QFrame.Shape.NoFrame)
@@ -211,6 +231,8 @@ class Ui_BlockEditorWindow(object):
         self.actionCenter.setText(QCoreApplication.translate("BlockEditorWindow", u"Center", None))
         self.actionZoom_in.setText(QCoreApplication.translate("BlockEditorWindow", u"Zoom in", None))
         self.actionZoom_out.setText(QCoreApplication.translate("BlockEditorWindow", u"Zoom out", None))
+        self.librarySearchButton.setText(QCoreApplication.translate("BlockEditorWindow", u"...", None))
+        self.librarySearchLineEdit.setPlaceholderText(QCoreApplication.translate("BlockEditorWindow", u"Search basic blocks", None))
         self.toolBox.setItemText(self.toolBox.indexOf(self.page_7), QCoreApplication.translate("BlockEditorWindow", u"Library", None))
         self.toolBox.setItemText(self.toolBox.indexOf(self.page), QCoreApplication.translate("BlockEditorWindow", u"Variables", None))
         self.toolBox.setItemText(self.toolBox.indexOf(self.page_2), QCoreApplication.translate("BlockEditorWindow", u"Parameters", None))

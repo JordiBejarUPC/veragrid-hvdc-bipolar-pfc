@@ -709,7 +709,7 @@ class RmsProblemComplex(RmsProblemTemplate):
                 x[i] = val
         return x
 
-    def update_variable_params(self, t: float):
+    def update_variable_params(self, t: float, x_snapshot: Vec | None = None):
         """Update the variable parameters."""
         self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
 

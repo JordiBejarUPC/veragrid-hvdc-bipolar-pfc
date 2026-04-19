@@ -713,7 +713,7 @@ class RmsProblemTensygrid(RmsProblemTemplate):
             x[i] = val
         return x
 
-    def update_variable_params(self, t: float):
+    def update_variable_params(self, t: float, x_snapshot: Vec | None = None):
         """
         Update the variable parameters
         :param t:

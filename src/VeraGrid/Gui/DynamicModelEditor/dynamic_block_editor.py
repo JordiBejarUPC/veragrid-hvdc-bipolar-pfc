@@ -32,6 +32,9 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
+from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import PowerFactoryBasicTemplateDescriptor
+from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_editor_ready_powerfactory_basic_catalog_descriptors
+from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import load_powerfactory_basic_catalog_template
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
@@ -70,6 +73,7 @@ BLOCK_MIN_HEIGHT: float = 70.0
 TEMPLATE_NODE_TYPE: str = "TEMPLATE"
 PARAMETER_VALUE_TYPE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 500
 PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
+LIBRARY_SEARCH_TEXT_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 502
 
 
 def _new_uid() -> int:
@@ -487,10 +491,66 @@ def is_supported_library_payload(item_data: object) -> bool:
     """
     if isinstance(item_data, BlockType):
         return True
+    elif isinstance(item_data, PowerFactoryBasicTemplateDescriptor):
+        return True
     elif isinstance(item_data, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
         return True
     else:
         return False
+
+
+@dataclass(frozen=True)
+class LibraryLeafSpec:
+    """
+    One draggable leaf entry in the library tree.
+    """
+
+    label: str
+    payload: object
+    search_text: str = ""
+
+
+class LibraryTreeFilterProxyModel(QtCore.QSortFilterProxyModel):
+    """
+    Tree proxy used by the block editor library search.
+    """
+
+    __slots__ = ("_search_role",)
+
+    def __init__(self, search_role: int, parent: QtCore.QObject | None = None):
+        super().__init__(parent)
+        self._search_role = search_role
+        self.setRecursiveFilteringEnabled(True)
+        if hasattr(self, "setAutoAcceptChildRows"):
+            self.setAutoAcceptChildRows(True)
+        else:
+            pass
+        self.setFilterCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
+        self.setFilterRole(search_role)
+        self.setFilterKeyColumn(0)
+
+    def mimeData(self, indexes: List[QtCore.QModelIndex]) -> QtCore.QMimeData:
+        """
+        Forward drag mime building to the source library model.
+        """
+
+        source_model: QtCore.QAbstractItemModel | None = self.sourceModel()
+        if isinstance(source_model, DynamicsLibraryTreeModel):
+            source_indexes: List[QtCore.QModelIndex] = [self.mapToSource(index) for index in indexes if index.isValid()]
+            return source_model.mimeData(source_indexes)
+        else:
+            return super().mimeData(indexes)
+
+    def supportedDragActions(self) -> QtCore.Qt.DropAction:
+        """
+        Reuse the drag action exposed by the source model.
+        """
+
+        source_model: QtCore.QAbstractItemModel | None = self.sourceModel()
+        if isinstance(source_model, DynamicsLibraryTreeModel):
+            return source_model.supportedDragActions()
+        else:
+            return super().supportedDragActions()
 
 
 def clone_block_for_editing(block: Block) -> Block:
@@ -3374,7 +3434,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             self.setWindowModality(QtCore.Qt.WindowModality.WindowModal)
 
         # set object label
-        self.ui.deviceLabel.setText(api_object.name)
+        self.ui.deviceLabel.setText(api_object.name if api_object is not None else "")
 
         self.block_role: int = int(QtCore.Qt.ItemDataRole.UserRole) + 300
         self.mime_type: str = "application/x-veragrid-dynamics-block"
@@ -3419,61 +3479,44 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.templates_list: List[
             RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
 
+        self.tree_structure: Dict[str, Any] = dict()
         if mode == DynamicSimulationMode.RMS:
-            self.tree_structure = {
-                "Basic": [
-                    ("Const", BlockType.CONST),
-                    ("Gain", BlockType.GAIN),
-                    ("Sum", BlockType.SUM),
-                    ("Substr", BlockType.SUBSTR),
-                    ("Product", BlockType.PRODUCT),
-                    ("Divide", BlockType.DIVIDE),
-                    ("Abs", BlockType.ABS),
-                ],
-                "Devices": [
-                    ("Generator basic", BlockType.GENRAW),
-                    ("Generator QEC", BlockType.GENQEC),
-                    ("Governor", BlockType.GOV_RMS),
-                    ("Stabilizer", BlockType.STAB_RMS),
-                    ("Exciter", BlockType.EXCITER_RMS),
-                    ("Line", BlockType.LINE_RMS),
-                    ("Load", BlockType.LOAD_RMS),
-                    ("Generic", BlockType.GENERIC),
-                ],
-            }
+            self.tree_structure["Basic"] = self.build_basic_library_branch()
+            self.tree_structure["Devices"] = [
+                LibraryLeafSpec("Generator basic", BlockType.GENRAW),
+                LibraryLeafSpec("Generator QEC", BlockType.GENQEC),
+                LibraryLeafSpec("Governor", BlockType.GOV_RMS),
+                LibraryLeafSpec("Stabilizer", BlockType.STAB_RMS),
+                LibraryLeafSpec("Exciter", BlockType.EXCITER_RMS),
+                LibraryLeafSpec("Line", BlockType.LINE_RMS),
+                LibraryLeafSpec("Load", BlockType.LOAD_RMS),
+                LibraryLeafSpec("Generic", BlockType.GENERIC),
+            ]
         elif mode == DynamicSimulationMode.EMT:
-            self.tree_structure = {
-                "Basic": [
-                    ("Const", BlockType.CONST),
-                    ("Gain", BlockType.GAIN),
-                    ("Sum", BlockType.SUM),
-                    ("Substr", BlockType.SUBSTR),
-                    ("Product", BlockType.PRODUCT),
-                    ("Divide", BlockType.DIVIDE),
-                    ("Abs", BlockType.ABS),
-                ],
-                "Devices": [
-                    ("Generator", BlockType.EMT_GENERATOR),
-                    ("Thevenin eq. generator", BlockType.EMT_THEVENIN),
-                    ("Governor", BlockType.GOV_EMT),
-                    ("Stabilizer", BlockType.STAB_EMT),
-                    ("Exciter", BlockType.EXCITER_EMT),
-                    ("Generic", BlockType.GENERIC),
-                    ("Emt pi line", BlockType.EMT_PI_LINE),
-                    ("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
-                    ("R load", BlockType.R_LOAD_EMT),
-                    ("L load", BlockType.L_LOAD_EMT),
-                    ("C load", BlockType.C_LOAD_EMT),
-                    ("Exponential load", BlockType.EXP_LOAD_EMT),
-                    ("ZIP load", BlockType.ZIP_LOAD_EMT),
-                    ("DC load", BlockType.DC_LOAD_EMT),
-                ],
-            }
+            self.tree_structure["Basic"] = self.build_basic_library_branch()
+            self.tree_structure["Devices"] = [
+                LibraryLeafSpec("Generator", BlockType.EMT_GENERATOR),
+                LibraryLeafSpec("Thevenin eq. generator", BlockType.EMT_THEVENIN),
+                LibraryLeafSpec("Governor", BlockType.GOV_EMT),
+                LibraryLeafSpec("Stabilizer", BlockType.STAB_EMT),
+                LibraryLeafSpec("Exciter", BlockType.EXCITER_EMT),
+                LibraryLeafSpec("Generic", BlockType.GENERIC),
+                LibraryLeafSpec("Emt pi line", BlockType.EMT_PI_LINE),
+                LibraryLeafSpec("Emt Bergeron line", BlockType.EMT_BERGERON_LINE),
+                LibraryLeafSpec("R load", BlockType.R_LOAD_EMT),
+                LibraryLeafSpec("L load", BlockType.L_LOAD_EMT),
+                LibraryLeafSpec("C load", BlockType.C_LOAD_EMT),
+                LibraryLeafSpec("Exponential load", BlockType.EXP_LOAD_EMT),
+                LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT),
+                LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),
+            ]
         else:
-            self.tree_structure = dict()
+            pass
 
         if self.templates_list:
-            self.tree_structure["Templates"] = [(template.name, template) for template in self.templates_list]
+            self.tree_structure["Templates"] = {
+                "Available": [LibraryLeafSpec(template.name, template, template.name) for template in self.templates_list]
+            }
         else:
             pass
 
@@ -3483,10 +3526,25 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             mime_type=self.mime_type
         )
 
-        self.ui.libraryTreeView.setModel(self.library_model)
-        self.ui.libraryTreeView.expandAll()
+        self.library_proxy_model = LibraryTreeFilterProxyModel(
+            search_role=LIBRARY_SEARCH_TEXT_ROLE,
+            parent=self.ui.libraryTreeView,
+        )
+        self.library_proxy_model.setSourceModel(self.library_model)
+
+        self.ui.libraryTreeView.setModel(self.library_proxy_model)
         self.ui.libraryTreeView.setDragEnabled(True)
         self.ui.libraryTreeView.setHeaderHidden(False)
+        self.ui.libraryTreeView.setUniformRowHeights(True)
+
+        self.ui.librarySearchButton.setIcon(QtGui.QIcon(":/Icons/icons/magnifying_glass.png"))
+        self.ui.librarySearchLineEdit.setVisible(True)
+        self.ui.librarySearchLineEdit.setClearButtonEnabled(True)
+        self.ui.librarySearchButton.clicked.connect(self.focus_library_search)
+        self.ui.librarySearchLineEdit.textChanged.connect(self.on_library_search_text_changed)
+        self.library_find_shortcut = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Find, self)
+        self.library_find_shortcut.activated.connect(self.focus_library_search)
+        self.reset_library_tree_expansion()
 
         self.variables_table_model = VariablesTableModel(
             var_factory=self.var_factory,
@@ -3555,6 +3613,211 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         # for every in variable and our variable in the main block of the editor we build a block item to connect these variables
 
+    @staticmethod
+    def _insert_library_leaf(branch: Dict[str, Any], category_path: tuple[str, ...], leaf: LibraryLeafSpec) -> None:
+        """
+        Insert one library leaf into a nested dictionary branch.
+        """
+
+        head: str = category_path[0]
+        if len(category_path) == 1:
+            leaves: Any = branch.setdefault(head, list())
+            if isinstance(leaves, list):
+                leaves.append(leaf)
+            else:
+                raise TypeError(f"Category '{head}' is already used as a branch node")
+        else:
+            child_branch: Any = branch.setdefault(head, dict())
+            if isinstance(child_branch, dict):
+                DynamicBlockEditorGUI._insert_library_leaf(child_branch, category_path[1:], leaf)
+            else:
+                raise TypeError(f"Category '{head}' is already used as a leaf collection")
+
+    def build_powerfactory_basic_catalog_branch(self) -> Dict[str, Any]:
+        """
+        Build the nested branch used to expose the imported PowerFactory basic catalog.
+        """
+
+        branch: Dict[str, Any] = {
+            "Continuous": {
+                "Transfer Functions and Filters": list(),
+                "Integrators and Derivatives": list(),
+                "Delays and Memory": list(),
+            },
+            "Control and Measurement": {
+                "Controllers": list(),
+                "Measurements and Units": list(),
+            },
+            "Logic and Events": {
+                "Comparators": list(),
+                "Gates and Memory": list(),
+                "Switching and Selection": list(),
+                "Timers and Enables": list(),
+            },
+            "Limits and Nonlinearities": {
+                "Limiters": list(),
+                "Deadbands and Rate Limiters": list(),
+            },
+            "Math and Functions": {
+                "Scaling and Products": list(),
+                "Elementary Functions": list(),
+                "Constants and Scaling": list(),
+            },
+            "Transforms": {
+                "Clarke, Park and dq0": list(),
+                "RMS and Sequence": list(),
+            },
+            "Complex": {
+                "Operations": list(),
+            },
+            "Waveforms and Time": {
+                "Signal Generators": list(),
+                "Time Sources and Timers": list(),
+            },
+            "Mechanical": {
+                "Drive Train": list(),
+            },
+            "Lookup and Tables": {
+                "Arrays and Matrices": list(),
+            },
+            "Miscellaneous": {
+                "Other": list(),
+            },
+        }
+
+        descriptor: PowerFactoryBasicTemplateDescriptor
+        for descriptor in get_editor_ready_powerfactory_basic_catalog_descriptors():
+            category_path: tuple[str, ...] = descriptor.category_path[1:] if descriptor.category_path and descriptor.category_path[0] == "Native" else descriptor.category_path
+            if len(category_path) == 0:
+                category_path = ("Miscellaneous", "Other")
+            else:
+                pass
+
+            self._insert_library_leaf(
+                branch=branch,
+                category_path=category_path,
+                leaf=LibraryLeafSpec(
+                    label=descriptor.display_label,
+                    payload=descriptor,
+                    search_text=descriptor.search_text,
+                ),
+            )
+
+        if len(branch["Miscellaneous"]["Other"]) == 0:
+            del branch["Miscellaneous"]
+        else:
+            pass
+
+        return branch
+
+    def build_basic_library_branch(self) -> Dict[str, Any]:
+        """
+        Build the nested Basic branch used by both RMS and EMT editors.
+        """
+
+        native_branch: Dict[str, Any] = {
+            "Arithmetic": [
+                LibraryLeafSpec("Const", BlockType.CONST),
+                LibraryLeafSpec("Gain", BlockType.GAIN),
+                LibraryLeafSpec("Sum", BlockType.SUM),
+                LibraryLeafSpec("Substr", BlockType.SUBSTR),
+                LibraryLeafSpec("Product", BlockType.PRODUCT),
+                LibraryLeafSpec("Divide", BlockType.DIVIDE),
+                LibraryLeafSpec("Abs", BlockType.ABS),
+            ],
+        }
+        native_branch.update(self.build_powerfactory_basic_catalog_branch())
+
+        return {
+            "Native": native_branch,
+        }
+
+    def focus_library_search(self) -> None:
+        """
+        Reveal and focus the library search box.
+        """
+
+        self.ui.toolBox.setCurrentWidget(self.ui.page_7)
+        self.ui.librarySearchLineEdit.setFocus(QtCore.Qt.FocusReason.ShortcutFocusReason)
+        self.ui.librarySearchLineEdit.selectAll()
+
+    def reset_library_tree_expansion(self) -> None:
+        """
+        Restore the default expansion depth for the library tree.
+        """
+
+        self.ui.libraryTreeView.collapseAll()
+        self.ui.libraryTreeView.expandToDepth(1)
+
+    def on_library_search_text_changed(self, text: str) -> None:
+        """
+        Filter the library tree according to the current search text.
+        """
+
+        search_text: str = text.strip()
+        self.library_proxy_model.setFilterFixedString(search_text)
+        if search_text:
+            self.ui.libraryTreeView.expandAll()
+        else:
+            self.reset_library_tree_expansion()
+
+    @staticmethod
+    def _set_library_item_icon(item: QtGui.QStandardItem, payload: object) -> None:
+        """
+        Apply the best matching icon for one draggable library leaf.
+        """
+
+        if isinstance(payload, FmuTemplate):
+            item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.FmuTemplateDevice.value]))
+        elif isinstance(payload, RmsModelTemplate):
+            item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.RmsModelTemplateDevice.value]))
+        elif isinstance(payload, (EmtModelTemplate, PowerFactoryBasicTemplateDescriptor)):
+            item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.EmtModelTemplateDevice.value]))
+        else:
+            pass
+
+    def _append_library_branch(self,
+                               model: DynamicsLibraryTreeModel,
+                               parent_item: QtGui.QStandardItem,
+                               branch_label: str,
+                               branch_data: Any,
+                               path_tokens: tuple[str, ...] = tuple()) -> None:
+        """
+        Append one recursive library branch into the tree model.
+        """
+
+        branch_item: QtGui.QStandardItem = QtGui.QStandardItem(branch_label)
+        branch_item.setEditable(False)
+        branch_item.setData(" ".join((*path_tokens, branch_label)).strip(), LIBRARY_SEARCH_TEXT_ROLE)
+        parent_item.appendRow(branch_item)
+
+        if len(path_tokens) == 0:
+            category_icon_path: str | None = device_type_icons.get(branch_label, None)
+            if category_icon_path is not None:
+                branch_item.setIcon(QtGui.QIcon(category_icon_path))
+            else:
+                pass
+        else:
+            pass
+
+        if isinstance(branch_data, dict):
+            child_label: str
+            child_data: Any
+            for child_label, child_data in branch_data.items():
+                self._append_library_branch(model, branch_item, child_label, child_data, (*path_tokens, branch_label))
+        else:
+            if isinstance(branch_data, list):
+                leaf: LibraryLeafSpec
+                for leaf in sorted(branch_data, key=lambda item: item.label.lower()):
+                    item: QtGui.QStandardItem = QtGui.QStandardItem(leaf.label)
+                    item.setEditable(False)
+                    item.setData(leaf.search_text if leaf.search_text else leaf.label, LIBRARY_SEARCH_TEXT_ROLE)
+                    self._set_library_item_icon(item, leaf.payload)
+                    model.register_drag_payload(item, leaf.payload)
+                    branch_item.appendRow(item)
+            else:
+                raise TypeError(f"Unsupported library branch data type {type(branch_data)!r}")
+
     def build_library_tree_model(self,
                                  block_role: int,
                                  mime_type: str) -> DynamicsLibraryTreeModel:
@@ -3573,36 +3836,15 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         model.setHorizontalHeaderLabels(["Dynamic library"])
         root_item: QtGui.QStandardItem = model.invisibleRootItem()
 
-        for category, blocks in self.tree_structure.items():
-            cat_item: QtGui.QStandardItem = QtGui.QStandardItem(category)
-            cat_item.setEditable(False)
-            category_icon_path: str | None = device_type_icons.get(category, None)
-            if category_icon_path is not None:
-                cat_item.setIcon(QtGui.QIcon(category_icon_path))
-            else:
-                pass
-            root_item.appendRow(cat_item)
-
-            for label, payload in blocks:
-                item: QtGui.QStandardItem = QtGui.QStandardItem(label)
-                item.setEditable(False)
-                if isinstance(payload, FmuTemplate):
-                    item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.FmuTemplateDevice.value]))
-                else:
-                    if isinstance(payload, RmsModelTemplate):
-                        item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.RmsModelTemplateDevice.value]))
-                    else:
-                        if isinstance(payload, EmtModelTemplate):
-                            item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.EmtModelTemplateDevice.value]))
-                        else:
-                            pass
-                model.register_drag_payload(item, payload)
-                cat_item.appendRow(item)
+        category: str
+        branch_data: Any
+        for category, branch_data in self.tree_structure.items():
+            self._append_library_branch(model, root_item, category, branch_data)
 
         return model
 
     def get_library_payload_from_mime_data(self,
-                                           mime_data: QtCore.QMimeData) -> BlockType | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None:
+                                           mime_data: QtCore.QMimeData) -> BlockType | PowerFactoryBasicTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None:
         """
         Decode the dragged library payload from the tree-view mime payload.
 
@@ -3617,6 +3859,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             payload = self.library_model.get_drag_payload(drag_token)
 
             if isinstance(payload, BlockType):
+                return payload
+            elif isinstance(payload, PowerFactoryBasicTemplateDescriptor):
                 return payload
             elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
                 return payload
@@ -3862,6 +4106,36 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.mark_unapplied_changes()
 
         return block_item
+
+    def create_library_payload_item(self,
+                                    payload: BlockType | PowerFactoryBasicTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
+                                    x_pos: float,
+                                    y_pos: float) -> BlockItem | None:
+        """
+        Materialize one library payload on the diagram scene.
+        """
+
+        if isinstance(payload, BlockType) and payload == BlockType.GENERIC:
+            return self.create_generic_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+        elif isinstance(payload, BlockType) and payload in {
+            BlockType.EMT_PI_LINE,
+            BlockType.EMT_BERGERON_LINE,
+            BlockType.R_LOAD_EMT,
+            BlockType.L_LOAD_EMT,
+            BlockType.C_LOAD_EMT,
+            BlockType.EXP_LOAD_EMT,
+            BlockType.ZIP_LOAD_EMT,
+        }:
+            return self.create_emt_wizard_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+        elif isinstance(payload, BlockType):
+            return self.create_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
+        elif isinstance(payload, PowerFactoryBasicTemplateDescriptor):
+            template: EmtModelTemplate = load_powerfactory_basic_catalog_template(payload, self.var_factory)
+            return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
+        elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
+            return self.create_template_block_item(template=payload, x_pos=x_pos, y_pos=y_pos)
+        else:
+            return None
 
     def remove_connection_item(self, item: ConnectionItem) -> None:
         """
@@ -5430,7 +5704,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | PowerFactoryBasicTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
 
@@ -5446,7 +5720,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | PowerFactoryBasicTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
 
@@ -5462,7 +5736,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | PowerFactoryBasicTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
         scene_position: QtCore.QPointF = self.ui.graphicsView.mapToScene(
@@ -5473,89 +5747,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         if payload is not None:
 
-            block_item = None
-
-            if isinstance(payload, BlockType) and payload == BlockType.GENERIC:
-
-                block_item = self.create_generic_block_item(
-                    block_type=payload,
-                    x_pos=scene_position.x(),
-                    y_pos=scene_position.y()
-                )
-
-            elif isinstance(payload, BlockType) and payload == BlockType.EMT_PI_LINE:
-
-                block_item = self.create_emt_wizard_block_item(
-                    block_type=payload,
-                    x_pos=scene_position.x(),
-                    y_pos=scene_position.y()
-                )
-
-            elif isinstance(payload, BlockType) and payload == BlockType.EMT_BERGERON_LINE:
-
-                block_item = self.create_emt_wizard_block_item(
-                    block_type=payload,
-                    x_pos=scene_position.x(),
-                    y_pos=scene_position.y()
-                )
-
-            elif isinstance(payload, BlockType) and payload == BlockType.R_LOAD_EMT:
-
-                block_item = self.create_emt_wizard_block_item(
-                    block_type=payload,
-                    x_pos=scene_position.x(),
-                    y_pos=scene_position.y()
-                )
-
-            elif isinstance(payload, BlockType) and payload == BlockType.L_LOAD_EMT:
-
-                block_item = self.create_emt_wizard_block_item(
-                    block_type=payload,
-                    x_pos=scene_position.x(),
-                    y_pos=scene_position.y()
-                )
-
-            elif isinstance(payload, BlockType) and payload == BlockType.C_LOAD_EMT:
-
-                block_item = self.create_emt_wizard_block_item(
-                    block_type=payload,
-                    x_pos=scene_position.x(),
-                    y_pos=scene_position.y()
-                )
-
-            elif isinstance(payload, BlockType) and payload == BlockType.EXP_LOAD_EMT:
-
-                block_item = self.create_emt_wizard_block_item(
-                    block_type=payload,
-                    x_pos=scene_position.x(),
-                    y_pos=scene_position.y()
-                )
-
-            elif isinstance(payload, BlockType) and payload == BlockType.ZIP_LOAD_EMT:
-
-                block_item = self.create_emt_wizard_block_item(
-                    block_type=payload,
-                    x_pos=scene_position.x(),
-                    y_pos=scene_position.y()
-                )
-
-
-            elif isinstance(payload, BlockType):
-                block_item = self.create_block_item(
-                    block_type=payload,
-                    x_pos=scene_position.x(),
-                    y_pos=scene_position.y()
-                )
-                print("")
-
-            elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
-                block_item = self.create_template_block_item(
-                    template=payload,
-                    x_pos=scene_position.x(),
-                    y_pos=scene_position.y()
-                )
-            else:
-                block_item = None
+            block_item = self.create_library_payload_item(
+                payload=payload,
+                x_pos=scene_position.x(),
+                y_pos=scene_position.y(),
+            )
 
             if block_item is not None:
                 event.acceptProposedAction()

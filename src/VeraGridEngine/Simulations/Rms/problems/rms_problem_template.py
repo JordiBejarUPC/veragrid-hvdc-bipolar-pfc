@@ -61,7 +61,7 @@ class RmsProblemTemplate(ABC):
     # def compute_event_params(self, parameters: Vec, time_value: float) -> Vec:
     #     raise NotImplementedError("compute_event_params")
 
-    def update_variable_params(self, t: float):
+    def update_variable_params(self, t: float, x_snapshot: Vec | None = None):
         raise NotImplementedError("update_variable_params")
 
     def get_dx(self, x: Vec, xn: Vec, dx: Vec, h: float) -> Vec:
