@@ -16,7 +16,7 @@ from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics
 from VeraGrid.Gui.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
 from VeraGrid.Gui.WindPowerWizard.wind_power_wizzard import WindFarmWizard
 from VeraGrid.Gui.gui_functions import add_menu_entry
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicSimulationMode
 from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
@@ -126,7 +126,7 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
             var_factory=self.editor.circuit.var_factory,
             block=self.api_object.rms_model,
             api_object=self.api_object,
-            mode=DynamicEditorMode.RMS,
+            mode=DynamicSimulationMode.RMS,
             templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
                 self.api_object.device_type,
                 FmuTemplateDomain.RMS,
@@ -147,7 +147,7 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
             var_factory=self.editor.circuit.var_factory,
             block=self.api_object.emt_model,
             api_object=self.api_object,
-            mode=DynamicEditorMode.EMT,
+            mode=DynamicSimulationMode.EMT,
             templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
                 self.api_object.device_type,
                 FmuTemplateDomain.EMT,

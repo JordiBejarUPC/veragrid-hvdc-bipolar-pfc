@@ -11,7 +11,7 @@ from VeraGridEngine.enumerations import (
     ParamPowerFlowRefferenceType,
     VarPowerFlowRefferenceType,
 )
-from VeraGridEngine.IO.fmu.importer import load_fmu_cs_device_config
+from VeraGridEngine.IO.fmu.importer.device_config import load_fmu_cs_device_config
 from VeraGridEngine.IO.fmu.importer.template_api import configure_fmu_template
 
 

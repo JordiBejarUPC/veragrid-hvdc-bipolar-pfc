@@ -832,6 +832,8 @@ class SimulationsMain(TimeEventsMain):
             SimulationTypes.Reliability_run.value: ':/Icons/icons/reliability.png',
             SimulationTypes.RmsSmallSignal_run.value: ':/Icons/icons/ss_icon.png',
             SimulationTypes.RmsDynamic_run.value: ':/Icons/icons/dyn.png',
+            SimulationTypes.EmtSmallSignal_run.value: ':/Icons/icons/ss_emt_icon.png',
+            SimulationTypes.EmtDynamic_run.value: ':/Icons/icons/dyn_emt.png',
             SimulationTypes.StateEstimation_run.value: ':/Icons/icons/SE.png',
         }
 
@@ -3603,7 +3605,7 @@ class SimulationsMain(TimeEventsMain):
             #     self.show_info_toast("Simulation converged for all simulation groups :)")
 
         else:
-            warning_msg('There are no emt simulation results.', 'Rms simulation')
+            warning_msg('There are no emt simulation results.', 'Emt simulation')
 
         if not self.session.is_anything_running():
             self.UNLOCK()

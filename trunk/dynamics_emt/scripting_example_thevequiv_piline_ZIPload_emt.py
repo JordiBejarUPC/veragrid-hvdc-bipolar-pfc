@@ -1008,7 +1008,9 @@ def run_single_solver_trajectory(
     t_arr: np.ndarray
     y_arr: np.ndarray
     dy_arr: np.ndarray
-    t_arr, y_arr, dy_arr, _, _  = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, dy_arr, well_initialized , converged  = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     return local_problem, solver, t_arr, y_arr, dy_arr
 
 
@@ -1222,7 +1224,9 @@ def run_single_solver_benchmark(solver_key: str,
     t_arr: np.ndarray
     y_arr: np.ndarray
     dy_arr: np.ndarray
-    t_arr, y_arr, dy_arr, _, _  = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, dy_arr, well_initialized , converged = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     simulate_s: float = perf_counter() - t_sim_0
     final_residual_inf: float = evaluate_final_residual_inf(solver_key, solver, local_problem, t_arr, y_arr, dy_arr)
     solver_total_s: float = solver_init_s + solver_build_s + simulate_s
@@ -1289,7 +1293,9 @@ def run_single_solver_cold_warm_benchmark(solver_key: str) -> SolverColdWarmBenc
     cold_t: np.ndarray
     cold_y: np.ndarray
     cold_dy: np.ndarray
-    cold_t, cold_y, cold_dy, _, _  = solver.simulate(boundary_updater=boundary_updater)
+    cold_t, cold_y, cold_dy, well_initialized , converged   = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     cold_sim_s: float = perf_counter() - cold_sim_t0
     cold_final_residual_inf: float = evaluate_final_residual_inf(solver_key, solver, local_problem, cold_t, cold_y, cold_dy)
     cold_trace_summary_raw: SolverTraceSummary = summarize_newton_trace(local_problem)
@@ -1307,7 +1313,9 @@ def run_single_solver_cold_warm_benchmark(solver_key: str) -> SolverColdWarmBenc
     warm_t: np.ndarray
     warm_y: np.ndarray
     warm_dy: np.ndarray
-    warm_t, warm_y, warm_dy, _, _  = solver.simulate(boundary_updater=boundary_updater)
+    warm_t, warm_y, warm_dy, well_initialized , converged   = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     warm_sim_s: float = perf_counter() - warm_sim_t0
     warm_final_residual_inf: float = evaluate_final_residual_inf(solver_key, solver, local_problem, warm_t, warm_y, warm_dy)
     warm_trace_summary_raw: SolverTraceSummary = summarize_newton_trace(local_problem)
@@ -1704,7 +1712,9 @@ def benchmark_structural_compiled_cold_and_warm() -> None:
     cold_t: np.ndarray
     cold_y: np.ndarray
     cold_dy: np.ndarray
-    cold_t, cold_y, cold_dy, _, _  = solver.simulate(boundary_updater=boundary_updater)
+    cold_t, cold_y, cold_dy, well_initialized , converged  = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     cold_sim_s: float = perf_counter() - cold_sim_t0
     cold_residual_inf: float = evaluate_final_residual_inf("COMPILED", solver, local_problem, cold_t, cold_y, cold_dy)
     cold_runtime_stats: Dict[str, float] = get_solver_runtime_stats(solver)
@@ -1713,7 +1723,9 @@ def benchmark_structural_compiled_cold_and_warm() -> None:
     warm_t: np.ndarray
     warm_y: np.ndarray
     warm_dy: np.ndarray
-    warm_t, warm_y, warm_dy, _, _  = solver.simulate(boundary_updater=boundary_updater)
+    warm_t, warm_y, warm_dy, well_initialized , converged  = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     warm_sim_s: float = perf_counter() - warm_sim_t0
     warm_residual_inf: float = evaluate_final_residual_inf("COMPILED", solver, local_problem, warm_t, warm_y, warm_dy)
     warm_runtime_stats: Dict[str, float] = get_solver_runtime_stats(solver)
@@ -1867,7 +1879,9 @@ def main() -> None:
     boundary_updater = cast(Any, problem)
     profiler.enable()
     sim_t0 = perf_counter()
-    t_arr, y_arr, _dy, _, _  = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, _dy, well_initialized , converged  = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     solver_sim_s = perf_counter() - sim_t0
 
     print("Single-solver benchmark")

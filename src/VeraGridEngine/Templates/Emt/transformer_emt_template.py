@@ -51,12 +51,12 @@ def get_transformer_emt_template(
     m12: Var = vf.add_var(name=f"xfmr_m_{name}")
     gm: Var = vf.add_var(name=f"xfmr_gm_{name}")
 
-    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_r1] = r1
-    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_r2] = r2
-    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_l1] = l1
-    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_l2] = l2
-    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_m] = m12
-    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.xfmr_gm] = gm
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_winding1_resistance_pu] = r1
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_winding2_resistance_pu] = r2
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_winding1_inductance_pu_s] = l1
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_winding2_inductance_pu_s] = l2
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_mutual_inductance_pu_s] = m12
+    templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_magnetizing_conductance_pu] = gm
 
     # ------------------------------------------------------------------
     # Create the terminal voltage inputs. These are the electrical interface to

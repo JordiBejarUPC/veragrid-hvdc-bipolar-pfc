@@ -3175,50 +3175,49 @@ class ParamPowerFlowRefferenceType(Enum):
     Ccb = "Ccb"  # C-B line shunt capacitance
     Ccc = "Ccc"  # C-C line shunt capacitance
 
-    # Classical transformer EMT mapped parameters
-    xfmr_r1 = "xfmr_r1"  # Primary winding resistance in pu
-    xfmr_r2 = "xfmr_r2"  # Secondary winding resistance in pu
-    xfmr_l1 = "xfmr_l1"  # Primary self inductance in pu*s/rad
-    xfmr_l2 = "xfmr_l2"  # Secondary self inductance in pu*s/rad
-    xfmr_m = "xfmr_m"  # Mutual inductance in pu*s/rad
-    xfmr_gm = "xfmr_gm"  # Primary shunt conductance in pu
+    # Transformer EMT mapped parameters
+    transformer_winding1_resistance_pu = "transformer_winding1_resistance_pu"
+    transformer_winding2_resistance_pu = "transformer_winding2_resistance_pu"
+    transformer_winding1_inductance_pu_s = "transformer_winding1_inductance_pu_s"
+    transformer_winding2_inductance_pu_s = "transformer_winding2_inductance_pu_s"
+    transformer_mutual_inductance_pu_s = "transformer_mutual_inductance_pu_s"
+    transformer_magnetizing_conductance_pu = "transformer_magnetizing_conductance_pu"
 
-    # XFMR EMT mapped parameters
-    xfmr_s_rated_mva = "xfmr_s_rated_mva"
-    xfmr_v_hv_ll_kv = "xfmr_v_hv_ll_kv"
-    xfmr_v_lv_ll_kv = "xfmr_v_lv_ll_kv"
-    xfmr_vector_group_clock = "xfmr_vector_group_clock"
-    xfmr_oc_current_pct = "xfmr_oc_current_pct"
-    xfmr_oc_loss_kw = "xfmr_oc_loss_kw"
-    xfmr_sc_voltage_pct = "xfmr_sc_voltage_pct"
-    xfmr_sc_resistance_pct = "xfmr_sc_resistance_pct"
-    xfmr_sc_loss_kw = "xfmr_sc_loss_kw"
-    xfmr_tap_module = "xfmr_tap_module"
-    xfmr_c_term = "xfmr_c_term"
-    xfmr_core_linear_l_pu = "xfmr_core_linear_l_pu"
-    xfmr_core_a_prime = "xfmr_core_a_prime"
-    xfmr_core_b_prime = "xfmr_core_b_prime"
-    xfmr_use_linear_core = "xfmr_use_linear_core"
+    transformer_rated_power_mva = "transformer_rated_power_mva"
+    transformer_winding1_rated_voltage_ll_kv = "transformer_winding1_rated_voltage_ll_kv"
+    transformer_winding2_rated_voltage_ll_kv = "transformer_winding2_rated_voltage_ll_kv"
+    transformer_connection_clock = "transformer_connection_clock"
+    transformer_open_circuit_current_pct = "transformer_open_circuit_current_pct"
+    transformer_open_circuit_loss_kw = "transformer_open_circuit_loss_kw"
+    transformer_short_circuit_voltage_pct = "transformer_short_circuit_voltage_pct"
+    transformer_short_circuit_resistance_pct = "transformer_short_circuit_resistance_pct"
+    transformer_short_circuit_loss_kw = "transformer_short_circuit_loss_kw"
+    transformer_tap_ratio = "transformer_tap_ratio"
+    transformer_terminal_capacitance_pu_s = "transformer_terminal_capacitance_pu_s"
+    transformer_linear_core_inductance_pu_s = "transformer_linear_core_inductance_pu_s"
+    transformer_core_curve_a_prime = "transformer_core_curve_a_prime"
+    transformer_core_curve_b_prime = "transformer_core_curve_b_prime"
+    transformer_use_linear_core = "transformer_use_linear_core"
 
-    xfmr_cf_aa = "xfmr_cf_aa"
-    xfmr_cf_ab = "xfmr_cf_ab"
-    xfmr_cf_ac = "xfmr_cf_ac"
-    xfmr_cf_ba = "xfmr_cf_ba"
-    xfmr_cf_bb = "xfmr_cf_bb"
-    xfmr_cf_bc = "xfmr_cf_bc"
-    xfmr_cf_ca = "xfmr_cf_ca"
-    xfmr_cf_cb = "xfmr_cf_cb"
-    xfmr_cf_cc = "xfmr_cf_cc"
+    transformer_from_connection_aa = "transformer_from_connection_aa"
+    transformer_from_connection_ab = "transformer_from_connection_ab"
+    transformer_from_connection_ac = "transformer_from_connection_ac"
+    transformer_from_connection_ba = "transformer_from_connection_ba"
+    transformer_from_connection_bb = "transformer_from_connection_bb"
+    transformer_from_connection_bc = "transformer_from_connection_bc"
+    transformer_from_connection_ca = "transformer_from_connection_ca"
+    transformer_from_connection_cb = "transformer_from_connection_cb"
+    transformer_from_connection_cc = "transformer_from_connection_cc"
 
-    xfmr_ct_aa = "xfmr_ct_aa"
-    xfmr_ct_ab = "xfmr_ct_ab"
-    xfmr_ct_ac = "xfmr_ct_ac"
-    xfmr_ct_ba = "xfmr_ct_ba"
-    xfmr_ct_bb = "xfmr_ct_bb"
-    xfmr_ct_bc = "xfmr_ct_bc"
-    xfmr_ct_ca = "xfmr_ct_ca"
-    xfmr_ct_cb = "xfmr_ct_cb"
-    xfmr_ct_cc = "xfmr_ct_cc"
+    transformer_to_connection_aa = "transformer_to_connection_aa"
+    transformer_to_connection_ab = "transformer_to_connection_ab"
+    transformer_to_connection_ac = "transformer_to_connection_ac"
+    transformer_to_connection_ba = "transformer_to_connection_ba"
+    transformer_to_connection_bb = "transformer_to_connection_bb"
+    transformer_to_connection_bc = "transformer_to_connection_bc"
+    transformer_to_connection_ca = "transformer_to_connection_ca"
+    transformer_to_connection_cb = "transformer_to_connection_cb"
+    transformer_to_connection_cc = "transformer_to_connection_cc"
 
 
     # Active phases in a branch
@@ -3292,11 +3291,11 @@ class ParamPowerFlowRefferenceType(Enum):
     alpha2 = 'alpha2'
     alpha3 = 'alpha3'    
 
-    P_loss0 = "P_loss0"
-    control1 = "control1"
-    control2 = "control2"
-    control1_val = "control1_val"
-    control2_val = "control2_val"
+    converter_loss_power_0 = "converter_loss_power_0"
+    converter_control_mode_1 = "converter_control_mode_1"
+    converter_control_mode_2 = "converter_control_mode_2"
+    converter_control_target_1 = "converter_control_target_1"
+    converter_control_target_2 = "converter_control_target_2"
     
     omega_base = "omega_base" # in rad/s
     Sbase = "Sbase" # in MVA
@@ -3423,6 +3422,34 @@ class EmtLineTypes(Enum):
             return EmtLineTypes[s]
         except KeyError:
             return s
+
+class DynamicSimulationMode(Enum):
+    RMS = "RMS",
+    EMT = "EMT",
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return DynamicSimulationMode[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
 
 class BlockScopeMode(Enum):
     """

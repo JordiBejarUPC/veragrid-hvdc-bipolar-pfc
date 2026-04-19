@@ -10,10 +10,12 @@ from PySide6 import QtWidgets, QtCore
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
+from VeraGridEngine.enumerations import DynamicSimulationMode
 
 
 class EventRow:
-    """Encapsulates a row in the RMS event table."""
+    """Encapsulates a row in the RMS/EMT event table."""
 
     def __init__(self, table, row, parameters_list, events_groups_list):
         self.table = table
@@ -76,7 +78,6 @@ class EventRow:
         """Add a new group option to the combo."""
         self.group_combo.addItem(group.name, group)
 
-
 class DynamicEventDialogue(QtWidgets.QDialog):
 
     def __init__(
@@ -84,11 +85,17 @@ class DynamicEventDialogue(QtWidgets.QDialog):
         circuit: MultiCircuit,
         parameters_list: List[Var],
         target_device_name: str,
+        mode: DynamicSimulationMode,
         parent=None,
     ):
         super().__init__(parent)
 
-        self.setWindowTitle("RMS Event Editor")
+        self.mode = mode
+
+        if self.mode == DynamicSimulationMode.RMS:
+            self.setWindowTitle("RMS Event Editor")
+        elif self.mode == DynamicSimulationMode.EMT:
+            self.setWindowTitle("EMT Event Editor")
         self.setMinimumWidth(600)
 
         self.circuit = circuit
@@ -180,14 +187,25 @@ class DynamicEventDialogue(QtWidgets.QDialog):
         row_index = self.table.rowCount()
         self.table.insertRow(row_index)
 
-        row = EventRow(
-            self.table,
-            row_index,
-            self.parameters_list,
-            self.circuit.rms_events_groups,
-        )
+        if self.mode == DynamicSimulationMode.RMS:
 
-        self.rows.append(row)
+            row = EventRow(
+                self.table,
+                row_index,
+                self.parameters_list,
+                self.circuit.rms_events_groups,
+            )
+            self.rows.append(row)
+
+        elif self.mode == DynamicSimulationMode.EMT:
+
+            row = EventRow(
+                self.table,
+                row_index,
+                self.parameters_list,
+                self.circuit.emt_events_groups,
+            )
+            self.rows.append(row)
 
     def remove_checked_rows(self):
         """Remove rows where checkbox is checked."""
@@ -211,26 +229,42 @@ class DynamicEventDialogue(QtWidgets.QDialog):
             row.row = i
 
     def create_event_group(self):
-        """Open dialog to create a new RMS events group."""
+        """Open dialog to create a new RMS/EMT events group."""
 
-        dialog = DynamicEventsGroupsDialog(self)
+        dialog = DynamicEventsGroupsDialog(parent=self,
+                                           mode=self.mode)
 
         if dialog.exec():
             name = dialog.get_name()
 
             # create and add new Rms Events Group
-            new_group = RmsEventsGroup(idtag=None, name=name)
-            self.circuit.add_rms_events_group(new_group)
+            if self.mode == DynamicSimulationMode.RMS:
+                new_group = RmsEventsGroup(idtag=None, name=name)
+                self.circuit.add_rms_events_group(new_group)
+                # update event rows
+                for row in self.rows:
+                    row.add_group(new_group)
 
-            # update event rows
-            for row in self.rows:
-                row.add_group(new_group)
+                QtWidgets.QMessageBox.information(
+                    self,
+                    "RMS group Created",
+                    f"New group name: {name}"
+                )
 
-            QtWidgets.QMessageBox.information(
-                self,
-                "Group Created",
-                f"New group name: {name}"
-            )
+            # create and add new Emt Events Group
+            elif self.mode == DynamicSimulationMode.EMT:
+                new_group = EmtEventsGroup(idtag=None, name=name)
+                self.circuit.add_emt_events_group(new_group)
+
+                # update event rows
+                for row in self.rows:
+                    row.add_group(new_group)
+
+                QtWidgets.QMessageBox.information(
+                    self,
+                    "EMT group Created",
+                    f"New group name: {name}"
+                )
 
     def accept_dialog(self):
         """Validate and collect event data."""
@@ -278,14 +312,20 @@ class DynamicEventDialogue(QtWidgets.QDialog):
 
 class DynamicEventsGroupsDialog(QtWidgets.QDialog):
 
-    def __init__(self, parent=None):
+    def __init__(self,
+                 mode: DynamicSimulationMode,
+                 parent=None):
         super().__init__(parent)
 
-        self.setWindowTitle("Create RMS Events Group")
+        self.mode = mode
+        if self.mode == DynamicSimulationMode.RMS:
+            self.setWindowTitle("Create RMS Events Group")
+        elif self.mode == DynamicSimulationMode.EMT:
+            self.setWindowTitle("Create EMT Events Group")
         self.setModal(True)
         self.setMinimumWidth(300)
 
-        self._name: str = None
+        self._name: str|None = None
 
         # Widgets
         self.name_label = QtWidgets.QLabel("Name:")

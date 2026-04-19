@@ -12,7 +12,7 @@ from PySide6.QtGui import QPolygonF
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.generic_graphics import Polygon
 from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics import MapInjectionTemplateGraphicItem
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
+from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicSimulationMode
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
 
@@ -85,7 +85,7 @@ class MapLoadGraphicItem(MapInjectionTemplateGraphicItem):
             var_factory=self.editor.circuit.var_factory,
             block=self.api_object.rms_model,
             api_object=self.api_object,
-            mode=DynamicEditorMode.RMS,
+            mode=DynamicSimulationMode.RMS,
             templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
                 self.api_object.device_type,
                 FmuTemplateDomain.RMS,
@@ -106,7 +106,7 @@ class MapLoadGraphicItem(MapInjectionTemplateGraphicItem):
             var_factory=self.editor.circuit.var_factory,
             block=self.api_object.emt_model,
             api_object=self.api_object,
-            mode=DynamicEditorMode.EMT,
+            mode=DynamicSimulationMode.EMT,
             templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
                 self.api_object.device_type,
                 FmuTemplateDomain.EMT,

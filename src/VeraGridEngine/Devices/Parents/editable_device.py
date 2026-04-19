@@ -1265,10 +1265,27 @@ class EditableDevice(metaclass=EditableDeviceMeta):
         for prop in selected_props:
             if isinstance(prop.tpe, DeviceType):
                 val = self.get_property_value(prop=prop, t_idx=None)
-                if val is not None and hasattr(val, "idtag"):
-                    pointed = objects_by_idtag.get(val.idtag, None)
+                if val is not None:
+                    if hasattr(val, "idtag"):
+                        pointed = objects_by_idtag.get(val.idtag, None)
+                    elif isinstance(val, str):
+                        pointed = objects_by_idtag.get(val, None)
+                    else:
+                        pointed = None
+
                     if pointed is not None:
                         self.set_property_value(prop=prop, value=pointed, t_idx=None)
+            else:
+                val = self.get_property_value(prop=prop, t_idx=None)
+                rebind = getattr(val, "rebind_device_references", None)
+                if callable(rebind):
+                    rebind(objects_by_idtag=objects_by_idtag)
+
+            if prop.has_profile():
+                profile = self.get_profile_by_prop(prop=prop)
+                rebind = getattr(profile, "rebind_device_references", None)
+                if callable(rebind):
+                    rebind(objects_by_idtag=objects_by_idtag)
 
     def compare(self, other: Any,
                 logger: Logger,
