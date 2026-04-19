@@ -3169,12 +3169,16 @@ def clone_procedural_logic_entries(entries: List[ProceduralLogicBase], var_mappi
 
 def build_boundary_updater_from_block(problem: EmtProblemTemplate) -> Optional[BlockProceduralLogicUpdater]:
     """
-    Build a boundary updater from ``problem.sys_block.procedural_logic``.
+    Build a boundary updater from the full procedural logic attached to ``problem.sys_block``.
 
     :param problem: EMT problem containing the root block.
     :return: Boundary updater or None.
     """
-    entries: List[Any] = problem.sys_block.procedural_logic
+    entries: List[Any] = list()
+    block: Block
+    for block in problem.sys_block.get_all_blocks():
+        entries.extend(block.procedural_logic)
+
     if len(entries) == 0:
         return None
     return BlockProceduralLogicUpdater(problem, procedural_logic_from_dict(entries))
