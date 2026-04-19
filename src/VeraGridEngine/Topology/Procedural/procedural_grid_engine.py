@@ -406,6 +406,7 @@ class Topology:
 
         self.intermediate_buses: List[dev.Bus] = list()  # buses generated in the markov process
         self.new_lines: List[dev.Line] = list()  # lines created during topology generation
+        self.new_transformers: List[dev.Transformer2W] = list()  # transformers created during topology generation
 
     def generate_markov(self):
         """
@@ -569,6 +570,7 @@ class Topology:
 
         if isinstance(branch, dev.Transformer2W):
             self.grid.add_transformer2w(obj=branch)
+            self.new_transformers.append(branch)
             return
 
         # TODO: Extend later for VSC, HVDC, switches, etc.
@@ -774,6 +776,7 @@ class ProceduralGridComputationEngine:
         self.steiner_buses: List[dev.Bus] = list()  # this is a result
         self.intermediate_buses: List[dev.Bus] = list()  # buses generated in the markov process
         self.new_lines: List[dev.Line] = list()  # lines created during topology generation
+        self.new_transformers: List[dev.Transformer2W] = list()  # transformers created during topology generation
 
         self.debugger = ProceduralGridDebugger(enabled=True)
 
@@ -836,6 +839,13 @@ class ProceduralGridComputationEngine:
         :return:
         """
         return self.new_lines
+
+    def get_new_transformers(self) -> List[dev.Transformer2W]:
+        """
+        Get only the newly created Transformer2W objects added during topology generation.
+        :return:
+        """
+        return self.new_transformers
 
     def run_steiner_alone(self):
         """
@@ -928,6 +938,7 @@ class ProceduralGridComputationEngine:
 
         self.intermediate_buses = topology.generate_markov()
         self.new_lines = topology.new_lines
+        self.new_transformers = topology.new_transformers
 
         added_names = self.debugger.get_added_element_names(
             grid=self.grid,

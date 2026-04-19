@@ -19,6 +19,7 @@ from VeraGridEngine.Topology.Procedural.procedural_grid_engine import Procedural
 from VeraGridEngine.basic_structures import Logger
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import make_diagram_from_buses, SchematicWidget
 from VeraGrid.Gui.ProceduralGrid.voltage_warning import VoltageWarningDialog
+from VeraGrid.Gui.ProceduralGrid.investment_group_dialogue import InvestmentGroupDialogue
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 
 if TYPE_CHECKING:
@@ -217,6 +218,16 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         if logger.has_logs():
             dlg = LogsDialogue('Procedural grid expansion log', logger)
             dlg.exec()
+
+        # Ask whether to assign generated objects to an investment group
+        inv_dlg = InvestmentGroupDialogue(
+            circuit=self.app.circuit,
+            new_buses=engine.get_new_buses(),
+            new_lines=engine.get_new_lines(),
+            new_transformers=engine.get_new_transformers(),
+            parent=self
+        )
+        inv_dlg.exec()
 
         # Exit
         self.close()
