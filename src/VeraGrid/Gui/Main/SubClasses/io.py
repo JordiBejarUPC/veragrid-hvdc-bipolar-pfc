@@ -796,7 +796,7 @@ class IoMain(ScenariosMain):
             diagram = self.get_selected_diagram_widget()
             if diagram is not None:
                 if isinstance(diagram, SchematicWidget):
-                    diagram.name.setText(f"Random grid {self.circuit.get_bus_number()} buses")
+                    diagram.name = f"Random grid {self.circuit.get_bus_number()} buses"
 
             # set base magnitudes
             self.ui.sbase_doubleSpinBox.setValue(self.circuit.Sbase)

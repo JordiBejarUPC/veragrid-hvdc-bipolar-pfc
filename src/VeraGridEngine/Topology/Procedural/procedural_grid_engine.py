@@ -22,18 +22,36 @@ if TYPE_CHECKING:
     from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 
 
-def coord_calc(current_bus_lon: float, current_bus_lat: float, length: float, coord_out: Vec):
+def coord_calc(current_bus_lon: float, current_bus_lat: float, length: float, coord_out: Vec) -> Vec:
     """
     Calculate the coordinates of the next bus based on the current bus,
     the length to be covered (in km), and the output coordinates (in degrees).
+
+    The bearing must be computed in physical km space (not raw degree space) so
+    that intermediate buses lie on the geographic straight line between the two
+    endpoints. Using raw degree differences would distort the direction because
+    1° of longitude is shorter in km than 1° of latitude at non-equatorial latitudes.
+
+    :param current_bus_lon: Longitude of the current bus in degrees.
+    :param current_bus_lat: Latitude of the current bus in degrees.
+    :param length: Distance to advance toward ``coord_out`` in km.
+    :param coord_out: Target coordinates as ``[longitude, latitude]`` in degrees.
+    :return: New coordinates as ``[longitude, latitude]`` in degrees.
     """
-    line_angle = np.arctan2(coord_out[1] - current_bus_lat, coord_out[0] - current_bus_lon)
-    # Convert length from km to degrees (1 degree lat ≈ 111 km; lon depends on latitude)
-    km_per_deg_lat = 111.0
-    km_per_deg_lon = 111.0 * np.cos(np.radians(current_bus_lat))
-    delta_lon = np.cos(line_angle) * length / km_per_deg_lon
-    delta_lat = np.sin(line_angle) * length / km_per_deg_lat
-    new_coord = np.array([current_bus_lon + delta_lon, current_bus_lat + delta_lat])
+    km_per_deg_lat: float = 111.0
+    km_per_deg_lon: float = 111.0 * np.cos(np.radians(current_bus_lat))
+
+    # Convert the degree-space displacement to physical km so the bearing is
+    # computed in a (locally) isotropic coordinate frame
+    physical_dx: float = (coord_out[0] - current_bus_lon) * km_per_deg_lon
+    physical_dy: float = (coord_out[1] - current_bus_lat) * km_per_deg_lat
+
+    line_angle: float = np.arctan2(physical_dy, physical_dx)
+
+    delta_lon: float = np.cos(line_angle) * length / km_per_deg_lon
+    delta_lat: float = np.sin(line_angle) * length / km_per_deg_lat
+
+    new_coord: Vec = np.array([current_bus_lon + delta_lon, current_bus_lat + delta_lat])
 
     return new_coord
 
@@ -497,7 +515,7 @@ class Topology:
                     )
 
                     next_bus = dev.Bus(
-                        name=f"Intermediate_{edge[0]}_{edge[1]}_{intermediate_bus_counter}",
+                        name=f"Intermediate_{input_bus.name}_{output_bus.name}_{intermediate_bus_counter}",
                         Vnom=float(next_bus_vnom),
                         is_dc=current_bus.is_dc,
                         longitude=float(next_coord[0]),
@@ -676,7 +694,7 @@ class Topology:
 
         # First bridge bus: same voltage as current_bus, but placed at output coordinates.
         first_bridge_bus = dev.Bus(
-            name=f"Intermediate_{edge[0]}_{edge[1]}_{intermediate_bus_counter}",
+            name=f"Intermediate_{current_bus.name}_{output_bus.name}_{intermediate_bus_counter}",
             Vnom=float(current_bus.Vnom),
             is_dc=current_bus.is_dc,
             longitude=float(output_bus.longitude),
@@ -700,7 +718,7 @@ class Topology:
                 next_bus = output_bus
             else:
                 next_bus = dev.Bus(
-                    name=f"Intermediate_{edge[0]}_{edge[1]}_{intermediate_bus_counter}",
+                    name=f"Intermediate_{current_bus.name}_{output_bus.name}_{intermediate_bus_counter}",
                     Vnom=float(next_voltage),
                     is_dc=current_bus.is_dc,
                     longitude=float(output_bus.longitude),

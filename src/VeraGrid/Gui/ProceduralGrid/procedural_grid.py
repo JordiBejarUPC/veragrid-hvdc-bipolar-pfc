@@ -3,7 +3,6 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.  
 # SPDX-License-Identifier: MPL-2.0
 from __future__ import annotations
-import sys
 from typing import List, TYPE_CHECKING
 import numpy as np
 from PySide6 import QtWidgets
@@ -20,6 +19,7 @@ from VeraGridEngine.basic_structures import Logger
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import make_diagram_from_buses, SchematicWidget
 from VeraGrid.Gui.ProceduralGrid.voltage_warning import VoltageWarningDialog
 from VeraGrid.Gui.ProceduralGrid.investment_group_dialogue import InvestmentGroupDialogue
+from VeraGrid.Gui.ProceduralGrid.procedural_grid_preview import ProceduralGridPreviewDialog
 from VeraGrid.Gui.general_dialogues import LogsDialogue
 
 if TYPE_CHECKING:
@@ -130,7 +130,9 @@ class ProceduralGridWindow(QtWidgets.QDialog):
 
     def compute(self):
         """
-        Computation
+        Validate inputs, run the expansion engine, show a preview dialog and —
+        only if the user confirms — apply the result to the application.
+
         :return:
         """
         # 1. Get the chosen method
@@ -146,8 +148,10 @@ class ProceduralGridWindow(QtWidgets.QDialog):
             dlg = VoltageWarningDialog(offenders=offenders, valid_voltages=valid_voltages, parent=self)
             dlg.exec()
             return
+        else:
+            pass
 
-        # 4. Instantiate your engine with the required inputs
+        # 4. Instantiate the engine and run the selected method
         logger = Logger()
         engine = ProceduralGridComputationEngine(
             grid=self.app.circuit,
@@ -166,6 +170,30 @@ class ProceduralGridWindow(QtWidgets.QDialog):
         else:
             raise NotImplementedError(f"Method {method} not implemented")
 
+        # 5. Show the preview dialog; only proceed if the user confirms
+        preview_dlg = ProceduralGridPreviewDialog(engine=engine, method=method, parent=self)
+        if preview_dlg.exec() != QtWidgets.QDialog.Accepted:
+            return
+        else:
+            pass
+
+        self._apply_to_app(engine=engine, expanded_grid=expanded_grid, method=method, logger=logger)
+
+    def _apply_to_app(self,
+                      engine: ProceduralGridComputationEngine,
+                      expanded_grid,
+                      method: ProceduralGridMethods,
+                      logger: Logger) -> None:
+        """
+        Apply the confirmed expansion result to the running application: create
+        substations for new buses, update all open map widgets, build the schematic
+        diagram, display the logger and prompt for investment group assignment.
+
+        :param engine: The engine whose results are being applied.
+        :param expanded_grid: The expanded MultiCircuit returned by the engine.
+        :param method: The method that was used (used for diagram naming).
+        :param logger: The logger accumulating messages during the run.
+        """
         # Create substations for new buses so map lines can reference them
         for bus in engine.get_new_buses():
             if bus.substation is None:
@@ -176,6 +204,8 @@ class ProceduralGridWindow(QtWidgets.QDialog):
                 )
                 bus.substation = substation
                 self.app.circuit.add_substation(substation)
+            else:
+                pass
 
         # Draw new elements on all open map widgets
         for map_widget in self.app.diagram_widgets_list:
@@ -185,23 +215,29 @@ class ProceduralGridWindow(QtWidgets.QDialog):
                         map_widget.add_api_substation(api_object=bus.substation,
                                                       lat=bus.latitude,
                                                       lon=bus.longitude)
+                    else:
+                        pass
                 for line in engine.get_new_lines():
                     if map_widget.graphics_manager.query(elm=line) is None:
                         map_widget.diagram.set_point(device=line, location=MapLocation())
                         map_widget.add_api_line(api_object=line)
+                    else:
+                        pass
+            else:
+                pass
 
         # Map geographic coordinates to schematic canvas coordinates
-        _SCALE = 1000.0
+        _SCALE: float = 1000.0
         for bus in expanded_grid.buses:
             bus.x = bus.longitude * _SCALE
             bus.y = -bus.latitude * _SCALE
 
-        # create the diagram
+        # Create the schematic diagram from the expanded grid
         expanded_grid_schematic = make_diagram_from_buses(circuit=expanded_grid,
                                                           buses=engine.get_buses(),
                                                           name=f'Diagram {method.value}')
 
-        # create the schematic widget
+        # Create the schematic widget and add it to the main GUI
         diagram_widget = SchematicWidget(
             gui=self.app,
             diagram=expanded_grid_schematic,
@@ -209,15 +245,16 @@ class ProceduralGridWindow(QtWidgets.QDialog):
             time_index=self.app.get_diagram_slider_index()
         )
 
-        # add the widget on the main GUI
         self.app.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
                                                 diagram=expanded_grid_schematic)
         self.app.set_diagrams_list_view()
 
         # Show logger if there are any entries
         if logger.has_logs():
-            dlg = LogsDialogue('Procedural grid expansion log', logger)
-            dlg.exec()
+            logs_dlg = LogsDialogue('Procedural grid expansion log', logger)
+            logs_dlg.exec()
+        else:
+            pass
 
         # Ask whether to assign generated objects to an investment group
         inv_dlg = InvestmentGroupDialogue(
