@@ -12,9 +12,9 @@ from PySide6.QtGui import QPolygonF
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.generic_graphics import Polygon
 from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics import MapInjectionTemplateGraphicItem
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicSimulationMode
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
 from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
+from VeraGridEngine.enumerations import DynamicSimulationMode
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget
@@ -65,35 +65,8 @@ class MapLoadGraphicItem(MapInjectionTemplateGraphicItem):
             self.editor.gui.show_error_toast("The graphic has no API object!")
 
     def edit_rms(self):
-        """
-
-        :return:
-        """
-        # load templates
-        templates = self.editor.circuit.rms_models
-
-        # select line templates
-        templ_catalogue = dict()
-        templ_list = []
-        for templ in templates:
-            if templ.tpe == DeviceType.LoadDevice:
-                templ_list.append(templ.name)
-                templ_catalogue[templ.name] = templ
-
-        # prompt RmsModelEditorGUI
-        rms_model_editor = DynamicBlockEditorGUI(
-            var_factory=self.editor.circuit.var_factory,
-            block=self.api_object.rms_model,
-            api_object=self.api_object,
-            mode=DynamicSimulationMode.RMS,
-            templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
-                self.api_object.device_type,
-                FmuTemplateDomain.RMS,
-            ),
-            circuit=self.editor.circuit,
-            main_editor=True,
-        )
-        rms_model_editor.show()
+        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                            preferred_mode=DynamicSimulationMode.RMS)
 
     def edit_emt(self):
         """
@@ -102,16 +75,12 @@ class MapLoadGraphicItem(MapInjectionTemplateGraphicItem):
         :return: None.
         """
 
-        emt_model_editor = DynamicBlockEditorGUI(
-            var_factory=self.editor.circuit.var_factory,
-            block=self.api_object.emt_model,
-            api_object=self.api_object,
-            mode=DynamicSimulationMode.EMT,
-            templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
-                self.api_object.device_type,
-                FmuTemplateDomain.EMT,
-            ),
-            circuit=self.editor.circuit,
-            main_editor=True,
-        )
-        emt_model_editor.show()
+        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                            preferred_mode=DynamicSimulationMode.EMT)
+
+    def edit_dynamic(self):
+        """
+        Open the unified dynamic editor workspace for this map load.
+        """
+
+        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit)

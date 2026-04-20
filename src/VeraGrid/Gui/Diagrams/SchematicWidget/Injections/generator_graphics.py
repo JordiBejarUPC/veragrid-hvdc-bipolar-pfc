@@ -15,8 +15,8 @@ from VeraGrid.Gui.Diagrams.Editors.generator_editor import GeneratorQCurveEditor
 from VeraGrid.Gui.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
 from VeraGrid.Gui.WindPowerWizard.wind_power_wizzard import WindFarmWizard
 from VeraGrid.Gui.gui_functions import add_menu_entry
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicSimulationMode
-from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
+from VeraGridEngine.enumerations import DeviceType
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -69,13 +69,8 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
                        function_ptr=self.set_regulation_bus)
 
         add_menu_entry(menu=menu,
-                       text="RMS Editor",
-                       function_ptr=self.edit_rms,
-                       icon_path=":/Icons/icons/dyn_gray.png")
-
-        add_menu_entry(menu=menu,
-                       text="EMT Editor",
-                       function_ptr=self.edit_emt,
+                       text="Dynamic Editor",
+                       function_ptr=self.edit_dynamic,
                        icon_path=":/Icons/icons/dyn_gray.png")
 
         add_menu_entry(menu=menu,
@@ -104,71 +99,12 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
 
         menu.exec_(event.screenPos())
 
-    def edit_rms(self):
+    def edit_dynamic(self):
+        """
+        Open the unified dynamic editor workspace for this generator.
         """
 
-        :return:
-        """
-        # load templates
-        templates = self.editor.circuit.rms_models
-
-        # select line templates
-        templ_catalogue = dict()
-        templ_list = []
-        for templ in templates:
-            if templ.tpe == DeviceType.GeneratorDevice:
-                templ_list.append(templ.name)
-                templ_catalogue[templ.name] = templ
-
-        # prompt RmsModelEditorGUI
-
-        rms_model_editor = DynamicBlockEditorGUI(
-            var_factory=self.editor.circuit.var_factory,
-            block=self.api_object.rms_model,
-            api_object=self.api_object,
-            mode=DynamicSimulationMode.RMS,
-            templates_list=self.editor.circuit.get_rms_models_by_device_type(self.api_object.device_type),
-            # templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
-            #     self.api_object.device_type,
-            #     FmuTemplateDomain.RMS,
-            # ),
-            circuit=self.editor.circuit,
-            main_editor=True,
-        )
-        rms_model_editor.show()
-
-    def edit_emt(self):
-        """
-
-        :return:
-        """
-        # load templates
-        templates = self.editor.circuit.rms_models
-
-        # select line templates
-        templ_catalogue = dict()
-        templ_list = []
-        for templ in templates:
-            if templ.tpe == DeviceType.GeneratorDevice:
-                templ_list.append(templ.name)
-                templ_catalogue[templ.name] = templ
-
-        # prompt RmsModelEditorGUI
-
-        rms_model_editor = DynamicBlockEditorGUI(
-            var_factory=self.editor.circuit.var_factory,
-            block=self.api_object.emt_model,
-            api_object=self.api_object,
-            mode=DynamicSimulationMode.EMT,
-            templates_list=self.editor.circuit.get_emt_models_by_device_type(self.api_object.device_type),
-            # templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
-            #     self.api_object.device_type,
-            #     FmuTemplateDomain.EMT,
-            # ),
-            circuit=self.editor.circuit,
-            main_editor=True,
-        )
-        rms_model_editor.show()
+        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit)
 
     def to_battery(self):
         """
