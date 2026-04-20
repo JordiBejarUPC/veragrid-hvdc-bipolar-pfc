@@ -15,9 +15,9 @@ from VeraGrid.Gui.profile_wizard_utils import fill_substation_weather_profiles
 from VeraGrid.Gui.Diagrams.generic_graphics import Polygon
 from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphics import InjectionTemplateGraphicItem
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicSimulationMode
-from VeraGrid.Gui.LoadDesigner.load_designer import LoadDesigner
 from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
+from VeraGrid.Gui.LoadDesigner.load_designer import LoadDesigner
+from VeraGridEngine.enumerations import DeviceType
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
