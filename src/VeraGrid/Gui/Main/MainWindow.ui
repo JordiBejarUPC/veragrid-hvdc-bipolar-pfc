@@ -740,6 +740,14 @@
                           </layout>
                          </widget>
                          <widget class="QWidget" name="page_3">
+                          <property name="geometry">
+                           <rect>
+                            <x>0</x>
+                            <y>0</y>
+                            <width>396</width>
+                            <height>298</height>
+                           </rect>
+                          </property>
                           <attribute name="icon">
                            <iconset resource="../Icons/icons.qrc">
                             <normaloff>:/Icons/icons/schematic.png</normaloff>:/Icons/icons/schematic.png</iconset>
@@ -883,6 +891,14 @@
                           </layout>
                          </widget>
                          <widget class="QWidget" name="page_4">
+                          <property name="geometry">
+                           <rect>
+                            <x>0</x>
+                            <y>0</y>
+                            <width>396</width>
+                            <height>298</height>
+                           </rect>
+                          </property>
                           <attribute name="icon">
                            <iconset resource="../Icons/icons.qrc">
                             <normaloff>:/Icons/icons/picture.png</normaloff>:/Icons/icons/picture.png</iconset>
@@ -981,6 +997,20 @@
                                 </property>
                                 <property name="value">
                                  <number>30</number>
+                                </property>
+                               </widget>
+                              </item>
+                              <item>
+                               <widget class="QLabel" name="label_40">
+                                <property name="text">
+                                 <string>Plotting style</string>
+                                </property>
+                               </widget>
+                              </item>
+                              <item>
+                               <widget class="QComboBox" name="plt_style_comboBox">
+                                <property name="toolTip">
+                                 <string>MatPlotlib plot styles to choose from</string>
                                 </property>
                                </widget>
                               </item>
@@ -3928,7 +3958,7 @@
               <item row="2" column="2">
                <widget class="QDoubleSpinBox" name="sbase_doubleSpinBox">
                 <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Base power&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Despite all the bibliography, changing this number to anything other than 100 MVA, might change the meaning of what sensible per-unit voltage are.&lt;/p&gt;&lt;p&gt;This is, 1.0 is no longer the nominal voltage and so on.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;span style=&quot; font-weight:700;&quot;&gt;Base power&lt;/span&gt;&lt;/p&gt;&lt;p&gt;Despite all the bibliography, changing this number to anything other than 100 MVA, might change the meaning of what sensible per-unit voltage are.&lt;/p&gt;&lt;p&gt;So, don't touch it. To have power in kW, use the option at the loads, geneerators, etc.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
                 <property name="suffix">
                  <string> MVA</string>
@@ -3954,24 +3984,10 @@
                 </property>
                </widget>
               </item>
-              <item row="8" column="2">
-               <widget class="QComboBox" name="plt_style_comboBox">
-                <property name="toolTip">
-                 <string>MatPlotlib plot styles to choose from</string>
-                </property>
-               </widget>
-              </item>
               <item row="7" column="0" colspan="2">
                <widget class="QLabel" name="label_24">
                 <property name="text">
                  <string>Engine</string>
-                </property>
-               </widget>
-              </item>
-              <item row="8" column="0" colspan="2">
-               <widget class="QLabel" name="label_40">
-                <property name="text">
-                 <string>Plotting style</string>
                 </property>
                </widget>
               </item>
