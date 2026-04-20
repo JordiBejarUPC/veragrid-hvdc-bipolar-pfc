@@ -565,13 +565,13 @@ def _build_pseudo_emt_converter_pll_block(vf: VarFactory, name: str) -> Block:
             # PLL angle dynamics.
             omega_pll,
             # PLL integrator dynamics driven by q-axis voltage.
-            pll_ki * v_q,
+            -pll_ki * v_q,
         ],
         state_vars=[theta_pll, xi_pll],
         diff_vars=[d_theta_pll, d_xi_pll],
         algebraic_eqs=[
             # PLL frequency output from proportional and integral action.
-            omega_pll - (omega_base + pll_kp * v_q + xi_pll),
+            omega_pll - (omega_base - pll_kp * v_q + xi_pll),
         ],
         algebraic_vars=[omega_pll],
         init_eqs={theta_pll: phi_v, xi_pll: c0, omega_pll: omega_base},
