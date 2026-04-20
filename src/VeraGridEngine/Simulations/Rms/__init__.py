@@ -6,3 +6,5 @@
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.rms_results import RmsResults
 from VeraGridEngine.Simulations.Rms.initialization import PseudoTransientInitProblem
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_phasor import RmsProblemPhasor
+
