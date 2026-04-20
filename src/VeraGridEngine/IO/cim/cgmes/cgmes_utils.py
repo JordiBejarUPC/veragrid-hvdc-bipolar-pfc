@@ -360,13 +360,68 @@ def build_cgmes_limit_dicts(cgmes_model: CgmesCircuit,
 # region PowerTransformer ----------------------------------------------------------------------------------------------
 
 
-def get_pu_values_power_transformer(power_transformer: CGMES_POWER_TRANSFORMER, System_Sbase: float):
+def get_power_transformer_ends(power_transformer: CGMES_POWER_TRANSFORMER,
+                               cgmes_model: CgmesCircuit | None = None) -> List[CGMES_POWER_TRANSFORMER_END]:
+    """
+    Return transformer ends as a list for both CGMES 2.4.15 and 3.0.0 object layouts.
+
+    Some parsers leave ``power_transformer.PowerTransformerEnd`` as None and only
+    populate the reverse relation through ``cgmes_assets.PowerTransformerEnd_list``.
+    """
+    if power_transformer is None:
+        raise AttributeError("'NoneType' object has no attribute 'PowerTransformerEnd'")
+
+    raw_ends = getattr(power_transformer, "PowerTransformerEnd", None)
+
+    if raw_ends is None:
+        ends: List[CGMES_POWER_TRANSFORMER_END] = list()
+    elif isinstance(raw_ends, list):
+        ends = [elm for elm in raw_ends if elm is not None]
+    else:
+        try:
+            ends = [elm for elm in list(raw_ends) if elm is not None]
+        except TypeError:
+            ends = [raw_ends]
+
+    if ends or cgmes_model is None:
+        return ends
+
+    pt_uuid = normalize_cgmes_reference_uuid(power_transformer)
+    recovered: List[CGMES_POWER_TRANSFORMER_END] = list()
+    seen_uuid: set[str] = set()
+    for pte in cgmes_model.cgmes_assets.PowerTransformerEnd_list:
+        if pte is None:
+            continue
+
+        pte_uuid = normalize_cgmes_reference_uuid(pte)
+        if pte_uuid is not None and pte_uuid in seen_uuid:
+            continue
+
+        pte_pt = getattr(pte, "PowerTransformer", None)
+        if pte_pt is power_transformer:
+            recovered.append(pte)
+            if pte_uuid is not None:
+                seen_uuid.add(pte_uuid)
+            continue
+
+        if pt_uuid is not None and normalize_cgmes_reference_uuid(pte_pt) == pt_uuid:
+            recovered.append(pte)
+            if pte_uuid is not None:
+                seen_uuid.add(pte_uuid)
+
+    return recovered
+
+
+def get_pu_values_power_transformer(power_transformer: CGMES_POWER_TRANSFORMER,
+                                    System_Sbase: float,
+                                    cgmes_model: CgmesCircuit | None = None):
     """
     Get the transformer p.u. values
     :return: R, X, G, B, R0, X0, G0, B0
     """
     try:
-        windings = list(power_transformer.PowerTransformerEnd)
+        windings = get_power_transformer_ends(power_transformer=power_transformer,
+                                              cgmes_model=cgmes_model)
 
         R, X, G, B = 0, 0, 0, 0
         R0, X0, G0, B0 = 0, 0, 0, 0
@@ -389,14 +444,16 @@ def get_pu_values_power_transformer(power_transformer: CGMES_POWER_TRANSFORMER, 
     return R, X, G, B, R0, X0, G0, B0
 
 
-def get_pu_values_power_transformer3w(power_transformer: CGMES_POWER_TRANSFORMER, System_Sbase: float):
+def get_pu_values_power_transformer3w(power_transformer: CGMES_POWER_TRANSFORMER,
+                                      System_Sbase: float,
+                                      cgmes_model: CgmesCircuit | None = None):
     """
     Get the transformer p.u. values
     :return: r12, r23, r31, x12, x23, x31
     """
     try:
-        # windings = get_windings(power_transformer)
-        windings = list(power_transformer.PowerTransformerEnd)
+        windings = get_power_transformer_ends(power_transformer=power_transformer,
+                                              cgmes_model=cgmes_model)
 
         r12, r23, r31, x12, x23, x31 = 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
 

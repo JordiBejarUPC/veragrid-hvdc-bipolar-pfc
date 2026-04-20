@@ -32,7 +32,11 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_utils import (get_nominal_voltage,
                                                      normalize_cgmes_reference_uuid,
                                                      is_reference_priority_one,
                                                      build_cgmes_limit_dicts,
-                                                     get_voltage_shunt)
+                                                     get_voltage_shunt,
+                                                     get_power_transformer_ends,
+                                                     extract_base_voltage_value,
+                                                     recover_base_voltage_from_container,
+                                                     recover_base_voltage_from_topological_node)
 
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.enumerations import TapChangerTypes, TapPhaseControl, TapModuleControl, ShuntControlMode
@@ -118,6 +122,263 @@ class Cn2BusBarLookup:
             return self.bus_dict[cgmes_tn.uuid]
         else:
             return None
+
+
+def assign_bus_nominal_voltage_if_missing(bus: gcdev.Bus | None,
+                                          nominal_voltage: float,
+                                          logger: DataLogger,
+                                          source: str,
+                                          source_idtag: str) -> bool:
+    """
+    Assign bus nominal voltage if it is missing.
+
+    :param bus: Bus object to update.
+    :param nominal_voltage: Candidate nominal voltage.
+    :param logger: Logger.
+    :param source: Source element type.
+    :param source_idtag: Source element idtag.
+    :return: True if bus nominal voltage was updated.
+    """
+    if bus is None:
+        return False
+    else:
+        pass
+
+    if nominal_voltage <= 0.0:
+        return False
+    else:
+        pass
+
+    if bus.Vnom > 0.0:
+        return False
+    else:
+        pass
+
+    bus.Vnom = float(nominal_voltage)
+    logger.add_warning(
+        msg='Recovered bus nominal voltage from connected element',
+        device=bus.idtag,
+        device_class='Bus',
+        device_property='Vnom',
+        value=0.0,
+        expected_value=bus.Vnom,
+        comment=f'{source}:{source_idtag}'
+    )
+    return True
+
+
+def recover_bus_nominal_voltages(gc_model: MultiCircuit, logger: DataLogger) -> None:
+    """
+    Recover missing bus nominal voltages from connected network elements.
+
+    Recovery order:
+    1. Seed voltages from transformer nominal side voltages.
+    2. Propagate voltages through line/switch links.
+
+    :param gc_model: Converted VeraGrid model.
+    :param logger: Logger.
+    :return: Nothing.
+    """
+    # Step 1: seed from transformer nominal sides.
+    for transformer in gc_model.transformers2w:
+        assign_bus_nominal_voltage_if_missing(
+            bus=transformer.bus_from,
+            nominal_voltage=float(transformer.HV),
+            logger=logger,
+            source='Transformer2W',
+            source_idtag=transformer.idtag
+        )
+        assign_bus_nominal_voltage_if_missing(
+            bus=transformer.bus_to,
+            nominal_voltage=float(transformer.LV),
+            logger=logger,
+            source='Transformer2W',
+            source_idtag=transformer.idtag
+        )
+
+    for transformer in gc_model.transformers3w:
+        assign_bus_nominal_voltage_if_missing(
+            bus=transformer.bus1,
+            nominal_voltage=float(transformer.V1),
+            logger=logger,
+            source='Transformer3W',
+            source_idtag=transformer.idtag
+        )
+        assign_bus_nominal_voltage_if_missing(
+            bus=transformer.bus2,
+            nominal_voltage=float(transformer.V2),
+            logger=logger,
+            source='Transformer3W',
+            source_idtag=transformer.idtag
+        )
+        assign_bus_nominal_voltage_if_missing(
+            bus=transformer.bus3,
+            nominal_voltage=float(transformer.V3),
+            logger=logger,
+            source='Transformer3W',
+            source_idtag=transformer.idtag
+        )
+
+    # Step 2: propagate through line/switch links.
+    max_iterations: int = max(1, len(gc_model.buses))
+    iteration_index: int = 0
+    changed: bool = True
+    while changed and iteration_index < max_iterations:
+        changed = False
+        iteration_index += 1
+
+        for line in gc_model.lines:
+            bus_from = line.bus_from
+            bus_to = line.bus_to
+            if bus_from is None or bus_to is None:
+                pass
+            elif bus_from.Vnom > 0.0 and bus_to.Vnom <= 0.0:
+                if assign_bus_nominal_voltage_if_missing(
+                        bus=bus_to,
+                        nominal_voltage=float(bus_from.Vnom),
+                        logger=logger,
+                        source='Line',
+                        source_idtag=line.idtag):
+                    changed = True
+                else:
+                    pass
+            elif bus_to.Vnom > 0.0 and bus_from.Vnom <= 0.0:
+                if assign_bus_nominal_voltage_if_missing(
+                        bus=bus_from,
+                        nominal_voltage=float(bus_to.Vnom),
+                        logger=logger,
+                        source='Line',
+                        source_idtag=line.idtag):
+                    changed = True
+                else:
+                    pass
+            else:
+                pass
+
+        for switch in gc_model.switch_devices:
+            bus_from = switch.bus_from
+            bus_to = switch.bus_to
+            if bus_from is None or bus_to is None:
+                pass
+            elif bus_from.Vnom > 0.0 and bus_to.Vnom <= 0.0:
+                if assign_bus_nominal_voltage_if_missing(
+                        bus=bus_to,
+                        nominal_voltage=float(bus_from.Vnom),
+                        logger=logger,
+                        source='Switch',
+                        source_idtag=switch.idtag):
+                    changed = True
+                else:
+                    pass
+            elif bus_to.Vnom > 0.0 and bus_from.Vnom <= 0.0:
+                if assign_bus_nominal_voltage_if_missing(
+                        bus=bus_from,
+                        nominal_voltage=float(bus_to.Vnom),
+                        logger=logger,
+                        source='Switch',
+                        source_idtag=switch.idtag):
+                    changed = True
+                else:
+                    pass
+            else:
+                pass
+
+
+def enforce_ac_line_voltage_consistency(gc_model: MultiCircuit,
+                                        logger: DataLogger,
+                                        branch_connection_voltage_tolerance: float = 0.1) -> None:
+    """
+    Convert cross-voltage AC lines into transformers when both bus voltages are known.
+
+    This enforces the same line/transformer consistency criterion after CGMES-specific
+    voltage recovery has completed.
+
+    :param gc_model: Converted VeraGrid model.
+    :param logger: Logger.
+    :param branch_connection_voltage_tolerance: Tolerance used by line->transformer criterion.
+    :return: Nothing.
+    """
+    kept_lines: List[gcdev.Line] = list()
+
+    for line in gc_model.lines:
+        bus_from = line.bus_from
+        bus_to = line.bus_to
+
+        if bus_from is None or bus_to is None:
+            kept_lines.append(line)
+        elif bus_from.Vnom > 0.0 and bus_to.Vnom > 0.0:
+            should_convert = line.should_this_be_a_transformer(
+                branch_connection_voltage_tolerance=branch_connection_voltage_tolerance,
+                logger=None
+            )
+            if should_convert:
+                transformer = line.get_equivalent_transformer(index=gc_model.time_profile)
+                gc_model.add_transformer2w(transformer)
+                logger.add_warning(
+                    msg='Converted cross-voltage ACLineSegment to Transformer2W after CGMES nominal-voltage recovery',
+                    device=line.idtag,
+                    device_class='ACLineSegment',
+                    value=min(bus_from.Vnom, bus_to.Vnom),
+                    expected_value=max(bus_from.Vnom, bus_to.Vnom)
+                )
+            else:
+                kept_lines.append(line)
+        else:
+            kept_lines.append(line)
+
+    gc_model.lines = kept_lines
+
+
+def build_terminal_voltage_hints(cgmes_model: CgmesCircuit) -> Tuple[Dict[str, float], Dict[str, float]]:
+    """
+    Build voltage hints from terminal associations for CN and TN buses.
+
+    The hints are used when direct BaseVoltage references are missing.
+
+    :param cgmes_model: CGMES model.
+    :return: Tuple with:
+             - ConnectivityNode UUID -> nominal voltage hint (kV)
+             - TopologicalNode UUID -> nominal voltage hint (kV)
+    """
+    cn_voltage_hints: Dict[str, float] = dict()
+    tn_voltage_hints: Dict[str, float] = dict()
+
+    for terminal in cgmes_model.cgmes_assets.Terminal_list:
+        voltage_hint: float | None = None
+
+        equipment = terminal.ConductingEquipment
+        if equipment is not None and not isinstance(equipment, str):
+            if equipment.BaseVoltage is not None:
+                voltage_hint = extract_base_voltage_value(equipment.BaseVoltage)
+
+            if voltage_hint is None:
+                voltage_hint = recover_base_voltage_from_container(equipment.EquipmentContainer)
+
+        if voltage_hint is None:
+            voltage_hint = recover_base_voltage_from_topological_node(terminal.TopologicalNode)
+
+        if voltage_hint is not None and voltage_hint > 0.0:
+            if terminal.ConnectivityNode is not None and not isinstance(terminal.ConnectivityNode, str):
+                cn_uuid: str = terminal.ConnectivityNode.uuid
+                if cn_uuid not in cn_voltage_hints:
+                    cn_voltage_hints[cn_uuid] = voltage_hint
+                else:
+                    pass
+            else:
+                pass
+
+            if terminal.TopologicalNode is not None and not isinstance(terminal.TopologicalNode, str):
+                tn_uuid: str = terminal.TopologicalNode.uuid
+                if tn_uuid not in tn_voltage_hints:
+                    tn_voltage_hints[tn_uuid] = voltage_hint
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
+
+    return cn_voltage_hints, tn_voltage_hints
 
 
 def get_gcdev_voltage_dict(cgmes_model: CgmesCircuit,
@@ -393,6 +654,7 @@ def get_gcdev_buses(cgmes_model: CgmesCircuit,
     TopologicalNode_tpe = cgmes_model.cgmes_assets.class_dict.get("TopologicalNode")
     DCTopologicalNode_tpe = cgmes_model.cgmes_assets.class_dict.get("DCTopologicalNode")
     line_tpe = cgmes_model.cgmes_assets.class_dict.get("Line")
+    cn_voltage_hints, tn_voltage_hints = build_terminal_voltage_hints(cgmes_model=cgmes_model)
 
     if cgmes_topology_mode == CgmesTopologyMode.Auto:
         use_connectivity_nodes = len(cgmes_model.cgmes_assets.ConnectivityNode_list) > 0
@@ -408,10 +670,20 @@ def get_gcdev_buses(cgmes_model: CgmesCircuit,
             voltage = v_dict.get(cn_elm.uuid, None)
             nominal_voltage = get_nominal_voltage_for_cn(cn=cn_elm, logger=logger)
             if nominal_voltage == 0:
-                logger.add_error(msg='Nominal voltage is 0. :(',
-                                 device=cn_elm.rdfid,
-                                 device_class=cn_elm.tpe,
-                                 device_property="nominalVoltage")
+                cn_hint_voltage = cn_voltage_hints.get(cn_elm.uuid, None)
+                if cn_hint_voltage is not None:
+                    nominal_voltage = cn_hint_voltage
+                    logger.add_warning(msg='Recovered ConnectivityNode nominal voltage from terminal associations',
+                                       device=cn_elm.rdfid,
+                                       device_class=cn_elm.tpe,
+                                       device_property="nominalVoltage",
+                                       value=0.0,
+                                       expected_value=cn_hint_voltage)
+                else:
+                    logger.add_error(msg='Nominal voltage is 0. :(',
+                                     device=cn_elm.rdfid,
+                                     device_class=cn_elm.tpe,
+                                     device_property="nominalVoltage")
             elif nominal_voltage is None:
                 logger.add_error(msg='Nominal voltage is None. Maybe boundary was not attached for import :(',
                                  device=cn_elm.rdfid,
@@ -481,10 +753,20 @@ def get_gcdev_buses(cgmes_model: CgmesCircuit,
             voltage = v_dict.get(tp_node.uuid, None)
             nominal_voltage = get_nominal_voltage(topological_node=tp_node, logger=logger)
             if nominal_voltage == 0:
-                logger.add_error(msg='Nominal voltage is 0. :(',
-                                 device=tp_node.rdfid,
-                                 device_class=tp_node.tpe,
-                                 device_property="nominalVoltage")
+                tp_hint_voltage = tn_voltage_hints.get(tp_node.uuid, None)
+                if tp_hint_voltage is not None:
+                    nominal_voltage = tp_hint_voltage
+                    logger.add_warning(msg='Recovered TopologicalNode nominal voltage from terminal associations',
+                                       device=tp_node.rdfid,
+                                       device_class=tp_node.tpe,
+                                       device_property="nominalVoltage",
+                                       value=0.0,
+                                       expected_value=tp_hint_voltage)
+                else:
+                    logger.add_error(msg='Nominal voltage is 0. :(',
+                                     device=tp_node.rdfid,
+                                     device_class=tp_node.tpe,
+                                     device_property="nominalVoltage")
             elif nominal_voltage is None:
                 logger.add_error(msg='Nominal voltage is None. Maybe boundary was not attached for import :(',
                                  device=tp_node.rdfid,
@@ -1473,7 +1755,25 @@ def get_gcdev_ac_lines(cgmes_model: CgmesCircuit,
                     length=length,
                 )
 
-                gcdev_model.add_line(gcdev_elm, logger=logger)
+                has_unknown_bus_voltage: bool = calc_node_f.Vnom <= 0.0 or calc_node_t.Vnom <= 0.0
+                if has_unknown_bus_voltage:
+                    logger.add_warning(
+                        msg='ACLineSegment kept as line because one associated bus has unknown nominal voltage',
+                        device=cgmes_elm.rdfid,
+                        device_class=cgmes_elm.tpe,
+                        value=min(calc_node_f.Vnom, calc_node_t.Vnom),
+                        expected_value=max(calc_node_f.Vnom, calc_node_t.Vnom),
+                    )
+
+                    if gcdev_model.time_profile is not None:
+                        gcdev_elm.ensure_profiles_exist(gcdev_model.time_profile)
+                    else:
+                        pass
+
+                    gcdev_model.lines.append(gcdev_elm)
+                    gcdev_elm.set_var_factory(gcdev_model.var_factory)
+                else:
+                    gcdev_model.add_line(gcdev_elm, logger=logger)
             else:
                 logger.add_error(msg='Not exactly two terminals',
                                  device=cgmes_elm.rdfid,
@@ -1602,7 +1902,7 @@ def get_gcdev_ac_transformers(cgmes_model: CgmesCircuit,
         for cgmes_elm in device_list:
 
             windings: List[CGMES_POWER_TRANSFORMER_END | None] = [None, None, None]
-            for pte in list(cgmes_elm.PowerTransformerEnd):
+            for pte in get_power_transformer_ends(power_transformer=cgmes_elm, cgmes_model=cgmes_model):
                 if hasattr(pte, "endNumber"):
                     i = getattr(pte, "endNumber")
                     if i is not None:
@@ -1639,7 +1939,9 @@ def get_gcdev_ac_transformers(cgmes_model: CgmesCircuit,
                     LV = windings[1].ratedU
 
                     # get per unit values
-                    r, x, g, b, r0, x0, g0, b0 = get_pu_values_power_transformer(cgmes_elm, Sbase)
+                    r, x, g, b, r0, x0, g0, b0 = get_pu_values_power_transformer(cgmes_elm,
+                                                                                  Sbase,
+                                                                                  cgmes_model=cgmes_model)
                     rated_s = windings[0].ratedS
 
                     gcdev_elm = gcdev.Transformer2W(
@@ -1699,17 +2001,28 @@ def get_gcdev_ac_transformers(cgmes_model: CgmesCircuit,
                     # The problem is that the windings order might not be the same as the buses order
                     # hence, there might be large virtual taps
                     windings2 = [None, None, None]
+                    winding_used = [False, False, False]
                     for i in range(3):
                         v_bus = calc_nodes[i].Vnom
                         d_min = 1e20
                         j_min = -1
                         for j in range(3):
-                            v_winding = windings[j].ratedU
-                            d = abs(v_bus - v_winding)
-                            if d < d_min:
-                                d_min = d
-                                j_min = j
+                            if not winding_used[j]:
+                                v_winding = windings[j].ratedU
+                                d = abs(v_bus - v_winding)
+                                if d < d_min:
+                                    d_min = d
+                                    j_min = j
+                            else:
+                                pass
+
+                        if j_min == -1:
+                            j_min = i
+                        else:
+                            pass
+
                         windings2[i] = windings[j_min]
+                        winding_used[j_min] = True
 
                         if i != j_min:
                             logger.add_error(
@@ -1720,7 +2033,9 @@ def get_gcdev_ac_transformers(cgmes_model: CgmesCircuit,
                     windings = windings2
 
                     # assign values
-                    r12, r23, r31, x12, x23, x31 = get_pu_values_power_transformer3w(cgmes_elm, Sbase)
+                    r12, r23, r31, x12, x23, x31 = get_pu_values_power_transformer3w(cgmes_elm,
+                                                                                      Sbase,
+                                                                                      cgmes_model=cgmes_model)
 
                     gcdev_elm = gcdev.Transformer3W(idtag=cgmes_elm.uuid,
                                                     code=cgmes_elm.description,
@@ -2964,5 +3279,8 @@ def cgmes_to_veragrid(cgmes_model: CgmesCircuit,
 
     cgmes_model.emit_progress(100)
     cgmes_model.emit_text("Cgmes import done!")
+
+    recover_bus_nominal_voltages(gc_model=gc_model, logger=logger)
+    enforce_ac_line_voltage_consistency(gc_model=gc_model, logger=logger)
 
     return gc_model

@@ -322,7 +322,7 @@ def test_ac_transformers3w():
                               device_to_terminal_dict_object_3_terminals(), logger,
                               10)
     generated_transformers3w = multi_circuit.transformers3w[0]
-    assert len(logger.entries) == 2
+    assert len(logger.entries) == 0
     assert generated_transformers3w.V1 == 2
     assert generated_transformers3w.V2 == 2
     assert generated_transformers3w.V3 == 2
