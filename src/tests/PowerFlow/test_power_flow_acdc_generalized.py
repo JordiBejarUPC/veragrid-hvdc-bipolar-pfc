@@ -199,7 +199,7 @@ def test_voltage_local_control_with_generation() -> None:
     vm = np.abs(solution.V)
 
     assert results.converged
-    assert not np.isclose(vm[bus_i], gen.Vset, atol=options.tolerance, rtol=0.0)
+    assert not np.isclose(vm[bus_i], gen.Vset, atol=options.tolerance)
 
 
 def test_voltage_remote_control_with_generation() -> None:

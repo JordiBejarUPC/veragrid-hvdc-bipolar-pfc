@@ -113,16 +113,7 @@ def load_from_xls(filename: str, logger: Logger) -> Dict[str, pd.DataFrame]:
     """
     data = dict()
     deadline: float = time.perf_counter() + 2.0
-
-    while True:
-        try:
-            xl = pd.ExcelFile(filename)
-            break
-        except (PermissionError, zipfile.BadZipFile):
-            if time.perf_counter() >= deadline:
-                raise
-            time.sleep(0.05)
-
+    xl = pd.ExcelFile(filename)
     names = xl.sheet_names
 
     # check the validity of this excel file

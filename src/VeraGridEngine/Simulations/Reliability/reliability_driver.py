@@ -71,20 +71,6 @@ def count_device_incidences(active_states: Mat) -> int:
     return n_incidences
 
 
-def _is_cancel_requested(driver: "ReliabilityStudyDriver") -> bool:
-    """
-    Return whether a cancellation request is active.
-
-    Tests may instantiate the driver with ``__new__`` and populate the historical
-    mangled attribute name directly, so we support both spellings.
-
-    :param driver: Reliability driver instance.
-    :return: Cancellation flag.
-    """
-    return bool(getattr(driver, "_DriverTemplate__cancel__", False)) or bool(
-        getattr(driver, "_ReliabilityStudyDriver__cancel__", False)
-    )
-
 
 class ReliabilityStudyDriver(DriverTemplate):
     __slots__ = (
@@ -255,7 +241,7 @@ class ReliabilityStudyDriver(DriverTemplate):
 
         for sim_idx in range(self.n_sim):
 
-            if _is_cancel_requested(self):
+            if self.is_cancel():
                 return
 
             gen_actives, gen_n_failures = generate_states_matrix(mttf=nc.generator_data.mttf,
