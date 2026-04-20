@@ -14,7 +14,7 @@ from matplotlib.colors import LinearSegmentedColormap
 
 import VeraGrid.Gui.gui_functions as gf
 from VeraGrid.Gui.general_dialogues import LogsDialogue
-from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
+from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget, make_diagram_from_buses
 from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import MapWidget
 from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg, info_msg
 from VeraGrid.Gui.Main.SubClasses.Model.time_events import TimeEventsMain
@@ -3114,7 +3114,7 @@ class SimulationsMain(TimeEventsMain):
         """
         Post investments evaluation
         """
-        _, results = self.session.investments_evaluation
+        driver, results = self.session.investments_evaluation
 
         # update the results in the circuit structures
         if results is not None:
@@ -3125,6 +3125,32 @@ class SimulationsMain(TimeEventsMain):
 
             self.update_available_results()
             self.colour_diagrams()
+
+            # create a schematic diagram for the best Pareto-optimal investment combination
+            if driver is not None and len(results.sorting_indices) > 0:
+                best_x = results.x[results.sorting_indices[0], :]
+                inv_list = driver.problem.get_investments_for_combination(x=best_x)
+
+                # work on a copy so the base circuit is not modified
+                invested_grid = self.circuit.copy()
+                invested_grid.set_investments_status(investments_list=inv_list, status=True)
+
+                diagram = make_diagram_from_buses(
+                    circuit=invested_grid,
+                    buses=invested_grid.buses,
+                    name='Investments evaluation (best Pareto)'
+                )
+
+                diagram_widget = SchematicWidget(
+                    gui=self,
+                    diagram=diagram,
+                    default_bus_voltage=self.ui.defaultBusVoltageSpinBox.value(),
+                    time_index=self.get_diagram_slider_index()
+                )
+
+                self.add_diagram_widget_and_diagram(diagram_widget=diagram_widget,
+                                                    diagram=diagram)
+                self.set_diagrams_list_view()
         else:
             self.show_error_toast('Something went wrong, There are no investments evaluation results.')
 

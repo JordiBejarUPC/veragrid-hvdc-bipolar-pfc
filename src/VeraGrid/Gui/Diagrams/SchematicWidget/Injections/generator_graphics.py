@@ -14,6 +14,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.Injections.injections_template_graphi
 from VeraGrid.Gui.Diagrams.Editors.generator_editor import GeneratorQCurveEditor
 from VeraGrid.Gui.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
 from VeraGrid.Gui.WindPowerWizard.wind_power_wizzard import WindFarmWizard
+from VeraGrid.Gui.profile_wizard_utils import fill_substation_weather_profiles
 from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicSimulationMode
 from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
@@ -235,7 +236,7 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
 
         if self._editor.circuit.has_time_series:
 
-            dlg = SolarPvWizard(time_array=self._editor.circuit.time_profile.strftime("%Y-%m-%d %H:%M").tolist(),
+            dlg = SolarPvWizard(time_array=self._editor.circuit.time_profile,
                                 peak_power=self.api_object.Pmax,
                                 latitude=self.api_object.bus.latitude,
                                 longitude=self.api_object.bus.longitude,
@@ -245,6 +246,11 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
                 if dlg.is_accepted:
                     if len(dlg.P) == self.api_object.P_prof.size():
                         self.api_object.P_prof.set(dlg.P)
+                        fill_substation_weather_profiles(bus=self.api_object.bus,
+                                                         temperature=dlg.temperature,
+                                                         wind_speed=dlg.wind_speed,
+                                                         irradiation=dlg.irradiation,
+                                                         expected_size=self.api_object.P_prof.size())
 
                         self.plot()
                     else:
@@ -260,7 +266,7 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
 
         if self._editor.circuit.has_time_series:
 
-            dlg = WindFarmWizard(time_array=self._editor.circuit.time_profile.strftime("%Y-%m-%d %H:%M").tolist(),
+            dlg = WindFarmWizard(time_array=self._editor.circuit.time_profile,
                                  peak_power=self.api_object.Pmax,
                                  latitude=self.api_object.bus.latitude,
                                  longitude=self.api_object.bus.longitude,
@@ -270,8 +276,13 @@ class GeneratorGraphicItem(InjectionTemplateGraphicItem):
                 if dlg.is_accepted:
                     if len(dlg.P) == self.api_object.P_prof.size():
                         self.api_object.P_prof.set(dlg.P)
+                        fill_substation_weather_profiles(bus=self.api_object.bus,
+                                                         temperature=dlg.temperature,
+                                                         wind_speed=dlg.wind_speed,
+                                                         irradiation=None,
+                                                         expected_size=self.api_object.P_prof.size())
                         self.plot()
                     else:
-                        raise Exception("Wrong length from the solar photovoltaic wizard")
+                        raise Exception("Wrong length from the wind farm wizard")
         else:
             info_msg("You need to have time profiles for this function")
