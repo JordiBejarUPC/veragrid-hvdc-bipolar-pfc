@@ -84,10 +84,16 @@ def _new_uid() -> int:
     """
     return uuid.uuid4().int
 
-def build_block_rows(blk, table_model) -> List[BlockParameterRow]:
-    rows = []
-    if blk is None:
-        return rows
+def build_parameters_rows(table_model, block: Block | None, rows: List[BlockParameterRow]):
+
+    if block is not None:
+        build_block_parameters_rows(table_model, block, rows)
+        if block.children:
+            for child in block.children:
+                build_block_parameters_rows(table_model, child, rows)
+
+
+def build_block_parameters_rows(table_model: Any, blk: Block, rows:List[BlockParameterRow]):
 
     for var, expr in blk.event_dict.items():
         if isinstance(expr, Const):
@@ -135,6 +141,41 @@ def update_param_value(blk: Block, kind: str, var: Var, value: Any):
         if var in blk.parameters:
             blk.parameters[var] = value
 
+def build_equations_rows(block: Block | None, rows):
+    """
+
+    :return:
+    """
+    if block is not None:
+        build_block_equations_rows(block, rows)
+        if block.children:
+            for child in block.children:
+                build_equations_rows(child, rows)
+
+def build_block_equations_rows(blk: Block, rows: List[BlockParameterRow]):
+    for idx, eq in enumerate(blk.state_eqs):
+        rows.append(BlockParameterRow(
+            name=f"State Eq {idx + 1}",
+            kind=BlockParameterKind.STATE_EQUATION,
+            key_var=None,
+            value=eq,
+            editable_name=False,
+            editable_value=True,
+            value_type=str,
+            item_index=idx
+        ))
+
+    for idx, eq in enumerate(blk.algebraic_eqs):
+        rows.append(BlockParameterRow(
+            name=f"Algebraic Eq {idx + 1}",
+            kind=BlockParameterKind.ALGEBRAIC_EQUATION,
+            key_var=None,
+            value=eq,
+            editable_name=False,
+            editable_value=True,
+            value_type=str,
+            item_index=idx
+        ))
 
 
 class BlockPositionChangedCallback:
@@ -1679,6 +1720,11 @@ class VariablesTableModel(QtCore.QAbstractTableModel):
         if self.block is None:
             return rows
 
+    def _build_block_rows(self) -> List[BlockParameterRow]:
+        rows = []
+        if self.block is None:
+            return rows
+
         for var in self.block.state_vars:
             init_eq = self.block.init_eqs.get(var)
             rows.append(BlockParameterRow(
@@ -1847,7 +1893,8 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
     def set_block(self, block: Block | None) -> None:
         self.beginResetModel()
         self.block = block
-        self.rows = self._build_rows()
+        self.rows: List[BlockParameterRow] = list()
+        build_parameters_rows(self, self.block, self.rows)
         self.endResetModel()
 
     def _build_rows(self) -> List[BlockParameterRow]:
@@ -1984,7 +2031,8 @@ class EquationsTableModel(QtCore.QAbstractTableModel):
         """
         self.beginResetModel()
         self.block = block
-        self.rows = self._build_rows()
+        self.rows: List[BlockParameterRow] = list()
+        build_equations_rows(self.block, self.rows)
         self.endResetModel()
 
     def _build_rows(self) -> List[BlockParameterRow]:
