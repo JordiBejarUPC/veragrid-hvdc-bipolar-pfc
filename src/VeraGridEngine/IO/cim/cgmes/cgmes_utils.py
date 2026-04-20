@@ -22,6 +22,41 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.IO.cim.cgmes.cgmes_enums import LimitTypeKind
 
 
+def sanitize_voltage_setpoint(v_set: float,
+                              cgmes_elm,
+                              logger: DataLogger,
+                              lower_limit: float = 0.5,
+                              upper_limit: float = 1.5) -> float:
+    """
+    Keep voltage setpoint in a physically plausible p.u. range.
+
+    :param v_set: Computed p.u. setpoint.
+    :param cgmes_elm: CGMES regulating equipment object.
+    :param logger: Data logger.
+    :param lower_limit: Minimum acceptable p.u. setpoint.
+    :param upper_limit: Maximum acceptable p.u. setpoint.
+    :return: Sanitized p.u. setpoint.
+    """
+    if np.isfinite(v_set):
+        if lower_limit <= v_set <= upper_limit:
+            return v_set
+        else:
+            logger.add_warning(msg='RegulatingControl targetValue yields unrealistic voltage setpoint; fallback to 1.0 p.u.',
+                               device=cgmes_elm.rdfid,
+                               device_class=cgmes_elm.tpe,
+                               device_property="RegulatingControl.targetValue",
+                               value=v_set,
+                               expected_value=f'[{lower_limit}, {upper_limit}]')
+            return 1.0
+    else:
+        logger.add_warning(msg='RegulatingControl targetValue yields non-finite voltage setpoint; fallback to 1.0 p.u.',
+                           device=cgmes_elm.rdfid,
+                           device_class=cgmes_elm.tpe,
+                           device_property="RegulatingControl.targetValue",
+                           value=v_set)
+        return 1.0
+
+
 def normalize_cgmes_reference_uuid(reference) -> str | None:
     """
     Normalize a CGMES reference into VeraGrid UUID format (no hyphens/underscores).
@@ -1095,7 +1130,19 @@ def get_regulating_control_params(cgmes_elm,
 
         if cgmes_elm.RegulatingControl.mode == cgmes_enums.RegulatingControlModeKind.voltage:
 
-            v_control_value = cgmes_elm.RegulatingControl.targetValue  # kV
+            v_control_value = cgmes_elm.RegulatingControl.targetValue  # nominally kV in CGMES voltage mode
+            v_control_value_num = None
+            if v_control_value is not None:
+                # In imported CGMES profiles, targetValue is already represented in the same
+                # engineering voltage scale used by BaseVoltage.nominalVoltage (kV in practice).
+                # Therefore no additional targetValueUnitMultiplier scaling is applied here.
+                v_control_value_num = float(v_control_value)
+            else:
+                logger.add_warning(msg='RegulatingControl targetValue is missing; fallback to 1.0 p.u.',
+                                   device=cgmes_elm.rdfid,
+                                   device_class=cgmes_elm.tpe,
+                                   device_property="RegulatingControl.targetValue",
+                                   value='None')
 
             # cgmes_elm.EquipmentContainer.BaseVoltage.nominalVoltage
             controlled_terminal = cgmes_elm.RegulatingControl.Terminal
@@ -1111,10 +1158,13 @@ def get_regulating_control_params(cgmes_elm,
                                    device_class=cgmes_elm.tpe,
                                    device_property="RegulatingControl.Terminal")
 
-            if base_voltage != 0:
-                v_set = v_control_value / base_voltage
+            if base_voltage != 0 and v_control_value_num is not None:
+                v_set = v_control_value_num / base_voltage
             else:
                 v_set = 1.0
+            v_set = sanitize_voltage_setpoint(v_set=v_set,
+                                              cgmes_elm=cgmes_elm,
+                                              logger=logger)
 
             equipment_container = cgmes_elm.EquipmentContainer
             control_terminal = cgmes_elm.RegulatingControl.Terminal

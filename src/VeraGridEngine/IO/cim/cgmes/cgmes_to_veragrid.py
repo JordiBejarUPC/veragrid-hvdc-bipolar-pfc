@@ -24,6 +24,7 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_utils import (get_nominal_voltage,
                                                      get_pu_values_power_transformer,
                                                      get_pu_values_power_transformer3w,
                                                      get_regulating_control_params,
+                                                     sanitize_voltage_setpoint,
                                                      get_pu_values_power_transformer_end,
                                                      get_slack_id,
                                                      find_object_by_idtag,
@@ -1613,17 +1614,43 @@ def get_gcdev_external_grids(cgmes_model: CgmesCircuit,
                 vm = 1.0
 
                 if hasattr(cgmes_elm, "regulationCapability") and getattr(cgmes_elm, "regulationCapability", False):
-                    mode = ExternalGridMode.VD
                     regulation_target = getattr(cgmes_elm, "regulationTarget", None)
                     if regulation_target is not None and calc_node.Vnom > 0.0:
                         vm = float(regulation_target) / float(calc_node.Vnom)
+                        vm = sanitize_voltage_setpoint(v_set=vm,
+                                                       cgmes_elm=cgmes_elm,
+                                                       logger=logger)
+                        mode = ExternalGridMode.VD
+                    else:
+                        logger.add_warning(msg='EquivalentInjection voltage regulation ignored due to missing target or nominal voltage',
+                                           device=cgmes_elm.rdfid,
+                                           device_class=cgmes_elm.tpe,
+                                           device_property="regulationTarget",
+                                           value=regulation_target,
+                                           expected_value="finite target and Bus.Vnom > 0")
                 elif getattr(cgmes_elm, "controlEnabled", False):
-                    mode = ExternalGridMode.VD
                     regulating_control = getattr(cgmes_elm, "RegulatingControl", None)
                     if regulating_control is not None:
                         target_value = getattr(regulating_control, "targetValue", None)
                         if target_value is not None and calc_node.Vnom > 0.0:
                             vm = float(target_value) / float(calc_node.Vnom)
+                            vm = sanitize_voltage_setpoint(v_set=vm,
+                                                           cgmes_elm=cgmes_elm,
+                                                           logger=logger)
+                            mode = ExternalGridMode.VD
+                        else:
+                            logger.add_warning(msg='ExternalNetworkInjection voltage regulation ignored due to missing target or nominal voltage',
+                                               device=cgmes_elm.rdfid,
+                                               device_class=cgmes_elm.tpe,
+                                               device_property="RegulatingControl.targetValue",
+                                               value=target_value,
+                                               expected_value="finite target and Bus.Vnom > 0")
+                    else:
+                        logger.add_warning(msg='ExternalNetworkInjection controlEnabled but RegulatingControl is missing',
+                                           device=cgmes_elm.rdfid,
+                                           device_class=cgmes_elm.tpe,
+                                           device_property="RegulatingControl",
+                                           value='None')
                 elif getattr(cgmes_elm, "referencePriority", 0) == 1:
                     mode = ExternalGridMode.VD
 
@@ -1781,6 +1808,103 @@ def get_gcdev_ac_lines(cgmes_model: CgmesCircuit,
                                  device_property="number of associated terminals",
                                  value=len(calc_nodes),
                                  expected_value=2)
+
+
+def get_gcdev_series_compensators(cgmes_model: CgmesCircuit,
+                                  gcdev_model: MultiCircuit,
+                                  bus_dict: Dict[str, gcdev.Bus],
+                                  device_to_terminal_dict: Dict[str, List[CGMES_TERMINAL]],
+                                  logger: DataLogger,
+                                  Sbase: float) -> None:
+    """
+    Convert CGMES SeriesCompensator devices to VeraGrid SeriesReactance branches.
+
+    :param cgmes_model: CgmesCircuit
+    :param gcdev_model: gcdevCircuit
+    :param bus_dict: Dict[str, gcdev.Bus]
+    :param device_to_terminal_dict: Dict[str, Terminal]
+    :param logger: DataLogger
+    :param Sbase: system base power in MVA
+    :return: None
+    """
+    TopologicalNode_tpe = cgmes_model.cgmes_assets.class_dict.get("TopologicalNode")
+    DCTopologicalNode_tpe = cgmes_model.cgmes_assets.class_dict.get("DCTopologicalNode")
+
+    (patl_dict, tatl_900_dict, tatl_60_dict) = build_cgmes_limit_dicts(
+        cgmes_model=cgmes_model,
+        device_type=cgmes_model.assets.SeriesCompensator,
+        logger=logger
+    )
+
+    for cgmes_elm in cgmes_model.cgmes_assets.SeriesCompensator_list:
+        calc_nodes = find_associated_buses(cgmes_elm=cgmes_elm,
+                                           device_to_terminal_dict=device_to_terminal_dict,
+                                           bus_dict=bus_dict,
+                                           TopologicalNode_tpe=TopologicalNode_tpe,
+                                           DCTopologicalNode_tpe=DCTopologicalNode_tpe,
+                                           logger=logger,
+                                           cgmes_version=cgmes_model.cgmes_version)
+
+        if len(calc_nodes) == 2:
+            calc_node_f = calc_nodes[0]
+            calc_node_t = calc_nodes[1]
+
+            if cgmes_elm.BaseVoltage is not None and cgmes_elm.BaseVoltage.nominalVoltage is not None:
+                v_nom = float(cgmes_elm.BaseVoltage.nominalVoltage)
+            elif calc_node_f.Vnom > 0.0:
+                v_nom = float(calc_node_f.Vnom)
+            elif calc_node_t.Vnom > 0.0:
+                v_nom = float(calc_node_t.Vnom)
+            else:
+                v_nom = 0.0
+
+            if v_nom > 0.0:
+                z_base = (v_nom * v_nom) / Sbase
+                r = float(cgmes_elm.r) / z_base if cgmes_elm.r is not None else 1e-20
+                x = float(cgmes_elm.x) / z_base if cgmes_elm.x is not None else 1e-20
+                r0 = float(cgmes_elm.r0) / z_base if cgmes_elm.r0 is not None else 1e-20
+                x0 = float(cgmes_elm.x0) / z_base if cgmes_elm.x0 is not None else 1e-20
+            else:
+                logger.add_warning(msg='SeriesCompensator nominal voltage is missing or invalid; default p.u. values used',
+                                   device=cgmes_elm.rdfid,
+                                   device_class=cgmes_elm.tpe,
+                                   device_property="BaseVoltage.nominalVoltage",
+                                   value=v_nom,
+                                   expected_value='> 0.0')
+                r = 1e-20
+                x = 1e-20
+                r0 = 1e-20
+                x0 = 1e-20
+
+            rates = [patl_dict.get(cgmes_elm.uuid, 9999.0),
+                     tatl_900_dict.get(cgmes_elm.uuid, 9999.0),
+                     tatl_60_dict.get(cgmes_elm.uuid, 9999.0)]
+            rates_pos = [val for val in rates if val > 0.0]
+            if len(rates_pos) > 0:
+                rate = min(rates_pos)
+            else:
+                rate = 9999.0
+
+            gcdev_elm = gcdev.SeriesReactance(bus_from=calc_node_f,
+                                              bus_to=calc_node_t,
+                                              idtag=cgmes_elm.uuid,
+                                              code=cgmes_elm.description,
+                                              name=cgmes_elm.name,
+                                              active=True,
+                                              rate=rate,
+                                              r=r,
+                                              x=x,
+                                              r0=r0,
+                                              x0=x0)
+
+            gcdev_model.add_series_reactance(obj=gcdev_elm)
+        else:
+            logger.add_error(msg='Not exactly two terminals',
+                             device=cgmes_elm.rdfid,
+                             device_class=cgmes_elm.tpe,
+                             device_property="number of associated terminals",
+                             value=len(calc_nodes),
+                             expected_value=2)
 
 
 # def get_tap_changer_values(windings):
@@ -2186,10 +2310,12 @@ def get_transformer_tap_changers(cgmes_model: CgmesCircuit,
             if isinstance(tap_changer, ratio_tc_class):
                 # Control from Control object
                 if getattr(tap_changer, 'TapChangerControl', None):
+                    tap_changer_control_enabled = bool(tap_changer.TapChangerControl.enabled)
+                    if tap_changer.controlEnabled is not None:
+                        tap_changer_control_enabled = tap_changer_control_enabled and bool(tap_changer.controlEnabled)
+
                     if (tap_changer.TapChangerControl.mode == cgmes_enums.RegulatingControlModeKind.voltage
-                            and tap_changer.TapChangerControl.enabled):
-                        tc_type = TapChangerTypes.VoltageRegulation
-                        tap_module_control_mode = TapModuleControl.Vm
+                            and tap_changer_control_enabled):
 
                         if cgmes_model.cgmes_version == CGMESVersions.v3_0_0:
                             reg_bus = find_terminal_bus_connectivity_priority(
@@ -2205,6 +2331,17 @@ def get_transformer_tap_changers(cgmes_model: CgmesCircuit,
                                 TopologicalNode_tpe=TopologicalNode_tpe,
                                 DCTopologicalNode_tpe=DCTopologicalNode_tpe
                             )
+
+                        if reg_bus is not None:
+                            tc_type = TapChangerTypes.VoltageRegulation
+                            tap_module_control_mode = TapModuleControl.Vm
+                        else:
+                            logger.add_warning(msg="TapChangerControl voltage mode ignored: regulation terminal not mapped to bus",
+                                               device=tap_changer.rdfid,
+                                               device_class=tap_changer.tpe,
+                                               device_property="TapChangerControl.Terminal",
+                                               value='None',
+                                               expected_value='Bus')
                 else:
                     logger.add_warning(msg="No TapChangerControl found for RatioTapChanger",
                                        device=tap_changer.rdfid,
@@ -2276,9 +2413,8 @@ def get_transformer_tap_changers(cgmes_model: CgmesCircuit,
 
                     gcdev_trafo.tap_module_control_mode = tap_module_control_mode
                     gcdev_trafo.tap_phase_control_mode = tap_phase_control_mode
-
-                    # gcdev_trafo.regulation_bus = reg_bus
-                    # gcdev_trafo.regulation_cn = reg_cn
+                    gcdev_trafo.regulation_bus = reg_bus
+                    gcdev_trafo.regulation_cn = reg_cn
 
                     gcdev_trafo.tap_changer.init_from_cgmes(
                         low=tap_changer.lowStep,
@@ -2350,6 +2486,11 @@ def get_transformer_tap_changers(cgmes_model: CgmesCircuit,
                     )
 
                     if winding_w_tc is not None:
+                        winding_w_tc.tap_module_control_mode = tap_module_control_mode
+                        winding_w_tc.tap_phase_control_mode = tap_phase_control_mode
+                        winding_w_tc.regulation_bus = reg_bus
+                        winding_w_tc.regulation_cn = reg_cn
+
                         winding_w_tc.tap_changer.init_from_cgmes(
                             low=tap_changer.lowStep,
                             high=tap_changer.highStep,
@@ -2619,6 +2760,93 @@ def get_gcdev_controllable_shunts(
                 gcdev_elm.G = 0.0
                 gcdev_elm.active = False
 
+            gcdev_model.add_controllable_shunt(bus=calc_node, api_obj=gcdev_elm)
+
+        else:
+                logger.add_error(msg='Not exactly one terminal',
+                                 device=cgmes_elm.rdfid,
+                                 device_class=cgmes_elm.tpe,
+                                 device_property="number of associated terminals",
+                                 value=len(calc_nodes),
+                                 expected_value=1)
+
+
+def get_gcdev_static_var_compensators(cgmes_model: CgmesCircuit,
+                                      gcdev_model: MultiCircuit,
+                                      bus_dict: Dict[str, gcdev.Bus],
+                                      device_to_terminal_dict: Dict[str, List[CGMES_TERMINAL]],
+                                      logger: DataLogger) -> None:
+    """
+    Convert CGMES StaticVarCompensator devices to VeraGrid ControllableShunt devices.
+
+    :param cgmes_model: CgmesCircuit
+    :param gcdev_model: gcdevCircuit
+    :param bus_dict: Dict[str, gcdev.Bus]
+    :param device_to_terminal_dict: Dict[str, Terminal]
+    :param logger: DataLogger
+    :return: None
+    """
+    TopologicalNode_tpe = cgmes_model.cgmes_assets.class_dict.get("TopologicalNode")
+    DCTopologicalNode_tpe = cgmes_model.cgmes_assets.class_dict.get("DCTopologicalNode")
+
+    for cgmes_elm in cgmes_model.cgmes_assets.StaticVarCompensator_list:
+        calc_nodes = find_associated_buses(cgmes_elm=cgmes_elm,
+                                           device_to_terminal_dict=device_to_terminal_dict,
+                                           bus_dict=bus_dict,
+                                           TopologicalNode_tpe=TopologicalNode_tpe,
+                                           DCTopologicalNode_tpe=DCTopologicalNode_tpe,
+                                           logger=logger,
+                                           cgmes_version=cgmes_model.cgmes_version)
+
+        if len(calc_nodes) == 1:
+            calc_node = calc_nodes[0]
+
+            b_value = float(cgmes_elm.q) if cgmes_elm.q is not None else 0.0
+            b_max = abs(b_value) if b_value != 0.0 else 9999.0
+            b_min = -b_max
+
+            control_mode = ShuntControlMode.Locked
+            v_set = 1.0
+
+            if cgmes_elm.RegulatingControl is not None:
+                (v_set, is_controlled, _, _) = get_regulating_control_params(
+                    cgmes_elm=cgmes_elm,
+                    cgmes_enums=cgmes_enums,
+                    bus_dict=bus_dict,
+                    TopologicalNode_tpe=TopologicalNode_tpe,
+                    DCTopologicalNode_tpe=DCTopologicalNode_tpe,
+                    logger=logger,
+                    prefer_connectivity_node=(cgmes_model.cgmes_version == CGMESVersions.v3_0_0)
+                )
+                if is_controlled:
+                    control_mode = ShuntControlMode.Continuous
+
+            if cgmes_elm.voltageSetPoint is not None and calc_node.Vnom > 0.0:
+                v_set = float(cgmes_elm.voltageSetPoint) / float(calc_node.Vnom)
+                v_set = sanitize_voltage_setpoint(v_set=v_set,
+                                                  cgmes_elm=cgmes_elm,
+                                                  logger=logger)
+                if cgmes_elm.sVCControlMode == cgmes_enums.SVCControlMode.voltage:
+                    control_mode = ShuntControlMode.Continuous
+            elif cgmes_elm.sVCControlMode == cgmes_enums.SVCControlMode.reactivePower:
+                control_mode = ShuntControlMode.Locked
+
+            gcdev_elm = gcdev.ControllableShunt(idtag=cgmes_elm.uuid,
+                                                code=cgmes_elm.description,
+                                                name=cgmes_elm.name,
+                                                active=True,
+                                                B=b_value,
+                                                G=0.0,
+                                                Bmax=b_max,
+                                                Bmin=b_min,
+                                                Gmax=0.0,
+                                                Gmin=0.0,
+                                                vset=v_set,
+                                                control_mode=control_mode,
+                                                number_of_steps=1,
+                                                step=0,
+                                                b_per_step=b_value,
+                                                g_per_step=0.0)
             gcdev_model.add_controllable_shunt(bus=calc_node, api_obj=gcdev_elm)
 
         else:
@@ -3179,6 +3407,13 @@ def cgmes_to_veragrid(cgmes_model: CgmesCircuit,
                        logger=logger,
                        Sbase=Sbase)
 
+    get_gcdev_series_compensators(cgmes_model=cgmes_model,
+                                  gcdev_model=gc_model,
+                                  bus_dict=bus_dict,
+                                  device_to_terminal_dict=device_to_terminal_dict,
+                                  logger=logger,
+                                  Sbase=Sbase)
+
     get_gcdev_ac_transformers(cgmes_model=cgmes_model,
                               gcdev_model=gc_model,
                               bus_dict=bus_dict,
@@ -3205,6 +3440,13 @@ def cgmes_to_veragrid(cgmes_model: CgmesCircuit,
         logger=logger,
         Sbase=Sbase
     )
+
+    get_gcdev_static_var_compensators(cgmes_model=cgmes_model,
+                                      gcdev_model=gc_model,
+                                      bus_dict=bus_dict,
+                                      device_to_terminal_dict=device_to_terminal_dict,
+                                      logger=logger)
+
     get_gcdev_switches(cgmes_model=cgmes_model,
                        gcdev_model=gc_model,
                        bus_dict=bus_dict,
