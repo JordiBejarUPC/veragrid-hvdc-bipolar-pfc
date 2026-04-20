@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import QPointF
@@ -14,10 +14,10 @@ from VeraGrid.Gui.messages import info_msg
 from VeraGrid.Gui.profile_wizard_utils import fill_substation_weather_profiles
 from VeraGrid.Gui.Diagrams.generic_graphics import Polygon
 from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics import MapInjectionTemplateGraphicItem
-from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicSimulationMode
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
 from VeraGrid.Gui.LoadDesigner.load_designer import LoadDesigner
 from VeraGridEngine.Devices.Injections.load import Load
-from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
+from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain, DynamicSimulationMode
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget
@@ -73,35 +73,25 @@ class MapLoadGraphicItem(MapInjectionTemplateGraphicItem):
             self.editor.gui.show_error_toast("The graphic has no API object!")
 
     def edit_rms(self):
+        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                            preferred_mode=DynamicSimulationMode.RMS)
+
+    def edit_emt(self):
+        """
+        Open the EMT dynamic model editor for this load.
+
+        :return: None.
         """
 
-        :return:
+        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                            preferred_mode=DynamicSimulationMode.EMT)
+
+    def edit_dynamic(self):
         """
-        # load templates
-        templates = self.editor.circuit.rms_models
+        Open the unified dynamic editor workspace for this map load.
+        """
 
-        # select line templates
-        templ_catalogue = dict()
-        templ_list = []
-        for templ in templates:
-            if templ.tpe == DeviceType.LoadDevice:
-                templ_list.append(templ.name)
-                templ_catalogue[templ.name] = templ
-
-        # prompt RmsModelEditorGUI
-        rms_model_editor = DynamicBlockEditorGUI(
-            var_factory=self.editor.circuit.var_factory,
-            block=self.api_object.rms_model,
-            api_object=self.api_object,
-            mode=DynamicSimulationMode.RMS,
-            templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
-                self.api_object.device_type,
-                FmuTemplateDomain.RMS,
-            ),
-            circuit=self.editor.circuit,
-            main_editor=True,
-        )
-        rms_model_editor.show()
+        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit)
 
     def load_profile_wizard(self) -> None:
         """
@@ -112,8 +102,8 @@ class MapLoadGraphicItem(MapInjectionTemplateGraphicItem):
         if self._editor.circuit.has_time_series:
             if self.api_object.bus is not None:
                 bus_name: str = self.api_object.bus.name
-                latitude: Union[float, None] = self.api_object.bus.latitude
-                longitude: Union[float, None] = self.api_object.bus.longitude
+                latitude: float | None = self.api_object.bus.latitude
+                longitude: float | None = self.api_object.bus.longitude
             else:
                 bus_name = ""
                 latitude = None
@@ -149,24 +139,3 @@ class MapLoadGraphicItem(MapInjectionTemplateGraphicItem):
                 pass
         else:
             info_msg("You need to have time profiles for this function")
-
-    def edit_emt(self):
-        """
-        Open the EMT dynamic model editor for this load.
-
-        :return: None.
-        """
-
-        emt_model_editor = DynamicBlockEditorGUI(
-            var_factory=self.editor.circuit.var_factory,
-            block=self.api_object.emt_model,
-            api_object=self.api_object,
-            mode=DynamicSimulationMode.EMT,
-            templates_list=self.editor.circuit.get_dynamic_templates_by_device_type_and_domain(
-                self.api_object.device_type,
-                FmuTemplateDomain.EMT,
-            ),
-            circuit=self.editor.circuit,
-            main_editor=True,
-        )
-        emt_model_editor.show()
