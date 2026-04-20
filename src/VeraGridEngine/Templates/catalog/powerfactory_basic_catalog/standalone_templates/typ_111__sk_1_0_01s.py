@@ -1,54 +1,100 @@
-# --- AUTO-GENERATED EMT TEMPLATE FROM DGS ---
-# Source: C:\Users\andre\Documents\BASE_CATALOG.dgs
+"""
+Standalone EMT template for the PowerFactory basic block 'sK/(1+0.01s)'.
 
-from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Utils.Symbolic import symbolic as sym
+This module is generated from the shipped VeraGrid catalog artifacts and keeps the
+symbolic surface explicit so both humans and tools can inspect it directly.
+"""
+
+from __future__ import annotations
+
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic import symbolic as sym
+from VeraGridEngine.Utils.Symbolic.symbolic import Const
+from VeraGridEngine.Utils.Symbolic.symbolic import Expr
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import DeviceType
 
-def get_sk_1_0_01s_111_emt_template(vf: VarFactory, name: str = 'sK/(1+0.01s)__111') -> EmtModelTemplate:
-    templ = EmtModelTemplate()
-    templ.tpe = DeviceType.NoDevice
-    templ.name = name
+def build_default_template_name() -> str:
+    """
+    Return the canonical runtime name for this standalone template.
 
-    # --- Parameters ---
-    sK_1_0_01s_K = vf.add_var('sK/(1+0.01s)__K_' + name)
-
-    # --- State Variables ---
-    sK_1_0_01s_x = vf.add_var('sK/(1+0.01s)__x_' + name)
-
-    # --- Algebraic / Shared Variables ---
-    sK_1_0_01s_dx = vf.add_var('sK/(1+0.01s)_dx_' + name)
-    yi = vf.add_var('yi_' + name)
-    yo = vf.add_var('yo_' + name)
-
-    # --- Derivative Variables ---
-    d_sK_1_0_01s_x = vf.add_diff_var('d_sK/(1+0.01s)__x_' + name, base_var=sK_1_0_01s_x)
-
-    # --- Block Assembly ---
-    templ.block = Block(
-        state_eqs=[
-            sK_1_0_01s_dx,
-        ],
-        state_vars=[sK_1_0_01s_x],
-        algebraic_eqs=[
-            (sK_1_0_01s_dx - ((yi - sK_1_0_01s_x) / sym.Const(0.01))),
-            (yo - (sK_1_0_01s_K * sK_1_0_01s_dx)),
-        ],
-        algebraic_vars=[sK_1_0_01s_dx, yo],
-        in_vars=[yi],
-        out_vars=[yo],
-        name='sK/(1+0.01s)'
-    )
-    templ.block.diff_vars = [d_sK_1_0_01s_x]
-    # --- Parameter Values ---
-    templ.block.event_dict = {
-        sK_1_0_01s_K: vf.add_const(None, name='K'),
-    }
-    templ.block.name = name
-
-    return templ
+    :returns: Default template name.
+    """
+    return 'sK/(1+0.01s)__111'
 
 def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
-    return get_sk_1_0_01s_111_emt_template(vf=vf, name='sK/(1+0.01s)__111' if name is None else name)
+    """
+    Materialize the standalone EMT template.
+
+    :param vf: Variable factory used to allocate the symbolic surface.
+    :param name: Optional explicit runtime template name.
+    :returns: Materialized EMT template.
+    """
+    template_name: str
+    if name is None:
+        template_name = build_default_template_name()
+    else:
+        template_name = name
+
+    # Allocate the template container before building the symbolic surface.
+    template: EmtModelTemplate = EmtModelTemplate()
+    template.tpe = DeviceType.NoDevice
+    template.name = template_name
+
+    # Declare every variable explicitly before the equations reference it.
+    # Declare the runtime parameter variables used by the template.
+    sK_1_0_01s_K: Var = vf.add_var('sK/(1+0.01s)__K_' + template_name)
+    # Declare the state variables used by the template.
+    sK_1_0_01s_x: Var = vf.add_var('sK/(1+0.01s)__x_' + template_name)
+    # Declare the algebraic/shared variables used by the template.
+    sK_1_0_01s_dx: Var = vf.add_var('sK/(1+0.01s)_dx_' + template_name)
+    yi: Var = vf.add_var('yi_' + template_name)
+    yo: Var = vf.add_var('yo_' + template_name)
+    # Declare the differential variables used by the template.
+    d_sK_1_0_01s_x: Var = vf.add_diff_var('d_sK/(1+0.01s)__x_' + template_name, base_var=sK_1_0_01s_x)
+
+    # Build explicit typed collections so the symbolic surface is easy to inspect.
+    state_equations: list[Expr] = list()
+    state_equations.append(sK_1_0_01s_dx)
+    state_variables: list[Var] = list()
+    state_variables.append(sK_1_0_01s_x)
+    algebraic_equations: list[Expr] = list()
+    algebraic_equations.append((sK_1_0_01s_dx - ((yi - sK_1_0_01s_x) / sym.Const(0.01))))
+    algebraic_equations.append((yo - (sK_1_0_01s_K * sK_1_0_01s_dx)))
+    algebraic_variables: list[Var] = list()
+    algebraic_variables.append(sK_1_0_01s_dx)
+    algebraic_variables.append(yo)
+    differential_variables: list[Var] = list()
+    differential_variables.append(d_sK_1_0_01s_x)
+    input_variables: list[Var] = list()
+    input_variables.append(yi)
+    output_variables: list[Var] = list()
+    output_variables.append(yo)
+    event_parameters: dict[Var, Expr | Const] = dict()
+    event_parameters[sK_1_0_01s_K] = vf.add_const(None, name='K')
+    mode_parameters: dict[Var, Expr | Const] = dict()
+    initial_equations: dict[Var, Expr | Const] = dict()
+    differential_initial_equations: dict[Var, Expr | Const] = dict()
+    procedural_logic_entries: list[object] = list()
+
+    # Assemble the final block from the explicit typed collections above.
+    template.block = Block(
+        state_vars=state_variables,
+        state_eqs=state_equations,
+        algebraic_vars=algebraic_variables,
+        algebraic_eqs=algebraic_equations,
+        diff_vars=differential_variables,
+        init_eqs=initial_equations,
+        diff_init_eqs=differential_initial_equations,
+        in_vars=input_variables,
+        out_vars=output_variables,
+        event_dict=event_parameters,
+        mode_dict=mode_parameters,
+        procedural_logic=procedural_logic_entries,
+        name=template_name,
+    )
+
+    return template
+

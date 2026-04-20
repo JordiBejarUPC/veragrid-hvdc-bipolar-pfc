@@ -1,41 +1,92 @@
-# --- AUTO-GENERATED EMT TEMPLATE FROM DGS ---
-# Source: C:\Users\andre\Documents\BASE_CATALOG.dgs
+"""
+Standalone EMT template for the PowerFactory basic block 'P/omg -> Torque'.
 
-from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Utils.Symbolic import symbolic as sym
+This module is generated from the shipped VeraGrid catalog artifacts and keeps the
+symbolic surface explicit so both humans and tools can inspect it directly.
+"""
+
+from __future__ import annotations
+
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic import symbolic as sym
+from VeraGridEngine.Utils.Symbolic.symbolic import Const
+from VeraGridEngine.Utils.Symbolic.symbolic import Expr
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import DeviceType
 
-def get_p_omg_torque_406_emt_template(vf: VarFactory, name: str = 'P/omg -> Torque__406') -> EmtModelTemplate:
-    templ = EmtModelTemplate()
-    templ.tpe = DeviceType.NoDevice
-    templ.name = name
+def build_default_template_name() -> str:
+    """
+    Return the canonical runtime name for this standalone template.
 
-    # --- Parameters ---
-
-    # --- State Variables ---
-
-    # --- Algebraic / Shared Variables ---
-    Power = vf.add_var('Power_' + name)
-    Torque = vf.add_var('Torque_' + name)
-    omega = vf.add_var('omega_' + name)
-
-    # --- Derivative Variables ---
-
-    # --- Block Assembly ---
-    templ.block = Block(
-        algebraic_eqs=[
-            (Torque - ((Power / omega) * sym.Const(1000.0))),
-        ],
-        algebraic_vars=[Torque],
-        in_vars=[Power, omega],
-        out_vars=[Torque],
-        name='P/omg -> Torque'
-    )
-    templ.block.name = name
-
-    return templ
+    :returns: Default template name.
+    """
+    return 'P/omg -> Torque__406'
 
 def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
-    return get_p_omg_torque_406_emt_template(vf=vf, name='P/omg -> Torque__406' if name is None else name)
+    """
+    Materialize the standalone EMT template.
+
+    :param vf: Variable factory used to allocate the symbolic surface.
+    :param name: Optional explicit runtime template name.
+    :returns: Materialized EMT template.
+    """
+    template_name: str
+    if name is None:
+        template_name = build_default_template_name()
+    else:
+        template_name = name
+
+    # Allocate the template container before building the symbolic surface.
+    template: EmtModelTemplate = EmtModelTemplate()
+    template.tpe = DeviceType.NoDevice
+    template.name = template_name
+
+    # Declare every variable explicitly before the equations reference it.
+    # Declare the runtime parameter variables used by the template.
+    # Declare the state variables used by the template.
+    # Declare the algebraic/shared variables used by the template.
+    Power: Var = vf.add_var('Power_' + template_name)
+    Torque: Var = vf.add_var('Torque_' + template_name)
+    omega: Var = vf.add_var('omega_' + template_name)
+    # Declare the differential variables used by the template.
+
+    # Build explicit typed collections so the symbolic surface is easy to inspect.
+    state_equations: list[Expr] = list()
+    state_variables: list[Var] = list()
+    algebraic_equations: list[Expr] = list()
+    algebraic_equations.append((Torque - ((Power / omega) * sym.Const(1000.0))))
+    algebraic_variables: list[Var] = list()
+    algebraic_variables.append(Torque)
+    differential_variables: list[Var] = list()
+    input_variables: list[Var] = list()
+    input_variables.append(Power)
+    input_variables.append(omega)
+    output_variables: list[Var] = list()
+    output_variables.append(Torque)
+    event_parameters: dict[Var, Expr | Const] = dict()
+    mode_parameters: dict[Var, Expr | Const] = dict()
+    initial_equations: dict[Var, Expr | Const] = dict()
+    differential_initial_equations: dict[Var, Expr | Const] = dict()
+    procedural_logic_entries: list[object] = list()
+
+    # Assemble the final block from the explicit typed collections above.
+    template.block = Block(
+        state_vars=state_variables,
+        state_eqs=state_equations,
+        algebraic_vars=algebraic_variables,
+        algebraic_eqs=algebraic_equations,
+        diff_vars=differential_variables,
+        init_eqs=initial_equations,
+        diff_init_eqs=differential_initial_equations,
+        in_vars=input_variables,
+        out_vars=output_variables,
+        event_dict=event_parameters,
+        mode_dict=mode_parameters,
+        procedural_logic=procedural_logic_entries,
+        name=template_name,
+    )
+
+    return template
+

@@ -1,59 +1,108 @@
-# --- AUTO-GENERATED EMT TEMPLATE FROM DGS ---
-# Source: C:\Users\andre\Documents\BASE_CATALOG.dgs
+"""
+Standalone EMT template for the PowerFactory basic block 'Switch sig 4->1 by sig'.
 
-from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Utils.Symbolic import symbolic as sym
+This module is generated from the shipped VeraGrid catalog artifacts and keeps the
+symbolic surface explicit so both humans and tools can inspect it directly.
+"""
+
+from __future__ import annotations
+
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic import symbolic as sym
+from VeraGridEngine.Utils.Symbolic.symbolic import Const
+from VeraGridEngine.Utils.Symbolic.symbolic import Expr
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Utils.procedural_logic import sampled_value
 from VeraGridEngine.enumerations import DeviceType
 
-def get_switch_sig_4_1_by_sig_524_emt_template(vf: VarFactory, name: str = 'Switch sig 4->1 by sig__524') -> EmtModelTemplate:
-    templ = EmtModelTemplate()
-    templ.tpe = DeviceType.NoDevice
-    templ.name = name
+def build_default_template_name() -> str:
+    """
+    Return the canonical runtime name for this standalone template.
 
-    # --- Parameters ---
-
-    # --- State Variables ---
-
-    # --- Algebraic / Shared Variables ---
-    Switch_sig_4_1_by_sig_proc_select_0 = vf.add_var('Switch sig 4->1 by sig__proc_select_0_' + name)
-    Switch_sig_4_1_by_sig_proc_select_1 = vf.add_var('Switch sig 4->1 by sig__proc_select_1_' + name)
-    Switch_sig_4_1_by_sig_proc_select_2 = vf.add_var('Switch sig 4->1 by sig__proc_select_2_' + name)
-    sw = vf.add_var('sw_' + name)
-    yi1 = vf.add_var('yi1_' + name)
-    yi2 = vf.add_var('yi2_' + name)
-    yi3 = vf.add_var('yi3_' + name)
-    yi4 = vf.add_var('yi4_' + name)
-    yo = vf.add_var('yo_' + name)
-
-    # --- Derivative Variables ---
-
-    # --- Block Assembly ---
-    templ.block = Block(
-        algebraic_eqs=[
-            (yo - ((Switch_sig_4_1_by_sig_proc_select_2 * yi1) + ((sym.Const(1.0) - Switch_sig_4_1_by_sig_proc_select_2) * ((Switch_sig_4_1_by_sig_proc_select_1 * yi2) + ((sym.Const(1.0) - Switch_sig_4_1_by_sig_proc_select_1) * ((Switch_sig_4_1_by_sig_proc_select_0 * yi3) + ((sym.Const(1.0) - Switch_sig_4_1_by_sig_proc_select_0) * yi4))))))),
-        ],
-        algebraic_vars=[yo],
-        in_vars=[yi1, yi2, yi3, yi4, sw],
-        out_vars=[yo],
-        name='Switch sig 4->1 by sig'
-    )
-    # --- Retained Runtime Modes ---
-    templ.block.mode_dict = {
-        Switch_sig_4_1_by_sig_proc_select_0: vf.add_const(0.0, name=''),
-        Switch_sig_4_1_by_sig_proc_select_1: vf.add_const(0.0, name=''),
-        Switch_sig_4_1_by_sig_proc_select_2: vf.add_const(0.0, name=''),
-    }
-    templ.block.procedural_logic = [
-        sampled_value(output=Switch_sig_4_1_by_sig_proc_select_0, source=(sw < 2.5)),
-        sampled_value(output=Switch_sig_4_1_by_sig_proc_select_1, source=(sw < 1.5)),
-        sampled_value(output=Switch_sig_4_1_by_sig_proc_select_2, source=(sw < 0.5)),
-    ]
-    templ.block.name = name
-
-    return templ
+    :returns: Default template name.
+    """
+    return 'Switch sig 4->1 by sig__524'
 
 def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
-    return get_switch_sig_4_1_by_sig_524_emt_template(vf=vf, name='Switch sig 4->1 by sig__524' if name is None else name)
+    """
+    Materialize the standalone EMT template.
+
+    :param vf: Variable factory used to allocate the symbolic surface.
+    :param name: Optional explicit runtime template name.
+    :returns: Materialized EMT template.
+    """
+    template_name: str
+    if name is None:
+        template_name = build_default_template_name()
+    else:
+        template_name = name
+
+    # Allocate the template container before building the symbolic surface.
+    template: EmtModelTemplate = EmtModelTemplate()
+    template.tpe = DeviceType.NoDevice
+    template.name = template_name
+
+    # Declare every variable explicitly before the equations reference it.
+    # Declare the runtime parameter variables used by the template.
+    # Declare the state variables used by the template.
+    # Declare the algebraic/shared variables used by the template.
+    Switch_sig_4_1_by_sig_proc_select_0: Var = vf.add_var('Switch sig 4->1 by sig__proc_select_0_' + template_name)
+    Switch_sig_4_1_by_sig_proc_select_1: Var = vf.add_var('Switch sig 4->1 by sig__proc_select_1_' + template_name)
+    Switch_sig_4_1_by_sig_proc_select_2: Var = vf.add_var('Switch sig 4->1 by sig__proc_select_2_' + template_name)
+    sw: Var = vf.add_var('sw_' + template_name)
+    yi1: Var = vf.add_var('yi1_' + template_name)
+    yi2: Var = vf.add_var('yi2_' + template_name)
+    yi3: Var = vf.add_var('yi3_' + template_name)
+    yi4: Var = vf.add_var('yi4_' + template_name)
+    yo: Var = vf.add_var('yo_' + template_name)
+    # Declare the differential variables used by the template.
+
+    # Build explicit typed collections so the symbolic surface is easy to inspect.
+    state_equations: list[Expr] = list()
+    state_variables: list[Var] = list()
+    algebraic_equations: list[Expr] = list()
+    algebraic_equations.append((yo - ((Switch_sig_4_1_by_sig_proc_select_2 * yi1) + ((sym.Const(1.0) - Switch_sig_4_1_by_sig_proc_select_2) * ((Switch_sig_4_1_by_sig_proc_select_1 * yi2) + ((sym.Const(1.0) - Switch_sig_4_1_by_sig_proc_select_1) * ((Switch_sig_4_1_by_sig_proc_select_0 * yi3) + ((sym.Const(1.0) - Switch_sig_4_1_by_sig_proc_select_0) * yi4))))))))
+    algebraic_variables: list[Var] = list()
+    algebraic_variables.append(yo)
+    differential_variables: list[Var] = list()
+    input_variables: list[Var] = list()
+    input_variables.append(yi1)
+    input_variables.append(yi2)
+    input_variables.append(yi3)
+    input_variables.append(yi4)
+    input_variables.append(sw)
+    output_variables: list[Var] = list()
+    output_variables.append(yo)
+    event_parameters: dict[Var, Expr | Const] = dict()
+    mode_parameters: dict[Var, Expr | Const] = dict()
+    mode_parameters[Switch_sig_4_1_by_sig_proc_select_0] = vf.add_const(0.0, name='')
+    mode_parameters[Switch_sig_4_1_by_sig_proc_select_1] = vf.add_const(0.0, name='')
+    mode_parameters[Switch_sig_4_1_by_sig_proc_select_2] = vf.add_const(0.0, name='')
+    initial_equations: dict[Var, Expr | Const] = dict()
+    differential_initial_equations: dict[Var, Expr | Const] = dict()
+    procedural_logic_entries: list[object] = list()
+    procedural_logic_entries.append(sampled_value(output=Switch_sig_4_1_by_sig_proc_select_0, source=sym.Comparison(lhs=sw, op=sym.CmpOp.LT, rhs=2.5)))
+    procedural_logic_entries.append(sampled_value(output=Switch_sig_4_1_by_sig_proc_select_1, source=sym.Comparison(lhs=sw, op=sym.CmpOp.LT, rhs=1.5)))
+    procedural_logic_entries.append(sampled_value(output=Switch_sig_4_1_by_sig_proc_select_2, source=sym.Comparison(lhs=sw, op=sym.CmpOp.LT, rhs=0.5)))
+
+    # Assemble the final block from the explicit typed collections above.
+    template.block = Block(
+        state_vars=state_variables,
+        state_eqs=state_equations,
+        algebraic_vars=algebraic_variables,
+        algebraic_eqs=algebraic_equations,
+        diff_vars=differential_variables,
+        init_eqs=initial_equations,
+        diff_init_eqs=differential_initial_equations,
+        in_vars=input_variables,
+        out_vars=output_variables,
+        event_dict=event_parameters,
+        mode_dict=mode_parameters,
+        procedural_logic=procedural_logic_entries,
+        name=template_name,
+    )
+
+    return template
+

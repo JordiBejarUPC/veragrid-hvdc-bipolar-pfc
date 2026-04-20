@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
@@ -12,7 +13,7 @@ from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDa
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_powerfactory_basic_catalog_descriptor_by_typ_id
+from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_powerfactory_basic_catalog_descriptor_by_key
 from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import load_powerfactory_basic_catalog_template
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
@@ -23,6 +24,20 @@ from VeraGridEngine.enumerations import RmsInitializationMethod
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 
 import VeraGridEngine.api as gce
+
+pytestmark = pytest.mark.filterwarnings("error")
+
+
+def _passthrough_event_params(values: np.ndarray, _: float) -> np.ndarray:
+    """
+    Return the runtime parameter vector without applying any extra transformation.
+
+    :param values: Runtime parameter vector.
+    :param _: Current time.
+    :returns: Unmodified parameter vector.
+    """
+
+    return values
 
 
 def _build_procedural_catalog_load_rms_template(vf: VarFactory,
@@ -43,7 +58,7 @@ def _build_procedural_catalog_load_rms_template(vf: VarFactory,
     p_ref_const = vf.add_var(f"P_ref_const_{name}")
     q_ref_const = vf.add_var(f"Q_ref_const_{name}")
 
-    enable_descriptor = get_powerfactory_basic_catalog_descriptor_by_typ_id()["505"]
+    enable_descriptor = get_powerfactory_basic_catalog_descriptor_by_key()["enable_signal"]
     enable_template = load_powerfactory_basic_catalog_template(enable_descriptor, vf, name=f"{name} enable")
     enable_block = enable_template.block
     enable_param = next(iter(enable_block.event_dict.keys()))
@@ -78,7 +93,7 @@ def _build_procedural_catalog_load_rms_template(vf: VarFactory,
 
 
 def test_rms_update_variable_params_applies_catalog_procedural_logic() -> None:
-    descriptor = get_powerfactory_basic_catalog_descriptor_by_typ_id()["504"]
+    descriptor = get_powerfactory_basic_catalog_descriptor_by_key()["enable_signal_fixed"]
     template = load_powerfactory_basic_catalog_template(descriptor, VarFactory())
     problem = RmsProblemDae.__new__(RmsProblemDae)
     runtime_parameters = list(template.block.event_dict.keys()) + list(template.block.mode_dict.keys())
@@ -98,7 +113,7 @@ def test_rms_update_variable_params_applies_catalog_procedural_logic() -> None:
     problem._parameters_values = list()
     problem._constant_params = np.zeros(0, dtype=float)
     problem._variable_parameters_values = np.array([1.0, 0.0], dtype=float)
-    problem._event_params_fn = lambda values, _: values
+    problem._event_params_fn = _passthrough_event_params
     problem._block_boundary_updater = build_boundary_updater_from_block(problem)
 
     RmsProblemDae.update_variable_params(problem, t=0.0, x_snapshot=np.zeros(len(ordered_vars), dtype=float))

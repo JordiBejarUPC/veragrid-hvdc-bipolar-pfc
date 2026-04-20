@@ -1,84 +1,123 @@
-# --- AUTO-GENERATED EMT TEMPLATE FROM DGS ---
-# Source: C:\Users\andre\Documents\BASE_CATALOG.dgs
+"""
+Standalone EMT template for the PowerFactory basic block 'Kp(1/Ti+s)/s (s) _rst (variant)'.
 
-from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Utils.Symbolic import symbolic as sym
+This module is generated from the shipped VeraGrid catalog artifacts and keeps the
+symbolic surface explicit so both humans and tools can inspect it directly.
+"""
+
+from __future__ import annotations
+
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
+from VeraGridEngine.Utils.Symbolic import symbolic as sym
+from VeraGridEngine.Utils.Symbolic.symbolic import Const
+from VeraGridEngine.Utils.Symbolic.symbolic import Expr
+from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Utils.procedural_logic import lastvalue, reset, sampled_value
 from VeraGridEngine.enumerations import DeviceType
 
-def get_kp_1_ti_s_s_s_rst_variant_452_emt_template(vf: VarFactory, name: str = 'Kp(1/Ti+s)/s (s) _rst (variant)__452') -> EmtModelTemplate:
-    templ = EmtModelTemplate()
-    templ.tpe = DeviceType.NoDevice
-    templ.name = name
+def build_default_template_name() -> str:
+    """
+    Return the canonical runtime name for this standalone template.
 
-    # --- Parameters ---
-    Kp_1_Ti_s_s_s_rst_variant_Kaw = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__Kaw_' + name)
-    Kp_1_Ti_s_s_s_rst_variant_Kp = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__Kp_' + name)
-    Kp_1_Ti_s_s_s_rst_variant_Ti = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__Ti_' + name)
-    Kp_1_Ti_s_s_s_rst_variant_y_max = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__y_max_' + name)
-    Kp_1_Ti_s_s_s_rst_variant_y_min = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__y_min_' + name)
-
-    # --- State Variables ---
-    Kp_1_Ti_s_s_s_rst_variant_x = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__x_' + name)
-
-    # --- Algebraic / Shared Variables ---
-    Kp_1_Ti_s_s_s_rst_variant_PIsum = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)_PIsum_' + name)
-    Kp_1_Ti_s_s_s_rst_variant_proc_lastvalue_1 = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__proc_lastvalue_1_' + name)
-    Kp_1_Ti_s_s_s_rst_variant_proc_select_0 = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__proc_select_0_' + name)
-    Kp_1_Ti_s_s_s_rst_variant_proc_select_2 = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__proc_select_2_' + name)
-    Kp_1_Ti_s_s_s_rst_variant_x_init = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)_x_init_' + name)
-    rst = vf.add_var('rst_' + name)
-    yi = vf.add_var('yi_' + name)
-    yo = vf.add_var('yo_' + name)
-
-    # --- Derivative Variables ---
-    d_Kp_1_Ti_s_s_s_rst_variant_x = vf.add_diff_var('d_Kp(1/Ti+s)/s (s) _rst (variant)__x_' + name, base_var=Kp_1_Ti_s_s_s_rst_variant_x)
-
-    # --- Block Assembly ---
-    templ.block = Block(
-        state_eqs=[
-            ((Kp_1_Ti_s_s_s_rst_variant_proc_select_2 * ((yi + (Kp_1_Ti_s_s_s_rst_variant_proc_lastvalue_1 * Kp_1_Ti_s_s_s_rst_variant_Kaw)) / Kp_1_Ti_s_s_s_rst_variant_Ti)) + ((sym.Const(1.0) - Kp_1_Ti_s_s_s_rst_variant_proc_select_2) * sym.Const(0.0))),
-        ],
-        state_vars=[Kp_1_Ti_s_s_s_rst_variant_x],
-        algebraic_eqs=[
-            (Kp_1_Ti_s_s_s_rst_variant_PIsum - (((Kp_1_Ti_s_s_s_rst_variant_proc_select_0 * sym.Const(0.0)) + ((sym.Const(1.0) - Kp_1_Ti_s_s_s_rst_variant_proc_select_0) * (Kp_1_Ti_s_s_s_rst_variant_Kp * yi))) + ((Kp_1_Ti_s_s_s_rst_variant_y_min + ((Kp_1_Ti_s_s_s_rst_variant_x - Kp_1_Ti_s_s_s_rst_variant_y_min) * sym.heaviside((Kp_1_Ti_s_s_s_rst_variant_x - Kp_1_Ti_s_s_s_rst_variant_y_min)))) - ((Kp_1_Ti_s_s_s_rst_variant_x - Kp_1_Ti_s_s_s_rst_variant_y_max) * sym.heaviside((Kp_1_Ti_s_s_s_rst_variant_x - Kp_1_Ti_s_s_s_rst_variant_y_max)))))),
-            (yo - ((Kp_1_Ti_s_s_s_rst_variant_y_min + ((Kp_1_Ti_s_s_s_rst_variant_PIsum - Kp_1_Ti_s_s_s_rst_variant_y_min) * sym.heaviside((Kp_1_Ti_s_s_s_rst_variant_PIsum - Kp_1_Ti_s_s_s_rst_variant_y_min)))) - ((Kp_1_Ti_s_s_s_rst_variant_PIsum - Kp_1_Ti_s_s_s_rst_variant_y_max) * sym.heaviside((Kp_1_Ti_s_s_s_rst_variant_PIsum - Kp_1_Ti_s_s_s_rst_variant_y_max))))),
-        ],
-        algebraic_vars=[Kp_1_Ti_s_s_s_rst_variant_PIsum, yo],
-        in_vars=[yi, rst],
-        out_vars=[yo],
-        name='Kp(1/Ti+s)/s (s) _rst (variant)'
-    )
-    templ.block.diff_vars = [d_Kp_1_Ti_s_s_s_rst_variant_x]
-    # --- Parameter Values ---
-    templ.block.event_dict = {
-        Kp_1_Ti_s_s_s_rst_variant_Kp: vf.add_const(None, name='Kp'),
-        Kp_1_Ti_s_s_s_rst_variant_Ti: vf.add_const(None, name='Ti'),
-        Kp_1_Ti_s_s_s_rst_variant_Kaw: vf.add_const(None, name='Kaw'),
-        Kp_1_Ti_s_s_s_rst_variant_y_max: vf.add_const(None, name='y_max'),
-        Kp_1_Ti_s_s_s_rst_variant_y_min: vf.add_const(None, name='y_min'),
-    }
-    # --- Retained Runtime Modes ---
-    templ.block.mode_dict = {
-        Kp_1_Ti_s_s_s_rst_variant_proc_select_0: vf.add_const(0.0, name=''),
-        Kp_1_Ti_s_s_s_rst_variant_proc_lastvalue_1: vf.add_const(0.0, name=''),
-        Kp_1_Ti_s_s_s_rst_variant_proc_select_2: vf.add_const(0.0, name=''),
-    }
-    # --- Initial Equations and Guesses ---
-    templ.block.init_eqs = {
-        Kp_1_Ti_s_s_s_rst_variant_x_init: Kp_1_Ti_s_s_s_rst_variant_x,
-    }
-    templ.block.procedural_logic = [
-        sampled_value(output=Kp_1_Ti_s_s_s_rst_variant_proc_select_0, source=(rst > 0.5)),
-        lastvalue((yo - Kp_1_Ti_s_s_s_rst_variant_PIsum), output=Kp_1_Ti_s_s_s_rst_variant_proc_lastvalue_1),
-        sampled_value(output=Kp_1_Ti_s_s_s_rst_variant_proc_select_2, source=(rst < 0.5)),
-        reset(Kp_1_Ti_s_s_s_rst_variant_x, rst, Kp_1_Ti_s_s_s_rst_variant_x_init),
-    ]
-    templ.block.name = name
-
-    return templ
+    :returns: Default template name.
+    """
+    return 'Kp(1/Ti+s)/s (s) _rst (variant)__452'
 
 def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
-    return get_kp_1_ti_s_s_s_rst_variant_452_emt_template(vf=vf, name='Kp(1/Ti+s)/s (s) _rst (variant)__452' if name is None else name)
+    """
+    Materialize the standalone EMT template.
+
+    :param vf: Variable factory used to allocate the symbolic surface.
+    :param name: Optional explicit runtime template name.
+    :returns: Materialized EMT template.
+    """
+    template_name: str
+    if name is None:
+        template_name = build_default_template_name()
+    else:
+        template_name = name
+
+    # Allocate the template container before building the symbolic surface.
+    template: EmtModelTemplate = EmtModelTemplate()
+    template.tpe = DeviceType.NoDevice
+    template.name = template_name
+
+    # Declare every variable explicitly before the equations reference it.
+    # Declare the runtime parameter variables used by the template.
+    Kp_1_Ti_s_s_s_rst_variant_Kaw: Var = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__Kaw_' + template_name)
+    Kp_1_Ti_s_s_s_rst_variant_Kp: Var = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__Kp_' + template_name)
+    Kp_1_Ti_s_s_s_rst_variant_Ti: Var = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__Ti_' + template_name)
+    Kp_1_Ti_s_s_s_rst_variant_y_max: Var = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__y_max_' + template_name)
+    Kp_1_Ti_s_s_s_rst_variant_y_min: Var = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__y_min_' + template_name)
+    # Declare the state variables used by the template.
+    Kp_1_Ti_s_s_s_rst_variant_x: Var = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__x_' + template_name)
+    # Declare the algebraic/shared variables used by the template.
+    Kp_1_Ti_s_s_s_rst_variant_PIsum: Var = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)_PIsum_' + template_name)
+    Kp_1_Ti_s_s_s_rst_variant_proc_lastvalue_1: Var = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__proc_lastvalue_1_' + template_name)
+    Kp_1_Ti_s_s_s_rst_variant_proc_select_0: Var = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__proc_select_0_' + template_name)
+    Kp_1_Ti_s_s_s_rst_variant_proc_select_2: Var = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)__proc_select_2_' + template_name)
+    Kp_1_Ti_s_s_s_rst_variant_x_init: Var = vf.add_var('Kp(1/Ti+s)/s (s) _rst (variant)_x_init_' + template_name)
+    rst: Var = vf.add_var('rst_' + template_name)
+    yi: Var = vf.add_var('yi_' + template_name)
+    yo: Var = vf.add_var('yo_' + template_name)
+    # Declare the differential variables used by the template.
+    d_Kp_1_Ti_s_s_s_rst_variant_x: Var = vf.add_diff_var('d_Kp(1/Ti+s)/s (s) _rst (variant)__x_' + template_name, base_var=Kp_1_Ti_s_s_s_rst_variant_x)
+
+    # Build explicit typed collections so the symbolic surface is easy to inspect.
+    state_equations: list[Expr] = list()
+    state_equations.append(((Kp_1_Ti_s_s_s_rst_variant_proc_select_2 * ((yi + (Kp_1_Ti_s_s_s_rst_variant_proc_lastvalue_1 * Kp_1_Ti_s_s_s_rst_variant_Kaw)) / Kp_1_Ti_s_s_s_rst_variant_Ti)) + ((sym.Const(1.0) - Kp_1_Ti_s_s_s_rst_variant_proc_select_2) * sym.Const(0.0))))
+    state_variables: list[Var] = list()
+    state_variables.append(Kp_1_Ti_s_s_s_rst_variant_x)
+    algebraic_equations: list[Expr] = list()
+    algebraic_equations.append((Kp_1_Ti_s_s_s_rst_variant_PIsum - (((Kp_1_Ti_s_s_s_rst_variant_proc_select_0 * sym.Const(0.0)) + ((sym.Const(1.0) - Kp_1_Ti_s_s_s_rst_variant_proc_select_0) * (Kp_1_Ti_s_s_s_rst_variant_Kp * yi))) + ((Kp_1_Ti_s_s_s_rst_variant_y_min + ((Kp_1_Ti_s_s_s_rst_variant_x - Kp_1_Ti_s_s_s_rst_variant_y_min) * sym.heaviside((Kp_1_Ti_s_s_s_rst_variant_x - Kp_1_Ti_s_s_s_rst_variant_y_min)))) - ((Kp_1_Ti_s_s_s_rst_variant_x - Kp_1_Ti_s_s_s_rst_variant_y_max) * sym.heaviside((Kp_1_Ti_s_s_s_rst_variant_x - Kp_1_Ti_s_s_s_rst_variant_y_max)))))))
+    algebraic_equations.append((yo - ((Kp_1_Ti_s_s_s_rst_variant_y_min + ((Kp_1_Ti_s_s_s_rst_variant_PIsum - Kp_1_Ti_s_s_s_rst_variant_y_min) * sym.heaviside((Kp_1_Ti_s_s_s_rst_variant_PIsum - Kp_1_Ti_s_s_s_rst_variant_y_min)))) - ((Kp_1_Ti_s_s_s_rst_variant_PIsum - Kp_1_Ti_s_s_s_rst_variant_y_max) * sym.heaviside((Kp_1_Ti_s_s_s_rst_variant_PIsum - Kp_1_Ti_s_s_s_rst_variant_y_max))))))
+    algebraic_variables: list[Var] = list()
+    algebraic_variables.append(Kp_1_Ti_s_s_s_rst_variant_PIsum)
+    algebraic_variables.append(yo)
+    differential_variables: list[Var] = list()
+    differential_variables.append(d_Kp_1_Ti_s_s_s_rst_variant_x)
+    input_variables: list[Var] = list()
+    input_variables.append(yi)
+    input_variables.append(rst)
+    output_variables: list[Var] = list()
+    output_variables.append(yo)
+    event_parameters: dict[Var, Expr | Const] = dict()
+    event_parameters[Kp_1_Ti_s_s_s_rst_variant_Kp] = vf.add_const(None, name='Kp')
+    event_parameters[Kp_1_Ti_s_s_s_rst_variant_Ti] = vf.add_const(None, name='Ti')
+    event_parameters[Kp_1_Ti_s_s_s_rst_variant_Kaw] = vf.add_const(None, name='Kaw')
+    event_parameters[Kp_1_Ti_s_s_s_rst_variant_y_max] = vf.add_const(None, name='y_max')
+    event_parameters[Kp_1_Ti_s_s_s_rst_variant_y_min] = vf.add_const(None, name='y_min')
+    mode_parameters: dict[Var, Expr | Const] = dict()
+    mode_parameters[Kp_1_Ti_s_s_s_rst_variant_proc_select_0] = vf.add_const(0.0, name='')
+    mode_parameters[Kp_1_Ti_s_s_s_rst_variant_proc_lastvalue_1] = vf.add_const(0.0, name='')
+    mode_parameters[Kp_1_Ti_s_s_s_rst_variant_proc_select_2] = vf.add_const(0.0, name='')
+    initial_equations: dict[Var, Expr | Const] = dict()
+    initial_equations[Kp_1_Ti_s_s_s_rst_variant_x_init] = Kp_1_Ti_s_s_s_rst_variant_x
+    differential_initial_equations: dict[Var, Expr | Const] = dict()
+    procedural_logic_entries: list[object] = list()
+    procedural_logic_entries.append(sampled_value(output=Kp_1_Ti_s_s_s_rst_variant_proc_select_0, source=sym.Comparison(lhs=rst, op=sym.CmpOp.GT, rhs=0.5)))
+    procedural_logic_entries.append(lastvalue((yo - Kp_1_Ti_s_s_s_rst_variant_PIsum), output=Kp_1_Ti_s_s_s_rst_variant_proc_lastvalue_1))
+    procedural_logic_entries.append(sampled_value(output=Kp_1_Ti_s_s_s_rst_variant_proc_select_2, source=sym.Comparison(lhs=rst, op=sym.CmpOp.LT, rhs=0.5)))
+    procedural_logic_entries.append(reset(Kp_1_Ti_s_s_s_rst_variant_x, rst, Kp_1_Ti_s_s_s_rst_variant_x_init))
+
+    # Assemble the final block from the explicit typed collections above.
+    template.block = Block(
+        state_vars=state_variables,
+        state_eqs=state_equations,
+        algebraic_vars=algebraic_variables,
+        algebraic_eqs=algebraic_equations,
+        diff_vars=differential_variables,
+        init_eqs=initial_equations,
+        diff_init_eqs=differential_initial_equations,
+        in_vars=input_variables,
+        out_vars=output_variables,
+        event_dict=event_parameters,
+        mode_dict=mode_parameters,
+        procedural_logic=procedural_logic_entries,
+        name=template_name,
+    )
+
+    return template
+
