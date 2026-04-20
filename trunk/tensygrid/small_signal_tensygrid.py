@@ -12,6 +12,7 @@ import sys
 import time, pickle, os
 from typing import Tuple, Any, List
 import numpy as np
+from memory_profiler import profile,LineProfiler, show_results
 #from cryptography.x509 import name
 
 from PolynomialMatrixBuilder import PolynomialMatrixBuilder
@@ -404,8 +405,7 @@ def solve_problem(problem: Any = None) -> Any:
 
     return eigenvalues
 
-
-if __name__ == "__main__":
+def main():
     # --- START CHRONO ---
     start_time = time.perf_counter()
 
@@ -440,8 +440,6 @@ if __name__ == "__main__":
         print("[FAST_MODE] Skipping eigenvalue reference matching and plotting")
         raise SystemExit(0)
 
-
-
     reference_evs = [complex(x) for x in
                      ["(-20.000000001+0j)", "(-10.000000001+0j)", "(-50.00000013636582+0j)", "(-49.9999998638391+0j)",
                       "(-12.168789431034414+0j)", "(-10.142655446318065+0j)", "(-6.854035294550814+0j)",
@@ -453,7 +451,6 @@ if __name__ == "__main__":
                       "(-0.11161483998140341+0j)", "(-0.9999999991690246+0j)", "(-1.0000000028309748+0j)",
                       "(-0.39635072300328184+0j)", "(-10.00000000099956+0j)", "(-1.0000000000000023e-09+0j)",
                       "(-9.999999999999996e-10+0j)", "(-9.999999999999992e-10+0j)"]]
-
 
     # --- MATCHING LOGIC (Hungarian Algorithm) ---
     finite_evs = calculated_evs[np.isfinite(calculated_evs) & (np.abs(calculated_evs) < 1e6)] if len(
@@ -552,8 +549,27 @@ if __name__ == "__main__":
     for ev in unmatched_calc:
         print(f"   {ev.real:.4f} + {ev.imag:.4f}j")
 
-
     print(f"\n⚠️ MISSING POLES (In Pablo's reference, not found by TenSyGrid): {n_unmatched_ref}")
     for ev in unmatched_ref:
         print(f"   {ev.real:.4f} + {ev.imag:.4f}j")
+
+if __name__ == "__main__":
+
+    lp = LineProfiler()
+    lp.add_function(main)
+    lp.add_function(solve_problem)
+    lp.add_function(define_problem_with_path)
+
+    try:
+        lp(main)()
+    except SystemExit:
+        pass  # Ignore exit
+    finally:
+        print("\n" + "=" * 80)
+        print("      DETAILED MEMORY PROFILE REPORT (VeraGrid Analysis)")
+        print("=" * 80)
+        show_results(lp)
+
+
+
 
