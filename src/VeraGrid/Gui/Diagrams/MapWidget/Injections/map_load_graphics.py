@@ -4,15 +4,18 @@
 # SPDX-License-Identifier: MPL-2.0
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 from PySide6 import QtWidgets
 from PySide6.QtCore import QPointF
 from PySide6.QtGui import QPolygonF
 from VeraGrid.Gui.gui_functions import add_menu_entry
+from VeraGrid.Gui.messages import info_msg
+from VeraGrid.Gui.profile_wizard_utils import fill_substation_weather_profiles
 from VeraGrid.Gui.Diagrams.generic_graphics import Polygon
 from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics import MapInjectionTemplateGraphicItem
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicSimulationMode
+from VeraGrid.Gui.LoadDesigner.load_designer import LoadDesigner
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGridEngine.enumerations import DeviceType, FmuTemplateDomain
 
@@ -56,6 +59,11 @@ class MapLoadGraphicItem(MapInjectionTemplateGraphicItem):
             menu.addSection("Load")
 
             add_menu_entry(menu=menu,
+                           text="Load profile wizard",
+                           function_ptr=self.load_profile_wizard,
+                           icon_path=":/Icons/icons/gear.png")
+
+            add_menu_entry(menu=menu,
                            text="Dynamic Editor",
                            function_ptr=self.edit_dynamic,
                            icon_path=":/Icons/icons/edit.png")
@@ -94,6 +102,53 @@ class MapLoadGraphicItem(MapInjectionTemplateGraphicItem):
             main_editor=True,
         )
         rms_model_editor.show()
+
+    def load_profile_wizard(self) -> None:
+        """
+        Open the load profile composition wizard and apply the generated profiles.
+
+        :return: None.
+        """
+        if self._editor.circuit.has_time_series:
+            if self.api_object.bus is not None:
+                bus_name: str = self.api_object.bus.name
+                latitude: Union[float, None] = self.api_object.bus.latitude
+                longitude: Union[float, None] = self.api_object.bus.longitude
+            else:
+                bus_name = ""
+                latitude = None
+                longitude = None
+
+            dlg: LoadDesigner = LoadDesigner(time_array=self._editor.circuit.time_profile,
+                                             active_power=self.api_object.P,
+                                             reactive_power=self.api_object.Q,
+                                             latitude=latitude,
+                                             longitude=longitude,
+                                             load_name=self.api_object.name,
+                                             bus_name=bus_name)
+
+            if dlg.exec():
+                if dlg.is_accepted:
+                    if len(dlg.P) == self.api_object.P_prof.size() and len(dlg.Q) == self.api_object.Q_prof.size():
+                        self.api_object.P_prof.set(dlg.P)
+                        self.api_object.Q_prof.set(dlg.Q)
+                        if self.api_object.bus is not None:
+                            fill_substation_weather_profiles(bus=self.api_object.bus,
+                                                             temperature=dlg.temperature,
+                                                             wind_speed=dlg.wind_speed,
+                                                             irradiation=None,
+                                                             expected_size=self.api_object.P_prof.size())
+                        else:
+                            pass
+                        self.plot()
+                    else:
+                        raise Exception("Wrong length from the load profile wizard")
+                else:
+                    pass
+            else:
+                pass
+        else:
+            info_msg("You need to have time profiles for this function")
 
     def edit_emt(self):
         """

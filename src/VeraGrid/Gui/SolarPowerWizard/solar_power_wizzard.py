@@ -16,6 +16,23 @@ from VeraGrid.Gui.SolarPowerWizard.solar_power_wizard_gui import Ui_MainWindow
 from VeraGrid.Gui.pandas_model import PandasModel
 
 
+def get_weather_column(data: pd.DataFrame, candidates: List[str]) -> Union[np.ndarray, None]:
+    """
+    Get the first available weather column from a data frame.
+
+    :param data: Data frame to inspect.
+    :param candidates: Candidate column names.
+    :return: Column values or None.
+    """
+    for candidate in candidates:
+        if candidate in data.columns:
+            return data[candidate].to_numpy(dtype=float)
+        else:
+            pass
+
+    return None
+
+
 def parse_pv_time_array(time_array: Sequence[Union[str, datetime, pd.Timestamp]]) -> Tuple[bool, pd.DatetimeIndex, str]:
     """
     Convert the circuit time profile to a validated pandas datetime index.
@@ -227,6 +244,9 @@ class SolarPvWizard(QtWidgets.QDialog):
 
         self.time_array = time_array
         self.P = np.zeros(len(time_array))
+        self.temperature: Union[np.ndarray, None] = None
+        self.wind_speed: Union[np.ndarray, None] = None
+        self.irradiation: Union[np.ndarray, None] = None
 
         # accept button
         self.ui.acceptButton.clicked.connect(self.accept_click)
@@ -262,9 +282,15 @@ class SolarPvWizard(QtWidgets.QDialog):
                                                  peak_power=self.ui.powerSpinBox.value())
         if self.ok:
             self.P = self.df['P'].values / 1e6  # Power in MW
+            self.temperature = get_weather_column(data=self.df, candidates=["T2m", "temp_air", "temperature"])
+            self.wind_speed = get_weather_column(data=self.df, candidates=["WS10m", "wind_speed", "wind_speed_10m"])
+            self.irradiation = get_weather_column(data=self.df, candidates=["G(i)", "poa_global", "GHI", "ghi"])
             self.update_results()
 
         else:
+            self.temperature = None
+            self.wind_speed = None
+            self.irradiation = None
             self.ui.resultsTableView.setModel(None)
 
     def plot(self) -> None:

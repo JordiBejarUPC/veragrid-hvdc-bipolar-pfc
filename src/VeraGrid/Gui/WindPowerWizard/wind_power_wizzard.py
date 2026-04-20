@@ -589,6 +589,16 @@ def get_wind_power_df(time_array: Sequence[Union[str, datetime, pd.Timestamp]],
                             return False, pd.DataFrame(data=dict(P=np.zeros(len(time_array))))
                         else:
                             result_df["P"] = np.clip(result_df["P"].to_numpy(dtype=float), 0.0, peak_power * 1e6)
+                            weather_source_df: pd.DataFrame = weather_df.copy()
+                            weather_source_df.index = weather_source_df.index.asi8
+                            weather_source_df.sort_index(inplace=True)
+                            weather_interpolated_df: pd.DataFrame = (
+                                weather_source_df.reindex(interpolation_index).interpolate(method="index")
+                            )
+                            weather_result_df: pd.DataFrame = weather_interpolated_df.ffill().bfill().reindex(
+                                requested_index)
+                            result_df["temperature"] = weather_result_df["temperature_2m"].to_numpy(dtype=float)
+                            result_df["wind_speed"] = weather_result_df["wind_speed_100m"].to_numpy(dtype=float)
                             return True, result_df
                     else:
                         return False, pd.DataFrame(data=dict(P=np.zeros(len(time_array))))
@@ -650,6 +660,8 @@ class WindFarmWizard(QtWidgets.QDialog):
         self.is_accepted: bool = False
         self.time_array: Sequence[Union[str, datetime, pd.Timestamp]] = time_array
         self.P: np.ndarray = np.zeros(len(time_array))
+        self.temperature: Union[np.ndarray, None] = None
+        self.wind_speed: Union[np.ndarray, None] = None
         self.df: Union[pd.DataFrame, None] = None
         self.ok: bool = False
         self.template_df: pd.DataFrame = pd.DataFrame()
@@ -915,8 +927,12 @@ class WindFarmWizard(QtWidgets.QDialog):
                                              turbine_type=self.get_selected_turbine_type())
         if self.ok:
             self.P = self.df["P"].to_numpy(dtype=float) / 1e6
+            self.temperature = self.df["temperature"].to_numpy(dtype=float)
+            self.wind_speed = self.df["wind_speed"].to_numpy(dtype=float)
             self.update_results()
         else:
+            self.temperature = None
+            self.wind_speed = None
             self.ui.tableView_2.setModel(None)
 
     def plot(self) -> None:
