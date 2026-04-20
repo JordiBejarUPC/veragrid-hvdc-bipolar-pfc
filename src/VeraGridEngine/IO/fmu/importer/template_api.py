@@ -629,7 +629,6 @@ def configure_fmu_template(template: FmuTemplate,
 
     :param template: Template instance to mutate.
     :param var_factory: RMS variable factory owned by the current grid.
-    :param emt_var_factory: EMT variable factory owned by the current grid.
     :param fmu_path: FMU archive selected by the user.
     :param device_tpe: Target VeraGrid device type.
     :param domain: Simulation domain where the template will be used.
