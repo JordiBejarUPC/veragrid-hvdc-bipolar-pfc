@@ -30,6 +30,7 @@ import VeraGridEngine.api as gce
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
+from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
@@ -436,7 +437,8 @@ def main() -> None:
     problem: EmtProblemDae = build_problem(grid=grid, pf_results=pf_results)
     validate_initialization(problem)
 
-    solver: StructuralCompiledSolver = build_solver(problem)
+    # solver: StructuralCompiledSolver = build_solver(problem)
+    solver: JitSymbolicSolver = build_solver(problem)
     t, y, _, well_initialized , converged  = solver.simulate(boundary_updater=cast(object, problem))
     print(f"well_initialized = {well_initialized}")
     print(f"converged = {converged}")
