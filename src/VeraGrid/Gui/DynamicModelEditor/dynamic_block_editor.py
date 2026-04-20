@@ -84,6 +84,58 @@ def _new_uid() -> int:
     """
     return uuid.uuid4().int
 
+def build_block_rows(blk, table_model) -> List[BlockParameterRow]:
+    rows = []
+    if blk is None:
+        return rows
+
+    for var, expr in blk.event_dict.items():
+        if isinstance(expr, Const):
+            rows.append(BlockParameterRow(
+                name=var.name,
+                kind=BlockParameterKind.EVENT_PARAMETER,
+                key_var=var,
+                value=expr.value,
+                editable_name=True,
+                editable_value=True,
+                value_type=table_model.get_python_value_type(expr.value),
+                source_dict_name="event_dict"
+            ))
+        else:
+            rows.append(BlockParameterRow(
+                name=var.name,
+                kind=BlockParameterKind.EVENT_PARAMETER,
+                key_var=var,
+                value=expr,
+                editable_name=True,
+                editable_value=True,
+                value_type=str,
+                source_dict_name="event_dict"
+            ))
+
+    for var, const in blk.parameters.items():
+        rows.append(BlockParameterRow(
+            name=var.name,
+            kind=BlockParameterKind.FIXED_PARAMETER,
+            key_var=var,
+            value=const.value,
+            editable_name=True,
+            editable_value=True,
+            value_type=table_model.get_python_value_type(const.value),
+            source_dict_name="parameters"
+        ))
+
+    return rows
+
+def update_param_value(blk: Block, kind: str, var: Var, value: Any):
+    if kind == "event_dict":
+        if var in blk.event_dict:
+            blk.event_dict[var] = value
+    elif kind == "parameters":
+        if var in blk.parameters:
+            blk.parameters[var] = value
+
+
 
 class BlockPositionChangedCallback:
     """
@@ -1802,44 +1854,13 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
         rows = []
         if self.block is None:
             return rows
-
-        for var, expr in self.block.event_dict.items():
-            if isinstance(expr, Const):
-                rows.append(BlockParameterRow(
-                    name=var.name,
-                    kind=BlockParameterKind.EVENT_PARAMETER,
-                    key_var=var,
-                    value=expr.value,
-                    editable_name=True,
-                    editable_value=True,
-                    value_type=self.get_python_value_type(expr.value),
-                    source_dict_name="event_dict"
-                ))
-            else:
-                rows.append(BlockParameterRow(
-                    name=var.name,
-                    kind=BlockParameterKind.EVENT_PARAMETER,
-                    key_var=var,
-                    value=expr,
-                    editable_name=True,
-                    editable_value=True,
-                    value_type=str,
-                    source_dict_name="event_dict"
-                ))
-
-        for var, const in self.block.parameters.items():
-            rows.append(BlockParameterRow(
-                name=var.name,
-                kind=BlockParameterKind.FIXED_PARAMETER,
-                key_var=var,
-                value=const.value,
-                editable_name=True,
-                editable_value=True,
-                value_type=self.get_python_value_type(const.value),
-                source_dict_name="parameters"
-            ))
-
-        return rows
+        main_built_rows = build_block_rows(self.block, self)
+        if self.block.children:
+            for child in self.block.children:
+                built_rows = build_block_rows(child, self)
+                for elm in built_rows:
+                    main_built_rows.append(elm)
+        return main_built_rows
 
     def rowCount(self, parent=QtCore.QModelIndex()) -> int:
         return len(self.rows)
@@ -1890,10 +1911,12 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
     def _update_source_dict(self, row: BlockParameterRow, value: Any) -> None:
         if self.block is None or row.key_var is None or row.source_dict_name is None:
             return
-        if row.source_dict_name == "event_dict":
-            self.block.event_dict[row.key_var] = value
-        elif row.source_dict_name == "parameters":
-            self.block.parameters[row.key_var] = value
+        update_param_value(self.block, row.source_dict_name, row.key_var, value)
+        if self.block.children:
+            for child in self.block.children:
+                update_param_value(child, row.source_dict_name, row.key_var, value)
+
+
 
     def set_value_from_expression(self, row_index: int, expr: Expr) -> None:
         if 0 <= row_index < len(self.rows):
