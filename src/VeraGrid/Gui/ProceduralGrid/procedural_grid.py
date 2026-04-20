@@ -18,9 +18,8 @@ from VeraGridEngine.Topology.Procedural.procedural_grid_engine import Procedural
 from VeraGridEngine.basic_structures import Logger
 from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import make_diagram_from_buses, SchematicWidget
 from VeraGrid.Gui.ProceduralGrid.voltage_warning import VoltageWarningDialog
-from VeraGrid.Gui.ProceduralGrid.investment_group_dialogue import InvestmentGroupDialogue
 from VeraGrid.Gui.ProceduralGrid.procedural_grid_preview import ProceduralGridPreviewDialog
-from VeraGrid.Gui.general_dialogues import LogsDialogue
+from VeraGrid.Gui.general_dialogues import LogsDialogue, CheckListDialogue
 
 if TYPE_CHECKING:
     from VeraGrid.Gui.Main.SubClasses.simulations import SimulationsMain
@@ -257,14 +256,34 @@ class ProceduralGridWindow(QtWidgets.QDialog):
             pass
 
         # Ask whether to assign generated objects to an investment group
-        inv_dlg = InvestmentGroupDialogue(
-            circuit=self.app.circuit,
-            new_buses=engine.get_new_buses(),
-            new_lines=engine.get_new_lines(),
-            new_transformers=engine.get_new_transformers(),
-            parent=self
-        )
+        new_devices: List[dev.ALL_DEV_TYPES] = (engine.get_new_buses()
+                                                 + engine.get_new_lines()
+                                                 + engine.get_new_transformers())
+        group_name: str = "Investment " + str(len(self.app.circuit.investments_groups))
+        names: List[str] = [d.type_name + ": " + d.name for d in new_devices]
+        inv_dlg: CheckListDialogue = CheckListDialogue(objects_list=names,
+                                                       title="Add investment",
+                                                       ask_for_group_name=True,
+                                                       group_label="Investment name",
+                                                       group_text=group_name)
+        inv_dlg.setModal(True)
         inv_dlg.exec()
+
+        if inv_dlg.is_accepted:
+            group: dev.InvestmentsGroup = dev.InvestmentsGroup(
+                idtag=None,
+                name=inv_dlg.get_group_text(),
+                category="single" if len(new_devices) == 1 else "multiple"
+            )
+            self.app.circuit.add_investments_group(group)
+
+            for i in inv_dlg.selected_indices:
+                d: dev.ALL_DEV_TYPES = new_devices[i]
+                self.app.circuit.add_investment(dev.Investment(device=d,
+                                                               code=d.code,
+                                                               name=d.type_name + ": " + d.name,
+                                                               CAPEX=0.0,
+                                                               group=group))
 
         # Exit
         self.close()
