@@ -19,6 +19,8 @@ if TYPE_CHECKING:  # Only imports the below statements during type checking
 
 
 class InputsAnalysisResults(ResultsTemplate):
+    LOCAL_RESULTS_DECLARATIONS = tuple()
+
     __slots__ = (
         "grid",
         "opf_results",

@@ -580,22 +580,22 @@ def get_voltage_shunt(shunt: CGMES_NON_LINEAR_SHUNT_COMPENSATOR | CGMES_EQUIVALE
     """
     if shunt.BaseVoltage is not None:
         return shunt.BaseVoltage.nominalVoltage
-    else:  # TODO look at EquipmentContainer/VoltageLevel/BaseVoltage
-        if hasattr(shunt, "nomU"):
-            if shunt.nomU is not None:
-                return shunt.nomU
 
-        if 'Terminal' in shunt.references_to_me.keys():
-            tps = list(shunt.references_to_me['Terminal'])
+    if hasattr(shunt, "nomU") and shunt.nomU is not None:
+        return shunt.nomU
 
-            if len(tps) > 0:
-                tp = tps[0]
+    if (hasattr(shunt, "EquipmentContainer")
+            and shunt.EquipmentContainer is not None
+            and hasattr(shunt.EquipmentContainer, "BaseVoltage")
+            and shunt.EquipmentContainer.BaseVoltage is not None):
+        return shunt.EquipmentContainer.BaseVoltage.nominalVoltage
 
-                return get_voltage_terminal(tp, logger=logger)
-            else:
-                return None
-        else:
-            return None
+    if 'Terminal' in shunt.references_to_me.keys():
+        tps = list(shunt.references_to_me['Terminal'])
+        if len(tps) > 0:
+            return get_voltage_terminal(tps[0], logger=logger)
+
+    return None
 
 
 def get_values_shunt(shunt: CGMES_LINEAR_SHUNT_COMPENSATOR,

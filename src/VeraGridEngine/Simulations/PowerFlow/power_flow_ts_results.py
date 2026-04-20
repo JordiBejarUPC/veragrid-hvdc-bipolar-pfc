@@ -12,13 +12,43 @@ from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Simulations.results_table import ResultsTable
-from VeraGridEngine.Simulations.results_template import ResultsTemplate
+from VeraGridEngine.Simulations.results_template import ResultsTemplate, ResultsProperty
 from VeraGridEngine.basic_structures import DateVec, IntVec, StrVec, CxMat, Mat
 from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType
 from VeraGridEngine.Simulations.Clustering.clustering_results import ClusteringResults
 
 
 class PowerFlowTimeSeriesResults(ResultsTemplate):
+
+    LOCAL_RESULTS_DECLARATIONS = (
+        ResultsProperty(name='bus_names', tpe=StrVec, old_names=list()),
+        ResultsProperty(name='branch_names', tpe=StrVec, old_names=list()),
+        ResultsProperty(name='hvdc_names', tpe=StrVec, old_names=list()),
+        ResultsProperty(name='bus_types', tpe=IntVec, old_names=list()),
+        ResultsProperty(name='time_array', tpe=DateVec, old_names=list()),
+        ResultsProperty(name='F', tpe=IntVec, old_names=list()),
+        ResultsProperty(name='T', tpe=IntVec, old_names=list()),
+        ResultsProperty(name='hvdc_F', tpe=IntVec, old_names=list()),
+        ResultsProperty(name='hvdc_T', tpe=IntVec, old_names=list()),
+        ResultsProperty(name='bus_area_indices', tpe=IntVec, old_names=list()),
+        ResultsProperty(name='area_names', tpe=IntVec, old_names=list()),
+        ResultsProperty(name='S', tpe=CxMat, old_names=list()),
+        ResultsProperty(name='voltage', tpe=CxMat, old_names=list()),
+        ResultsProperty(name='Sf', tpe=CxMat, old_names=list()),
+        ResultsProperty(name='St', tpe=CxMat, old_names=list()),
+        ResultsProperty(name='If', tpe=CxMat, old_names=list()),
+        ResultsProperty(name='It', tpe=CxMat, old_names=list()),
+        ResultsProperty(name='tap_module', tpe=Mat, old_names=list()),
+        ResultsProperty(name='tap_angle', tpe=Mat, old_names=list()),
+        ResultsProperty(name='Vbranch', tpe=CxMat, old_names=list()),
+        ResultsProperty(name='loading', tpe=CxMat, old_names=list()),
+        ResultsProperty(name='losses', tpe=CxMat, old_names=list()),
+        ResultsProperty(name='hvdc_losses', tpe=Mat, old_names=list()),
+        ResultsProperty(name='hvdc_Pf', tpe=Mat, old_names=list()),
+        ResultsProperty(name='hvdc_Pt', tpe=Mat, old_names=list()),
+        ResultsProperty(name='hvdc_loading', tpe=Mat, old_names=list()),
+    )
+
     __slots__ = (
         "bus_names",
         "branch_names",
@@ -155,36 +185,6 @@ class PowerFlowTimeSeriesResults(ResultsTemplate):
         self.error_values = np.zeros(nt)
         self.converged_values = np.ones(nt, dtype=bool)  # guilty assumption
 
-        self.register(name='bus_names', tpe=StrVec)
-        self.register(name='branch_names', tpe=StrVec)
-        self.register(name='hvdc_names', tpe=StrVec)
-        self.register(name='bus_types', tpe=IntVec)
-        self.register(name='time_array', tpe=DateVec)
-
-        self.register(name='F', tpe=IntVec)
-        self.register(name='T', tpe=IntVec)
-        self.register(name='hvdc_F', tpe=IntVec)
-        self.register(name='hvdc_T', tpe=IntVec)
-        self.register(name='bus_area_indices', tpe=IntVec)
-        self.register(name='area_names', tpe=IntVec)
-
-        self.register(name='S', tpe=CxMat)
-        self.register(name='voltage', tpe=CxMat)
-
-        self.register(name='Sf', tpe=CxMat)
-        self.register(name='St', tpe=CxMat)
-        self.register(name='If', tpe=CxMat)
-        self.register(name='It', tpe=CxMat)
-        self.register(name='tap_module', tpe=Mat)
-        self.register(name='tap_angle', tpe=Mat)
-        self.register(name='Vbranch', tpe=CxMat)
-        self.register(name='loading', tpe=CxMat)
-        self.register(name='losses', tpe=CxMat)
-
-        self.register(name='hvdc_losses', tpe=Mat)
-        self.register(name='hvdc_Pf', tpe=Mat)
-        self.register(name='hvdc_Pt', tpe=Mat)
-        self.register(name='hvdc_loading', tpe=Mat)
 
     def apply_new_time_series_rates(self, nc: NumericalCircuit):
         """

@@ -7,7 +7,6 @@ from __future__ import annotations
 from typing import Dict, List, Tuple, Union
 import numpy as np
 import VeraGridEngine.IO.cim.cgmes.cgmes_enums as cgmes_enums
-from VeraGridEngine.enumerations import ShuntControlMode
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.enumerations import CGMESVersions, CgmesTopologyMode, ConverterControlType, ExternalGridMode
 import VeraGridEngine.Devices as gcdev
@@ -36,7 +35,7 @@ from VeraGridEngine.IO.cim.cgmes.cgmes_utils import (get_nominal_voltage,
                                                      get_voltage_shunt)
 
 from VeraGridEngine.data_logger import DataLogger
-from VeraGridEngine.enumerations import TapChangerTypes, TapPhaseControl, TapModuleControl
+from VeraGridEngine.enumerations import TapChangerTypes, TapPhaseControl, TapModuleControl, ShuntControlMode
 
 
 class Cn2BusBarLookup:
@@ -1094,14 +1093,38 @@ def get_gcdev_loads(cgmes_model: CgmesCircuit,
                 if cgmes_elm.LoadResponse is not None:
 
                     if cgmes_elm.LoadResponse.exponentModel:
-                        logger.add_error(
-                            msg=f'Exponent model True',
-                            device=cgmes_elm.rdfid,
-                            device_class=cgmes_elm.tpe,
-                            device_property="LoadResponse",
-                            value=cgmes_elm.LoadResponse.exponentModel,
-                            comment=f"get_gcdev_loads() {cgmes_elm.name}")
-                        # TODO convert exponent to ZIP
+                        # Convert CGMES exponent model (P = P0·V^α) to ZIP via
+                        # linear interpolation between the bracketing integer exponents:
+                        #   α=0 → constant power, α=1 → constant current, α=2 → constant impedance.
+                        # Exponents outside [0, 2] are clamped to the nearest endpoint.
+                        lr = cgmes_elm.LoadResponse
+                        p_exp = lr.pVoltageExponent if lr.pVoltageExponent is not None else 0.0
+                        q_exp = lr.qVoltageExponent if lr.qVoltageExponent is not None else 0.0
+
+                        def _exponent_to_zip(exp: float):
+                            exp = max(0.0, min(2.0, exp))
+                            if exp <= 1.0:
+                                return 1.0 - exp, exp, 0.0       # (P, I, Z) weights
+                            else:
+                                return 0.0, 2.0 - exp, exp - 1.0
+
+                        pp, pi, pz = _exponent_to_zip(p_exp)
+                        qp, qi, qz = _exponent_to_zip(q_exp)
+
+                        p = cgmes_elm.p * pp
+                        q = cgmes_elm.q * qp
+                        i_r = cgmes_elm.p * pi
+                        i_i = cgmes_elm.q * qi
+                        g = cgmes_elm.p * pz
+                        b = cgmes_elm.q * qz
+
+                        if p_exp != 0.0 or q_exp != 0.0:
+                            logger.add_warning(
+                                msg='Exponent load model approximated as ZIP',
+                                device=cgmes_elm.rdfid,
+                                device_class=cgmes_elm.tpe,
+                                device_property="LoadResponse",
+                                comment=f"pVoltageExponent={p_exp}, qVoltageExponent={q_exp}")
                     else:  # ZIP model
                         # :param P: Active power in MW
                         p = cgmes_elm.p * cgmes_elm.LoadResponse.pConstantPower
@@ -1247,9 +1270,8 @@ def get_gcdev_generators(cgmes_model: CgmesCircuit,
                                                 Qmin=cgmes_elm.minQ if cgmes_elm.minQ is not None else -9999.0,
                                                 vset=v_set,
                                                 is_controlled=is_controlled,
-                                                # controlled_bus
-                                                # TODO get controlled gc.bus
                                                 )
+                    gcdev_elm.control_bus = controlled_bus
 
                     gcdev_model.add_generator(bus=calc_node, api_obj=gcdev_elm)
 

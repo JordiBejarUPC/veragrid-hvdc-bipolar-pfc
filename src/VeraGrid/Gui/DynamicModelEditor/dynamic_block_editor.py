@@ -3392,6 +3392,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
     DynamicModelEditorGUI
     """
 
+    dirtyStateChanged = Signal(bool)
+
     # block_added = Signal(object)
 
     def __init__(self,
@@ -3402,8 +3404,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                  templates_list: Optional[List[RmsModelTemplate | EmtModelTemplate | FmuTemplate]] = None,
                  circuit: Any | None = None,
                  main_editor=False,
-                 modal: bool = True
-                 ):
+                 modal: bool = True,
+                 workspace_embedded: bool = False,
+                  ):
         """
         Initializes a dynamic block editor window used for editing and managing blocks within a graphical model.
 
@@ -3469,12 +3472,18 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.circuit = circuit
         self.mode = mode
         self.main_editor = main_editor
+        self.workspace_embedded = workspace_embedded
         self._emt_bus_fallback_warning_shown: bool = False
         self.setWindowTitle(f"Dynamic Model Editor [{self.mode.name}]")
         self.block_counters: Dict[BlockType, int] = dict()
         self.scene: DiagramScene = DiagramScene(self)
         self.changes_applied: bool = False
         self.has_unapplied_changes: bool = False
+
+        if self.workspace_embedded:
+            self.menuBar().setVisible(False)
+        else:
+            pass
 
         self.templates_list: List[
             RmsModelTemplate | EmtModelTemplate | FmuTemplate] = templates_list if templates_list is not None else list()
@@ -5537,7 +5546,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             copy_block_state(source_block=self.main_block, target_block=self.original_block)
             self.has_unapplied_changes = False
             self.changes_applied = True
-            self.close()
+            self.dirtyStateChanged.emit(False)
+            if self.workspace_embedded:
+                pass
+            else:
+                self.close()
 
         elif self.mode == DynamicSimulationMode.EMT:
             if self.api_object.emt_template is not None:
@@ -5546,7 +5559,11 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             copy_block_state(source_block=self.main_block, target_block=self.original_block)
             self.has_unapplied_changes = False
             self.changes_applied = True
-            self.close()
+            self.dirtyStateChanged.emit(False)
+            if self.workspace_embedded:
+                pass
+            else:
+                self.close()
 
     def open_inspect_dialog(self):
         """
@@ -5673,6 +5690,32 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         """
         self.has_unapplied_changes = True
         self.changes_applied = False
+        self.dirtyStateChanged.emit(True)
+
+    def get_dynamic_editor_display_title(self) -> str:
+        """
+        Return the user-facing title for this editor instance.
+        """
+
+        object_name = self.api_object.name if self.api_object is not None else "Dynamic object"
+        return f"{object_name} [{self.mode.name}]"
+
+    def can_close_editor(self, parent: QtWidgets.QWidget | None = None) -> bool:
+        """
+        Return whether this editor can be closed without losing unapplied changes silently.
+        """
+
+        if not self.has_unapplied_changes:
+            return True
+
+        reply = QtWidgets.QMessageBox.question(
+            parent if parent is not None else self,
+            "Unsaved changes",
+            "There are unapplied changes. Do you want to close without applying them?",
+            QtWidgets.QMessageBox.StandardButton.Yes,
+            QtWidgets.QMessageBox.StandardButton.No,
+        )
+        return reply == QtWidgets.QMessageBox.StandardButton.Yes
 
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         """
@@ -5681,21 +5724,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        if self.has_unapplied_changes:
-            reply = QtWidgets.QMessageBox.question(
-                self,
-                "Unsaved changes",
-                "There are unapplied changes. Do you want to close without applying them?",
-                QtWidgets.QMessageBox.StandardButton.Yes,
-                QtWidgets.QMessageBox.StandardButton.No
-            )
-
-            if reply == QtWidgets.QMessageBox.StandardButton.Yes:
-                event.accept()
-            else:
-                event.ignore()
-        else:
+        if self.can_close_editor(self):
             event.accept()
+        else:
+            event.ignore()
 
     def graphicsDragEnterEvent(self, event: QDragEnterEvent) -> None:
         """

@@ -2835,7 +2835,7 @@ class DiagramsMain(CompiledArraysMain):
                             self.circuit.add_rms_event(event)
 
             else:
-                raise ValueError(f"Select one and only one device to add event to")
+                self.show_warning_toast(f"Select one and only one device to add event to")
 
     def add_emt_event_to_selected(self) -> None:
         """
@@ -2881,7 +2881,7 @@ class DiagramsMain(CompiledArraysMain):
                     if emt_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
 
                         events_data = emt_events_dialog.get_data()
-                        events_list = []
+                        events_list = list()
                         for i, event in enumerate(events_data["parameters"]):
                             events_list.append(dev.EmtEvent(device=target_device,
                                                             parameter=events_data["parameters"][i],
@@ -2893,7 +2893,7 @@ class DiagramsMain(CompiledArraysMain):
                             self.circuit.add_emt_event(event)
 
             else:
-                raise ValueError(f"Select one and only one device to add event to")
+                self.show_warning_toast(f"Select one and only one device to add event to")
 
     def add_short_circuit_events(self):
         """
@@ -2990,7 +2990,7 @@ class DiagramsMain(CompiledArraysMain):
         if self.object_select_window.selected_object is not None:
             self.select_buses_by_property(self.object_select_window.selected_object)
 
-    def set_selected_bus_property(self, prop):
+    def set_selected_bus_property(self, prop: str):
         """
 
         :param prop:

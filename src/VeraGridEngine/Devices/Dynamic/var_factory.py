@@ -5,10 +5,8 @@
 from __future__ import annotations
 
 from typing import Union, List, Dict, Any
-
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
-from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 
 
