@@ -147,7 +147,15 @@ class UcteNode:
 
     def _parse_nominal_voltage(self, logger: Logger) -> float:
         if len(self.node_code) >= 7:
-            return try_parse_voltage(self.node_code[6], self.node_code, logger)
+            inferred_voltage = try_parse_voltage(self.node_code[6], self.node_code, logger)
+            if inferred_voltage > 0:
+                return inferred_voltage
+
+        if is_defined_number(self.voltage_reference) and self.voltage_reference > 0:
+            logger.add_warning("Could not infer nominal voltage from node code, using voltage_reference as nominal voltage",
+                               device=self.node_code,
+                               value=self.voltage_reference)
+            return self.voltage_reference
 
         logger.add_error("Could not infer nominal voltage from node code",
                          device=self.node_code,
