@@ -20,7 +20,7 @@ def get_transformer_emt_template(
     name: str = "transformer_emt_template",
 ) -> EmtModelTemplate:
     """
-    Build the classical EMT transformer template using mapped winding data.
+    Build the classical linear coupled-inductor equivalent of a two-winding transformer.
 
     The template models each phase as two coupled windings with the state
     variables chosen as the winding currents. All static electrical constants

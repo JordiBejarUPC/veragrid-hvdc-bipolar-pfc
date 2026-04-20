@@ -255,7 +255,7 @@ if pf_res_3ph.converged:
 # Solver configuration
 CHOSEN_SOLVER = "COMPILED"
 RUN_ALL_SOLVERS = False
-ENABLE_PLOTS = False
+ENABLE_PLOTS = True
 ENABLE_NEWTON_TRACE = False
 DENSE_THRESHOLD = 0
 SOLVER_VERBOSE = False

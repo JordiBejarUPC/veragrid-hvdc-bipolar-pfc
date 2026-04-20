@@ -417,15 +417,15 @@ steps: int = int(options.simulation_time / h)
 tme: np.ndarray = np.linspace(0, options.simulation_time, steps)
 
 # Find voltage variables in buses
-v_A_bus1 = find_name_in_block(f"v_A_emt_bus_template", bus1_ac.emt_model)
-v_B_bus1 = find_name_in_block(f"v_B_emt_bus_template", bus1_ac.emt_model)
-v_C_bus1 = find_name_in_block(f"v_C_emt_bus_template", bus1_ac.emt_model)
+v_A_bus1 = find_name_in_block(f"v_A_Bus1_AC_emt_template", bus1_ac.emt_model)
+v_B_bus1 = find_name_in_block(f"v_B_Bus1_AC_emt_template", bus1_ac.emt_model)
+v_C_bus1 = find_name_in_block(f"v_C_Bus1_AC_emt_template", bus1_ac.emt_model)
 
-v_A_bus2 = find_name_in_block(f"v_A_emt_bus_template", bus2_ac.emt_model)
-v_B_bus2 = find_name_in_block(f"v_B_emt_bus_template", bus2_ac.emt_model)
-v_C_bus2 = find_name_in_block(f"v_C_emt_bus_template", bus2_ac.emt_model)
+v_A_bus2 = find_name_in_block(f"v_A_Bus2_AC_emt_template", bus2_ac.emt_model)
+v_B_bus2 = find_name_in_block(f"v_B_Bus2_AC_emt_template", bus2_ac.emt_model)
+v_C_bus2 = find_name_in_block(f"v_C_Bus2_AC_emt_template", bus2_ac.emt_model)
 
-v_DC_bus3 = find_name_in_block(f"v_DC_emt_bus_template", bus3_dc.emt_model)
+v_DC_bus3 = find_name_in_block(f"v_DC_Bus3_DC_emt_template", bus3_dc.emt_model)
 
 # Generator currents
 i_A_gen = find_name_in_block(f"i_A_emt_thevenin_eq_generator_template", gen_mdl)
@@ -440,7 +440,7 @@ i_B_vsc = find_name_in_block(f"i_B_{vsc.name}", vsc_mdl)
 i_C_vsc = find_name_in_block(f"i_C_{vsc.name}", vsc_mdl)
 
 # DC current
-i_DC_vsc = find_name_in_block(f"Idc_{vsc.name}", vsc_mdl)
+i_DC_vsc = find_name_in_block(f"i_dc_VSC", vsc_mdl)
 
 # Plot voltages at AC buses
 plt.figure(figsize=(14, 10))
