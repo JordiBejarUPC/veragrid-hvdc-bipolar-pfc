@@ -135,6 +135,12 @@ class RmsProblemDae(RmsProblemTemplate):
         self._constant_parameters: List[Var] = list()
         self._parameters_values: List[Const] = list()
 
+        # compiler helpers
+        self.VARS_NAME = 'vars'
+        self.DIFF_NAME = 'diff_vars'
+        self.VARIABLE_PARAMS_NAME = 'variable_params'
+        self.CONSTANT_PARAMS_NAME = 'constant_params'
+
         # function pointers
         self._derivative_fn: SymbolicDerivative | None = None
         self._event_params_fn: SymbolicParamsVector | None = None
@@ -1376,3 +1382,11 @@ class RmsProblemDae(RmsProblemTemplate):
     def get_dt_value(self):
         dt_value = self._variable_parameters_values[-2]
         return dt_value
+
+    def get_compiler_names_dict(self):
+        return self._compiler_names_dict
+
+    def get_alias_names_dict(self):
+        return self._alias_names_dict
+
+
