@@ -194,10 +194,10 @@ def update_param_value(blk: Block, row: BlockParameterRow, value: Any, old_expr:
                 if row.key_var in blk.init_eqs:
                     blk.init_eqs[row.key_var] = value
         if row.kind == BlockParameterKind.STATE_EQUATION and row.item_index is not None:
-            if symbolic_to_string(blk.state_eqs[row.item_index])==old_expr:
+            if old_expr in blk.state_eqs:
                 blk.state_eqs[row.item_index] = value
         elif row.kind == BlockParameterKind.ALGEBRAIC_EQUATION and row.item_index is not None:
-            if blk.algebraic_eqs[row.item_index]==old_expr:
+            if old_expr in blk.algebraic_eqs:
                 blk.algebraic_eqs[row.item_index] = value
 
 
