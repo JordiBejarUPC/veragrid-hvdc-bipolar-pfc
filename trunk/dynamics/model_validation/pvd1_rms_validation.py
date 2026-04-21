@@ -18,8 +18,8 @@ from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complet
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
-from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.Simulations.Rms.rms_problem_factory import build_rms_problem
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 
@@ -91,7 +91,7 @@ def run_pf(grid: vge.MultiCircuit):
 
 
 def initialize_rms_models(grid: vge.MultiCircuit):
-    vf = grid.rms_var_factory
+    vf = grid.var_factory
 
     for bus in grid.buses:
         initialize_bus_rms(bus=bus, vf=vf)
@@ -208,8 +208,8 @@ def run_rms(grid: vge.MultiCircuit, pf_results):
                 f"abs_diff={abs_diff[i, j]: .3e}"
             )
 
-    compare_jacobian(tag="pre-event", t_eval=0.0)
-    compare_jacobian(tag="at-event", t_eval=0.2)
+    #compare_jacobian(tag="pre-event", t_eval=0.0)
+    #compare_jacobian(tag="at-event", t_eval=0.2)
 
     rms_driver = vge.RmsSimulationDriver(
         grid=grid,

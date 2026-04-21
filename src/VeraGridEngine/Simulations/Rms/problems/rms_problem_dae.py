@@ -1145,9 +1145,19 @@ class RmsProblemDae(RmsProblemTemplate):
             return
 
         for parameter, expression in mdl.event_dict.items():
+            init_eq_for_parameter: Expr | Const | None = None
+            for init_var, init_eq in mdl.init_eqs.items():
+                if init_var.uid == parameter.uid:
+                    init_eq_for_parameter = init_eq
+                    break
+
+            expression_for_classification: Expr | Const = expression
+            if isinstance(expression, Const) and expression.value is None and init_eq_for_parameter is not None:
+                expression_for_classification = init_eq_for_parameter
+
             self._event_parameter_device_idtags[parameter.uid] = dev.idtag
 
-            if self._expression_references_system_vars(expression):
+            if self._expression_references_system_vars(expression_for_classification):
                 self._discrete_event_parameter_uids.add(parameter.uid)
             else:
                 self._continuous_event_parameter_uids.add(parameter.uid)
@@ -1536,17 +1546,27 @@ class RmsProblemDae(RmsProblemTemplate):
             self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
             self._uid2idx_event_params[ep.uid] = self._n_event_params
 
+            effective_eq: Expr | Const = eq
+            if isinstance(eq, Const) and eq.value is None:
+                init_eq_for_ep: Expr | Const | None = None
+                for init_var, init_eq in mdl.init_eqs.items():
+                    if init_var.uid == ep.uid:
+                        init_eq_for_ep = init_eq
+                        break
+                if init_eq_for_ep is not None:
+                    effective_eq = init_eq_for_ep
+
             self._variable_parameters.append(ep)
-            self._event_parameters_eqs0.append(eq)
+            self._event_parameters_eqs0.append(effective_eq)
             self._runtime_all_parameters_source.append(ep)
-            runtime_expression: Expr | Const = eq if runtime_eq is None else runtime_eq
+            runtime_expression: Expr | Const = effective_eq if runtime_eq is None else runtime_eq
 
             if runtime_eq is None and ep.uid in self._discrete_event_parameter_uids:
                 if isinstance(eq, Const) and eq.value is not None:
                     runtime_expression = Const(float(eq.value))
                 else:
                     runtime_expression = Const(0.0)
-                    self._mode_runtime_expression_by_uid[ep.uid] = eq
+                    self._mode_runtime_expression_by_uid[ep.uid] = effective_eq
 
             self._runtime_all_eqs_source.append(runtime_expression)
             self._runtime_all_eqs_source0.append(runtime_expression)

@@ -22,8 +22,8 @@ import VeraGridEngine.Utils.Symbolic.symbolic as sym
 from VeraGridEngine.Utils.Symbolic.symbolic import get_expression_vars
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
-from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod, VarPowerFlowRefferenceType, ConverterControlType
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
@@ -222,7 +222,7 @@ def initialize_rms_models(grid: vge.MultiCircuit, pf_results):
     print("Initializing RMS Models (aggregated PV model)")
     print("-" * 70)
 
-    vf = grid.rms_var_factory
+    vf = grid.var_factory
 
     for bus in grid.buses:
         if bus.rms_model.empty():
