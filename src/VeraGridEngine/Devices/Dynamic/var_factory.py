@@ -206,7 +206,7 @@ class VarFactory(EditableDevice):
         """
         obj_dict: Dict[int, Var] = dict()
         for data in data_list:
-            assert data["type"] == "Var"
+            assert data["type"] == "Var" or data["type"] == "DiffVar"
 
             obj = Var(name=data["name"], uid=data["uid"])
 
