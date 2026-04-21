@@ -709,7 +709,7 @@ def get_exciter_rms(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemp
         TolLi: vfactory.add_const(0.05),  # limiter crossing tolerance (fraction)
 
         # Limits
-        VaMaxPu: vfactory.add_const(2.0),  # AVR output max (pu)
+        VaMaxPu: vfactory.add_const(2.5),  # AVR output max (pu)
         VaMinPu: vfactory.add_const(-2.0),  # AVR output min (pu)
         VeMinPu: vfactory.add_const(-2.0),  # min exciter output voltage (pu)
         VfeMaxPu: vfactory.add_const(5.0),  # max exciter field current signal (pu)

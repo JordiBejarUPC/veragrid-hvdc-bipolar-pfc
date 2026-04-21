@@ -312,7 +312,7 @@ def build_gfl_converter_model(vfactory: VarFactory, inputs,
         control_block_1, _ = tf_to_block(vfactory,
             num=[Ki_vdc, Kp_vdc],
             den=[0, 1],
-            x= (Vdc_ref - v_dc),
+            x= (v_dc - Vdc_ref),
             y = i_q_ref,
             name='Vdc_ctrl'
         )
@@ -570,7 +570,7 @@ def VscGflBuild(vfactory: VarFactory, name: str = "",
         a2: vfactory.add_const(0.0),
     }
     
-    Im = sym.sqrt(i_d**2 + i_q**2 + vfactory.add_const(1e-7))
+    Im = sym.sqrt(i_d**2 + i_q**2 + vfactory.add_const(1e-11))
     vsc_block = Block(
         algebraic_eqs=[
             Pf_vsc + P - (a0 + a1*Im + a2*Im**2),
@@ -657,7 +657,8 @@ def TrafoGflBuild(vfactory: VarFactory, name: str = "",
         a2: vfactory.add_const(0.0),
     }
 
-    Im = sym.sqrt(i_d**2 + i_q**2 + vfactory.add_const(1e-7))
+    #Im = sym.sqrt(i_d**2 + i_q**2 + vfactory.add_const(1e-11))
+    Im = sym.sqrt(Pt_vsc * Pt_vsc + Qt_vsc * Qt_vsc) / (Vm_t)
     Im_out = vfactory.add_var('Im_vsc_control')
 
     vsc_block = Block(

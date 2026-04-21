@@ -398,27 +398,42 @@ class RmsProblemDae(RmsProblemTemplate):
 
                 #We connect the vsc to its transformer
                 if elm.bus_from.is_dc:
-                    for branch_num, other_elm in enumerate(self.grid.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True)):
-                        if other_elm.bus_to.idtag == elm.bus_to.idtag:
-                            mdl.connect([mdl.in_vars[0]], [other_elm.rms_model.out_vars[0]])
-                        else:
-                            _ = 0
-                            #Do nothing
+                    if len(mdl.in_vars) > 0 and mdl.in_vars[0].name.startswith("Im_placeholder"):
+                        for branch_num, other_elm in enumerate(self.grid.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True)):
+                            if other_elm.bus_to.idtag == elm.bus_to.idtag:
+                                mdl.connect([mdl.in_vars[0]], [other_elm.rms_model.out_vars[0]])
+                            else:
+                                _ = 0
+                                #Do nothing
 
                 St_vsc = self.power_flow_results.St_vsc / self.grid.Sbase
                 Sf_vsc = (self.power_flow_results.Pfn_vsc[i] + self.power_flow_results.Pfp_vsc[i]) / self.grid.Sbase
                 # fill init_guess
 
                 self.add_variables_to_compilation_dicts(elm, mdl)
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pf, Sf_vsc)
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pt, St_vsc[i].real)
-                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qt, St_vsc[i].imag)
-
                 f = bus_dict[elm.bus_from]
                 t = bus_dict[elm.bus_to]
+                pt_init = St_vsc[i].real
+                qt_init = St_vsc[i].imag
+                vm_t = np.abs(self.power_flow_results.voltage[t])
+                im_init = np.sqrt(pt_init * pt_init + qt_init * qt_init) / (vm_t + 1e-12)
+
+                if hasattr(self.power_flow_results, 'It_vsc') and i < len(self.power_flow_results.It_vsc):
+                    it_mag = np.abs(self.power_flow_results.It_vsc[i]) / self.grid.Sbase
+                    if np.isfinite(it_mag) and it_mag > 0.0:
+                        im_init = it_mag
+
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pf, Sf_vsc)
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Pt, pt_init)
+                self.set_init_guess(mdl, VarPowerFlowRefferenceType.Qt, qt_init)
+                if VarPowerFlowRefferenceType.Im in mdl.external_mapping:
+                    im_init = float(np.abs(self.power_flow_results.It_vsc[i]) / self.grid.Sbase)
+                    self.set_init_guess(mdl, VarPowerFlowRefferenceType.Im, im_init)
+
                 setP(P, P_used, f, -mdl.E(VarPowerFlowRefferenceType.Pf))
                 setP(P, P_used, t, -mdl.E(VarPowerFlowRefferenceType.Pt))
-                #setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
+                if VarPowerFlowRefferenceType.Qt in mdl.external_mapping and not elm.bus_to.is_dc:
+                    setQ(Q, Q_used, t, -mdl.E(VarPowerFlowRefferenceType.Qt))
                 self.sys_block.add(mdl)
 
         # Populating HVDC init guess (similar to VSCs)
