@@ -5,14 +5,14 @@
 
 from __future__ import annotations
 
-import importlib.util
 from functools import lru_cache
 from pathlib import Path
-from types import ModuleType
 from typing import Sequence
 
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Templates.BasicBlockCatalog.Functions import BasicBlockCatalogTemplateBuilder
+from VeraGridEngine.Templates.BasicBlockCatalog.Functions import get_basic_block_catalog_template_builder_by_module_name
 from VeraGridEngine.Templates.BasicBlockCatalog.catalog_static_registry import BasicBlockCatalogStaticRecord
 from VeraGridEngine.Templates.BasicBlockCatalog.catalog_static_registry import build_basic_block_catalog_branch_skeleton as build_static_basic_block_catalog_branch_skeleton
 from VeraGridEngine.Templates.BasicBlockCatalog.catalog_static_registry import build_basic_block_catalog_pending_template_reason
@@ -287,32 +287,6 @@ def _descriptor_sort_key(descriptor: BasicBlockTemplateDescriptor) -> tuple[int,
     return int(descriptor.typ_id), descriptor.module_name
 
 
-def _build_template_from_imported_module(
-    imported_module: ModuleType,
-    var_factory: VarFactory,
-    name: str | None = None,
-) -> EmtModelTemplate:
-    """
-    Build one EMT template instance from one imported standalone module.
-
-    :param imported_module: Imported standalone module.
-    :param var_factory: Variable factory for the new instance.
-    :param name: Optional explicit template instance name.
-    :returns: Materialized EMT template.
-    :raises TypeError: Raised when the imported module does not expose a valid ``get_template`` function.
-    """
-    template_builder_obj: object | None = imported_module.__dict__.get("get_template", None)
-
-    if callable(template_builder_obj):
-        template_obj: object = template_builder_obj(vf=var_factory, name=name)
-        if isinstance(template_obj, EmtModelTemplate):
-            return template_obj
-        else:
-            raise TypeError("The imported standalone catalog module returned an invalid template object")
-    else:
-        raise TypeError("The imported standalone catalog module does not expose get_template()")
-
-
 def _build_descriptor_from_static_record(record: BasicBlockCatalogStaticRecord) -> BasicBlockTemplateDescriptor:
     """
     Convert one static record into the public descriptor object.
@@ -337,26 +311,24 @@ def _build_descriptor_from_static_record(record: BasicBlockCatalogStaticRecord) 
     )
 
 
-def _import_template_module_from_descriptor(descriptor: BasicBlockTemplateDescriptor) -> ModuleType:
+def _resolve_template_builder_from_descriptor(descriptor: BasicBlockTemplateDescriptor) -> BasicBlockCatalogTemplateBuilder:
     """
-    Import one shipped standalone module directly from its file path.
+    Resolve one shipped standalone template builder from the static package registry.
 
     :param descriptor: Catalog descriptor for the target module.
-    :returns: Imported standalone module.
-    :raises ImportError: Raised when the module cannot be imported.
+    :returns: Imported standalone template builder.
+    :raises KeyError: Raised when the generated package registry does not expose the descriptor module.
     """
-    module_path: Path = get_basic_block_catalog_templates_dir() / descriptor.module_filename
-    module_name: str = f"veragrid_basic_block_catalog_{descriptor.module_name}"
-    spec = importlib.util.spec_from_file_location(module_name, module_path)
+    template_builder: BasicBlockCatalogTemplateBuilder | None = (
+        get_basic_block_catalog_template_builder_by_module_name(descriptor.module_name)
+    )
 
-    # Importing by file path keeps the shipped catalog resilient to package-path
-    # moves because the descriptor snapshot already owns the module filename.
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Could not import standalone module from '{module_path}'")
+    # The descriptor snapshot owns the canonical module name, so the runtime can
+    # resolve one explicit builder without probing the filesystem or imported module state.
+    if template_builder is None:
+        raise KeyError(f"Could not resolve standalone template builder for module '{descriptor.module_name}'")
     else:
-        imported_module: ModuleType = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(imported_module)
-        return imported_module
+        return template_builder
 
 
 @lru_cache(maxsize=1)
@@ -448,17 +420,6 @@ def get_basic_block_catalog_descriptor_by_typ_id() -> dict[str, BasicBlockTempla
     return descriptor_lookup
 
 
-def import_basic_block_catalog_module_by_key(template_key: str) -> ModuleType:
-    """
-    Import one shipped standalone template module by semantic key.
-
-    :param template_key: Stable semantic lookup key.
-    :returns: Imported standalone module.
-    """
-    descriptor: BasicBlockTemplateDescriptor = get_basic_block_catalog_descriptor_by_key()[template_key]
-    return _import_template_module_from_descriptor(descriptor)
-
-
 def load_basic_block_catalog_template(
     descriptor: BasicBlockTemplateDescriptor,
     var_factory: VarFactory,
@@ -472,6 +433,6 @@ def load_basic_block_catalog_template(
     :param name: Optional explicit instance name.
     :returns: Materialized EMT template.
     """
-    imported_module: ModuleType = _import_template_module_from_descriptor(descriptor)
-    template: EmtModelTemplate = _build_template_from_imported_module(imported_module, var_factory, name=name)
+    template_builder: BasicBlockCatalogTemplateBuilder = _resolve_template_builder_from_descriptor(descriptor)
+    template: EmtModelTemplate = template_builder(var_factory, name)
     return template

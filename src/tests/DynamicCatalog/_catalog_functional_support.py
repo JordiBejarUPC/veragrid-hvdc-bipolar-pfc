@@ -6,14 +6,13 @@ from typing import Dict
 
 import numpy as np
 
-from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Utils.procedural_logic import AnalogFlipFlopLogic, FixedSampleLogic, FlipFlopLogic, GradientLimiterLogic, MovingAverageLogic, PickupDropoffLogic, ResetOnRisingEdgeLogic, SampledValueLogic, TimeDelayLogic
 from VeraGridEngine.Utils.Symbolic.symbolic import Comparison, Expr
 
 from DynamicCatalog._catalog_support import (
-    import_template_module,
+    build_template,
 )
 
 
@@ -3150,8 +3149,7 @@ class TestDevicesCatalogFunctionalContractsHarness(unittest.TestCase):
         :return: Block, lightweight runtime problem, state vector and runtime parameter vector.
         """
         # Import the generated template exactly as the final menu action would do.
-        module = import_template_module(contract.typ_id)
-        templ = module.get_template(VarFactory())
+        templ = build_template(contract.typ_id)
         block: Block = templ.block
         hidden_runtime_vars = []
         known_surface = list(block.state_vars) + list(block.algebraic_vars) + list(block.in_vars)
@@ -3289,8 +3287,7 @@ class TestDevicesCatalogFunctionalContractsHarness(unittest.TestCase):
         :return: None.
         """
         # Import the exact generated template so the test always reflects the artifact that would reach the menu.
-        module = import_template_module(contract.typ_id)
-        templ = module.get_template(VarFactory())
+        templ = build_template(contract.typ_id)
         block: Block = templ.block
 
         # Seed the full variable surface with deterministic values before applying the explicit contract values.

@@ -4,8 +4,8 @@ import sys
 
 from PySide6 import QtWidgets
 
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_picker import DynamicEditorPickerDialog
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_support import build_dynamic_editor_entry
+from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import DynamicEditorPickerDialog
+from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import build_dynamic_editor_entry
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import DynamicEditorWorkspaceManager
 from VeraGridEngine.enumerations import DynamicSimulationMode
 

@@ -3395,8 +3395,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     dirtyStateChanged = Signal(bool)
 
-    # block_added = Signal(object)
-
     def __init__(self,
                  var_factory: VarFactory,
                  block: Block,
