@@ -6,10 +6,10 @@ from typing import Sequence
 import pytest
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import PowerFactoryBasicTemplateDescriptor
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_editor_ready_powerfactory_basic_catalog_descriptors
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_pending_powerfactory_basic_catalog_descriptors
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_powerfactory_basic_catalog_pending_template_reason
+from VeraGridEngine.Templates.catalog.basic_block_catalog import BasicBlockTemplateDescriptor
+from VeraGridEngine.Templates.catalog.basic_block_catalog import get_editor_ready_basic_block_catalog_descriptors
+from VeraGridEngine.Templates.catalog.basic_block_catalog import get_pending_basic_block_catalog_descriptors
+from VeraGridEngine.Templates.catalog.basic_block_catalog import get_basic_block_catalog_pending_template_reason
 
 from DynamicCatalog._catalog_support import build_templates_dir
 from DynamicCatalog._catalog_support import descriptor_entries
@@ -18,7 +18,7 @@ from DynamicCatalog._catalog_support import find_template_path
 from DynamicCatalog._catalog_support import import_template_module
 
 
-def build_descriptor_parameters() -> Sequence[PowerFactoryBasicTemplateDescriptor]:
+def build_descriptor_parameters() -> Sequence[BasicBlockTemplateDescriptor]:
     """
     Return every shipped catalog descriptor as pytest parameters.
 
@@ -28,36 +28,36 @@ def build_descriptor_parameters() -> Sequence[PowerFactoryBasicTemplateDescripto
     return descriptor_entries()
 
 
-def build_ready_descriptor_parameters() -> Sequence[PowerFactoryBasicTemplateDescriptor]:
+def build_ready_descriptor_parameters() -> Sequence[BasicBlockTemplateDescriptor]:
     """
     Return the editor-ready catalog descriptors as pytest parameters.
 
     :returns: Editor-ready descriptor sequence.
     """
 
-    return get_editor_ready_powerfactory_basic_catalog_descriptors()
+    return get_editor_ready_basic_block_catalog_descriptors()
 
 
-def build_pending_descriptor_parameters() -> Sequence[PowerFactoryBasicTemplateDescriptor]:
+def build_pending_descriptor_parameters() -> Sequence[BasicBlockTemplateDescriptor]:
     """
     Return the pending catalog descriptors as pytest parameters.
 
     :returns: Pending descriptor sequence.
     """
 
-    return get_pending_powerfactory_basic_catalog_descriptors()
+    return get_pending_basic_block_catalog_descriptors()
 
 
-def build_constant_descriptor_parameters() -> Sequence[PowerFactoryBasicTemplateDescriptor]:
+def build_constant_descriptor_parameters() -> Sequence[BasicBlockTemplateDescriptor]:
     """
     Return the constant descriptors that previously risked controller misclassification.
 
     :returns: Constant descriptor sequence.
     """
 
-    descriptor_by_key: dict[str, PowerFactoryBasicTemplateDescriptor] = descriptor_lookup_by_key()
+    descriptor_by_key: dict[str, BasicBlockTemplateDescriptor] = descriptor_lookup_by_key()
     template_keys: Sequence[str] = ("2pi_form_a", "2pi_form_b", "pi", "pi_2")
-    descriptors: list[PowerFactoryBasicTemplateDescriptor] = list()
+    descriptors: list[BasicBlockTemplateDescriptor] = list()
     template_key: str
 
     for template_key in template_keys:
@@ -66,7 +66,7 @@ def build_constant_descriptor_parameters() -> Sequence[PowerFactoryBasicTemplate
     return descriptors
 
 
-def build_descriptor_test_id(descriptor: PowerFactoryBasicTemplateDescriptor) -> str:
+def build_descriptor_test_id(descriptor: BasicBlockTemplateDescriptor) -> str:
     """
     Build the pytest id for one catalog descriptor.
 
@@ -77,7 +77,7 @@ def build_descriptor_test_id(descriptor: PowerFactoryBasicTemplateDescriptor) ->
     return descriptor.template_key
 
 
-def read_template_module_text(descriptor: PowerFactoryBasicTemplateDescriptor) -> str:
+def read_template_module_text(descriptor: BasicBlockTemplateDescriptor) -> str:
     """
     Read the generated standalone module text for one catalog descriptor.
 
@@ -97,7 +97,7 @@ def test_catalog_artifacts_exist() -> None:
     :returns: None.
     """
 
-    descriptors: Sequence[PowerFactoryBasicTemplateDescriptor] = build_descriptor_parameters()
+    descriptors: Sequence[BasicBlockTemplateDescriptor] = build_descriptor_parameters()
     assert build_templates_dir().exists()
     assert len(descriptors) == 551
 
@@ -110,8 +110,8 @@ def test_editor_ready_subset_counts_are_clean() -> None:
     :returns: None.
     """
 
-    ready_descriptors: Sequence[PowerFactoryBasicTemplateDescriptor] = build_ready_descriptor_parameters()
-    pending_descriptors: Sequence[PowerFactoryBasicTemplateDescriptor] = build_pending_descriptor_parameters()
+    ready_descriptors: Sequence[BasicBlockTemplateDescriptor] = build_ready_descriptor_parameters()
+    pending_descriptors: Sequence[BasicBlockTemplateDescriptor] = build_pending_descriptor_parameters()
 
     assert len(ready_descriptors) == 533
     assert len(pending_descriptors) == 18
@@ -126,7 +126,7 @@ def test_editor_ready_labels_are_unique() -> None:
     :returns: None.
     """
 
-    ready_descriptors: Sequence[PowerFactoryBasicTemplateDescriptor] = build_ready_descriptor_parameters()
+    ready_descriptors: Sequence[BasicBlockTemplateDescriptor] = build_ready_descriptor_parameters()
     labels: list[str] = [descriptor.display_label for descriptor in ready_descriptors]
     assert len(labels) == len(set(labels))
 
@@ -137,7 +137,7 @@ def test_editor_ready_labels_are_unique() -> None:
     build_pending_descriptor_parameters(),
     ids=build_descriptor_test_id,
 )
-def test_pending_descriptor_is_lookup_only(descriptor: PowerFactoryBasicTemplateDescriptor) -> None:
+def test_pending_descriptor_is_lookup_only(descriptor: BasicBlockTemplateDescriptor) -> None:
     """
     Validate one pending descriptor that must remain in the lookup-only subset.
 
@@ -146,7 +146,7 @@ def test_pending_descriptor_is_lookup_only(descriptor: PowerFactoryBasicTemplate
     """
 
     assert descriptor.category_path == ("Native", "Lookup and Tables", "Arrays and Matrices")
-    assert descriptor.unsupported_lines == (get_powerfactory_basic_catalog_pending_template_reason(),)
+    assert descriptor.unsupported_lines == (get_basic_block_catalog_pending_template_reason(),)
 
 
 @pytest.mark.filterwarnings("error")
@@ -155,7 +155,7 @@ def test_pending_descriptor_is_lookup_only(descriptor: PowerFactoryBasicTemplate
     build_descriptor_parameters(),
     ids=build_descriptor_test_id,
 )
-def test_every_catalog_entry_has_one_exported_template(descriptor: PowerFactoryBasicTemplateDescriptor) -> None:
+def test_every_catalog_entry_has_one_exported_template(descriptor: BasicBlockTemplateDescriptor) -> None:
     """
     Validate one shipped descriptor and its exported standalone module artifact.
 
@@ -172,7 +172,7 @@ def test_every_catalog_entry_has_one_exported_template(descriptor: PowerFactoryB
     build_descriptor_parameters(),
     ids=build_descriptor_test_id,
 )
-def test_exported_template_module_text_is_clean(descriptor: PowerFactoryBasicTemplateDescriptor) -> None:
+def test_exported_template_module_text_is_clean(descriptor: BasicBlockTemplateDescriptor) -> None:
     """
     Validate one generated standalone module against the catalog hygiene rules.
 
@@ -200,7 +200,7 @@ def test_exported_template_module_text_is_clean(descriptor: PowerFactoryBasicTem
     build_ready_descriptor_parameters(),
     ids=build_descriptor_test_id,
 )
-def test_editor_ready_descriptor_is_fully_categorized(descriptor: PowerFactoryBasicTemplateDescriptor) -> None:
+def test_editor_ready_descriptor_is_fully_categorized(descriptor: BasicBlockTemplateDescriptor) -> None:
     """
     Validate one editor-ready descriptor and its library categorization.
 
@@ -219,7 +219,7 @@ def test_editor_ready_descriptor_is_fully_categorized(descriptor: PowerFactoryBa
     build_ready_descriptor_parameters(),
     ids=build_descriptor_test_id,
 )
-def test_editor_ready_label_does_not_expose_internal_typ_ids(descriptor: PowerFactoryBasicTemplateDescriptor) -> None:
+def test_editor_ready_label_does_not_expose_internal_typ_ids(descriptor: BasicBlockTemplateDescriptor) -> None:
     """
     Validate one editor-ready descriptor label and ensure it hides imported ids.
 
@@ -236,7 +236,7 @@ def test_editor_ready_label_does_not_expose_internal_typ_ids(descriptor: PowerFa
     build_constant_descriptor_parameters(),
     ids=build_descriptor_test_id,
 )
-def test_constant_catalog_block_is_not_classified_as_controller(descriptor: PowerFactoryBasicTemplateDescriptor) -> None:
+def test_constant_catalog_block_is_not_classified_as_controller(descriptor: BasicBlockTemplateDescriptor) -> None:
     """
     Validate one constant descriptor that historically risked controller classification.
 
@@ -253,7 +253,7 @@ def test_constant_catalog_block_is_not_classified_as_controller(descriptor: Powe
     build_ready_descriptor_parameters(),
     ids=build_descriptor_test_id,
 )
-def test_editor_ready_template_materializes_as_executable_device(descriptor: PowerFactoryBasicTemplateDescriptor) -> None:
+def test_editor_ready_template_materializes_as_executable_device(descriptor: BasicBlockTemplateDescriptor) -> None:
     """
     Validate one editor-ready template and its executable symbolic surface.
 

@@ -4,12 +4,12 @@ from pathlib import Path
 from types import ModuleType
 from typing import Sequence
 
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import PowerFactoryBasicTemplateDescriptor
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_pending_powerfactory_basic_catalog_descriptors
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_powerfactory_basic_catalog_descriptor_by_key
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_powerfactory_basic_catalog_descriptors
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_powerfactory_basic_catalog_templates_dir
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import import_powerfactory_basic_catalog_module_by_key
+from VeraGridEngine.Templates.catalog.basic_block_catalog import BasicBlockTemplateDescriptor
+from VeraGridEngine.Templates.catalog.basic_block_catalog import get_pending_basic_block_catalog_descriptors
+from VeraGridEngine.Templates.catalog.basic_block_catalog import get_basic_block_catalog_descriptor_by_key
+from VeraGridEngine.Templates.catalog.basic_block_catalog import get_basic_block_catalog_descriptors
+from VeraGridEngine.Templates.catalog.basic_block_catalog import get_basic_block_catalog_templates_dir
+from VeraGridEngine.Templates.catalog.basic_block_catalog import import_basic_block_catalog_module_by_key
 
 
 def build_templates_dir() -> Path:
@@ -19,40 +19,40 @@ def build_templates_dir() -> Path:
     :returns: Standalone-template directory.
     """
 
-    return get_powerfactory_basic_catalog_templates_dir()
+    return get_basic_block_catalog_templates_dir()
 
 
-def descriptor_entries() -> Sequence[PowerFactoryBasicTemplateDescriptor]:
+def descriptor_entries() -> Sequence[BasicBlockTemplateDescriptor]:
     """
     Return every shipped catalog descriptor.
 
     :returns: Full descriptor tuple.
     """
 
-    return get_powerfactory_basic_catalog_descriptors()
+    return get_basic_block_catalog_descriptors()
 
 
-def pending_descriptor_entries() -> Sequence[PowerFactoryBasicTemplateDescriptor]:
+def pending_descriptor_entries() -> Sequence[BasicBlockTemplateDescriptor]:
     """
     Return the pending catalog descriptors.
 
     :returns: Pending descriptor tuple.
     """
 
-    return get_pending_powerfactory_basic_catalog_descriptors()
+    return get_pending_basic_block_catalog_descriptors()
 
 
-def descriptor_lookup_by_key() -> dict[str, PowerFactoryBasicTemplateDescriptor]:
+def descriptor_lookup_by_key() -> dict[str, BasicBlockTemplateDescriptor]:
     """
     Return the descriptor lookup indexed by semantic key.
 
     :returns: Descriptor lookup by semantic key.
     """
 
-    return get_powerfactory_basic_catalog_descriptor_by_key()
+    return get_basic_block_catalog_descriptor_by_key()
 
 
-def _resolve_descriptor(template_identifier: str) -> PowerFactoryBasicTemplateDescriptor:
+def _resolve_descriptor(template_identifier: str) -> BasicBlockTemplateDescriptor:
     """
     Resolve one descriptor from either the semantic key or the old numeric fixture id.
 
@@ -61,8 +61,8 @@ def _resolve_descriptor(template_identifier: str) -> PowerFactoryBasicTemplateDe
     :raises KeyError: Raised when no descriptor matches.
     """
 
-    descriptor_by_key: dict[str, PowerFactoryBasicTemplateDescriptor] = descriptor_lookup_by_key()
-    descriptor: PowerFactoryBasicTemplateDescriptor | None = descriptor_by_key.get(template_identifier, None)
+    descriptor_by_key: dict[str, BasicBlockTemplateDescriptor] = descriptor_lookup_by_key()
+    descriptor: BasicBlockTemplateDescriptor | None = descriptor_by_key.get(template_identifier, None)
 
     if descriptor is not None:
         return descriptor
@@ -71,7 +71,7 @@ def _resolve_descriptor(template_identifier: str) -> PowerFactoryBasicTemplateDe
 
     if template_identifier.isdigit():
         prefix: str = f"typ_{template_identifier}__"
-        candidate: PowerFactoryBasicTemplateDescriptor
+        candidate: BasicBlockTemplateDescriptor
         for candidate in descriptor_entries():
             if candidate.module_name.startswith(prefix):
                 return candidate
@@ -91,7 +91,7 @@ def find_template_path(template_identifier: str) -> Path:
     :returns: Standalone module path.
     """
 
-    descriptor: PowerFactoryBasicTemplateDescriptor = _resolve_descriptor(template_identifier)
+    descriptor: BasicBlockTemplateDescriptor = _resolve_descriptor(template_identifier)
     return build_templates_dir() / descriptor.module_filename
 
 
@@ -103,5 +103,5 @@ def import_template_module(template_identifier: str) -> ModuleType:
     :returns: Imported standalone module.
     """
 
-    descriptor: PowerFactoryBasicTemplateDescriptor = _resolve_descriptor(template_identifier)
-    return import_powerfactory_basic_catalog_module_by_key(descriptor.template_key)
+    descriptor: BasicBlockTemplateDescriptor = _resolve_descriptor(template_identifier)
+    return import_basic_block_catalog_module_by_key(descriptor.template_key)

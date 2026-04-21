@@ -8,8 +8,8 @@ from PySide6.QtTest import QTest
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import PowerFactoryBasicTemplateDescriptor
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_powerfactory_basic_catalog_descriptor_by_key
+from VeraGridEngine.Templates.catalog.basic_block_catalog import BasicBlockTemplateDescriptor
+from VeraGridEngine.Templates.catalog.basic_block_catalog import get_basic_block_catalog_descriptor_by_key
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DynamicSimulationMode
 
@@ -87,7 +87,7 @@ def _collect_leaf_labels(model: QtCore.QAbstractItemModel,
 def _count_descriptor_leaves(editor: DynamicBlockEditorGUI,
                              parent_item) -> int:
     """
-    Count PowerFactory basic descriptor leaves below one source-model item.
+    Count basic block descriptor leaves below one source-model item.
     """
 
     count: int = 0
@@ -98,7 +98,7 @@ def _count_descriptor_leaves(editor: DynamicBlockEditorGUI,
             count += _count_descriptor_leaves(editor, child)
         else:
             payload = child.data(editor.block_role)
-            if isinstance(payload, PowerFactoryBasicTemplateDescriptor):
+            if isinstance(payload, BasicBlockTemplateDescriptor):
                 count += 1
             else:
                 pass
@@ -131,7 +131,7 @@ def _build_catalog_block_item(editor: DynamicBlockEditorGUI, template_key: str):
     Materialize one catalog block on the editor canvas.
     """
 
-    descriptor = get_powerfactory_basic_catalog_descriptor_by_key()[template_key]
+    descriptor = get_basic_block_catalog_descriptor_by_key()[template_key]
     block_item = editor.create_library_payload_item(descriptor, 10.0, 20.0)
     assert block_item is not None
     return block_item
@@ -170,7 +170,7 @@ def _port_name_prefixes(block_item) -> list[str]:
     return prefixes
 
 
-def test_emt_editor_exposes_powerfactory_basic_catalog_under_basic() -> None:
+def test_emt_editor_exposes_basic_block_catalog_under_basic() -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
     source_model = editor.library_model
     basic_item = source_model.invisibleRootItem().child(0)
@@ -187,7 +187,7 @@ def test_emt_editor_exposes_powerfactory_basic_catalog_under_basic() -> None:
     editor.close()
 
 
-def test_rms_editor_exposes_powerfactory_basic_catalog_under_basic() -> None:
+def test_rms_editor_exposes_basic_block_catalog_under_basic() -> None:
     editor = _build_editor(DynamicSimulationMode.RMS)
     source_model = editor.library_model
     basic_item = source_model.invisibleRootItem().child(0)
@@ -203,7 +203,7 @@ def test_rms_editor_exposes_powerfactory_basic_catalog_under_basic() -> None:
 
 def test_library_search_button_and_shortcut_filter_basic_catalog() -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
-    descriptor_by_key = get_powerfactory_basic_catalog_descriptor_by_key()
+    descriptor_by_key = get_basic_block_catalog_descriptor_by_key()
     park_label = descriptor_by_key["park_transform_dq"].display_label
     limit_label = descriptor_by_key["limit"].display_label
 
@@ -230,7 +230,7 @@ def test_library_search_button_and_shortcut_filter_basic_catalog() -> None:
 
 def test_proxy_drag_payload_materializes_catalog_template() -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
-    park_descriptor = get_powerfactory_basic_catalog_descriptor_by_key()["park_transform_dq"]
+    park_descriptor = get_basic_block_catalog_descriptor_by_key()["park_transform_dq"]
     park_label = park_descriptor.display_label
     source_index = _find_index_by_label(editor.library_model, park_label)
 
@@ -243,7 +243,7 @@ def test_proxy_drag_payload_materializes_catalog_template() -> None:
     payload = editor.get_library_payload_from_mime_data(mime_data)
 
     assert payload is not None
-    assert isinstance(payload, PowerFactoryBasicTemplateDescriptor)
+    assert isinstance(payload, BasicBlockTemplateDescriptor)
     assert payload.template_key == "park_transform_dq"
 
     block_item = editor.create_library_payload_item(payload, 10.0, 20.0)
