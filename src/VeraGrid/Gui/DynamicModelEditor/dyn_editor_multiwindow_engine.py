@@ -67,7 +67,7 @@ def build_dynamic_editor_entry(api_object: Any, circuit: Any) -> DynamicEditorEn
     else:
         key_base = f"dynamic-object:{id(api_object)}"
         type_label = type(api_object).__name__
-        display_name = getattr(api_object, "name", type_label)
+        display_name = api_object.name
 
     return DynamicEditorEntry(
         api_object=api_object,
@@ -128,18 +128,24 @@ def get_block_for_entry(entry: DynamicEditorEntry, mode: DynamicSimulationMode):
     else:
         return api_object.emt_model
 
-@dataclass(frozen=True)
 class DynamicEditorEntry:
     """
     One selectable/openable Dynamic Editor entry.
     """
 
-    api_object: Any
-    circuit: Any
-    available_modes: tuple[DynamicSimulationMode, ...]
-    display_name: str
-    type_label: str
-    key_base: str
+    def __init__(self,
+                 api_object: Any,
+                 circuit: Any,
+                 available_modes: tuple[DynamicSimulationMode, ...],
+                 display_name: str,
+                 type_label: str,
+                 key_base: str) -> None:
+        self.api_object = api_object
+        self.circuit = circuit
+        self.available_modes = available_modes
+        self.display_name = display_name
+        self.type_label = type_label
+        self.key_base = key_base
 
     def session_key(self, mode: DynamicSimulationMode) -> str:
         return f"{self.key_base}:{mode.name}"
