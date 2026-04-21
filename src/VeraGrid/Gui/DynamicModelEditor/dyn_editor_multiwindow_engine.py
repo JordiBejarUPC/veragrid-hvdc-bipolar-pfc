@@ -26,18 +26,18 @@ def get_available_dynamic_modes(api_object: Any) -> tuple[DynamicSimulationMode,
     """
     Return the modes that can be opened for one API object.
     """
-
-    device_type = getattr(api_object, "device_type", None)
     modes: list[DynamicSimulationMode] = list()
+
+    device_type = api_object.device_type
 
     if device_type == DeviceType.RmsModelTemplateDevice:
         return (DynamicSimulationMode.RMS,)
     if device_type == DeviceType.EmtModelTemplateDevice:
         return (DynamicSimulationMode.EMT,)
 
-    if hasattr(api_object, "rms_model"):
+    if api_object.rms_model is not None:
         modes.append(DynamicSimulationMode.RMS)
-    if hasattr(api_object, "emt_model"):
+    if api_object.emt_model is not None:
         modes.append(DynamicSimulationMode.EMT)
 
     return tuple(modes)
@@ -48,7 +48,7 @@ def build_dynamic_editor_title(api_object: Any, mode: DynamicSimulationMode) -> 
     Build the tab/window title for one dynamic editor session.
     """
 
-    return f"{getattr(api_object, 'name', 'Dynamic object')} [{mode.name}]"
+    return f"{api_object.name} [{mode.name}]"
 
 
 def build_dynamic_editor_entry(api_object: Any, circuit: Any) -> DynamicEditorEntry | None:
@@ -100,7 +100,7 @@ def get_templates_for_entry(entry: DynamicEditorEntry, mode: DynamicSimulationMo
     """
 
     api_object = entry.api_object
-    device_type = getattr(api_object, "device_type", None)
+    device_type = api_object.device_type
 
     if device_type == DeviceType.RmsModelTemplateDevice:
         return list(entry.circuit.get_dynamic_templates_by_domain(FmuTemplateDomain.RMS))
@@ -119,7 +119,7 @@ def get_block_for_entry(entry: DynamicEditorEntry, mode: DynamicSimulationMode):
     """
 
     api_object = entry.api_object
-    device_type = getattr(api_object, "device_type", None)
+    device_type = api_object.device_type
 
     if device_type in {DeviceType.RmsModelTemplateDevice, DeviceType.EmtModelTemplateDevice}:
         return api_object.block

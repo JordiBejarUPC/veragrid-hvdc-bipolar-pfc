@@ -106,6 +106,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             return
 
         can_close = True
+        # Todo:remove hasattr
         if hasattr(page, "can_close_editor"):
             can_close = bool(page.can_close_editor(self))
         if not can_close:
@@ -125,6 +126,7 @@ class DynamicEditorWorkspaceWindow(QtWidgets.QMainWindow):
             page = self.page_at(index)
             if page is None:
                 continue
+            # Todo:remove hasattr
             if hasattr(page, "can_close_editor") and not bool(page.can_close_editor(self)):
                 event.ignore()
                 return

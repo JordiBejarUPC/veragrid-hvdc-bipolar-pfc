@@ -84,11 +84,13 @@ class DynamicEditorWorkspaceManager(QtCore.QObject):
         entry = self._page_to_entry[page]
         mode = self._page_to_mode[page]
         title = build_dynamic_editor_title(entry.api_object, mode)
+        # Todo:remove getattr
         if getattr(page, "has_unapplied_changes", False):
             return f"* {title}"
         return title
 
     def _connect_page_signals(self, page: QtWidgets.QWidget) -> None:
+        # Todo:remove hasattr
         if hasattr(page, "dirtyStateChanged"):
             page.dirtyStateChanged.connect(lambda _dirty, page=page: self.refresh_page_title(page))
 
