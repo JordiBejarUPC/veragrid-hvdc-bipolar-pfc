@@ -223,16 +223,25 @@ def _process_equation_worker(raw_eq, parsing_context, param_map, sym_to_idx_snap
                     is_positive = deg > 1.0
                     num_aux = int(deg - 1.0) if is_positive else int(-deg + 1.0)
                     prefix = "mulaux" if is_positive else "invaux"
-                    for i_aux in range(num_aux):
-                        aux = f"{sym.name}_{prefix}{i_aux}"
-                        if aux not in sym_to_idx_snap:
-                            new_aux_names.append(aux)
+                    aux_names = [f"{sym.name}_{prefix}{i_aux}" for i_aux in range(num_aux)]
+                    missing = [a for a in aux_names if a not in sym_to_idx_snap]
+                    if missing:
+                        new_aux_names.extend(missing)
+                        return
+                    new_syms = [sp.Symbol(a) for a in aux_names]
+                    multilinear_f = sym
+                    for s_aux in new_syms:
+                        multilinear_f = multilinear_f * s_aux
+                    _extract_term((term / f) * multilinear_f)
                     return
 
                 elif is_sqrt and not is_protected:
-                    for aux in [f"{sym.name}_sqrtaux0", f"{sym.name}_sqrtaux1"]:
-                        if aux not in sym_to_idx_snap:
-                            new_aux_names.append(aux)
+                    aux_names_sqrt = [f"{sym.name}_sqrtaux0", f"{sym.name}_sqrtaux1"]
+                    missing = [a for a in aux_names_sqrt if a not in sym_to_idx_snap]
+                    if missing:
+                        new_aux_names.extend(missing)
+                        return
+                    _extract_term((term / f) * sp.Symbol(aux_names_sqrt[0]))
                     return
 
                 b_val = float(b_val_sym)
