@@ -5,11 +5,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Iterable
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialogButtonBox,
-                             QGroupBox, QHBoxLayout, QHeaderView, QLabel,
+                             QGroupBox, QHBoxLayout, QLabel,
                              QLineEdit, QPushButton, QSizePolicy, QSpacerItem,
                              QTableWidget, QTableWidgetItem, QVBoxLayout)
 from typing import Optional
