@@ -1150,6 +1150,13 @@ class RmsProblemDae(RmsProblemTemplate):
         return self._algebraic_vars
 
     @property
+    def algebraic_eqs(self):
+        """
+        :return:
+        """
+        return self._algebraic_eqs
+
+    @property
     def state_and_algebraic_vars(self) -> List[Var]:
         """
         :return:
@@ -1167,6 +1174,13 @@ class RmsProblemDae(RmsProblemTemplate):
         :return:
         """
         return self._state_vars
+
+    @property
+    def state_eqs(self):
+        """
+        :return:
+        """
+        return self._state_eqs
 
     def get_all_vars_number(self) -> int:
         return self._n_vars

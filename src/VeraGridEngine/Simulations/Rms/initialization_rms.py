@@ -1395,7 +1395,7 @@ def _build_runtime_param_array(problem: EmtProblemTemplate) -> np.ndarray:
     return runtime_params
 
 
-def _build_state_equation_lookup(problem: EmtProblemTemplate) -> Dict[int, Expr]:
+def build_state_equation_lookup(problem: RmsProblemDae) -> Dict[int, Expr]:
     """
     Build a UID lookup for state equations.
 
@@ -1403,8 +1403,8 @@ def _build_state_equation_lookup(problem: EmtProblemTemplate) -> Dict[int, Expr]
     :return: Mapping from state variable UID to its differential right-hand side.
     """
     lookup: Dict[int, Expr] = dict()
-    state_vars: List[Var] = problem.get_state_vars()
-    state_eqs: List[Expr] = problem.get_state_eqs()
+    state_vars: List[Var] = problem.state_vars
+    state_eqs: List[Expr] = problem.state_eqs
 
     idx: int = 0
     while idx < len(state_vars):
@@ -1467,7 +1467,7 @@ def _build_reduced_initialization_system(
     :param allow_state_equilibrium: Whether unresolved states may use f(x,z,p)=0.
     :return: Reduced initialization system or None if nothing remains to solve.
     """
-    reduced_problem = _collect_reduced_initialization_problem(problem, allow_state_equilibrium)
+    reduced_problem = collect_reduced_initialization_problem(problem, allow_state_equilibrium)
 
     if reduced_problem is None:
         return None
@@ -1481,8 +1481,8 @@ def _build_reduced_initialization_system(
         )
 
 
-def _collect_reduced_initialization_problem(
-        problem: EmtProblemTemplate,
+def collect_reduced_initialization_problem(
+        problem: RmsProblemDae,
         allow_state_equilibrium: bool,
 ) -> Tuple[List[Var], List[Expr], np.ndarray] | None:
     """
@@ -1498,10 +1498,10 @@ def _collect_reduced_initialization_problem(
     unknown_vars: List[Var] = list()
     residual_eqs: List[Expr] = list()
     state_unknown_flags: List[float] = list()
-    state_eq_lookup: Dict[int, Expr] = _build_state_equation_lookup(problem)
+    state_eq_lookup: Dict[int, Expr] = build_state_equation_lookup(problem)
     init_eq_lookup: Dict[Var, Expr] = problem.sys_block.init_eqs
-    algebraic_vars: List[Var] = problem.get_algebraic_vars()
-    algebraic_eqs: List[Expr] = problem.get_algebraic_eqs()
+    algebraic_vars: List[Var] = problem.algebraic_vars
+    algebraic_eqs: List[Expr] = problem.algebraic_eqs
     alg_idx: int = 0
 
     while alg_idx < len(algebraic_vars):
@@ -1514,7 +1514,7 @@ def _collect_reduced_initialization_problem(
             state_unknown_flags.append(0.0)
         alg_idx += 1
 
-    for state_var in problem.get_state_vars():
+    for state_var in problem.state_vars:
         if state_var.uid in problem.init_guess:
             state_var = state_var
         else:
@@ -1899,6 +1899,7 @@ def run_rms_native_initialization(problem: RmsProblemDae, options: RmsOptions) -
     reduced_cache_key: str | None = None
 
     if method_requested == EmtInitializationMethod.Explicit:
+        print('Explicit initialization')
 
     else:
         reduced_system: ReducedInitializationSystem | None
@@ -1908,7 +1909,7 @@ def run_rms_native_initialization(problem: RmsProblemDae, options: RmsOptions) -
 
         try:
             phase_t0: float = time.perf_counter()
-            reduced_problem_payload = _collect_reduced_initialization_problem(
+            reduced_problem_payload = collect_reduced_initialization_problem(
                 problem=problem,
                 allow_state_equilibrium=bool(options.init_allow_state_equilibrium),
             )
