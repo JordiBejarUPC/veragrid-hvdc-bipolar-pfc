@@ -794,9 +794,9 @@ def build_emt_options(
         solver_type=solver_type,
         integration_method=integration_method,
         initialization_method=initialization_method,
-        newton_max_iter=newton_max_iter,
         verbose=0,
     )
+    options.newton_max_iter = int(newton_max_iter)
     return options
 
 
