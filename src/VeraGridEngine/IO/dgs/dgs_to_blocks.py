@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Set, Tuple
 
 from VeraGridEngine.IO.dgs.dgs_circuit import DgsCircuit
-from VeraGridEngine.IO.dgs.dgs_objects import BlkDef, BlkFrom, BlkGoto, BlkRef, BlkSig, BlkSlot, BlkSum, ElmComp, ElmDsl, DGSElement
+from VeraGridEngine.IO.dgs.dgs_objects import BlkDef, BlkFrom, BlkGoto, BlkRef, BlkSlot, BlkSum, ElmComp, ElmDsl, DGSElement
 from VeraGridEngine.Utils.procedural_logic import (
     AnalogFlipFlopLogic,
     FixedSampleLogic,
@@ -3075,7 +3075,7 @@ def _build_catalog_entry_info_by_typ_id() -> Dict[str, tuple[Sequence[str], str 
 
     :returns: Unsupported-lines and build-error tuple by typ_id.
     """
-    from VeraGridEngine.Templates.catalog.basic_block_catalog import get_basic_block_catalog_descriptors
+    from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptors
 
     info_by_typ_id: Dict[str, tuple[Sequence[str], str | None]] = dict()
     descriptor: object

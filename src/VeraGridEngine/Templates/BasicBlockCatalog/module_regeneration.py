@@ -8,8 +8,8 @@ from typing import Sequence
 
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Templates.catalog.basic_block_catalog.catalog import get_basic_block_catalog_descriptor_by_key
-from VeraGridEngine.Templates.catalog.basic_block_catalog.catalog import get_basic_block_catalog_templates_dir
+from VeraGridEngine.Templates.BasicBlockCatalog.catalog import get_basic_block_catalog_descriptor_by_key
+from VeraGridEngine.Templates.BasicBlockCatalog.catalog import get_basic_block_catalog_templates_dir
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp
 from VeraGridEngine.Utils.Symbolic.symbolic import Comparison
