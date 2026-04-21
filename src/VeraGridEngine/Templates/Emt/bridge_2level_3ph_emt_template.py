@@ -294,7 +294,11 @@ def get_bridge_2level_3ph_emt_template(vf: VarFactory, name: str = "bridge_2leve
             v_conv_q,
             v_conv_0,
         ]),
-        event_dict=dict(),
+        event_dict=dict([
+            # The procedural PWM logic needs the carrier phase stored as a runtime parameter even when
+            # the symbolic problem prunes unused input variables from the retained block tree.
+            (carrier_phase, Const(0.0)),
+        ]),
         mode_dict=dict([
             (gate_a_mode, Const(0.0)),
             (gate_b_mode, Const(0.0)),
