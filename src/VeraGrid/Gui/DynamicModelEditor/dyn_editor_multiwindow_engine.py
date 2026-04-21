@@ -8,10 +8,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable
 from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialogButtonBox,
+                             QGroupBox, QHBoxLayout, QHeaderView, QLabel,
+                             QLineEdit, QPushButton, QSizePolicy, QSpacerItem,
+                             QTableWidget, QTableWidgetItem, QVBoxLayout)
 from typing import Optional
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode, FmuTemplateDomain
-from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_picker_dialog import Ui_DynamicEditorPickerDialog
+
 
 
 DYNAMIC_EDITOR_TAB_MIME: str = "application/x-veragrid-dynamic-editor-tab"
@@ -152,8 +156,8 @@ class DynamicEditorPickerDialog(QtWidgets.QDialog):
                  current_mode: DynamicSimulationMode | None = None,
                  parent: QtWidgets.QWidget | None = None) -> None:
         super().__init__(parent)
-        self.ui = Ui_DynamicEditorPickerDialog()
-        self.ui.setupUi(self)
+        self.setObjectName("DynamicEditorPickerDialog")
+        self.resize(720, 520)
 
         self._entries: list[DynamicEditorEntry] = entries
         self._filtered_entries: list[DynamicEditorEntry] = list(entries)
@@ -162,19 +166,69 @@ class DynamicEditorPickerDialog(QtWidgets.QDialog):
         self._quick_entry: DynamicEditorEntry | None = current_entry
         self._quick_mode: DynamicSimulationMode | None = None
 
-        self.ui.entriesTableWidget.horizontalHeader().setStretchLastSection(True)
-        self.ui.entriesTableWidget.horizontalHeader().setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
-        self.ui.entriesTableWidget.horizontalHeader().setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-        self.ui.entriesTableWidget.horizontalHeader().setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
-        self.ui.entriesTableWidget.verticalHeader().setVisible(False)
+        self.verticalLayout = QVBoxLayout(self)
+        self.verticalLayout.setContentsMargins(12, 12, 12, 12)
 
-        self.ui.searchLineEdit.textChanged.connect(self._apply_filter)
-        self.ui.entriesTableWidget.itemSelectionChanged.connect(self._on_selection_changed)
-        self.ui.entriesTableWidget.itemDoubleClicked.connect(self._accept_selected_entry)
-        self.ui.modeComboBox.currentIndexChanged.connect(self._on_mode_changed)
-        self.ui.quickOpenButton.clicked.connect(self._accept_quick_open)
-        self.ui.buttonBox.accepted.connect(self._accept_selected_entry)
-        self.ui.buttonBox.rejected.connect(self.reject)
+        self.quickOpenGroupBox = QGroupBox(self)
+        self.quickOpenGroupBox.setTitle("Quick Open")
+        self.horizontalLayoutQuick = QHBoxLayout(self.quickOpenGroupBox)
+
+        self.quickOpenLabel = QLabel("Open the current block in the other mode.", self.quickOpenGroupBox)
+        self.quickOpenLabel.setWordWrap(True)
+        self.horizontalLayoutQuick.addWidget(self.quickOpenLabel)
+
+        self.quickOpenButton = QPushButton("Open", self.quickOpenGroupBox)
+        self.horizontalLayoutQuick.addWidget(self.quickOpenButton)
+
+        self.verticalLayout.addWidget(self.quickOpenGroupBox)
+
+        self.searchLineEdit = QLineEdit(self)
+        self.searchLineEdit.setPlaceholderText("Search dynamic editors")
+        self.searchLineEdit.setClearButtonEnabled(True)
+        self.verticalLayout.addWidget(self.searchLineEdit)
+
+        self.entriesTableWidget = QTableWidget(self)
+        self.entriesTableWidget.setColumnCount(3)
+        self.entriesTableWidget.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.entriesTableWidget.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.entriesTableWidget.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        self.entriesTableWidget.verticalHeader().setVisible(False)
+
+        header = self.entriesTableWidget.horizontalHeader()
+        header.setStretchLastSection(True)
+        header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.Stretch)
+        header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+
+        for col, text in enumerate(["Name", "Type", "Modes"]):
+            self.entriesTableWidget.setHorizontalHeaderItem(col, QTableWidgetItem(text))
+
+        self.verticalLayout.addWidget(self.entriesTableWidget)
+
+        self.horizontalLayoutMode = QHBoxLayout()
+
+        self.modeLabel = QLabel("Mode", self)
+        self.horizontalLayoutMode.addWidget(self.modeLabel)
+
+        self.modeComboBox = QComboBox(self)
+        self.horizontalLayoutMode.addWidget(self.modeComboBox)
+
+        self.horizontalSpacer = QSpacerItem(40, 20, QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Minimum)
+        self.horizontalLayoutMode.addItem(self.horizontalSpacer)
+
+        self.verticalLayout.addLayout(self.horizontalLayoutMode)
+
+        self.buttonBox = QDialogButtonBox(self)
+        self.buttonBox.setStandardButtons(QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Open)
+        self.verticalLayout.addWidget(self.buttonBox)
+
+        self.searchLineEdit.textChanged.connect(self._apply_filter)
+        self.entriesTableWidget.itemSelectionChanged.connect(self._on_selection_changed)
+        self.entriesTableWidget.itemDoubleClicked.connect(self._accept_selected_entry)
+        self.modeComboBox.currentIndexChanged.connect(self._on_mode_changed)
+        self.quickOpenButton.clicked.connect(self._accept_quick_open)
+        self.buttonBox.accepted.connect(self._accept_selected_entry)
+        self.buttonBox.rejected.connect(self.reject)
 
         self._configure_quick_open(current_entry=current_entry, current_mode=current_mode)
         self._apply_filter("")
@@ -183,18 +237,18 @@ class DynamicEditorPickerDialog(QtWidgets.QDialog):
                               current_entry: DynamicEditorEntry | None,
                               current_mode: DynamicSimulationMode | None) -> None:
         if current_entry is None or current_mode is None:
-            self.ui.quickOpenGroupBox.setVisible(False)
+            self.quickOpenGroupBox.setVisible(False)
             return
 
         alternate_modes = [mode for mode in current_entry.available_modes if mode != current_mode]
         if len(alternate_modes) == 0:
-            self.ui.quickOpenGroupBox.setVisible(False)
+            self.quickOpenGroupBox.setVisible(False)
             return
 
         self._quick_mode = alternate_modes[0]
-        self.ui.quickOpenGroupBox.setVisible(True)
-        self.ui.quickOpenLabel.setText(f"Open the current block in {self._quick_mode.name}.")
-        self.ui.quickOpenButton.setText(f"Open {self._quick_mode.name}")
+        self.quickOpenGroupBox.setVisible(True)
+        self.quickOpenLabel.setText(f"Open the current block in {self._quick_mode.name}.")
+        self.quickOpenButton.setText(f"Open {self._quick_mode.name}")
 
     def _apply_filter(self, text: str) -> None:
         needle = text.strip().lower()
@@ -209,41 +263,41 @@ class DynamicEditorPickerDialog(QtWidgets.QDialog):
         else:
             self._filtered_entries = list(self._entries)
 
-        self.ui.entriesTableWidget.setRowCount(len(self._filtered_entries))
+        self.entriesTableWidget.setRowCount(len(self._filtered_entries))
         for row, entry in enumerate(self._filtered_entries):
-            self.ui.entriesTableWidget.setItem(row, 0, QtWidgets.QTableWidgetItem(entry.display_name))
-            self.ui.entriesTableWidget.setItem(row, 1, QtWidgets.QTableWidgetItem(entry.type_label))
-            self.ui.entriesTableWidget.setItem(row, 2, QtWidgets.QTableWidgetItem(" / ".join(mode.name for mode in entry.available_modes)))
+            self.entriesTableWidget.setItem(row, 0, QtWidgets.QTableWidgetItem(entry.display_name))
+            self.entriesTableWidget.setItem(row, 1, QtWidgets.QTableWidgetItem(entry.type_label))
+            self.entriesTableWidget.setItem(row, 2, QtWidgets.QTableWidgetItem(" / ".join(mode.name for mode in entry.available_modes)))
 
         if len(self._filtered_entries) > 0:
-            self.ui.entriesTableWidget.selectRow(0)
+            self.entriesTableWidget.selectRow(0)
         else:
             self._selected_entry = None
             self._selected_mode = None
-            self.ui.modeComboBox.clear()
+            self.modeComboBox.clear()
 
     def _on_selection_changed(self) -> None:
-        current_row = self.ui.entriesTableWidget.currentRow()
+        current_row = self.entriesTableWidget.currentRow()
         if current_row < 0 or current_row >= len(self._filtered_entries):
             self._selected_entry = None
             self._selected_mode = None
-            self.ui.modeComboBox.clear()
+            self.modeComboBox.clear()
             return
 
         self._selected_entry = self._filtered_entries[current_row]
-        self.ui.modeComboBox.blockSignals(True)
-        self.ui.modeComboBox.clear()
+        self.modeComboBox.blockSignals(True)
+        self.modeComboBox.clear()
         for mode in self._selected_entry.available_modes:
-            self.ui.modeComboBox.addItem(mode.name, mode)
-        self.ui.modeComboBox.blockSignals(False)
+            self.modeComboBox.addItem(mode.name, mode)
+        self.modeComboBox.blockSignals(False)
 
-        if self.ui.modeComboBox.count() > 0:
-            self._selected_mode = self.ui.modeComboBox.currentData(QtCore.Qt.ItemDataRole.UserRole)
+        if self.modeComboBox.count() > 0:
+            self._selected_mode = self.modeComboBox.currentData(QtCore.Qt.ItemDataRole.UserRole)
         else:
             self._selected_mode = None
 
     def _on_mode_changed(self, _index: int) -> None:
-        self._selected_mode = self.ui.modeComboBox.currentData(QtCore.Qt.ItemDataRole.UserRole)
+        self._selected_mode = self.modeComboBox.currentData(QtCore.Qt.ItemDataRole.UserRole)
 
     def _accept_quick_open(self) -> None:
         if self._quick_entry is None or self._quick_mode is None:
