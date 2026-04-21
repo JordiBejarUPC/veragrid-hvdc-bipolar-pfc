@@ -295,6 +295,44 @@ class BlockSaver:
     def get_blocks(self) -> Dict[int, Dict[str, Any]]:
         return self.blocks
 
+    def _ensure_var_registered(self, var: Var) -> None:
+        """
+        Ensure that one algebraic variable is present in the shared variable factory.
+
+        Some blocks created through GUI/template workflows keep live variable objects
+        that are not reinserted into the factory before serialization. The saver must
+        register them instead of failing deep in a background thread.
+
+        :param var: Variable to register.
+        :return: None.
+        """
+        try:
+            found_var = self.var_factory.get_var(var.uid)
+        except Exception:
+            found_var = None
+
+        if found_var is None:
+            self.var_factory._var_dict[var.uid] = var
+        else:
+            pass
+
+    def _ensure_diff_var_registered(self, diff_var: Var) -> None:
+        """
+        Ensure that one differential variable is present in the shared variable factory.
+
+        :param diff_var: Differential variable to register.
+        :return: None.
+        """
+        try:
+            found_var = self.var_factory.get_diff_var(diff_var.uid)
+        except Exception:
+            found_var = None
+
+        if found_var is None:
+            self.var_factory._diff_var_dict[diff_var.uid] = diff_var
+        else:
+            pass
+
     def save_block(self, blk: Block, main: bool = False) -> Dict[str, Any]:
         """
         Get a dictionary representing the block
@@ -327,15 +365,7 @@ class BlockSaver:
         init_eq_list = list()
         diff_init_eq_list = list()
         for var, expr in blk.init_eqs.items():
-
-            try:
-                found_var = self.var_factory.get_var(var.uid)
-            except:
-                found_var = None
-
-            if found_var is None:
-            #     raise ValueError(f"variable {var.name} not added to vars factory")
-                self.var_factory._var_dict[var.uid] = var
+            self._ensure_var_registered(var)
 
             init_eq_list.append(
                 {
@@ -350,15 +380,7 @@ class BlockSaver:
             )
 
         for diff_var, expr in blk.diff_init_eqs.items():
-
-            try:
-                found_var = self.var_factory.get_diff_var(diff_var.uid)
-            except:
-                found_var = None
-
-            if found_var is None:
-            #     raise ValueError(f"variable {diff_var.name} not added to vars factory")
-                self.var_factory._diff_var_dict[diff_var.uid] = diff_var
+            self._ensure_diff_var_registered(diff_var)
 
             diff_init_eq_list.append(
                 {
@@ -374,11 +396,7 @@ class BlockSaver:
 
         events_list = list()
         for var, expr in blk.event_dict.items():
-
-            found_var = self.var_factory.get_var(var.uid)
-
-            if found_var is None:
-                raise ValueError(f"variable {var.name} not added to vars factory")
+            self._ensure_var_registered(var)
 
             events_list.append(
                 {
@@ -394,57 +412,37 @@ class BlockSaver:
 
         in_vars: List[int] = list()
         for var in blk.in_vars:
-
-            found_var = self.var_factory.get_var(var.uid)
-
-            if found_var is None:
-                raise ValueError(f"variable {var.name} not added to vars factory")
+            self._ensure_var_registered(var)
 
             in_vars.append(var.uid)
 
         out_vars: List[int] = list()
         for var in blk.out_vars:
-
-            found_var = self.var_factory.get_var(var.uid)
-
-            if found_var is None:
-                raise ValueError(f"variable {var.name} not added to vars factory")
+            self._ensure_var_registered(var)
 
             out_vars.append(var.uid)
 
         init_values: List[Dict[str, float | int]] = list()
         for var, value in blk.init_values.items():
-
-            found_var = self.var_factory.get_var(var.uid)
-
-            if found_var is None:
-                raise ValueError(f"variable {var.name} not added to vars factory")
+            self._ensure_var_registered(var)
 
             init_values.append({"var": var.uid, "value": value.value})
 
         parameters: List[Dict[str, float | int]] = list()
         for var, value in blk.parameters.items():
-
-            found_var = self.var_factory.get_var(var.uid)
-
-            if found_var is None:
-                raise ValueError(f"variable {var.name} not added to vars factory")
+            self._ensure_var_registered(var)
 
             parameters.append({"var": var.uid, "value": value.value})
 
         # diff_vars: List[DiffVar] = list()
         for diff_var in blk.diff_vars:
-            found_var = self.var_factory.get_diff_var(diff_var.uid)
-            if found_var is None:
-                raise ValueError(f"variable {diff_var.name} not added to vars factory")
+            self._ensure_diff_var_registered(diff_var)
 
         for dyn_var_type, var in blk.external_mapping.items():
             if var is not None:
-                var_in_varfactory = self.var_factory.find_var_or_diff_var(var_uid=var.uid)
-                # if var is not in VarFactory "2"find_var_or_diff_var" will also raise an error
-
-                # if var.uid not in self.var_factory.get_vars_dict() and var.uid not in self.var_factory.get_diff_var_dict():
-                #     raise ValueError(f"variable {var.name} not added to vars factory")
+                self._ensure_var_registered(var)
+            else:
+                pass
 
         # save diagram
         diagram = blk.diagram.to_dict()

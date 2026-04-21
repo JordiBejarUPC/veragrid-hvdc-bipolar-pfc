@@ -9,10 +9,9 @@ import uuid
 import numpy as np
 import pandas as pd
 
-from VeraGridEngine import RmsInitializationMethod, EmtSolverTypes
 from typing import List, Dict, AnyStr, Any, Union, Type, Tuple
 from VeraGridEngine.basic_structures import Logger, IntVec
-from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileDevice, ProfileEnum, ProfileFloat, ProfileInt
+from VeraGridEngine.Devices.Profiles import ProfileBool, ProfileDevice, ProfileEnum, ProfileFloat, ProfileInt, AnyProfile, PROFILE_INSTANCE_TYPES
 from VeraGridEngine.enumerations import (DeviceType, TimeFrame, BuildStatus, WindingsConnection,
                                          TapModuleControl, TapPhaseControl, SubObjectType, ConverterControlType,
                                          HvdcControlType, ActionType, AvailableTransferMode, ContingencyMethod,
@@ -24,13 +23,8 @@ from VeraGridEngine.enumerations import (DeviceType, TimeFrame, BuildStatus, Win
                                          BusGraphicType, SwitchGraphicType, DynamicIntegrationMethod, OpfDispatchMode,
                                          EmtLineTypes, EmtProblemTypes, EmtInitializationMethod,
                                          SmallSignalEmtBuildTypes, FmuTemplateDomain,
-                                         EraSvdSolverType, ShuntControlMode, RmsProblemTypes, FmuTemplateMode, )
-
-
-
-AnyProfile = Union[ProfileFloat, ProfileInt, ProfileBool, ProfileDevice, ProfileEnum]
-PROFILE_INSTANCE_TYPES = (ProfileFloat, ProfileInt, ProfileBool, ProfileDevice, ProfileEnum)
-
+                                         EraSvdSolverType, ShuntControlMode, RmsProblemTypes, FmuTemplateDomain,
+                                         FmuTemplateMode, RmsInitializationMethod, EmtSolverTypes)
 # types that can be assigned to a VeraGrid property
 GCPROP_TYPES = Union[
     Type[int],

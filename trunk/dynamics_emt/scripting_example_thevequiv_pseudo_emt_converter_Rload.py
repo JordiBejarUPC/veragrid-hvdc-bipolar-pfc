@@ -30,6 +30,7 @@ import VeraGridEngine.api as gce
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
+from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import JitSymbolicSolver
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOptions
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
@@ -77,7 +78,7 @@ def build_grid() -> Tuple[gce.MultiCircuit, gce.Bus, gce.Bus, gce.Generator, gce
         Snom=grid.Sbase,
         freq=50.0,
         r1=0.001,
-        x1=0.4,
+        x1=0.04,
     )
     grid.add_generator(bus_ac, generator)
 
@@ -133,9 +134,13 @@ def attach_emt_models(
 
     gen_mdl: Block = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
 
-    converter.control1 = ConverterControlType.Pdc
+    # converter.control1 = ConverterControlType.Pdc
+    # converter.control2 = ConverterControlType.Qac
+    # converter.control1_val = float(dc_load.P)
+    # converter.control2_val = 0.0
+    converter.control1 = ConverterControlType.Vm_dc
     converter.control2 = ConverterControlType.Qac
-    converter.control1_val = float(dc_load.P)
+    converter.control1_val = 1.0
     converter.control2_val = 0.0
 
     vsc_mdl: Block = get_full_pseudo_emt_converter(
@@ -220,7 +225,7 @@ def build_problem(grid: gce.MultiCircuit, pf_results: PowerFlowResults) -> EmtPr
     """
     options: EmtOptions = EmtOptions(
         time_step=2.0e-5,
-        simulation_time=0.1,
+        simulation_time=0.15,
         tolerance=1e-6,
         solver_type=EmtSolverTypes.StructuralCompiled,
         initialization_method=EmtInitializationMethod.Explicit,
@@ -230,7 +235,7 @@ def build_problem(grid: gce.MultiCircuit, pf_results: PowerFlowResults) -> EmtPr
     return EmtProblemDae(grid=grid, options=options, pf_results_3ph=None, pf_results=pf_results)
 
 
-def build_solver(problem: EmtProblemDae) -> StructuralCompiledSolver:
+def build_solver(problem: EmtProblemDae) -> StructuralCompiledSolver|JitSymbolicSolver:
     """
     Build the compiled EMT solver backend.
 
@@ -436,8 +441,10 @@ def main() -> None:
     problem: EmtProblemDae = build_problem(grid=grid, pf_results=pf_results)
     validate_initialization(problem)
 
-    solver: StructuralCompiledSolver = build_solver(problem)
-    t, y, _, well_initialized , converged  = solver.simulate(boundary_updater=cast(object, problem))
+    # solver: StructuralCompiledSolver = build_solver(problem)
+    solver: JitSymbolicSolver = build_solver(problem)
+    # t, y, _, well_initialized , converged  = solver.simulate(boundary_updater=cast(object, problem))
+    t, y, _, well_initialized, converged = solver.simulate()
     print(f"well_initialized = {well_initialized}")
     print(f"converged = {converged}")
 

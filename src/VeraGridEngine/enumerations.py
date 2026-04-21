@@ -1,4 +1,4 @@
-# This Source Code Form is subject to the terms of the Mozilla Public
+﻿# This Source Code Form is subject to the terms of the Mozilla Public
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
@@ -538,7 +538,7 @@ class DiagramType(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class SchematicBranchEndpoint(Enum):
@@ -710,7 +710,7 @@ class AcOpfMode(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class TapModuleControl(Enum):
@@ -746,7 +746,7 @@ class TapModuleControl(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class TapPhaseControl(Enum):
@@ -783,7 +783,7 @@ class TapPhaseControl(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class ConverterControlType(Enum):
@@ -823,7 +823,88 @@ class ConverterControlType(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
+
+
+class ValveEmtType(Enum):
+    """
+    Enumeration of EMT valve physical types.
+    """
+
+    Diode = "Diode"
+    Igbt = "IGBT"
+    Thyristor = "Thyristor"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return ValveEmtType[s]
+        except KeyError:
+            return s
+
+
+class ValveEmtModelVariant(Enum):
+    """
+    Enumeration of EMT valve modelling variants.
+    """
+
+    Ideal = "Ideal"
+    Complete = "Complete"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return ValveEmtModelVariant[s]
+        except KeyError:
+            return s
+
+
+class ValveInitializationState(Enum):
+    """
+    Enumeration of valve initialization states.
+    """
+
+    FromPowerFlow = "From power flow"
+    Blocked = "Blocked"
+    ForwardConducting = "Forward conducting"
+    ReverseConducting = "Reverse conducting"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self) -> str:
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+        :param s:
+        :return:
+        """
+        try:
+            return ValveInitializationState[s]
+        except KeyError:
+            return s
 
 
 class HvdcControlType(Enum):
@@ -857,7 +938,7 @@ class HvdcControlType(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class GenerationNtcFormulation(Enum):
@@ -909,7 +990,7 @@ class FaultType(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class MethodShortCircuit(Enum):
@@ -942,7 +1023,7 @@ class MethodShortCircuit(Enum):
         """
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class PhasesShortCircuit(Enum):
@@ -979,7 +1060,7 @@ class PhasesShortCircuit(Enum):
         """
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class WindingsConnection(Enum):
@@ -1020,7 +1101,7 @@ class WindingsConnection(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class TerminalType(Enum):
@@ -1060,7 +1141,7 @@ class TerminalType(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class WindingType(Enum):
@@ -1097,7 +1178,7 @@ class WindingType(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class ShuntConnectionType(Enum):
@@ -1133,7 +1214,7 @@ class ShuntConnectionType(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class ActionType(Enum):
@@ -1169,7 +1250,7 @@ class ActionType(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 # class GpfControlType(Enum):
@@ -1210,7 +1291,7 @@ class ActionType(Enum):
 #         """
 #         :return:
 #         """
-#         return list(map(lambda c: c.value, cls))
+#         return list(enum_item.value for enum_item in cls)
 
 
 class DeviceType(Enum):
@@ -1368,7 +1449,7 @@ class DeviceType(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class SubObjectType(Enum):
@@ -1413,7 +1494,7 @@ class SubObjectType(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class TapChangerTypes(Enum):
@@ -1449,7 +1530,7 @@ class TapChangerTypes(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class BuildStatus(Enum):
@@ -1486,7 +1567,7 @@ class BuildStatus(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class StudyResultsType(Enum):
@@ -1542,7 +1623,7 @@ class StudyResultsType(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class AvailableTransferMode(Enum):
@@ -1579,7 +1660,7 @@ class AvailableTransferMode(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class InvestmentsEvaluationObjectives(Enum):
@@ -1618,7 +1699,7 @@ class InvestmentsEvaluationObjectives(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class LogSeverity(Enum):
@@ -1828,7 +1909,7 @@ class ResultTypes(Enum):
     BusReactivePowerB = 'QB: Reactive power B'
     BusReactivePowerC = 'QC: Reactive power C'
 
-    BusActivePowerIncrement = "ΔP: Active power increment"
+    BusActivePowerIncrement = "Î”P: Active power increment"
 
     BranchActivePowerFrom = 'Pf: Active power "from"'
     BranchActivePowerFromA = 'PfA: Active power "from" A'
@@ -1871,7 +1952,7 @@ class ResultTypes(Enum):
     BranchReactiveCurrentToC = 'Iit: Reactive current "to" C'
 
     BranchTapModule = 'm: Tap module'
-    BranchTapAngle = '𝜏: Tap angle'
+    BranchTapAngle = 'ðœ: Tap angle'
     BranchBeq = 'Beq: Equivalent susceptance'
 
     BranchLoading = 'Branch Loading'
@@ -1879,15 +1960,15 @@ class ResultTypes(Enum):
     BranchLoadingB = 'Branch Loading B'
     BranchLoadingC = 'Branch Loading C'
 
-    BranchVoltage = 'ΔV: Voltage modules drop'
-    BranchVoltageA = 'ΔV: Voltage modules drop A'
-    BranchVoltageB = 'ΔV: Voltage modules drop B'
-    BranchVoltageC = 'ΔV: Voltage modules drop C'
+    BranchVoltage = 'Î”V: Voltage modules drop'
+    BranchVoltageA = 'Î”V: Voltage modules drop A'
+    BranchVoltageB = 'Î”V: Voltage modules drop B'
+    BranchVoltageC = 'Î”V: Voltage modules drop C'
 
-    BranchAngles = 'Δθ: Voltage angles drop'
-    BranchAnglesA = 'Δθ: Voltage angles drop A'
-    BranchAnglesB = 'Δθ: Voltage angles drop B'
-    BranchAnglesC = 'Δθ: Voltage angles drop C'
+    BranchAngles = 'Î”Î¸: Voltage angles drop'
+    BranchAnglesA = 'Î”Î¸: Voltage angles drop A'
+    BranchAnglesB = 'Î”Î¸: Voltage angles drop B'
+    BranchAnglesC = 'Î”Î¸: Voltage angles drop C'
 
     BranchLosses = 'Branch losses'
 
@@ -1954,11 +2035,11 @@ class ResultTypes(Enum):
     BusVoltageModuleB = 'VB: Voltage module B'
     BusVoltageModuleC = 'VC: Voltage module C'
 
-    BusVoltageAngle = 'θ: Voltage angle'
+    BusVoltageAngle = 'Î¸: Voltage angle'
 
-    BusVoltageAngleA = 'θA: Voltage angle A'
-    BusVoltageAngleB = 'θB: Voltage angle B'
-    BusVoltageAngleC = 'θC: Voltage angle C'
+    BusVoltageAngleA = 'Î¸A: Voltage angle A'
+    BusVoltageAngleB = 'Î¸B: Voltage angle B'
+    BusVoltageAngleC = 'Î¸C: Voltage angle C'
 
     BusPower = 'Bus power'
     BusShadowPrices = 'Nodal shadow prices'
@@ -2522,7 +2603,7 @@ class VoltageLevelTypes(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class ContingencyOperationTypes(Enum):
@@ -2559,7 +2640,7 @@ class ContingencyOperationTypes(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class BranchGroupTypes(Enum):
@@ -2594,7 +2675,7 @@ class BranchGroupTypes(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class CascadeType(Enum):
@@ -2625,7 +2706,7 @@ class CascadeType(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 class DynamicIntegrationMethod(Enum):
     """
@@ -2656,7 +2737,7 @@ class DynamicIntegrationMethod(Enum):
 
     @classmethod
     def list(cls):
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class EmtSolverTypes(Enum):
@@ -2692,7 +2773,7 @@ class EmtSolverTypes(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 class RmsProblemTypes(Enum):
 
@@ -2724,7 +2805,7 @@ class RmsProblemTypes(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 class EmtProblemTypes(Enum):
 
@@ -2754,7 +2835,7 @@ class EmtProblemTypes(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
     
 class SmallSignalEmtBuildTypes(Enum):
     """
@@ -2787,7 +2868,7 @@ class SmallSignalEmtBuildTypes(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class EraSvdSolverType(Enum):
@@ -2821,7 +2902,7 @@ class EraSvdSolverType(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 
@@ -2854,7 +2935,7 @@ class RmsInitializationMethod(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class EmtInitializationMethod(Enum):
@@ -2891,7 +2972,7 @@ class EmtInitializationMethod(Enum):
 
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 
 class GridReductionMethod(Enum):
@@ -2987,6 +3068,9 @@ class VarPowerFlowRefferenceType(Enum):
     Iit = "Iit"  # Imaginary current at branch to end
 
     Vdc = "Vdc"  # Bus voltage for DC voltage in p.u.
+    Vf_dc = "Vf_dc"  # Branch from-side DC voltage in p.u.
+    Vt_dc = "Vt_dc"  # Branch to-side DC voltage in p.u.
+    DcPathModeSeed = "DcPathModeSeed"  # PF-derived discrete conduction seed for DC branch EMT devices.
     Idc = "Idc"  # Bus current for DC Bus in p.u.
 
     If_dc = "If_dc"  # Branch from current for DC Bus in p.u.
@@ -3482,7 +3566,7 @@ class BlockScopeMode(Enum):
         """
         :return:
         """
-        return list(map(lambda c: c.value, cls))
+        return list(enum_item.value for enum_item in cls)
 
 class BlockType(Enum):
     """
@@ -3588,7 +3672,13 @@ class ProceduralLogicType(Enum):
     AnalogFlipFlop = "analog_flipflop"
     PickupDropoff = "pickup_dropoff"
     ResetOnRisingEdge = "reset_on_rising_edge"
+    TimeDelay = "time_delay"
+    MovingAverage = "moving_average"
+    GradientLimiter = "gradient_limiter"
     DelayedThresholdLatch = "delayed_threshold_latch"
+    StartupHandover = "startup_handover"
+    ValveState = "valve_state"
+    ThreePhaseCarrierPwm = "three_phase_carrier_pwm"
 
     def __str__(self) -> str:
         return str(self.value)
@@ -3630,3 +3720,4 @@ class EmtInitializationStatus(Enum):
             return EmtInitializationStatus[s]
         except KeyError:
             return s
+

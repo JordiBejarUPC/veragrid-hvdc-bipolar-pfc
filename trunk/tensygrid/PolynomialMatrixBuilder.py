@@ -995,22 +995,8 @@ class PolynomialMatrixBuilder:
 
     def _split_EABC(self, EABC: sparse.csr_matrix) -> tuple:
         """
-        Partitions the combined linearized Jacobian block matrix into the canonical
-        descriptor state-space matrices E, A, and B.
-
-        Algorithmically, this function maps the global Jacobian back to the standard
-        differential algebraic form (E*dx/dt = A*x + B*u). It scans all system symbols
-        to classify the columns into states, time-derivatives, and control inputs. State
-        columns directly populate the A matrix, while input columns form the B matrix.
-        Crucially, it executes a rigorous heuristic and mapped search to pair each state
-        variable with its exact explicit derivative; the negated columns of these derivatives
-        are then assigned to the E (mass) matrix. The entire operation leverages fast
-        mutations using SciPy LIL format before finalizing into strict CSR matrices.
-
-        :param EABC: The combined structural matrix representing the full system Jacobian.
-        :type EABC: sps.csr_matrix
-        :return: A tuple containing the (E, A, B) numerical sparse state-space matrices.
-        :rtype: tuple
+        Partitions the combined linearized Jacobian block matrix into E, A, and B.
+        Zero-RAM overhead implementation using Sparse Projection Matrices instead of LIL.
         """
         idx_dx, idx_vars, idx_u = [], [], []
 
@@ -1028,10 +1014,12 @@ class PolynomialMatrixBuilder:
         cols_to_take = len(idx_vars)
         dim = max(n_eqs, cols_to_take)
 
-        E = sparse.lil_matrix((dim, dim))
-        A = sparse.lil_matrix((dim, dim))
+        # 1. Build A directly by slicing EABC and resizing (Ultra-fast, minimal RAM)
+        A = EABC[:, idx_vars[:cols_to_take]].copy()
+        A.resize((dim, dim))
 
-        A[:n_eqs, :cols_to_take] = EABC[:, idx_vars[:cols_to_take]]
+        # 2. Build E using a Sparse Projection Matrix
+        P_row, P_col, P_val = [], [], []
 
         for i in range(cols_to_take):
             state_sym = self.all_symbols[idx_vars[i]]
@@ -1063,16 +1051,32 @@ class PolynomialMatrixBuilder:
                         break
 
             if deriv_idx != -1 and deriv_idx in idx_dx:
-                E[:n_eqs, i] = -EABC[:, deriv_idx]
+                P_row.append(deriv_idx)
+                P_col.append(i)
+                P_val.append(-1.0)  # Extract and negate the derivative column
 
+        # Build Projection matrix P in pure CSC format
+        P = sparse.csc_matrix((P_val, (P_row, P_col)), shape=(EABC.shape[1], dim))
+
+        # E is instantly computed by C++ backend (EABC @ P)
+        E = (EABC @ P).tocsr()
+        E.resize((dim, dim))
+
+        # 3. Build B directly
         if len(idx_u) > 0:
-            B = sparse.lil_matrix((dim, len(idx_u)))
-            B[:n_eqs, :] = EABC[:, idx_u]
-            B = B.tocsr()
+            B = EABC[:, idx_u].copy()
+            B.resize((dim, len(idx_u)))
         else:
             B = sparse.csr_matrix((dim, 0))
 
-        return E.tocsr(), A.tocsr(), B
+        # --- FLOATING POINT NOISE CLEANUP ---
+        A.data[np.abs(A.data) < 1e-10] = 0.0
+        A.eliminate_zeros()
+
+        E.data[np.abs(E.data) < 1e-10] = 0.0
+        E.eliminate_zeros()
+
+        return E, A, B
 
     def save_state_space(self, file_prefix: str = "system") -> None:
         """
@@ -1154,11 +1158,9 @@ class PolynomialMatrixBuilder:
             SPARSE_THRESHOLD = 2000
             used_sparse = False
 
-            # Automatically route large systems through the dedicated sparse routine.
             if n_dims >= SPARSE_THRESHOLD:
                 k_modes = min(100, n_dims - 2)
                 if k_modes > 0:
-                    # USA ESTO: Llamada directa a través de la instancia (self)
                     try:
                         sparse_res = self.compute_stability_sparse(sigma=2.0, k_modes=k_modes)
                         evals_s, evecs_right_s, evecs_left_s, p_s, stable_s, margin_s = sparse_res
@@ -1167,15 +1169,12 @@ class PolynomialMatrixBuilder:
                             print(f"[*] Sparse method not available or error: {e}")
                         sparse_res = (None, None, None, None, False, 0.0)
 
-                    # Validación de resultados
                     if (
-                        evals_s is not None
-                        and evecs_right_s is not None
-                        and evecs_left_s is not None
-                        and len(evals_s) > 0
+                            evals_s is not None
+                            and evecs_right_s is not None
+                            and evecs_left_s is not None
+                            and len(evals_s) > 0
                     ):
-                        # Nota: He corregido el orden de retorno para que coincida con tu desempaquetado
-                        # (evals, V, W, P, stable, margin) -> (evals, W, V, P, stable, margin)
                         return evals_s, evecs_left_s, evecs_right_s, p_s, stable_s, margin_s
 
                 if self.verbose:
@@ -1189,7 +1188,6 @@ class PolynomialMatrixBuilder:
                     spinner = LoadingSpinner(f"[*] Diagonalizing Dense Matrix (N={n_dims})")
                     spinner.start()
 
-                # OpenBLAS / MKL handles threading automatically in C here
                 evals, evecs_left_raw, evecs_right_raw = linalg.eig(A_dense, b=E_dense, left=True, right=True)
 
                 if self.verbose:
@@ -1207,10 +1205,19 @@ class PolynomialMatrixBuilder:
             n_states, n_modes = evecs_right.shape
             participation_matrix = np.zeros((n_states, n_modes), dtype=float)
 
+            # DAE FORMULA FIX: Mapping by Physical States (Columns), NOT Equations
             for m in range(n_modes):
-                mag_product = np.abs(evecs_left[:, m]) * np.abs(evecs_right[:, m])
-                total_mag = np.sum(mag_product)
-                if total_mag > 1e-12: participation_matrix[:, m] = mag_product / total_mag
+                # P_k = V_k * (w^H * E)_k
+                w_H = evecs_left[:, m].conj()
+                w_H_E = w_H @ self.E  # This yields a row vector mapping to states
+
+                participation_raw = evecs_right[:, m] * w_H_E
+                normalization = np.sum(participation_raw)
+
+                if abs(normalization) > 1e-16:
+                    participation_matrix[:, m] = np.abs(participation_raw / normalization)
+                else:
+                    participation_matrix[:, m] = 0.0
 
             max_real = float(np.max(np.real(evals)))
             is_stable = max_real < 1e-6
@@ -1279,30 +1286,36 @@ class PolynomialMatrixBuilder:
 
         print(f"    State-space dimension: {n_dims}")
 
+        # (Asegúrate de tener esta parte dentro de compute_stability_sparse)
         M_shift = A_csr - sigma * E_csr
-        M_shift_lil = M_shift.tolil()
 
-        # Structural regularization
+        # Structural regularization (WITHOUT LIL MATRIX)
         row_norms = np.array(np.abs(M_shift).max(axis=1).todense()).flatten()
         col_norms = np.array(np.abs(M_shift).max(axis=0).todense()).flatten()
 
         zero_rows = np.where(row_norms < 1e-10)[0]
         zero_cols = np.where(col_norms < 1e-10)[0]
+        all_zeros = np.unique(np.concatenate((zero_rows, zero_cols)))
 
-        if len(zero_rows) > 0 or len(zero_cols) > 0:
-            print(f"    Patching {len(zero_rows)} empty rows and {len(zero_cols)} empty columns...")
-            for r in zero_rows: M_shift_lil[r, r] = -1.0
-            for c in zero_cols: M_shift_lil[c, c] = -1.0
+        if len(all_zeros) > 0:
+            print(f"    Patching {len(all_zeros)} empty structural nodes (Zero-RAM Diagonal Addition)...")
+            # Create a diagonal array filled with zeros, and put -1.0 only at empty spots
+            patch_diag = np.zeros(n_dims)
+            patch_diag[all_zeros] = -1.0
 
-        # 1. LU factorization (the heavy step)
+            # Sparse diagonal matrix
+            D = sparse.diags(patch_diag, format='csr')
+
+            # Add directly without mutating sparsity structure manually
+            M_shift = M_shift + D
+
         print(f"    Factoring (A - {sigma}*E) using SuperLU...")
         try:
-            lu_solver = splu(M_shift_lil.tocsc())
+            lu_solver = splu(M_shift.tocsc())
         except Exception as e:
             print(f"    [!] SuperLU factorization error: {e}")
             return [], None, None, None, False, 0.0
 
-        # 2. Right operator (V eigenvectors)
         def matvec_right(v):
             y = E_csr.dot(v)
             return lu_solver.solve(y.real) + 1j * lu_solver.solve(y.imag)
@@ -1313,13 +1326,11 @@ class PolynomialMatrixBuilder:
 
         def matvec_left(v):
             y = E_csr.T.dot(v)
-            # Use trans='T' to solve the transposed system almost for free
             return lu_solver.solve(y.real, trans='T') + 1j * lu_solver.solve(y.imag, trans='T')
 
         OP_L = LinearOperator((n_dims, n_dims), matvec=matvec_left, dtype=complex)
 
         try:
-            print("****************Starting parallel ARPACK solves...")
             with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
                 future_r = executor.submit(eigs, OP_R, k=k_modes, which='LM')
                 future_l = executor.submit(eigs, OP_L, k=k_modes, which='LM')
@@ -1332,15 +1343,12 @@ class PolynomialMatrixBuilder:
         evals_R = sigma + (1.0 / evals_nu_R)
         evals_L = sigma + (1.0 / evals_nu_L)
 
-        # 4. Mode matching
-        # ARPACK can return modes in a different order. Use the Hungarian algorithm to align them.
         from scipy.optimize import linear_sum_assignment
         dist_matrix = np.abs(evals_R[:, None] - evals_L[None, :])
         row_ind, col_ind = linear_sum_assignment(dist_matrix)
 
         evecs_left_matched = evecs_left_raw[:, col_ind]
 
-        # 5. Transform and filter to physical poles
         valid_nu = np.abs(evals_nu_R) > 1e-10
         evals = evals_R[valid_nu]
         V = evecs_right_raw[:, valid_nu]
@@ -1351,11 +1359,22 @@ class PolynomialMatrixBuilder:
         V = V[:, finite_mask]
         W = W[:, finite_mask]
 
-        # 6. Participation matrix calculation: P_ji = (W_ji * V_ji) / (W_i^T * V_i)
-        dot_products = np.sum(W * V, axis=0)
-        participation_matrix = (W * V) / dot_products
+        # --- DAE FORMULA FIX FOR SPARSE MATRICES ---
+        # Formula: P_ki = V_ki * (W_i^H * E)_k
+        E_T = E_csr.T
+        W_conj = np.conj(W)
 
-        # 7. Stability evaluation
+        # (W^H * E)^T = E^T * conj(W)
+        E_T_W_conj = E_T.dot(W_conj)
+
+        # Element-wise product ensures we map onto the states correctly
+        participation_raw = V * E_T_W_conj
+
+        dot_products = np.sum(participation_raw, axis=0)
+        dot_products[np.abs(dot_products) < 1e-16] = 1.0  # Prevent div-by-zero
+
+        participation_matrix = np.abs(participation_raw / dot_products)
+
         margin = float(np.max(evals.real)) if len(evals) > 0 else 0.0
         stable = margin <= 1e-5
 

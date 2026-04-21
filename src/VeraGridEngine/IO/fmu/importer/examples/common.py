@@ -328,7 +328,15 @@ def _build_rms_demo_grid() -> tuple[MultiCircuit, Load]:
     initialize_bus_rms(bus_load, vf=grid.var_factory)
 
     line: Line = Line(name="line_0_1", bus_from=bus_slack, bus_to=bus_load, r=0.03, x=0.07, b=0.03, rate=900.0)
-    generator: Generator = Generator(name="Gen0", P=10.0, vset=1.0, Snom=900.0, x1=0.86138701, r1=0.3, freq=50.0)
+    generator: Generator = Generator(
+        name="Gen0",
+        P=10.0,
+        vset=1.0,
+        Snom=900.0,
+        x1=0.86138701,
+        r1=0.3,
+        freq=50.0,
+    )
     load: Load = Load(name="ImportedLoad", P=10.0, Q=1.0)
 
     line.rms_model = get_line_rms_template(grid.var_factory).block

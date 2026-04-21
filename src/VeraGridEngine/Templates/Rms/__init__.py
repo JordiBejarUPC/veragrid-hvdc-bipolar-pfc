@@ -14,3 +14,4 @@ from VeraGridEngine.Templates.Rms.load_phasor_current_rms_template import get_lo
 from VeraGridEngine.Templates.Rms.genqec_phasor_rms_template import get_complete_generator_template_phasor
 from VeraGridEngine.Templates.Rms.transformer_rms_template import initialize_trafo_rms
 from VeraGridEngine.Templates.Rms.shunt_template import get_shunt_template
+from VeraGridEngine.Templates.Rms.genqec_phasor_rms_template import get_genqec_phasor

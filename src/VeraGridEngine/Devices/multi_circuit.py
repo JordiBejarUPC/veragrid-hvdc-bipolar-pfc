@@ -15,7 +15,6 @@ import networkx as nx
 from matplotlib import pyplot as plt
 from scipy.sparse import csc_matrix, lil_matrix
 
-from VeraGridEngine import BusGraphicType
 from VeraGridEngine.Devices.assets import Assets
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.basic_structures import IntVec, Vec, Mat, CxVec, IntMat, CxMat, BoolVec
@@ -24,7 +23,8 @@ import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES, AREA_TYPES, BRANCH_TYPES
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Topology.topology import find_different_states
-from VeraGridEngine.enumerations import DeviceType, ActionType, SubObjectType, ConverterControlType, ExternalGridMode
+from VeraGridEngine.enumerations import (DeviceType, ActionType, SubObjectType, ConverterControlType, ExternalGridMode,
+                                         BusGraphicType)
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import compare_blocks
 
@@ -1517,8 +1517,6 @@ class MultiCircuit(Assets):
                             devices_by_type[elm.device_type].append(elm)
 
         return groups
-
-
 
     def get_injection_devices_grouped_by_bus(self) -> Dict[dev.Bus, Dict[DeviceType, List[INJECTION_DEVICE_TYPES]]]:
         """
@@ -3327,8 +3325,6 @@ class MultiCircuit(Assets):
                 logger.add_error("Missing EMT model",
                                  device_class=elm.device_type.value,
                                  device=elm.name)
-
-
 
         for elm in self.get_injection_devices_iter():
             if elm.emt_model.empty():

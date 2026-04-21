@@ -26,10 +26,9 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 
 
 class FakeGrid:
-    __slots__ = ("var_factory")
+    __slots__ = ("var_factory",)
 
     def __init__(self) -> None:
-
 
         self.var_factory = VarFactory(name="UserApiVarFactory")
 

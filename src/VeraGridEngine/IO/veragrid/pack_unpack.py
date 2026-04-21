@@ -1846,8 +1846,8 @@ def parse_veragrid_data(data: VERAGRID_FILE_TYPE,
                                                       devices=devices,
                                                       logger=logger)
                 else:
-                    # branch is a legacy structure, so we can avoid reporting its absence
-                    if object_type_key != 'branch':
+                    # Legacy and optional sections should not generate warnings when absent.
+                    if object_type_key not in {'branch', 'fmu_template'}:
                         logger.add_warning(msg=f'No data for {object_type_key}')
 
                 if progress_func is not None:

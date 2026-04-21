@@ -2,13 +2,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-from typing import Dict, List, Callable
+from typing import Dict, List, Callable, Any
 import time
 import numpy as np
 import pandas as pd
 import scipy.sparse as sp
 
-from VeraGridEngine import ParamPowerFlowRefferenceType
+from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise)
@@ -148,6 +148,7 @@ class RmsProblemDae(RmsProblemTemplate):
         self._variable_parameters_values: Vec | None = None
         self._last_variable_parameters_values: Vec | None = None
         self._constant_params: Vec | None = None
+        self._block_boundary_updater: Any | None = None
         self._fmu_cs_adapters: List[object] = list()
         self._fmu_cs_initialized: bool = False
         self._fmu_me_adapters: List[object] = list()
@@ -918,6 +919,10 @@ class RmsProblemDae(RmsProblemTemplate):
 
         self._constant_params = np.array([const.value for const in self._parameters_values])
 
+        from VeraGridEngine.Utils.procedural_logic import build_boundary_updater_from_block
+
+        self._block_boundary_updater = build_boundary_updater_from_block(self)
+
         if self.options.verbose > 0:
             print(f"\nTotal compile time: {sum(timings.values()):.4f} s")
 
@@ -991,6 +996,17 @@ class RmsProblemDae(RmsProblemTemplate):
             self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
             self._uid2idx_event_params[ep.uid] = self._n_event_params
             self._variable_parameters.append(ep)
+            self._event_parameters_eqs0.append(eq)
+            self._n_event_params += 1
+
+        for mode_var, eq in mdl.mode_dict.items():
+            if mode_var.uid in self._uid2idx_event_params:
+                raise ValueError(f"Mode parameter '{mode_var.name}' (uid={mode_var.uid}) is already registered in the system. "
+                                 f"Previous device may have created a duplicate runtime parameter.")
+            self._compiler_names_dict[mode_var.uid] = f"{self.VARIABLE_PARAMS_NAME}[{self._n_event_params}]"
+            self._alias_names_dict[mode_var.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
+            self._uid2idx_event_params[mode_var.uid] = self._n_event_params
+            self._variable_parameters.append(mode_var)
             self._event_parameters_eqs0.append(eq)
             self._n_event_params += 1
 
@@ -1105,6 +1121,22 @@ class RmsProblemDae(RmsProblemTemplate):
         return self._uid2idx_vars
 
     @property
+    def uid2idx_event_params(self):
+        """
+        Return the runtime parameter position map.
+        """
+
+        return self._uid2idx_event_params
+
+    @property
+    def glob_time(self) -> Var:
+        """
+        Return the global time symbolic variable.
+        """
+
+        return self._glob_time
+
+    @property
     def algebraic_vars(self):
         """
         :return:
@@ -1161,7 +1193,14 @@ class RmsProblemDae(RmsProblemTemplate):
             x[i] = val
         return x
 
-    def update_variable_params(self, t: float):
+    def get_parameters_values(self) -> List[Const]:
+        """
+        Return the constant parameter values used by procedural logic bindings.
+        """
+
+        return self._parameters_values
+
+    def update_variable_params(self, t: float, x_snapshot: Vec | None = None):
         """
         Update the variable parameters
         :param t:
@@ -1171,6 +1210,19 @@ class RmsProblemDae(RmsProblemTemplate):
             raise ValueError("_event_params_fn is None")
 
         self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
+
+        if self._block_boundary_updater is not None and x_snapshot is not None:
+            constant_params: Vec
+            if self._constant_params is None:
+                constant_params = np.zeros(0, dtype=float)
+            else:
+                constant_params = self._constant_params
+
+            full_params = np.concatenate((self._variable_parameters_values.copy(), constant_params))
+            self._block_boundary_updater.update(float(t), x_snapshot, full_params)
+            self._variable_parameters_values[:] = full_params[:self.get_variable_parameter_number()]
+        else:
+            pass
 
     def initialize_fmu_cs_devices(self, x_snapshot: Vec, t: float = 0.0) -> None:
         """

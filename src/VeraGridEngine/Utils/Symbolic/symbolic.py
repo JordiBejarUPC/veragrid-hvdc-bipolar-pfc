@@ -101,12 +101,16 @@ class Comparison:
         :return: Equivalent symbolic expression.
         """
         rhs_expr: Expr = _to_expr(self.rhs)
-        if self.op == CmpOp.LE or self.op == CmpOp.LT:
-            return heaviside(rhs_expr - self.lhs)
-        elif self.op == CmpOp.GE or self.op == CmpOp.GT:
-            return heaviside(self.lhs - rhs_expr)
+        eps: Const = Const(1e-6)
+        if self.op == CmpOp.LT:
+            return heaviside(rhs_expr - self.lhs - eps)
+        elif self.op == CmpOp.LE:
+            return heaviside(rhs_expr - self.lhs + eps)
+        elif self.op == CmpOp.GT:
+            return heaviside(self.lhs - rhs_expr - eps)
+        elif self.op == CmpOp.GE:
+            return heaviside(self.lhs - rhs_expr + eps)
         elif self.op == CmpOp.EQ:
-            eps: Const = Const(1e-6)
             return heaviside(self.lhs - rhs_expr + eps) * heaviside(rhs_expr - self.lhs + eps)
         else:
             raise ValueError(f"operator not supported {self.op}")
@@ -1050,6 +1054,11 @@ def _evaluate_unary_function(op: str, value: NUMBER) -> NUMBER:
             return np.log(value)
         else:
             return math.log(value)
+    elif op == "log10":
+        if np.iscomplexobj(value):
+            return np.log10(value)
+        else:
+            return math.log10(value)
     elif op == "sqrt":
         return math.sqrt(value)
     elif op == "asin":
@@ -1062,6 +1071,14 @@ def _evaluate_unary_function(op: str, value: NUMBER) -> NUMBER:
         return math.sinh(value)
     elif op == "cosh":
         return math.cosh(value)
+    elif op == "tanh":
+        return math.tanh(value)
+    elif op == "floor":
+        return math.floor(value)
+    elif op == "ceil":
+        return math.ceil(value)
+    elif op == "round":
+        return builtins.round(value)
     elif op == "real":
         return np.real(value)
     elif op == "imag":
@@ -1097,6 +1114,8 @@ def _differentiate_unary_function(op: str, u: Expr, du: Expr) -> Expr:
         return exp_diff(u, du)
     elif op == "log":
         return log_diff(u, du)
+    elif op == "log10":
+        return log10_diff(u, du)
     elif op == "sqrt":
         return sqrt_diff(u, du)
     elif op == "asin":
@@ -1109,6 +1128,10 @@ def _differentiate_unary_function(op: str, u: Expr, du: Expr) -> Expr:
         return sinh_diff(u, du)
     elif op == "cosh":
         return cosh_diff(u, du)
+    elif op == "tanh":
+        return tanh_diff(u, du)
+    elif op in {"floor", "ceil", "round"}:
+        return Const(0.0)
     elif op == "abs":
         return abs_diff(u, du)
     elif op == "heaviside":
@@ -1127,7 +1150,7 @@ def _evaluate_binary_function(name: str, arg1: NUMBER, arg2: NUMBER) -> NUMBER:
     :return: Numeric function result.
     """
     if name == "atan2":
-        return np.arctan2(arg2, arg1)
+        return np.arctan2(arg1, arg2)
     elif name == "min":
         return np.minimum(arg1, arg2)
     elif name == "max":
@@ -1289,6 +1312,14 @@ def log_diff(u: Expr, du: Expr) -> Expr:
     return du / u
 
 
+def log10(x: Expr) -> Expr:
+    return Func(_to_expr(x), "log10")
+
+
+def log10_diff(u: Expr, du: Expr) -> Expr:
+    return du / (u * Const(math.log(10.0)))
+
+
 def sqrt(x: Expr) -> Expr:
     return Func(_to_expr(x), "sqrt")
 
@@ -1335,6 +1366,35 @@ def sinh_diff(u: Expr, du: Expr) -> Expr:
 
 def cosh_diff(u: Expr, du: Expr) -> Expr:
     return sinh(u) * du
+
+
+def tanh(x: Expr) -> Expr:
+    return Func(_to_expr(x), "tanh")
+
+
+def tanh_diff(u: Expr, du: Expr) -> Expr:
+    return (Const(1) - tanh(u) ** Const(2)) * du
+
+
+def floor(x: Expr) -> Expr:
+    return Func(_to_expr(x), "floor")
+
+
+def ceil(x: Expr) -> Expr:
+    return Func(_to_expr(x), "ceil")
+
+
+def round_expr(x: Expr) -> Expr:
+    return Func(_to_expr(x), "round")
+
+
+def round(x: Expr) -> Expr:
+    return round_expr(x)
+
+
+def frac(x: Expr) -> Expr:
+    expr = _to_expr(x)
+    return expr - floor(expr)
 
 
 def heaviside(x: Expr) -> Expr:
@@ -1531,7 +1591,7 @@ class Func2(Expr):
             return Const(0)
 
         if self.name == "atan2":
-            return (x * dy - y * dx) / (x ** Const(2) + y ** Const(2))
+            return (y * dx - x * dy) / (x ** Const(2) + y ** Const(2))
         if self.name == "min":
             return heaviside(y - x) * dx + heaviside(x - y) * dy
         if self.name == "max":
