@@ -22,7 +22,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Utils.procedural_logic import selfix
 from VeraGridEngine.enumerations import DeviceType
 
-def build_default_template_name() -> str:
+def build_typ_203__k_1_std_1_sta_1_stb_s_p_default_template_name() -> str:
     """
     Return the canonical runtime name for this standalone template.
 
@@ -30,7 +30,7 @@ def build_default_template_name() -> str:
     """
     return 'K(1+sTd)/((1+sTa)(1+sTb)s) (p__203'
 
-def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
+def build_typ_203__k_1_std_1_sta_1_stb_s_p_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
     """
     Materialize the standalone EMT template.
 
@@ -40,7 +40,7 @@ def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
     """
     template_name: str
     if name is None:
-        template_name = build_default_template_name()
+        template_name = build_typ_203__k_1_std_1_sta_1_stb_s_p_default_template_name()
     else:
         template_name = name
 

@@ -21,7 +21,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Expr
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import DeviceType
 
-def build_default_template_name() -> str:
+def build_typ_169__multiply_k_default_template_name() -> str:
     """
     Return the canonical runtime name for this standalone template.
 
@@ -29,7 +29,7 @@ def build_default_template_name() -> str:
     """
     return 'Multiply (-K)__169'
 
-def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
+def build_typ_169__multiply_k_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
     """
     Materialize the standalone EMT template.
 
@@ -39,7 +39,7 @@ def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
     """
     template_name: str
     if name is None:
-        template_name = build_default_template_name()
+        template_name = build_typ_169__multiply_k_default_template_name()
     else:
         template_name = name
 
