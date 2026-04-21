@@ -8,6 +8,20 @@ Small Signal Analysis for Phasor-based RMS Grid.
 
 This script creates the phasor problem manually and injects it into the SmallSignalStabilityRmsDriver.
 """
+
+import sys
+from pathlib import Path
+project_base = Path(__file__).resolve().parents[2]
+
+src_path = project_base / "src"
+
+if src_path.exists():
+    if str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+else:
+    print(f"[ERROR] Engine not found: {src_path}")
+    sys.exit(1)
+
 import sys
 import time, pickle, os
 from typing import Tuple, Any, List
@@ -34,13 +48,14 @@ from scipy.optimize import linear_sum_assignment
 #GRID = "Texas 2000 + VSC"
 #GRID = "IEEE 14.xlsx"
 #GRID = "case_ACTIVSg2000.matpower"
-GRID = "case_ACTIVSg2000.matpower"
-USE_CACHED_BUILDER = True
+grid_folder = project_base / "Grids_and_profiles" / "grids"
+GRID = "IEEE25.gridcal"
+USE_CACHED_BUILDER = False
 BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
 FAST_MODE = True
-FAST_GRID_PATH = f'Grids_and_profiles/grids/{GRID}' #'trunk/tensygrid/grids/IEEE_14-2.gridcal'
-FULL_GRID_PATH = f'Grids_and_profiles/grids/{GRID}'
+FULL_GRID_PATH = str(grid_folder / GRID)
+FAST_GRID_PATH = FULL_GRID_PATH
 PRINT_ALL_BUSES = False # not FAST_MODE
 ENABLE_POST_COMPARE_PLOT = False # not FAST_MODE
 RUN_DYNAMIC_STEP = False
