@@ -7,16 +7,20 @@ from __future__ import annotations
 
 import math
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, TYPE_CHECKING
 
 import numpy as np
 
-from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
-from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import BoundaryUpdateWrapper
+from VeraGridEngine.Utils.emt_boundary_update_wrapper import BoundaryUpdateWrapper
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import CmpOp, Comparison, Const, Expr, Var
 from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.enumerations import ProceduralLogicType
+
+if TYPE_CHECKING:
+    from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
+else:
+    pass
 
 
 ProceduralLogicData = Dict[str, Any]
