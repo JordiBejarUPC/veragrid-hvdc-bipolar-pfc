@@ -13,6 +13,19 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Const
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
+import VeraGridEngine.Templates.BasicBlockCatalog.Functions as fun
+
+
+def get_basic_block_catalog():
+    return {
+        "Native": {
+            "Lookup and Tables": {
+                "Arrays and Matrices": {
+                    ("typ2_a_x_c1_x_c2", fun.get_typ2_a_x_c1_x_c2)
+                }
+            }
+        }
+    }
 
 
 class BasicBlockCatalogTables:
@@ -56,6 +69,9 @@ class BasicBlockCatalogTables:
 
         :returns: None.
         """
+
+
+
         self._pending_template_reason: str = "template_has_no_executable_content"
         self._category_lookup_arrays_and_matrices: tuple[str, str, str] = ("Native", "Lookup and Tables", "Arrays and Matrices")
         self._category_transforms_clarke_park_dq0: tuple[str, str, str] = ("Native", "Transforms", "Clarke, Park and dq0")

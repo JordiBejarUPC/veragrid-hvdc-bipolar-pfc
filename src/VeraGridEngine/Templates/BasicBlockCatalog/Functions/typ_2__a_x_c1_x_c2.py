@@ -24,7 +24,7 @@ def build_default_template_name() -> str:
     """
     return 'a(x-c1)(x-c2)__2'
 
-def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
+def get_typ2_a_x_c1_x_c2(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
     """
     Materialize the standalone EMT template.
 
