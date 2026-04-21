@@ -4,8 +4,8 @@ from typing import Any
 
 from PySide6 import QtCore, QtGui, QtWidgets
 
-from VeraGrid.Gui.DynamicModelEditor.detachable_tab_widget import DynamicEditorAddButton
-from VeraGrid.Gui.DynamicModelEditor.detachable_tab_widget import DetachableEditorTabWidget
+from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import DynamicEditorAddButton
+from VeraGrid.Gui.DynamicModelEditor.dyn_editor_multiwindow_engine import DetachableEditorTabWidget
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace import Ui_DynamicEditorWorkspaceWindow
 
 
