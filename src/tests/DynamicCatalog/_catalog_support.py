@@ -70,10 +70,9 @@ def _resolve_descriptor(template_identifier: str) -> BasicBlockTemplateDescripto
         pass
 
     if template_identifier.isdigit():
-        prefix: str = f"typ_{template_identifier}__"
         candidate: BasicBlockTemplateDescriptor
         for candidate in descriptor_entries():
-            if candidate.module_name.startswith(prefix):
+            if candidate.typ_id == template_identifier:
                 return candidate
             else:
                 pass

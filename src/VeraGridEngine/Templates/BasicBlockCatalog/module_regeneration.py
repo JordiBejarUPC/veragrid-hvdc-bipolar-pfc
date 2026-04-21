@@ -1,3 +1,8 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+
 from __future__ import annotations
 
 import importlib.util
@@ -103,12 +108,26 @@ class BasicBlockStandaloneModuleEmitter:
         """
         lines: list[str] = list()
 
+        self._append_module_license_header(lines)
         self._append_module_docstring(lines)
         self._append_imports(lines)
         self._append_default_name_function(lines)
         self._append_get_template_function(lines)
 
         return "\n".join(lines) + "\n"
+
+    def _append_module_license_header(self, lines: list[str]) -> None:
+        """
+        Append the standard MPL header used by the repository.
+
+        :param lines: Output line buffer.
+        :returns: None.
+        """
+        lines.append("# This Source Code Form is subject to the terms of the Mozilla Public")
+        lines.append("# License, v. 2.0. If a copy of the MPL was not distributed with this")
+        lines.append("# file, You can obtain one at https://mozilla.org/MPL/2.0/.")
+        lines.append("# SPDX-License-Identifier: MPL-2.0")
+        lines.append("")
 
     def _append_module_docstring(self, lines: list[str]) -> None:
         """

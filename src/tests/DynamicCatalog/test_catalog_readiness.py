@@ -89,6 +89,23 @@ def read_template_module_text(descriptor: BasicBlockTemplateDescriptor) -> str:
     return template_path.read_text(encoding="utf-8")
 
 
+def build_expected_generated_template_license_header() -> str:
+    """
+    Return the standard MPL header expected at the top of generated templates.
+
+    :returns: Generated-template license header text.
+    """
+    return "\n".join(
+        (
+            "# This Source Code Form is subject to the terms of the Mozilla Public",
+            "# License, v. 2.0. If a copy of the MPL was not distributed with this",
+            "# file, You can obtain one at https://mozilla.org/MPL/2.0/.",
+            "# SPDX-License-Identifier: MPL-2.0",
+            "",
+        )
+    )
+
+
 @pytest.mark.filterwarnings("error")
 def test_catalog_artifacts_exist() -> None:
     """
@@ -182,7 +199,8 @@ def test_exported_template_module_text_is_clean(descriptor: BasicBlockTemplateDe
 
     module_text: str = read_template_module_text(descriptor)
 
-    assert module_text.startswith('"""')
+    assert module_text.startswith(build_expected_generated_template_license_header())
+    assert "\n\"\"\"\nStandalone EMT template for the basic catalog block" in module_text
     assert "AUTO-GENERATED EMT TEMPLATE FROM DGS" not in module_text
     assert "# Source:" not in module_text
     assert "C:\\Users\\" not in module_text
