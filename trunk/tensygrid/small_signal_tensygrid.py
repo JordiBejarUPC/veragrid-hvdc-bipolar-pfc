@@ -45,7 +45,7 @@ else:
 #GRID = "IEEE 14.xlsx"
 #GRID = "case_ACTIVSg2000.matpower"
 grid_folder = project_base / "Grids_and_profiles" / "grids"
-GRID = "IEEE25.gridcal"
+GRID = "IEEE 118.xlsx"
 USE_CACHED_BUILDER = False
 BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
