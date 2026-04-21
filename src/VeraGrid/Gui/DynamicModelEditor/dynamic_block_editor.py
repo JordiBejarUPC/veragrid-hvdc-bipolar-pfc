@@ -19,22 +19,21 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
                                QColorDialog, QPlainTextEdit, QCheckBox)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter,
                            QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
-from PySide6.QtCore import QAbstractItemModel, QLineF
-from PySide6.QtCore import Qt, QPointF, QModelIndex, Signal, QAbstractTableModel
+from PySide6.QtCore import Qt, QPointF, Signal
 
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, \
     DynamicSimulationMode
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
+from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template, get_bus_emt_algebraic_vars
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import PowerFactoryBasicTemplateDescriptor
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_editor_ready_powerfactory_basic_catalog_descriptors
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import load_powerfactory_basic_catalog_template
+from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
+from VeraGridEngine.Templates.BasicBlockCatalog import get_editor_ready_basic_block_catalog_descriptors
+from VeraGridEngine.Templates.BasicBlockCatalog import load_basic_block_catalog_template
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
@@ -49,7 +48,6 @@ from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import BlockType
 from dataclasses import dataclass
 
-# from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
 
 BLOCK_BORDER: QColor = QColor("#36536b")
 BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
@@ -644,7 +642,7 @@ def is_supported_library_payload(item_data: object) -> bool:
     """
     if isinstance(item_data, BlockType):
         return True
-    elif isinstance(item_data, PowerFactoryBasicTemplateDescriptor):
+    elif isinstance(item_data, BasicBlockTemplateDescriptor):
         return True
     elif isinstance(item_data, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
         return True
@@ -3678,9 +3676,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 raise TypeError(f"Category '{head}' is already used as a leaf collection")
 
-    def build_powerfactory_basic_catalog_branch(self) -> Dict[str, Any]:
+    def build_basic_block_catalog_branch(self) -> Dict[str, Any]:
         """
-        Build the nested branch used to expose the imported PowerFactory basic catalog.
+        Build the nested branch used to expose the imported basic block catalog.
         """
 
         branch: Dict[str, Any] = {
@@ -3730,8 +3728,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             },
         }
 
-        descriptor: PowerFactoryBasicTemplateDescriptor
-        for descriptor in get_editor_ready_powerfactory_basic_catalog_descriptors():
+        descriptor: BasicBlockTemplateDescriptor
+        for descriptor in get_editor_ready_basic_block_catalog_descriptors():
             category_path: tuple[str, ...] = descriptor.category_path[1:] if descriptor.category_path and descriptor.category_path[0] == "Native" else descriptor.category_path
             if len(category_path) == 0:
                 category_path = ("Miscellaneous", "Other")
@@ -3771,7 +3769,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Abs", BlockType.ABS),
             ],
         }
-        native_branch.update(self.build_powerfactory_basic_catalog_branch())
+        native_branch.update(self.build_basic_block_catalog_branch())
 
         return {
             "Native": native_branch,
@@ -3816,7 +3814,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.FmuTemplateDevice.value]))
         elif isinstance(payload, RmsModelTemplate):
             item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.RmsModelTemplateDevice.value]))
-        elif isinstance(payload, (EmtModelTemplate, PowerFactoryBasicTemplateDescriptor)):
+        elif isinstance(payload, (EmtModelTemplate, BasicBlockTemplateDescriptor)):
             item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.EmtModelTemplateDevice.value]))
         else:
             pass
@@ -3889,7 +3887,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         return model
 
     def get_library_payload_from_mime_data(self,
-                                           mime_data: QtCore.QMimeData) -> BlockType | PowerFactoryBasicTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None:
+                                           mime_data: QtCore.QMimeData) -> BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None:
         """
         Decode the dragged library payload from the tree-view mime payload.
 
@@ -3905,7 +3903,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             if isinstance(payload, BlockType):
                 return payload
-            elif isinstance(payload, PowerFactoryBasicTemplateDescriptor):
+            elif isinstance(payload, BasicBlockTemplateDescriptor):
                 return payload
             elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
                 return payload
@@ -4153,7 +4151,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         return block_item
 
     def create_library_payload_item(self,
-                                    payload: BlockType | PowerFactoryBasicTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
+                                    payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
                                     x_pos: float,
                                     y_pos: float) -> BlockItem | None:
         """
@@ -4174,8 +4172,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return self.create_emt_wizard_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, BlockType):
             return self.create_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-        elif isinstance(payload, PowerFactoryBasicTemplateDescriptor):
-            template: EmtModelTemplate = load_powerfactory_basic_catalog_template(payload, self.var_factory)
+        elif isinstance(payload, BasicBlockTemplateDescriptor):
+            template: EmtModelTemplate = load_basic_block_catalog_template(payload, self.var_factory)
             return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
             return self.create_template_block_item(template=payload, x_pos=x_pos, y_pos=y_pos)
@@ -5773,7 +5771,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | PowerFactoryBasicTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
 
@@ -5789,7 +5787,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | PowerFactoryBasicTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
 
@@ -5805,7 +5803,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | PowerFactoryBasicTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
         scene_position: QtCore.QPointF = self.ui.graphicsView.mapToScene(

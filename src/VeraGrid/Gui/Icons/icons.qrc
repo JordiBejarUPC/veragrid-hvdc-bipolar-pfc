@@ -68,7 +68,7 @@
     <file>icons/add_remedial_action.png</file>
     <file>icons/plugin.png</file>
     <file>icons/picture.png</file>
-    <file>icons/catalogue.png</file>
+    <file>icons/Catalogue.png</file>
     <file>icons/CataloguePrivate.png</file>
     <file>icons/record.png</file>
     <file>icons/delete_schematic.png</file>
@@ -181,7 +181,6 @@
     <file>icons/import.png</file>
     <file>icons/piece.png</file>
     <file>icons/schematic.png</file>
-    <file>icons/Catalogue.png</file>
     <file>icons/plot.png</file>
     <file>icons/import_profiles.png</file>
     <file>icons/copy2left.png</file>

@@ -1,106 +1,291 @@
 from __future__ import annotations
 
 import re
-import unittest
+from typing import Sequence
+
+import pytest
 
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_editor_ready_powerfactory_basic_catalog_descriptors
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_pending_powerfactory_basic_catalog_descriptors
+from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
+from VeraGridEngine.Templates.BasicBlockCatalog import get_editor_ready_basic_block_catalog_descriptors
+from VeraGridEngine.Templates.BasicBlockCatalog import get_pending_basic_block_catalog_descriptors
+from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_pending_template_reason
 
-from DynamicCatalog._catalog_support import build_manifest_path
-from DynamicCatalog._catalog_support import build_pending_lookup_type_ids
 from DynamicCatalog._catalog_support import build_templates_dir
+from DynamicCatalog._catalog_support import descriptor_entries
+from DynamicCatalog._catalog_support import descriptor_lookup_by_key
 from DynamicCatalog._catalog_support import find_template_path
 from DynamicCatalog._catalog_support import import_template_module
-from DynamicCatalog._catalog_support import manifest_entries
 
 
-class TestPowerFactoryBasicCatalogReadiness(unittest.TestCase):
+def build_descriptor_parameters() -> Sequence[BasicBlockTemplateDescriptor]:
     """
-    Validate that the shipped PowerFactory basic catalog is importable and editor-ready.
+    Return every shipped catalog descriptor as pytest parameters.
+
+    :returns: Full descriptor sequence.
     """
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        cls.entries = manifest_entries()
-        cls.editor_ready_entries = [entry for entry in cls.entries if len(entry["unsupported_lines"]) == 0]
-        cls.pending_entries = [entry for entry in cls.entries if len(entry["unsupported_lines"]) > 0]
-        cls.ready_descriptors = list(get_editor_ready_powerfactory_basic_catalog_descriptors())
-        cls.pending_descriptors = list(get_pending_powerfactory_basic_catalog_descriptors())
-
-    def test_catalog_artifacts_exist(self) -> None:
-        self.assertTrue(build_manifest_path().exists())
-        self.assertTrue(build_templates_dir().exists())
-
-    def test_pending_lookup_subset_is_frozen(self) -> None:
-        pending_lookup_type_ids = build_pending_lookup_type_ids()
-        self.assertEqual({entry["typ_id"] for entry in self.pending_entries}, set(pending_lookup_type_ids))
-        self.assertEqual(len(self.pending_entries), len(pending_lookup_type_ids))
-        self.assertTrue(all(entry["build_error"] is None for entry in self.pending_entries))
-        self.assertTrue(all(len(entry["unsupported_lines"]) == 1 for entry in self.pending_entries))
-
-    def test_editor_ready_subset_is_clean(self) -> None:
-        self.assertEqual(len(self.ready_descriptors), 533)
-        self.assertEqual(len(self.pending_descriptors), 18)
-        self.assertEqual(len(self.editor_ready_entries), 533)
-        self.assertTrue(all(entry["build_error"] is None for entry in self.editor_ready_entries))
-        self.assertTrue(all(entry["unsupported_lines"] == [] for entry in self.editor_ready_entries))
-
-    def test_every_catalog_entry_has_one_exported_template(self) -> None:
-        for entry in self.entries:
-            with self.subTest(typ_id=entry["typ_id"], name=entry["blkdef_name"]):
-                self.assertTrue(find_template_path(entry["typ_id"]).exists())
-
-    def test_editor_ready_descriptors_are_fully_categorized(self) -> None:
-        for descriptor in self.ready_descriptors:
-            with self.subTest(typ_id=descriptor.typ_id, label=descriptor.display_label):
-                self.assertGreaterEqual(len(descriptor.category_path), 3)
-                self.assertEqual(descriptor.category_path[0], "Native")
-                self.assertNotEqual(descriptor.category_path[-1], "Other")
-
-    def test_editor_ready_labels_do_not_expose_internal_typ_ids(self) -> None:
-        for descriptor in self.ready_descriptors:
-            with self.subTest(typ_id=descriptor.typ_id, label=descriptor.display_label):
-                self.assertIsNone(re.search(r"\[\d+\]", descriptor.display_label))
-
-    def test_editor_ready_labels_are_unique(self) -> None:
-        labels = [descriptor.display_label for descriptor in self.ready_descriptors]
-        self.assertEqual(len(labels), len(set(labels)))
-
-    def test_constant_catalog_blocks_are_not_classified_as_controllers(self) -> None:
-        descriptor_by_id = {descriptor.typ_id: descriptor for descriptor in self.ready_descriptors}
-        for typ_id in ("53", "58", "59", "411"):
-            with self.subTest(typ_id=typ_id, label=descriptor_by_id[typ_id].display_label):
-                self.assertEqual(descriptor_by_id[typ_id].category_path[1:], ("Math and Functions", "Constants and Scaling"))
-
-    def test_editor_ready_templates_materialize_as_executable_devices(self) -> None:
-        for entry in self.editor_ready_entries:
-            with self.subTest(typ_id=entry["typ_id"], name=entry["blkdef_name"]):
-                module = import_template_module(entry["typ_id"])
-                templ = module.get_template(VarFactory())
-
-                self.assertEqual(len(templ.block.in_vars), len(entry["inputs"]))
-                self.assertEqual(len(templ.block.out_vars), len(entry["outputs"]))
-                self.assertEqual(len(templ.block.children), 0)
-
-                declared_state_surface = (
-                    len(templ.block.state_vars)
-                    + len(templ.block.diff_vars)
-                    + len(templ.block.init_eqs)
-                    + len(templ.block.diff_init_eqs)
-                )
-                if len(entry["states"]) > 0:
-                    self.assertGreater(declared_state_surface, 0)
-
-                executable_content = (
-                    len(templ.block.state_eqs)
-                    + len(templ.block.algebraic_eqs)
-                    + len(templ.block.init_eqs)
-                    + len(templ.block.diff_init_eqs)
-                    + len(templ.block.procedural_logic)
-                )
-                self.assertGreater(executable_content, 0)
+    return descriptor_entries()
 
 
-if __name__ == "__main__":
-    unittest.main()
+def build_ready_descriptor_parameters() -> Sequence[BasicBlockTemplateDescriptor]:
+    """
+    Return the editor-ready catalog descriptors as pytest parameters.
+
+    :returns: Editor-ready descriptor sequence.
+    """
+
+    return get_editor_ready_basic_block_catalog_descriptors()
+
+
+def build_pending_descriptor_parameters() -> Sequence[BasicBlockTemplateDescriptor]:
+    """
+    Return the pending catalog descriptors as pytest parameters.
+
+    :returns: Pending descriptor sequence.
+    """
+
+    return get_pending_basic_block_catalog_descriptors()
+
+
+def build_constant_descriptor_parameters() -> Sequence[BasicBlockTemplateDescriptor]:
+    """
+    Return the constant descriptors that previously risked controller misclassification.
+
+    :returns: Constant descriptor sequence.
+    """
+
+    descriptor_by_key: dict[str, BasicBlockTemplateDescriptor] = descriptor_lookup_by_key()
+    template_keys: Sequence[str] = ("2pi_form_a", "2pi_form_b", "pi", "pi_2")
+    descriptors: list[BasicBlockTemplateDescriptor] = list()
+    template_key: str
+
+    for template_key in template_keys:
+        descriptors.append(descriptor_by_key[template_key])
+
+    return descriptors
+
+
+def build_descriptor_test_id(descriptor: BasicBlockTemplateDescriptor) -> str:
+    """
+    Build the pytest id for one catalog descriptor.
+
+    :param descriptor: Catalog descriptor.
+    :returns: Stable pytest id.
+    """
+
+    return descriptor.template_key
+
+
+def read_template_module_text(descriptor: BasicBlockTemplateDescriptor) -> str:
+    """
+    Read the generated standalone module text for one catalog descriptor.
+
+    :param descriptor: Catalog descriptor.
+    :returns: Generated module text.
+    """
+
+    template_path = find_template_path(descriptor.template_key)
+    return template_path.read_text(encoding="utf-8")
+
+
+@pytest.mark.filterwarnings("error")
+def test_catalog_artifacts_exist() -> None:
+    """
+    Validate that the shipped standalone template directory exists and is complete.
+
+    :returns: None.
+    """
+
+    descriptors: Sequence[BasicBlockTemplateDescriptor] = build_descriptor_parameters()
+    assert build_templates_dir().exists()
+    assert len(descriptors) == 551
+
+
+@pytest.mark.filterwarnings("error")
+def test_editor_ready_subset_counts_are_clean() -> None:
+    """
+    Validate the expected ready-versus-pending descriptor counts.
+
+    :returns: None.
+    """
+
+    ready_descriptors: Sequence[BasicBlockTemplateDescriptor] = build_ready_descriptor_parameters()
+    pending_descriptors: Sequence[BasicBlockTemplateDescriptor] = build_pending_descriptor_parameters()
+
+    assert len(ready_descriptors) == 533
+    assert len(pending_descriptors) == 18
+    assert all(descriptor.unsupported_lines == tuple() for descriptor in ready_descriptors)
+
+
+@pytest.mark.filterwarnings("error")
+def test_editor_ready_labels_are_unique() -> None:
+    """
+    Validate that every editor-ready descriptor exposes a unique visible label.
+
+    :returns: None.
+    """
+
+    ready_descriptors: Sequence[BasicBlockTemplateDescriptor] = build_ready_descriptor_parameters()
+    labels: list[str] = [descriptor.display_label for descriptor in ready_descriptors]
+    assert len(labels) == len(set(labels))
+
+
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
+    "descriptor",
+    build_pending_descriptor_parameters(),
+    ids=build_descriptor_test_id,
+)
+def test_pending_descriptor_is_lookup_only(descriptor: BasicBlockTemplateDescriptor) -> None:
+    """
+    Validate one pending descriptor that must remain in the lookup-only subset.
+
+    :param descriptor: Pending descriptor.
+    :returns: None.
+    """
+
+    assert descriptor.category_path == ("Native", "Lookup and Tables", "Arrays and Matrices")
+    assert descriptor.unsupported_lines == (get_basic_block_catalog_pending_template_reason(),)
+
+
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
+    "descriptor",
+    build_descriptor_parameters(),
+    ids=build_descriptor_test_id,
+)
+def test_every_catalog_entry_has_one_exported_template(descriptor: BasicBlockTemplateDescriptor) -> None:
+    """
+    Validate one shipped descriptor and its exported standalone module artifact.
+
+    :param descriptor: Catalog descriptor.
+    :returns: None.
+    """
+
+    assert find_template_path(descriptor.template_key).exists()
+
+
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
+    "descriptor",
+    build_descriptor_parameters(),
+    ids=build_descriptor_test_id,
+)
+def test_exported_template_module_text_is_clean(descriptor: BasicBlockTemplateDescriptor) -> None:
+    """
+    Validate one generated standalone module against the catalog hygiene rules.
+
+    :param descriptor: Catalog descriptor.
+    :returns: None.
+    """
+
+    module_text: str = read_template_module_text(descriptor)
+
+    assert module_text.startswith('"""')
+    assert "AUTO-GENERATED EMT TEMPLATE FROM DGS" not in module_text
+    assert "# Source:" not in module_text
+    assert "C:\\Users\\" not in module_text
+    assert re.search(r"def get_[^(]+_emt_template", module_text) is None
+    assert "getattr(" not in module_text
+    assert "lambda" not in module_text
+    assert "continue" not in module_text
+    assert "..." not in module_text
+    assert "def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:" in module_text
+
+
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
+    "descriptor",
+    build_ready_descriptor_parameters(),
+    ids=build_descriptor_test_id,
+)
+def test_editor_ready_descriptor_is_fully_categorized(descriptor: BasicBlockTemplateDescriptor) -> None:
+    """
+    Validate one editor-ready descriptor and its library categorization.
+
+    :param descriptor: Editor-ready descriptor.
+    :returns: None.
+    """
+
+    assert len(descriptor.category_path) >= 3
+    assert descriptor.category_path[0] == "Native"
+    assert descriptor.category_path[-1] != "Other"
+
+
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
+    "descriptor",
+    build_ready_descriptor_parameters(),
+    ids=build_descriptor_test_id,
+)
+def test_editor_ready_label_does_not_expose_internal_typ_ids(descriptor: BasicBlockTemplateDescriptor) -> None:
+    """
+    Validate one editor-ready descriptor label and ensure it hides imported ids.
+
+    :param descriptor: Editor-ready descriptor.
+    :returns: None.
+    """
+
+    assert re.search(r"\[\d+\]", descriptor.display_label) is None
+
+
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
+    "descriptor",
+    build_constant_descriptor_parameters(),
+    ids=build_descriptor_test_id,
+)
+def test_constant_catalog_block_is_not_classified_as_controller(descriptor: BasicBlockTemplateDescriptor) -> None:
+    """
+    Validate one constant descriptor that historically risked controller classification.
+
+    :param descriptor: Constant descriptor.
+    :returns: None.
+    """
+
+    assert descriptor.category_path[1:] == ("Math and Functions", "Constants and Scaling")
+
+
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
+    "descriptor",
+    build_ready_descriptor_parameters(),
+    ids=build_descriptor_test_id,
+)
+def test_editor_ready_template_materializes_as_executable_device(descriptor: BasicBlockTemplateDescriptor) -> None:
+    """
+    Validate one editor-ready template and its executable symbolic surface.
+
+    :param descriptor: Editor-ready descriptor.
+    :returns: None.
+    """
+
+    module = import_template_module(descriptor.template_key)
+    templ = module.get_template(VarFactory())
+
+    # The materialized template must preserve the declared public surface described
+    # by the descriptor, otherwise the editor tree and runtime import would diverge.
+    assert len(templ.block.in_vars) == len(descriptor.inputs)
+    assert len(templ.block.out_vars) == len(descriptor.outputs)
+
+    declared_state_surface: int = (
+        len(templ.block.state_vars)
+        + len(templ.block.diff_vars)
+        + len(templ.block.init_eqs)
+        + len(templ.block.diff_init_eqs)
+    )
+    if len(descriptor.states) > 0:
+        assert declared_state_surface > 0
+    else:
+        pass
+
+    executable_content: int = (
+        len(templ.block.state_eqs)
+        + len(templ.block.algebraic_eqs)
+        + len(templ.block.init_eqs)
+        + len(templ.block.diff_init_eqs)
+        + len(templ.block.procedural_logic)
+        + len(templ.block.children)
+    )
+    assert executable_content > 0

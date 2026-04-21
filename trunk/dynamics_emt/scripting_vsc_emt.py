@@ -255,7 +255,7 @@ if pf_res_3ph.converged:
 # Solver configuration
 CHOSEN_SOLVER = "COMPILED"
 RUN_ALL_SOLVERS = False
-ENABLE_PLOTS = False
+ENABLE_PLOTS = True
 ENABLE_NEWTON_TRACE = False
 DENSE_THRESHOLD = 0
 SOLVER_VERBOSE = False
@@ -450,6 +450,14 @@ i_A_vsc = find_name_in_block(f"i_A_{vsc.name}", vsc_mdl)
 i_B_vsc = find_name_in_block(f"i_B_{vsc.name}", vsc_mdl)
 i_C_vsc = find_name_in_block(f"i_C_{vsc.name}", vsc_mdl)
 
+# transformer currents
+if_A_trafo = find_name_in_block(f"if_Transformer_A", trafo_mdl)
+if_B_trafo = find_name_in_block(f"if_Transformer_B", trafo_mdl)
+if_C_trafo = find_name_in_block(f"if_Transformer_C", trafo_mdl)
+it_A_trafo = find_name_in_block(f"it_Transformer_A", trafo_mdl)
+it_B_trafo = find_name_in_block(f"it_Transformer_B", trafo_mdl)
+it_C_trafo = find_name_in_block(f"it_Transformer_C", trafo_mdl)
+
 # DC current
 i_DC_vsc = find_name_in_block(f"i_dc_{vsc.name}", vsc_mdl)
 
@@ -527,6 +535,38 @@ if i_B_vsc:
 if i_C_vsc:
     plt.plot(tme, y[:len(tme), problem.get_var_idx(i_C_vsc)], label='VSC - Phase C', color='green')
 plt.title("VSC AC Currents")
+plt.xlabel("Time [s]")
+plt.ylabel("Current [p.u.]")
+plt.legend(loc='upper right')
+plt.grid(True)
+
+plt.tight_layout()
+plt.show()
+
+# Plot transformer currents
+plt.figure(figsize=(14, 10))
+
+plt.subplot(2, 1, 1)
+if if_A_trafo:
+    plt.plot(tme, y[:len(tme), problem.get_var_idx(if_A_trafo)], label='Transformer from - Phase A', color='blue')
+if if_B_trafo:
+    plt.plot(tme, y[:len(tme), problem.get_var_idx(if_B_trafo)], label='Transformer from - Phase B', color='red')
+if if_C_trafo:
+    plt.plot(tme, y[:len(tme), problem.get_var_idx(if_C_trafo)], label='Transformer from - Phase C', color='green')
+plt.title("Transformer from Currents")
+plt.xlabel("Time [s]")
+plt.ylabel("Current [p.u.]")
+plt.legend(loc='upper right')
+plt.grid(True)
+
+plt.subplot(2, 1, 2)
+if it_A_trafo:
+    plt.plot(tme, y[:len(tme), problem.get_var_idx(it_A_trafo)], label='Transformer to - Phase A', color='blue')
+if it_A_trafo:
+    plt.plot(tme, y[:len(tme), problem.get_var_idx(it_B_trafo)], label='Transformer to - Phase B', color='red')
+if it_A_trafo:
+    plt.plot(tme, y[:len(tme), problem.get_var_idx(it_C_trafo)], label='Transformer to - Phase C', color='green')
+plt.title("Transformer to Currents")
 plt.xlabel("Time [s]")
 plt.ylabel("Current [p.u.]")
 plt.legend(loc='upper right')

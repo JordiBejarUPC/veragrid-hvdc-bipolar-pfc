@@ -53,6 +53,7 @@ class PowerFlowTimeSeriesResults(ResultsTemplate):
         "bus_names",
         "branch_names",
         "hvdc_names",
+        "vsc_names",
         "bus_types",
         "voltage",
         "S",
@@ -69,6 +70,10 @@ class PowerFlowTimeSeriesResults(ResultsTemplate):
         "hvdc_Pf",
         "hvdc_Pt",
         "hvdc_loading",
+        "Pf_vsc",
+        "St_vsc",
+        "loading_vsc",
+        "losses_vsc",
         "error_values",
         "converged_values",
     )
@@ -77,12 +82,14 @@ class PowerFlowTimeSeriesResults(ResultsTemplate):
                  n: int,
                  m: int,
                  n_hvdc: int,
-                 bus_names: np.ndarray,
-                 branch_names: np.ndarray,
-                 hvdc_names: np.ndarray,
+                 n_vsc: int,
+                 bus_names: StrVec,
+                 branch_names: StrVec,
+                 hvdc_names: StrVec,
+                 vsc_names: StrVec,
                  time_array: DateVec,
-                 bus_types: np.ndarray,
-                 area_names: Union[np.ndarray, None] = None,
+                 bus_types: IntVec,
+                 area_names: StrVec | None = None,
                  clustering_results: Union[ClusteringResults, None] = None):
         """
 
@@ -150,6 +157,7 @@ class PowerFlowTimeSeriesResults(ResultsTemplate):
         self.bus_names: StrVec = bus_names
         self.branch_names: StrVec = branch_names
         self.hvdc_names: StrVec = hvdc_names
+        self.vsc_names: StrVec = vsc_names
         self.bus_types: IntVec = bus_types
         self.time_array = time_array
         self.bus_types = np.zeros(n, dtype=int)
@@ -182,6 +190,11 @@ class PowerFlowTimeSeriesResults(ResultsTemplate):
         self.hvdc_Pt = np.zeros((nt, n_hvdc))
         self.hvdc_loading = np.zeros((nt, n_hvdc))
 
+        self.losses_vsc = np.zeros((nt, n_vsc))
+        self.Pf_vsc = np.zeros((nt, n_vsc))
+        self.St_vsc = np.zeros((nt, n_vsc), dtype=complex)
+        self.loading_vsc = np.zeros((nt, n_vsc))
+
         self.error_values = np.zeros(nt)
         self.converged_values = np.ones(nt, dtype=bool)  # guilty assumption
 
@@ -191,7 +204,7 @@ class PowerFlowTimeSeriesResults(ResultsTemplate):
         Recompute the loading with new rates
         :param nc: NumericalCircuit instance
         """
-        self.loading = self.Sf / (nc.rates + 1e-9)
+        self.loading = self.Sf / (nc.passive_branch_data.rates + 1e-9)
 
     def fill_circuit_info(self, grid: MultiCircuit):
         """
@@ -260,22 +273,6 @@ class PowerFlowTimeSeriesResults(ResultsTemplate):
             df = pd.concat([df, obj], axis=1)
 
         return df
-
-    # def get_dict(self):
-    #     """
-    #     Returns a dictionary with the results sorted in a dictionary
-    #     :return:  of 2D numpy arrays (probably of complex numbers)
-    #     """
-    #     data = {'Vm': np.abs(self.voltage).tolist(),
-    #             'Va': np.angle(self.voltage).tolist(),
-    #             'P': self.S.real.tolist(),
-    #             'Q': self.S.imag.tolist(),
-    #             'Sf_real': self.Sf.real.tolist(),
-    #             'Sf_imag': self.Sf.imag.tolist(),
-    #             'loading': np.abs(self.loading).tolist(),
-    #             'losses_real': np.real(self.losses).tolist(),
-    #             'losses_imag': np.imag(self.losses).tolist()}
-    #     return data
 
     def to_json(self, fname):
         """
