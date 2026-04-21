@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
 from VeraGridEngine.Templates.BasicBlockCatalog.catalog import BasicBlockTemplateDescriptor
 from VeraGridEngine.Templates.BasicBlockCatalog.catalog import get_editor_ready_basic_block_catalog_descriptors
 from VeraGridEngine.Templates.BasicBlockCatalog.catalog import get_pending_basic_block_catalog_descriptors
