@@ -41,17 +41,6 @@ else:
     print(f"[ERROR] Engine not found: {src_path}")
     sys.exit(1)
 
-# --- THREAD CONFIGURATION FOR HEAVY MATH ---
-# A good starting point is the number of physical cores in your CPU.
-num_threads = "1"
-
-os.environ["OMP_NUM_THREADS"] = num_threads
-os.environ["OPENBLAS_NUM_THREADS"] = num_threads
-os.environ["MKL_NUM_THREADS"] = num_threads
-os.environ["VECLIB_MAXIMUM_THREADS"] = num_threads
-os.environ["NUMEXPR_NUM_THREADS"] = num_threads
-# -------------------------------------------------------
-
 #GRID = "Texas 2000 + VSC"
 #GRID = "IEEE 14.xlsx"
 #GRID = "case_ACTIVSg2000.matpower"
@@ -62,11 +51,12 @@ BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
 REPORT_TIME = False
 
-FAST_MODE = True
+FAST_MODE = False
+LOGS = False
 FULL_GRID_PATH = str(grid_folder / GRID)
 FAST_GRID_PATH = FULL_GRID_PATH
-PRINT_ALL_BUSES = not FAST_MODE
-ENABLE_POST_COMPARE_PLOT = not FAST_MODE
+PRINT_ALL_BUSES = LOGS
+ENABLE_POST_COMPARE_PLOT = LOGS
 RUN_DYNAMIC_STEP = False
 RUN_CONSISTENCY_CHECK = False
 RUN_PF_LINE_EQ_CHECK = False
