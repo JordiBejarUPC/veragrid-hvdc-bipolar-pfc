@@ -138,6 +138,8 @@ class FluidPathGraphicItem(LineGraphicTemplateItem):
                            icon_path=":/Icons/icons/delete3.png",
                            function_ptr=self.delete)
 
+            menu.addSeparator()
+            self.add_auto_route_style_menu(menu=menu)
             menu.addSection('Convert to')
             add_menu_entry(menu=menu,
                            text="Convert to line",

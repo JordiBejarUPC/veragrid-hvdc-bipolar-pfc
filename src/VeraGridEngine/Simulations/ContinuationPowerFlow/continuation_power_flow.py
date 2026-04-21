@@ -20,6 +20,17 @@ class CpfNumericResults:
     """
     CpfNumericResults
     """
+    __slots__ = (
+        "V",
+        "Sbus",
+        "lmbda",
+        "Sf",
+        "St",
+        "loading",
+        "losses",
+        "normF",
+        "success",
+    )
 
     def __init__(self) -> None:
         self.V = list()

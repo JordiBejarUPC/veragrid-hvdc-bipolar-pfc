@@ -13,7 +13,7 @@ from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Aggregation.area import Area
 from VeraGridEngine.enumerations import (BusMode, BranchImpedanceMode, ExternalGridMode, DeviceType,
                                          TapModuleControl, TapPhaseControl, HvdcControlType, ConverterControlType,
-                                         ShuntConnectionType)
+                                         ShuntConnectionType, ShuntControlMode)
 from VeraGridEngine.basic_structures import BoolVec, IntVec
 from VeraGridEngine.Devices.types import BRANCH_TYPES
 from VeraGridEngine.DataStructures.battery_data import BatteryData
@@ -893,14 +893,26 @@ def get_shunt_data(
             data.mttf[ii] = elm.mttf
             data.mttr[ii] = elm.mttr
 
-            data.controllable[ii] = elm.is_controlled
+            data.control_mode[ii] = elm.control_mode
+            data.is_pv_control[ii] = elm.control_mode == ShuntControlMode.Continuous
             data.vset[ii] = elm.Vset
+            data.vmin[ii] = elm.Vmin
+            data.vmax[ii] = elm.Vmax
             data.qmin[ii] = elm.Bmin
             data.qmax[ii] = elm.Bmax
 
-            data.Y[ii] += elm.get_Y_at(t_idx)
+            data.step[ii] = elm.step
+            data.g_steps.insert(i=ii, x=np.insert(np.cumsum(elm.g_steps), 0, 0))
+            data.b_steps.insert(i=ii, x=np.insert(np.cumsum(elm.b_steps), 0, 0))
+
             data.active[ii] = elm.get_active_at(t_idx)
             data.cost[ii] = elm.get_Cost_at(t_idx)
+
+            if elm.control_mode == ShuntControlMode.Continuous:
+                data.Y[ii] += elm.get_Y_at(t_idx)
+
+            if elm.control_mode == ShuntControlMode.Discrete:
+                data.Y[ii] += elm.step * complex(elm.g_steps[elm.step], elm.b_steps[elm.step])
 
             if fill_three_phase:
                 if elm.conn == ShuntConnectionType.GroundedStar:
@@ -920,7 +932,7 @@ def get_shunt_data(
                 else:
                     raise Exception(f"Unhandled connection type {elm.conn}")
 
-            if elm.is_controlled and elm.active:
+            if elm.control_mode == ShuntControlMode.Continuous and elm.active:
                 if elm.control_bus is not None:
                     remote_control = True
                     j = bus_dict[elm.control_bus]
@@ -946,7 +958,7 @@ def get_shunt_data(
 
             # reactive power sharing data
             if data.active[ii]:
-                if data.controllable[ii]:
+                if data.control_mode[ii] == ShuntControlMode.Locked:
                     bus_data.q_shared_total[i] += data.Y[ii].imag
                     data.q_share[ii] = data.Y[ii].imag
                 else:
@@ -1010,13 +1022,13 @@ def fill_generator_parent(
     data.x1[k] = elm.X1
     data.x2[k] = elm.X2
 
-    data.startup_cost[k] = elm.StartupCost
-    data.shut_down_cost[k] = elm.ShutdownCost
+    data.startup_cost[k] = elm.startup_cost
+    data.shut_down_cost[k] = elm.shutdown_cost
 
-    data.ramp_up[k] = elm.RampUp
-    data.ramp_down[k] = elm.RampDown
-    data.min_time_up[k] = elm.MinTimeUp
-    data.min_time_down[k] = elm.MinTimeDown
+    data.ramp_up[k] = elm.ramp_up
+    data.ramp_down[k] = elm.ramp_down
+    data.min_time_up[k] = elm.min_time_up
+    data.min_time_down[k] = elm.min_time_down
 
     data.dispatchable[k] = elm.get_enabled_dispatch_at(t_idx)
     data.must_run[k] = elm.get_must_run_at(t_idx)
@@ -1026,15 +1038,16 @@ def fill_generator_parent(
     data.scalable[k] = elm.scalable
 
     data.p[k] = elm.get_P_at(t_idx)
+    data.q[k] = elm.get_Q_at(t_idx)
     data.active[k] = elm.get_active_at(t_idx)
-    data.pf[k] = elm.get_Pf_at(t_idx)
+
     data.v[k] = elm.get_Vset_at(t_idx)
     data.pmax[k] = elm.get_Pmax_at(t_idx)
     data.pmin[k] = elm.get_Pmin_at(t_idx)
 
     if elm.use_reactive_power_curve:
-        data.qmin[k] = elm.q_curve.get_qmin(data.p[i])
-        data.qmax[k] = elm.q_curve.get_qmax(data.p[i])
+        data.qmin[k] = elm.q_curve.get_qmin(data.p[k])
+        data.qmax[k] = elm.q_curve.get_qmax(data.p[k])
     else:
         data.qmin[k] = elm.get_Qmin_at(t_idx)
         data.qmax[k] = elm.get_Qmax_at(t_idx)
@@ -1970,6 +1983,7 @@ def get_vsc_data(
         data.alpha1[ii] = elm.alpha1
         data.alpha2[ii] = elm.alpha2
         data.alpha3[ii] = elm.alpha3
+        data.min_ac_voltage[ii] = elm.min_ac_voltage
 
         ii += 1
 

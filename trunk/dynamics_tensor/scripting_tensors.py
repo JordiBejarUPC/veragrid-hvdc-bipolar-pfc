@@ -22,7 +22,7 @@ from VeraGridEngine.Devices.Dynamic.events import RmsEvents, RmsEvent
 from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.MultiLinear.multilinearize import *
-from VeraGridEngine.Utils.Symbolic.block_solver import BlockSolver
+from VeraGridEngine.Utils.Symbolic.block_solver_no_diff import BlockSolverNoDiff
 import VeraGridEngine.api as gce
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -382,7 +382,7 @@ sys = Block(
 # ----------------------------------------------------------------------------------------------------------------------
 # Solver
 # ----------------------------------------------------------------------------------------------------------------------
-slv = BlockSolver(sys)
+slv = BlockSolverNoDiff(sys)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Intialization

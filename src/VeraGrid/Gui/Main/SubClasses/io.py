@@ -4,6 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 import os
+import pathlib
 from typing import Union, List, Callable
 from PySide6 import QtWidgets
 
@@ -19,7 +20,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidg
 from VeraGrid.Gui.messages import yes_no_question, error_msg, warning_msg, info_msg
 from VeraGrid.Gui.GridGenerator.grid_generator_dialogue import GridGeneratorGUI
 from VeraGrid.Gui.RosetaExplorer.RosetaExplorer import RosetaExplorerGUI
-from VeraGrid.Gui.Main.SubClasses.Settings.configuration import ConfigurationMain
+from VeraGrid.Gui.Main.SubClasses.Model.scenarios import ScenariosMain
 from VeraGrid.Gui.CGMESDialogue.cgmes_export import CgmesExportDialogue
 from VeraGrid.Gui.PsseDialogue.psse_export import PsseExportDialogue
 from VeraGrid.Gui.PsseDialogue.psse_import import PsseImportDialogue
@@ -33,10 +34,10 @@ from VeraGridEngine.IO.veragrid.remote import RemoteInstruction
 from VeraGridEngine.IO.veragrid.catalogue import save_catalogue, load_catalogue
 from VeraGridEngine.Utils.ThirdParty.gslv.gslv_activation import install_gslv_license
 from VeraGrid.templates import (get_cables_catalogue, get_transformer_catalogue, get_wires_catalogue,
-                                get_sequence_lines_catalogue, get_rms_model_catalogue)
+                                get_sequence_lines_catalogue)
 
 
-class IoMain(ConfigurationMain):
+class IoMain(ScenariosMain):
     """
     Inputs-Outputs Main
     """
@@ -47,8 +48,8 @@ class IoMain(ConfigurationMain):
         @param parent:
         """
 
-        # create main window
-        ConfigurationMain.__init__(self, parent)
+        # create the main window
+        ScenariosMain.__init__(self, parent)
 
         self.rosetta_gui: Union[RosetaExplorerGUI, None] = None
 
@@ -56,7 +57,7 @@ class IoMain(ConfigurationMain):
                                     '.gridcal', '.dgridcal',
                                     '.xlsx', '.xls', '.sqlite', '.gch5',
                                     '.dgs', '.m', '.matpower', '.raw', '.RAW', '.json', '.uct',
-                                    '.iidm', '.xiidm',
+                                    '.iidm', '.xiidm', '.xiidm.bz2',
                                     '.ejson2', '.ejson3', '.p', '.nc', '.hdf5',
                                     '.xml', '.rawx', '.zip', '.dpx', '.pwf', '.epc', '.EPC',
                                     '.vgplugin', '.gslv']
@@ -134,7 +135,8 @@ class IoMain(ConfigurationMain):
 
                 for event in events:
                     file_name = event.toLocalFile()
-                    name, file_extension = os.path.splitext(file_name)
+                    # name, file_extension = os.path.splitext(file_name)
+                    file_extension = ''.join(pathlib.Path(file_name).suffixes)
                     if file_extension.lower() in self.accepted_extensions:
                         file_names.append(file_name)
 
@@ -150,6 +152,9 @@ class IoMain(ConfigurationMain):
                             else:
                                 self.show_error_toast(msg)
                             return
+                        elif file_name.endswith(".xiidm.bz2"):
+                            any_grid_delta = False
+                            any_normal_grid = True
                         else:
                             any_normal_grid = True
 
@@ -367,13 +372,26 @@ class IoMain(ConfigurationMain):
 
                 # assign the loaded circuit
                 self.new_project_now(create_default_diagrams=False)
-                if self.open_file_thread_object.circuit is not None:
+
+
+                if self.open_file_thread_object.multiverse is not None:
+                    # A multiverse file already contains the complete scenario tree and active
+                    # scenario. Reassigning through self.circuit would rebuild a fresh
+                    # single-root MultiVerse and discard the loaded multiverse information.
+                    self.multiverse = self.open_file_thread_object.multiverse
+                    self.ui.activeScenarioLabel.setText(f"Current: {self.circuit.name}")
+                    self.file_name = self.open_file_thread_object.file_name
+
+                elif self.open_file_thread_object.circuit is not None:
                     self.circuit = self.open_file_thread_object.circuit
                     self.file_name = self.open_file_thread_object.file_name
 
                 if self.circuit.has_diagrams():
                     # create the diagrams that came with the file
-                    self.create_circuit_stored_diagrams()
+                    if self.open_file_thread_object.multiverse is not None:
+                        self.reload_diagrams_for_active_scenario()
+                    else:
+                        self.create_circuit_stored_diagrams()
 
                 else:
                     if self.circuit.get_bus_number() > 300:
@@ -572,6 +590,7 @@ class IoMain(ConfigurationMain):
                                                                      dc_lines=new_circuit.dc_lines,
                                                                      transformers2w=new_circuit.transformers2w,
                                                                      transformers3w=new_circuit.transformers3w,
+                                                                     transformers_nw=new_circuit.transformers_nw,
                                                                      hvdc_lines=new_circuit.hvdc_lines,
                                                                      vsc_devices=new_circuit.vsc_devices,
                                                                      upfc_devices=new_circuit.upfc_devices,
@@ -644,16 +663,16 @@ class IoMain(ConfigurationMain):
 
                     # we were able to compose the file correctly, now save it
                     self.file_name = filename
+                    options = self.get_file_save_options()
+                    options.file_type = FileType.VeraGrid
                     self.save_file_now(
-                        self.file_name,
+                        filename=self.file_name,
                         type_selected=type_selected,
-                        options=FileSavingOptions(
-                            file_type=FileType.VeraGrid
-                        )
+                        options=options,
                     )
             else:
                 # save directly
-                self.save_file_now(self.file_name)
+                self.save_file_now(filename=self.file_name)
 
     def get_file_save_options(self) -> filedrv.FileSavingOptions:
         """
@@ -667,8 +686,10 @@ class IoMain(ConfigurationMain):
         # get json files to store
         json_files = {"gui_config": self.get_gui_config_data()}
 
-        options = filedrv.FileSavingOptions(sessions_data=sessions_data,
-                                            dictionary_of_json_files=json_files)
+        options = filedrv.FileSavingOptions(
+            sessions_data=sessions_data,
+            dictionary_of_json_files=json_files,
+        )
 
         return options
 
@@ -685,7 +706,8 @@ class IoMain(ConfigurationMain):
         :param options: FileSavingOptions to override the default ones
         """
 
-        if ('file_save' not in self.stuff_running_now) and ('file_open' not in self.stuff_running_now):
+        if ((SimulationTypes.FileSave not in self.stuff_running_now) and
+                (SimulationTypes.FileOpen not in self.stuff_running_now)):
             # lock the ui
             self.LOCK()
 
@@ -701,6 +723,7 @@ class IoMain(ConfigurationMain):
 
             self.save_file_thread_object = filedrv.FileSaveThread(
                 circuit=self.circuit if grid is None else grid,
+                multiverse=self.multiverse,
                 file_name=filename,
                 options=options2
             )
@@ -973,11 +996,33 @@ class IoMain(ConfigurationMain):
         Add default catalogue to circuit
         """
 
-        self.circuit.transformer_types += get_transformer_catalogue()
-        self.circuit.underground_cable_types += get_cables_catalogue()
-        self.circuit.wire_types += get_wires_catalogue()
-        self.circuit.sequence_line_types += get_sequence_lines_catalogue()
-        self.circuit.rms_models += get_rms_model_catalogue()
+
+        for tpe in get_transformer_catalogue():
+            self.circuit.add_transformer_type(tpe)
+
+        for tpe in get_cables_catalogue():
+            self.circuit.add_underground_line(tpe)
+
+        for tpe in get_wires_catalogue():
+            self.circuit.add_wire(tpe)
+
+        for tpe in get_sequence_lines_catalogue():
+            self.circuit.add_sequence_line(tpe)
+
+        if not self.circuit.rms_models:
+            self.circuit.add_rms_model_catalogue()
+        else:
+            self.circuit.rms_models = list()
+            self.circuit.add_rms_model_catalogue()
+
+
+        if not self.circuit.emt_models:
+            self.circuit.add_emt_model_catalogue()
+        else:
+            self.circuit.emt_models = list()
+            self.circuit.add_emt_model_catalogue()
+
+        self.show_info_toast("Catalogue added!")
 
     def load_custom_catalogue(self):
         """
@@ -1005,6 +1050,8 @@ class IoMain(ConfigurationMain):
                     dlg.exec()
 
                 self.circuit.add_catalogue(data)
+                self.show_info_toast("Catalogue loaded!")
+            return None
         else:
             return None
 
@@ -1026,6 +1073,7 @@ class IoMain(ConfigurationMain):
                 filename += ".xlsx"
 
             save_catalogue(fname=filename, grid=self.circuit)
+            self.show_info_toast("Catalogue saved!")
 
     def set_circuit(self, grid: MultiCircuit, create_diagram: bool = True):
         """
@@ -1081,11 +1129,13 @@ class IoMain(ConfigurationMain):
 
             # we were able to compose the file correctly, now save it
             self.file_name = filename
-            self.save_file_now(self.file_name,
-                               type_selected=type_selected,
-                               options=FileSavingOptions(
-                                   file_type=FileType.DGS
-                               ))
+            self.save_file_now(
+                filename=self.file_name,
+                type_selected=type_selected,
+                options=FileSavingOptions(
+                    file_type=FileType.DGS
+                )
+            )
 
     def export_cim(self):
         """
@@ -1111,11 +1161,13 @@ class IoMain(ConfigurationMain):
 
             # we were able to compose the file correctly, now save it
             self.file_name = filename
-            self.save_file_now(self.file_name,
-                               type_selected=type_selected,
-                               options=FileSavingOptions(
-                                   file_type=FileType.CIM
-                               ))
+            self.save_file_now(
+                filename=self.file_name,
+                type_selected=type_selected,
+                options=FileSavingOptions(
+                    file_type=FileType.CIM
+                )
+            )
 
     def export_cgmes(self):
         """
@@ -1152,7 +1204,7 @@ class IoMain(ConfigurationMain):
                 # we were able to compose the file correctly, now save it
                 self.file_name = filename
                 self.save_file_now(
-                    self.file_name,
+                    filename=self.file_name,
                     type_selected=type_selected,
                     options=FileSavingOptions(
                         file_type=FileType.PGM
@@ -1186,7 +1238,7 @@ class IoMain(ConfigurationMain):
             # we were able to compose the file correctly, now save it
             self.file_name = filename
             self.save_file_now(
-                self.file_name,
+                filename=self.file_name,
                 type_selected=type_selected,
                 options=FileSavingOptions(
                     file_type=FileType.VeraGrid_json
@@ -1218,11 +1270,12 @@ class IoMain(ConfigurationMain):
             # we were able to compose the file correctly, now save it
             self.file_name = filename
             self.save_file_now(
-                self.file_name,
+                filename=self.file_name,
                 type_selected=type_selected,
                 options=FileSavingOptions(
                     file_type=FileType.VeraGrid_h5
-                ))
+                )
+            )
 
     def export_excel(self):
         """
@@ -1249,7 +1302,7 @@ class IoMain(ConfigurationMain):
             # we were able to compose the file correctly, now save it
             self.file_name = filename
             self.save_file_now(
-                self.file_name,
+                filename=self.file_name,
                 type_selected=type_selected,
                 options=FileSavingOptions(
                     file_type=FileType.VeraGrid_xlsx4
@@ -1281,7 +1334,7 @@ class IoMain(ConfigurationMain):
             # we were able to compose the file correctly, now save it
             self.file_name = filename
             self.save_file_now(
-                self.file_name,
+                filename=self.file_name,
                 type_selected=type_selected,
                 options=FileSavingOptions(
                     file_type=FileType.VeraGrid_sqlite

@@ -53,6 +53,13 @@ class DgsCircuit:
 
     _ELEMENT_CLASSES: List[Type[DGSElement]] = [
         General,
+        BlkDef,
+        BlkFrom,
+        BlkGoto,
+        BlkRef,
+        BlkSig,
+        BlkSlot,
+        BlkSum,
         ChaRef,
         ChaVec,
         ElmComp,
@@ -83,15 +90,23 @@ class DgsCircuit:
         ElmZone,
         General,
         IntFolder,
+        IntRef,
+        IntTemplate,
         IntGrf,
         IntGrfcon,
         IntGrfnet,
+        Matrix,
         RelFuse,
         StaCubic,
+        StaCt,
         StaSwitch,
+        StaVt,
+        TypSwitch,
         TypAsmo,
+        TypCt,
         TypFuse,
         TypCon,
+        TypGeo,
         TypLne,
         TypTow,
         TypSind,
@@ -99,6 +114,7 @@ class DgsCircuit:
         TypSym,
         TypTr2,
         TypTr3,
+        TypVt,
     ]
 
     _REGISTRY: Dict[str, Type[DGSElement]] = {cls.element_type: cls for cls in _ELEMENT_CLASSES}
@@ -110,6 +126,13 @@ class DgsCircuit:
         self._id_counter = 0
 
         self.generals: List[General] = list()
+        self.blkdefs: List[BlkDef] = list()
+        self.blkfroms: List[BlkFrom] = list()
+        self.blkgotos: List[BlkGoto] = list()
+        self.blkrefs: List[BlkRef] = list()
+        self.blksigs: List[BlkSig] = list()
+        self.blkslots: List[BlkSlot] = list()
+        self.blksums: List[BlkSum] = list()
         self.elmcomps: List[ElmComp] = list()
         self.elmdsls: List[ElmDsl] = list()
         self.elmbranches: List[ElmBranch] = list()
@@ -139,15 +162,23 @@ class DgsCircuit:
         self.elmxnets: List[ElmXnet] = list()
         self.elmzones: List[ElmZone] = list()
         self.intfolders: List[IntFolder] = list()
+        self.intrefs: List[IntRef] = list()
+        self.inttemplates: List[IntTemplate] = list()
         self.intgrfs: List[IntGrf] = list()
         self.intgrfcons: List[IntGrfcon] = list()
         self.intgrfnets: List[IntGrfnet] = list()
+        self.matrixes: List[Matrix] = list()
         self.relfuses: List[RelFuse] = list()
         self.stacubics: List[StaCubic] = list()
+        self.stacts: List[StaCt] = list()
         self.staswitchs: List[StaSwitch] = list()
+        self.stavts: List[StaVt] = list()
+        self.typswitches: List[TypSwitch] = list()
         self.typasmos: List[TypAsmo] = list()
+        self.typcts: List[TypCt] = list()
         self.typfuses: List[TypFuse] = list()
         self.typcons: List[TypCon] = list()
+        self.typgeos: List[TypGeo] = list()
         self.typlnes: List[TypLne] = list()
         self.typtows: List[TypTow] = list()
         self.typsinds: List[TypSind] = list()
@@ -155,9 +186,17 @@ class DgsCircuit:
         self.typsyms: List[TypSym] = list()
         self.typtr2s: List[TypTr2] = list()
         self.typtr3s: List[TypTr3] = list()
+        self.typvts: List[TypVt] = list()
 
         self._CLASS_TO_LIST: Dict[Type[DGSElement], List[DGSElement]] = {
             General: self.generals,
+            BlkDef: self.blkdefs,
+            BlkFrom: self.blkfroms,
+            BlkGoto: self.blkgotos,
+            BlkRef: self.blkrefs,
+            BlkSig: self.blksigs,
+            BlkSlot: self.blkslots,
+            BlkSum: self.blksums,
             ChaRef: self.charefs,
             ChaVec: self.chavecs,
             ElmComp: self.elmcomps,
@@ -186,15 +225,23 @@ class DgsCircuit:
             ElmXnet: self.elmxnets,
             ElmZone: self.elmzones,
             IntFolder: self.intfolders,
+            IntRef: self.intrefs,
+            IntTemplate: self.inttemplates,
             IntGrf: self.intgrfs,
             IntGrfcon: self.intgrfcons,
             IntGrfnet: self.intgrfnets,
+            Matrix: self.matrixes,
             RelFuse: self.relfuses,
             StaCubic: self.stacubics,
+            StaCt: self.stacts,
             StaSwitch: self.staswitchs,
+            StaVt: self.stavts,
+            TypSwitch: self.typswitches,
             TypAsmo: self.typasmos,
+            TypCt: self.typcts,
             TypFuse: self.typfuses,
             TypCon: self.typcons,
+            TypGeo: self.typgeos,
             TypLne: self.typlnes,
             TypTow: self.typtows,
             TypSind: self.typsinds,
@@ -202,6 +249,7 @@ class DgsCircuit:
             TypSym: self.typsyms,
             TypTr2: self.typtr2s,
             TypTr3: self.typtr3s,
+            TypVt: self.typvts,
         }
 
     def new_id(self) -> str:

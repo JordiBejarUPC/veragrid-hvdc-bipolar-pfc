@@ -30,6 +30,12 @@ class PythonCodeEditor(QPlainTextEdit):
 
         font = QFont("Consolas", CONSOLE_TEXT_SIZE)
         self.setFont(font)
+        self._tab_text: str = "    "
+
+        # Keep the visual width of tab characters aligned with four spaces so
+        # existing text containing tabs is shown with the same indentation width
+        # that the editor inserts for new indentation.
+        self.setTabStopDistance(float(self.fontMetrics().horizontalAdvance(self._tab_text)))
 
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
 
@@ -126,9 +132,10 @@ class PythonCodeEditor(QPlainTextEdit):
             # --------------------------------------------------
             elif e.key() == Qt.Key.Key_Tab:
                 if not popup.isVisible():
-                    # Insert tab space if no popup is visible
+                    # Insert four spaces instead of a literal tab character so
+                    # new indentation always follows the configured width.
                     cursor = self.textCursor()
-                    cursor.insertText("\t")  # Insert tab space
+                    cursor.insertText(self._tab_text)
                     self.setTextCursor(cursor)
                     return True
 

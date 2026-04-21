@@ -252,8 +252,8 @@ def parse_generators(circuit: MultiCircuit,
 
         for i in gen_dict.keys():
             curve_model = opf_table[i, 0]
-            gen_dict[i].StartupCost = opf_table[i, 1]
-            gen_dict[i].ShutdownCost = opf_table[i, 2]
+            gen_dict[i].startup_cost = opf_table[i, 1]
+            gen_dict[i].shutdown_cost = opf_table[i, 2]
             n_cost = opf_table[i, 3]
             points = opf_table[i, 4:]
             if curve_model == 2:
@@ -928,8 +928,8 @@ def get_generation(
 
             cost_data.append({
                 'costtype': 2,
-                'startup': elm.StartupCost,
-                'shutdown': elm.ShutdownCost,
+                'startup': elm.startup_cost,
+                'shutdown': elm.shutdown_cost,
                 'n': 3,
                 'costvector': [elm.Cost2, elm.Cost, elm.Cost0]
             })

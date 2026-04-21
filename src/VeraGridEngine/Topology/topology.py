@@ -577,6 +577,10 @@ class ConnectivityMatrices:
     """
     Connectivity matrices
     """
+    __slots__ = (
+        "Cf_",
+        "Ct_",
+    )
 
     def __init__(self, Cf: sp.csc_matrix, Ct: sp.csc_matrix):
         self.Cf_ = Cf

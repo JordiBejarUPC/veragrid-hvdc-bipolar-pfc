@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from typing import Union
 from VeraGridEngine.Simulations.results_table import ResultsTable
-from VeraGridEngine.Simulations.results_template import ResultsTemplate
+from VeraGridEngine.Simulations.results_template import ResultsTemplate, ResultsProperty
 from VeraGridEngine.DataStructures.numerical_circuit import NumericalCircuit
 from VeraGridEngine.Simulations.ContingencyAnalysis.contingencies_report import ContingencyResultsReport
 from VeraGridEngine.basic_structures import DateVec, IntVec, StrVec, Mat
@@ -20,10 +20,44 @@ class ContingencyAnalysisTimeSeriesResults(ResultsTemplate):
     Contingency analysis time series results
     """
 
+    LOCAL_RESULTS_DECLARATIONS = (
+        ResultsProperty(name='branch_names', tpe=StrVec, old_names=list()),
+        ResultsProperty(name='bus_names', tpe=StrVec, old_names=list()),
+        ResultsProperty(name='bus_types', tpe=IntVec, old_names=list()),
+        ResultsProperty(name='con_names', tpe=StrVec, old_names=list()),
+        ResultsProperty(name='S', tpe=Mat, old_names=list()),
+        ResultsProperty(name='max_flows', tpe=Mat, old_names=list()),
+        ResultsProperty(name='max_loading', tpe=Mat, old_names=list()),
+        ResultsProperty(name='sum_overload', tpe=Mat, old_names=list()),
+        ResultsProperty(name='mean_overload', tpe=Mat, old_names=list()),
+        ResultsProperty(name='std_dev_overload', tpe=Mat, old_names=list()),
+        ResultsProperty(name='srap_used_power', tpe=Mat, old_names=list()),
+        ResultsProperty(name='report', tpe=ContingencyResultsReport, old_names=list()),
+    )
+
+    __slots__ = (
+        "nt",
+        "original_time_array",
+        "branch_names",
+        "bus_names",
+        "con_names",
+        "bus_types",
+        "S",
+        "max_flows",
+        "max_loading",
+        "overload_count",
+        "sum_overload",
+        "mean_overload",
+        "std_dev_overload",
+        "srap_used_power",
+        "report",
+    )
+
     def __init__(self,
                  n: int,
                  nbr: int,
                  time_array: DateVec,
+                 original_time_array: DateVec,
                  bus_names: StrVec,
                  branch_names: StrVec,
                  bus_types: IntVec,
@@ -65,6 +99,10 @@ class ContingencyAnalysisTimeSeriesResults(ResultsTemplate):
 
         self.nt = len(time_array)
 
+        # this is the complete time array because the report indices
+        # may be referring to a point outside the simulation range
+        self.original_time_array = original_time_array
+
         self.branch_names: StrVec = branch_names
         self.bus_names: StrVec = bus_names
         self.con_names: StrVec = con_names
@@ -96,19 +134,6 @@ class ContingencyAnalysisTimeSeriesResults(ResultsTemplate):
 
         self.report: ContingencyResultsReport = ContingencyResultsReport()
 
-        self.register(name='branch_names', tpe=StrVec)
-        self.register(name='bus_names', tpe=StrVec)
-        self.register(name='bus_types', tpe=IntVec)
-        self.register(name='con_names', tpe=StrVec)
-
-        self.register(name='S', tpe=Mat)
-        self.register(name='max_flows', tpe=Mat)
-        self.register(name='max_loading', tpe=Mat)
-        self.register(name='sum_overload', tpe=Mat)
-        self.register(name='mean_overload', tpe=Mat)
-        self.register(name='std_dev_overload', tpe=Mat)
-        self.register(name='srap_used_power', tpe=Mat)
-        self.register(name='report', tpe=ContingencyResultsReport)
 
     @property
     def nbus(self) -> int:
@@ -236,7 +261,7 @@ class ContingencyAnalysisTimeSeriesResults(ResultsTemplate):
         elif result_type == ResultTypes.ContingencyAnalysisReport:
 
             return ResultsTable(
-                data=self.report.get_data(time_array=self.time_array, time_format='%Y/%m/%d  %H:%M.%S'),
+                data=self.report.get_data(time_array=self.original_time_array, time_format='%Y/%m/%d  %H:%M.%S'),
                 index=self.report.get_index(),
                 idx_device_type=DeviceType.NoDevice,
                 columns=self.report.get_headers(),
@@ -245,16 +270,23 @@ class ContingencyAnalysisTimeSeriesResults(ResultsTemplate):
             )
 
         elif result_type == ResultTypes.ContingencyStatisticalAnalysisReport:
-            df = self.report.get_summary_table(time_array=self.time_array, time_format='%Y/%m/%d  %H:%M.%S')
 
-            return ResultsTable(
-                data=df.values,
-                index=df.index.tolist(),
-                idx_device_type=DeviceType.NoDevice,
-                columns=df.columns.tolist(),
-                cols_device_type=DeviceType.NoDevice,
-                title=result_type.value,
-            )
+            try:
+                df = self.report.get_summary_table(time_array=self.original_time_array,
+                                                   time_format='%Y/%m/%d  %H:%M.%S')
+
+                return ResultsTable(
+                    data=df.values,
+                    index=df.index.tolist(),
+                    idx_device_type=DeviceType.NoDevice,
+                    columns=df.columns.tolist(),
+                    cols_device_type=DeviceType.NoDevice,
+                    title=result_type.value,
+                )
+            except KeyError as e:
+                print(f"error getting summary table: {e}")
+                return None
+
 
         else:
             raise Exception('Result type not understood:' + str(result_type))

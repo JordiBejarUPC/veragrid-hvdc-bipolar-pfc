@@ -572,7 +572,7 @@ def ac_optimal_power_flow(nc: NumericalCircuit,
     # Shunt elements are treated as generators with fixed P.
     # As such, their limits are added in the generator limits array.
 
-    id_sh = np.where(nc.shunt_data.controllable == True)[0]
+    id_sh = np.where(nc.shunt_data.is_pv_control == True)[0]
     nsh = len(id_sh)
 
     # Since controllable shunts will be treated as generators, we deactivate them to avoid its computation in the
@@ -1116,7 +1116,7 @@ def run_nonlinear_opf(grid: MultiCircuit,
                       gen_idx=island.generator_data.original_idx,
                       hvdc_idx=island.hvdc_data.original_idx,
                       ncap_idx=capacity_nodes_idx_org,
-                      contshunt_idx=np.where(island.shunt_data.controllable == True)[0],
+                      contshunt_idx=np.where(island.shunt_data.is_pv_control == True)[0],
                       acopf_mode=opf_options.acopf_mode)
         if i > 0:
             results.error = max(results.error, island_res.error)

@@ -70,7 +70,12 @@ class PythonConsole(QPlainTextEdit):
 
         font = QFont("Consolas", CONSOLE_TEXT_SIZE)
         self.setFont(font)
+        self._tab_text: str = "    "
         self.setUndoRedoEnabled(False)
+
+        # Match the visual width of tab characters to four spaces so the
+        # console renders legacy tab-indented text consistently with new input.
+        self.setTabStopDistance(float(self.fontMetrics().horizontalAdvance(self._tab_text)))
         self.setLineWrapMode(QPlainTextEdit.LineWrapMode.NoWrap)
 
         PythonHighlighter(self.document())
@@ -275,9 +280,10 @@ class PythonConsole(QPlainTextEdit):
         # Insert tab space or trigger completion when popup is NOT visible
         # -------------------------------------------------
         elif event.key() == Qt.Key.Key_Tab:
-            # If no popup is visible, insert a tab character (space or actual tab)
+            # Insert four spaces instead of a literal tab character so console
+            # input always uses the requested indentation width.
             cursor = self.textCursor()
-            cursor.insertText("\t")  # Insert tab space
+            cursor.insertText(self._tab_text)
             self.setTextCursor(cursor)
             return
 

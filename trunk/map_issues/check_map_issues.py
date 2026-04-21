@@ -28,7 +28,6 @@ def check1():
         longitude=-4.0,
         latitude=40.0,
         name="",
-        circuit=gui.circuit,
         diagram=None
     )
 
@@ -89,7 +88,6 @@ def check2():
         longitude=-4.0,
         latitude=40.0,
         name="",
-        circuit=gui.circuit,
         diagram=None
     )
 
@@ -124,7 +122,6 @@ def check3():
         longitude=-4.0,
         latitude=40.0,
         name="",
-        circuit=gui.circuit,
         diagram=diagram
     )
 

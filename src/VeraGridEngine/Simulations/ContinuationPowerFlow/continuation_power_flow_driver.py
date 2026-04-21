@@ -23,6 +23,14 @@ if TYPE_CHECKING:  # Only imports the below statements during type checking
 
 
 class ContinuationPowerFlowDriver(DriverTemplate):
+    __slots__ = (
+        "options",
+        "inputs",
+        "pf_options",
+        "opf_results",
+        "t_idx",
+    )
+
     name = 'Continuation Power Flow'
     tpe = SimulationTypes.ContinuationPowerFlow_run
 

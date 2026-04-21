@@ -1,0 +1,33 @@
+**How to Add a Custom Icon for Use in the GUI**
+
+Follow these steps to create and integrate a new icon into the application:
+
+1. **Create the icon files**
+   Generate the required icon files:
+
+   * `my_icon.png`
+   * `my_icon.svg`
+
+2. **Add the files to the project directory**
+   Place both files in the following folder:
+   `src/VeraGrid/Gui/Icons/icons`
+
+3. **Register the icon in the resource file**
+   Open the `icons.qrc` file and add the following line:
+
+   ```
+   <file>icons/my_icon.png</file>
+   ```
+
+4. **Recompile the resource file**
+   Run the script `update_icons_rc.py` to update and recompile the `icons.qrc` file.
+
+5. **Assign the icon in Qt Designer**
+
+   * Open Qt Designer
+   * Go to the **Icon** property of the desired widget
+   * Click the small triangle button
+   * Select **Choose Resource...**
+   * Locate and select your newly added icon from the list
+
+Your icon should now be available and ready to use in the GUI.

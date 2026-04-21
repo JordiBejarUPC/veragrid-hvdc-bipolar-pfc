@@ -95,6 +95,22 @@ class SimulationIndices:
     """
     Class to handle the simulation indices
     """
+    __slots__ = (
+        "bus_types",
+        "tap_module_control_mode",
+        "tap_controlled_buses",
+        "tap_phase_control_mode",
+        "F",
+        "T",
+        "ac",
+        "dc",
+        "pq",
+        "pv",
+        "p",
+        "pqv",
+        "vd",
+        "no_slack",
+    )
 
     def __init__(self,
                  bus_types: IntVec,

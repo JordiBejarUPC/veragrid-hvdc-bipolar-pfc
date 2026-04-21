@@ -15,12 +15,15 @@ from VeraGridEngine.IO.raw.devices.facts import RawFACTS
 from VeraGridEngine.IO.raw.devices.generator import RawGenerator
 from VeraGridEngine.IO.raw.devices.load import RawLoad
 from VeraGridEngine.IO.raw.devices.fixed_shunt import RawFixedShunt
+from VeraGridEngine.IO.raw.devices.system_switching_device import RawSystemSwitchingDevice
 from VeraGridEngine.IO.raw.devices.switched_shunt import RawSwitchedShunt
 from VeraGridEngine.IO.raw.devices.transformer import RawTransformer
 from VeraGridEngine.IO.raw.devices.two_terminal_dc_line import RawTwoTerminalDCLine
 from VeraGridEngine.IO.raw.devices.vsc_dc_line import RawVscDCLine
 from VeraGridEngine.IO.raw.devices.psse_circuit import PsseCircuit
-from VeraGridEngine.enumerations import TapChangerTypes, TapPhaseControl, TapModuleControl
+from VeraGridEngine.enumerations import (
+    TapChangerTypes, TapPhaseControl, TapModuleControl, ShuntControlMode, SwitchGraphicType
+)
 
 
 def get_veragrid_bus(psse_bus: RawBus,
@@ -209,18 +212,23 @@ def get_veragrid_shunt_switched(
     vset = 1.0
 
     if psse_elm.MODSW == 0:  # locked
-        is_controlled = False
+        control_mode = ShuntControlMode.Locked
         b_init = psse_elm.BINIT
 
-    elif psse_elm.MODSW in [1, 2]:
+    elif psse_elm.MODSW == 1:
         # 1 - discrete adjustment, controlling voltage locally or at bus SWREG
+        control_mode = ShuntControlMode.Discrete
+        b_init = psse_elm.BINIT * psse_elm.RMPCT / 100.0
+        vset = (psse_elm.VSWHI + psse_elm.VSWLO) / 2.0
+
+    elif psse_elm.MODSW == 2:
         # 2 - continuous adjustment, controlling voltage locally or at bus SWREG
-        is_controlled = True
+        control_mode = ShuntControlMode.Continuous
         b_init = psse_elm.BINIT * psse_elm.RMPCT / 100.0
         vset = (psse_elm.VSWHI + psse_elm.VSWLO) / 2.0
 
     elif psse_elm.MODSW in [3, 4, 5, 6]:
-        is_controlled = True
+        control_mode = ShuntControlMode.Continuous
         b_init = psse_elm.BINIT
         logger.add_warning(
             msg="Not supported control mode for Switched Shunt",
@@ -228,7 +236,7 @@ def get_veragrid_shunt_switched(
         )
 
     else:
-        is_controlled = False
+        control_mode = ShuntControlMode.Locked
         b_init = psse_elm.BINIT
         logger.add_warning(
             msg="Invalid control mode for Switched Shunt.",
@@ -237,21 +245,24 @@ def get_veragrid_shunt_switched(
             value=psse_elm.MODSW,
         )
 
-    elm = dev.ControllableShunt(name='Switched shunt ' + busnum_id,
-                                active=bool(psse_elm.STAT),
-                                B=b_init,
-                                step=0,
-                                vset=vset,
-                                code=busnum_id,
-                                is_nonlinear=True,
-                                is_controlled=is_controlled, )
+    elm = dev.ControllableShunt(
+        name='Switched shunt ' + busnum_id,
+        code=busnum_id,
+        active=bool(psse_elm.STAT),
+        B=b_init,
+        step=0,
+        vset=vset,
+        vmin=float(psse_elm.VSWLO),
+        vmax=float(psse_elm.VSWHI),
+        control_mode=control_mode,
+    )
 
     if psse_elm.SWREG > 0:
         if psse_elm.SWREG != psse_elm.I:
             elm.control_bus = psse_bus_dict[psse_elm.SWREG]
 
-    n_list = []
-    b_list = []
+    n_list: list[int] = list()
+    b_list: list[float] = list()
 
     for i in range(1, 9):
         s = getattr(psse_elm, f"S{i}")
@@ -261,10 +272,43 @@ def get_veragrid_shunt_switched(
             n_list.append(n)
             b_list.append(getattr(psse_elm, f"B{i}"))
 
-    if len(n_list) == 1:
-        elm.is_nonlinear = False
-
     elm.set_blocks(n_list, b_list)
+
+    return elm
+
+
+def get_veragrid_switch(psse_elm: RawSystemSwitchingDevice,
+                        psse_bus_dict: Dict[int, dev.Bus],
+                        logger: Logger) -> dev.Switch | None:
+    """
+    Return VeraGrid Switch object
+    """
+    bus_from = psse_bus_dict.get(psse_elm.I, None)
+    bus_to = psse_bus_dict.get(psse_elm.J, None)
+
+    if bus_from is None or bus_to is None:
+        logger.add_error("Switch bus missing", device=psse_elm.get_id(), value=f"{psse_elm.I}->{psse_elm.J}")
+        return None
+
+    if psse_elm.STYPE == 3:
+        graphic_type = SwitchGraphicType.Disconnector
+    else:
+        graphic_type = SwitchGraphicType.CircuitBreaker
+
+    code = str(psse_elm.CKT).replace("'", "").strip()
+    name = str(psse_elm.NAME).replace("'", "").strip() or f"{psse_elm.I}_{psse_elm.J}_{code}"
+
+    elm = dev.Switch(
+        bus_from=bus_from,
+        bus_to=bus_to,
+        name=name,
+        code=code,
+        x=float(psse_elm.X),
+        rate=float(psse_elm.RATE1),
+        active=bool(psse_elm.STATUS),
+        normal_open=bool(psse_elm.NSTATUS),
+        graphic_type=graphic_type,
+    )
 
     return elm
 
@@ -311,6 +355,7 @@ def get_veragrid_generator(psse_elm: RawGenerator, psse_bus_dict: Dict[int, dev.
                         idtag=None,
                         code=name,
                         P=psse_elm.PG,
+                        Q=psse_elm.QG,
                         vset=psse_elm.VS,
                         Qmin=Qmin,
                         Qmax=Qmax,
@@ -1104,7 +1149,7 @@ def psse_to_veragrid(psse_circuit: PsseCircuit,
     :return: MultiCircuit instance
     """
 
-    circuit = MultiCircuit(Sbase=psse_circuit.SBASE)
+    circuit = MultiCircuit(Sbase=psse_circuit.SBASE, fbase=psse_circuit.BASFRQ)
     circuit.comments = 'Converted from a PSS/e .raw file'
 
     circuit.areas = [dev.Area(name=x.ARNAME) for x in psse_circuit.areas]
@@ -1247,6 +1292,19 @@ def psse_to_veragrid(psse_circuit: PsseCircuit,
             else:
                 logger.add_warning('The RAW file has a repeated line device and it is omitted from the model',
                                    str(branch.idtag))
+
+    # Go through switches
+    for psse_switch in psse_circuit.switches:
+        switch = get_veragrid_switch(psse_switch, psse_bus_dict, logger)
+
+        if switch is not None:
+            switch_key = psse_switch.get_id()
+            if switch_key not in branches_already_there:
+                circuit.add_switch(switch)
+                branches_already_there.add(switch_key)
+            else:
+                logger.add_warning('The RAW file has a repeated switch device and it is omitted from the model',
+                                   switch_key)
 
     # Go through hvdc lines
     for psse_branch in psse_circuit.vsc_dc_lines:

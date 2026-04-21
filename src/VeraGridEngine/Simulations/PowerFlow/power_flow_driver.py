@@ -24,6 +24,13 @@ if TYPE_CHECKING:  # Only imports the below statements during type checking
 
 
 class PowerFlowDriver(DriverTemplate):
+    __slots__ = (
+        "options",
+        "opf_results",
+        "t_idx",
+        "convergence_reports",
+    )
+
     name = 'Power Flow'
     tpe = SimulationTypes.PowerFlow_run
 

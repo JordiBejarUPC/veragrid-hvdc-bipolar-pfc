@@ -5,15 +5,18 @@
 from __future__ import annotations
 import os
 import json
+import pathlib
 
 from collections.abc import Callable
 from typing import Union, List, Tuple
 
+from VeraGridEngine.Devices.multiverse import MultiVerse
 from VeraGridEngine.IO.cim.cgmes.cgmes_data_parser import CgmesDataParser
+from VeraGridEngine.IO.cim.cgmes.cgmes_enums import CgmesRecoveryMode
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.data_logger import DataLogger
 from VeraGridEngine.IO.veragrid.excel_interface import (load_from_xls, interpret_excel_v3, interprete_excel_v2)
-from VeraGridEngine.IO.veragrid.pack_unpack import (parse_veragrid_data)
+from VeraGridEngine.IO.veragrid.pack_unpack import (parse_veragrid_data, parse_multiverse_data)
 from VeraGridEngine.IO.matpower.legacy.matpower_parser import interpret_data_v1
 from VeraGridEngine.IO.matpower.matpower_circuit import MatpowerCircuit
 from VeraGridEngine.IO.matpower.matpower_to_veragrid import matpower_to_veragrid
@@ -39,7 +42,7 @@ from VeraGridEngine.IO.others.rte_parser import rte2veragrid
 from VeraGridEngine.IO.others.anarede import PWFParser
 from VeraGridEngine.IO.iidm.iidm_parser_pypowsybl import IidmParser
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
-from VeraGridEngine.enumerations import CGMESVersions, FileType
+from VeraGridEngine.enumerations import CGMESVersions, CgmesTopologyMode, FileType
 
 
 class FileOpenOptions:
@@ -55,10 +58,13 @@ class FileOpenOptions:
                  cgmes_version: CGMESVersions | None = None,
                  cgmes_map_areas_like_raw: bool = False,
                  cgmes_try_to_map_dc_to_hvdc_line: bool = True,
+                 cgmes_topology_mode: CgmesTopologyMode = CgmesTopologyMode.Auto,
+                 cgmes_create_busbar_section_for_every_connectivity_node: bool = False,
                  # PSSe
                  psse_adjust_taps_to_discrete_positions: bool = False,
                  psse_use_short_names: bool = True,
-                 psse_flatten_virtual_taps: bool = False):
+                 psse_flatten_virtual_taps: bool = False,
+                 cgmes_recovery_mode: CgmesRecoveryMode = CgmesRecoveryMode.Auto):
         """
         :param file_type: FileType to load, none is unsure
         :param crash_on_errors: Mainly debug feature to allow finding the exact crash issue when loading files
@@ -71,6 +77,12 @@ class FileOpenOptions:
                                             SubGeographicalRegion <-> Community
         :param cgmes_try_to_map_dc_to_hvdc_line: Converters and DC lines in CGMES are attempted to be converted
                                             to the simplified HvdcLine objects in VeraGrid
+        :param cgmes_topology_mode: CGMES topology conversion mode.
+                                    Auto: decide from model content.
+                                    ConnectivityNode: import node-breaker view.
+                                    TopologicalNode: import bus-branch view.
+        :param cgmes_create_busbar_section_for_every_connectivity_node: If true, create a BusBar for each
+                                                                         ConnectivityNode similarly to powsybl.
         :param psse_adjust_taps_to_discrete_positions: Modify the tap angle and module to the discrete positions
         """
 
@@ -82,6 +94,11 @@ class FileOpenOptions:
         self.cgmes_version: CGMESVersions | None = cgmes_version
         self.cgmes_map_areas_like_raw = cgmes_map_areas_like_raw
         self.cgmes_try_to_map_dc_to_hvdc_line = cgmes_try_to_map_dc_to_hvdc_line
+        self.cgmes_topology_mode: CgmesTopologyMode = cgmes_topology_mode
+        self.cgmes_create_busbar_section_for_every_connectivity_node = (
+            cgmes_create_busbar_section_for_every_connectivity_node
+        )
+        self.cgmes_recovery_mode: CgmesRecoveryMode = cgmes_recovery_mode
 
         # PSS/e options
         self.psse_adjust_taps_to_discrete_positions = psse_adjust_taps_to_discrete_positions
@@ -89,24 +106,28 @@ class FileOpenOptions:
         self.psse_flatten_virtual_taps = psse_flatten_virtual_taps
 
 
-
-
 def open_cgmes(files: List[str] | str,
                version: CGMESVersions | None = None,
                cgmes_map_areas_like_raw: bool = False,
                try_to_map_dc_to_hvdc_line: bool = False,
+               cgmes_topology_mode: CgmesTopologyMode = CgmesTopologyMode.Auto,
+               cgmes_create_busbar_section_for_every_connectivity_node: bool = False,
                text_func: Union[None, Callable] = None,
                progress_func: Union[None, Callable] = None,
-               cgmes_logger: DataLogger = DataLogger()) -> Tuple[MultiCircuit, CgmesCircuit]:
+               cgmes_logger: DataLogger = DataLogger(),
+               cgmes_recovery_mode: CgmesRecoveryMode = CgmesRecoveryMode.Auto) -> Tuple[MultiCircuit, CgmesCircuit]:
     """
     Load cgmes files
     :param files: file or list of files
     :param version:
     :param cgmes_map_areas_like_raw:
     :param try_to_map_dc_to_hvdc_line:
+    :param cgmes_topology_mode:
+    :param cgmes_create_busbar_section_for_every_connectivity_node:
     :param text_func:
     :param progress_func:
     :param cgmes_logger:
+    :param cgmes_recovery_mode:
     :return:
     """
 
@@ -131,6 +152,7 @@ def open_cgmes(files: List[str] | str,
         cgmes_version=cgmes_version,
         text_func=text_func,
         cgmes_map_areas_like_raw=cgmes_map_areas_like_raw,
+        cgmes_recovery_mode=cgmes_recovery_mode,
         progress_func=progress_func,
         logger=cgmes_logger
     )
@@ -138,6 +160,10 @@ def open_cgmes(files: List[str] | str,
     circuit = cgmes_to_veragrid(
         cgmes_model=cgmes_circuit,
         map_dc_to_hvdc_line=try_to_map_dc_to_hvdc_line,
+        cgmes_topology_mode=cgmes_topology_mode,
+        create_busbar_section_for_every_connectivity_node=(
+            cgmes_create_busbar_section_for_every_connectivity_node
+        ),
         logger=cgmes_logger
     )
 
@@ -179,7 +205,9 @@ def determine_file_type(file_name: List[str] | str) -> FileType | None:
 
         looks_like_ucte = False
         for f in file_name:
-            _, file_extension = os.path.splitext(f)
+            # Use only the final suffix. Joining all suffixes breaks normal
+            # dotted names such as "case.4.10.gridcal".
+            file_extension = pathlib.Path(f).suffix.lower()
             if file_extension.lower() in ['.xml', '.zip']:
                 looks_like_ucte = False
 
@@ -198,74 +226,81 @@ def determine_file_type(file_name: List[str] | str) -> FileType | None:
 
     else:
 
-        name, file_extension = os.path.splitext(file_name)
+        # Use the final suffix for normal formats. Joining all suffixes breaks
+        # dotted names such as "case.4.10.gridcal".
+        path = pathlib.Path(file_name)
+        file_extension = path.suffix.lower()
+        suffixes = [suffix.lower() for suffix in path.suffixes]
+        compound_extension = ''.join(suffixes[-2:]) if len(suffixes) >= 2 else file_extension
         # print(name, file_extension)
-        if file_extension.lower() in ['.xls', '.xlsx']:
+        if file_extension in ['.xls', '.xlsx']:
 
             return FileType.generic_excel
 
-        elif file_extension.lower() in ['.gridcal', '.veragrid']:
+        elif file_extension in ['.gridcal', '.veragrid']:
 
             # open file content
             return FileType.VeraGrid
 
-        elif file_extension.lower() in ['.dgridcal', '.dveragrid']:
+        elif file_extension in ['.dgridcal', '.dveragrid']:
 
             # open file content
             return FileType.VeraGrid_delta
 
-        elif file_extension.lower() == '.sqlite':
+        elif file_extension == '.sqlite':
 
             # open file content
             return FileType.VeraGrid_sqlite
 
-        elif file_extension.lower() == '.dgs':
+        elif file_extension == '.dgs':
             return FileType.DGS
 
-        elif file_extension.lower() == '.gch5':
+        elif file_extension == '.gch5':
             return FileType.VeraGrid_h5
 
-        elif file_extension.lower() in ['.m', '.matpower']:
+        elif file_extension in ['.m', '.matpower']:
             return FileType.Matpower
 
-        elif file_extension.lower() == '.dpx':
+        elif file_extension == '.dpx':
             return FileType.DPX
 
-        elif file_extension.lower() == '.pwf':
+        elif file_extension == '.pwf':
             return FileType.PWF
 
-        elif file_extension.lower() == '.json':
+        elif file_extension == '.json':
             return FileType.VeraGrid_json
 
-        elif file_extension.lower() == '.ejson3':
+        elif file_extension == '.ejson3':
             return FileType.VeraGrid_ejson3
 
-        elif file_extension.lower() == '.raw':
+        elif file_extension == '.raw':
             return FileType.PSSE_raw
 
-        elif file_extension.lower() == '.rawx':
+        elif file_extension == '.rawx':
             return FileType.PSSE_rawx
 
-        elif file_extension.lower() == '.epc':
+        elif file_extension == '.epc':
             return FileType.EPC
 
-        elif file_extension.lower() in ['.xml', '.zip']:
+        elif file_extension in ['.xml', '.zip']:
             # inconclusive
             return None
 
-        elif file_extension.lower() == '.hdf5':
+        elif file_extension == '.hdf5':
             return FileType.PyPsa_h5
 
-        elif file_extension.lower() == '.nc':
+        elif file_extension == '.nc':
             return FileType.PyPsa
 
-        elif file_extension.lower() == '.p':
+        elif file_extension == '.p':
             return FileType.PandaPower
 
-        elif file_extension.lower() == '.uct' or file_extension.lower() == '.ucte':
+        elif file_extension == '.uct' or file_extension == '.ucte':
             return FileType.UCTE
 
-        elif file_extension.lower() == '.iidm' or file_extension.lower() == '.xiidm':
+        elif (file_extension == '.iidm'
+              or file_extension == '.xiidm'
+              or compound_extension == '.xiidm.bz2'):
             return FileType.Iidm
         else:
             return None
@@ -288,11 +323,13 @@ class FileOpen:
         """
         self.file_name: Union[str, List[str]] = file_name
 
-        self.circuit: Union[MultiCircuit, None] = None
+        self.circuit: MultiCircuit | None = None
+
+        self.multiverse: MultiVerse | None = None
 
         self.options: FileOpenOptions = options if options is not None else FileOpenOptions()
 
-        self.cgmes_circuit: Union[CgmesCircuit, None] = None
+        self.cgmes_circuit: CgmesCircuit | None = None
 
         self.json_files = dict()
 
@@ -322,7 +359,7 @@ class FileOpen:
 
     def open(self,
              text_func: Union[None, Callable] = None,
-             progress_func: Union[None, Callable] = None) -> Union[MultiCircuit, None]:
+             progress_func: Union[None, Callable] = None) -> MultiCircuit | None:
         """
         Load VeraGrid compatible file
         :param text_func: pointer to function that prints the names
@@ -333,80 +370,106 @@ class FileOpen:
 
         # --- VeraGrid Core & Excel Variants ---
         if self.file_type == FileType.VeraGrid:
-            # open file content
-            data_dictionary, self.json_files = get_frames_from_zip(self.file_name,
-                                                                   text_func=text_func,
-                                                                   progress_func=progress_func,
-                                                                   logger=self.logger)
-            # interpret file content
-            if data_dictionary is not None:
-                self.circuit = parse_veragrid_data(data=data_dictionary,
-                                                   text_func=text_func,
-                                                   progress_func=progress_func,
-                                                   logger=self.logger)
+            if isinstance(self.file_name, str):
+                # open file content
+                (data_dictionary,
+                 self.json_files,
+                 has_multiverse_data) = get_frames_from_zip(file_name_zip=self.file_name,
+                                                            text_func=text_func,
+                                                            progress_func=progress_func,
+                                                            logger=self.logger)
+                # interpret file content
+                if data_dictionary is not None:
+                    if has_multiverse_data:
+                        self.multiverse = parse_multiverse_data(data=data_dictionary,
+                                                                metadata=self.json_files["metadata"],
+                                                                text_func=text_func,
+                                                                progress_func=progress_func,
+                                                                logger=self.logger)
+                        self.circuit = self.multiverse.current_model
+                    else:
+
+                        self.circuit = parse_veragrid_data(data=data_dictionary,
+                                                           text_func=text_func,
+                                                           progress_func=progress_func,
+                                                           logger=self.logger)
+                else:
+                    self.logger.add("Error while reading the file :(")
+                    return None
             else:
-                self.logger.add("Error while reading the file :(")
+                self.logger.add("File name is not a string")
                 return None
 
         # --- VeraGrid Data Serialization ---
         elif self.file_type == FileType.VeraGrid_delta:
-            # open file content
-            data_dictionary, self.json_files = get_frames_from_zip(self.file_name,
-                                                                   text_func=text_func,
-                                                                   progress_func=progress_func,
-                                                                   logger=self.logger)
-            # interpret file content
-            if data_dictionary is not None:
-                self.circuit = parse_veragrid_data(data=data_dictionary,
-                                                   previous_circuit=self._previous_circuit,
-                                                   text_func=text_func,
-                                                   progress_func=progress_func,
-                                                   logger=self.logger)
+            if isinstance(self.file_name, str):
+                # open file content
+                (data_dictionary,
+                 self.json_files,
+                 has_multiverse_data) = get_frames_from_zip(file_name_zip=self.file_name,
+                                                            text_func=text_func,
+                                                            progress_func=progress_func,
+                                                            logger=self.logger)
+                # interpret file content
+                if data_dictionary is not None:
+
+                    if has_multiverse_data:
+                        self.multiverse = parse_multiverse_data(data=data_dictionary,
+                                                                metadata=self.json_files["metadata"],
+                                                                text_func=text_func,
+                                                                progress_func=progress_func,
+                                                                logger=self.logger)
+                        self.circuit = self.multiverse.current_model
+                    else:
+
+                        self.circuit = parse_veragrid_data(data=data_dictionary,
+                                                           previous_circuit=self._previous_circuit,
+                                                           text_func=text_func,
+                                                           progress_func=progress_func,
+                                                           logger=self.logger)
+                else:
+                    self.logger.add("Error while reading the file :(")
+                    return None
             else:
-                self.logger.add("Error while reading the file :(")
+                self.logger.add("File name is not a string")
                 return None
+
         elif self.file_type == FileType.VeraGrid_ejson3:
-            with open(self.file_name, encoding="utf-8") as f:
-                data = json.load(f)
-                self.circuit = parse_json_data_v3(data, self.logger)
+            if isinstance(self.file_name, str):
+                with open(self.file_name, encoding="utf-8") as f:
+                    data = json.load(f)
+                    self.circuit = parse_json_data_v3(data, self.logger)
+            else:
+                self.logger.add("File name is not a string")
+                return None
 
         elif self.file_type == FileType.VeraGrid_xlsx1:
-            data_dictionary = load_from_xls(self.file_name, self.logger)
-            self.circuit = interpret_data_v1(data_dictionary, self.logger)
-
-        elif self.file_type == FileType.VeraGrid_xlsx2:
-            data_dictionary = load_from_xls(self.file_name, self.logger)
-            self.circuit = interprete_excel_v2(data_dictionary, logger=self.logger)
-
-        elif self.file_type == FileType.VeraGrid_xlsx3:
-            data_dictionary = load_from_xls(self.file_name, self.logger)
-            self.circuit = interpret_excel_v3(data_dictionary, logger=self.logger)
-
-        elif self.file_type == FileType.VeraGrid_xlsx4:
-            data_dictionary = load_from_xls(self.file_name, self.logger)
-            if data_dictionary is not None:
-                self.circuit = parse_veragrid_data(data=data_dictionary,
-                                                   text_func=text_func,
-                                                   progress_func=progress_func,
-                                                   logger=self.logger)
+            if isinstance(self.file_name, str):
+                data_dictionary = load_from_xls(self.file_name, self.logger)
+                self.circuit = interpret_data_v1(data_dictionary, self.logger)
             else:
-                self.logger.add("Error while reading the file :(")
+                self.logger.add("File name is not a string")
                 return None
 
-        elif self.file_type == FileType.generic_excel:
-            data_dictionary = load_from_xls(self.file_name, self.logger)
-
-            # Pass the table-like data dictionary to objects in this circuit
-            if 'version' not in data_dictionary:
-                self.circuit = interpret_data_v1(data_dictionary, self.logger)
-
-            elif data_dictionary['version'] == 2.0:
+        elif self.file_type == FileType.VeraGrid_xlsx2:
+            if isinstance(self.file_name, str):
+                data_dictionary = load_from_xls(self.file_name, self.logger)
                 self.circuit = interprete_excel_v2(data_dictionary, logger=self.logger)
+            else:
+                self.logger.add("File name is not a string")
+                return None
 
-            elif data_dictionary['version'] == 3.0:
+        elif self.file_type == FileType.VeraGrid_xlsx3:
+            if isinstance(self.file_name, str):
+                data_dictionary = load_from_xls(self.file_name, self.logger)
                 self.circuit = interpret_excel_v3(data_dictionary, logger=self.logger)
+            else:
+                self.logger.add("File name is not a string")
+                return None
 
-            elif data_dictionary['version'] == 4.0:
+        elif self.file_type == FileType.VeraGrid_xlsx4:
+            if isinstance(self.file_name, str):
+                data_dictionary = load_from_xls(self.file_name, self.logger)
                 if data_dictionary is not None:
                     self.circuit = parse_veragrid_data(data=data_dictionary,
                                                        text_func=text_func,
@@ -416,7 +479,37 @@ class FileOpen:
                     self.logger.add("Error while reading the file :(")
                     return None
             else:
-                self.logger.add('The excel file could not be processed')
+                self.logger.add("File name is not a string")
+                return None
+
+        elif self.file_type == FileType.generic_excel:
+            if isinstance(self.file_name, str):
+                data_dictionary = load_from_xls(self.file_name, self.logger)
+
+                # Pass the table-like data dictionary to objects in this circuit
+                if 'version' not in data_dictionary:
+                    self.circuit = interpret_data_v1(data_dictionary, self.logger)
+
+                elif data_dictionary['version'] == 2.0:
+                    self.circuit = interprete_excel_v2(data_dictionary, logger=self.logger)
+
+                elif data_dictionary['version'] == 3.0:
+                    self.circuit = interpret_excel_v3(data_dictionary, logger=self.logger)
+
+                elif data_dictionary['version'] >= 4.0:
+                    if data_dictionary is not None:
+                        self.circuit = parse_veragrid_data(data=data_dictionary,
+                                                           text_func=text_func,
+                                                           progress_func=progress_func,
+                                                           logger=self.logger)
+                    else:
+                        self.logger.add("Error while reading the file :(")
+                        return None
+                else:
+                    self.logger.add('The excel file could not be processed')
+                    return None
+            else:
+                self.logger.add("File name is not a string")
                 return None
 
         elif self.file_type == FileType.VeraGrid_sqlite:
@@ -439,18 +532,26 @@ class FileOpen:
 
         # --- Common Power Flow Formats ---
         elif self.file_type == FileType.Matpower:
-            m_grid = MatpowerCircuit()
-            m_grid.read_file(file_name=self.file_name)
-            self.circuit = matpower_to_veragrid(m_grid, self.logger)
+            if isinstance(self.file_name, str):
+                m_grid = MatpowerCircuit()
+                m_grid.read_file(file_name=self.file_name)
+                self.circuit = matpower_to_veragrid(m_grid, self.logger)
+            else:
+                self.logger.add("File name is not a string")
+                return None
 
         elif self.file_type == FileType.DPX:
             self.circuit, log = load_dpx(self.file_name)
             self.logger += log
 
         elif self.file_type == FileType.PWF:
-            parser = PWFParser(self.file_name)
-            self.circuit = parser.to_veragrid()
-            self.logger += parser.logger
+            if isinstance(self.file_name, str):
+                parser = PWFParser(self.file_name)
+                self.circuit = parser.to_veragrid()
+                self.logger += parser.logger
+            else:
+                self.logger.add("File name is not a string")
+                return None
 
         elif self.file_type == FileType.EPC:
             parser = PowerWorldParser(self.file_name)
@@ -459,10 +560,18 @@ class FileOpen:
 
         # --- Python Modeling Frameworks ---
         elif self.file_type == FileType.PyPsa:
-            self.circuit = parse_pypsa_netcdf(self.file_name, self.logger)
+            if isinstance(self.file_name, str):
+                self.circuit = parse_pypsa_netcdf(self.file_name, self.logger)
+            else:
+                self.logger.add("File name is not a string")
+                return None
 
         elif self.file_type == FileType.PyPsa_h5:
-            self.circuit = parse_pypsa_hdf5(self.file_name, self.logger)
+            if isinstance(self.file_name, str):
+                self.circuit = parse_pypsa_hdf5(self.file_name, self.logger)
+            else:
+                self.logger.add("File name is not a string")
+                return None
 
         elif self.file_type == FileType.PandaPower:
             self.circuit = Panda2VeraGrid(self.file_name, self.logger).get_multicircuit()
@@ -482,22 +591,31 @@ class FileOpen:
             )
 
         elif self.file_type == FileType.PSSE_rawx:
-            pss_grid = parse_rawx(self.file_name, logger=self.logger)
-            self.circuit = psse_to_veragrid(
-                psse_circuit=pss_grid,
-                logger=self.logger,
-                adjust_taps_to_discrete_positions=self.options.psse_adjust_taps_to_discrete_positions,
-                use_short_names=self.options.psse_use_short_names,
-                flatten_virtual_taps=self.options.psse_flatten_virtual_taps
-            )
+            if isinstance(self.file_name, str):
+                pss_grid = parse_rawx(self.file_name, logger=self.logger)
+                self.circuit = psse_to_veragrid(
+                    psse_circuit=pss_grid,
+                    logger=self.logger,
+                    adjust_taps_to_discrete_positions=self.options.psse_adjust_taps_to_discrete_positions,
+                    use_short_names=self.options.psse_use_short_names,
+                    flatten_virtual_taps=self.options.psse_flatten_virtual_taps
+                )
 
         elif self.file_type == FileType.DGS:
-            self.circuit = dgs_to_circuit(self.file_name)
+            if isinstance(self.file_name, str):
+                self.circuit = dgs_to_circuit(self.file_name, logger=self.logger)
+            else:
+                self.logger.add("File name is not a string")
+                return None
 
         # --- European Grid Standards & RTE ---
         elif self.file_type == FileType.Iidm:
-            parser = IidmParser(self.file_name, self.logger)
-            self.circuit = parser.parse()
+            if isinstance(self.file_name, str):
+                parser = IidmParser(self.file_name, self.logger)
+                self.circuit = parser.parse()
+            else:
+                self.logger.add("File name is not a string")
+                return None
 
         elif self.file_type == FileType.CGMES:
             self.circuit, self.cgmes_circuit = open_cgmes(
@@ -505,6 +623,11 @@ class FileOpen:
                 version=self.options.cgmes_version,  # will be determined inside if possible
                 cgmes_map_areas_like_raw=self.options.cgmes_map_areas_like_raw,
                 try_to_map_dc_to_hvdc_line=self.options.cgmes_try_to_map_dc_to_hvdc_line,
+                cgmes_topology_mode=self.options.cgmes_topology_mode,
+                cgmes_create_busbar_section_for_every_connectivity_node=(
+                    self.options.cgmes_create_busbar_section_for_every_connectivity_node
+                ),
+                cgmes_recovery_mode=self.options.cgmes_recovery_mode,
                 text_func=text_func,
                 progress_func=progress_func,
                 cgmes_logger=self.cgmes_logger
@@ -517,7 +640,11 @@ class FileOpen:
                                      logger=self.logger)
 
         elif self.file_type == FileType.RTE_xml:
-            self.circuit, is_valid_rte = rte2veragrid(self.file_name, self.logger)
+            if isinstance(self.file_name, str):
+                self.circuit, is_valid_rte = rte2veragrid(self.file_name, self.logger)
+            else:
+                self.logger.add("File name is not a string")
+                return None
 
         elif self.file_type == FileType.CIM:
             parser = CIMImport(text_func=text_func, progress_func=progress_func)
@@ -546,8 +673,12 @@ class FileOpen:
         _, file_extension = os.path.splitext(file_name)
 
         if file_extension.lower() == '.json':
-            with open(self.file_name, encoding="utf-8") as f:
-                data = json.load(f)
-                return data['type'] if 'type' in data else 'Unknown json file'
+            if isinstance(self.file_name, str):
+                with open(self.file_name, encoding="utf-8") as f:
+                    data = json.load(f)
+                    return data['type'] if 'type' in data else 'Unknown json file'
+            else:
+                self.logger.add("File name is not a string")
+                return "File name is not a string"
         else:
             return 'Not json file'

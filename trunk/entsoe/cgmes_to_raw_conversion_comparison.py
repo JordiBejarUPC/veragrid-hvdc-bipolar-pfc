@@ -4,7 +4,7 @@
 # SPDX-License-Identifier: MPL-2.0
 import os
 import numpy as np
-import VeraGridEngine.api as gce
+import VeraGridEngine.api as vg
 
 
 def tuc_17_1() -> None:
@@ -14,16 +14,22 @@ def tuc_17_1() -> None:
     base_folder = os.path.join("..", "..", "tests", "data", "grids", "CGMES_2_4_15",
                                "TestConfigurations_packageCASv2.0")
 
-    logger = gce.Logger()
+    logger = vg.Logger()
 
     lst = [
         os.path.join(base_folder, 'MicroGrid', 'BaseCase_BC', 'CGMES_v2.4.15_MicroGridTestConfiguration_BD_v2.zip'),
         os.path.join(base_folder, 'MicroGrid', 'BaseCase_BC', 'CGMES_v2.4.15_MicroGridTestConfiguration_BC_BE_v2.zip'),
     ]
 
-    grid1 = gce.open_file(filename=lst)
+    grid1 = vg.open_file(
+        filename=["file1", "file2", "file3"],
+        options=vg.FileOpenOptions(
+            cgmes_version=vg.CGMESVersions.v2_4_15,
+            file_type=vg.FileType.CGMES
+        )
+    )
 
-    grid2 = gce.open_file(filename=os.path.join(base_folder, 'MicroGrid', 'BaseCase_BC', 'BE_psse33_cimconverter.raw'))
+    grid2 = vg.open_file(filename=os.path.join(base_folder, 'MicroGrid', 'BaseCase_BC', 'BE_psse33_cimconverter.raw'))
 
     # does not make sense because ID?s are not respected
     # ok, logger = grid1.compare_circuits(grid2)
@@ -31,8 +37,8 @@ def tuc_17_1() -> None:
     # if not ok:
     #     logger.print()
 
-    nc1 = gce.compile_numerical_circuit_at(grid1)
-    nc2 = gce.compile_numerical_circuit_at(grid2)
+    nc1 = vg.compile_numerical_circuit_at(grid1)
+    nc2 = vg.compile_numerical_circuit_at(grid2)
 
     ok_nc, logger_nc = nc1.compare(nc2)
 
@@ -50,16 +56,16 @@ def tuc_17_2() -> None:
     base_folder = os.path.join("..", "..", "tests", "data", "grids", "CGMES_2_4_15",
                                "TestConfigurations_packageCASv2.0")
 
-    logger = gce.Logger()
+    logger = vg.Logger()
 
     lst = [
         os.path.join(base_folder, 'MicroGrid', 'BaseCase_BC', 'CGMES_v2.4.15_MicroGridTestConfiguration_BD_v2.zip'),
         os.path.join(base_folder, 'MicroGrid', 'BaseCase_BC', 'CGMES_v2.4.15_MicroGridTestConfiguration_BC_BE_v2.zip'),
     ]
 
-    grid1 = gce.open_file(filename=lst)
+    grid1 = vg.open_file(filename=lst)
 
-    grid2 = gce.open_file(filename=os.path.join(base_folder, 'MicroGrid', 'BaseCase_BC', 'BE_psse33_cimconverter.raw'))
+    grid2 = vg.open_file(filename=os.path.join(base_folder, 'MicroGrid', 'BaseCase_BC', 'BE_psse33_cimconverter.raw'))
 
     # does not make sense because ID?s are not respected
     # ok, logger = grid1.compare_circuits(grid2)
@@ -67,8 +73,8 @@ def tuc_17_2() -> None:
     # if not ok:
     #     logger.print()
 
-    res1 = gce.power_flow(grid1)
-    res2 = gce.power_flow(grid2)
+    res1 = vg.power_flow(grid1)
+    res2 = vg.power_flow(grid2)
 
     df1 = res1.get_bus_df()
     df2 = res2.get_bus_df()

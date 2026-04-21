@@ -1,28 +1,28 @@
-import VeraGridEngine.api as gce
+import VeraGridEngine.api as vge
 from VeraGridEngine import WindingType, ShuntConnectionType, SolverType
 import numpy as np
 import pandas as pd
 
-logger = gce.Logger()
-grid = gce.MultiCircuit()
+logger = vge.Logger()
+grid = vge.MultiCircuit()
 grid.fBase = 60
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Buses
 # ----------------------------------------------------------------------------------------------------------------------
-bus_632 = gce.Bus(name='Bus632', Vnom=4.16, xpos=0, ypos=0)
+bus_632 = vge.Bus(name='Bus632', Vnom=4.16, xpos=0, ypos=0)
 bus_632.is_slack = True
 grid.add_bus(obj=bus_632)
-gen = gce.Generator(vset = 1.0)
+gen = vge.Generator(vset = 1.0)
 grid.add_generator(bus = bus_632, api_obj = gen)
 
-bus_634 = gce.Bus(name='Bus634', Vnom=0.48, xpos=200*5, ypos=0)
+bus_634 = vge.Bus(name='Bus634', Vnom=0.48, xpos=200*5, ypos=0)
 grid.add_bus(obj=bus_634)
 
 # ----------------------------------------------------------------------------------------------------------------------
 # Transformer
 # ----------------------------------------------------------------------------------------------------------------------
-XFM_1 = gce.Transformer2W(name='XFM-1',
+XFM_1 = vge.Transformer2W(name='XFM-1',
                           bus_from=bus_632,
                           bus_to=bus_634,
                           HV=4.16,
@@ -38,7 +38,7 @@ grid.add_transformer2w(XFM_1)
 # ----------------------------------------------------------------------------------------------------------------------
 # Load
 # ----------------------------------------------------------------------------------------------------------------------
-load_634 = gce.Load(P1=0.7,
+load_634 = vge.Load(P1=0.7,
                     Q1=0.5,
                     P2=0.6,
                     Q2=0.45,
@@ -50,7 +50,7 @@ grid.add_load(bus=bus_634, api_obj=load_634)
 # ----------------------------------------------------------------------------------------------------------------------
 # Run power flow
 # ----------------------------------------------------------------------------------------------------------------------
-res = gce.power_flow3ph(grid=grid, options=gce.PowerFlowOptions(solver_type=SolverType.NR,
+res = vge.power_flow3ph(grid=grid, options=vge.PowerFlowOptions(solver_type=SolverType.NR,
                                                              retry_with_other_methods=False))
 
 # ----------------------------------------------------------------------------------------------------------------------

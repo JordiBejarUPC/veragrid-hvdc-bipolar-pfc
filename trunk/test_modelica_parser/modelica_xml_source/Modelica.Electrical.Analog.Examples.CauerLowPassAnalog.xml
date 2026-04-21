@@ -1,0 +1,2497 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenModelicaModelDescription
+  xmlns:exp="https://github.com/JModelica/JModelica/tree/master/XML/daeExpressions.xsd"
+  xmlns:equ="https://github.com/JModelica/JModelica/tree/master/XML/daeEquations.xsd"
+  xmlns:fun="https://github.com/JModelica/JModelica/tree/master/XML/daeFunctions.xsd"
+  xmlns:opt="https://github.com/JModelica/JModelica/tree/master/XML/daeOptimization.xsd"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  fmiVersion="1.0"
+  modelName="Modelica.Electrical.Analog.Examples.CauerLowPassAnalog"
+  modelIdentifier="Modelica_Electrical_Analog_Examples_CauerLowPassAnalog"
+  guid="{231f7ccb-f59a-4459-a95f-4e964071e714}"
+  generationDateAndTime="2026-03-04T14:40:31"
+  variableNamingConvention="structured"
+  numberOfContinuousStates="5"
+  numberOfEventIndicators="1"
+  >
+  
+  <VendorAnnotations>
+    <Tool name="OpenModelica Compiler OpenModelica v1.26.3 (64-bit)"> </Tool>
+  </VendorAnnotations>
+
+
+  <ModelVariables>
+    <ScalarVariable name="C1.v" description="Voltage drop of the two pins (= p.v - n.v)" valueReference="0" variability="continuous" causality="local" alias="noAlias">
+      <Real start="0.0" fixed="true"   unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C1"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>state</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C3.v" description="Voltage drop of the two pins (= p.v - n.v)" valueReference="1" variability="continuous" causality="local" alias="noAlias">
+      <Real start="0.0" fixed="true"   unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C3"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>state</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C5.v" description="Voltage drop of the two pins (= p.v - n.v)" valueReference="2" variability="continuous" causality="local" alias="noAlias">
+      <Real start="0.0" fixed="true"   unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C5"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>state</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="L1.i" description="Current flowing from pin p to pin n" valueReference="3" variability="continuous" causality="local" alias="noAlias">
+      <Real start="0.0" fixed="true"   unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L1"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>state</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="L2.i" description="Current flowing from pin p to pin n" valueReference="4" variability="continuous" causality="local" alias="noAlias">
+      <Real start="0.0" fixed="true"   unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L2"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>state</VariableCategory>
+    </ScalarVariable>
+    <ScalarVariable name="der(C1.v)" description="der(Voltage drop of the two pins (= p.v - n.v))" valueReference="5" variability="continuous" causality="local" alias="noAlias">
+      <Real    unit="km2.s-4.A-1.g" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C1"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>derivative</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="der(C3.v)" description="der(Voltage drop of the two pins (= p.v - n.v))" valueReference="6" variability="continuous" causality="local" alias="noAlias">
+      <Real start="0.0" fixed="false"   unit="km2.s-4.A-1.g" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C3"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>derivative</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="der(C5.v)" description="der(Voltage drop of the two pins (= p.v - n.v))" valueReference="7" variability="continuous" causality="local" alias="noAlias">
+      <Real start="0.0" fixed="false"   unit="km2.s-4.A-1.g" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C5"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>derivative</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="der(L1.i)" description="der(Current flowing from pin p to pin n)" valueReference="8" variability="continuous" causality="local" alias="noAlias">
+      <Real    unit="s-1.A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L1"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>derivative</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="der(L2.i)" description="der(Current flowing from pin p to pin n)" valueReference="9" variability="continuous" causality="local" alias="noAlias">
+      <Real    unit="s-1.A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L2"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>derivative</VariableCategory>
+    </ScalarVariable>
+    <ScalarVariable name="der(C2.v)" description="Voltage drop of the two pins (= p.v - n.v)" valueReference="10" variability="continuous" causality="local" alias="noAlias">
+      <Real     />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C2"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="der(C4.v)" description="Voltage drop of the two pins (= p.v - n.v)" valueReference="11" variability="continuous" causality="local" alias="noAlias">
+      <Real     />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C4"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="der(L1.v)" description="Voltage drop of the two pins (= p.v - n.v)" valueReference="12" variability="continuous" causality="local" alias="noAlias">
+      <Real     />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L1"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="der(L2.v)" description="Voltage drop of the two pins (= p.v - n.v)" valueReference="13" variability="continuous" causality="local" alias="noAlias">
+      <Real     />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L2"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C1.i" description="Current flowing from pin p to pin n" valueReference="14" variability="continuous" causality="local" alias="noAlias">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C1"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C2.i" description="Current flowing from pin p to pin n" valueReference="15" variability="continuous" causality="local" alias="noAlias">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C2"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C2.v" description="Voltage drop of the two pins (= p.v - n.v)" valueReference="16" variability="continuous" causality="local" alias="noAlias">
+      <Real start="0.0" fixed="false"   unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C2"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C3.i" description="Current flowing from pin p to pin n" valueReference="17" variability="continuous" causality="local" alias="noAlias">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C3"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C4.i" description="Current flowing from pin p to pin n" valueReference="18" variability="continuous" causality="local" alias="noAlias">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C4"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C4.v" description="Voltage drop of the two pins (= p.v - n.v)" valueReference="19" variability="continuous" causality="local" alias="noAlias">
+      <Real start="0.0" fixed="false"   unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C4"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C5.i" description="Current flowing from pin p to pin n" valueReference="20" variability="continuous" causality="local" alias="noAlias">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C5"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="G.p.i" description="Current flowing into the pin" valueReference="21" variability="continuous" causality="local" alias="noAlias">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="G"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="G.p.v" description="Potential at the pin" valueReference="22" variability="continuous" causality="local" alias="noAlias">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="G"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="L1.v" description="Voltage drop of the two pins (= p.v - n.v)" valueReference="23" variability="continuous" causality="local" alias="noAlias">
+      <Real start="0.0" fixed="false"   unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L1"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="L2.v" description="Voltage drop of the two pins (= p.v - n.v)" valueReference="24" variability="continuous" causality="local" alias="noAlias">
+      <Real start="0.0" fixed="false"   unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L2"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R1.LossPower" description="Loss power leaving component via heatPort" valueReference="25" variability="continuous" causality="local" alias="noAlias">
+      <Real    unit="W" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="LossPower"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R1.R_actual" description="Actual resistance = R*(1 + alpha*(T_heatPort - T_ref))" valueReference="26" variability="continuous" causality="local" alias="noAlias">
+      <Real    unit="Ohm" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="R_actual"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R1.v" description="Voltage drop of the two pins (= p.v - n.v)" valueReference="27" variability="continuous" causality="local" alias="noAlias">
+      <Real start="0.0" fixed="false"   unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R2.LossPower" description="Loss power leaving component via heatPort" valueReference="28" variability="continuous" causality="local" alias="noAlias">
+      <Real start="0.0" fixed="false"   unit="W" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="LossPower"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R2.R_actual" description="Actual resistance = R*(1 + alpha*(T_heatPort - T_ref))" valueReference="29" variability="continuous" causality="local" alias="noAlias">
+      <Real    unit="Ohm" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="R_actual"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R2.i" description="Current flowing from pin p to pin n" valueReference="30" variability="continuous" causality="local" alias="noAlias">
+      <Real start="0.0" fixed="false"   unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="V.i" description="Current flowing from pin p to pin n" valueReference="31" variability="continuous" causality="local" alias="noAlias">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="V.v" description="Voltage drop of the two pins (= p.v - n.v)" valueReference="32" variability="continuous" causality="local" alias="noAlias">
+      <Real start="0.0" fixed="false"   unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+    <ScalarVariable name="C1.n.i" description="Current flowing into the pin" valueReference="33" variability="continuous" causality="local" alias="-C1.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C1"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C1.n.v" description="Potential at the pin" valueReference="34" variability="continuous" causality="local" alias="G.p.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C1"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C1.p.i" description="Current flowing into the pin" valueReference="35" variability="continuous" causality="local" alias="C1.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C1"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C1.p.v" description="Potential at the pin" valueReference="36" variability="continuous" causality="local" alias="C1.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C1"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C2.n.i" description="Current flowing into the pin" valueReference="37" variability="continuous" causality="local" alias="-C2.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C2"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C2.n.v" description="Potential at the pin" valueReference="38" variability="continuous" causality="local" alias="C3.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C2"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C2.p.i" description="Current flowing into the pin" valueReference="39" variability="continuous" causality="local" alias="C2.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C2"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C2.p.v" description="Potential at the pin" valueReference="40" variability="continuous" causality="local" alias="C1.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C2"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C3.n.i" description="Current flowing into the pin" valueReference="41" variability="continuous" causality="local" alias="-C3.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C3"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C3.n.v" description="Potential at the pin" valueReference="42" variability="continuous" causality="local" alias="G.p.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C3"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C3.p.i" description="Current flowing into the pin" valueReference="43" variability="continuous" causality="local" alias="C3.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C3"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C3.p.v" description="Potential at the pin" valueReference="44" variability="continuous" causality="local" alias="C3.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C3"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C4.n.i" description="Current flowing into the pin" valueReference="45" variability="continuous" causality="local" alias="-C4.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C4"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C4.n.v" description="Potential at the pin" valueReference="46" variability="continuous" causality="local" alias="C5.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C4"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C4.p.i" description="Current flowing into the pin" valueReference="47" variability="continuous" causality="local" alias="C4.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C4"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C4.p.v" description="Potential at the pin" valueReference="48" variability="continuous" causality="local" alias="C3.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C4"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C5.n.i" description="Current flowing into the pin" valueReference="49" variability="continuous" causality="local" alias="-C5.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C5"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C5.n.v" description="Potential at the pin" valueReference="50" variability="continuous" causality="local" alias="G.p.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C5"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C5.p.i" description="Current flowing into the pin" valueReference="51" variability="continuous" causality="local" alias="C5.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C5"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C5.p.v" description="Potential at the pin" valueReference="52" variability="continuous" causality="local" alias="C5.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C5"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="L1.n.i" description="Current flowing into the pin" valueReference="53" variability="continuous" causality="local" alias="-L1.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L1"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="L1.n.v" description="Potential at the pin" valueReference="54" variability="continuous" causality="local" alias="C3.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L1"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="L1.p.i" description="Current flowing into the pin" valueReference="55" variability="continuous" causality="local" alias="L1.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L1"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="L1.p.v" description="Potential at the pin" valueReference="56" variability="continuous" causality="local" alias="C1.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L1"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="L2.n.i" description="Current flowing into the pin" valueReference="57" variability="continuous" causality="local" alias="-L2.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L2"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="L2.n.v" description="Potential at the pin" valueReference="58" variability="continuous" causality="local" alias="C5.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L2"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="L2.p.i" description="Current flowing into the pin" valueReference="59" variability="continuous" causality="local" alias="L2.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L2"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="L2.p.v" description="Potential at the pin" valueReference="60" variability="continuous" causality="local" alias="C3.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L2"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R1.T_heatPort" description="Temperature of heatPort" valueReference="61" variability="continuous" causality="local" alias="R1.T">
+      <Real start="288.15" fixed="false" min="0.0"  unit="K" displayUnit="degC"/>
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="T_heatPort"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R1.i" description="Current flowing from pin p to pin n" valueReference="62" variability="continuous" causality="local" alias="-V.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R1.n.i" description="Current flowing into the pin" valueReference="63" variability="continuous" causality="local" alias="V.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R1.n.v" description="Potential at the pin" valueReference="64" variability="continuous" causality="local" alias="C1.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R1.p.i" description="Current flowing into the pin" valueReference="65" variability="continuous" causality="local" alias="-V.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R1.p.v" description="Potential at the pin" valueReference="66" variability="continuous" causality="local" alias="V.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R2.T_heatPort" description="Temperature of heatPort" valueReference="67" variability="continuous" causality="local" alias="R2.T">
+      <Real start="288.15" fixed="false" min="0.0"  unit="K" displayUnit="degC"/>
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="T_heatPort"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R2.n.i" description="Current flowing into the pin" valueReference="68" variability="continuous" causality="local" alias="-R2.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R2.n.v" description="Potential at the pin" valueReference="69" variability="continuous" causality="local" alias="G.p.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R2.p.i" description="Current flowing into the pin" valueReference="70" variability="continuous" causality="local" alias="R2.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R2.p.v" description="Potential at the pin" valueReference="71" variability="continuous" causality="local" alias="C5.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R2.v" description="Voltage drop of the two pins (= p.v - n.v)" valueReference="72" variability="continuous" causality="local" alias="C5.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="V.n.i" description="Current flowing into the pin" valueReference="73" variability="continuous" causality="local" alias="-V.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="V.n.v" description="Potential at the pin" valueReference="74" variability="continuous" causality="local" alias="G.p.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="n"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="V.p.i" description="Current flowing into the pin" valueReference="75" variability="continuous" causality="local" alias="V.i">
+      <Real    unit="A" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="i"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="V.p.v" description="Potential at the pin" valueReference="76" variability="continuous" causality="local" alias="V.v">
+      <Real    unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="p"/>
+        <exp:QualifiedNamePart name="v"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="V.signalSource.y" description="Connector of Real output signal" valueReference="77" variability="continuous" causality="local" alias="V.v">
+      <Real     />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="signalSource"/>
+        <exp:QualifiedNamePart name="y"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>algebraic</VariableCategory>
+    </ScalarVariable>
+    <ScalarVariable name="C1.C" description="Capacitance" valueReference="78" variability="parameter" causality="calculatedParameter" alias="noAlias">
+      <Real start="c1" fixed="true" min="0.0"  unit="F" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C1"/>
+        <exp:QualifiedNamePart name="C"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C2.C" description="Capacitance" valueReference="79" variability="parameter" causality="calculatedParameter" alias="noAlias">
+      <Real start="c2" fixed="true" min="0.0"  unit="F" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C2"/>
+        <exp:QualifiedNamePart name="C"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C3.C" description="Capacitance" valueReference="80" variability="parameter" causality="calculatedParameter" alias="noAlias">
+      <Real start="c3" fixed="true" min="0.0"  unit="F" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C3"/>
+        <exp:QualifiedNamePart name="C"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C4.C" description="Capacitance" valueReference="81" variability="parameter" causality="calculatedParameter" alias="noAlias">
+      <Real start="c4" fixed="true" min="0.0"  unit="F" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C4"/>
+        <exp:QualifiedNamePart name="C"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="C5.C" description="Capacitance" valueReference="82" variability="parameter" causality="calculatedParameter" alias="noAlias">
+      <Real start="c5" fixed="true" min="0.0"  unit="F" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="C5"/>
+        <exp:QualifiedNamePart name="C"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="L1.L" description="Inductance" valueReference="83" variability="parameter" causality="calculatedParameter" alias="noAlias">
+      <Real start="l1" fixed="true"   unit="H" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L1"/>
+        <exp:QualifiedNamePart name="L"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="L2.L" description="Inductance" valueReference="84" variability="parameter" causality="calculatedParameter" alias="noAlias">
+      <Real start="l2" fixed="true"   unit="H" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="L2"/>
+        <exp:QualifiedNamePart name="L"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R1.R" description="Resistance at temperature T_ref" valueReference="85" variability="parameter" causality="parameter" alias="noAlias">
+      <Real start="1.0" fixed="true"   unit="Ohm" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="R"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R1.T" description="Fixed device temperature if useHeatPort = false" valueReference="86" variability="parameter" causality="calculatedParameter" alias="noAlias">
+      <Real start="R1.T_ref" fixed="true" min="0.0"  unit="K" displayUnit="degC"/>
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="T"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R1.T_ref" description="Reference temperature" valueReference="87" variability="parameter" causality="parameter" alias="noAlias">
+      <Real start="300.15" fixed="true" min="0.0"  unit="K" displayUnit="degC"/>
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="T_ref"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R1.alpha" description="Temperature coefficient of resistance (R_actual = R*(1 + alpha*(T_heatPort - T_ref))" valueReference="88" variability="parameter" causality="parameter" alias="noAlias">
+      <Real start="0.0" fixed="true"   unit="1/K" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="alpha"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R2.R" description="Resistance at temperature T_ref" valueReference="89" variability="parameter" causality="parameter" alias="noAlias">
+      <Real start="1.0" fixed="true"   unit="Ohm" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="R"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R2.T" description="Fixed device temperature if useHeatPort = false" valueReference="90" variability="parameter" causality="calculatedParameter" alias="noAlias">
+      <Real start="R2.T_ref" fixed="true" min="0.0"  unit="K" displayUnit="degC"/>
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="T"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R2.T_ref" description="Reference temperature" valueReference="91" variability="parameter" causality="parameter" alias="noAlias">
+      <Real start="300.15" fixed="true" min="0.0"  unit="K" displayUnit="degC"/>
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="T_ref"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R2.alpha" description="Temperature coefficient of resistance (R_actual = R*(1 + alpha*(T_heatPort - T_ref))" valueReference="92" variability="parameter" causality="parameter" alias="noAlias">
+      <Real start="0.0" fixed="true"   unit="1/K" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="alpha"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="V.V" description="Height of step" valueReference="93" variability="parameter" causality="parameter" alias="noAlias">
+      <Real start="1.0" fixed="true"   unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="V"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="V.offset" description="Voltage offset" valueReference="94" variability="parameter" causality="parameter" alias="noAlias">
+      <Real start="0.0" fixed="true"   unit="V" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="offset"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="V.signalSource.height" description="Height of step" valueReference="95" variability="parameter" causality="calculatedParameter" alias="noAlias">
+      <Real start="V.V" fixed="true"    />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="signalSource"/>
+        <exp:QualifiedNamePart name="height"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="V.signalSource.offset" description="Offset of output signal y" valueReference="96" variability="parameter" causality="calculatedParameter" alias="noAlias">
+      <Real start="V.offset" fixed="true"    />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="signalSource"/>
+        <exp:QualifiedNamePart name="offset"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="V.signalSource.startTime" description="Output y = offset for time &lt; startTime" valueReference="97" variability="parameter" causality="calculatedParameter" alias="noAlias">
+      <Real start="V.startTime" fixed="true"   unit="s" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="signalSource"/>
+        <exp:QualifiedNamePart name="startTime"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="V.startTime" description="Time offset" valueReference="98" variability="parameter" causality="parameter" alias="noAlias">
+      <Real start="1.0" fixed="true"   unit="s" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="startTime"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="c1" description="Filter coefficient c1" valueReference="99" variability="parameter" causality="parameter" alias="noAlias">
+      <Real start="1.072" fixed="true" min="0.0"  unit="F" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="c1"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="c2" description="Filter coefficient c2" valueReference="100" variability="parameter" causality="calculatedParameter" alias="noAlias">
+      <Real  min="0.0"  unit="F" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="c2"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="c3" description="Filter coefficient c3" valueReference="101" variability="parameter" causality="parameter" alias="noAlias">
+      <Real start="1.682" fixed="true" min="0.0"  unit="F" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="c3"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="c4" description="Filter coefficient c4" valueReference="102" variability="parameter" causality="calculatedParameter" alias="noAlias">
+      <Real  min="0.0"  unit="F" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="c4"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="c5" description="Filter coefficient c5" valueReference="103" variability="parameter" causality="parameter" alias="noAlias">
+      <Real start="0.7262" fixed="true" min="0.0"  unit="F" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="c5"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="l1" description="Filter coefficient I1" valueReference="104" variability="parameter" causality="parameter" alias="noAlias">
+      <Real start="1.304" fixed="true"   unit="H" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="l1"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="l2" description="Filter coefficient I2" valueReference="105" variability="parameter" causality="parameter" alias="noAlias">
+      <Real start="0.8586" fixed="true"   unit="H" />
+      <QualifiedName>
+        <exp:QualifiedNamePart name="l2"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+    <ScalarVariable name="R1.useHeatPort" description="= true, if heatPort is enabled" valueReference="106" variability="parameter" causality="calculatedParameter" alias="noAlias">
+      <Boolean start="0" fixed="true"/>
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="useHeatPort"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+
+    <ScalarVariable name="R2.useHeatPort" description="= true, if heatPort is enabled" valueReference="107" variability="parameter" causality="calculatedParameter" alias="noAlias">
+      <Boolean start="0" fixed="true"/>
+      <QualifiedName>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="useHeatPort"/>
+      </QualifiedName>
+    <isLinearTimedVariables>
+      <TimePoint index="0" isLinear="true"/>
+    </isLinearTimedVariables>
+      <VariableCategory>independentParameter</VariableCategory>
+    </ScalarVariable>
+  </ModelVariables>
+
+  <equ:BindingEquations>
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="C1"/>
+        <exp:QualifiedNamePart name="C"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="c1"/>
+        </exp:Identifier>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="C2"/>
+        <exp:QualifiedNamePart name="C"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="c2"/>
+        </exp:Identifier>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="C3"/>
+        <exp:QualifiedNamePart name="C"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="c3"/>
+        </exp:Identifier>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="C4"/>
+        <exp:QualifiedNamePart name="C"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="c4"/>
+        </exp:Identifier>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="C5"/>
+        <exp:QualifiedNamePart name="C"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="c5"/>
+        </exp:Identifier>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="L1"/>
+        <exp:QualifiedNamePart name="L"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="l1"/>
+        </exp:Identifier>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="L2"/>
+        <exp:QualifiedNamePart name="L"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="l2"/>
+        </exp:Identifier>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="R"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:RealLiteral>1.0</exp:RealLiteral>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="T"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="R1"/>
+          <exp:QualifiedNamePart name="T_ref"/>
+        </exp:Identifier>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="T_ref"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:RealLiteral>300.15</exp:RealLiteral>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="alpha"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="R"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:RealLiteral>1.0</exp:RealLiteral>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="T"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="R2"/>
+          <exp:QualifiedNamePart name="T_ref"/>
+        </exp:Identifier>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="T_ref"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:RealLiteral>300.15</exp:RealLiteral>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="alpha"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="V"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:RealLiteral>1.0</exp:RealLiteral>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="offset"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="signalSource"/>
+        <exp:QualifiedNamePart name="height"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="V"/>
+          <exp:QualifiedNamePart name="V"/>
+        </exp:Identifier>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="signalSource"/>
+        <exp:QualifiedNamePart name="offset"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="V"/>
+          <exp:QualifiedNamePart name="offset"/>
+        </exp:Identifier>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="signalSource"/>
+        <exp:QualifiedNamePart name="startTime"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="V"/>
+          <exp:QualifiedNamePart name="startTime"/>
+        </exp:Identifier>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="V"/>
+        <exp:QualifiedNamePart name="startTime"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:RealLiteral>1.0</exp:RealLiteral>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="c1"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:RealLiteral>1.072</exp:RealLiteral>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="c2"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:Div>
+          <exp:RealLiteral>0.3439975178164172</exp:RealLiteral>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="l1"/>
+          </exp:Identifier>
+        </exp:Div>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="c3"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:RealLiteral>1.682</exp:RealLiteral>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="c4"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:Div>
+          <exp:RealLiteral>0.7182513838386324</exp:RealLiteral>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="l2"/>
+          </exp:Identifier>
+        </exp:Div>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="c5"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:RealLiteral>0.7262</exp:RealLiteral>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="l1"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:RealLiteral>1.304</exp:RealLiteral>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="l2"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:RealLiteral>0.8586</exp:RealLiteral>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="R1"/>
+        <exp:QualifiedNamePart name="useHeatPort"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:BooleanLiteral>0</exp:BooleanLiteral>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+
+    <equ:BindingEquation>
+      <equ:Parameter>
+        <exp:QualifiedNamePart name="R2"/>
+        <exp:QualifiedNamePart name="useHeatPort"/>
+      </equ:Parameter>
+      <equ:BindingExp>
+        <exp:BooleanLiteral>0</exp:BooleanLiteral>
+      </equ:BindingExp>
+    </equ:BindingEquation>
+  </equ:BindingEquations>
+
+  <equ:DynamicEquations>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="R2"/>
+          <exp:QualifiedNamePart name="i"/>
+        </exp:Identifier>
+        <exp:Div>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C5"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="R2"/>
+            <exp:QualifiedNamePart name="R_actual"/>
+          </exp:Identifier>
+        </exp:Div>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="R2"/>
+          <exp:QualifiedNamePart name="LossPower"/>
+        </exp:Identifier>
+        <exp:Mul>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C5"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="R2"/>
+            <exp:QualifiedNamePart name="i"/>
+          </exp:Identifier>
+        </exp:Mul>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="V"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <fun:If>
+          <fun:Condition>
+            <exp:LogLt>
+              <exp:Time>time</exp:Time>
+              <exp:Identifier>
+                <exp:QualifiedNamePart name="V"/>
+                <exp:QualifiedNamePart name="signalSource"/>
+                <exp:QualifiedNamePart name="startTime"/>
+              </exp:Identifier>
+            </exp:LogLt>
+          </fun:Condition>
+          <fun:Statements>
+            <exp:RealLiteral>0.0</exp:RealLiteral>
+          </fun:Statements>
+          <fun:Else>
+            <exp:Identifier>
+              <exp:QualifiedNamePart name="V"/>
+              <exp:QualifiedNamePart name="signalSource"/>
+              <exp:QualifiedNamePart name="height"/>
+            </exp:Identifier>
+          </fun:Else>
+        </fun:If>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="R1"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:Sub>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="V"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C1"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+        </exp:Sub>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="V"/>
+          <exp:QualifiedNamePart name="i"/>
+        </exp:Identifier>
+        <exp:Div>
+            <exp:Neg>
+              <exp:Identifier>
+                <exp:QualifiedNamePart name="R1"/>
+                <exp:QualifiedNamePart name="v"/>
+              </exp:Identifier>
+            </exp:Neg>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="R1"/>
+            <exp:QualifiedNamePart name="R_actual"/>
+          </exp:Identifier>
+        </exp:Div>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Der>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="L2"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+        </exp:Der>
+        <exp:Der>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C4"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+        </exp:Der>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Der>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="L1"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+        </exp:Der>
+        <exp:Der>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C2"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+        </exp:Der>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="G"/>
+          <exp:QualifiedNamePart name="p"/>
+          <exp:QualifiedNamePart name="i"/>
+        </exp:Identifier>
+        <exp:Sub>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C1"/>
+            <exp:QualifiedNamePart name="i"/>
+          </exp:Identifier>
+          <exp:Sub>
+            <exp:Sub>
+              <exp:Sub>
+                  <exp:Neg>
+                    <exp:Identifier>
+                      <exp:QualifiedNamePart name="R2"/>
+                      <exp:QualifiedNamePart name="i"/>
+                    </exp:Identifier>
+                  </exp:Neg>
+                <exp:Identifier>
+                  <exp:QualifiedNamePart name="V"/>
+                  <exp:QualifiedNamePart name="i"/>
+                </exp:Identifier>
+              </exp:Sub>
+              <exp:Identifier>
+                <exp:QualifiedNamePart name="C5"/>
+                <exp:QualifiedNamePart name="i"/>
+              </exp:Identifier>
+            </exp:Sub>
+            <exp:Identifier>
+              <exp:QualifiedNamePart name="C3"/>
+              <exp:QualifiedNamePart name="i"/>
+            </exp:Identifier>
+          </exp:Sub>
+        </exp:Sub>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="R1"/>
+          <exp:QualifiedNamePart name="LossPower"/>
+        </exp:Identifier>
+        <exp:Mul>
+            <exp:Neg>
+              <exp:Identifier>
+                <exp:QualifiedNamePart name="R1"/>
+                <exp:QualifiedNamePart name="v"/>
+              </exp:Identifier>
+            </exp:Neg>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="V"/>
+            <exp:QualifiedNamePart name="i"/>
+          </exp:Identifier>
+        </exp:Mul>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="C4"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:Sub>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C3"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C5"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+        </exp:Sub>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Der>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="L2"/>
+            <exp:QualifiedNamePart name="i"/>
+          </exp:Identifier>
+        </exp:Der>
+        <exp:Div>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C4"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="L2"/>
+            <exp:QualifiedNamePart name="L"/>
+          </exp:Identifier>
+        </exp:Div>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="L2"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="C4"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="C2"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:Sub>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C1"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C3"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+        </exp:Sub>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Der>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="L1"/>
+            <exp:QualifiedNamePart name="i"/>
+          </exp:Identifier>
+        </exp:Der>
+        <exp:Div>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C2"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="L1"/>
+            <exp:QualifiedNamePart name="L"/>
+          </exp:Identifier>
+        </exp:Div>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="L1"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="C2"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+      </exp:Sub>
+    </equ:Equation>
+     
+     
+  </equ:DynamicEquations>
+
+  <equ:InitialEquations>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="C1"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </exp:Sub>
+    </equ:Equation>
+
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="C3"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </exp:Sub>
+    </equ:Equation>
+
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="C5"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </exp:Sub>
+    </equ:Equation>
+
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="L1"/>
+          <exp:QualifiedNamePart name="i"/>
+        </exp:Identifier>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </exp:Sub>
+    </equ:Equation>
+
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="L2"/>
+          <exp:QualifiedNamePart name="i"/>
+        </exp:Identifier>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Der>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C3"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+        </exp:Der>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </exp:Sub>
+    </equ:Equation>
+
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Der>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C5"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+        </exp:Der>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="C2"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </exp:Sub>
+    </equ:Equation>
+
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="C4"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </exp:Sub>
+    </equ:Equation>
+
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="L1"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </exp:Sub>
+    </equ:Equation>
+
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="L2"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </exp:Sub>
+    </equ:Equation>
+
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="R1"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </exp:Sub>
+    </equ:Equation>
+
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="R2"/>
+          <exp:QualifiedNamePart name="LossPower"/>
+        </exp:Identifier>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </exp:Sub>
+    </equ:Equation>
+
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="R2"/>
+          <exp:QualifiedNamePart name="i"/>
+        </exp:Identifier>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </exp:Sub>
+    </equ:Equation>
+
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="V"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="R2"/>
+          <exp:QualifiedNamePart name="R_actual"/>
+        </exp:Identifier>
+        <exp:Mul>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="R2"/>
+            <exp:QualifiedNamePart name="R"/>
+          </exp:Identifier>
+          <exp:Add>
+            <exp:RealLiteral>1.0</exp:RealLiteral>
+            <exp:Mul>
+              <exp:Identifier>
+                <exp:QualifiedNamePart name="R2"/>
+                <exp:QualifiedNamePart name="alpha"/>
+              </exp:Identifier>
+              <exp:Sub>
+                <exp:Identifier>
+                  <exp:QualifiedNamePart name="R2"/>
+                  <exp:QualifiedNamePart name="T"/>
+                </exp:Identifier>
+                <exp:Identifier>
+                  <exp:QualifiedNamePart name="R2"/>
+                  <exp:QualifiedNamePart name="T_ref"/>
+                </exp:Identifier>
+              </exp:Sub>
+            </exp:Mul>
+          </exp:Add>
+        </exp:Mul>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="R1"/>
+          <exp:QualifiedNamePart name="R_actual"/>
+        </exp:Identifier>
+        <exp:Mul>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="R1"/>
+            <exp:QualifiedNamePart name="R"/>
+          </exp:Identifier>
+          <exp:Add>
+            <exp:RealLiteral>1.0</exp:RealLiteral>
+            <exp:Mul>
+              <exp:Identifier>
+                <exp:QualifiedNamePart name="R1"/>
+                <exp:QualifiedNamePart name="alpha"/>
+              </exp:Identifier>
+              <exp:Sub>
+                <exp:Identifier>
+                  <exp:QualifiedNamePart name="R1"/>
+                  <exp:QualifiedNamePart name="T"/>
+                </exp:Identifier>
+                <exp:Identifier>
+                  <exp:QualifiedNamePart name="R1"/>
+                  <exp:QualifiedNamePart name="T_ref"/>
+                </exp:Identifier>
+              </exp:Sub>
+            </exp:Mul>
+          </exp:Add>
+        </exp:Mul>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+         
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="C1"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="$START"/>
+          <exp:QualifiedNamePart name="C1"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+         
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+         
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+         
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="C3"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="$START"/>
+          <exp:QualifiedNamePart name="C3"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="L1"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:Sub>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C1"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C3"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+        </exp:Sub>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="C2"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="L1"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Der>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="L1"/>
+            <exp:QualifiedNamePart name="i"/>
+          </exp:Identifier>
+        </exp:Der>
+        <exp:Div>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="L1"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="L1"/>
+            <exp:QualifiedNamePart name="L"/>
+          </exp:Identifier>
+        </exp:Div>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="C5"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="$START"/>
+          <exp:QualifiedNamePart name="C5"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="L2"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:Sub>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C3"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="C5"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+        </exp:Sub>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="C4"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="L2"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Der>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="L2"/>
+            <exp:QualifiedNamePart name="i"/>
+          </exp:Identifier>
+        </exp:Der>
+        <exp:Div>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="L2"/>
+            <exp:QualifiedNamePart name="v"/>
+          </exp:Identifier>
+          <exp:Identifier>
+            <exp:QualifiedNamePart name="L2"/>
+            <exp:QualifiedNamePart name="L"/>
+          </exp:Identifier>
+        </exp:Div>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+         
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+         
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="L1"/>
+          <exp:QualifiedNamePart name="i"/>
+        </exp:Identifier>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="$START"/>
+          <exp:QualifiedNamePart name="L1"/>
+          <exp:QualifiedNamePart name="i"/>
+        </exp:Identifier>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="L2"/>
+          <exp:QualifiedNamePart name="i"/>
+        </exp:Identifier>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="$START"/>
+          <exp:QualifiedNamePart name="L2"/>
+          <exp:QualifiedNamePart name="i"/>
+        </exp:Identifier>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+         
+      </exp:Sub>
+    </equ:Equation>
+    <equ:Equation>
+      <exp:Sub>
+        <exp:Identifier>
+          <exp:QualifiedNamePart name="G"/>
+          <exp:QualifiedNamePart name="p"/>
+          <exp:QualifiedNamePart name="v"/>
+        </exp:Identifier>
+        <exp:RealLiteral>0.0</exp:RealLiteral>
+      </exp:Sub>
+    </equ:Equation>
+  </equ:InitialEquations>
+
+  <fun:Algorithm>
+    <fun:Assertion>
+      <fun:Condition>
+        <exp:LogGeq>
+          <exp:Add>
+            <exp:RealLiteral>1.0</exp:RealLiteral>
+            <exp:Mul>
+              <exp:Identifier>
+                <exp:QualifiedNamePart name="R2"/>
+                <exp:QualifiedNamePart name="alpha"/>
+              </exp:Identifier>
+              <exp:Sub>
+                <exp:Identifier>
+                  <exp:QualifiedNamePart name="R2"/>
+                  <exp:QualifiedNamePart name="T"/>
+                </exp:Identifier>
+                <exp:Identifier>
+                  <exp:QualifiedNamePart name="R2"/>
+                  <exp:QualifiedNamePart name="T_ref"/>
+                </exp:Identifier>
+              </exp:Sub>
+            </exp:Mul>
+          </exp:Add>
+          <exp:RealLiteral>2.220446049250313e-16</exp:RealLiteral>
+        </exp:LogGeq>
+      </fun:Condition>
+      <fun:Message>
+        <exp:StringLiteral>"Temperature outside scope of model!"</exp:StringLiteral>
+      </fun:Message>
+    </fun:Assertion>
+    <fun:Assertion>
+      <fun:Condition>
+        <exp:LogGeq>
+          <exp:Add>
+            <exp:RealLiteral>1.0</exp:RealLiteral>
+            <exp:Mul>
+              <exp:Identifier>
+                <exp:QualifiedNamePart name="R1"/>
+                <exp:QualifiedNamePart name="alpha"/>
+              </exp:Identifier>
+              <exp:Sub>
+                <exp:Identifier>
+                  <exp:QualifiedNamePart name="R1"/>
+                  <exp:QualifiedNamePart name="T"/>
+                </exp:Identifier>
+                <exp:Identifier>
+                  <exp:QualifiedNamePart name="R1"/>
+                  <exp:QualifiedNamePart name="T_ref"/>
+                </exp:Identifier>
+              </exp:Sub>
+            </exp:Mul>
+          </exp:Add>
+          <exp:RealLiteral>2.220446049250313e-16</exp:RealLiteral>
+        </exp:LogGeq>
+      </fun:Condition>
+      <fun:Message>
+        <exp:StringLiteral>"Temperature outside scope of model!"</exp:StringLiteral>
+      </fun:Message>
+    </fun:Assertion>
+  </fun:Algorithm>
+
+  <fun:RecordsList>
+  </fun:RecordsList>
+
+  <fun:FunctionsList>
+  </fun:FunctionsList>
+
+
+</OpenModelicaModelDescription>

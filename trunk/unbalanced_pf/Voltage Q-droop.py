@@ -1,0 +1,25 @@
+# u = 1.01456 # Actual voltage value at the terminal [pu]
+# u = 1.005954 # Actual voltage value at the terminal [pu]
+u = 1.001481 # Actual voltage value at the terminal [pu]
+u_setpoint_max = 1.05 # Maximum voltage setpoint [pu]
+u_setpoint_min = 0.95 # Minimum voltage setpoint [pu]
+if u > u_setpoint_max:
+    u = u_setpoint_max
+elif u < u_setpoint_min:
+    u = u_setpoint_min
+else:
+    u = u
+u_setpoint = 0.99 # Specified voltage setpoint [pu]
+du_setpoint = 0.0 # Voltage signal coming from the station controller
+du_droop = u_setpoint + du_setpoint - u # Voltage deviation [pu]
+
+Q_setpoint = 0.0 # Specified dispatch reactive power [MVAr]
+S_r = 33.33333 # Rated apparent power [MVA]
+ddroop = 3 # Voltage droop value [%]
+Q_droop = S_r * 100 / ddroop # Additional reactive power for the specified voltage droop [MVAr]
+
+# Actual reactive power output
+Q = Q_setpoint + Q_droop * du_droop
+print('Q =', round(Q, 2), 'MVAr')
+
+# Add Qmin Qmax

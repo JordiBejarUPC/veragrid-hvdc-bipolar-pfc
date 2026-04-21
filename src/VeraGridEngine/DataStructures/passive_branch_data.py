@@ -6,9 +6,8 @@
 from __future__ import annotations
 import numpy as np
 
-from VeraGridEngine import ShuntConnectionType
 from VeraGridEngine.DataStructures.branch_parent_data import BranchParentData
-from VeraGridEngine.enumerations import WindingsConnection
+from VeraGridEngine.enumerations import WindingsConnection, ShuntConnectionType
 from VeraGridEngine.Utils.Sparse.sparse_array import SparseObjectArray
 from VeraGridEngine.basic_structures import Vec, IntVec, ObjVec, CxVec, Logger
 from typing import List, Tuple, Set
@@ -110,7 +109,7 @@ class PassiveBranchData(BranchParentData):
         data.virtual_tap_t = self.virtual_tap_t[elm_idx]
 
         elm_idx_4 = ((elm_idx * 4)[:, np.newaxis] + np.arange(4)).flatten()
-        
+
         data.Yff3 = self.Yff3[elm_idx_4, :]
         data.Yft3 = self.Yft3[elm_idx_4, :]
         data.Ytt3 = self.Ytt3[elm_idx_4, :]
@@ -136,15 +135,15 @@ class PassiveBranchData(BranchParentData):
         data.G = self.G.copy()
         data.B = self.B.copy()
 
-        data.R0 = self.R.copy()
-        data.X0 = self.X.copy()
-        data.G0 = self.G.copy()
-        data.B0 = self.B.copy()
+        data.R0 = self.R0.copy()
+        data.X0 = self.X0.copy()
+        data.G0 = self.G0.copy()
+        data.B0 = self.B0.copy()
 
-        data.R2 = self.R.copy()
-        data.X2 = self.X.copy()
-        data.G2 = self.G.copy()
-        data.B2 = self.B.copy()
+        data.R2 = self.R2.copy()
+        data.X2 = self.X2.copy()
+        data.G2 = self.G2.copy()
+        data.B2 = self.B2.copy()
 
         data.conn = self.conn.copy()  # winding connection
         data.conn_f = self.conn_f.copy()
@@ -156,7 +155,10 @@ class PassiveBranchData(BranchParentData):
         data.virtual_tap_f = self.virtual_tap_f.copy()
         data.virtual_tap_t = self.virtual_tap_t.copy()
 
-        # TODO: Review that we are copying everything
+        data.Yff3 = self.Yff3.copy()
+        data.Yft3 = self.Yft3.copy()
+        data.Ytf3 = self.Ytf3.copy()
+        data.Ytt3 = self.Ytt3.copy()
 
         data.phN = self.phN.copy()
         data.phA = self.phA.copy()
