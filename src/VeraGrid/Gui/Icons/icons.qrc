@@ -129,9 +129,11 @@
     <file>icons/cdf.png</file>
     <file>icons/array.png</file>
     <file>icons/upfc.png</file>
+    <file>icons/upfc_gray.png</file>
     <file>icons/to_upfc.png</file>
     <file>icons/color_grid2.png</file>
     <file>icons/vsc.png</file>
+    <file>icons/vsc_gray.png</file>
     <file>icons/dc.png</file>
     <file>icons/CatalogueAdd.png</file>
     <file>icons/clear_runs.png</file>

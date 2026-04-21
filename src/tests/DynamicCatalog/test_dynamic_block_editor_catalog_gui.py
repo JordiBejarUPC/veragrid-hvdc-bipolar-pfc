@@ -8,8 +8,8 @@ from PySide6.QtTest import QTest
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Templates.catalog.basic_block_catalog import BasicBlockTemplateDescriptor
-from VeraGridEngine.Templates.catalog.basic_block_catalog import get_basic_block_catalog_descriptor_by_key
+from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
+from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptor_by_key
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DynamicSimulationMode
 

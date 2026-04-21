@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import ModuleType
 from typing import Sequence
 
-from VeraGridEngine.Templates.catalog.basic_block_catalog import BasicBlockTemplateDescriptor
-from VeraGridEngine.Templates.catalog.basic_block_catalog import get_pending_basic_block_catalog_descriptors
-from VeraGridEngine.Templates.catalog.basic_block_catalog import get_basic_block_catalog_descriptor_by_key
-from VeraGridEngine.Templates.catalog.basic_block_catalog import get_basic_block_catalog_descriptors
-from VeraGridEngine.Templates.catalog.basic_block_catalog import get_basic_block_catalog_templates_dir
-from VeraGridEngine.Templates.catalog.basic_block_catalog import import_basic_block_catalog_module_by_key
+from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
+from VeraGridEngine.Templates.BasicBlockCatalog import get_pending_basic_block_catalog_descriptors
+from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptor_by_key
+from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptors
+from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_templates_dir
+from VeraGridEngine.Templates.BasicBlockCatalog import load_basic_block_catalog_template
 
 
 def build_templates_dir() -> Path:
@@ -70,10 +71,9 @@ def _resolve_descriptor(template_identifier: str) -> BasicBlockTemplateDescripto
         pass
 
     if template_identifier.isdigit():
-        prefix: str = f"typ_{template_identifier}__"
         candidate: BasicBlockTemplateDescriptor
         for candidate in descriptor_entries():
-            if candidate.module_name.startswith(prefix):
+            if candidate.typ_id == template_identifier:
                 return candidate
             else:
                 pass
@@ -95,13 +95,15 @@ def find_template_path(template_identifier: str) -> Path:
     return build_templates_dir() / descriptor.module_filename
 
 
-def import_template_module(template_identifier: str) -> ModuleType:
+def build_template(template_identifier: str,
+                   name: str | None = None) -> EmtModelTemplate:
     """
-    Import one shipped standalone template module by semantic key.
+    Materialize one shipped standalone template through the static catalog runtime path.
 
     :param template_identifier: Semantic key or numeric fixture identifier.
-    :returns: Imported standalone module.
+    :param name: Optional explicit runtime template name.
+    :returns: Materialized template.
     """
 
     descriptor: BasicBlockTemplateDescriptor = _resolve_descriptor(template_identifier)
-    return import_basic_block_catalog_module_by_key(descriptor.template_key)
+    return load_basic_block_catalog_template(descriptor, VarFactory(), name=name)

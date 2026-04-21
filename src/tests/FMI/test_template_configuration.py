@@ -33,13 +33,11 @@ def test_configure_fmu_template_builds_visual_ports_and_auto_bindings() -> None:
     """
 
     template = FmuTemplate(name="")
-    rms_var_factory = VarFactory(name="RmsFmuTemplateFactory")
-    emt_var_factory = VarFactory(name="EmtFmuTemplateFactory")
+    var_factory = VarFactory(name="RmsFmuTemplateFactory")
 
     configured_template = configure_fmu_template(
         template=template,
-        rms_var_factory=rms_var_factory,
-        emt_var_factory=emt_var_factory,
+        var_factory=var_factory,
         fmu_path=_artifact_path(),
         device_tpe=DeviceType.LoadDevice,
         domain=FmuTemplateDomain.RMS,

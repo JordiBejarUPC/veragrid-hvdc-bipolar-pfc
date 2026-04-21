@@ -32,9 +32,10 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
-from VeraGridEngine.Templates.catalog.basic_block_catalog import BasicBlockTemplateDescriptor
-from VeraGridEngine.Templates.catalog.basic_block_catalog import get_editor_ready_basic_block_catalog_descriptors
-from VeraGridEngine.Templates.catalog.basic_block_catalog import load_basic_block_catalog_template
+from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
+from VeraGridEngine.Templates.BasicBlockCatalog import get_editor_ready_basic_block_catalog_descriptors
+from VeraGridEngine.Templates.BasicBlockCatalog import load_basic_block_catalog_template
+from VeraGridEngine.Templates.BasicBlockCatalog.catalog import build_basic_block_catalog_branch_skeleton
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
@@ -3394,8 +3395,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     dirtyStateChanged = Signal(bool)
 
-    # block_added = Signal(object)
-
     def __init__(self,
                  var_factory: VarFactory,
                  block: Block,
@@ -3647,52 +3646,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         Build the nested branch used to expose the imported basic block catalog.
         """
 
-        branch: Dict[str, Any] = {
-            "Continuous": {
-                "Transfer Functions and Filters": list(),
-                "Integrators and Derivatives": list(),
-                "Delays and Memory": list(),
-            },
-            "Control and Measurement": {
-                "Controllers": list(),
-                "Measurements and Units": list(),
-            },
-            "Logic and Events": {
-                "Comparators": list(),
-                "Gates and Memory": list(),
-                "Switching and Selection": list(),
-                "Timers and Enables": list(),
-            },
-            "Limits and Nonlinearities": {
-                "Limiters": list(),
-                "Deadbands and Rate Limiters": list(),
-            },
-            "Math and Functions": {
-                "Scaling and Products": list(),
-                "Elementary Functions": list(),
-                "Constants and Scaling": list(),
-            },
-            "Transforms": {
-                "Clarke, Park and dq0": list(),
-                "RMS and Sequence": list(),
-            },
-            "Complex": {
-                "Operations": list(),
-            },
-            "Waveforms and Time": {
-                "Signal Generators": list(),
-                "Time Sources and Timers": list(),
-            },
-            "Mechanical": {
-                "Drive Train": list(),
-            },
-            "Lookup and Tables": {
-                "Arrays and Matrices": list(),
-            },
-            "Miscellaneous": {
-                "Other": list(),
-            },
-        }
+        # The catalog owns the static library skeleton so the GUI does not need to
+        # duplicate category dictionaries that can drift during refactors.
+        branch: Dict[str, Any] = build_basic_block_catalog_branch_skeleton()
 
         descriptor: BasicBlockTemplateDescriptor
         for descriptor in get_editor_ready_basic_block_catalog_descriptors():

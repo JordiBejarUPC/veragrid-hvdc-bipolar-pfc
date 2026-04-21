@@ -289,8 +289,7 @@ class FmuTemplateEditorDialog(QtWidgets.QDialog):
         try:
             configure_fmu_template(
                 template=self._template,
-                rms_var_factory=self._circuit.var_factory,
-                emt_var_factory=self._circuit.var_factory,
+                var_factory=self._circuit.var_factory,
                 fmu_path=fmu_path,
                 device_tpe=device_tpe,
                 domain=domain,
