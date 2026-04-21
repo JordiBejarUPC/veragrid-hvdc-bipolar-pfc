@@ -3047,6 +3047,7 @@ class VarPowerFlowRefferenceType(Enum):
     Qf = "Qf"  # Branch reactive power from in p.u.
     Pt = "Pt"  # Branch active power to in p.u.
     Qt = "Qt"  # Branch reactive power to in p.u.
+    Im = "Im"  # Converter current magnitude in p.u.
 
     # HVDC
     Pf_hvdc = "Pf_hvdc"
@@ -3192,6 +3193,9 @@ class ParamPowerFlowRefferenceType(Enum):
     bsh = "bsh"  # Branch shunt susceptance in per unit
     vtap_f = "vtap_f"  # Virtual tap at from-side
     vtap_t = "vtap_t"  # Virtual tap at to-side
+    r = "r"  # Branch resistance in per unit
+    x = "x"  # Branch reactance in per unit
+    l = "l"  # Branch inductance in per unit
     Pl0 = "Pl0"  # Load active power
     Ql0 = "Ql0"  # Load reactive power
     

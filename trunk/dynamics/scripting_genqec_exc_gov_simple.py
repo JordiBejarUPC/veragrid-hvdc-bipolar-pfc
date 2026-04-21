@@ -205,6 +205,16 @@ grid.add_rms_event(event)
 # assert equal
 
 
+# gce.save_file(grid=grid, filename="saved_grid_1.veragrid")
+# grid_opened = gce.open_file("saved_grid_1.veragrid")
+#
+# equal, logger = grid.compare_circuits(grid_opened, detailed_profile_comparison=True)
+# if not equal:
+#     logger.print()
+# # asset for failing
+# assert equal
+
+
 rms_events_group_names = np.array(0)
 
 # choose variables to save values
@@ -252,7 +262,7 @@ print(res.get_branch_df())
 params_mapping = dict()
 
 options = RmsOptions(time_step=0.001,
-                     simulation_time=5,
+                     simulation_time=1,
                      tolerance=1e-6,
                      integration_method=DynamicIntegrationMethod.DaeBackEuler,
                      initialization_method=RmsInitializationMethod.Explicit,
@@ -282,14 +292,14 @@ solver = BackEulerImplicitIntegration(
 
 t, y, well_initialized, converged = solver.simulate()
 
-# results = RmsResults(
-#             time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
-#             rms_events_group_names = rms_events_group_names,
-#             variables=problem.state_and_algebraic_vars,
-#             uid2idx=problem.uid2idx_vars,
-#             vars_glob_name2uid=problem.vars_glob_name2uid,
-#             devices_vars_info=problem.get_device_vars_dict()
-#             )
+results = RmsResults(
+            time_array=pd.DatetimeIndex(pd.to_datetime(solver.t * 1e9)),
+            rms_events_group_names = rms_events_group_names,
+            variables=problem.state_and_algebraic_vars,
+            uid2idx=problem.uid2idx_vars,
+            vars_glob_name2uid=problem.vars_glob_name2uid,
+            devices_vars_info=problem.get_device_vars_dict()
+            )
 
 
 
