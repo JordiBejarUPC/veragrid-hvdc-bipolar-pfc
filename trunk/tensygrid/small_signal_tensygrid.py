@@ -11,24 +11,11 @@ This script creates the phasor problem manually and injects it into the SmallSig
 
 import sys
 from pathlib import Path
-project_base = Path(__file__).resolve().parents[2]
-
-src_path = project_base / "src"
-
-if src_path.exists():
-    if str(src_path) not in sys.path:
-        sys.path.insert(0, str(src_path))
-else:
-    print(f"[ERROR] Engine not found: {src_path}")
-    sys.exit(1)
-
-import sys
 import time, pickle, os
 from typing import Tuple, Any, List
 import numpy as np
 from memory_profiler import profile,LineProfiler, show_results
 #from cryptography.x509 import name
-
 from PolynomialMatrixBuilder import PolynomialMatrixBuilder
 from matplotlib import pyplot as plt
 import VeraGridEngine.api as vge
@@ -45,6 +32,26 @@ from phasor_diagnostics import (
 )
 from scipy.optimize import linear_sum_assignment
 
+project_base = Path(__file__).resolve().parents[2]
+src_path = project_base / "src"
+if src_path.exists():
+    if str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+else:
+    print(f"[ERROR] Engine not found: {src_path}")
+    sys.exit(1)
+
+# --- THREAD CONFIGURATION FOR HEAVY MATH ---
+# A good starting point is the number of physical cores in your CPU.
+num_threads = "1"
+
+os.environ["OMP_NUM_THREADS"] = num_threads
+os.environ["OPENBLAS_NUM_THREADS"] = num_threads
+os.environ["MKL_NUM_THREADS"] = num_threads
+os.environ["VECLIB_MAXIMUM_THREADS"] = num_threads
+os.environ["NUMEXPR_NUM_THREADS"] = num_threads
+# -------------------------------------------------------
+
 #GRID = "Texas 2000 + VSC"
 #GRID = "IEEE 14.xlsx"
 #GRID = "case_ACTIVSg2000.matpower"
@@ -53,24 +60,27 @@ GRID = "IEEE25.gridcal"
 USE_CACHED_BUILDER = False
 BUILDER_CACHE_FILE = f'trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
+REPORT_TIME = False
+
 FAST_MODE = True
 FULL_GRID_PATH = str(grid_folder / GRID)
 FAST_GRID_PATH = FULL_GRID_PATH
-PRINT_ALL_BUSES = False # not FAST_MODE
-ENABLE_POST_COMPARE_PLOT = False # not FAST_MODE
-RUN_DYNAMIC_STEP = False
-"""FAST_MODE = False
-FAST_GRID_PATH = 'trunk/tensygrid/grids/IEEE_14-2.gridcal'
-FULL_GRID_PATH = 'trunk/tensygrid/grids/IEEE118_opf.gridcal'
 PRINT_ALL_BUSES = not FAST_MODE
 ENABLE_POST_COMPARE_PLOT = not FAST_MODE
-RUN_DYNAMIC_STEP = True"""
+RUN_DYNAMIC_STEP = False
 RUN_CONSISTENCY_CHECK = False
 RUN_PF_LINE_EQ_CHECK = False
 RUN_EXCITER_DIAGNOSTICS = False
 PF_LINE_FOCUS_INDEX = 0
 DYNAMIC_SIM_TIME_FAST = 0.05
 DYNAMIC_SIM_TIME_FULL = 0.20
+
+EXEC_METRICS = {
+    "n_vars": 0,
+    "t_builder": 0.0,
+    "t_solve": 0.0,
+    "is_sparse": False
+}
 
 def define_problem_with_path(grid_path):
     """Creates the grid, runs the power flow, and returns the phasor problem."""
@@ -128,7 +138,6 @@ def define_problem_with_path(grid_path):
         vge.set_rms_model(device=shunt, model=shuntec, var_factory=grid.var_factory)
     
     # TRANSFORMERS 3W: Not present in existing grids and not supported
-
     print("  ✓ Grid with path loaded")
 
     # ===================================================================
@@ -172,8 +181,10 @@ def define_problem_with_path(grid_path):
         max_iter=20,
         verbose=True,
     )
+
     start_time= time.perf_counter()
     phasor_problem = vge.RmsProblemPhasor(grid=grid, options=rms_options, pf_results=pf_results)
+    EXEC_METRICS["n_vars"] = phasor_problem.get_all_vars_number()
     end_time= time.perf_counter()
     print(f"\n[3.1.0] ⏰ Func phasor_problem took {end_time - start_time:.2f} seconds")
     print(f"  ✓ Phasor problem created with {phasor_problem.get_states_number()} states")
@@ -373,7 +384,7 @@ def solve_problem(problem: Any = None) -> Any:
             print("\n[*] Linearizing model with real parameters...")
             builder.linearize(v_dict=v_dict)
 
-            builder.save_state_space(f"trunk/tensygrid/precomputed_matrices/{GRID}")
+            #builder.save_state_space(f"trunk/tensygrid/precomputed_matrices/{GRID}")
 
             if USE_CACHED_BUILDER:
                 print(f"\n[📦] Saving full builder object to '{BUILDER_CACHE_FILE}'...")
@@ -570,22 +581,28 @@ def main():
         print(f"   {ev.real:.4f} + {ev.imag:.4f}j")
 
 if __name__ == "__main__":
-
-    lp = LineProfiler()
-    lp.add_function(main)
-    lp.add_function(solve_problem)
-    lp.add_function(define_problem_with_path)
-
     try:
-        lp(main)()
+        if REPORT_TIME:
+            lp = LineProfiler()
+            lp.add_function(main)
+            lp.add_function(solve_problem)
+            lp.add_function(define_problem_with_path)
+            lp(main)()
+        else: main()
     except SystemExit:
-        pass  # Ignore exit
+        print("Error during execution")
     finally:
-        print("\n" + "=" * 80)
-        print("      DETAILED MEMORY PROFILE REPORT (VeraGrid Analysis)")
-        print("=" * 80)
-        show_results(lp)
-
+        if REPORT_TIME:
+            print("\n" + "=" * 80)
+            print("      DETAILED MEMORY PROFILE REPORT (VeraGrid Analysis)")
+            print("=" * 80)
+            show_results(lp)
+            print(
+                f"N_variables: {EXEC_METRICS['n_vars']}, "
+                f"exec_time_builder: {EXEC_METRICS['t_builder']:.4f} sec, "
+                f"exec_time_solve: {EXEC_METRICS['t_solve']:.4f} sec, "
+                f"sparse: {EXEC_METRICS['is_sparse']}"
+            )
 
 
 
