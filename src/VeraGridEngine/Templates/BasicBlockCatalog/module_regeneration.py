@@ -1,13 +1,20 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+
 from __future__ import annotations
 
-import importlib.util
 import re
 from pathlib import Path
-from types import ModuleType
 from typing import Sequence
 
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Templates.BasicBlockCatalog.Functions import BasicBlockCatalogTemplateBuilder
+from VeraGridEngine.Templates.BasicBlockCatalog.Functions import get_basic_block_catalog_template_builder_by_module_name
+from VeraGridEngine.Templates.BasicBlockCatalog.catalog import BasicBlockTemplateDescriptor
+from VeraGridEngine.Templates.BasicBlockCatalog.catalog import get_basic_block_catalog_descriptors
 from VeraGridEngine.Templates.BasicBlockCatalog.catalog import get_basic_block_catalog_descriptor_by_key
 from VeraGridEngine.Templates.BasicBlockCatalog.catalog import get_basic_block_catalog_templates_dir
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -26,6 +33,26 @@ from VeraGridEngine.Utils.procedural_logic import PickupDropoffLogic
 from VeraGridEngine.Utils.procedural_logic import ResetOnRisingEdgeLogic
 from VeraGridEngine.Utils.procedural_logic import SampledValueLogic
 from VeraGridEngine.Utils.procedural_logic import TimeDelayLogic
+
+
+def build_basic_block_catalog_default_name_builder_name(module_name: str) -> str:
+    """
+    Build the unique helper name that returns one module default template name.
+
+    :param module_name: Standalone module stem.
+    :returns: Unique helper name.
+    """
+    return f"build_{module_name}_default_template_name"
+
+
+def build_basic_block_catalog_template_builder_name(module_name: str) -> str:
+    """
+    Build the unique helper name that materializes one standalone template.
+
+    :param module_name: Standalone module stem.
+    :returns: Unique builder name.
+    """
+    return f"build_{module_name}_template"
 
 
 class _TemplateVariableGroups:
@@ -63,6 +90,7 @@ class BasicBlockStandaloneModuleEmitter:
     __slots__ = (
         "_block",
         "_display_name",
+        "_module_name",
         "_default_template_name",
         "_referenced_vars_by_uid",
         "_identifier_map",
@@ -70,14 +98,16 @@ class BasicBlockStandaloneModuleEmitter:
     )
 
     def __init__(self,
-                 block: Block,
-                 display_name: str,
-                 default_template_name: str) -> None:
+                  block: Block,
+                  display_name: str,
+                  module_name: str,
+                  default_template_name: str) -> None:
         """
         Build the standalone module emitter for one materialized template.
 
         :param block: Materialized template block.
         :param display_name: Human-facing template name.
+        :param module_name: Standalone module stem used to build unique function names.
         :param default_template_name: Default runtime template name.
         :returns: None.
         :raises ValueError: Raised when the block contains child blocks.
@@ -89,6 +119,7 @@ class BasicBlockStandaloneModuleEmitter:
 
         self._block = block
         self._display_name = display_name
+        self._module_name = module_name
         self._default_template_name = default_template_name
         self._referenced_vars_by_uid: dict[int, Var] = dict()
         self._collect_referenced_variables(self._referenced_vars_by_uid)
@@ -103,12 +134,26 @@ class BasicBlockStandaloneModuleEmitter:
         """
         lines: list[str] = list()
 
+        self._append_module_license_header(lines)
         self._append_module_docstring(lines)
         self._append_imports(lines)
         self._append_default_name_function(lines)
-        self._append_get_template_function(lines)
+        self._append_template_builder_function(lines)
 
         return "\n".join(lines) + "\n"
+
+    def _append_module_license_header(self, lines: list[str]) -> None:
+        """
+        Append the standard MPL header used by the repository.
+
+        :param lines: Output line buffer.
+        :returns: None.
+        """
+        lines.append("# This Source Code Form is subject to the terms of the Mozilla Public")
+        lines.append("# License, v. 2.0. If a copy of the MPL was not distributed with this")
+        lines.append("# file, You can obtain one at https://mozilla.org/MPL/2.0/.")
+        lines.append("# SPDX-License-Identifier: MPL-2.0")
+        lines.append("")
 
     def _append_module_docstring(self, lines: list[str]) -> None:
         """
@@ -158,7 +203,11 @@ class BasicBlockStandaloneModuleEmitter:
         :param lines: Output line buffer.
         :returns: None.
         """
-        lines.append("def build_default_template_name() -> str:")
+        default_name_builder_name: str = build_basic_block_catalog_default_name_builder_name(self._module_name)
+
+        # Each generated helper name must be unique so the package can import every
+        # module explicitly without relying on wildcard exports or name shadowing.
+        lines.append(f"def {default_name_builder_name}() -> str:")
         lines.append("    \"\"\"")
         lines.append("    Return the canonical runtime name for this standalone template.")
         lines.append("")
@@ -167,14 +216,19 @@ class BasicBlockStandaloneModuleEmitter:
         lines.append(f"    return {repr(self._default_template_name)}")
         lines.append("")
 
-    def _append_get_template_function(self, lines: list[str]) -> None:
+    def _append_template_builder_function(self, lines: list[str]) -> None:
         """
         Append the template builder function.
 
         :param lines: Output line buffer.
         :returns: None.
         """
-        lines.append("def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:")
+        default_name_builder_name: str = build_basic_block_catalog_default_name_builder_name(self._module_name)
+        template_builder_name: str = build_basic_block_catalog_template_builder_name(self._module_name)
+
+        # The explicit builder name becomes the stable import target used by the
+        # package registry, so no runtime module probing is needed anymore.
+        lines.append(f"def {template_builder_name}(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:")
         lines.append("    \"\"\"")
         lines.append("    Materialize the standalone EMT template.")
         lines.append("")
@@ -184,7 +238,7 @@ class BasicBlockStandaloneModuleEmitter:
         lines.append("    \"\"\"")
         lines.append("    template_name: str")
         lines.append("    if name is None:")
-        lines.append("        template_name = build_default_template_name()")
+        lines.append(f"        template_name = {default_name_builder_name}()")
         lines.append("    else:")
         lines.append("        template_name = name")
         lines.append("")
@@ -867,24 +921,22 @@ class BasicBlockStandaloneModuleEmitter:
         return self._build_runtime_free_var_name(var_obj.name)
 
 
-def _build_template_from_imported_module(imported_module: ModuleType) -> EmtModelTemplate:
+def _build_template_from_descriptor(descriptor: BasicBlockTemplateDescriptor) -> EmtModelTemplate:
     """
-    Materialize one EMT template from one imported standalone module.
+    Materialize one EMT template from the static generated package registry.
 
-    :param imported_module: Imported standalone module.
+    :param descriptor: Catalog descriptor for the requested module.
     :returns: Materialized EMT template.
-    :raises TypeError: Raised when the module does not expose a valid ``get_template`` function.
+    :raises KeyError: Raised when the generated package registry does not expose the descriptor module.
     """
-    template_builder_obj: object | None = imported_module.__dict__.get("get_template", None)
+    template_builder: BasicBlockCatalogTemplateBuilder | None = (
+        get_basic_block_catalog_template_builder_by_module_name(descriptor.module_name)
+    )
 
-    if callable(template_builder_obj):
-        template_obj: object = template_builder_obj(VarFactory())
-        if isinstance(template_obj, EmtModelTemplate):
-            return template_obj
-        else:
-            raise TypeError("The imported standalone catalog module returned an invalid template object")
+    if template_builder is None:
+        raise KeyError(f"Could not resolve standalone template builder for module '{descriptor.module_name}'")
     else:
-        raise TypeError("The imported standalone catalog module does not expose get_template()")
+        return template_builder(VarFactory())
 
 
 def _sanitize_display_name(default_template_name: str) -> str:
@@ -897,83 +949,103 @@ def _sanitize_display_name(default_template_name: str) -> str:
     return re.sub(r"__\d+$", "", default_template_name).strip()
 
 
-def _build_module_sort_key(module_path: Path) -> tuple[int, str]:
+def render_basic_block_catalog_functions_package_init() -> str:
     """
-    Build the deterministic sort key for one standalone module path.
+    Render the static package registry for every generated basic-block builder.
 
-    :param module_path: Standalone module path.
-    :returns: Sort key ordered by numeric typ_id and filename.
+    :returns: ``Functions/__init__.py`` source text.
     """
-    match_obj = re.fullmatch(r"typ_(\d+)__.+", module_path.stem)
-    if match_obj is None:
-        raise ValueError(f"Unexpected standalone module filename '{module_path.name}'")
+    lines: list[str] = list()
+    descriptors: Sequence[BasicBlockTemplateDescriptor] = get_basic_block_catalog_descriptors()
+    descriptor: BasicBlockTemplateDescriptor
+
+    lines.append("# This Source Code Form is subject to the terms of the Mozilla Public")
+    lines.append("# License, v. 2.0. If a copy of the MPL was not distributed with this")
+    lines.append("# file, You can obtain one at https://mozilla.org/MPL/2.0/.")
+    lines.append("# SPDX-License-Identifier: MPL-2.0")
+    lines.append("")
+    lines.append("from __future__ import annotations")
+    lines.append("")
+    lines.append("from functools import lru_cache")
+    lines.append("from typing import Callable")
+    lines.append("")
+    lines.append("from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate")
+    lines.append("from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory")
+
+    for descriptor in descriptors:
+        template_builder_name: str = build_basic_block_catalog_template_builder_name(descriptor.module_name)
+        lines.append(
+            "from VeraGridEngine.Templates.BasicBlockCatalog.Functions."
+            f"{descriptor.module_name} import {template_builder_name}"
+        )
+
+    lines.append("")
+    lines.append("BasicBlockCatalogTemplateBuilder = Callable[[VarFactory, str | None], EmtModelTemplate]")
+    lines.append("")
+    lines.append("@lru_cache(maxsize=1)")
+    lines.append("def get_basic_block_catalog_template_builders_by_module_name() -> dict[str, BasicBlockCatalogTemplateBuilder]:")
+    lines.append("    \"\"\"")
+    lines.append("    Return the static template-builder lookup indexed by standalone module name.")
+    lines.append("")
+    lines.append("    :returns: Template-builder lookup.")
+    lines.append("    \"\"\"")
+    lines.append("    builders_by_module_name: dict[str, BasicBlockCatalogTemplateBuilder] = dict()")
+    lines.append("")
+    lines.append("    # The package imports each generated builder explicitly so the catalog runtime")
+    lines.append("    # can resolve templates without wildcard imports or filesystem probing.")
+
+    for descriptor in descriptors:
+        template_builder_name = build_basic_block_catalog_template_builder_name(descriptor.module_name)
+        lines.append(f"    builders_by_module_name['{descriptor.module_name}'] = {template_builder_name}")
+
+    lines.append("")
+    lines.append("    return builders_by_module_name")
+    lines.append("")
+    lines.append("def get_basic_block_catalog_template_builder_by_module_name(")
+    lines.append("    module_name: str,")
+    lines.append(") -> BasicBlockCatalogTemplateBuilder | None:")
+    lines.append("    \"\"\"")
+    lines.append("    Return one generated template builder by standalone module name.")
+    lines.append("")
+    lines.append("    :param module_name: Standalone module stem.")
+    lines.append("    :returns: Matching template builder or ``None`` when the registry does not expose it.")
+    lines.append("    \"\"\"")
+    lines.append("    builders_by_module_name: dict[str, BasicBlockCatalogTemplateBuilder] = (")
+    lines.append("        get_basic_block_catalog_template_builders_by_module_name()")
+    lines.append("    )")
+    lines.append("    template_builder: BasicBlockCatalogTemplateBuilder | None = builders_by_module_name.get(module_name, None)")
+    lines.append("")
+    lines.append("    if template_builder is None:")
+    lines.append("        return None")
+    lines.append("    else:")
+    lines.append("        return template_builder")
+    lines.append("")
+
+    return "\n".join(lines) + "\n"
+
+
+def rewrite_basic_block_catalog_functions_package_init(output_directory: Path | None = None) -> Path:
+    """
+    Rewrite the static package registry that exposes every generated basic-block builder.
+
+    :param output_directory: Optional destination directory.
+    :returns: Path to the rewritten package init file.
+    """
+    target_directory: Path
+
+    if output_directory is None:
+        target_directory = get_basic_block_catalog_templates_dir()
     else:
-        return int(match_obj.group(1)), module_path.name
+        target_directory = output_directory
 
-
-def _import_template_module_from_path(module_path: Path) -> ModuleType:
-    """
-    Import one standalone module directly from one source path.
-
-    :param module_path: Standalone module path.
-    :returns: Imported standalone module.
-    :raises ImportError: Raised when the module cannot be imported.
-    """
-    module_name: str = f"veragrid_catalog_rewrite_{module_path.stem}"
-    spec = importlib.util.spec_from_file_location(module_name, module_path)
-
-    if spec is None or spec.loader is None:
-        raise ImportError(f"Could not import standalone module from '{module_path}'")
-    else:
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
-
-
-def rewrite_basic_block_catalog_template_module_from_path(source_path: Path,
-                                                                 output_directory: Path) -> Path:
-    """
-    Rewrite one standalone catalog module from one explicit source path.
-
-    :param source_path: Source standalone module path.
-    :param output_directory: Destination directory.
-    :returns: Path to the rewritten module.
-    """
-    imported_module: ModuleType = _import_template_module_from_path(source_path)
-    template: EmtModelTemplate = _build_template_from_imported_module(imported_module)
-    emitter: BasicBlockStandaloneModuleEmitter = BasicBlockStandaloneModuleEmitter(
-        block=template.block,
-        display_name=_sanitize_display_name(template.name),
-        default_template_name=template.name,
-    )
-    output_directory.mkdir(parents=True, exist_ok=True)
-    target_path: Path = output_directory / source_path.name
-    target_path.write_text(emitter.render(), encoding="utf-8")
+    target_directory.mkdir(parents=True, exist_ok=True)
+    target_path: Path = target_directory / "__init__.py"
+    target_path.write_text(render_basic_block_catalog_functions_package_init(), encoding="utf-8")
     return target_path
 
 
-def rewrite_basic_block_catalog_standalone_modules_from_directory(source_directory: Path,
-                                                                         output_directory: Path) -> Sequence[Path]:
-    """
-    Rewrite every standalone catalog module from one explicit source directory.
-
-    :param source_directory: Source directory containing ``typ_*.py`` modules.
-    :param output_directory: Destination directory.
-    :returns: Written module paths.
-    """
-    source_paths: list[Path] = list(source_directory.glob("typ_*.py"))
-    source_paths.sort(key=_build_module_sort_key)
-    written_paths: list[Path] = list()
-    source_path: Path
-
-    for source_path in source_paths:
-        written_paths.append(rewrite_basic_block_catalog_template_module_from_path(source_path, output_directory))
-
-    return tuple(written_paths)
-
-
 def rewrite_basic_block_catalog_template_module(template_key: str,
-                                                      output_directory: Path | None = None) -> Path:
+                                                       output_directory: Path | None = None) -> Path:
     """
     Rewrite one standalone catalog module using the clean emitter.
 
@@ -981,11 +1053,25 @@ def rewrite_basic_block_catalog_template_module(template_key: str,
     :param output_directory: Optional destination directory.
     :returns: Path to the rewritten module.
     """
-    source_directory: Path = get_basic_block_catalog_templates_dir()
-    target_directory: Path = get_basic_block_catalog_templates_dir() if output_directory is None else output_directory
-    descriptor = get_basic_block_catalog_descriptor_by_key()[template_key]
-    source_path: Path = source_directory / descriptor.module_filename
-    return rewrite_basic_block_catalog_template_module_from_path(source_path, target_directory)
+    descriptor: BasicBlockTemplateDescriptor = get_basic_block_catalog_descriptor_by_key()[template_key]
+    template: EmtModelTemplate = _build_template_from_descriptor(descriptor)
+    emitter: BasicBlockStandaloneModuleEmitter = BasicBlockStandaloneModuleEmitter(
+        block=template.block,
+        display_name=_sanitize_display_name(template.name),
+        module_name=descriptor.module_name,
+        default_template_name=template.name,
+    )
+    target_directory: Path
+
+    if output_directory is None:
+        target_directory = get_basic_block_catalog_templates_dir()
+    else:
+        target_directory = output_directory
+
+    target_directory.mkdir(parents=True, exist_ok=True)
+    target_path: Path = target_directory / descriptor.module_filename
+    target_path.write_text(emitter.render(), encoding="utf-8")
+    return target_path
 
 
 def rewrite_basic_block_catalog_standalone_modules(output_directory: Path | None = None) -> Sequence[Path]:
@@ -995,6 +1081,20 @@ def rewrite_basic_block_catalog_standalone_modules(output_directory: Path | None
     :param output_directory: Optional destination directory.
     :returns: Written module paths.
     """
-    source_directory: Path = get_basic_block_catalog_templates_dir()
-    target_directory: Path = get_basic_block_catalog_templates_dir() if output_directory is None else output_directory
-    return rewrite_basic_block_catalog_standalone_modules_from_directory(source_directory, target_directory)
+    target_directory: Path
+    descriptors: Sequence[BasicBlockTemplateDescriptor] = get_basic_block_catalog_descriptors()
+    descriptor: BasicBlockTemplateDescriptor
+    written_paths: list[Path] = list()
+
+    if output_directory is None:
+        target_directory = get_basic_block_catalog_templates_dir()
+    else:
+        target_directory = output_directory
+
+    # The modules must be rewritten before the package registry so the final
+    # explicit imports always point at builders that already exist on disk.
+    for descriptor in descriptors:
+        written_paths.append(rewrite_basic_block_catalog_template_module(descriptor.template_key, target_directory))
+
+    written_paths.append(rewrite_basic_block_catalog_functions_package_init(target_directory))
+    return tuple(written_paths)

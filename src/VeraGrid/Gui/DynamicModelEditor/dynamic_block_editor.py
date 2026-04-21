@@ -19,13 +19,14 @@ from PySide6.QtWidgets import (QApplication, QHBoxLayout, QGraphicsScene, QGraph
                                QColorDialog, QPlainTextEdit, QCheckBox)
 from PySide6.QtGui import (QPen, QBrush, QPainterPath, QAction, QPainter,
                            QDropEvent, QDragEnterEvent, QDragMoveEvent, QColor)
-from PySide6.QtCore import Qt, QPointF, Signal
+from PySide6.QtCore import QAbstractItemModel, QLineF
+from PySide6.QtCore import Qt, QPointF, QModelIndex, Signal, QAbstractTableModel
 
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.injection_parent import InjectionParent
 from VeraGridEngine.enumerations import DeviceType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType, \
     DynamicSimulationMode
-from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
+from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms, get_bus_rms_algebraic_vars
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template, get_bus_emt_algebraic_vars
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
@@ -34,6 +35,7 @@ from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 from VeraGridEngine.Templates.BasicBlockCatalog import get_editor_ready_basic_block_catalog_descriptors
 from VeraGridEngine.Templates.BasicBlockCatalog import load_basic_block_catalog_template
+from VeraGridEngine.Templates.BasicBlockCatalog.catalog import build_basic_block_catalog_branch_skeleton
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
@@ -48,6 +50,7 @@ from VeraGridEngine.Devices.Diagrams.block_diagram import BlockDiagram
 from VeraGridEngine.enumerations import BlockType
 from dataclasses import dataclass
 
+# from VeraGridEngine.Templates.Rms.common import create_block_of_type, create_generic_block, create_emt_wizard_block
 
 BLOCK_BORDER: QColor = QColor("#36536b")
 BLOCK_BORDER_SELECTED: QColor = QColor("#cc6f2c")
@@ -81,159 +84,6 @@ def _new_uid() -> int:
     :return:
     """
     return uuid.uuid4().int
-
-
-def build_variables_rows(block: Block | None, rows: List[BlockParameterRow]):
-    if block is not None:
-        build_block_variables_rows(block, rows)
-        if block.children:
-            for child in block.children:
-                build_variables_rows(child, rows)
-
-
-def build_block_variables_rows(block: Block, rows: List[BlockParameterRow]):
-
-    for var in block.state_vars:
-        init_eq = block.init_eqs.get(var)
-        rows.append(BlockParameterRow(
-            name=var.name,
-            kind=BlockParameterKind.STATE_VAR,
-            key_var=var,
-            value=block.init_values.get(var, ""),
-            editable_name=True,
-            editable_value=True,
-            value_type=float,
-            init_eq=init_eq
-        ))
-
-    for var in block.algebraic_vars:
-        init_eq = block.init_eqs.get(var)
-        rows.append(BlockParameterRow(
-            name=var.name,
-            kind=BlockParameterKind.ALGEBRAIC_VAR,
-            key_var=var,
-            value="",
-            editable_name=True,
-            editable_value=False,
-            value_type=str,
-            init_eq=init_eq
-        ))
-
-
-def build_parameters_rows(table_model, block: Block | None, rows: List[BlockParameterRow]):
-
-    if block is not None:
-        build_block_parameters_rows(table_model, block, rows)
-        if block.children:
-            for child in block.children:
-                build_block_parameters_rows(table_model, child, rows)
-
-
-def build_block_parameters_rows(table_model: Any, blk: Block, rows:List[BlockParameterRow]):
-
-    for var, expr in blk.event_dict.items():
-        if isinstance(expr, Const):
-            rows.append(BlockParameterRow(
-                name=var.name,
-                kind=BlockParameterKind.EVENT_PARAMETER,
-                key_var=var,
-                value=expr.value,
-                editable_name=True,
-                editable_value=True,
-                value_type=table_model.get_python_value_type(expr.value),
-                source_dict_name="event_dict"
-            ))
-        else:
-            rows.append(BlockParameterRow(
-                name=var.name,
-                kind=BlockParameterKind.EVENT_PARAMETER,
-                key_var=var,
-                value=expr,
-                editable_name=True,
-                editable_value=True,
-                value_type=str,
-                source_dict_name="event_dict"
-            ))
-
-    for var, const in blk.parameters.items():
-        rows.append(BlockParameterRow(
-            name=var.name,
-            kind=BlockParameterKind.FIXED_PARAMETER,
-            key_var=var,
-            value=const.value,
-            editable_name=True,
-            editable_value=True,
-            value_type=table_model.get_python_value_type(const.value),
-            source_dict_name="parameters"
-        ))
-
-    return rows
-
-def update_source_dict(block: Block | None, row: BlockParameterRow, value: Any, old_expr: Any) -> None:
-    if block is not None and row is not None:
-        update_param_value(block, row, value, old_expr)
-        if block.children:
-            for child in block.children:
-                update_source_dict(child, row, value, old_expr)
-
-def update_param_value(blk: Block, row: BlockParameterRow, value: Any, old_expr: Any):
-    if blk is not None and row is not None:
-        if row.key_var is not None:
-            if row.kind == BlockParameterKind.EVENT_PARAMETER:
-                if row.key_var in blk.event_dict:
-                    blk.event_dict[row.key_var] = value
-            elif row.kind == BlockParameterKind.FIXED_PARAMETER:
-                if row.key_var in blk.parameters:
-                    blk.parameters[row.key_var] = value
-            elif row.kind == BlockParameterKind.STATE_VAR:
-                if row.key_var in blk.init_eqs:
-                    blk.init_eqs[row.key_var] = value
-            elif row.kind == BlockParameterKind.ALGEBRAIC_VAR:
-                if row.key_var in blk.init_eqs:
-                    blk.init_eqs[row.key_var] = value
-        if row.kind == BlockParameterKind.STATE_EQUATION and row.item_index is not None:
-            if old_expr in blk.state_eqs:
-                blk.state_eqs[row.item_index] = value
-        elif row.kind == BlockParameterKind.ALGEBRAIC_EQUATION and row.item_index is not None:
-            if old_expr in blk.algebraic_eqs:
-                blk.algebraic_eqs[row.item_index] = value
-
-
-def build_equations_rows(block: Block | None, rows):
-    """
-
-    :return:
-    """
-    if block is not None:
-        build_block_equations_rows(block, rows)
-        if block.children:
-            for child in block.children:
-                build_equations_rows(child, rows)
-
-def build_block_equations_rows(blk: Block, rows: List[BlockParameterRow]):
-    for idx, eq in enumerate(blk.state_eqs):
-        rows.append(BlockParameterRow(
-            name=f"State Eq {idx + 1}",
-            kind=BlockParameterKind.STATE_EQUATION,
-            key_var=None,
-            value=eq,
-            editable_name=False,
-            editable_value=True,
-            value_type=str,
-            item_index=idx
-        ))
-
-    for idx, eq in enumerate(blk.algebraic_eqs):
-        rows.append(BlockParameterRow(
-            name=f"Algebraic Eq {idx + 1}",
-            kind=BlockParameterKind.ALGEBRAIC_EQUATION,
-            key_var=None,
-            value=eq,
-            editable_name=False,
-            editable_value=True,
-            value_type=str,
-            item_index=idx
-        ))
 
 
 class BlockPositionChangedCallback:
@@ -1770,10 +1620,41 @@ class VariablesTableModel(QtCore.QAbstractTableModel):
     def set_block(self, block: Block | None) -> None:
         self.beginResetModel()
         self.block = block
-        self.rows: List[BlockParameterRow] = list()
-        build_variables_rows(self.block, self.rows)
+        self.rows = self._build_rows()
         self.endResetModel()
 
+    def _build_rows(self) -> List[BlockParameterRow]:
+        rows = []
+        if self.block is None:
+            return rows
+
+        for var in self.block.state_vars:
+            init_eq = self.block.init_eqs.get(var)
+            rows.append(BlockParameterRow(
+                name=var.name,
+                kind=BlockParameterKind.STATE_VAR,
+                key_var=var,
+                value=self.block.init_values.get(var, ""),
+                editable_name=True,
+                editable_value=True,
+                value_type=float,
+                init_eq=init_eq
+            ))
+
+        for var in self.block.algebraic_vars:
+            init_eq = self.block.init_eqs.get(var)
+            rows.append(BlockParameterRow(
+                name=var.name,
+                kind=BlockParameterKind.ALGEBRAIC_VAR,
+                key_var=var,
+                value="",
+                editable_name=True,
+                editable_value=False,
+                value_type=str,
+                init_eq=init_eq
+            ))
+
+        return rows
 
     def rowCount(self, parent=QtCore.QModelIndex()) -> int:
         return len(self.rows)
@@ -1832,7 +1713,7 @@ class VariablesTableModel(QtCore.QAbstractTableModel):
             row = self.rows[row_index]
             row.init_eq = init_eq
             if self.block is not None and row.key_var is not None:
-                update_source_dict(self.block, row, init_eq)
+                self.block.init_eqs[row.key_var] = init_eq
             index = self.index(row_index, 2)
             self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
 
@@ -1915,9 +1796,51 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
     def set_block(self, block: Block | None) -> None:
         self.beginResetModel()
         self.block = block
-        self.rows: List[BlockParameterRow] = list()
-        build_parameters_rows(self, self.block, self.rows)
+        self.rows = self._build_rows()
         self.endResetModel()
+
+    def _build_rows(self) -> List[BlockParameterRow]:
+        rows = []
+        if self.block is None:
+            return rows
+
+        for var, expr in self.block.event_dict.items():
+            if isinstance(expr, Const):
+                rows.append(BlockParameterRow(
+                    name=var.name,
+                    kind=BlockParameterKind.EVENT_PARAMETER,
+                    key_var=var,
+                    value=expr.value,
+                    editable_name=True,
+                    editable_value=True,
+                    value_type=self.get_python_value_type(expr.value),
+                    source_dict_name="event_dict"
+                ))
+            else:
+                rows.append(BlockParameterRow(
+                    name=var.name,
+                    kind=BlockParameterKind.EVENT_PARAMETER,
+                    key_var=var,
+                    value=expr,
+                    editable_name=True,
+                    editable_value=True,
+                    value_type=str,
+                    source_dict_name="event_dict"
+                ))
+
+        for var, const in self.block.parameters.items():
+            rows.append(BlockParameterRow(
+                name=var.name,
+                kind=BlockParameterKind.FIXED_PARAMETER,
+                key_var=var,
+                value=const.value,
+                editable_name=True,
+                editable_value=True,
+                value_type=self.get_python_value_type(const.value),
+                source_dict_name="parameters"
+            ))
+
+        return rows
 
     def rowCount(self, parent=QtCore.QModelIndex()) -> int:
         return len(self.rows)
@@ -1958,18 +1881,26 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
                 row.key_var.name = value
             elif index.column() == 2 and row.editable_value:
                 row.value = value
-                update_source_dict(self.block, row, value)
+                self._update_source_dict(row, value)
             else:
                 return False
             self.dataChanged.emit(index, index, [role])
             return True
         return False
 
+    def _update_source_dict(self, row: BlockParameterRow, value: Any) -> None:
+        if self.block is None or row.key_var is None or row.source_dict_name is None:
+            return
+        if row.source_dict_name == "event_dict":
+            self.block.event_dict[row.key_var] = value
+        elif row.source_dict_name == "parameters":
+            self.block.parameters[row.key_var] = value
+
     def set_value_from_expression(self, row_index: int, expr: Expr) -> None:
         if 0 <= row_index < len(self.rows):
             row = self.rows[row_index]
             row.value = expr
-            update_source_dict(self.block, row, expr)
+            self._update_source_dict(row, expr)
             index = self.index(row_index, 2)
             self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
 
@@ -2022,7 +1953,6 @@ class EquationsTableModel(QtCore.QAbstractTableModel):
         self.block = None
         self.rows = []
         self.headers = ["Type", "Equation"]
-        self.symbol_namespace = None
 
     def set_block(self, block: Block | None) -> None:
         """
@@ -2032,9 +1962,43 @@ class EquationsTableModel(QtCore.QAbstractTableModel):
         """
         self.beginResetModel()
         self.block = block
-        self.rows: List[BlockParameterRow] = list()
-        build_equations_rows(self.block, self.rows)
+        self.rows = self._build_rows()
         self.endResetModel()
+
+    def _build_rows(self) -> List[BlockParameterRow]:
+        """
+
+        :return:
+        """
+        rows = []
+        if self.block is None:
+            return rows
+
+        for idx, eq in enumerate(self.block.state_eqs):
+            rows.append(BlockParameterRow(
+                name=f"State Eq {idx + 1}",
+                kind=BlockParameterKind.STATE_EQUATION,
+                key_var=None,
+                value=eq,
+                editable_name=False,
+                editable_value=True,
+                value_type=str,
+                item_index=idx
+            ))
+
+        for idx, eq in enumerate(self.block.algebraic_eqs):
+            rows.append(BlockParameterRow(
+                name=f"Algebraic Eq {idx + 1}",
+                kind=BlockParameterKind.ALGEBRAIC_EQUATION,
+                key_var=None,
+                value=eq,
+                editable_name=False,
+                editable_value=True,
+                value_type=str,
+                item_index=idx
+            ))
+
+        return rows
 
     def rowCount(self, parent=QtCore.QModelIndex()) -> int:
         """
@@ -2089,14 +2053,17 @@ class EquationsTableModel(QtCore.QAbstractTableModel):
         if not index.isValid():
             return False
         row = self.rows[index.row()]
-        old_expr = row.value
         if role == QtCore.Qt.ItemDataRole.EditRole:
             if index.column() == 1:
                 try:
-
-                    new_expr = string_to_symbolic(value, self.symbol_namespace)
+                    new_expr = string_to_symbolic(value)
                     row.value = new_expr
-                    update_source_dict(self.block, row, row.value, old_expr)
+                    if row.kind == BlockParameterKind.STATE_EQUATION and row.item_index is not None:
+                        self.block.state_eqs[row.item_index] = new_expr
+                    elif row.kind == BlockParameterKind.ALGEBRAIC_EQUATION and row.item_index is not None:
+                        self.block.algebraic_eqs[row.item_index] = new_expr
+                    else:
+                        return False
                     self.dataChanged.emit(index, index, [role])
                     self.block_updated.emit(self.block.uid)
                     return True
@@ -3679,52 +3646,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         Build the nested branch used to expose the imported basic block catalog.
         """
 
-        branch: Dict[str, Any] = {
-            "Continuous": {
-                "Transfer Functions and Filters": list(),
-                "Integrators and Derivatives": list(),
-                "Delays and Memory": list(),
-            },
-            "Control and Measurement": {
-                "Controllers": list(),
-                "Measurements and Units": list(),
-            },
-            "Logic and Events": {
-                "Comparators": list(),
-                "Gates and Memory": list(),
-                "Switching and Selection": list(),
-                "Timers and Enables": list(),
-            },
-            "Limits and Nonlinearities": {
-                "Limiters": list(),
-                "Deadbands and Rate Limiters": list(),
-            },
-            "Math and Functions": {
-                "Scaling and Products": list(),
-                "Elementary Functions": list(),
-                "Constants and Scaling": list(),
-            },
-            "Transforms": {
-                "Clarke, Park and dq0": list(),
-                "RMS and Sequence": list(),
-            },
-            "Complex": {
-                "Operations": list(),
-            },
-            "Waveforms and Time": {
-                "Signal Generators": list(),
-                "Time Sources and Timers": list(),
-            },
-            "Mechanical": {
-                "Drive Train": list(),
-            },
-            "Lookup and Tables": {
-                "Arrays and Matrices": list(),
-            },
-            "Miscellaneous": {
-                "Other": list(),
-            },
-        }
+        # The catalog owns the static library skeleton so the GUI does not need to
+        # duplicate category dictionaries that can drift during refactors.
+        branch: Dict[str, Any] = build_basic_block_catalog_branch_skeleton()
 
         descriptor: BasicBlockTemplateDescriptor
         for descriptor in get_editor_ready_basic_block_catalog_descriptors():
@@ -5451,18 +5375,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         if row_data is not None and self.equations_table_model.block is not None:
             if isinstance(row_data.value, Expr):
-                old_expr = row_data.value
                 expression_text = symbolic_to_string(row_data.value)
-                self.equations_table_model.symbol_namespace = build_block_symbol_namespace(self.equations_table_model.block)
+                symbol_namespace = build_block_symbol_namespace(self.equations_table_model.block)
                 dialog = ExpressionTextEditorDialog(
                     expression_text=expression_text,
-                    symbol_namespace=self.equations_table_model.symbol_namespace,
+                    symbol_namespace=symbol_namespace,
                     parent=self
                 )
 
                 if dialog.exec() == QDialog.DialogCode.Accepted:
                     try:
-                        parsed_expression = string_to_symbolic(dialog.get_expression_text(), self.equations_table_model.symbol_namespace)
+                        parsed_expression = string_to_symbolic(dialog.get_expression_text(), symbol_namespace)
 
                         if isinstance(parsed_expression, Comparison):
                             expression_value = parsed_expression.to_expression()

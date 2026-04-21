@@ -1,3 +1,8 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+
 """
 Standalone EMT template for the basic catalog block 'Switch par 1->2 by sig'.
 
@@ -17,7 +22,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Utils.procedural_logic import sampled_value, selfix
 from VeraGridEngine.enumerations import DeviceType
 
-def build_default_template_name() -> str:
+def build_typ_509__switch_par_1_2_by_sig_default_template_name() -> str:
     """
     Return the canonical runtime name for this standalone template.
 
@@ -25,7 +30,7 @@ def build_default_template_name() -> str:
     """
     return 'Switch par 1->2 by sig__509'
 
-def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
+def build_typ_509__switch_par_1_2_by_sig_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
     """
     Materialize the standalone EMT template.
 
@@ -35,7 +40,7 @@ def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
     """
     template_name: str
     if name is None:
-        template_name = build_default_template_name()
+        template_name = build_typ_509__switch_par_1_2_by_sig_default_template_name()
     else:
         template_name = name
 

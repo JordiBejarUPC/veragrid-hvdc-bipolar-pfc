@@ -1,3 +1,8 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+
 """
 Standalone EMT template for the basic catalog block 'a23(1+(a11-a13a21/a23)sTw)/(1+a11sTw)'.
 
@@ -16,7 +21,7 @@ from VeraGridEngine.Utils.Symbolic.symbolic import Expr
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.enumerations import DeviceType
 
-def build_default_template_name() -> str:
+def build_typ_309__a23_1_a11_a13a21_a23_stw_1_a11stw_default_template_name() -> str:
     """
     Return the canonical runtime name for this standalone template.
 
@@ -24,7 +29,7 @@ def build_default_template_name() -> str:
     """
     return 'a23(1+(a11-a13a21/a23)sTw)/(1+a11sTw)__309'
 
-def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
+def build_typ_309__a23_1_a11_a13a21_a23_stw_1_a11stw_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
     """
     Materialize the standalone EMT template.
 
@@ -34,7 +39,7 @@ def get_template(vf: VarFactory, name: str | None = None) -> EmtModelTemplate:
     """
     template_name: str
     if name is None:
-        template_name = build_default_template_name()
+        template_name = build_typ_309__a23_1_a11_a13a21_a23_stw_1_a11stw_default_template_name()
     else:
         template_name = name
 
