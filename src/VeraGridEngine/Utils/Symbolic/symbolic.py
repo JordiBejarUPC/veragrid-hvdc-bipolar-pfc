@@ -1407,7 +1407,25 @@ def heaviside(x: Expr) -> Expr:
 
 
 def heaviside_diff(u: Expr, du: Expr) -> Expr:
-    return du * heaviside(u)
+    """
+    Return the symbolic derivative of the Heaviside step for Newton linearization.
+
+    In VeraGrid the Heaviside function is used to build piecewise-algebraic
+    helpers such as ``hard_sat()``, ``max()`` and ``min()``. During Newton
+    linearization the step is treated as piecewise constant away from its
+    switching surface, so its derivative must be zero almost everywhere.
+
+    Using a non-zero surrogate here injects spurious Jacobian terms proportional
+    to the saturated signal magnitude, which severely degrades convergence in
+    switched and limited EMT controllers.
+
+    :param u: Heaviside argument.
+    :param du: Derivative of the Heaviside argument.
+    :return: Zero symbolic derivative for piecewise-constant linearization.
+    """
+    _unused_u: Expr = u
+    _unused_du: Expr = du
+    return Const(0.0)
 
 
 def _symbolic_max(x: Expr | NUMBER, y: Expr | NUMBER) -> Expr:
