@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Any, Iterable
 from PySide6 import QtCore, QtGui, QtWidgets
 from typing import Optional
@@ -123,7 +124,7 @@ def get_block_for_entry(entry: DynamicEditorEntry, mode: DynamicSimulationMode):
     else:
         return api_object.emt_model
 
-
+@dataclass(frozen=True)
 class DynamicEditorEntry:
     """
     One selectable/openable Dynamic Editor entry.
