@@ -463,16 +463,6 @@ class RmsProblemDae(RmsProblemTemplate):
                 if ParamPowerFlowRefferenceType.alpha3 in elm.rms_model.api_obj_mapping:
                     elm.rms_model.parameters[elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha3]] = Const(elm.alpha3)
 
-
-                #We connect the vsc to its transformer
-                if elm.bus_from.is_dc:
-                    if len(mdl.in_vars) > 0 and mdl.in_vars[0].name.startswith("Im_placeholder"):
-                        for branch_num, other_elm in enumerate(self.grid.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True)):
-                            if other_elm.bus_to.idtag == elm.bus_to.idtag:
-                                mdl.connect([mdl.in_vars[0]], [other_elm.rms_model.out_vars[0]])
-                            else:
-                                pass
-
                 St_vsc = self.power_flow_results.St_vsc / self.grid.Sbase
                 Sf_vsc = (self.power_flow_results.Pfn_vsc[i] + self.power_flow_results.Pfp_vsc[i]) / self.grid.Sbase
                 # fill init_guess
@@ -1435,6 +1425,7 @@ class RmsProblemDae(RmsProblemTemplate):
             mode_snapshot = ev_param[self._runtime_mode_slice].copy()
 
         updated = self._event_params_fn(ev_param, t)
+        updated = self._event_params_fn(updated, t)
 
         if self._runtime_mode_slice.start == self._runtime_mode_slice.stop:
             return updated
