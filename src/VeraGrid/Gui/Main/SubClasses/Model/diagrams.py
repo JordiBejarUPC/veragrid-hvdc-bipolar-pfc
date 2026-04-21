@@ -2369,7 +2369,7 @@ class DiagramsMain(CompiledArraysMain):
 
         # set the alignment
         self.ui.diagram_selection_splitter.setStretchFactor(0, 10)
-        self.ui.diagram_selection_splitter.setStretchFactor(1, 2)
+        self.ui.diagram_selection_splitter.setStretchFactor(1, 1)
 
         # set the selected index
         row = self.diagram_widgets_list.index(widget)

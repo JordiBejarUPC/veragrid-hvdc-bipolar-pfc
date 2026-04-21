@@ -1032,6 +1032,7 @@ class Ui_mainWindow(object):
         self.toolBox.addItem(self.page_2, icon40, u"Map settings")
         self.page_3 = QWidget()
         self.page_3.setObjectName(u"page_3")
+        self.page_3.setGeometry(QRect(0, 0, 396, 298))
         self.verticalLayout_47 = QVBoxLayout(self.page_3)
         self.verticalLayout_47.setObjectName(u"verticalLayout_47")
         self.frame_49 = QFrame(self.page_3)
@@ -1098,6 +1099,7 @@ class Ui_mainWindow(object):
         self.toolBox.addItem(self.page_3, icon59, u"Schematic settings")
         self.page_4 = QWidget()
         self.page_4.setObjectName(u"page_4")
+        self.page_4.setGeometry(QRect(0, 0, 396, 298))
         self.verticalLayout_29 = QVBoxLayout(self.page_4)
         self.verticalLayout_29.setObjectName(u"verticalLayout_29")
         self.frame_51 = QFrame(self.page_4)
@@ -1144,6 +1146,16 @@ class Ui_mainWindow(object):
         self.fps_spinBox.setValue(30)
 
         self.verticalLayout_4.addWidget(self.fps_spinBox)
+
+        self.label_40 = QLabel(self.frame_51)
+        self.label_40.setObjectName(u"label_40")
+
+        self.verticalLayout_4.addWidget(self.label_40)
+
+        self.plt_style_comboBox = QComboBox(self.frame_51)
+        self.plt_style_comboBox.setObjectName(u"plt_style_comboBox")
+
+        self.verticalLayout_4.addWidget(self.plt_style_comboBox)
 
         self.verticalSpacer_14 = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
 
@@ -2486,20 +2498,10 @@ class Ui_mainWindow(object):
 
         self.gridLayout.addWidget(self.engineComboBox, 7, 2, 1, 1)
 
-        self.plt_style_comboBox = QComboBox(self.frame_25)
-        self.plt_style_comboBox.setObjectName(u"plt_style_comboBox")
-
-        self.gridLayout.addWidget(self.plt_style_comboBox, 8, 2, 1, 1)
-
         self.label_24 = QLabel(self.frame_25)
         self.label_24.setObjectName(u"label_24")
 
         self.gridLayout.addWidget(self.label_24, 7, 0, 1, 2)
-
-        self.label_40 = QLabel(self.frame_25)
-        self.label_40.setObjectName(u"label_40")
-
-        self.gridLayout.addWidget(self.label_40, 8, 0, 1, 2)
 
         self.dark_mode_checkBox = QCheckBox(self.frame_25)
         self.dark_mode_checkBox.setObjectName(u"dark_mode_checkBox")
@@ -6009,6 +6011,10 @@ class Ui_mainWindow(object):
         self.fps_spinBox.setToolTip(QCoreApplication.translate("mainWindow", u"Video frames per second", None))
 #endif // QT_CONFIG(tooltip)
         self.fps_spinBox.setSuffix(QCoreApplication.translate("mainWindow", u" FPS", None))
+        self.label_40.setText(QCoreApplication.translate("mainWindow", u"Plotting style", None))
+#if QT_CONFIG(tooltip)
+        self.plt_style_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"MatPlotlib plot styles to choose from", None))
+#endif // QT_CONFIG(tooltip)
         self.toolBox.setItemText(self.toolBox.indexOf(self.page_4), QCoreApplication.translate("mainWindow", u"General settings", None))
 #if QT_CONFIG(tooltip)
         self.available_results_to_color_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Available results", None))
@@ -6317,17 +6323,13 @@ class Ui_mainWindow(object):
         self.label_48.setText("")
         self.label_82.setText(QCoreApplication.translate("mainWindow", u"Grid name", None))
 #if QT_CONFIG(tooltip)
-        self.sbase_doubleSpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Base power</span></p><p>Despite all the bibliography, changing this number to anything other than 100 MVA, might change the meaning of what sensible per-unit voltage are.</p><p>This is, 1.0 is no longer the nominal voltage and so on.</p></body></html>", None))
+        self.sbase_doubleSpinBox.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">Base power</span></p><p>Despite all the bibliography, changing this number to anything other than 100 MVA, might change the meaning of what sensible per-unit voltage are.</p><p>So, don't touch it. To have power in kW, use the option at the loads, geneerators, etc.</p></body></html>", None))
 #endif // QT_CONFIG(tooltip)
         self.sbase_doubleSpinBox.setSuffix(QCoreApplication.translate("mainWindow", u" MVA", None))
 #if QT_CONFIG(tooltip)
         self.engineComboBox.setToolTip(QCoreApplication.translate("mainWindow", u"Engine to be used when available", None))
 #endif // QT_CONFIG(tooltip)
-#if QT_CONFIG(tooltip)
-        self.plt_style_comboBox.setToolTip(QCoreApplication.translate("mainWindow", u"MatPlotlib plot styles to choose from", None))
-#endif // QT_CONFIG(tooltip)
         self.label_24.setText(QCoreApplication.translate("mainWindow", u"Engine", None))
-        self.label_40.setText(QCoreApplication.translate("mainWindow", u"Plotting style", None))
         self.dark_mode_checkBox.setText(QCoreApplication.translate("mainWindow", u"Dark mode", None))
 #if QT_CONFIG(tooltip)
         self.settingsTabWidget.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p>Settings for state estimation.</p></body></html>", None))
