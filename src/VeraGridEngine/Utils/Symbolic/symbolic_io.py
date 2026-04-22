@@ -46,13 +46,18 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
                     "name": expr.name,
                     "uid": expr.uid,
                     "base_var": expr.base_var.uid,
+                    "ref": expr.ref.value if expr.ref is not None else None,
                 })
+
 
             else:
                 # it is a normal var
                 lst.append({"type": "Var",
                             "name": expr.name,
-                            "uid": expr.uid})
+                            "uid": expr.uid,
+                            "base_var": None,
+                            "ref": expr.ref.value if expr.ref is not None else None,})
+
 
     return lst
 
