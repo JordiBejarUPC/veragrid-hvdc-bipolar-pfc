@@ -1426,23 +1426,39 @@ class RmsProblemDae(RmsProblemTemplate):
             self._initialize_latched_mode_defaults(t=float(t0), x=self.get_x0())
 
     def def_event_params_fn(self, ev_param: Vec, t: float) -> Vec:
-        n_continuous = len(self._runtime_continuous_eqs)
+        try:
+            runtime_continuous_eqs = self._runtime_continuous_eqs
+        except AttributeError:
+            if self._event_params_fn is None:
+                return ev_param
+
+            updated = self._event_params_fn(ev_param, t)
+            updated = self._event_params_fn(updated, t)
+
+            return updated
+
+        n_continuous = len(runtime_continuous_eqs)
 
         if n_continuous == 0 or self._event_params_fn is None:
             return ev_param
 
+        try:
+            runtime_mode_slice = self._runtime_mode_slice
+        except AttributeError:
+            runtime_mode_slice = slice(0, 0)
+
         mode_snapshot: Vec | None = None
-        if self._runtime_mode_slice.start != self._runtime_mode_slice.stop:
-            mode_snapshot = ev_param[self._runtime_mode_slice].copy()
+        if runtime_mode_slice.start != runtime_mode_slice.stop:
+            mode_snapshot = ev_param[runtime_mode_slice].copy()
 
         updated = self._event_params_fn(ev_param, t)
         updated = self._event_params_fn(updated, t)
 
-        if self._runtime_mode_slice.start == self._runtime_mode_slice.stop:
+        if runtime_mode_slice.start == runtime_mode_slice.stop:
             return updated
         else:
             assert mode_snapshot is not None
-            updated[self._runtime_mode_slice] = mode_snapshot
+            updated[runtime_mode_slice] = mode_snapshot
 
             return updated
 
