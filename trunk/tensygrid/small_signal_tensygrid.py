@@ -11,6 +11,16 @@ This script creates the phasor problem manually and injects it into the SmallSig
 
 import sys
 from pathlib import Path
+
+project_base = Path(__file__).resolve().parents[2]
+src_path = project_base / "src"
+if src_path.exists():
+    if str(src_path) not in sys.path:
+        sys.path.insert(0, str(src_path))
+else:
+    print(f"[ERROR] Engine not found: {src_path}")
+    sys.exit(1)
+
 import time, pickle, os
 from typing import Tuple, Any, List
 import numpy as np
@@ -32,14 +42,7 @@ from phasor_diagnostics import (
 )
 from scipy.optimize import linear_sum_assignment
 
-project_base = Path(__file__).resolve().parents[2]
-src_path = project_base / "src"
-if src_path.exists():
-    if str(src_path) not in sys.path:
-        sys.path.insert(0, str(src_path))
-else:
-    print(f"[ERROR] Engine not found: {src_path}")
-    sys.exit(1)
+
 
 #GRID = "Texas 2000 + VSC"
 #GRID = "IEEE 14.xlsx"
@@ -389,6 +392,7 @@ def solve_problem(problem: Any = None) -> Any:
     res = builder.compute_stability()
 
     eigenvalues = res[0]
+    #print(eigenvalues)
     stable = res[4]
     margin = res[5] if res[5] is not None else 0.0
     participation_matrix = res[3] if res[3] is not None else None
