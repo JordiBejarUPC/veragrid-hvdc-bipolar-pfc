@@ -295,11 +295,11 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
                 elm.rms_model.unify_blocks()
                 # get parameters from api object
-                if (ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping):
+                if ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping:
                     elm.rms_model.parameters[
                         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
                         float(elm.R / (elm.R ** 2 + elm.X ** 2)))
-                if (ParamPowerFlowRefferenceType.b in elm.rms_model.api_obj_mapping):
+                if ParamPowerFlowRefferenceType.b in elm.rms_model.api_obj_mapping:
                     elm.rms_model.parameters[
                         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
                         float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
@@ -1448,6 +1448,7 @@ class RmsProblemDae(RmsProblemTemplate):
         logic.
 
         :param t:
+        :param x_snapshot:
         :return:
         """
         if self._event_params_fn is None:
