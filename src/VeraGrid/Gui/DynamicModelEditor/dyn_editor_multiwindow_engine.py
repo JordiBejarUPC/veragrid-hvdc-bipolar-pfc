@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from typing import Any, Iterable
+from itertools import chain
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtWidgets import (QAbstractItemView, QComboBox, QDialogButtonBox,
                              QGroupBox, QHBoxLayout, QLabel,
@@ -34,10 +35,13 @@ def get_available_dynamic_modes(api_object: Any) -> tuple[DynamicSimulationMode,
     if device_type == DeviceType.EmtModelTemplateDevice:
         return (DynamicSimulationMode.EMT,)
 
-    if api_object.rms_model is not None:
-        modes.append(DynamicSimulationMode.RMS)
-    if api_object.emt_model is not None:
-        modes.append(DynamicSimulationMode.EMT)
+    try:
+        if api_object.rms_model is not None:
+            modes.append(DynamicSimulationMode.RMS)
+        if api_object.emt_model is not None:
+            modes.append(DynamicSimulationMode.EMT)
+    except:
+        pass
 
     return tuple(modes)
 
@@ -85,7 +89,7 @@ def iter_dynamic_editor_entries(circuit: Any) -> Iterable[DynamicEditorEntry]:
 
     seen_keys: set[str] = set()
     api_object: Any
-    for api_object in circuit.items():
+    for api_object in chain(circuit.get_injection_devices(), circuit.get_branches()):
         entry = build_dynamic_editor_entry(api_object, circuit)
         if entry is None or entry.key_base in seen_keys:
             continue
