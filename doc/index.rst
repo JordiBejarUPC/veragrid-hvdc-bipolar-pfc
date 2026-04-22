@@ -13,7 +13,7 @@ product of cutting-edge research.
 .. figure:: md_source/figures/VeraGrid_yt.png
     :alt: VeraGrid main figure
 
-|Codacy Badge| |Documentation Status| |Build Status| |DOI| |Downloads| |Discord|
+|Codacy Badge| |Documentation Status| |Build Status| |DOI| |Downloads| |Chat|
 
 VeraGrid started in 2015 with a clear objective: create a solid
 programming library and a user-friendly interface. This straightforward
@@ -109,6 +109,6 @@ to their respective owners.
    :target: https://www.zenodo.org/badge/latestdoi/49583206
 .. |Downloads| image:: https://static.pepy.tech/personalized-badge/veragrid?period=total&units=abbreviation&left_color=grey&right_color=green&left_text=Downloads
    :target: https://pepy.tech/project/veragrid
-.. |Discord| image:: https://img.shields.io/badge/join-chat_room-green
+.. |Chat| image:: https://img.shields.io/badge/join-chat_room-green
    :target: https://matrix.to/#/#veragrid:matrix.org
 

@@ -14,7 +14,7 @@ product of cutting-edge research.
 [![Documentation Status](https://readthedocs.org/projects/veragrid/badge/?version=latest)](https://veragrid.readthedocs.io/en/latest/?badge=latest) [![Build Status](https://travis-ci.org/SanPen/VeraGrid.svg?branch=master)](https://travis-ci.org/SanPen/VeraGrid)
 [![DOI](https://www.zenodo.org/badge/49583206.svg)](https://www.zenodo.org/badge/latestdoi/49583206)
 [![Downloads](https://static.pepy.tech/personalized-badge/veragrid?period=total&units=abbreviation&left_color=grey&right_color=green&left_text=Downloads)](https://pepy.tech/project/veragrid)
-[![Discord](https://img.shields.io/badge/join-chat-green)](https://matrix.to/#/#veragrid:matrix.org)
+[![Chat](https://img.shields.io/badge/join-chat-green)](https://matrix.to/#/#veragrid:matrix.org)
 
 VeraGrid started in 2015 with a clear objective: create a solid programming library and a user-friendly interface.
 This straightforward approach sparked many innovations — some driven by the necessity
