@@ -19,7 +19,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOpt
 from VeraGridEngine.Simulations.InvestmentsEvaluation.investments_evaluation_results import (
     InvestmentsEvaluationResults,
 )
-from VeraGridEngine.Simulations.InvestmentsEvaluation.Methods.NSGA_3 import NSGA_3
+from VeraGridEngine.Simulations.CatalogueOptimization.nsga3_integer import NSGA_3_integer
 from VeraGridEngine.Simulations.CatalogueOptimization.Problems.catalogue_problem import (
     CatalogueOptimizationProblem,
 )
@@ -163,15 +163,23 @@ class CatalogueOptimizationDriver(DriverTemplate):
         # Decision-space dimensionality (number of optimisable branch slots).
         dim: int = self.problem.n_vars()
 
-        # Population size proportional to the problem dimensionality (mirrors investments evaluation).
-        pop_size: int = max(int(round(dim)), 1)
+        # Number of objectives is fixed by the problem (no need to wait for the baseline run).
+        n_obj: int = self.problem.n_objectives()
+
+        # Minimum Das-Dennis reference set, which is the floor for pop_size:
+        # ref_dirs(n_partitions=1) = C(1 + n_obj - 1, n_obj - 1) = n_obj.
+        # NSGA-3 emits a warning when pop_size < ref_dirs, so we lift the population to at least
+        # `n_obj` even when the user only selected a handful of branches.
+        min_ref_dirs: int = n_obj
+
+        # Population size: proportional to dimensionality, but never below the reference-set floor.
+        pop_size: int = max(int(round(dim)), min_ref_dirs)
 
         # Baseline evaluation at x = zero index for every slot. Two purposes:
         #  - It provides a reference point in the results matrix.
         #  - It makes sure the snapshot/restore logic is exercised at least once before NSGA-3.
         baseline_x: IntVec = np.zeros(dim, dtype=int)
-        baseline_f: Vec = self.objective_function(x=baseline_x)
-        n_obj: int = len(baseline_f)
+        self.objective_function(x=baseline_x)
 
         # Find the largest n_partitions such that the Das-Dennis reference set still fits in pop_size.
         # ref_dirs cardinality = C(n_partitions + n_obj - 1, n_obj - 1).
@@ -179,8 +187,11 @@ class CatalogueOptimizationDriver(DriverTemplate):
         while comb(n_partitions + 1 + n_obj - 1, n_obj - 1) <= pop_size:
             n_partitions += 1
 
-        # Run NSGA-3. The integer bounds (lb / ub) come straight from the problem.
-        X, obj_values = NSGA_3(
+        # Run the integer-aware NSGA-3. The integer bounds (lb / ub) come straight from the
+        # problem. We use `NSGA_3_integer` (PolynomialMutation) instead of the investments
+        # `NSGA_3` (BitflipMutation) because our slot indices live in `[0, len(pool) - 1]` rather
+        # than `{0, 1}`.
+        X, obj_values = NSGA_3_integer(
             obj_func=self.objective_function,
             n_partitions=n_partitions,
             n_var=dim,
@@ -191,11 +202,14 @@ class CatalogueOptimizationDriver(DriverTemplate):
             pop_size=pop_size,
             crossover_prob=0.8,
             mutation_probability=0.1,
-            eta=30,
+            eta_crossover=30.0,
+            eta_mutation=20.0,
         )
 
-        # Record the best Pareto member (column 0) as the "selected" combination for the GUI.
-        self.results.set_best_combination(combination=X[:, 0])
+        # Record the best Pareto member (row 0) as the "selected" combination for the GUI.
+        # `X` is shape (n_pareto, n_var) from pymoo, so we want the full decision vector of the
+        # first Pareto member, not the first decision variable across all members.
+        self.results.set_best_combination(combination=X[0, :])
 
     def _log_best_combination(self) -> None:
         """
