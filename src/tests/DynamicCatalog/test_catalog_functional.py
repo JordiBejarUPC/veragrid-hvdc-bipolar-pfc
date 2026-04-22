@@ -1,51 +1,111 @@
 from __future__ import annotations
 
-import unittest
+from typing import Sequence
 
-from DynamicCatalog._catalog_functional_support import (
-    DynamicFunctionalContract,
-    FunctionalContract,
-    TestDevicesCatalogFunctionalContractsHarness,
-    build_dynamic_functional_contracts,
-    build_functional_contracts,
+import pytest
+
+from DynamicCatalog._catalog_functional_support import DynamicFunctionalContract
+from DynamicCatalog._catalog_functional_support import FunctionalContract
+from DynamicCatalog._catalog_functional_support import TestDevicesCatalogFunctionalContractsHarness
+from DynamicCatalog._catalog_functional_support import build_dynamic_functional_contracts
+from DynamicCatalog._catalog_functional_support import build_functional_contracts
+
+
+def build_functional_contract_parameters() -> Sequence[FunctionalContract]:
+    """
+    Return the explicit static catalog contracts as pytest parameters.
+
+    :returns: Static contract sequence.
+    """
+
+    return build_functional_contracts()
+
+
+def build_dynamic_contract_parameters() -> Sequence[DynamicFunctionalContract]:
+    """
+    Return the explicit dynamic catalog contracts as pytest parameters.
+
+    :returns: Dynamic contract sequence.
+    """
+
+    return build_dynamic_functional_contracts()
+
+
+def build_functional_contract_id(contract: FunctionalContract) -> str:
+    """
+    Build the pytest id for one static catalog contract.
+
+    :param contract: Static contract.
+    :returns: Stable pytest id.
+    """
+
+    return contract.label
+
+
+def build_dynamic_contract_id(contract: DynamicFunctionalContract) -> str:
+    """
+    Build the pytest id for one dynamic catalog contract.
+
+    :param contract: Dynamic contract.
+    :returns: Stable pytest id.
+    """
+
+    return contract.label
+
+
+@pytest.fixture(scope="module")
+def harness() -> TestDevicesCatalogFunctionalContractsHarness:
+    """
+    Construct the shared harness once for the whole functional suite.
+
+    :returns: Shared functional-contract harness.
+    """
+
+    # The harness owns the assertion helpers and lightweight runtimes used by every
+    # functional contract. Building it once keeps the parametrized suite explicit
+    # without paying the setup cost thousands of times.
+    test_harness: TestDevicesCatalogFunctionalContractsHarness = TestDevicesCatalogFunctionalContractsHarness()
+    test_harness.setUpClass()
+    return test_harness
+
+
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
+    "contract",
+    build_functional_contract_parameters(),
+    ids=build_functional_contract_id,
 )
+def test_functional_contract_matches_expected_behavior(
+    harness: TestDevicesCatalogFunctionalContractsHarness,
+    contract: FunctionalContract,
+) -> None:
+    """
+    Validate one explicit static contract declared for the catalog.
+
+    :param harness: Shared functional-contract harness.
+    :param contract: Static functional contract.
+    :returns: None.
+    """
+
+    harness.evaluate_contract(contract)
 
 
-class TestDevicesCatalogFunctionalContracts(unittest.TestCase):
-    """Run the explicit functional contracts for the exported TEST-only catalog."""
+@pytest.mark.filterwarnings("error")
+@pytest.mark.parametrize(
+    "contract",
+    build_dynamic_contract_parameters(),
+    ids=build_dynamic_contract_id,
+)
+def test_dynamic_signal_and_timer_contract_matches_expected_behavior(
+    harness: TestDevicesCatalogFunctionalContractsHarness,
+    contract: DynamicFunctionalContract,
+) -> None:
+    """
+    Validate one explicit dynamic contract declared for the catalog.
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        """
-        Construct the shared harness once for the whole functional suite.
+    :param harness: Shared functional-contract harness.
+    :param contract: Dynamic functional contract.
+    :returns: None.
+    """
 
-        :return: None.
-        """
-        cls.harness = TestDevicesCatalogFunctionalContractsHarness()
-        cls.harness.setUpClass()
-
-    def test_functional_contracts_match_expected_behavior(self) -> None:
-        """
-        Validate every explicit static contract declared for the catalog.
-
-        :return: None.
-        """
-        contract: FunctionalContract
-        for contract in build_functional_contracts():
-            with self.subTest(label=contract.label, typ_id=contract.typ_id):
-                self.harness.evaluate_contract(contract)
-
-    def test_dynamic_signal_and_timer_contracts_match_expected_behavior(self) -> None:
-        """
-        Validate every explicit dynamic contract declared for the catalog.
-
-        :return: None.
-        """
-        contract: DynamicFunctionalContract
-        for contract in build_dynamic_functional_contracts():
-            with self.subTest(label=contract.label, typ_id=contract.typ_id):
-                self.harness.simulate_dynamic_contract(contract)
-
-
-if __name__ == "__main__":
-    unittest.main()
+    harness.simulate_dynamic_contract(contract)

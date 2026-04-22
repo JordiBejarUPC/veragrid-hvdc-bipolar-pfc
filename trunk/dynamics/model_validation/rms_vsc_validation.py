@@ -19,12 +19,11 @@ import matplotlib.pyplot as plt
 import VeraGridEngine.api as vge
 from VeraGridEngine.enumerations import ConverterControlType, VarPowerFlowRefferenceType, ParamPowerFlowRefferenceType
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import SolverType
-from VeraGridEngine.Templates.Rms.vsc_gfl import VscGflBuild
-from VeraGridEngine.Templates.Rms.transformer_rms_template import initialize_trafo_rms
-from VeraGridEngine.Templates.Rms.dc_voltage_source import DCPVSourceAveraged
-from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template
+from VeraGridEngine.Templates.Rms.vsc_gfl_dclinked import build_vsc_rms, build_trafo_vsc
+from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource, DCCurrentSource
+from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
-from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
@@ -244,9 +243,9 @@ def print_results(circuit, results, grid_name):
     return pf_transformer if pf_transformer is not None else pf_vsc, qf_transformer if qf_transformer is not None else qf_vsc
 
 
-def initialize_grid2_rms_models(grid2, pf_results):
+def initialize_grid2_rms_models(grid2):
     """
-    Initialize RMS models for Grid 2 using transformer RMS + VSC GFL
+    Initialize RMS models for Grid 2 using build_vsc_rms and build_trafo_vsc
     
     Args:
         grid2: Grid 2 MultiCircuit with transformer and VSC
@@ -258,90 +257,24 @@ def initialize_grid2_rms_models(grid2, pf_results):
     # Use the grid's built-in RMS VarFactory
     vf = grid2.var_factory
     
-    for trafo in grid2.transformers2w:
-        print(f"  Initializing Transformer '{trafo.name}' with initialize_trafo_rms...")
-        if trafo.bus_from.rms_model.empty():
-            initialize_bus_rms(trafo.bus_from, vf)
-        if trafo.bus_to.rms_model.empty():
-            initialize_bus_rms(trafo.bus_to, vf)
-        initialize_trafo_rms(trafo=trafo, vf=vf, Sbase=grid2.Sbase)
-
-        # Compatibility with RMSProblemDae transformer initialization path
-        g = vf.add_var(f"g_{trafo.name}")
-        b = vf.add_var(f"b_{trafo.name}")
-        bsh = vf.add_var(f"bsh_{trafo.name}")
-        trafo.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g] = g
-        trafo.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b] = b
-        trafo.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.bsh] = bsh
-        ys = 1.0 / complex(trafo.R, trafo.X)
-        trafo.rms_model.parameters[g] = vf.add_const(float(ys.real))
-        trafo.rms_model.parameters[b] = vf.add_const(float(ys.imag))
-        trafo.rms_model.parameters[bsh] = vf.add_const(float(trafo.B))
-
-        vmf = trafo.bus_from.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
-        vaf = trafo.bus_from.rms_model.external_mapping[VarPowerFlowRefferenceType.Va]
-        vmt = trafo.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
-        vat = trafo.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Va]
-        trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmf] = vmf
-        trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Vaf] = vaf
-        trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt] = vmt
-        trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat] = vat
-
-        # Compatibility for automatic VSC path (dummy value)
-        trafo.rms_model.out_vars = [trafo.rms_model.external_mapping[VarPowerFlowRefferenceType.Pf]]
-        print("    ✓ Transformer RMS model assigned")
-
+    # Assign RMS models to VSC devices using build_vsc_rms
     for vsc in grid2.vsc_devices:
-        print(f"  Initializing VSC '{vsc.name}' with VscGflBuild...")
-        vsc.rms_model = VscGflBuild(
-            vfactory=vf,
-            name=vsc.name,
-            control1=ConverterControlType.Vm_dc,
-            control2=ConverterControlType.Qac,
-        ).block
-        vsc.rms_model.unify_blocks()
+        print(f"  Initializing VSC '{vsc.name}' with build_vsc_rms...")
+        vsc.rms_model = build_vsc_rms(vfactory=vf, name=vsc.name).block
+        print(f"    ✓ VSC RMS model assigned")
 
-        # Align GFL initialization with RMS PF sign convention and control references
-        q_ref_var = find_name_in_block('Q_ref', vsc.rms_model)
-        if q_ref_var is not None:
-            vsc.rms_model.event_dict[q_ref_var] = vf.add_const(None)
-
-        # Compatibility with RMSProblemDae VSC initialization path
-        alpha1 = vf.add_var(f"alpha1_{vsc.name}")
-        alpha2 = vf.add_var(f"alpha2_{vsc.name}")
-        alpha3 = vf.add_var(f"alpha3_{vsc.name}")
-        vsc.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha1] = alpha1
-        vsc.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha2] = alpha2
-        vsc.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.alpha3] = alpha3
-        vsc.rms_model.parameters[alpha1] = vf.add_const(0.0)
-        vsc.rms_model.parameters[alpha2] = vf.add_const(0.0)
-        vsc.rms_model.parameters[alpha3] = vf.add_const(0.0)
-
-        # Prevent automatic branch->vsc in_vars[0] overwrite of Vm input
-        vsc.rms_model.in_vars = [vf.add_var(f"dummy_in_{vsc.name}")] + list(vsc.rms_model.in_vars)
-
-        if vsc.bus_from.rms_model.empty():
-            initialize_bus_rms(vsc.bus_from, vf)
-        if vsc.bus_to.rms_model.empty():
-            initialize_bus_rms(vsc.bus_to, vf)
-
-        vdc_bus = vsc.bus_from.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
-        vm_bus = vsc.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Vm]
-        va_bus = vsc.bus_to.rms_model.external_mapping[VarPowerFlowRefferenceType.Va]
-
-        vdc_vsc = vsc.rms_model.external_mapping[VarPowerFlowRefferenceType.Vdc]
-        vm_vsc = vsc.rms_model.external_mapping[VarPowerFlowRefferenceType.Vmt]
-        va_vsc = vsc.rms_model.external_mapping[VarPowerFlowRefferenceType.Vat]
-        vsc.rms_model.connect([vdc_vsc, vm_vsc, va_vsc], [vdc_bus, vm_bus, va_bus])
-
-        print("    ✓ VSC GFL RMS model assigned")
+    # Assign RMS models to transformers using build_trafo_vsc
+    for trafo in grid2.transformers2w:
+        print(f"  Initializing Transformer '{trafo.name}' with build_trafo_vsc...")
+        trafo.rms_model = build_trafo_vsc(vf=vf, trafo=trafo).block
+        print(f"    ✓ Transformer RMS model assigned")
     
     # Assign RMS models to generators (including DC load)
     for gen in grid2.generators:
         bus = gen.bus
         if bus.is_dc:
-            # DC source - use averaged PV + MPPT model
-            print(f"  Initializing DC Generator '{gen.name}' at DC bus '{bus.name}' as PV source...")
+            # DC load/generator - use DC current source model
+            print(f"  Initializing DC Generator '{gen.name}' at DC bus '{bus.name}'...")
             if bus.rms_model.empty():
                 initialize_bus_rms(bus, grid2.var_factory)
             # Get the Vdc variable from the bus RMS model
@@ -351,8 +284,8 @@ def initialize_grid2_rms_models(grid2, pf_results):
                 print(f"vdc uid is {vdc.uid}")
                 # Check for potential NaN sources
                 print(f"    DEBUG: Initial Pdc={gen.P}, Vdc should come from PF results")
-                gen.rms_model = DCPVSourceAveraged(vfactory=vf, Vdc=vdc, name=gen.name).block
-                print(f"    ✓ DC PV RMS model assigned")
+                gen.rms_model = DCCurrentSource(vfactory=vf, Vdc=vdc, name=gen.name).block
+                print(f"    ✓ DC Generator RMS model assigned")
             else:
                 print(f"    ⚠ Bus '{bus.name}' has no RMS model, skipping DC generator")
         else:
@@ -360,15 +293,25 @@ def initialize_grid2_rms_models(grid2, pf_results):
             print(f"  Initializing AC Generator '{gen.name}' at AC bus '{bus.name}'...")
             if bus.rms_model.empty():
                 initialize_bus_rms(bus, grid2.var_factory)
-            gen_model = get_complete_generator_template(vfactory=vf, name=gen.name).block
+            gen_model = get_complete_generator_template_rms(vfactory=vf, name=gen.name).block
             set_rms_model(device = gen, model=gen_model, var_factory=grid2.var_factory)
 
     
-    # Add missing reactive balance at AC virtual bus (bus_to of VSC)
+    # Connect transformer to DC bus (if VSC exists)
     if len(grid2.transformers2w) > 0 and len(grid2.vsc_devices) > 0:
-        trafo_qt = grid2.transformers2w[0].rms_model.external_mapping[VarPowerFlowRefferenceType.Qt]
-        vsc_qt = grid2.vsc_devices[0].rms_model.external_mapping[VarPowerFlowRefferenceType.Qt]
-        grid2.vsc_devices[0].rms_model.algebraic_eqs.append(trafo_qt + vsc_qt)
+        vsc = grid2.vsc_devices[0]
+        trafo = grid2.transformers2w[0]
+        if hasattr(vsc.bus_from, 'rms_model') and vsc.bus_from.rms_model is not None:
+            if hasattr(trafo.rms_model, 'in_vars') and len(trafo.rms_model.in_vars) > 0:
+                vdc_trafo = trafo.rms_model.in_vars[0]
+                vdc_bus = vsc.bus_from.rms_model.out_vars[0]
+                trafo.rms_model.connect([vdc_trafo], [vdc_bus])
+
+                pt_vsc = vsc.rms_model.in_vars[1]
+                pt_trafo = trafo.rms_model.out_vars[1]
+                vsc.rms_model.connect([pt_vsc], [pt_trafo])
+                print(f"  ✓ Connected transformer to DC bus")
+
     
 
     
@@ -396,7 +339,7 @@ def run_rms_simulation(grid2, pf_results):
     events_group = RmsEventsGroup(name="Grid2 RMS Simulation")
     grid2.add_rms_events_group(events_group)
     
-    # Find DC generator and irradiance variable for the event
+    # Find DC generator and its Idc_src0 variable for the event
     dc_gen = None
     for gen in grid2.generators:
         if gen.bus.is_dc:
@@ -404,17 +347,17 @@ def run_rms_simulation(grid2, pf_results):
             break
     
     if dc_gen is not None and hasattr(dc_gen, 'rms_model') and dc_gen.rms_model is not None:
-        irradiance_var = find_name_in_block('G', dc_gen.rms_model)
-        if irradiance_var is not None:
+        idc_src0_var = find_name_in_block('Idc_src0', dc_gen.rms_model)
+        if idc_src0_var is not None:
             event = RmsEvent(
                 device=dc_gen,
-                parameter=irradiance_var,
+                parameter=idc_src0_var,
                 time=0.1,
-                value=700.0,
+                value=0.011,
                 group=events_group
             )
             grid2.add_rms_event(event)
-            print(f"  Added event: irradiance G step at t=0.1s to value=700 W/m2")
+            print(f"  Added event: Idc_src0 step at t=1.0s to value=0.5")
     
     # Set up RMS simulation options
     rms_options = vge.RmsOptions(
@@ -633,7 +576,7 @@ if __name__ == "__main__":
         # Step 3: Initialize RMS models and run dynamic simulation for Grid 2
         if results2.converged:
             # Initialize RMS models for VSC and Transformer
-            vf = initialize_grid2_rms_models(grid2, results2)
+            vf = initialize_grid2_rms_models(grid2)
             
             # Run RMS dynamic simulation
             rms_driver, t, y, sim_results = run_rms_simulation(grid2, results2)

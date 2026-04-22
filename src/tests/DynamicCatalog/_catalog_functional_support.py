@@ -6,15 +6,13 @@ from typing import Dict
 
 import numpy as np
 
-from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Utils.procedural_logic import AnalogFlipFlopLogic, FixedSampleLogic, FlipFlopLogic, GradientLimiterLogic, MovingAverageLogic, PickupDropoffLogic, ResetOnRisingEdgeLogic, SampledValueLogic, TimeDelayLogic
 from VeraGridEngine.Utils.Symbolic.symbolic import Comparison, Expr
 
 from DynamicCatalog._catalog_support import (
-    import_template_module,
-    manifest_entries,
+    build_template,
 )
 
 
@@ -3090,11 +3088,11 @@ class TestDevicesCatalogFunctionalContractsHarness(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         """
-        Cache the manifest rows once for the whole functional suite.
+        Keep the class-level setup hook explicit for the shared harness.
 
         :return: None.
         """
-        cls.entries_by_id = {entry["typ_id"]: entry for entry in manifest_entries()}
+        pass
 
     @staticmethod
     def _eval_expr_like(expr_like: Expr | Comparison | float | int | bool, uid_bindings: Dict[int, float]) -> float:
@@ -3151,8 +3149,7 @@ class TestDevicesCatalogFunctionalContractsHarness(unittest.TestCase):
         :return: Block, lightweight runtime problem, state vector and runtime parameter vector.
         """
         # Import the generated template exactly as the final menu action would do.
-        module = import_template_module(contract.typ_id)
-        templ = module.get_template(VarFactory())
+        templ = build_template(contract.typ_id)
         block: Block = templ.block
         hidden_runtime_vars = []
         known_surface = list(block.state_vars) + list(block.algebraic_vars) + list(block.in_vars)
@@ -3290,9 +3287,7 @@ class TestDevicesCatalogFunctionalContractsHarness(unittest.TestCase):
         :return: None.
         """
         # Import the exact generated template so the test always reflects the artifact that would reach the menu.
-        entry = self.entries_by_id[contract.typ_id]
-        module = import_template_module(contract.typ_id)
-        templ = module.get_template(VarFactory())
+        templ = build_template(contract.typ_id)
         block: Block = templ.block
 
         # Seed the full variable surface with deterministic values before applying the explicit contract values.
@@ -3398,7 +3393,11 @@ class TestDevicesCatalogFunctionalContractsHarness(unittest.TestCase):
             self.assertAlmostEqual(residual, 0.0, delta=contract.tol)
 
         if contract.state_derivatives is not None:
-            for state_name, expr in zip(entry["states"], block.state_eqs):
-                expected = contract.state_derivatives[state_name]
+            state_name: str
+            expected: float
+            for state_name, expected in contract.state_derivatives.items():
+                state_var = find_named_var(block.state_vars, state_name, matcher=matches_internal_name)
+                state_index: int = list(block.state_vars).index(state_var)
+                expr = block.state_eqs[state_index]
                 actual = float(expr.eval_uid(uid_bindings))
                 self.assertAlmostEqual(actual, expected, delta=contract.tol)

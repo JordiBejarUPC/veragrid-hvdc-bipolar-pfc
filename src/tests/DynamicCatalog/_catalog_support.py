@@ -1,73 +1,109 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import ModuleType
-from typing import Any
+from typing import Sequence
 
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import PENDING_LOOKUP_TYPE_IDS
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_powerfactory_basic_catalog_descriptor_by_typ_id
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_powerfactory_basic_catalog_manifest_path
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_powerfactory_basic_catalog_templates_dir
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import import_powerfactory_basic_catalog_module
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import load_powerfactory_basic_catalog_manifest
-
-
-def build_manifest_path() -> Path:
-    """
-    Return the shipped PowerFactory basic catalog manifest path.
-    """
-
-    return get_powerfactory_basic_catalog_manifest_path()
+from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
+from VeraGridEngine.Templates.BasicBlockCatalog import get_pending_basic_block_catalog_descriptors
+from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptor_by_key
+from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptors
+from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_templates_dir
+from VeraGridEngine.Templates.BasicBlockCatalog import load_basic_block_catalog_template
 
 
 def build_templates_dir() -> Path:
     """
     Return the directory with shipped standalone template modules.
+
+    :returns: Standalone-template directory.
     """
 
-    return get_powerfactory_basic_catalog_templates_dir()
+    return get_basic_block_catalog_templates_dir()
 
 
-def build_pending_lookup_type_ids() -> list[str]:
+def descriptor_entries() -> Sequence[BasicBlockTemplateDescriptor]:
     """
-    Return the frozen typ_id list for the unsupported lookup subset.
-    """
+    Return every shipped catalog descriptor.
 
-    return sorted(PENDING_LOOKUP_TYPE_IDS, key=int)
-
-
-def load_manifest() -> dict[str, Any]:
-    """
-    Load the shipped PowerFactory basic catalog manifest.
+    :returns: Full descriptor tuple.
     """
 
-    return load_powerfactory_basic_catalog_manifest()
+    return get_basic_block_catalog_descriptors()
 
 
-def manifest_entries() -> list[dict[str, Any]]:
+def pending_descriptor_entries() -> Sequence[BasicBlockTemplateDescriptor]:
     """
-    Return manifest rows exactly as stored in the shipped snapshot.
+    Return the pending catalog descriptors.
+
+    :returns: Pending descriptor tuple.
     """
 
-    raw_entries: Any = load_manifest()["entries"]
-    if isinstance(raw_entries, list):
-        return list(raw_entries)
+    return get_pending_basic_block_catalog_descriptors()
+
+
+def descriptor_lookup_by_key() -> dict[str, BasicBlockTemplateDescriptor]:
+    """
+    Return the descriptor lookup indexed by semantic key.
+
+    :returns: Descriptor lookup by semantic key.
+    """
+
+    return get_basic_block_catalog_descriptor_by_key()
+
+
+def _resolve_descriptor(template_identifier: str) -> BasicBlockTemplateDescriptor:
+    """
+    Resolve one descriptor from either the semantic key or the old numeric fixture id.
+
+    :param template_identifier: Semantic key or numeric fixture identifier.
+    :returns: Matching descriptor.
+    :raises KeyError: Raised when no descriptor matches.
+    """
+
+    descriptor_by_key: dict[str, BasicBlockTemplateDescriptor] = descriptor_lookup_by_key()
+    descriptor: BasicBlockTemplateDescriptor | None = descriptor_by_key.get(template_identifier, None)
+
+    if descriptor is not None:
+        return descriptor
     else:
-        raise TypeError("Manifest entries are not stored as a list")
+        pass
+
+    if template_identifier.isdigit():
+        candidate: BasicBlockTemplateDescriptor
+        for candidate in descriptor_entries():
+            if candidate.typ_id == template_identifier:
+                return candidate
+            else:
+                pass
+    else:
+        pass
+
+    raise KeyError(f"Unknown catalog template identifier '{template_identifier}'")
 
 
-def find_template_path(typ_id: str) -> Path:
+def find_template_path(template_identifier: str) -> Path:
     """
-    Resolve the shipped standalone module path for one typ_id.
+    Resolve the shipped standalone module path for one catalog template.
+
+    :param template_identifier: Semantic key or numeric fixture identifier.
+    :returns: Standalone module path.
     """
 
-    descriptor = get_powerfactory_basic_catalog_descriptor_by_typ_id()[typ_id]
+    descriptor: BasicBlockTemplateDescriptor = _resolve_descriptor(template_identifier)
     return build_templates_dir() / descriptor.module_filename
 
 
-def import_template_module(typ_id: str) -> ModuleType:
+def build_template(template_identifier: str,
+                   name: str | None = None) -> EmtModelTemplate:
     """
-    Import one shipped standalone template module by typ_id.
+    Materialize one shipped standalone template through the static catalog runtime path.
+
+    :param template_identifier: Semantic key or numeric fixture identifier.
+    :param name: Optional explicit runtime template name.
+    :returns: Materialized template.
     """
 
-    return import_powerfactory_basic_catalog_module(typ_id)
+    descriptor: BasicBlockTemplateDescriptor = _resolve_descriptor(template_identifier)
+    return load_basic_block_catalog_template(descriptor, VarFactory(), name=name)

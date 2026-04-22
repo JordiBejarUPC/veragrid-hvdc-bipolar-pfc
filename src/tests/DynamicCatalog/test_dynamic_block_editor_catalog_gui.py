@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import sys
 
+import pytest
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtTest import QTest
 
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_powerfactory_basic_catalog_descriptor_by_typ_id
+from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
+from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptor_by_key
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import DynamicSimulationMode
+
+pytestmark = pytest.mark.filterwarnings("error")
 
 
 class _ApiStub:
@@ -83,7 +87,7 @@ def _collect_leaf_labels(model: QtCore.QAbstractItemModel,
 def _count_descriptor_leaves(editor: DynamicBlockEditorGUI,
                              parent_item) -> int:
     """
-    Count PowerFactory basic descriptor leaves below one source-model item.
+    Count basic block descriptor leaves below one source-model item.
     """
 
     count: int = 0
@@ -94,7 +98,7 @@ def _count_descriptor_leaves(editor: DynamicBlockEditorGUI,
             count += _count_descriptor_leaves(editor, child)
         else:
             payload = child.data(editor.block_role)
-            if payload is not None and payload.__class__.__name__ == "PowerFactoryBasicTemplateDescriptor":
+            if isinstance(payload, BasicBlockTemplateDescriptor):
                 count += 1
             else:
                 pass
@@ -122,12 +126,12 @@ def _build_editor(mode: DynamicSimulationMode = DynamicSimulationMode.EMT) -> Dy
     return editor
 
 
-def _build_catalog_block_item(editor: DynamicBlockEditorGUI, typ_id: str):
+def _build_catalog_block_item(editor: DynamicBlockEditorGUI, template_key: str):
     """
     Materialize one catalog block on the editor canvas.
     """
 
-    descriptor = get_powerfactory_basic_catalog_descriptor_by_typ_id()[typ_id]
+    descriptor = get_basic_block_catalog_descriptor_by_key()[template_key]
     block_item = editor.create_library_payload_item(descriptor, 10.0, 20.0)
     assert block_item is not None
     return block_item
@@ -166,7 +170,7 @@ def _port_name_prefixes(block_item) -> list[str]:
     return prefixes
 
 
-def test_emt_editor_exposes_powerfactory_basic_catalog_under_basic() -> None:
+def test_emt_editor_exposes_basic_block_catalog_under_basic() -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
     source_model = editor.library_model
     basic_item = source_model.invisibleRootItem().child(0)
@@ -183,7 +187,7 @@ def test_emt_editor_exposes_powerfactory_basic_catalog_under_basic() -> None:
     editor.close()
 
 
-def test_rms_editor_exposes_powerfactory_basic_catalog_under_basic() -> None:
+def test_rms_editor_exposes_basic_block_catalog_under_basic() -> None:
     editor = _build_editor(DynamicSimulationMode.RMS)
     source_model = editor.library_model
     basic_item = source_model.invisibleRootItem().child(0)
@@ -199,8 +203,9 @@ def test_rms_editor_exposes_powerfactory_basic_catalog_under_basic() -> None:
 
 def test_library_search_button_and_shortcut_filter_basic_catalog() -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
-    park_label = get_powerfactory_basic_catalog_descriptor_by_typ_id()["539"].display_label
-    limit_label = get_powerfactory_basic_catalog_descriptor_by_typ_id()["310"].display_label
+    descriptor_by_key = get_basic_block_catalog_descriptor_by_key()
+    park_label = descriptor_by_key["park_transform_dq"].display_label
+    limit_label = descriptor_by_key["limit"].display_label
 
     assert editor.ui.librarySearchLineEdit.isVisible()
 
@@ -225,7 +230,8 @@ def test_library_search_button_and_shortcut_filter_basic_catalog() -> None:
 
 def test_proxy_drag_payload_materializes_catalog_template() -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
-    park_label = get_powerfactory_basic_catalog_descriptor_by_typ_id()["539"].display_label
+    park_descriptor = get_basic_block_catalog_descriptor_by_key()["park_transform_dq"]
+    park_label = park_descriptor.display_label
     source_index = _find_index_by_label(editor.library_model, park_label)
 
     assert source_index.isValid()
@@ -237,7 +243,8 @@ def test_proxy_drag_payload_materializes_catalog_template() -> None:
     payload = editor.get_library_payload_from_mime_data(mime_data)
 
     assert payload is not None
-    assert getattr(payload, "typ_id", None) == "539"
+    assert isinstance(payload, BasicBlockTemplateDescriptor)
+    assert payload.template_key == "park_transform_dq"
 
     block_item = editor.create_library_payload_item(payload, 10.0, 20.0)
     assert block_item is not None
@@ -249,8 +256,8 @@ def test_proxy_drag_payload_materializes_catalog_template() -> None:
 
 def test_limit_signal_variant_exposes_signal_ports_while_parameter_variant_does_not() -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
-    signal_block = _build_catalog_block_item(editor, "321")
-    parameter_block = _build_catalog_block_item(editor, "313")
+    signal_block = _build_catalog_block_item(editor, "limit_s_form_b")
+    parameter_block = _build_catalog_block_item(editor, "limit_p_form_c")
 
     assert len(signal_block.inputs) == 3
     assert _port_name_prefixes(signal_block) == ["yi", "y_max", "y_min"]
@@ -265,8 +272,8 @@ def test_limit_signal_variant_exposes_signal_ports_while_parameter_variant_does_
 
 def test_rate_limiter_signal_variant_exposes_gradient_ports_while_parameter_variant_keeps_parameter_table() -> None:
     editor = _build_editor(DynamicSimulationMode.EMT)
-    signal_block = _build_catalog_block_item(editor, "333")
-    parameter_block = _build_catalog_block_item(editor, "332")
+    signal_block = _build_catalog_block_item(editor, "rate_limiter_s")
+    parameter_block = _build_catalog_block_item(editor, "rate_limiter_p_form_c")
 
     assert len(signal_block.inputs) == 3
     assert _port_name_prefixes(signal_block) == ["yi", "grd_up", "grd_down"]

@@ -4,7 +4,11 @@ import numpy as np
 
 # Assuming these modules are in the correct fully qualified path as per eRoots rules
 from PolynomialMatrixBuilder import PolynomialMatrixBuilder
-from MTI_problem import MTI_Problem
+try:
+    from MTI_problem import MTI_Problem
+except ImportError:
+    from trunk.tensygrid.MTI_problem import MTI_Problem
+
 from small_signal_tensygrid import define_problem, op_extraction, solve_problem
 from scipy.optimize import linear_sum_assignment
 

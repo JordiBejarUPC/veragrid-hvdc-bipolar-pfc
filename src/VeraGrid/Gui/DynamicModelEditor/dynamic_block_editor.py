@@ -32,9 +32,10 @@ from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.rms_template import RmsModelTemplate
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
 from VeraGridEngine.Devices.Dynamic.fmu_template import FmuTemplate
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import PowerFactoryBasicTemplateDescriptor
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import get_editor_ready_powerfactory_basic_catalog_descriptors
-from VeraGridEngine.Templates.catalog.powerfactory_basic_catalog import load_powerfactory_basic_catalog_template
+from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
+from VeraGridEngine.Templates.BasicBlockCatalog import get_editor_ready_basic_block_catalog_descriptors
+from VeraGridEngine.Templates.BasicBlockCatalog import load_basic_block_catalog_template
+from VeraGridEngine.Templates.BasicBlockCatalog.catalog import build_basic_block_catalog_branch_skeleton
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
@@ -491,7 +492,7 @@ def is_supported_library_payload(item_data: object) -> bool:
     """
     if isinstance(item_data, BlockType):
         return True
-    elif isinstance(item_data, PowerFactoryBasicTemplateDescriptor):
+    elif isinstance(item_data, BasicBlockTemplateDescriptor):
         return True
     elif isinstance(item_data, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
         return True
@@ -3394,8 +3395,6 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
     dirtyStateChanged = Signal(bool)
 
-    # block_added = Signal(object)
-
     def __init__(self,
                  var_factory: VarFactory,
                  block: Block,
@@ -3642,60 +3641,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             else:
                 raise TypeError(f"Category '{head}' is already used as a leaf collection")
 
-    def build_powerfactory_basic_catalog_branch(self) -> Dict[str, Any]:
+    def build_basic_block_catalog_branch(self) -> Dict[str, Any]:
         """
-        Build the nested branch used to expose the imported PowerFactory basic catalog.
+        Build the nested branch used to expose the imported basic block catalog.
         """
 
-        branch: Dict[str, Any] = {
-            "Continuous": {
-                "Transfer Functions and Filters": list(),
-                "Integrators and Derivatives": list(),
-                "Delays and Memory": list(),
-            },
-            "Control and Measurement": {
-                "Controllers": list(),
-                "Measurements and Units": list(),
-            },
-            "Logic and Events": {
-                "Comparators": list(),
-                "Gates and Memory": list(),
-                "Switching and Selection": list(),
-                "Timers and Enables": list(),
-            },
-            "Limits and Nonlinearities": {
-                "Limiters": list(),
-                "Deadbands and Rate Limiters": list(),
-            },
-            "Math and Functions": {
-                "Scaling and Products": list(),
-                "Elementary Functions": list(),
-                "Constants and Scaling": list(),
-            },
-            "Transforms": {
-                "Clarke, Park and dq0": list(),
-                "RMS and Sequence": list(),
-            },
-            "Complex": {
-                "Operations": list(),
-            },
-            "Waveforms and Time": {
-                "Signal Generators": list(),
-                "Time Sources and Timers": list(),
-            },
-            "Mechanical": {
-                "Drive Train": list(),
-            },
-            "Lookup and Tables": {
-                "Arrays and Matrices": list(),
-            },
-            "Miscellaneous": {
-                "Other": list(),
-            },
-        }
+        # The catalog owns the static library skeleton so the GUI does not need to
+        # duplicate category dictionaries that can drift during refactors.
+        branch: Dict[str, Any] = build_basic_block_catalog_branch_skeleton()
 
-        descriptor: PowerFactoryBasicTemplateDescriptor
-        for descriptor in get_editor_ready_powerfactory_basic_catalog_descriptors():
+        descriptor: BasicBlockTemplateDescriptor
+        for descriptor in get_editor_ready_basic_block_catalog_descriptors():
             category_path: tuple[str, ...] = descriptor.category_path[1:] if descriptor.category_path and descriptor.category_path[0] == "Native" else descriptor.category_path
             if len(category_path) == 0:
                 category_path = ("Miscellaneous", "Other")
@@ -3735,7 +3691,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Abs", BlockType.ABS),
             ],
         }
-        native_branch.update(self.build_powerfactory_basic_catalog_branch())
+        native_branch.update(self.build_basic_block_catalog_branch())
 
         return {
             "Native": native_branch,
@@ -3780,7 +3736,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.FmuTemplateDevice.value]))
         elif isinstance(payload, RmsModelTemplate):
             item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.RmsModelTemplateDevice.value]))
-        elif isinstance(payload, (EmtModelTemplate, PowerFactoryBasicTemplateDescriptor)):
+        elif isinstance(payload, (EmtModelTemplate, BasicBlockTemplateDescriptor)):
             item.setIcon(QtGui.QIcon(device_type_icons[DeviceType.EmtModelTemplateDevice.value]))
         else:
             pass
@@ -3853,7 +3809,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         return model
 
     def get_library_payload_from_mime_data(self,
-                                           mime_data: QtCore.QMimeData) -> BlockType | PowerFactoryBasicTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None:
+                                           mime_data: QtCore.QMimeData) -> BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None:
         """
         Decode the dragged library payload from the tree-view mime payload.
 
@@ -3869,7 +3825,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
             if isinstance(payload, BlockType):
                 return payload
-            elif isinstance(payload, PowerFactoryBasicTemplateDescriptor):
+            elif isinstance(payload, BasicBlockTemplateDescriptor):
                 return payload
             elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
                 return payload
@@ -4117,7 +4073,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         return block_item
 
     def create_library_payload_item(self,
-                                    payload: BlockType | PowerFactoryBasicTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
+                                    payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
                                     x_pos: float,
                                     y_pos: float) -> BlockItem | None:
         """
@@ -4138,8 +4094,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             return self.create_emt_wizard_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, BlockType):
             return self.create_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
-        elif isinstance(payload, PowerFactoryBasicTemplateDescriptor):
-            template: EmtModelTemplate = load_powerfactory_basic_catalog_template(payload, self.var_factory)
+        elif isinstance(payload, BasicBlockTemplateDescriptor):
+            template: EmtModelTemplate = load_basic_block_catalog_template(payload, self.var_factory)
             return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
             return self.create_template_block_item(template=payload, x_pos=x_pos, y_pos=y_pos)
@@ -4793,7 +4749,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         current_refs = self.build_emt_injection_current_refs(self.api_object.bus)
         for reference in current_refs:
-            specs.append(ConnectionVarSpec("output", reference, f"network_conn_{reference.value}"))
+            specs.append(ConnectionVarSpec("output", reference, f"net_conn_{reference.value}_{self.api_object.name}"))
 
         return specs
 
@@ -4824,17 +4780,17 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         safe_bus_to = self._get_safe_bus_name(self.api_object.bus_to)
 
         current_name_map_from: Dict[VarPowerFlowRefferenceType, str] = {
-            VarPowerFlowRefferenceType.if_N: f"network_conn_i_N_{safe_bus_from}",
-            VarPowerFlowRefferenceType.if_A: f"network_conn_i_A_{safe_bus_from}",
-            VarPowerFlowRefferenceType.if_B: f"network_conn_i_B_{safe_bus_from}",
-            VarPowerFlowRefferenceType.if_C: f"network_conn_i_C_{safe_bus_from}",
+            VarPowerFlowRefferenceType.if_N: f"net_conn_i_N_{safe_bus_from}_{self.api_object.name}",
+            VarPowerFlowRefferenceType.if_A: f"net_conn_i_A_{safe_bus_from}_{self.api_object.name}",
+            VarPowerFlowRefferenceType.if_B: f"net_conn_i_B_{safe_bus_from}_{self.api_object.name}",
+            VarPowerFlowRefferenceType.if_C: f"net_conn_i_C_{safe_bus_from}_{self.api_object.name}",
         }
 
         current_name_map_to: Dict[VarPowerFlowRefferenceType, str] = {
-            VarPowerFlowRefferenceType.it_N: f"network_conn_i_N_{safe_bus_to}",
-            VarPowerFlowRefferenceType.it_A: f"network_conn_i_A_{safe_bus_to}",
-            VarPowerFlowRefferenceType.it_B: f"network_conn_i_B_{safe_bus_to}",
-            VarPowerFlowRefferenceType.it_C: f"network_conn_i_C_{safe_bus_to}",
+            VarPowerFlowRefferenceType.it_N: f"net_conn_i_N_{safe_bus_to}_{self.api_object.name}",
+            VarPowerFlowRefferenceType.it_A: f"net_conn_i_A_{safe_bus_to}_{self.api_object.name}",
+            VarPowerFlowRefferenceType.it_B: f"net_conn_i_B_{safe_bus_to}_{self.api_object.name}",
+            VarPowerFlowRefferenceType.it_C: f"net_conn_i_C_{safe_bus_to}_{self.api_object.name}",
         }
 
         current_refs_from = self._build_emt_branch_current_refs(self.api_object.bus_from, "from")
@@ -5736,7 +5692,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | PowerFactoryBasicTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
 
@@ -5752,7 +5708,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | PowerFactoryBasicTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
 
@@ -5768,7 +5724,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :param event:
         :return:
         """
-        payload: BlockType | PowerFactoryBasicTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
+        payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate | None = self.get_library_payload_from_mime_data(
             event.mimeData()
         )
         scene_position: QtCore.QPointF = self.ui.graphicsView.mapToScene(
