@@ -536,7 +536,7 @@ def run_rms_simulation(grid2, pf_results):
             print(f"  Added event: PV irradiance ramp G {g0:.1f} -> {g_target:.1f} W/m^2 from t=0.10s to t=0.16s")
 
     rms_options = vge.RmsOptions(
-        simulation_time=40,
+        simulation_time=10,
         time_step=0.01,
         max_iter=30,
         integration_method=DynamicIntegrationMethod.DaeBackEuler,

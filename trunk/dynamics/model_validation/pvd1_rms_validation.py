@@ -5,6 +5,7 @@
 
 import os
 import sys
+import cProfile
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "src")))
 
@@ -319,4 +320,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    profiler = cProfile.Profile()
+    profiler.enable()
+    exit_code = main()
+    profiler.disable()
+    profiler.dump_stats("profile.pstat")
+    raise SystemExit(exit_code)

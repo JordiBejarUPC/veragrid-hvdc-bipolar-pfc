@@ -434,15 +434,16 @@ class RmsProblemDae(RmsProblemTemplate):
                 f = bus_dict[elm.bus_from]
                 t = bus_dict[elm.bus_to]
 
-                if VarPowerFlowRefferenceType.Pf in elm.rms_model.external_mapping:
-                    setP(P, P_used, f, -elm.rms_model.E(VarPowerFlowRefferenceType.Pf))
-                if VarPowerFlowRefferenceType.Pt in elm.rms_model.external_mapping:
-                    setP(P, P_used, t, -elm.rms_model.E(VarPowerFlowRefferenceType.Pt))
+                setP(P, P_used, f, -elm.rms_model.E(VarPowerFlowRefferenceType.Pf))
+                setP(P, P_used, t, -elm.rms_model.E(VarPowerFlowRefferenceType.Pt))
                 if not elm.bus_from.is_dc and VarPowerFlowRefferenceType.Qf in elm.rms_model.external_mapping:
                     setQ(Q, Q_used, f, -elm.rms_model.E(VarPowerFlowRefferenceType.Qf))
+                else:
+                    pass
                 if not elm.bus_to.is_dc and VarPowerFlowRefferenceType.Qt in elm.rms_model.external_mapping:
                     setQ(Q, Q_used, t, -elm.rms_model.E(VarPowerFlowRefferenceType.Qt))
-
+                else:
+                    pass
         # Populating VSCs init guess
         for i, elm in enumerate(self.grid.get_vsc()):
             if elm.rms_model.empty():

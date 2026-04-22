@@ -17,7 +17,7 @@ from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.esd1_rms_template import get_esd1_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.pvd1_rms_template import get_pvd1_rms_template
+from VeraGridEngine.Templates.Rms.pvd1_rms_template import get_pvd1_rms_template, get_pvd1_complete_rms_template
 from VeraGridEngine.Templates.Rms.transformer_rms_template import initialize_trafo_rms
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 
@@ -84,28 +84,26 @@ def get_technology_names(device) -> list[str]:
 def initialize_tuvalu_rms_models(grid: vg.MultiCircuit) -> None:
     print("\n--- Populating RMS models for Tuvalu grid ---")
 
-    vf = grid.rms_var_factory
+    vf = grid.var_factory
 
     for bus in grid.buses:
         initialize_bus_rms(bus=bus, vf=vf)
 
-    branch_models = 0
-    for line in grid.lines:
+    branch_models = grid.get_lines_number()
+    for line in grid.get_lines():
         line_model = get_line_rms_template(vfactory=vf, name=f"Line_{line.name}").block
         set_rms_model(device=line, model=line_model, var_factory=vf)
-        branch_models += 1
 
-    transformer_models = 0
-    for trafo in grid.transformers2w:
+    transformer_models = grid.get_transformers2w_number()
+    for trafo in grid.get_transformers2w():
         initialize_trafo_rms(trafo=trafo, vf=vf, Sbase=grid.Sbase)
-        transformer_models += 1
 
     diesel_models = 0
     pv_models = 0
-    for gen in grid.generators:
+    for gen in grid.get_generators():
         tech_names = [name.lower() for name in get_technology_names(gen)]
         if any("pv" in name for name in tech_names):
-            gen_model = get_pvd1_rms_template(vfactory=vf, name=f"PVD1_{gen.name}").block
+            gen_model = get_pvd1_complete_rms_template(vfactory=vf, name=f"PVD1_{gen.name}").block
             pv_models += 1
         else:
             gen_model = get_complete_generator_template_rms(vfactory=vf, name=f"GENQEC_{gen.name}").block
@@ -113,11 +111,14 @@ def initialize_tuvalu_rms_models(grid: vg.MultiCircuit) -> None:
 
         set_rms_model(device=gen, model=gen_model, var_factory=vf)
 
-    battery_models = 0
-    for batt in grid.batteries:
+    battery_models = grid.get_batteries_number()
+    for batt in grid.get_batteries():
         batt_model = get_esd1_rms_template(vfactory=vf, name=f"ESD1_{batt.name}").block
         set_rms_model(device=batt, model=batt_model, var_factory=vf)
-        battery_models += 1
+
+    for load in grid.get_loads():
+        load_model = get_esd1_rms_template(vfactory=vf, name=f"Load_{load.name}").block
+        set_rms_model(device=load, model=load_model, var_factory=vf)
 
     print(
         "RMS models connected: "

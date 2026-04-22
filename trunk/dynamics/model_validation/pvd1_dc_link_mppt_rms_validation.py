@@ -104,7 +104,7 @@ def run_rms(grid: vge.MultiCircuit, pf_results):
             print("Added event: Tcell step 25.0 -> 35.0 degC at 1.00 s")
 
     rms_options = vge.RmsOptions(
-        simulation_time=4.0,
+        simulation_time=1.0,
         time_step=0.001,
         max_iter=40,
         tolerance=3e-6,
