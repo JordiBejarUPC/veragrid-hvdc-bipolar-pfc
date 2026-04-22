@@ -3,7 +3,7 @@
 ################################################################################
 ## Form generated from reading UI file 'MainWindow.ui'
 ##
-## Created by: Qt User Interface Compiler version 6.11.0
+## Created by: Qt User Interface Compiler version 6.9.2
 ##
 ## WARNING! All changes made in this file will be lost when recompiling UI file!
 ################################################################################
@@ -701,6 +701,9 @@ class Ui_mainWindow(object):
         self.actionProcedural_grid_expansion = QAction(mainWindow)
         self.actionProcedural_grid_expansion.setObjectName(u"actionProcedural_grid_expansion")
         self.actionProcedural_grid_expansion.setIcon(icon59)
+        self.actionCatalogue_element_optimization = QAction(mainWindow)
+        self.actionCatalogue_element_optimization.setObjectName(u"actionCatalogue_element_optimization")
+        self.actionCatalogue_element_optimization.setIcon(icon59)
         self.actionRun_Dynamic_EMT_Simulation = QAction(mainWindow)
         self.actionRun_Dynamic_EMT_Simulation.setObjectName(u"actionRun_Dynamic_EMT_Simulation")
         icon96 = QIcon()
@@ -5421,6 +5424,7 @@ class Ui_mainWindow(object):
         self.menuModel.addAction(self.actionFuse_devices)
         self.menuModel.addAction(self.actionGrid_reduction)
         self.menuModel.addAction(self.actionProcedural_grid_expansion)
+        self.menuModel.addAction(self.actionCatalogue_element_optimization)
         self.menuModel.addAction(self.actionre_index_time)
         self.menuModel.addAction(self.actionScale)
         self.menuModel.addSeparator()
@@ -5897,6 +5901,7 @@ class Ui_mainWindow(object):
         self.actionClean_Room.setToolTip(QCoreApplication.translate("mainWindow", u"Cleam room utility to produce an machine learning statistical representation of the static time series", None))
 #endif // QT_CONFIG(tooltip)
         self.actionProcedural_grid_expansion.setText(QCoreApplication.translate("mainWindow", u"Procedural grid expansion", None))
+        self.actionCatalogue_element_optimization.setText(QCoreApplication.translate("mainWindow", u"Catalogue element optimization", None))
         self.actionRun_Dynamic_EMT_Simulation.setText(QCoreApplication.translate("mainWindow", u"Dynamic EMT Simulation", None))
 #if QT_CONFIG(tooltip)
         self.actionRun_Dynamic_EMT_Simulation.setToolTip(QCoreApplication.translate("mainWindow", u"<html><head/><body><p><span style=\" font-weight:700;\">EMT Simulation</span></p><p>Run a dynamic EMT simulation</p></body></html>", None))
