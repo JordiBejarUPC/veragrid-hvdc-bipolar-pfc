@@ -3618,6 +3618,8 @@ class BlockType(Enum):
     DC_LOAD_EMT = "DC_LOAD_EMT"
     EMT_THEVENIN = "EMT_THEVENIN_EMT"
     EMTLOAD = "EMT_LOAD"
+    TRAFO_EMT = "TRAFO_EMT"
+    XFMR_TRANSFORMER = "XFMR_TRANSFORMER"
 
 
     def __str__(self):

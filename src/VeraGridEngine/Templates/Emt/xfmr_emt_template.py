@@ -1076,7 +1076,7 @@ def get_xfmr_emt_template(
     templ.block.event_dict[xfmr_yoke_length_rel] = vf.add_const(1.0)
     templ.block.event_dict[xfmr_outer_leg_area_rel] = vf.add_const(1.0)
     templ.block.event_dict[xfmr_outer_leg_length_rel] = vf.add_const(1.0)
-    templ.block.event_dict[xfmr_c_term] = vf.add_const(0.0)
+    templ.block.event_dict[xfmr_c_term] = vf.add_const(1e-6)
     templ.block.event_dict[xfmr_use_linear_core] = vf.add_const(1.0)
     templ.block.event_dict[xfmr_core_knee_flux_mult] = vf.add_const(1.05)
     templ.block.event_dict[xfmr_core_knee_current_mult] = vf.add_const(8.0)

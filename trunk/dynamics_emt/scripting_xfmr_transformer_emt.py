@@ -157,7 +157,7 @@ set_emt_model(device=load, model=load_mdl, var_factory=circuit.var_factory)
 # These names follow the XFMR template naming convention.
 # ---------------------------------------------------------------------
 xfmr_mdl.set_parameter_in_model(var_name='xfmr_use_linear_core_xfmr_test', new_value=1.0)
-xfmr_mdl.set_parameter_in_model(var_name='xfmr_c_term_xfmr_test', new_value=0.0)
+xfmr_mdl.set_parameter_in_model(var_name='xfmr_c_term_xfmr_test', new_value=1e-6)
 xfmr_mdl.set_parameter_in_model(var_name='xfmr_core_topology_code_xfmr_test', new_value=3.0)
 xfmr_mdl.set_parameter_in_model(var_name='xfmr_yoke_area_rel_xfmr_test', new_value=1.0)
 xfmr_mdl.set_parameter_in_model(var_name='xfmr_yoke_length_rel_xfmr_test', new_value=1.0)
