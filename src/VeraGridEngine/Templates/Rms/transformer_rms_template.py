@@ -77,12 +77,11 @@ class TrafoRmsTemplate(RmsModelTemplate):
             gFe = vf.add_var('gFe')
             bmu = vf.add_var('bmu')
             vtap_f, vtap_t = trafo.get_virtual_taps()
-            print(f"DEBUG Trafo: R={trafo.R}, X={trafo.X}, G={trafo.G}, B={trafo.B}")
-            print(f"DEBUG Trafo: tap_mod={trafo.tap_module}, tap_phase={trafo.tap_phase}, vtap_f={vtap_f}, vtap_t={vtap_t}")
-
-            print(f"vtap  p is {vtap_f}")
-            print(f"vtap  t is {vtap_t}")
-            print(f'ys is {ys} ysh is {ysh}')
+            #print(f"DEBUG Trafo: R={trafo.R}, X={trafo.X}, G={trafo.G}, B={trafo.B}")
+            #print(f"DEBUG Trafo: tap_mod={trafo.tap_module}, tap_phase={trafo.tap_phase}, vtap_f={vtap_f}, vtap_t={vtap_t}")
+            #print(f"vtap  p is {vtap_f}")
+            #print(f"vtap  t is {vtap_t}")
+            #print(f'ys is {ys} ysh is {ysh}')
 
             Vmf = trafo.bus_from.rms_model.E(VarPowerFlowRefferenceType.Vm)
             Vaf = trafo.bus_from.rms_model.E(VarPowerFlowRefferenceType.Va)

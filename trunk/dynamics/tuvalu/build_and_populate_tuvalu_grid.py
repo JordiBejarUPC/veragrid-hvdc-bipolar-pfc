@@ -17,7 +17,7 @@ from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.esd1_rms_template import get_esd1_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.pvd1_rms_template import get_pvd1_rms_template, get_pvd1_complete_rms_template
+from VeraGridEngine.Templates.Rms.pvd1_rms_template import get_pvd1_dc_mppt_rms_template
 from VeraGridEngine.Templates.Rms.transformer_rms_template import initialize_trafo_rms
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 
@@ -81,6 +81,23 @@ def get_technology_names(device) -> list[str]:
     return names
 
 
+def collect_event_var_names(block) -> list[str]:
+    names = [var.name for var in block.event_dict.keys()]
+    for mdl in block.children:
+        names.extend(collect_event_var_names(mdl))
+    return names
+
+
+def has_irradiance_event_var(block) -> bool:
+    for var in block.event_dict.keys():
+        if var.name.lower() in {"g", "irradiance"}:
+            return True
+    for mdl in block.children:
+        if has_irradiance_event_var(mdl):
+            return True
+    return False
+
+
 def initialize_tuvalu_rms_models(grid: vg.MultiCircuit) -> None:
     print("\n--- Populating RMS models for Tuvalu grid ---")
 
@@ -100,16 +117,27 @@ def initialize_tuvalu_rms_models(grid: vg.MultiCircuit) -> None:
 
     diesel_models = 0
     pv_models = 0
+    pv_irradiance_ready = 0
     for gen in grid.get_generators():
         tech_names = [name.lower() for name in get_technology_names(gen)]
         if any("pv" in name for name in tech_names):
-            gen_model = get_pvd1_complete_rms_template(vfactory=vf, name=f"PVD1_{gen.name}").block
+            gen_model = get_pvd1_dc_mppt_rms_template(vfactory=vf, name=f"PVD1_{gen.name}").block
             pv_models += 1
         else:
             gen_model = get_complete_generator_template_rms(vfactory=vf, name=f"GENQEC_{gen.name}").block
             diesel_models += 1
 
         set_rms_model(device=gen, model=gen_model, var_factory=vf)
+        if any("pv" in name for name in tech_names):
+            if has_irradiance_event_var(gen.rms_model):
+                pv_irradiance_ready += 1
+            else:
+                event_names = collect_event_var_names(gen.rms_model)
+                preview = ", ".join(event_names[:10]) if event_names else "<none>"
+                raise RuntimeError(
+                    f"PV generator '{gen.name}' RMS model has no irradiance event variable. "
+                    f"Found event vars: {preview}"
+                )
 
     battery_models = grid.get_batteries_number()
     for batt in grid.get_batteries():
@@ -126,7 +154,8 @@ def initialize_tuvalu_rms_models(grid: vg.MultiCircuit) -> None:
         f"lines={branch_models}, "
         f"transformers={transformer_models}, "
         f"diesel(genqec)={diesel_models}, "
-        f"pv(pvd1)={pv_models}, "
+        f"pv(pvd1_dc_mppt)={pv_models}, "
+        f"pv_irradiance_ready={pv_irradiance_ready}, "
         f"batteries(esd1)={battery_models}"
     )
 

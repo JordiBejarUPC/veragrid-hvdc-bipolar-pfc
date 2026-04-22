@@ -689,8 +689,11 @@ class RmsProblemDae(RmsProblemTemplate):
                                         np.real(self.power_flow_results.Sbus[bus_index] / grid.Sbase))
                 else:
                     Vbus = self.power_flow_results.voltage[bus_index]
+                    elm_active = bool(elm.get_active_at(None))
                     if elm.idtag in gen_idx_map:
-                        if elm.bus.is_slack and remaining_slack_gen[bus_index] > 0:
+                        if not elm_active:
+                            Sdev = 0.0 + 0.0j
+                        elif elm.bus.is_slack and remaining_slack_gen[bus_index] > 0:
                             elm_snom = float(elm.Snom)
                             if elm_snom <= 0.0:
                                 elm_snom = 1.0
@@ -715,8 +718,11 @@ class RmsProblemDae(RmsProblemTemplate):
                             gidx = gen_idx_map[elm.idtag]
                             Sdev = complex(float(elm.P), float(self.power_flow_results.gen_q[gidx])) / grid.Sbase
                     elif elm.idtag in batt_idx_map:
-                        bidx = batt_idx_map[elm.idtag]
-                        Sdev = complex(float(elm.P), float(self.power_flow_results.battery_q[bidx])) / grid.Sbase
+                        if not elm_active:
+                            Sdev = 0.0 + 0.0j
+                        else:
+                            bidx = batt_idx_map[elm.idtag]
+                            Sdev = complex(float(elm.P), float(self.power_flow_results.battery_q[bidx])) / grid.Sbase
                     elif elm.idtag in shunt_idx_map:
                         g_sh = float(elm.G) / grid.Sbase
                         b_sh = float(elm.B) / grid.Sbase
