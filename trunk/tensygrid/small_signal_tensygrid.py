@@ -84,8 +84,8 @@ def debug_input(input_bool):
     Function to debug
     """
     EXEC_METRICS["stops"] = EXEC_METRICS["stops"] + 1
-    if input_bool: input(f"Hola, ens quedem parats {EXEC_METRICS["stops"]} vegades")
-    else: print(f"Hola, ens quedem parats {EXEC_METRICS["stops"]} vegades")
+    if input_bool: input(f"Hola, ens quedem parats {EXEC_METRICS['stops']} vegades")
+    else: print(f"Hola, ens quedem parats {EXEC_METRICS['stops']} vegades")
 
 
 def define_problem_with_path(grid_path):
