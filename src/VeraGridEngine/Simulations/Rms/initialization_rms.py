@@ -567,7 +567,7 @@ def _serialize_problem_guess_map(problem: EmtProblemTemplate, guess_map: Dict[in
     return serialized
 
 
-def _restore_problem_guess_map(problem: EmtProblemTemplate, name_map: Dict[str, float], diff_guess: bool) -> Dict[int, float]:
+def _restore_problem_guess_map(problem: RmsProblemDae, name_map: Dict[str, float], diff_guess: bool) -> Dict[int, float]:
     """
     Restore an initialization guess map from stable variable names.
 
@@ -589,9 +589,9 @@ def _restore_problem_guess_map(problem: EmtProblemTemplate, name_map: Dict[str, 
         for diff_var in problem.get_diff_vars():
             name_to_uid[alias_name_map[diff_var.uid]] = diff_var.uid
     else:
-        for var in problem.get_state_vars():
+        for var in problem.state_vars():
             name_to_uid[alias_name_map[var.uid]] = var.uid
-        for var in problem.get_algebraic_vars():
+        for var in problem.algebraic_vars():
             name_to_uid[alias_name_map[var.uid]] = var.uid
 
     for name, value in name_map.items():
@@ -649,12 +649,12 @@ def _restore_initialization_report_from_payload(
     report.message = str(payload["message"])
 
 
-def _build_persistent_initialization_cache_key(
-        problem: EmtProblemTemplate,
+def build_persistent_initialization_cache_key(
+        problem: RmsProblemDae,
         unknown_vars: List[Var],
         residual_eqs: List[Expr],
         state_unknown_mask: np.ndarray,
-        options: EmtOptions,
+        options: RmsOptions,
 ) -> str:
     """
     Return the deterministic cache key of one persistent reduced initialization result.
@@ -751,7 +751,7 @@ def _persistent_initialization_params_match(
     return True
 
 
-def _load_persistent_initialization_solution(cache_key: str) -> Dict[str, object] | None:
+def load_persistent_initialization_solution(cache_key: str) -> Dict[str, object] | None:
     """
     Load one persistent reduced initialization result.
 
@@ -787,13 +787,13 @@ def _store_persistent_initialization_solution(cache_key: str, payload: Dict[str,
 
 
 def build_reduced_initialization_cache_key(
-        problem: RmsProblemTemplate,
+        problem: RmsProblemDae,
         unknown_vars: List[Var],
         residual_eqs: List[Expr],
         state_unknown_mask: np.ndarray,
 ) -> str:
     """
-    Return a deterministic cache key for one reduced EMT initialization system.
+    Return a deterministic cache key for one reduced Rms initialization system.
 
     :param problem: EMT problem being initialized.
     :type problem: EmtProblemTemplate
@@ -1326,7 +1326,7 @@ class ReducedInitializationSystem:
         """
         Compile the reduced residual and Jacobian used by the consistent initializer.
 
-        :param problem: EMT problem being initialized.
+        :param problem: Rms problem being initialized.
         :param unknown_vars: Unknown variables solved by the reduced system.
         :param residual_eqs: Residual equations enforcing consistency.
         :param state_unknown_mask: Mask marking which reduced unknowns correspond to states.
@@ -1372,7 +1372,7 @@ class ReducedInitializationSystem:
             self.jacobian_fn = cache_entry.get_jacobian_fn()
 
 
-def _build_constant_param_array(problem: EmtProblemTemplate) -> np.ndarray:
+def build_constant_param_array(problem: RmsProblemDae) -> np.ndarray:
     """
     Build the dense constant-parameter vector used by the initialization solvers.
 
@@ -1383,7 +1383,7 @@ def _build_constant_param_array(problem: EmtProblemTemplate) -> np.ndarray:
     return np.asarray([float(item.value) for item in const_values], dtype=np.float64)
 
 
-def _build_runtime_param_array(problem: EmtProblemTemplate) -> np.ndarray:
+def build_runtime_param_array(problem: RmsProblemDae) -> np.ndarray:
     """
     Build the runtime-parameter snapshot at the initialization time.
 
@@ -1418,7 +1418,7 @@ def extract_unknown_vector(problem: RmsProblemDae, unknown_vars: List[Var], x: n
     """
     Extract the reduced unknown vector from the full EMT variable vector.
 
-    :param problem: EMT problem being initialized.
+    :param problem: Rms problem being initialized.
     :param unknown_vars: Unknown variables solved by the reduced system.
     :param x: Full EMT variable vector.
     :return: Reduced unknown vector.
@@ -1437,7 +1437,7 @@ def extract_unknown_vector(problem: RmsProblemDae, unknown_vars: List[Var], x: n
 
 def scatter_unknown_vector(problem: RmsProblemDae, unknown_vars: List[Var], x: np.ndarray, reduced_x: np.ndarray) -> None:
     """
-    Scatter the reduced unknown vector back into the full EMT variable vector.
+    Scatter the reduced unknown vector back into the full Rms variable vector.
 
     :param problem: EMT problem being initialized.
     :param unknown_vars: Unknown variables solved by the reduced system.
@@ -1502,8 +1502,12 @@ def collect_reduced_initialization_problem(
     init_eq_lookup: Dict[Var, Expr] = problem.sys_block.init_eqs
     algebraic_vars: List[Var] = problem.algebraic_vars
     algebraic_eqs: List[Expr] = problem.algebraic_eqs
+    variable_parameters: List[Var] = problem.variable_parameters
+    event_params_eqs: List[Expr] = problem.event_parameters_eqs
     alg_idx: int = 0
+    evt_params_idx: int = 0
 
+    # Todo: Improve logic
     while alg_idx < len(algebraic_vars):
         algebraic_var: Var = algebraic_vars[alg_idx]
         if algebraic_var.uid in problem.init_guess:
@@ -1513,6 +1517,16 @@ def collect_reduced_initialization_problem(
             residual_eqs.append(algebraic_eqs[alg_idx])
             state_unknown_flags.append(0.0)
         alg_idx += 1
+
+    while evt_params_idx < len(variable_parameters):
+        evnt_param: Var = variable_parameters[evt_params_idx]
+        if evnt_param.uid in problem.event_params_init_dict:
+            evnt_param = evnt_param
+        else:
+            unknown_vars.append(evnt_param)
+            residual_eqs.append(event_params_eqs[evt_params_idx])
+            state_unknown_flags.append(0.0)
+        evt_params_idx += 1
 
     for state_var in problem.state_vars:
         if state_var.uid in problem.init_guess:
@@ -1542,6 +1556,7 @@ def evaluate_initialization_residual(
         runtime_params: np.ndarray,
         constant_params: np.ndarray,
 ) -> np.ndarray:
+    # Todo: this function can be eliminated and calculated directly
     """
     Evaluate the reduced initialization residual.
 
@@ -1565,6 +1580,7 @@ def evaluate_initialization_jacobian(
         runtime_params: np.ndarray,
         constant_params: np.ndarray,
 ) -> sp.csc_matrix:
+    # Todo: this function can be eliminated and calculated directly
     """
     Evaluate the reduced initialization Jacobian.
 
@@ -1767,7 +1783,7 @@ def _run_reduced_pseudo_transient_initialization(
     return False
 
 
-def _apply_solution_to_problem(problem: EmtProblemTemplate, x: np.ndarray) -> None:
+def apply_solution_to_problem(problem: RmsProblemDae, x: np.ndarray) -> None:
     """
     Persist the reduced-solve state vector back into the initialization guess map.
 
@@ -1780,12 +1796,11 @@ def _apply_solution_to_problem(problem: EmtProblemTemplate, x: np.ndarray) -> No
         problem.init_guess[var.uid] = float(x[problem.uid2idx_vars[var.uid]])
 
 
-def _compute_missing_dx0(problem: EmtProblemTemplate,
-                         report: EmtInitializationReport,
-                         x_full: np.ndarray | None = None,
-                         dx_full: np.ndarray | None = None,
-                         runtime_params: np.ndarray | None = None,
-                         constant_params: np.ndarray | None = None) -> None:
+def compute_missing_dx0(problem: RmsProblemDae,
+                        x_full: np.ndarray | None = None,
+                        dx_full: np.ndarray | None = None,
+                        runtime_params: np.ndarray | None = None,
+                        constant_params: np.ndarray | None = None) -> None:
     """
     Compute missing differential initial values from the state equations.
 
@@ -1825,12 +1840,12 @@ def _compute_missing_dx0(problem: EmtProblemTemplate,
     report.dx0_seed_build_s = float(time.perf_counter() - phase_t0)
 
     if runtime_params is None or len(runtime_params) != problem.get_variable_parameter_number():
-        runtime_params = _build_runtime_param_array(problem)
+        runtime_params = build_runtime_param_array(problem)
     else:
         runtime_params = runtime_params
 
     if constant_params is None or len(constant_params) != len(problem.get_parameters_values()):
-        constant_params = _build_constant_param_array(problem)
+        constant_params = build_constant_param_array(problem)
     else:
         constant_params = constant_params
     cache_key: str = _build_state_rhs_cache_key(problem, missing_state_eqs)
@@ -1877,7 +1892,7 @@ def _build_initialization_system_if_needed(
     return reduced_system
 
 
-def run_rms_native_initialization(problem: RmsProblemDae, options: RmsOptions) -> EmtInitializationReport:
+def run_rms_native_initialization(problem: RmsProblemDae, options: RmsOptions):
     """
     Run the EMT-native initialization stages after PF projection and explicit init.
 
@@ -1893,215 +1908,53 @@ def run_rms_native_initialization(problem: RmsProblemDae, options: RmsOptions) -
     x: np.ndarray = problem.get_x0()
     x_seed: np.ndarray = x.copy()
     dx: np.ndarray = problem.get_dx0()
-    method_requested: RmsInitializationMethod = options.initialization_method
+    method_requested: RmsInitializationMethod = RmsInitializationMethod.ReducedExplicit
     runtime_params: np.ndarray = np.zeros(0, dtype=np.float64)
     constant_params: np.ndarray = np.zeros(0, dtype=np.float64)
-    reduced_cache_key: str | None = None
 
-    if method_requested == EmtInitializationMethod.Explicit:
-        print('Explicit initialization')
+    reduced_system: ReducedInitializationSystem | None
+    runtime_params: np.ndarray
+    constant_params: np.ndarray
+    reduced_problem_payload: Tuple[List[Var], List[Expr], np.ndarray] | None
 
-    else:
-        reduced_system: ReducedInitializationSystem | None
-        runtime_params: np.ndarray
-        constant_params: np.ndarray
-        reduced_problem_payload: Tuple[List[Var], List[Expr], np.ndarray] | None
+    phase_t0: float = time.perf_counter()
+    reduced_problem_payload = collect_reduced_initialization_problem(
+        problem=problem,
+        # Todo: maby allow_state_equilibrium = False doesn't work
+        allow_state_equilibrium= False,
+    )
 
-        try:
-            phase_t0: float = time.perf_counter()
-            reduced_problem_payload = collect_reduced_initialization_problem(
+    if reduced_problem_payload is not None:
+        constant_params = build_constant_param_array(problem)
+
+        reduced_system = ReducedInitializationSystem(
+            problem=problem,
+            unknown_vars=reduced_problem_payload[0],
+            residual_eqs=reduced_problem_payload[1],
+            state_unknown_mask=reduced_problem_payload[2],
+        )
+
+        if reduced_system is not None:
+            converged = run_reduced_newton_initialization(
+                reduced_system=reduced_system,
                 problem=problem,
-                allow_state_equilibrium=bool(options.init_allow_state_equilibrium),
+                x=x,
+                dx=dx,
+                runtime_params=runtime_params,
+                constant_params=constant_params,
+                options=options
             )
 
-            if reduced_problem_payload is None:
-                reduced_system = None
-                report.unknown_var_count = 0
-                report.unresolved_state_count = 0
-            else:
-                report.unknown_var_count = len(reduced_problem_payload[0])
-                report.unresolved_state_count = int(np.count_nonzero(reduced_problem_payload[2]))
-                reduced_system = None
-
-            report.reduced_system_build_s = float(time.perf_counter() - phase_t0)
-
-            phase_t0 = time.perf_counter()
-            runtime_params = _build_runtime_param_array(problem)
-            report.runtime_param_build_s = float(time.perf_counter() - phase_t0)
-
-            phase_t0 = time.perf_counter()
-            constant_params = _build_constant_param_array(problem)
-            report.constant_param_build_s = float(time.perf_counter() - phase_t0)
-
-            if reduced_problem_payload is None:
-                reduced_cache_key = None
-            else:
-                reduced_cache_key = _build_persistent_initialization_cache_key(
-                    problem=problem,
-                    unknown_vars=reduced_problem_payload[0],
-                    residual_eqs=reduced_problem_payload[1],
-                    state_unknown_mask=reduced_problem_payload[2],
-                    options=options,
-                )
-
-                phase_t0 = time.perf_counter()
-                cached_payload: Dict[str, object] | None = _load_persistent_initialization_solution(reduced_cache_key)
-                report.persistent_cache_load_s = float(time.perf_counter() - phase_t0)
-
-                if cached_payload is None:
-                    reduced_system = ReducedInitializationSystem(
-                        problem=problem,
-                        unknown_vars=reduced_problem_payload[0],
-                        residual_eqs=reduced_problem_payload[1],
-                        state_unknown_mask=reduced_problem_payload[2],
-                    )
-                    report.reduced_system_build_s += 0.0
-                else:
-                    if "init_guess_by_name" in cached_payload and "diff_init_guess_by_name" in cached_payload and _persistent_initialization_params_match(cached_payload, runtime_params, constant_params):
-                        problem.init_guess = _restore_problem_guess_map(problem, dict(cached_payload["init_guess_by_name"]), False)
-                        problem.diff_init_guess = _restore_problem_guess_map(problem, dict(cached_payload["diff_init_guess_by_name"]), True)
-                        _restore_initialization_report_from_payload(report, dict(cached_payload["report"]))
-                        report.persistent_cache_hit = True
-                        report.persistent_cache_load_s = float(report.persistent_cache_load_s)
-                        report.elapsed_s = float(time.perf_counter() - start_time)
-                        return report
-                    else:
-                        reduced_system = ReducedInitializationSystem(
-                            problem=problem,
-                            unknown_vars=reduced_problem_payload[0],
-                            residual_eqs=reduced_problem_payload[1],
-                            state_unknown_mask=reduced_problem_payload[2],
-                        )
-        except (FloatingPointError, ZeroDivisionError, ValueError, RuntimeError):
-            reduced_system = None
-            runtime_params = np.zeros(0, dtype=np.float64)
-            constant_params = np.zeros(0, dtype=np.float64)
-            reduced_cache_key = None
-            report.status = InitializationStatus.FAILED
-            report.method_used = EmtInitializationMethod.Explicit
-            report.message = "Reduced initialization system construction failed; keeping explicit initialization."
-
-        if reduced_system is None:
-            if report.status == InitializationStatus.FAILED:
-                x[:] = x_seed
-            else:
-                report.status = InitializationStatus.RESOLVED
-                report.method_used = EmtInitializationMethod.Explicit
-        else:
-            try:
-                phase_t0 = time.perf_counter()
-                residual0: np.ndarray = evaluate_initialization_residual(reduced_system, problem, x, dx, runtime_params, constant_params)
-                report.initial_residual_eval_s = float(time.perf_counter() - phase_t0)
-                report.initial_residual_inf = _max_abs_value(residual0)
-            except (FloatingPointError, ZeroDivisionError, ValueError, RuntimeError):
-                x[:] = x_seed
-                report.status = InitializationStatus.FAILED
-                report.method_used = EmtInitializationMethod.Explicit
-                report.message = "Reduced initialization residual evaluation failed; keeping explicit initialization."
-                reduced_system = None
-
-        if reduced_system is None:
-            report.final_residual_inf = report.initial_residual_inf
-        else:
-            use_newton: bool = method_requested in {EmtInitializationMethod.Auto, EmtInitializationMethod.ConsistentNewton}
-            use_ptc: bool = method_requested in {EmtInitializationMethod.Auto, EmtInitializationMethod.PseudoTransient} or bool(options.init_pseudo_transient_enable)
-
-            converged: bool = False
-            if use_newton:
-                phase_t0 = time.perf_counter()
-                converged = run_reduced_newton_initialization(
-                    reduced_system=reduced_system,
-                    problem=problem,
-                    x=x,
-                    dx=dx,
-                    runtime_params=runtime_params,
-                    constant_params=constant_params,
-                    options=options,
-                    report=report,
-                )
-                report.newton_elapsed_s += float(time.perf_counter() - phase_t0)
-                if converged:
-                    report.method_used = EmtInitializationMethod.ConsistentNewton
-                else:
-                    converged = converged
-            else:
-                converged = False
-
             if converged:
-                report.status = InitializationStatus.RESOLVED
-            elif use_ptc:
-                phase_t0 = time.perf_counter()
-                converged = _run_reduced_pseudo_transient_initialization(
-                    reduced_system=reduced_system,
-                    problem=problem,
-                    x=x,
-                    dx=dx,
+                apply_solution_to_problem(problem, x)
+                compute_missing_dx0(
+                    problem,
+                    x_full=x,
+                    dx_full=dx,
                     runtime_params=runtime_params,
                     constant_params=constant_params,
-                    options=options,
-                    report=report,
                 )
-                report.pseudo_transient_elapsed_s += float(time.perf_counter() - phase_t0)
-                if converged:
-                    converged = converged
-                else:
-                    phase_t0 = time.perf_counter()
-                    converged = run_reduced_newton_initialization(
-                        reduced_system=reduced_system,
-                        problem=problem,
-                        x=x,
-                        dx=dx,
-                        runtime_params=runtime_params,
-                        constant_params=constant_params,
-                        options=options,
-                        report=report,
-                    )
-                    report.newton_elapsed_s += float(time.perf_counter() - phase_t0)
-                if converged:
-                    report.status = InitializationStatus.RESOLVED
-                    report.method_used = EmtInitializationMethod.PseudoTransient
-                else:
-                    x[:] = x_seed
-                    report.status = InitializationStatus.FAILED
-                    report.method_used = EmtInitializationMethod.Explicit
-                    report.message = "Consistent initialization failed after pseudo-transient fallback; keeping explicit initialization."
-            else:
-                x[:] = x_seed
-                report.status = InitializationStatus.FAILED
-                report.method_used = EmtInitializationMethod.Explicit
-                report.message = "Consistent initialization failed and pseudo-transient fallback was disabled."
 
-    phase_t0 = time.perf_counter()
-    _apply_solution_to_problem(problem, x)
-    solution_apply_s: float = float(time.perf_counter() - phase_t0)
-    report.solution_apply_s = solution_apply_s
-    phase_t0 = time.perf_counter()
-    _compute_missing_dx0(
-        problem,
-        report,
-        x_full=x,
-        dx_full=dx,
-        runtime_params=runtime_params,
-        constant_params=constant_params,
-    )
-    report.dx0_completion_s = float(time.perf_counter() - phase_t0)
-    report.elapsed_s = float(time.perf_counter() - start_time)
-    report.dx0_completion_s += solution_apply_s
 
-    if report.status == InitializationStatus.RESOLVED and reduced_cache_key is not None:
-        phase_t0 = time.perf_counter()
-        _store_persistent_initialization_solution(
-            reduced_cache_key,
-            dict(
-                init_guess_by_name=_serialize_problem_guess_map(problem, dict(problem.init_guess), False),
-                diff_init_guess_by_name=_serialize_problem_guess_map(problem, dict(problem.diff_init_guess), True),
-                runtime_params_snapshot=runtime_params.tolist(),
-                constant_params_snapshot=constant_params.tolist(),
-                report=_serialize_initialization_report(report),
-            ),
-        )
-        report.persistent_cache_store_s = float(time.perf_counter() - phase_t0)
-    else:
-        report.persistent_cache_store_s = 0.0
 
-    return report
+
