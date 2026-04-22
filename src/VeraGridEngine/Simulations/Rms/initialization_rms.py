@@ -1309,7 +1309,9 @@ class ReducedInitializationSystem:
     """
 
     __slots__ = [
+        "unknowns",
         "unknown_vars",
+        "unknown_events",
         "residual_eqs",
         "state_unknown_mask",
         "residual_fn",
@@ -1319,7 +1321,9 @@ class ReducedInitializationSystem:
     def __init__(
             self,
             problem: RmsProblemDae,
+            unknowns: List[Var],
             unknown_vars: List[Var],
+            unknown_events: List[Var],
             residual_eqs: List[Expr],
             state_unknown_mask: np.ndarray,
     ) -> None:
@@ -1332,44 +1336,31 @@ class ReducedInitializationSystem:
         :param state_unknown_mask: Mask marking which reduced unknowns correspond to states.
         :return: None
         """
+        self.unknowns = unknowns
         self.unknown_vars = unknown_vars
+        self.unknown_events = unknown_events
         self.residual_eqs = residual_eqs
         self.state_unknown_mask = state_unknown_mask
-        cache_key: str = build_reduced_initialization_cache_key(
-            problem=problem,
-            unknown_vars=unknown_vars,
-            residual_eqs=residual_eqs,
-            state_unknown_mask=state_unknown_mask,
-        )
-        cache_entry: ReducedInitializationSystemCacheEntry | None = REDUCED_INITIALIZATION_SYSTEM_CACHE.get_entry(cache_key)
 
-        if cache_entry is None:
-            self.residual_fn = SymbolicVector(
-                eqs=residual_eqs,
-                compiler_names_dict=problem.get_compiler_names_dict(),
-                alias_names_dict=problem.get_alias_names_dict(),
-                VARS_NAME=problem.VARS_NAME,
-                DIFF_NAME=problem.DIFF_NAME,
-                EVENT_PARAMS_NAME=problem.VARIABLE_PARAMS_NAME,
-                PARAMS_NAME=problem.CONSTANT_PARAMS_NAME,
-            )
-            self.jacobian_fn = SymbolicJacobian(
-                eqs=residual_eqs,
-                variables=unknown_vars,
-                compiler_names_dict=problem.get_compiler_names_dict(),
-                alias_names_dict=problem.get_alias_names_dict(),
-                VARS_NAME=problem.VARS_NAME,
-                DIFF_NAME=problem.DIFF_NAME,
-                EVENT_PARAMS_NAME=problem.VARIABLE_PARAMS_NAME,
-                PARAMS_NAME=problem.CONSTANT_PARAMS_NAME,
-            )
-            REDUCED_INITIALIZATION_SYSTEM_CACHE.set_entry(
-                cache_key,
-                ReducedInitializationSystemCacheEntry(self.residual_fn, self.jacobian_fn),
-            )
-        else:
-            self.residual_fn = cache_entry.get_residual_fn()
-            self.jacobian_fn = cache_entry.get_jacobian_fn()
+        self.residual_fn = SymbolicVector(
+            eqs=residual_eqs,
+            compiler_names_dict=problem.get_compiler_names_dict(),
+            alias_names_dict=problem.get_alias_names_dict(),
+            VARS_NAME=problem.VARS_NAME,
+            DIFF_NAME=problem.DIFF_NAME,
+            EVENT_PARAMS_NAME=problem.VARIABLE_PARAMS_NAME,
+            PARAMS_NAME=problem.CONSTANT_PARAMS_NAME,
+        )
+        self.jacobian_fn = SymbolicJacobian(
+            eqs=residual_eqs,
+            variables=unknowns,
+            compiler_names_dict=problem.get_compiler_names_dict(),
+            alias_names_dict=problem.get_alias_names_dict(),
+            VARS_NAME=problem.VARS_NAME,
+            DIFF_NAME=problem.DIFF_NAME,
+            EVENT_PARAMS_NAME=problem.VARIABLE_PARAMS_NAME,
+            PARAMS_NAME=problem.CONSTANT_PARAMS_NAME,
+        )
 
 
 def build_constant_param_array(problem: RmsProblemDae) -> np.ndarray:
@@ -1434,6 +1425,26 @@ def extract_unknown_vector(problem: RmsProblemDae, unknown_vars: List[Var], x: n
 
     return out
 
+def extract_unknown_events_vector(problem: RmsProblemDae, unknown_events: List[Var], event_x: np.ndarray) -> np.ndarray:
+    """
+    Extract the reduced unknown vector from the full EMT variable vector.
+
+    :param problem: Rms problem being initialized.
+    :param unknown_vars: Unknown variables solved by the reduced system.
+    :param x: Full EMT variable vector.
+    :return: Reduced unknown vector.
+    """
+    n_unknown: int = len(unknown_events)
+    out: np.ndarray = np.zeros(n_unknown, dtype=np.float64)
+
+    idx: int = 0
+    while idx < n_unknown:
+        var: Var = unknown_events[idx]
+        out[idx] = float(event_x[problem.uid2idx_event_params[var.uid]])
+        idx += 1
+
+    return out
+
 
 def scatter_unknown_vector(problem: RmsProblemDae, unknown_vars: List[Var], x: np.ndarray, reduced_x: np.ndarray) -> None:
     """
@@ -1451,9 +1462,25 @@ def scatter_unknown_vector(problem: RmsProblemDae, unknown_vars: List[Var], x: n
         x[problem.uid2idx_vars[var.uid]] = float(reduced_x[idx])
         idx += 1
 
+def scatter_unknown_event_vector(problem: RmsProblemDae, unknown_events: List[Var], event_x: np.ndarray, reduced_event_x: np.ndarray) -> None:
+    """
+    Scatter the reduced unknown vector back into the full Rms variable vector.
 
-def _build_reduced_initialization_system(
-        problem: EmtProblemTemplate,
+    :param problem: EMT problem being initialized.
+    :param unknown_vars: Unknown variables solved by the reduced system.
+    :param x: Full EMT variable vector updated in place.
+    :param reduced_x: Reduced unknown vector.
+    :return: None
+    """
+    idx: int = 0
+    while idx < len(unknown_events):
+        var: Var = unknown_events[idx]
+        event_x[problem.uid2idx_vars[var.uid]] = float(reduced_event_x[idx])
+        idx += 1
+
+
+def build_reduced_initialization_system(
+        problem: RmsProblemDae,
         allow_state_equilibrium: bool,
 ) -> ReducedInitializationSystem | None:
     """
@@ -1472,10 +1499,12 @@ def _build_reduced_initialization_system(
     if reduced_problem is None:
         return None
     else:
-        unknown_vars, residual_eqs, mask_array = reduced_problem
+        unknowns, unknown_vars, unknown_events, residual_eqs, mask_array = reduced_problem
         return ReducedInitializationSystem(
             problem=problem,
+            unknowns = unknowns,
             unknown_vars=unknown_vars,
+            unknown_events=unknown_events,
             residual_eqs=residual_eqs,
             state_unknown_mask=mask_array,
         )
@@ -1484,7 +1513,7 @@ def _build_reduced_initialization_system(
 def collect_reduced_initialization_problem(
         problem: RmsProblemDae,
         allow_state_equilibrium: bool,
-) -> Tuple[List[Var], List[Expr], np.ndarray] | None:
+) -> Tuple[List[Var], List[Var], List[Var], List[Expr], np.ndarray] | None:
     """
     Collect the reduced initialization unknowns and residual equations without compiling them.
 
@@ -1495,7 +1524,9 @@ def collect_reduced_initialization_problem(
     :return: Tuple ``(unknown_vars, residual_eqs, state_unknown_mask)`` or ``None``.
     :rtype: Tuple[List[Var], List[Expr], np.ndarray] | None
     """
+    unknowns: List[Var] = list()
     unknown_vars: List[Var] = list()
+    unknown_events: List[Var] = list()
     residual_eqs: List[Expr] = list()
     state_unknown_flags: List[float] = list()
     state_eq_lookup: Dict[int, Expr] = build_state_equation_lookup(problem)
@@ -1545,7 +1576,7 @@ def collect_reduced_initialization_problem(
     if len(unknown_vars) == 0:
         return None
     else:
-        return unknown_vars, residual_eqs, np.asarray(state_unknown_flags, dtype=np.float64)
+        return unknowns, unknown_vars, unknown_events, residual_eqs, np.asarray(state_unknown_flags, dtype=np.float64)
 
 
 def evaluate_initialization_residual(
@@ -1644,6 +1675,7 @@ def solve_reduced_linear_system(
 def run_reduced_newton_initialization(
         reduced_system: ReducedInitializationSystem,
         problem: RmsProblemDae,
+        event_x: np.ndarray,
         x: np.ndarray,
         dx: np.ndarray,
         runtime_params: np.ndarray,
@@ -1656,6 +1688,7 @@ def run_reduced_newton_initialization(
     :param reduced_system: Reduced initialization system.
     :param problem: EMT problem being initialized.
     :param x: Full EMT variable vector updated in place.
+    :param event_x: Full Rms variable vector updated in place.
     :param dx: Full EMT differential vector.
     :param runtime_params: Runtime-parameter vector.
     :param constant_params: Constant-parameter vector.
@@ -1664,17 +1697,18 @@ def run_reduced_newton_initialization(
     :return: True if Newton converged.
     """
     reduced_x: np.ndarray = extract_unknown_vector(problem, reduced_system.unknown_vars, x)
+    reduced_event_x: np.ndarray = extract_unknown_events_vector(problem, reduced_system.unknown_events, event_x)
     max_iter: int = 20
     tol: float = 1e-8
 
     iter_idx: int = 0
     while iter_idx < max_iter:
         scatter_unknown_vector(problem, reduced_system.unknown_vars, x, reduced_x)
-        residual: np.ndarray = evaluate_initialization_residual(reduced_system, problem, x, dx, runtime_params, constant_params)
+        residual: np.ndarray = evaluate_initialization_residual(reduced_system, problem, x, dx, event_x, constant_params)
         res_norm: float = _max_abs_value(residual)
 
 
-        jacobian: sp.csc_matrix = evaluate_initialization_jacobian(reduced_system, problem, x, dx, runtime_params, constant_params)
+        jacobian: sp.csc_matrix = evaluate_initialization_jacobian(reduced_system, problem, x, dx, event_x, constant_params)
         delta: np.ndarray = solve_reduced_linear_system(jacobian, -residual, 48)
 
         if np.all(np.isfinite(delta)):
@@ -1686,12 +1720,15 @@ def run_reduced_newton_initialization(
         accepted: bool = False
         while alpha >= 1.0e-4:
             trial_reduced_x: np.ndarray = reduced_x + alpha * delta
+            trial_reduced_event_x: np.ndarray = reduced_event_x + alpha * delta
             scatter_unknown_vector(problem, reduced_system.unknown_vars, x, trial_reduced_x)
-            trial_residual: np.ndarray = evaluate_initialization_residual(reduced_system, problem, x, dx, runtime_params, constant_params)
+            scatter_unknown_event_vector(problem, reduced_system.unknown_events, event_x, trial_reduced_event_x)
+            trial_residual: np.ndarray = evaluate_initialization_residual(reduced_system, problem, x, dx, event_x, constant_params)
             trial_norm: float = _max_abs_value(trial_residual)
             init_newton_backtracking = True
             if (not init_newton_backtracking) or (trial_norm < res_norm):
                 reduced_x = trial_reduced_x
+                reduced_event_x = trial_reduced_event_x
                 accepted = True
                 break
             else:
@@ -1699,6 +1736,8 @@ def run_reduced_newton_initialization(
 
         if accepted:
             reduced_x = reduced_x
+            reduced_event_x = reduced_event_x
+
         else:
             return False
 
@@ -1879,7 +1918,7 @@ def _build_initialization_system_if_needed(
     :param report: Initialization report updated in place.
     :return: Reduced initialization system or None.
     """
-    reduced_system: ReducedInitializationSystem | None = _build_reduced_initialization_system(
+    reduced_system: ReducedInitializationSystem | None = build_reduced_initialization_system(
         problem=problem,
         allow_state_equilibrium=bool(options.init_allow_state_equilibrium),
     )
@@ -1906,18 +1945,17 @@ def run_rms_native_initialization(problem: RmsProblemDae, options: RmsOptions):
     :return: Initialization report.
     """
     x: np.ndarray = problem.get_x0()
+    event_x: np.ndarray = problem.get_eventparams0()
     x_seed: np.ndarray = x.copy()
     dx: np.ndarray = problem.get_dx0()
-    method_requested: RmsInitializationMethod = RmsInitializationMethod.ReducedExplicit
     runtime_params: np.ndarray = np.zeros(0, dtype=np.float64)
-    constant_params: np.ndarray = np.zeros(0, dtype=np.float64)
 
     reduced_system: ReducedInitializationSystem | None
     runtime_params: np.ndarray
     constant_params: np.ndarray
     reduced_problem_payload: Tuple[List[Var], List[Expr], np.ndarray] | None
 
-    phase_t0: float = time.perf_counter()
+
     reduced_problem_payload = collect_reduced_initialization_problem(
         problem=problem,
         # Todo: maby allow_state_equilibrium = False doesn't work
@@ -1939,6 +1977,7 @@ def run_rms_native_initialization(problem: RmsProblemDae, options: RmsOptions):
                 reduced_system=reduced_system,
                 problem=problem,
                 x=x,
+                event_x=event_x,
                 dx=dx,
                 runtime_params=runtime_params,
                 constant_params=constant_params,

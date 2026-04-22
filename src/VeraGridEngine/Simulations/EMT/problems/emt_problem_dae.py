@@ -964,6 +964,7 @@ class EmtProblemDae(EmtProblemTemplate):
                         variable_parameters=self._variable_parameters,
                         event_parameters_eqs=self._event_parameters_eqs,
                         constant_parameters=self._constant_parameters,
+                        event_param_init_dict=self.event_params_init_dict,
                         init_guess=self.init_guess,
                         diff_init_guess=self.diff_init_guess,
                         uid2idx_vars=self.uid2idx_vars,

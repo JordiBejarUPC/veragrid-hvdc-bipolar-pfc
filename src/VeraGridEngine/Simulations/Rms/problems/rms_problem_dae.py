@@ -19,6 +19,7 @@ from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializ
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
+from VeraGridEngine.Simulations.Rms.initialization_rms import run_rms_native_initialization
 from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import (init_explicit_common,
     build_rms_single_equation_compiler)
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
@@ -380,7 +381,7 @@ class RmsProblemDae(RmsProblemTemplate):
                 if isinstance(elm, Transformer2W):
 
                     if self.options.initialization_method == RmsInitializationMethod.Explicit:
-                        params_array: np.ndarray = np.zeros(len(self._constant_parameters))
+                        params_array_values: np.ndarray = np.zeros(len(self._constant_parameters))
                         diff_sys_vars: Dict[int, Var] = {diff_var.uid: diff_var for diff_var in self._diff_vars}
                         rms_compiler_init = RMSCompiler(
                             variables=list(self.sys_vars.values()),
@@ -423,13 +424,14 @@ class RmsProblemDae(RmsProblemTemplate):
                             variable_parameters=self._variable_parameters,
                             event_parameters_eqs=self._event_parameters_eqs0,
                             constant_parameters=self._constant_parameters,
+                            event_param_init_dict=self.event_params_init_dict,
                             init_guess=self.init_guess,
                             diff_init_guess=diff_init_guess_common,
                             uid2idx_vars=self.uid2idx_vars,
                             uid2idx_diff=self._uid2idx_diff,
                             uid2idx_params=self._uid2idx_params,
                             uid2idx_event_params=self._uid2idx_event_params,
-                            params_array=params_array,
+                            params_array=params_array_values,
                             compile_single_equation=compile_single_equation,
                             verbose=bool(self.options.verbose > 0),
                         )
@@ -591,6 +593,7 @@ class RmsProblemDae(RmsProblemTemplate):
                         variable_parameters=self._variable_parameters,
                         event_parameters_eqs=self._event_parameters_eqs0,
                         constant_parameters=self._constant_parameters,
+                        event_param_init_dict=self.event_params_init_dict,
                         init_guess=self.init_guess,
                         diff_init_guess=diff_init_guess_common,
                         uid2idx_vars=self.uid2idx_vars,
@@ -794,6 +797,7 @@ class RmsProblemDae(RmsProblemTemplate):
                         variable_parameters=self._variable_parameters,
                         event_parameters_eqs=self._event_parameters_eqs0,
                         constant_parameters=self._constant_parameters,
+                        event_param_init_dict=self.event_params_init_dict,
                         init_guess=self.init_guess,
                         diff_init_guess=diff_init_guess_common,
                         uid2idx_vars=self.uid2idx_vars,
@@ -804,6 +808,8 @@ class RmsProblemDae(RmsProblemTemplate):
                         compile_single_equation=compile_single_equation,
                         verbose=bool(self.options.verbose > 0),
                     )
+
+                    run_rms_native_initialization(self, self.options)
 
                 elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
                     raise ValueError("Not implemented initialization method")
@@ -1786,6 +1792,17 @@ class RmsProblemDae(RmsProblemTemplate):
 
         for uid, val in self.init_guess.items():
             i = self._uid2idx_vars[uid]
+            x[i] = val
+        return x
+    def get_eventparams0(self) -> Vec:
+        """
+        Helper function to build the initial vector
+        :return: array matching with the mapping, matching the solver ordering
+        """
+        x = np.zeros(len(self._variable_parameters))
+
+        for uid, val in self.event_params_init_dict.items():
+            i = self._uid2idx_event_params[uid]
             x[i] = val
         return x
 
