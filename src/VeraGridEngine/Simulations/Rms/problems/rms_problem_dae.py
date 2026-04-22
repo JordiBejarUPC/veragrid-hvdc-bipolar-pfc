@@ -15,12 +15,12 @@ from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise,
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector, SymbolicDerivative
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializationMethod, DeviceType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializationMethod
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
-from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import init_explicit_common, \
-    build_rms_single_equation_compiler
+from VeraGridEngine.Utils.Symbolic.explicit_initialization_symbolic import (init_explicit_common,
+    build_rms_single_equation_compiler)
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Devices.Substation.bus import Bus
@@ -295,11 +295,11 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
                 elm.rms_model.unify_blocks()
                 # get parameters from api object
-                if (ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping):
+                if ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping:
                     elm.rms_model.parameters[
                         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
                         float(elm.R / (elm.R ** 2 + elm.X ** 2)))
-                if (ParamPowerFlowRefferenceType.b in elm.rms_model.api_obj_mapping):
+                if ParamPowerFlowRefferenceType.b in elm.rms_model.api_obj_mapping:
                     elm.rms_model.parameters[
                         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
                         float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
@@ -1415,6 +1415,12 @@ class RmsProblemDae(RmsProblemTemplate):
             self._initialize_latched_mode_defaults(t=float(t0), x=self.get_x0())
 
     def def_event_params_fn(self, ev_param: Vec, t: float) -> Vec:
+        """
+
+        :param ev_param:
+        :param t:
+        :return:
+        """
         n_continuous = len(self._runtime_continuous_eqs)
 
         if n_continuous == 0 or self._event_params_fn is None:
@@ -1442,6 +1448,7 @@ class RmsProblemDae(RmsProblemTemplate):
         logic.
 
         :param t:
+        :param x_snapshot:
         :return:
         """
         if self._event_params_fn is None:

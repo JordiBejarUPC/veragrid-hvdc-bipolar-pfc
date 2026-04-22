@@ -44,6 +44,12 @@ else:
 #GRID = "Texas 2000 + VSC"
 #GRID = "IEEE 14.xlsx"
 #GRID = "case_ACTIVSg2000.matpower"
+"""GRIDS: 
+    "IEEE 14.xlsx"
+    "case_ACTIVSg2000.matpower"
+    "Texas 2000 + VSC"
+    "IEEE 118.xlsx"
+"""
 grid_folder = project_base / "Grids_and_profiles" / "grids"
 GRID = "IEEE 118.xlsx"
 USE_CACHED_BUILDER = False
@@ -69,8 +75,18 @@ EXEC_METRICS = {
     "n_vars": 0,
     "t_builder": 0.0,
     "t_solve": 0.0,
-    "is_sparse": False
+    "is_sparse": False,
+    "stops":0
 }
+
+def debug_input(input_bool):
+    """
+    Function to debug
+    """
+    EXEC_METRICS["stops"] = EXEC_METRICS["stops"] + 1
+    if input_bool: input(f"Hola, ens quedem parats {EXEC_METRICS['stops']} vegades")
+    else: print(f"Hola, ens quedem parats {EXEC_METRICS['stops']} vegades")
+
 
 def define_problem_with_path(grid_path):
     """Creates the grid, runs the power flow, and returns the phasor problem."""
@@ -182,7 +198,7 @@ def define_problem_with_path(grid_path):
         check_equation_consistency(phasor_problem)
     if RUN_EXCITER_DIAGNOSTICS:
         debug_exciter_equations(phasor_problem)
-        compare_generator_bus_currents(grid=grid, problem=phasor_problem, pf_results=pf_results)
+        compare_generator_bus_currents(problem=phasor_problem, pf_results=pf_results)
     print("\n[3.0] Exciter diagnostics...")
     #debug_exciter_equations(problem=phasor_problem)
     # ===================================================================
@@ -341,6 +357,7 @@ def op_extraction(problem: vge.RmsProblemPhasor) -> dict:
 
 
 def solve_problem(problem: Any = None) -> Any:
+
     builder = None
 
     if USE_CACHED_BUILDER and os.path.exists(BUILDER_CACHE_FILE):
@@ -352,35 +369,20 @@ def solve_problem(problem: Any = None) -> Any:
         print("  ✓ Builder restored successfully (skipping linearization)")
 
     else:
+
         print("\n[4] Rebuilding equations and extracting exact physics...")
         builder = PolynomialMatrixBuilder(problem=problem, verbose=True)
         v_dict: dict = op_extraction(problem=problem)
 
         print("\n[*] Linearizing model with real parameters...")
         builder.linearize(v_dict=v_dict)
-
-        if USE_CACHED_BUILDER and os.path.exists(BUILDER_CACHE_FILE):
-            print(f"\n[📦] Loading full builder object from '{BUILDER_CACHE_FILE}'...")
-            with open(BUILDER_CACHE_FILE, 'rb') as f:
-                builder = pickle.load(f)
-            print("  ✓ Builder loaded successfully (skipping build and linearization)")
-
             # 2. If it does not exist, build it from scratch and save it
-        else:
-            print("\n[4] Rebuilding equations and extracting exact physics...")
-            builder = PolynomialMatrixBuilder(problem=problem, verbose=True)
-            v_dict: dict = op_extraction(problem=problem)
 
-            print("\n[*] Linearizing model with real parameters...")
-            builder.linearize(v_dict=v_dict)
-
-            #builder.save_state_space(f"trunk/tensygrid/precomputed_matrices/{GRID}")
-
-            if USE_CACHED_BUILDER:
-                print(f"\n[📦] Saving full builder object to '{BUILDER_CACHE_FILE}'...")
-                with open(BUILDER_CACHE_FILE, 'wb') as f:
-                    pickle.dump(builder, f)
-                print("  ✓ Builder saved successfully")
+        if USE_CACHED_BUILDER:
+            print(f"\n[📦] Saving full builder object to '{BUILDER_CACHE_FILE}'...")
+            with open(BUILDER_CACHE_FILE, 'wb') as f:
+                pickle.dump(builder, f)
+            print("  ✓ Builder saved successfully")
 
     # Continue with the normal stability analysis
     # Use automatic routing: sparse for large systems, dense fallback otherwise.
