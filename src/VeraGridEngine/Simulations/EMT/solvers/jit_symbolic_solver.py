@@ -532,7 +532,7 @@ class JitSymbolicSolver:
                  pred_method:DynamicIntegrationMethod = None,
                  dense_threshold: int = 100,
                  verbose: bool = False,
-                 newton_max_iter: int = 20,
+                 newton_max_iter: int = 15,
                  newton_diag_config: NewtonDiagnosticsConfig | None = None)-> None:
         """
         :param problem: The DAE problem definition.

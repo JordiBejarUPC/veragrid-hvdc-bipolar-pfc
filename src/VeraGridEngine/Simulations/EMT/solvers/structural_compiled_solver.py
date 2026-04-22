@@ -2096,7 +2096,7 @@ class StructuralCompiledSolver:
             pred_method: DynamicIntegrationMethod | None = None,
             dense_threshold: int = 100,
             verbose: bool = False,
-            newton_max_iter: int = 20,
+            newton_max_iter: int = 15,
             auto_build: bool = True,
             warmup_policy: StructuralCompiledWarmupPolicy = StructuralCompiledWarmupPolicy.Adaptive,
             sparse_solver_backend_provider: SparseLinearSolverBackendProvider | None = None,

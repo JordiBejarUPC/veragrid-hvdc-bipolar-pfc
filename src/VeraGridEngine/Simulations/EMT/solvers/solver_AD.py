@@ -661,7 +661,7 @@ class JitAdSolver:
                  pred_method: DynamicIntegrationMethod = None,
                  dense_threshold: int = 100,
                  verbose: bool = False,
-                 newton_max_iter: int = 20,
+                 newton_max_iter: int = 15,
                  newton_diag_config: NewtonDiagnosticsConfig | None = None)-> None:
         """
         Initializes the JIT AD Solver.
