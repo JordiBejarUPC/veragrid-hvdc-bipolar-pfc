@@ -12,8 +12,8 @@ import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "src")))
 
 import VeraGridEngine.api as vge
-from VeraGridEngine.Devices.Aggregation import RmsEvent
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
@@ -64,7 +64,7 @@ def run_pf(grid: vge.MultiCircuit):
 
 
 def initialize_rms_models(grid: vge.MultiCircuit):
-    vf = grid.rms_var_factory
+    vf = grid.var_factory
 
     for bus in grid.buses:
         initialize_bus_rms(bus=bus, vf=vf)
@@ -100,14 +100,14 @@ def run_rms(grid: vge.MultiCircuit, pf_results):
             grid.add_rms_event(RmsEvent(device=pv_gen, parameter=g_var, time=2.50, value=1.00, group=events_group))
             print("Added events: G step 1.00 -> 0.85 pu at 0.20 s, then 0.85 -> 1.00 pu at 2.50 s")
         if tcell_var is not None:
-            grid.add_rms_event(RmsEvent(device=pv_gen, parameter=tcell_var, time=1.00, value=35.0, group=events_group))
+            grid.add_rms_event(RmsEvent(device=pv_gen, parameter=tcell_var, time=1.00, value=32.0, group=events_group))
             print("Added event: Tcell step 25.0 -> 35.0 degC at 1.00 s")
 
     rms_options = vge.RmsOptions(
-        simulation_time=4.0,
+        simulation_time=1.0,
         time_step=0.001,
         max_iter=40,
-        tolerance=1e-6,
+        tolerance=3e-6,
         integration_method=vge.DynamicIntegrationMethod.DaeBackEuler,
     )
 

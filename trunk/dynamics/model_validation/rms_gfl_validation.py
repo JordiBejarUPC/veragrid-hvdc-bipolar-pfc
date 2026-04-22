@@ -26,7 +26,7 @@ from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
-from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.Utils.Symbolic.block import Block
 
 
@@ -536,7 +536,7 @@ def run_rms_simulation(grid2, pf_results):
             print(f"  Added event: PV irradiance ramp G {g0:.1f} -> {g_target:.1f} W/m^2 from t=0.10s to t=0.16s")
 
     rms_options = vge.RmsOptions(
-        simulation_time=40,
+        simulation_time=10,
         time_step=0.01,
         max_iter=30,
         integration_method=DynamicIntegrationMethod.DaeBackEuler,

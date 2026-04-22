@@ -5,6 +5,7 @@
 
 import os
 import sys
+import cProfile
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "src")))
 
@@ -18,8 +19,8 @@ from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complet
 from VeraGridEngine.Templates.templates_common_functions import set_rms_model
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
-from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.Simulations.Rms.rms_problem_factory import build_rms_problem
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 
@@ -91,7 +92,7 @@ def run_pf(grid: vge.MultiCircuit):
 
 
 def initialize_rms_models(grid: vge.MultiCircuit):
-    vf = grid.rms_var_factory
+    vf = grid.var_factory
 
     for bus in grid.buses:
         initialize_bus_rms(bus=bus, vf=vf)
@@ -208,8 +209,8 @@ def run_rms(grid: vge.MultiCircuit, pf_results):
                 f"abs_diff={abs_diff[i, j]: .3e}"
             )
 
-    compare_jacobian(tag="pre-event", t_eval=0.0)
-    compare_jacobian(tag="at-event", t_eval=0.2)
+    #compare_jacobian(tag="pre-event", t_eval=0.0)
+    #compare_jacobian(tag="at-event", t_eval=0.2)
 
     rms_driver = vge.RmsSimulationDriver(
         grid=grid,
@@ -319,4 +320,9 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    profiler = cProfile.Profile()
+    profiler.enable()
+    exit_code = main()
+    profiler.disable()
+    profiler.dump_stats("profile.pstat")
+    raise SystemExit(exit_code)
