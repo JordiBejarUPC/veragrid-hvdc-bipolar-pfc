@@ -89,8 +89,6 @@ def iter_dynamic_editor_entries(circuit: Any) -> Iterable[DynamicEditorEntry]:
 
     seen_keys: set[str] = set()
     api_object: Any
-    # circuit_devices =
-    # for api_object in circuit.items():
     for api_object in chain(circuit.get_injection_devices(), circuit.get_branches()):
         entry = build_dynamic_editor_entry(api_object, circuit)
         if entry is None or entry.key_base in seen_keys:
