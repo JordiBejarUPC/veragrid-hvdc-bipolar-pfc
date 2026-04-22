@@ -8777,6 +8777,7 @@ class Assets:
             tem.get_load_ZIP_emt_template(vf=self._var_factory, phA=True, phB=True, phC=True),
             tem.get_pi_line_emt_template(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True),
             tem.get_bergeron_line_emt_template(vf=self._var_factory, phN=False, phA=True, phB=True, phC=True),
+
             # tem.get_transformer_emt_template(vf=self._var_factory),
             # tem.get_xfmr_emt_template(vf=self._var_factory)
         ]
