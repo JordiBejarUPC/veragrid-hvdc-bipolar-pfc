@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Callable, Dict, List, Tuple, Union, Optional
+from typing import Callable, Dict, List, Tuple, Union, Optional, Any
 import numpy as np
 import numba as nb
 import math
@@ -18,7 +18,7 @@ import scipy.sparse.linalg as spla
 
 from collections import defaultdict, deque
 
-from VeraGridEngine.Simulations.Rms.problems import RmsProblemDae
+# from VeraGridEngine.Simulations.Rms.problems import Any
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.enumerations import EmtInitializationMethod, EmtInitializationStatus, RmsInitializationMethod
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
@@ -567,7 +567,7 @@ def _serialize_problem_guess_map(problem: EmtProblemTemplate, guess_map: Dict[in
     return serialized
 
 
-def _restore_problem_guess_map(problem: RmsProblemDae, name_map: Dict[str, float], diff_guess: bool) -> Dict[int, float]:
+def _restore_problem_guess_map(problem: Any, name_map: Dict[str, float], diff_guess: bool) -> Dict[int, float]:
     """
     Restore an initialization guess map from stable variable names.
 
@@ -650,7 +650,7 @@ def _restore_initialization_report_from_payload(
 
 
 def build_persistent_initialization_cache_key(
-        problem: RmsProblemDae,
+        problem: Any,
         unknown_vars: List[Var],
         residual_eqs: List[Expr],
         state_unknown_mask: np.ndarray,
@@ -787,7 +787,7 @@ def _store_persistent_initialization_solution(cache_key: str, payload: Dict[str,
 
 
 def build_reduced_initialization_cache_key(
-        problem: RmsProblemDae,
+        problem: Any,
         unknown_vars: List[Var],
         residual_eqs: List[Expr],
         state_unknown_mask: np.ndarray,
@@ -1320,7 +1320,7 @@ class ReducedInitializationSystem:
 
     def __init__(
             self,
-            problem: RmsProblemDae,
+            problem: Any,
             unknowns: List[Var],
             unknown_vars: List[Var],
             unknown_events: List[Var],
@@ -1363,7 +1363,7 @@ class ReducedInitializationSystem:
         )
 
 
-def build_constant_param_array(problem: RmsProblemDae) -> np.ndarray:
+def build_constant_param_array(problem: Any) -> np.ndarray:
     """
     Build the dense constant-parameter vector used by the initialization solvers.
 
@@ -1374,7 +1374,7 @@ def build_constant_param_array(problem: RmsProblemDae) -> np.ndarray:
     return np.asarray([float(item.value) for item in const_values], dtype=np.float64)
 
 
-def build_runtime_param_array(problem: RmsProblemDae) -> np.ndarray:
+def build_runtime_param_array(problem: Any) -> np.ndarray:
     """
     Build the runtime-parameter snapshot at the initialization time.
 
@@ -1386,7 +1386,7 @@ def build_runtime_param_array(problem: RmsProblemDae) -> np.ndarray:
     return runtime_params
 
 
-def build_state_equation_lookup(problem: RmsProblemDae) -> Dict[int, Expr]:
+def build_state_equation_lookup(problem: Any) -> Dict[int, Expr]:
     """
     Build a UID lookup for state equations.
 
@@ -1405,7 +1405,7 @@ def build_state_equation_lookup(problem: RmsProblemDae) -> Dict[int, Expr]:
     return lookup
 
 
-def extract_unknown_vector(problem: RmsProblemDae, unknown_vars: List[Var], x: np.ndarray) -> np.ndarray:
+def extract_unknown_vector(problem: Any, unknown_vars: List[Var], x: np.ndarray) -> np.ndarray:
     """
     Extract the reduced unknown vector from the full EMT variable vector.
 
@@ -1425,7 +1425,7 @@ def extract_unknown_vector(problem: RmsProblemDae, unknown_vars: List[Var], x: n
 
     return out
 
-def extract_unknown_events_vector(problem: RmsProblemDae, unknown_events: List[Var], event_x: np.ndarray) -> np.ndarray:
+def extract_unknown_events_vector(problem: Any, unknown_events: List[Var], event_x: np.ndarray) -> np.ndarray:
     """
     Extract the reduced unknown vector from the full EMT variable vector.
 
@@ -1446,7 +1446,7 @@ def extract_unknown_events_vector(problem: RmsProblemDae, unknown_events: List[V
     return out
 
 
-def scatter_unknown_vector(problem: RmsProblemDae, unknown_vars: List[Var], x: np.ndarray, reduced_x: np.ndarray) -> None:
+def scatter_unknown_vector(problem: Any, unknown_vars: List[Var], x: np.ndarray, reduced_x: np.ndarray) -> None:
     """
     Scatter the reduced unknown vector back into the full Rms variable vector.
 
@@ -1462,7 +1462,7 @@ def scatter_unknown_vector(problem: RmsProblemDae, unknown_vars: List[Var], x: n
         x[problem.uid2idx_vars[var.uid]] = float(reduced_x[idx])
         idx += 1
 
-def scatter_unknown_event_vector(problem: RmsProblemDae, unknown_events: List[Var], event_x: np.ndarray, reduced_event_x: np.ndarray) -> None:
+def scatter_unknown_event_vector(problem: Any, unknown_events: List[Var], event_x: np.ndarray, reduced_event_x: np.ndarray) -> None:
     """
     Scatter the reduced unknown vector back into the full Rms variable vector.
 
@@ -1480,7 +1480,7 @@ def scatter_unknown_event_vector(problem: RmsProblemDae, unknown_events: List[Va
 
 
 def build_reduced_initialization_system(
-        problem: RmsProblemDae,
+        problem: Any,
         allow_state_equilibrium: bool,
 ) -> ReducedInitializationSystem | None:
     """
@@ -1511,7 +1511,7 @@ def build_reduced_initialization_system(
 
 
 def collect_reduced_initialization_problem(
-        problem: RmsProblemDae,
+        problem: Any,
         allow_state_equilibrium: bool,
 ) -> Tuple[List[Var], List[Var], List[Var], List[Expr], np.ndarray] | None:
     """
@@ -1545,6 +1545,7 @@ def collect_reduced_initialization_problem(
             algebraic_var = algebraic_var
         else:
             unknown_vars.append(algebraic_var)
+            unknowns.append(algebraic_var)
             residual_eqs.append(algebraic_eqs[alg_idx])
             state_unknown_flags.append(0.0)
         alg_idx += 1
@@ -1554,7 +1555,8 @@ def collect_reduced_initialization_problem(
         if evnt_param.uid in problem.event_params_init_dict:
             evnt_param = evnt_param
         else:
-            unknown_vars.append(evnt_param)
+            unknown_events.append(evnt_param)
+            unknowns.append(evnt_param)
             residual_eqs.append(event_params_eqs[evt_params_idx])
             state_unknown_flags.append(0.0)
         evt_params_idx += 1
@@ -1581,7 +1583,7 @@ def collect_reduced_initialization_problem(
 
 def evaluate_initialization_residual(
         reduced_system: ReducedInitializationSystem,
-        problem: RmsProblemDae,
+        problem: Any,
         x: np.ndarray,
         dx: np.ndarray,
         runtime_params: np.ndarray,
@@ -1605,7 +1607,7 @@ def evaluate_initialization_residual(
 
 def evaluate_initialization_jacobian(
         reduced_system: ReducedInitializationSystem,
-        problem: RmsProblemDae,
+        problem: Any,
         x: np.ndarray,
         dx: np.ndarray,
         runtime_params: np.ndarray,
@@ -1674,7 +1676,7 @@ def solve_reduced_linear_system(
 
 def run_reduced_newton_initialization(
         reduced_system: ReducedInitializationSystem,
-        problem: RmsProblemDae,
+        problem: Any,
         event_x: np.ndarray,
         x: np.ndarray,
         dx: np.ndarray,
@@ -1822,7 +1824,7 @@ def _run_reduced_pseudo_transient_initialization(
     return False
 
 
-def apply_solution_to_problem(problem: RmsProblemDae, x: np.ndarray) -> None:
+def apply_solution_to_problem(problem: Any, x: np.ndarray, event_x: np.ndarray) -> None:
     """
     Persist the reduced-solve state vector back into the initialization guess map.
 
@@ -1830,12 +1832,15 @@ def apply_solution_to_problem(problem: RmsProblemDae, x: np.ndarray) -> None:
     :param x: Full EMT variable vector.
     :return: None
     """
-    all_vars: List[Var] = list(problem.get_state_vars()) + list(problem.get_algebraic_vars())
-    for var in all_vars:
+    all_vars: List[Var] = list(problem.state_vars) + list(problem.algebraic_vars)
+    event_params = problem.variable_parameters
+    for var in event_params:
         problem.init_guess[var.uid] = float(x[problem.uid2idx_vars[var.uid]])
+    for var in all_vars:
+        problem.event_params_init_dict[var.uid] = float(event_x[problem.uid2idx_event_params[var.uid]])
+        problem.event_parameters_eqs[problem.uid2idx_event_params[var.uid]] = float(event_x[problem.uid2idx_event_params[var.uid]])
 
-
-def compute_missing_dx0(problem: RmsProblemDae,
+def compute_missing_dx0(problem: Any,
                         x_full: np.ndarray | None = None,
                         dx_full: np.ndarray | None = None,
                         runtime_params: np.ndarray | None = None,
@@ -1931,7 +1936,7 @@ def _build_initialization_system_if_needed(
     return reduced_system
 
 
-def run_rms_native_initialization(problem: RmsProblemDae, options: RmsOptions):
+def run_rms_native_initialization(problem: Any, options: RmsOptions):
     """
     Run the EMT-native initialization stages after PF projection and explicit init.
 
@@ -1953,7 +1958,7 @@ def run_rms_native_initialization(problem: RmsProblemDae, options: RmsOptions):
     reduced_system: ReducedInitializationSystem | None
     runtime_params: np.ndarray
     constant_params: np.ndarray
-    reduced_problem_payload: Tuple[List[Var], List[Expr], np.ndarray] | None
+    reduced_problem_payload: Tuple[List[Var], List[Var], List[Var], List[Expr], np.ndarray] | None
 
 
     reduced_problem_payload = collect_reduced_initialization_problem(
@@ -1963,36 +1968,39 @@ def run_rms_native_initialization(problem: RmsProblemDae, options: RmsOptions):
     )
 
     if reduced_problem_payload is not None:
-        constant_params = build_constant_param_array(problem)
+        if len(reduced_problem_payload[0]) != 0:
+            constant_params = build_constant_param_array(problem)
 
-        reduced_system = ReducedInitializationSystem(
-            problem=problem,
-            unknown_vars=reduced_problem_payload[0],
-            residual_eqs=reduced_problem_payload[1],
-            state_unknown_mask=reduced_problem_payload[2],
-        )
-
-        if reduced_system is not None:
-            converged = run_reduced_newton_initialization(
-                reduced_system=reduced_system,
+            reduced_system = ReducedInitializationSystem(
                 problem=problem,
-                x=x,
-                event_x=event_x,
-                dx=dx,
-                runtime_params=runtime_params,
-                constant_params=constant_params,
-                options=options
+                unknowns=reduced_problem_payload[0],
+                unknown_vars=reduced_problem_payload[1],
+                unknown_events=reduced_problem_payload[2],
+                residual_eqs=reduced_problem_payload[3],
+                state_unknown_mask=reduced_problem_payload[4],
             )
 
-            if converged:
-                apply_solution_to_problem(problem, x)
-                compute_missing_dx0(
-                    problem,
-                    x_full=x,
-                    dx_full=dx,
+            if reduced_system is not None:
+                converged = run_reduced_newton_initialization(
+                    reduced_system=reduced_system,
+                    problem=problem,
+                    x=x,
+                    event_x=event_x,
+                    dx=dx,
                     runtime_params=runtime_params,
                     constant_params=constant_params,
+                    options=options
                 )
+
+                if converged:
+                    apply_solution_to_problem(problem, x, event_x)
+                    compute_missing_dx0(
+                        problem,
+                        x_full=x,
+                        dx_full=dx,
+                        runtime_params=runtime_params,
+                        constant_params=constant_params,
+                    )
 
 
 
