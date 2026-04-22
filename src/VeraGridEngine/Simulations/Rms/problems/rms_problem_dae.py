@@ -122,6 +122,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
         # this is the general init guess that will contain all the variables init value
         self.init_guess: Dict[int, float | int | complex | None] = dict()
+        self.event_params_init_dict: Dict[int, float | int | complex | None] = dict()
         self.sys_block: Block = Block(children=[], in_vars=[])
 
         self._algebraic_vars: List[Var] = list()
@@ -153,7 +154,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
         self._variable_parameters_values: Vec | None = None
         self._last_variable_parameters_values: Vec | None = None
-        self._constant_params: Vec | None = None
+        self._constant_params: Vec = np.zeros(len(self._constant_parameters))
         self._block_boundary_updater: Any | None = None
         self._fmu_cs_adapters: List[object] = list()
         self._fmu_cs_initialized: bool = False
@@ -307,7 +308,7 @@ class RmsProblemDae(RmsProblemTemplate):
                         compile_single_equation = build_rms_single_equation_compiler(rms_compiler_init)
 
                         for param, const in elm.rms_model.parameters.items():
-                            params_array[self._uid2idx_params[param.uid]] = const.value
+                            params_array_values[self._uid2idx_params[param.uid]] = const.value
 
                         # OLD init_explicit path kept for reference
                         # init_explicit(
@@ -664,9 +665,9 @@ class RmsProblemDae(RmsProblemTemplate):
                         compiler_names_dict=self._compiler_names_dict,
                     )
                     compile_single_equation = build_rms_single_equation_compiler(rms_compiler_init)
-
+                    self._constant_params = np.array([const.value for const in self._parameters_values])
                     for param, const in elm.rms_model.parameters.items():
-                        params_array[self._uid2idx_params[param.uid]] = const.value
+                        self._constant_params[self._uid2idx_params[param.uid]] = const.value
 
                     # OLD init_explicit path kept for reference
                     # init_explicit(
@@ -702,7 +703,7 @@ class RmsProblemDae(RmsProblemTemplate):
                         uid2idx_diff=self._uid2idx_diff,
                         uid2idx_params=self._uid2idx_params,
                         uid2idx_event_params=self._uid2idx_event_params,
-                        params_array=params_array,
+                        params_array=self._constant_params,
                         compile_single_equation=compile_single_equation,
                         verbose=bool(self.options.verbose > 0),
                     )
@@ -1157,6 +1158,20 @@ class RmsProblemDae(RmsProblemTemplate):
         return self._algebraic_eqs
 
     @property
+    def variable_parameters(self):
+        """
+        :return:
+        """
+        return self._variable_parameters
+
+    @property
+    def event_parameters_eqs(self):
+        """
+        :return:
+        """
+        return self._event_parameters_eqs
+
+    @property
     def state_and_algebraic_vars(self) -> List[Var]:
         """
         :return:
@@ -1211,6 +1226,18 @@ class RmsProblemDae(RmsProblemTemplate):
         for uid, val in self.init_guess.items():
             i = self._uid2idx_vars[uid]
             x[i] = val
+        return x
+
+    def get_dx0(self) -> Vec:
+        """
+        Helper function to build the initial vector
+        :return: array matching with the mapping, matching the solver ordering
+        """
+        x = np.zeros(len(self._diff_vars))
+
+        # for uid, val in self.init_guess.items():
+        #     i = self._uid2idx_vars[uid]
+        #     x[i] = val
         return x
 
     def get_parameters_values(self) -> List[Const]:
@@ -1402,5 +1429,8 @@ class RmsProblemDae(RmsProblemTemplate):
 
     def get_alias_names_dict(self):
         return self._alias_names_dict
+
+    def get_diff_vars(self):
+        return self._diff_vars
 
 
