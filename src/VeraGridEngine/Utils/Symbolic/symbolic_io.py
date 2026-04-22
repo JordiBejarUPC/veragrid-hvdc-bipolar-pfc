@@ -604,12 +604,14 @@ class BlockParser:
             var = self.var_factory.get_var(entry["var"])
             init_values[var] = Const(entry["value"])
 
-        external_mapping: Dict[VarPowerFlowRefferenceType, Var] = dict()
+        external_mapping: Dict[VarPowerFlowRefferenceType, Var|None] = dict()
         for key_str, var_uid in data["external_mapping"].items():
             key = VarPowerFlowRefferenceType(key_str)
             var_in_varfactory = self.var_factory.find_var_or_diff_var(var_uid)
             if var_in_varfactory is not None:
                 external_mapping[key] = var_in_varfactory
+            else:
+                external_mapping[key] = None
 
         api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var] = dict()
         for key_str, var_uid in data["api_obj_mapping"].items():
