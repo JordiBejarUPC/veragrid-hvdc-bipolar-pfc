@@ -803,7 +803,7 @@ class RmsProblemDae(RmsProblemTemplate):
                         compile_single_equation=compile_single_equation,
                         verbose=bool(self.options.verbose > 0),
                     )
-
+                    # initialize variables with no init equation assigned
                     run_rms_native_initialization(self, self.options)
 
                 elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
@@ -1859,36 +1859,6 @@ class RmsProblemDae(RmsProblemTemplate):
         #     x[i] = val
         return x
 
-    # def get_parameters_values(self) -> List[Const]:
-    #     """
-    #     Return the constant parameter values used by procedural logic bindings.
-    #     """
-    #
-    #     return self._parameters_values
-
-    # def update_variable_params(self, t: float, x_snapshot: Vec | None = None):
-    #     """
-    #     Update the variable parameters
-    #     :param t:
-    #     :return:
-    #     """
-    #     if self._event_params_fn is None:
-    #         raise ValueError("_event_params_fn is None")
-    #
-    #     self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
-    #
-    #     if self._block_boundary_updater is not None and x_snapshot is not None:
-    #         constant_params: Vec
-    #         if self._constant_params is None:
-    #             constant_params = np.zeros(0, dtype=float)
-    #         else:
-    #             constant_params = self._constant_params
-    #
-    #         full_params = np.concatenate((self._variable_parameters_values.copy(), constant_params))
-    #         self._block_boundary_updater.update(float(t), x_snapshot, full_params)
-    #         self._variable_parameters_values[:] = full_params[:self.get_variable_parameter_number()]
-    #     else:
-    #         pass
 
     def initialize_fmu_cs_devices(self, x_snapshot: Vec, t: float = 0.0) -> None:
         """
