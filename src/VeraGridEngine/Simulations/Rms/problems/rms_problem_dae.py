@@ -811,8 +811,8 @@ class RmsProblemDae(RmsProblemTemplate):
 
                     run_rms_native_initialization(self, self.options)
 
-                elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
-                    raise ValueError("Not implemented initialization method")
+                # elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
+                #     raise ValueError("Not implemented initialization method")
 
                 # elif self.options.initialization_method == RmsInitializationMethod.CustomValues:
                 #
@@ -1737,6 +1737,13 @@ class RmsProblemDae(RmsProblemTemplate):
         :return:
         """
         return self._event_parameters_eqs
+
+    @property
+    def event_parameters_eqs0(self):
+        """
+        :return:
+        """
+        return self._event_parameters_eqs0
 
     @property
     def state_and_algebraic_vars(self) -> List[Var]:

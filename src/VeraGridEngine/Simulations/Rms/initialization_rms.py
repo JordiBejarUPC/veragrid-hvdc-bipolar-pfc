@@ -1539,32 +1539,9 @@ def collect_reduced_initialization_problem(
     evt_params_idx: int = 0
 
     # Todo: Improve logic
-    while alg_idx < len(algebraic_vars):
-        algebraic_var: Var = algebraic_vars[alg_idx]
-        if algebraic_var.uid in problem.init_guess:
-            algebraic_var = algebraic_var
-        else:
-            unknown_vars.append(algebraic_var)
-            unknowns.append(algebraic_var)
-            residual_eqs.append(algebraic_eqs[alg_idx])
-            state_unknown_flags.append(0.0)
-        alg_idx += 1
-
-    while evt_params_idx < len(variable_parameters):
-        evnt_param: Var = variable_parameters[evt_params_idx]
-        if evnt_param.uid in problem.event_params_init_dict:
-            evnt_param = evnt_param
-        else:
-            unknown_events.append(evnt_param)
-            unknowns.append(evnt_param)
-            residual_eqs.append(event_params_eqs[evt_params_idx])
-            state_unknown_flags.append(0.0)
-        evt_params_idx += 1
 
     for state_var in problem.state_vars:
-        if state_var.uid in problem.init_guess:
-            state_var = state_var
-        else:
+        if state_var.uid not in problem.init_guess:
             unknown_vars.append(state_var)
             state_unknown_flags.append(1.0)
 
@@ -1574,6 +1551,31 @@ def collect_reduced_initialization_problem(
                 residual_eqs.append(state_eq_lookup[state_var.uid])
             else:
                 residual_eqs.append(state_var)
+
+
+    while alg_idx < len(algebraic_vars):
+        algebraic_var: Var = algebraic_vars[alg_idx]
+        if algebraic_var.uid not in problem.init_guess:
+            unknown_vars.append(algebraic_var)
+            unknowns.append(algebraic_var)
+            residual_eqs.append(algebraic_eqs[alg_idx])
+            state_unknown_flags.append(0.0)
+        alg_idx += 1
+
+
+    while evt_params_idx < len(variable_parameters):
+        evnt_param: Var = variable_parameters[evt_params_idx]
+        if evnt_param.uid not in problem.event_params_init_dict:
+            unknown_events.append(evnt_param)
+            unknowns.append(evnt_param)
+            residual_eqs.append(event_params_eqs[evt_params_idx])
+            state_unknown_flags.append(0.0)
+
+        evt_params_idx += 1
+
+
+
+
 
     if len(unknown_vars) == 0:
         return None
@@ -1709,20 +1711,29 @@ def run_reduced_newton_initialization(
         residual: np.ndarray = evaluate_initialization_residual(reduced_system, problem, x, dx, event_x, constant_params)
         res_norm: float = _max_abs_value(residual)
 
+        if res_norm <= tol:
+            return True
 
         jacobian: sp.csc_matrix = evaluate_initialization_jacobian(reduced_system, problem, x, dx, event_x, constant_params)
         delta: np.ndarray = solve_reduced_linear_system(jacobian, -residual, 48)
 
-        if np.all(np.isfinite(delta)):
-            delta = delta
-        else:
+        if not np.all(np.isfinite(delta)):
             return False
+
+        # split delta array into vars and events
+
 
         alpha: float = 1.0
         accepted: bool = False
         while alpha >= 1.0e-4:
-            trial_reduced_x: np.ndarray = reduced_x + alpha * delta
-            trial_reduced_event_x: np.ndarray = reduced_event_x + alpha * delta
+            if len(reduced_x) != 0:
+                trial_reduced_x: np.ndarray = reduced_x + alpha * delta[:len(reduced_x)]
+            else:
+                trial_reduced_x = reduced_x
+            if len(reduced_event_x) != 0:
+                trial_reduced_event_x: np.ndarray = reduced_event_x + alpha * delta[len(reduced_x):]
+            else:
+                trial_reduced_event_x = reduced_event_x
             scatter_unknown_vector(problem, reduced_system.unknown_vars, x, trial_reduced_x)
             scatter_unknown_event_vector(problem, reduced_system.unknown_events, event_x, trial_reduced_event_x)
             trial_residual: np.ndarray = evaluate_initialization_residual(reduced_system, problem, x, dx, event_x, constant_params)
@@ -1740,10 +1751,12 @@ def run_reduced_newton_initialization(
             reduced_x = reduced_x
             reduced_event_x = reduced_event_x
 
+            iter_idx += 1
+
         else:
             return False
 
-        iter_idx += 1
+
 
     return False
 
@@ -1834,11 +1847,12 @@ def apply_solution_to_problem(problem: Any, x: np.ndarray, event_x: np.ndarray) 
     """
     all_vars: List[Var] = list(problem.state_vars) + list(problem.algebraic_vars)
     event_params = problem.variable_parameters
-    for var in event_params:
-        problem.init_guess[var.uid] = float(x[problem.uid2idx_vars[var.uid]])
     for var in all_vars:
+        problem.init_guess[var.uid] = float(x[problem.uid2idx_vars[var.uid]])
+
+    for var in event_params:
         problem.event_params_init_dict[var.uid] = float(event_x[problem.uid2idx_event_params[var.uid]])
-        problem.event_parameters_eqs[problem.uid2idx_event_params[var.uid]] = float(event_x[problem.uid2idx_event_params[var.uid]])
+        problem.event_parameters_eqs0[problem.uid2idx_event_params[var.uid]] = float(event_x[problem.uid2idx_event_params[var.uid]])
 
 def compute_missing_dx0(problem: Any,
                         x_full: np.ndarray | None = None,
@@ -1852,7 +1866,7 @@ def compute_missing_dx0(problem: Any,
     :param report: Initialization report updated in place.
     :return: None
     """
-    state_eqs: List[Expr] = problem.get_state_eqs()
+    state_eqs: List[Expr] = problem.state_eqs()
     if len(state_eqs) == 0:
         return
     else:
@@ -1862,7 +1876,7 @@ def compute_missing_dx0(problem: Any,
     missing_diff_vars: List[Var]
     missing_state_eqs: List[Expr]
     missing_diff_vars, missing_state_eqs = _collect_missing_dx_problem(problem)
-    report.missing_dx_problem_collect_s = float(time.perf_counter() - phase_t0)
+
 
     if len(missing_diff_vars) == 0:
         return
@@ -1874,14 +1888,13 @@ def compute_missing_dx0(problem: Any,
         x0: np.ndarray = problem.get_x0()
     else:
         x0 = x_full
-    report.x0_rebuild_s = float(time.perf_counter() - phase_t0)
 
     phase_t0 = time.perf_counter()
     if dx_full is None:
         dx0_seed: np.ndarray = problem.get_dx0()
     else:
         dx0_seed = dx_full
-    report.dx0_seed_build_s = float(time.perf_counter() - phase_t0)
+
 
     if runtime_params is None or len(runtime_params) != problem.get_variable_parameter_number():
         runtime_params = build_runtime_param_array(problem)
@@ -1897,16 +1910,16 @@ def compute_missing_dx0(problem: Any,
 
     phase_t0 = time.perf_counter()
     computed_dx: np.ndarray = state_rhs_fn(x0, dx0_seed, runtime_params, constant_params).copy()
-    report.state_rhs_eval_s = float(time.perf_counter() - phase_t0)
+
 
     idx: int = 0
     phase_t0 = time.perf_counter()
     while idx < len(missing_diff_vars):
         diff_var: Var = missing_diff_vars[idx]
         problem.diff_init_guess[diff_var.uid] = float(computed_dx[idx])
-        report.automatic_dx0_count += 1
+
         idx += 1
-    report.missing_dx_scatter_s = float(time.perf_counter() - phase_t0)
+
 
 
 
@@ -1977,7 +1990,7 @@ def run_rms_native_initialization(problem: Any, options: RmsOptions):
                 unknown_vars=reduced_problem_payload[1],
                 unknown_events=reduced_problem_payload[2],
                 residual_eqs=reduced_problem_payload[3],
-                state_unknown_mask=reduced_problem_payload[4],
+                state_unknown_mask=reduced_problem_payload[4]
             )
 
             if reduced_system is not None:
@@ -1994,13 +2007,13 @@ def run_rms_native_initialization(problem: Any, options: RmsOptions):
 
                 if converged:
                     apply_solution_to_problem(problem, x, event_x)
-                    compute_missing_dx0(
-                        problem,
-                        x_full=x,
-                        dx_full=dx,
-                        runtime_params=runtime_params,
-                        constant_params=constant_params,
-                    )
+                    # compute_missing_dx0(
+                    #     problem,
+                    #     x_full=x,
+                    #     dx_full=dx,
+                    #     runtime_params=runtime_params,
+                    #     constant_params=constant_params,
+                    # )
 
 
 

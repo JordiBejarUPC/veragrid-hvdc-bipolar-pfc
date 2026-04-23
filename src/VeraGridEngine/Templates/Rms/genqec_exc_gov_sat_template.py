@@ -241,8 +241,8 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
             # Terminal Voltages and Intensities in dq frame
             Vd: -(inputs[0] * sym.sin(inputs[1] - delta)),
             Vq: (inputs[0] * sym.cos(inputs[1] - delta)),
-            Id: (Pg * Vd + Qg * Vq) / (Vd ** 2 + Vq ** 2),
-            Iq: (Pg * Vq - Qg * Vd) / (Vd ** 2 + Vq ** 2),
+            # Id: (Pg * Vd + Qg * Vq) / (Vd ** 2 + Vq ** 2),
+            # Iq: (Pg * Vq - Qg * Vd) / (Vd ** 2 + Vq ** 2),
             V_dag: (Vd + Id * Ra - Iq * Xl),
             V_qag: (Vq + Iq * Ra + Id * Xl),
 
