@@ -2563,6 +2563,10 @@ class DiagramsMain(CompiledArraysMain):
                                        "Are you sure of this?"):
                         diagram.fill_xy_from_lat_lon(destructive=True)
                         diagram.center_nodes()
+                else:
+                    self.show_warning_toast("No schematic diagram selected!")
+            else:
+                self.show_warning_toast("No diagram selected!")
 
     def set_big_bus_marker(self, buses: List[dev.Bus], color: QtGui.QColor):
         """

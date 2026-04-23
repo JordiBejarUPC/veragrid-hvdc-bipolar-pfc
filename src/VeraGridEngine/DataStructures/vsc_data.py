@@ -27,9 +27,9 @@ class VscData(BranchParentData):
         self.F_dcn = np.zeros(self.nelm, dtype=int)
 
         self.Kdp: Vec = np.ones(self.nelm, dtype=float)
-        self.alpha1: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha1)
-        self.alpha2: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha2)
-        self.alpha3: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha3)
+        self.alpha1: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha1) (idle loss)
+        self.alpha2: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha2) (switching loss)
+        self.alpha3: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha3) (resistive loss)
 
         self.control1: ObjVec = np.full(self.nelm, fill_value=ConverterControlType.Vm_dc, dtype=object)
         self.control2: ObjVec = np.full(self.nelm, fill_value=ConverterControlType.Pac, dtype=object)

@@ -12,8 +12,8 @@ import numpy as np
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "src")))
 
 import VeraGridEngine.api as vge
-from VeraGridEngine.Devices.Aggregation import RmsEvent
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
@@ -64,7 +64,7 @@ def run_pf(grid: vge.MultiCircuit):
 
 
 def initialize_rms_models(grid: vge.MultiCircuit):
-    vf = grid.rms_var_factory
+    vf = grid.var_factory
 
     for bus in grid.buses:
         initialize_bus_rms(bus=bus, vf=vf)

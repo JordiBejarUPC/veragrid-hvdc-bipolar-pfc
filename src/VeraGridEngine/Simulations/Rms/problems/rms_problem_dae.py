@@ -303,11 +303,11 @@ class RmsProblemDae(RmsProblemTemplate):
             else:
                 elm.rms_model.unify_blocks()
                 # get parameters from api object
-                if (ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping):
+                if ParamPowerFlowRefferenceType.g in elm.rms_model.api_obj_mapping:
                     elm.rms_model.parameters[
                         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.g]] = Const(
                         float(elm.R / (elm.R ** 2 + elm.X ** 2)))
-                if (ParamPowerFlowRefferenceType.b in elm.rms_model.api_obj_mapping):
+                if ParamPowerFlowRefferenceType.b in elm.rms_model.api_obj_mapping:
                     elm.rms_model.parameters[
                         elm.rms_model.api_obj_mapping[ParamPowerFlowRefferenceType.b]] = Const(
                         float(-elm.X / (elm.R ** 2 + elm.X ** 2)))
@@ -443,15 +443,16 @@ class RmsProblemDae(RmsProblemTemplate):
                 f = bus_dict[elm.bus_from]
                 t = bus_dict[elm.bus_to]
 
-                if VarPowerFlowRefferenceType.Pf in elm.rms_model.external_mapping:
-                    setP(P, P_used, f, -elm.rms_model.E(VarPowerFlowRefferenceType.Pf))
-                if VarPowerFlowRefferenceType.Pt in elm.rms_model.external_mapping:
-                    setP(P, P_used, t, -elm.rms_model.E(VarPowerFlowRefferenceType.Pt))
+                setP(P, P_used, f, -elm.rms_model.E(VarPowerFlowRefferenceType.Pf))
+                setP(P, P_used, t, -elm.rms_model.E(VarPowerFlowRefferenceType.Pt))
                 if not elm.bus_from.is_dc and VarPowerFlowRefferenceType.Qf in elm.rms_model.external_mapping:
                     setQ(Q, Q_used, f, -elm.rms_model.E(VarPowerFlowRefferenceType.Qf))
+                else:
+                    pass
                 if not elm.bus_to.is_dc and VarPowerFlowRefferenceType.Qt in elm.rms_model.external_mapping:
                     setQ(Q, Q_used, t, -elm.rms_model.E(VarPowerFlowRefferenceType.Qt))
-
+                else:
+                    pass
         # Populating VSCs init guess
         for i, elm in enumerate(self.grid.get_vsc()):
             if elm.rms_model.empty():
@@ -1158,9 +1159,19 @@ class RmsProblemDae(RmsProblemTemplate):
             return
 
         for parameter, expression in mdl.event_dict.items():
+            init_eq_for_parameter: Expr | Const | None = None
+            for init_var, init_eq in mdl.init_eqs.items():
+                if init_var.uid == parameter.uid:
+                    init_eq_for_parameter = init_eq
+                    break
+
+            expression_for_classification: Expr | Const = expression
+            if isinstance(expression, Const) and expression.value is None and init_eq_for_parameter is not None:
+                expression_for_classification = init_eq_for_parameter
+
             self._event_parameter_device_idtags[parameter.uid] = dev.idtag
 
-            if self._expression_references_system_vars(expression):
+            if self._expression_references_system_vars(expression_for_classification):
                 self._discrete_event_parameter_uids.add(parameter.uid)
             else:
                 self._continuous_event_parameter_uids.add(parameter.uid)
@@ -1429,28 +1440,46 @@ class RmsProblemDae(RmsProblemTemplate):
 
     def def_event_params_fn(self, ev_param: Vec, t: float) -> Vec:
         """
+        Evaluate runtime event parameter expressions while preserving mode latches.
 
-        :param ev_param:
-        :param t:
-        :return:
+        :param ev_param: Current runtime parameter vector.
+        :param t: Simulation time.
+        :return: Updated runtime parameter vector.
         """
-        n_continuous = len(self._runtime_continuous_eqs)
+        try:
+            runtime_continuous_eqs = self._runtime_continuous_eqs
+        except AttributeError:
+            if self._event_params_fn is None:
+                return ev_param
+
+            updated = self._event_params_fn(ev_param, t)
+            updated = self._event_params_fn(updated, t)
+
+            return updated
+
+        n_continuous = len(runtime_continuous_eqs)
+
 
         if n_continuous == 0 or self._event_params_fn is None:
             return ev_param
 
+        try:
+            runtime_mode_slice = self._runtime_mode_slice
+        except AttributeError:
+            runtime_mode_slice = slice(0, 0)
+
         mode_snapshot: Vec | None = None
-        if self._runtime_mode_slice.start != self._runtime_mode_slice.stop:
-            mode_snapshot = ev_param[self._runtime_mode_slice].copy()
+        if runtime_mode_slice.start != runtime_mode_slice.stop:
+            mode_snapshot = ev_param[runtime_mode_slice].copy()
 
         updated = self._event_params_fn(ev_param, t)
         updated = self._event_params_fn(updated, t)
 
-        if self._runtime_mode_slice.start == self._runtime_mode_slice.stop:
+        if runtime_mode_slice.start == runtime_mode_slice.stop:
             return updated
         else:
             assert mode_snapshot is not None
-            updated[self._runtime_mode_slice] = mode_snapshot
+            updated[runtime_mode_slice] = mode_snapshot
 
             return updated
 
@@ -1461,6 +1490,7 @@ class RmsProblemDae(RmsProblemTemplate):
         logic.
 
         :param t:
+        :param x_snapshot:
         :return:
         """
         if self._event_params_fn is None:
@@ -1555,17 +1585,27 @@ class RmsProblemDae(RmsProblemTemplate):
             self._alias_names_dict[ep.uid] = f"{self.VARIABLE_PARAMS_NAME}_{self._n_event_params}"
             self._uid2idx_event_params[ep.uid] = self._n_event_params
 
+            effective_eq: Expr | Const = eq
+            if isinstance(eq, Const) and eq.value is None:
+                init_eq_for_ep: Expr | Const | None = None
+                for init_var, init_eq in mdl.init_eqs.items():
+                    if init_var.uid == ep.uid:
+                        init_eq_for_ep = init_eq
+                        break
+                if init_eq_for_ep is not None:
+                    effective_eq = init_eq_for_ep
+
             self._variable_parameters.append(ep)
-            self._event_parameters_eqs0.append(eq)
+            self._event_parameters_eqs0.append(effective_eq)
             self._runtime_all_parameters_source.append(ep)
-            runtime_expression: Expr | Const = eq if runtime_eq is None else runtime_eq
+            runtime_expression: Expr | Const = effective_eq if runtime_eq is None else runtime_eq
 
             if runtime_eq is None and ep.uid in self._discrete_event_parameter_uids:
                 if isinstance(eq, Const) and eq.value is not None:
                     runtime_expression = Const(float(eq.value))
                 else:
                     runtime_expression = Const(0.0)
-                    self._mode_runtime_expression_by_uid[ep.uid] = eq
+                    self._mode_runtime_expression_by_uid[ep.uid] = effective_eq
 
             self._runtime_all_eqs_source.append(runtime_expression)
             self._runtime_all_eqs_source0.append(runtime_expression)

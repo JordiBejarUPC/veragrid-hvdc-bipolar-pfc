@@ -199,6 +199,7 @@ class BackEulerImplicitIntegration:
                     n_iter = 0
                     substep_converged = False
                     tol = self.tol
+                    tol = 1e-6
 
                     while not substep_converged and n_iter < self.max_iter_0:
                         if step_idx == 0 and is_first_local_step:
@@ -229,6 +230,7 @@ class BackEulerImplicitIntegration:
                                 for i in non_zero_indexes:
                                     eq = all_eq[i]
                                     print(f"eq {eq} with error {rhs[i]}")
+
 
                         if not substep_converged:
                             solved = False
@@ -292,7 +294,7 @@ class BackEulerImplicitIntegration:
                     break
 
                 lag_update_start = time.time()
-                print(f"converged is {True} at step {step_idx}")
+                print(f'converged is {True} at step {step_idx} with {n_iter} iterations')
 
                 self.y[step_idx + 1, :] = x_prev
                 self.t[step_idx + 1] = t_macro_target

@@ -1082,12 +1082,18 @@ class EmtProblemDae(EmtProblemTemplate):
             VarPowerFlowRefferenceType.vt_B,
             VarPowerFlowRefferenceType.vt_C,
         }
-
         ac_phases = [
             VarPowerFlowRefferenceType.v_N,
             VarPowerFlowRefferenceType.v_A,
             VarPowerFlowRefferenceType.v_B,
             VarPowerFlowRefferenceType.v_C,
+        ]
+
+        ac_phases_value = [
+            VarPowerFlowRefferenceType.v_N.value,
+            VarPowerFlowRefferenceType.v_A.value,
+            VarPowerFlowRefferenceType.v_B.value,
+            VarPowerFlowRefferenceType.v_C.value,
         ]
 
         bus_phase_connections: Dict[Tuple[Any, VarPowerFlowRefferenceType], Set[str]] = dict()
@@ -1154,6 +1160,10 @@ class EmtProblemDae(EmtProblemTemplate):
                                 bus_phase = phase_ref_to_bus_phase[in_var.ref]
 
                                 if in_var.ref in {
+                                    VarPowerFlowRefferenceType.vf_N.value,
+                                    VarPowerFlowRefferenceType.vf_A.value,
+                                    VarPowerFlowRefferenceType.vf_B.value,
+                                    VarPowerFlowRefferenceType.vf_C.value,
                                     VarPowerFlowRefferenceType.vf_N,
                                     VarPowerFlowRefferenceType.vf_A,
                                     VarPowerFlowRefferenceType.vf_B,
@@ -1161,6 +1171,10 @@ class EmtProblemDae(EmtProblemTemplate):
                                 }:
                                     bus_phase_connections[(br_bus_from, bus_phase)].add(f"branch_from:{br.name}")
                                 elif in_var.ref in {
+                                    VarPowerFlowRefferenceType.vt_N.value,
+                                    VarPowerFlowRefferenceType.vt_A.value,
+                                    VarPowerFlowRefferenceType.vt_B.value,
+                                    VarPowerFlowRefferenceType.vt_C.value,
                                     VarPowerFlowRefferenceType.vt_N,
                                     VarPowerFlowRefferenceType.vt_A,
                                     VarPowerFlowRefferenceType.vt_B,
@@ -1192,7 +1206,9 @@ class EmtProblemDae(EmtProblemTemplate):
                     pass
                 else:
                     for in_var in inj_emt_model.in_vars:
-                        if in_var.ref in ac_phases:
+                        if in_var.ref in ac_phases_value:
+                            bus_phase_connections[(inj_bus, in_var.ref)].add(f"injection:{inj.name}")
+                        elif in_var.ref in ac_phases:
                             bus_phase_connections[(inj_bus, in_var.ref)].add(f"injection:{inj.name}")
                         else:
                             pass
@@ -4803,18 +4819,24 @@ class EmtProblemDae(EmtProblemTemplate):
         # 1. Handle the XFMR EMT transformer mapping before the classical
         # transformer path and before the line path.
         #
-        # Only quantities that are directly available on Transformer2W or can be
-        # robustly derived from its electrical test data belong to api_obj_mapping.
-        # Template-owned modelling options and defaults remain in event_dict.
+        # This path assigns only quantities that come directly from the static
+        # Transformer2W object or require only minimal direct processing.
+        #
+        # All model-owned derived quantities such as:
+        #   - xfmr_sc_resistance_pct
+        #   - xfmr_core_linear_l_pu
+        #   - xfmr_core_a_prime
+        #   - xfmr_core_b_prime
+        #
+        # are intentionally left to the XFMR template event_dict.
         # -----------------------------
         xfmr_keys: list[ParamPowerFlowRefferenceType] = list([
             ParamPowerFlowRefferenceType.transformer_rated_power_mva,
             ParamPowerFlowRefferenceType.transformer_open_circuit_current_pct,
             ParamPowerFlowRefferenceType.transformer_open_circuit_loss_kw,
             ParamPowerFlowRefferenceType.transformer_short_circuit_voltage_pct,
-            ParamPowerFlowRefferenceType.transformer_short_circuit_resistance_pct,
+            ParamPowerFlowRefferenceType.transformer_short_circuit_loss_kw,
             ParamPowerFlowRefferenceType.transformer_tap_ratio,
-            ParamPowerFlowRefferenceType.transformer_linear_core_inductance_pu_s,
             ParamPowerFlowRefferenceType.transformer_from_connection_aa,
             ParamPowerFlowRefferenceType.transformer_to_connection_aa,
         ])
@@ -4823,34 +4845,25 @@ class EmtProblemDae(EmtProblemTemplate):
         if has_xfmr_mapping:
             if isinstance(br, Transformer2W):
                 w0: float = 2.0 * np.pi * float(self.grid.fBase)
-                eps_value: float = 1e-12
+                eps_value: float = 1.0e-12
 
-                sn_value: float = max(float(br.Sn), 1e-9)
+                sn_value: float = max(float(br.Sn), 1.0e-9)
                 pcu_kw_value: float = max(float(br.Pcu), 0.0)
                 pfe_kw_value: float = max(float(br.Pfe), 0.0)
                 i0_pct_value: float = max(float(br.I0), 0.0)
-                tap_module_value: float = float(br.tap_module) if abs(float(br.tap_module)) > eps_value else 1.0
+
+                tap_module_value: float = float(br.tap_module)
+                if abs(tap_module_value) <= eps_value:
+                    tap_module_value = 1.0
+                else:
+                    pass
 
                 if float(br.Vsc) > 0.0:
                     vsc_pct_value: float = float(br.Vsc)
                 else:
-                    vsc_pct_value = 100.0 * np.sqrt(max(float(br.R) * float(br.R) + float(br.X) * float(br.X), 0.0))
-
-                if pcu_kw_value > 0.0:
-                    sc_resistance_pct_value: float = pcu_kw_value / (10.0 * sn_value)
-                else:
-                    sc_resistance_pct_value = 100.0 * max(float(br.R), 0.0)
-
-                oc_loss_pu_value: float = pfe_kw_value / (1000.0 * sn_value)
-                oc_current_pu_value: float = i0_pct_value / 100.0
-                i_mag_pu_value: float = np.sqrt(
-                    max(oc_current_pu_value * oc_current_pu_value - oc_loss_pu_value * oc_loss_pu_value, 0.0)
-                )
-
-                if i_mag_pu_value > eps_value:
-                    linear_lm_value: float = 1.0 / i_mag_pu_value
-                else:
-                    linear_lm_value = 1e6
+                    vsc_pct_value = 100.0 * np.sqrt(
+                        max(float(br.R) * float(br.R) + float(br.X) * float(br.X), 0.0)
+                    )
 
                 c_f_matrix: np.ndarray = _xfmr_connection_matrix(br.conn_f)
                 c_t_matrix: np.ndarray = _xfmr_connection_matrix(br.conn_t)
@@ -4884,18 +4897,13 @@ class EmtProblemDae(EmtProblemTemplate):
                 )
                 self._assign_api_obj_param_if_present(
                     br.emt_model,
-                    ParamPowerFlowRefferenceType.transformer_short_circuit_resistance_pct,
-                    sc_resistance_pct_value,
+                    ParamPowerFlowRefferenceType.transformer_short_circuit_loss_kw,
+                    pcu_kw_value,
                 )
                 self._assign_api_obj_param_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_tap_ratio,
                     tap_module_value,
-                )
-                self._assign_api_obj_param_if_present(
-                    br.emt_model,
-                    ParamPowerFlowRefferenceType.transformer_linear_core_inductance_pu_s,
-                    linear_lm_value,
                 )
 
                 self._assign_api_obj_param_if_present(

@@ -13,8 +13,8 @@ import numpy as np
 import VeraGridEngine.api as vge
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCPowerLimitedSource
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
-from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 
 import rms_gfl_validation as base
 
@@ -22,7 +22,7 @@ import rms_gfl_validation as base
 def initialize_grid2_rms_models_power_limited(grid2, pf_results):
     base.initialize_grid2_rms_models(grid2, pf_results)
 
-    vf = grid2.rms_var_factory
+    vf = grid2.var_factory
     dc_gen = next((g for g in grid2.generators if g.bus.is_dc), None)
     if dc_gen is None:
         return

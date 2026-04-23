@@ -156,8 +156,8 @@ set_emt_model(device=load, model=load_mdl, var_factory=circuit.var_factory)
 # Template-owned XFMR parameters: set them explicitly through event_dict.
 # These names follow the XFMR template naming convention.
 # ---------------------------------------------------------------------
-xfmr_mdl.set_parameter_in_model(var_name='xfmr_use_linear_core_xfmr_test', new_value=1.0)
-xfmr_mdl.set_parameter_in_model(var_name='xfmr_c_term_xfmr_test', new_value=0.0)
+xfmr_mdl.set_parameter_in_model(var_name='xfmr_use_linear_core_xfmr_test', new_value=1.0) # USING THE FROHLICH CURVE
+xfmr_mdl.set_parameter_in_model(var_name='xfmr_c_term_xfmr_test', new_value=1e-6)
 xfmr_mdl.set_parameter_in_model(var_name='xfmr_core_topology_code_xfmr_test', new_value=3.0)
 xfmr_mdl.set_parameter_in_model(var_name='xfmr_yoke_area_rel_xfmr_test', new_value=1.0)
 xfmr_mdl.set_parameter_in_model(var_name='xfmr_yoke_length_rel_xfmr_test', new_value=1.0)
@@ -166,7 +166,7 @@ xfmr_mdl.set_parameter_in_model(var_name='xfmr_outer_leg_length_rel_xfmr_test', 
 
 # Optional nonlinear-core tuning defaults. These do not affect the run while
 # xfmr_use_linear_core_xfmr_test = 1, but setting them keeps the example explicit.
-xfmr_mdl.set_parameter_in_model(var_name='xfmr_core_knee_flux_mult_xfmr_test', new_value=1.05)
+xfmr_mdl.set_parameter_in_model(var_name='xfmr_core_knee_flux_mult_xfmr_test', new_value=1.50)
 xfmr_mdl.set_parameter_in_model(var_name='xfmr_core_knee_current_mult_xfmr_test', new_value=8.0)
 
 
@@ -203,7 +203,7 @@ print(pf_results.get_branch_df())
 # =====================================================================
 options = EmtOptions(
     time_step=10e-6,
-    simulation_time=0.04,
+    simulation_time=0.06,
     tolerance=1e-6,
     solver_type=EmtSolverTypes.Symbolic,
     integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
@@ -254,13 +254,13 @@ print('\nSimulation completed successfully!')
 t_sim = np.asarray(t).reshape(-1)
 
 # Bus voltages
-vA_hv = get_series(problem, y, find_name_in_block('v_A_emt_bus_template', bus_hv.emt_model))
-vB_hv = get_series(problem, y, find_name_in_block('v_B_emt_bus_template', bus_hv.emt_model))
-vC_hv = get_series(problem, y, find_name_in_block('v_C_emt_bus_template', bus_hv.emt_model))
+vA_hv = get_series(problem, y, find_name_in_block('v_A_Bus_HV_emt_template', bus_hv.emt_model))
+vB_hv = get_series(problem, y, find_name_in_block('v_B_Bus_HV_emt_template', bus_hv.emt_model))
+vC_hv = get_series(problem, y, find_name_in_block('v_C_Bus_HV_emt_template', bus_hv.emt_model))
 
-vA_lv = get_series(problem, y, find_name_in_block('v_A_emt_bus_template', bus_lv.emt_model))
-vB_lv = get_series(problem, y, find_name_in_block('v_B_emt_bus_template', bus_lv.emt_model))
-vC_lv = get_series(problem, y, find_name_in_block('v_C_emt_bus_template', bus_lv.emt_model))
+vA_lv = get_series(problem, y, find_name_in_block('v_A_Bus_LV_emt_template', bus_lv.emt_model))
+vB_lv = get_series(problem, y, find_name_in_block('v_B_Bus_LV_emt_template', bus_lv.emt_model))
+vC_lv = get_series(problem, y, find_name_in_block('v_C_Bus_LV_emt_template', bus_lv.emt_model))
 
 # Transformer terminal currents
 ifA = get_series(problem, y, find_name_in_block('if_A_xfmr_test', xfmr_mdl))
@@ -346,5 +346,33 @@ plt.xlabel('Time [s]')
 plt.ylabel('Per-unit / state value')
 plt.grid(True)
 plt.legend(loc='upper right')
+plt.tight_layout()
+plt.show()
+
+vcm_hv = (vA_hv + vB_hv + vC_hv) / 3.0
+vab_hv = vA_hv - vB_hv
+vbc_hv = vB_hv - vC_hv
+vca_hv = vC_hv - vA_hv
+
+plt.figure(figsize=(12, 8))
+
+plt.subplot(2, 1, 1)
+plt.plot(t_sim, vcm_hv, label='HV common-mode voltage')
+plt.title('HV bus common-mode voltage')
+plt.xlabel('Time [s]')
+plt.ylabel('Voltage [p.u.]')
+plt.grid(True)
+plt.legend()
+
+plt.subplot(2, 1, 2)
+plt.plot(t_sim, vab_hv, label='Vab')
+plt.plot(t_sim, vbc_hv, label='Vbc')
+plt.plot(t_sim, vca_hv, label='Vca')
+plt.title('HV bus line-to-line voltages')
+plt.xlabel('Time [s]')
+plt.ylabel('Voltage [p.u.]')
+plt.grid(True)
+plt.legend()
+
 plt.tight_layout()
 plt.show()

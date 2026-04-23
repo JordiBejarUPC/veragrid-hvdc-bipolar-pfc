@@ -4,7 +4,25 @@ import numpy as np
 
 # Assuming these modules are in the correct fully qualified path as per eRoots rules
 from PolynomialMatrixBuilder import PolynomialMatrixBuilder
-from trunk.tensygrid.MTI_problem import MTI_Problem
+
+
+
+try:
+    print("primer try")
+    from MTI_problem import MTI_Problem
+except ModuleNotFoundError:
+    try:
+        print("segon try")
+        import sys, os
+        sys.path.extend([os.path.abspath('.'), os.path.abspath('../../src')])
+        from MTI_problem import MTI_Problem
+    except ModuleNotFoundError:
+        try:
+            print("tercer try")
+            from ..tensygrid.MTI_problem import MTI_Problem
+        except ModuleNotFoundError:
+            from VeraGrid.trunk.tensygrid.MTI_problem import MTI_Problem
+
 from small_signal_tensygrid import define_problem, op_extraction, solve_problem
 from scipy.optimize import linear_sum_assignment
 
