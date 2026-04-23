@@ -317,11 +317,18 @@ def plot_eigenvalues(eigenvalue_dict: dict):
         # Extract real and imaginary parts
         reals = np.real(evs)
         imags = np.imag(evs)
-
-        plt.scatter(reals, imags,
+        mask_stable = reals <= 0
+        plt.scatter(reals[mask_stable], imags[mask_stable],
                     marker=markers[i % len(markers)],
-                    color=colors[i % len(colors)],
+                    color="green",
                     label=name,
+                    alpha=0.7,
+                    s=60)
+        mask_unstable = reals > 0
+        plt.scatter(reals[mask_unstable], imags[mask_unstable],
+                    marker=markers[i % len(markers)],
+                    color="red",
+                    label=f"{name} (Unstable)",
                     alpha=0.7,
                     s=60)
 
@@ -401,6 +408,3 @@ if __name__ == "__main__":
                 f"exec_time_solve: {EXEC_METRICS['t_solve']:.4f} sec, "
                 f"sparse: {EXEC_METRICS['is_sparse']}"
             )
-
-
-
