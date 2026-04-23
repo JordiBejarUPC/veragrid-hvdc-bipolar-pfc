@@ -1082,17 +1082,10 @@ class EmtProblemDae(EmtProblemTemplate):
             VarPowerFlowRefferenceType.vt_C,
         }
         ac_phases = [
-            VarPowerFlowRefferenceType.v_N.value,
-            VarPowerFlowRefferenceType.v_A.value,
-            VarPowerFlowRefferenceType.v_B.value,
-            VarPowerFlowRefferenceType.v_C.value,
-        ]
-
-        ac_phases_value = [
-            VarPowerFlowRefferenceType.v_N.value,
-            VarPowerFlowRefferenceType.v_A.value,
-            VarPowerFlowRefferenceType.v_B.value,
-            VarPowerFlowRefferenceType.v_C.value,
+            VarPowerFlowRefferenceType.v_N,
+            VarPowerFlowRefferenceType.v_A,
+            VarPowerFlowRefferenceType.v_B,
+            VarPowerFlowRefferenceType.v_C,
         ]
 
         bus_phase_connections: Dict[Tuple[Any, VarPowerFlowRefferenceType], Set[str]] = dict()
@@ -1159,17 +1152,17 @@ class EmtProblemDae(EmtProblemTemplate):
                                 bus_phase = phase_ref_to_bus_phase[in_var.ref]
 
                                 if in_var.ref in {
-                                    VarPowerFlowRefferenceType.vf_N.value,
-                                    VarPowerFlowRefferenceType.vf_A.value,
-                                    VarPowerFlowRefferenceType.vf_B.value,
-                                    VarPowerFlowRefferenceType.vf_C.value,
+                                    VarPowerFlowRefferenceType.vf_N,
+                                    VarPowerFlowRefferenceType.vf_A,
+                                    VarPowerFlowRefferenceType.vf_B,
+                                    VarPowerFlowRefferenceType.vf_C,
                                 }:
                                     bus_phase_connections[(br_bus_from, bus_phase)].add(f"branch_from:{br.name}")
                                 elif in_var.ref in {
-                                    VarPowerFlowRefferenceType.vt_N.value,
-                                    VarPowerFlowRefferenceType.vt_A.value,
-                                    VarPowerFlowRefferenceType.vt_B.value,
-                                    VarPowerFlowRefferenceType.vt_C.value,
+                                    VarPowerFlowRefferenceType.vt_N,
+                                    VarPowerFlowRefferenceType.vt_A,
+                                    VarPowerFlowRefferenceType.vt_B,
+                                    VarPowerFlowRefferenceType.vt_C,
                                 }:
                                     bus_phase_connections[(br_bus_to, bus_phase)].add(f"branch_to:{br.name}")
                                 else:
@@ -1197,7 +1190,7 @@ class EmtProblemDae(EmtProblemTemplate):
                     pass
                 else:
                     for in_var in inj_emt_model.in_vars:
-                        if in_var.ref in ac_phases_value:
+                        if in_var.ref in ac_phases:
                             bus_phase_connections[(inj_bus, in_var.ref)].add(f"injection:{inj.name}")
                         else:
                             pass

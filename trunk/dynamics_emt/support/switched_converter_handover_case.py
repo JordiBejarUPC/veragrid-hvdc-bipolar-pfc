@@ -222,6 +222,9 @@ class SwitchedConverterHandoverTrace:
     :param total_newton_iterations: Total Newton iterations.
     :param jacobian_evaluations: Total Jacobian evaluations.
     :param aligned_substeps: Forced aligned substeps.
+    :param failed_substeps: Number of EMT local substeps that exhausted the Newton iterations.
+    :param first_failed_time_s: First simulation time where one EMT local substep failed to converge.
+    :param failed_substep_times_s_arr: Exact simulation times where one EMT local substep failed to converge.
     :return: None.
     """
 
@@ -268,6 +271,9 @@ class SwitchedConverterHandoverTrace:
         "total_newton_iterations",
         "jacobian_evaluations",
         "aligned_substeps",
+        "failed_substeps",
+        "first_failed_time_s",
+        "failed_substep_times_s_arr",
     ])
 
     def __init__(
@@ -314,6 +320,9 @@ class SwitchedConverterHandoverTrace:
             total_newton_iterations: float,
             jacobian_evaluations: float,
             aligned_substeps: float,
+            failed_substeps: float,
+            first_failed_time_s: float,
+            failed_substep_times_s_arr: np.ndarray,
     ) -> None:
         self.t_arr: np.ndarray = t_arr
         self.mode_t_arr: np.ndarray = mode_t_arr
@@ -357,6 +366,9 @@ class SwitchedConverterHandoverTrace:
         self.total_newton_iterations: float = float(total_newton_iterations)
         self.jacobian_evaluations: float = float(jacobian_evaluations)
         self.aligned_substeps: float = float(aligned_substeps)
+        self.failed_substeps: float = float(failed_substeps)
+        self.first_failed_time_s: float = float(first_failed_time_s)
+        self.failed_substep_times_s_arr: np.ndarray = failed_substep_times_s_arr
 
     def get_pre_handover_mask(self, margin_s: float = 1.0e-12) -> np.ndarray:
         """
@@ -816,6 +828,11 @@ def build_switched_vsc_case(
         p_transfer_mw: float = 30.0,
         pf_seed_p_transfer_mw: float | None = None,
         omega_sw_hz: float = 1000.0,
+        r_eq_pu: float = 0.03,
+        l_eq_pu: float = 1.0,
+        q_kp: float = 1.6,
+        q_ki: float = 60.0,
+        tau_meas_s: float = 0.005,
 ) -> SwitchedConverterCaseContext:
     """
     Build the switched EMT VSC validation case.
@@ -824,6 +841,11 @@ def build_switched_vsc_case(
     :param p_transfer_mw: Active-power transfer absorbed by the DC load in MW.
     :param pf_seed_p_transfer_mw: Optional active-power value used only for the PF seed.
     :param omega_sw_hz: PWM switching frequency in hertz.
+    :param r_eq_pu: AC filter resistance in pu.
+    :param l_eq_pu: AC filter inductance in pu.
+    :param q_kp: Reactive-power loop proportional gain.
+    :param q_ki: Reactive-power loop integral gain.
+    :param tau_meas_s: Reactive and active power measurement time constant in seconds.
     :return: Structured case context.
     """
     resolved_pf_seed_p_transfer_mw: float = float(p_transfer_mw if pf_seed_p_transfer_mw is None else pf_seed_p_transfer_mw)
@@ -877,21 +899,23 @@ def build_switched_vsc_case(
     dc_load_mdl = get_dc_load_emt_template(vf=grid.var_factory, name="dc_load_emt_switched").block
 
     # Align the switched case with the pseudo-EMT reference tuning on the same physical topology.
-    vsc_mdl.set_parameter_in_model(var_name=f"R_eq_{vsc.name}", new_value=0.03)
+    vsc_mdl.set_parameter_in_model(var_name=f"R_eq_{vsc.name}", new_value=r_eq_pu)
     # The switched benchmark needs a stronger AC filter than the pseudo-EMT average model so that the
     # bus voltage remains close to a sinusoidal waveform while the bridge still commutates explicitly.
-    vsc_mdl.set_parameter_in_model(var_name=f"L_eq_{vsc.name}", new_value=1.0)
+    vsc_mdl.set_parameter_in_model(var_name=f"L_eq_{vsc.name}", new_value=l_eq_pu)
     vsc_mdl.set_parameter_in_model(var_name=f"pll_kp_{vsc.name}", new_value=40.0)
     vsc_mdl.set_parameter_in_model(var_name=f"pll_ki_{vsc.name}", new_value=400.0)
     vsc_mdl.set_parameter_in_model(var_name=f"i_kp_{vsc.name}", new_value=0.6)
     vsc_mdl.set_parameter_in_model(var_name=f"i_ki_{vsc.name}", new_value=50.0)
     vsc_mdl.set_parameter_in_model(var_name=f"vdc_kp_{vsc.name}", new_value=2.0)
     vsc_mdl.set_parameter_in_model(var_name=f"vdc_ki_{vsc.name}", new_value=30.0)
-    vsc_mdl.set_parameter_in_model(var_name=f"q_kp_{vsc.name}", new_value=0.8)
-    vsc_mdl.set_parameter_in_model(var_name=f"q_ki_{vsc.name}", new_value=20.0)
+    # The switched bridge needs a faster q-loop and power measurement than the averaged reference
+    # case so the filtered reactive-power channel recovers within one fundamental cycle.
+    vsc_mdl.set_parameter_in_model(var_name=f"q_kp_{vsc.name}", new_value=q_kp)
+    vsc_mdl.set_parameter_in_model(var_name=f"q_ki_{vsc.name}", new_value=q_ki)
     vsc_mdl.set_parameter_in_model(var_name=f"i_max_{vsc.name}", new_value=1.3)
     vsc_mdl.set_parameter_in_model(var_name=f"m_max_{vsc.name}", new_value=0.95)
-    vsc_mdl.set_parameter_in_model(var_name=f"tau_meas_{vsc.name}", new_value=0.01)
+    vsc_mdl.set_parameter_in_model(var_name=f"tau_meas_{vsc.name}", new_value=tau_meas_s)
     vsc_mdl.set_parameter_in_model(var_name=f"aw_gain_{vsc.name}", new_value=0.1)
     vsc_mdl.set_parameter_in_model(var_name=f"vdc_floor_{vsc.name}", new_value=0.05)
     vsc_mdl.set_parameter_in_model(var_name=f"omega_sw_{vsc.name}", new_value=2.0 * np.pi * float(omega_sw_hz))
@@ -923,7 +947,7 @@ def build_switched_converter_trace(
         tracing_updater: RuntimeTraceUpdater,
         well_initialized: bool,
         converged: bool,
-        runtime_stats: dict[str, float],
+        runtime_stats: dict[str, Any],
 ) -> SwitchedConverterHandoverTrace:
     """
     Extract one structured switched-converter trace object from a raw EMT trajectory.
@@ -976,9 +1000,12 @@ def build_switched_converter_trace(
     i_b_arr: np.ndarray
     i_c_arr: np.ndarray
     i_dc_conv_sw_arr: np.ndarray
+    failed_substep_times_s_arr: np.ndarray
     initialization_requested: str = ""
     initialization_used: str = ""
     trace: SwitchedConverterHandoverTrace
+
+    failed_substep_times_s_arr = np.asarray(runtime_stats.get("failed_substep_times_s", list()), dtype=float)
 
     if problem.initialization_report is None:
         initialization_requested = ""
@@ -1047,6 +1074,9 @@ def build_switched_converter_trace(
         total_newton_iterations=float(runtime_stats.get("total_newton_iterations", float("nan"))),
         jacobian_evaluations=float(runtime_stats.get("jacobian_evaluations", float("nan"))),
         aligned_substeps=float(runtime_stats.get("aligned_substeps", float("nan"))),
+        failed_substeps=float(runtime_stats.get("failed_substeps", float("nan"))),
+        first_failed_time_s=float(runtime_stats.get("first_failed_time_s", float("nan"))),
+        failed_substep_times_s_arr=failed_substep_times_s_arr,
     )
     return trace
 
@@ -1056,6 +1086,11 @@ def simulate_switched_converter_handover(
         p_transfer_mw: float = 30.0,
         pf_seed_p_transfer_mw: float | None = None,
         omega_sw_hz: float = 1000.0,
+        r_eq_pu: float = 0.03,
+        l_eq_pu: float = 1.0,
+        q_kp: float = 1.6,
+        q_ki: float = 60.0,
+        tau_meas_s: float = 0.005,
 ) -> SwitchedConverterHandoverTrace:
     """
     Simulate the full hybrid switched-converter case and collect handover traces.
@@ -1064,6 +1099,11 @@ def simulate_switched_converter_handover(
     :param p_transfer_mw: Active-power transfer absorbed by the DC load in MW.
     :param pf_seed_p_transfer_mw: Optional active-power value used only for the PF seed.
     :param omega_sw_hz: PWM switching frequency in hertz.
+    :param r_eq_pu: AC filter resistance in pu.
+    :param l_eq_pu: AC filter inductance in pu.
+    :param q_kp: Reactive-power loop proportional gain.
+    :param q_ki: Reactive-power loop integral gain.
+    :param tau_meas_s: Reactive and active power measurement time constant in seconds.
     :return: Structured switched-converter handover trace.
     """
     case_context: SwitchedConverterCaseContext = build_switched_vsc_case(
@@ -1071,6 +1111,11 @@ def simulate_switched_converter_handover(
         p_transfer_mw=p_transfer_mw,
         pf_seed_p_transfer_mw=pf_seed_p_transfer_mw,
         omega_sw_hz=omega_sw_hz,
+        r_eq_pu=r_eq_pu,
+        l_eq_pu=l_eq_pu,
+        q_kp=q_kp,
+        q_ki=q_ki,
+        tau_meas_s=tau_meas_s,
     )
     problem: EmtProblemDae = case_context.problem
     switching_enabled_idx: int = require_runtime_mode_index(
@@ -1085,7 +1130,7 @@ def simulate_switched_converter_handover(
     _diff_traj: np.ndarray
     well_initialized: bool
     converged: bool
-    runtime_stats: dict[str, float]
+    runtime_stats: dict[str, Any]
     trace: SwitchedConverterHandoverTrace
 
     assert base_updater is not None
@@ -1796,6 +1841,13 @@ def print_switched_converter_summary(trace: SwitchedConverterHandoverTrace) -> N
     print(f"Newton iterations       : {trace.total_newton_iterations: .0f}")
     print(f"Jacobian evaluations    : {trace.jacobian_evaluations: .0f}")
     print(f"Aligned substeps        : {trace.aligned_substeps: .0f}")
+    if trace.failed_substeps > 0.0:
+        print(f"Failed Newton substeps  : {trace.failed_substeps: .0f}")
+        print(f"First failed time [s]   : {trace.first_failed_time_s: .6e}")
+        print("Convergence meaning     : one or more local Newton solves hit the iteration limit")
+        print(f"Failed times [s]        : {np.array2string(trace.failed_substep_times_s_arr, precision=6, separator=', ')}")
+    else:
+        pass
     print("-" * 80)
     print("TAIL-WINDOW CONTROL DIAGNOSTICS")
     print("-" * 80)
@@ -1838,6 +1890,11 @@ def run_switched_converter_handover_case(
         p_transfer_mw: float = 30.0,
         pf_seed_p_transfer_mw: float | None = None,
         omega_sw_hz: float = 1000.0,
+        r_eq_pu: float = 0.03,
+        l_eq_pu: float = 1.0,
+        q_kp: float = 1.6,
+        q_ki: float = 60.0,
+        tau_meas_s: float = 0.005,
 ) -> SwitchedConverterHandoverTrace:
     """
     Run the switched converter handover case, validate it and optionally export plots.
@@ -1850,6 +1907,11 @@ def run_switched_converter_handover_case(
     :param p_transfer_mw: Active-power transfer absorbed by the DC load in MW.
     :param pf_seed_p_transfer_mw: Optional active-power value used only for the PF seed.
     :param omega_sw_hz: PWM switching frequency in hertz.
+    :param r_eq_pu: AC filter resistance in pu.
+    :param l_eq_pu: AC filter inductance in pu.
+    :param q_kp: Reactive-power loop proportional gain.
+    :param q_ki: Reactive-power loop integral gain.
+    :param tau_meas_s: Reactive and active power measurement time constant in seconds.
     :return: Structured switched-converter handover trace.
     """
     trace: SwitchedConverterHandoverTrace = simulate_switched_converter_handover(
@@ -1857,6 +1919,11 @@ def run_switched_converter_handover_case(
         p_transfer_mw=p_transfer_mw,
         pf_seed_p_transfer_mw=pf_seed_p_transfer_mw,
         omega_sw_hz=omega_sw_hz,
+        r_eq_pu=r_eq_pu,
+        l_eq_pu=l_eq_pu,
+        q_kp=q_kp,
+        q_ki=q_ki,
+        tau_meas_s=tau_meas_s,
     )
     plot_path: Path | None
 
