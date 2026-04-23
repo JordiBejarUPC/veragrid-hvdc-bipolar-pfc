@@ -40,7 +40,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_3ph_emt_template
+from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 
@@ -53,6 +53,7 @@ from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.enumerations import (BranchImpedanceMode, DynamicIntegrationMethod, EmtInitializationMethod,
                                          EmtSolverTypes, ShuntConnectionType, SolverType,
                                          VarPowerFlowRefferenceType)
+from VeraGridEngine.Templates.templates_common_functions import set_emt_model
 
 ###########################################################################################################################
 # Build VeraGrid object
@@ -126,40 +127,44 @@ for bus in grid.buses:
 # Build EMT models
 ######################################################################################################
 # generator
-gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
 
 # line
-line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
+line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
 
 # load
-load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.emt_var_factory).block
+load_mdl = get_load_ZIP_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
-# connection with buses
-gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
-gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # v_B
-gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # v_C
+set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.var_factory)
+set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
+set_emt_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
-
-line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # line vf_A
-line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # line vf_B
-line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # line vf_C
-
-line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.out_vars[0]]) # line vt_A
-line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.out_vars[1]]) # line vt_B
-line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.out_vars[2]]) # line vt_C
-
-# u_gov = find_name_in_block("u_gov1", gov1_mdl)
-
-load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]]) # v_A
-load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]]) # v_B
-load_mdl.connect([load_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]]) # v_C
-
-# attach emt models to VeraGrid objects.
-# The generator must stay attached as an injection model so the topology
-# validator counts its voltage inputs at the slack bus.
-line0.emt_model = line_mdl
-load.emt_model = load_mdl
-gen0.emt_model = gen_mdl
+# # connection with buses
+# gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
+# gen_mdl.connect([gen_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # v_B
+# gen_mdl.connect([gen_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # v_C
+#
+#
+# line_mdl.connect([line_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # line vf_A
+# line_mdl.connect([line_mdl.in_vars[1]], [bus0.emt_model.out_vars[1]]) # line vf_B
+# line_mdl.connect([line_mdl.in_vars[2]], [bus0.emt_model.out_vars[2]]) # line vf_C
+#
+# line_mdl.connect([line_mdl.in_vars[3]], [bus1.emt_model.out_vars[0]]) # line vt_A
+# line_mdl.connect([line_mdl.in_vars[4]], [bus1.emt_model.out_vars[1]]) # line vt_B
+# line_mdl.connect([line_mdl.in_vars[5]], [bus1.emt_model.out_vars[2]]) # line vt_C
+#
+# # u_gov = find_name_in_block("u_gov1", gov1_mdl)
+#
+# load_mdl.connect([load_mdl.in_vars[0]], [bus1.emt_model.out_vars[0]]) # v_A
+# load_mdl.connect([load_mdl.in_vars[1]], [bus1.emt_model.out_vars[1]]) # v_B
+# load_mdl.connect([load_mdl.in_vars[2]], [bus1.emt_model.out_vars[2]]) # v_C
+#
+# # attach emt models to VeraGrid objects.
+# # The generator must stay attached as an injection model so the topology
+# # validator counts its voltage inputs at the slack bus.
+# line0.emt_model = line_mdl
+# load.emt_model = load_mdl
+# gen0.emt_model = gen_mdl
 
 pf_options = PowerFlowOptions(
     solver_type=SolverType.NR,
@@ -779,7 +784,7 @@ def create_problem(enable_trace: bool = False) -> EmtProblemDae:
     """
     local_problem: EmtProblemDae = EmtProblemDae(grid=grid,
                                                  options=options,
-                                                 pf_results_3Ph=res,
+                                                 pf_results_3ph=res,
                                                  pf_results=None)
 
     if enable_trace:
@@ -1003,7 +1008,9 @@ def run_single_solver_trajectory(
     t_arr: np.ndarray
     y_arr: np.ndarray
     dy_arr: np.ndarray
-    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, dy_arr, well_initialized , converged  = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     return local_problem, solver, t_arr, y_arr, dy_arr
 
 
@@ -1217,7 +1224,9 @@ def run_single_solver_benchmark(solver_key: str,
     t_arr: np.ndarray
     y_arr: np.ndarray
     dy_arr: np.ndarray
-    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, dy_arr, well_initialized , converged = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     simulate_s: float = perf_counter() - t_sim_0
     final_residual_inf: float = evaluate_final_residual_inf(solver_key, solver, local_problem, t_arr, y_arr, dy_arr)
     solver_total_s: float = solver_init_s + solver_build_s + simulate_s
@@ -1284,7 +1293,9 @@ def run_single_solver_cold_warm_benchmark(solver_key: str) -> SolverColdWarmBenc
     cold_t: np.ndarray
     cold_y: np.ndarray
     cold_dy: np.ndarray
-    cold_t, cold_y, cold_dy = solver.simulate(boundary_updater=boundary_updater)
+    cold_t, cold_y, cold_dy, well_initialized , converged   = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     cold_sim_s: float = perf_counter() - cold_sim_t0
     cold_final_residual_inf: float = evaluate_final_residual_inf(solver_key, solver, local_problem, cold_t, cold_y, cold_dy)
     cold_trace_summary_raw: SolverTraceSummary = summarize_newton_trace(local_problem)
@@ -1302,7 +1313,9 @@ def run_single_solver_cold_warm_benchmark(solver_key: str) -> SolverColdWarmBenc
     warm_t: np.ndarray
     warm_y: np.ndarray
     warm_dy: np.ndarray
-    warm_t, warm_y, warm_dy = solver.simulate(boundary_updater=boundary_updater)
+    warm_t, warm_y, warm_dy, well_initialized , converged   = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     warm_sim_s: float = perf_counter() - warm_sim_t0
     warm_final_residual_inf: float = evaluate_final_residual_inf(solver_key, solver, local_problem, warm_t, warm_y, warm_dy)
     warm_trace_summary_raw: SolverTraceSummary = summarize_newton_trace(local_problem)
@@ -1699,7 +1712,9 @@ def benchmark_structural_compiled_cold_and_warm() -> None:
     cold_t: np.ndarray
     cold_y: np.ndarray
     cold_dy: np.ndarray
-    cold_t, cold_y, cold_dy = solver.simulate(boundary_updater=boundary_updater)
+    cold_t, cold_y, cold_dy, well_initialized , converged  = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     cold_sim_s: float = perf_counter() - cold_sim_t0
     cold_residual_inf: float = evaluate_final_residual_inf("COMPILED", solver, local_problem, cold_t, cold_y, cold_dy)
     cold_runtime_stats: Dict[str, float] = get_solver_runtime_stats(solver)
@@ -1708,7 +1723,9 @@ def benchmark_structural_compiled_cold_and_warm() -> None:
     warm_t: np.ndarray
     warm_y: np.ndarray
     warm_dy: np.ndarray
-    warm_t, warm_y, warm_dy = solver.simulate(boundary_updater=boundary_updater)
+    warm_t, warm_y, warm_dy, well_initialized , converged  = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     warm_sim_s: float = perf_counter() - warm_sim_t0
     warm_residual_inf: float = evaluate_final_residual_inf("COMPILED", solver, local_problem, warm_t, warm_y, warm_dy)
     warm_runtime_stats: Dict[str, float] = get_solver_runtime_stats(solver)
@@ -1862,7 +1879,9 @@ def main() -> None:
     boundary_updater = cast(Any, problem)
     profiler.enable()
     sim_t0 = perf_counter()
-    t_arr, y_arr, _dy = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, _dy, well_initialized , converged  = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     solver_sim_s = perf_counter() - sim_t0
 
     print("Single-solver benchmark")

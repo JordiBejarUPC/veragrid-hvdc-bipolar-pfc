@@ -17,7 +17,7 @@ from VeraGridEngine.Devices.Branches.switch import Switch
 from VeraGridEngine.Devices.Branches.series_reactance import SeriesReactance
 from VeraGridEngine.Devices.Branches.upfc import UPFC
 from VeraGridEngine.Devices.Injections.generator import Generator
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileFloat
 from VeraGridEngine.enumerations import DeviceType
 from VeraGridEngine.basic_structures import Vec
 
@@ -81,12 +81,12 @@ class MeasurementTemplate(PointerDeviceParent):
         self.value = float(value)
         self.sigma = float(uncertainty)
 
-        self._value_prof = Profile(default_value=self.value, data_type=float)
-        self._sigma_prof = Profile(default_value=self.sigma, data_type=float)
+        self._value_prof = ProfileFloat(default_value=self.value)
+        self._sigma_prof = ProfileFloat(default_value=self.sigma)
 
 
     @property
-    def value_prof(self) -> Profile:
+    def value_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -94,8 +94,8 @@ class MeasurementTemplate(PointerDeviceParent):
         return self._value_prof
 
     @value_prof.setter
-    def value_prof(self, val: Union[Profile, Vec]):
-        if isinstance(val, Profile):
+    def value_prof(self, val: Union[ProfileFloat, Vec]):
+        if isinstance(val, ProfileFloat):
             self._value_prof = val
         elif isinstance(val, np.ndarray):
             self._value_prof.set(arr=val)
@@ -110,7 +110,7 @@ class MeasurementTemplate(PointerDeviceParent):
         return get_at(self.value, self.value_prof, t)
 
     @property
-    def sigma_prof(self) -> Profile:
+    def sigma_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -118,8 +118,8 @@ class MeasurementTemplate(PointerDeviceParent):
         return self._sigma_prof
 
     @sigma_prof.setter
-    def sigma_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def sigma_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._sigma_prof = val
         elif isinstance(val, np.ndarray):
             self._sigma_prof.set(arr=val)

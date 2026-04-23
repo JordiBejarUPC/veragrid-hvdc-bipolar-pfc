@@ -7,12 +7,18 @@ from VeraGridEngine.Utils.procedural_logic import (
     AnalogFlipFlopLogic,
     FixedSampleLogic,
     FlipFlopLogic,
+    GradientLimiterLogic,
+    MovingAverageLogic,
     PickupDropoffLogic,
     SampledValueLogic,
+    TimeDelayLogic,
     aflipflop,
+    delay,
     build_boundary_updater_from_block,
     flipflop,
+    gradlim_const,
     lastvalue,
+    movingavg,
     picdro,
     reset,
     selfix,
@@ -54,6 +60,9 @@ class TestDgsProceduralHelpers(unittest.TestCase):
         self.assertIsInstance(flipflop(x > 0.5, rst > 0.5, output=flag), FlipFlopLogic)
         self.assertIsInstance(aflipflop(x, x > 0.5, rst > 0.5, output=flag), AnalogFlipFlopLogic)
         self.assertIsInstance(picdro(x > 0.5, 0.01, 0.02, output=flag), PickupDropoffLogic)
+        self.assertIsInstance(delay(x, 0.01, output=flag), TimeDelayLogic)
+        self.assertIsInstance(movingavg(x, 0.01, 0.02, output=flag), MovingAverageLogic)
+        self.assertIsInstance(gradlim_const(x, -1.0, 1.0, output=flag), GradientLimiterLogic)
         self.assertEqual(reset(x, rst, val).target_var_name, x.name)
 
     def test_parser_collects_procedural_helpers(self) -> None:
@@ -102,6 +111,46 @@ class TestDgsProceduralHelpers(unittest.TestCase):
         unsupported = [entry for entry in report if entry.status == "unsupported"]
         self.assertEqual(len(unsupported), 0)
 
+    def test_boolean_procedural_inputs_are_coerced_during_block_build(self) -> None:
+        blkdef = BlkDef()
+        blkdef.ID = "select_eq_bool"
+        blkdef.loc_name = "SelectEqBool"
+        blkdef.inputs = ["u"]
+        blkdef.outputs = ["yo"]
+        blkdef.states = []
+        blkdef.params = []
+        blkdef.internals = []
+        blkdef.equations_raw = ["yo = select(u == 0.5, 1.0, 0.0)"]
+
+        parsed = _parse_blkdef(blkdef, dict())
+        self.assertEqual(len(parsed.procedural_logic), 1)
+
+        block = _build_block_from_parsed(parsed, dict())
+        self.assertIsNotNone(block.procedural_logic[0].source_expr)
+
+    def test_parser_collects_delay_moving_average_and_gradient_limiter_helpers(self) -> None:
+        blkdef = BlkDef()
+        blkdef.ID = "proc_delay_avg_grad"
+        blkdef.loc_name = "ProcDelayAvgGrad"
+        blkdef.inputs = ["u"]
+        blkdef.outputs = ["yd", "ym", "yg"]
+        blkdef.states = []
+        blkdef.params = []
+        blkdef.internals = []
+        blkdef.equations_raw = [
+            "yd = delay(u,0.01);ym = movingavg(u,0.01,0.02);yg = gradlim_const(u,-1.0,1.0)"
+        ]
+
+        parsed = _parse_blkdef(blkdef, dict())
+        block = _build_block_from_parsed(parsed, dict())
+
+        self.assertEqual(parsed.unsupported_lines, [])
+        self.assertEqual(len(parsed.procedural_logic), 3)
+        self.assertEqual(len(block.procedural_logic), 3)
+        self.assertTrue(any(isinstance(item, TimeDelayLogic) for item in block.procedural_logic))
+        self.assertTrue(any(isinstance(item, MovingAverageLogic) for item in block.procedural_logic))
+        self.assertTrue(any(isinstance(item, GradientLimiterLogic) for item in block.procedural_logic))
+
     def test_rms_selfix_const_is_folded_as_true(self) -> None:
         blkdef = BlkDef()
         blkdef.ID = "rms_local"
@@ -113,7 +162,7 @@ class TestDgsProceduralHelpers(unittest.TestCase):
         blkdef.internals = ["wref"]
         blkdef.equations_raw = ["inc0(wref)=selfix_const(rms(),1.0,0.0);yo=wref"]
 
-        parsed = _parse_blkdef(blkdef, dict())
+        parsed = _parse_blkdef(blkdef, dict(), simulation_domain="rms")
 
         self.assertEqual(parsed.unsupported_lines, [])
         self.assertEqual(len(parsed.procedural_logic), 0)

@@ -48,6 +48,7 @@ from VeraGridEngine.enumerations import SchematicAutoRouteStyle, SchematicRouteK
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
     from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformer3w_graphics import Transformer3WGraphicItem
+    from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformerNw_graphics import TransformerNWGraphicItem
     from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.vsc_graphics_3term import VscGraphicItem3Term
 
 NODE_GRAPHIC = Union[BusGraphicItem, FluidNodeGraphicItem]
@@ -809,6 +810,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
             "from": EndpointAlignmentHandleItem(parent_branch=self, endpoint="from"),
             "to": EndpointAlignmentHandleItem(parent_branch=self, endpoint="to"),
         }
+        self._route_edit_active: bool = False
 
         self.pos1: QPointF = QPointF(0.0, 0.0)
         self.pos2: QPointF = QPointF(0.0, 0.0)
@@ -875,7 +877,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         """
         return self._to_port
 
-    def get_terminal_from_parent(self) -> Union[None, BusGraphicItem, Transformer3WGraphicItem,
+    def get_terminal_from_parent(self) -> Union[None, BusGraphicItem, Transformer3WGraphicItem, TransformerNWGraphicItem,
                                                 FluidNodeGraphicItem, VscGraphicItem3Term]:
         """
         Get the terminal from parent object
@@ -886,7 +888,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         else:
             return self._from_port.get_parent()
 
-    def get_terminal_to_parent(self) -> Union[None, BusGraphicItem, Transformer3WGraphicItem,
+    def get_terminal_to_parent(self) -> Union[None, BusGraphicItem, Transformer3WGraphicItem, TransformerNWGraphicItem,
                                               FluidNodeGraphicItem, VscGraphicItem3Term]:
         """
         Get the terminal to parent object
@@ -918,7 +920,16 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         Load any persisted route points from the diagram compatibility layer.
         """
         if self.api_object is None:
-            return
+            if self.is_vsc3_terminal_connection():
+                owner_graphic = self.get_vsc3_connection_owner()
+
+                if owner_graphic is None:
+                    return
+                else:
+                    self._route_points = normalize_route_points(owner_graphic.get_connection_route_points(conn_line=self))
+                    return
+            else:
+                return
 
         location = self.editor.diagram.query_point(self.api_object)
         if location is None:
@@ -969,7 +980,21 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
                                               end=end,
                                               persisted_points=self._route_points)
         elif self.api_object is None:
-            return [start, end]
+            if self.is_vsc3_terminal_connection():
+                owner_graphic = self.get_vsc3_connection_owner()
+
+                if owner_graphic is None:
+                    return [start, end]
+                elif owner_graphic.should_preserve_connection_route_shape(conn_line=self) and len(self._route_points) >= 2:
+                    return merge_route_with_endpoints(start=start,
+                                                      end=end,
+                                                      persisted_points=self._route_points)
+                else:
+                    return build_default_branch_route(start=start,
+                                                      end=end,
+                                                      route_style=self.get_branch_auto_route_style())
+            else:
+                return [start, end]
         else:
             from_attachment = self.get_persisted_endpoint_attachment(endpoint="from")
             to_attachment = self.get_persisted_endpoint_attachment(endpoint="to")
@@ -988,7 +1013,15 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         :return: Branch-specific automatic route-style enum.
         """
         if self.api_object is None:
-            return SchematicAutoRouteStyle.STRAIGHT
+            if self.is_vsc3_terminal_connection():
+                owner_graphic = self.get_vsc3_connection_owner()
+
+                if owner_graphic is None:
+                    return SchematicAutoRouteStyle.RETICULAR
+                else:
+                    return owner_graphic.get_connection_auto_route_style(conn_line=self)
+            else:
+                return SchematicAutoRouteStyle.STRAIGHT
         elif self.editor.diagram is None:
             return SchematicAutoRouteStyle.STRAIGHT
         else:
@@ -1002,7 +1035,18 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         :return: ``None``.
         """
         if self.api_object is None:
-            return
+            if self.is_vsc3_terminal_connection():
+                owner_graphic = self.get_vsc3_connection_owner()
+
+                if owner_graphic is None:
+                    return
+                else:
+                    owner_graphic.set_connection_auto_route_style(conn_line=self, route_style=route_style)
+                    self._route_points = list()
+                    self.redraw()
+                    return
+            else:
+                return
         elif self.editor.diagram is None:
             return
         else:
@@ -1040,7 +1084,13 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         straight_action: object
 
         if self.api_object is None:
-            return
+            if self.is_vsc3_terminal_connection():
+                current_route_style = self.get_branch_auto_route_style()
+                route_style_menu = menu.addMenu("Auto route style")
+                reticular_action = route_style_menu.addAction("Reticular")
+                straight_action = route_style_menu.addAction("Straight")
+            else:
+                return
         else:
             current_route_style = self.get_branch_auto_route_style()
             route_style_menu = menu.addMenu("Auto route style")
@@ -1068,10 +1118,32 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
 
         :return: ``None``.
         """
-        if self.isSelected():
+        if self.is_route_edit_active():
             self.setZValue(4)
         else:
             self.setZValue(-1)
+
+    def is_route_edit_active(self) -> bool:
+        """
+        Return whether the manual route editor is explicitly active for this branch.
+
+        Plain selection must not show edit handles. Handles only appear after a direct
+        click activates editing on the selected branch.
+
+        :return: ``True`` when route-edit handles should be shown.
+        """
+        return self._route_edit_active and self.isSelected()
+
+    def set_route_edit_active(self, active: bool) -> None:
+        """
+        Set the explicit route-edit activation state.
+
+        :param active: Requested edit activation state.
+        :return: ``None``.
+        """
+        self._route_edit_active = bool(active)
+        self.refresh_z_order()
+        self.refresh_route_handles()
 
     def get_persisted_endpoint_attachment(self, endpoint: str) -> dict[str, object]:
         """
@@ -1081,7 +1153,15 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         :return: Attachment dictionary.
         """
         if self.api_object is None:
-            return dict()
+            if self.is_vsc3_terminal_connection():
+                owner_graphic = self.get_vsc3_connection_owner()
+
+                if owner_graphic is None:
+                    return dict()
+                else:
+                    return owner_graphic.get_connection_attachment(conn_line=self, endpoint=endpoint)
+            else:
+                return dict()
         else:
             return self.editor.get_persisted_attachment(api_object=self.api_object, endpoint=endpoint)
 
@@ -1152,7 +1232,15 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         :return: ``None``.
         """
         if self.api_object is None:
-            return
+            if self.is_vsc3_terminal_connection():
+                owner_graphic = self.get_vsc3_connection_owner()
+
+                if owner_graphic is None:
+                    return
+                else:
+                    pass
+            else:
+                return
         else:
             pass
 
@@ -1161,10 +1249,16 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
                                                    delta_x=delta_x,
                                                    delta_y=delta_y)
         self._route_points = normalize_route_points(moved_points)
-        self.editor.diagram.set_branch_route_points(api_object=self.api_object,
-                                                    points=self._route_points,
-                                                    kind=SchematicRouteKind.MANUAL_POLYLINE,
-                                                    locked=False)
+        if self.api_object is None:
+            owner_graphic.set_connection_route_points(conn_line=self,
+                                                      points=self._route_points,
+                                                      kind=SchematicRouteKind.MANUAL_POLYLINE,
+                                                      locked=False)
+        else:
+            self.editor.diagram.set_branch_route_points(api_object=self.api_object,
+                                                        points=self._route_points,
+                                                        kind=SchematicRouteKind.MANUAL_POLYLINE,
+                                                        locked=False)
         self.redraw()
 
     def move_route_vertex(self, vertex_index: int, scene_pos: QPointF) -> None:
@@ -1176,7 +1270,15 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         :return: ``None``.
         """
         if self.api_object is None:
-            return
+            if self.is_vsc3_terminal_connection():
+                owner_graphic = self.get_vsc3_connection_owner()
+
+                if owner_graphic is None:
+                    return
+                else:
+                    pass
+            else:
+                return
         else:
             pass
 
@@ -1186,10 +1288,16 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
                                                   new_x=scene_pos.x(),
                                                   new_y=scene_pos.y())
         self._route_points = normalize_route_points(moved_points)
-        self.editor.diagram.set_branch_route_points(api_object=self.api_object,
-                                                    points=self._route_points,
-                                                    kind=SchematicRouteKind.MANUAL_POLYLINE,
-                                                    locked=False)
+        if self.api_object is None:
+            owner_graphic.set_connection_route_points(conn_line=self,
+                                                      points=self._route_points,
+                                                      kind=SchematicRouteKind.MANUAL_POLYLINE,
+                                                      locked=False)
+        else:
+            self.editor.diagram.set_branch_route_points(api_object=self.api_object,
+                                                        points=self._route_points,
+                                                        kind=SchematicRouteKind.MANUAL_POLYLINE,
+                                                        locked=False)
         self.redraw()
 
     def move_endpoint_alignment(self, endpoint: str, scene_pos: QPointF) -> None:
@@ -1200,14 +1308,11 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         :param scene_pos: Scene point chosen by the user.
         :return: ``None``.
         """
-        if self.api_object is None:
-            return
-        else:
-            pass
-
         owner_graphic = self.get_endpoint_owner_graphic(endpoint=endpoint)
 
         if owner_graphic is None:
+            return
+        elif not self.can_edit_endpoint_alignment(endpoint=endpoint):
             return
         else:
             pass
@@ -1218,9 +1323,22 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         attachment["anchor_x"] = float(local_anchor.x())
         attachment["anchor_y"] = float(local_anchor.y())
         attachment["anchor_auto"] = False
-        self.editor.diagram.set_attachment(api_object=self.api_object,
-                                           endpoint=endpoint,
-                                           attachment=attachment)
+        if self.api_object is None:
+            if self.is_vsc3_terminal_connection():
+                vsc_owner = self.get_vsc3_connection_owner()
+
+                if vsc_owner is None:
+                    return
+                else:
+                    vsc_owner.set_connection_attachment(conn_line=self,
+                                                        endpoint=endpoint,
+                                                        attachment=attachment)
+            else:
+                return
+        else:
+            self.editor.diagram.set_attachment(api_object=self.api_object,
+                                               endpoint=endpoint,
+                                               attachment=attachment)
         self.redraw()
 
     def get_owner_local_anchor_from_scene_point(self,
@@ -1333,6 +1451,8 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         editable_vertex_indexes = self.get_editable_vertex_indexes(points=points)
         handle_index: int
 
+        can_edit_polyline: bool = self.can_edit_route_geometry()
+
         while len(self._route_handles) < len(editable_indexes):
             self._route_handles.append(RouteSegmentHandleItem(parent_branch=self, segment_index=0))
 
@@ -1351,7 +1471,7 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
             handle_mid_y = (segment_start[1] + segment_end[1]) * 0.5
             handle.set_segment_index(segment_index=segment_index)
             handle.setPos(handle_mid_x, handle_mid_y)
-            handle.setVisible(self.isSelected() and self.api_object is not None)
+            handle.setVisible(self.is_route_edit_active() and can_edit_polyline)
 
         while len(self._vertex_handles) < len(editable_vertex_indexes):
             self._vertex_handles.append(RouteVertexHandleItem(parent_branch=self, vertex_index=0))
@@ -1368,12 +1488,12 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
             vertex_point = points[vertex_index]
             handle.set_vertex_index(vertex_index=vertex_index)
             handle.setPos(vertex_point[0], vertex_point[1])
-            handle.setVisible(self.isSelected() and self.api_object is not None)
+            handle.setVisible(self.is_route_edit_active() and can_edit_polyline)
 
         for endpoint_key, handle in self._endpoint_handles.items():
             anchor_point = self.get_endpoint_anchor(endpoint=endpoint_key)
             handle.setPos(anchor_point)
-            handle.setVisible(self.isSelected() and self.api_object is not None)
+            handle.setVisible(self.is_route_edit_active() and self.can_edit_endpoint_alignment(endpoint=endpoint_key))
 
     def itemChange(self, change, value):
         """
@@ -1386,6 +1506,10 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         result = QGraphicsLineItem.itemChange(self, change, value)
 
         if change == self.GraphicsItemChange.ItemSelectedHasChanged:
+            if bool(value):
+                pass
+            else:
+                self._route_edit_active = False
             self.refresh_z_order()
             self.refresh_route_handles()
         else:
@@ -1407,7 +1531,13 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         if owner_graphic is None:
             return fallback_point
         elif self.api_object is None:
-            return fallback_point
+            if self.is_vsc3_terminal_connection() and self.can_edit_endpoint_alignment(endpoint=endpoint):
+                attachment = self.get_persisted_endpoint_attachment(endpoint=endpoint)
+                return self.get_owner_scene_anchor_from_attachment(owner_graphic=owner_graphic,
+                                                                   attachment=attachment,
+                                                                   fallback_point=fallback_point)
+            else:
+                return fallback_point
         else:
             pass
 
@@ -1421,6 +1551,14 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         """
         Persist the currently rendered route without changing route kind or lock metadata.
         """
+        if self.api_object is None:
+            if self.is_vsc3_terminal_connection():
+                return
+            else:
+                pass
+        else:
+            pass
+
         if self.api_object is None:
             return
         elif self.editor.is_loading_diagram():
@@ -1556,7 +1694,91 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
         else:
             pass
 
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.set_route_edit_active(True)
+        else:
+            pass
+
         QGraphicsLineItem.mousePressEvent(self, event)
+
+    def can_edit_route_geometry(self) -> bool:
+        """
+        Determine whether this line supports manual polyline editing.
+
+        Normal branches always support this. VSC three-terminal connector lines
+        also support polyline editing even though they do not map to a branch
+        API object.
+
+        :return: ``True`` when blue/yellow route handles may be shown.
+        """
+        if self.api_object is not None:
+            return True
+        elif self.is_vsc3_terminal_connection():
+            return True
+        else:
+            return False
+
+    def can_edit_endpoint_alignment(self, endpoint: str) -> bool:
+        """
+        Determine whether one endpoint supports green-handle alignment editing.
+
+        Only endpoints hosted by buses or fluid nodes expose a movable electrical
+        connection locus. Device-local round terminals such as the VSC symbol
+        terminals stay fixed at their own center points.
+
+        :param endpoint: Endpoint key.
+        :return: ``True`` when the endpoint may expose a green handle.
+        """
+        owner_graphic = self.get_endpoint_owner_graphic(endpoint=endpoint)
+
+        if isinstance(owner_graphic, BusGraphicItem):
+            return True
+        elif isinstance(owner_graphic, FluidNodeGraphicItem):
+            return True
+        else:
+            return False
+
+    def get_vsc3_connection_owner(self) -> "VscGraphicItem3Term | None":
+        """
+        Return the owning three-terminal VSC graphic when this line is one of its connectors.
+
+        :return: VSC graphic or ``None``.
+        """
+        if self.is_from_port_a_vsc3():
+            return self.get_terminal_from_parent()
+        elif self.is_to_port_a_vsc3():
+            return self.get_terminal_to_parent()
+        else:
+            return None
+
+    def is_vsc3_terminal_connection(self) -> bool:
+        """
+        Return whether this line is one of the three-terminal VSC connector links.
+
+        :return: ``True`` for VSC terminal connector lines.
+        """
+        if self.api_object is not None:
+            return False
+        elif self.is_from_port_a_vsc3():
+            return True
+        elif self.is_to_port_a_vsc3():
+            return True
+        else:
+            return False
+
+    def contextMenuEvent(self, event) -> None:
+        """
+        Show a lightweight route-style menu for VSC terminal connector lines.
+
+        :param event: Context-menu event.
+        :return: ``None``.
+        """
+        if self.is_vsc3_terminal_connection():
+            menu = QMenu()
+            self.add_auto_route_style_menu(menu=menu)
+            menu.exec_(event.screenPos())
+        else:
+            super().contextMenuEvent(event)
 
     def paint(self,
               painter: QPainter,
@@ -1942,7 +2164,10 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
                 # keep this here, we need an actual instance
                 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformer3w_graphics import \
                     Transformer3WGraphicItem
-            return isinstance(self.get_terminal_from_parent(), Transformer3WGraphicItem)
+            if 'TransformerNWGraphicItem' not in sys.modules:
+                from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformerNw_graphics import \
+                    TransformerNWGraphicItem
+            return isinstance(self.get_terminal_from_parent(), (Transformer3WGraphicItem, TransformerNWGraphicItem))
         else:
             return False
 
@@ -1956,7 +2181,10 @@ class LineGraphicTemplateItem(GenericDiagramWidget, QGraphicsLineItem):
                 # keep this here, we need an actual instance
                 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformer3w_graphics import \
                     Transformer3WGraphicItem
-            return isinstance(self.get_terminal_to_parent(), Transformer3WGraphicItem)
+            if 'TransformerNWGraphicItem' not in sys.modules:
+                from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.transformerNw_graphics import \
+                    TransformerNWGraphicItem
+            return isinstance(self.get_terminal_to_parent(), (Transformer3WGraphicItem, TransformerNWGraphicItem))
         else:
             return False
 

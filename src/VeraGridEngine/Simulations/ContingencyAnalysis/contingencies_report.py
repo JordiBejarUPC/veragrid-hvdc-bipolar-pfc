@@ -533,7 +533,7 @@ class ContingencyResultsReport:
         :param base_flow: base flows array
         :param base_loading: base loading array
         :param contingency_flows: flows array after the contingency
-        :param contingency_loadings: loading array after the contingency
+        :param contingency_loadings: loading array after the contingency in the base of the normal rate
         :param contingency_group_idx: contingency group index
         :param contingency_group: ContingencyGroup
         :param using_srap: Inspect contingency using the SRAP conditions
@@ -624,7 +624,7 @@ class ContingencyResultsReport:
             # if it produces an overload, and if the variation affects negatively to the flow
             if affected_by_cont1 and affected_by_cont2 and c_load > 1 and c_flow > b_flow:
 
-                # Conditions to set behaviour
+                # Conditions to set behavior
                 if 1 < c_load <= rate_nx_pu:
                     ov_status = 1
                     msg_ov = 'Overload acceptable'

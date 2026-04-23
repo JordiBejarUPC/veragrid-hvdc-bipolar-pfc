@@ -8,7 +8,7 @@ from typing import List, Dict
 
 from matplotlib import pyplot as plt
 
-from VeraGridEngine.Simulations.results_template import ResultsTemplate
+from VeraGridEngine.Simulations.results_template import ResultsTemplate, ResultsProperty
 from VeraGridEngine.basic_structures import Vec, DateVec, StrVec, Mat
 from VeraGridEngine.enumerations import StudyResultsType, DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
@@ -16,6 +16,26 @@ from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 
 
 class RmsResults(ResultsTemplate):
+
+    LOCAL_RESULTS_DECLARATIONS = (
+        ResultsProperty(name='values', tpe=Vec, old_names=list()),
+    )
+
+    __slots__ = (
+        "nt",
+        "nv",
+        "ng",
+        "rms_events_group_names",
+        "well_initialized",
+        "converged",
+        "variables",
+        "uid2vars_glob_name",
+        "devices_vars_info",
+        "uid2idx",
+        "vars_glob_name2uid",
+        "variable_array",
+        "values",
+    )
 
     def __init__(self,
                  time_array: DateVec,
@@ -57,10 +77,13 @@ class RmsResults(ResultsTemplate):
         self.devices_vars_info: Dict[ALL_DEV_TYPES, List[Var]] = devices_vars_info
         self.uid2idx: Dict[int, int] = uid2idx
         self.vars_glob_name2uid = vars_glob_name2uid
+        not_found_vars= list()
+        for var in variables:
+            if var.uid not in self.uid2vars_glob_name:
+                not_found_vars.append(var)
         self.variable_array = np.array([self.uid2vars_glob_name[var.uid] for var in variables], dtype=str)
         self.values = np.zeros((self.nt, self.nv, self.ng), dtype=float)
 
-        self.register(name='values', tpe=Vec)
         
     def get_var(self, uid: int) -> Var:
         """

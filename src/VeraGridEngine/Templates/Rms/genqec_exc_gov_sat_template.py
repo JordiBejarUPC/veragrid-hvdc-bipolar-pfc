@@ -20,7 +20,7 @@ from VeraGridEngine.Templates.templates_common_functions import (tf_to_block, tf
 
 
 
-def get_genqec_rms(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
+def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> RmsModelTemplate:
     """
      generator with quadratic saturation
     """
@@ -144,12 +144,12 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
 
         Xd_prime_minus_Xl: Xd_prime - Xl,
         Xq_prime_minus_Xl: Xq_prime - Xl,
-        Xdaux: ((Xd_prime - Xd_2prime) / (Xd_prime_minus_Xl) ** 2),
-        Xdaux2: ((Xd_prime - Xd_2prime) / (Xd_prime_minus_Xl)),
-        Xdaux3: ((Xd_2prime - Xl) / (Xd_prime_minus_Xl)),
-        Xqaux: ((Xq_prime - Xq_2prime) / (Xq_prime_minus_Xl) ** 2),
-        Xqaux2: (Xq_prime - Xq_2prime) / (Xq_prime_minus_Xl),
-        Xqaux3: ((Xq_2prime - Xl) / (Xq_prime_minus_Xl)),
+        Xdaux: ((Xd_prime - Xd_2prime) / (((Xd_prime - Xl) ** 2) + sym.Const(1e-12))),
+        Xdaux2: ((Xd_prime - Xd_2prime) / ((Xd_prime - Xl) + sym.Const(1e-12))),
+        Xdaux3: ((Xd_2prime - Xl) / ((Xd_prime - Xl) + sym.Const(1e-12))),
+        Xqaux: ((Xq_prime - Xq_2prime) / (((Xq_prime - Xl) ** 2) + sym.Const(1e-12))),
+        Xqaux2: (Xq_prime - Xq_2prime) / ((Xq_prime - Xl) + sym.Const(1e-12)),
+        Xqaux3: ((Xq_2prime - Xl) / ((Xq_prime - Xl) + sym.Const(1e-12))),
         A: vfactory.add_const(5.0),
         B: vfactory.add_const(1.0)
     }
@@ -274,41 +274,7 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "") -> RmsModelTemplate:
             VarPowerFlowRefferenceType.Va: inputs[1],
         },
 
-        api_obj_mapping={
-            ParamPowerFlowRefferenceType.fn: fn,
-            ParamPowerFlowRefferenceType.ws: ws,
-            ParamPowerFlowRefferenceType.M: M,
-            ParamPowerFlowRefferenceType.D: D,
-            ParamPowerFlowRefferenceType.Rs: Rs,
-            ParamPowerFlowRefferenceType.Ra: Ra,
-
-            # Reactances
-            ParamPowerFlowRefferenceType.Xd: Xd,
-            ParamPowerFlowRefferenceType.Xq: Xq,
-            ParamPowerFlowRefferenceType.Xd_prime: Xd_prime,
-            ParamPowerFlowRefferenceType.Xq_prime: Xq_prime,
-            ParamPowerFlowRefferenceType.Xd_2prime: Xd_2prime,
-            ParamPowerFlowRefferenceType.Xq_2prime: Xq_2prime,
-            ParamPowerFlowRefferenceType.Xl: Xl,
-
-            # Time constants
-            ParamPowerFlowRefferenceType.Td0_prime: Td0_prime,
-            ParamPowerFlowRefferenceType.Tq0_prime: Tq0_prime,
-            ParamPowerFlowRefferenceType.Td0_2prime: Td0_2prime,
-            ParamPowerFlowRefferenceType.Tq0_2prime: Tq0_2prime,
-
-            ParamPowerFlowRefferenceType.Xd_prime_minus_Xl: Xd_prime_minus_Xl,
-            ParamPowerFlowRefferenceType.Xq_prime_minus_Xl: Xq_prime_minus_Xl,
-            ParamPowerFlowRefferenceType.Xdaux: Xdaux,
-            ParamPowerFlowRefferenceType.Xdaux2: Xdaux2,
-            ParamPowerFlowRefferenceType.Xdaux3: Xdaux3,
-            ParamPowerFlowRefferenceType.Xqaux: Xqaux,
-            ParamPowerFlowRefferenceType.Xqaux2: Xqaux2,
-            ParamPowerFlowRefferenceType.Xqaux3: Xqaux3,
-
-            ParamPowerFlowRefferenceType.A: A,
-            ParamPowerFlowRefferenceType.B: B,
-        },
+        api_obj_mapping={  },
 
         out_vars=[Pg, Qg, omega, IRPu, Te],
         in_vars=inputs,
@@ -709,7 +675,7 @@ def get_exciter_rms(vfactory: VarFactory, name: str = "exciter") -> RmsModelTemp
         TolLi: vfactory.add_const(0.05),  # limiter crossing tolerance (fraction)
 
         # Limits
-        VaMaxPu: vfactory.add_const(2.0),  # AVR output max (pu)
+        VaMaxPu: vfactory.add_const(2.5),  # AVR output max (pu)
         VaMinPu: vfactory.add_const(-2.0),  # AVR output min (pu)
         VeMinPu: vfactory.add_const(-2.0),  # min exciter output voltage (pu)
         VfeMaxPu: vfactory.add_const(5.0),  # max exciter field current signal (pu)

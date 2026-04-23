@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import math
 from typing import Any, List, Sequence, Tuple, cast
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -15,7 +16,6 @@ from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import EmtProblemTemplate
 from VeraGridEngine.Simulations.EMT.solvers.jit_symbolic_solver import (
     JitSymbolicSolver,
-    BoundaryUpdateWrapper as SymbolicBoundaryUpdateWrapper,
 )
 from VeraGridEngine.Simulations.EMT.solvers.solver_AD import (
     JitAdSolver,
@@ -23,8 +23,8 @@ from VeraGridEngine.Simulations.EMT.solvers.solver_AD import (
 )
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import (
     StructuralVectorizedSolver,
-    BoundaryUpdateWrapper as StructuralBoundaryUpdateWrapper,
 )
+from VeraGridEngine.Utils.emt_boundary_update_wrapper import BoundaryUpdateWrapper
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const
 from VeraGridEngine.enumerations import EmtSolverTypes
@@ -79,8 +79,7 @@ class DummyProblem(EmtProblemTemplate):
 
 class ForcedEventTracker(
     BoundaryUpdaterInterface,
-    SymbolicBoundaryUpdateWrapper,
-    StructuralBoundaryUpdateWrapper,
+    BoundaryUpdateWrapper,
 ):
     """
     Boundary updater used to verify aligned substeps.
@@ -233,16 +232,14 @@ def test_force_step_alignment_is_used_by_all_three_solvers(
         solver.jit_kernels[integration_method] = [_dummy_kernel]
         solver.jit_jacobian_symbolic[f"{integration_method}_{False}"] = cast(Any, DummyJacobian())
 
-        monkeypatch.setattr(JitSymbolicSolver, "build_jit_kernel", lambda self, method: None)
-        monkeypatch.setattr(
+        with patch.object(JitSymbolicSolver, "build_jit_kernel", lambda self, method: None), patch.object(
             JitSymbolicSolver,
             "_build_jit_symbolic_hybrid",
             lambda self, method, use_sparse: None,
-        )
-
-        t, y, dy = solver.simulate(
-            boundary_updater=cast(SymbolicBoundaryUpdateWrapper, cast(object, updater))
-        )
+        ):
+            t, y, dy, _, _ = solver.simulate(
+                boundary_updater=cast(BoundaryUpdateWrapper, cast(object, updater))
+            )
 
     elif solver_kind == EmtSolverTypes.Automatic:
         solver = JitAdSolver(
@@ -258,7 +255,7 @@ def test_force_step_alignment_is_used_by_all_three_solvers(
         solver.jit_kernels_ad[integration_method] = [_dummy_kernel]
         solver.jit_jacobian_ad[integration_method] = cast(Any, DummyJacobian())
 
-        t, y, dy = solver.simulate(boundary_updater=updater)
+        t, y, dy, _, _ = solver.simulate(boundary_updater=updater)
 
     elif solver_kind == EmtSolverTypes.StructuralAD:
         solver = StructuralVectorizedSolver(
@@ -277,8 +274,8 @@ def test_force_step_alignment_is_used_by_all_three_solvers(
         solver.fused_residual = cast(Any, _dummy_fused_residual)
         solver.vec_jacobian = cast(Any, DummyJacobian())
 
-        t, y, dy = solver.simulate(
-            boundary_updater=cast(StructuralBoundaryUpdateWrapper, cast(object, updater))
+        t, y, dy, _, _ = solver.simulate(
+            boundary_updater=cast(BoundaryUpdateWrapper, cast(object, updater))
         )
 
     else:

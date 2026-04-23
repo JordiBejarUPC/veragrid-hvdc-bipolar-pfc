@@ -8,12 +8,8 @@ from VeraGridEngine.IO.veragrid import *
 from VeraGridEngine.IO.matpower import *
 from VeraGridEngine.IO.epc import *
 from VeraGridEngine.IO.dgs import *
-
-# Optional parsers may depend on third-party packages that are not required for DGS workflows.
-try:
-    from VeraGridEngine.IO.others import *
-except ModuleNotFoundError:
-    pass
+from VeraGridEngine.IO.fmu import *
+from VeraGridEngine.IO.others import *
 
 
 

@@ -4,8 +4,27 @@ import numpy as np
 
 # Assuming these modules are in the correct fully qualified path as per eRoots rules
 from PolynomialMatrixBuilder import PolynomialMatrixBuilder
-from MTI_problem import MTI_Problem
 
+
+
+try:
+    print("primer try")
+    from MTI_problem import MTI_Problem
+except ModuleNotFoundError:
+    try:
+        print("segon try")
+        import sys, os
+        sys.path.extend([os.path.abspath('.'), os.path.abspath('../../src')])
+        from MTI_problem import MTI_Problem
+    except ModuleNotFoundError:
+        try:
+            print("tercer try")
+            from ..tensygrid.MTI_problem import MTI_Problem
+        except ModuleNotFoundError:
+            from VeraGrid.trunk.tensygrid.MTI_problem import MTI_Problem
+
+from small_signal_tensygrid import define_problem, op_extraction, solve_problem
+from scipy.optimize import linear_sum_assignment
 
 class StabilityResult(object):
     """
@@ -420,6 +439,62 @@ class TestPolynomialStability(unittest.TestCase):
         self.assertTrue(found_dominant, "Dominant pole at -20.6046 not found.")
         self.assertTrue(found_secondary, "Secondary pole at -142.3954 not found.")
 
+    '''def test_vg_1(self) -> None:
+        """
+        Test:
+        """
+        problem = define_problem()
+        calculated_evs = []
+        if problem:
+            calculated_evs = solve_problem(problem)
+
+        reference_evs = [complex(x) for x in
+                         ["(-20.000000001+0j)", "(-10.000000001+0j)", "(-50.00000013636582+0j)",
+                          "(-49.9999998638391+0j)",
+                          "(-12.168789431034414+0j)", "(-10.142655446318065+0j)", "(-6.854035294550814+0j)",
+                          "(-5.029702766536969+0j)", "(-3.6156680497265823+0j)", "(0.7258649757244431+0j)",
+                          "(-1.8851882786542178+0j)", "(-1.719135993985083+0.32085026247445086j)",
+                          "(-1.7191359939850832-0.3208502624744508j)", "(-0.49201422052160765+0.8707873679911879j)",
+                          "(-0.49201422052160765-0.870787367991188j)", "(-0.48381848641530006+0.465928959924564j)",
+                          "(-0.48381848641530006-0.46592895992456396j)", "(-0.10000000099999705+0j)",
+                          "(-0.11161483998140341+0j)", "(-0.9999999991690246+0j)", "(-1.0000000028309748+0j)",
+                          "(-0.39635072300328184+0j)", "(-10.00000000099956+0j)", "(-1.0000000000000023e-09+0j)",
+                          "(-9.999999999999996e-10+0j)", "(-9.999999999999992e-10+0j)"]]
+
+        finite_evs = calculated_evs[np.isfinite(calculated_evs) & (np.abs(calculated_evs) < 1e6)] if len(
+            calculated_evs) > 0 else []
+
+        tol = 0.06  # Tolerancia para considerar que coinciden
+        matched_calc = []
+        unmatched_calc = []
+        unmatched_ref = list(reference_evs)
+        if len(finite_evs) > 0 and len(reference_evs) > 0:
+            # 1. Crear matriz de distancias (costos)
+            cost_matrix = np.zeros((len(finite_evs), len(reference_evs)))
+            for i, c_ev in enumerate(finite_evs):
+                for j, r_ev in enumerate(reference_evs):
+                    cost_matrix[i, j] = np.abs(c_ev - r_ev)
+
+            # 2. Asignación óptima
+            row_ind, col_ind = linear_sum_assignment(cost_matrix)
+
+            # 3. Filtrar por tolerancia
+            for i, j in zip(row_ind, col_ind):
+                if cost_matrix[i, j] < tol:
+                    matched_calc.append(finite_evs[i])
+                    unmatched_ref[j] = None  # Marcamos como encontrado
+                else:
+                    unmatched_calc.append(finite_evs[i])
+
+            # 4. Limpiar listas de no emparejados
+            unmatched_ref = [x for x in unmatched_ref if x is not None]
+
+            # Añadir los calculados que ni siquiera entraron en la asignación
+            for i in range(len(finite_evs)):
+                if i not in row_ind:
+                    unmatched_calc.append(finite_evs[i])
+        self.assertTrue(len(unmatched_ref)==0, f"# unmatched eigenvalues: {len(unmatched_ref)}")'''
+
 if __name__ == "__main__":
     # Standard unittest execution
-    unittest.main()
+    unittest.main(buffer=True)

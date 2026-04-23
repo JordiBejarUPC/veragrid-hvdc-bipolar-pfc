@@ -16,6 +16,7 @@ class GraphicLocation:
     """
 
     def __init__(self,
+                 api_object: ALL_DEV_TYPES,
                  x: float = 0,
                  y: float = 0,
                  h: float = 80,
@@ -23,8 +24,7 @@ class GraphicLocation:
                  r: float = 0,
                  poly_line: Union[None, List[Tuple[int, int]]] = None,
                  layout_metadata: Union[None, Dict[str, Any]] = None,
-                 draw_labels: bool = True,
-                 api_object: ALL_DEV_TYPES = None):
+                 draw_labels: bool = True):
         """
         GraphicLocation
         :param x: x position (px)
@@ -62,7 +62,7 @@ class GraphicLocation:
                 'draw_labels': self.draw_labels,
                 'api_object': self.api_object.idtag if self.api_object else ''}
 
-    def copy(self) -> "GraphicLocation":
+    def copy(self, api_object: ALL_DEV_TYPES | None = None) -> "GraphicLocation":
         """
         Return a detached copy so diagrams do not accidentally share mutable layout state.
         """
@@ -74,4 +74,15 @@ class GraphicLocation:
                                poly_line=deepcopy(self.poly_line),
                                layout_metadata=deepcopy(self.layout_metadata),
                                draw_labels=self.draw_labels,
-                               api_object=self.api_object)
+                               api_object=self.api_object if api_object is None else api_object)
+
+    def __deepcopy__(self, memo: Dict[int, Any]) -> "GraphicLocation":
+        """
+        Deep-copy the location layout while preserving the API object as a pointer.
+        """
+        if id(self) in memo:
+            return memo[id(self)]
+
+        cpy = self.copy()
+        memo[id(self)] = cpy
+        return cpy

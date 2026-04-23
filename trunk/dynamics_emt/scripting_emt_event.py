@@ -5,13 +5,22 @@
 import cProfile
 import json
 import pstats
+import os
+import sys
 import numpy as np
 from pathlib import Path
 from time import perf_counter
 from typing import Any, Dict, List, Tuple, cast
-import pandas as pd
 
-import matplotlib.pyplot as plt
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+SRC_ROOT = os.path.join(REPO_ROOT, 'src')
+
+if SRC_ROOT not in sys.path:
+    sys.path.insert(0, SRC_ROOT)
+
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+
 from trunk.dynamics_emt.support.emt_plot_exports import (
     extract_three_phase_matrix,
     get_plot_results_directory,
@@ -40,7 +49,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
@@ -50,8 +59,8 @@ from VeraGridEngine.Simulations.EMT.solvers.solver_AD import JitAdSolver
 from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import StructuralVectorizedSolver
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 
-from VeraGridEngine.Devices.Aggregation.emt_events_group import EmtEventsGroup
-from VeraGridEngine.Devices.Aggregation import EmtEvent
+from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
+from VeraGridEngine.Devices.Events.emt_event import EmtEvent
 
 from VeraGridEngine.Utils.Symbolic.diagnostic import NewtonTraceCollector
 from VeraGridEngine.enumerations import (BranchImpedanceMode, DynamicIntegrationMethod, EmtInitializationMethod,
@@ -131,24 +140,24 @@ for bus in grid.buses:
 ######################################################################################################
 
 # generator
-gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.emt_var_factory).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.var_factory).block
 
 # line
-line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
-# line_mdl = get_pi_line_emt_template(vf= grid.emt_var_factory).block
+# line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
+line_mdl = get_pi_line_emt_template(vf=grid.var_factory).block
 
 # load
-load_mdl = get_shunt_r_3ph_emt_template(vf = grid.emt_var_factory).block
+load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
 ######################################################################################################
 # Add models to devices
 ######################################################################################################
 
-set_emt_model(device=gen0, model=gen_mdl, var_factory= grid.emt_var_factory)
+set_emt_model(device=gen0, model=gen_mdl, var_factory= grid.var_factory)
 
-set_emt_model(device=line0, model=line_mdl, var_factory= grid.emt_var_factory)
+set_emt_model(device=line0, model=line_mdl, var_factory= grid.var_factory)
 
-set_emt_model(device=load, model=load_mdl, var_factory= grid.emt_var_factory)
+set_emt_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 
 
 ######################################################################################################
@@ -174,7 +183,7 @@ grid.add_emt_event(event_R_B)
 event_R_C = EmtEvent(device=load, parameter=R_C, time=0.04, value=6.0, group=events_group)
 grid.add_emt_event(event_R_C)
 
-rms_events_group_names = np.array(0)
+emt_events_group_names = np.array(0)
 
 
 pf_options = PowerFlowOptions(
@@ -231,7 +240,7 @@ print(res.get_branch_df())
 # ==============================================================================
 # SELECT YOUR SOLVER HERE ("SYMBOLIC", "AD", "VECTORIZED", "COMPILED")
 # ==============================================================================
-CHOSEN_SOLVER = "SYMBOLIC"
+CHOSEN_SOLVER = "COMPILED"
 RUN_ALL_SOLVERS = False
 BENCHMARK_ALL_SOLVERS_COLD_WARM = False
 ENABLE_PLOTS = True
@@ -264,7 +273,7 @@ options = EmtOptions(time_step = 5e-6,
 def create_problem() -> EmtProblemDae:
     local_problem = EmtProblemDae(grid=grid,
                                   options=options,
-                                  pf_results_3Ph=res,
+                                  pf_results_3ph=res,
                                   pf_results= None)
 
     if ENABLE_NEWTON_TRACE:
@@ -371,7 +380,9 @@ def run_single_solver_trajectory(solver_key: str, enable_trace: bool) -> Tuple[E
     t_arr: np.ndarray
     y_arr: np.ndarray
     dy_arr: np.ndarray
-    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, dy_arr, well_initialized, converged = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     return local_problem, solver, t_arr, y_arr, dy_arr
 
 
@@ -428,9 +439,9 @@ def export_demo_plots(
     bus0_voltages: np.ndarray = extract_three_phase_matrix(problem, y_values, bus0.emt_model.out_vars)
     bus1_voltages: np.ndarray = extract_three_phase_matrix(problem, y_values, bus1.emt_model.out_vars)
     load_current_triplet: Tuple[Any, Any, Any] = (
-        find_name_in_block("i_A_Shunt_R_3ph", load_mdl),
-        find_name_in_block("i_B_Shunt_R_3ph", load_mdl),
-        find_name_in_block("i_C_Shunt_R_3ph", load_mdl),
+        find_name_in_block("i_A_R_shunt_3ph", load_mdl),
+        find_name_in_block("i_B_R_shunt_3ph", load_mdl),
+        find_name_in_block("i_C_R_shunt_3ph", load_mdl),
     )
     load_currents: np.ndarray = -extract_three_phase_matrix(problem, y_values, load_current_triplet)
     generator_currents: np.ndarray = extract_three_phase_matrix(problem, y_values, gen_mdl.out_vars)
@@ -676,14 +687,18 @@ def run_single_solver_cold_warm_benchmark(solver_key: str) -> Dict[str, object]:
     _cold_t: np.ndarray
     cold_y: np.ndarray
     _cold_dy: np.ndarray
-    _cold_t, cold_y, _cold_dy = solver.simulate(boundary_updater=boundary_updater)
+    _cold_t, cold_y, _cold_dy, well_initialized, converged  = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     cold_sim_s: float = perf_counter() - cold_sim_t0
 
     warm_sim_t0: float = perf_counter()
     _warm_t: np.ndarray
     warm_y: np.ndarray
     _warm_dy: np.ndarray
-    _warm_t, warm_y, _warm_dy = solver.simulate(boundary_updater=boundary_updater)
+    _warm_t, warm_y, _warm_dy, well_initialized, converged  = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     warm_sim_s: float = perf_counter() - warm_sim_t0
 
     if warm_sim_s > 0.0:
@@ -734,7 +749,9 @@ def run_single_solver_benchmark(solver_key: str, reference_y: np.ndarray | None)
     t_arr: np.ndarray
     y_arr: np.ndarray
     dy_arr: np.ndarray
-    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, dy_arr, well_initialized, converged  = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     simulate_s: float = perf_counter() - t_sim_0
 
     if reference_y is None:
@@ -876,7 +893,9 @@ def main() -> None:
     # ==============================================================================
     boundary_updater = cast(Any, problem)
     profiler.enable()
-    _t, _y, _dy = solver.simulate(boundary_updater=boundary_updater)
+    _t, _y, _dy, well_initialized, converged  = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
 
     if isinstance(solver, StructuralCompiledSolver):
         print("StructuralCompiled backend build stats")

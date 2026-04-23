@@ -275,6 +275,19 @@ def compute_atc_list(br_idx: IntVec, contingency_br_idx: IntVec, lodf: Mat, alph
 
 
 class AvailableTransferCapacityResults(ResultsTemplate):
+    LOCAL_RESULTS_DECLARATIONS = tuple()
+
+    __slots__ = (
+        "branch_names",
+        "bus_names",
+        "rates",
+        "contingency_rates",
+        "base_exchange",
+        "report",
+        "report_headers",
+        "report_indices",
+        "raw_report",
+    )
 
     def __init__(self, br_names, bus_names, rates, contingency_rates: Vec,
                  clustering_results: Union[ClusteringResults, None]):
@@ -428,6 +441,12 @@ class AvailableTransferCapacityResults(ResultsTemplate):
 
 
 class AvailableTransferCapacityDriver(DriverTemplate):
+    __slots__ = (
+        "options",
+        "opf_results",
+        "t_idx",
+    )
+
     tpe = SimulationTypes.NetTransferCapacity_run
     name = tpe.value
 

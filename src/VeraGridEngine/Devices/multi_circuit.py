@@ -15,7 +15,6 @@ import networkx as nx
 from matplotlib import pyplot as plt
 from scipy.sparse import csc_matrix, lil_matrix
 
-from VeraGridEngine import BusGraphicType
 from VeraGridEngine.Devices.assets import Assets
 from VeraGridEngine.Devices.Parents.editable_device import EditableDevice
 from VeraGridEngine.basic_structures import IntVec, Vec, Mat, CxVec, IntMat, CxMat, BoolVec
@@ -24,7 +23,8 @@ import VeraGridEngine.Devices as dev
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES, INJECTION_DEVICE_TYPES, FLUID_TYPES, AREA_TYPES, BRANCH_TYPES
 from VeraGridEngine.basic_structures import Logger
 from VeraGridEngine.Topology.topology import find_different_states
-from VeraGridEngine.enumerations import DeviceType, ActionType, SubObjectType, ConverterControlType, ExternalGridMode
+from VeraGridEngine.enumerations import (DeviceType, ActionType, SubObjectType, ConverterControlType, ExternalGridMode,
+                                         BusGraphicType)
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import compare_blocks
 
@@ -363,20 +363,44 @@ class MultiCircuit(Assets):
                 'if_measurements',
                 'modelling_authorities',
                 'diagrams',
-                'rms_var_factory',
-                'emt_var_factory',
+                'var_factory',
                 'rms_models',
                 'emt_models',
+                'fmu_templates',
                 'rms_events',
                 'emt_events',
                 'rms_events_groups',
                 'emt_events_groups',
                 ]
 
+        copy_memo = dict()
         for pr in ppts:
-            setattr(cpy, pr, copy.deepcopy(getattr(self, pr)))
+            if pr != 'diagrams':
+                setattr(cpy, pr, copy.deepcopy(getattr(self, pr), copy_memo))
+
+        cpy.rebind_internal_device_references()
+
+        obj_dict = cpy.get_all_elements_dict_by_type(add_locations=True)
+        cpy.diagrams = [diagram.copy(obj_dict=obj_dict) for diagram in self.diagrams]
 
         return cpy
+
+    def rebind_internal_device_references(self) -> None:
+        """
+        Rebind copied device-pointer properties to the canonical objects in this circuit.
+
+        ``MultiCircuit.copy()`` copies device lists independently for historical compatibility.
+        Any pointer crossing from one list to another must therefore be repaired by idtag after
+        all lists have been copied.
+        """
+        objects_by_idtag, _ = self.get_all_elements_dict()
+
+        for elm in self.get_all_elements_iter():
+            set_var_factory = getattr(elm, "set_var_factory", None)
+            if callable(set_var_factory):
+                set_var_factory(self.var_factory)
+
+            elm.rebind_device_references(objects_by_idtag=objects_by_idtag)
 
     def build_graph(self) -> nx.MultiDiGraph:
         """
@@ -517,6 +541,7 @@ class MultiCircuit(Assets):
         batt = dev.Battery(name=gen.name,
                            idtag=gen.idtag,
                            P=gen.P,
+                           Q=gen.Q,
                            power_factor=gen.Pf,
                            vset=gen.Vset,
                            is_controlled=gen.is_controlled,
@@ -540,7 +565,7 @@ class MultiCircuit(Assets):
 
         batt.active_prof = gen.active_prof
         batt.P_prof = gen.P_prof
-        batt.Pf_prof = gen.Pf_prof
+        batt.Q_prof = gen.Q_prof
         batt.Vset_prof = gen.Vset_prof
         batt.enabled_dispatch_prof = gen.enabled_dispatch_prof
         batt.must_run_prof = gen.must_run_prof
@@ -860,12 +885,14 @@ class MultiCircuit(Assets):
 
     def set_state(self, t: int):
         """
-        Set the profiles state at the index t as the default values.
+        Set the profiles' state at the index t as the default values.
         """
         self.ensure_profiles_exist()
 
         for device in self.items():
+            device.disable_auto_updates()
             device.set_profile_values(t)
+            device.enable_auto_updates()
 
         self.snapshot_time = self.time_profile[t]
 
@@ -1380,17 +1407,17 @@ class MultiCircuit(Assets):
         area_names = [a.name for a in self.get_areas()]
         bus_area_indices = np.array([area_dict.get(b.area, 0) for b in self.get_buses()])
 
-        branches = self.get_branches(add_vsc=False, add_hvdc=False, add_switch=True)
-        F: IntVec = np.zeros(len(branches), dtype=int)
-        T: IntVec = np.zeros(len(branches), dtype=int)
-        for k, elm in enumerate(branches):
-            F[k] = bus_dict[elm.bus_from]
-            T[k] = bus_dict[elm.bus_to]
+        nbr = self.get_branch_number(add_vsc=False, add_hvdc=False, add_switch=True)
+        F: IntVec = np.zeros(nbr, dtype=int)
+        T: IntVec = np.zeros(nbr, dtype=int)
+        for k, elm in enumerate(self.get_branches_iter(add_vsc=False, add_hvdc=False, add_switch=True)):
+            F[k] = bus_dict.get(elm.bus_from, -1)
+            T[k] = bus_dict.get(elm.bus_to, -1)
 
-        hvdc = self.get_hvdc()
-        hvdc_F: IntVec = np.zeros(len(hvdc), dtype=int)
-        hvdc_T: IntVec = np.zeros(len(hvdc), dtype=int)
-        for k, elm in enumerate(hvdc):
+        nhvdc = self.get_hvdc_number()
+        hvdc_F: IntVec = np.zeros(nhvdc, dtype=int)
+        hvdc_T: IntVec = np.zeros(nhvdc, dtype=int)
+        for k, elm in enumerate(self.hvdc_lines):
             hvdc_F[k] = bus_dict[elm.bus_from]
             hvdc_T[k] = bus_dict[elm.bus_to]
 
@@ -1490,8 +1517,6 @@ class MultiCircuit(Assets):
                             devices_by_type[elm.device_type].append(elm)
 
         return groups
-
-
 
     def get_injection_devices_grouped_by_bus(self) -> Dict[dev.Bus, Dict[DeviceType, List[INJECTION_DEVICE_TYPES]]]:
         """
@@ -2234,7 +2259,7 @@ class MultiCircuit(Assets):
                                             expected_value=v1)
 
                             elif prop.tpe == SubObjectType.DaeBlockType:
-                                if not compare_blocks(v1, v2, self.rms_var_factory, grid2.rms_var_factory):
+                                if not compare_blocks(v1, v2, self.var_factory, grid2.var_factory):
                                     logger.add_error(msg="Different snapshot values",
                                                      device_class=template_elm.device_type.value,
                                                      device_property=prop.name,
@@ -2957,6 +2982,7 @@ class MultiCircuit(Assets):
 
         self.rms_models += data.rms_models
         self.emt_models += data.emt_models
+        self.fmu_templates += data.fmu_templates
 
     def set_opf_ts_results(self, results: OptimalPowerFlowTimeSeriesResults):
         """
@@ -3299,6 +3325,7 @@ class MultiCircuit(Assets):
                 logger.add_error("Missing EMT model",
                                  device_class=elm.device_type.value,
                                  device=elm.name)
+
         for elm in self.get_injection_devices_iter():
             if elm.emt_model.empty():
                 logger.add_error("Missing EMT model",
@@ -3306,6 +3333,109 @@ class MultiCircuit(Assets):
                                  device=elm.name)
         return logger
 
-
-
-
+    # USE AS REFERENCE TO VALIDATE THAT ALL MODELS HAVE THE SAME NUMBER OF PHASES THAN THE STATIC DEVICES!
+    # def _get_expected_pi_line_terminal_refs(ph_mask: List[bool]) -> List[VarPowerFlowRefferenceType]:
+    #     """
+    #     Build the ordered terminal-voltage references for the active pi-line phases.
+    #
+    #     :param ph_mask: Physical line phase mask in NABC order.
+    #     :return: Ordered ``vf_*`` and ``vt_*`` references for the active phases only.
+    #     """
+    #     vf_refs: List[VarPowerFlowRefferenceType] = list([
+    #         VarPowerFlowRefferenceType.vf_N,
+    #         VarPowerFlowRefferenceType.vf_A,
+    #         VarPowerFlowRefferenceType.vf_B,
+    #         VarPowerFlowRefferenceType.vf_C,
+    #     ])
+    #     vt_refs: List[VarPowerFlowRefferenceType] = list([
+    #         VarPowerFlowRefferenceType.vt_N,
+    #         VarPowerFlowRefferenceType.vt_A,
+    #         VarPowerFlowRefferenceType.vt_B,
+    #         VarPowerFlowRefferenceType.vt_C,
+    #     ])
+    #
+    #     ordered_refs: List[VarPowerFlowRefferenceType] = list()
+    #
+    #     for idx, is_active in enumerate(ph_mask):
+    #         if is_active:
+    #             ordered_refs.append(vf_refs[idx])
+    #         else:
+    #             pass
+    #
+    #     for idx, is_active in enumerate(ph_mask):
+    #         if is_active:
+    #             ordered_refs.append(vt_refs[idx])
+    #         else:
+    #             pass
+    #
+    #     return ordered_refs
+    #
+    #
+    # def _normalize_pi_line_phase_layout(branch: Any, grid: MultiCircuit) -> None:
+    #     """
+    #     Rebuild the standard pi-line template when its symbolic phase layout does not
+    #     match the physical branch connection mask.
+    #
+    #     The EMT parameter mapper writes reduced branch matrices into the fixed NABC
+    #     API map using ``branch.ys``. After the recent API change, callers can create
+    #     a pi-line template with a phase mask that does not match ``branch.ys``. When
+    #     that happens, the symbolic block keeps terminal inputs for non-existent bus
+    #     phases and later substitutions introduce ``None`` or unresolved UIDs.
+    #
+    #     This helper keeps the public explicit-mask API in place, but re-aligns the
+    #     standard pi-line block with the physical branch mask right before the EMT
+    #     problem flattens the device into the global system.
+    #
+    #     :param branch: Grid branch device.
+    #     :param grid: Parent circuit, used for the shared variable factory.
+    #     :return: None.
+    #     """
+    #     mdl: Any = branch.emt_model
+    #     api_obj_mapping: Any = mdl.api_obj_mapping
+    #
+    #     if not isinstance(api_obj_mapping, dict):
+    #         return
+    #     else:
+    #         pass
+    #
+    #     if ParamPowerFlowRefferenceType.Rnn not in api_obj_mapping:
+    #         return
+    #     else:
+    #         pass
+    #
+    #     ph_mask: List[bool] = list([
+    #         bool(branch.ys.phN),
+    #         bool(branch.ys.phA),
+    #         bool(branch.ys.phB),
+    #         bool(branch.ys.phC),
+    #     ])
+    #     expected_refs: List[VarPowerFlowRefferenceType] = _get_expected_pi_line_terminal_refs(ph_mask)
+    #     tracked_refs: Set[VarPowerFlowRefferenceType] = set([
+    #         VarPowerFlowRefferenceType.vf_N,
+    #         VarPowerFlowRefferenceType.vf_A,
+    #         VarPowerFlowRefferenceType.vf_B,
+    #         VarPowerFlowRefferenceType.vf_C,
+    #         VarPowerFlowRefferenceType.vt_N,
+    #         VarPowerFlowRefferenceType.vt_A,
+    #         VarPowerFlowRefferenceType.vt_B,
+    #         VarPowerFlowRefferenceType.vt_C,
+    #     ])
+    #     current_refs: List[VarPowerFlowRefferenceType] = list()
+    #
+    #     for in_var in mdl.in_vars:
+    #         if in_var.ref in tracked_refs:
+    #             current_refs.append(in_var.ref)
+    #         else:
+    #             pass
+    #
+    #     if current_refs != expected_refs:
+    #         branch.emt_model = get_pi_line_emt_template(
+    #             vf=grid.var_factory,
+    #             phN=ph_mask[0],
+    #             phA=ph_mask[1],
+    #             phB=ph_mask[2],
+    #             phC=ph_mask[3],
+    #             name=mdl.name,
+    #         ).block
+    #     else:
+    #         pass

@@ -4,49 +4,73 @@
 # SPDX-License-Identifier: MPL-2.0
 import numpy as np
 import scipy.linalg as spla
-from typing import Dict, List, Tuple, Any
+from typing import List, Tuple, Any
 
 from VeraGridEngine.Utils.Symbolic.block import Block, Var
-from VeraGridEngine.enumerations import DeviceType, EmtLineTypes
+from VeraGridEngine.enumerations import DeviceType, EmtLineTypes, VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
-from VeraGridEngine.Devices.Branches.line import Line
-
 
 def get_bergeron_line_emt_template(
     vf: VarFactory,
-    line: Line,
-    name: str | None = EmtLineTypes.Bergeron,
-) -> EmtModelTemplate:
+    phN: bool = False,
+    phA: bool = True,
+    phB: bool = True,
+    phC: bool = True,
+    name: str | None = "Bergeron") -> EmtModelTemplate:
     """
     Create the symbolic EMT template for a Bergeron line.
 
     Only active phases in NABC are represented.
     The history terms are modelled as runtime-updated event parameters.
+    :param vf: EMT variable factory.
+    :param phN: Bool. True if the line has neutral, else False.
+    :param phA: Bool. True if the line has phase A, else False.
+    :param phB: Bool. True if the line has phase B, else False.
+    :param phC: Bool. True if the line has phase C, else False.
+    :param name: Symbolic model name.
+    :return: EMT bergeron-line model template.
     """
     templ = EmtModelTemplate()
     templ.tpe = DeviceType.LineDevice
     templ.name = name
 
-    templ.block.name = EmtLineTypes.Bergeron
+    templ.block.name = EmtLineTypes.Bergeron.value
 
 
     ph_labels = ["N", "A", "B", "C"]
     ph_mask = np.array([
-        bool(line.ys.phN),
-        bool(line.ys.phA),
-        bool(line.ys.phB),
-        bool(line.ys.phC),
+        phN,
+        phA,
+        phB,
+        phC,
     ], dtype=bool)
 
     active_ph = [lab for lab, on in zip(ph_labels, ph_mask) if on]
 
-    if len(active_ph) == 0:
-        raise ValueError(f"Bergeron line '{line.name}' has no enabled phases in line.ys")
+    vf_keys = dict({
+        "N": VarPowerFlowRefferenceType.vf_N,
+        "A": VarPowerFlowRefferenceType.vf_A,
+        "B": VarPowerFlowRefferenceType.vf_B,
+        "C": VarPowerFlowRefferenceType.vf_C,
+    })
+    vt_keys = dict({
+        "N": VarPowerFlowRefferenceType.vt_N,
+        "A": VarPowerFlowRefferenceType.vt_A,
+        "B": VarPowerFlowRefferenceType.vt_B,
+        "C": VarPowerFlowRefferenceType.vt_C,
+    })
 
-    ih_f = [vf.add_var(f"Ih_f_{line.name}_{ph}") for ph in active_ph]
-    ih_t = [vf.add_var(f"Ih_t_{line.name}_{ph}") for ph in active_ph]
+    vf_vars = [vf.add_var(name=f"vf_{ph_label}_{name}", reference=vf_keys[ph_label]) for ph_label in active_ph]
+    vt_vars = [vf.add_var(name=f"vt_{ph_label}_{name}", reference=vt_keys[ph_label]) for ph_label in active_ph]
 
+    templ.block.in_vars = vf_vars + vt_vars
+
+
+    ih_f = [vf.add_var(f"Ih_f_{name}_{ph}") for ph in active_ph]
+    ih_t = [vf.add_var(f"Ih_t_{name}_{ph}") for ph in active_ph]
+
+    # I history
     templ.block.event_dict = {p: vf.add_const(0.0) for p in (ih_f + ih_t)}
 
 
@@ -57,8 +81,39 @@ class BergeronHistoryRuntime:
     """
     Runtime companion for a Bergeron line in reduced active-phase space.
     """
+    __slots__ = (
+        "line",
+        "block",
+        "h",
+        "hist_if",
+        "hist_it",
+        "hist_Ih_f",
+        "hist_Ih_t",
+        "hist_Ih_f_next",
+        "hist_Ih_t_next",
+        "ph_labels",
+        "ph_mask",
+        "phase_idx",
+        "active_ph",
+        "m",
+        "Ih_f",
+        "Ih_t",
+        "Gc_red",
+        "H_red",
+        "n_delay",
+        "buf_vf",
+        "buf_vt",
+        "buf_if",
+        "buf_it",
+        "v_f_vars",
+        "v_t_vars",
+        "idx_vf",
+        "idx_vt",
+        "idx_p_hf",
+        "idx_p_ht",
+    )
 
-    def __init__(self, line: Line, line_block: Block, h: float, sbase: float, fbase: float) -> None:
+    def __init__(self, line: Any, line_block: Block, h: float, sbase: float, fbase: float) -> None:
         self.line = line
         self.block = line_block
         self.h = float(h)
@@ -177,7 +232,20 @@ class BergeronHistoryRuntime:
             key = f"{prefix}{ph}"
             var = vars_by_name.get(key, None)
             if var is None:
-                raise ValueError(f"Missing Bergeron history var '{key}' for line '{self.line.name}'.")
+                matching_names: List[str] = list()
+
+                for candidate_name in vars_by_name.keys():
+                    if candidate_name.startswith(prefix.split("_", 2)[0] + "_" + prefix.split("_", 2)[1] + "_") and candidate_name.endswith(f"_{ph}"):
+                        matching_names.append(candidate_name)
+                    else:
+                        pass
+
+                if len(matching_names) == 1:
+                    var = vars_by_name[matching_names[0]]
+                else:
+                    raise ValueError(f"Missing Bergeron history var '{key}' for line '{self.line.name}'.")
+            else:
+                pass
             out.append(var)
 
         return out

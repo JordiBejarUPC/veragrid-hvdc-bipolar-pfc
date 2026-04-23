@@ -2,235 +2,279 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
+
+"""Phase-selective EMT ZIP-load template."""
+
+from typing import Dict, List, Tuple
+
 import numpy as np
 
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DeviceType, ParamPowerFlowRefferenceType
-from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Devices.Dynamic.emt_template import EmtModelTemplate
+from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import _get_active_phases, _get_phase_count_name
+from VeraGridEngine.Utils.Symbolic.block import Expr, Var
+from VeraGridEngine.enumerations import DeviceType, ParamPowerFlowRefferenceType, VarPowerFlowRefferenceType
 
-def get_load_ZIP_3ph_emt_template(vf: VarFactory,   name: str = "ZIP_Load_EMT_3ph") -> EmtModelTemplate:
+
+def _get_voltage_reference(phase_label: str) -> VarPowerFlowRefferenceType:
+    """Return the EMT voltage enum for one active phase.
+
+    :param phase_label: Phase label in ``A``, ``B`` or ``C``.
+    :return: Matching voltage reference enum.
     """
-    ZIP load model template in the abc domain
-    :param grid: MultiCircuit
-    :param load: Load object to apply the template
-    :param name: string to identify the load and model
-    :return: EmtModelTemplate
+    if phase_label == "A":
+        reference: VarPowerFlowRefferenceType = VarPowerFlowRefferenceType.v_A
+    else:
+        if phase_label == "B":
+            reference = VarPowerFlowRefferenceType.v_B
+        else:
+            if phase_label == "C":
+                reference = VarPowerFlowRefferenceType.v_C
+            else:
+                raise ValueError(f"Unsupported phase label '{phase_label}'")
+
+    return reference
+
+
+def _get_api_power_references(phase_label: str) -> Tuple[ParamPowerFlowRefferenceType, ParamPowerFlowRefferenceType]:
+    """Return the API active/reactive power enums for one active phase.
+
+    :param phase_label: Phase label in ``A``, ``B`` or ``C``.
+    :return: Tuple with API active-power and reactive-power reference enums.
     """
+    if phase_label == "A":
+        p_reference: ParamPowerFlowRefferenceType = ParamPowerFlowRefferenceType.Pl0_A
+        q_reference: ParamPowerFlowRefferenceType = ParamPowerFlowRefferenceType.Ql0_A
+    else:
+        if phase_label == "B":
+            p_reference = ParamPowerFlowRefferenceType.Pl0_B
+            q_reference = ParamPowerFlowRefferenceType.Ql0_B
+        else:
+            if phase_label == "C":
+                p_reference = ParamPowerFlowRefferenceType.Pl0_C
+                q_reference = ParamPowerFlowRefferenceType.Ql0_C
+            else:
+                raise ValueError(f"Unsupported phase label '{phase_label}'")
+
+    return p_reference, q_reference
 
 
-    templ = EmtModelTemplate()
+def get_load_ZIP_emt_template(
+    vf: VarFactory,
+    phA: bool = True,
+    phB: bool = True,
+    phC: bool = True,
+    name: str = "ZIP_Load_EMT_3ph",
+) -> EmtModelTemplate:
+    """Build the phase-selective EMT ZIP-load template.
+
+    The original per-phase SOGI filter and ZIP polynomial are reused without
+    changing their formulas. Only the number and ordering of the generated phase
+    blocks now follow the explicit ``phA``/``phB``/``phC`` selection.
+
+    :param vf: EMT variable factory.
+    :param phA: True when phase A is active.
+    :param phB: True when phase B is active.
+    :param phC: True when phase C is active.
+    :param name: Symbolic block name.
+    :return: Configured EMT template.
+    """
+    active_phases: List[str] = _get_active_phases(phA=phA, phB=phB, phC=phC)
+    phase_count: int = len(active_phases)
+    resolved_name: str = _get_phase_count_name(base_name="ZIP_Load_EMT", phase_count=phase_count, requested_name=name)
+
+    templ: EmtModelTemplate = EmtModelTemplate()
     templ.tpe = DeviceType.LoadDevice
-    templ.name = name
-    templ.block.name = name
+    templ.name = resolved_name
+    templ.block.name = resolved_name
 
-    # fbase: float = grid.fBase
-    # sbase: float = grid.Sbase
+    # Shared constants are reused by every active phase and keep the original ZIP
+    # formulation numerically identical when all three phases are enabled.
+    c2: Expr = vf.add_const(2.0)
+    c05: Expr = vf.add_const(0.5)
 
-    # Symbolic constants for math operations
-    c0 = vf.add_const(0.0)
-    c2 = vf.add_const(2.0)
-    c05 = vf.add_const(0.5)
+    # ZIP coefficients remain device-wide EMT parameters because the existing load
+    # model uses one coefficient set for all active phase equations.
+    v0: Var = vf.add_var(name=f"V0_{resolved_name}")
+    a1: Var = vf.add_var(name=f"a1_{resolved_name}")
+    a2: Var = vf.add_var(name=f"a2_{resolved_name}")
+    a3: Var = vf.add_var(name=f"a3_{resolved_name}")
+    a4: Var = vf.add_var(name=f"a4_{resolved_name}")
+    a5: Var = vf.add_var(name=f"a5_{resolved_name}")
+    a6: Var = vf.add_var(name=f"a6_{resolved_name}")
+    k_sogi: Var = vf.add_var(name=f"k_sogi_{resolved_name}")
+    eps: Var = vf.add_var(name=f"eps_{resolved_name}")
+    omega: Var = vf.add_var(name=f"omega_{resolved_name}")
 
-    # Inputs: Instantaneous phase voltages from the grid
-    v_A = vf.add_var(name=f"v_A_{name}", reference=VarPowerFlowRefferenceType.v_A)
-    v_B = vf.add_var(name=f"v_B_{name}", reference=VarPowerFlowRefferenceType.v_B)
-    v_C = vf.add_var(name=f"v_C_{name}", reference=VarPowerFlowRefferenceType.v_C)
-    templ.block.in_vars = [v_A, v_B, v_C]
-
-    # Used for initialization:
-    d_v_A = vf.add_var(name=f"d_v_A_{name}")
-    d_v_B = vf.add_var(name=f"d_v_B_{name}")
-    d_v_C = vf.add_var(name=f"d_v_C_{name}")
-
-    # Parameters: Nominal power (P0, Q0) and Voltage (V0)
-    P0_A = vf.add_var("P0_A_" + name)
-    Q0_A = vf.add_var("Q0_A_" + name)
-    P0_B = vf.add_var("P0_B_" + name)
-    Q0_B = vf.add_var("Q0_B_" + name)
-    P0_C = vf.add_var("P0_C_" + name)
-    Q0_C = vf.add_var("Q0_C_" + name)
-    V0 = vf.add_var("V0_" + name)
-
-    # ZIP coefficients and SOGI filter parameters
-    a1 = vf.add_var("a1_" + name)
-    a2 = vf.add_var("a2_" + name)
-    a3 = vf.add_var("a3_" + name)
-    a4 = vf.add_var("a4_" + name)
-    a5 = vf.add_var("a5_" + name)
-    a6 = vf.add_var("a6_" + name)
-    k_sogi = vf.add_var("k_sogi_" + name)
-    eps = vf.add_var("eps_" + name)
-    omega = vf.add_var("omega_" + name)
-
-    templ.block.event_dict[V0] = vf.add_const(np.sqrt(2))
-    templ.block.event_dict[k_sogi] = vf.add_const(np.sqrt(2))
+    templ.block.event_dict[v0] = vf.add_const(float(np.sqrt(2.0)))
+    templ.block.event_dict[k_sogi] = vf.add_const(float(np.sqrt(2.0)))
     templ.block.event_dict[eps] = vf.add_const(1e-12)
-    templ.block.event_dict[d_v_A] = vf.add_const(None)
-    templ.block.event_dict[d_v_B] = vf.add_const(None)
-    templ.block.event_dict[d_v_C] = vf.add_const(None)
+    templ.block.event_dict[a1] = vf.add_const(1.0)
+    templ.block.event_dict[a2] = vf.add_const(0.0)
+    templ.block.event_dict[a3] = vf.add_const(0.0)
+    templ.block.event_dict[a4] = vf.add_const(1.0)
+    templ.block.event_dict[a5] = vf.add_const(0.0)
+    templ.block.event_dict[a6] = vf.add_const(0.0)
 
+    # Every phase-indexed structure is instantiated strictly in filtered A-B-C
+    # order so 1-phase and 2-phase realizations have compact indexing.
+    voltage_vars: Dict[str, Var] = dict()
+    voltage_derivative_vars: Dict[str, Var] = dict()
+    p0_vars: Dict[str, Var] = dict()
+    q0_vars: Dict[str, Var] = dict()
+    u_vars: Dict[str, Var] = dict()
+    q_vars: Dict[str, Var] = dict()
+    d_u_vars: Dict[str, Var] = dict()
+    d_q_vars: Dict[str, Var] = dict()
+    v2_vars: Dict[str, Var] = dict()
+    vm_vars: Dict[str, Var] = dict()
+    ratio_vars: Dict[str, Var] = dict()
+    p_vars: Dict[str, Var] = dict()
+    q_load_vars: Dict[str, Var] = dict()
+    current_vars: Dict[str, Var] = dict()
 
-    # Constant Power behavior (a3=1, a6=1)
-    # for p in [a1, a2, a4, a5]: templ.block.event_dict[p] = c0
-    # for p in [a3, a6]: templ.block.event_dict[p] = vf.add_const(1.0)
+    in_vars: List[Var] = list()
+    state_vars: List[Var] = list()
+    diff_vars: List[Var] = list()
+    state_eqs: List[Expr] = list()
+    algebraic_vars: List[Var] = list()
+    algebraic_eqs: List[Expr] = list()
+    init_eqs: Dict[Var, Expr] = dict()
+    diff_init_eqs: Dict[Var, Expr] = dict()
 
-    # templ.block.event_dict[a1] = vf.add_const(0.4) # Z
-    # templ.block.event_dict[a2] = vf.add_const(0.4) # I
-    # templ.block.event_dict[a3] = vf.add_const(0.2) # P
-    # templ.block.event_dict[a4] = vf.add_const(0.4) # Z
-    # templ.block.event_dict[a5] = vf.add_const(0.4) # I
-    # templ.block.event_dict[a6] = vf.add_const(0.2) # P
+    phase_label: str
+    for phase_label in active_phases:
+        # These inputs are the only terminal voltages exposed to the bus model, so
+        # the block connectivity automatically shrinks to the active phase set.
+        voltage_var: Var = vf.add_var(
+            name=f"v_{phase_label}_{resolved_name}",
+            reference=_get_voltage_reference(phase_label=phase_label),
+        )
+        voltage_derivative_var: Var = vf.add_var(name=f"d_v_{phase_label}_{resolved_name}")
+        p0_var: Var = vf.add_var(name=f"P0_{phase_label}_{resolved_name}")
+        q0_var: Var = vf.add_var(name=f"Q0_{phase_label}_{resolved_name}")
 
-    # constant impedance behavior
-    templ.block.event_dict[a1] = vf.add_const(1.0)  # Z
-    templ.block.event_dict[a2] = vf.add_const(0.0)  # I
-    templ.block.event_dict[a3] = vf.add_const(0.0)  # P
-    templ.block.event_dict[a4] = vf.add_const(1.0)  # Z
-    templ.block.event_dict[a5] = vf.add_const(0.0)  # I
-    templ.block.event_dict[a6] = vf.add_const(0.0)  # P
+        templ.block.event_dict[voltage_derivative_var] = vf.add_const(None)
 
-    # State Variables (SOGI output and its quadrature signal)
-    u_A = vf.add_var("u_A_" + name)
-    q_A = vf.add_var("q_A_" + name)
-    u_B = vf.add_var("u_B_" + name)
-    q_B = vf.add_var("q_B_" + name)
-    u_C = vf.add_var("u_C_" + name)
-    q_C = vf.add_var("q_C_" + name)
-    templ.block.state_vars = [u_A, q_A, u_B, q_B, u_C, q_C]
+        voltage_vars[phase_label] = voltage_var
+        voltage_derivative_vars[phase_label] = voltage_derivative_var
+        p0_vars[phase_label] = p0_var
+        q0_vars[phase_label] = q0_var
+        in_vars.append(voltage_var)
 
-    # Differential Variables (Derivatives)
-    d_u_A = vf.add_diff_var("d_u_A_" + name, base_var=u_A)
-    d_q_A = vf.add_diff_var("d_q_A_" + name, base_var=q_A)
-    d_u_B = vf.add_diff_var("d_u_B_" + name, base_var=u_B)
-    d_q_B = vf.add_diff_var("d_q_B_" + name, base_var=q_B)
-    d_u_C = vf.add_diff_var("d_u_C_" + name, base_var=u_C)
-    d_q_C = vf.add_diff_var("d_q_C_" + name, base_var=q_C)
-    templ.block.diff_vars = [d_u_A, d_q_A, d_u_B, d_q_B, d_u_C, d_q_C]
+        # Each active phase preserves the original SOGI pair and differential
+        # equations, which is why the ABC realization remains numerically stable.
+        u_var: Var = vf.add_var(name=f"u_{phase_label}_{resolved_name}")
+        q_var: Var = vf.add_var(name=f"q_{phase_label}_{resolved_name}")
+        d_u_var: Var = vf.add_diff_var(name=f"d_u_{phase_label}_{resolved_name}", base_var=u_var)
+        d_q_var: Var = vf.add_diff_var(name=f"d_q_{phase_label}_{resolved_name}", base_var=q_var)
 
-    # State Equations: SOGI Dynamics (Standard Orthogonal Filter)
-    templ.block.state_eqs = [
-        (k_sogi * omega * (v_A - u_A) - omega * q_A),
-        (omega * u_A),
+        u_vars[phase_label] = u_var
+        q_vars[phase_label] = q_var
+        d_u_vars[phase_label] = d_u_var
+        d_q_vars[phase_label] = d_q_var
+        state_vars.append(u_var)
+        state_vars.append(q_var)
+        diff_vars.append(d_u_var)
+        diff_vars.append(d_q_var)
+        state_eqs.append(k_sogi * omega * (voltage_var - u_var) - omega * q_var)
+        state_eqs.append(omega * u_var)
 
-        (k_sogi * omega * (v_B - u_B) - omega * q_B),
-        (omega * u_B),
+        # The ZIP polynomial and current injection are created per active phase so
+        # there are no inactive entries hidden in the algebraic system size.
+        v2_var: Var = vf.add_var(name=f"V{phase_label}2_{resolved_name}")
+        vm_var: Var = vf.add_var(name=f"Vm{phase_label}_{resolved_name}")
+        ratio_var: Var = vf.add_var(name=f"r{phase_label}_{resolved_name}")
+        p_var: Var = vf.add_var(name=f"P_{phase_label}_{resolved_name}")
+        q_load_var: Var = vf.add_var(name=f"Q_{phase_label}_{resolved_name}")
+        current_var: Var = vf.add_var(name=f"i_{phase_label}_{resolved_name}")
 
-        (k_sogi * omega * (v_C - u_C) - omega * q_C),
-        (omega * u_C),
-    ]
+        v2_vars[phase_label] = v2_var
+        vm_vars[phase_label] = vm_var
+        ratio_vars[phase_label] = ratio_var
+        p_vars[phase_label] = p_var
+        q_load_vars[phase_label] = q_load_var
+        current_vars[phase_label] = current_var
+        algebraic_vars.append(v2_var)
+        algebraic_vars.append(vm_var)
+        algebraic_vars.append(ratio_var)
+        algebraic_vars.append(p_var)
+        algebraic_vars.append(q_load_var)
+        algebraic_vars.append(current_var)
 
-    # Algebraic Variables for ZIP model
-    VA2 = vf.add_var("VA2_" + name)
-    VB2 = vf.add_var("VB2_" + name)
-    VC2 = vf.add_var("VC2_" + name)
-    VmA = vf.add_var("VmA_" + name)
-    VmB = vf.add_var("VmB_" + name)
-    VmC = vf.add_var("VmC_" + name)
-    rA = vf.add_var("rA_" + name)
-    rB = vf.add_var("rB_" + name)
-    rC = vf.add_var("rC_" + name)
-    P_A = vf.add_var("P_A_" + name)
-    Q_A = vf.add_var("Q_A_" + name)
-    P_B = vf.add_var("P_B_" + name)
-    Q_B = vf.add_var("Q_B_" + name)
-    P_C = vf.add_var("P_C_" + name)
-    Q_C = vf.add_var("Q_C_" + name)
-    i_A = vf.add_var("i_A_" + name)
-    i_B = vf.add_var("i_B_" + name)
-    i_C = vf.add_var("i_C_" + name)
+        algebraic_eqs.append(v2_var - (u_var ** 2 + q_var ** 2))
+        algebraic_eqs.append(vm_var - ((v2_var + eps) ** c05))
+        algebraic_eqs.append(ratio_var - (vm_var / v0))
+        algebraic_eqs.append(p_var + (p0_var * (a1 * ratio_var ** 2 + a2 * ratio_var + a3)))
+        algebraic_eqs.append(q_load_var + (q0_var * (a4 * ratio_var ** 2 + a5 * ratio_var + a6)))
+        algebraic_eqs.append(current_var + (c2 * (u_var * (-p_var) + q_var * (-q_load_var)) / (v2_var + eps)))
 
-    templ.block.algebraic_vars = [
-        VA2, VB2, VC2, VmA, VmB, VmC, rA, rB, rC,
-        P_A, Q_A, P_B, Q_B, P_C, Q_C, i_A, i_B, i_C
-    ]
+        # The initializer keeps the same seeds as the legacy ZIP template so the
+        # change stays limited to phase-selective sizing and naming.
+        init_eqs[u_var] = voltage_var
+        init_eqs[q_var] = -voltage_derivative_var / omega
+        init_eqs[v2_var] = u_var ** 2 + q_var ** 2
+        init_eqs[vm_var] = (v2_var + eps) ** c05
+        init_eqs[ratio_var] = vm_var / v0
 
-    # Algebraic Equations: Definitions for magnitudes and the ZIP polynomial
-    templ.block.algebraic_eqs = [
-        # Magnitudes squared (u^2 + q^2)
-        VA2 - (u_A ** 2 + q_A ** 2),
-        VB2 - (u_B ** 2 + q_B ** 2),
-        VC2 - (u_C ** 2 + q_C ** 2),
-        # Peak amplitudes
-        VmA - ((VA2 + eps) ** c05),
-        VmB - ((VB2 + eps) ** c05),
-        VmC - ((VC2 + eps) ** c05),
-        # Voltage ratios (V/V_nominal)
-        rA - (VmA / V0),
-        rB - (VmB / V0),
-        rC - (VmC / V0),
-        # ZIP Polynomials for P and Q
-        P_A + (P0_A * (a1 * rA ** 2 + a2 * rA + a3)),
-        Q_A + (Q0_A * (a4 * rA ** 2 + a5 * rA + a6)),
-        P_B + (P0_B * (a1 * rB ** 2 + a2 * rB + a3)),
-        Q_B + (Q0_B * (a4 * rB ** 2 + a5 * rB + a6)),
-        P_C + (P0_C * (a1 * rC ** 2 + a2 * rC + a3)),
-        Q_C + (Q0_C * (a4 * rC ** 2 + a5 * rC + a6)),
+        diff_init_eqs[d_u_var] = voltage_derivative_var
+        diff_init_eqs[d_q_var] = omega * u_var
 
-        # Current injection: i = 2 * (u*P + q*Q) / V_peak^2
-        i_A + (c2 * (u_A * (-P_A) + q_A * (-Q_A)) / (VA2 + eps)),
-        i_B + (c2 * (u_B * (-P_B) + q_B * (-Q_B)) / (VB2 + eps)),
-        i_C + (c2 * (u_C * (-P_C) + q_C * (-Q_C)) / (VC2 + eps)),
-    ]
+    templ.block.in_vars = in_vars
+    templ.block.out_vars = list(current_vars[phase_label] for phase_label in active_phases)
+    templ.block.state_vars = state_vars
+    templ.block.diff_vars = diff_vars
+    templ.block.state_eqs = state_eqs
+    templ.block.algebraic_vars = algebraic_vars
+    templ.block.algebraic_eqs = algebraic_eqs
+    templ.block.init_eqs = init_eqs
+    templ.block.diff_init_eqs = diff_init_eqs
 
-    templ.block.init_eqs = {
-        u_A: v_A,
-        u_B: v_B,
-        u_C: v_C,
-        q_A: -d_v_A / omega,
-        q_B: -d_v_B / omega,
-        q_C: -d_v_C / omega,
-        VA2: (u_A ** 2 + q_A ** 2), VmA: ((VA2 + eps) ** c05), rA: (VmA / V0),
-        VB2: (u_B ** 2 + q_B ** 2), VmB: ((VB2 + eps) ** c05), rB: (VmB / V0),
-        VC2: (u_C ** 2 + q_C ** 2), VmC: ((VC2 + eps) ** c05), rC: (VmC / V0),
-    }
-
-    templ.block.diff_init_eqs = {
-        d_u_A: d_v_A,
-        d_q_A: omega * u_A,
-        d_u_B: d_v_B,
-        d_q_B: omega * u_B,
-        d_u_C: d_v_C,
-        d_q_C: omega * u_C,
-    }
-
-
-    templ.block.external_mapping = {
+    # The external mapping stays compatible with the fixed EMT enum contract, but
+    # only active phases carry symbolic variables into the topology assembler.
+    external_mapping: Dict[VarPowerFlowRefferenceType, Var | None] = dict({
         VarPowerFlowRefferenceType.v_N: None,
-        VarPowerFlowRefferenceType.v_A: v_A,
-        VarPowerFlowRefferenceType.v_B: v_B,
-        VarPowerFlowRefferenceType.v_C: v_C,
+        VarPowerFlowRefferenceType.v_A: voltage_vars.get("A", None),
+        VarPowerFlowRefferenceType.v_B: voltage_vars.get("B", None),
+        VarPowerFlowRefferenceType.v_C: voltage_vars.get("C", None),
         VarPowerFlowRefferenceType.P: None,
         VarPowerFlowRefferenceType.Q: None,
         VarPowerFlowRefferenceType.P_N: None,
         VarPowerFlowRefferenceType.Q_N: None,
-        VarPowerFlowRefferenceType.P_A: P_A,
-        VarPowerFlowRefferenceType.Q_A: Q_A,
-        VarPowerFlowRefferenceType.P_B: P_B,
-        VarPowerFlowRefferenceType.Q_B: Q_B,
-        VarPowerFlowRefferenceType.P_C: P_C,
-        VarPowerFlowRefferenceType.Q_C: Q_C,
+        VarPowerFlowRefferenceType.P_A: p_vars.get("A", None),
+        VarPowerFlowRefferenceType.Q_A: q_load_vars.get("A", None),
+        VarPowerFlowRefferenceType.P_B: p_vars.get("B", None),
+        VarPowerFlowRefferenceType.Q_B: q_load_vars.get("B", None),
+        VarPowerFlowRefferenceType.P_C: p_vars.get("C", None),
+        VarPowerFlowRefferenceType.Q_C: q_load_vars.get("C", None),
         VarPowerFlowRefferenceType.i_N: None,
-        VarPowerFlowRefferenceType.i_A: i_A,
-        VarPowerFlowRefferenceType.i_B: i_B,
-        VarPowerFlowRefferenceType.i_C: i_C,
+        VarPowerFlowRefferenceType.i_A: current_vars.get("A", None),
+        VarPowerFlowRefferenceType.i_B: current_vars.get("B", None),
+        VarPowerFlowRefferenceType.i_C: current_vars.get("C", None),
         VarPowerFlowRefferenceType.phi_v: None,
         VarPowerFlowRefferenceType.phi: None,
         VarPowerFlowRefferenceType.Vpk: None,
         VarPowerFlowRefferenceType.Ipk: None,
         VarPowerFlowRefferenceType.d_v_N: None,
-        VarPowerFlowRefferenceType.d_v_A: d_v_A,
-        VarPowerFlowRefferenceType.d_v_B: d_v_B,
-        VarPowerFlowRefferenceType.d_v_C: d_v_C,
-    }
+        VarPowerFlowRefferenceType.d_v_A: voltage_derivative_vars.get("A", None),
+        VarPowerFlowRefferenceType.d_v_B: voltage_derivative_vars.get("B", None),
+        VarPowerFlowRefferenceType.d_v_C: voltage_derivative_vars.get("C", None),
+    })
+    templ.block.external_mapping = external_mapping
 
-    templ.block.api_obj_mapping = {
+    # Only active per-phase load powers are published to the EMT initializer, and
+    # the shared omega parameter remains mapped exactly as in the 3-phase model.
+    api_obj_mapping: Dict[ParamPowerFlowRefferenceType, Var | None] = dict({
         ParamPowerFlowRefferenceType.omega_base: omega,
-        ParamPowerFlowRefferenceType.Pl0_A: P0_A,
-        ParamPowerFlowRefferenceType.Pl0_B: P0_B,
-        ParamPowerFlowRefferenceType.Pl0_C: P0_C,
-        ParamPowerFlowRefferenceType.Ql0_A: Q0_A,
-        ParamPowerFlowRefferenceType.Ql0_B: Q0_B,
-        ParamPowerFlowRefferenceType.Ql0_C: Q0_C,
-    }
+    })
+
+    for phase_label in active_phases:
+        p_reference: ParamPowerFlowRefferenceType
+        q_reference: ParamPowerFlowRefferenceType
+        p_reference, q_reference = _get_api_power_references(phase_label=phase_label)
+        api_obj_mapping[p_reference] = p0_vars[phase_label]
+        api_obj_mapping[q_reference] = q0_vars[phase_label]
+
+    templ.block.api_obj_mapping = api_obj_mapping
 
     return templ

@@ -6,7 +6,7 @@
 
 import cProfile
 import time
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Any
 import numpy as np
 from collections import defaultdict, deque
 
@@ -18,6 +18,42 @@ from VeraGridEngine.Utils.Symbolic.symbolic import get_expression_vars
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, find_vars_order
 from VeraGridEngine.basic_structures import Vec
+
+
+
+
+
+def add_items(blk, init_vars, init_event):
+    """
+    adds items from a block to the dictionary
+    :param blk:
+    :type blk:
+    :param init_vars:
+    :param init_event:
+    init_dict
+    :return:
+    :rtype:
+    """
+
+    init_vars.update(blk.init_eqs)
+    init_event.update(blk.event_dict)
+
+def build_init_dict(mdl, init_vars, init_event):
+    """
+    builds initialization dictionary from mdl
+    :param mdl:
+    :type mdl:
+    :param init_vars:
+    :param init_event:
+    :type init_vars:
+    init_dict
+    :return:
+    :rtype:
+    """
+    add_items(mdl, init_vars, init_event)
+    for blk in mdl.children:
+        build_init_dict(blk, init_vars, init_event)
+
 
 
 # ask Maria for usages and delete
@@ -40,17 +76,30 @@ def build_init_vars_vector(uid2idx_vars, mapping: dict[Var, float]) -> np.ndarra
     return x
 
 def solve_secant(eq_fn, x, idx, event_params_array, params_array,
-                 tol=1e-8, max_iter=50):
-    x0 = 1.0
-    x1 = 1.1
+                 tol=1e-8, max_iter=50, seed: float | None = None, fallback_seed: float = 10.0):
+    if seed is not None and np.isfinite(seed):
+        x0 = float(seed)
+    elif np.isfinite(x[idx]):
+        x0 = float(x[idx])
+    else:
+        x0 = float(fallback_seed)
+
+    x1 = x0 + 0.1 if abs(x0) < 1e-6 else x0 * 1.1
 
     for _ in range(max_iter):
 
         x[idx] = x0
         f0 = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0]) - x0
+        if not np.isfinite(f0):
+            x0 = float(fallback_seed)
+            x1 = x0 + 0.1 if abs(x0) < 1e-6 else x0 * 1.1
+            continue
 
         x[idx] = x1
         f1 = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0]) - x1
+        if not np.isfinite(f1):
+            x1 = x0 + 0.1 if abs(x0) < 1e-6 else x0 * 1.1
+            continue
 
         if abs(f1) < tol:
             return x1
@@ -60,7 +109,15 @@ def solve_secant(eq_fn, x, idx, event_params_array, params_array,
             break
 
         x2 = x1 - f1 * (x1 - x0) / denom
+        if not np.isfinite(x2):
+            raise ValueError(
+                f"Secant init produced non-finite iterate at idx={idx}: x0={x0}, x1={x1}, x2={x2}"
+            )
+
         x0, x1 = x1, x2
+
+    if not np.isfinite(x1):
+        raise ValueError(f"Secant init failed to converge to a finite value at idx={idx}")
 
     return x1
 
@@ -193,12 +250,18 @@ def init_explicit(mdl: Block,
     #         event_params_array[uid2idx_event_params[event_param.uid]] = result
 
     # unify event_dict and init_equations
+    init_vars = dict()
+    init_event = dict()
+    build_init_dict(mdl, init_vars, init_event)
 
-    dic_total = mdl.event_dict.copy()
-    dic_total.update(mdl.init_eqs)
+    for key, val in init_event.items():
+        if not(isinstance(val, Const) and val.value is None):
+            init_vars[key] = val
+        else:
+            pass
 
-
-
+    # init_dict = mdl.event_dict.copy()
+    # init_dict.update(mdl.init_eqs)
 
     # compute and assign missing init_vars and None event parameters
 
@@ -210,10 +273,10 @@ def init_explicit(mdl: Block,
 
     dependencies = {}
 
-    for var, eq in dic_total.items():
+    for var, eq in init_vars.items():
 
         vars_in_eq = get_expression_vars(eq)
-        deps = [v for v in vars_in_eq if v in dic_total]
+        deps = [v for v in vars_in_eq if v in init_vars]
 
         dependencies[var] = deps
 
@@ -238,30 +301,59 @@ def init_explicit(mdl: Block,
             if in_degree[v] == 0:
                 queue.append(v)
 
-    if len(topo_order) != len(dic_total):
+    if len(topo_order) != len(init_vars):
         raise RuntimeError("Cycle detected between different variables")
+
+    def _resolve_numeric(value):
+        if isinstance(value, Var):
+            if value.uid in uid2idx_event_params:
+                return float(event_params_array[uid2idx_event_params[value.uid]])
+            if value.uid in uid2idx_vars:
+                return float(x[uid2idx_vars[value.uid]])
+            if value.uid in uid2idx_params:
+                return float(params_array[uid2idx_params[value.uid]])
+            if value.uid in init_guess:
+                return float(init_guess[value.uid])
+            raise ValueError(f"Could not resolve numeric value for '{value.name}' (uid={value.uid})")
+
+        return float(value)
 
     # evaluate
     for var in topo_order:
-        eq = dic_total[var]
+        eq = init_vars[var]
         vars_list = find_vars_order(eq)
 
-        if var in mdl.event_dict.keys():
+        if var in init_event.keys():
             uid_bindings: Dict[int, float] = {}
             for vr in vars_list:
                 if vr.uid in uid2idx_event_params:
                     uid_bindings.update({vr.uid: event_params_array[uid2idx_event_params[vr.uid]]})
                 elif vr.uid in uid2idx_vars:
                     uid_bindings.update({vr.uid: x[uid2idx_vars[vr.uid]]})
+                elif vr.uid in uid2idx_params:
+                    uid_bindings.update({vr.uid: params_array[uid2idx_params[vr.uid]]})
+
+            missing = [f"{vr.name}:{vr.uid}" for vr in vars_list if vr.uid not in uid_bindings]
+            if len(missing) > 0:
+                raise ValueError(
+                    f"Explicit init could not evaluate event equation for '{var.name}' (uid={var.uid}). "
+                    f"Missing bindings: {', '.join(missing)}"
+                )
 
             result = eq.eval_uid(uid_bindings)
             # eq_fn = SymbolicParamsVectorInit([eq], compiler_names_dict, alias_names_dict, VARS_NAME,
             #                                  VARIABLE_PARAMS_NAME, TIME_NAME)
             #
             # result = float(eq_fn(x, event_params_array, 0.0)[0])
-            event_params_array[uid2idx_event_params[var.uid]] = result
+            resolved_result = _resolve_numeric(result)
+            if not np.isfinite(resolved_result):
+                raise ValueError(
+                    f"Explicit init produced non-finite event value for '{var.name}' (uid={var.uid}): "
+                    f"{resolved_result}. Equation: {eq}"
+                )
+            event_params_array[uid2idx_event_params[var.uid]] = resolved_result
             index = variable_parameters.index(var)
-            event_parameters_eqs[index] = Const(result)
+            event_parameters_eqs[index] = Const(resolved_result)
         elif var.base_var is None:
             # check if implicit equation
             is_self_implicit = var in dependencies[var]
@@ -277,11 +369,24 @@ def init_explicit(mdl: Block,
                     elif vr.uid in uid2idx_params:
                         uid_bindings.update({vr.uid: params_array[uid2idx_params[vr.uid]]})
 
+                missing = [f"{vr.name}:{vr.uid}" for vr in vars_list if vr.uid not in uid_bindings]
+                if len(missing) > 0:
+                    raise ValueError(
+                        f"Explicit init could not evaluate equation for '{var.name}' (uid={var.uid}). "
+                        f"Missing bindings: {', '.join(missing)}"
+                    )
+
                 result = eq.eval_uid(uid_bindings)
                 # eq_fn = rms_compiler.compile_rhs([eq], "equation")
                 # result = float(eq_fn(x, np.ones(1), event_params_array, params_array)[0])
-                init_guess[var.uid] = result
-                x[uid2idx_vars[var.uid]] = result
+                resolved_result = _resolve_numeric(result)
+                if not np.isfinite(resolved_result):
+                    raise ValueError(
+                        f"Explicit init produced non-finite state/algebraic value for '{var.name}' (uid={var.uid}): "
+                        f"{resolved_result}. Equation: {eq}"
+                    )
+                init_guess[var.uid] = resolved_result
+                x[uid2idx_vars[var.uid]] = resolved_result
 
             else:
                 # compile equations
@@ -297,11 +402,29 @@ def init_explicit(mdl: Block,
                     event_params_array=event_params_array,
                     params_array=params_array,
                     tol=1e-8,
-                    max_iter=50
+                    max_iter=50,
+                    seed=init_guess.get(var.uid, None),
                 )
+
+                if not np.isfinite(init_val):
+                    raise ValueError(
+                        f"Explicit init produced non-finite implicit solve value for '{var.name}' "
+                        f"(uid={var.uid}): {init_val}. Equation: {eq}"
+                    )
 
                 init_guess[var.uid] = init_val
                 x[uid2idx_vars[var.uid]] = init_val
+
+    # Debug print: show initialized values for all variables/params in this model
+    seen = set()
+    debug_vars = list(mdl.algebraic_vars) + list(mdl.state_vars) + list(mdl.diff_vars)
+    for var in debug_vars:
+        if var.uid in seen:
+            continue
+        seen.add(var.uid)
+
+        if var.uid in uid2idx_vars:
+            print(f"DEBUG_INIT_ALL: {var.name} = {x[uid2idx_vars[var.uid]]}")
 
 
 def init_custom(mdl, init_guess):

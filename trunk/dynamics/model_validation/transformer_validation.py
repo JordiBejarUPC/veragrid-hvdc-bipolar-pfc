@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import math
 import cProfile as profile
 import numpy as np
 from matplotlib import pyplot as plt
@@ -12,13 +11,9 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')))
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
-from VeraGridEngine.Templates.Rms.genrow_rms_template import get_genrow_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 from VeraGridEngine.Templates.Rms.transformer_rms_template import initialize_trafo_rms
@@ -27,8 +22,8 @@ from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
-from VeraGridEngine.Devices.Aggregation import RmsEvent
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 import VeraGridEngine.api as gce
 
 def block_dimensions(block:Block):
@@ -94,7 +89,7 @@ grid.add_bus(bus2)
 grid.add_bus(bus3)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.rms_var_factory)
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 grid.add_line(line12)
 grid.add_generator(bus=bus1, api_obj=gen1)
@@ -118,16 +113,16 @@ print(f"Trafo flows (PF): Qf={res.Sf[trafo_idx].imag:.6f}, Qt={res.St[trafo_idx]
 
 
 # Build Rms models
-line12_mdl = (get_line_rms_template(grid.rms_var_factory).block)
-initialize_trafo_rms(trafo_1, grid.rms_var_factory, Sbase=grid.Sbase)
+line12_mdl = (get_line_rms_template(grid.var_factory).block)
+initialize_trafo_rms(trafo_1, grid.var_factory, Sbase=grid.Sbase)
 trafo_mdl = trafo_1.rms_model
 
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = (ZIPLoadBuild(grid.rms_var_factory, Pl0=-0.01, Ql0=-0.001).block)
+    load_mdl = (ZIPLoadBuild(grid.var_factory, Pl0=-0.01, Ql0=-0.001).block)
 else:
     raise ValueError(f"Unknown load type: {load_type}")
-genrow_mdl1 = (get_complete_generator_template_rms(grid.rms_var_factory).block)
+genrow_mdl1 = (get_complete_generator_template_rms(grid.var_factory).block)
 
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
 genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])

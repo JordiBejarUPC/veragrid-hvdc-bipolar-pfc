@@ -102,7 +102,6 @@ class TestSVSJacobianBackends(unittest.TestCase):
         p_full: np.ndarray = get_full_params(solver)
 
         # Verify clustering detection
-        self.assertTrue(hasattr(solver, 'vec_kernels'))
         self.assertGreater(len(solver.vec_kernels), 0)
 
         J: Any = solver.vec_jacobian(states=x, params=p_full, history=x, d_history=dx, h=1e-6)
@@ -126,7 +125,7 @@ class TestSVSJacobianBackends(unittest.TestCase):
             problem, t0=0.0, t_end=50e-6, h=1e-6, method=DynamicIntegrationMethod.DaeTrapezoidal
         )
 
-        t_arr, y_arr, _ = solver.simulate(x0=x0, params0=p0)
+        t_arr, y_arr, _, _, _ = solver.simulate(x0=x0, params0=p0)
 
         self.assertEqual(len(t_arr), y_arr.shape[0])
         self.assertTrue(bool(np.all(np.isfinite(y_arr))))

@@ -8,9 +8,9 @@ import pandas as pd
 import numpy as np
 from matplotlib import pyplot as plt
 from typing import List, Tuple, TYPE_CHECKING
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileDevice, ProfileEnum, ProfileFloat
 from VeraGridEngine.Devices.Substation.bus import Bus
-from VeraGridEngine.enumerations import BuildStatus, ConverterControlType, ConverterFaultControlType
+from VeraGridEngine.enumerations import BuildStatus, ConverterControlType
 from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
 from VeraGridEngine.Devices.Parents.editable_device import get_at
@@ -22,12 +22,6 @@ if TYPE_CHECKING:
 class VSC(BranchParent):
     __slots__ = (
         '_kdp',
-        '_u_setpoint_min',
-        '_u_setpoint_max',
-        '_u_setpoint',
-        '_du_setpoint',
-        '_Q_min',
-        '_Q_max',
         '_alpha1',
         '_alpha2',
         '_alpha3',
@@ -35,7 +29,6 @@ class VSC(BranchParent):
         '_control1_prof',
         '_control2',
         '_control2_prof',
-        '_fault_control',
         '_control1_dev',
         '_control1_dev_prof',
         '_control2_dev',
@@ -44,10 +37,8 @@ class VSC(BranchParent):
         '_control1_val_prof',
         '_control2_val',
         '_control2_val_prof',
-        '_fault_control_prof',
         '_bus_dc_n',
         '_min_ac_voltage',
-        '_ysvs',
         '_x',
         '_y',
     )
@@ -56,24 +47,16 @@ class VSC(BranchParent):
         GCProp(key='bus_dc_n', units="", tpe=DeviceType.BusDevice,
                       definition='DC negative bus', editable=False),
         GCProp(key='alpha1', units='', tpe=float,
-                      definition='Losses constant parameter (IEC 62751-2 loss Correction).'),
+                      definition='Losses constant parameter (IEC 62751-2 loss Correction, idle loss).'),
         GCProp(key='alpha2', units='', tpe=float,
-                      definition='Losses linear parameter (IEC 62751-2 loss Correction).'),
+                      definition='Losses linear parameter (IEC 62751-2 loss Correction, Switching loss).'),
         GCProp(key='alpha3', units='', tpe=float,
-                      definition='Losses quadratic parameter (IEC 62751-2 loss Correction).'),
-        GCProp(key='kdp', units='%', tpe=float, definition='Droop Power/Voltage slope.'),
-        GCProp(key='u_setpoint_min', units='p.u.', tpe=float, definition='Minimum voltage setpoint.'),
-        GCProp(key='u_setpoint_max', units='p.u.', tpe=float, definition='Maximum voltage setpoint.'),
-        GCProp(key='u_setpoint', units='p.u.', tpe=float, definition='Specified voltage setpoint.'),
-        GCProp(key='du_setpoint', units='p.u.', tpe=float, definition='Voltage signal coming from the station controller.'),
-        GCProp(key='Q_min', units='MVAr', tpe=float, definition='Minimum reactive power the converter can inject/absorb.'),
-        GCProp(key='Q_max', units='MVAr', tpe=float, definition='Maximum reactive power the converter can inject/absorb.'),
+                      definition='Losses quadratic parameter (IEC 62751-2 loss Correction, resistive loss).'),
+        GCProp(key='kdp', units='p.u./p.u.', tpe=float, definition='Droop Power/Voltage slope.'),
         GCProp(key='control1', units='', tpe=ConverterControlType, profile_name="control1_prof",
                       definition='Control mode 1.'),
         GCProp(key='control2', units='', tpe=ConverterControlType, profile_name="control2_prof",
                       definition='Control mode 2.'),
-        GCProp(key='fault_control', units='', tpe=ConverterFaultControlType, profile_name="fault_control_prof",
-               definition='VSC control system during a short-circuit event.'),
         GCProp(key='control1_val', units='', tpe=float, profile_name="control1_val_prof",
                       definition='Control value 1.'
                                  'p.u. for voltage\n'
@@ -93,8 +76,6 @@ class VSC(BranchParent):
         GCProp(key='min_ac_voltage', units='p.u.', tpe=float,
                       definition='Minimum AC voltage threshold. '
                                  'If the AC bus voltage drops below this value, the VSC is disconnected.'),
-        GCProp(key='ysvs', units='p.u.', tpe=float,
-               definition='Admittance of non-controlled Static Var Systems.'),
         GCProp(key='x', units='px', tpe=float, definition='x position'),
         GCProp(key='y', units='px', tpe=float, definition='y position'),
     )
@@ -108,13 +89,7 @@ class VSC(BranchParent):
                  code='',
                  active=True,
                  rate: float = 100.0,
-                 kdp: float = 0.0,
-                 u_setpoint_min: float = 0.9,
-                 u_setpoint_max: float = 1.1,
-                 u_setpoint: float = 1.0,
-                 du_setpoint: float = 0.0,
-                 Q_min: float = -999.0,
-                 Q_max: float = 999.0,
+                 kdp=-0.05,
                  alpha1=0.0001,
                  alpha2=0.015,
                  alpha3=0.2,
@@ -130,13 +105,11 @@ class VSC(BranchParent):
                  build_status: BuildStatus = BuildStatus.Commissioned,
                  control1: ConverterControlType = ConverterControlType.Vm_dc,
                  control2: ConverterControlType = ConverterControlType.Pac,
-                 fault_control: ConverterFaultControlType = ConverterFaultControlType.Standard,
                  control1_val: float = 1.0,
                  control2_val: float = 0.0,
                  control1_dev: Bus | BRANCH_TYPES | None = None,
                  control2_dev: Bus | BRANCH_TYPES | None = None,
                  min_ac_voltage: float = 0.1,
-                 ysvs: float = 0.0,
                  x: float = 0.0,
                  y: float = 0.0):
         """
@@ -151,13 +124,7 @@ class VSC(BranchParent):
         :param code:
         :param active:
         :param rate:
-        :param kdp: Voltage droop value [%]
-        :param u_setpoint_min: Minimum voltage setpoint [pu]
-        :param u_setpoint_max: Maximum voltage setpoint [pu]
-        :param u_setpoint: Specified voltage setpoint [pu]
-        :param du_setpoint: Voltage signal coming from the station controller [pu]
-        :param Q_min: Minimum reactive power the converter can inject/absorb [MVAr]
-        :param Q_max: Maximum reactive power the converter can inject/absorb [MVAr]
+        :param kdp:
         :param alpha1:
         :param alpha2:
         :param alpha3:
@@ -173,9 +140,6 @@ class VSC(BranchParent):
         :param build_status:
         :param control1:
         :param control2:
-        :param fault_control:
-        :param min_ac_voltage: Voltage threshold below which the converter is disconnected
-        :param ysvs: Admittance of Static Var Systems
         :param x: graphical x position (px)
         :param y: graphical y position (px)
         """
@@ -262,41 +226,29 @@ class VSC(BranchParent):
         # self._bus_to = bus_to
 
         self.kdp = float(kdp)
-        self.u_setpoint_min = float(u_setpoint_min)
-        self.u_setpoint_max = float(u_setpoint_max)
-        self.u_setpoint = float(u_setpoint)
-        self.du_setpoint = float(du_setpoint)
-        self.Q_min = float(Q_min)
-        self.Q_max = float(Q_max)
-
         self.alpha1 = float(alpha1)
         self.alpha2 = float(alpha2)
         self.alpha3 = float(alpha3)
 
         self._control1: ConverterControlType = control1
-        self._control1_prof: Profile = Profile(default_value=control1, data_type=ConverterControlType)
+        self._control1_prof: ProfileEnum = ProfileEnum(default_value=control1, enum_type=ConverterControlType)
 
         self._control2: ConverterControlType = control2
-        self._control2_prof: Profile = Profile(default_value=control2, data_type=ConverterControlType)
-
-        self._fault_control: ConverterFaultControlType = fault_control
-        self._fault_control_prof: Profile = Profile(default_value=fault_control, data_type=ConverterFaultControlType)
+        self._control2_prof: ProfileEnum = ProfileEnum(default_value=control2, enum_type=ConverterControlType)
 
         self._control1_dev: Bus | BRANCH_TYPES | None = control1_dev
-        self._control1_dev_prof: Profile = Profile(default_value=control1_dev, data_type=DeviceType.BusOrBranch)
+        self._control1_dev_prof: ProfileDevice = ProfileDevice(default_value=control1_dev, device_type=DeviceType.BusOrBranch)
 
         self._control2_dev: Bus | BRANCH_TYPES | None = control2_dev
-        self._control2_dev_prof: Profile = Profile(default_value=control2_dev, data_type=DeviceType.BusOrBranch)
+        self._control2_dev_prof: ProfileDevice = ProfileDevice(default_value=control2_dev, device_type=DeviceType.BusOrBranch)
 
         self._control1_val = float(control1_val)
-        self._control1_val_prof: Profile = Profile(default_value=self._control1_val, data_type=float)
+        self._control1_val_prof: ProfileFloat = ProfileFloat(default_value=self._control1_val)
 
         self._control2_val = float(control2_val)
-        self._control2_val_prof: Profile = Profile(default_value=self._control2_val, data_type=float)
+        self._control2_val_prof: ProfileFloat = ProfileFloat(default_value=self._control2_val)
 
         self.min_ac_voltage = float(min_ac_voltage)
-
-        self.ysvs = float(ysvs)
 
         self.x = float(x)
         self.y = float(y)
@@ -403,7 +355,7 @@ class VSC(BranchParent):
             self._control1 = value
 
     @property
-    def control1_prof(self) -> Profile:
+    def control1_prof(self) -> ProfileEnum:
         """
         Cost profile
         :return: Profile
@@ -411,8 +363,8 @@ class VSC(BranchParent):
         return self._control1_prof
 
     @control1_prof.setter
-    def control1_prof(self, val: Profile | np.ndarray):
-        if isinstance(val, Profile):
+    def control1_prof(self, val: ProfileEnum | np.ndarray):
+        if isinstance(val, ProfileEnum):
             self._control1_prof = val
         elif isinstance(val, np.ndarray):
             self._control1_prof.set(arr=val)
@@ -448,7 +400,7 @@ class VSC(BranchParent):
             self._control2 = value
 
     @property
-    def control2_prof(self) -> Profile:
+    def control2_prof(self) -> ProfileEnum:
         """
         Cost profile
         :return: Profile
@@ -456,8 +408,8 @@ class VSC(BranchParent):
         return self._control2_prof
 
     @control2_prof.setter
-    def control2_prof(self, val: Profile | np.ndarray):
-        if isinstance(val, Profile):
+    def control2_prof(self, val: ProfileEnum | np.ndarray):
+        if isinstance(val, ProfileEnum):
             self._control2_prof = val
         elif isinstance(val, np.ndarray):
             self._control2_prof.set(arr=val)
@@ -470,43 +422,6 @@ class VSC(BranchParent):
         :return:
         """
         return get_at(self.control2, self.control2_prof, t)
-
-    @property
-    def fault_control(self):
-        """
-
-        :return:
-        """
-        return self._fault_control
-
-    @fault_control.setter
-    def fault_control(self, value: ConverterFaultControlType):
-
-        self._fault_control = value
-
-    @property
-    def fault_control_prof(self) -> Profile:
-        """
-        Cost profile
-        :return: Profile
-        """
-        return self._fault_control_prof
-
-    @fault_control_prof.setter
-    def fault_control_prof(self, val: Profile | np.ndarray):
-        if isinstance(val, Profile):
-            self._fault_control_prof = val
-        elif isinstance(val, np.ndarray):
-            self._fault_control_prof.set(arr=val)
-        else:
-            raise Exception(str(type(val)) + 'not supported to be set into a profile')
-
-    def get_fault_control_at(self, t: int | None) -> ConverterControlType:
-        """
-        :param t:
-        :return:
-        """
-        return get_at(self.fault_control, self.fault_control_prof, t)
 
     @property
     def control1_val(self):
@@ -522,7 +437,7 @@ class VSC(BranchParent):
         self._control1_val = value
 
     @property
-    def control1_val_prof(self) -> Profile:
+    def control1_val_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -530,8 +445,8 @@ class VSC(BranchParent):
         return self._control1_val_prof
 
     @control1_val_prof.setter
-    def control1_val_prof(self, val: Profile | np.ndarray):
-        if isinstance(val, Profile):
+    def control1_val_prof(self, val: ProfileFloat | np.ndarray):
+        if isinstance(val, ProfileFloat):
             self._control1_val_prof = val
         elif isinstance(val, np.ndarray):
             self._control1_val_prof.set(arr=val)
@@ -559,7 +474,7 @@ class VSC(BranchParent):
         self._control2_val = value
 
     @property
-    def control2_val_prof(self) -> Profile:
+    def control2_val_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -567,8 +482,8 @@ class VSC(BranchParent):
         return self._control2_val_prof
 
     @control2_val_prof.setter
-    def control2_val_prof(self, val: Profile | np.ndarray):
-        if isinstance(val, Profile):
+    def control2_val_prof(self, val: ProfileFloat | np.ndarray):
+        if isinstance(val, ProfileFloat):
             self._control2_val_prof = val
         elif isinstance(val, np.ndarray):
             self._control2_val_prof.set(arr=val)
@@ -595,7 +510,7 @@ class VSC(BranchParent):
         self._control1_dev = value
 
     @property
-    def control1_dev_prof(self) -> Profile:
+    def control1_dev_prof(self) -> ProfileDevice:
         """
         Cost profile
         :return: Profile
@@ -603,8 +518,8 @@ class VSC(BranchParent):
         return self._control1_dev_prof
 
     @control1_dev_prof.setter
-    def control1_dev_prof(self, val: Profile | np.ndarray):
-        if isinstance(val, Profile):
+    def control1_dev_prof(self, val: ProfileDevice | np.ndarray):
+        if isinstance(val, ProfileDevice):
             self._control1_dev_prof = val
         elif isinstance(val, np.ndarray):
             self._control1_dev_prof.set(arr=val)
@@ -631,7 +546,7 @@ class VSC(BranchParent):
         self._control2_dev = value
 
     @property
-    def control2_dev_prof(self) -> Profile:
+    def control2_dev_prof(self) -> ProfileDevice:
         """
         Cost profile
         :return: Profile
@@ -639,8 +554,8 @@ class VSC(BranchParent):
         return self._control2_dev_prof
 
     @control2_dev_prof.setter
-    def control2_dev_prof(self, val: Profile | np.ndarray):
-        if isinstance(val, Profile):
+    def control2_dev_prof(self, val: ProfileDevice | np.ndarray):
+        if isinstance(val, ProfileDevice):
             self._control2_dev_prof = val
         elif isinstance(val, np.ndarray):
             self._control2_dev_prof.set(arr=val)
@@ -782,120 +697,6 @@ class VSC(BranchParent):
         self._kdp = float(val)
 
     @property
-    def u_setpoint_min(self) -> float:
-        """
-        Get ``u_setpoint_min``.
-
-        :return: float
-        """
-        return self._u_setpoint_min
-
-    @u_setpoint_min.setter
-    def u_setpoint_min(self, val: float) -> None:
-        """
-        Set ``u_setpoint_min``.
-
-        :param val: Value to assign.
-        :return: None
-        """
-        self._u_setpoint_min = float(val)
-
-    @property
-    def u_setpoint_max(self) -> float:
-        """
-        Get ``u_setpoint_max``.
-
-        :return: float
-        """
-        return self._u_setpoint_max
-
-    @u_setpoint_max.setter
-    def u_setpoint_max(self, val: float) -> None:
-        """
-        Set ``u_setpoint_max``.
-
-        :param val: Value to assign.
-        :return: None
-        """
-        self._u_setpoint_max = float(val)
-
-    @property
-    def u_setpoint(self) -> float:
-        """
-        Get ``u_setpoint``.
-
-        :return: float
-        """
-        return self._u_setpoint
-
-    @u_setpoint.setter
-    def u_setpoint(self, val: float) -> None:
-        """
-        Set ``u_setpoint``.
-
-        :param val: Value to assign.
-        :return: None
-        """
-        self._u_setpoint = float(val)
-
-    @property
-    def du_setpoint(self) -> float:
-        """
-        Get ``du_setpoint``.
-
-        :return: float
-        """
-        return self._du_setpoint
-
-    @du_setpoint.setter
-    def du_setpoint(self, val: float) -> None:
-        """
-        Set ``du_setpoint``.
-
-        :param val: Value to assign.
-        :return: None
-        """
-        self._du_setpoint = float(val)
-
-    @property
-    def Q_min(self) -> float:
-        """
-        Get ``Q_min``.
-
-        :return: float
-        """
-        return self._Q_min
-
-    @Q_min.setter
-    def Q_min(self, val: float) -> None:
-        """
-        Set ``Q_min``.
-
-        :param val: Value to assign.
-        :return: None
-        """
-        self._Q_min = float(val)
-
-    @property
-    def Q_max(self) -> float:
-        """
-        Get ``Q_max``.
-
-        :return: float
-        """
-        return self._Q_max
-
-    @Q_max.setter
-    def Q_max(self, val: float) -> None:
-        """
-        Set ``Q_max``.
-
-        :param val: Value to assign.
-        :return: None
-        """
-        self._Q_max = float(val)
-
-    @property
     def min_ac_voltage(self) -> float:
         """
         Get ``min_ac_voltage``.
@@ -913,25 +714,6 @@ class VSC(BranchParent):
         :return: None
         """
         self._min_ac_voltage = float(val)
-
-    @property
-    def ysvs(self) -> float:
-        """
-        Get ``ysvs``.
-
-        :return: float
-        """
-        return self._ysvs
-
-    @ysvs.setter
-    def ysvs(self, val: float) -> None:
-        """
-        Set ``ysvs``.
-
-        :param val: Value to assign.
-        :return: None
-        """
-        self._ysvs = float(val)
 
     @property
     def x(self) -> float:

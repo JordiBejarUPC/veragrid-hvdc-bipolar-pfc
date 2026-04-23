@@ -81,7 +81,7 @@ def small_signal_analysis(show_plt: bool = False, test_mti=False):
     grid.add_bus(bus1)
 
     for bus in grid.buses:
-        vge.initialize_bus_phasor_rms(bus, vf=grid.rms_var_factory)
+        vge.initialize_bus_phasor_rms(bus, vf=grid.var_factory)
 
     line = vge.Line(name="Line", bus_from=bus0, bus_to=bus1,
                     r=0.029585798816568046, x=0.07100591715976332, b=0.03, rate=900.0)
@@ -94,30 +94,30 @@ def small_signal_analysis(show_plt: bool = False, test_mti=False):
     grid.add_generator(bus=bus0, api_obj=gen)
 
     # Build RMS models
-    genqec = vge.get_complete_generator_template_phasor(grid.rms_var_factory, name="Gen0").block
+    genqec = vge.get_complete_generator_template_phasor(grid.var_factory, name="Gen0").block
 
-    line_mdl = vge.get_line_phasor_rms_template(grid.rms_var_factory).block
+    line_mdl = vge.get_line_phasor_rms_template(grid.var_factory).block
     line_mdl.connect([line_mdl.in_vars[0]], [bus0.rms_model.out_vars[0]])
     line_mdl.connect([line_mdl.in_vars[1]], [bus0.rms_model.out_vars[1]])
     line_mdl.connect([line_mdl.in_vars[2]], [bus1.rms_model.out_vars[0]])
     line_mdl.connect([line_mdl.in_vars[3]], [bus1.rms_model.out_vars[1]])
 
     # Attach line model to the line device
-    vge.set_rms_model(device=line, model=line_mdl, var_factory=grid.rms_var_factory)
+    vge.set_rms_model(device=line, model=line_mdl, var_factory=grid.var_factory)
 
     genqec.connect([genqec.in_vars[0]], [bus0.rms_model.out_vars[0]])
     genqec.connect([genqec.in_vars[1]], [bus0.rms_model.out_vars[1]])
 
-    vge.set_rms_model(device=gen, model=genqec, var_factory=grid.rms_var_factory)
+    vge.set_rms_model(device=gen, model=genqec, var_factory=grid.var_factory)
 
-    load_mdl = vge.get_load_phasor_current_rms_template(grid.rms_var_factory).block
+    load_mdl = vge.get_load_phasor_current_rms_template(grid.var_factory).block
     load_mdl.connect([load_mdl.in_vars[0]], [bus1.rms_model.out_vars[0]])
     load_mdl.connect([load_mdl.in_vars[1]], [bus1.rms_model.out_vars[1]])
     # Convert power to current: I = S* / V* (approximation for initialization)
     # For V ≈ 1.0, Ir ≈ P, Ii ≈ Q
     load_mdl.set_parameter_in_model(var_name="Ir0", new_value=-0.1)
     load_mdl.set_parameter_in_model(var_name="Ii0", new_value=-0.01)
-    vge.set_rms_model(device=load, model=load_mdl, var_factory=grid.rms_var_factory)
+    vge.set_rms_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
     print("  ✓ Grid created with multilinear generator")
 
@@ -288,10 +288,13 @@ def small_signal_analysis(show_plt: bool = False, test_mti=False):
 
     print(f"  Found {len(eigenvalues)} finite eigenvalues")
 
+    state_vars_attr = getattr(driver.problem, "get_state_vars", [])
+    state_vars = state_vars_attr() if callable(state_vars_attr) else state_vars_attr
+
     # Display dominant modes
     print(f"\n  Dominant eigenvalues (top 10):")
-    print(f"  {'Mode':<6} {'Real':<15} {'Imag':<15} {'Freq (Hz)':<12} {'Damping':<12} {'Status'}")
-    print(f"  {'-' * 80}")
+    print(f"  {'Mode':<6} {'Real':<15} {'Imag':<15} {'Freq (Hz)':<12} {'Damping':<12} {'Status':<10} {'Dominant State'}")
+    print(f"  {'-' * 130}")
 
     for i in range(min(10, len(eigenvalues))):
         lam = eigenvalues[i]
@@ -308,7 +311,17 @@ def small_signal_analysis(show_plt: bool = False, test_mti=False):
             damping = 0.0
 
         status = "Stable" if real_part < -1e-6 else "UNSTABLE" if real_part > 1e-6 else "Marginal"
-        print(f"  {i + 1:<6} {real_part:<15.6f} {imag_part:<15.6f} {freq:<12.4f} {damping:<12.4f} {status}")
+
+        dominant_state = "N/A"
+        if participation_factors is not None and i < participation_factors.shape[1] and participation_factors.shape[0] > 0:
+            pf = np.abs(participation_factors[:, i])
+            max_pf_idx = np.argmax(pf)
+            dominant_state = str(state_vars[max_pf_idx]) if max_pf_idx < len(state_vars) else f"State {max_pf_idx}"
+
+        print(
+            f"  {i + 1:<6} {real_part:<15.6f} {imag_part:<15.6f} {freq:<12.4f} "
+            f"{damping:<12.4f} {status:<10} {dominant_state}"
+        )
 
     # Check for unstable eigenvalues
     unstable = [(i, ev) for i, ev in enumerate(eigenvalues) if np.real(ev) > 1e-6]
@@ -317,13 +330,10 @@ def small_signal_analysis(show_plt: bool = False, test_mti=False):
         print(f"  {'Mode':<6} {'Real':<15} {'Imag':<15} {'Dominant State'}")
         print(f"  {'-' * 80}")
 
-        # Get state variable names
-        state_vars = driver.problem.get_state_vars
-
         for i, ev in unstable:
             # Find the state with the highest participation for this mode
             if participation_factors is not None and i < participation_factors.shape[1]:
-                pf = participation_factors[:, i]
+                pf = np.abs(participation_factors[:, i])
                 max_pf_idx = np.argmax(pf)
                 dominant_state = str(state_vars[max_pf_idx]) if max_pf_idx < len(state_vars) else f"State {max_pf_idx}"
                 pf_val = pf[max_pf_idx]

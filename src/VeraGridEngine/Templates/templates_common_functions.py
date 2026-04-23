@@ -9,7 +9,7 @@ import numpy as np
 from typing import Tuple, Optional, List, Any
 from typing import Tuple, Optional, List, Callable, Dict
 
-from VeraGridEngine import VarPowerFlowRefferenceType
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.basic_structures import Vec
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, CmpOp, Comparison, heaviside, hard_sat, expression2numba, get_expression_vars)
@@ -84,6 +84,11 @@ def tf_to_block(var_factory: VarFactory,
     # Create the diff equation
     rhs = np.array(diff_vars_x) @ np.array(num)
     lhs = np.array(diff_vars_y) @ np.array(den)
+
+    # Pure integrator-style blocks (den[0] == 0) need a derivative init that
+    # matches the input, otherwise the first consistency check leaves a residual.
+    if len(den) > 1 and den[0] == 0 and y.base_var is not None:
+        diff_init_eqs[y.diff_var] = x / den[1]
 
     block = Block()
     block.algebraic_vars = [y] + aux_vars
@@ -833,7 +838,7 @@ def connect_models(mdl1: Block, mdl2: Block):
 
 
 
-    print("")
+    #print("")
 
 
 def set_rms_model(device: Any, model:Block, var_factory: VarFactory):
@@ -902,7 +907,8 @@ def connect_line_emt_from(mdl1: Block, mdl2: Block):
         VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.vf_N,
         VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.vf_A,
         VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.vf_B,
-        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.vf_C
+        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.vf_C,
+        VarPowerFlowRefferenceType.Vdc: VarPowerFlowRefferenceType.Vf_dc,
     }
 
     # Find the variable pairs that match our mapping
@@ -933,7 +939,8 @@ def connect_line_emt_to(mdl1: Block, mdl2: Block):
         VarPowerFlowRefferenceType.v_N: VarPowerFlowRefferenceType.vt_N,
         VarPowerFlowRefferenceType.v_A: VarPowerFlowRefferenceType.vt_A,
         VarPowerFlowRefferenceType.v_B: VarPowerFlowRefferenceType.vt_B,
-        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.vt_C
+        VarPowerFlowRefferenceType.v_C: VarPowerFlowRefferenceType.vt_C,
+        VarPowerFlowRefferenceType.Vdc: VarPowerFlowRefferenceType.Vt_dc,
     }
 
     # Find the variable pairs that match our mapping
@@ -1038,7 +1045,14 @@ def set_emt_model(device: Any, model: Block, var_factory: VarFactory):
     :return: None
     """
     # 1. Connect bus variables depending on the device type
-    if device.device_type in [DeviceType.BranchDevice, DeviceType.LineDevice, DeviceType.Transformer2WDevice,
+    if device.device_type in [DeviceType.BranchDevice,
+                              DeviceType.LineDevice,
+                              DeviceType.DCLineDevice,
+                              DeviceType.HVDCLineDevice,
+                              DeviceType.SwitchDevice,
+                              DeviceType.SeriesReactanceDevice,
+                              DeviceType.UpfcDevice,
+                              DeviceType.Transformer2WDevice,
                               DeviceType.Transformer3WDevice]:
 
         # Bus FROM connection

@@ -111,6 +111,9 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
     phi = vf.add_var("phi_" + name)
     Vpk = vf.add_var("Vpk_" + name)
     Ipk = vf.add_var("Ipk_" + name)
+
+    E_scale = vf.add_var("E_scale_" + name)
+
     E_re = Vpk + R_s * Ipk * sym.cos(phi) - X_s * Ipk * sym.sin(phi)
     E_im = R_s * Ipk * sym.sin(phi) + X_s * Ipk * sym.cos(phi)
     delta_expr = sym.atan(E_im / E_re)
@@ -129,9 +132,9 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
         state_vars=[i_A, i_B, i_C, theta],
 
         algebraic_eqs=[
-            e_A - Epk_expr * sym.sin(theta),
-            e_B - Epk_expr * sym.sin(theta - 2 * np.pi / 3),
-            e_C - Epk_expr * sym.sin(theta + 2 * np.pi / 3),
+            e_A - E_scale * Epk_expr * sym.sin(theta),
+            e_B - E_scale * Epk_expr * sym.sin(theta - 2 * np.pi / 3),
+            e_C - E_scale * Epk_expr * sym.sin(theta + 2 * np.pi / 3),
 
             Pe - (i_A * v_A + i_B * v_B + i_C * v_C),
             Qe - (1 / np.sqrt(3)) * (
@@ -197,7 +200,9 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
         phi: vf.add_const(None),
         Vpk: vf.add_const(None),
         Ipk: vf.add_const(None),
-
+        # Local eventable source-voltage scaling.
+        # This allows creating overvoltage events without changing the transformer.
+        E_scale: vf.add_const(1.0),
     }
 
     # ----------------------------------------------------------------------------------
@@ -232,9 +237,9 @@ def get_generator_thevenin_rl_emt_template(vf: VarFactory,
     templ.block.init_eqs = {
         theta: phi_v + delta_expr,
 
-        e_A: Epk_expr * sym.sin(theta),
-        e_B: Epk_expr * sym.sin(theta - 2 * np.pi / 3),
-        e_C: Epk_expr * sym.sin(theta + 2 * np.pi / 3),
+        e_A: E_scale * Epk_expr * sym.sin(theta),
+        e_B: E_scale * Epk_expr * sym.sin(theta - 2 * np.pi / 3),
+        e_C: E_scale * Epk_expr * sym.sin(theta + 2 * np.pi / 3),
 
         Pe: (i_A * v_A + i_B * v_B + i_C * v_C),
         Qe: (1 / np.sqrt(3)) * (

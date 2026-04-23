@@ -7,13 +7,26 @@ import numpy as np
 import VeraGridEngine.api as gce
 
 
+TEST_GRID_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "grids"))
+
+
+def get_grid_path(file_name: str) -> str:
+    """
+    Build an absolute path to a grid fixture used by the NTC tests.
+
+    :param file_name: Grid fixture file name.
+    :return: Absolute grid fixture path.
+    """
+    return os.path.join(TEST_GRID_DIR, file_name)
+
+
 def test_ntc_ultra_simple() -> None:
     """
 
     :return:
     """
     np.set_printoptions(precision=4)
-    fname = os.path.join('data', 'grids', 'red_ultra_simple_ntc.gridcal')
+    fname = get_grid_path('red_ultra_simple_ntc.gridcal')
 
     grid = gce.open_file(fname)
 
@@ -90,7 +103,7 @@ def test_ntc_ieee_14() -> None:
     :return:
     """
     np.set_printoptions(precision=4)
-    fname = os.path.join('data', 'grids', 'ntc_test.gridcal')
+    fname = get_grid_path('ntc_test.gridcal')
 
     grid = gce.open_file(fname)
 
@@ -156,7 +169,7 @@ def test_issue_372_1():
 
     """
     # fname = os.path.join('data', 'grids', 'ntc_test.gridcal')
-    fname = os.path.join('data', 'grids', 'IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
+    fname = get_grid_path('IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
 
     grid = gce.open_file(fname)
 
@@ -257,7 +270,7 @@ def test_issue_372_2():
 
     """
     # fname = os.path.join('data', 'grids', 'ntc_test.gridcal')
-    fname = os.path.join('data', 'grids', 'IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
+    fname = get_grid_path('IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
 
     grid = gce.open_file(fname)
 
@@ -367,7 +380,7 @@ def test_issue_372_3():
         The HVDC power must be: P0 + angle_droop · (theta_f − theta_t) (all in proper units)
 
     """
-    fname = os.path.join('data', 'grids', 'IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
+    fname = get_grid_path('IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
 
     grid = gce.open_file(fname)
 
@@ -491,7 +504,7 @@ def test_issue_372_4():
 
     """
     # fname = os.path.join('data', 'grids', 'ntc_test.gridcal')
-    fname = os.path.join('data', 'grids', 'IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
+    fname = get_grid_path('IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
 
     grid = gce.open_file(fname)
 
@@ -610,7 +623,7 @@ def test_issue_372_5():
 
     """
     # fname = os.path.join('data', 'grids', 'ntc_test.gridcal')
-    fname = os.path.join('data', 'grids', 'IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
+    fname = get_grid_path('IEEE14 - ntc areas_voltages_hvdc_shifter_l10free.gridcal')
 
     grid = gce.open_file(fname)
 
@@ -708,7 +721,7 @@ def test_ntc_pmode_saturation() -> None:
     checking that the PMODE3 equation goes on to provide a larger set point
     """
     np.set_printoptions(precision=4)
-    fname = os.path.join('data', 'grids', 'ntc_test.gridcal')
+    fname = get_grid_path('ntc_test.gridcal')
 
     grid = gce.open_file(fname)
 
@@ -783,7 +796,7 @@ def test_ntc_pmode_non_saturation() -> None:
     in the droop region (Pmode3).
     """
     np.set_printoptions(precision=4)
-    fname = os.path.join('data', 'grids', 'ntc_test.gridcal')
+    fname = get_grid_path('ntc_test.gridcal')
 
     grid = gce.open_file(fname)
 
@@ -857,7 +870,7 @@ def test_ntc_areas_connected_only_through_hvdc() -> None:
     This test checks that a grid that is only joined with HVDC lines can transfer power through the 2 areas
     """
     np.set_printoptions(precision=4)
-    fname = os.path.join('data', 'grids', 'ntc_test_cont.gridcal')
+    fname = get_grid_path('ntc_test_cont.gridcal')
 
     grid = gce.open_file(fname)
 
@@ -923,7 +936,7 @@ def test_ntc_vsc():
     This test runs a test grid with VSC systems where controllers pairs are in Pset and Vdc modes
     No contingencies are enabled
     """
-    fname = os.path.join('data', 'grids', 'ntc_test_cont (vsc).gridcal')
+    fname = get_grid_path('ntc_test_cont (vsc).gridcal')
 
     grid = gce.open_file(fname)
 
@@ -977,7 +990,7 @@ def test_ntc_vsc_contingencies():
     This test runs a test grid with VSC systems where controllers pairs are in Pset and Vdc modes
     Contingencies are enabled
     """
-    fname = os.path.join('data', 'grids', 'ntc_test_cont (vsc).gridcal')
+    fname = get_grid_path('ntc_test_cont (vsc).gridcal')
 
     grid = gce.open_file(fname)
 
@@ -1031,7 +1044,7 @@ def test_ntc_vsc_8_buses_REE_contingencies():
     This test runs a test grid with VSC systems where controllers pairs are in Pset and Vdc modes
     Contingencies are enabled
     """
-    fname = os.path.join('data', 'grids', 'NTC_8_bus_vsc_REE.veragrid')
+    fname = get_grid_path('NTC_8_bus_vsc_REE.veragrid')
     # fname = os.path.join('src', 'tests', 'data', 'grids', 'NTC_8_bus_vsc_REE.veragrid')
 
     grid = gce.open_file(fname)
@@ -1323,7 +1336,7 @@ def test_hvdc_lines_tests():
     :return:
     """
     np.set_printoptions(precision=4)
-    fname = os.path.join('data', 'grids', 'test_santi_20250625.gridcal')
+    fname = get_grid_path('test_santi_20250625.gridcal')
 
     grid = gce.open_file(fname)
 
@@ -1368,7 +1381,7 @@ def test_activs_2000():
     :return:
     """
     np.set_printoptions(precision=4)
-    fname = os.path.join('data', 'grids', 'ACTIVSg2000.gridcal')
+    fname = get_grid_path('ACTIVSg2000.gridcal')
 
     grid = gce.open_file(fname)
 
@@ -1445,7 +1458,7 @@ def test_activs_2000_acdc():
     :return:
     """
     np.set_printoptions(precision=4)
-    fname = os.path.join('data', 'grids', 'ACTIVSg2000.gridcal')
+    fname = get_grid_path('ACTIVSg2000.gridcal')
 
     grid = gce.open_file(fname)
 
@@ -1529,7 +1542,7 @@ def test_activs_2000_acdc_ts():
     :return:
     """
     np.set_printoptions(precision=4)
-    fname = os.path.join('data', 'grids', 'ACTIVSg2000_vsc.gridcal')
+    fname = get_grid_path('ACTIVSg2000_vsc.gridcal')
 
     grid = gce.open_file(fname)
 

@@ -9,7 +9,7 @@ import numpy as np
 
 from VeraGridEngine.enumerations import DeviceType, BuildStatus, SubObjectType, ShuntControlMode
 from VeraGridEngine.Devices.Parents.shunt_parent import ShuntParent
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileFloat, ProfileInt
 from VeraGridEngine.Devices.Substation.bus import Bus
 from VeraGridEngine.Devices.Parents.editable_device import get_at, GCProp
 from VeraGridEngine.basic_structures import Vec
@@ -159,7 +159,7 @@ class ControllableShunt(ShuntParent):
         self._b_steps = np.full(number_of_steps, b_per_step)
 
         self._step = int(step)
-        self._step_prof = Profile(default_value=self._step, data_type=int)
+        self._step_prof = ProfileInt(default_value=self._step)
 
         self.control_bus = control_bus
 
@@ -167,7 +167,7 @@ class ControllableShunt(ShuntParent):
         self.Vset = float(vset)
 
         # voltage set profile for this load in p.u.
-        self._Vset_prof = Profile(default_value=self.Vset, data_type=float)
+        self._Vset_prof = ProfileFloat(default_value=self.Vset)
 
         self.Vmin = float(vmin)
         self.Vmax = float(vmax)
@@ -277,7 +277,7 @@ class ControllableShunt(ShuntParent):
         # self.Bmin = value.min()
 
     @property
-    def Vset_prof(self) -> Profile:
+    def Vset_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -285,8 +285,8 @@ class ControllableShunt(ShuntParent):
         return self._Vset_prof
 
     @Vset_prof.setter
-    def Vset_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def Vset_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._Vset_prof = val
         elif isinstance(val, np.ndarray):
             self._Vset_prof.set(arr=val)
@@ -301,7 +301,7 @@ class ControllableShunt(ShuntParent):
         return get_at(self.Vset, self.Vset_prof, t)
 
     @property
-    def step_prof(self) -> Profile:
+    def step_prof(self) -> ProfileInt:
         """
         Cost profile
         :return: Profile
@@ -309,8 +309,8 @@ class ControllableShunt(ShuntParent):
         return self._step_prof
 
     @step_prof.setter
-    def step_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def step_prof(self, val: Union[ProfileInt, np.ndarray]):
+        if isinstance(val, ProfileInt):
             self._step_prof = val
         elif isinstance(val, np.ndarray):
             self._step_prof.set(arr=val)

@@ -28,7 +28,7 @@ from VeraGridEngine.Simulations.Rms.problems.rms_problem_tensygrid import RmsPro
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_ts import BackEulerImplicitTensygrid
 
 from VeraGridEngine.enumerations import DynamicIntegrationMethod, RmsInitializationMethod
-from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType
 import VeraGridEngine.api as gce
 
@@ -61,7 +61,7 @@ grid.add_bus(bus0)
 grid.add_bus(bus1)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.rms_var_factory)
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 # Lines
 line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
@@ -93,13 +93,13 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 
 
 # line
-line0_mdl = get_line_rms_template(grid.rms_var_factory).block
+line0_mdl = get_line_rms_template(grid.var_factory).block
 
 # load
-load_mdl = get_load_rms_template(grid.rms_var_factory).block
+load_mdl = get_load_rms_template(grid.var_factory).block
 
 # generator
-genqec1_mdl = get_complete_generator_template(grid.rms_var_factory).block
+genqec1_mdl = get_complete_generator_template(grid.var_factory).block
 
 # connection with buses
 

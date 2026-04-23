@@ -73,7 +73,8 @@ class GenericEmtProblem(EmtProblemTemplate):
                 CONSTANT_PARAMS_NAME=self.CONSTANT_PARAMS_NAME
             )
         except Exception as e:
-            print(f"[EMT][init_explicit] failed for block '{getattr(self.sys_block, 'name', 'unknown')}'. Error: {e}")
+            block_name = self.sys_block.name if isinstance(self.sys_block, Block) else "unknown"
+            print(f"[EMT][init_explicit] failed for block '{block_name}'. Error: {e}")
 
         self._build_runtime_param_vectors()
 
@@ -124,7 +125,7 @@ class GenericEmtProblem(EmtProblemTemplate):
                     keep_row = False
 
                 if keep_row:
-                    alias = self._alias_names_dict.get(uid, None) if hasattr(self, "_alias_names_dict") else None
+                    alias = self._alias_names_dict.get(uid, None)
 
                     rows.append({
                         "uid": uid,
@@ -349,7 +350,7 @@ def run_test_bergeron(case_name: str, R_load: float) -> Tuple[np.ndarray, np.nda
         verbose=False
     )
 
-    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=line_updater)
+    t_arr, y_arr, dy_arr, _, _ = solver.simulate(boundary_updater=line_updater)
 
     idx_vf: int = problem.get_var_idx(v_f_var)
     idx_vt: int = problem.get_var_idx(v_t_var)
@@ -470,7 +471,7 @@ def run_case_mechanical_system(backend_str: EmtSolverTypes,
 
     t_start: float = time.time()
 
-    t_arr, y_arr, dy_arr = solver.simulate()
+    t_arr, y_arr, dy_arr, _, _ = solver.simulate()
 
     elapsed: float = time.time() - t_start
 
@@ -608,7 +609,7 @@ def run_case_buck_converter(backend_str: EmtSolverTypes) -> Tuple[np.ndarray, np
 
     t_start: float = time.time()
 
-    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=pwm_updater)
+    t_arr, y_arr, dy_arr, _, _ = solver.simulate(boundary_updater=pwm_updater)
 
 
     elapsed: float = time.time() - t_start

@@ -7,26 +7,10 @@
 
 from __future__ import annotations
 
-import os
-import sys
 from typing import Dict, Tuple, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
-
-SCRIPT_DIR: str = os.path.abspath(os.path.dirname(__file__))
-REPO_ROOT: str = os.path.abspath(os.path.join(SCRIPT_DIR, "..", ".."))
-SRC_ROOT: str = os.path.join(REPO_ROOT, "src")
-
-if SRC_ROOT not in sys.path:
-    sys.path.insert(0, SRC_ROOT)
-else:
-    sys.path = sys.path
-
-if REPO_ROOT not in sys.path:
-    sys.path.insert(0, REPO_ROOT)
-else:
-    sys.path = sys.path
 
 import VeraGridEngine.api as gce
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
@@ -36,7 +20,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowOpti
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlowResults3Ph
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
-from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_exponential_load_3ph_emt
+from VeraGridEngine.Templates.Emt.load_exponential_emt_template import get_exponential_load_emt
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
@@ -133,20 +117,20 @@ def attach_emt_models(
     for bus in grid.buses:
         get_bus_emt_template(grid, bus)
 
-    gen_mdl: Block = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
-    line_mdl: Block = get_pi_line_emt_template(vf=grid.emt_var_factory, line=line0).block
-    load_mdl: Block = get_exponential_load_3ph_emt(vf=grid.emt_var_factory).block
+    gen_mdl: Block = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
+    line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True, name = "Pi").block
+    load_mdl: Block = get_exponential_load_emt(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
     # ``a = 2`` reproduces an impedance-like active-power dependence. This keeps the
     # example aligned with the original resistive load while exercising the new EMT
     # exponential-load initialization chain.
-    load_mdl.set_parameter_in_model(var_name="a_exp_Load_EMT_3ph", new_value=2.0)
-    load_mdl.set_parameter_in_model(var_name="b_exp_Load_EMT_3ph", new_value=2.0)
-    load_mdl.set_parameter_in_model(var_name="V0_exp_Load_EMT_3ph", new_value=float(np.sqrt(2.0)))
+    load_mdl.set_parameter_in_model(var_name="a_EXP_Load_EMT_3ph", new_value=2.0)
+    load_mdl.set_parameter_in_model(var_name="b_EXP_Load_EMT_3ph", new_value=2.0)
+    load_mdl.set_parameter_in_model(var_name="V0_EXP_Load_EMT_3ph", new_value=float(np.sqrt(2.0)))
 
-    set_emt_model(device=generator, model=gen_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=line0, model=line_mdl, var_factory=grid.emt_var_factory)
-    set_emt_model(device=load, model=load_mdl, var_factory=grid.emt_var_factory)
+    set_emt_model(device=generator, model=gen_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
+    set_emt_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
     return gen_mdl, line_mdl, load_mdl
 
@@ -217,7 +201,7 @@ def build_problem(grid: gce.MultiCircuit, pf_results: PowerFlowResults3Ph) -> Em
         integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
         verbose=1,
     )
-    return EmtProblemDae(grid=grid, options=options, pf_results_3Ph=pf_results, pf_results=None)
+    return EmtProblemDae(grid=grid, options=options, pf_results_3ph=pf_results, pf_results=None)
 
 
 def build_solver(problem: EmtProblemDae) -> StructuralCompiledSolver:
@@ -321,12 +305,12 @@ def build_plot_data(
     data["v_bus1_c"] = get_signal(problem, bus1.emt_model, "v_C_Bus1_emt_template", y)
 
     data["i_gen_a"] = get_signal(problem, gen_mdl, "i_A_emt_thevenin_eq_generator_template", y)
-    data["i_line_f_a"] = get_signal(problem, line_mdl, "if_Pi_0", y)
-    data["i_line_t_a"] = get_signal(problem, line_mdl, "it_Pi_0", y)
-    data["i_load_a"] = -get_signal(problem, load_mdl, "i_A_exp_Load_EMT_3ph", y)
+    data["i_line_f_a"] = get_signal(problem, line_mdl, "if_Pi_A", y)
+    data["i_line_t_a"] = get_signal(problem, line_mdl, "it_Pi_A", y)
+    data["i_load_a"] = -get_signal(problem, load_mdl, "i_A_EXP_Load_EMT_3ph", y)
 
-    data["p_load_a"] = get_signal(problem, load_mdl, "P_A_exp_Load_EMT_3ph", y)
-    data["q_load_a"] = get_signal(problem, load_mdl, "Q_A_exp_Load_EMT_3ph", y)
+    data["p_load_a"] = get_signal(problem, load_mdl, "P_A_EXP_Load_EMT_3ph", y)
+    data["q_load_a"] = get_signal(problem, load_mdl, "Q_A_EXP_Load_EMT_3ph", y)
 
     return data
 
@@ -392,7 +376,9 @@ def main() -> None:
     validate_initialization(problem)
 
     solver: StructuralCompiledSolver = build_solver(problem)
-    t, y, _ = solver.simulate(boundary_updater=cast(object, problem))
+    t, y, _, well_initialized , converged = solver.simulate(boundary_updater=cast(object, problem))
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
 
     plot_data: Dict[str, np.ndarray] = build_plot_data(
         problem=problem,

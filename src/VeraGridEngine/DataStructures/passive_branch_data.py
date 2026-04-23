@@ -6,9 +6,8 @@
 from __future__ import annotations
 import numpy as np
 
-from VeraGridEngine import ShuntConnectionType
 from VeraGridEngine.DataStructures.branch_parent_data import BranchParentData
-from VeraGridEngine.enumerations import WindingsConnection
+from VeraGridEngine.enumerations import WindingsConnection, ShuntConnectionType
 from VeraGridEngine.Utils.Sparse.sparse_array import SparseObjectArray
 from VeraGridEngine.basic_structures import Vec, IntVec, ObjVec, CxVec, Logger
 from typing import List, Tuple, Set
@@ -111,7 +110,6 @@ class PassiveBranchData(BranchParentData):
 
         elm_idx_4 = ((elm_idx * 4)[:, np.newaxis] + np.arange(4)).flatten()
 
-        # TODO: Investigate why does it say that Yff3, ... do not exist
         data.Yff3 = self.Yff3[elm_idx_4, :]
         data.Yft3 = self.Yft3[elm_idx_4, :]
         data.Ytt3 = self.Ytt3[elm_idx_4, :]
@@ -157,7 +155,6 @@ class PassiveBranchData(BranchParentData):
         data.virtual_tap_f = self.virtual_tap_f.copy()
         data.virtual_tap_t = self.virtual_tap_t.copy()
 
-        # TODO: Review that we are copying everything
         data.Yff3 = self.Yff3.copy()
         data.Yft3 = self.Yft3.copy()
         data.Ytf3 = self.Ytf3.copy()

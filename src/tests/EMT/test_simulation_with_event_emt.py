@@ -13,11 +13,11 @@ from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.EMT.emt_options import EmtOptions
 from VeraGridEngine.Simulations.EMT.problems.emt_problem_dae import EmtProblemDae
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlowDriver3Ph
-from VeraGridEngine.Devices.Aggregation.emt_events_group import EmtEventsGroup
-from VeraGridEngine.Devices.Aggregation import EmtEvent
+from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
+from VeraGridEngine.Devices.Events.emt_event import EmtEvent
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
@@ -108,23 +108,23 @@ def test_simulation_with_event_emt():
     ######################################################################################################
 
     # generator
-    gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.emt_var_factory).block
+    gen_mdl = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
 
     # line
-    line_mdl = get_pi_line_emt_template(grid=grid, line=line0).block
+    line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
 
     # load
-    load_mdl = get_shunt_r_3ph_emt_template(vf=grid.emt_var_factory).block
+    load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
     ######################################################################################################
     # Add models to devices
     ######################################################################################################
 
-    set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.emt_var_factory)
+    set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.var_factory)
 
-    set_emt_model(device=line0, model=line_mdl, var_factory=grid.emt_var_factory)
+    set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
 
-    set_emt_model(device=load, model=load_mdl, var_factory=grid.emt_var_factory)
+    set_emt_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
     # apply event
     R_A = find_name_in_block('R_A_Shunt_R_3ph', load_mdl)
@@ -186,9 +186,9 @@ def test_simulation_with_event_emt():
                          verbose=1)
 
     problem = EmtProblemDae(grid=grid,
-                                  options=options,
-                                  pf_results_3Ph=res,
-                                  pf_results=None)
+                            options=options,
+                            pf_results_3ph=res,
+                            pf_results=None)
 
     problem.set_events_group(events_group)
 
@@ -202,7 +202,7 @@ def test_simulation_with_event_emt():
                                  verbose = True)
 
     boundary_updater = cast(Any, problem)
-    t, y, dy = solver.simulate(boundary_updater=boundary_updater)
+    t, y, dy, _, _ = solver.simulate(boundary_updater=boundary_updater)
 
     res = np.concatenate((y, dy), axis=1)
 

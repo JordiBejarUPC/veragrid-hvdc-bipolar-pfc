@@ -62,7 +62,7 @@ def stability_kundur_no_shunt():
     grid.add_bus(bus11)
 
     for bus in grid.buses:
-        initialize_bus_rms(bus, vf=grid.rms_var_factory)
+        initialize_bus_rms(bus, vf=grid.var_factory)
 
     # Line
 
@@ -168,41 +168,21 @@ def stability_kundur_no_shunt():
     gen1 = Generator(
         name="Gen1", P=700.0, vset=1.03, Snom=900.0,
         x1=xd_1, r1=ra_1, freq=fn_1,
-        tm0=6.999999999999999,
-        vf=1.1410480598099169,
-        M=M_1, D=D_1,
-        omega_ref=omega_ref_1,
-        Kp=Kp_1, Ki=Ki_1
     )
 
     gen2 = Generator(
         name="Gen2", P=700.0, vset=1.01, Snom=900.0,
         x1=xd_2, r1=ra_2, freq=fn_2,
-        tm0=6.999999999999998,
-        vf=1.1801018702912192,
-        M=M_2, D=D_2,
-        omega_ref=omega_ref_2,
-        Kp=Kp_2, Ki=Ki_2
     )
 
     gen3 = Generator(
         name="Gen3", P=719.091, vset=1.03, Snom=900.0,
         x1=xd_3, r1=ra_3, freq=fn_3,
-        tm0=7.331838148595014,
-        vf=1.15513088317088697,
-        M=M_3, D=D_3,
-        omega_ref=omega_ref_3,
-        Kp=Kp_3, Ki=Ki_3
     )
 
     gen4 = Generator(
         name="Gen4", P=700.0, vset=1.01, Snom=900.0,
         x1=xd_4, r1=ra_4, freq=fn_4,
-        tm0=6.999999999999998,
-        vf=1.2028207647478641,
-        M=M_4, D=D_4,
-        omega_ref=omega_ref_4,
-        Kp=Kp_4, Ki=Ki_4
     )
 
     ######################################################################################################
@@ -211,36 +191,36 @@ def stability_kundur_no_shunt():
 
     # Build rms models from template
     # generators
-    genrow_mdl1 = get_genrow1_rms_template(grid.rms_var_factory).block
-    genrow_mdl2 = get_genrow2_rms_template(grid.rms_var_factory).block
-    genrow_mdl3 = get_genrow3_rms_template(grid.rms_var_factory).block
-    genrow_mdl4 = get_genrow4_rms_template(grid.rms_var_factory).block
+    genrow_mdl1 = get_genrow1_rms_template(grid.var_factory).block
+    genrow_mdl2 = get_genrow2_rms_template(grid.var_factory).block
+    genrow_mdl3 = get_genrow3_rms_template(grid.var_factory).block
+    genrow_mdl4 = get_genrow4_rms_template(grid.var_factory).block
 
     # lines
-    line0_mdl = get_line_rms_template(grid.rms_var_factory).block
-    line1_mdl = get_line_rms_template(grid.rms_var_factory).block
-    line2_mdl = get_line_rms_template(grid.rms_var_factory).block
-    line3_mdl = get_line_rms_template(grid.rms_var_factory).block
-    line4_mdl = get_line_rms_template(grid.rms_var_factory).block
-    line5_mdl = get_line_rms_template(grid.rms_var_factory).block
-    line6_mdl = get_line_rms_template(grid.rms_var_factory).block
-    line7_mdl = get_line_rms_template(grid.rms_var_factory).block
-    line8_mdl = get_line_rms_template(grid.rms_var_factory).block
-    line9_mdl = get_line_rms_template(grid.rms_var_factory).block
-    line10_mdl = get_line_rms_template(grid.rms_var_factory).block
-    line11_mdl = get_line_rms_template(grid.rms_var_factory).block
-    line12_mdl = get_line_rms_template(grid.rms_var_factory).block
-    line13_mdl = get_line_rms_template(grid.rms_var_factory).block
+    line0_mdl = get_line_rms_template(grid.var_factory).block
+    line1_mdl = get_line_rms_template(grid.var_factory).block
+    line2_mdl = get_line_rms_template(grid.var_factory).block
+    line3_mdl = get_line_rms_template(grid.var_factory).block
+    line4_mdl = get_line_rms_template(grid.var_factory).block
+    line5_mdl = get_line_rms_template(grid.var_factory).block
+    line6_mdl = get_line_rms_template(grid.var_factory).block
+    line7_mdl = get_line_rms_template(grid.var_factory).block
+    line8_mdl = get_line_rms_template(grid.var_factory).block
+    line9_mdl = get_line_rms_template(grid.var_factory).block
+    line10_mdl = get_line_rms_template(grid.var_factory).block
+    line11_mdl = get_line_rms_template(grid.var_factory).block
+    line12_mdl = get_line_rms_template(grid.var_factory).block
+    line13_mdl = get_line_rms_template(grid.var_factory).block
 
     # trafos
-    trafo1_mdl = get_line_rms_template(grid.rms_var_factory).block
-    trafo2_mdl = get_line_rms_template(grid.rms_var_factory).block
-    trafo3_mdl = get_line_rms_template(grid.rms_var_factory).block
-    trafo4_mdl = get_line_rms_template(grid.rms_var_factory).block
+    trafo1_mdl = get_line_rms_template(grid.var_factory).block
+    trafo2_mdl = get_line_rms_template(grid.var_factory).block
+    trafo3_mdl = get_line_rms_template(grid.var_factory).block
+    trafo4_mdl = get_line_rms_template(grid.var_factory).block
 
     # loads
-    load1_mdl = get_load_rms_template(grid.rms_var_factory).block
-    load2_mdl = get_load_rms_template(grid.rms_var_factory).block
+    load1_mdl = get_load_rms_template(grid.var_factory).block
+    load2_mdl = get_load_rms_template(grid.var_factory).block
 
     # set models parameters
     load1_mdl.set_parameter_in_model(var_name="Pl0", new_value=-9.670000000007317)

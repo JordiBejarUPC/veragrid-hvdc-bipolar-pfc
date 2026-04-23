@@ -2,7 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import math
 import cProfile as profile
 import numpy as np
 from matplotlib import pyplot as plt
@@ -12,11 +11,9 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')))
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
-from VeraGridEngine.Templates.Rms.vsc_template import PVCellBuild
 from VeraGridEngine.Templates.Rms.vsc_gfm import VscGfmBuild
 from VeraGridEngine.Templates.Rms.dc_voltage_source import DCVoltageSource
 from VeraGridEngine.Templates.Rms.genrow1_rms_template import get_genrow1_rms_template
@@ -27,8 +24,8 @@ from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
-from VeraGridEngine.Devices.Aggregation import RmsEvent
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.enumerations import ConverterControlType
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_generalized_formulation import PfGeneralizedFormulation
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
@@ -108,7 +105,7 @@ grid.add_bus(bus2)
 grid.add_bus(bus3)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.rms_var_factory)
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 grid.add_line(line12)
 grid.add_vsc(vsc1)
@@ -261,20 +258,20 @@ print('Voltage angles (deg): ', np.angle(res.voltage, deg=True))
 
 
 #Initialise the RMS
-line12_mdl = get_line_rms_template(grid.rms_var_factory).block
+line12_mdl = get_line_rms_template(grid.var_factory).block
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = ZIPLoadBuild(grid.rms_var_factory, Pl0 =-0.1, Ql0 =-0.01).block
+    load_mdl = ZIPLoadBuild(grid.var_factory, Pl0 =-0.1, Ql0 =-0.01).block
 else:
     raise ValueError(f"Unknown load type: {load_type}")
     
-genrow_mdl1 = get_genrow1_rms_template(grid.rms_var_factory).block
-genrow_mdl1 = get_complete_generator_template_rms(grid.rms_var_factory).block
+genrow_mdl1 = get_genrow1_rms_template(grid.var_factory).block
+genrow_mdl1 = get_complete_generator_template_rms(grid.var_factory).block
 
 # Initialize the RMS
-line12_mdl = (get_line_rms_template(grid.rms_var_factory).block)
-load_mdl = (ZIPLoadBuild(grid.rms_var_factory, Pl0 =-0.1, Ql0 =-0.01).block)
-vsc_mdl = (VscGfmBuild(grid.rms_var_factory).block)
+line12_mdl = (get_line_rms_template(grid.var_factory).block)
+load_mdl = (ZIPLoadBuild(grid.var_factory, Pl0 =-0.1, Ql0 =-0.01).block)
+vsc_mdl = (VscGfmBuild(grid.var_factory).block)
 
 # DEBUG: Check all blocks and their init_eqs
 print("\n=== VSC MODEL STRUCTURE ===")
@@ -285,7 +282,7 @@ for i, b in enumerate(vsc_mdl.get_all_blocks()):
     print(f"  diff_vars: {[v.name for v in b.diff_vars]}")
     print(f"  init_eqs keys: {[v.name for v in b.init_eqs.keys()]}")
 
-dc_source = (DCVoltageSource(grid.rms_var_factory, bus3.rms_model.out_vars[0]).block)
+dc_source = (DCVoltageSource(grid.var_factory, bus3.rms_model.out_vars[0]).block)
 
 
 

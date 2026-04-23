@@ -2,8 +2,6 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import math
-import cProfile as profile
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -13,8 +11,7 @@ import os
 # Ensure the library can be found
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', '..', 'src')))
 
-from VeraGridEngine import VarPowerFlowRefferenceType, SimulationTypes
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
+from VeraGridEngine import VarPowerFlowRefferenceType
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
@@ -25,10 +22,9 @@ from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDa
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 
-from VeraGridEngine.enumerations import DynamicIntegrationMethod, TapModuleControl, TapPhaseControl, RmsInitializationMethod
-from VeraGridEngine.Devices.Aggregation import RmsEvent
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
-from VeraGridEngine.enumerations import WindingType
+from VeraGridEngine.enumerations import DynamicIntegrationMethod, TapPhaseControl, RmsInitializationMethod
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 import VeraGridEngine.api as gce
 
 from VeraGridEngine.Simulations.PowerFlow.power_flow_worker import PowerFlowOptions
@@ -111,7 +107,7 @@ grid.add_bus(bus2)
 grid.add_bus(bus3)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.rms_var_factory)
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 grid.add_line(line12)
 grid.add_generator(bus=bus1, api_obj=gen1)
@@ -215,17 +211,17 @@ print(f"Trafo 2 Tap Module: {trafo_2.tap_module:.6f}, Phase: {np.degrees(trafo_2
 
 
 #Initialise the RMS
-line12_mdl = block_deep_copy(get_line_rms_template(grid.rms_var_factory).block)
+line12_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
 trafo_1.initialize_rms(name = "trafo1")
 trafo_2.initialize_rms(name = "trafo2")
 
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = block_deep_copy(ZIPLoadBuild(grid.rms_var_factory, Pl0 =-0.1, Ql0 =-0.02).block)
+    load_mdl = block_deep_copy(ZIPLoadBuild(grid.var_factory, Pl0 =-0.1, Ql0 =-0.02).block)
 else:
     raise ValueError(f"Unknown load type: {load_type}")
     
-genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.rms_var_factory).block)
+genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.var_factory).block)
 
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
 genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])

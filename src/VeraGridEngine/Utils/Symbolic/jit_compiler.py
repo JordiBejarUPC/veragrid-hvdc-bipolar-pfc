@@ -46,7 +46,7 @@ import hashlib
 import scipy.sparse as sp
 
 #RMS
-from VeraGridEngine.Utils.Symbolic.symbolic import expression2numba
+from VeraGridEngine.Utils.Symbolic.symbolic import expression2numba, get_expression_vars
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 #Totally integrated
 from VeraGridEngine.Utils.Symbolic.symbolic import Expr, BinOp, UnOp, Func, Var, Const
@@ -611,6 +611,7 @@ def _build_matrix_codegen_cache_key(template_eq: Expr,
 # ==============================================================================
 class DiscretizationMethod(ABC):
     """Abstract base class for discretization strategies."""
+    __slots__ = ()
 
     @abstractmethod
     def discretize(self, state_idx: int, h_var: str = 'h') -> str:
@@ -622,6 +623,8 @@ class DiscretizationMethod(ABC):
 
 
 class TrapezoidalMethod(DiscretizationMethod):
+    __slots__ = ()
+
     def discretize(self, state_idx: int, h_var: str = 'h') -> str:
         return f"((2.0/{h_var}) * (states[{state_idx}] - history[{state_idx}]) - d_history[{state_idx}])"
 
@@ -630,6 +633,8 @@ class TrapezoidalMethod(DiscretizationMethod):
 
 
 class BackwardEulerMethod(DiscretizationMethod):
+    __slots__ = ()
+
     def discretize(self, state_idx: int, h_var: str = 'h') -> str:
         return f"((states[{state_idx}] - history[{state_idx}]) / {h_var})"
 
@@ -638,6 +643,8 @@ class BackwardEulerMethod(DiscretizationMethod):
 
 
 class BDF2Method(DiscretizationMethod):
+    __slots__ = ()
+
     def discretize(self, state_idx: int, h_var: str = 'h') -> str:
         return f"((1.5*states[{state_idx}] - 2.0*history[{state_idx}] + 0.5*history2[{state_idx}]) / {h_var})"
 
@@ -646,6 +653,8 @@ class BDF2Method(DiscretizationMethod):
 
 class ContinuousMethod(DiscretizationMethod):
     """Strategy for continuous systems (RMS Small Signal). Does not discretize."""
+    __slots__ = ()
+
     def discretize(self, state_idx: int, h_var: str = 'h') -> str:
         return f"dx[{state_idx}]"
 
@@ -1551,6 +1560,7 @@ class EagerKernelKind(Enum):
     and the Numba signature differ between residual kernels, AD kernels and
     vectorized matrix kernels.
     """
+    __slots__ = ()
 
     Residual = "residual"
     AutomaticDifferentiation = "automatic_differentiation"
@@ -2031,9 +2041,11 @@ class RMSCompiler(EquationCompiler):
         Returns:
             Callable: An executable function computing the RHS residuals.
         """
-        # Use the exact array names expected by the legacy solver interface: vars, diff, vprms, cprms
+        # Keep legacy signature (`vrs`) while also exposing `vars` alias,
+        # so equations compiled with either naming convention work.
         lines: List[str] = list()
-        lines.append(f"def {func_name}(vars, diff, vprms, cprms):")
+        lines.append(f"def {func_name}(vrs, diff, vprms, cprms):")
+        lines.append("    vars = vrs")
         lines.append(f"    out = np.zeros({len(equations)}, dtype=np.float64)")
 
         for i, eq in enumerate(equations):
@@ -2058,21 +2070,37 @@ class RMSCompiler(EquationCompiler):
         Returns:
             Callable: A function that populates and returns a scipy.sparse.csc_matrix.
         """
+        wrt_map = {v.uid: (i, v) for i, v in enumerate(wrt_vars)}
         triplets: List[Tuple[int, int, Expr]] = list()
 
-        # O(N) Algorithmic Extraction:
-        # We check ALL variable-equation pairs to correctly handle chain rules
-        # through differential variables. This is less efficient than checking only
-        # variables that appear in each equation, but it ensures correctness.
-        for row, eq in enumerate(eqs):
-            for col, var in enumerate(wrt_vars):
-                # Differentiate with respect to the physical time variable (dt_var)
-                d_expr = eq.diff(var, dt=self.dt_var)
+        def _collect_related_uids(var: Var, out: Set[int], seen: Set[int]) -> None:
+            if var.uid in seen:
+                return
+            seen.add(var.uid)
 
+            if var.uid in wrt_map:
+                out.add(var.uid)
+
+            if var.base_var is not None:
+                _collect_related_uids(var.base_var, out, seen)
+
+            if var.diff_var is not None:
+                _collect_related_uids(var.diff_var, out, seen)
+
+        def _candidate_uids(eq: Expr) -> Set[int]:
+            candidates: Set[int] = set()
+            seen: Set[int] = set()
+            for v_in_eq in get_expression_vars(eq):
+                _collect_related_uids(v_in_eq, candidates, seen)
+            return candidates
+
+        # Only differentiate variables that appear in the equation AST.
+        for row, eq in enumerate(eqs):
+            for uid in _candidate_uids(eq):
+                col, var = wrt_map[uid]
+                d_expr = eq.diff(var, dt=self.dt_var)
                 if not (isinstance(d_expr, Const) and d_expr.value == 0):
                     triplets.append((col, row, d_expr))
-                else:
-                    pass
 
         triplets.sort(key=lambda t: (t[0], t[1]))
 
@@ -2080,10 +2108,7 @@ class RMSCompiler(EquationCompiler):
         if not triplets:
             J_empty = sp.csc_matrix((len(eqs), len(wrt_vars)))
             # noinspection PyShadowingBuiltins
-            return lambda vars, diff, vprms, cprms, h: J_empty
-        else:
-            pass
-
+            return lambda vrs, diff, vprms, cprms, h: J_empty
         # Extract sorted coordinates and corresponding symbolic derivatives
         cols_sorted = [t[0] for t in triplets]
         rows_sorted = [t[1] for t in triplets]
@@ -2102,7 +2127,8 @@ class RMSCompiler(EquationCompiler):
 
         # The Jacobian receives 'h' in its signature for solver compatibility,
         # even though 'expression2numba' internally resolves 'dt' via vprms[...]
-        lines = [f"def {func_name}_filler(vars, diff, vprms, cprms, h, data_out):"]
+        lines = [f"def {func_name}_filler(vrs, diff, vprms, cprms, h, data_out):"]
+        lines.append("    vars = vrs")
         for i, expr in enumerate(d_exprs):
             expr_str = expression2numba(expr, self.compiler_names_dict)
             lines.append(f"    data_out[{i}] = {expr_str}")
@@ -2111,8 +2137,96 @@ class RMSCompiler(EquationCompiler):
 
         # Wrapper function to evaluate and return the actual CSC matrix natively
         # noinspection PyShadowingBuiltins
-        def jac_evaluator(vars, diff, vprms, cprms, h):
-            filler_fn(vars, diff, vprms, cprms, h, J_template.data)
+        def jac_evaluator(vrs, diff, vprms, cprms, h):
+            filler_fn(vrs, diff, vprms, cprms, h, J_template.data)
             return J_template
 
         return jac_evaluator
+
+    def compile_event_params_fn(self, eqs: List[Expr], alias_names_dict: Dict[int, str],
+                                EVENT_PARAMS_NAME: str, TIME_NAME: str,
+                                func_name: str = "event_params_fn") -> Callable[[Vec, float, Vec], Vec]:
+        """
+        Compiles event parameters equations into a fast, executable JIT function.
+
+        This is the equivalent of SymbolicParamsVector.
+
+        Args:
+            eqs (List[Expr]): The list of symbolic expressions for event parameters.
+            alias_names_dict (Dict[int, str]): Dictionary mapping var UIDs to alias names.
+            EVENT_PARAMS_NAME (str): Name of the event parameters array (e.g., "vprms").
+            TIME_NAME (str): Name of the time variable (e.g., "glob_time").
+            func_name (str): The desired name for the compiled target function.
+
+        Returns:
+            Callable: An executable function with signature (event_params, time, out) -> out.
+        """
+        from collections import defaultdict
+
+        used_vars_count = defaultdict(int)
+        for eq in eqs:
+            for var in get_expression_vars(eq):
+                used_vars_count[var.uid] += 1
+
+        lines: List[str] = list()
+        lines.append(f"def {func_name}({EVENT_PARAMS_NAME}, {TIME_NAME}, out):")
+
+        final_names_dict = self.compiler_names_dict.copy()
+        for uid, count in used_vars_count.items():
+            if count > 1:
+                final_names_dict[uid] = alias_names_dict[uid]
+                lines.append(f"    {alias_names_dict[uid]} = {self.compiler_names_dict[uid]}")
+
+        for i, eq in enumerate(eqs):
+            expr_str = expression2numba(eq, self.compiler_names_dict)
+            lines.append(f"    out[{i}] = {expr_str}")
+
+        raw_fn = _compile_to_file("\n".join(lines), func_name)
+
+        def wrapped(event_params: Vec, glob_time: float):
+            out = np.zeros(len(eqs), dtype=np.float64)
+            raw_fn(event_params, glob_time, out)
+            return out
+
+        return wrapped
+
+    def compile_derivative_fn(self, uid2idx_vars: Dict[int, int],
+                              func_name: str = "derivative_fn") -> Callable[[Vec, Vec, Vec, float, Vec], Vec]:
+        """
+        Compiles the derivative evaluation function for differential variables.
+
+        This is the equivalent of SymbolicDerivative.
+
+        Args:
+            uid2idx_vars (Dict[int, int]): Dictionary mapping var UIDs to their indices.
+            func_name (str): The desired name for the compiled target function.
+
+        Returns:
+            Callable: An executable function with signature (vrs, lagvars, lagdx, h, out) -> out.
+        """
+        lines: List[str] = list()
+        lines.append(f"def {func_name}(vrs, lagvars, lagdx, h, out):")
+
+        uid2dx_expression = {}
+        for i, diff_var in enumerate(self.diff_vars):
+            base_var_uid = diff_var.base_var.uid
+            uid = diff_var.uid
+            if diff_var.diff_order == 1:
+                j = uid2idx_vars[base_var_uid]
+                rhs = f" (vrs[{j}] - lagvars[{j}]) / h"
+            else:
+                dx_expression = uid2dx_expression[diff_var.base_var.uid]
+                rhs = f" ({dx_expression} - lagdx[{i}]) / h"
+            lines.append(f"    out[{i}] = {rhs}")
+            uid2dx_expression[uid] = rhs
+
+        lines.append("    return out")
+
+        raw_fn = _compile_to_file("\n".join(lines), func_name)
+
+        def wrapped(vrs: Vec, lagvars: Vec, lagdx: Vec, h: float):
+            out = np.zeros(len(self.diff_vars), dtype=np.float64)
+            raw_fn(vrs, lagvars, lagdx, h, out)
+            return out
+
+        return wrapped

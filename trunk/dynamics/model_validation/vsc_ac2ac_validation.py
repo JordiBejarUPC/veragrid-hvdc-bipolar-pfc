@@ -172,7 +172,7 @@ def create_test_grid():
     
     # Initialize bus RMS models
     for bus in grid.buses:
-        initialize_bus_rms(bus, vf=grid.rms_var_factory)
+        initialize_bus_rms(bus, vf=grid.var_factory)
     
     # Lines
     line0 = gce.Line(name="line 0-1", bus_from=bus0, bus_to=bus1, 
@@ -210,7 +210,7 @@ def create_test_grid():
 def setup_vsc_model(grid, vsc):
     """Setup the VSC AC2AC model for the validation."""
     # Build VSC AC2AC model
-    vsc_model = VscAc2acModel(grid.rms_var_factory)
+    vsc_model = VscAc2acModel(grid.var_factory)
     vsc_block = block_deep_copy(vsc_model.block)
     
     # Get bus variables

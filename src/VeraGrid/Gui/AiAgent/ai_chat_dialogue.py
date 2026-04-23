@@ -16,6 +16,7 @@ configuration, live app-derived context and a visible transcript.
 import html
 import json
 import os
+import re
 import time
 from enum import Enum
 from typing import Any, Optional, TYPE_CHECKING
@@ -40,6 +41,7 @@ from VeraGrid.Gui.AiAgent.ai_backend import ToolSpec
 from VeraGrid.Gui.AiAgent.ai_backend import VeraGridContext
 from VeraGrid.Gui.AiAgent.ai_backend import build_default_tool_registry
 from VeraGrid.Gui.AiAgent.ai_backend import build_provider
+from VeraGrid.Gui.AiAgent.ai_backend import sanitize_visible_assistant_text
 from VeraGrid.Gui.AiAgent.ai_backend import list_provider_models
 from VeraGrid.Gui.AiAgent.ai_chat_gui import Ui_AiChatDialog
 from VeraGrid.Gui.Analysis.object_plot_analysis import GridErrorLog
@@ -728,10 +730,12 @@ def is_direct_grid_diagnostics_request(message_text: str) -> bool:
     diagnosis_phrases: list[str] = list()
     issue_markers: list[str] = list()
     grid_markers: list[str] = list()
+    contextual_markers: list[str] = list()
     index: int = 0
     marker_index: int = 0
     has_issue_marker: bool = False
     has_grid_marker: bool = False
+    has_contextual_marker: bool = False
 
     diagnosis_phrases.append("what is wrong with the grid")
     diagnosis_phrases.append("what's wrong with the grid")
@@ -752,6 +756,11 @@ def is_direct_grid_diagnostics_request(message_text: str) -> bool:
     diagnosis_phrases.append("analyse the grid issues")
     diagnosis_phrases.append("grid diagnostics")
     diagnosis_phrases.append("grid diagnosis")
+    diagnosis_phrases.append("what is wrong with it")
+    diagnosis_phrases.append("what's wrong with it")
+    diagnosis_phrases.append("diagnose it")
+    diagnosis_phrases.append("analyze it")
+    diagnosis_phrases.append("analyse it")
     issue_markers.append("issue")
     issue_markers.append("issues")
     issue_markers.append("problem")
@@ -765,6 +774,11 @@ def is_direct_grid_diagnostics_request(message_text: str) -> bool:
     grid_markers.append("grid")
     grid_markers.append("network")
     grid_markers.append("model")
+    contextual_markers.append("loaded")
+    contextual_markers.append("current")
+    contextual_markers.append("given")
+    contextual_markers.append("this")
+    contextual_markers.append("it")
 
     while index < len(diagnosis_phrases):
         if diagnosis_phrases[index] in normalized_text:
@@ -788,10 +802,21 @@ def is_direct_grid_diagnostics_request(message_text: str) -> bool:
             pass
         marker_index += 1
 
+    marker_index = 0
+    while marker_index < len(contextual_markers):
+        if contextual_markers[marker_index] in normalized_text:
+            has_contextual_marker = True
+        else:
+            pass
+        marker_index += 1
+
     if has_issue_marker and has_grid_marker:
         return True
     else:
-        pass
+        if has_issue_marker and has_contextual_marker:
+            return True
+        else:
+            pass
 
     return False
 
@@ -1355,6 +1380,18 @@ class AiSimulationCommand(Enum):
     NODAL_CAPACITY = "nodal_capacity"
 
 
+class CodeExampleTopic(Enum):
+    """
+    Code-example topics supported by deterministic doc-backed replies.
+    """
+
+    POWER_FLOW = "power_flow"
+    POWER_FLOW_TIME_SERIES = "power_flow_time_series"
+    SHORT_CIRCUIT = "short_circuit"
+    OPTIMAL_POWER_FLOW = "optimal_power_flow"
+    CONTINGENCY_ANALYSIS = "contingency_analysis"
+
+
 class SimulationCommandDefinition:
     """
     Explicit definition for one VeraGrid simulation command.
@@ -1805,6 +1842,408 @@ def is_explicit_run_request(message_text: str) -> bool:
     return False
 
 
+def is_code_request(message_text: str) -> bool:
+    """
+    Check whether the user is asking for source code or a programming example.
+
+    :param message_text: User message text.
+    :returns: True when the request is about code rather than live execution.
+    """
+    normalized_text: str = normalize_simulation_request_text(message_text)
+    code_markers: list[str] = list()
+    marker_index: int = 0
+
+    code_markers.append("python code")
+    code_markers.append("python example")
+    code_markers.append("code example")
+    code_markers.append("example code")
+    code_markers.append("example in python")
+    code_markers.append("source code")
+    code_markers.append("code snippet")
+    code_markers.append("snippet")
+    code_markers.append("script")
+    code_markers.append("programmatically")
+    code_markers.append("from code")
+    code_markers.append("in code")
+    code_markers.append("using python")
+    code_markers.append("python api")
+    code_markers.append("how to code")
+
+    while marker_index < len(code_markers):
+        if code_markers[marker_index] in normalized_text:
+            return True
+        else:
+            pass
+        marker_index += 1
+
+    if ("how to" in normalized_text) and ("code" in normalized_text):
+        return True
+    else:
+        pass
+
+    if ("python" in normalized_text) and ("example" in normalized_text):
+        return True
+    else:
+        pass
+
+    if ("python" in normalized_text) and ("run" in normalized_text):
+        return True
+    else:
+        pass
+
+    if ("script" in normalized_text) and ("power flow" in normalized_text):
+        return True
+    else:
+        pass
+
+    return False
+
+
+def is_power_flow_code_request(message_text: str) -> bool:
+    """
+    Check whether the user is asking for a power-flow Python example.
+
+    :param message_text: User message text.
+    :returns: True when the request targets a power-flow code example.
+    """
+    normalized_text: str = normalize_simulation_request_text(message_text)
+
+    if not is_code_request(normalized_text):
+        return False
+    else:
+        pass
+
+    if ("power flow" in normalized_text) or ("load flow" in normalized_text):
+        return True
+    else:
+        return False
+
+
+def detect_code_example_topic(message_text: str) -> Optional[CodeExampleTopic]:
+    """
+    Detect which documented code-example topic the user is asking for.
+
+    :param message_text: User message text.
+    :returns: Matching code-example topic or None.
+    """
+    normalized_text: str = normalize_simulation_request_text(message_text)
+
+    if not is_code_request(normalized_text):
+        return None
+    else:
+        pass
+
+    if ("contingency" in normalized_text) or ("n-1" in normalized_text):
+        return CodeExampleTopic.CONTINGENCY_ANALYSIS
+    else:
+        pass
+
+    if ("optimal power flow" in normalized_text) or (" opf" in f" {normalized_text} "):
+        return CodeExampleTopic.OPTIMAL_POWER_FLOW
+    else:
+        pass
+
+    if ("short circuit" in normalized_text) or ("short-circuit" in normalized_text):
+        return CodeExampleTopic.SHORT_CIRCUIT
+    else:
+        pass
+
+    if (("time series" in normalized_text) or ("timeseries" in normalized_text)) and (
+        ("power flow" in normalized_text) or ("load flow" in normalized_text)
+    ):
+        return CodeExampleTopic.POWER_FLOW_TIME_SERIES
+    else:
+        pass
+
+    if ("power flow" in normalized_text) or ("load flow" in normalized_text):
+        return CodeExampleTopic.POWER_FLOW
+    else:
+        return None
+
+
+def build_power_flow_code_example_text() -> str:
+    """
+    Build a grounded Python example for running a power flow with VeraGridEngine.
+
+    :returns: Markdown response text.
+    """
+    lines: list[str] = list()
+
+    lines.append("Use the documented `VeraGridEngine` pattern, not `from veragrid import VeraGrid`.")
+    lines.append("")
+    lines.append("```python")
+    lines.append("import os")
+    lines.append("import VeraGridEngine as vg")
+    lines.append("")
+    lines.append("folder = os.path.join('..', 'Grids_and_profiles', 'grids')")
+    lines.append("fname = os.path.join(folder, 'IEEE14_from_raw.veragrid')")
+    lines.append("main_circuit = vg.open_file(fname)")
+    lines.append("")
+    lines.append("options = vg.PowerFlowOptions(vg.SolverType.NR, verbose=False)")
+    lines.append("power_flow = vg.PowerFlowDriver(main_circuit, options)")
+    lines.append("power_flow.run()")
+    lines.append("")
+    lines.append("print(main_circuit.name)")
+    lines.append("print('Converged:', power_flow.results.converged, 'error:', power_flow.results.error)")
+    lines.append("print(power_flow.results.get_bus_df())")
+    lines.append("print(power_flow.results.get_branch_df())")
+    lines.append("```")
+    lines.append("")
+    lines.append("For the unbalanced three-phase helper shown in the docs, the pattern is:")
+    lines.append("")
+    lines.append("```python")
+    lines.append("res = vg.power_flow(")
+    lines.append("    grid=grid,")
+    lines.append("    options=vg.PowerFlowOptions(three_phase_unbalanced=True),")
+    lines.append(")")
+    lines.append("print(res.get_bus_df())")
+    lines.append("```")
+    lines.append("")
+    lines.append(
+        "This is based on the packaged VeraGrid docs, specifically the documented `PowerFlowOptions`, "
+        "`PowerFlowDriver`, and `open_file()` workflow."
+    )
+
+    return "\n".join(lines)
+
+
+def build_power_flow_time_series_code_example_text() -> str:
+    """
+    Build a grounded Python example for running a power-flow time series.
+
+    :returns: Markdown response text.
+    """
+    lines: list[str] = list()
+
+    lines.append("The documented VeraGridEngine time-series pattern is:")
+    lines.append("")
+    lines.append("```python")
+    lines.append("import os")
+    lines.append("import VeraGridEngine as gce")
+    lines.append("")
+    lines.append('fname = os.path.join("data", "grids", "IEEE39_1W.veragrid")')
+    lines.append("grid = gce.open_file(fname)")
+    lines.append("")
+    lines.append("pf_driver = gce.PowerFlowTimeSeriesDriver(")
+    lines.append("    grid=grid,")
+    lines.append("    options=gce.PowerFlowOptions(),")
+    lines.append("    time_indices=grid.get_all_time_indices(),")
+    lines.append(")")
+    lines.append("pf_driver.run()")
+    lines.append("")
+    lines.append('gce.export_drivers(drivers_list=[pf_driver], file_name="IEEE39_1W_results.zip")')
+    lines.append("```")
+    lines.append("")
+    lines.append("The docs also show an alternative clustered time-series workflow:")
+    lines.append("")
+    lines.append("```python")
+    lines.append("pf_options = vg.PowerFlowOptions()")
+    lines.append("pf_ts_driver = vg.PowerFlowTimeSeriesDriver(")
+    lines.append("    grid=grid,")
+    lines.append("    options=pf_options,")
+    lines.append("    clustering_results=cl_drv.results,")
+    lines.append(")")
+    lines.append("pf_ts_driver.run()")
+    lines.append("pf_res: vg.PowerFlowTimeSeriesResults = pf_ts_driver.results")
+    lines.append("```")
+
+    return "\n".join(lines)
+
+
+def build_short_circuit_code_example_text() -> str:
+    """
+    Build a grounded Python example for running a short-circuit study.
+
+    :returns: Markdown response text.
+    """
+    lines: list[str] = list()
+
+    lines.append("The docs show both a convenience API and an explicit driver workflow.")
+    lines.append("")
+    lines.append("Convenience function:")
+    lines.append("")
+    lines.append("```python")
+    lines.append("import os")
+    lines.append("import VeraGridEngine as gce")
+    lines.append("")
+    lines.append("folder = os.path.join('..', 'Grids_and_profiles', 'grids')")
+    lines.append("fname = os.path.join(folder, 'South Island of New Zealand.veragrid')")
+    lines.append("")
+    lines.append("grid = gce.open_file(filename=fname)")
+    lines.append("fault_index = 2")
+    lines.append("results = gce.short_circuit(grid, fault_index, fault_type=gce.FaultType.LG)")
+    lines.append("print('Short circuit power: ', results.SCpower[fault_index])")
+    lines.append("```")
+    lines.append("")
+    lines.append("Explicit driver workflow:")
+    lines.append("")
+    lines.append("```python")
+    lines.append("import os")
+    lines.append("import VeraGridEngine as gce")
+    lines.append("from VeraGridEngine.enumerations import FaultType, MethodShortCircuit, PhasesShortCircuit")
+    lines.append("")
+    lines.append("folder = os.path.join('..', 'Grids_and_profiles', 'grids')")
+    lines.append("fname = os.path.join(folder, 'South Island of New Zealand.veragrid')")
+    lines.append("grid = gce.open_file(filename=fname)")
+    lines.append("")
+    lines.append("pf_options = gce.PowerFlowOptions()")
+    lines.append("pf = gce.PowerFlowDriver(grid, pf_options)")
+    lines.append("pf.run()")
+    lines.append("")
+    lines.append("fault_index = 2")
+    lines.append("grid.add_short_circuit_event(")
+    lines.append("    gce.ShortCircuitEvent(")
+    lines.append("        device=grid.buses[fault_index],")
+    lines.append("        fault_type=FaultType.LG,")
+    lines.append("        method=MethodShortCircuit.phases,")
+    lines.append("        phases=PhasesShortCircuit.a,")
+    lines.append("    )")
+    lines.append(")")
+    lines.append("")
+    lines.append("sc_options = gce.ShortCircuitOptions()")
+    lines.append("sc = gce.ShortCircuitDriver(")
+    lines.append("    grid,")
+    lines.append("    options=sc_options,")
+    lines.append("    pf_options=pf_options,")
+    lines.append("    pf_results=pf.results,")
+    lines.append(")")
+    lines.append("sc.run()")
+    lines.append("print('Short circuit power: ', sc.results.SCpower[fault_index])")
+    lines.append("```")
+
+    return "\n".join(lines)
+
+
+def build_optimal_power_flow_code_example_text() -> str:
+    """
+    Build a grounded Python example for running an optimal power flow.
+
+    :returns: Markdown response text.
+    """
+    lines: list[str] = list()
+
+    lines.append("A documented VeraGridEngine OPF pattern is:")
+    lines.append("")
+    lines.append("```python")
+    lines.append("import os")
+    lines.append("import numpy as np")
+    lines.append("import VeraGridEngine as vg")
+    lines.append("")
+    lines.append("fname = os.path.join('data', 'grids', 'IEEE 14 zip costs.veragrid')")
+    lines.append("grid = vg.FileOpen(fname).open()")
+    lines.append("")
+    lines.append("pf_options = vg.PowerFlowOptions(solver_type=vg.SolverType.NR)")
+    lines.append("")
+    lines.append("opf_options = vg.OptimalPowerFlowOptions(")
+    lines.append("    solver=vg.SolverType.NONLINEAR_OPF,")
+    lines.append("    ips_tolerance=1e-8,")
+    lines.append("    ips_iterations=50,")
+    lines.append("    verbose=0,")
+    lines.append("    acopf_mode=vg.AcOpfMode.ACOPFstd,")
+    lines.append(")")
+    lines.append("")
+    lines.append("res = vg.run_nonlinear_opf(")
+    lines.append("    grid=grid,")
+    lines.append("    opf_options=opf_options,")
+    lines.append("    plot_error=False,")
+    lines.append("    optimize_nodal_capacity=True,")
+    lines.append("    nodal_capacity_sign=-1.0,")
+    lines.append("    capacity_nodes_idx=np.array([10, 11]),")
+    lines.append(")")
+    lines.append("")
+    lines.append("print('P non-linear nodal capacity: ', res.nodal_capacity)")
+    lines.append("```")
+    lines.append("")
+    lines.append("This snippet comes from the packaged VeraGrid docs around `OptimalPowerFlowOptions` and `run_nonlinear_opf()`.")
+
+    return "\n".join(lines)
+
+
+def build_contingency_analysis_code_example_text() -> str:
+    """
+    Build a grounded Python example for running contingency analysis.
+
+    :returns: Markdown response text.
+    """
+    lines: list[str] = list()
+
+    lines.append("The docs show this explicit contingency-analysis workflow:")
+    lines.append("")
+    lines.append("```python")
+    lines.append("import os")
+    lines.append("import VeraGridEngine as gce")
+    lines.append("")
+    lines.append("folder = os.path.join('..', 'Grids_and_profiles', 'grids')")
+    lines.append("fname = os.path.join(folder, 'IEEE39_1W.veragrid')")
+    lines.append("grid = gce.open_file(fname)")
+    lines.append("")
+    lines.append("branches = grid.get_branches()")
+    lines.append("")
+    lines.append("for i, br in enumerate(branches):")
+    lines.append('    group = gce.ContingencyGroup(name=\"contingency {}\".format(i + 1))')
+    lines.append("    grid.add_contingency_group(group)")
+    lines.append("    con = gce.Contingency(device=br, name=br.name, group=group)")
+    lines.append("    grid.add_contingency(con)")
+    lines.append("")
+    lines.append('group = gce.ContingencyGroup(name=\"Special contingency\")')
+    lines.append("grid.add_contingency_group(group)")
+    lines.append("grid.add_contingency(gce.Contingency(device=branches[3], name=branches[3].name, group=group))")
+    lines.append("grid.add_contingency(gce.Contingency(device=branches[5], name=branches[5].name, group=group))")
+    lines.append("")
+    lines.append("pf_options = gce.PowerFlowOptions(solver_type=gce.SolverType.NR)")
+    lines.append("options_ = gce.ContingencyAnalysisOptions(")
+    lines.append("    use_provided_flows=False,")
+    lines.append("    Pf=None,")
+    lines.append("    contingency_method=gce.ContingencyMethod.PowerFlow,")
+    lines.append("    contingency_groups=grid.get_contingency_groups(),")
+    lines.append("    pf_options=pf_options,")
+    lines.append(")")
+    lines.append("")
+    lines.append("contingency_groups = grid.get_contingency_groups()")
+    lines.append("linear_multiple_contingencies = gce.LinearMultiContingencies(")
+    lines.append("    grid=grid,")
+    lines.append("    contingency_groups_used=contingency_groups,")
+    lines.append(")")
+    lines.append("")
+    lines.append("simulation = gce.ContingencyAnalysisDriver(")
+    lines.append("    grid=grid,")
+    lines.append("    options=options_,")
+    lines.append("    linear_multiple_contingencies=linear_multiple_contingencies,")
+    lines.append(")")
+    lines.append("simulation.run()")
+    lines.append("")
+    lines.append("df = simulation.results.mdl(gce.ResultTypes.BranchActivePowerFrom).to_df()")
+    lines.append('print(\"Contingency flows:\\n\", df)')
+    lines.append("```")
+
+    return "\n".join(lines)
+
+
+def build_documented_code_example_text(topic: CodeExampleTopic) -> str:
+    """
+    Build a doc-backed code example for a supported topic.
+
+    :param topic: Code-example topic.
+    :returns: Markdown response text.
+    """
+    if topic == CodeExampleTopic.POWER_FLOW:
+        return build_power_flow_code_example_text()
+    else:
+        if topic == CodeExampleTopic.POWER_FLOW_TIME_SERIES:
+            return build_power_flow_time_series_code_example_text()
+        else:
+            if topic == CodeExampleTopic.SHORT_CIRCUIT:
+                return build_short_circuit_code_example_text()
+            else:
+                if topic == CodeExampleTopic.OPTIMAL_POWER_FLOW:
+                    return build_optimal_power_flow_code_example_text()
+                else:
+                    if topic == CodeExampleTopic.CONTINGENCY_ANALYSIS:
+                        return build_contingency_analysis_code_example_text()
+                    else:
+                        return build_power_flow_code_example_text()
+
+
 def detect_direct_simulation_command(message_text: str) -> Optional[AiSimulationCommand]:
     """
     Detect an explicit simulation command from a user request.
@@ -1815,6 +2254,11 @@ def detect_direct_simulation_command(message_text: str) -> Optional[AiSimulation
     definitions: list[SimulationCommandDefinition] = build_simulation_command_definitions()
     normalized_text: str = normalize_simulation_request_text(message_text)
     definition_index: int = 0
+
+    if is_code_request(normalized_text):
+        return None
+    else:
+        pass
 
     if not is_explicit_run_request(normalized_text):
         return None
@@ -2500,7 +2944,8 @@ class AiTurnExecutionRequest:
     :param provider_config: Provider configuration.
     :param system_prompt: System prompt.
     :param tool_registry: Snapshotted tool registry.
-    :param base_history: Transcript before the current user turn.
+    :param base_history: Full transcript before the current user turn.
+    :param llm_history: Compacted transcript used only as model input.
     :param user_message: User message.
     :param approved_tool_name: Approved tool name if any.
     :param approved_arguments_json: Approved tool arguments if any.
@@ -2512,6 +2957,7 @@ class AiTurnExecutionRequest:
         "grounding_context_text",
         "tool_registry",
         "base_history",
+        "llm_history",
         "user_message",
         "approved_tool_name",
         "approved_arguments_json",
@@ -2524,6 +2970,7 @@ class AiTurnExecutionRequest:
         grounding_context_text: str,
         tool_registry: ToolRegistry,
         base_history: list[ChatMessage],
+        llm_history: list[ChatMessage],
         user_message: str,
         approved_tool_name: Optional[str],
         approved_arguments_json: Optional[str],
@@ -2535,7 +2982,8 @@ class AiTurnExecutionRequest:
         :param system_prompt: System prompt.
         :param grounding_context_text: Deterministic grounding context for the current turn.
         :param tool_registry: Snapshotted tool registry.
-        :param base_history: Transcript before the current user turn.
+        :param base_history: Full transcript before the current user turn.
+        :param llm_history: Compacted transcript used only as model input.
         :param user_message: User message.
         :param approved_tool_name: Approved tool name if any.
         :param approved_arguments_json: Approved tool arguments if any.
@@ -2545,6 +2993,7 @@ class AiTurnExecutionRequest:
         self.grounding_context_text: str = grounding_context_text
         self.tool_registry: ToolRegistry = tool_registry
         self.base_history: list[ChatMessage] = base_history
+        self.llm_history: list[ChatMessage] = llm_history
         self.user_message: str = user_message
         self.approved_tool_name: Optional[str] = approved_tool_name
         self.approved_arguments_json: Optional[str] = approved_arguments_json
@@ -2671,6 +3120,7 @@ class AiTurnWorker(QtCore.QObject):
     __slots__ = (
         "_cached_provider",
         "_cached_provider_signature",
+        "_cancel_requested",
     )
 
     def __init__(self) -> None:
@@ -2679,9 +3129,15 @@ class AiTurnWorker(QtCore.QObject):
         """
         QtCore.QObject.__init__(self)
         self._cached_provider: Any = None
-        self._cached_provider_signature: Optional[tuple[str, str, str, str, float]] = None
+        self._cancel_requested: bool = False
+        self._cached_provider_signature: Optional[
+            tuple[str, str, str, str, float, int, int, int, float, float, int, int, int]
+        ] = None
 
-    def _build_provider_signature(self, config: ProviderConfig) -> tuple[str, str, str, str, float]:
+    def _build_provider_signature(
+        self,
+        config: ProviderConfig,
+    ) -> tuple[str, str, str, str, float, int, int, int, float, float, int, int, int]:
         """
         Build the provider cache signature.
 
@@ -2697,6 +3153,14 @@ class AiTurnWorker(QtCore.QObject):
             api_key_value,
             base_url_value,
             config.timeout_s,
+            config.context_window_tokens,
+            config.completion_tokens,
+            config.gpu_layers,
+            config.temperature,
+            config.top_p,
+            config.history_message_limit,
+            config.history_char_budget,
+            config.grounding_char_budget,
         )
 
     def _get_or_create_provider(self, config: ProviderConfig) -> Any:
@@ -2706,7 +3170,9 @@ class AiTurnWorker(QtCore.QObject):
         :param config: Provider configuration.
         :returns: Provider instance.
         """
-        provider_signature: tuple[str, str, str, str, float] = self._build_provider_signature(config)
+        provider_signature: tuple[str, str, str, str, float, int, int, int, float, float, int, int, int] = (
+            self._build_provider_signature(config)
+        )
 
         if self._cached_provider_signature == provider_signature:
             if self._cached_provider is None:
@@ -2719,6 +3185,33 @@ class AiTurnWorker(QtCore.QObject):
 
         return self._cached_provider
 
+    @QtCore.Slot()
+    def reset_cached_provider(self) -> None:
+        """
+        Drop the cached provider so the next turn rebuilds it from the current settings.
+
+        :returns: Nothing.
+        """
+        self._cached_provider = None
+        self._cached_provider_signature = None
+
+    @QtCore.Slot()
+    def request_cancellation(self) -> None:
+        """
+        Request cancellation of the current worker task.
+
+        :returns: Nothing.
+        """
+        self._cancel_requested = True
+
+    def _is_cancellation_requested(self) -> bool:
+        """
+        Check whether cancellation was requested for the current task.
+
+        :returns: True when the current task should stop.
+        """
+        return self._cancel_requested
+
     @QtCore.Slot(object)
     def run_request(self, request: AiTurnExecutionRequest) -> None:
         """
@@ -2727,6 +3220,8 @@ class AiTurnWorker(QtCore.QObject):
         :param request: Execution request.
         :returns: Nothing.
         """
+        self._cancel_requested = False
+
         try:
             provider: Any = self._get_or_create_provider(request.provider_config)
             orchestrator: ConversationOrchestrator = ConversationOrchestrator(
@@ -2738,10 +3233,11 @@ class AiTurnWorker(QtCore.QObject):
                 system_prompt=request.system_prompt,
                 user_message=request.user_message,
                 grounding_context_text=request.grounding_context_text,
-                history=request.base_history,
+                history=request.llm_history,
                 approved_tool_name=request.approved_tool_name,
                 approved_arguments_json=request.approved_arguments_json,
                 text_delta_callback=self.partial_text_received.emit,
+                cancellation_check=self._is_cancellation_requested,
             )
             self.completed.emit(
                 AiTurnExecutionResponse(
@@ -2776,7 +3272,21 @@ class AiTurnWorker(QtCore.QObject):
         study_summary_obj: object
         assistant_text: str
 
+        self._cancel_requested = False
+
         try:
+            if self._cancel_requested:
+                self.direct_simulation_analysis_completed.emit(
+                    DirectSimulationAnalysisResponse(
+                        success=False,
+                        transcript=transcript,
+                        error_message="Generation stopped.",
+                    )
+                )
+                return
+            else:
+                pass
+
             run_result = request.tool_registry.execute(
                 tool_name="run_simulation",
                 arguments_json=json.dumps(
@@ -2788,6 +3298,18 @@ class AiTurnWorker(QtCore.QObject):
                 is_approved=False,
             )
             transcript.append(ChatMessage(role="user", content=request.user_message, name=None))
+
+            if self._cancel_requested:
+                self.direct_simulation_analysis_completed.emit(
+                    DirectSimulationAnalysisResponse(
+                        success=False,
+                        transcript=transcript,
+                        error_message="Generation stopped.",
+                    )
+                )
+                return
+            else:
+                pass
 
             if run_result.success:
                 try:
@@ -2907,6 +3429,14 @@ class AiBackendState:
     :param base_url: Provider base URL or local model path.
     :param api_key: Optional API key.
     :param timeout_s: Request timeout in seconds.
+    :param context_window_tokens: Local context-window token budget.
+    :param completion_tokens: Completion token budget.
+    :param gpu_layers: Local llama.cpp GPU layer count.
+    :param temperature: Local llama.cpp sampling temperature.
+    :param top_p: Local llama.cpp nucleus sampling factor.
+    :param history_message_limit: Prompt history message budget.
+    :param history_char_budget: Prompt history character budget.
+    :param grounding_char_budget: Prompt grounding character budget.
     """
 
     __slots__ = (
@@ -2915,6 +3445,14 @@ class AiBackendState:
         "base_url",
         "api_key",
         "timeout_s",
+        "context_window_tokens",
+        "completion_tokens",
+        "gpu_layers",
+        "temperature",
+        "top_p",
+        "history_message_limit",
+        "history_char_budget",
+        "grounding_char_budget",
     )
 
     def __init__(
@@ -2924,6 +3462,14 @@ class AiBackendState:
         base_url: str,
         api_key: Optional[str],
         timeout_s: float,
+        context_window_tokens: int = 4096,
+        completion_tokens: int = 1024,
+        gpu_layers: int = 33,
+        temperature: float = 0.15,
+        top_p: float = 0.90,
+        history_message_limit: int = 6,
+        history_char_budget: int = 2200,
+        grounding_char_budget: int = 1800,
     ) -> None:
         """
         Build one backend-state snapshot.
@@ -2939,6 +3485,14 @@ class AiBackendState:
         self.base_url: str = base_url
         self.api_key: Optional[str] = api_key
         self.timeout_s: float = timeout_s
+        self.context_window_tokens: int = context_window_tokens
+        self.completion_tokens: int = completion_tokens
+        self.gpu_layers: int = gpu_layers
+        self.temperature: float = temperature
+        self.top_p: float = top_p
+        self.history_message_limit: int = history_message_limit
+        self.history_char_budget: int = history_char_budget
+        self.grounding_char_budget: int = grounding_char_budget
 
 
 def build_provider_presets() -> list[ProviderPreset]:
@@ -3007,6 +3561,19 @@ def build_provider_presets() -> list[ProviderPreset]:
     presets[-1].typical_model_names.append("qwen2.5")
     presets[-1].typical_model_names.append("mistral-small")
 
+    # Gemini uses an OpenAI-compatible surface.
+    presets.append(
+        ProviderPreset(
+            provider_tpe=ProviderType.GEMINI,
+            display_name="Gemini coding assistant",
+            typical_model_names=list(),
+            default_base_url="https://generativelanguage.googleapis.com/v1beta/openai",
+        )
+    )
+    presets[-1].typical_model_names.append("gemini-2.5-pro")
+    presets[-1].typical_model_names.append("gemini-2.5-flash")
+    presets[-1].typical_model_names.append("gemini-2.0-flash")
+
     return presets
 
 
@@ -3033,6 +3600,152 @@ def copy_chat_history(messages: list[ChatMessage]) -> list[ChatMessage]:
         index += 1
 
     return copied_messages
+
+
+def compact_text_for_budget(text: str, max_chars: int) -> str:
+    """
+    Compact one text block to fit within a character budget.
+
+    :param text: Source text.
+    :param max_chars: Maximum character count.
+    :returns: Compacted text.
+    """
+    marker_text: str = "\n...[truncated for model context]...\n"
+    head_chars: int
+    tail_chars: int
+
+    if len(text) <= max_chars:
+        return text
+    else:
+        pass
+
+    if max_chars <= len(marker_text) + 16:
+        return text[:max_chars]
+    else:
+        pass
+
+    head_chars = int(max_chars * 0.72)
+    tail_chars = max_chars - head_chars - len(marker_text)
+
+    if tail_chars < 8:
+        tail_chars = 8
+        head_chars = max_chars - tail_chars - len(marker_text)
+    else:
+        pass
+
+    return text[:head_chars].rstrip() + marker_text + text[-tail_chars:].lstrip()
+
+
+def compact_chat_history_for_budget(
+    messages: list[ChatMessage],
+    max_messages: int,
+    max_total_chars: int,
+    max_message_chars: int,
+) -> list[ChatMessage]:
+    """
+    Compact chat history to fit a bounded prompt budget.
+
+    :param messages: Source transcript.
+    :param max_messages: Maximum message count to keep.
+    :param max_total_chars: Maximum combined content character count.
+    :param max_message_chars: Maximum content length per message.
+    :returns: Compacted transcript.
+    """
+    compacted_messages: list[ChatMessage] = list()
+    start_index: int = max(len(messages) - max_messages, 0)
+    total_chars: int = 0
+    index: int = len(messages) - 1
+    compacted_content: str
+
+    if len(messages) == 0:
+        return compacted_messages
+    else:
+        pass
+
+    while index >= start_index:
+        compacted_content = compact_text_for_budget(messages[index].content, max_message_chars)
+
+        if (total_chars + len(compacted_content)) <= max_total_chars:
+            compacted_messages.insert(
+                0,
+                ChatMessage(
+                    role=messages[index].role,
+                    content=compacted_content,
+                    name=messages[index].name,
+                ),
+            )
+            total_chars += len(compacted_content)
+        else:
+            if len(compacted_messages) == 0:
+                compacted_content = compact_text_for_budget(
+                    messages[index].content,
+                    max(max_total_chars, 64),
+                )
+                compacted_messages.insert(
+                    0,
+                    ChatMessage(
+                        role=messages[index].role,
+                        content=compacted_content,
+                        name=messages[index].name,
+                    ),
+                )
+            else:
+                pass
+
+            index = -1
+
+        index -= 1
+
+    return compacted_messages
+
+
+def compact_turn_payload_for_provider(
+    config: ProviderConfig,
+    system_prompt: str,
+    grounding_context_text: str,
+    base_history: list[ChatMessage],
+) -> tuple[str, str, list[ChatMessage]]:
+    """
+    Compact one AI turn payload to fit the selected provider context budget.
+
+    :param config: Provider configuration.
+    :param system_prompt: System prompt.
+    :param grounding_context_text: Turn grounding block.
+    :param base_history: Existing transcript.
+    :returns: Compacted system prompt, grounding block, and history.
+    """
+    compacted_system_prompt: str = system_prompt
+    compacted_grounding_text: str = grounding_context_text
+    compacted_history: list[ChatMessage] = copy_chat_history(base_history)
+    max_history_messages: int
+    max_history_chars: int
+    max_message_chars: int
+    max_grounding_chars: int
+    max_system_prompt_chars: int
+
+    if config.provider_tpe == ProviderType.LOCAL_LLAMA_CPP:
+        max_history_messages = max(config.history_message_limit, 1)
+        max_history_chars = max(config.history_char_budget, 256)
+        max_message_chars = 480
+        max_grounding_chars = max(config.grounding_char_budget, 128)
+        max_system_prompt_chars = 2600
+    else:
+        max_history_messages = 12
+        max_history_chars = 5000
+        max_message_chars = 900
+        max_grounding_chars = 3600
+        max_system_prompt_chars = 4200
+
+    compacted_system_prompt = compact_text_for_budget(system_prompt, max_system_prompt_chars)
+    compacted_grounding_text = compact_text_for_budget(grounding_context_text, max_grounding_chars)
+    compacted_history = compact_chat_history_for_budget(
+        messages=base_history,
+        max_messages=max_history_messages,
+        max_total_chars=max_history_chars,
+        max_message_chars=max_message_chars,
+    )
+
+    return compacted_system_prompt, compacted_grounding_text, compacted_history
 
 
 def collect_non_empty_lines(text: str) -> list[str]:
@@ -4219,7 +4932,10 @@ class AiChatDialogue(QtWidgets.QDialog):
 
     turn_execution_requested = QtCore.Signal(object)
     direct_simulation_analysis_requested = QtCore.Signal(object)
+    reset_cached_provider_requested = QtCore.Signal()
+    cancel_turn_requested = QtCore.Signal()
     dialogue_visibility_changed = QtCore.Signal(bool)
+    _GOLDEN_RATIO: float = (1.0 + (5.0 ** 0.5)) / 2.0
 
     __slots__ = (
         "ui",
@@ -4242,6 +4958,12 @@ class AiChatDialogue(QtWidgets.QDialog):
         "_allow_window_close",
         "_stream_update_timer",
         "_pending_stream_text_delta",
+        "_turn_cancel_requested",
+        "_active_turn_base_history",
+        "_active_turn_user_message",
+        "_code_snippets_by_id",
+        "_next_code_snippet_id",
+        "_last_rendered_history_size",
     )
 
     def __init__(
@@ -4262,6 +4984,8 @@ class AiChatDialogue(QtWidgets.QDialog):
         self.ui.setupUi(self)
         self.setWindowTitle("VeraGrid AI dialogue")
         self.setAttribute(QtCore.Qt.WidgetAttribute.WA_DeleteOnClose, False)
+        self.ui.conversation_text_browser.setOpenExternalLinks(False)
+        self.ui.message_plain_text_edit.installEventFilter(self)
         if self.ui.local_model_combo_box.lineEdit() is not None:
             self.ui.local_model_combo_box.lineEdit().setPlaceholderText("Pick or type a GGUF file name")
         else:
@@ -4271,6 +4995,7 @@ class AiChatDialogue(QtWidgets.QDialog):
         else:
             pass
         self._configure_transcript_browser()
+        self._configure_splitter_layout()
 
         # Create explicit controller state used by future user turns.
         self._provider_presets: list[ProviderPreset] = build_provider_presets()
@@ -4299,6 +5024,8 @@ class AiChatDialogue(QtWidgets.QDialog):
         self.direct_simulation_analysis_requested.connect(
             self._turn_worker.run_direct_simulation_analysis
         )
+        self.reset_cached_provider_requested.connect(self._turn_worker.reset_cached_provider)
+        self.cancel_turn_requested.connect(self._turn_worker.request_cancellation)
         self._turn_worker.completed.connect(self._handle_turn_execution_response)
         self._turn_worker.partial_text_received.connect(self._handle_partial_text_received)
         self._turn_worker.direct_simulation_analysis_completed.connect(
@@ -4315,6 +5042,12 @@ class AiChatDialogue(QtWidgets.QDialog):
         self._stream_update_timer.setInterval(60)
         self._stream_update_timer.setSingleShot(True)
         self._pending_stream_text_delta: str = ""
+        self._turn_cancel_requested: bool = False
+        self._active_turn_base_history: list[ChatMessage] = list()
+        self._active_turn_user_message: str = ""
+        self._code_snippets_by_id: dict[str, str] = dict()
+        self._next_code_snippet_id: int = 0
+        self._last_rendered_history_size: int = 0
         self._waiting_animation_timer.setInterval(140)
         self._waiting_animation_timer.timeout.connect(self._advance_waiting_animation)
         self._stream_update_timer.timeout.connect(self._flush_pending_stream_text_delta)
@@ -4335,27 +5068,173 @@ class AiChatDialogue(QtWidgets.QDialog):
         self._refresh_pending_approval_widgets()
         self._render_transcript()
 
+        self.ui.splitter.setStretchFactor(0, 0.99)
+        self.ui.splitter.setStretchFactor(1, 0.01)
+
     def _configure_transcript_browser(self) -> None:
         """
         Configure the transcript browser colors for readable selection and contrast.
 
         :returns: Nothing.
         """
+        background_color: str = self._get_transcript_page_background_color()
+        text_color: str = self._get_transcript_base_text_color()
+        selection_background_color: str = self._get_transcript_selection_background_color()
+        selection_text_color: str = self._get_transcript_selection_text_color()
+        link_color: str = self._get_transcript_link_color()
+
         self.ui.conversation_text_browser.setStyleSheet(
-            """
-            QTextBrowser {
-                background-color: #f7f7f8;
-                color: #1f2937;
-                selection-background-color: #c9defe;
-                selection-color: #111827;
+            f"""
+            QTextBrowser {{
+                background-color: {background_color};
+                color: {text_color};
+                selection-background-color: {selection_background_color};
+                selection-color: {selection_text_color};
                 border: none;
                 padding: 0px;
-            }
-            QTextBrowser a {
-                color: #2563eb;
-            }
+            }}
+            QTextBrowser a {{
+                color: {link_color};
+            }}
             """
         )
+
+    def changeEvent(self, event: QtCore.QEvent) -> None:
+        """
+        Refresh theme-sensitive transcript styling when the Qt palette changes.
+
+        :param event: Qt change event.
+        :returns: Nothing.
+        """
+        QtWidgets.QDialog.changeEvent(self, event)
+
+        if event.type() in (
+            QtCore.QEvent.Type.PaletteChange,
+            QtCore.QEvent.Type.ApplicationPaletteChange,
+        ):
+            self._configure_transcript_browser()
+            self._render_transcript()
+        else:
+            pass
+
+    def _is_dark_transcript_theme(self) -> bool:
+        """
+        Detect whether the active Qt palette is dark.
+
+        :returns: True when the current UI palette is dark.
+        """
+        palette: QtGui.QPalette = self.palette()
+        window_color: QtGui.QColor = palette.color(QtGui.QPalette.ColorRole.Window)
+        return window_color.lightness() < 128
+
+    def _get_transcript_page_background_color(self) -> str:
+        """
+        Return the page background color for the transcript browser.
+
+        :returns: CSS color value.
+        """
+        if self._is_dark_transcript_theme():
+            return "#0f1115"
+        else:
+            return "#f7f7f8"
+
+    def _get_transcript_card_background_color(self) -> str:
+        """
+        Return the neutral card background color for the transcript browser.
+
+        :returns: CSS color value.
+        """
+        if self._is_dark_transcript_theme():
+            return "#171b22"
+        else:
+            return "#ffffff"
+
+    def _get_transcript_base_text_color(self) -> str:
+        """
+        Return the main transcript text color.
+
+        :returns: CSS color value.
+        """
+        if self._is_dark_transcript_theme():
+            return "#e7ebf3"
+        else:
+            return "#1f2937"
+
+    def _get_transcript_muted_text_color(self) -> str:
+        """
+        Return the muted transcript text color.
+
+        :returns: CSS color value.
+        """
+        if self._is_dark_transcript_theme():
+            return "#9aa4b5"
+        else:
+            return "#6b7280"
+
+    def _get_transcript_card_border_color(self) -> str:
+        """
+        Return the neutral border color for transcript cards.
+
+        :returns: CSS color value.
+        """
+        if self._is_dark_transcript_theme():
+            return "#2a3140"
+        else:
+            return "#e5e7eb"
+
+    def _get_transcript_link_color(self) -> str:
+        """
+        Return the transcript hyperlink color.
+
+        :returns: CSS color value.
+        """
+        if self._is_dark_transcript_theme():
+            return "#8fb7ff"
+        else:
+            return "#2563eb"
+
+    def _get_transcript_selection_background_color(self) -> str:
+        """
+        Return the browser selection background color.
+
+        :returns: CSS color value.
+        """
+        if self._is_dark_transcript_theme():
+            return "#315da8"
+        else:
+            return "#c9defe"
+
+    def _get_transcript_selection_text_color(self) -> str:
+        """
+        Return the browser selection foreground color.
+
+        :returns: CSS color value.
+        """
+        if self._is_dark_transcript_theme():
+            return "#f3f6fc"
+        else:
+            return "#111827"
+
+    def _configure_splitter_layout(self) -> None:
+        """
+        Apply a lower default splitter position with a golden-ratio-like top area.
+
+        :returns: Nothing.
+        """
+        total_height: int = max(self.height(), 760)
+        top_height: int = int(round(total_height / self._GOLDEN_RATIO))
+        bottom_height: int = max(total_height - top_height, 180)
+
+        if top_height < 320:
+            top_height = 320
+            bottom_height = max(total_height - top_height, 180)
+        else:
+            pass
+
+        self.ui.splitter.setChildrenCollapsible(False)
+        self.ui.splitter.setStretchFactor(0, 5)
+        self.ui.splitter.setStretchFactor(1, 3)
+        self.ui.splitter.setSizes([top_height, bottom_height])
 
     def _hide_approval_controls(self) -> None:
         """
@@ -4505,9 +5384,41 @@ class AiChatDialogue(QtWidgets.QDialog):
         self.ui.local_refresh_models_button.clicked.connect(self.refresh_available_models)
         self.ui.api_refresh_models_button.clicked.connect(self.refresh_available_models)
         self.ui.clear_chat_button.clicked.connect(self.clear_chat)
+        self.ui.conversation_text_browser.anchorClicked.connect(self._handle_transcript_anchor_clicked)
 
         # The main action path is explicit: send a turn.
-        self.ui.send_button.clicked.connect(self.send_message)
+        self.ui.send_button.clicked.connect(self._handle_send_button_clicked)
+
+    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        """
+        Intercept Enter in the chat textbox to trigger send.
+
+        Shift+Enter keeps inserting a newline.
+
+        :param watched: Event source object.
+        :param event: Qt event.
+        :returns: True when the event is consumed.
+        """
+        if watched == self.ui.message_plain_text_edit:
+            if event.type() == QtCore.QEvent.Type.KeyPress:
+                if isinstance(event, QtGui.QKeyEvent):
+                    if event.key() in (
+                        QtCore.Qt.Key.Key_Return,
+                        QtCore.Qt.Key.Key_Enter,
+                    ):
+                        if event.modifiers() == QtCore.Qt.KeyboardModifier.NoModifier:
+                            self._handle_send_button_clicked()
+                            return True
+                        else:
+                            pass
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
+
+        return QtWidgets.QDialog.eventFilter(self, watched, event)
 
     def _handle_backend_mode_changed(self, checked: bool) -> None:
         """
@@ -4604,6 +5515,22 @@ class AiChatDialogue(QtWidgets.QDialog):
             self.ui.local_refresh_models_button.setEnabled(True)
             self.ui.local_timeout_label.setEnabled(True)
             self.ui.local_timeout_double_spin_box.setEnabled(True)
+            self.ui.local_context_tokens_label.setEnabled(True)
+            self.ui.local_context_tokens_spin_box.setEnabled(True)
+            self.ui.local_completion_tokens_label.setEnabled(True)
+            self.ui.local_completion_tokens_spin_box.setEnabled(True)
+            self.ui.local_gpu_layers_label.setEnabled(True)
+            self.ui.local_gpu_layers_spin_box.setEnabled(True)
+            self.ui.local_temperature_label.setEnabled(True)
+            self.ui.local_temperature_double_spin_box.setEnabled(True)
+            self.ui.local_top_p_label.setEnabled(True)
+            self.ui.local_top_p_double_spin_box.setEnabled(True)
+            self.ui.local_history_messages_label.setEnabled(True)
+            self.ui.local_history_messages_spin_box.setEnabled(True)
+            self.ui.local_history_chars_label.setEnabled(True)
+            self.ui.local_history_chars_spin_box.setEnabled(True)
+            self.ui.local_grounding_chars_label.setEnabled(True)
+            self.ui.local_grounding_chars_spin_box.setEnabled(True)
             self.ui.api_provider_label.setEnabled(False)
             self.ui.api_provider_combo_box.setEnabled(False)
             self.ui.api_base_url_label.setEnabled(False)
@@ -4630,6 +5557,22 @@ class AiChatDialogue(QtWidgets.QDialog):
             self.ui.local_refresh_models_button.setEnabled(False)
             self.ui.local_timeout_label.setEnabled(False)
             self.ui.local_timeout_double_spin_box.setEnabled(False)
+            self.ui.local_context_tokens_label.setEnabled(False)
+            self.ui.local_context_tokens_spin_box.setEnabled(False)
+            self.ui.local_completion_tokens_label.setEnabled(False)
+            self.ui.local_completion_tokens_spin_box.setEnabled(False)
+            self.ui.local_gpu_layers_label.setEnabled(False)
+            self.ui.local_gpu_layers_spin_box.setEnabled(False)
+            self.ui.local_temperature_label.setEnabled(False)
+            self.ui.local_temperature_double_spin_box.setEnabled(False)
+            self.ui.local_top_p_label.setEnabled(False)
+            self.ui.local_top_p_double_spin_box.setEnabled(False)
+            self.ui.local_history_messages_label.setEnabled(False)
+            self.ui.local_history_messages_spin_box.setEnabled(False)
+            self.ui.local_history_chars_label.setEnabled(False)
+            self.ui.local_history_chars_spin_box.setEnabled(False)
+            self.ui.local_grounding_chars_label.setEnabled(False)
+            self.ui.local_grounding_chars_spin_box.setEnabled(False)
             self.ui.api_provider_label.setEnabled(True)
             self.ui.api_provider_combo_box.setEnabled(True)
             self.ui.api_base_url_label.setEnabled(True)
@@ -4641,6 +5584,7 @@ class AiChatDialogue(QtWidgets.QDialog):
             self.ui.api_refresh_models_button.setEnabled(True)
             self.ui.api_timeout_label.setEnabled(True)
             self.ui.api_timeout_double_spin_box.setEnabled(True)
+            self.ui.api_api_key_label.setText("API key")
             self.ui.api_api_key_line_edit.setPlaceholderText(
                 "Leave empty for unauthenticated endpoints"
             )
@@ -4776,6 +5720,14 @@ class AiChatDialogue(QtWidgets.QDialog):
                 if provider_tpe == ProviderType.LOCAL_LLAMA_CPP
                 else float(self.ui.api_timeout_double_spin_box.value())
             ),
+            context_window_tokens=int(self.ui.local_context_tokens_spin_box.value()),
+            completion_tokens=int(self.ui.local_completion_tokens_spin_box.value()),
+            gpu_layers=int(self.ui.local_gpu_layers_spin_box.value()),
+            temperature=float(self.ui.local_temperature_double_spin_box.value()),
+            top_p=float(self.ui.local_top_p_double_spin_box.value()),
+            history_message_limit=int(self.ui.local_history_messages_spin_box.value()),
+            history_char_budget=int(self.ui.local_history_chars_spin_box.value()),
+            grounding_char_budget=int(self.ui.local_grounding_chars_spin_box.value()),
         )
 
     def apply_backend_state(self, state: AiBackendState) -> None:
@@ -4787,6 +5739,15 @@ class AiChatDialogue(QtWidgets.QDialog):
         """
         provider_index: int = self._find_provider_index(state.provider_tpe)
         current_index: int = self.ui.api_provider_combo_box.currentIndex()
+
+        self.ui.local_context_tokens_spin_box.setValue(state.context_window_tokens)
+        self.ui.local_completion_tokens_spin_box.setValue(state.completion_tokens)
+        self.ui.local_gpu_layers_spin_box.setValue(state.gpu_layers)
+        self.ui.local_temperature_double_spin_box.setValue(state.temperature)
+        self.ui.local_top_p_double_spin_box.setValue(state.top_p)
+        self.ui.local_history_messages_spin_box.setValue(state.history_message_limit)
+        self.ui.local_history_chars_spin_box.setValue(state.history_char_budget)
+        self.ui.local_grounding_chars_spin_box.setValue(state.grounding_char_budget)
 
         if state.provider_tpe == ProviderType.LOCAL_LLAMA_CPP:
             if not self.ui.local_ai_radioButton.isChecked():
@@ -4902,6 +5863,14 @@ class AiChatDialogue(QtWidgets.QDialog):
                     api_key=api_key,
                     base_url=base_url_text,
                     timeout_s=timeout_s,
+                    context_window_tokens=int(self.ui.local_context_tokens_spin_box.value()),
+                    completion_tokens=int(self.ui.local_completion_tokens_spin_box.value()),
+                    gpu_layers=int(self.ui.local_gpu_layers_spin_box.value()),
+                    temperature=float(self.ui.local_temperature_double_spin_box.value()),
+                    top_p=float(self.ui.local_top_p_double_spin_box.value()),
+                    history_message_limit=int(self.ui.local_history_messages_spin_box.value()),
+                    history_char_budget=int(self.ui.local_history_chars_spin_box.value()),
+                    grounding_char_budget=int(self.ui.local_grounding_chars_spin_box.value()),
                 )
 
         return config
@@ -4996,6 +5965,34 @@ class AiChatDialogue(QtWidgets.QDialog):
         else:
             self._set_status_message("Resolve the pending tool approval or clear the chat first.")
 
+    def _handle_send_button_clicked(self) -> None:
+        """
+        Either send a new message or stop the currently running turn.
+
+        :returns: Nothing.
+        """
+        if self._turn_running:
+            self._request_turn_cancellation()
+        else:
+            self.send_message()
+
+    def _request_turn_cancellation(self) -> None:
+        """
+        Request cancellation of the current AI turn.
+
+        :returns: Nothing.
+        """
+        if self._turn_running:
+            if self._turn_cancel_requested:
+                pass
+            else:
+                self._turn_cancel_requested = True
+                self.cancel_turn_requested.emit()
+                self.ui.send_button.setEnabled(False)
+                self._set_status_message("Stopping AI turn...")
+        else:
+            self._set_status_message("There is no running AI turn to stop.")
+
     def _try_handle_direct_app_command(self, message_text: str) -> bool:
         """
         Execute explicit simulation commands without relying on LLM tool-calling.
@@ -5008,12 +6005,43 @@ class AiChatDialogue(QtWidgets.QDialog):
         assistant_text: str
         payload_obj: object
 
+        code_example_topic: Optional[CodeExampleTopic] = detect_code_example_topic(message_text)
+
+        if code_example_topic is None:
+            pass
+        else:
+            assistant_text = build_documented_code_example_text(code_example_topic)
+            self._history.append(ChatMessage(role="user", content=message_text, name=None))
+            self._history.append(ChatMessage(role="assistant", content=assistant_text, name=None))
+            self._set_status_message("Provided a documented Python example.")
+            self._render_transcript()
+            return True
+
         if self._app is None:
             return False
         else:
             pass
 
         if is_direct_grid_diagnostics_request(message_text):
+            bus_count: int = int(self._app.circuit.get_bus_number())
+            if bus_count <= 0:
+                self._history.append(ChatMessage(role="user", content=message_text, name=None))
+                self._history.append(
+                    ChatMessage(
+                        role="assistant",
+                        content=(
+                            "I can run grid diagnostics, but the current model has no buses loaded. "
+                            "Load a project first, then try again."
+                        ),
+                        name=None,
+                    )
+                )
+                self._set_status_message("No loaded buses were found in the current model.")
+                self._render_transcript()
+                return True
+            else:
+                pass
+
             result = LiveGridDiagnosticsTool(self._app).execute(
                 {
                     "analyze_time_series": True,
@@ -5139,6 +6167,7 @@ class AiChatDialogue(QtWidgets.QDialog):
 
         self._pending_stream_text_delta = ""
         self._stream_update_timer.stop()
+        self._turn_cancel_requested = False
         self._set_turn_running(True)
         self._show_pending_turn_preview(base_history=base_history, user_message=user_message)
         self._set_status_message("Running simulation and analyzing the results...")
@@ -5206,8 +6235,11 @@ class AiChatDialogue(QtWidgets.QDialog):
                 retrieved_context_text: str = self._build_retrieved_context_text(user_message)
                 system_prompt: str = self._prompt_factory.build_system_prompt(
                     context,
-                    retrieved_context_text=retrieved_context_text,
+                    retrieved_context_text="",
                 )
+                compacted_system_prompt: str
+                compacted_grounding_text: str
+                compacted_base_history: list[ChatMessage]
                 tool_registry: ToolRegistry
 
                 if self._app is None:
@@ -5216,18 +6248,29 @@ class AiChatDialogue(QtWidgets.QDialog):
                     tool_registry = build_live_tool_registry_from_app(self._app)
                     self._tool_registry = tool_registry
 
+                compacted_system_prompt, compacted_grounding_text, compacted_base_history = (
+                    compact_turn_payload_for_provider(
+                        config=config,
+                        system_prompt=system_prompt,
+                        grounding_context_text=retrieved_context_text,
+                        base_history=base_history,
+                    )
+                )
+
                 request: AiTurnExecutionRequest = AiTurnExecutionRequest(
                     provider_config=config,
-                    system_prompt=system_prompt,
-                    grounding_context_text=retrieved_context_text,
+                    system_prompt=compacted_system_prompt,
+                    grounding_context_text=compacted_grounding_text,
                     tool_registry=tool_registry,
                     base_history=copy_chat_history(base_history),
+                    llm_history=compacted_base_history,
                     user_message=user_message,
                     approved_tool_name=approved_tool_name,
                     approved_arguments_json=approved_arguments_json,
                 )
                 self._pending_stream_text_delta = ""
                 self._stream_update_timer.stop()
+                self._turn_cancel_requested = False
                 self._set_turn_running(True)
                 self._show_pending_turn_preview(base_history=base_history, user_message=user_message)
                 self._set_status_message("Running AI turn...")
@@ -5247,6 +6290,8 @@ class AiChatDialogue(QtWidgets.QDialog):
         """
         provisional_history: list[ChatMessage] = copy_chat_history(base_history)
 
+        self._active_turn_base_history = copy_chat_history(base_history)
+        self._active_turn_user_message = user_message
         provisional_history.append(ChatMessage(role="user", content=user_message, name=None))
         provisional_history.append(ChatMessage(role="assistant", content="...", name=None))
         self._history = provisional_history
@@ -5301,9 +6346,19 @@ class AiChatDialogue(QtWidgets.QDialog):
             pass
 
         if last_message.content == "...":
-            last_message.content = self._pending_stream_text_delta
+            next_content: str = self._pending_stream_text_delta
         else:
-            last_message.content += self._pending_stream_text_delta
+            next_content = last_message.content + self._pending_stream_text_delta
+
+        sanitized_content: str = sanitize_visible_assistant_text(next_content)
+
+        if len(sanitized_content) > 0:
+            last_message.content = sanitized_content
+        else:
+            if last_message.content == "...":
+                pass
+            else:
+                last_message.content = sanitized_content
 
         self._pending_stream_text_delta = ""
         self._render_transcript()
@@ -5316,17 +6371,19 @@ class AiChatDialogue(QtWidgets.QDialog):
         :returns: Nothing.
         """
         self._turn_running = running
-        self.ui.send_button.setEnabled(not running)
+        self.ui.send_button.setEnabled(True)
         self.ui.clear_chat_button.setEnabled(not running)
 
         if running:
             self._waiting_status_base_text = "Running AI turn"
             self._waiting_animation_index = 0
             self._waiting_animation_timer.start()
+            self.ui.send_button.setText("Stop")
         else:
             self._waiting_animation_timer.stop()
             self._stream_update_timer.stop()
             self._pending_stream_text_delta = ""
+            self._turn_cancel_requested = False
             self.ui.send_button.setText("Send")
             self._refresh_pending_approval_widgets()
 
@@ -5340,7 +6397,6 @@ class AiChatDialogue(QtWidgets.QDialog):
         frame_text: str = frames[self._waiting_animation_index % len(frames)]
 
         self.ui.status_label.setText(f"{self._waiting_status_base_text} {frame_text}")
-        self.ui.send_button.setText(f"Wait {frame_text}")
         self._waiting_animation_index += 1
 
     @QtCore.Slot(object)
@@ -5352,9 +6408,30 @@ class AiChatDialogue(QtWidgets.QDialog):
         :returns: Nothing.
         """
         result: ConversationRunResult = response.result
+        was_cancel_requested: bool = self._turn_cancel_requested
 
         self._flush_pending_stream_text_delta()
         self._set_turn_running(False)
+
+        if was_cancel_requested:
+            self._history = copy_chat_history(self._active_turn_base_history)
+
+            if len(self._active_turn_user_message) > 0:
+                self._history.append(
+                    ChatMessage(role="user", content=self._active_turn_user_message, name=None)
+                )
+            else:
+                pass
+
+            self._pending_state = None
+            self._set_status_message("AI turn stopped.")
+            self._render_transcript()
+            self._active_turn_base_history = list()
+            self._active_turn_user_message = ""
+            return
+        else:
+            pass
+
         self._history = result.transcript
 
         if result.pending_approval is None:
@@ -5373,6 +6450,8 @@ class AiChatDialogue(QtWidgets.QDialog):
 
         self._refresh_pending_approval_widgets()
         self._render_transcript()
+        self._active_turn_base_history = list()
+        self._active_turn_user_message = ""
 
     @QtCore.Slot(object)
     def _handle_direct_simulation_analysis_response(
@@ -5385,7 +6464,28 @@ class AiChatDialogue(QtWidgets.QDialog):
         :param response: Deterministic worker response.
         :returns: Nothing.
         """
+        was_cancel_requested: bool = self._turn_cancel_requested
         self._set_turn_running(False)
+
+        if was_cancel_requested:
+            self._history = copy_chat_history(self._active_turn_base_history)
+
+            if len(self._active_turn_user_message) > 0:
+                self._history.append(
+                    ChatMessage(role="user", content=self._active_turn_user_message, name=None)
+                )
+            else:
+                pass
+
+            self._pending_state = None
+            self._set_status_message("AI turn stopped.")
+            self._render_transcript()
+            self._active_turn_base_history = list()
+            self._active_turn_user_message = ""
+            return
+        else:
+            pass
+
         self._history = response.transcript
         self._pending_state = None
 
@@ -5395,6 +6495,8 @@ class AiChatDialogue(QtWidgets.QDialog):
             self._set_status_message(response.error_message)
 
         self._render_transcript()
+        self._active_turn_base_history = list()
+        self._active_turn_user_message = ""
 
     def shutdown_turn_thread(self) -> None:
         """
@@ -5464,16 +6566,17 @@ class AiChatDialogue(QtWidgets.QDialog):
 
     def clear_chat(self) -> None:
         """
-        Clear the transcript and reset pending approval state.
+        Clear the transcript and reset the cached AI session state.
 
         :returns: Nothing.
         """
-        # Reset both visible transcript data and hidden approval replay state.
+        # Reset both visible transcript data and the cached provider session state.
         self._history = list()
         self._pending_state = None
+        self.reset_cached_provider_requested.emit()
         self.ui.message_plain_text_edit.clear()
         self._render_transcript()
-        self._set_status_message("Chat cleared.")
+        self._set_status_message("Chat cleared. AI session reset.")
 
     def _refresh_pending_approval_widgets(self) -> None:
         """
@@ -5498,6 +6601,33 @@ class AiChatDialogue(QtWidgets.QDialog):
         """
         self.ui.status_label.setText(text)
 
+    def _handle_transcript_anchor_clicked(self, link: QtCore.QUrl) -> None:
+        """
+        Handle transcript links, including local copy-code actions.
+
+        :param link: Clicked anchor URL.
+        :returns: Nothing.
+        """
+        if link.scheme() == "copy-code":
+            snippet_id: str = link.host().strip()
+            if len(snippet_id) == 0:
+                snippet_id = link.path().lstrip("/").strip()
+            else:
+                pass
+
+            snippet_text: Optional[str] = self._code_snippets_by_id.get(snippet_id, None)
+            if snippet_text is None:
+                self._set_status_message("Code snippet is no longer available.")
+            else:
+                clipboard: Optional[QtGui.QClipboard] = QtWidgets.QApplication.clipboard()
+                if clipboard is None:
+                    self._set_status_message("Clipboard is not available.")
+                else:
+                    clipboard.setText(snippet_text)
+                    self._set_status_message("Code snippet copied to clipboard.")
+        else:
+            QtGui.QDesktopServices.openUrl(link)
+
     def _render_transcript(self) -> None:
         """
         Render the current transcript into the chat browser.
@@ -5507,26 +6637,118 @@ class AiChatDialogue(QtWidgets.QDialog):
         html_parts: list[str] = list()
         index: int = 0
         wrapper_html: str
+        page_background_color: str = self._get_transcript_page_background_color()
+        base_text_color: str = self._get_transcript_base_text_color()
+        muted_text_color: str = self._get_transcript_muted_text_color()
+        link_color: str = self._get_transcript_link_color()
+
+        markdown_code_bg: str
+        markdown_inline_code_bg: str
+        markdown_code_border: str
+        markdown_quote_bg: str
+        markdown_quote_border: str
+        markdown_table_border: str
+        markdown_hr_color: str
+        animate_last_assistant: bool = (
+            (len(self._history) > self._last_rendered_history_size)
+            and (len(self._history) > 0)
+            and (self._history[-1].role == "assistant")
+        )
+        self._code_snippets_by_id = dict()
+        self._next_code_snippet_id = 0
 
         # Render an initial help state when there is still no conversation content.
         if len(self._history) == 0:
             html_parts.append(self._build_empty_state_html())
         else:
             while index < len(self._history):
-                html_parts.append(self._format_message_html(self._history[index]))
+                html_parts.append(
+                    self._format_message_html(
+                        self._history[index],
+                        index=index,
+                        animate=(animate_last_assistant and (index == (len(self._history) - 1))),
+                    )
+                )
                 index += 1
 
+        if self._is_dark_transcript_theme():
+            markdown_code_bg = "#111827"
+            markdown_inline_code_bg = "#1a202c"
+            markdown_code_border = "#2f3a4d"
+            markdown_quote_bg = "#151b24"
+            markdown_quote_border = "#3a475f"
+            markdown_table_border = "#2f3a4d"
+            markdown_hr_color = "#2f3a4d"
+        else:
+            markdown_code_bg = "#f8fafc"
+            markdown_inline_code_bg = "#f3f4f6"
+            markdown_code_border = "#d1d5db"
+            markdown_quote_bg = "#f9fafb"
+            markdown_quote_border = "#d1d5db"
+            markdown_table_border = "#d1d5db"
+            markdown_hr_color = "#e5e7eb"
+
         wrapper_html = (
-            "<html><body style='margin:0;background-color:#f7f7f8;'>"
-            "<div style='max-width:880px;margin:0 auto;padding:24px 20px 40px 20px;"
-            "font-family:\"Segoe UI\", \"Noto Sans\", sans-serif;font-size:11pt;"
-            "line-height:1.6;color:#1f2937;'>"
+            "<html><head><style>"
+            "body { margin: 0; }"
+            ".transcript-root { "
+            "max-width: 960px; margin: 0 auto; padding: 28px 22px 44px 22px; "
+            "font-family: \"IBM Plex Sans\", \"Segoe UI\", \"Noto Sans\", sans-serif; "
+            "font-size: 11pt; line-height: 1.65; "
+            "}"
+            ".transcript-root p { margin: 0 0 0.7em 0; }"
+            ".transcript-root p:last-child { margin-bottom: 0; }"
+            ".transcript-root h1, .transcript-root h2, .transcript-root h3, .transcript-root h4 { "
+            "margin: 0.1em 0 0.45em 0; line-height: 1.25; font-weight: 650; "
+            "}"
+            ".message-content.message-new { animation: messageFadeIn 180ms ease-out; }"
+            "@keyframes messageFadeIn { "
+            "0% { opacity: 0.20; transform: translateY(5px); } "
+            "100% { opacity: 1; transform: translateY(0px); } "
+            "}"
+            ".transcript-root ul, .transcript-root ol { margin: 0.2em 0 0.8em 1.35em; }"
+            ".transcript-root li { margin: 0.1em 0; }"
+            ".transcript-root blockquote { "
+            f"margin: 0.5em 0; padding: 0.42em 0.8em; border-left: 4px solid {markdown_quote_border}; "
+            f"background: {markdown_quote_bg}; border-radius: 0 8px 8px 0; "
+            f"color: {muted_text_color}; "
+            "}"
+            ".transcript-root pre { "
+            f"margin: 0.55em 0 0.85em 0; padding: 11px 12px; border: 1px solid {markdown_code_border}; "
+            f"background: {markdown_code_bg}; border-radius: 10px; "
+            "overflow-x: auto; "
+            "font-family: \"JetBrains Mono\", \"Fira Code\", Consolas, \"Courier New\", monospace; "
+            "font-size: 9.4pt; line-height: 1.45; "
+            "}"
+            ".transcript-root pre code { background: transparent; border: none; padding: 0; }"
+            ".transcript-root code { "
+            f"background: {markdown_inline_code_bg}; border: 1px solid {markdown_code_border}; "
+            "border-radius: 6px; padding: 0.08em 0.35em; "
+            "font-family: \"JetBrains Mono\", \"Fira Code\", Consolas, \"Courier New\", monospace; "
+            "font-size: 0.92em; "
+            "}"
+            ".transcript-root table { border-collapse: collapse; width: 100%; margin: 0.5em 0 0.85em 0; }"
+            ".transcript-root th, .transcript-root td { "
+            f"border: 1px solid {markdown_table_border}; padding: 6px 8px; text-align: left; "
+            "}"
+            ".transcript-root .code-block-wrap { margin: 0.6em 0 0.85em 0; }"
+            ".transcript-root .code-toolbar { display: flex; justify-content: space-between; align-items: center; "
+            f"margin: 0 0 4px 2px; color: {muted_text_color}; font-size: 8.5pt; "
+            "text-transform: uppercase; letter-spacing: 0.04em; }"
+            ".transcript-root .code-toolbar .copy-link { text-decoration: none; font-weight: 600; }"
+            ".transcript-root .code-toolbar .code-lang { font-weight: 600; opacity: 0.86; }"
+            f".transcript-root a {{ color: {link_color}; text-decoration: underline; }}"
+            f".transcript-root hr {{ border: none; border-top: 1px solid {markdown_hr_color}; margin: 0.95em 0; }}"
+            "</style></head>"
+            f"<body style='background-color:{page_background_color};'>"
+            f"<div class='transcript-root' style='color:{base_text_color};'>"
             + "".join(html_parts)
             + "</div></body></html>"
         )
 
         self.ui.conversation_text_browser.setHtml(wrapper_html)
         self.ui.conversation_text_browser.moveCursor(QtGui.QTextCursor.MoveOperation.End)
+        self._last_rendered_history_size = len(self._history)
 
     def _build_empty_state_html(self) -> str:
         """
@@ -5534,21 +6756,26 @@ class AiChatDialogue(QtWidgets.QDialog):
 
         :returns: Empty-state HTML.
         """
+        title_color: str = self._get_transcript_base_text_color()
+        muted_text_color: str = self._get_transcript_muted_text_color()
+        card_background_color: str = self._get_transcript_card_background_color()
+        card_border_color: str = self._get_transcript_card_border_color()
+
         if self._is_local_provider_selected():
             return (
                 "<div style='padding:32px 12px 12px 12px;'>"
                 "<div style='max-width:700px;margin:0 auto;text-align:left;'>"
-                "<div style='font-size:20pt;font-weight:600;color:#111827;margin-bottom:10px;'>"
+                f"<div style='font-size:20pt;font-weight:600;color:{title_color};margin-bottom:10px;'>"
                 "How can VeraGrid help?"
                 "</div>"
-                "<div style='font-size:10pt;color:#6b7280;margin-bottom:18px;'>"
+                f"<div style='font-size:10pt;color:{muted_text_color};margin-bottom:18px;'>"
                 "Select a GGUF file or model directory in Settings, scan it, choose a local model, "
                 "then start a conversation with the current VeraGrid session."
                 "</div>"
-                "<div style='background-color:#ffffff;border:1px solid #e5e7eb;border-radius:16px;"
-                "padding:16px 18px;'>"
+                f"<div style='background-color:{card_background_color};"
+                f"border:1px solid {card_border_color};border-radius:16px;padding:16px 18px;'>"
                 "<div style='font-size:9pt;font-weight:600;letter-spacing:0.04em;"
-                "text-transform:uppercase;color:#9ca3af;margin-bottom:10px;'>"
+                f"text-transform:uppercase;color:{muted_text_color};margin-bottom:10px;'>"
                 "Try asking"
                 "</div>"
                 "<ul>"
@@ -5564,16 +6791,16 @@ class AiChatDialogue(QtWidgets.QDialog):
             return (
                 "<div style='padding:32px 12px 12px 12px;'>"
                 "<div style='max-width:700px;margin:0 auto;text-align:left;'>"
-                "<div style='font-size:20pt;font-weight:600;color:#111827;margin-bottom:10px;'>"
+                f"<div style='font-size:20pt;font-weight:600;color:{title_color};margin-bottom:10px;'>"
                 "How can VeraGrid help?"
                 "</div>"
-                "<div style='font-size:10pt;color:#6b7280;margin-bottom:18px;'>"
+                f"<div style='font-size:10pt;color:{muted_text_color};margin-bottom:18px;'>"
                 "Choose an API backend in Settings. The VeraGrid context is taken directly from the main app."
                 "</div>"
-                "<div style='background-color:#ffffff;border:1px solid #e5e7eb;border-radius:16px;"
-                "padding:16px 18px;'>"
+                f"<div style='background-color:{card_background_color};"
+                f"border:1px solid {card_border_color};border-radius:16px;padding:16px 18px;'>"
                 "<div style='font-size:9pt;font-weight:600;letter-spacing:0.04em;"
-                "text-transform:uppercase;color:#9ca3af;margin-bottom:10px;'>"
+                f"text-transform:uppercase;color:{muted_text_color};margin-bottom:10px;'>"
                 "Try asking"
                 "</div>"
                 "<ul>"
@@ -5596,23 +6823,91 @@ class AiChatDialogue(QtWidgets.QDialog):
         escaped_tool_name: str = html.escape(approval.tool_name)
         escaped_arguments: str = html.escape(approval.arguments_json)
         escaped_reason: str = html.escape(approval.reason)
+        background_color: str
+        text_color: str
+
+        if self._is_dark_transcript_theme():
+            background_color = "#3f2f12"
+            text_color = "#f8fafc"
+        else:
+            background_color = "#fff4d8"
+            text_color = "#7c2d12"
 
         return (
             "<div style='margin-top:12px;padding:10px;border:1px solid #e1a63b;"
-            "background-color:#fff4d8;border-radius:6px;'>"
+            f"background-color:{background_color};color:{text_color};border-radius:6px;'>"
             f"<b>Approval required</b><br/>Tool: <code>{escaped_tool_name}</code><br/>"
             f"Arguments: <code>{escaped_arguments}</code><br/>"
             f"Reason: {escaped_reason}"
             "</div>"
         )
 
-    def _format_message_html(self, message: ChatMessage) -> str:
+    def _infer_code_language_label(self, block_html: str) -> str:
+        """
+        Infer a language label from a rendered code block.
+
+        :param block_html: HTML for one code block.
+        :returns: Upper-case short language label.
+        """
+        class_match: Optional[re.Match[str]] = re.search(r'class\s*=\s*"([^"]+)"', block_html)
+        if class_match is None:
+            return "CODE"
+
+        classes_text: str = class_match.group(1)
+        token_items: list[str] = classes_text.split()
+        index: int = 0
+        while index < len(token_items):
+            token: str = token_items[index].strip()
+            if token.startswith("language-") and len(token) > len("language-"):
+                return token[len("language-"):].upper()
+            index += 1
+
+        return "CODE"
+
+    def _decorate_markdown_html_for_display(self, html_fragment: str) -> str:
+        """
+        Decorate markdown HTML with copy controls for fenced code blocks.
+
+        :param html_fragment: Raw markdown HTML fragment.
+        :returns: Decorated HTML fragment.
+        """
+        block_pattern: re.Pattern[str] = re.compile(
+            r"<pre[^>]*><code[^>]*>.*?</code></pre>",
+            re.DOTALL,
+        )
+
+        def replace_block(match: re.Match[str]) -> str:
+            block_html: str = match.group(0)
+            code_text_doc: QtGui.QTextDocument = QtGui.QTextDocument()
+            code_text_doc.setHtml(block_html)
+            snippet_text: str = code_text_doc.toPlainText()
+            snippet_id: str = f"s{self._next_code_snippet_id}"
+            self._next_code_snippet_id += 1
+            self._code_snippets_by_id[snippet_id] = snippet_text
+            language_label: str = self._infer_code_language_label(block_html)
+
+            return (
+                "<div class='code-block-wrap'>"
+                "<div class='code-toolbar'>"
+                f"<span class='code-lang'>{html.escape(language_label)}</span>"
+                f"<a class='copy-link' href='copy-code://{snippet_id}'>Copy</a>"
+                "</div>"
+                f"{block_html}"
+                "</div>"
+            )
+
+        return block_pattern.sub(replace_block, html_fragment)
+
+    def _format_message_html(self, message: ChatMessage, index: int, animate: bool) -> str:
         """
         Format one transcript message as HTML.
 
         :param message: Transcript message.
+        :param index: Transcript message index.
+        :param animate: Whether to animate this message on render.
         :returns: Message HTML block.
         """
+        del index
         role_label: str = self._get_role_label(message.role)
         background_color: str = self._get_role_background_color(message.role)
         border_color: str = self._get_role_border_color(message.role)
@@ -5620,7 +6915,15 @@ class AiChatDialogue(QtWidgets.QDialog):
         role_color: str = self._get_role_label_color(message.role)
         row_alignment: str = self._get_role_row_alignment(message.role)
         message_width: str = self._get_role_message_width(message.role)
-        content_text: str = convert_markdown_to_html(message.content)
+        content_text: str = self._decorate_markdown_html_for_display(
+            convert_markdown_to_html(message.content)
+        )
+        message_classes: str = "message-content"
+
+        if animate:
+            message_classes += " message-new"
+        else:
+            pass
 
         return (
             f"<div style='display:flex;justify-content:{row_alignment};margin-bottom:20px;'>"
@@ -5628,13 +6931,24 @@ class AiChatDialogue(QtWidgets.QDialog):
             f"<div style='font-size:8.5pt;font-weight:600;letter-spacing:0.03em;"
             f"text-transform:uppercase;color:{role_color};margin-bottom:6px;'>"
             f"{html.escape(role_label)}</div>"
-            "<div style='padding:14px 16px;border-radius:18px;"
+            f"<div class='{message_classes}' style='padding:14px 16px;border-radius:18px;"
             f"background-color:{background_color};border:1px solid {border_color};"
-            f"color:{content_color};box-shadow:0 1px 2px rgba(15, 23, 42, 0.04);'>"
+            f"color:{content_color};box-shadow:{self._get_transcript_box_shadow()};'>"
             f"{content_text}</div>"
             "</div>"
             "</div>"
         )
+
+    def _get_transcript_box_shadow(self) -> str:
+        """
+        Return the CSS box shadow used for chat bubbles.
+
+        :returns: CSS box-shadow value.
+        """
+        if self._is_dark_transcript_theme():
+            return "0 2px 8px rgba(2, 6, 23, 0.24)"
+        else:
+            return "0 1px 2px rgba(15, 23, 42, 0.04)"
 
     def _get_role_label(self, role: str) -> str:
         """
@@ -5667,16 +6981,28 @@ class AiChatDialogue(QtWidgets.QDialog):
         """
         background_color: str
 
-        if role == "user":
-            background_color = "#dbeafe"
-        else:
-            if role == "assistant":
-                background_color = "#ffffff"
+        if self._is_dark_transcript_theme():
+            if role == "user":
+                background_color = "#274d93"
             else:
-                if role == "tool":
-                    background_color = "#f3f4f6"
+                if role == "assistant":
+                    background_color = "#171c24"
                 else:
-                    background_color = "#fff7ed"
+                    if role == "tool":
+                        background_color = "#1d232e"
+                    else:
+                        background_color = "#3a2a21"
+        else:
+            if role == "user":
+                background_color = "#dbeafe"
+            else:
+                if role == "assistant":
+                    background_color = "#ffffff"
+                else:
+                    if role == "tool":
+                        background_color = "#f3f4f6"
+                    else:
+                        background_color = "#fff7ed"
 
         return background_color
 
@@ -5689,16 +7015,28 @@ class AiChatDialogue(QtWidgets.QDialog):
         """
         border_color: str
 
-        if role == "user":
-            border_color = "#bfdbfe"
-        else:
-            if role == "assistant":
-                border_color = "#e5e7eb"
+        if self._is_dark_transcript_theme():
+            if role == "user":
+                border_color = "#3d6ec8"
             else:
-                if role == "tool":
-                    border_color = "#d1d5db"
+                if role == "assistant":
+                    border_color = "#2a3240"
                 else:
-                    border_color = "#fed7aa"
+                    if role == "tool":
+                        border_color = "#334055"
+                    else:
+                        border_color = "#7d4b35"
+        else:
+            if role == "user":
+                border_color = "#bfdbfe"
+            else:
+                if role == "assistant":
+                    border_color = "#e5e7eb"
+                else:
+                    if role == "tool":
+                        border_color = "#d1d5db"
+                    else:
+                        border_color = "#fed7aa"
 
         return border_color
 
@@ -5711,16 +7049,28 @@ class AiChatDialogue(QtWidgets.QDialog):
         """
         content_color: str
 
-        if role == "user":
-            content_color = "#0f172a"
-        else:
-            if role == "assistant":
-                content_color = "#1f2937"
+        if self._is_dark_transcript_theme():
+            if role == "user":
+                content_color = "#eaf2ff"
             else:
-                if role == "tool":
-                    content_color = "#374151"
+                if role == "assistant":
+                    content_color = "#e7ebf3"
                 else:
-                    content_color = "#7c2d12"
+                    if role == "tool":
+                        content_color = "#dfe6f2"
+                    else:
+                        content_color = "#ffe8d6"
+        else:
+            if role == "user":
+                content_color = "#0f172a"
+            else:
+                if role == "assistant":
+                    content_color = "#1f2937"
+                else:
+                    if role == "tool":
+                        content_color = "#374151"
+                    else:
+                        content_color = "#7c2d12"
 
         return content_color
 
@@ -5733,16 +7083,28 @@ class AiChatDialogue(QtWidgets.QDialog):
         """
         label_color: str
 
-        if role == "user":
-            label_color = "#2563eb"
-        else:
-            if role == "assistant":
-                label_color = "#6b7280"
+        if self._is_dark_transcript_theme():
+            if role == "user":
+                label_color = "#9ec1ff"
             else:
-                if role == "tool":
-                    label_color = "#4b5563"
+                if role == "assistant":
+                    label_color = "#a3adbc"
                 else:
-                    label_color = "#c2410c"
+                    if role == "tool":
+                        label_color = "#b8c6dd"
+                    else:
+                        label_color = "#e6b294"
+        else:
+            if role == "user":
+                label_color = "#2563eb"
+            else:
+                if role == "assistant":
+                    label_color = "#6b7280"
+                else:
+                    if role == "tool":
+                        label_color = "#4b5563"
+                    else:
+                        label_color = "#c2410c"
 
         return label_color
 

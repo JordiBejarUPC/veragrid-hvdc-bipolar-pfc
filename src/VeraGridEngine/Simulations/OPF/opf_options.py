@@ -8,7 +8,7 @@ from typing import List, Union, Tuple
 from VeraGridEngine.enumerations import (SolverType, MIPSolvers, ZonalGrouping, TimeGrouping, AcOpfMode, DeviceType,
                                          SubObjectType, MIPFramework, OpfDispatchMode)
 from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOptions
-from VeraGridEngine.Devices.Aggregation.contingency_group import ContingencyGroup
+from VeraGridEngine.Devices.Events.contingency_group import ContingencyGroup
 from VeraGridEngine.Devices.Aggregation.inter_aggregation_info import InterAggregationInfo
 from VeraGridEngine.Simulations.options_template import OptionsTemplate
 from VeraGridEngine.basic_structures import Vec

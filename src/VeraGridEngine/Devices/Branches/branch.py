@@ -14,7 +14,7 @@ from VeraGridEngine.Devices.Parents.branch_parent import BranchParent
 from VeraGridEngine.Devices.Branches.tap_changer import TapChanger
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Devices.Branches.line import Line
-from VeraGridEngine.Devices.profile import Profile
+from VeraGridEngine.Devices.Profiles import ProfileFloat
 
 from VeraGridEngine.Devices.Parents.editable_device import DeviceType, GCProp
 
@@ -209,7 +209,7 @@ class Branch(BranchParent):
         # Conductor base and operating temperatures in ºC
         self.temp_base = temp_base
         self.temp_oper = temp_oper
-        self._temp_oper_prof = Profile(default_value=temp_oper, data_type=float)
+        self._temp_oper_prof = ProfileFloat(default_value=temp_oper)
 
         # Conductor thermal constant (1/ºC)
         self.alpha = alpha
@@ -229,7 +229,7 @@ class Branch(BranchParent):
 
         # branch rating in MVA
         self.rate = rate
-        self._rate_prof = Profile(default_value=rate, data_type=float)
+        self._rate_prof = ProfileFloat(default_value=rate)
 
         # branch type: Line, Transformer, etc...
         self.branch_type = branch_type
@@ -253,7 +253,7 @@ class Branch(BranchParent):
 
 
     @property
-    def rate_prof(self) -> Profile:
+    def rate_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -261,8 +261,8 @@ class Branch(BranchParent):
         return self._rate_prof
 
     @rate_prof.setter
-    def rate_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def rate_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._rate_prof = val
         elif isinstance(val, np.ndarray):
             self._rate_prof.set(arr=val)
@@ -270,7 +270,7 @@ class Branch(BranchParent):
             raise Exception(str(type(val)) + 'not supported to be set into a rate_prof')
 
     @property
-    def temp_oper_prof(self) -> Profile:
+    def temp_oper_prof(self) -> ProfileFloat:
         """
         Cost profile
         :return: Profile
@@ -278,8 +278,8 @@ class Branch(BranchParent):
         return self._temp_oper_prof
 
     @temp_oper_prof.setter
-    def temp_oper_prof(self, val: Union[Profile, np.ndarray]):
-        if isinstance(val, Profile):
+    def temp_oper_prof(self, val: Union[ProfileFloat, np.ndarray]):
+        if isinstance(val, ProfileFloat):
             self._temp_oper_prof = val
         elif isinstance(val, np.ndarray):
             self._temp_oper_prof.set(arr=val)

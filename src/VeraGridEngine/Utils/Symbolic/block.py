@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import copy
 import uuid
 from typing import List, Dict, Any
 
@@ -207,12 +208,12 @@ class Block:
             },
 
             "external_mapping": {
-                k: _expr_to_dict(v)
+                k: _expr_to_dict(v) if v is not None else None
                 for k, v in self.external_mapping.items()
             },
 
             "api_obj_mapping": {
-                k.value: _expr_to_dict(v)
+                k.value: _expr_to_dict(v) if v is not None else None
                 for k, v in self.api_obj_mapping.items()
             },
 
@@ -280,11 +281,11 @@ class Block:
             },
             procedural_logic=Block._procedural_logic_from_dict(data.get("procedural_logic", [])),
             external_mapping={
-                VarPowerFlowRefferenceType(k): _dict_to_expr(v)
+                VarPowerFlowRefferenceType(k): (_dict_to_expr(v) if v is not None else None)
                 for k, v in data["external_mapping"].items()
             },
             api_obj_mapping={
-                ParamPowerFlowRefferenceType(k): _dict_to_expr(v)
+                ParamPowerFlowRefferenceType(k): (_dict_to_expr(v) if v is not None else None)
                 for k, v in data["api_obj_mapping"].items()
             },
             name=data["name"],
@@ -298,11 +299,11 @@ class Block:
 
     def copy(self) -> "Block":
         """
-        Deep copy preserving UIDs.
-        Completely structural clone using to_dict + parse.
+        Deep-copy this block while preserving symbolic UIDs.
+
+        :return: Copied block.
         """
-        d = self.to_dict()
-        return Block.parse(d)
+        return copy.deepcopy(self)
 
 
     def _procedural_logic_to_dict(self) -> List[Dict[str, Any]]:
@@ -323,10 +324,56 @@ class Block:
         :return: Procedural logic objects.
         """
         from VeraGridEngine.Utils.procedural_logic import procedural_logic_from_dict
-        return procedural_logic_from_dict(data)
 
-    def __deepcopy__(self, memo: Dict) -> "Block":
-        return self.copy()
+        if len(data) == 0:
+            return list()
+        else:
+            pass
+
+        if isinstance(data[0], dict):
+            return procedural_logic_from_dict(data)
+        else:
+            return list(data)
+
+    def __deepcopy__(self, memo: Dict[int, Any]) -> "Block":
+        """
+        Copy the block preserving shared symbolic references inside the block graph.
+
+        :param memo: Standard deepcopy memo table.
+        :return: Copied block.
+        """
+        if id(self) in memo:
+            return memo[id(self)]
+        else:
+            result: Block = Block.__new__(Block)
+            memo[id(self)] = result
+
+            result.name = copy.deepcopy(self.name, memo)
+            result.uid = copy.deepcopy(self.uid, memo)
+            result.vars_glob_name2uid = copy.deepcopy(self.vars_glob_name2uid, memo)
+            result.state_vars = copy.deepcopy(self.state_vars, memo)
+            result.state_eqs = copy.deepcopy(self.state_eqs, memo)
+            result.algebraic_vars = copy.deepcopy(self.algebraic_vars, memo)
+            result.algebraic_eqs = copy.deepcopy(self.algebraic_eqs, memo)
+            result.diff_vars = copy.deepcopy(self.diff_vars, memo)
+            result.reformulated_vars = copy.deepcopy(self.reformulated_vars, memo)
+            result.differential_eqs = copy.deepcopy(self.differential_eqs, memo)
+            result.init_eqs = copy.deepcopy(self.init_eqs, memo)
+            result.diff_init_eqs = copy.deepcopy(self.diff_init_eqs, memo)
+            result.children = copy.deepcopy(self.children, memo)
+            result.in_vars = copy.deepcopy(self.in_vars, memo)
+            result.out_vars = copy.deepcopy(self.out_vars, memo)
+            result.parameters = copy.deepcopy(self.parameters, memo)
+            result.discrete_eqs = copy.deepcopy(self.discrete_eqs, memo)
+            result.external_mapping = copy.deepcopy(self.external_mapping, memo)
+            result.api_obj_mapping = copy.deepcopy(self.api_obj_mapping, memo)
+            result.init_values = copy.deepcopy(self.init_values, memo)
+            result.var_mapping = copy.deepcopy(self.var_mapping, memo)
+            result.event_dict = copy.deepcopy(self.event_dict, memo)
+            result.mode_dict = copy.deepcopy(self.mode_dict, memo)
+            result.procedural_logic = copy.deepcopy(self.procedural_logic, memo)
+            result._diagram = copy.deepcopy(self._diagram, memo)
+            return result
 
     def compare(self, block2: Block) -> bool:
         """
@@ -526,6 +573,7 @@ class Block:
             mdl_placeholder.diff_vars.extend(b.diff_vars)
             mdl_placeholder.reformulated_vars.extend(b.reformulated_vars)
             mdl_placeholder.external_mapping.update(b.external_mapping)
+            mdl_placeholder.api_obj_mapping.update(b.api_obj_mapping)
             for event_param, eq in b.event_dict.items():
                 mdl_placeholder.event_dict[event_param] = eq
 
@@ -558,6 +606,7 @@ class Block:
         self.diff_init_eqs = mdl_placeholder.diff_init_eqs
         self.reformulated_vars = mdl_placeholder.reformulated_vars
         self.external_mapping = mdl_placeholder.external_mapping
+        self.api_obj_mapping = mdl_placeholder.api_obj_mapping
         self.procedural_logic = mdl_placeholder.procedural_logic
         self.children = list()
 

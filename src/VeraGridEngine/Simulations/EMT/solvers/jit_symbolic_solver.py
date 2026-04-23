@@ -17,6 +17,7 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     get_solver_forced_event_time,
     resolve_solver_boundary_updater,
 )
+from VeraGridEngine.Utils.emt_boundary_update_wrapper import BoundaryUpdateWrapper
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 
 from VeraGridEngine.Utils.Symbolic.symbolic import Var, Const, Expr, BinOp, UnOp, Func
@@ -103,6 +104,59 @@ def _safe_njit(py_func: Callable[..., Any], fastmath: bool = True, cache: bool =
     compiled_kernel: Callable[..., Any] = nb.njit(cache=cache, fastmath=fastmath)(py_func)
     SYMBOLIC_NUMBA_KERNEL_CACHE.set(cache_key, compiled_kernel)
     return compiled_kernel
+
+
+def _should_use_numba_residual_backend(total_equation_count: int) -> bool:
+    """
+    Decide whether one residual backend should be wrapped with Numba.
+
+    Small and medium EMT systems often spend much more wall time in the first
+    lazy Numba compilation than in the actual Newton loop. For those systems the
+    generated Python kernel gives a better end-to-end turnaround, especially for
+    interactive debugging and tests.
+
+    :param total_equation_count: Total number of residual equations.
+    :type total_equation_count: int
+    :return: ``True`` when the residual backend should use Numba.
+    :rtype: bool
+    """
+    small_system_threshold: int = 160
+
+    if total_equation_count <= small_system_threshold:
+        return False
+    else:
+        return True
+
+
+def _should_use_numba_jacobian_backend(total_variable_count: int, jacobian_expression_count: int) -> bool:
+    """
+    Decide whether one Jacobian backend should be wrapped with Numba.
+
+    The Jacobian kernel is usually much larger than the residual kernel. Moderate
+    EMT systems can therefore hit a severe cold-start penalty when the generated
+    kernel is compiled lazily on the first Newton iteration. Keeping those cases
+    in eager Python form avoids that startup cliff while preserving the exact
+    numerical formulation.
+
+    :param total_variable_count: Number of state plus algebraic variables.
+    :type total_variable_count: int
+    :param jacobian_expression_count: Number of generated Jacobian expressions.
+    :type jacobian_expression_count: int
+    :return: ``True`` when the Jacobian backend should use Numba.
+    :rtype: bool
+    """
+    small_variable_threshold: int = 160
+    medium_variable_threshold: int = 220
+    moderate_jacobian_threshold: int = 4000
+
+    # Small EMT systems are faster and more predictable when they avoid the first
+    # lazy Numba compilation altogether, even if the Jacobian is assembled densely.
+    if total_variable_count <= small_variable_threshold:
+        return False
+    elif total_variable_count <= medium_variable_threshold and jacobian_expression_count <= moderate_jacobian_threshold:
+        return False
+    else:
+        return True
 
 
 def get_vars_in_expr(expr: Expr) -> Set[int]:
@@ -283,38 +337,6 @@ def evaluate_batched_residual(
     return float(np.linalg.norm(residual_out, np.inf))
 
 
-class BoundaryUpdateWrapper:
-    """
-    Interface for injecting boundary conditions and events before the Newton step.
-    Users must inherit from this class to update parameters safely.
-    """
-    __slots__ = []  # No state allowed in the base class
-
-    def update(self, t: float, x: Vec, params: Vec) -> None:
-        """
-        Updates the parameters vector in place based on the current time and state.
-
-        :param t: The current simulation time.
-        :type t: float
-        :param x: The current state vector.
-        :type x: Vec
-        :param params: The parameter vector to be modified.
-        :type params: Vec
-        :rtype: None
-        """
-        pass  # Explicit no-op for base class
-
-    def get_next_forced_event_time(self, t_prev: float, t_target: float) -> Optional[float]:
-        """
-        Return the earliest forced-alignment event time in the interval (t_prev, t_target].
-
-        :param t_prev: Previous solver time.
-        :param t_target: Nominal target time.
-        :return: Earliest forced event time or None.
-        """
-        _unused: Tuple["BoundaryUpdateWrapper", float, float] = (self, t_prev, t_target)
-        return None
-
 class HybridJacobianEvaluator:
     """
     Evaluates the JIT-compiled Jacobian and formats it as either Dense or Sparse.
@@ -492,7 +514,7 @@ class ResidualTrialEvaluator:
 class JitSymbolicSolver:
 
     __slots__ = [
-        'problem', 't0', 't_end', 'h', 'method', 'pred_method', 'dense_threshold', 'verbose',
+        'problem', 't0', 't_end', 'h', 'method', 'pred_method', 'dense_threshold', 'verbose', 'newton_max_iter',
         'steps', 't', 'y', 'dy', 'jit_kernels', 'jit_jacobian_symbolic',
         'state_vars', 'algebraic_vars', 'state_eqs', 'algebraic_eqs', 'diff_vars',
         'jit_compiler', '_residual_debug_info', '_newton_diag_config',
@@ -510,6 +532,7 @@ class JitSymbolicSolver:
                  pred_method:DynamicIntegrationMethod = None,
                  dense_threshold: int = 100,
                  verbose: bool = False,
+                 newton_max_iter: int = 15,
                  newton_diag_config: NewtonDiagnosticsConfig | None = None)-> None:
         """
         :param problem: The DAE problem definition.
@@ -520,6 +543,7 @@ class JitSymbolicSolver:
         :param pred_method: DynamicIntegrationMethod used in the predictor step if method is explicit.
         :param dense_threshold: Threshold to switch between dense and sparse linear solvers.
         :param verbose: Print compilation and simulation timings.
+        :param newton_max_iter: Maximum Newton iterations per local EMT substep.
         """
         self.jit_compiler = None
         self.problem = problem
@@ -529,6 +553,7 @@ class JitSymbolicSolver:
         self.pred_method = pred_method
         self.dense_threshold = dense_threshold
         self.verbose = verbose
+        self.newton_max_iter: int = int(newton_max_iter)
         self._newton_diag_config = newton_diag_config or NewtonDiagnosticsConfig(
             compute_dense_cond=False,
             enable_fallback=False,
@@ -655,16 +680,33 @@ class JitSymbolicSolver:
         # Batch compilation strategy
         BATCH_SIZE = 100
         n_eqs = len(equations)
-        batched_kernels = []
+        batched_kernels: List[Callable[..., Any]] = list()
+        use_numba_residual_backend: bool = _should_use_numba_residual_backend(total_equation_count=n_eqs)
+
+        if self.verbose:
+            if use_numba_residual_backend:
+                print("   [JIT] Residual backend uses Numba kernels.")
+            else:
+                print("   [JIT] Residual backend uses generated Python kernels to avoid cold-start compilation cost.")
+        else:
+            pass
 
         for i in range(0, n_eqs, BATCH_SIZE):
             chunk = equations[i: i + BATCH_SIZE]
             f_name = f"jit_step_{method}_part_{i}"
+            py_func: Callable[..., Any]
+            wrapped_kernel: Callable[..., Any]
 
             # Compile inplace: the function writes directly to the 'residuals' array
             py_func = self.jit_compiler.compile(chunk, func_name=f_name, use_cse=True, offset=i, inplace=True)
-            jit_func = _safe_njit(py_func, cache=True, fastmath=True)
-            batched_kernels.append(jit_func)
+
+            # Small systems are faster end-to-end when they avoid the first lazy Numba compilation.
+            if use_numba_residual_backend:
+                wrapped_kernel = _safe_njit(py_func, cache=True, fastmath=True)
+            else:
+                wrapped_kernel = py_func
+
+            batched_kernels.append(wrapped_kernel)
 
         self.jit_kernels[method] = batched_kernels
         elapsed_s: float = time.perf_counter() - t_start_build
@@ -772,10 +814,25 @@ class JitSymbolicSolver:
         compiler = EquationCompiler(variables=sorted_vars, parameters=compile_params, method=method)
         func_name = f"jac_eval_{method.name}_{N}_{'sparse' if use_sparse else 'dense'}"
         kernel_py = compiler.compile(jac_expression, func_name=func_name, use_cse=True)
+        use_numba_jacobian_backend: bool = _should_use_numba_jacobian_backend(
+            total_variable_count=N,
+            jacobian_expression_count=len(jac_expression),
+        )
 
         # The symbolic Jacobian structure is deterministic for a given method and
         # sparsity mode, so persistent caching is safe and accelerates warm runs.
-        kernel_jit = _safe_njit(kernel_py, cache=True, fastmath=True)
+        if use_numba_jacobian_backend:
+            kernel_jit = _safe_njit(kernel_py, cache=True, fastmath=True)
+        else:
+            kernel_jit = kernel_py
+
+        if self.verbose:
+            if use_numba_jacobian_backend:
+                print("   [JIT-SD] Jacobian backend uses Numba kernels.")
+            else:
+                print("   [JIT-SD] Jacobian backend uses generated Python kernels to avoid cold-start compilation cost.")
+        else:
+            pass
 
         if method == DynamicIntegrationMethod.DaeTrapezoidal:
             alpha_mult = 2.0
@@ -811,7 +868,7 @@ class JitSymbolicSolver:
                  x0: Union[Vec | None] = None,
                  dx0: Union[Vec | None] = None,
                  params0: Union[Vec | None] = None,
-                 boundary_updater: EmtBoundaryUpdateProtocol | None = None) -> Tuple[Vec, Mat, Mat]:
+                 boundary_updater: EmtBoundaryUpdateProtocol | None = None) -> Tuple[Vec, Mat, Mat, bool, bool]:
         """
         Main JIT simulation loop using the Symbolic Differentiation (SD) backend.
         :param x0: Initial state vector.
@@ -822,6 +879,9 @@ class JitSymbolicSolver:
         """
         t_start = time.time()
         method = self.method
+
+        converged: bool = True
+        well_initialized: bool = True
 
         n_eqs = self.problem.get_all_vars_number()
         n_states = self.problem.get_states_number()
@@ -1006,7 +1066,8 @@ class JitSymbolicSolver:
                 else:
                     pass
 
-                for k in range(15):
+                substep_converged: bool = False
+                for k in range(self.newton_max_iter):
                     total_newton_iterations += 1
                     ctx = NewtonSolveContext(
                         t=float(t_curr),
@@ -1043,6 +1104,7 @@ class JitSymbolicSolver:
                         )
 
                     if res_norm_inf < 1e-6:
+                        substep_converged = True
                         break
                     else:
                         pass
@@ -1121,6 +1183,11 @@ class JitSymbolicSolver:
 
                     last_res_norm = res_norm_inf
 
+                if not substep_converged:
+                    converged = False
+                    if i == 0 and is_first_local_step:
+                        well_initialized = False
+
                 if method == DynamicIntegrationMethod.DaeTrapezoidal:
                     dx_prev[:n_states] = (
                             (2.0 / h_eff) * (x_iter[:n_states] - x_prev[:n_states])
@@ -1151,6 +1218,8 @@ class JitSymbolicSolver:
                 t_local_prev = t_curr
                 is_first_local_step = False
 
+
+
             self.y[i + 1, :] = x_prev
             self.dy[i + 1, :] = dx_prev
 
@@ -1168,7 +1237,7 @@ class JitSymbolicSolver:
             macro_steps=float(self.steps),
         )
 
-        return self.t, self.y, self.dy
+        return self.t, self.y, self.dy, well_initialized, converged
 
     def get_backend_build_stats(self) -> Dict[str, float]:
         """

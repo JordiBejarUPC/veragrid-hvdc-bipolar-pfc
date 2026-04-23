@@ -14,7 +14,7 @@ import scipy.sparse as sp
 
 from typing import Union, Any
 
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DriverTemplate
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import PowerFlowResults
@@ -26,7 +26,6 @@ from VeraGridEngine.basic_structures import Vec, Mat
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae, RmsProblemTemplate
 from VeraGridEngine.enumerations import DynamicIntegrationMethod
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
-from VeraGridEngine.Simulations.Rms.rms_problem_factory import build_rms_problem
 
 
 def compute_state_matrix(problem: RmsProblemTemplate, x: Vec, dx: Vec) -> tuple[Mat, Mat]:
@@ -39,15 +38,13 @@ def compute_state_matrix(problem: RmsProblemTemplate, x: Vec, dx: Vec) -> tuple[
     :return
     """
     h = problem.get_dt_value()
-    #h = 0.001 
+    # h = 0.001
     fx = problem.get_j11(x, dx, h)  # ∂f/∂x
     fy = problem.get_j12(x, dx, h)  # ∂f/∂y
     gx = problem.get_j21(x, dx, h)  # ∂g/∂x
     gy = problem.get_j22(x, dx, h)  # ∂g/∂y
 
     # Convert to dense for SVD-based solve (handles singular matrices)
-
-    
 
     differential_vars = problem.get_diff_var_number()
     if differential_vars == 0:
@@ -63,7 +60,7 @@ def compute_state_matrix(problem: RmsProblemTemplate, x: Vec, dx: Vec) -> tuple[
         U, s, Vh = la.svd(gy_dense, full_matrices=False)
         s_reg = np.where(s > tol, s, 0.0)
         s_inv = np.where(s_reg > 0, 1.0 / s_reg, 0.0)
-        
+
         # Compute pseudo-inverse: gy^+ = V @ diag(s_inv) @ U^T
         gy_pinv = Vh.T @ np.diag(s_inv) @ U.T
         gy_inv_gx = gy_pinv @ gx_dense
@@ -73,6 +70,7 @@ def compute_state_matrix(problem: RmsProblemTemplate, x: Vec, dx: Vec) -> tuple[
     A_bal, scale_factors = la.matrix_balance(A=A, separate=False)
 
     return A_bal, A
+
 
 @nb.njit(cache=True)
 def compute_participation_factors(v: np.ndarray,
@@ -141,8 +139,8 @@ def select_eigs_without_conjugates(eigenvalues: Vec) -> Vec:
 
 
 @nb.njit(cache=True)
-def compute_damping_ratios_and_frequencies(eigenvalues:Vec,
-                                           eig_no_conjugates: Vec) -> tuple[Vec,Vec]:
+def compute_damping_ratios_and_frequencies(eigenvalues: Vec,
+                                           eig_no_conjugates: Vec) -> tuple[Vec, Vec]:
     """
     :param eigenvalues: row np array with modes
     :param eig_no_conjugates: row np array with only the positive complex conjugate modes
@@ -180,7 +178,7 @@ def compute_damping_ratios_and_frequencies(eigenvalues:Vec,
 
 
 def plot_stability(eigenvalues: Vec,
-                   plot_units: str = "rad/s")->None:
+                   plot_units: str = "rad/s") -> None:
     """
     :param eigenvalues: row np array with modes
     :param plot_units: string with the imaginary units "rad/s" or "Hz"
@@ -248,7 +246,7 @@ def run_dense_small_signal_stability(problem: RmsProblemTemplate,
 
     differential_vars = problem.get_diff_var_number()
     if differential_vars == 0:
-    # Scipy returns w such that w^TA = lambda w^H. We must conjugate it to W^TA = lambda W^T.
+        # Scipy returns w such that w^TA = lambda w^H. We must conjugate it to W^TA = lambda W^T.
         A_bal, A_orig = compute_state_matrix(problem=problem, x=x, dx=dx)
         eig_results = list(la.eig(A_bal, left=True, right=True))
     else:
@@ -267,12 +265,12 @@ def run_dense_small_signal_stability(problem: RmsProblemTemplate,
             fy = problem.get_j12(x, dx, h)
             gx = problem.get_j21(x, dx, h)
         gy = problem.get_j22(x, dx, h)
-    
+
         # 1. BUILD THE ENHANCED JACOBIAN (Sparse)
         J_top = sp.hstack([fx, fy])
         J_bot = sp.hstack([gx, gy])
         A_matrix = sp.vstack([J_top, J_bot])
-        
+
         # Debug: Check A_matrix row 70 for large values
         A_dense = A_matrix.toarray()
         A_orig = A_dense.copy()
@@ -284,7 +282,7 @@ def run_dense_small_signal_stability(problem: RmsProblemTemplate,
     v = eig_results[2]
 
     w = w_raw.conj()
-    
+
     # Ensure eigenvectors are complex (scipy may return float64 for real eigenvalues)
     v = v.astype(np.complex128, copy=False)
     w = w.astype(np.complex128, copy=False)
@@ -341,8 +339,8 @@ def run_sparse_small_signal_stability(problem: RmsProblemTemplate,
     if problem.get_diff_var_number() == 0:
         # 3. CREATE THE SHIFT-AND-INVERT OPERATOR (A^-1 * v)
         op_methods = SparseShiftAndInvertMethods(n_states=n_states,
-                                             total_size=J_aug.shape[0],
-                                             J_aug_lu=J_aug_lu)
+                                                 total_size=J_aug.shape[0],
+                                                 J_aug_lu=J_aug_lu)
     else:
         # 3. CREATE THE SHIFT-AND-INVERT OPERATOR (A^-1 * E * v)
         E = problem.get_E_matrix()
@@ -424,6 +422,7 @@ def run_sparse_small_signal_stability(problem: RmsProblemTemplate,
 
     return eigenvalues, participation_factors, damping_ratios, conjugate_freq, np.empty(0), None
 
+
 class SparseGeneralizedShiftInvertMethods:
     """
     Helper class to hold the matvec and rmatvec operations for the Sparse LinearOperator for 
@@ -448,6 +447,7 @@ class SparseGeneralizedShiftInvertMethods:
         rhs[:self.n_states] = v
         sol = self.J_aug_lu.solve(rhs, trans='H')
         return self.E.T @ sol[:self.n_states]
+
 
 class SparseShiftAndInvertMethods:
     """
@@ -499,12 +499,20 @@ class SparseShiftAndInvertMethods:
 
         return sol[:self.n_states]
 
+
 class SmallSignalStabilityRmsDriver(DriverTemplate):
     """
     Small Signal Stability RMS driver
     """
-    __slots__ = ['problem', 'sss_options', 'assessment_time', 'k', 'rms_options', 'integration_methods_dict', 'results',
-                 '__cancel__']
+    __slots__ = [
+        'problem',
+        'sss_options',
+        'assessment_time',
+        'k',
+        'rms_options',
+        'integration_methods_dict',
+        'results',
+    ]
 
     name = 'Small Signal Stability Simulation'
     tpe = SimulationTypes.RmsSmallSignal_run
@@ -552,10 +560,7 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
                                                                                       state_matrix=np.empty(0),
                                                                                       stat_vars=list())
 
-
-        self.__cancel__ = False
-
-    def run(self)->None:
+    def run(self) -> None:
         """
         Main function to initialize and run the system simulation.
 
@@ -566,7 +571,7 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
         # Run the dynamic simulation
         self.run_small_signal_stability()
 
-    def run_small_signal_stability(self)-> None:
+    def run_small_signal_stability(self) -> None:
         """
         Performs the numerical integration using the chosen method and the small signal stability assessment.
         :return:
@@ -615,7 +620,7 @@ class SmallSignalStabilityRmsDriver(DriverTemplate):
                                                                        k=self.k,
                                                                        verbose=self.sss_options.verbose)
 
-        state_vars = self.problem.get_state_vars
+        state_vars = self.problem.state_vars
         self.results: SmallSignalStabilityRmsResults = SmallSignalStabilityRmsResults(
             eigenvalues=eigenvalues,
             participation_factors=participation_factors,

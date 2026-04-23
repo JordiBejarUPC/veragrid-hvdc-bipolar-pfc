@@ -15,8 +15,8 @@ from VeraGridEngine.Simulations.EMT.solvers.StructuralVectorizedSolver import St
 from VeraGridEngine.Simulations.EMT.solvers.structural_compiled_solver import StructuralCompiledSolver
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_3ph_emt_template
-from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template
+from VeraGridEngine.Templates.Emt.load_zip_emt_template import get_load_ZIP_emt_template
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.enumerations import (
     DynamicIntegrationMethod,
@@ -80,12 +80,12 @@ def build_two_bus_real_emt_case(
     for bus in grid.buses:
         get_bus_emt_template(grid, bus)
 
-    gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.emt_var_factory).block
-    line_mdl = get_pi_line_emt_template(vf=grid.emt_var_factory, line=line0).block
+    gen_mdl = get_generator_thevenin_rl_emt_template(vf = grid.var_factory).block
+    line_mdl = get_pi_line_emt_template(vf=grid.var_factory, line=line0).block
     if zip_load:
-        load_mdl = get_load_ZIP_3ph_emt_template(vf = grid.emt_var_factory).block
+        load_mdl = get_load_ZIP_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
     else:
-        load_mdl = get_shunt_r_3ph_emt_template(vf=grid.emt_var_factory).block
+        load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
         z_base = 1.0 / grid.Sbase
         v_phase_pu = 1.0 / np.sqrt(3.0)
         r_a_pu = (v_phase_pu ** 2) / load.Pa / z_base
@@ -102,11 +102,11 @@ def build_two_bus_real_emt_case(
             else:
                 load_mdl.event_dict[var] = load_mdl.event_dict[var]
 
-    set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.emt_var_factory)
+    set_emt_model(device=gen0, model=gen_mdl, var_factory=grid.var_factory)
 
-    set_emt_model(device=line0, model=line_mdl, var_factory=grid.emt_var_factory)
+    set_emt_model(device=line0, model=line_mdl, var_factory=grid.var_factory)
 
-    set_emt_model(device=load, model=load_mdl, var_factory=grid.emt_var_factory)
+    set_emt_model(device=load, model=load_mdl, var_factory=grid.var_factory)
 
     pf_options = PowerFlowOptions(
         solver_type=gce.SolverType.NR,
@@ -143,7 +143,7 @@ def build_two_bus_real_emt_case(
         initialization_method=initialization_method,
         verbose=0,
     )
-    problem = EmtProblemDae(grid=grid, options=options, pf_results_3Ph=res)
+    problem = EmtProblemDae(grid=grid, options=options, pf_results_3ph=res)
 
     return problem, {
         "grid": grid,

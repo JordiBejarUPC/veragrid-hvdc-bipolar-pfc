@@ -5,7 +5,7 @@
 
 import numpy as np
 import pandas as pd
-from VeraGridEngine.Simulations.results_template import ResultsTemplate
+from VeraGridEngine.Simulations.results_template import ResultsTemplate, ResultsProperty
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.enumerations import FaultType
 from VeraGridEngine.basic_structures import IntVec, Vec, StrVec, CxVec
@@ -14,6 +14,192 @@ from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation_3ph 
 
 
 class ShortCircuitResults(ResultsTemplate):
+
+    LOCAL_RESULTS_DECLARATIONS = (
+        ResultsProperty(name='bus_names', tpe=StrVec, old_names=list()),
+        ResultsProperty(name='branch_names', tpe=StrVec, old_names=list()),
+        ResultsProperty(name='hvdc_names', tpe=StrVec, old_names=list()),
+        ResultsProperty(name='sc_names', tpe=StrVec, old_names=list()),
+        ResultsProperty(name='bus_types', tpe=IntVec, old_names=list()),
+        ResultsProperty(name='F', tpe=IntVec, old_names=list()),
+        ResultsProperty(name='T', tpe=IntVec, old_names=list()),
+        ResultsProperty(name='hvdc_F', tpe=IntVec, old_names=list()),
+        ResultsProperty(name='hvdc_T', tpe=IntVec, old_names=list()),
+        ResultsProperty(name='bus_area_indices', tpe=IntVec, old_names=list()),
+        ResultsProperty(name='area_names', tpe=IntVec, old_names=list()),
+        ResultsProperty(name='Sbus1', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='voltage1', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='Sf1', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='St1', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='If1', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='It1', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='Vbranch1', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='loading1', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='losses1', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='Sbus0', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='voltage0', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='Sf0', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='St0', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='If0', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='It0', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='Vbranch0', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='loading0', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='losses0', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='Sbus2', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='voltage2', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='Sf2', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='St2', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='If2', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='It2', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='Vbranch2', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='loading2', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='losses2', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='SbusN', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='voltageN', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='SfN', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='StN', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='IfN', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='ItN', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='VbranchN', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='loadingN', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='lossesN', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='SbusA', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='voltageA', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='SfA', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='StA', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='IfA', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='ItA', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='VbranchA', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='loadingA', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='lossesA', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='SbusB', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='voltageB', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='SfB', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='StB', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='IfB', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='ItB', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='VbranchB', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='loadingB', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='lossesB', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='SbusC', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='voltageC', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='SfC', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='StC', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='IfC', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='ItC', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='VbranchC', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='loadingC', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='lossesC', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='hvdc_losses', tpe=Vec, old_names=list()),
+        ResultsProperty(name='hvdc_Pf', tpe=Vec, old_names=list()),
+        ResultsProperty(name='hvdc_Pt', tpe=Vec, old_names=list()),
+        ResultsProperty(name='hvdc_loading', tpe=Vec, old_names=list()),
+        ResultsProperty(name='vsc_If', tpe=Vec, old_names=list()),
+        ResultsProperty(name='vsc_It', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='vsc_Pfp', tpe=Vec, old_names=list()),
+        ResultsProperty(name='vsc_Pfn', tpe=Vec, old_names=list()),
+        ResultsProperty(name='vsc_St', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='vsc_losses', tpe=Vec, old_names=list()),
+        ResultsProperty(name='vsc_loading', tpe=Vec, old_names=list()),
+        ResultsProperty(name='SCpower', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='SCpowerA', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='SCpowerB', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='SCpowerC', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='ICurrent', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='ICurrentA', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='ICurrentB', tpe=CxVec, old_names=list()),
+        ResultsProperty(name='ICurrentC', tpe=CxVec, old_names=list()),
+    )
+
+    __slots__ = (
+        "bus_types",
+        "bus_names",
+        "branch_names",
+        "hvdc_names",
+        "sc_names",
+        "Sbus1",
+        "voltage1",
+        "Sf1",
+        "St1",
+        "If1",
+        "It1",
+        "Vbranch1",
+        "loading1",
+        "losses1",
+        "Sbus0",
+        "voltage0",
+        "Sf0",
+        "St0",
+        "If0",
+        "It0",
+        "Vbranch0",
+        "loading0",
+        "losses0",
+        "Sbus2",
+        "voltage2",
+        "Sf2",
+        "St2",
+        "If2",
+        "It2",
+        "Vbranch2",
+        "loading2",
+        "losses2",
+        "SbusN",
+        "voltageN",
+        "SfN",
+        "StN",
+        "IfN",
+        "ItN",
+        "VbranchN",
+        "loadingN",
+        "lossesN",
+        "SbusA",
+        "voltageA",
+        "SfA",
+        "StA",
+        "IfA",
+        "ItA",
+        "VbranchA",
+        "loadingA",
+        "lossesA",
+        "SbusB",
+        "voltageB",
+        "SfB",
+        "StB",
+        "IfB",
+        "ItB",
+        "VbranchB",
+        "loadingB",
+        "lossesB",
+        "SbusC",
+        "voltageC",
+        "SfC",
+        "StC",
+        "IfC",
+        "ItC",
+        "VbranchC",
+        "loadingC",
+        "lossesC",
+        "hvdc_losses",
+        "hvdc_Pf",
+        "hvdc_Pt",
+        "hvdc_loading",
+        "vsc_If",
+        "vsc_It",
+        "vsc_Pfp",
+        "vsc_Pfn",
+        "vsc_St",
+        "vsc_losses",
+        "vsc_loading",
+        "SCpower",
+        "SCpowerA",
+        "SCpowerB",
+        "SCpowerC",
+        "ICurrent",
+        "ICurrentA",
+        "ICurrentB",
+        "ICurrentC",
+    )
 
     def __init__(self,
                  nsc: int,
@@ -137,7 +323,7 @@ class ShortCircuitResults(ResultsTemplate):
                                                                  ResultTypes.BranchReactiveLossesB,
                                                                  ResultTypes.BranchReactiveLossesC],
 
-                                     ResultTypes.InfoResults: [ResultTypes.ShortCircuitInfo],
+                                     # ResultTypes.InfoResults: [ResultTypes.ShortCircuitInfo],
                                  },
                                  time_array=None,
                                  clustering_results=None,
@@ -158,75 +344,75 @@ class ShortCircuitResults(ResultsTemplate):
         self.bus_area_indices = np.zeros(n, dtype=int)
         self.area_names = area_names
 
-        self.Sbus1 = np.zeros((n, nsc), dtype=complex)
-        self.voltage1 = np.zeros((n, nsc), dtype=complex)
-        self.Sf1 = np.zeros((m, nsc), dtype=complex)
-        self.St1 = np.zeros((m, nsc), dtype=complex)
-        self.If1 = np.zeros((m, nsc), dtype=complex)
-        self.It1 = np.zeros((m, nsc), dtype=complex)
-        self.Vbranch1 = np.zeros((m, nsc), dtype=complex)
-        self.loading1 = np.zeros((m, nsc), dtype=complex)
-        self.losses1 = np.zeros((m, nsc), dtype=complex)
+        self.Sbus1 = np.zeros((n, nsc), dtype=np.complex64)
+        self.voltage1 = np.zeros((n, nsc), dtype=np.complex64)
+        self.Sf1 = np.zeros((m, nsc), dtype=np.complex64)
+        self.St1 = np.zeros((m, nsc), dtype=np.complex64)
+        self.If1 = np.zeros((m, nsc), dtype=np.complex64)
+        self.It1 = np.zeros((m, nsc), dtype=np.complex64)
+        self.Vbranch1 = np.zeros((m, nsc), dtype=np.complex64)
+        self.loading1 = np.zeros((m, nsc), dtype=np.complex64)
+        self.losses1 = np.zeros((m, nsc), dtype=np.complex64)
 
-        self.Sbus0 = np.zeros((n, nsc), dtype=complex)
-        self.voltage0 = np.zeros((n, nsc), dtype=complex)
-        self.Sf0 = np.zeros((m, nsc), dtype=complex)
-        self.St0 = np.zeros((m, nsc), dtype=complex)
-        self.If0 = np.zeros((m, nsc), dtype=complex)
-        self.It0 = np.zeros((m, nsc), dtype=complex)
-        self.Vbranch0 = np.zeros((m, nsc), dtype=complex)
-        self.loading0 = np.zeros((m, nsc), dtype=complex)
-        self.losses0 = np.zeros((m, nsc), dtype=complex)
+        self.Sbus0 = np.zeros((n, nsc), dtype=np.complex64)
+        self.voltage0 = np.zeros((n, nsc), dtype=np.complex64)
+        self.Sf0 = np.zeros((m, nsc), dtype=np.complex64)
+        self.St0 = np.zeros((m, nsc), dtype=np.complex64)
+        self.If0 = np.zeros((m, nsc), dtype=np.complex64)
+        self.It0 = np.zeros((m, nsc), dtype=np.complex64)
+        self.Vbranch0 = np.zeros((m, nsc), dtype=np.complex64)
+        self.loading0 = np.zeros((m, nsc), dtype=np.complex64)
+        self.losses0 = np.zeros((m, nsc), dtype=np.complex64)
 
-        self.Sbus2 = np.zeros((n, nsc), dtype=complex)
-        self.voltage2 = np.zeros((n, nsc), dtype=complex)
-        self.Sf2 = np.zeros((m, nsc), dtype=complex)
-        self.St2 = np.zeros((m, nsc), dtype=complex)
-        self.If2 = np.zeros((m, nsc), dtype=complex)
-        self.It2 = np.zeros((m, nsc), dtype=complex)
-        self.Vbranch2 = np.zeros((m, nsc), dtype=complex)
-        self.loading2 = np.zeros((m, nsc), dtype=complex)
-        self.losses2 = np.zeros((m, nsc), dtype=complex)
+        self.Sbus2 = np.zeros((n, nsc), dtype=np.complex64)
+        self.voltage2 = np.zeros((n, nsc), dtype=np.complex64)
+        self.Sf2 = np.zeros((m, nsc), dtype=np.complex64)
+        self.St2 = np.zeros((m, nsc), dtype=np.complex64)
+        self.If2 = np.zeros((m, nsc), dtype=np.complex64)
+        self.It2 = np.zeros((m, nsc), dtype=np.complex64)
+        self.Vbranch2 = np.zeros((m, nsc), dtype=np.complex64)
+        self.loading2 = np.zeros((m, nsc), dtype=np.complex64)
+        self.losses2 = np.zeros((m, nsc), dtype=np.complex64)
 
-        self.SbusN = np.zeros((n, nsc), dtype=complex)
-        self.voltageN = np.zeros((n, nsc), dtype=complex)
-        self.SfN = np.zeros((m, nsc), dtype=complex)
-        self.StN = np.zeros((m, nsc), dtype=complex)
-        self.IfN = np.zeros((m, nsc), dtype=complex)
-        self.ItN = np.zeros((m, nsc), dtype=complex)
-        self.VbranchN = np.zeros((m, nsc), dtype=complex)
-        self.loadingN = np.zeros((m, nsc), dtype=complex)
-        self.lossesN = np.zeros((m, nsc), dtype=complex)
+        self.SbusN = np.zeros((n, nsc), dtype=np.complex64)
+        self.voltageN = np.zeros((n, nsc), dtype=np.complex64)
+        self.SfN = np.zeros((m, nsc), dtype=np.complex64)
+        self.StN = np.zeros((m, nsc), dtype=np.complex64)
+        self.IfN = np.zeros((m, nsc), dtype=np.complex64)
+        self.ItN = np.zeros((m, nsc), dtype=np.complex64)
+        self.VbranchN = np.zeros((m, nsc), dtype=np.complex64)
+        self.loadingN = np.zeros((m, nsc), dtype=np.complex64)
+        self.lossesN = np.zeros((m, nsc), dtype=np.complex64)
 
-        self.SbusA = np.zeros((n, nsc), dtype=complex)
-        self.voltageA = np.zeros((n, nsc), dtype=complex)
-        self.SfA = np.zeros((m, nsc), dtype=complex)
-        self.StA = np.zeros((m, nsc), dtype=complex)
-        self.IfA = np.zeros((m, nsc), dtype=complex)
-        self.ItA = np.zeros((m, nsc), dtype=complex)
-        self.VbranchA = np.zeros((m, nsc), dtype=complex)
-        self.loadingA = np.zeros((m, nsc), dtype=complex)
-        self.lossesA = np.zeros((m, nsc), dtype=complex)
+        self.SbusA = np.zeros((n, nsc), dtype=np.complex64)
+        self.voltageA = np.zeros((n, nsc), dtype=np.complex64)
+        self.SfA = np.zeros((m, nsc), dtype=np.complex64)
+        self.StA = np.zeros((m, nsc), dtype=np.complex64)
+        self.IfA = np.zeros((m, nsc), dtype=np.complex64)
+        self.ItA = np.zeros((m, nsc), dtype=np.complex64)
+        self.VbranchA = np.zeros((m, nsc), dtype=np.complex64)
+        self.loadingA = np.zeros((m, nsc), dtype=np.complex64)
+        self.lossesA = np.zeros((m, nsc), dtype=np.complex64)
 
-        self.SbusB = np.zeros((n, nsc), dtype=complex)
-        self.voltageB = np.zeros((n, nsc), dtype=complex)
-        self.SfB = np.zeros((m, nsc), dtype=complex)
-        self.StB = np.zeros((m, nsc), dtype=complex)
-        self.IfB = np.zeros((m, nsc), dtype=complex)
-        self.ItB = np.zeros((m, nsc), dtype=complex)
-        self.VbranchB = np.zeros((m, nsc), dtype=complex)
-        self.loadingB = np.zeros((m, nsc), dtype=complex)
-        self.lossesB = np.zeros((m, nsc), dtype=complex)
+        self.SbusB = np.zeros((n, nsc), dtype=np.complex64)
+        self.voltageB = np.zeros((n, nsc), dtype=np.complex64)
+        self.SfB = np.zeros((m, nsc), dtype=np.complex64)
+        self.StB = np.zeros((m, nsc), dtype=np.complex64)
+        self.IfB = np.zeros((m, nsc), dtype=np.complex64)
+        self.ItB = np.zeros((m, nsc), dtype=np.complex64)
+        self.VbranchB = np.zeros((m, nsc), dtype=np.complex64)
+        self.loadingB = np.zeros((m, nsc), dtype=np.complex64)
+        self.lossesB = np.zeros((m, nsc), dtype=np.complex64)
 
-        self.SbusC = np.zeros((n, nsc), dtype=complex)
-        self.voltageC = np.zeros((n, nsc), dtype=complex)
-        self.SfC = np.zeros((m, nsc), dtype=complex)
-        self.StC = np.zeros((m, nsc), dtype=complex)
-        self.IfC = np.zeros((m, nsc), dtype=complex)
-        self.ItC = np.zeros((m, nsc), dtype=complex)
-        self.VbranchC = np.zeros((m, nsc), dtype=complex)
-        self.loadingC = np.zeros((m, nsc), dtype=complex)
-        self.lossesC = np.zeros((m, nsc), dtype=complex)
+        self.SbusC = np.zeros((n, nsc), dtype=np.complex64)
+        self.voltageC = np.zeros((n, nsc), dtype=np.complex64)
+        self.SfC = np.zeros((m, nsc), dtype=np.complex64)
+        self.StC = np.zeros((m, nsc), dtype=np.complex64)
+        self.IfC = np.zeros((m, nsc), dtype=np.complex64)
+        self.ItC = np.zeros((m, nsc), dtype=np.complex64)
+        self.VbranchC = np.zeros((m, nsc), dtype=np.complex64)
+        self.loadingC = np.zeros((m, nsc), dtype=np.complex64)
+        self.lossesC = np.zeros((m, nsc), dtype=np.complex64)
 
         self.hvdc_losses = np.zeros((n_hvdc, nsc))
         self.hvdc_Pf = np.zeros((n_hvdc, nsc))
@@ -234,129 +420,25 @@ class ShortCircuitResults(ResultsTemplate):
         self.hvdc_loading = np.zeros((n_hvdc, nsc))
 
         self.vsc_If = np.zeros((n_vsc, nsc))
-        self.vsc_It = np.zeros((n_vsc, nsc), dtype=complex)
+        self.vsc_It = np.zeros((n_vsc, nsc), dtype=np.complex64)
         self.vsc_Pfp = np.zeros((n_vsc, nsc))
         self.vsc_Pfn = np.zeros((n_vsc, nsc))
-        self.vsc_St = np.zeros((n_vsc, nsc), dtype=complex)
+        self.vsc_St = np.zeros((n_vsc, nsc), dtype=np.complex64)
         self.vsc_losses = np.zeros((n_vsc, nsc), dtype=float)
         self.vsc_loading = np.zeros((n_vsc, nsc), dtype=float)
 
-        self.SCpower = np.zeros((n, nsc), dtype=complex)
-        self.SCpowerA = np.zeros((n, nsc), dtype=complex)
-        self.SCpowerB = np.zeros((n, nsc), dtype=complex)
-        self.SCpowerC = np.zeros((n, nsc), dtype=complex)
+        self.SCpower = np.zeros((n, nsc), dtype=np.complex64)
+        self.SCpowerA = np.zeros((n, nsc), dtype=np.complex64)
+        self.SCpowerB = np.zeros((n, nsc), dtype=np.complex64)
+        self.SCpowerC = np.zeros((n, nsc), dtype=np.complex64)
 
-        self.ICurrent = np.zeros((n, nsc), dtype=complex)
-        self.ICurrentA = np.zeros((n, nsc), dtype=complex)
-        self.ICurrentB = np.zeros((n, nsc), dtype=complex)
-        self.ICurrentC = np.zeros((n, nsc), dtype=complex)
+        self.ICurrent = np.zeros((n, nsc), dtype=np.complex64)
+        self.ICurrentA = np.zeros((n, nsc), dtype=np.complex64)
+        self.ICurrentB = np.zeros((n, nsc), dtype=np.complex64)
+        self.ICurrentC = np.zeros((n, nsc), dtype=np.complex64)
 
         # Register results
-        self.register(name='bus_names', tpe=StrVec)
-        self.register(name='branch_names', tpe=StrVec)
-        self.register(name='hvdc_names', tpe=StrVec)
-        self.register(name='sc_names', tpe=StrVec)
-        self.register(name='bus_types', tpe=IntVec)
 
-        self.register(name='F', tpe=IntVec)
-        self.register(name='T', tpe=IntVec)
-        self.register(name='hvdc_F', tpe=IntVec)
-        self.register(name='hvdc_T', tpe=IntVec)
-        self.register(name='bus_area_indices', tpe=IntVec)
-        self.register(name='area_names', tpe=IntVec)
-
-        self.register(name='Sbus1', tpe=CxVec)
-        self.register(name='voltage1', tpe=CxVec)
-        self.register(name='Sf1', tpe=CxVec)
-        self.register(name='St1', tpe=CxVec)
-        self.register(name='If1', tpe=CxVec)
-        self.register(name='It1', tpe=CxVec)
-        self.register(name='Vbranch1', tpe=CxVec)
-        self.register(name='loading1', tpe=CxVec)
-        self.register(name='losses1', tpe=CxVec)
-
-        self.register(name='Sbus0', tpe=CxVec)
-        self.register(name='voltage0', tpe=CxVec)
-        self.register(name='Sf0', tpe=CxVec)
-        self.register(name='St0', tpe=CxVec)
-        self.register(name='If0', tpe=CxVec)
-        self.register(name='It0', tpe=CxVec)
-        self.register(name='Vbranch0', tpe=CxVec)
-        self.register(name='loading0', tpe=CxVec)
-        self.register(name='losses0', tpe=CxVec)
-
-        self.register(name='Sbus2', tpe=CxVec)
-        self.register(name='voltage2', tpe=CxVec)
-        self.register(name='Sf2', tpe=CxVec)
-        self.register(name='St2', tpe=CxVec)
-        self.register(name='If2', tpe=CxVec)
-        self.register(name='It2', tpe=CxVec)
-        self.register(name='Vbranch2', tpe=CxVec)
-        self.register(name='loading2', tpe=CxVec)
-        self.register(name='losses2', tpe=CxVec)
-
-        self.register(name='SbusN', tpe=CxVec)
-        self.register(name='voltageN', tpe=CxVec)
-        self.register(name='SfN', tpe=CxVec)
-        self.register(name='StN', tpe=CxVec)
-        self.register(name='IfN', tpe=CxVec)
-        self.register(name='ItN', tpe=CxVec)
-        self.register(name='VbranchN', tpe=CxVec)
-        self.register(name='loadingN', tpe=CxVec)
-        self.register(name='lossesN', tpe=CxVec)
-
-        self.register(name='SbusA', tpe=CxVec)
-        self.register(name='voltageA', tpe=CxVec)
-        self.register(name='SfA', tpe=CxVec)
-        self.register(name='StA', tpe=CxVec)
-        self.register(name='IfA', tpe=CxVec)
-        self.register(name='ItA', tpe=CxVec)
-        self.register(name='VbranchA', tpe=CxVec)
-        self.register(name='loadingA', tpe=CxVec)
-        self.register(name='lossesA', tpe=CxVec)
-
-        self.register(name='SbusB', tpe=CxVec)
-        self.register(name='voltageB', tpe=CxVec)
-        self.register(name='SfB', tpe=CxVec)
-        self.register(name='StB', tpe=CxVec)
-        self.register(name='IfB', tpe=CxVec)
-        self.register(name='ItB', tpe=CxVec)
-        self.register(name='VbranchB', tpe=CxVec)
-        self.register(name='loadingB', tpe=CxVec)
-        self.register(name='lossesB', tpe=CxVec)
-
-        self.register(name='SbusC', tpe=CxVec)
-        self.register(name='voltageC', tpe=CxVec)
-        self.register(name='SfC', tpe=CxVec)
-        self.register(name='StC', tpe=CxVec)
-        self.register(name='IfC', tpe=CxVec)
-        self.register(name='ItC', tpe=CxVec)
-        self.register(name='VbranchC', tpe=CxVec)
-        self.register(name='loadingC', tpe=CxVec)
-        self.register(name='lossesC', tpe=CxVec)
-
-        self.register(name='hvdc_losses', tpe=Vec)
-        self.register(name='hvdc_Pf', tpe=Vec)
-        self.register(name='hvdc_Pt', tpe=Vec)
-        self.register(name='hvdc_loading', tpe=Vec)
-
-        self.register(name='vsc_If', tpe=Vec)
-        self.register(name='vsc_It', tpe=CxVec)
-        self.register(name='vsc_Pfp', tpe=Vec)
-        self.register(name='vsc_Pfn', tpe=Vec)
-        self.register(name='vsc_St', tpe=CxVec)
-        self.register(name='vsc_losses', tpe=Vec)
-        self.register(name='vsc_loading', tpe=Vec)
-
-        self.register(name='SCpower', tpe=CxVec)
-        self.register(name='SCpowerA', tpe=CxVec)
-        self.register(name='SCpowerB', tpe=CxVec)
-        self.register(name='SCpowerC', tpe=CxVec)
-
-        self.register(name='ICurrent', tpe=CxVec)
-        self.register(name='ICurrentA', tpe=CxVec)
-        self.register(name='ICurrentB', tpe=CxVec)
-        self.register(name='ICurrentC', tpe=CxVec)
 
     @property
     def elapsed(self):
@@ -1457,19 +1539,19 @@ class ShortCircuitResults(ResultsTemplate):
                                 ylabel=y_label,
                                 units=y_label)
 
-        elif result_type == ResultTypes.ShortCircuitInfo:
-            labels = np.array(['Type', 'Bus name'])
-            y = np.array([self.sc_type.value, self.bus_names[self.sc_bus_index]])
-            y_label = ''
-
-            return ResultsTable(data=y,
-                                index=labels,
-                                idx_device_type=DeviceType.BusDevice,
-                                columns=self.sc_names,
-                                cols_device_type=DeviceType.NoDevice,
-                                title=title,
-                                ylabel=y_label,
-                                units=y_label)
+        # elif result_type == ResultTypes.ShortCircuitInfo:
+        #     labels = np.array(['Type', 'Bus name'])
+        #     y = np.array([self.sc_type.value, self.bus_names[self.sc_bus_index]])
+        #     y_label = ''
+        #
+        #     return ResultsTable(data=y,
+        #                         index=labels,
+        #                         idx_device_type=DeviceType.BusDevice,
+        #                         columns=self.sc_names,
+        #                         cols_device_type=DeviceType.NoDevice,
+        #                         title=title,
+        #                         ylabel=y_label,
+        #                         units=y_label)
 
         else:
             raise Exception('Unsupported result type: ' + str(result_type))

@@ -1249,6 +1249,38 @@ def test_injection_nexus_parent_endpoint_move_persists_parent_anchor_coordinates
     assert parent_anchor.y() == 45.0
 
 
+def test_moving_injection_preserves_manual_child_nexus_anchor() -> None:
+    """
+    Moving the injection glyph must not overwrite one manually aligned child nexus anchor.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    bus: Bus = Bus(name="B1")
+    load: Load = Load(name="LD1")
+    load.bus = bus
+    bus_graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    load_graphic: LoadGraphicItem = LoadGraphicItem(parent=bus_graphic, api_obj=load, editor=editor)
+
+    load_graphic.move_nexus_endpoint_alignment(endpoint="child", scene_pos=QPointF(10.0, 120.0))
+    dock_before = editor.diagram.get_dock(load)
+    child_anchor_x_before: float = float(dock_before["child_anchor_x"])
+    child_anchor_y_before: float = float(dock_before["child_anchor_y"])
+
+    load_graphic.setPos(40.0, 110.0)
+    load_graphic.sync_manual_dock_metadata_from_position()
+
+    dock_after = editor.diagram.get_dock(load)
+    child_anchor_scene = load_graphic.get_child_nexus_anchor()
+    nexus_path = load_graphic.nexus.path()
+    nexus_start = nexus_path.elementAt(0)
+
+    assert dock_after["child_anchor_x"] == child_anchor_x_before
+    assert dock_after["child_anchor_y"] == child_anchor_y_before
+    assert child_anchor_scene == load_graphic.mapToScene(QPointF(child_anchor_x_before, child_anchor_y_before))
+    assert float(nexus_start.x) == child_anchor_scene.x()
+    assert float(nexus_start.y) == child_anchor_scene.y()
+
+
 def test_injection_base_context_menu_only_exposes_rotate_not_dock_move() -> None:
     """
     Injection base menus should remove dock/move actions and expose only rotation.
@@ -1498,6 +1530,34 @@ def test_bus_graphic_auto_assign_branch_slots_uses_geometry_order() -> None:
     assert editor.diagram.get_attachment(branch_api_object_2, "from")["anchor_x"] == 140.0
     assert editor.diagram.get_attachment(branch_api_object_1, "from")["anchor_y"] == 45.0
     assert editor.diagram.get_attachment(branch_api_object_2, "from")["anchor_y"] == 45.0
+
+
+def test_bus_graphic_auto_assign_branch_slots_ignores_connector_without_api_object() -> None:
+    """
+    Auto slot assignment should skip connector graphics that do not have one diagram API object.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    bus: Bus = Bus(name="B1")
+    other_bus: Bus = Bus(name="B2")
+    graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    branch_api_object: object = object()
+    branch_graphic: _BranchGraphicStub = _BranchGraphicStub(api_object=branch_api_object,
+                                                            from_parent=graphic,
+                                                            to_parent=other_bus,
+                                                            pos1=QPointF(90.0, 25.0),
+                                                            pos2=QPointF(40.0, 220.0))
+    connector_graphic: _BranchGraphicStub = _BranchGraphicStub(api_object=None,
+                                                               from_parent=graphic,
+                                                               to_parent=other_bus,
+                                                               pos1=QPointF(90.0, 25.0),
+                                                               pos2=QPointF(140.0, 220.0))
+    graphic.terminal.add_hosting_connection(branch_graphic, _noop_callback)
+    graphic.terminal.add_hosting_connection(connector_graphic, _noop_callback)
+
+    graphic.auto_assign_branch_slots()
+
+    assert editor.diagram.get_attachment(branch_api_object, "from")["slot"] == "bus-bottom-1"
 
 
 def test_bus_graphic_applies_persisted_rotation_to_bar_and_nexus_anchors() -> None:
@@ -1839,3 +1899,101 @@ def test_terminal_reassignment_updates_branch_endpoint_port_reference() -> None:
     assert branch_graphic.get_terminal_from() is graphic_new.get_terminal()
     assert branch_graphic in graphic_new.get_terminal().get_hosted_graphics()
     assert branch_graphic not in graphic_from.get_terminal().get_hosted_graphics()
+
+
+def test_plain_branch_selection_does_not_activate_route_handles() -> None:
+    """
+    Rubber-band or programmatic selection alone must not surface branch edit handles.
+    """
+    _get_app()
+    editor: _BranchEditorStub = _BranchEditorStub()
+    scene: QtWidgets.QGraphicsScene = QtWidgets.QGraphicsScene()
+    bus_from: Bus = Bus(name="B1")
+    bus_to: Bus = Bus(name="B2")
+    line: Line = Line(name="L1", bus_from=bus_from, bus_to=bus_to)
+    graphic_from: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_from, w=180.0, h=40.0, x=0.0, y=0.0)
+    graphic_to: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus_to, w=180.0, h=40.0, x=300.0, y=0.0)
+
+    scene.addItem(graphic_from)
+    scene.addItem(graphic_to)
+
+    editor.diagram.set_attachment(line, "from", {"side": "bottom", "slot": "bottom", "terminal_key": "bottom"})
+    editor.diagram.set_attachment(line, "to", {"side": "bottom", "slot": "bottom", "terminal_key": "bottom"})
+    editor.diagram.set_branch_route_points(api_object=line,
+                                           points=[(90.0, 45.0), (90.0, 110.0), (390.0, 110.0), (390.0, 45.0)],
+                                           kind="manual-polyline",
+                                           locked=False)
+
+    branch_graphic = LineGraphicTemplateItem(from_port=graphic_from.get_terminal(),
+                                             to_port=graphic_to.get_terminal(),
+                                             editor=editor,
+                                             api_object=line)
+    scene.addItem(branch_graphic)
+
+    branch_graphic.setSelected(True)
+    branch_graphic.refresh_route_handles()
+
+    assert len(branch_graphic._route_handles) > 0
+    assert all(not handle.isVisible() for handle in branch_graphic._route_handles)
+    assert all(not handle.isVisible() for handle in branch_graphic._vertex_handles)
+    assert all(not handle.isVisible() for handle in branch_graphic._endpoint_handles.values())
+
+    branch_graphic.set_route_edit_active(True)
+
+    assert all(handle.isVisible() for handle in branch_graphic._route_handles)
+    assert all(handle.isVisible() for handle in branch_graphic._vertex_handles)
+    assert all(handle.isVisible() for handle in branch_graphic._endpoint_handles.values())
+
+
+def test_plain_injection_selection_does_not_activate_nexus_handles() -> None:
+    """
+    Selecting one injection without clicking into edit mode must keep nexus handles hidden.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    scene: QtWidgets.QGraphicsScene = QtWidgets.QGraphicsScene()
+    bus: Bus = Bus(name="B1")
+    load: Load = Load(name="L1")
+    bus_graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    load_graphic: LoadGraphicItem = LoadGraphicItem(parent=bus_graphic, api_obj=load, editor=editor)
+
+    scene.addItem(bus_graphic)
+    scene.addItem(load_graphic.nexus)
+    load_graphic.update_nexus(load_graphic.scenePos())
+    load_graphic.setSelected(True)
+    load_graphic.refresh_nexus_handles()
+
+    assert not load_graphic._nexus_endpoint_handles["child"].isVisible()
+    assert not load_graphic._nexus_endpoint_handles["parent"].isVisible()
+
+    load_graphic.set_nexus_edit_active(True)
+
+    assert load_graphic._nexus_endpoint_handles["child"].isVisible()
+    assert load_graphic._nexus_endpoint_handles["parent"].isVisible()
+
+
+def test_glyph_interaction_clears_nexus_edit_and_restores_movement() -> None:
+    """
+    Starting a normal glyph interaction must leave nexus edit mode so the
+    injection remains draggable.
+    """
+    _get_app()
+    editor: _EditorStub = _EditorStub()
+    scene: QtWidgets.QGraphicsScene = QtWidgets.QGraphicsScene()
+    bus: Bus = Bus(name="B1")
+    load: Load = Load(name="L1")
+    bus_graphic: BusGraphicItem = BusGraphicItem(editor=editor, bus=bus, w=180.0, h=40.0, x=0.0, y=0.0)
+    load_graphic: LoadGraphicItem = LoadGraphicItem(parent=bus_graphic, api_obj=load, editor=editor)
+
+    scene.addItem(bus_graphic)
+    scene.addItem(load_graphic.nexus)
+    load_graphic.setSelected(True)
+    load_graphic.set_nexus_edit_active(True)
+
+    assert load_graphic.is_nexus_edit_active()
+    assert not bool(load_graphic.flags() & QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsMovable)
+
+    load_graphic.prepare_for_glyph_interaction()
+
+    assert not load_graphic.is_nexus_edit_active()
+    assert bool(load_graphic.flags() & QtWidgets.QGraphicsItem.GraphicsItemFlag.ItemIsMovable)

@@ -8,7 +8,7 @@ from pandas.testing import assert_frame_equal
 
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_dae import RmsProblemDae
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 from VeraGridEngine.Templates.Rms.line_rms_template import get_line_rms_template
@@ -16,9 +16,8 @@ from VeraGridEngine.Templates.Rms.load_rms_template import get_load_rms_template
 from VeraGridEngine.Templates.Rms.genqec_exc_gov_sat_template import get_complete_generator_template_rms
 from VeraGridEngine.Templates.Rms.bus_rms_template import initialize_bus_rms
 
-from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod, \
-    ResultTypes
-from VeraGridEngine.Devices.Aggregation import RmsEvent
+from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
 import VeraGridEngine.api as gce
 
 
@@ -43,7 +42,7 @@ def test_simulation_with_event():
     #########
     # retrieve reference results df
 
-    folder = os.path.join('data', 'dynamics')
+    folder = os.path.join(os.path.dirname(__file__), '..', 'data', 'dynamics')
     name = "simulation_with_event.csv"
 
     fname = os.path.join(folder, name)
@@ -63,7 +62,7 @@ def test_simulation_with_event():
     grid.add_bus(bus1)
 
     for bus in grid.buses:
-        initialize_bus_rms(bus, vf=grid.rms_var_factory)
+        initialize_bus_rms(bus, vf=grid.var_factory)
 
     # Lines
     line0 = gce.Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
@@ -74,12 +73,7 @@ def test_simulation_with_event():
 
     # Generators
     gen0 = gce.Generator(name="Gen0", P=10, vset=1.0, Snom=900,
-                         x1=0.86138701, r1=0.3, freq=50.0,
-                         M=10.0,
-                         D=1.0,
-                         omega_ref=1.0,
-                         Kp=1.0,
-                         Ki=10.0,
+                         x1=0.86138701, r1=0.3, freq=50.0
                          )
 
     ######################################################################################################
@@ -87,13 +81,13 @@ def test_simulation_with_event():
     ######################################################################################################
 
     # generator
-    genqec_mdl = get_complete_generator_template_rms(grid.rms_var_factory).block
+    genqec_mdl = get_complete_generator_template_rms(grid.var_factory).block
 
     # line
-    line_mdl = get_line_rms_template(grid.rms_var_factory).block
+    line_mdl = get_line_rms_template(grid.var_factory).block
 
     # load
-    load_mdl = get_load_rms_template(grid.rms_var_factory).block
+    load_mdl = get_load_rms_template(grid.var_factory).block
 
     # connection with buses
 

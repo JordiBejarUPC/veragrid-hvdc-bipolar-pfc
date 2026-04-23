@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import Dict, List, Tuple
+from typing import Dict, List
 import time
 import numpy as np
 import pandas as pd
@@ -11,17 +11,16 @@ import pandas as pd
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise)
-from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicJacobian, SymbolicVector, SymbolicParamsVector, \
+from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector, \
     SymbolicDerivative
 from VeraGridEngine.Utils.Symbolic.block import Block
-from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, RmsInitializationMethod
 from VeraGridEngine.basic_structures import Vec, ObjVec, BoolVec, Logger
 from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowResults
 from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.initialization import init_explicit, init_pseudo_transient
 from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
 
@@ -658,7 +657,7 @@ class RmsProblemTensygrid(RmsProblemTemplate):
         return self._uid2idx_vars
 
     @property
-    def get_algebraic_vars(self):
+    def algebraic_vars(self):
         """
         :return:
         """
@@ -677,7 +676,7 @@ class RmsProblemTensygrid(RmsProblemTemplate):
         return variables
 
     @property
-    def get_state_vars(self):
+    def state_vars(self):
         """
         :return:
         """
@@ -714,7 +713,7 @@ class RmsProblemTensygrid(RmsProblemTemplate):
             x[i] = val
         return x
 
-    def update_variable_params(self, t: float):
+    def update_variable_params(self, t: float, x_snapshot: Vec | None = None):
         """
         Update the variable parameters
         :param t:

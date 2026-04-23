@@ -20,6 +20,12 @@ from VeraGridEngine.basic_structures import Vec, StrVec
 
 
 class RmsSimulationDriver(DriverTemplate):
+    __slots__ = (
+        "pf_results",
+        "options",
+        "problem",
+    )
+
     name = 'Rms Simulation'
     tpe = SimulationTypes.RmsDynamic_run
 
@@ -49,6 +55,7 @@ class RmsSimulationDriver(DriverTemplate):
         self.options = options
 
         self.results: RmsResults | None = None
+        self.problem: RmsProblemDae | None = None
 
     def run(self):
         """
@@ -84,6 +91,7 @@ class RmsSimulationDriver(DriverTemplate):
             pf_results=self.pf_results,
             progress_signal=self.progress_signal,
         )
+        self.problem = problem
         self.results = RmsResults(
             time_array=pd.DatetimeIndex(pd.to_datetime(t * 1e9)),
             rms_events_group_names=rms_events_group_names,
@@ -101,6 +109,7 @@ class RmsSimulationDriver(DriverTemplate):
 
             self.report_text("Simulating RMS event group " + rms_events_group.name)
             problem.set_events_group(rms_events_group=rms_events_group)
+            problem.reset_boundary_update_state(0.0)
 
             # DaeTrapezoidal = "DAE_Trapezoidal"
             # DaeBackEuler = "DAE_BackEuler"

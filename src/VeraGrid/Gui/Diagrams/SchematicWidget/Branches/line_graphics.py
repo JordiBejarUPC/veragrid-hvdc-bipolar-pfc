@@ -14,7 +14,7 @@ from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem,
 from VeraGrid.Gui.Diagrams.Editors.line_editor import LineEditor
 from VeraGrid.Gui.messages import yes_no_question, warning_msg
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
-from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
 from VeraGridEngine.Devices.Branches.line import Line, SequenceLineType
 from VeraGridEngine.enumerations import DeviceType
 
@@ -122,9 +122,9 @@ class LineGraphicItem(LineGraphicTemplateItem):
                            icon_path=":/Icons/icons/edit.png")
 
             add_menu_entry(menu=menu,
-                           text="Rms Editor",
-                           function_ptr=self.edit_rms,
-                           icon_path=":/Icons/icons/edit.png")
+                           text="Dynamic Editor",
+                           function_ptr=self.edit_dynamic,
+                           icon_path=":/Icons/icons/dyn_gray.png")
 
             add_menu_entry(menu=menu,
                            text="Change bus",
@@ -226,29 +226,12 @@ class LineGraphicItem(LineGraphicTemplateItem):
         if dlg.exec():
             pass
 
-    def edit_rms(self):
+    def edit_dynamic(self):
+        """
+        Open the unified dynamic editor workspace for this line.
+        """
 
-        # load templates
-        templates = self.editor.circuit.rms_models
-
-        # select line templates
-        templ_catalogue = dict()
-        templ_list = []
-        for templ in templates:
-            if templ.tpe == DeviceType.LineDevice:
-                templ_list.append(templ.name)
-                templ_catalogue[templ.name] = templ
-
-        # prompt RmsModelEditorGUI
-        rms_model_editor = DynamicBlockEditorGUI(
-            var_factory=self.editor.circuit.rms_var_factory,
-            block=self.api_object.rms_model,
-            api_object=self.api_object,
-            mode=DynamicEditorMode.RMS,
-            templates_list=self.editor.circuit.get_rms_models_by_device_type(self.api_object.device_type),
-            main_editor=True,
-        )
-        rms_model_editor.show()
+        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit)
 
     def add_to_catalogue(self):
         """

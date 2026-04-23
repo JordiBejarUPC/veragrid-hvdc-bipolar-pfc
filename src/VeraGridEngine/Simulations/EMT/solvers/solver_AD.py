@@ -645,7 +645,7 @@ class SparseADJacobian:
 
 class JitAdSolver:
     __slots__ = [
-        'problem', 't0', 't_end', 'h', 'method', 'pred_method', 'dense_threshold', 'verbose',
+        'problem', 't0', 't_end', 'h', 'method', 'pred_method', 'dense_threshold', 'verbose', 'newton_max_iter',
         'steps', 't', 'y', 'dy',  'jit_kernels_ad', 'jit_jacobian_ad',
         'state_vars', 'algebraic_vars', 'state_eqs', 'algebraic_eqs', '_newton_diag_config',
         '_predictor', '_runtime_param_count', '_static_parameter_buffer', '_full_parameter_buffer',
@@ -661,6 +661,7 @@ class JitAdSolver:
                  pred_method: DynamicIntegrationMethod = None,
                  dense_threshold: int = 100,
                  verbose: bool = False,
+                 newton_max_iter: int = 15,
                  newton_diag_config: NewtonDiagnosticsConfig | None = None)-> None:
         """
         Initializes the JIT AD Solver.
@@ -681,6 +682,8 @@ class JitAdSolver:
         :type dense_threshold: int
         :param verbose: Print compilation and simulation timings.
         :type verbose: bool
+        :param newton_max_iter: Maximum Newton iterations per local EMT substep.
+        :type newton_max_iter: int
         """
         self.problem = problem
         self.t0 = t0
@@ -689,6 +692,7 @@ class JitAdSolver:
         self.pred_method = pred_method
         self.dense_threshold = dense_threshold
         self.verbose = verbose
+        self.newton_max_iter: int = int(newton_max_iter)
         self.t_end = t_end
         self._newton_diag_config = newton_diag_config or NewtonDiagnosticsConfig(
             compute_dense_cond=False,
@@ -821,7 +825,7 @@ class JitAdSolver:
                  x0: Union[Vec | None] = None,
                  dx0: Union[Vec | None] = None,
                  params0: Union[Vec | None] = None,
-                 boundary_updater: EmtBoundaryUpdateProtocol | None = None) -> Tuple[Vec, Mat, Mat]:
+                 boundary_updater: EmtBoundaryUpdateProtocol | None = None) -> Tuple[Vec, Mat, Mat, bool, bool]:
         """
         Main JIT simulation loop using the Automatic Differentiation (AD) backend.
 
@@ -833,6 +837,9 @@ class JitAdSolver:
         """
         t_start = time.time()
         method = self.method
+
+        converged: bool = True
+        well_initialized: bool = True
 
         if method not in self.jit_kernels_ad:
             self.build_jit_ad()
@@ -999,7 +1006,8 @@ class JitAdSolver:
                 else:
                     pass
 
-                for k in range(15):
+                substep_converged: bool = False
+                for k in range(self.newton_max_iter):
                     total_newton_iterations += 1
                     ctx = NewtonSolveContext(
                         t=float(t_curr),
@@ -1024,6 +1032,7 @@ class JitAdSolver:
                     )
 
                     if res_norm_inf < 1e-5:
+                        substep_converged = True
                         break
                     else:
                         pass
@@ -1076,6 +1085,11 @@ class JitAdSolver:
                     else:
                         x_iter += delta
 
+                if not substep_converged:
+                    converged = False
+                    if i == 0 and is_first_local_step:
+                        well_initialized = False
+
                 if method == DynamicIntegrationMethod.DaeTrapezoidal:
                     dx_prev[:n_states] = (
                             (2.0 / h_eff) * (x_iter[:n_states] - x_prev[:n_states]) - dx_prev[:n_states]
@@ -1096,6 +1110,7 @@ class JitAdSolver:
                 t_local_prev = t_curr
                 is_first_local_step = False
 
+
             self.y[i + 1, :] = x_prev
             self.dy[i + 1, :] = dx_prev
 
@@ -1113,7 +1128,7 @@ class JitAdSolver:
         else:
             pass
 
-        return self.t, self.y, self.dy
+        return self.t, self.y, self.dy, well_initialized, converged
 
     def get_backend_build_stats(self) -> Dict[str, float]:
         """

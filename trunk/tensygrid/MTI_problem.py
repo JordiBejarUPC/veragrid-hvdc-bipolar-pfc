@@ -5,17 +5,17 @@ import time
 import re
 
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr)
-from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector, SymbolicDerivative
-from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
+from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicDerivative
 from VeraGridEngine.Utils.Symbolic.jit_compiler import RMSCompiler
-
+import VeraGridEngine.api as vge
+from VeraGridEngine.Simulations.Rms.problems.rms_problem_template import RmsProblemTemplate
 
 class MTI_Problem(RmsProblemTemplate):
     """
     Mathematical DAE/ODE problem builder for TenSyGrid.
 
     This class handles the parsing of symbolic equations and maps operating points
-    directly from a provided dictionary (v_dict). It ensures that state, algebraic,
+    from an optionally provided dictionary (v_dict). It ensures that state, algebraic,
     and derivative variables (dx/xp) are correctly synchronized for stable
     linearization in the iMTI framework.
     """
@@ -36,15 +36,20 @@ class MTI_Problem(RmsProblemTemplate):
     DIFF_NAME: str = "diff"
     TIME_NAME: str = "glob_time"
 
-    def __init__(self, eqs_str: List[str], v_dict: Dict[str, float]):
+    def __init__(self, eqs_str: List[str], v_dict: Optional[Dict[str, float]] = None):
         """
         Initializes the problem using a flat dictionary of operating points.
 
         :param eqs_str: List of mathematical equations as strings.
-        :param v_dict: Dictionary mapping variable names (e.g., 'x1', 'dx1', 'y1')
-                       to their numerical values at the operating point.
+        :param v_dict: Optional dictionary mapping variable names (e.g., 'x1', 'dx1', 'y1')
+                       to their numerical values at the operating point. If omitted,
+                       all values default to 0.0 and can be set later via set_operating_point().
         """
         super().__init__()
+
+        # Default to an empty dictionary if no initial guess is provided yet
+        if v_dict is None:
+            v_dict = dict()
 
         all_eqs = " ".join(eqs_str)
 
@@ -134,6 +139,36 @@ class MTI_Problem(RmsProblemTemplate):
 
         # --- 6. Equation Parsing and JIT Compilation ---
         self._parse_and_compile(eqs_str, sym_dict, var_dict)
+
+    def set_operating_point(self, v_dict: Dict[str, float]) -> None:
+        """
+        Updates the initial guess and parameter values dynamically.
+        Use this to inject a v_dict after the problem has been instantiated.
+
+        :param v_dict: Dictionary mapping variable names to their values.
+        """
+        # Update states (x)
+        for v_x in self._state_vars:
+            if v_x.name in v_dict:
+                self.init_guess[v_x.uid] = float(v_dict[v_x.name])
+
+        # Update derivatives (xp / dx)
+        for v_xp in self._diff_vars:
+            alt_name = v_xp.name.replace("xp", "dx")
+            if v_xp.name in v_dict:
+                self.init_guess[v_xp.uid] = float(v_dict[v_xp.name])
+            elif alt_name in v_dict:
+                self.init_guess[v_xp.uid] = float(v_dict[alt_name])
+
+        # Update algebraic variables (y, z)
+        for v_alg in self._algebraic_vars:
+            if v_alg.name in v_dict:
+                self.init_guess[v_alg.uid] = float(v_dict[v_alg.name])
+
+        # Update constant parameters (u)
+        for i, v_u in enumerate(self._constant_parameters):
+            if v_u.name in v_dict:
+                self._parameters_values[i] = Const(float(v_dict[v_u.name]))
 
     def _get_max_idx(self, p: str, text: str, d: int) -> int:
         """Finds the maximum numeric index referenced in equations via regex."""

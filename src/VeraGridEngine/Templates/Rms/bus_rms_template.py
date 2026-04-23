@@ -19,6 +19,12 @@ if TYPE_CHECKING:
 
 
 class BusRmsTemplate(RmsModelTemplate):
+    __slots__ = (
+        "tpe",
+        "_block",
+        "Vm",
+        "Va",
+    )
 
     def __init__(self, vf: VarFactory, is_dc:bool=False, name: str = "rms_bus_template"):
         """
@@ -71,7 +77,7 @@ def initialize_bus_rms(bus: Bus, vf: VarFactory):
 
 
 
-def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Optional[Var]]:
+def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Var] | Var:
     """
     Return the RMS bus algebraic voltage variables.
 
@@ -85,17 +91,20 @@ def get_bus_rms_algebraic_vars(bus_rms_model: Block) -> Tuple[Var, Optional[Var]
     :return: Tuple with two positions to preserve the project API
     """
     mapping = bus_rms_model.external_mapping
+    if VarPowerFlowRefferenceType.Vdc in mapping:
+        vdc = mapping[VarPowerFlowRefferenceType.Vdc]
+        if vdc is not None:
+            return vdc
+        else:
+            raise ValueError("Invalid RMS bus model: expected either (Vdc) or (Vm, Va)")
 
-    vdc = mapping.get(VarPowerFlowRefferenceType.Vdc, None)
-    if vdc is not None:
-        return vdc, None
+    else:
+        Vm = mapping[VarPowerFlowRefferenceType.Vm]
+        Va = mapping[VarPowerFlowRefferenceType.Va]
 
-    Vm = mapping.get(VarPowerFlowRefferenceType.Vm, None)
-    Va = mapping.get(VarPowerFlowRefferenceType.Va, None)
+        if Vm is not None and Va is not None:
+            return Vm, Va
 
-    if Vm is None or Va is None:
-        raise ValueError("Invalid RMS bus model: expected either (Vdc) or (Vm, Va)")
-
-    return Vm, Va
-
+        else:
+            raise ValueError("Invalid RMS bus model: expected either (Vdc) or (Vm, Va)")
 

@@ -15,9 +15,10 @@ from VeraGrid.Gui.messages import yes_no_question, info_msg
 from VeraGrid.Gui.Diagrams.MapWidget.Injections.map_injections_template_graphics import MapInjectionTemplateGraphicItem
 from VeraGrid.Gui.SolarPowerWizard.solar_power_wizzard import SolarPvWizard
 from VeraGrid.Gui.WindPowerWizard.wind_power_wizzard import WindFarmWizard
+from VeraGrid.Gui.profile_wizard_utils import fill_substation_weather_profiles
 from VeraGrid.Gui.gui_functions import add_menu_entry
-from VeraGrid.Gui.RmsModelEditor.dynamic_block_editor import DynamicBlockEditorGUI, DynamicEditorMode
-from VeraGridEngine.enumerations import DeviceType
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
+from VeraGridEngine.enumerations import DeviceType, DynamicSimulationMode
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.MapWidget.grid_map_widget import GridMapWidget
@@ -69,8 +70,8 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
                        checked_value=self.api_object.is_controlled)
 
         add_menu_entry(menu=menu,
-                       text="Rms Editor",
-                       function_ptr=self.edit_rms,
+                       text="Dynamic Editor",
+                       function_ptr=self.edit_dynamic,
                        icon_path=":/Icons/icons/edit.png")
 
         add_menu_entry(menu=menu,
@@ -104,28 +105,25 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
 
         :return:
         """
-        # load templates
-        templates = self.editor.circuit.rms_models
+        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                            preferred_mode=DynamicSimulationMode.RMS)
 
-        # select line templates
-        templ_catalogue = dict()
-        templ_list = []
-        for templ in templates:
-            if templ.tpe == DeviceType.GeneratorDevice:
-                templ_list.append(templ.name)
-                templ_catalogue[templ.name] = templ
+    def edit_emt(self):
+        """
+        Open the EMT dynamic model editor for this generator.
 
-        # prompt RmsModelEditorGUI
+        :return: None.
+        """
 
-        rms_model_editor = DynamicBlockEditorGUI(
-            var_factory=self.editor.circuit.rms_var_factory,
-            block=self.api_object.rms_model,
-            api_object=self.api_object,
-            mode=DynamicEditorMode.RMS,
-            templates_list=self.editor.circuit.get_rms_models_by_device_type(self.api_object.device_type),
-            main_editor=True,
-        )
-        rms_model_editor.show()
+        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                            preferred_mode=DynamicSimulationMode.EMT)
+
+    def edit_dynamic(self):
+        """
+        Open the unified dynamic editor workspace for this map generator.
+        """
+
+        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit)
 
     def to_battery(self):
         """
@@ -192,7 +190,7 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
 
         if self._editor.circuit.has_time_series:
 
-            dlg = SolarPvWizard(time_array=self._editor.circuit.time_profile.strftime("%Y-%m-%d %H:%M").tolist(),
+            dlg = SolarPvWizard(time_array=self._editor.circuit.time_profile,
                                 peak_power=self.api_object.Pmax,
                                 latitude=self.api_object.bus.latitude,
                                 longitude=self.api_object.bus.longitude,
@@ -202,6 +200,11 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
                 if dlg.is_accepted:
                     if len(dlg.P) == self.api_object.P_prof.size():
                         self.api_object.P_prof.set(dlg.P)
+                        fill_substation_weather_profiles(bus=self.api_object.bus,
+                                                         temperature=dlg.temperature,
+                                                         wind_speed=dlg.wind_speed,
+                                                         irradiation=dlg.irradiation,
+                                                         expected_size=self.api_object.P_prof.size())
 
                         self.plot()
                     else:
@@ -217,7 +220,7 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
 
         if self._editor.circuit.has_time_series:
 
-            dlg = WindFarmWizard(time_array=self._editor.circuit.time_profile.strftime("%Y-%m-%d %H:%M").tolist(),
+            dlg = WindFarmWizard(time_array=self._editor.circuit.time_profile,
                                  peak_power=self.api_object.Pmax,
                                  latitude=self.api_object.bus.latitude,
                                  longitude=self.api_object.bus.longitude,
@@ -227,8 +230,13 @@ class MapGeneratorGraphicItem(MapInjectionTemplateGraphicItem):
                 if dlg.is_accepted:
                     if len(dlg.P) == self.api_object.P_prof.size():
                         self.api_object.P_prof.set(dlg.P)
+                        fill_substation_weather_profiles(bus=self.api_object.bus,
+                                                         temperature=dlg.temperature,
+                                                         wind_speed=dlg.wind_speed,
+                                                         irradiation=None,
+                                                         expected_size=self.api_object.P_prof.size())
                         self.plot()
                     else:
-                        raise Exception("Wrong length from the solar photovoltaic wizard")
+                        raise Exception("Wrong length from the wind farm wizard")
         else:
             info_msg("You need to have time profiles for this function")

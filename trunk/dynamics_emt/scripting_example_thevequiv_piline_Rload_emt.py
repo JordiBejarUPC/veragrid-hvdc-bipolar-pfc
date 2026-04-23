@@ -5,10 +5,21 @@
 import cProfile
 import json
 import pstats
+import os
+import sys
 import numpy as np
 from pathlib import Path
 from time import perf_counter
 from typing import Any, Dict, List, Tuple, cast
+
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+SRC_ROOT = os.path.join(REPO_ROOT, 'src')
+
+if SRC_ROOT not in sys.path:
+    sys.path.insert(0, SRC_ROOT)
+
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
 
 import matplotlib.pyplot as plt
 from trunk.dynamics_emt.support.emt_plot_exports import (
@@ -40,7 +51,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriv
 
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
@@ -82,8 +93,6 @@ grid.add_bus(bus1)
 
 # Lines
 line0 = Line(name="line0", bus_from=bus0, bus_to=bus1, length=10, rate=900.0)
-
-
 # physical configuration (Overhead line tower)
 tower = OverheadLineType(name="Tower", Vnom=vnom)
 wire = Wire(name="Panther 30/7 ACSR",
@@ -96,9 +105,12 @@ tower.add_wire_relationship(wire=wire, xpos=-12.65, ypos=27.5, phase=1)
 tower.add_wire_relationship(wire=wire, xpos=0.0, ypos=27.5, phase=2)
 tower.add_wire_relationship(wire=wire, xpos=12.65, ypos=27.5, phase=3)
 tower.compute()
-
-# Aplicar física a la línea
+# Apply line physics
 line0.apply_template(tower, grid.Sbase, grid.fBase)
+
+# line0 = Line(name="line 0-2", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
+#                  rate=900.0)
+
 
 # load
 # P=1.0
@@ -128,26 +140,25 @@ for bus in grid.buses:
 ######################################################################################################
 
 # generator
-gen_mdl = get_generator_thevenin_rl_emt_template(vf= grid.emt_var_factory).block
+gen_mdl = get_generator_thevenin_rl_emt_template(vf= grid.var_factory).block
 
 # line
-line_mdl = get_pi_line_emt_template(grid = grid, line = line0).block
-# line_mdl = get_pi_line_emt_template(vf= grid.emt_var_factory).block
+line_mdl = get_pi_line_emt_template(vf= grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
 
 # load
-load_mdl = get_shunt_r_3ph_emt_template(vf = grid.emt_var_factory).block
+load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 
-load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_3ph", new_value=1.0)
+
 
 ######################################################################################################
 # Add models to devices
 ######################################################################################################
 
-set_emt_model(device=gen0, model=gen_mdl, var_factory= grid.emt_var_factory)
+set_emt_model(device=gen0, model=gen_mdl, var_factory= grid.var_factory)
 
-set_emt_model(device=line0, model=line_mdl, var_factory= grid.emt_var_factory)
+set_emt_model(device=line0, model=line_mdl, var_factory= grid.var_factory)
 
-set_emt_model(device=load, model=load_mdl, var_factory= grid.emt_var_factory)
+set_emt_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 
 #
 # # connection with buses
@@ -280,7 +291,7 @@ options = EmtOptions(time_step = 5e-6,
                      simulation_time =  0.01, # s
                      tolerance = 1e-6,
                      solver_type = SOLVER_TYPE_MAP[CHOSEN_SOLVER],
-                     initialization_method = EmtInitializationMethod.Auto,
+                     initialization_method = EmtInitializationMethod.Explicit,
                      integration_method = DynamicIntegrationMethod.DaeTrapezoidal,
                      verbose = 1)
 
@@ -292,7 +303,7 @@ def create_problem() -> EmtProblemDae:
     #                               pf_results= res)
     local_problem = EmtProblemDae(grid=grid,
                                   options=options,
-                                  pf_results_3Ph=None,
+                                  pf_results_3ph=None,
                                   pf_results=res)
 
     if ENABLE_NEWTON_TRACE:
@@ -399,7 +410,9 @@ def run_single_solver_trajectory(solver_key: str, enable_trace: bool) -> Tuple[E
     t_arr: np.ndarray
     y_arr: np.ndarray
     dy_arr: np.ndarray
-    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, dy_arr, well_initialized , converged = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     return local_problem, solver, t_arr, y_arr, dy_arr
 
 
@@ -433,9 +446,9 @@ def export_demo_plots(
     bus1_voltages: np.ndarray = extract_three_phase_matrix(problem, y_values, bus1.emt_model.out_vars)
     generator_currents: np.ndarray = extract_three_phase_matrix(problem, y_values, gen_mdl.out_vars)
     load_current_triplet: Tuple[Any, Any, Any] = (
-        find_name_in_block("i_A_Shunt_R_3ph", load_mdl),
-        find_name_in_block("i_B_Shunt_R_3ph", load_mdl),
-        find_name_in_block("i_C_Shunt_R_3ph", load_mdl),
+        find_name_in_block("i_A_R_shunt_3ph", load_mdl),
+        find_name_in_block("i_B_R_shunt_3ph", load_mdl),
+        find_name_in_block("i_C_R_shunt_3ph", load_mdl),
     )
     load_currents: np.ndarray = -extract_three_phase_matrix(problem, y_values, load_current_triplet)
     theta_var: Any = find_name_in_block("theta_emt_thevenin_eq_generator_template", gen_mdl)
@@ -681,14 +694,18 @@ def run_single_solver_cold_warm_benchmark(solver_key: str) -> Dict[str, object]:
     _cold_t: np.ndarray
     cold_y: np.ndarray
     _cold_dy: np.ndarray
-    _cold_t, cold_y, _cold_dy = solver.simulate(boundary_updater=boundary_updater)
+    _cold_t, cold_y, _cold_dy, well_initialized , converged = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     cold_sim_s: float = perf_counter() - cold_sim_t0
 
     warm_sim_t0: float = perf_counter()
     _warm_t: np.ndarray
     warm_y: np.ndarray
     _warm_dy: np.ndarray
-    _warm_t, warm_y, _warm_dy = solver.simulate(boundary_updater=boundary_updater)
+    _warm_t, warm_y, _warm_dy, well_initialized , converged = solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     warm_sim_s: float = perf_counter() - warm_sim_t0
 
     if warm_sim_s > 0.0:
@@ -739,7 +756,9 @@ def run_single_solver_benchmark(solver_key: str, reference_y: np.ndarray | None)
     t_arr: np.ndarray
     y_arr: np.ndarray
     dy_arr: np.ndarray
-    t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, dy_arr, well_initialized , converged= solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
     simulate_s: float = perf_counter() - t_sim_0
 
     if reference_y is None:
@@ -880,7 +899,9 @@ def main() -> None:
     # ==============================================================================
     boundary_updater = cast(Any, problem)
     profiler.enable()
-    t_arr, y_arr, _dy = solver.simulate(boundary_updater=boundary_updater)
+    t_arr, y_arr, _dy, well_initialized , converged= solver.simulate(boundary_updater=boundary_updater)
+    print(f"well_initialized = {well_initialized}")
+    print(f"converged = {converged}")
 
     if isinstance(solver, StructuralCompiledSolver):
         print("StructuralCompiled backend build stats")
@@ -919,23 +940,23 @@ def main() -> None:
     # PROFILING REPORT
     # ==============================================================================
 
-    i_ser_A = find_name_in_block("i_ser_Pi_0", line0.emt_model)
-    i_ser_B = find_name_in_block("i_ser_Pi_1", line0.emt_model)
-    i_ser_C = find_name_in_block("i_ser_Pi_2", line0.emt_model)
+    i_ser_A = find_name_in_block("i_ser_Pi_A", line0.emt_model)
+    i_ser_B = find_name_in_block("i_ser_Pi_B", line0.emt_model)
+    i_ser_C = find_name_in_block("i_ser_Pi_C", line0.emt_model)
     i_ser_A_plt = y_arr[:, problem.get_var_idx(i_ser_A)]
     i_ser_B_plt = y_arr[:, problem.get_var_idx(i_ser_B)]
     i_ser_C_plt = y_arr[:, problem.get_var_idx(i_ser_C)]
 
-    i_f_cap_A = find_name_in_block("i_cap_f_Pi_0", line0.emt_model)
-    i_f_cap_B = find_name_in_block("i_cap_f_Pi_1", line0.emt_model)
-    i_f_cap_C = find_name_in_block("i_cap_f_Pi_2", line0.emt_model)
+    i_f_cap_A = find_name_in_block("i_cap_f_Pi_A", line0.emt_model)
+    i_f_cap_B = find_name_in_block("i_cap_f_Pi_B", line0.emt_model)
+    i_f_cap_C = find_name_in_block("i_cap_f_Pi_C", line0.emt_model)
     i_f_cap_A_plt = y_arr[:, problem.get_var_idx(i_f_cap_A)]
     i_f_cap_B_plt = y_arr[:, problem.get_var_idx(i_f_cap_B)]
     i_f_cap_C_plt = y_arr[:, problem.get_var_idx(i_f_cap_C)]
 
-    i_t_cap_A = find_name_in_block("i_cap_t_Pi_0", line0.emt_model)
-    i_t_cap_B = find_name_in_block("i_cap_t_Pi_1", line0.emt_model)
-    i_t_cap_C = find_name_in_block("i_cap_t_Pi_2", line0.emt_model)
+    i_t_cap_A = find_name_in_block("i_cap_t_Pi_A", line0.emt_model)
+    i_t_cap_B = find_name_in_block("i_cap_t_Pi_B", line0.emt_model)
+    i_t_cap_C = find_name_in_block("i_cap_t_Pi_C", line0.emt_model)
     i_t_cap_A_plt = y_arr[:, problem.get_var_idx(i_t_cap_A)]
     i_t_cap_B_plt = y_arr[:, problem.get_var_idx(i_t_cap_B)]
     i_t_cap_C_plt = y_arr[:, problem.get_var_idx(i_t_cap_C)]

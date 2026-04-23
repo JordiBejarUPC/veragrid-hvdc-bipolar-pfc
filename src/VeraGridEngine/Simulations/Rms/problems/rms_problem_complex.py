@@ -8,7 +8,7 @@ import time
 import numpy as np
 import pandas as pd
 
-from VeraGridEngine import ParamPowerFlowRefferenceType
+from VeraGridEngine.enumerations import ParamPowerFlowRefferenceType
 from VeraGridEngine.Devices import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.symbolic import (Var, Const, Expr, piecewise)
 from VeraGridEngine.Utils.Symbolic.compiled_functions import SymbolicParamsVector, SymbolicDerivative
@@ -173,11 +173,11 @@ class RmsProblemComplex(RmsProblemTemplate):
             bus_dict[elm] = bus_num
 
             # Initialize complex phasor-based bus model
-            initialize_bus_complex_rms(bus=elm, vf=grid.rms_var_factory)
+            initialize_bus_complex_rms(bus=elm, vf=grid.var_factory)
 
             # Flatten model
             elm.rms_model.unify_blocks()
-            mdl = block_deep_copy(elm.rms_model, grid.rms_var_factory)
+            mdl = block_deep_copy(elm.rms_model, grid.var_factory)
 
             self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -215,7 +215,7 @@ class RmsProblemComplex(RmsProblemTemplate):
                     elm.rms_model = DynamicModelHost()
                 
                 elm.rms_model = get_line_complex_rms_template(
-                    vfactory=grid.rms_var_factory,
+                    vfactory=grid.var_factory,
                     name=f"Line_complex_{elm.name}"
                 ).block
                 
@@ -350,7 +350,7 @@ class RmsProblemComplex(RmsProblemTemplate):
                 bus_index = bus_dict[elm.bus]
 
                 elm.rms_model.unify_blocks()
-                mdl = block_deep_copy(elm.rms_model, self.grid.rms_var_factory)
+                mdl = block_deep_copy(elm.rms_model, self.grid.var_factory)
 
                 self.add_variables_to_compilation_dicts(elm, mdl)
 
@@ -417,7 +417,7 @@ class RmsProblemComplex(RmsProblemTemplate):
 
         # Add the nodal balance equations
         for i, elm in enumerate(self.grid.buses):
-            mdl = block_deep_copy(elm.rms_model, grid.rms_var_factory)
+            mdl = block_deep_copy(elm.rms_model, grid.var_factory)
             if len(mdl.algebraic_eqs) == 0:
                 if not P_used[i] and not Q_used[i]:
                     self.logger.add_error("Isolated bus", value=i)
@@ -668,7 +668,7 @@ class RmsProblemComplex(RmsProblemTemplate):
         return self._uid2idx_vars
 
     @property
-    def get_algebraic_vars(self):
+    def algebraic_vars(self):
         return self._algebraic_vars
 
     @property
@@ -681,7 +681,7 @@ class RmsProblemComplex(RmsProblemTemplate):
         return variables
 
     @property
-    def get_state_vars(self):
+    def state_vars(self):
         return self._state_vars
 
     def get_all_vars_number(self) -> int:
@@ -709,7 +709,7 @@ class RmsProblemComplex(RmsProblemTemplate):
                 x[i] = val
         return x
 
-    def update_variable_params(self, t: float):
+    def update_variable_params(self, t: float, x_snapshot: Vec | None = None):
         """Update the variable parameters."""
         self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
 

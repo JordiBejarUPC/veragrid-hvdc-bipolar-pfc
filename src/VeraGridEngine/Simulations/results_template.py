@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 import numpy as np
 import pandas as pd
-from typing import List, Dict, Any, Union, TYPE_CHECKING
+from typing import List, Dict, Any, Union, TYPE_CHECKING, Tuple
 
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.basic_structures import (IntVec, IntMat, Vec, CxVec, StrVec, StrMat, Mat, DateVec, CxMat, BoolVec,
@@ -23,10 +23,15 @@ class ResultsProperty:
     """
     ResultsProperty
     """
+    __slots__ = (
+        "name",
+        "tpe",
+        "old_names",
+    )
 
     def __init__(self, name: str,
-                 tpe: Union[Vec, Mat, CxVec, CxMat],
-                 old_names: List[str]):
+                 tpe: Any,
+                 old_names: Union[List[str], Tuple[str, ...]]) -> None:
         """
         ResultsProperty
         :param name: name of the property
@@ -34,17 +39,75 @@ class ResultsProperty:
         :param old_names: list of previous names. Use in case of renaming a registered property
         """
 
-        self.name = name
+        self.name: str = name
 
-        self.tpe = tpe
+        self.tpe: Any = tpe
 
-        self.old_names = old_names
+        self.old_names: Tuple[str, ...] = tuple(old_names)
 
 
-class ResultsTemplate:
+class ResultsTemplateMeta(type):
+    """
+    Metaclass that pre-builds inherited results schema declarations.
+    """
+
+    def __new__(mcs: type, name: str, bases: Tuple[type, ...], namespace: Dict[str, Any]) -> type:
+        """
+        Build a new class and aggregate result declarations from base to child.
+        :param name: Class name
+        :param bases: Base classes
+        :param namespace: Class namespace
+        :return: New class
+        """
+        cls: type = super().__new__(mcs, name, bases, namespace)
+
+        aggregated_declarations: List[ResultsProperty] = list()
+        for base in bases:
+            base_declarations: Tuple[ResultsProperty, ...] = base.__dict__.get("CLASS_RESULTS_DECLARATIONS", tuple())
+            for declaration in base_declarations:
+                aggregated_declarations.append(declaration)
+
+        local_declarations: Tuple[ResultsProperty, ...] = namespace.get("LOCAL_RESULTS_DECLARATIONS", tuple())
+        for declaration in local_declarations:
+            aggregated_declarations.append(declaration)
+
+        cls.CLASS_RESULTS_DECLARATIONS = tuple(aggregated_declarations)
+
+        class_data_variables: Dict[str, ResultsProperty] = dict()
+        for declaration in cls.CLASS_RESULTS_DECLARATIONS:
+            prop: ResultsProperty = declaration
+            class_data_variables[prop.name] = prop
+
+        cls.CLASS_DATA_VARIABLES = class_data_variables
+
+        return cls
+
+
+class ResultsTemplate(metaclass=ResultsTemplateMeta):
     """
     ResultsTemplate
     """
+    __slots__ = (
+        "name",
+        "report_text",
+        "study_results_type",
+        "available_results",
+        "_data_variables",
+        "_time_array",
+        "_is_3ph",
+        "clustering_results",
+        "using_clusters",
+        "time_indices",
+        "sampled_probabilities",
+        "original_sample_idx",
+        "F",
+        "T",
+        "hvdc_F",
+        "hvdc_T",
+        "bus_area_indices",
+        "area_names",
+        "_ResultsTemplate__show_plot",
+    )
 
     def __init__(
             self,
@@ -71,7 +134,7 @@ class ResultsTemplate:
 
         self.available_results: Dict[ResultTypes, List[ResultTypes]] = available_results
 
-        self._data_variables: Dict[str, ResultsProperty] = dict()
+        self._data_variables: Dict[str, ResultsProperty] = type(self).CLASS_DATA_VARIABLES
 
         self._time_array: Union[DateVec, None] = time_array
 
@@ -101,12 +164,12 @@ class ResultsTemplate:
         self.__show_plot = True
 
     @property
-    def data_variables(self):
+    def data_variables(self) -> Dict[str, ResultsProperty]:
         """
 
         :return:
         """
-        return self._data_variables
+        return type(self).CLASS_DATA_VARIABLES
 
     @property
     def time_array(self) -> DateVec:
@@ -145,19 +208,18 @@ class ResultsTemplate:
         """
         self.__show_plot = False
 
-    def register(self, name: str, tpe: Union[Vec, Mat, CxVec, CxMat], old_names: Union[None, List[str]] = None):
+    def register(self, name: str, tpe: Union[Vec, Mat, CxVec, CxMat], old_names: Union[None, List[str]] = None) -> None:
         """
-        Register a results variable for disk persistence
+        Runtime registration is intentionally disabled.
         :param name: name of the variable to register (is checked)
         :param tpe: type of the variable
         :param old_names: list of old names for retro compatibility (optional)
+        :return: None
         """
-
-        assert (hasattr(self, name))  # the property must exist, this avoids bugs when registering
-
-        self._data_variables[name] = ResultsProperty(name=name,
-                                                     tpe=tpe,
-                                                     old_names=list() if old_names is None else old_names)
+        raise RuntimeError(
+            "Runtime results registration is disabled. "
+            "Declare results in LOCAL_RESULTS_DECLARATIONS."
+        )
 
     def consolidate_after_loading(self):
         """
@@ -416,6 +478,31 @@ class ResultsTemplate:
         """
         pass
 
+    def _iter_instance_items(self):
+        """
+        Iterate over instance attributes stored either in slots or in __dict__.
+        """
+        seen = set()
+
+        for cls in type(self).mro():
+            cls_slots = cls.__dict__.get("__slots__", ())
+
+            if isinstance(cls_slots, str):
+                cls_slots = (cls_slots,)
+
+            for slot in cls_slots:
+                if slot in {"__dict__", "__weakref__"} or slot in seen:
+                    continue
+
+                seen.add(slot)
+
+                if hasattr(self, slot):
+                    yield slot, getattr(self, slot)
+
+        for prop, value in getattr(self, "__dict__", {}).items():
+            if prop not in seen:
+                yield prop, value
+
     def expand_clustered_results(self):
         """
         Expand all arrays using the clustering info
@@ -428,7 +515,7 @@ class ResultsTemplate:
             # NOTE: You might be tempted to change this loop to use the registered properties.
             #       Don't do it, there may be unregistered properties that will fail if this doesn't
             #       traverse all te actual properties of the class... this may be a future topic
-            for prop, value in self.__dict__.items():
+            for prop, value in self._iter_instance_items():
 
                 if isinstance(value, np.ndarray):
 
@@ -516,6 +603,3 @@ class ResultsTemplate:
                                          expected_value=str(curr_value.shape))
                 else:
                     setattr(self, res_prop.name, array)
-
-
-

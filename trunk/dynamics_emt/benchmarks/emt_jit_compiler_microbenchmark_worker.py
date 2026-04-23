@@ -210,8 +210,8 @@ def build_compiler_benchmark_target(case_name: CompilerBenchmarkCase) -> Compile
     :rtype: CompilerBenchmarkTarget
     """
     problem: Any = build_problem_from_case(case_name)
-    state_vars: List[Var] = problem.get_state_vars()
-    algebraic_vars: List[Var] = problem.get_algebraic_vars()
+    state_vars: List[Var] = problem.state_vars()
+    algebraic_vars: List[Var] = problem.algebraic_vars()
     state_eqs: List[Expr] = problem.get_state_eqs()
     algebraic_eqs: List[Expr] = problem.get_algebraic_eqs()
     event_parameters: List[Var] = problem.get_variable_parameters()

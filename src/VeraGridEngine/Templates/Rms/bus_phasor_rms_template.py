@@ -26,6 +26,12 @@ class BusPhasorRmsTemplate(RmsModelTemplate):
     This template represents bus voltage as V = Vr + j*Vi instead of polar coordinates (Vm, Va).
     This representation makes line equations linear in the voltage variables.
     """
+    __slots__ = (
+        "tpe",
+        "_block",
+        "Vr",
+        "Vi",
+    )
 
     def __init__(self, vf: VarFactory, is_dc:bool=False, name: str = "rms_bus_phasor_template"):
         """

@@ -5,8 +5,6 @@
 from __future__ import annotations
 
 import numpy as np
-
-from VeraGridEngine import ConverterFaultControlType
 from VeraGridEngine.DataStructures.branch_parent_data import BranchParentData
 from VeraGridEngine.enumerations import ConverterControlType
 from VeraGridEngine.basic_structures import Vec, IntVec, ObjVec, Logger
@@ -28,21 +26,13 @@ class VscData(BranchParentData):
 
         self.F_dcn = np.zeros(self.nelm, dtype=int)
 
-        self.Kdp: Vec = np.full(self.nelm, fill_value=0.0, dtype=float)
-        self.u_setpoint_min: Vec = np.full(self.nelm, fill_value=0.9, dtype=float)
-        self.u_setpoint_max: Vec = np.full(self.nelm, fill_value=1.1, dtype=float)
-        self.u_setpoint: Vec = np.full(self.nelm, fill_value=1.0, dtype=float)
-        self.du_setpoint: Vec = np.full(self.nelm, fill_value=0.0, dtype=float)
-        self.Q_min: Vec = np.full(self.nelm, fill_value=-999.0, dtype=float)
-        self.Q_max: Vec = np.full(self.nelm, fill_value=999.0, dtype=float)
-
-        self.alpha1: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha1)
-        self.alpha2: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha2)
-        self.alpha3: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha3)
+        self.Kdp: Vec = np.ones(self.nelm, dtype=float)
+        self.alpha1: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha1) (idle loss)
+        self.alpha2: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha2) (switching loss)
+        self.alpha3: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha3) (resistive loss)
 
         self.control1: ObjVec = np.full(self.nelm, fill_value=ConverterControlType.Vm_dc, dtype=object)
         self.control2: ObjVec = np.full(self.nelm, fill_value=ConverterControlType.Pac, dtype=object)
-        self.fault_control: ObjVec = np.full(self.nelm, fill_value=ConverterFaultControlType.Standard, dtype=object)
 
         self.control1_val: Vec = np.ones(self.nelm, dtype=float)
         self.control2_val: Vec = np.ones(self.nelm, dtype=float)
@@ -53,8 +43,6 @@ class VscData(BranchParentData):
         self.control2_branch_idx: IntVec = np.full(nelm, -1, dtype=int)
 
         self.min_ac_voltage: Vec = np.full(self.nelm, 0.1, dtype=float)
-
-        self.ysvs: Vec = np.full(self.nelm, 0.0, dtype=float)
 
     def slice(self, elm_idx: IntVec, bus_idx: IntVec, bus_map: IntVec, logger: Logger | None) -> "VscData":
         """
@@ -75,20 +63,12 @@ class VscData(BranchParentData):
         # data.T_ac = self.T_ac[elm_idx]
 
         data.Kdp = self.Kdp[elm_idx]
-        data.u_setpoint_min = self.u_setpoint_min[elm_idx]
-        data.u_setpoint_max = self.u_setpoint_max[elm_idx]
-        data.u_setpoint = self.u_setpoint[elm_idx]
-        data.du_setpoint = self.du_setpoint[elm_idx]
-        data.Q_min = self.Q_min[elm_idx]
-        data.Q_max = self.Q_max[elm_idx]
-
         data.alpha1 = self.alpha1[elm_idx]
         data.alpha2 = self.alpha2[elm_idx]
         data.alpha3 = self.alpha3[elm_idx]
 
         data.control1 = self.control1[elm_idx]
         data.control2 = self.control2[elm_idx]
-        data.fault_control = self.fault_control[elm_idx]
 
         data.control1_val = self.control1_val[elm_idx]
         data.control2_val = self.control2_val[elm_idx]
@@ -101,8 +81,6 @@ class VscData(BranchParentData):
         data.control2_branch_idx = self.control2_branch_idx[elm_idx]
 
         data.min_ac_voltage = self.min_ac_voltage[elm_idx]
-
-        data.ysvs = self.ysvs[elm_idx]
 
         for k in range(data.nelm):
             if data.control1_bus_idx[k] > -1:
@@ -134,13 +112,6 @@ class VscData(BranchParentData):
         data.F_dcn = self.F_dcn.copy()
 
         data.Kdp = self.Kdp.copy()
-        data.u_setpoint_min = self.u_setpoint_min.copy()
-        data.u_setpoint_max = self.u_setpoint_max.copy()
-        data.u_setpoint = self.u_setpoint.copy()
-        data.du_setpoint = self.du_setpoint.copy()
-        data.Q_min = self.Q_min.copy()
-        data.Q_max = self.Q_max.copy()
-
         data.dc = self.dc.copy()
         data.alpha1 = self.alpha1.copy()
         data.alpha2 = self.alpha2.copy()
@@ -148,7 +119,6 @@ class VscData(BranchParentData):
 
         data.control1 = self.control1.copy()
         data.control2 = self.control2.copy()
-        data.fault_control = self.fault_control.copy()
 
         data.control1_val = self.control1_val.copy()
         data.control2_val = self.control2_val.copy()
@@ -159,8 +129,6 @@ class VscData(BranchParentData):
         data.control2_branch_idx = self.control2_branch_idx.copy()
 
         data.min_ac_voltage = self.min_ac_voltage.copy()
-
-        data.ysvs = self.ysvs.copy()
 
         return data
 

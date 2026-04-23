@@ -58,8 +58,8 @@ def get_genrow1_rms_template(var_factory: VarFactory, name="Genrow rms template"
     templ.block.event_dict[omega_ref] = var_factory.add_const(1.0)
     templ.block.event_dict[Kp] = var_factory.add_const(0.0)
     templ.block.event_dict[Ki] = var_factory.add_const(0.0)
-    templ.block.event_dict[vf] = var_factory.add_const(None)
-    templ.block.event_dict[tm0] = var_factory.add_const(None)
+    templ.block.event_dict[vf] = psid + X1 * i_d
+    templ.block.event_dict[tm0] = tm
 
     templ.block.algebraic_vars = [P_g, Q_g, v_d, v_q, i_d, i_q, psid, psiq, te, tm, et]
 
@@ -101,8 +101,6 @@ def get_genrow1_rms_template(var_factory: VarFactory, name="Genrow rms template"
         te: psid * i_q - psiq * i_d,
         tm: te,
         et: delta / (2 * np.pi * freq),
-        tm0: tm,
-        vf: psid + X1 * i_d
     }
 
     templ.block.external_mapping = {

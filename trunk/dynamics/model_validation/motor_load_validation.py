@@ -2,9 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
-import math
 import cProfile as profile
-import numpy as np
 from matplotlib import pyplot as plt
 
 import sys
@@ -12,7 +10,6 @@ import os
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 
-from VeraGridEngine.Utils.Symbolic.symbolic import Const, Var, cos, sin, piecewise
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic_io import block_deep_copy
 from VeraGridEngine.Templates.Rms.load_zip_template import ZIPLoadBuild
@@ -26,8 +23,8 @@ from VeraGridEngine.Simulations.Rms.rms_options import RmsOptions
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
 
 from VeraGridEngine.enumerations import VarPowerFlowRefferenceType, DynamicIntegrationMethod, RmsInitializationMethod
-from VeraGridEngine.Devices.Aggregation import RmsEvent
-from VeraGridEngine.Devices.Aggregation.rms_events_group import RmsEventsGroup
+from VeraGridEngine.Devices.Events.rms_event import RmsEvent
+from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 import VeraGridEngine.api as gce
 
 def find_name_in_block(name: str, block: Block):
@@ -55,7 +52,7 @@ grid.add_bus(bus1)
 grid.add_bus(bus2)
 
 for bus in grid.buses:
-    initialize_bus_rms(bus, vf=grid.rms_var_factory)
+    initialize_bus_rms(bus, vf=grid.var_factory)
 
 # Lines
 line0 = gce.Line(name="line 0-1", bus_from=bus0, bus_to=bus1, r=0.029585798816568046, x=0.07100591715976332, b=0.03,
@@ -91,23 +88,23 @@ grid.add_generator(bus=bus0, api_obj=gen0)
 
 
 # line
-line0_mdl = block_deep_copy(get_line_rms_template(grid.rms_var_factory).block)
-line1_mdl = block_deep_copy(get_line_rms_template(grid.rms_var_factory).block)
+line0_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
+line1_mdl = block_deep_copy(get_line_rms_template(grid.var_factory).block)
 
 # load
 load_type = 'zip'
 if load_type == 'zip':
-    load_mdl = block_deep_copy(ZIPLoadBuild(grid.rms_var_factory, Pl0 =-0.0999999, Ql0 =-0.00999999).block)
+    load_mdl = block_deep_copy(ZIPLoadBuild(grid.var_factory, Pl0 =-0.0999999, Ql0 =-0.00999999).block)
 elif load_type == 'exponential':
-    load_mdl = block_deep_copy(ExponentialLoadBuild(grid.rms_var_factory, Pl0 =-0.0999999, Ql0 =-0.00999999).block)
+    load_mdl = block_deep_copy(ExponentialLoadBuild(grid.var_factory, Pl0 =-0.0999999, Ql0 =-0.00999999).block)
 elif load_type == 'motor':
-    load_mdl = block_deep_copy(MotorLoadBuild(grid.rms_var_factory).block)
+    load_mdl = block_deep_copy(MotorLoadBuild(grid.var_factory).block)
 else:
     raise ValueError(f"Unknown load type: {load_type}")
 
-motor_mdl = block_deep_copy(MotorLoadBuild(grid.rms_var_factory).block)
+motor_mdl = block_deep_copy(MotorLoadBuild(grid.var_factory).block)
 
-genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.rms_var_factory).block)
+genrow_mdl1 = block_deep_copy(get_genrow1_rms_template(grid.var_factory).block)
 
 genrow_mdl1.connect([genrow_mdl1.in_vars[0]], [bus1.rms_model.out_vars[0]])
 genrow_mdl1.connect([genrow_mdl1.in_vars[1]], [bus1.rms_model.out_vars[1]])

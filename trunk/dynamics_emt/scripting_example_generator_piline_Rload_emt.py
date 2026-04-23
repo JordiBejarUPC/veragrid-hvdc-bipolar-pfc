@@ -32,7 +32,7 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver_3ph import PowerFlow
 
 
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_3ph_emt_template
+from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.generator_emt_type_template import get_generator_emt_type_template, get_complete_generator_template_emt, get_generator_sauer_pai_type_emt_template
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 
@@ -127,17 +127,18 @@ for bus in grid.buses:
 # gen_mdl = get_generator_classical_type_template(grid=grid, gen = gen0).block
 # gen_mdl = get_generator_sauer_pai_type_template(grid=grid, gen = gen0).block
 
-gen_mdl = get_complete_generator_template_emt(vf= grid.emt_var_factory).block
+gen_mdl = get_complete_generator_template_emt(vf= grid.var_factory).block
 # gen_mdl = get_simple_generator_emt_template(grid=grid, gen = gen0).block
 
 
 
 # line
-line_mdl = get_pi_line_emt_template(vf=grid.emt_var_factory, line = line0).block
+# line_mdl = get_pi_line_emt_template(vf=grid.var_factory, line = line0).block
+line_mdl = get_pi_line_emt_template(vf = grid.var_factory, phN = False, phA = True, phB = True, phC = True).block
 
 # load
 # load_mdl = get_load_ZIP_3ph_emt_template(grid = grid, load = load).block
-load_mdl = get_shunt_r_3ph_emt_template(vf= grid.emt_var_factory).block
+load_mdl = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
 # load_mdl.set_parameter_in_model(var_name="Vnom_Shunt_R_3ph", new_value=1.0)
 
 
@@ -145,11 +146,11 @@ load_mdl = get_shunt_r_3ph_emt_template(vf= grid.emt_var_factory).block
 # Add models to devices
 ######################################################################################################
 
-set_emt_model(device=gen0, model=gen_mdl, var_factory= grid.emt_var_factory)
+set_emt_model(device=gen0, model=gen_mdl, var_factory= grid.var_factory)
 
-set_emt_model(device=line0, model=line_mdl, var_factory= grid.emt_var_factory)
+set_emt_model(device=line0, model=line_mdl, var_factory= grid.var_factory)
 
-set_emt_model(device=load, model=load_mdl, var_factory= grid.emt_var_factory)
+set_emt_model(device=load, model=load_mdl, var_factory= grid.var_factory)
 
 # # connection with buses
 # gen_mdl.connect([gen_mdl.in_vars[0]], [bus0.emt_model.out_vars[0]]) # v_A
@@ -266,7 +267,7 @@ options = EmtOptions(time_step = 5e-6, # 5e-7,
 def create_problem() -> EmtProblemDae:
     local_problem = EmtProblemDae(grid=grid,
                                   options=options,
-                                  pf_results_3Ph=res,
+                                  pf_results_3ph=res,
                                   pf_results=None)
 
     if ENABLE_NEWTON_TRACE:
@@ -376,7 +377,7 @@ def benchmark_all_solvers() -> None:
 
         boundary_updater = cast(Any, local_problem)
         t_sim_0 = perf_counter()
-        t_arr, y_arr, dy_arr = solver.simulate(boundary_updater=boundary_updater)
+        t_arr, y_arr, dy_arr, _, _ = solver.simulate(boundary_updater=boundary_updater)
         simulate_s = perf_counter() - t_sim_0
 
         if reference_y is None:
@@ -385,8 +386,8 @@ def benchmark_all_solvers() -> None:
         else:
             max_abs_diff = float(np.max(np.abs(y_arr - reference_y)))
 
-        loop_time = getattr(solver, "_last_sim_loop_time", np.nan)
-        build_stats_fn = getattr(solver, "get_backend_build_stats", None)
+        loop_time = solver.get_last_sim_loop_time()
+        build_stats = solver.get_backend_build_stats()
 
         results.append({
             "solver": solver_key,
@@ -397,7 +398,7 @@ def benchmark_all_solvers() -> None:
             "solver_total_s": solver_init_s + solver_build_s + simulate_s,
             "loop_s": float(loop_time) if loop_time == loop_time else np.nan,
             "max_abs_diff": max_abs_diff,
-            "build_stats": build_stats_fn() if callable(build_stats_fn) else dict(),
+            "build_stats": build_stats,
             "steps": len(t_arr) - 1,
             "shape": y_arr.shape,
             "dy_shape": dy_arr.shape,
@@ -446,12 +447,11 @@ build_solver_backend(CHOSEN_SOLVER, solver, problem)
 # RUN SIMULATION
 # ==============================================================================
 boundary_updater = cast(Any, problem)
-t, y, dy = solver.simulate(boundary_updater=boundary_updater)
+t, y, dy, _, _  = solver.simulate(boundary_updater=boundary_updater)
 
-if hasattr(solver, "get_backend_build_stats"):
-    print("StructuralCompiled backend build stats")
-    for key, value in solver.get_backend_build_stats().items():
-        print(f"  {key}: {value:.6f}s")
+print("StructuralCompiled backend build stats")
+for key, value in solver.get_backend_build_stats().items():
+    print(f"  {key}: {value:.6f}s")
 
 
 collector = problem.get_newton_trace_collector()
