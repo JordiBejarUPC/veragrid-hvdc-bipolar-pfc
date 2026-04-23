@@ -261,8 +261,6 @@ class Bus(DynamicBusDevice):
         self.longitude = float(longitude)
         self.latitude = float(latitude)
 
-        self.is_grounded: bool = True
-
         self.color = color if color is not None else "#000000"
 
     @property
