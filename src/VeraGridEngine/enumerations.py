@@ -3388,6 +3388,10 @@ class ParamPowerFlowRefferenceType(Enum):
     omega_base = "omega_base" # in rad/s
     Sbase = "Sbase" # in MVA
 
+    generator_share_enable = "generator_share_enable"
+    generator_share_p_ref = "generator_share_p_ref"
+    generator_share_q_ref = "generator_share_q_ref"
+
 
     def __str__(self):
         return self.value
