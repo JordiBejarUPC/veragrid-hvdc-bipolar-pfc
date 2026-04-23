@@ -1314,13 +1314,16 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
 
         for branch_graphic in self.get_associated_branch_graphics():
             endpoint: SchematicBranchEndpoint | None = self.get_branch_endpoint_for_graphic(branch_graphic)
+            branch_api_object = branch_graphic.api_object
 
             if endpoint is None:
+                continue
+            elif branch_api_object is None:
                 continue
             else:
                 pass
 
-            attachment = self.editor.get_persisted_attachment(api_object=branch_graphic.api_object,
+            attachment = self.editor.get_persisted_attachment(api_object=branch_api_object,
                                                               endpoint=endpoint.value)
             has_saved_endpoint_state = any(key in attachment for key in ("side",
                                                                          "slot",
@@ -1360,7 +1363,7 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             attachment["anchor_auto"] = True
 
             grouped_entries[side_key].append((sort_value,
-                                              str(id(branch_graphic.api_object)),
+                                              str(id(branch_api_object)),
                                               branch_graphic,
                                               endpoint,
                                               attachment))
@@ -1371,13 +1374,20 @@ class BusGraphicItem(GenericDiagramWidget, QtWidgets.QGraphicsRectItem):
             entries.sort(key=lambda entry: (entry[0], entry[1]))
 
             for order_index, (_, _, branch_graphic, endpoint, attachment) in enumerate(entries, start=1):
+                branch_api_object = branch_graphic.api_object
+
+                if branch_api_object is None:
+                    continue
+                else:
+                    pass
+
                 slot_key = build_explicit_slot_key(owner_kind="bus", side=side_key, order=order_index)
                 attachment["side"] = side_key.value
                 attachment["order"] = order_index
                 attachment["slot"] = slot_key
                 attachment["terminal_key"] = slot_key
                 attachment["auto_slot"] = True
-                self.editor.diagram.set_attachment(api_object=branch_graphic.api_object,
+                self.editor.diagram.set_attachment(api_object=branch_api_object,
                                                    endpoint=endpoint.value,
                                                    attachment=attachment)
 
