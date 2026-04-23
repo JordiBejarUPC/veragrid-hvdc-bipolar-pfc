@@ -241,8 +241,8 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
             # Terminal Voltages and Intensities in dq frame
             Vd: -(inputs[0] * sym.sin(inputs[1] - delta)),
             Vq: (inputs[0] * sym.cos(inputs[1] - delta)),
-            # Id: (Pg * Vd + Qg * Vq) / (Vd ** 2 + Vq ** 2),
-            # Iq: (Pg * Vq - Qg * Vd) / (Vd ** 2 + Vq ** 2),
+            Id: (Pg * Vd + Qg * Vq) / (Vd ** 2 + Vq ** 2),
+            Iq: (Pg * Vq - Qg * Vd) / (Vd ** 2 + Vq ** 2),
             V_dag: (Vd + Id * Ra - Iq * Xl),
             V_qag: (Vq + Iq * Ra + Id * Xl),
 
@@ -256,8 +256,8 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
             Eq1: (Eq_prime + (Xd - Xd_prime) * (
                     Id / Sat + (Eq_prime - Psid_prime - Id * (Xd_prime - Xl) / Sat) * Xdaux)),
 
-            Psid: (Eq_2prime_expr - Id * Xd_2prime_sat),
-            Psiq: (-Ed_2prime_expr - Iq * Xq_2prime_sat),
+            # Psid: (Eq_2prime_expr - Id * Xd_2prime_sat),
+            # Psiq: (-Ed_2prime_expr - Iq * Xq_2prime_sat),
             Te: (Psid * Iq - Psiq * Id),
 
             IRPu: Eq1 * (1 + Sa),

@@ -170,12 +170,6 @@ class RmsProblemDae(RmsProblemTemplate):
         self._constant_parameters: List[Var] = list()
         self._parameters_values: List[Const] = list()
 
-        # compiler helpers
-        self.VARS_NAME = 'vars'
-        self.DIFF_NAME = 'diff_vars'
-        self.VARIABLE_PARAMS_NAME = 'variable_params'
-        self.CONSTANT_PARAMS_NAME = 'constant_params'
-
         self._runtime_all_parameters_source: List[Var] = list()
         self._runtime_all_eqs_source: List[Expr | Const] = list()
         self._runtime_continuous_parameters: List[Var] = list()
@@ -207,7 +201,7 @@ class RmsProblemDae(RmsProblemTemplate):
 
         self._variable_parameters_values: Vec | None = None
         self._last_variable_parameters_values: Vec | None = None
-        self._constant_params: Vec = np.zeros(len(self._constant_parameters))
+        self._constant_params: Vec | None = None
         self._block_boundary_updater: Any | None = None
         self._fmu_cs_adapters: List[object] = list()
         self._fmu_cs_initialized: bool = False
@@ -381,7 +375,7 @@ class RmsProblemDae(RmsProblemTemplate):
                 if isinstance(elm, Transformer2W):
 
                     if self.options.initialization_method == RmsInitializationMethod.Explicit:
-                        params_array_values: np.ndarray = np.zeros(len(self._constant_parameters))
+                        params_array: np.ndarray = np.zeros(len(self._constant_parameters))
                         diff_sys_vars: Dict[int, Var] = {diff_var.uid: diff_var for diff_var in self._diff_vars}
                         rms_compiler_init = RMSCompiler(
                             variables=list(self.sys_vars.values()),
@@ -394,7 +388,7 @@ class RmsProblemDae(RmsProblemTemplate):
                         compile_single_equation = build_rms_single_equation_compiler(rms_compiler_init)
 
                         for param, const in elm.rms_model.parameters.items():
-                            params_array_values[self._uid2idx_params[param.uid]] = const.value
+                            params_array[self._uid2idx_params[param.uid]] = const.value
 
                         # OLD init_explicit path kept for reference
                         # init_explicit(
@@ -431,7 +425,7 @@ class RmsProblemDae(RmsProblemTemplate):
                             uid2idx_diff=self._uid2idx_diff,
                             uid2idx_params=self._uid2idx_params,
                             uid2idx_event_params=self._uid2idx_event_params,
-                            params_array=params_array_values,
+                            params_array=params_array,
                             compile_single_equation=compile_single_equation,
                             verbose=bool(self.options.verbose > 0),
                         )
@@ -766,9 +760,9 @@ class RmsProblemDae(RmsProblemTemplate):
                         compiler_names_dict=self._compiler_names_dict,
                     )
                     compile_single_equation = build_rms_single_equation_compiler(rms_compiler_init)
-                    self._constant_params = np.array([const.value for const in self._parameters_values])
+
                     for param, const in elm.rms_model.parameters.items():
-                        self._constant_params[self._uid2idx_params[param.uid]] = const.value
+                        params_array[self._uid2idx_params[param.uid]] = const.value
 
                     # OLD init_explicit path kept for reference
                     # init_explicit(
@@ -805,15 +799,15 @@ class RmsProblemDae(RmsProblemTemplate):
                         uid2idx_diff=self._uid2idx_diff,
                         uid2idx_params=self._uid2idx_params,
                         uid2idx_event_params=self._uid2idx_event_params,
-                        params_array=self._constant_params,
+                        params_array=params_array,
                         compile_single_equation=compile_single_equation,
                         verbose=bool(self.options.verbose > 0),
                     )
 
                     run_rms_native_initialization(self, self.options)
 
-                # elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
-                #     raise ValueError("Not implemented initialization method")
+                elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
+                    raise ValueError("Not implemented initialization method")
 
                 # elif self.options.initialization_method == RmsInitializationMethod.CustomValues:
                 #
@@ -1865,36 +1859,36 @@ class RmsProblemDae(RmsProblemTemplate):
         #     x[i] = val
         return x
 
-    def get_parameters_values(self) -> List[Const]:
-        """
-        Return the constant parameter values used by procedural logic bindings.
-        """
+    # def get_parameters_values(self) -> List[Const]:
+    #     """
+    #     Return the constant parameter values used by procedural logic bindings.
+    #     """
+    #
+    #     return self._parameters_values
 
-        return self._parameters_values
-
-    def update_variable_params(self, t: float, x_snapshot: Vec | None = None):
-        """
-        Update the variable parameters
-        :param t:
-        :return:
-        """
-        if self._event_params_fn is None:
-            raise ValueError("_event_params_fn is None")
-
-        self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
-
-        if self._block_boundary_updater is not None and x_snapshot is not None:
-            constant_params: Vec
-            if self._constant_params is None:
-                constant_params = np.zeros(0, dtype=float)
-            else:
-                constant_params = self._constant_params
-
-            full_params = np.concatenate((self._variable_parameters_values.copy(), constant_params))
-            self._block_boundary_updater.update(float(t), x_snapshot, full_params)
-            self._variable_parameters_values[:] = full_params[:self.get_variable_parameter_number()]
-        else:
-            pass
+    # def update_variable_params(self, t: float, x_snapshot: Vec | None = None):
+    #     """
+    #     Update the variable parameters
+    #     :param t:
+    #     :return:
+    #     """
+    #     if self._event_params_fn is None:
+    #         raise ValueError("_event_params_fn is None")
+    #
+    #     self._variable_parameters_values = self._event_params_fn(self._variable_parameters_values, t)
+    #
+    #     if self._block_boundary_updater is not None and x_snapshot is not None:
+    #         constant_params: Vec
+    #         if self._constant_params is None:
+    #             constant_params = np.zeros(0, dtype=float)
+    #         else:
+    #             constant_params = self._constant_params
+    #
+    #         full_params = np.concatenate((self._variable_parameters_values.copy(), constant_params))
+    #         self._block_boundary_updater.update(float(t), x_snapshot, full_params)
+    #         self._variable_parameters_values[:] = full_params[:self.get_variable_parameter_number()]
+    #     else:
+    #         pass
 
     def initialize_fmu_cs_devices(self, x_snapshot: Vec, t: float = 0.0) -> None:
         """
