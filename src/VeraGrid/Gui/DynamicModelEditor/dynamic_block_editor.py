@@ -1465,6 +1465,7 @@ class BlockParameterKind(Enum):
     ALGEBRAIC_EQUATION = "Algebraic Equation"
     EVENT_PARAMETER = "Event Parameter"
     FIXED_PARAMETER = "Parameter"
+    MODE_PARAM = "Mode Parameter"
 
 
 class BlockParameterRow:
@@ -1840,6 +1841,30 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
                 source_dict_name="parameters"
             ))
 
+        for var, expr in self.block.mode_dict.items():
+            if isinstance(expr, Const):
+                rows.append(BlockParameterRow(
+                    name=var.name,
+                    kind=BlockParameterKind.MODE_PARAM,
+                    key_var=var,
+                    value=expr.value,
+                    editable_name=True,
+                    editable_value=True,
+                    value_type=self.get_python_value_type(expr.value),
+                    source_dict_name="mode_dict"
+                ))
+            else:
+                rows.append(BlockParameterRow(
+                    name=var.name,
+                    kind=BlockParameterKind.MODE_PARAM,
+                    key_var=var,
+                    value=expr,
+                    editable_name=True,
+                    editable_value=True,
+                    value_type=str,
+                    source_dict_name="mode_dict"
+                ))
+
         return rows
 
     def rowCount(self, parent=QtCore.QModelIndex()) -> int:
@@ -1895,6 +1920,8 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
             self.block.event_dict[row.key_var] = value
         elif row.source_dict_name == "parameters":
             self.block.parameters[row.key_var] = value
+        elif row.source_dict_name == "mode_dict":
+            self.block.mode_dict[row.key_var] = value
 
     def set_value_from_expression(self, row_index: int, expr: Expr) -> None:
         if 0 <= row_index < len(self.rows):
