@@ -1015,7 +1015,10 @@ class MapWidget(QWidget):
         xtile: float = self.key_tile_left + x_from_key / self.effective_tile_width
         ytile: float = self.key_tile_top + y_from_key / self.effective_tile_height
 
-        longitude, latitude = self.tile_src.Tile2Geo(xtile, ytile)
+        try:
+            longitude, latitude = self.tile_src.Tile2Geo(xtile, ytile)
+        except OverflowError:
+            return None, None
 
         if not (min_lon <= longitude <= max_lon):
             return None, None
