@@ -156,7 +156,7 @@ class VSC(BranchParent):
                  control1_val: float = 1.0,
                  control1_val_min = 0,
                  control1_val_max = 9999,
-                 control1_val_droop = 0.1,
+                 control1_droop = 0.1,
                  control1_droop_val = 1.0,
                  control1_droop_val_min = 0.9,
                  control1_droop_val_max = 1.1,
@@ -166,7 +166,7 @@ class VSC(BranchParent):
                  control2_val: float = 0.0,
                  control2_val_min=0,
                  control2_val_max=9999,
-                 control2_val_droop=0.1,
+                 control2_droop=0.1,
                  control2_droop_val=1.0,
                  control2_droop_val_min=0.9,
                  control2_droop_val_max=1.1,
@@ -312,7 +312,7 @@ class VSC(BranchParent):
         self._control1_val_prof: ProfileFloat = ProfileFloat(default_value=self._control1_val)
         self._control1_val_min = float(control1_val_min)
         self._control1_val_max = float(control1_val_max)
-        self._control1_droop = float(control1_val_droop)
+        self._control1_droop = float(control1_droop)
         self._control1_droop_prof: ProfileFloat = ProfileFloat(default_value=self._control1_droop)
         self._control1_droop_val = float(control1_droop_val)
         self._control1_droop_val_prof: ProfileFloat = ProfileFloat(default_value=self._control1_droop_val)
@@ -328,7 +328,7 @@ class VSC(BranchParent):
         self._control2_val_prof: ProfileFloat = ProfileFloat(default_value=self._control2_val)
         self._control2_val_min = float(control2_val_min)
         self._control2_val_max = float(control2_val_max)
-        self._control2_val_droop = float(control2_val_droop)
+        self._control2_val_droop = float(control2_droop)
         self._control2_val_droop_prof: ProfileFloat = ProfileFloat(default_value=self._control2_val_droop)
         self._control2_droop_val = float(control2_droop_val)
         self._control2_droop_val_prof: ProfileFloat = ProfileFloat(default_value=self._control2_droop_val)

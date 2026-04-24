@@ -2186,17 +2186,16 @@ def convert_dgs_staticgen_to_vsc(elmgenstat: ElmGenstat,
         alpha2=0.0,
         alpha3=0.0,
         control1=ConverterControlType.Pac,
-        control2=ConverterControlType.Qac,
+        control2=ConverterControlType.Q_droop,
         control1_val=-1.0 * float(elmgenstat.pgini),
         control2_val=-1.0 * float(elmgenstat.qgini),
         fault_control=ConverterFaultControlType.WECC_WT_Type_4B,
-        kdp=float(elmgenstat.ddroop),
-        # u_setpoint_min=float(elmgenstat.usp_min),
-        # u_setpoint_max=float(elmgenstat.usp_max),
-        # u_setpoint=float(elmgenstat.usetp),
-        # du_setpoint=0.0,
-        # Q_min=float(elmgenstat.cQ_min),
-        # Q_max=float(elmgenstat.cQ_max)
+        control2_droop=float(elmgenstat.ddroop),
+        control2_droop_val_min=float(elmgenstat.usp_min),
+        control2_droop_val_max=float(elmgenstat.usp_max),
+        control2_droop_val=float(elmgenstat.usetp),
+        control2_val_min=float(elmgenstat.cQ_min),
+        control2_val_max=float(elmgenstat.cQ_max)
     )
 
     return dc_bus, vsc
@@ -2719,8 +2718,8 @@ def convert_dgs_svs_to_vsc(elmsvs: ElmSvs,
         control1_val=control1_val,
         control2_val=control2_val,
         ysvs=ysvs,
-        kdp=kpd,
-        # u_setpoint=u_setpoint
+        control1_droop=kpd,
+        control1_droop_val=u_setpoint
     )
 
     return dc_bus, vsc

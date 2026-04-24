@@ -25,7 +25,7 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
                                                                                     solve_reactive_power)
 from VeraGridEngine.enumerations import (TapPhaseControl, TapModuleControl, HvdcControlType, ConverterControlType,
                                          ConverterFaultControlType, ShuntControlMode, GeneratorType)
-from VeraGridEngine.Simulations.ShortCircuitStudies.converter_fault_controls import wecc_wt_type_4b
+from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.converter_fault_controls import wecc_wt_type_4b
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, Logger
 
 
@@ -325,7 +325,8 @@ def adv_jacobian(nbus: int,
 
     J_jo = csc_stack_2d_ff(mats=[
 
-        dP_dVa, dP_dVm, dP_dPfpvsc, dP_dPfnvsc, dP_dPtvsc, dP_dQtvsc, dP_dPfhvdc, dP_dPthvdc, dP_dQfhvdc, dP_dQthvdc, dP_dm, dP_dtau,
+        dP_dVa, dP_dVm, dP_dPfpvsc, dP_dPfnvsc, dP_dPtvsc, dP_dQtvsc, dP_dPfhvdc, dP_dPthvdc, dP_dQfhvdc, dP_dQthvdc,
+        dP_dm, dP_dtau,
 
         # dQ_dVa, dQ_dVm, dQ_dPfpvsc, dQ_dPfnvsc, dQ_dPtvsc, dQ_dQtvsc, dQ_dPfhvdc, dQ_dPthvdc, dQ_dQfhvdc, dQ_dQthvdc, dQ_dm, dQ_dtau,
 
@@ -338,9 +339,11 @@ def adv_jacobian(nbus: int,
 
     # compose the Jacobian
     J = csc_stack_2d_ff(mats=[
-        dP_dVa, dP_dVm, dP_dPfpvsc, dP_dPfnvsc, dP_dPtvsc, dP_dQtvsc, dP_dPfhvdc, dP_dPthvdc, dP_dQfhvdc, dP_dQthvdc, dP_dm, dP_dtau,
+        dP_dVa, dP_dVm, dP_dPfpvsc, dP_dPfnvsc, dP_dPtvsc, dP_dQtvsc, dP_dPfhvdc, dP_dPthvdc, dP_dQfhvdc, dP_dQthvdc,
+        dP_dm, dP_dtau,
 
-        dQ_dVa, dQ_dVm, dQ_dPfpvsc, dQ_dPfnvsc, dQ_dPtvsc, dQ_dQtvsc, dQ_dPfhvdc, dQ_dPthvdc, dQ_dQfhvdc, dQ_dQthvdc, dQ_dm, dQ_dtau,
+        dQ_dVa, dQ_dVm, dQ_dPfpvsc, dQ_dPfnvsc, dQ_dPtvsc, dQ_dQtvsc, dQ_dPfhvdc, dQ_dPthvdc, dQ_dQfhvdc, dQ_dQthvdc,
+        dQ_dm, dQ_dtau,
 
         dLvsc_dVa, dLvsc_dVm, dLvsc_dPfpvsc, dLvsc_dPfnvsc, dLvsc_dPtvsc, dLvsc_dQtvsc, dLvsc_dPfhvdc, dLvsc_dPthvdc,
         dLvsc_dQfhvdc, dLvsc_dQthvdc, dLvsc_dm, dLvsc_dtau,
@@ -351,10 +354,12 @@ def adv_jacobian(nbus: int,
         dImax_dVa, dImax_dVm, dImax_dPfpvsc, dImax_dPfnvsc, dImax_dPtvsc, dImax_dQtvsc, dImax_dPfhvdc, dImax_dPthvdc,
         dImax_dQfhvdc, dImax_dQthvdc, dImax_dm, dImax_dtau,
 
-        dLhvdc_dVa, dLhvdc_dVm, dLhvdc_dPfpvsc, dLhvdc_dPfnvsc, dLhvdc_dPtvsc, dLhvdc_dQtvsc, dLhvdc_dPfhvdc, dLhvdc_dPthvdc,
+        dLhvdc_dVa, dLhvdc_dVm, dLhvdc_dPfpvsc, dLhvdc_dPfnvsc, dLhvdc_dPtvsc, dLhvdc_dQtvsc, dLhvdc_dPfhvdc,
+        dLhvdc_dPthvdc,
         dLhvdc_dQfhvdc, dLhvdc_dQthvdc, dLhvdc_dm, dLhvdc_dtau,
 
-        dInjhvdc_dVa, dInjhvdc_dVm, dInjhvdc_dPfpvsc, dInjhvdc_dPfnvsc, dInjhvdc_dPtvsc, dInjhvdc_dQtvsc, dInjhvdc_dPfhvdc,
+        dInjhvdc_dVa, dInjhvdc_dVm, dInjhvdc_dPfpvsc, dInjhvdc_dPfnvsc, dInjhvdc_dPtvsc, dInjhvdc_dQtvsc,
+        dInjhvdc_dPfhvdc,
         dInjhvdc_dPthvdc, dInjhvdc_dQfhvdc, dInjhvdc_dQthvdc, dInjhvdc_dm, dInjhvdc_dtau,
 
         dPf_dVa, dPf_dVm, dPf_dPfpvsc, dPf_dPfnvsc, dPf_dPtvsc, dPf_dQtvsc, dPf_dPfhvdc, dPf_dPthvdc, dPf_dQfhvdc,
@@ -758,7 +763,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                         u_cbr_m.append(k)
                 else:
                     self.logger.add_error("Controlled bus index outside of the island, skipping control",
-                                          device=self.nc.passive_branch_data.idtag[k],)
+                                          device=self.nc.passive_branch_data.idtag[k], )
 
             elif ctrl_m == TapModuleControl.Qf:
                 u_cbr_m.append(k)
@@ -1811,43 +1816,40 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
             if self.nc.vsc_data.ysvs[k] != 0.0:
 
                 if self.nc.vsc_data.control1[k] == ConverterControlType.Qac:
-                    Qt_vsc_[k] = np.abs(V[self.nc.vsc_data.T[k]]**2) * self.nc.vsc_data.ysvs[k] / self.nc.Sbase
+                    Qt_vsc_[k] = np.abs(V[self.nc.vsc_data.T[k]] ** 2) * self.nc.vsc_data.ysvs[k] / self.nc.Sbase
 
                 elif self.nc.vsc_data.control2[k] == ConverterControlType.Qac:
-                    Qt_vsc_[k] = np.abs(V[self.nc.vsc_data.T[k]]**2) * self.nc.vsc_data.ysvs[k] / self.nc.Sbase
+                    Qt_vsc_[k] = np.abs(V[self.nc.vsc_data.T[k]] ** 2) * self.nc.vsc_data.ysvs[k] / self.nc.Sbase
 
 
             elif self.nc.vsc_data.Kdp[k] != 0.0:
 
-                if self.nc.vsc_data.control1[k] == ConverterControlType.Qac:
-                    Q_setpoint = self.nc.vsc_data.control1_val[k]
-                    Qt_vsc_[k] = voltage_q_droop(ut=V[self.nc.vsc_data.T[k]],
-                                                   u_setpoint_min=self.nc.vsc_data.u_setpoint_min[k],
-                                                   u_setpoint_max=self.nc.vsc_data.u_setpoint_max[k],
-                                                   u_setpoint=self.nc.vsc_data.u_setpoint[k],
-                                                   du_setpoint=self.nc.vsc_data.du_setpoint[k],
-                                                   Q_setpoint=Q_setpoint,
-                                                   S_r=self.nc.vsc_data.rates[k],
-                                                   droop=self.nc.vsc_data.Kdp[k],
-                                                   Q_min=self.nc.vsc_data.Q_min[k],
-                                                   Q_max=self.nc.vsc_data.Q_max[k],
-                                                   S_base=self.nc.Sbase
-                                                   )
-                elif self.nc.vsc_data.control2[k] == ConverterControlType.Qac:
-                    Q_setpoint = self.nc.vsc_data.control2_val[k]
-                    Qt_vsc_[k] = voltage_q_droop(ut=V[self.nc.vsc_data.T[k]],
-                                                   u_setpoint_min=self.nc.vsc_data.u_setpoint_min[k],
-                                                   u_setpoint_max=self.nc.vsc_data.u_setpoint_max[k],
-                                                   u_setpoint=self.nc.vsc_data.u_setpoint[k],
-                                                   du_setpoint=self.nc.vsc_data.du_setpoint[k],
-                                                   Q_setpoint=Q_setpoint,
-                                                   S_r=self.nc.vsc_data.rates[k],
-                                                   droop=self.nc.vsc_data.Kdp[k],
-                                                   Q_min=self.nc.vsc_data.Q_min[k],
-                                                   Q_max=self.nc.vsc_data.Q_max[k],
-                                                   S_base=self.nc.Sbase
-                                                   )
-
+                if self.nc.vsc_data.control1[k] == ConverterControlType.Q_droop:
+                    Qt_vsc_[k] = voltage_q_droop(
+                        ut=V[self.nc.vsc_data.T[k]],
+                        u_setpoint_min=self.nc.vsc_data.control1_droop_val_min[k],
+                        u_setpoint_max=self.nc.vsc_data.control1_droop_val_max[k],
+                        u_setpoint=self.nc.vsc_data.control1_droop_val[k],
+                        Q_setpoint=self.nc.vsc_data.control1_val[k],
+                        S_r=self.nc.vsc_data.rates[k],
+                        droop=self.nc.vsc_data.control1_droop[k],
+                        Q_min=self.nc.vsc_data.control1_val_min[k],
+                        Q_max=self.nc.vsc_data.control1_val_max[k],
+                        S_base=self.nc.Sbase
+                    )
+                elif self.nc.vsc_data.control2[k] == ConverterControlType.Q_droop:
+                    Qt_vsc_[k] = voltage_q_droop(
+                        ut=V[self.nc.vsc_data.T[k]],
+                        u_setpoint_min=self.nc.vsc_data.control2_droop_val_min[k],
+                        u_setpoint_max=self.nc.vsc_data.control2_droop_val_max[k],
+                        u_setpoint=self.nc.vsc_data.control2_droop_val[k],
+                        Q_setpoint=self.nc.vsc_data.control2_val[k],
+                        S_r=self.nc.vsc_data.rates[k],
+                        droop=self.nc.vsc_data.control2_droop[k],
+                        Q_min=self.nc.vsc_data.control2_val_min[k],
+                        Q_max=self.nc.vsc_data.control2_val_max[k],
+                        S_base=self.nc.Sbase
+                    )
 
         T_vsc = self.nc.vsc_data.T
         It = np.sqrt(Pt_vsc_ * Pt_vsc_ + Qt_vsc_ * Qt_vsc_) / Vm_[T_vsc]
@@ -1864,7 +1866,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                        Pfn_vsc_[self.k_vsc_has_dc_n] * Vm_[self.nc.vsc_data.F[self.k_vsc_has_dc_n]])
 
         # Add the 3rd equation per VSC
-        current_vsc = It**2 - Imax_vsc**2
+        current_vsc = It ** 2 - Imax_vsc ** 2
 
         for vsc_i in self.u_vsc_pt:
             Pt_ref_[vsc_i], Qt_ref_[vsc_i] = wecc_wt_type_4b(
@@ -1933,8 +1935,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         tm[7] = time.time()
         for i in range(self.nc.nvsc):
-
-            It_i = np.sqrt(self.Pt_vsc[i]**2 + self.Qt_vsc[i]**2) / self.Vm[self.nc.vsc_data.T[i]]
+            It_i = np.sqrt(self.Pt_vsc[i] ** 2 + self.Qt_vsc[i] ** 2) / self.Vm[self.nc.vsc_data.T[i]]
             Imax = self.nc.vsc_data.rates[i] / self.nc.Sbase  # Assume 1.0 p.u. base voltage
 
             # print(f"Compute f current: {It_i}, Imax: {Imax}")
@@ -2161,18 +2162,18 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                             S_base_vg=self.nc.Sbase,
                             S_rated_vsc=self.nc.vsc_data.rates[i],
                             Vpf=abs(self.V0[self.nc.vsc_data.T[i]])
-                            )
+                        )
 
                     elif self.nc.vsc_data.fault_control[i] == ConverterFaultControlType.Standard:
 
-                        It_i = np.sqrt(self.Pt_vsc[i]**2 + self.Qt_vsc[i]**2) / self.Vm[self.nc.vsc_data.T[i]]
+                        It_i = np.sqrt(self.Pt_vsc[i] ** 2 + self.Qt_vsc[i] ** 2) / self.Vm[self.nc.vsc_data.T[i]]
                         Imax = self.nc.vsc_data.rates[i] / self.nc.Sbase  # Assume 1.0 p.u. base voltage
 
                         # print(f"Josep current: {It_i}, Imax: {Imax}")
 
                         if (It_i > Imax
-                            and self.nc.vsc_data.control1[i] != ConverterControlType.Imax
-                            and self.nc.vsc_data.control2[i] != ConverterControlType.Imax):
+                                and self.nc.vsc_data.control1[i] != ConverterControlType.Imax
+                                and self.nc.vsc_data.control2[i] != ConverterControlType.Imax):
 
                             self.logger.add_info("VSC current limit reached",
                                                  device=self.nc.vsc_data.names[i],
@@ -2250,14 +2251,13 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
                             # print(It_i, Imax)
 
-
                             # Potentially add new conditionals, mainly for the 2nd iteration once saturated
                             # If letting the P naturally go to zero is not enough, no longer control Vm
                             # Control Q and then it will naturally get to a point that does not surpass Imax
 
                         elif (It_i > Imax * 1.1
-                            and self.nc.vsc_data.control1[i] == ConverterControlType.Imax
-                            and self.nc.vsc_data.control2[i] == ConverterControlType.Imax):
+                              and self.nc.vsc_data.control1[i] == ConverterControlType.Imax
+                              and self.nc.vsc_data.control2[i] == ConverterControlType.Imax):
                             """
                             We give some margin to the current because it may not exactly converge to Imax
                             in just one iteration. 10% buffer seems enough.
@@ -2487,7 +2487,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         balance_vsc = (self.Pfp_vsc[self.k_vsc_has_dc_n] * self.Vm[F_dcn[self.k_vsc_has_dc_n]] +
                        self.Pfn_vsc[self.k_vsc_has_dc_n] * self.Vm[F[self.k_vsc_has_dc_n]])
 
-        current_vsc = It**2 - Imax_vsc**2
+        current_vsc = It ** 2 - Imax_vsc ** 2
 
         St_vsc = make_complex(self.Pt_vsc, self.Qt_vsc)
 
@@ -2558,7 +2558,6 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         Qt_vsc_[self.u_vsc_qt] = x[e:f]
 
         for k in self.u_vsc_pt:
-
             Pt_ref_[k], Qt_ref_[k] = wecc_wt_type_4b(
                 V_measured=self.V[self.nc.vsc_data.T[k]],
                 P_measured=self.Pt_vsc[k],
@@ -2569,11 +2568,10 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         f_vsc = np.r_[
             Pt_ref_[self.u_vsc_pt] - Pt_vsc_[self.u_vsc_pt],
-            Qt_ref_ [self.u_vsc_qt]- Qt_vsc_[self.u_vsc_qt]
+            Qt_ref_[self.u_vsc_qt] - Qt_vsc_[self.u_vsc_qt]
         ]
 
         return f_vsc
-
 
     def Jacobian(self, autodiff: bool = True) -> CSC:
         """
@@ -2794,7 +2792,8 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         If_vsc = self.Pfp_vsc / self.Vm[self.nc.vsc_data.F]
         It_vsc = make_complex(self.Pt_vsc, self.Qt_vsc) / self.Vm[self.nc.vsc_data.T]
         Uac_vsc = self.V[self.nc.vsc_data.T]
-        loading_vsc = np.abs(make_complex(self.Pt_vsc, self.Qt_vsc) / Uac_vsc + 1e-20) / (self.nc.vsc_data.rates / self.nc.Sbase + 1e-20)
+        loading_vsc = np.abs(make_complex(self.Pt_vsc, self.Qt_vsc) / Uac_vsc + 1e-20) / (
+                self.nc.vsc_data.rates / self.nc.Sbase + 1e-20)
         losses_vsc = (self.Pt_vsc + self.Pfp_vsc + self.Pfn_vsc) * self.nc.Sbase
 
         # HVDC ---------------------------------------------------------------------------------------------------------

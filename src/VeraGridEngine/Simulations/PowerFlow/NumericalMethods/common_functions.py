@@ -117,7 +117,6 @@ def voltage_q_droop(ut: complex,
                     u_setpoint_min: float,
                     u_setpoint_max: float,
                     u_setpoint: float,
-                    du_setpoint: float,
                     Q_setpoint: float,
                     S_r: float,
                     droop: float,
@@ -131,7 +130,6 @@ def voltage_q_droop(ut: complex,
     :param u_setpoint_min: Minimum voltage setpoint [pu]
     :param u_setpoint_max: Maximum voltage setpoint [pu]
     :param u_setpoint: Specified voltage setpoint [pu]
-    :param du_setpoint: Voltage signal coming from the station controller [pu]
     :param Q_setpoint: Specified dispatch reactive power [MVAr]
     :param S_r: Rated apparent power [MVA]
     :param droop: Voltage droop value [%]
@@ -148,11 +146,9 @@ def voltage_q_droop(ut: complex,
     else:
         u = u
 
-    du_droop = u_setpoint + du_setpoint - u  # Voltage deviation [pu]
-
     Q_droop = S_r * 100 / droop  # Additional reactive power for the specified voltage droop [MVAr]
 
-    Q = Q_setpoint * S_base - Q_droop * du_droop  # Actual reactive power output [MVAr]
+    Q = Q_setpoint * S_base - Q_droop * (u_setpoint - u)  # Actual reactive power output [MVAr]
 
     # Reactive power limits
     if Q > Q_max:
