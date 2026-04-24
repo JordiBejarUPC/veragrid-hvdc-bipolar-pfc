@@ -3517,6 +3517,8 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
                 LibraryLeafSpec("Exponential load", BlockType.EXP_LOAD_EMT),
                 LibraryLeafSpec("ZIP load", BlockType.ZIP_LOAD_EMT),
                 LibraryLeafSpec("DC load", BlockType.DC_LOAD_EMT),
+                LibraryLeafSpec("Transformer", BlockType.TRAFO_EMT),
+                LibraryLeafSpec("XFMR Transformer", BlockType.XFMR_TRANSFORMER),
             ]
         else:
             pass

@@ -210,8 +210,15 @@ class VarFactory(EditableDevice):
 
             # Older persisted symbolic models may not store the power-flow
             # reference field, so keep loading those files by defaulting to None.
-            reference: VarPowerFlowRefferenceType | None = data.get("ref", None)
-            obj = Var(name=data["name"], uid=data["uid"], reference=reference)
+            ref_data: Any = data.get("ref", None)
+            key_ref: VarPowerFlowRefferenceType | None
+
+            if ref_data is not None:
+                key_ref = VarPowerFlowRefferenceType(ref_data)
+            else:
+                key_ref = None
+
+            obj = Var(name=data["name"], uid=data["uid"], reference=key_ref)
 
             # at this point we can store the object
             obj_dict[obj.uid] = obj

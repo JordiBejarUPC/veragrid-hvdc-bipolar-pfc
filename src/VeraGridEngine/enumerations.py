@@ -2908,6 +2908,7 @@ class EraSvdSolverType(Enum):
 
 class RmsInitializationMethod(Enum):
     Explicit = "Explicit"
+    ReducedExplicit = "ReducedExplicit"
     PseudoTransient = "PseudoTransient"
     CustomValues = "CustomValues"
 
@@ -3388,6 +3389,10 @@ class ParamPowerFlowRefferenceType(Enum):
     omega_base = "omega_base" # in rad/s
     Sbase = "Sbase" # in MVA
 
+    generator_share_enable = "generator_share_enable"
+    generator_share_p_ref = "generator_share_p_ref"
+    generator_share_q_ref = "generator_share_q_ref"
+
 
     def __str__(self):
         return self.value
@@ -3618,6 +3623,8 @@ class BlockType(Enum):
     DC_LOAD_EMT = "DC_LOAD_EMT"
     EMT_THEVENIN = "EMT_THEVENIN_EMT"
     EMTLOAD = "EMT_LOAD"
+    TRAFO_EMT = "TRAFO_EMT"
+    XFMR_TRANSFORMER = "XFMR_TRANSFORMER"
 
 
     def __str__(self):

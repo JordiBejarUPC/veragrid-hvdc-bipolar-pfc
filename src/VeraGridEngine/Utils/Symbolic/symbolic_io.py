@@ -41,22 +41,40 @@ def symbolic_objects_to_dict(obj_dict: Dict[int, Var | Const | Var]) -> List[Dic
         elif isinstance(expr, Var):
 
             if expr.base_var is not None:
-                lst.append({
-                    "type": "DiffVar",
-                    "name": expr.name,
-                    "uid": expr.uid,
-                    "base_var": expr.base_var.uid,
-                    "ref": expr.ref.value if expr.ref is not None else None,
-                })
+                if type(expr.ref) == str:
+                    lst.append({
+                        "type": "DiffVar",
+                        "name": expr.name,
+                        "uid": expr.uid,
+                        "base_var": expr.base_var.uid,
+                        "ref": expr.ref if expr.ref is not None else None,
+                    })
+                else:
+                    lst.append({
+                        "type": "DiffVar",
+                        "name": expr.name,
+                        "uid": expr.uid,
+                        "base_var": expr.base_var.uid,
+                        "ref": expr.ref.value if expr.ref is not None else None,
+                    })
+
 
 
             else:
                 # it is a normal var
-                lst.append({"type": "Var",
-                            "name": expr.name,
-                            "uid": expr.uid,
-                            "base_var": None,
-                            "ref": expr.ref.value if expr.ref is not None else None,})
+                if type(expr.ref) == str:
+                    lst.append({"type": "Var",
+                                "name": expr.name,
+                                "uid": expr.uid,
+                                "base_var": None,
+                                "ref": expr.ref if expr.ref is not None else None})
+                else:
+                    lst.append({"type": "Var",
+                                "name": expr.name,
+                                "uid": expr.uid,
+                                "base_var": None,
+                                "ref": expr.ref.value if expr.ref is not None else None})
+
 
 
     return lst

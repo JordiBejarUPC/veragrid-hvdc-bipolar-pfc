@@ -54,125 +54,101 @@ def get_xfmr_emt_template(
     name: str = "xfmr_emt_template",
 ) -> EmtModelTemplate:
     """
-    Build the EMT DAE template of an ATP-like hybrid transformer.
+    Build the EMT DAE template of a basic ATP-like transformer model.
 
     Overview
     --------
-    This template represents a three-phase, two-winding transformer through
-    a decomposition similar in spirit to ATP/EMTP hybrid transformer models:
+    This transformer model is organized as:
 
-    1. A linear series leakage branch models the short-circuit path.
-    2. A magnetic core branch models the main flux path.
-    3. Core losses are represented by linear conductances.
-    4. Terminal capacitances are represented through explicit charge states.
+    1. one series leakage branch between the two transformer terminals,
+    2. one magnetizing/core branch referred to the from side only,
+    3. one linear core-loss branch referred to the from side only,
+    4. optional terminal shunt capacitances represented through charge states.
 
-    The model is written in the phase domain and uses winding-frame quantities
-    internally. The terminal electrical interface remains the standard VeraGrid
-    branch interface in abc terminal variables.
+    The model is intentionally kept close to the classical robust transformer
+    equivalent used in EMT-type formulations:
+
+    * the leakage path couples the from and to terminals,
+    * the core is excited from the from-side winding voltage only,
+    * the core current is injected only on the from side.
+
+    This avoids the algebraic/numerical issues caused by splitting the magnetic
+    branch symmetrically between both sides.
 
     Parameter ownership
     -------------------
-    This template follows the VeraGrid architecture described by the user:
+    This template follows the requested VeraGrid architecture:
 
-    * ``api_obj_mapping``:
-      contains only parameters that come directly from the static transformer
-      object or are passed by the EMT assembler with minimal processing.
+    * api_obj_mapping:
+      only parameters that come from the static transformer object or are passed
+      almost directly by the EMT assembler.
 
-    * ``event_dict``:
-      contains parameters of the dynamic model that do not belong to the static
-      object. These can be constants or symbolic initialization equations and
-      can be overridden by the user through ``set_parameter_in_model()``.
+    * event_dict:
+      parameters of the dynamic transformer model that are not explicit static
+      data and can be overridden through set_parameter_in_model().
 
-    * ``init_eqs``:
-      initializes internal state and algebraic variables that are not directly
-      initialized from the power flow through ``external_mapping``.
+    * init_eqs:
+      initialization equations of internal algebraic and state variables.
 
-    * ``diff_init_eqs``:
-      initializes internal derivatives.
+    * diff_init_eqs:
+      initialization equations of internal derivatives.
 
     Static mapped parameters
     ------------------------
-    The following quantities are expected from the EMT assembler through
-    ``api_obj_mapping``:
+    Expected from the EMT assembler through api_obj_mapping:
 
-    * ``omega_base``
-    * ``transformer_rated_power_mva``
-    * ``transformer_open_circuit_current_pct``
-    * ``transformer_open_circuit_loss_kw``
-    * ``transformer_short_circuit_voltage_pct``
-    * ``transformer_short_circuit_loss_kw``
-    * ``transformer_tap_ratio``
-    * ``transformer_from_connection_**``
-    * ``transformer_to_connection_**``
+    * omega_base
+    * transformer_rated_power_mva
+    * transformer_open_circuit_current_pct
+    * transformer_open_circuit_loss_kw
+    * transformer_short_circuit_voltage_pct
+    * transformer_short_circuit_loss_kw
+    * transformer_tap_ratio
+    * transformer_from_connection_**
+    * transformer_to_connection_**
 
     Dynamic local parameters
     ------------------------
-    The following quantities are local to the EMT transformer model and thus
-    belong to ``event_dict``:
+    Local model parameters stored in event_dict:
 
-    * ``xfmr_c_term``
-    * ``xfmr_use_linear_core``
-    * ``xfmr_core_topology_code``
-    * ``xfmr_yoke_area_rel``
-    * ``xfmr_yoke_length_rel``
-    * ``xfmr_outer_leg_area_rel``
-    * ``xfmr_outer_leg_length_rel``
-    * ``xfmr_core_knee_flux_mult``
-    * ``xfmr_core_knee_current_mult``
-    * ``xfmr_sc_resistance_pct``
-    * ``xfmr_core_linear_l_pu``
-    * ``xfmr_core_a_prime``
-    * ``xfmr_core_b_prime``
+    * xfmr_core_topology_code
+    * xfmr_yoke_area_rel
+    * xfmr_yoke_length_rel
+    * xfmr_outer_leg_area_rel
+    * xfmr_outer_leg_length_rel
+    * xfmr_c_term
+    * xfmr_use_linear_core
+    * xfmr_core_knee_flux_mult
+    * xfmr_core_knee_current_mult
+    * xfmr_sc_resistance_pct
+    * xfmr_core_linear_l_pu
+    * xfmr_core_a_prime
+    * xfmr_core_b_prime
 
-    Core model
-    ----------
-    The core can be used in two modes:
+    Core modelling
+    --------------
+    The magnetic branch is referred only to the from side:
 
-    * ``xfmr_use_linear_core = 1``:
-      use a linear constitutive law.
+    * v_core_w = v_f_w
+    * i_core is injected only at the from terminal
 
-    * ``xfmr_use_linear_core = 0``:
-      use a Frohlich-type nonlinear constitutive law.
-
-    Since the static ``Transformer2W`` object does not contain a full magnetic
-    saturation curve, the Frohlich coefficients are derived internally from the
-    open-circuit operating point and a heuristic knee definition. These remain
-    local model parameters in ``event_dict`` and can be overridden by the user.
+    This is more robust and closer to the classical transformer equivalent than
+    the previous symmetric split of the core branch between both terminals.
 
     Capacitive path
     ---------------
-    The terminal capacitance is represented exactly in the same modelling spirit
-    as the pi-line template:
+    Terminal capacitances are represented through:
 
-    * terminal charges ``q_f`` and ``q_t`` are states
-    * capacitor currents ``i_cap_f`` and ``i_cap_t`` are internal algebraic
-      currents that feed the charge derivatives
-    * no direct use of ``d_v_f`` or ``d_v_t`` is made in the equations
+    * state charges q_f and q_t
+    * algebraic currents i_cap_f and i_cap_t
+    * q = C v
+    * dq/dt = i_cap
 
-    This avoids binding transformer equations to derivatives of bus variables,
-    which do not belong to the transformer block.
-
-    External mapping contract
-    -------------------------
-    The template exports the full standard branch external mapping with all
-    expected keys present. Keys that do not correspond to an actual variable in
-    this template are mapped to ``None``.
-
-    In particular, this branch template maps:
-
-    * terminal voltages ``vf_*`` and ``vt_*``
-    * terminal currents ``if_*`` and ``it_*``
-
-    and keeps as ``None``:
-
-    * ``Sf_*`` / ``St_*``
-    * ``d_v_*_f`` / ``d_v_*_t``
-
-    so the structure remains homogeneous with other branch templates.
+    If xfmr_c_term = 0, these states collapse consistently to zero.
 
     Sign convention
     ---------------
-    Exported branch currents follow the VeraGrid convention:
+    Exported branch currents follow the VeraGrid branch convention:
     current is positive when it leaves the bus.
 
     :param vf: EMT variable factory.
@@ -188,17 +164,12 @@ def get_xfmr_emt_template(
     c1: Expr = vf.add_const(1.0)
     c2: Expr = vf.add_const(2.0)
     c3: Expr = vf.add_const(3.0)
-    c_half: Expr = vf.add_const(0.5)
     c_eps: Expr = vf.add_const(1e-9)
     c_smooth: Expr = vf.add_const(1e-8)
     c_sqrt2: Expr = sym.sqrt(vf.add_const(2.0))
 
-
     # ------------------------------------------------------------------
     # Static parameters mapped from the transformer API object.
-    #
-    # These are quantities that come from the static transformer description
-    # and are written by the EMT assembler into the block static parameters.
     # ------------------------------------------------------------------
     omega_base: Var = vf.add_var(name=f"omega_base_{name}")
     xfmr_s_rated_mva: Var = vf.add_var(name=f"xfmr_s_rated_mva_{name}")
@@ -217,10 +188,7 @@ def get_xfmr_emt_template(
     templ.block.api_obj_mapping[ParamPowerFlowRefferenceType.transformer_tap_ratio] = xfmr_tap_module
 
     # ------------------------------------------------------------------
-    # Mapped connection matrices.
-    #
-    # These matrices define how terminal abc variables are transformed into
-    # internal winding-frame variables and vice versa.
+    # Mapped winding-connection matrices.
     # ------------------------------------------------------------------
     cf_enums: list[list[ParamPowerFlowRefferenceType]] = [
         [
@@ -278,10 +246,7 @@ def get_xfmr_emt_template(
         c_t_expr.append(c_t_row)
 
     # ------------------------------------------------------------------
-    # Dynamic local parameters of the transformer model.
-    #
-    # These do not belong to the static transformer object. They are local
-    # modelling choices or quantities derived from mapped static data.
+    # Local dynamic-model parameters.
     # ------------------------------------------------------------------
     xfmr_core_topology_code: Var = vf.add_var(name=f"xfmr_core_topology_code_{name}")
     xfmr_yoke_area_rel: Var = vf.add_var(name=f"xfmr_yoke_area_rel_{name}")
@@ -297,46 +262,33 @@ def get_xfmr_emt_template(
     xfmr_core_linear_l_pu: Var = vf.add_var(name=f"xfmr_core_linear_l_pu_{name}")
     xfmr_core_a_prime: Var = vf.add_var(name=f"xfmr_core_a_prime_{name}")
     xfmr_core_b_prime: Var = vf.add_var(name=f"xfmr_core_b_prime_{name}")
-    g_damp: Var = vf.add_var(name=f"g_damp_{name}")
 
     templ.block.event_dict[xfmr_core_topology_code] = vf.add_const(3.0)
     templ.block.event_dict[xfmr_yoke_area_rel] = vf.add_const(1.0)
     templ.block.event_dict[xfmr_yoke_length_rel] = vf.add_const(1.0)
     templ.block.event_dict[xfmr_outer_leg_area_rel] = vf.add_const(1.0)
     templ.block.event_dict[xfmr_outer_leg_length_rel] = vf.add_const(1.0)
-    templ.block.event_dict[xfmr_c_term] = vf.add_const(0.0)
+    templ.block.event_dict[xfmr_c_term] = vf.add_const(1e-6)
     templ.block.event_dict[xfmr_use_linear_core] = vf.add_const(1.0)
-    templ.block.event_dict[xfmr_core_knee_flux_mult] = vf.add_const(1.05)
+    templ.block.event_dict[xfmr_core_knee_flux_mult] = vf.add_const(1.50)
     templ.block.event_dict[xfmr_core_knee_current_mult] = vf.add_const(8.0)
-    templ.block.event_dict[g_damp] = vf.add_const(1e-4)
 
     # ------------------------------------------------------------------
-    # Dynamic-model parameter derivations.
-    #
-    # These are transformer-model parameters that are not stored explicitly
-    # in the static object and are thus derived locally in the EMT model.
+    # Derived local parameters of the dynamic model.
     # ------------------------------------------------------------------
     templ.block.event_dict[xfmr_sc_resistance_pct] = xfmr_sc_loss_kw / (vf.add_const(10.0) * xfmr_s_rated_mva + c_eps)
 
     oc_loss_pu: Expr = (xfmr_oc_loss_kw / vf.add_const(1000.0)) / (xfmr_s_rated_mva + c_eps)
     oc_current_pu: Expr = xfmr_oc_current_pct / vf.add_const(100.0)
-    # i_mag_pu: Expr = sym.sqrt(sym.max(oc_current_pu * oc_current_pu - oc_loss_pu * oc_loss_pu, c0))
     i_mag_pu: Expr = sym.sqrt(oc_current_pu * oc_current_pu - oc_loss_pu * oc_loss_pu + c_eps)
 
-    # Linear magnetizing inductance around the nominal operating point.
     templ.block.event_dict[xfmr_core_linear_l_pu] = c1 / (i_mag_pu + c_eps)
 
-    # Approximate Frohlich coefficients derived from the linear slope and a
-    # heuristic knee point. The user can always override these values.
     lambda_nom_peak: Expr = c_sqrt2
     i_nom_peak_from_linear: Expr = lambda_nom_peak / (xfmr_core_linear_l_pu + c_eps)
     a_prime_auto: Expr = c1 / (xfmr_core_linear_l_pu + c_eps)
     lambda_knee: Expr = xfmr_core_knee_flux_mult * lambda_nom_peak
     i_knee: Expr = xfmr_core_knee_current_mult * i_nom_peak_from_linear
-    # b_prime_auto: Expr = sym.max(
-    #     (i_knee / (lambda_knee + c_eps) - a_prime_auto) / (i_knee + c_eps),
-    #     c0,
-    # )
     b_prime_raw: Expr = (i_knee / (lambda_knee + c_eps) - a_prime_auto) / (i_knee + c_eps)
     b_prime_auto: Expr = b_prime_raw * b_prime_raw / (sym.sqrt(b_prime_raw * b_prime_raw + c_smooth) + c_eps)
 
@@ -344,14 +296,8 @@ def get_xfmr_emt_template(
     templ.block.event_dict[xfmr_core_b_prime] = b_prime_auto
 
     # ------------------------------------------------------------------
-    # Leakage-branch parameter derivation.
-    #
-    # The short-circuit report defines the magnitude uk% of the leakage path.
-    # The resistive percentage is derived locally from copper losses.
+    # Leakage-branch parameters.
     # ------------------------------------------------------------------
-    # z_sc_pu: Expr = xfmr_sc_voltage_pct / vf.add_const(100.0)
-    # r_sc_pu: Expr = xfmr_sc_resistance_pct / vf.add_const(100.0)
-    # x_sc_pu: Expr = sym.sqrt(sym.max(z_sc_pu * z_sc_pu - r_sc_pu * r_sc_pu, c0))
     z_sc_pu: Expr = xfmr_sc_voltage_pct / vf.add_const(100.0)
     r_sc_pu: Expr = xfmr_sc_resistance_pct / vf.add_const(100.0)
     x_sc_pu: Expr = sym.sqrt(z_sc_pu * z_sc_pu - r_sc_pu * r_sc_pu + c_eps)
@@ -366,8 +312,6 @@ def get_xfmr_emt_template(
 
     # ------------------------------------------------------------------
     # Terminal electrical interface variables in abc frame.
-    #
-    # The branch exposes standard terminal voltages and currents.
     # ------------------------------------------------------------------
     vf_keys: Dict[str, VarPowerFlowRefferenceType] = {
         "N": VarPowerFlowRefferenceType.vf_N,
@@ -395,15 +339,6 @@ def get_xfmr_emt_template(
 
     # ------------------------------------------------------------------
     # Dynamic states and derivatives.
-    #
-    # i_leak:
-    #   leakage-branch currents in winding frame.
-    #
-    # lam_leg:
-    #   magnetic leg flux-linkage states.
-    #
-    # q_f and q_t:
-    #   terminal charge states associated with the explicit terminal capacitance.
     # ------------------------------------------------------------------
     i_leak: list[Var] = [vf.add_var(name=f"i_leak_{ph}_{name}") for ph in ("A", "B", "C")]
     lam_leg: list[Var] = [vf.add_var(name=f"lam_leg_{ph}_{name}") for ph in ("A", "B", "C")]
@@ -417,24 +352,6 @@ def get_xfmr_emt_template(
 
     # ------------------------------------------------------------------
     # Algebraic variables.
-    #
-    # i_leg_core:
-    #   nonlinear magnetizing currents of the core legs.
-    #
-    # i_return_path and i_return_total:
-    #   return-path currents used to represent 3-legged or 5-legged topology.
-    #
-    # i_mag:
-    #   net magnetizing currents in winding frame.
-    #
-    # i_loss_leg:
-    #   linear core-loss currents.
-    #
-    # i_cap_f and i_cap_t:
-    #   terminal capacitance currents associated with q_f and q_t.
-    #
-    # if_act and it_act:
-    #   exported terminal currents in terminal abc frame.
     # ------------------------------------------------------------------
     i_leg_core: list[Var] = [vf.add_var(name=f"i_leg_core_{ph}_{name}") for ph in ("A", "B", "C")]
     i_mag: list[Var] = [vf.add_var(name=f"i_mag_{ph}_{name}") for ph in ("A", "B", "C")]
@@ -461,7 +378,7 @@ def get_xfmr_emt_template(
     )
 
     # ------------------------------------------------------------------
-    # Voltage transformation from terminal frame to winding frame.
+    # Voltage transformation from terminal abc frame to winding frame.
     # ------------------------------------------------------------------
     c_f_expr_t: list[list[Expr]] = [[c_f_expr[j][i] for j in range(3)] for i in range(3)]
     c_t_expr_t: list[list[Expr]] = [[c_t_expr[j][i] for j in range(3)] for i in range(3)]
@@ -481,37 +398,34 @@ def get_xfmr_emt_template(
         v_t_w.append(expr_vtw)
 
     # ------------------------------------------------------------------
-    # Internal leakage and core excitation voltages.
+    # Internal winding-side voltages.
     #
-    # v_leak:
-    #   voltage across the lumped series leakage branch.
+    # Leakage branch:
+    #   v_leak = v_f_w - n_tap * v_t_w
     #
-    # v_core_w:
-    #   internal core excitation voltage. This is taken as the symmetric
-    #   average of the winding-side voltages referred through the tap.
+    # Core branch:
+    #   referred only to the from side
     # ------------------------------------------------------------------
     n_tap: Expr = xfmr_tap_module
     v_leak: list[Expr] = [v_f_w[k] - n_tap * v_t_w[k] for k in range(3)]
-    v_core_w: list[Expr] = [c_half * (v_f_w[k] + n_tap * v_t_w[k]) for k in range(3)]
+    v_core_w: list[Expr] = [v_f_w[k] for k in range(3)]
 
     # ------------------------------------------------------------------
     # State equations.
-    #
-    # 1) Leakage-current dynamics.
-    # 2) Core-flux dynamics.
-    # 3) Charge dynamics for terminal capacitances.
     # ------------------------------------------------------------------
     state_eqs: list[Expr] = []
 
+    # Leakage-current dynamics.
     for k in range(3):
         state_eqs.append(l_inv * (v_leak[k] - r_sc_pu * i_leak[k]))
 
+    # Core-flux dynamics referred to the from side.
     for k in range(3):
         state_eqs.append(omega_base * v_core_w[k])
 
+    # Charge dynamics of terminal capacitances.
     for k in range(3):
         state_eqs.append(i_cap_f[k])
-
     for k in range(3):
         state_eqs.append(i_cap_t[k])
 
@@ -520,11 +434,9 @@ def get_xfmr_emt_template(
     # ------------------------------------------------------------------
     # Core topology selectors.
     #
-    # Supported local topology codes are:
+    # Supported values:
     #   3.0 -> three-legged core
     #   5.0 -> five-legged core
-    #
-    # The affine selector avoids symbolic discontinuities such as heaviside.
     # ------------------------------------------------------------------
     lam_return_total: Expr = -(lam_leg[0] + lam_leg[1] + lam_leg[2])
     five_leg_selector: Expr = (xfmr_core_topology_code - c3) / c2
@@ -535,12 +447,6 @@ def get_xfmr_emt_template(
     outer_leg_area_rel: Expr = xfmr_outer_leg_area_rel
     outer_leg_length_rel: Expr = xfmr_outer_leg_length_rel
 
-    # ------------------------------------------------------------------
-    # Core constitutive coefficients.
-    #
-    # Linear mode uses xfmr_core_linear_l_pu.
-    # Nonlinear mode uses the Frohlich parameters a' and b'.
-    # ------------------------------------------------------------------
     yoke_linear_coeff: Expr = xfmr_core_linear_l_pu * yoke_area_rel / (yoke_length_rel + c_eps)
     outer_linear_coeff: Expr = xfmr_core_linear_l_pu * outer_leg_area_rel / (outer_leg_length_rel + c_eps)
 
@@ -556,14 +462,14 @@ def get_xfmr_emt_template(
     )
 
     # ------------------------------------------------------------------
-    # Projection of leakage currents and core currents to terminal frame.
+    # Projection of winding-frame currents to terminal-frame currents.
     # ------------------------------------------------------------------
     i_series_from: list[Expr] = _project_currents(c_f_expr, i_leak, c0)
     i_series_to: list[Expr] = _project_currents(c_t_expr, i_leak, c0)
 
-    i_core_branch_w: list[Expr] = [i_mag[k] + i_loss_leg[k] for k in range(3)]
-    i_core_from_w: list[Expr] = [c_half * i_core_branch_w[k] for k in range(3)]
-    i_core_to_w: list[Expr] = [c_half * n_tap * i_core_branch_w[k] for k in range(3)]
+    # Core branch referred only to the from side.
+    i_core_from_w: list[Expr] = [i_mag[k] + i_loss_leg[k] for k in range(3)]
+    i_core_to_w: list[Expr] = [c0, c0, c0]
 
     i_core_from_term: list[Expr] = _project_currents(c_f_expr, i_core_from_w, c0)
     i_core_to_term: list[Expr] = _project_currents(c_t_expr, i_core_to_w, c0)
@@ -581,13 +487,18 @@ def get_xfmr_emt_template(
             + xfmr_core_b_prime * sym.sqrt(i_leg_core[k] * i_leg_core[k] + c_smooth)
             + c_eps
         )
-        alg_eqs.append(xfmr_use_linear_core * linear_leg_eq + (c1 - xfmr_use_linear_core) * nonlinear_leg_eq)
+        alg_eqs.append(
+            xfmr_use_linear_core * linear_leg_eq
+            + (c1 - xfmr_use_linear_core) * nonlinear_leg_eq
+        )
 
-    # Return-path constitutive law for 3-legged and 5-legged cores.
-    five_leg_eq_linear: Expr = c_half * lam_return_total - (
+    # Return-path constitutive law.
+    five_leg_eq_linear: Expr = c0
+    five_leg_eq_linear = c0
+    five_leg_eq_linear = (c1 / c2) * lam_return_total - (
         c2 * yoke_linear_coeff * i_return_path + outer_linear_coeff * i_return_path
     )
-    five_leg_eq_nonlinear: Expr = c_half * lam_return_total - (
+    five_leg_eq_nonlinear: Expr = (c1 / c2) * lam_return_total - (
         c2 * yoke_frolich_lam + outer_frolich_lam
     )
     three_leg_eq_linear: Expr = lam_return_total - c2 * yoke_linear_coeff * i_return_path
@@ -604,31 +515,40 @@ def get_xfmr_emt_template(
         )
     )
 
-    alg_eqs.append(i_return_total - (five_leg_selector * c2 * i_return_path + three_leg_selector * i_return_path))
+    alg_eqs.append(
+        i_return_total - (
+            five_leg_selector * c2 * i_return_path
+            + three_leg_selector * i_return_path
+        )
+    )
 
-    # Net magnetizing currents in winding frame.
+    # Magnetizing currents.
     for k in range(3):
         alg_eqs.append(i_mag[k] - (i_leg_core[k] - i_return_total))
 
-    # Core-loss currents driven by the core excitation voltage.
+    # Core-loss currents referred only to the from side.
     for k in range(3):
-        alg_eqs.append(i_loss_leg[k] - g_core_leg * v_core_w[k])
+        alg_eqs.append(i_loss_leg[k] - g_core_leg * v_f_w[k])
 
-    # Charge-voltage relations for terminal capacitances.
+    # Charge-voltage relations of terminal capacitances.
     for k in range(3):
         alg_eqs.append(q_f[k] - xfmr_c_term * v_f[k])
         alg_eqs.append(q_t[k] - xfmr_c_term * v_t[k])
 
-    # Final terminal current assembly.
-    # for k in range(3):
-    #     alg_eqs.append(if_act[k] - (i_series_from[k] + i_core_from_term[k] + i_cap_f[k]))
-    #     alg_eqs.append(it_act[k] - (-n_tap * i_series_to[k] + i_core_to_term[k] + i_cap_t[k]))
+    # Terminal current assembly.
     for k in range(3):
         alg_eqs.append(
-            if_act[k] - (i_series_from[k] + i_core_from_term[k] + i_cap_f[k] + g_damp * v_f[k])
+            if_act[k] - (
+                i_series_from[k]
+                + i_core_from_term[k]
+                + i_cap_f[k]
+            )
         )
         alg_eqs.append(
-            it_act[k] - (-n_tap * i_series_to[k] + i_core_to_term[k] + i_cap_t[k] + g_damp * v_t[k])
+            it_act[k] - (
+                -n_tap * i_series_to[k]
+                + i_cap_t[k]
+            )
         )
 
     templ.block.algebraic_eqs = alg_eqs
@@ -636,9 +556,6 @@ def get_xfmr_emt_template(
 
     # ------------------------------------------------------------------
     # External mapping.
-    #
-    # The full standard branch mapping is exposed, using None for keys that
-    # do not correspond to actual variables of this template.
     # ------------------------------------------------------------------
     if_keys: Dict[str, VarPowerFlowRefferenceType] = {
         "N": VarPowerFlowRefferenceType.if_N,
@@ -711,12 +628,15 @@ def get_xfmr_emt_template(
     mapping[vf_keys["A"]] = v_f[0]
     mapping[vf_keys["B"]] = v_f[1]
     mapping[vf_keys["C"]] = v_f[2]
+
     mapping[vt_keys["A"]] = v_t[0]
     mapping[vt_keys["B"]] = v_t[1]
     mapping[vt_keys["C"]] = v_t[2]
+
     mapping[if_keys["A"]] = if_act[0]
     mapping[if_keys["B"]] = if_act[1]
     mapping[if_keys["C"]] = if_act[2]
+
     mapping[it_keys["A"]] = it_act[0]
     mapping[it_keys["B"]] = it_act[1]
     mapping[it_keys["C"]] = it_act[2]
@@ -726,129 +646,84 @@ def get_xfmr_emt_template(
     # ------------------------------------------------------------------
     # Initialization equations.
     #
-    # The PF-derived terminal currents if_act / it_act are expected to be seeded
-    # from EmtProblemDae through the external mapping. Therefore they are not
-    # initialized here.
-    #
-    # Internal variables are initialized from already initialized terminal
-    # voltages and currents so that the magnetic states start from a steady-state
-    # sinusoidal operating point instead of an artificial demagnetized condition.
+    # PF-derived terminal currents if_act / it_act are initialized before
+    # init_eqs through external_mapping. The magnetic branch is initialized
+    # from the from-side winding voltage only.
     # ------------------------------------------------------------------
     c_inv_sqrt3: Expr = c1 / sym.sqrt(c3)
 
-    # ------------------------------------------------------------------
-    # Balanced steady-state initialization of the core flux linkages.
-    #
-    # For a balanced three-phase sinusoidal set, a flux waveform consistent with
-    # d(lambda)/dt = omega_base * v_core_w can be reconstructed from the three
-    # instantaneous core excitation voltages as:
-    #
-    #   lambda_A = -(v_C - v_B) / sqrt(3)
-    #   lambda_B = -(v_A - v_C) / sqrt(3)
-    #   lambda_C = -(v_B - v_A) / sqrt(3)
-    #
-    # This uses only already initialized voltage variables and does not require
-    # voltage derivatives from outside the transformer block.
-    # ------------------------------------------------------------------
     lam_leg_init: list[Expr] = [
-        -(v_core_w[2] - v_core_w[1]) * c_inv_sqrt3,
-        -(v_core_w[0] - v_core_w[2]) * c_inv_sqrt3,
-        -(v_core_w[1] - v_core_w[0]) * c_inv_sqrt3,
+        -(v_f_w[2] - v_f_w[1]) * c_inv_sqrt3,
+        -(v_f_w[0] - v_f_w[2]) * c_inv_sqrt3,
+        -(v_f_w[1] - v_f_w[0]) * c_inv_sqrt3,
     ]
 
     init_eqs: Dict[Var, Expr] = {}
 
-    # ------------------------------------------------------------------
-    # Capacitor charge states from the terminal voltages.
-    # ------------------------------------------------------------------
+    # Charge states.
     for k in range(3):
         init_eqs[q_f[k]] = xfmr_c_term * v_f[k]
         init_eqs[q_t[k]] = xfmr_c_term * v_t[k]
 
-    # ------------------------------------------------------------------
-    # Core flux-linkage states from the balanced sinusoidal steady-state
-    # reconstruction based on the internal core excitation voltages.
-    # ------------------------------------------------------------------
+    # Core flux-linkage states from the from-side winding voltage set.
     for k in range(3):
         init_eqs[lam_leg[k]] = lam_leg_init[k]
 
-    # ------------------------------------------------------------------
-    # Core leg currents from the constitutive law evaluated at the initialized
-    # leg fluxes.
-    #
-    # In linear mode:
-    #   lambda = Lm * i
-    #
-    # In nonlinear mode:
-    #   a practical initialization is obtained using the small-signal inverse
-    #   slope around the initialized point, i.e. i ~= lambda / a'.
-    # ------------------------------------------------------------------
+    # Core leg currents from the constitutive law.
+    # for k in range(3):
+    #     init_eqs[i_leg_core[k]] = (
+    #         xfmr_use_linear_core * (lam_leg[k] / (xfmr_core_linear_l_pu + c_eps))
+    #         + (c1 - xfmr_use_linear_core) * (lam_leg[k] / (xfmr_core_a_prime + c_eps))
+    #     )
     for k in range(3):
-        init_eqs[i_leg_core[k]] = (
-                xfmr_use_linear_core * (lam_leg[k] / (xfmr_core_linear_l_pu + c_eps))
-                + (c1 - xfmr_use_linear_core) * (lam_leg[k] / (xfmr_core_a_prime + c_eps))
+        abs_lam_k: Expr = sym.sqrt(lam_leg[k] * lam_leg[k] + c_smooth)
+        i_leg_core_nl_init: Expr = (
+                xfmr_core_a_prime * lam_leg[k]
+                / (c1 - xfmr_core_b_prime * abs_lam_k + c_eps)
         )
 
-    # ------------------------------------------------------------------
-    # Core return-path current from the initialized total return flux.
-    #
-    # The initialization is intentionally linearized even when the nonlinear
-    # core law is active. The goal is to provide a physically coherent and
-    # numerically robust starting point for Newton, not to solve the full
-    # nonlinear magnetic algebra exactly inside init_eqs.
-    # ------------------------------------------------------------------
+        init_eqs[i_leg_core[k]] = (
+                xfmr_use_linear_core * (lam_leg[k] / (xfmr_core_linear_l_pu + c_eps))
+                + (c1 - xfmr_use_linear_core) * i_leg_core_nl_init
+        )
+
+    # Return-path currents from initialized fluxes.
     init_eqs[i_return_path] = (
-            five_leg_selector * (lam_return_total / (c2 * yoke_linear_coeff + outer_linear_coeff + c_eps))
-            + three_leg_selector * (lam_return_total / (c2 * yoke_linear_coeff + c_eps))
+        five_leg_selector * (lam_return_total / (c2 * yoke_linear_coeff + outer_linear_coeff + c_eps))
+        + three_leg_selector * (lam_return_total / (c2 * yoke_linear_coeff + c_eps))
     )
     init_eqs[i_return_total] = (
-            five_leg_selector * c2 * i_return_path
-            + three_leg_selector * i_return_path
+        five_leg_selector * c2 * i_return_path
+        + three_leg_selector * i_return_path
     )
 
-    # ------------------------------------------------------------------
-    # Net magnetizing currents after subtracting the common return-path current.
-    # ------------------------------------------------------------------
+    # Net magnetizing currents.
     for k in range(3):
         init_eqs[i_mag[k]] = i_leg_core[k] - i_return_total
 
-    # ------------------------------------------------------------------
-    # Core-loss currents driven by the initialized internal core excitation
-    # voltage.
-    # ------------------------------------------------------------------
+    # Core-loss currents referred to the from side.
     for k in range(3):
-        init_eqs[i_loss_leg[k]] = g_core_leg * v_core_w[k]
+        init_eqs[i_loss_leg[k]] = g_core_leg * v_f_w[k]
 
-    # ------------------------------------------------------------------
-    # Leakage-current states seeded from the PF-initialized from-side terminal
-    # currents. This preserves the PF operating point already imposed through
-    # external_mapping.
-    # ------------------------------------------------------------------
+    # Leakage-current seed from PF-initialized from-side terminal current.
     for k in range(3):
         init_eqs[i_leak[k]] = if_act[k]
 
-    # ------------------------------------------------------------------
     # Capacitor-current seeds from terminal current balance.
-    # ------------------------------------------------------------------
-    # for k in range(3):
-    #     init_eqs[i_cap_f[k]] = if_act[k] - (i_series_from[k] + i_core_from_term[k])
-    #     init_eqs[i_cap_t[k]] = it_act[k] - (-n_tap * i_series_to[k] + i_core_to_term[k])
     for k in range(3):
-        init_eqs[i_cap_f[k]] = if_act[k] - (i_series_from[k] + i_core_from_term[k] + g_damp * v_f[k])
-        init_eqs[i_cap_t[k]] = it_act[k] - (-n_tap * i_series_to[k] + i_core_to_term[k] + g_damp * v_t[k])
+        init_eqs[i_cap_f[k]] = if_act[k] - (i_series_from[k] + i_core_from_term[k])
+        init_eqs[i_cap_t[k]] = it_act[k] - (-n_tap * i_series_to[k])
 
     templ.block.init_eqs = init_eqs
 
     # ------------------------------------------------------------------
-    # Derivative initialization.
-    #
-    # These expressions mirror the state equations exactly.
+    # Differential initialization equations.
     # ------------------------------------------------------------------
     diff_init_eqs: Dict[Var, Expr] = {}
 
     for k in range(3):
         diff_init_eqs[di_leak[k]] = l_inv * (v_leak[k] - r_sc_pu * i_leak[k])
-        diff_init_eqs[dlam_leg[k]] = omega_base * v_core_w[k]
+        diff_init_eqs[dlam_leg[k]] = omega_base * v_f_w[k]
         diff_init_eqs[dq_f[k]] = i_cap_f[k]
         diff_init_eqs[dq_t[k]] = i_cap_t[k]
 

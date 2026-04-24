@@ -14,8 +14,8 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_options import PowerFlowOpt
 from VeraGridEngine.Simulations.PowerFlow.power_flow_results import NumericPowerFlowResults
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_basic_formulation import PfBasicFormulation
 from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_full_acdc_with_negative_poles import PfAcDcWithNegativePoles
-from VeraGridEngine.Simulations.PowerFlow.Formulations.pf_generalized_formulation import PfGeneralizedFormulation
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.newton_raphson_fx import newton_raphson_fx
+from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions import split_bus_quantity
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.powell_fx import powell_fx
 from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.levenberg_marquadt_fx import levenberg_marquardt_fx
 from VeraGridEngine.Topology.simulation_indices import SimulationIndices
@@ -183,14 +183,14 @@ def __solve_island_complete_support(nc: NumericalCircuit,
             if solver_type == SolverType.LM:
 
                 problem = PfAcDcWithNegativePoles(V0=final_solution.V,
-                                                   S0=S0,
-                                                   I0=I0,
-                                                   Y0=Y0,
-                                                   Qmin=Qmin,
-                                                   Qmax=Qmax,
-                                                   nc=nc,
-                                                   options=options,
-                                                   logger=logger)
+                                                  S0=S0,
+                                                  I0=I0,
+                                                  Y0=Y0,
+                                                  Qmin=Qmin,
+                                                  Qmax=Qmax,
+                                                  nc=nc,
+                                                  options=options,
+                                                  logger=logger)
 
                 solution = levenberg_marquardt_fx(problem=problem,
                                                   tol=options.tolerance,
@@ -201,14 +201,14 @@ def __solve_island_complete_support(nc: NumericalCircuit,
             elif solver_type == SolverType.NR:
 
                 problem = PfAcDcWithNegativePoles(V0=final_solution.V,
-                                                   S0=S0,
-                                                   I0=I0,
-                                                   Y0=Y0,
-                                                   Qmin=Qmin,
-                                                   Qmax=Qmax,
-                                                   nc=nc,
-                                                   options=options,
-                                                   logger=logger)
+                                                  S0=S0,
+                                                  I0=I0,
+                                                  Y0=Y0,
+                                                  Qmin=Qmin,
+                                                  Qmax=Qmax,
+                                                  nc=nc,
+                                                  options=options,
+                                                  logger=logger)
 
                 solution = newton_raphson_fx(problem=problem,
                                              tol=options.tolerance,
@@ -220,14 +220,14 @@ def __solve_island_complete_support(nc: NumericalCircuit,
             elif solver_type == SolverType.PowellDogLeg:
 
                 problem = PfAcDcWithNegativePoles(V0=final_solution.V,
-                                                   S0=S0,
-                                                   I0=I0,
-                                                   Y0=Y0,
-                                                   Qmin=Qmin,
-                                                   Qmax=Qmax,
-                                                   nc=nc,
-                                                   options=options,
-                                                   logger=logger)
+                                                  S0=S0,
+                                                  I0=I0,
+                                                  Y0=Y0,
+                                                  Qmin=Qmin,
+                                                  Qmax=Qmax,
+                                                  nc=nc,
+                                                  options=options,
+                                                  logger=logger)
 
                 solution = powell_fx(problem=problem,
                                      tol=options.tolerance,
@@ -991,7 +991,18 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             results.voltage = nc.propagate_bus_result(results.voltage)
 
         # do the reactive power partition and store the values
-        __split_reactive_power_into_devices(nc=nc, Qbus=results.Sbus.imag, results=results)
+        # __split_reactive_power_into_devices(nc=nc, Qbus=results.Sbus.imag, results=results)
+
+        results.gen_q = split_bus_quantity(
+            Qbus=results.Sbus.imag,
+            gen_bus_idx=nc.generator_data.bus_idx,
+            Qmin_gen=nc.generator_data.qmin,
+            Qmax_gen=nc.generator_data.qmax,
+            gen_status=nc.generator_data.active,
+            is_controlling=nc.generator_data.controllable,
+            Q0_gen=nc.generator_data.q,
+            atol=1e-12,
+        )
 
         return results
 
