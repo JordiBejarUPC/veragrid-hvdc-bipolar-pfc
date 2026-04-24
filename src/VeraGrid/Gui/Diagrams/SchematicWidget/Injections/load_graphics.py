@@ -18,6 +18,7 @@ from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import ope
 from VeraGridEngine.Devices.Injections.load import Load
 from VeraGrid.Gui.LoadDesigner.load_designer import LoadDesigner
 from VeraGridEngine.enumerations import DeviceType
+from VeraGridEngine.enumerations import DynamicSimulationMode
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -69,20 +70,34 @@ class LoadGraphicItem(InjectionTemplateGraphicItem):
                            icon_path=":/Icons/icons/gear.png")
 
             add_menu_entry(menu=menu,
-                           text="Dynamic Editor",
-                           function_ptr=self.edit_dynamic,
+                           text="RMS Editor",
+                           function_ptr=self.edit_dynamic_rms,
+                           icon_path=":/Icons/icons/dyn_gray.png")
+
+            add_menu_entry(menu=menu,
+                           text="EMT Editor",
+                           function_ptr=self.edit_dynamic_emt,
                            icon_path=":/Icons/icons/dyn_gray.png")
 
             menu.exec(event.screenPos())
         else:
             self.editor.gui.show_error_toast("The graphic has no API object!")
 
-    def edit_dynamic(self):
+    def edit_dynamic_rms(self):
         """
-        Open the unified dynamic editor workspace for this load.
+        Open the unified dynamic editor workspace for this generator.
         """
 
-        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit)
+        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                            preferred_mode=DynamicSimulationMode.RMS)
+
+    def edit_dynamic_emt(self):
+        """
+        Open the unified dynamic editor workspace for this generator.
+        """
+
+        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                            preferred_mode=DynamicSimulationMode.EMT)
 
     def load_profile_wizard(self) -> None:
         """
