@@ -27,6 +27,7 @@ from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
 from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
+from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
@@ -216,10 +217,32 @@ def attach_emt_models(
     :return: Line, the two generator and the load EMT blocks.
     """
     bus: Bus
-    line_block: Block = get_pi_line_emt_template(vf=grid.var_factory, phN=False, phA=True, phB=True, phC=True).block
-    generator_1_block: Block = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
-    generator_2_block: Block = get_generator_thevenin_rl_emt_template(vf=grid.var_factory).block
-    load_block: Block = get_shunt_r_emt_template(vf=grid.var_factory, phA=True, phB=True, phC=True).block
+
+    line_block: Block = get_pi_line_emt_template(
+        vf=grid.var_factory,
+        phN=False,
+        phA=True,
+        phB=True,
+        phC=True,
+        name="Line01_Pi",
+    ).block
+
+    generator_1_block: Block = get_simple_generator_emt_template(
+        vf=grid.var_factory,
+        name="SlackGen1_SimpleEmt",
+    ).block
+
+    generator_2_block: Block = get_simple_generator_emt_template(
+        vf=grid.var_factory,
+        name="SlackGen2_SimpleEmt",
+    ).block
+
+    load_block: Block = get_shunt_r_emt_template(
+        vf=grid.var_factory,
+        phA=True,
+        phB=True,
+        phC=True,
+    ).block
 
     for bus in grid.buses:
         get_bus_emt_template(grid, bus)
@@ -229,7 +252,7 @@ def attach_emt_models(
     set_emt_model(device=generator_2, model=generator_2_block, var_factory=grid.var_factory)
     set_emt_model(device=load, model=load_block, var_factory=grid.var_factory)
 
-    return line_block, generator_1_block, generator_2_block, load_block
+    return line.emt_model, generator_1.emt_model, generator_2.emt_model, load.emt_model
 
 
 def run_balanced_power_flow(grid: MultiCircuit) -> Any:
@@ -414,6 +437,7 @@ def save_two_panel_three_phase_plot(
     axes[0].grid(True)
     axes[0].legend(loc='upper left')
 
+
     axes[1].plot(time_values, bottom_triplet[0], label=f"{bottom_legend_prefix} A")
     axes[1].plot(time_values, bottom_triplet[1], label=f"{bottom_legend_prefix} B")
     axes[1].plot(time_values, bottom_triplet[2], label=f"{bottom_legend_prefix} C")
@@ -425,6 +449,7 @@ def save_two_panel_three_phase_plot(
 
     figure.tight_layout()
     figure.savefig(file_path, dpi=200)
+    plt.show()
     plt.close(figure)
     return file_path
 
@@ -481,6 +506,7 @@ def save_line_internal_currents_plot(
 
     figure.tight_layout()
     figure.savefig(file_path, dpi=200)
+    plt.show()
     plt.close(figure)
     return file_path
 
@@ -524,6 +550,7 @@ def save_phase_a_split_plot(
 
     figure.tight_layout()
     figure.savefig(file_path, dpi=200)
+    plt.show()
     plt.close(figure)
     return file_path
 
@@ -575,19 +602,19 @@ def export_plots_two_slack_generators_same_bus(
     ))
 
     line_series_currents: np.ndarray = np.column_stack((
-        get_state_series(problem, line_block, 'i_ser_Pi_A', y_values),
-        get_state_series(problem, line_block, 'i_ser_Pi_B', y_values),
-        get_state_series(problem, line_block, 'i_ser_Pi_C', y_values),
+        get_state_series(problem, line_block, 'i_ser_Line01_Pi_A', y_values),
+        get_state_series(problem, line_block, 'i_ser_Line01_Pi_B', y_values),
+        get_state_series(problem, line_block, 'i_ser_Line01_Pi_C', y_values),
     ))
     line_from_shunt_currents: np.ndarray = np.column_stack((
-        get_state_series(problem, line_block, 'i_cap_f_Pi_A', y_values),
-        get_state_series(problem, line_block, 'i_cap_f_Pi_B', y_values),
-        get_state_series(problem, line_block, 'i_cap_f_Pi_C', y_values),
+        get_state_series(problem, line_block, 'i_cap_f_Line01_Pi_A', y_values),
+        get_state_series(problem, line_block, 'i_cap_f_Line01_Pi_B', y_values),
+        get_state_series(problem, line_block, 'i_cap_f_Line01_Pi_C', y_values),
     ))
     line_to_shunt_currents: np.ndarray = np.column_stack((
-        get_state_series(problem, line_block, 'i_cap_t_Pi_A', y_values),
-        get_state_series(problem, line_block, 'i_cap_t_Pi_B', y_values),
-        get_state_series(problem, line_block, 'i_cap_t_Pi_C', y_values),
+        get_state_series(problem, line_block, 'i_cap_t_Line01_Pi_A', y_values),
+        get_state_series(problem, line_block, 'i_cap_t_Line01_Pi_B', y_values),
+        get_state_series(problem, line_block, 'i_cap_t_Line01_Pi_C', y_values),
     ))
 
     output_directory.mkdir(parents=True, exist_ok=True)
@@ -752,8 +779,16 @@ def main() -> None:
     expected_current_1_a = compute_expected_balanced_phase_current(slack_phase_power_1, bus_voltage_a)
     expected_current_2_a = compute_expected_balanced_phase_current(slack_phase_power_2, bus_voltage_a)
 
-    initialized_current_1_a = get_external_init_value(problem, generator_1_block, "i_A_emt_thevenin_eq_generator_template")
-    initialized_current_2_a = get_external_init_value(problem, generator_2_block, "i_A_emt_thevenin_eq_generator_template")
+    initialized_current_1_a = get_external_init_value(
+        problem,
+        generator_1_block,
+        "i_A_SlackGen1_SimpleEmt",
+    )
+    initialized_current_2_a = get_external_init_value(
+        problem,
+        generator_2_block,
+        "i_A_SlackGen2_SimpleEmt",
+    )
 
     assert_close(
         label="Slack generator 1 phase-A EMT initialization",
