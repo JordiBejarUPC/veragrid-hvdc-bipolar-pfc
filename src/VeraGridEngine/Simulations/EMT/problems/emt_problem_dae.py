@@ -1597,7 +1597,7 @@ class EmtProblemDae(EmtProblemTemplate):
             f: int = bus_dict[br.bus_from]
             t: int = bus_dict[br.bus_to]
             _normalize_pi_line_phase_layout(branch=br, grid=grid)
-            mdl: Block = self._process_device_model(br, sys_block, grid, glob_time)
+            mdl: Block = self._process_device_model(br, sys_block)
 
             is_bergeron: bool = False
             if br.emt_model.name == EmtLineTypes.Bergeron or br.emt_model.name == EmtLineTypes.Bergeron.value:
@@ -1825,7 +1825,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 seed_store = None
 
         for injection_index, inj in enumerate(injection_devices):
-            mdl: Block = self._process_device_model(inj, sys_block, grid, glob_time)
+            mdl: Block = self._process_device_model(inj, sys_block)
             b: int = bus_dict[inj.bus]
 
             if inj.device_type == DeviceType.LoadDevice:
@@ -1913,7 +1913,7 @@ class EmtProblemDae(EmtProblemTemplate):
                 pass
 
         for bus_idx, bus in enumerate(grid.buses):
-            mdl: Block = self._process_device_model(bus, sys_block, grid, glob_time)
+            mdl: Block = self._process_device_model(bus, sys_block)
 
             if self.power_flow_results_3ph is not None:
                 self._try_set_bus_pf_init(
