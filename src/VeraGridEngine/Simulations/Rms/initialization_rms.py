@@ -1851,73 +1851,73 @@ def apply_solution_to_problem(problem: Any, x: np.ndarray, event_x: np.ndarray) 
         problem.event_params_init_dict[var.uid] = float(event_x[problem.uid2idx_event_params[var.uid]])
         problem.event_parameters_eqs0[problem.uid2idx_event_params[var.uid]] = float(event_x[problem.uid2idx_event_params[var.uid]])
 
-def compute_missing_dx0(problem: Any,
-                        x_full: np.ndarray | None = None,
-                        dx_full: np.ndarray | None = None,
-                        runtime_params: np.ndarray | None = None,
-                        constant_params: np.ndarray | None = None) -> None:
-    """
-    Compute missing differential initial values from the state equations.
-
-    :param problem: EMT problem being initialized.
-    :param report: Initialization report updated in place.
-    :return: None
-    """
-    state_eqs: List[Expr] = problem.state_eqs()
-    if len(state_eqs) == 0:
-        return
-    else:
-        state_eqs = state_eqs
-
-    phase_t0: float = time.perf_counter()
-    missing_diff_vars: List[Var]
-    missing_state_eqs: List[Expr]
-    missing_diff_vars, missing_state_eqs = _collect_missing_dx_problem(problem)
-
-
-    if len(missing_diff_vars) == 0:
-        return
-    else:
-        pass
-
-    phase_t0 = time.perf_counter()
-    if x_full is None:
-        x0: np.ndarray = problem.get_x0()
-    else:
-        x0 = x_full
-
-    phase_t0 = time.perf_counter()
-    if dx_full is None:
-        dx0_seed: np.ndarray = problem.get_dx0()
-    else:
-        dx0_seed = dx_full
-
-
-    if runtime_params is None or len(runtime_params) != problem.get_variable_parameter_number():
-        runtime_params = build_runtime_param_array(problem)
-    else:
-        runtime_params = runtime_params
-
-    if constant_params is None or len(constant_params) != len(problem.get_parameters_values()):
-        constant_params = build_constant_param_array(problem)
-    else:
-        constant_params = constant_params
-    cache_key: str = _build_state_rhs_cache_key(problem, missing_state_eqs)
-    state_rhs_fn = _load_or_build_state_rhs_vector(problem, missing_state_eqs, cache_key, report)
-
-    phase_t0 = time.perf_counter()
-    computed_dx: np.ndarray = state_rhs_fn(x0, dx0_seed, runtime_params, constant_params).copy()
-
-
-    idx: int = 0
-    phase_t0 = time.perf_counter()
-    while idx < len(missing_diff_vars):
-        diff_var: Var = missing_diff_vars[idx]
-        problem.diff_init_guess[diff_var.uid] = float(computed_dx[idx])
-
-        idx += 1
-
-
+# def compute_missing_dx0(problem: Any,
+#                         x_full: np.ndarray | None = None,
+#                         dx_full: np.ndarray | None = None,
+#                         runtime_params: np.ndarray | None = None,
+#                         constant_params: np.ndarray | None = None) -> None:
+#     """
+#     Compute missing differential initial values from the state equations.
+#
+#     :param problem: EMT problem being initialized.
+#     :param report: Initialization report updated in place.
+#     :return: None
+#     """
+#     state_eqs: List[Expr] = problem.state_eqs()
+#     if len(state_eqs) == 0:
+#         return
+#     else:
+#         state_eqs = state_eqs
+#
+#     phase_t0: float = time.perf_counter()
+#     missing_diff_vars: List[Var]
+#     missing_state_eqs: List[Expr]
+#     missing_diff_vars, missing_state_eqs = _collect_missing_dx_problem(problem)
+#
+#
+#     if len(missing_diff_vars) == 0:
+#         return
+#     else:
+#         pass
+#
+#     phase_t0 = time.perf_counter()
+#     if x_full is None:
+#         x0: np.ndarray = problem.get_x0()
+#     else:
+#         x0 = x_full
+#
+#     phase_t0 = time.perf_counter()
+#     if dx_full is None:
+#         dx0_seed: np.ndarray = problem.get_dx0()
+#     else:
+#         dx0_seed = dx_full
+#
+#
+#     if runtime_params is None or len(runtime_params) != problem.get_variable_parameter_number():
+#         runtime_params = build_runtime_param_array(problem)
+#     else:
+#         runtime_params = runtime_params
+#
+#     if constant_params is None or len(constant_params) != len(problem.get_parameters_values()):
+#         constant_params = build_constant_param_array(problem)
+#     else:
+#         constant_params = constant_params
+#     cache_key: str = _build_state_rhs_cache_key(problem, missing_state_eqs)
+#     state_rhs_fn = _load_or_build_state_rhs_vector(problem, missing_state_eqs, cache_key, report)
+#
+#     phase_t0 = time.perf_counter()
+#     computed_dx: np.ndarray = state_rhs_fn(x0, dx0_seed, runtime_params, constant_params).copy()
+#
+#
+#     idx: int = 0
+#     phase_t0 = time.perf_counter()
+#     while idx < len(missing_diff_vars):
+#         diff_var: Var = missing_diff_vars[idx]
+#         problem.diff_init_guess[diff_var.uid] = float(computed_dx[idx])
+#
+#         idx += 1
+#
+#
 
 
 def _build_initialization_system_if_needed(
