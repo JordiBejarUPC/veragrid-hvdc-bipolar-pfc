@@ -2908,6 +2908,7 @@ class EraSvdSolverType(Enum):
 
 class RmsInitializationMethod(Enum):
     Explicit = "Explicit"
+    ReducedExplicit = "ReducedExplicit"
     PseudoTransient = "PseudoTransient"
     CustomValues = "CustomValues"
 

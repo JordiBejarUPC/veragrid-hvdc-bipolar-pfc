@@ -13,6 +13,19 @@ import numpy as np
 from scipy.sparse.linalg import splu, LinearOperator, eigs
 
 
+def _parallel_executor_cls():
+    """
+    Select executor class with Windows-safe default.
+
+    On Windows, ProcessPoolExecutor uses spawn and re-imports module-level code
+    in each child process. For these preprocessing stages, ThreadPoolExecutor
+    avoids repeated interpreter startup and recursive import storms.
+    """
+    if sys.platform.startswith("win"):
+        return concurrent.futures.ThreadPoolExecutor
+    return concurrent.futures.ProcessPoolExecutor
+
+
 
 class LoadingSpinner:
     """A threaded terminal spinner to show activity during blocking C/Fortran calls."""
@@ -520,7 +533,8 @@ class PolynomialMatrixBuilder:
                     parsed_predefined.append(sym)
 
         # 3. Expression parsing (parallelized)
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        executor_cls = _parallel_executor_cls()
+        with executor_cls() as executor:
             self.eqs = list(
                 executor.map(
                     _parse_single_equation,
@@ -702,7 +716,8 @@ class PolynomialMatrixBuilder:
         protected_snap: list = list(self._protected_params)
         raw_strings: list = [str(e) for e in all_exprs]
 
-        with concurrent.futures.ProcessPoolExecutor() as executor:
+        executor_cls = _parallel_executor_cls()
+        with executor_cls() as executor:
             worker_results = list(executor.map(
                 _process_equation_worker,
                 raw_strings,
