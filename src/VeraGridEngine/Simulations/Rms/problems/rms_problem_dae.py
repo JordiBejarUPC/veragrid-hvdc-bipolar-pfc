@@ -804,7 +804,7 @@ class RmsProblemDae(RmsProblemTemplate):
                         verbose=bool(self.options.verbose > 0),
                     )
                     # initialize variables with no init equation assigned
-                    run_rms_native_initialization(self, self.options)
+                    # run_rms_native_initialization(self, self.options)
 
                 elif self.options.initialization_method == RmsInitializationMethod.PseudoTransient:
                     raise ValueError("Not implemented initialization method")
