@@ -214,7 +214,9 @@ class PowerFlowResults(ResultsTemplate):
         "It_vsc",
         "losses_vsc",
         "loading_vsc",
+        "gen_p",
         "gen_q",
+        "battery_p",
         "battery_q",
         "shunt_q",
         "plot_bars_limit",
@@ -297,10 +299,12 @@ class PowerFlowResults(ResultsTemplate):
                     ResultTypes.VscLosses,
                 ],
                 ResultTypes.GeneratorResults: [
+                    ResultTypes.GeneratorPower,
                     ResultTypes.GeneratorReactivePower,
                 ],
 
                 ResultTypes.BatteryResults: [
+                    ResultTypes.BatteryPower,
                     ResultTypes.BatteryReactivePower,
                 ],
 
@@ -362,8 +366,12 @@ class PowerFlowResults(ResultsTemplate):
         self.losses_vsc = np.zeros(n_vsc, dtype=float)
         self.loading_vsc = np.zeros(n_vsc, dtype=float)
 
+        self.gen_p: Vec = np.zeros(n_gen)
         self.gen_q: Vec = np.zeros(n_gen)
+
+        self.battery_p: Vec = np.zeros(n_batt)
         self.battery_q: Vec = np.zeros(n_batt)
+
         self.shunt_q: Vec = np.zeros(n_sh)
 
         self.plot_bars_limit: int = 100
@@ -973,6 +981,17 @@ class PowerFlowResults(ResultsTemplate):
                                 ylabel='(MW)',
                                 units='(MW)')
 
+        elif result_type == ResultTypes.GeneratorPower:
+
+            return ResultsTable(data=self.gen_p,
+                                index=self.gen_names,
+                                idx_device_type=DeviceType.GeneratorDevice,
+                                columns=np.array([result_type.value]),
+                                cols_device_type=DeviceType.NoDevice,
+                                title=result_type.value,
+                                ylabel='(MW)',
+                                units='(MW)')
+
         elif result_type == ResultTypes.GeneratorReactivePower:
 
             return ResultsTable(data=self.gen_q,
@@ -983,6 +1002,17 @@ class PowerFlowResults(ResultsTemplate):
                                 title=result_type.value,
                                 ylabel='(MVAr)',
                                 units='(MVAr)')
+
+        elif result_type == ResultTypes.BatteryPower:
+
+            return ResultsTable(data=self.battery_p,
+                                index=self.batt_names,
+                                idx_device_type=DeviceType.BatteryDevice,
+                                columns=np.array([result_type.value]),
+                                cols_device_type=DeviceType.NoDevice,
+                                title=result_type.value,
+                                ylabel='(MW)',
+                                units='(MW)')
 
         elif result_type == ResultTypes.BatteryReactivePower:
 
