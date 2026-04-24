@@ -10,10 +10,11 @@ from VeraGrid.Gui.gui_functions import add_menu_entry
 from VeraGrid.Gui.Diagrams.SchematicWidget.Branches.line_graphics_template import LineGraphicTemplateItem
 from VeraGrid.Gui.Diagrams.SchematicWidget.terminal_item import BarTerminalItem, RoundTerminalItem
 from VeraGrid.Gui.messages import yes_no_question
+from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_workspace_manager import open_dynamic_editor
 from VeraGrid.Gui.Diagrams.Editors.transformer_editor import TransformerEditor
 from VeraGrid.Gui.Diagrams.Editors.transformer_taps_editor import TransformerTapsEditor
 from VeraGridEngine.Devices.Branches.transformer import Transformer2W, TransformerType
-from VeraGridEngine.enumerations import DeviceType, TapModuleControl
+from VeraGridEngine.enumerations import DeviceType, TapModuleControl, DynamicSimulationMode
 
 if TYPE_CHECKING:  # Only imports the below statements during type checking
     from VeraGrid.Gui.Diagrams.SchematicWidget.schematic_widget import SchematicWidget
@@ -83,6 +84,16 @@ class TransformerGraphicItem(LineGraphicTemplateItem):
                            function_ptr=self.edit,
                            icon_path=":/Icons/icons/edit.png")
 
+            add_menu_entry(menu=menu,
+                           text="RMS Editor",
+                           function_ptr=self.edit_dynamic_rms,
+                           icon_path=":/Icons/icons/dyn_gray.png")
+
+            add_menu_entry(menu=menu,
+                           text="EMT Editor",
+                           function_ptr=self.edit_dynamic_emt,
+                           icon_path=":/Icons/icons/dyn_gray.png")
+
             menu.addSection('Tap changer')
 
             add_menu_entry(menu=menu,
@@ -148,6 +159,22 @@ class TransformerGraphicItem(LineGraphicTemplateItem):
 
         else:
             pass
+
+    def edit_dynamic_rms(self):
+        """
+        Open the unified dynamic editor workspace for this generator.
+        """
+
+        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                            preferred_mode=DynamicSimulationMode.RMS)
+
+    def edit_dynamic_emt(self):
+        """
+        Open the unified dynamic editor workspace for this generator.
+        """
+
+        open_dynamic_editor(api_object=self.api_object, circuit=self.editor.circuit,
+                            preferred_mode=DynamicSimulationMode.EMT)
 
     def mouseDoubleClickEvent(self, event):
         """
