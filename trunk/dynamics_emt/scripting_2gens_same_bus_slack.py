@@ -133,7 +133,7 @@ def build_emt_options() -> EmtOptions:
         simulation_time=0.1,
         tolerance=1e-8,
         solver_type=EmtSolverTypes.Symbolic,
-        initialization_method=EmtInitializationMethod.Explicit,
+        initialization_method=EmtInitializationMethod.Auto,
         integration_method=DynamicIntegrationMethod.DaeTrapezoidal,
         verbose=1,
     )
@@ -255,13 +255,13 @@ def attach_emt_models(
     generator_1.emt_model.set_parameter_in_model(var_name="Ki_SlackGen1_SimpleEmt", new_value=0.0)
     generator_1.emt_model.set_parameter_in_model(var_name="Kq_share_SlackGen1_SimpleEmt", new_value=0.000)
     generator_1.emt_model.set_parameter_in_model(var_name="D_SlackGen1_SimpleEmt", new_value=10.0)
-    generator_1.emt_model.set_parameter_in_model(var_name="Tg_SlackGen1_SimpleEmt", new_value=0.1)
+    # generator_1.emt_model.set_parameter_in_model(var_name="Tg_SlackGen1_SimpleEmt", new_value=0.1)
 
     generator_2.emt_model.set_parameter_in_model(var_name="Kp_SlackGen2_SimpleEmt", new_value=0.06)
     generator_2.emt_model.set_parameter_in_model(var_name="Ki_SlackGen2_SimpleEmt", new_value=0.0)
     generator_2.emt_model.set_parameter_in_model(var_name="Kq_share_SlackGen2_SimpleEmt", new_value=0.00)
     generator_2.emt_model.set_parameter_in_model(var_name="D_SlackGen2_SimpleEmt", new_value=10.0)
-    generator_2.emt_model.set_parameter_in_model(var_name="Tg_SlackGen2_SimpleEmt", new_value=0.1)
+    # generator_2.emt_model.set_parameter_in_model(var_name="Tg_SlackGen2_SimpleEmt", new_value=0.1)
 
     return line.emt_model, generator_1.emt_model, generator_2.emt_model, load.emt_model
 
