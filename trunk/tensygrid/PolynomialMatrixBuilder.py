@@ -1,3 +1,8 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+
 import sympy as sp
 from scipy import sparse, linalg
 from enum import Enum
@@ -9,7 +14,7 @@ import itertools
 import concurrent.futures
 import time
 import numpy as np
-
+import json
 from scipy.sparse.linalg import splu, LinearOperator, eigs
 
 
@@ -26,9 +31,9 @@ def _parallel_executor_cls():
     return concurrent.futures.ProcessPoolExecutor
 
 
-
 class LoadingSpinner:
     """A threaded terminal spinner to show activity during blocking C/Fortran calls."""
+
     def __init__(self, message="Computing"):
         self.spinner = itertools.cycle(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'])
         self.message = message
@@ -43,7 +48,7 @@ class LoadingSpinner:
     def stop(self):
         self.stop_event.set()
         self.thread.join()
-        sys.stdout.write('\r' + ' ' * (len(self.message) + 15) + '\r') # Clear line
+        sys.stdout.write('\r' + ' ' * (len(self.message) + 15) + '\r')  # Clear line
         sys.stdout.flush()
         return time.time() - self.start_time
 
@@ -98,6 +103,7 @@ def _sort_symbol(sym: sp.Symbol) -> tuple:
     else:
         return 1, name
 
+
 def _clean_name_fn(n):
     """
     Standardizes the string representation of a symbolic variable name by normalizing
@@ -145,10 +151,9 @@ def _safe_to_string(item: Any) -> str:
         except AttributeError:
             return str(item)
 
+
 def _parse_single_equation(raw_eq, parsing_context, param_map):
     """Isolated parser to run equation parsing in process workers."""
-    import re
-    import sympy as sp
 
     s = raw_eq if isinstance(raw_eq, str) else str(raw_eq)
     s = s.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
@@ -187,8 +192,6 @@ def _process_equation_worker(raw_eq, parsing_context, param_map, sym_to_idx_snap
         new_aux_names: list of symbol names missing from sym_to_idx_snap.
                        Should be empty when called after full symbol extraction.
     """
-    import re
-    import sympy as sp
 
     s = raw_eq if isinstance(raw_eq, str) else str(raw_eq)
     s = s.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
@@ -436,8 +439,6 @@ class PolynomialMatrixBuilder:
 
         if ineqs is not None:
             processed_ineqs = list(ineqs)
-
-
 
         def _extract_mappings(var_list: list) -> None:
             """
@@ -1347,7 +1348,6 @@ class PolynomialMatrixBuilder:
 
             # Optional: Save the symbol names so you know what the columns mean!
             if hasattr(self, 'all_symbols'):
-                import json
                 symbol_names = [s.name for s in self.all_symbols]
                 with open(f"{file_prefix}_symbols.json", "w") as f:
                     json.dump(symbol_names, f)
@@ -1460,17 +1460,19 @@ class PolynomialMatrixBuilder:
             n_states, n_modes = evecs_right.shape
             participation_matrix = np.zeros((n_states, n_modes), dtype=float)
 
-            # DAE FORMULA FIX: Mapping by Physical States (Columns), NOT Equations
+            # DAE FORMULA FIX: Element-wise product of left/right evec vectors mapping to Physical States
             for m in range(n_modes):
-                # P_k = V_k * (w^H * E)_k
                 w_H = evecs_left[:, m].conj()
-                w_H_E = w_H @ self.E  # This yields a row vector mapping to states
+                w_H_E = w_H @ E_dense
 
-                participation_raw = evecs_right[:, m] * w_H_E
-                normalization = np.sum(participation_raw)
+                participation_raw = w_H_E * evecs_right[:, m]
 
-                if abs(normalization) > 1e-16:
-                    participation_matrix[:, m] = np.abs(participation_raw / normalization)
+                # NORMALIZATION FIX: Sum the absolute magnitudes to guarantee 1.0 (100%) distribution limit
+                p_abs = np.abs(participation_raw)
+                normalization = np.sum(p_abs)
+
+                if normalization > 1e-16:
+                    participation_matrix[:, m] = p_abs / normalization
                 else:
                     participation_matrix[:, m] = 0.0
 
@@ -1541,7 +1543,6 @@ class PolynomialMatrixBuilder:
 
         print(f"    State-space dimension: {n_dims}")
 
-        # (Asegúrate de tener esta parte dentro de compute_stability_sparse)
         M_shift = A_csr - sigma * E_csr
 
         # Structural regularization (WITHOUT LIL MATRIX)
@@ -1598,7 +1599,6 @@ class PolynomialMatrixBuilder:
         evals_R = sigma + (1.0 / evals_nu_R)
         evals_L = sigma + (1.0 / evals_nu_L)
 
-        from scipy.optimize import linear_sum_assignment
         dist_matrix = np.abs(evals_R[:, None] - evals_L[None, :])
         row_ind, col_ind = linear_sum_assignment(dist_matrix)
 
@@ -1615,7 +1615,6 @@ class PolynomialMatrixBuilder:
         W = W[:, finite_mask]
 
         # --- DAE FORMULA FIX FOR SPARSE MATRICES ---
-        # Formula: P_ki = V_ki * (W_i^H * E)_k
         E_T = E_csr.T
         W_conj = np.conj(W)
 
@@ -1625,10 +1624,12 @@ class PolynomialMatrixBuilder:
         # Element-wise product ensures we map onto the states correctly
         participation_raw = V * E_T_W_conj
 
-        dot_products = np.sum(participation_raw, axis=0)
-        dot_products[np.abs(dot_products) < 1e-16] = 1.0  # Prevent div-by-zero
+        # NORMALIZATION FIX: Sum the absolute magnitudes to guarantee 1.0 (100%) distribution limit
+        p_abs = np.abs(participation_raw)
+        dot_products = np.sum(p_abs, axis=0)
+        dot_products[dot_products < 1e-16] = 1.0  # Prevent div-by-zero
 
-        participation_matrix = np.abs(participation_raw / dot_products)
+        participation_matrix = p_abs / dot_products
 
         margin = float(np.max(evals.real)) if len(evals) > 0 else 0.0
         stable = margin <= 1e-5
@@ -1639,7 +1640,7 @@ class PolynomialMatrixBuilder:
         return evals, V, W, participation_matrix, stable, margin
 
     def get_participation_mapping(self, evals: np.ndarray, participation_matrix: np.ndarray,
-                                  threshold: float = 0.05) -> dict:
+                                  threshold: float = 0.02) -> dict:
         """
         Maps the raw participation matrix to the exact physical state variables for each dynamic mode.
         Filters out derivative and input tokens to match the true dimensions of the state-space.
@@ -1647,30 +1648,36 @@ class PolynomialMatrixBuilder:
         mapping: dict = dict()
         if participation_matrix is None or evals is None: return mapping
 
-        state_symbols: list = list()
-        for s in self.all_symbols:
-            s_name: str = s.name
-            is_deriv: bool = s_name.startswith('dx') or s_name.startswith('xp') or s_name.startswith(
-                'd_') or s_name.startswith('dt_')
-            is_input: bool = s_name.startswith('u') and not s_name.startswith('u_')
-
-            if not is_deriv and not is_input:
-                state_symbols.append(s)
-
         n_modes: int = int(participation_matrix.shape[1])
         n_states: int = int(participation_matrix.shape[0])
 
         for m in range(n_modes):
             mode_eval: complex = evals[m]
             mode_pfs: list = list()
+            all_valid_pfs: list = list()
 
-            limit: int = min(n_states, len(state_symbols))
-            for i in range(limit):
-                pf_val: float = float(abs(participation_matrix[i, m]))
-                if pf_val >= threshold:
-                    mode_pfs.append((state_symbols[i].name, pf_val))
+            # INDEX BUG FIX: We must iterate exactly exactly over n_states which maps identically to self.all_symbols indices.
+            for i in range(n_states):
+                s_name = self.all_symbols[i].name
+                is_deriv = s_name.startswith('dx') or s_name.startswith('xp') or s_name.startswith(
+                    'd_') or s_name.startswith('dt_')
+                is_input = s_name.startswith('u') and not s_name.startswith('u_')
+
+                # Only map if it is an actual physical variable or proxy non-derivative
+                if not is_deriv and not is_input:
+                    pf_val = float(abs(participation_matrix[i, m]))
+                    all_valid_pfs.append((s_name, pf_val))
+                    if pf_val >= threshold:
+                        mode_pfs.append((s_name, pf_val))
 
             mode_pfs.sort(key=lambda x: x[1], reverse=True)
+
+            # If all physical variables were filtered out because their participations were highly dispersed
+            # (e.g. 50 variables at 0.019 PF each), just grab the top 5 largest ones unconditionally.
+            if not mode_pfs:
+                all_valid_pfs.sort(key=lambda x: x[1], reverse=True)
+                mode_pfs = [x for x in all_valid_pfs[:5] if x[1] > 1e-6]
+
             mapping[mode_eval] = mode_pfs
 
         return mapping
