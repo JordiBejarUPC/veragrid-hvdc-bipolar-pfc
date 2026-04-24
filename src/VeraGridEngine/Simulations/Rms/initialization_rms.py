@@ -1475,7 +1475,7 @@ def scatter_unknown_event_vector(problem: Any, unknown_events: List[Var], event_
     idx: int = 0
     while idx < len(unknown_events):
         var: Var = unknown_events[idx]
-        event_x[problem.uid2idx_vars[var.uid]] = float(reduced_event_x[idx])
+        event_x[problem.uid2idx_event_params[var.uid]] = float(reduced_event_x[idx])
         idx += 1
 
 
@@ -1682,9 +1682,7 @@ def run_reduced_newton_initialization(
         event_x: np.ndarray,
         x: np.ndarray,
         dx: np.ndarray,
-        runtime_params: np.ndarray,
         constant_params: np.ndarray,
-        options: RmsOptions,
 ) -> bool:
     """
     Solve the reduced initialization system with damped sparse Newton iterations.
@@ -1702,12 +1700,13 @@ def run_reduced_newton_initialization(
     """
     reduced_x: np.ndarray = extract_unknown_vector(problem, reduced_system.unknown_vars, x)
     reduced_event_x: np.ndarray = extract_unknown_events_vector(problem, reduced_system.unknown_events, event_x)
-    max_iter: int = 20
+    max_iter: int = 1000
     tol: float = 1e-8
 
     iter_idx: int = 0
     while iter_idx < max_iter:
         scatter_unknown_vector(problem, reduced_system.unknown_vars, x, reduced_x)
+        scatter_unknown_event_vector(problem, reduced_system.unknown_events, x, reduced_event_x)
         residual: np.ndarray = evaluate_initialization_residual(reduced_system, problem, x, dx, event_x, constant_params)
         res_norm: float = _max_abs_value(residual)
 
@@ -1761,15 +1760,13 @@ def run_reduced_newton_initialization(
     return False
 
 
-def _run_reduced_pseudo_transient_initialization(
+def run_reduced_pseudo_transient_initialization(
         reduced_system: ReducedInitializationSystem,
         problem: EmtProblemTemplate,
         x: np.ndarray,
+        event_x: np.ndarray,
         dx: np.ndarray,
-        runtime_params: np.ndarray,
         constant_params: np.ndarray,
-        options: EmtOptions,
-        report: EmtInitializationReport,
 ) -> bool:
     """
     Solve the reduced initialization system with a pseudo-transient fallback.
@@ -1778,62 +1775,62 @@ def _run_reduced_pseudo_transient_initialization(
     :param problem: EMT problem being initialized.
     :param x: Full EMT variable vector updated in place.
     :param dx: Full EMT differential vector.
-    :param runtime_params: Runtime-parameter vector.
+    :param event_x: Runtime-parameter vector.
     :param constant_params: Constant-parameter vector.
-    :param options: EMT simulation options.
-    :param report: Initialization report updated in place.
     :return: True if pseudo-transient converged.
     """
     reduced_x: np.ndarray = extract_unknown_vector(problem, reduced_system.unknown_vars, x)
-    dtau: float = float(options.init_ptc_dtau0)
-    dtau_min: float = float(options.init_ptc_dtau_min)
-    dtau_max: float = float(options.init_ptc_dtau_max)
-    max_iter: int = int(options.init_ptc_max_iter)
-    tol: float = float(options.init_newton_tol)
+    reduced_event_x: np.ndarray = extract_unknown_events_vector(problem, reduced_system.unknown_events, event_x)
+    dtau: float = 1.0
+    dtau_min: float = 1e-6
+    dtau_max: float =  1e1
+    max_iter: int = 60
+    tol: float = 1e-8
     identity_mask: np.ndarray = np.ones(len(reduced_system.unknown_vars), dtype=np.float64)
     mass_matrix: sp.csc_matrix = sp.diags(identity_mask / max(dtau, dtau_min), format="csc")
 
     iter_idx: int = 0
     while iter_idx < max_iter:
         scatter_unknown_vector(problem, reduced_system.unknown_vars, x, reduced_x)
-        residual: np.ndarray = evaluate_initialization_residual(reduced_system, problem, x, dx, runtime_params, constant_params)
+        scatter_unknown_event_vector(problem, reduced_system.unknown_events, x, reduced_event_x)
+        residual: np.ndarray = evaluate_initialization_residual(reduced_system, problem, x, dx, event_x, constant_params)
         res_norm: float = _max_abs_value(residual)
-        report.final_residual_inf = res_norm
 
         if res_norm <= tol:
-            report.pseudo_transient_steps = iter_idx
-            return True
-        else:
-            report.final_residual_inf = report.final_residual_inf
 
-        jacobian: sp.csc_matrix = evaluate_initialization_jacobian(reduced_system, problem, x, dx, runtime_params, constant_params)
+            return True
+
+        jacobian: sp.csc_matrix = evaluate_initialization_jacobian(reduced_system, problem, x, dx, event_x, constant_params)
         mass_matrix = sp.diags(identity_mask / max(dtau, dtau_min), format="csc")
         linear_matrix: sp.csc_matrix = (jacobian + mass_matrix).tocsc()
 
-        delta: np.ndarray = solve_reduced_linear_system(linear_matrix, -residual, int(options.init_dense_threshold))
+        delta: np.ndarray = solve_reduced_linear_system(linear_matrix, -residual, 48)
 
         if np.all(np.isfinite(delta)):
-            trial_reduced_x: np.ndarray = reduced_x + delta
+            trial_reduced_x: np.ndarray = reduced_x + delta[:len(reduced_x)]
+            trial_reduced_event_x: np.ndarray = reduced_event_x + delta[len(reduced_x):]
             scatter_unknown_vector(problem, reduced_system.unknown_vars, x, trial_reduced_x)
-            trial_residual: np.ndarray = evaluate_initialization_residual(reduced_system, problem, x, dx, runtime_params, constant_params)
+            scatter_unknown_event_vector(problem, reduced_system.unknown_events, event_x, trial_reduced_event_x)
+            trial_residual: np.ndarray = evaluate_initialization_residual(reduced_system, problem, x, dx, event_x, constant_params)
             trial_norm: float = _max_abs_value(trial_residual)
 
             if trial_norm < res_norm:
                 reduced_x = trial_reduced_x
+                reduced_event_x = trial_reduced_event_x
                 dtau = min(dtau_max, dtau * 2.0)
             else:
                 dtau = max(dtau_min, dtau * 0.5)
         else:
-            delta = solve_reduced_linear_system(linear_matrix, -residual, int(options.init_dense_threshold))
+            delta = solve_reduced_linear_system(linear_matrix, -residual, 48)
             if np.all(np.isfinite(delta)):
-                reduced_x = reduced_x + delta
+                reduced_x = reduced_x + delta[len(reduced_x):]
+                reduced_event_x = reduced_event_x + delta[:len(reduced_x)]
                 dtau = min(dtau_max, dtau * 2.0)
             else:
                 dtau = max(dtau_min, dtau * 0.5)
 
         iter_idx += 1
 
-    report.pseudo_transient_steps = max_iter
     return False
 
 
@@ -1973,7 +1970,7 @@ def run_rms_native_initialization(problem: Any, options: RmsOptions):
     constant_params: np.ndarray
     reduced_problem_payload: Tuple[List[Var], List[Var], List[Var], List[Expr], np.ndarray] | None
 
-
+    newton_init = True
     reduced_problem_payload = collect_reduced_initialization_problem(
         problem=problem,
         # Todo: maby allow_state_equilibrium = False doesn't work
@@ -1994,26 +1991,28 @@ def run_rms_native_initialization(problem: Any, options: RmsOptions):
             )
 
             if reduced_system is not None:
-                converged = run_reduced_newton_initialization(
-                    reduced_system=reduced_system,
-                    problem=problem,
-                    x=x,
-                    event_x=event_x,
-                    dx=dx,
-                    runtime_params=runtime_params,
-                    constant_params=constant_params,
-                    options=options
-                )
+                if newton_init:
+                    converged = run_reduced_newton_initialization(
+                        reduced_system=reduced_system,
+                        problem=problem,
+                        x=x,
+                        event_x=event_x,
+                        dx=dx,
+                        constant_params=constant_params,
+                    )
+                else:
+                    converged = run_reduced_pseudo_transient_initialization(
+                        reduced_system=reduced_system,
+                        problem=problem,
+                        x=x,
+                        event_x=event_x,
+                        dx=dx,
+                        constant_params=constant_params,
+                    )
 
                 if converged:
                     apply_solution_to_problem(problem, x, event_x)
-                    # compute_missing_dx0(
-                    #     problem,
-                    #     x_full=x,
-                    #     dx_full=dx,
-                    #     runtime_params=runtime_params,
-                    #     constant_params=constant_params,
-                    # )
+
 
 
 

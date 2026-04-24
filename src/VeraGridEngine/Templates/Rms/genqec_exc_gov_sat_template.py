@@ -256,8 +256,8 @@ def get_genqec_rms(vfactory: VarFactory, name: str = "Genqec rms template") -> R
             Eq1: (Eq_prime + (Xd - Xd_prime) * (
                     Id / Sat + (Eq_prime - Psid_prime - Id * (Xd_prime - Xl) / Sat) * Xdaux)),
 
-            # Psid: (Eq_2prime_expr - Id * Xd_2prime_sat),
-            # Psiq: (-Ed_2prime_expr - Iq * Xq_2prime_sat),
+            Psid: (Eq_2prime_expr - Id * Xd_2prime_sat),
+            Psiq: (-Ed_2prime_expr - Iq * Xq_2prime_sat),
             Te: (Psid * Iq - Psiq * Id),
 
             IRPu: Eq1 * (1 + Sa),
