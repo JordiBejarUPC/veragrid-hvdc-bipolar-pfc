@@ -15,6 +15,8 @@ import concurrent.futures
 import time
 import numpy as np
 import json
+
+from scipy.optimize import linear_sum_assignment
 from scipy.sparse.linalg import splu, LinearOperator, eigs
 
 
