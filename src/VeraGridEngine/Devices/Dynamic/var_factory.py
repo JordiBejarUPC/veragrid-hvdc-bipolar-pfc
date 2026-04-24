@@ -208,7 +208,12 @@ class VarFactory(EditableDevice):
         for data in data_list:
             assert data["type"] == "Var"
 
-            obj = Var(name=data["name"], uid=data["uid"], reference=data["ref"])
+            if data["ref"] is not None:
+                key_ref = VarPowerFlowRefferenceType(data["ref"])
+            else:
+                ke_ref = None
+
+            obj = Var(name=data["name"], uid=data["uid"], reference=key_ref)
 
             # at this point we can store the object
             obj_dict[obj.uid] = obj
