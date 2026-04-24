@@ -24,8 +24,7 @@ from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.common_functions impo
                                                                                     polar_to_rect, voltage_q_droop,
                                                                                     solve_reactive_power)
 from VeraGridEngine.enumerations import (TapPhaseControl, TapModuleControl, HvdcControlType, ConverterControlType,
-                                         ConverterFaultControlType, ShuntControlMode, GeneratorType)
-from VeraGridEngine.Simulations.PowerFlow.NumericalMethods.converter_fault_controls import wecc_wt_type_4b
+                                         ShuntControlMode, GeneratorType)
 from VeraGridEngine.basic_structures import Vec, IntVec, CxVec, Logger
 
 
@@ -574,7 +573,7 @@ def calc_autodiff_jacobian(func: Callable[[Vec], Vec], x: Vec, h=1e-8) -> CSC:
 
 class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
-    def __init__(self, V0: CxVec, S0: CxVec, I0: CxVec, Y0: CxVec, St_vsc_pf: CxVec,
+    def __init__(self, V0: CxVec, S0: CxVec, I0: CxVec, Y0: CxVec,
                  Qmin: Vec, Qmax: Vec,
                  nc: NumericalCircuit,
                  options: PowerFlowOptions,
@@ -585,7 +584,6 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         :param S0: Set power injections
         :param I0: Set current injections
         :param Y0: Set admittance injections
-        :param St_vsc_pf: Converters St coming from a previous power flow
         :param nc: NumericalCircuit
         :param options: PowerFlowOptions
         :param logger: Logger (modified in-place)
@@ -601,7 +599,6 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         self.I0: CxVec = I0
         # We move Y0 to Ybus diagonal to improve convergence, so self.Y0 set to zeros
         self.Y0: CxVec = np.zeros_like(Y0)
-        self.St_vsc_pf: CxVec = St_vsc_pf
 
         self.Qmin = Qmin
         self.Qmax = Qmax
@@ -1865,15 +1862,6 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
         # Add the 3rd equation per VSC
         current_vsc = It ** 2 - Imax_vsc ** 2
 
-        for vsc_i in self.u_vsc_pt:
-            Pt_ref_[vsc_i], Qt_ref_[vsc_i] = wecc_wt_type_4b(
-                V_measured=self.V[self.nc.vsc_data.T[vsc_i]],
-                Vpf=abs(self.V0[self.nc.vsc_data.T[vsc_i]]),
-                St_vsc_pf=self.St_vsc_pf[self.nc.vsc_data.original_idx[vsc_i]],
-                S_base_vg=self.nc.Sbase,
-                S_rated_vsc=self.nc.vsc_data.rates[vsc_i]
-            )
-
         # HVDC ---------------------------------------------------------------------------------------------------------
         tm[4] = time.time()
 
@@ -2151,137 +2139,125 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
                 for i in range(self.nc.nvsc):
 
-                    if self.nc.vsc_data.fault_control[i] == ConverterFaultControlType.WECC_WT_Type_4B:
+                    It_i = np.sqrt(self.Pt_vsc[i] ** 2 + self.Qt_vsc[i] ** 2) / self.Vm[self.nc.vsc_data.T[i]]
+                    Imax = self.nc.vsc_data.rates[i] / self.nc.Sbase  # Assume 1.0 p.u. base voltage
 
-                        self.Pt_vsc[i], self.Qt_vsc[i] = wecc_wt_type_4b(
-                            V_measured=self.V[self.nc.vsc_data.T[i]],
-                            P_measured=self.Pt_vsc[i],
-                            S_base_vg=self.nc.Sbase,
-                            S_rated_vsc=self.nc.vsc_data.rates[i],
-                            Vpf=abs(self.V0[self.nc.vsc_data.T[i]])
-                        )
+                    # print(f"Josep current: {It_i}, Imax: {Imax}")
 
-                    elif self.nc.vsc_data.fault_control[i] == ConverterFaultControlType.Standard:
+                    if (It_i > Imax
+                            and self.nc.vsc_data.control1[i] != ConverterControlType.Imax
+                            and self.nc.vsc_data.control2[i] != ConverterControlType.Imax):
 
-                        It_i = np.sqrt(self.Pt_vsc[i] ** 2 + self.Qt_vsc[i] ** 2) / self.Vm[self.nc.vsc_data.T[i]]
-                        Imax = self.nc.vsc_data.rates[i] / self.nc.Sbase  # Assume 1.0 p.u. base voltage
+                        self.logger.add_info("VSC current limit reached",
+                                             device=self.nc.vsc_data.names[i],
+                                             value=It_i)
 
-                        # print(f"Josep current: {It_i}, Imax: {Imax}")
+                        if self.nc.vsc_data.control1[i] == ConverterControlType.Vm_ac:
+                            self.nc.bus_data.is_vm_controlled[self.nc.vsc_data.T[i]] = False
+                            self.nc.vsc_data.control1[i] = ConverterControlType.Imax
+                            self.nc.vsc_data.control1_val[i] = Imax
+                            self.nc.vsc_data.control1_branch_idx[i] = i
+                            branch_ctrl_change = True
+                        elif self.nc.vsc_data.control2[i] == ConverterControlType.Vm_ac:
+                            self.nc.bus_data.is_vm_controlled[self.nc.vsc_data.T[i]] = False
+                            self.nc.vsc_data.control2[i] = ConverterControlType.Imax
+                            self.nc.vsc_data.control2_val[i] = Imax
+                            self.nc.vsc_data.control2_branch_idx[i] = i
+                            branch_ctrl_change = True
+                        elif self.nc.vsc_data.control1[i] == ConverterControlType.Pdc:
+                            self.nc.vsc_data.control1[i] = ConverterControlType.Imax
+                            self.nc.vsc_data.control1_val[i] = Imax
+                            self.nc.vsc_data.control1_branch_idx[i] = i
+                            branch_ctrl_change = True
+                        elif self.nc.vsc_data.control2[i] == ConverterControlType.Pdc:
+                            self.nc.vsc_data.control2[i] = ConverterControlType.Imax
+                            self.nc.vsc_data.control2_val[i] = Imax
+                            self.nc.vsc_data.control2_branch_idx[i] = i
+                            branch_ctrl_change = True
+                        elif self.nc.vsc_data.control1[i] == ConverterControlType.Pac:
+                            self.nc.vsc_data.control1[i] = ConverterControlType.Imax
+                            self.nc.vsc_data.control1_val[i] = Imax
+                            self.nc.vsc_data.control1_branch_idx[i] = i
+                            branch_ctrl_change = True
+                        elif self.nc.vsc_data.control2[i] == ConverterControlType.Pac:
+                            self.nc.vsc_data.control2[i] = ConverterControlType.Imax
+                            self.nc.vsc_data.control2_val[i] = Imax
+                            self.nc.vsc_data.control2_branch_idx[i] = i
+                            branch_ctrl_change = True
+                        elif self.nc.vsc_data.control1[i] == ConverterControlType.Qac:
+                            self.nc.vsc_data.control1[i] = ConverterControlType.Imax
+                            self.nc.vsc_data.control1_val[i] = Imax
+                            self.nc.vsc_data.control1_branch_idx[i] = i
+                            branch_ctrl_change = True
+                        elif self.nc.vsc_data.control2[i] == ConverterControlType.Qac:
+                            self.nc.vsc_data.control2[i] = ConverterControlType.Imax
+                            self.nc.vsc_data.control2_val[i] = Imax
+                            self.nc.vsc_data.control2_branch_idx[i] = i
+                            branch_ctrl_change = True
+                        elif self.nc.vsc_data.control1[i] == ConverterControlType.Vm_dc:
+                            self.nc.bus_data.is_vm_controlled[self.nc.vsc_data.F[i]] = False
+                            self.nc.vsc_data.control1[i] = ConverterControlType.Imax
+                            self.nc.vsc_data.control1_val[i] = Imax
+                            self.nc.vsc_data.control1_branch_idx[i] = i
+                            branch_ctrl_change = True
+                        elif self.nc.vsc_data.control2[i] == ConverterControlType.Vm_dc:
+                            self.nc.bus_data.is_vm_controlled[self.nc.vsc_data.F[i]] = False
+                            self.nc.vsc_data.control2[i] = ConverterControlType.Imax
+                            self.nc.vsc_data.control2_val[i] = Imax
+                            self.nc.vsc_data.control2_branch_idx[i] = i
+                            branch_ctrl_change = True
+                        elif self.nc.vsc_data.control1[i] == ConverterControlType.Va_ac:
+                            self.nc.bus_data.is_va_controlled[self.nc.vsc_data.T[i]] = False
+                            self.nc.vsc_data.control1[i] = ConverterControlType.Imax
+                            self.nc.vsc_data.control1_val[i] = Imax
+                            self.nc.vsc_data.control1_branch_idx[i] = i
+                            branch_ctrl_change = True
+                        elif self.nc.vsc_data.control2[i] == ConverterControlType.Va_ac:
+                            self.nc.bus_data.is_va_controlled[self.nc.vsc_data.T[i]] = False
+                            self.nc.vsc_data.control2[i] = ConverterControlType.Imax
+                            self.nc.vsc_data.control2_val[i] = Imax
+                            self.nc.vsc_data.control2_branch_idx[i] = i
+                            branch_ctrl_change = True
+                        else:
+                            raise ValueError(f"Unfound control type when switching to current limiting: "
+                                             f"{self.nc.vsc_data.control1[i]}")
 
-                        if (It_i > Imax
-                                and self.nc.vsc_data.control1[i] != ConverterControlType.Imax
-                                and self.nc.vsc_data.control2[i] != ConverterControlType.Imax):
+                        # print(It_i, Imax)
 
-                            self.logger.add_info("VSC current limit reached",
-                                                 device=self.nc.vsc_data.names[i],
-                                                 value=It_i)
+                        # Potentially add new conditionals, mainly for the 2nd iteration once saturated
+                        # If letting the P naturally go to zero is not enough, no longer control Vm
+                        # Control Q and then it will naturally get to a point that does not surpass Imax
 
-                            if self.nc.vsc_data.control1[i] == ConverterControlType.Vm_ac:
-                                self.nc.bus_data.is_vm_controlled[self.nc.vsc_data.T[i]] = False
-                                self.nc.vsc_data.control1[i] = ConverterControlType.Imax
-                                self.nc.vsc_data.control1_val[i] = Imax
-                                self.nc.vsc_data.control1_branch_idx[i] = i
-                                branch_ctrl_change = True
-                            elif self.nc.vsc_data.control2[i] == ConverterControlType.Vm_ac:
-                                self.nc.bus_data.is_vm_controlled[self.nc.vsc_data.T[i]] = False
-                                self.nc.vsc_data.control2[i] = ConverterControlType.Imax
-                                self.nc.vsc_data.control2_val[i] = Imax
-                                self.nc.vsc_data.control2_branch_idx[i] = i
-                                branch_ctrl_change = True
-                            elif self.nc.vsc_data.control1[i] == ConverterControlType.Pdc:
-                                self.nc.vsc_data.control1[i] = ConverterControlType.Imax
-                                self.nc.vsc_data.control1_val[i] = Imax
-                                self.nc.vsc_data.control1_branch_idx[i] = i
-                                branch_ctrl_change = True
-                            elif self.nc.vsc_data.control2[i] == ConverterControlType.Pdc:
-                                self.nc.vsc_data.control2[i] = ConverterControlType.Imax
-                                self.nc.vsc_data.control2_val[i] = Imax
-                                self.nc.vsc_data.control2_branch_idx[i] = i
-                                branch_ctrl_change = True
-                            elif self.nc.vsc_data.control1[i] == ConverterControlType.Pac:
-                                self.nc.vsc_data.control1[i] = ConverterControlType.Imax
-                                self.nc.vsc_data.control1_val[i] = Imax
-                                self.nc.vsc_data.control1_branch_idx[i] = i
-                                branch_ctrl_change = True
-                            elif self.nc.vsc_data.control2[i] == ConverterControlType.Pac:
-                                self.nc.vsc_data.control2[i] = ConverterControlType.Imax
-                                self.nc.vsc_data.control2_val[i] = Imax
-                                self.nc.vsc_data.control2_branch_idx[i] = i
-                                branch_ctrl_change = True
-                            elif self.nc.vsc_data.control1[i] == ConverterControlType.Qac:
-                                self.nc.vsc_data.control1[i] = ConverterControlType.Imax
-                                self.nc.vsc_data.control1_val[i] = Imax
-                                self.nc.vsc_data.control1_branch_idx[i] = i
-                                branch_ctrl_change = True
-                            elif self.nc.vsc_data.control2[i] == ConverterControlType.Qac:
-                                self.nc.vsc_data.control2[i] = ConverterControlType.Imax
-                                self.nc.vsc_data.control2_val[i] = Imax
-                                self.nc.vsc_data.control2_branch_idx[i] = i
-                                branch_ctrl_change = True
-                            elif self.nc.vsc_data.control1[i] == ConverterControlType.Vm_dc:
-                                self.nc.bus_data.is_vm_controlled[self.nc.vsc_data.F[i]] = False
-                                self.nc.vsc_data.control1[i] = ConverterControlType.Imax
-                                self.nc.vsc_data.control1_val[i] = Imax
-                                self.nc.vsc_data.control1_branch_idx[i] = i
-                                branch_ctrl_change = True
-                            elif self.nc.vsc_data.control2[i] == ConverterControlType.Vm_dc:
-                                self.nc.bus_data.is_vm_controlled[self.nc.vsc_data.F[i]] = False
-                                self.nc.vsc_data.control2[i] = ConverterControlType.Imax
-                                self.nc.vsc_data.control2_val[i] = Imax
-                                self.nc.vsc_data.control2_branch_idx[i] = i
-                                branch_ctrl_change = True
-                            elif self.nc.vsc_data.control1[i] == ConverterControlType.Va_ac:
-                                self.nc.bus_data.is_va_controlled[self.nc.vsc_data.T[i]] = False
-                                self.nc.vsc_data.control1[i] = ConverterControlType.Imax
-                                self.nc.vsc_data.control1_val[i] = Imax
-                                self.nc.vsc_data.control1_branch_idx[i] = i
-                                branch_ctrl_change = True
-                            elif self.nc.vsc_data.control2[i] == ConverterControlType.Va_ac:
-                                self.nc.bus_data.is_va_controlled[self.nc.vsc_data.T[i]] = False
-                                self.nc.vsc_data.control2[i] = ConverterControlType.Imax
-                                self.nc.vsc_data.control2_val[i] = Imax
-                                self.nc.vsc_data.control2_branch_idx[i] = i
-                                branch_ctrl_change = True
-                            else:
-                                raise ValueError(f"Unfound control type when switching to current limiting: "
-                                                 f"{self.nc.vsc_data.control1[i]}")
+                    elif (It_i > Imax * 1.1
+                          and self.nc.vsc_data.control1[i] == ConverterControlType.Imax
+                          and self.nc.vsc_data.control2[i] == ConverterControlType.Imax):
+                        """
+                        We give some margin to the current because it may not exactly converge to Imax
+                        in just one iteration. 10% buffer seems enough.
+                        
+                        We establish reactive power priority over active power
+                        So if we are already controlling Imax, set the P to zero
+                        As a last resort, set Q to zero
+                        """
 
-                            # print(It_i, Imax)
+                        if self.nc.vsc_data.control1[i] == ConverterControlType.Pdc:
+                            self.nc.vsc_data.control1_val[i] = 0.0
+                        elif self.nc.vsc_data.control2[i] == ConverterControlType.Pdc:
+                            self.nc.vsc_data.control2_val[i] = 0.0
+                        elif self.nc.vsc_data.control1[i] == ConverterControlType.Pac:
+                            self.nc.vsc_data.control1_val[i] = 0.0
+                        elif self.nc.vsc_data.control2[i] == ConverterControlType.Pac:
+                            self.nc.vsc_data.control2_val[i] = 0.0
+                        elif self.nc.vsc_data.control1[i] == ConverterControlType.Qac:
+                            self.nc.vsc_data.control1_val[i] = 0.0
+                        elif self.nc.vsc_data.control2[i] == ConverterControlType.Qac:
+                            self.nc.vsc_data.control2_val[i] = 0.0
+                        else:
+                            raise ValueError(f"Unfound control type when switching to current limiting: "
+                                             f"{self.nc.vsc_data.control1[i]}")
 
-                            # Potentially add new conditionals, mainly for the 2nd iteration once saturated
-                            # If letting the P naturally go to zero is not enough, no longer control Vm
-                            # Control Q and then it will naturally get to a point that does not surpass Imax
-
-                        elif (It_i > Imax * 1.1
-                              and self.nc.vsc_data.control1[i] == ConverterControlType.Imax
-                              and self.nc.vsc_data.control2[i] == ConverterControlType.Imax):
-                            """
-                            We give some margin to the current because it may not exactly converge to Imax
-                            in just one iteration. 10% buffer seems enough.
-                            
-                            We establish reactive power priority over active power
-                            So if we are already controlling Imax, set the P to zero
-                            As a last resort, set Q to zero
-                            """
-
-                            if self.nc.vsc_data.control1[i] == ConverterControlType.Pdc:
-                                self.nc.vsc_data.control1_val[i] = 0.0
-                            elif self.nc.vsc_data.control2[i] == ConverterControlType.Pdc:
-                                self.nc.vsc_data.control2_val[i] = 0.0
-                            elif self.nc.vsc_data.control1[i] == ConverterControlType.Pac:
-                                self.nc.vsc_data.control1_val[i] = 0.0
-                            elif self.nc.vsc_data.control2[i] == ConverterControlType.Pac:
-                                self.nc.vsc_data.control2_val[i] = 0.0
-                            elif self.nc.vsc_data.control1[i] == ConverterControlType.Qac:
-                                self.nc.vsc_data.control1_val[i] = 0.0
-                            elif self.nc.vsc_data.control2[i] == ConverterControlType.Qac:
-                                self.nc.vsc_data.control2_val[i] = 0.0
-                            else:
-                                raise ValueError(f"Unfound control type when switching to current limiting: "
-                                                 f"{self.nc.vsc_data.control1[i]}")
-
-                        # print(f"VSC {i} control 1: {self.nc.vsc_data.control1[i]}")
-                        print(f"VSC {i} control 2: {self.nc.vsc_data.control2[i]}")
+                    # print(f"VSC {i} control 1: {self.nc.vsc_data.control1[i]}")
+                    print(f"VSC {i} control 2: {self.nc.vsc_data.control2[i]}")
 
             # Check minimum AC voltage threshold for VSC disconnection
             n_disconnected_vscs = 0
@@ -2539,38 +2515,7 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
 
         return self._f
 
-    def compute_f_vsc(self, x: Vec) -> Vec:
-
-        e = len(self.u_vsc_pt)
-        f = e + len(self.u_vsc_qt)
-
-        # copy the sliceable vectors
-        Pt_vsc_ = self.Pt_vsc.copy()
-        Qt_vsc_ = self.Qt_vsc.copy()
-        Pt_ref_ = self.Pt_vsc.copy()
-        Qt_ref_ = self.Qt_vsc.copy()
-
-        # update the vectors
-        Pt_vsc_[self.u_vsc_pt] = x[0:e]
-        Qt_vsc_[self.u_vsc_qt] = x[e:f]
-
-        for k in self.u_vsc_pt:
-            Pt_ref_[k], Qt_ref_[k] = wecc_wt_type_4b(
-                V_measured=self.V[self.nc.vsc_data.T[k]],
-                P_measured=self.Pt_vsc[k],
-                S_base_vg=self.nc.Sbase,
-                S_rated_vsc=self.nc.vsc_data.rates[k],
-                Vpf=abs(self.V0[self.nc.vsc_data.T[k]])
-            )
-
-        f_vsc = np.r_[
-            Pt_ref_[self.u_vsc_pt] - Pt_vsc_[self.u_vsc_pt],
-            Qt_ref_[self.u_vsc_qt] - Qt_vsc_[self.u_vsc_qt]
-        ]
-
-        return f_vsc
-
-    def Jacobian(self, autodiff: bool = True) -> CSC:
+    def Jacobian(self, autodiff: bool = False) -> CSC:
         """
         Get the Jacobian
         :return:
@@ -2671,17 +2616,6 @@ class PfAcDcWithNegativePoles(PfFormulationTemplate):
                 Yp=self.adm.Ybus.indptr,
                 Yx=self.adm.Ybus.data
             )
-
-            # x_vsc = np.r_[
-            #     self.Pt_vsc[self.u_vsc_pt],
-            #     self.Qt_vsc[self.u_vsc_qt],
-            # ]
-            #
-            # f_vsc = self.compute_f_vsc
-            #
-            # J_vsc = calc_autodiff_jacobian(func=f_vsc,
-            #                                x=x_vsc,
-            #                                h=1e-7)
 
             return J_sym
 
