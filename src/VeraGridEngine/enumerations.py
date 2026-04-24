@@ -826,6 +826,8 @@ class ConverterControlType(Enum):
     Q_droop = "Q_droop"
     P_droop = "P_droop"
     Imax = 'Imax'
+    Fault1 = 'Fault1'
+    Fault2 = 'Fault2'
 
     def __str__(self) -> str:
         return str(self.value)
