@@ -3,7 +3,7 @@
 # file, You can obtain one at https://mozilla.org/MPL/2.0/.
 # SPDX-License-Identifier: MPL-2.0
 
-from typing import List, Dict
+from typing import List, Dict, Set
 
 from PySide6 import QtWidgets, QtCore
 
@@ -17,9 +17,17 @@ from VeraGridEngine.enumerations import DynamicSimulationMode
 class EventRow:
     """Encapsulates a row in the RMS/EMT event table."""
 
-    def __init__(self, table, row, parameters_list, events_groups_list):
+    def __init__(self,
+                 table,
+                 row,
+                 parameters_list,
+                 events_groups_list,
+                 mode: DynamicSimulationMode,
+                 mode_parameter_uids: Set[int] | None = None):
         self.table = table
         self.row = row
+        self.mode = mode
+        self.mode_parameter_uids: Set[int] = set() if mode_parameter_uids is None else set(mode_parameter_uids)
 
         # --- Checkbox ---
         checkbox = QtWidgets.QTableWidgetItem()
@@ -57,6 +65,17 @@ class EventRow:
             self.group_combo.addItem(group.name, group)
         table.setCellWidget(row, 4, self.group_combo)
 
+        self.force_alignment_check: QtWidgets.QCheckBox | None = None
+        if self.mode == DynamicSimulationMode.EMT:
+            self.force_alignment_check = QtWidgets.QCheckBox()
+            self.force_alignment_check.setChecked(False)
+            self.force_alignment_check.setEnabled(False)
+            table.setCellWidget(row, 5, self.force_alignment_check)
+            self.param_combo.currentIndexChanged.connect(self.on_parameter_changed)
+            self.on_parameter_changed()
+        else:
+            pass
+
     def is_checked(self):
         item = self.table.item(self.row, 0)
         return item and item.checkState() == QtCore.Qt.CheckState.Checked
@@ -72,11 +91,36 @@ class EventRow:
         t = self.time_spin.value()
         v = self.value_spin.value()
 
-        return param, t, v, group
+        if self.force_alignment_check is not None:
+            force_step_alignment = self.force_alignment_check.isChecked()
+        else:
+            force_step_alignment = False
+
+        return param, t, v, group, force_step_alignment
 
     def add_group(self, group):
         """Add a new group option to the combo."""
         self.group_combo.addItem(group.name, group)
+
+    def on_parameter_changed(self) -> None:
+        """
+        Update EMT-only controls when the selected parameter changes.
+
+        :return: None.
+        """
+        selected_param = self.param_combo.currentData()
+
+        if self.force_alignment_check is None:
+            return
+        else:
+            pass
+
+        if isinstance(selected_param, Var) and selected_param.uid in self.mode_parameter_uids:
+            self.force_alignment_check.setEnabled(True)
+            self.force_alignment_check.setChecked(True)
+        else:
+            self.force_alignment_check.setChecked(False)
+            self.force_alignment_check.setEnabled(False)
 
 class DynamicEventDialogue(QtWidgets.QDialog):
 
@@ -86,6 +130,7 @@ class DynamicEventDialogue(QtWidgets.QDialog):
         parameters_list: List[Var],
         target_device_name: str,
         mode: DynamicSimulationMode,
+        mode_parameter_uids: Set[int] | None = None,
         parent=None,
     ):
         super().__init__(parent)
@@ -101,6 +146,7 @@ class DynamicEventDialogue(QtWidgets.QDialog):
         self.circuit = circuit
         self.parameters_list = parameters_list
         self.target_device_name = target_device_name
+        self.mode_parameter_uids: Set[int] = set() if mode_parameter_uids is None else set(mode_parameter_uids)
 
         self.rows: List[EventRow] = []
 
@@ -109,6 +155,7 @@ class DynamicEventDialogue(QtWidgets.QDialog):
             "target_times": [],
             "values": [],
             "groups": [],
+            "force_step_alignment": [],
         }
 
         # ---- Main Layout ----
@@ -121,11 +168,16 @@ class DynamicEventDialogue(QtWidgets.QDialog):
         layout.addWidget(label_device)
 
         # --- Events Table ---
-        self.table = QtWidgets.QTableWidget(0, 5)
-
-        self.table.setHorizontalHeaderLabels(
-            ["", "Parameter", "Time", "New Value", "Group"]
-        )
+        if self.mode == DynamicSimulationMode.EMT:
+            self.table = QtWidgets.QTableWidget(0, 6)
+            self.table.setHorizontalHeaderLabels(
+                ["", "Parameter", "Time", "New Value", "Group", "Align Step"]
+            )
+        else:
+            self.table = QtWidgets.QTableWidget(0, 5)
+            self.table.setHorizontalHeaderLabels(
+                ["", "Parameter", "Time", "New Value", "Group"]
+            )
 
         self.table.horizontalHeader().setSectionResizeMode(
             0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents
@@ -194,6 +246,8 @@ class DynamicEventDialogue(QtWidgets.QDialog):
                 row_index,
                 self.parameters_list,
                 self.circuit.rms_events_groups,
+                self.mode,
+                self.mode_parameter_uids,
             )
             self.rows.append(row)
 
@@ -204,6 +258,8 @@ class DynamicEventDialogue(QtWidgets.QDialog):
                 row_index,
                 self.parameters_list,
                 self.circuit.emt_events_groups,
+                self.mode,
+                self.mode_parameter_uids,
             )
             self.rows.append(row)
 
@@ -281,11 +337,12 @@ class DynamicEventDialogue(QtWidgets.QDialog):
         target_times = []
         values = []
         groups = []
+        force_step_alignment_flags = []
 
         for i, row in enumerate(self.rows):
 
             try:
-                param, t, v, group = row.get_data()
+                param, t, v, group, force_step_alignment = row.get_data()
 
             except Exception as exc:
 
@@ -300,10 +357,12 @@ class DynamicEventDialogue(QtWidgets.QDialog):
             target_times.append(t)
             values.append(v)
             groups.append(group)
+            force_step_alignment_flags.append(force_step_alignment)
         self.data["parameters"] = parameters
         self.data["target_times"] = target_times
         self.data["values"] = values
         self.data["groups"] = groups
+        self.data["force_step_alignment"] = force_step_alignment_flags
         self.accept()
 
     def get_data(self) -> Dict[str, List]:

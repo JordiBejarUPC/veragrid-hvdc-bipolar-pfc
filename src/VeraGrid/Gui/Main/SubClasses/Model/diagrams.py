@@ -2876,11 +2876,13 @@ class DiagramsMain(CompiledArraysMain):
 
 
                 else:
+                    emt_event_parameters = list(target_device.emt_model.event_dict.keys()) + list(target_device.emt_model.mode_dict.keys())
+                    mode_parameter_uids = set(var.uid for var in target_device.emt_model.mode_dict.keys())
                     emt_events_dialog = DynamicEventDialogue(circuit=self.circuit,
-                                                             parameters_list=[var for var in
-                                                                          target_device.emt_model.event_dict.keys()],
+                                                             parameters_list=emt_event_parameters,
                                                              target_device_name=target_device.type_name + ": " + target_device.name,
-                                                             mode=mode)
+                                                             mode=mode,
+                                                             mode_parameter_uids=mode_parameter_uids)
 
                     if emt_events_dialog.exec() == QtWidgets.QDialog.DialogCode.Accepted:
 
@@ -2891,7 +2893,8 @@ class DiagramsMain(CompiledArraysMain):
                                                             parameter=events_data["parameters"][i],
                                                             time=float(events_data["target_times"][i]),
                                                             value=float(events_data["values"][i]),
-                                                            group=events_data["groups"][i]))
+                                                            group=events_data["groups"][i],
+                                                            force_step_alignment=bool(events_data["force_step_alignment"][i])))
 
                         for event in events_list:
                             self.circuit.add_emt_event(event)

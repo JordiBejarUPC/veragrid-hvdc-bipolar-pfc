@@ -6,7 +6,10 @@ import pytest
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtTest import QTest
 
+import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_editor_module
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
+from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinearDialog
+from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupMatrixLinearDialog
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptor_by_key
@@ -182,7 +185,7 @@ def test_emt_editor_exposes_basic_block_catalog_under_basic() -> None:
     assert native_item.child(0).text() == "Arithmetic"
     assert _find_index_by_label(editor.library_model, "Scaling and Products").isValid()
     assert not _find_index_by_label(editor.library_model, "Arithmetic and Products").isValid()
-    assert _count_descriptor_leaves(editor, native_item) == 533
+    assert _count_descriptor_leaves(editor, native_item) == 545
 
     editor.close()
 
@@ -196,7 +199,7 @@ def test_rms_editor_exposes_basic_block_catalog_under_basic() -> None:
     assert basic_item.text() == "Basic"
     assert basic_item.rowCount() == 1
     assert native_item.text() == "Native"
-    assert _count_descriptor_leaves(editor, native_item) == 533
+    assert _count_descriptor_leaves(editor, native_item) == 545
 
     editor.close()
 
@@ -281,6 +284,287 @@ def test_rate_limiter_signal_variant_exposes_gradient_ports_while_parameter_vari
     assert len(parameter_block.inputs) == 1
     assert _port_name_prefixes(parameter_block) == ["yi"]
     assert {const.name for const in parameter_block.subsys.event_dict.values()} == {"grd"}
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_side_panel_loads_only_the_visible_table_for_selected_block() -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+    block_item = _build_catalog_block_item(editor, "pulse")
+
+    editor.ui.toolBox.setCurrentWidget(editor.ui.page_7)
+    editor.scene.clearSelection()
+    block_item.setSelected(True)
+    QtWidgets.QApplication.processEvents()
+
+    assert editor.variables_table_model.rowCount() == 0
+    assert editor.parameters_table_model.rowCount() == 0
+    assert editor.equations_table_model.rowCount() == 0
+
+    editor.ui.toolBox.setCurrentWidget(editor.ui.page_2)
+    QtWidgets.QApplication.processEvents()
+
+    assert editor.parameters_table_model.rowCount() > 0
+    assert editor.variables_table_model.rowCount() == 0
+    assert editor.equations_table_model.rowCount() == 0
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_parameter_edit_does_not_rebuild_scene_for_non_structural_change() -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+    block_item = _build_catalog_block_item(editor, "pulse")
+    rebuild_calls: list[str] = list()
+
+    editor.scene.clearSelection()
+    block_item.setSelected(True)
+    editor.ui.toolBox.setCurrentWidget(editor.ui.page_2)
+    QtWidgets.QApplication.processEvents()
+
+    assert editor.parameters_table_model.rowCount() > 0
+
+    def _record_rebuild() -> None:
+        rebuild_calls.append("rebuild")
+
+    editor.rebuild_scene_from_diagram = _record_rebuild
+    value_index = editor.parameters_table_model.index(0, 2)
+
+    assert editor.parameters_table_model.setData(value_index, 1.0, QtCore.Qt.ItemDataRole.EditRole)
+    QtWidgets.QApplication.processEvents()
+    assert rebuild_calls == list()
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_parameter_panel_includes_mode_parameters_for_pulse_block() -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+    block_item = _build_catalog_block_item(editor, "pulse")
+
+    editor.scene.clearSelection()
+    block_item.setSelected(True)
+    editor.ui.toolBox.setCurrentWidget(editor.ui.page_2)
+    QtWidgets.QApplication.processEvents()
+
+    row_types: list[str] = list()
+    row_index: int
+    for row_index in range(editor.parameters_table_model.rowCount()):
+        index = editor.parameters_table_model.index(row_index, 0)
+        row_types.append(str(editor.parameters_table_model.data(index, QtCore.Qt.ItemDataRole.DisplayRole)))
+
+    assert "Event Parameter" in row_types
+    assert "Mode Parameter" in row_types
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_lookup_array_linear_dialog_parses_clipboard_rows() -> None:
+    _get_app()
+    dialog = LookupArrayLinearDialog(block_label="Lookup array (linear)")
+    clipboard = QtWidgets.QApplication.clipboard()
+    clipboard.setText("0\t0\n1\t10\n2\t20")
+
+    dialog.paste_from_clipboard()
+    dialog.accept_dialog()
+    x_points, y_points = dialog.get_points()
+
+    assert x_points == [0.0, 1.0, 2.0]
+    assert y_points == [0.0, 10.0, 20.0]
+    dialog.close()
+
+
+def test_lookup_array_linear_dialog_supports_copy_paste_and_delete_shortcuts() -> None:
+    _get_app()
+    dialog = LookupArrayLinearDialog(block_label="Lookup array (linear)")
+    clipboard = QtWidgets.QApplication.clipboard()
+
+    dialog._table_widget.selectRow(0)
+    QTest.keyClick(dialog, QtCore.Qt.Key.Key_C, QtCore.Qt.KeyboardModifier.ControlModifier)
+    QtWidgets.QApplication.processEvents()
+    assert clipboard.text().strip() == "0.0\t0.0"
+
+    clipboard.setText("3\t30\n4\t40")
+    QTest.keyClick(dialog, QtCore.Qt.Key.Key_V, QtCore.Qt.KeyboardModifier.ControlModifier)
+    QtWidgets.QApplication.processEvents()
+    assert dialog._table_widget.rowCount() == 2
+
+    dialog._table_widget.selectRow(0)
+    QTest.keyClick(dialog, QtCore.Qt.Key.Key_Delete)
+    QtWidgets.QApplication.processEvents()
+    assert dialog._table_widget.rowCount() == 1
+    dialog.close()
+
+
+def test_lookup_array_linear_descriptor_uses_modal_points_to_build_block(monkeypatch) -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+    descriptor = get_basic_block_catalog_descriptor_by_key()["lookup_array_linear"]
+
+    class _DialogStub:
+        def __init__(self, block_label: str, initial_points=None, parent=None) -> None:
+            _unused = (block_label, initial_points, parent)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_points(self) -> tuple[list[float], list[float]]:
+            return [0.0, 2.0, 4.0], [0.0, 20.0, 40.0]
+
+    monkeypatch.setattr(dynamic_block_editor_module, "LookupArrayLinearDialog", _DialogStub)
+    block_item = editor.create_library_payload_item(descriptor, 10.0, 20.0)
+
+    assert block_item is not None
+    assert any(var.name.startswith("arr_x3_") for var in block_item.subsys.event_dict.keys())
+    assert any(var.name.startswith("arr_y3_") for var in block_item.subsys.event_dict.keys())
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_lookup_matrix_linear_dialog_parses_clipboard_matrix() -> None:
+    _get_app()
+    dialog = LookupMatrixLinearDialog(block_label="Lookup matrix (linear)")
+    clipboard = QtWidgets.QApplication.clipboard()
+    clipboard.setText("\t0\t1\n0\t0\t10\n2\t20\t30")
+
+    dialog.paste_from_clipboard()
+    dialog.accept_dialog()
+    x_points, y_points, z_matrix = dialog.get_matrix_data()
+
+    assert x_points == [0.0, 1.0]
+    assert y_points == [0.0, 2.0]
+    assert z_matrix == [[0.0, 10.0], [20.0, 30.0]]
+    dialog.close()
+
+
+def test_lookup_matrix_linear_dialog_supports_copy_paste_and_delete_shortcuts() -> None:
+    _get_app()
+    dialog = LookupMatrixLinearDialog(block_label="Lookup matrix (linear)")
+    clipboard = QtWidgets.QApplication.clipboard()
+
+    selection = QtWidgets.QTableWidgetSelectionRange(0, 0, 2, 2)
+    dialog._table_widget.setRangeSelected(selection, True)
+    QTest.keyClick(dialog, QtCore.Qt.Key.Key_C, QtCore.Qt.KeyboardModifier.ControlModifier)
+    QtWidgets.QApplication.processEvents()
+    assert clipboard.text().rstrip() == "\t0.0\t1.0\n0.0\t0.0\t10.0\n2.0\t20.0\t30.0"
+
+    clipboard.setText("\t5\t6\n7\t8\t9\n10\t11\t12\n13\t14\t15")
+    QTest.keyClick(dialog, QtCore.Qt.Key.Key_V, QtCore.Qt.KeyboardModifier.ControlModifier)
+    QtWidgets.QApplication.processEvents()
+    x_points, y_points, z_matrix = dialog._read_matrix_from_table()
+    assert x_points == [5.0, 6.0]
+    assert y_points == [7.0, 10.0, 13.0]
+    assert z_matrix == [[8.0, 9.0], [11.0, 12.0], [14.0, 15.0]]
+
+    dialog._table_widget.clearSelection()
+    selection = QtWidgets.QTableWidgetSelectionRange(1, 0, 1, 2)
+    dialog._table_widget.setRangeSelected(selection, True)
+    QTest.keyClick(dialog, QtCore.Qt.Key.Key_Delete)
+    QtWidgets.QApplication.processEvents()
+    x_points, y_points, z_matrix = dialog._read_matrix_from_table()
+    assert x_points == [5.0, 6.0]
+    assert y_points == [10.0, 13.0]
+    assert z_matrix == [[11.0, 12.0], [14.0, 15.0]]
+    dialog.close()
+
+
+def test_lookup_matrix_linear_descriptor_uses_modal_matrix_to_build_block(monkeypatch) -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+    descriptor = get_basic_block_catalog_descriptor_by_key()["lookup_matrix_linear"]
+
+    class _MatrixDialogStub:
+        def __init__(self, block_label: str, initial_x_points=None, initial_y_points=None, initial_z_matrix=None, parent=None) -> None:
+            _unused = (block_label, initial_x_points, initial_y_points, initial_z_matrix, parent)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_matrix_data(self) -> tuple[list[float], list[float], list[list[float]]]:
+            return [0.0, 1.0], [0.0, 2.0], [[0.0, 10.0], [20.0, 30.0]]
+
+    monkeypatch.setattr(dynamic_block_editor_module, "LookupMatrixLinearDialog", _MatrixDialogStub)
+    block_item = editor.create_library_payload_item(descriptor, 10.0, 20.0)
+
+    assert block_item is not None
+    assert any(var.name.startswith("arr_x2_") for var in block_item.subsys.event_dict.keys())
+    assert any(var.name.startswith("arr_y2_") for var in block_item.subsys.event_dict.keys())
+    assert any(var.name.startswith("arr_z2_2_") for var in block_item.subsys.event_dict.keys())
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_inverse_lookup_array_linear_descriptor_uses_modal_points_to_build_block(monkeypatch) -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+    descriptor = get_basic_block_catalog_descriptor_by_key()["inverse_lookup_array_linear"]
+
+    class _DialogStub:
+        def __init__(self, block_label: str, initial_points=None, parent=None) -> None:
+            _unused = (block_label, initial_points, parent)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_points(self) -> tuple[list[float], list[float]]:
+            return [0.0, 1.0, 2.0], [0.0, 10.0, 20.0]
+
+    monkeypatch.setattr(dynamic_block_editor_module, "LookupArrayLinearDialog", _DialogStub)
+    block_item = editor.create_library_payload_item(descriptor, 10.0, 20.0)
+
+    assert block_item is not None
+    assert any(var.name.startswith("arr_x3_") for var in block_item.subsys.event_dict.keys())
+    assert any(var.name.startswith("arr_y3_") for var in block_item.subsys.event_dict.keys())
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_lookup_array_spline_descriptor_uses_modal_points_to_build_block(monkeypatch) -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+    descriptor = get_basic_block_catalog_descriptor_by_key()["lookup_array_spline"]
+
+    class _DialogStub:
+        def __init__(self, block_label: str, initial_points=None, parent=None) -> None:
+            _unused = (block_label, initial_points, parent)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_points(self) -> tuple[list[float], list[float]]:
+            return [0.0, 1.0, 2.0], [0.0, 10.0, 20.0]
+
+    monkeypatch.setattr(dynamic_block_editor_module, "LookupArrayLinearDialog", _DialogStub)
+    block_item = editor.create_library_payload_item(descriptor, 10.0, 20.0)
+
+    assert block_item is not None
+    assert any(var.name.startswith("arr_x3_") for var in block_item.subsys.event_dict.keys())
+    assert any(var.name.startswith("arr_y3_") for var in block_item.subsys.event_dict.keys())
+
+    editor.has_unapplied_changes = False
+    editor.close()
+
+
+def test_lookup_matrix_spline_descriptor_uses_modal_matrix_to_build_block(monkeypatch) -> None:
+    editor = _build_editor(DynamicSimulationMode.EMT)
+    descriptor = get_basic_block_catalog_descriptor_by_key()["lookup_matrix_spline"]
+
+    class _MatrixDialogStub:
+        def __init__(self, block_label: str, initial_x_points=None, initial_y_points=None, initial_z_matrix=None, parent=None) -> None:
+            _unused = (block_label, initial_x_points, initial_y_points, initial_z_matrix, parent)
+
+        def exec(self) -> int:
+            return int(QtWidgets.QDialog.DialogCode.Accepted)
+
+        def get_matrix_data(self) -> tuple[list[float], list[float], list[list[float]]]:
+            return [0.0, 1.0], [0.0, 2.0], [[0.0, 10.0], [20.0, 30.0]]
+
+    monkeypatch.setattr(dynamic_block_editor_module, "LookupMatrixLinearDialog", _MatrixDialogStub)
+    block_item = editor.create_library_payload_item(descriptor, 10.0, 20.0)
+
+    assert block_item is not None
+    assert any(var.name.startswith("arr_z2_2_") for var in block_item.subsys.event_dict.keys())
 
     editor.has_unapplied_changes = False
     editor.close()

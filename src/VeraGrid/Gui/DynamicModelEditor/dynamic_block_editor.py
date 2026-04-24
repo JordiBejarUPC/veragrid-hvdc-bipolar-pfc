@@ -36,11 +36,18 @@ from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescrip
 from VeraGridEngine.Templates.BasicBlockCatalog import get_editor_ready_basic_block_catalog_descriptors
 from VeraGridEngine.Templates.BasicBlockCatalog import load_basic_block_catalog_template
 from VeraGridEngine.Templates.BasicBlockCatalog.catalog import build_basic_block_catalog_branch_skeleton
+from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import build_lookup_array_linear_runtime_template
+from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import build_inverse_lookup_array_linear_runtime_template
+from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import build_lookup_matrix_linear_runtime_template
+from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import build_lookup_array_spline_runtime_template
+from VeraGridEngine.Templates.BasicBlockCatalog.lookup_array_runtime_templates import build_lookup_matrix_spline_runtime_template
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGrid.Gui.DynamicModelEditor.block_editor import Ui_BlockEditorWindow
 from VeraGrid.Gui.DynamicModelEditor.dynamic_editor_utilities import create_block_of_type, create_generic_block, \
     create_emt_wizard_block
+from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinearDialog
+from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupMatrixLinearDialog
 from VeraGrid.Gui.Icons.icon_associations import device_type_icons
 from VeraGridEngine.Utils.Symbolic.symbolic import (symbolic_to_string, string_to_symbolic,
                                                     get_symbolic_parser_function_names,
@@ -75,6 +82,28 @@ TEMPLATE_NODE_TYPE: str = "TEMPLATE"
 PARAMETER_VALUE_TYPE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 500
 PARAMETER_EDITABLE_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 501
 LIBRARY_SEARCH_TEXT_ROLE: int = int(QtCore.Qt.ItemDataRole.UserRole) + 502
+LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS: set[str] = {
+    "lookup_array_linear",
+    "lookup_array_linear_noclipping",
+    "lookup_array_object_linear",
+    "lookup_array_object_linear_noclipping",
+}
+INVERSE_LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS: set[str] = {
+    "inverse_lookup_array_linear",
+    "inverse_lookup_array_object_linear",
+}
+LOOKUP_ARRAY_SPLINE_DESCRIPTOR_KEYS: set[str] = {
+    "lookup_array_spline",
+    "lookup_array_object_spline",
+}
+LOOKUP_MATRIX_LINEAR_DESCRIPTOR_KEYS: set[str] = {
+    "lookup_matrix_linear",
+    "lookup_matrix_object_linear",
+}
+LOOKUP_MATRIX_SPLINE_DESCRIPTOR_KEYS: set[str] = {
+    "lookup_matrix_spline",
+    "lookup_matrix_object_spline",
+}
 
 
 def _new_uid() -> int:
@@ -688,6 +717,10 @@ def add_variable_to_block(block: Block,
         block.out_vars.append(var)
     elif var_type == "parameter":
         block.parameters[var] = Const(parameter_value, name=var.name)
+    elif var_type == "event_parameter":
+        block.event_dict[var] = Const(parameter_value, name=var.name)
+    elif var_type == "mode_parameter":
+        block.mode_dict[var] = Const(parameter_value, name=var.name)
     else:
         raise ValueError(f"Unknown var_type {var_type}")
 
@@ -1171,6 +1204,8 @@ class AddBlockVariableDialog(QDialog):
         ("Algebraic", "algebraic"),
         ("Input", "in"),
         ("Output", "out"),
+        ("Event Parameter", "event_parameter"),
+        ("Mode Parameter", "mode_parameter"),
         ("Parameter", "parameter"),
     ]
 
@@ -1233,7 +1268,7 @@ class AddBlockVariableDialog(QDialog):
         """
         category: str = self.get_category()
         name: str = self.get_name()
-        is_parameter: bool = category == "parameter"
+        is_parameter: bool = category in {"parameter", "event_parameter", "mode_parameter"}
 
         self.parameter_value_spin.setEnabled(is_parameter)
 
@@ -1464,6 +1499,7 @@ class BlockParameterKind(Enum):
     STATE_EQUATION = "State Equation"
     ALGEBRAIC_EQUATION = "Algebraic Equation"
     EVENT_PARAMETER = "Event Parameter"
+    MODE_PARAMETER = "Mode Parameter"
     FIXED_PARAMETER = "Parameter"
 
 
@@ -1473,7 +1509,7 @@ class BlockParameterRow:
     """
 
     __slots__ = ("name", "kind", "key_var", "value", "editable_name", "editable_value", "value_type", "item_index",
-                 "init_eq", "source_dict_name")
+                 "init_eq", "source_dict_name", "display_value", "display_init_eq")
 
     def __init__(self,
                  name: str,
@@ -1510,6 +1546,9 @@ class BlockParameterRow:
         self.item_index: int | None = item_index
         self.init_eq: Expr | None = init_eq
         self.source_dict_name: str | None = source_dict_name
+        self.display_value: Any = None
+        self.display_init_eq: Any = None
+        refresh_block_parameter_row_cache(self)
 
     @property
     def is_section(self) -> bool:
@@ -1521,8 +1560,37 @@ class BlockParameterRow:
             BlockParameterKind.STATE_EQUATION,
             BlockParameterKind.ALGEBRAIC_EQUATION,
             BlockParameterKind.EVENT_PARAMETER,
+            BlockParameterKind.MODE_PARAMETER,
             BlockParameterKind.FIXED_PARAMETER,
         } and isinstance(self.value, Expr)
+
+
+def build_block_parameter_display_value(value: Any) -> Any:
+    """
+    Return the cached visible representation for one table value.
+
+    :param value: Raw row value.
+    :return: Display-friendly cached value.
+    """
+    if isinstance(value, Expr):
+        return symbolic_to_string(value)
+    else:
+        return value
+
+
+def refresh_block_parameter_row_cache(row: BlockParameterRow) -> None:
+    """
+    Refresh the cached visible text for one row.
+
+    :param row: Row to update.
+    :return: None.
+    """
+    row.display_value = build_block_parameter_display_value(row.value)
+
+    if row.init_eq is not None:
+        row.display_init_eq = build_block_parameter_display_value(row.init_eq)
+    else:
+        row.display_init_eq = None
 
 
 class BlockParameterValueDelegate(QtWidgets.QStyledItemDelegate):
@@ -1676,12 +1744,9 @@ class VariablesTableModel(QtCore.QAbstractTableModel):
                 return row.name
             elif index.column() == 2:
                 if row.init_eq is not None:
-                    if isinstance(row.init_eq, Expr):
-                        return symbolic_to_string(row.init_eq)
-                    return row.init_eq
-                if isinstance(row.value, Expr):
-                    return symbolic_to_string(row.value)
-                return row.value
+                    return row.display_init_eq
+                else:
+                    return row.display_value
         elif role == PARAMETER_VALUE_TYPE_ROLE and index.column() == 2:
             return "float" if row.value_type == float else "text"
         elif role == PARAMETER_EDITABLE_ROLE and index.column() == 2:
@@ -1702,6 +1767,7 @@ class VariablesTableModel(QtCore.QAbstractTableModel):
                 row.key_var.name = value
             elif index.column() == 2 and row.editable_value:
                 row.value = value
+                refresh_block_parameter_row_cache(row)
             else:
                 return False
             self.dataChanged.emit(index, index, [role])
@@ -1712,6 +1778,7 @@ class VariablesTableModel(QtCore.QAbstractTableModel):
         if 0 <= row_index < len(self.rows):
             row = self.rows[row_index]
             row.init_eq = init_eq
+            refresh_block_parameter_row_cache(row)
             if self.block is not None and row.key_var is not None:
                 self.block.init_eqs[row.key_var] = init_eq
             index = self.index(row_index, 2)
@@ -1828,6 +1895,30 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
                     source_dict_name="event_dict"
                 ))
 
+        for var, expr in self.block.mode_dict.items():
+            if isinstance(expr, Const):
+                rows.append(BlockParameterRow(
+                    name=var.name,
+                    kind=BlockParameterKind.MODE_PARAMETER,
+                    key_var=var,
+                    value=expr.value,
+                    editable_name=True,
+                    editable_value=True,
+                    value_type=self.get_python_value_type(expr.value),
+                    source_dict_name="mode_dict"
+                ))
+            else:
+                rows.append(BlockParameterRow(
+                    name=var.name,
+                    kind=BlockParameterKind.MODE_PARAMETER,
+                    key_var=var,
+                    value=expr,
+                    editable_name=True,
+                    editable_value=True,
+                    value_type=str,
+                    source_dict_name="mode_dict"
+                ))
+
         for var, const in self.block.parameters.items():
             rows.append(BlockParameterRow(
                 name=var.name,
@@ -1858,9 +1949,7 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
             elif index.column() == 1:
                 return row.name
             elif index.column() == 2:
-                if isinstance(row.value, Expr):
-                    return symbolic_to_string(row.value)
-                return row.value
+                return row.display_value
         elif role == PARAMETER_EDITABLE_ROLE and index.column() == 2:
             return row.editable_value
         elif role == PARAMETER_VALUE_TYPE_ROLE and index.column() == 2:
@@ -1881,6 +1970,7 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
                 row.key_var.name = value
             elif index.column() == 2 and row.editable_value:
                 row.value = value
+                refresh_block_parameter_row_cache(row)
                 self._update_source_dict(row, value)
             else:
                 return False
@@ -1893,6 +1983,8 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
             return
         if row.source_dict_name == "event_dict":
             self.block.event_dict[row.key_var] = value
+        elif row.source_dict_name == "mode_dict":
+            self.block.mode_dict[row.key_var] = value
         elif row.source_dict_name == "parameters":
             self.block.parameters[row.key_var] = value
 
@@ -1900,6 +1992,7 @@ class ParametersTableModel(QtCore.QAbstractTableModel):
         if 0 <= row_index < len(self.rows):
             row = self.rows[row_index]
             row.value = expr
+            refresh_block_parameter_row_cache(row)
             self._update_source_dict(row, expr)
             index = self.index(row_index, 2)
             self.dataChanged.emit(index, index, [QtCore.Qt.ItemDataRole.EditRole])
@@ -2033,9 +2126,7 @@ class EquationsTableModel(QtCore.QAbstractTableModel):
                 elif row.kind == BlockParameterKind.ALGEBRAIC_EQUATION:
                     return "Algebraic"
             elif index.column() == 1:
-                if isinstance(row.value, Expr):
-                    return symbolic_to_string(row.value)
-                return row.value
+                return row.display_value
         elif role == QtCore.Qt.ItemDataRole.BackgroundRole:
             return QColor("#f7fafc")
         elif role == QtCore.Qt.ItemDataRole.ForegroundRole:
@@ -2058,6 +2149,7 @@ class EquationsTableModel(QtCore.QAbstractTableModel):
                 try:
                     new_expr = string_to_symbolic(value)
                     row.value = new_expr
+                    refresh_block_parameter_row_cache(row)
                     if row.kind == BlockParameterKind.STATE_EQUATION and row.item_index is not None:
                         self.block.state_eqs[row.item_index] = new_expr
                     elif row.kind == BlockParameterKind.ALGEBRAIC_EQUATION and row.item_index is not None:
@@ -3473,6 +3565,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.main_editor = main_editor
         self.workspace_embedded = workspace_embedded
         self._emt_bus_fallback_warning_shown: bool = False
+        self._selected_side_block: Block | None = None
         self.setWindowTitle(f"Dynamic Model Editor [{self.mode.name}]")
         self.block_counters: Dict[BlockType, int] = dict()
         self.scene: DiagramScene = DiagramScene(self)
@@ -3561,7 +3654,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             parent=self.ui.variablesTableView
         )
         self.ui.variablesTableView.setModel(self.variables_table_model)
-        self.ui.variablesTableView.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        variables_header: QtWidgets.QHeaderView = self.ui.variablesTableView.horizontalHeader()
+        variables_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Interactive)
+        variables_header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        variables_header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.Stretch)
         self.ui.variablesTableView.verticalHeader().setVisible(False)
         self.ui.variablesTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.ui.variablesTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
@@ -3574,7 +3670,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             parent=self.ui.parametersTableView
         )
         self.ui.parametersTableView.setModel(self.parameters_table_model)
-        self.ui.parametersTableView.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        parameters_header: QtWidgets.QHeaderView = self.ui.parametersTableView.horizontalHeader()
+        parameters_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Interactive)
+        parameters_header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        parameters_header.setSectionResizeMode(2, QtWidgets.QHeaderView.ResizeMode.Stretch)
         self.ui.parametersTableView.verticalHeader().setVisible(False)
         self.ui.parametersTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.ui.parametersTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
@@ -3587,7 +3686,10 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             parent=self.ui.equationsTableView
         )
         self.ui.equationsTableView.setModel(self.equations_table_model)
-        self.ui.equationsTableView.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeToContents)
+        equations_header: QtWidgets.QHeaderView = self.ui.equationsTableView.horizontalHeader()
+        equations_header.setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Interactive)
+        equations_header.setSectionResizeMode(0, QtWidgets.QHeaderView.ResizeMode.ResizeToContents)
+        equations_header.setSectionResizeMode(1, QtWidgets.QHeaderView.ResizeMode.Stretch)
         self.ui.equationsTableView.verticalHeader().setVisible(False)
         self.ui.equationsTableView.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
         self.ui.equationsTableView.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
@@ -3612,6 +3714,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         self.ui.graphicsView.dropEvent = self.graphicsDropEvent
 
         self.ui.doItButton.clicked.connect(self.apply_changes)
+        self.ui.toolBox.currentChanged.connect(self.on_side_panel_page_changed)
         self.scene.selectionChanged.connect(self.on_scene_selection_changed)
         if not self.main_block.diagram.node_data:
             # here we add the connection variables to the main block
@@ -4074,6 +4177,163 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
 
         return block_item
 
+    def create_lookup_array_linear_descriptor_item(self,
+                                                   descriptor: BasicBlockTemplateDescriptor,
+                                                   x_pos: float,
+                                                   y_pos: float) -> BlockItem | None:
+        """
+        Materialize one modal-configured 1D lookup-table descriptor.
+
+        :param descriptor: Lookup descriptor selected from the native catalog.
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        dialog: LookupArrayLinearDialog = LookupArrayLinearDialog(block_label=descriptor.display_label, parent=self)
+        dialog_result: int = dialog.exec()
+
+        if dialog_result == QDialog.DialogCode.Accepted:
+            x_points, y_points = dialog.get_points()
+        else:
+            return None
+
+        clip_enabled: bool = descriptor.template_key not in {
+            "lookup_array_linear_noclipping",
+            "lookup_array_object_linear_noclipping",
+        }
+        count: int = len(self.main_block.children) + 1
+        item_name: str = f"{descriptor.template_key}_{count}"
+        template: EmtModelTemplate = build_lookup_array_linear_runtime_template(
+            vf=self.var_factory,
+            x_points=x_points,
+            y_points=y_points,
+            clip=clip_enabled,
+            name=item_name,
+        )
+        return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
+
+    def create_inverse_lookup_array_linear_descriptor_item(self,
+                                                           descriptor: BasicBlockTemplateDescriptor,
+                                                           x_pos: float,
+                                                           y_pos: float) -> BlockItem | None:
+        """
+        Materialize one modal-configured inverse 1D lookup-table descriptor.
+
+        :param descriptor: Lookup descriptor selected from the native catalog.
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        dialog: LookupArrayLinearDialog = LookupArrayLinearDialog(block_label=descriptor.display_label, parent=self)
+        dialog_result: int = dialog.exec()
+
+        if dialog_result == QDialog.DialogCode.Accepted:
+            x_points, y_points = dialog.get_points()
+        else:
+            return None
+
+        count: int = len(self.main_block.children) + 1
+        item_name: str = f"{descriptor.template_key}_{count}"
+        template: EmtModelTemplate = build_inverse_lookup_array_linear_runtime_template(
+            vf=self.var_factory,
+            x_points=x_points,
+            y_points=y_points,
+            name=item_name,
+        )
+        return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
+
+    def create_lookup_array_spline_descriptor_item(self,
+                                                   descriptor: BasicBlockTemplateDescriptor,
+                                                   x_pos: float,
+                                                   y_pos: float) -> BlockItem | None:
+        """
+        Materialize one modal-configured 1D spline lookup descriptor.
+
+        :param descriptor: Lookup descriptor selected from the native catalog.
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        dialog: LookupArrayLinearDialog = LookupArrayLinearDialog(block_label=descriptor.display_label, parent=self)
+        dialog_result: int = dialog.exec()
+
+        if dialog_result == QDialog.DialogCode.Accepted:
+            x_points, y_points = dialog.get_points()
+        else:
+            return None
+
+        count: int = len(self.main_block.children) + 1
+        item_name: str = f"{descriptor.template_key}_{count}"
+        template: EmtModelTemplate = build_lookup_array_spline_runtime_template(
+            vf=self.var_factory,
+            x_points=x_points,
+            y_points=y_points,
+            name=item_name,
+        )
+        return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
+
+    def create_lookup_matrix_linear_descriptor_item(self,
+                                                    descriptor: BasicBlockTemplateDescriptor,
+                                                    x_pos: float,
+                                                    y_pos: float) -> BlockItem | None:
+        """
+        Materialize one modal-configured 2D lookup-matrix descriptor.
+
+        :param descriptor: Lookup descriptor selected from the native catalog.
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        dialog: LookupMatrixLinearDialog = LookupMatrixLinearDialog(block_label=descriptor.display_label, parent=self)
+        dialog_result: int = dialog.exec()
+
+        if dialog_result == QDialog.DialogCode.Accepted:
+            x_points, y_points, z_matrix = dialog.get_matrix_data()
+        else:
+            return None
+
+        count: int = len(self.main_block.children) + 1
+        item_name: str = f"{descriptor.template_key}_{count}"
+        template: EmtModelTemplate = build_lookup_matrix_linear_runtime_template(
+            vf=self.var_factory,
+            x_points=x_points,
+            y_points=y_points,
+            z_matrix=z_matrix,
+            name=item_name,
+        )
+        return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
+
+    def create_lookup_matrix_spline_descriptor_item(self,
+                                                    descriptor: BasicBlockTemplateDescriptor,
+                                                    x_pos: float,
+                                                    y_pos: float) -> BlockItem | None:
+        """
+        Materialize one modal-configured 2D spline lookup-matrix descriptor.
+
+        :param descriptor: Lookup descriptor selected from the native catalog.
+        :param x_pos: Drop x position.
+        :param y_pos: Drop y position.
+        :return: Created block item or None when the dialog is cancelled.
+        """
+        dialog: LookupMatrixLinearDialog = LookupMatrixLinearDialog(block_label=descriptor.display_label, parent=self)
+        dialog_result: int = dialog.exec()
+
+        if dialog_result == QDialog.DialogCode.Accepted:
+            x_points, y_points, z_matrix = dialog.get_matrix_data()
+        else:
+            return None
+
+        count: int = len(self.main_block.children) + 1
+        item_name: str = f"{descriptor.template_key}_{count}"
+        template: EmtModelTemplate = build_lookup_matrix_spline_runtime_template(
+            vf=self.var_factory,
+            x_points=x_points,
+            y_points=y_points,
+            z_matrix=z_matrix,
+            name=item_name,
+        )
+        return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
+
     def create_library_payload_item(self,
                                     payload: BlockType | BasicBlockTemplateDescriptor | RmsModelTemplate | EmtModelTemplate | FmuTemplate,
                                     x_pos: float,
@@ -4097,8 +4357,19 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         elif isinstance(payload, BlockType):
             return self.create_block_item(block_type=payload, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, BasicBlockTemplateDescriptor):
-            template: EmtModelTemplate = load_basic_block_catalog_template(payload, self.var_factory)
-            return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
+            if payload.template_key in LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
+                return self.create_lookup_array_linear_descriptor_item(payload, x_pos, y_pos)
+            elif payload.template_key in INVERSE_LOOKUP_ARRAY_LINEAR_DESCRIPTOR_KEYS:
+                return self.create_inverse_lookup_array_linear_descriptor_item(payload, x_pos, y_pos)
+            elif payload.template_key in LOOKUP_ARRAY_SPLINE_DESCRIPTOR_KEYS:
+                return self.create_lookup_array_spline_descriptor_item(payload, x_pos, y_pos)
+            elif payload.template_key in LOOKUP_MATRIX_LINEAR_DESCRIPTOR_KEYS:
+                return self.create_lookup_matrix_linear_descriptor_item(payload, x_pos, y_pos)
+            elif payload.template_key in LOOKUP_MATRIX_SPLINE_DESCRIPTOR_KEYS:
+                return self.create_lookup_matrix_spline_descriptor_item(payload, x_pos, y_pos)
+            else:
+                template: EmtModelTemplate = load_basic_block_catalog_template(payload, self.var_factory)
+                return self.create_template_block_item(template=template, x_pos=x_pos, y_pos=y_pos)
         elif isinstance(payload, (RmsModelTemplate, EmtModelTemplate, FmuTemplate)):
             return self.create_template_block_item(template=payload, x_pos=x_pos, y_pos=y_pos)
         else:
@@ -5321,6 +5592,9 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
             if row_data.kind == BlockParameterKind.EVENT_PARAMETER:
                 if var in block.event_dict:
                     del block.event_dict[var]
+            elif row_data.kind == BlockParameterKind.MODE_PARAMETER:
+                if var in block.mode_dict:
+                    del block.mode_dict[var]
             elif row_data.kind == BlockParameterKind.FIXED_PARAMETER:
                 if var in block.parameters:
                     del block.parameters[var]
@@ -5441,9 +5715,38 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         selected_block: Block | None = self.get_selected_scene_block()
-        self.variables_table_model.set_block(selected_block)
-        self.parameters_table_model.set_block(selected_block)
-        self.equations_table_model.set_block(selected_block)
+        self._selected_side_block = selected_block
+        self.refresh_active_side_panel()
+
+    @QtCore.Slot(int)
+    def on_side_panel_page_changed(self, index: int) -> None:
+        """
+        Refresh only the side panel that just became visible.
+
+        :param index: Newly selected toolbox page index.
+        :return: None.
+        """
+        _unused_index: int = index
+        self.refresh_active_side_panel()
+
+    def refresh_active_side_panel(self) -> None:
+        """
+        Refresh only the currently visible side panel.
+
+        :return: None.
+        """
+        current_widget: QtWidgets.QWidget = self.ui.toolBox.currentWidget()
+
+        if current_widget == self.ui.page:
+            self.variables_table_model.set_block(self._selected_side_block)
+        else:
+            if current_widget == self.ui.page_2:
+                self.parameters_table_model.set_block(self._selected_side_block)
+            else:
+                if current_widget == self.ui.page_3:
+                    self.equations_table_model.set_block(self._selected_side_block)
+                else:
+                    pass
 
     def get_scene_item_by_block_uid(self, block_uid: int) -> BlockItem | GenericBlockItem | None:
         """
@@ -5488,8 +5791,13 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         self.mark_unapplied_changes()
-        self.rebuild_scene_from_diagram()
-        self.select_block_by_uid(block_uid)
+        sender_obj: QtCore.QObject | None = self.sender()
+
+        if sender_obj is self.parameters_table_model:
+            self.refresh_active_side_panel()
+        else:
+            self.rebuild_scene_from_diagram()
+            self.select_block_by_uid(block_uid)
 
     def apply_changes(self) -> None:
         """
@@ -5675,6 +5983,22 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         )
         return reply == QtWidgets.QMessageBox.StandardButton.Yes
 
+    def disconnect_editor_signals(self) -> None:
+        """
+        Disconnect long-lived UI signals before the editor gets destroyed.
+
+        :return: None.
+        """
+        try:
+            self.ui.toolBox.currentChanged.disconnect(self.on_side_panel_page_changed)
+        except (RuntimeError, TypeError):
+            pass
+
+        try:
+            self.scene.selectionChanged.disconnect(self.on_scene_selection_changed)
+        except (RuntimeError, TypeError):
+            pass
+
     def closeEvent(self, event: QtGui.QCloseEvent) -> None:
         """
         Close the editor. Ask for confirmation when there are unapplied changes.
@@ -5683,6 +6007,7 @@ class DynamicBlockEditorGUI(QtWidgets.QMainWindow):
         :return:
         """
         if self.can_close_editor(self):
+            self.disconnect_editor_signals()
             event.accept()
         else:
             event.ignore()

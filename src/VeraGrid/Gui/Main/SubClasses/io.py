@@ -996,31 +996,39 @@ class IoMain(ScenariosMain):
         Add default catalogue to circuit
         """
 
-
-        for tpe in get_transformer_catalogue():
-            self.circuit.add_transformer_type(tpe)
-
-        for tpe in get_cables_catalogue():
-            self.circuit.add_underground_line(tpe)
-
-        for tpe in get_wires_catalogue():
-            self.circuit.add_wire(tpe)
-
-        for tpe in get_sequence_lines_catalogue():
-            self.circuit.add_sequence_line(tpe)
-
-        if not self.circuit.rms_models:
-            self.circuit.add_rms_model_catalogue()
+        if len(self.circuit.transformer_types) == 0:
+            for tpe in get_transformer_catalogue():
+                self.circuit.add_transformer_type(tpe)
         else:
-            self.circuit.rms_models = list()
-            self.circuit.add_rms_model_catalogue()
+            pass
 
-
-        if not self.circuit.emt_models:
-            self.circuit.add_emt_model_catalogue()
+        if len(self.circuit.underground_cable_types) == 0:
+            for tpe in get_cables_catalogue():
+                self.circuit.add_underground_line(tpe)
         else:
-            self.circuit.emt_models = list()
-            self.circuit.add_emt_model_catalogue()
+            pass
+
+        if len(self.circuit.wire_types) == 0:
+            for tpe in get_wires_catalogue():
+                self.circuit.add_wire(tpe)
+        else:
+            pass
+
+        if len(self.circuit.sequence_line_types) == 0:
+            for tpe in get_sequence_lines_catalogue():
+                self.circuit.add_sequence_line(tpe)
+        else:
+            pass
+
+        if self.circuit.get_rms_models_number() == 0:
+            self.circuit.enable_default_rms_model_catalogue_lazy_loading()
+        else:
+            pass
+
+        if self.circuit.get_emt_models_number() == 0:
+            self.circuit.enable_default_emt_model_catalogue_lazy_loading()
+        else:
+            pass
 
         self.show_info_toast("Catalogue added!")
 
