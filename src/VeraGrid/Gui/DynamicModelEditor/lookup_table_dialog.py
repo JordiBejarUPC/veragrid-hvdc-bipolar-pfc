@@ -67,12 +67,61 @@ def _clear_selected_table_cells(table_widget: QtWidgets.QTableWidget) -> None:
             pass
 
 
+def _parse_clipboard_grid(clipboard_text: str) -> list[list[str]]:
+    """
+    Parse one clipboard payload into a rectangular text grid.
+
+    :param clipboard_text: Clipboard text.
+    :return: Parsed grid.
+    :raises ValueError: If the clipboard has no usable rows.
+    """
+    parsed_rows: list[list[str]] = list()
+    line_text: str
+
+    for line_text in clipboard_text.splitlines():
+        if len(line_text.strip()) == 0:
+            pass
+        else:
+            if "\t" in line_text:
+                parsed_rows.append([part.strip() for part in line_text.rstrip("\r").split("\t")])
+            else:
+                parsed_rows.append([part.strip() for part in re.split(r"[;,]+", line_text.strip())])
+
+    if len(parsed_rows) == 0:
+        raise ValueError("Clipboard does not contain table rows")
+    else:
+        return parsed_rows
+
+
+def _get_selection_anchor(table_widget: QtWidgets.QTableWidget, default_row: int, default_col: int) -> tuple[int, int]:
+    """
+    Return the top-left anchor used for spreadsheet-style pasting.
+
+    :param table_widget: Target table widget.
+    :param default_row: Fallback row.
+    :param default_col: Fallback column.
+    :return: Anchor `(row, column)`.
+    """
+    selected_indexes: list[QtCore.QModelIndex] = list(table_widget.selectionModel().selectedIndexes())
+
+    if len(selected_indexes) == 0:
+        current_row: int = table_widget.currentRow()
+        current_col: int = table_widget.currentColumn()
+
+        if current_row >= 0 and current_col >= 0:
+            return current_row, current_col
+        else:
+            return default_row, default_col
+    else:
+        return min(index.row() for index in selected_indexes), min(index.column() for index in selected_indexes)
+
+
 class LookupArrayLinearDialog(QtWidgets.QDialog):
     """
     Modal dialog used to capture a one-dimensional lookup table.
     """
 
-    __slots__ = ("_table_widget", "_x_points", "_y_points")
+    __slots__ = ("_table_widget", "_x_points", "_y_points", "_shortcuts")
 
     def __init__(self,
                  block_label: str,
@@ -92,6 +141,7 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
 
         self._x_points: list[float] = list()
         self._y_points: list[float] = list()
+        self._shortcuts: list[QtGui.QShortcut] = list()
 
         main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
         description_label: QtWidgets.QLabel = QtWidgets.QLabel(
@@ -105,9 +155,11 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
         self._table_widget.setColumnCount(2)
         self._table_widget.setHorizontalHeaderLabels(list(["X", "Y"]))
         self._table_widget.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
+        self._table_widget.horizontalHeader().sectionClicked.connect(self.select_column_by_header)
         self._table_widget.verticalHeader().setVisible(False)
-        self._table_widget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectRows)
+        self._table_widget.setSelectionBehavior(QtWidgets.QAbstractItemView.SelectionBehavior.SelectItems)
         self._table_widget.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self._table_widget.installEventFilter(self)
         main_layout.addWidget(self._table_widget)
 
         buttons_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
@@ -135,7 +187,54 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
         dialog_buttons.accepted.connect(self.accept_dialog)
         dialog_buttons.rejected.connect(self.reject)
 
+        self._install_shortcuts()
+
         self._populate_initial_rows(initial_points)
+
+    def _install_shortcuts(self) -> None:
+        """
+        Install dialog-level shortcuts that remain active while the table has focus.
+
+        :return: None.
+        """
+        copy_shortcut = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Copy, self)
+        copy_shortcut.setContext(QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        copy_shortcut.activated.connect(self.copy_selection_to_clipboard)
+        self._shortcuts.append(copy_shortcut)
+
+        paste_shortcut = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Paste, self)
+        paste_shortcut.setContext(QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        paste_shortcut.activated.connect(self.paste_from_clipboard)
+        self._shortcuts.append(paste_shortcut)
+
+        delete_shortcut = QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key.Key_Delete), self)
+        delete_shortcut.setContext(QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        delete_shortcut.activated.connect(self.delete_selection)
+        self._shortcuts.append(delete_shortcut)
+
+    def select_column_by_header(self, section_index: int) -> None:
+        """
+        Select one complete data column when the user clicks its header.
+
+        :param section_index: Header section index.
+        :return: None.
+        """
+        last_row: int = self._table_widget.rowCount() - 1
+
+        if last_row >= 0:
+            self._table_widget.clearSelection()
+            selection = QtWidgets.QTableWidgetSelectionRange(0, section_index, last_row, section_index)
+            self._table_widget.setRangeSelected(selection, True)
+        else:
+            pass
+
+    def copy_selection_to_clipboard(self) -> None:
+        """
+        Copy the current selection to the clipboard.
+
+        :return: None.
+        """
+        _copy_selected_table_range_to_clipboard(self._table_widget)
 
     def _populate_initial_rows(self, initial_points: Sequence[tuple[float, float]] | None) -> None:
         """
@@ -210,13 +309,20 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
 
     def paste_from_clipboard(self) -> None:
         """
-        Replace the current grid with rows parsed from the clipboard.
+        Paste the clipboard grid into the current selection like a spreadsheet.
 
         :return: None.
         """
         clipboard: QtWidgets.QClipboard = QtWidgets.QApplication.clipboard()
         clipboard_text: str = clipboard.text().strip()
-        parsed_points: list[tuple[float, float]]
+        parsed_rows: list[list[str]]
+        anchor_row: int
+        anchor_col: int
+        row_offset: int
+        col_offset: int
+        target_row: int
+        target_col: int
+        item: QtWidgets.QTableWidgetItem | None
 
         if len(clipboard_text) == 0:
             QtWidgets.QMessageBox.information(self, "Lookup Table", "Clipboard is empty.")
@@ -225,12 +331,59 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
             pass
 
         try:
-            parsed_points = self._parse_points_from_text(clipboard_text)
+            parsed_rows = _parse_clipboard_grid(clipboard_text)
         except ValueError as exc:
             QtWidgets.QMessageBox.warning(self, "Lookup Table", str(exc))
             return
 
-        self._replace_table_points(parsed_points)
+        if max(len(row) for row in parsed_rows) <= 2:
+            pass
+        else:
+            QtWidgets.QMessageBox.warning(self, "Lookup Table", "Lookup table clipboard data can only have up to two columns.")
+            return
+
+        anchor_row, anchor_col = _get_selection_anchor(self._table_widget, 0, 0)
+
+        while self._table_widget.rowCount() < anchor_row + len(parsed_rows):
+            self.add_empty_row()
+
+        for row_offset in range(len(parsed_rows)):
+            for col_offset in range(len(parsed_rows[row_offset])):
+                target_row = anchor_row + row_offset
+                target_col = anchor_col + col_offset
+
+                if target_col < self._table_widget.columnCount():
+                    item = self._table_widget.item(target_row, target_col)
+                    if item is None:
+                        item = QtWidgets.QTableWidgetItem("")
+                        self._table_widget.setItem(target_row, target_col, item)
+                    else:
+                        pass
+
+                    item.setText(parsed_rows[row_offset][col_offset])
+                else:
+                    pass
+
+    def delete_selection(self) -> None:
+        """
+        Delete the current selection using row-aware behavior.
+
+        :return: None.
+        """
+        selected_ranges: list[QtWidgets.QTableWidgetSelectionRange] = list(self._table_widget.selectedRanges())
+        selection_range: QtWidgets.QTableWidgetSelectionRange
+        removes_rows: bool = False
+
+        for selection_range in selected_ranges:
+            if selection_range.leftColumn() == 0 and selection_range.rightColumn() == self._table_widget.columnCount() - 1:
+                removes_rows = True
+            else:
+                pass
+
+        if removes_rows:
+            self.remove_selected_rows()
+        else:
+            _clear_selected_table_cells(self._table_widget)
 
     def accept_dialog(self) -> None:
         """
@@ -372,34 +525,43 @@ class LookupArrayLinearDialog(QtWidgets.QDialog):
         return float(point[0])
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        """
-        Handle keyboard shortcuts for copy, paste, and row deletion.
-
-        :param event: Qt key event.
-        :return: None.
-        """
-        if event.matches(QtGui.QKeySequence.StandardKey.Copy):
-            _copy_selected_table_range_to_clipboard(self._table_widget)
-            event.accept()
-            return
-        else:
-            pass
-
-        if event.matches(QtGui.QKeySequence.StandardKey.Paste):
-            self.paste_from_clipboard()
-            event.accept()
-            return
-        else:
-            pass
-
-        if event.key() == int(QtCore.Qt.Key.Key_Delete):
-            self.remove_selected_rows()
-            event.accept()
-            return
-        else:
-            pass
-
         super().keyPressEvent(event)
+
+    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        """
+        Capture table shortcuts directly from the child widget.
+
+        :param watched: Watched QObject.
+        :param event: Qt event.
+        :return: True when the event is handled here.
+        """
+        if watched is self._table_widget and event.type() == QtCore.QEvent.Type.KeyPress:
+            key_event = event
+
+            if isinstance(key_event, QtGui.QKeyEvent):
+                if key_event.matches(QtGui.QKeySequence.StandardKey.Copy):
+                    self.copy_selection_to_clipboard()
+                    return True
+                else:
+                    pass
+
+                if key_event.matches(QtGui.QKeySequence.StandardKey.Paste):
+                    self.paste_from_clipboard()
+                    return True
+                else:
+                    pass
+
+                if key_event.key() == int(QtCore.Qt.Key.Key_Delete):
+                    self.delete_selection()
+                    return True
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
+
+        return super().eventFilter(watched, event)
 
 
 class LookupMatrixLinearDialog(QtWidgets.QDialog):
@@ -407,7 +569,7 @@ class LookupMatrixLinearDialog(QtWidgets.QDialog):
     Modal dialog used to capture one two-dimensional lookup table.
     """
 
-    __slots__ = ("_table_widget", "_x_points", "_y_points", "_z_matrix")
+    __slots__ = ("_table_widget", "_x_points", "_y_points", "_z_matrix", "_shortcuts")
 
     def __init__(self,
                  block_label: str,
@@ -432,6 +594,7 @@ class LookupMatrixLinearDialog(QtWidgets.QDialog):
         self._x_points: list[float] = list()
         self._y_points: list[float] = list()
         self._z_matrix: list[list[float]] = list()
+        self._shortcuts: list[QtGui.QShortcut] = list()
 
         main_layout: QtWidgets.QVBoxLayout = QtWidgets.QVBoxLayout(self)
         description_label: QtWidgets.QLabel = QtWidgets.QLabel(
@@ -445,7 +608,9 @@ class LookupMatrixLinearDialog(QtWidgets.QDialog):
         self._table_widget.verticalHeader().setVisible(False)
         self._table_widget.horizontalHeader().setVisible(False)
         self._table_widget.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch)
+        self._table_widget.cellPressed.connect(self.on_matrix_cell_pressed)
         self._table_widget.setSelectionMode(QtWidgets.QAbstractItemView.SelectionMode.ExtendedSelection)
+        self._table_widget.installEventFilter(self)
         main_layout.addWidget(self._table_widget)
 
         buttons_layout: QtWidgets.QHBoxLayout = QtWidgets.QHBoxLayout()
@@ -479,7 +644,58 @@ class LookupMatrixLinearDialog(QtWidgets.QDialog):
         dialog_buttons.accepted.connect(self.accept_dialog)
         dialog_buttons.rejected.connect(self.reject)
 
+        self._install_shortcuts()
+
         self._populate_initial_grid(initial_x_points, initial_y_points, initial_z_matrix)
+
+    def _install_shortcuts(self) -> None:
+        """
+        Install dialog-level shortcuts that remain active while the table has focus.
+
+        :return: None.
+        """
+        copy_shortcut = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Copy, self)
+        copy_shortcut.setContext(QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        copy_shortcut.activated.connect(self.copy_selection_to_clipboard)
+        self._shortcuts.append(copy_shortcut)
+
+        paste_shortcut = QtGui.QShortcut(QtGui.QKeySequence.StandardKey.Paste, self)
+        paste_shortcut.setContext(QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        paste_shortcut.activated.connect(self.paste_from_clipboard)
+        self._shortcuts.append(paste_shortcut)
+
+        delete_shortcut = QtGui.QShortcut(QtGui.QKeySequence(QtCore.Qt.Key.Key_Delete), self)
+        delete_shortcut.setContext(QtCore.Qt.ShortcutContext.WidgetWithChildrenShortcut)
+        delete_shortcut.activated.connect(self.delete_selection)
+        self._shortcuts.append(delete_shortcut)
+
+    def copy_selection_to_clipboard(self) -> None:
+        """
+        Copy the current selection to the clipboard.
+
+        :return: None.
+        """
+        _copy_selected_table_range_to_clipboard(self._table_widget)
+
+    def on_matrix_cell_pressed(self, row_index: int, column_index: int) -> None:
+        """
+        Convert axis-cell clicks into full row or column selections.
+
+        :param row_index: Pressed row index.
+        :param column_index: Pressed column index.
+        :return: None.
+        """
+        if row_index == 0 and column_index > 0:
+            self._table_widget.clearSelection()
+            selection = QtWidgets.QTableWidgetSelectionRange(0, column_index, self._table_widget.rowCount() - 1, column_index)
+            self._table_widget.setRangeSelected(selection, True)
+        else:
+            if column_index == 0 and row_index > 0:
+                self._table_widget.clearSelection()
+                selection = QtWidgets.QTableWidgetSelectionRange(row_index, 0, row_index, self._table_widget.columnCount() - 1)
+                self._table_widget.setRangeSelected(selection, True)
+            else:
+                pass
 
     def _populate_initial_grid(self,
                                initial_x_points: Sequence[float] | None,
@@ -769,15 +985,20 @@ class LookupMatrixLinearDialog(QtWidgets.QDialog):
 
     def paste_from_clipboard(self) -> None:
         """
-        Replace the current matrix with clipboard data.
+        Paste the clipboard grid into the current selection like a spreadsheet.
 
         :return: None.
         """
         clipboard: QtWidgets.QClipboard = QtWidgets.QApplication.clipboard()
         clipboard_text: str = clipboard.text()
-        x_points: list[float]
-        y_points: list[float]
-        z_matrix: list[list[float]]
+        parsed_rows: list[list[str]]
+        anchor_row: int
+        anchor_col: int
+        row_offset: int
+        col_offset: int
+        target_row: int
+        target_col: int
+        item: QtWidgets.QTableWidgetItem | None
 
         if len(clipboard_text.strip()) == 0:
             QtWidgets.QMessageBox.information(self, "Lookup Matrix", "Clipboard is empty.")
@@ -786,12 +1007,41 @@ class LookupMatrixLinearDialog(QtWidgets.QDialog):
             pass
 
         try:
-            x_points, y_points, z_matrix = self._parse_matrix_from_text(clipboard_text)
+            parsed_rows = _parse_clipboard_grid(clipboard_text)
         except ValueError as exc:
             QtWidgets.QMessageBox.warning(self, "Lookup Matrix", str(exc))
             return
 
-        self._replace_matrix_data(x_points=x_points, y_points=y_points, z_matrix=z_matrix)
+        anchor_row, anchor_col = _get_selection_anchor(self._table_widget, 0, 0)
+
+        if anchor_row == 0 and anchor_col == 0:
+            row_count: int = len(parsed_rows)
+            col_count: int = max(len(row) for row in parsed_rows)
+            self._table_widget.setRowCount(row_count)
+            self._table_widget.setColumnCount(col_count)
+        else:
+            required_rows: int = anchor_row + len(parsed_rows)
+            required_cols: int = anchor_col + max(len(row) for row in parsed_rows)
+
+            while self._table_widget.rowCount() < required_rows:
+                self.add_y_row()
+
+            while self._table_widget.columnCount() < required_cols:
+                self.add_x_column()
+
+        for row_offset in range(len(parsed_rows)):
+            for col_offset in range(len(parsed_rows[row_offset])):
+                target_row = anchor_row + row_offset
+                target_col = anchor_col + col_offset
+                item = self._table_widget.item(target_row, target_col)
+
+                if item is None:
+                    item = QtWidgets.QTableWidgetItem("")
+                    self._table_widget.setItem(target_row, target_col, item)
+                else:
+                    pass
+
+                item.setText(parsed_rows[row_offset][col_offset])
 
     def accept_dialog(self) -> None:
         """
@@ -994,34 +1244,43 @@ class LookupMatrixLinearDialog(QtWidgets.QDialog):
         return x_points, y_points, z_matrix
 
     def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
-        """
-        Handle keyboard shortcuts for copy, paste, and selection clearing.
-
-        :param event: Qt key event.
-        :return: None.
-        """
-        if event.matches(QtGui.QKeySequence.StandardKey.Copy):
-            _copy_selected_table_range_to_clipboard(self._table_widget)
-            event.accept()
-            return
-        else:
-            pass
-
-        if event.matches(QtGui.QKeySequence.StandardKey.Paste):
-            self.paste_from_clipboard()
-            event.accept()
-            return
-        else:
-            pass
-
-        if event.key() == int(QtCore.Qt.Key.Key_Delete):
-            self.delete_selection()
-            event.accept()
-            return
-        else:
-            pass
-
         super().keyPressEvent(event)
+
+    def eventFilter(self, watched: QtCore.QObject, event: QtCore.QEvent) -> bool:
+        """
+        Capture table shortcuts directly from the child widget.
+
+        :param watched: Watched QObject.
+        :param event: Qt event.
+        :return: True when the event is handled here.
+        """
+        if watched is self._table_widget and event.type() == QtCore.QEvent.Type.KeyPress:
+            key_event = event
+
+            if isinstance(key_event, QtGui.QKeyEvent):
+                if key_event.matches(QtGui.QKeySequence.StandardKey.Copy):
+                    self.copy_selection_to_clipboard()
+                    return True
+                else:
+                    pass
+
+                if key_event.matches(QtGui.QKeySequence.StandardKey.Paste):
+                    self.paste_from_clipboard()
+                    return True
+                else:
+                    pass
+
+                if key_event.key() == int(QtCore.Qt.Key.Key_Delete):
+                    self.delete_selection()
+                    return True
+                else:
+                    pass
+            else:
+                pass
+        else:
+            pass
+
+        return super().eventFilter(watched, event)
 
     @staticmethod
     def _build_sorted_axis_indexes(axis_values: Sequence[float]) -> list[int]:

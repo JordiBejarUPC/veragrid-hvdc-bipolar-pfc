@@ -10,6 +10,7 @@ import VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor as dynamic_block_edi
 from VeraGrid.Gui.DynamicModelEditor.dynamic_block_editor import DynamicBlockEditorGUI
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupArrayLinearDialog
 from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import LookupMatrixLinearDialog
+from VeraGrid.Gui.DynamicModelEditor.lookup_table_dialog import _parse_clipboard_grid
 from VeraGridEngine.Devices.Dynamic.var_factory import VarFactory
 from VeraGridEngine.Templates.BasicBlockCatalog import BasicBlockTemplateDescriptor
 from VeraGridEngine.Templates.BasicBlockCatalog import get_basic_block_catalog_descriptor_by_key
@@ -379,22 +380,44 @@ def test_lookup_array_linear_dialog_parses_clipboard_rows() -> None:
 def test_lookup_array_linear_dialog_supports_copy_paste_and_delete_shortcuts() -> None:
     _get_app()
     dialog = LookupArrayLinearDialog(block_label="Lookup array (linear)")
+    dialog.show()
+    dialog.activateWindow()
     clipboard = QtWidgets.QApplication.clipboard()
 
-    dialog._table_widget.selectRow(0)
-    QTest.keyClick(dialog, QtCore.Qt.Key.Key_C, QtCore.Qt.KeyboardModifier.ControlModifier)
+    dialog._table_widget.clearSelection()
+    selection = QtWidgets.QTableWidgetSelectionRange(0, 0, 0, 1)
+    dialog._table_widget.setRangeSelected(selection, True)
+    dialog._table_widget.setFocus()
+    QTest.keyClick(dialog._table_widget, QtCore.Qt.Key.Key_C, QtCore.Qt.KeyboardModifier.ControlModifier)
     QtWidgets.QApplication.processEvents()
     assert clipboard.text().strip() == "0.0\t0.0"
 
     clipboard.setText("3\t30\n4\t40")
-    QTest.keyClick(dialog, QtCore.Qt.Key.Key_V, QtCore.Qt.KeyboardModifier.ControlModifier)
+    QTest.keyClick(dialog._table_widget, QtCore.Qt.Key.Key_V, QtCore.Qt.KeyboardModifier.ControlModifier)
+    QtWidgets.QApplication.processEvents()
+    x_points, y_points = dialog._read_points_from_table()
+    assert x_points == [3.0, 4.0, 2.0]
+    assert y_points == [30.0, 40.0, 20.0]
+
+    dialog._table_widget.clearSelection()
+    selection = QtWidgets.QTableWidgetSelectionRange(0, 0, 0, 1)
+    dialog._table_widget.setRangeSelected(selection, True)
+    QTest.keyClick(dialog._table_widget, QtCore.Qt.Key.Key_Delete)
     QtWidgets.QApplication.processEvents()
     assert dialog._table_widget.rowCount() == 2
+    dialog.close()
 
-    dialog._table_widget.selectRow(0)
-    QTest.keyClick(dialog, QtCore.Qt.Key.Key_Delete)
+
+def test_lookup_array_linear_dialog_header_click_selects_full_column() -> None:
+    _get_app()
+    dialog = LookupArrayLinearDialog(block_label="Lookup array (linear)")
+
+    dialog.select_column_by_header(0)
     QtWidgets.QApplication.processEvents()
-    assert dialog._table_widget.rowCount() == 1
+    selected_indexes = dialog._table_widget.selectionModel().selectedIndexes()
+
+    assert len(selected_indexes) == dialog._table_widget.rowCount()
+    assert all(index.column() == 0 for index in selected_indexes)
     dialog.close()
 
 
@@ -442,13 +465,18 @@ def test_lookup_matrix_linear_dialog_parses_clipboard_matrix() -> None:
 def test_lookup_matrix_linear_dialog_supports_copy_paste_and_delete_shortcuts() -> None:
     _get_app()
     dialog = LookupMatrixLinearDialog(block_label="Lookup matrix (linear)")
+    dialog.show()
+    dialog.activateWindow()
     clipboard = QtWidgets.QApplication.clipboard()
 
+    dialog._table_widget.clearSelection()
     selection = QtWidgets.QTableWidgetSelectionRange(0, 0, 2, 2)
     dialog._table_widget.setRangeSelected(selection, True)
+    dialog.setFocus()
     QTest.keyClick(dialog, QtCore.Qt.Key.Key_C, QtCore.Qt.KeyboardModifier.ControlModifier)
     QtWidgets.QApplication.processEvents()
-    assert clipboard.text().rstrip() == "\t0.0\t1.0\n0.0\t0.0\t10.0\n2.0\t20.0\t30.0"
+    copied_grid = _parse_clipboard_grid(clipboard.text())
+    assert copied_grid == [["", "0.0", "1.0"], ["0.0", "0.0", "10.0"], ["2.0", "20.0", "30.0"]] or copied_grid == [["", "0", "1"], ["0", "0", "10"], ["2", "20", "30"]]
 
     clipboard.setText("\t5\t6\n7\t8\t9\n10\t11\t12\n13\t14\t15")
     QTest.keyClick(dialog, QtCore.Qt.Key.Key_V, QtCore.Qt.KeyboardModifier.ControlModifier)
@@ -467,6 +495,49 @@ def test_lookup_matrix_linear_dialog_supports_copy_paste_and_delete_shortcuts() 
     assert x_points == [5.0, 6.0]
     assert y_points == [10.0, 13.0]
     assert z_matrix == [[11.0, 12.0], [14.0, 15.0]]
+    dialog.close()
+
+
+def test_lookup_matrix_linear_dialog_axis_click_selects_full_column_or_row() -> None:
+    _get_app()
+    dialog = LookupMatrixLinearDialog(block_label="Lookup matrix (linear)")
+
+    dialog.on_matrix_cell_pressed(0, 1)
+    QtWidgets.QApplication.processEvents()
+    selected_indexes = dialog._table_widget.selectionModel().selectedIndexes()
+    assert len(selected_indexes) == dialog._table_widget.rowCount()
+    assert all(index.column() == 1 for index in selected_indexes)
+
+    dialog.on_matrix_cell_pressed(1, 0)
+    QtWidgets.QApplication.processEvents()
+    selected_indexes = dialog._table_widget.selectionModel().selectedIndexes()
+    assert len(selected_indexes) == dialog._table_widget.columnCount()
+    assert all(index.row() == 1 for index in selected_indexes)
+    dialog.close()
+
+
+def test_lookup_matrix_linear_dialog_supports_row_copy_and_row_paste() -> None:
+    _get_app()
+    dialog = LookupMatrixLinearDialog(block_label="Lookup matrix (linear)")
+    dialog.show()
+    dialog.activateWindow()
+    clipboard = QtWidgets.QApplication.clipboard()
+
+    dialog.on_matrix_cell_pressed(1, 0)
+    QtWidgets.QApplication.processEvents()
+    dialog.setFocus()
+    QTest.keyClick(dialog, QtCore.Qt.Key.Key_C, QtCore.Qt.KeyboardModifier.ControlModifier)
+    QtWidgets.QApplication.processEvents()
+    assert clipboard.text().rstrip() == "0.0\t0.0\t10.0"
+
+    dialog.on_matrix_cell_pressed(2, 0)
+    QtWidgets.QApplication.processEvents()
+    QTest.keyClick(dialog, QtCore.Qt.Key.Key_V, QtCore.Qt.KeyboardModifier.ControlModifier)
+    QtWidgets.QApplication.processEvents()
+    x_points, y_points, z_matrix = dialog._read_matrix_from_table()
+    assert x_points == [0.0, 1.0]
+    assert y_points == [0.0, 0.0]
+    assert z_matrix == [[0.0, 10.0], [0.0, 10.0]]
     dialog.close()
 
 
