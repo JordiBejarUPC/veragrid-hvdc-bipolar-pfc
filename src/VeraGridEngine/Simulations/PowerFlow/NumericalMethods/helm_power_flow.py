@@ -246,19 +246,9 @@ def conv3(A, B, c, indices):
     return suma
 
 
-def helm_coefficients_josep(Ybus: CscMat,
-                            Yseries: CscMat,
-                            V0: CxVec,
-                            S0: CxVec,
-                            Ysh0: CxVec,
-                            pq: IntVec,
-                            pv: IntVec,
-                            sl: IntVec,
-                            no_slack: IntVec,
-                            tolerance=1e-6,
-                            max_coeff=30,
-                            verbose=False,
-                            stop_if_too_bad=False,
+def helm_coefficients_josep(Ybus: CscMat, Yseries: CscMat, V0: CxVec, S0: CxVec, Ysh0: CxVec,
+                            pq: IntVec, pv: IntVec, sl: IntVec, no_slack: IntVec,
+                            tolerance=1e-6, max_coeff=30, verbose=False, stop_if_too_bad=False,
                             logger: Logger = None):
     """
     Holomorphic Embedding LoadFlow Method as formulated by Josep Fanals Batllori in 2020
@@ -436,7 +426,6 @@ def helm_coefficients_josep(Ybus: CscMat,
         if stop_if_too_bad:
             # usually we want to go this route for power flows
             if V.real.max() < 10:
-
                 Scalc = cf.compute_power(Ybus, V)
                 norm_f = cf.compute_fx_error(cf.compute_fx(Scalc, S0, no_slack, pq))
                 converged = (norm_f <= tolerance) and (c % 2)  # we want an odd amount of coefficients
