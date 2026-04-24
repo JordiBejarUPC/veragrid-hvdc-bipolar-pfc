@@ -26,7 +26,6 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_driver import PowerFlowDriv
 from VeraGridEngine.Templates.Emt.bus_emt_template import get_bus_emt_template
 from VeraGridEngine.Templates.Emt.load_RLC_emt_template import get_shunt_r_emt_template
 from VeraGridEngine.Templates.Emt.pi_line_emt_template import get_pi_line_emt_template
-from VeraGridEngine.Templates.Emt.thevenin_equivalent_emt_generator_template import get_generator_thevenin_rl_emt_template
 from VeraGridEngine.Templates.Emt.simple_generator_emt_template import get_simple_generator_emt_template
 from VeraGridEngine.Templates.templates_common_functions import set_emt_model
 from VeraGridEngine.Utils.Symbolic.block import Block
@@ -251,6 +250,18 @@ def attach_emt_models(
     set_emt_model(device=generator_1, model=generator_1_block, var_factory=grid.var_factory)
     set_emt_model(device=generator_2, model=generator_2_block, var_factory=grid.var_factory)
     set_emt_model(device=load, model=load_block, var_factory=grid.var_factory)
+
+    generator_1.emt_model.set_parameter_in_model(var_name="Kp_SlackGen1_SimpleEmt", new_value=0.02)
+    generator_1.emt_model.set_parameter_in_model(var_name="Ki_SlackGen1_SimpleEmt", new_value=0.0)
+    generator_1.emt_model.set_parameter_in_model(var_name="Kq_share_SlackGen1_SimpleEmt", new_value=0.000)
+    generator_1.emt_model.set_parameter_in_model(var_name="D_SlackGen1_SimpleEmt", new_value=10.0)
+    generator_1.emt_model.set_parameter_in_model(var_name="Tg_SlackGen1_SimpleEmt", new_value=0.1)
+
+    generator_2.emt_model.set_parameter_in_model(var_name="Kp_SlackGen2_SimpleEmt", new_value=0.06)
+    generator_2.emt_model.set_parameter_in_model(var_name="Ki_SlackGen2_SimpleEmt", new_value=0.0)
+    generator_2.emt_model.set_parameter_in_model(var_name="Kq_share_SlackGen2_SimpleEmt", new_value=0.00)
+    generator_2.emt_model.set_parameter_in_model(var_name="D_SlackGen2_SimpleEmt", new_value=10.0)
+    generator_2.emt_model.set_parameter_in_model(var_name="Tg_SlackGen2_SimpleEmt", new_value=0.1)
 
     return line.emt_model, generator_1.emt_model, generator_2.emt_model, load.emt_model
 
