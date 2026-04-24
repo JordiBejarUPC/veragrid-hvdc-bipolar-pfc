@@ -129,6 +129,7 @@ def __solve_island_complete_support(nc: NumericalCircuit,
                                            loading=np.zeros(nc.nbr, dtype=complex),
                                            losses=np.zeros(nc.nbr, dtype=complex),
                                            Pfp_vsc=np.zeros(nc.nvsc, dtype=float),
+                                           Pfn_vsc=np.zeros(nc.nvsc, dtype=float),
                                            St_vsc=np.zeros(nc.nvsc, dtype=complex),
                                            If_vsc=np.zeros(nc.nvsc, dtype=float),
                                            It_vsc=np.zeros(nc.nvsc, dtype=complex),
@@ -371,6 +372,7 @@ def __solve_island_limited_support(island: NumericalCircuit,
                                            loading=np.zeros(island.nbr, dtype=complex),
                                            losses=np.zeros(island.nbr, dtype=complex),
                                            Pfp_vsc=np.zeros(island.nvsc, dtype=float),
+                                           Pfn_vsc=np.zeros(island.nvsc, dtype=float),
                                            St_vsc=np.zeros(island.nvsc, dtype=complex),
                                            If_vsc=np.zeros(island.nvsc, dtype=float),
                                            It_vsc=np.zeros(island.nvsc, dtype=complex),
@@ -993,7 +995,7 @@ def multi_island_pf_nc(nc: NumericalCircuit,
         # do the reactive power partition and store the values
         # __split_reactive_power_into_devices(nc=nc, Qbus=results.Sbus.imag, results=results)
 
-        results.gen_q = split_bus_quantity(
+        results.gen_q, results.battery_q = split_bus_quantity(
             Qbus=results.Sbus.imag,
             gen_bus_idx=nc.generator_data.bus_idx,
             Qmin_gen=nc.generator_data.qmin,
@@ -1001,6 +1003,12 @@ def multi_island_pf_nc(nc: NumericalCircuit,
             gen_status=nc.generator_data.active,
             is_controlling=nc.generator_data.controllable,
             Q0_gen=nc.generator_data.q,
+            batt_bus_idx=nc.battery_data.bus_idx,
+            Qmin_batt=nc.battery_data.qmin,
+            Qmax_batt=nc.battery_data.qmax,
+            batt_status=nc.battery_data.active,
+            batt_is_controlling=nc.battery_data.controllable,
+            Q0_batt=nc.battery_data.q,
             atol=1e-12,
         )
 
