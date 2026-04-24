@@ -2007,7 +2007,7 @@ def get_vsc_data(
         data.contingency_enabled[i] = int(elm.contingency_enabled)
         data.monitor_loading[i] = int(elm.monitor_loading)
 
-        data.Kdp[ii] = elm.kdp
+        # data.Kdp[ii] = elm.kdp
         data.alpha1[ii] = elm.alpha1
         data.alpha2[ii] = elm.alpha2
         data.alpha3[ii] = elm.alpha3

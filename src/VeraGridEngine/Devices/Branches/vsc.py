@@ -1132,25 +1132,6 @@ class VSC(BranchParent):
         self._alpha3 = float(val)
 
     @property
-    def kdp(self) -> float:
-        """
-        Get ``kdp``.
-
-        :return: float
-        """
-        return self._kdp
-
-    @kdp.setter
-    def kdp(self, val: float) -> None:
-        """
-        Set ``kdp``.
-
-        :param val: Value to assign.
-        :return: None
-        """
-        self._kdp = float(val)
-
-    @property
     def min_ac_voltage(self) -> float:
         """
         Get ``min_ac_voltage``.

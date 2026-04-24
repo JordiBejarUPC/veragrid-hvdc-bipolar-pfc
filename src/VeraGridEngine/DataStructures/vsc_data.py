@@ -26,7 +26,6 @@ class VscData(BranchParentData):
 
         self.F_dcn = np.zeros(self.nelm, dtype=int)
 
-        self.Kdp: Vec = np.ones(self.nelm, dtype=float)
         self.alpha1: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha1) (idle loss)
         self.alpha2: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha2) (switching loss)
         self.alpha3: Vec = np.zeros(self.nelm, dtype=float)  # converter losses parameter (alpha3) (resistive loss)
@@ -78,7 +77,6 @@ class VscData(BranchParentData):
         data.F_dcn = self.F_dcn[elm_idx]
         # data.T_ac = self.T_ac[elm_idx]
 
-        data.Kdp = self.Kdp[elm_idx]
         data.alpha1 = self.alpha1[elm_idx]
         data.alpha2 = self.alpha2[elm_idx]
         data.alpha3 = self.alpha3[elm_idx]
@@ -143,7 +141,6 @@ class VscData(BranchParentData):
 
         data.F_dcn = self.F_dcn.copy()
 
-        data.Kdp = self.Kdp.copy()
         data.dc = self.dc.copy()
         data.alpha1 = self.alpha1.copy()
         data.alpha2 = self.alpha2.copy()
