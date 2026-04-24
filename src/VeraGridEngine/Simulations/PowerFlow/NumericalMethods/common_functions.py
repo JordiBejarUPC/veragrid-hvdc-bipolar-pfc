@@ -10,6 +10,161 @@ from VeraGridEngine.basic_structures import Vec, CxVec, IntVec, CscMat, CxMat, B
 from typing import Tuple
 
 
+def active_power_mismatch(slip: float,
+                          u: complex,
+                          Rs: float,
+                          Xs: float,
+                          Xm: float,
+                          Rr: float,
+                          Xr: float,
+                          P: float,
+                          Sr: float) -> float:
+    """
+
+    :param slip:
+    :param u:
+    :param Rs:
+    :param Xs:
+    :param Xm:
+    :param Rr:
+    :param Xr:
+    :param P:
+    :param Sr:
+    :return:
+    """
+    Zr = Rr / slip + 1j * Xr
+    Zpar = (1j * Xm * Zr) / (1j * Xm + Zr)
+    z = Rs + 1j * Xs + Zpar
+    i = u / z
+    s = -u * np.conj(i)
+    return s.real - P / Sr
+
+
+def solve_slip(f, a, b, tol, max_iter, u, Rs, Xs, Xm, Rr, Xr, P, Sr):
+    """
+
+    :param f:
+    :param a:
+    :param b:
+    :param tol:
+    :param max_iter:
+    :param u:
+    :param Rs:
+    :param Xs:
+    :param Xm:
+    :param Rr:
+    :param Xr:
+    :param P:
+    :param Sr:
+    :return:
+    """
+    # TODO: Poner typos a todo y no usar punteros a funciones que no pintan nada
+    fa = f(a, u, Rs, Xs, Xm, Rr, Xr, P, Sr)
+    fb = f(b, u, Rs, Xs, Xm, Rr, Xr, P, Sr)
+
+    if fa * fb > 0:
+        raise ValueError("No sign change in interval.")
+
+    for _ in range(max_iter):
+        c = 0.5 * (a + b)
+        fc = f(c, u, Rs, Xs, Xm, Rr, Xr, P, Sr)
+
+        if abs(fc) < tol or abs(b - a) < tol:
+            return c
+
+        if fa * fc < 0:
+            b = c
+            fb = fc
+        else:
+            a = c
+            fa = fc
+
+    return 0.5 * (a + b)
+
+
+def solve_reactive_power(u: complex,
+                         Rs: float,
+                         Xs: float,
+                         Xm: float,
+                         Rr: float,
+                         Xr: float,
+                         P: float,
+                         Sr: float) -> float:
+    """
+
+    :param u:
+    :param Rs:
+    :param Xs:
+    :param Xm:
+    :param Rr:
+    :param Xr:
+    :param P:
+    :param Sr:
+    :return:
+    """
+    slip = solve_slip(f=active_power_mismatch,
+                      a=-0.05, b=-1e-6, tol=1e-10, max_iter=200,
+                      u=u, Rs=Rs, Xs=Xs, Xm=Xm, Rr=Rr, Xr=Xr, P=P, Sr=Sr)
+    Zr = Rr / slip + 1j * Xr
+    Zpar = (1j * Xm * Zr) / (1j * Xm + Zr)
+    z = Rs + 1j * Xs + Zpar
+    i = u / z
+    s = -u * np.conj(i)
+    return s.imag * Sr
+
+
+def voltage_q_droop(ut: complex,
+                    u_setpoint_min: float,
+                    u_setpoint_max: float,
+                    u_setpoint: float,
+                    du_setpoint: float,
+                    Q_setpoint: float,
+                    S_r: float,
+                    droop: float,
+                    Q_min: float,
+                    Q_max: float,
+                    S_base: float
+                    ):
+    """
+    Find the actual reactive power output for generators controlled with a voltage droop.
+    :param ut: Actual voltage value at the terminal [pu]
+    :param u_setpoint_min: Minimum voltage setpoint [pu]
+    :param u_setpoint_max: Maximum voltage setpoint [pu]
+    :param u_setpoint: Specified voltage setpoint [pu]
+    :param du_setpoint: Voltage signal coming from the station controller [pu]
+    :param Q_setpoint: Specified dispatch reactive power [MVAr]
+    :param S_r: Rated apparent power [MVA]
+    :param droop: Voltage droop value [%]
+    :param Q_min: Minimum reactive power the converter can inject/absorb [MVAr]
+    :param Q_max: Maximum reactive power the converter can inject/absorb [MVAr]
+    :param S_base: Base power of the network [MVA]
+    """
+    u = np.abs(ut)
+    # Voltage limits
+    if u > u_setpoint_max:
+        u = u_setpoint_max
+    elif u < u_setpoint_min:
+        u = u_setpoint_min
+    else:
+        u = u
+
+    du_droop = u_setpoint + du_setpoint - u  # Voltage deviation [pu]
+
+    Q_droop = S_r * 100 / droop  # Additional reactive power for the specified voltage droop [MVAr]
+
+    Q = Q_setpoint * S_base - Q_droop * du_droop  # Actual reactive power output [MVAr]
+
+    # Reactive power limits
+    if Q > Q_max:
+        Q = Q_max
+    elif Q < Q_min:
+        Q = Q_min
+    else:
+        Q = Q
+
+    return Q / S_base
+
+
 @nb.njit(cache=True, fastmath=True)
 def polar_to_rect(Vm, Va) -> CxVec:
     """

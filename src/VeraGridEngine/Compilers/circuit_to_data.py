@@ -1026,6 +1026,15 @@ def fill_generator_parent(
     data.x1[k] = elm.X1
     data.x2[k] = elm.X2
 
+    # asynchronous generator impedance
+    data.Rs[k] = elm.Rs
+    data.Xs[k] = elm.Xs
+    data.Xm[k] = elm.Xm
+    data.Rr[k] = elm.Rr
+    data.Xr[k] = elm.Xr
+
+    data.type[k] = elm.tpe
+
     data.startup_cost[k] = elm.startup_cost
     data.shut_down_cost[k] = elm.shutdown_cost
 
@@ -1952,8 +1961,21 @@ def get_vsc_data(
 
         data.control1[ii] = elm.get_control1_at(t_idx)
         data.control2[ii] = elm.get_control2_at(t_idx)
+        data.fault_control[ii] = elm.get_fault_control_at(t_idx)
         data.control1_val[ii] = elm.get_control1_val_at(t_idx)
         data.control2_val[ii] = elm.get_control2_val_at(t_idx)
+        data.control1_val_min[ii] = elm.control1_val_min
+        data.control1_val_max[ii] = elm.control1_val_max
+        data.control1_droop[ii] = elm.get_control1_droop_at(t_idx)
+        data.control1_droop_val[ii] = elm.get_control1_droop_val_at(t_idx)
+        data.control1_droop_val_min[ii] = elm.control1_droop_val_min
+        data.control1_droop_val_max[ii] = elm.control1_droop_val_max
+        data.control2_val_min[ii] = elm.control2_val_min
+        data.control2_val_max[ii] = elm.control2_val_max
+        data.control2_val_droop[ii] = elm.get_control2_val_droop_at(t_idx)
+        data.control2_droop_val[ii] = elm.get_control2_droop_val_at(t_idx)
+        data.control2_droop_val_min[ii] = elm.control2_droop_val_min
+        data.control2_droop_val_max[ii] = elm.control2_droop_val_max
 
         # Using DC_positive to set the controls, may need to also pass DC_negative
         set_control_dev(k=ii, f=f, t=t,
@@ -1990,6 +2012,8 @@ def get_vsc_data(
         data.alpha2[ii] = elm.alpha2
         data.alpha3[ii] = elm.alpha3
         data.min_ac_voltage[ii] = elm.min_ac_voltage
+
+        data.ysvs[ii] = elm.ysvs
 
         ii += 1
 

@@ -180,6 +180,32 @@ class ShuntControlMode(Enum):
             return s
 
 
+class GeneratorType(Enum):
+    """
+    Machine type of the generator element.
+    """
+    Synchronous = "Synchronous"
+    Asynchronous = "Asynchronous"
+
+    def __str__(self):
+        return self.value
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return GeneratorType[s]
+        except KeyError:
+            return s
+
+
 class InvestmentEvaluationMethod(Enum):
     """
     Investment evaluation methods
@@ -797,6 +823,8 @@ class ConverterControlType(Enum):
     Pdc = 'P_dc'
     Pac = 'P_ac'
     Pdc_angle_droop = 'P_dc_angle_droop'  # PMODE3
+    Q_droop = "Q_droop"
+    P_droop = "P_droop"
     Imax = 'Imax'
 
     def __str__(self) -> str:
@@ -954,6 +982,40 @@ class TimeFrame(Enum):
     Time frame
     """
     Continuous = 'Continuous'
+
+
+class ConverterFaultControlType(Enum):
+    """
+    Converter fault control types
+    """
+    Standard = 'Standard'
+    WECC_WT_Type_4B = 'WECC_WT_Type_4B'
+
+    def __str__(self):
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        """
+
+        :param s:
+        :return:
+        """
+        try:
+            return ConverterFaultControlType[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        """
+
+        :return:
+        """
+        return list(map(lambda c: c.value, cls))
 
 
 class FaultType(Enum):
