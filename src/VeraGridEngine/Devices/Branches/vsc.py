@@ -21,7 +21,6 @@ if TYPE_CHECKING:
 
 class VSC(BranchParent):
     __slots__ = (
-        '_kdp',
         '_u_setpoint_min',
         '_u_setpoint_max',
         '_u_setpoint',
@@ -79,8 +78,6 @@ class VSC(BranchParent):
                       definition='Losses linear parameter (IEC 62751-2 loss Correction, Switching loss).'),
         GCProp(key='alpha3', units='', tpe=float,
                       definition='Losses quadratic parameter (IEC 62751-2 loss Correction, resistive loss).'),
-        GCProp(key='kdp', units='p.u./p.u.', tpe=float, definition='Droop Power/Voltage slope.'),
-
 
 
         GCProp(key='control1', units='', tpe=ConverterControlType, profile_name="control1_prof",
@@ -189,7 +186,6 @@ class VSC(BranchParent):
         :param code:
         :param active:
         :param rate:
-        :param kdp:
         :param alpha1:
         :param alpha2:
         :param alpha3:
