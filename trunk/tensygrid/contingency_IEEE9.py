@@ -10,9 +10,9 @@ This script creates the phasor problem manually and injects it into the SmallSig
 """
 
 import sys
+import math
 from pathlib import Path
 import scienceplots
-
 
 project_base = Path(__file__).resolve().parents[2]
 src_path = project_base / "src"
@@ -30,6 +30,7 @@ from memory_profiler import profile, LineProfiler, show_results
 # from cryptography.x509 import name
 from PolynomialMatrixBuilder import PolynomialMatrixBuilder
 from matplotlib import pyplot as plt
+from matplotlib.gridspec import GridSpec
 import VeraGridEngine.api as vge
 from VeraGridEngine.Templates.Rms.genqec_phasor_rms_template import get_genqec_phasor
 from VeraGridEngine.Simulations.Rms.numerical.back_euler_fx import BackEulerImplicitIntegration
@@ -43,6 +44,7 @@ from phasor_diagnostics import (
     print_bus_current_balance,
 )
 from scipy.optimize import linear_sum_assignment
+
 plt.style.use(['science', 'ieee', 'no-latex'])
 # GRID = "Texas 2000 + VSC"
 # GRID = "IEEE 14.xlsx"
@@ -55,7 +57,7 @@ plt.style.use(['science', 'ieee', 'no-latex'])
 """
 grid_folder = project_base / "Grids_and_profiles" / "grids"
 GRID = "IEEE 9 Bus.gridcal"
-USE_CACHED_BUILDER = False
+USE_CACHED_BUILDER = True
 BUILDER_CACHE_FILE = f'../trunk/tensygrid/precomputed_builds/{GRID}.pkl'
 
 REPORT_TIME = False
@@ -89,9 +91,9 @@ def debug_input(input_bool):
     """
     EXEC_METRICS["stops"] = EXEC_METRICS["stops"] + 1
     if input_bool:
-        input(f"Hola, ens quedem parats {EXEC_METRICS['stops']} vegades")
+        input(f"Hello, we stopped {EXEC_METRICS['stops']} times")
     else:
-        print(f"Hola, ens quedem parats {EXEC_METRICS['stops']} vegades")
+        print(f"Hello, we stopped {EXEC_METRICS['stops']} times")
 
 
 def define_problems_with_path(grid_path):
@@ -149,22 +151,24 @@ def define_problems_with_path(grid_path):
     print("  ✓ Grid with path loaded")
 
     contingencies = [
-        vge.Contingency(name="Fallo_Gen0", device=grid.generators[0]),
-        vge.Contingency(name="Fallo_Gen1", device=grid.generators[1]),
-        vge.Contingency(name="Fallo_Gen2", device=grid.generators[2])
-    ]
+                        vge.Contingency(name=f"Fault_{generator.name}", device=generator) for generator in
+                        grid.generators] + [
+                        vge.Contingency(name=f"Fault_{load.name}", device=load) for load in grid.loads] + [
+                        vge.Contingency(name=f"Fault_{shunt.name}", device=shunt) for shunt in grid.shunts] + [
+                        vge.Contingency(name=f"Fault_{line.name}", device=line) for line in grid.lines
+                    ]
 
     phasor_problems = []
 
     for ct in contingencies:
         print(f"\n" + "=" * 50)
-        print(f"--- Evaluando contingencia: {ct.name} ---")
+        print(f"--- Evaluating contingency: {ct.name} ---")
         print("=" * 50)
 
         target_device = ct.device
         original_state = target_device.active
 
-        # Aplicamos la contingencia (desconectamos)
+        # Apply the contingency (disconnect)
         target_device.active = False
 
         print("\n[2] Running power flow...")
@@ -189,14 +193,13 @@ def define_problems_with_path(grid_path):
             # CORRECT APPEND: Appends the tuple containing the problem AND the name
             phasor_problems.append((phasor_problem, ct.name))
         else:
-            print(f"  ✗ Power flow failed para {ct.name}. El sistema colapsa en régimen permanente.")
+            print(f"  ✗ Power flow failed for {ct.name}. The system collapses in steady state.")
 
-        # --- FUNDAMENTAL: RESTAURAR EL SISTEMA ---
+        # --- FUNDAMENTAL: RESTORE THE SYSTEM ---
         target_device.active = original_state
 
     # Return the correctly formatted list of tuples
     return phasor_problems
-
 
 
 def op_extraction(problem: vge.RmsProblemPhasor) -> dict:
@@ -247,7 +250,7 @@ def op_extraction(problem: vge.RmsProblemPhasor) -> dict:
     return v_dict
 
 
-def solve_problem(problem: Any = None) -> Any:
+def solve_problem(problem: Any = None) -> Tuple[np.ndarray, dict]:
     builder = None
 
     print("\n[4] Rebuilding equations and extracting exact physics...")
@@ -257,13 +260,12 @@ def solve_problem(problem: Any = None) -> Any:
     print("\n[*] Linearizing model with real parameters...")
     builder.linearize(v_dict=v_dict)
 
-
     # Continue with the normal stability analysis
     # Use automatic routing: sparse for large systems, dense fallback otherwise.
     res = builder.compute_stability()
 
     eigenvalues = res[0]
-    print(eigenvalues)
+    #print(eigenvalues)
     stable = res[4]
     margin = res[5] if res[5] is not None else 0.0
     participation_matrix = res[3] if res[3] is not None else None
@@ -297,54 +299,115 @@ def solve_problem(problem: Any = None) -> Any:
     if not unstable_found:
         print("\n✅ The system is stable! There is no real part greater than 0.")
 
-    return eigenvalues
+    return eigenvalues, pf_map
 
 
-def plot_eigenvalues(eigenvalue_dict: dict):
+def plot_contingency_severity_and_pf(results_dict: dict):
     """
-    Plots a scatter plot of eigenvalues for multiple scenarios.
+    Creates a severity ranking based on the dominant pole,
+    followed by a grid of participation factor bar charts for all unstable modes.
     """
-    print("\n[5] Generating Eigenvalue Scatter Plot...")
-    plt.figure(figsize=(10, 8))
+    names = []
+    max_reals = []
+    unstable_modes_info = []
 
-    markers = ['o', 's', '^', 'D', 'v', 'p', '*']
-    colors = ['tab:blue', 'tab:orange', 'tab:green', 'tab:red', 'tab:purple']
+    # Extract the dominant pole and unstable mode participations for each contingency
+    for name, (evs, pf_map) in results_dict.items():
+        if evs is not None and len(evs) > 0:
+            dominant_pole = np.max(np.real(evs))
+            names.append(name)
+            max_reals.append(dominant_pole)
 
-    for i, (name, evs) in enumerate(eigenvalue_dict.items()):
-        if evs is None or len(evs) == 0:
-            continue
+            if pf_map:
+                # Track seen conjugate pairs so we don't plot identical participation charts
+                seen_modes = set()
+                for ev, participations in pf_map.items():
+                    if ev.real > 1e-6:
+                        # Identificador para pares conjugados basado en magnitud
+                        mode_id = (round(ev.real, 4), round(abs(ev.imag), 4))
+                        if mode_id not in seen_modes:
+                            seen_modes.add(mode_id)
+                            unstable_modes_info.append((name, ev, participations))
 
-        # Extract real and imaginary parts
-        reals = np.real(evs)
-        imags = np.imag(evs)
-        mask_stable = reals <= 0
-        plt.scatter(reals[mask_stable], imags[mask_stable],
-                    marker=markers[i % len(markers)],
-                    color="green",
-                    label=name,
-                    alpha=0.7,
-                    s=60)
-        mask_unstable = reals > 0
-        plt.scatter(reals[mask_unstable], imags[mask_unstable],
-                    marker=markers[i % len(markers)],
-                    color="red",
-                    label=f"{name} (Unstable)",
-                    alpha=0.7,
-                    s=60)
+    if not names:
+        print("[!] No data available to plot the severity ranking.")
+        return
 
-    # Draw axes lines
-    plt.axvline(x=0, color='red', linestyle='--', linewidth=1.5, label='Stability Limit')
-    plt.axhline(y=0, color='black', linestyle='-', linewidth=0.8)
+    # Sort severity ranking (from highest to lowest real part)
+    sorted_data = sorted(zip(names, max_reals), key=lambda x: x[1], reverse=True)
+    sorted_names, sorted_values = zip(*sorted_data)
 
-    # Plot formatting
-    plt.title("Small Signal Stability - Eigenvalues Map", fontsize=14)
-    plt.xlabel("Real Part (Neper/s)", fontsize=12)
-    plt.ylabel("Imaginary Part (Rad/s)", fontsize=12)
-    plt.grid(True, linestyle=':', alpha=0.7)
-    plt.legend(loc='best', fontsize=10)
+    # --- Setup the Figure and Grid Layout ---
+    num_unstable = len(unstable_modes_info)
+    cols = min(3, max(1, num_unstable))  # Up to 3 columns
+    pf_rows = math.ceil(num_unstable / cols) if num_unstable > 0 else 0
+    total_rows = 1 + pf_rows
+
+    # Dynamic figure height based on rows
+    fig = plt.figure(figsize=(14, 6 + 4 * pf_rows))
+
+    # GridSpec gives more height to the main top plot
+    height_ratios = [1.5] + [1] * pf_rows
+    gs = GridSpec(total_rows, cols, figure=fig, height_ratios=height_ratios)
+
+    # --- 1. Plot Contingency Severity Ranking ---
+    ax_main = fig.add_subplot(gs[0, :])
+    # Define colors: Red for unstable (Re > 0), Green for stable
+    colors = ['#e74c3c' if val > 0 else '#2ecc71' for val in sorted_values]
+    bars = ax_main.bar(sorted_names, sorted_values, color=colors, edgecolor='black', alpha=0.8)
+
+    # Reference line at 0 (Stability limit)
+    ax_main.axhline(y=0, color='black', linestyle='-', linewidth=1.5)
+
+    ax_main.set_title("Contingency severity ranking", fontsize=14, fontweight='bold')
+    ax_main.set_ylabel(r"Real part of dominant pole ($\sigma$)", fontsize=12)
+    ax_main.set_xlabel("Contingency", fontsize=12)
+    ax_main.set_xticks(range(len(sorted_names)))
+    ax_main.set_xticklabels(sorted_names, rotation=45, ha='right')
+    ax_main.grid(axis='y', linestyle='--', alpha=0.6)
+
+    # Add value labels on top of the bars
+    for bar in bars:
+        yval = bar.get_height()
+        ax_main.text(bar.get_x() + bar.get_width() / 2, yval, f'{yval:.3f}',
+                     va='bottom' if yval > 0 else 'top', ha='center', fontsize=9)
+
+    # --- 2. Plot Participation Factors Grid for Unstable Modes ---
+    if num_unstable > 0:
+        for idx, (ct_name, ev, participations) in enumerate(unstable_modes_info):
+            r = 1 + (idx // cols)
+            c = idx % cols
+            ax_sub = fig.add_subplot(gs[r, c])
+
+            if not participations:
+                ax_sub.text(0.5, 0.5, "No dominant variables found", ha='center', va='center')
+                ax_sub.set_title(f"[{ct_name}]\nMode: {ev.real:.3f} $\pm$ {abs(ev.imag):.3f}j", fontsize=11)
+                ax_sub.axis('off')
+                continue
+
+            # Sort ascending so the highest factor is at the top of horizontal bar chart
+            sorted_pf = sorted(participations, key=lambda x: x[1], reverse=False)
+
+            # Keep top 5 to avoid cluttering the plot
+            sorted_pf = sorted_pf[-5:]
+            var_names = [x[0] for x in sorted_pf]
+            pf_values = [x[1] * 100 for x in sorted_pf]  # convert to %
+
+            bars_sub = ax_sub.barh(var_names, pf_values, color='#3498db', edgecolor='black', alpha=0.8)
+            ax_sub.set_title(f"[{ct_name}]\nMode: {ev.real:.3f} $\pm$ {abs(ev.imag):.3f}j", fontsize=11,
+                             fontweight='bold')
+            ax_sub.set_xlabel("Participation Factor (%)", fontsize=10)
+            ax_sub.set_xlim(0, max(pf_values) * 1.2 if pf_values else 100)
+
+            # Add percentage text next to each bar
+            for i, v in enumerate(pf_values):
+                ax_sub.text(v + 1, i, f"{v:.1f}%", va='center', fontsize=9)
+
+            # Truncate y-labels if they are too long to maintain grid neatness
+            ax_sub.set_yticklabels([str(lbl)[:20] + '...' if len(str(lbl)) > 20 else str(lbl) for lbl in var_names],
+                                   fontsize=9)
+
     plt.tight_layout()
-
-    # Show plot
     plt.show()
 
 
@@ -355,21 +418,21 @@ def main():
     grid_path = FAST_GRID_PATH if FAST_MODE else FULL_GRID_PATH
     print(f"[FAST_MODE={FAST_MODE}] Using grid: {grid_path}")
 
-    # Dictionary to store eigenvalues linked to their contingency names
-    all_eigenvalues = {}
+    # Dictionary to store eigenvalues and pf_maps linked to their contingency names
+    all_results = {}
 
     problems_with_names = define_problems_with_path(grid_path)
 
     if problems_with_names:
         # Unpack the problem and its name
         for problem, ct_name in problems_with_names:
-            print(f"\n>>> Solving Small Signal for: {ct_name}")
+            print(f"\n>>> Solving small signal for: {ct_name}")
 
-            # solve_problem returns the eigenvalues array
-            eigenvalues = solve_problem(problem)
+            # solve_problem returns both eigenvalues and participation factors dictionary
+            eigenvalues, pf_map = solve_problem(problem)
 
-            # Save them into the dictionary
-            all_eigenvalues[ct_name] = eigenvalues
+            # Save them into the results dictionary
+            all_results[ct_name] = (eigenvalues, pf_map)
 
     # --- END CHRONO ---
     end_time = time.perf_counter()
@@ -379,9 +442,9 @@ def main():
     print(f"EXECUTION TIME: {total_duration:.4f} seconds")
     print(f"========================================")
 
-    # Finally, plot the eigenvalues if we collected any
-    if all_eigenvalues:
-        plot_eigenvalues(all_eigenvalues)
+    # Finally, plot the severity ranking and participation factors grid
+    if all_results:
+        plot_contingency_severity_and_pf(all_results)
 
 
 if __name__ == "__main__":
