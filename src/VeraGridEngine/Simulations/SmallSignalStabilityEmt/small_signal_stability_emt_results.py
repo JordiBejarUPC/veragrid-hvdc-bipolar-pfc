@@ -31,9 +31,9 @@ class SmallSignalStabilityEmtResults(ResultsTemplate):
     """
 
     LOCAL_RESULTS_DECLARATIONS = (
-        ResultsProperty(name='multipliers', tpe=CxVec, old_names=list()),
-        ResultsProperty(name='eigenvalues', tpe=CxVec, old_names=list()),
-        ResultsProperty(name='participation_factors', tpe=Mat, old_names=list()),
+        ResultsProperty(name='multipliers', tpe=CxVec, old_names=list(), expandable=False),
+        ResultsProperty(name='eigenvalues', tpe=CxVec, old_names=list(), expandable=False),
+        ResultsProperty(name='participation_factors', tpe=Mat, old_names=list(), expandable=False),
     )
 
     __slots__ = (

@@ -64,11 +64,11 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
     """
 
     LOCAL_RESULTS_DECLARATIONS = (
-        ResultsProperty(name='eigenvalues', tpe=Vec, old_names=list()),
-        ResultsProperty(name='participation_factors', tpe=Mat, old_names=list()),
-        ResultsProperty(name='damping_ratios', tpe=Vec, old_names=list()),
-        ResultsProperty(name='conjugate_frequencies', tpe=Vec, old_names=list()),
-        ResultsProperty(name='state_matrix', tpe=Mat, old_names=list()),
+        ResultsProperty(name='eigenvalues', tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name='participation_factors', tpe=Mat, old_names=list(), expandable=False),
+        ResultsProperty(name='damping_ratios', tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name='conjugate_frequencies', tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name='state_matrix', tpe=Mat, old_names=list(), expandable=False),
     )
     __slots__ = [
         'stat_vars_array', 'eigenvalues', 'participation_factors',
