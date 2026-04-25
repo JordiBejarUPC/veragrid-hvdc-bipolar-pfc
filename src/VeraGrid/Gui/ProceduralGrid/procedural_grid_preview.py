@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import List, Set, TYPE_CHECKING
 
 import networkx as nx
-from adjustText import adjust_text
+from VeraGrid.ThirdParty.adjustText import adjust_text
 from PySide6 import QtWidgets
 
 from VeraGrid.Gui.ProceduralGrid.procedural_grid_preview_ui import Ui_Dialog
