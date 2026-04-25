@@ -57,6 +57,9 @@ from VeraGridEngine.Simulations.EMT.problems.emt_problem_template import (
     EmtBoundaryUpdateProtocol,
     EmtProblemTemplate,
 )
+from VeraGridEngine.Simulations.EMT.static_parameter_mapping import (
+    assign_static_api_object_mapping_for_device,
+)
 
 
 def _tic() -> float:
@@ -773,7 +776,7 @@ class EmtProblemDae(EmtProblemTemplate):
         t_phase_start = _tic()
 
         # build on local sys_block
-        self._build_structure_and_collect(sys_block, grid, glob_time)
+        self._build_structure_and_collect(sys_block, grid)
         structure_collect_s: float = _toc(t_phase_start)
         t_phase_start = _tic()
 
@@ -1458,23 +1461,23 @@ class EmtProblemDae(EmtProblemTemplate):
         else:
             return Const(float(value))
 
-    def _assign_api_obj_param_if_present(
-            self,
-            mdl: Block,
-            key: ParamPowerFlowRefferenceType,
-            value: Any
+    def _assign_api_mapping_value_if_present(self,
+                                             mdl: Block,
+                                             key: ParamPowerFlowRefferenceType,
+                                             value: Any
     ) -> None:
         """
-        Assign a mapped model parameter when the mapping key exists.
+        Assign one static API-object parameter into ``mdl.parameters``.
 
-        Some device models do not expose every optional API mapping entry.
-        This method performs a defensive assignment and keeps the original
-        semantics of silently skipping unavailable parameters.
+        This function intentionally never writes into ``mdl.event_dict``.
+        The ``api_obj_mapping`` contract is static-device to constant EMT
+        parameter mapping only. Runtime/event parameters belong to the
+        explicit initialization/runtime event path.
 
-        :param mdl: Device symbolic block.
-        :param key: Parameter mapping key.
-        :param value: Value to assign.
-        :return: None.
+        :param mdl: EMT model block.
+        :param key: Static parameter reference key.
+        :param value: Static value to assign.
+        :return: Assignment status.
         """
         api_obj_mapping: Any = mdl.api_obj_mapping
 
@@ -1490,6 +1493,8 @@ class EmtProblemDae(EmtProblemTemplate):
                 pass
         else:
             pass
+
+
     # ---------------------------------------------------------------------
     # BUILD STRUCTURE
     # ---------------------------------------------------------------------
@@ -1497,7 +1502,6 @@ class EmtProblemDae(EmtProblemTemplate):
             self,
             sys_block: Block,
             grid: MultiCircuit,
-            glob_time: Var
     ) -> None:
         """
         Build the EMT system structure and collect all algebraic KCL equations.
@@ -1514,7 +1518,6 @@ class EmtProblemDae(EmtProblemTemplate):
 
         :param sys_block: Block containing the full system DAE.
         :param grid: Network model to assemble.
-        :param glob_time: Global simulation time variable.
         :return: None.
         """
         bus_dict: Dict[Any, int] = dict()
@@ -1576,10 +1579,8 @@ class EmtProblemDae(EmtProblemTemplate):
         generator_count_same_bus: Dict[int, int] = dict()
         for bus_idx, _ in enumerate(grid.buses):
             generator_count_same_bus[bus_idx] = 0
-
         for inj in injection_devices:
             bus_idx_local: int = bus_dict[inj.bus]
-
             if inj.device_type == DeviceType.GeneratorDevice:
                 generator_count_same_bus[bus_idx_local] += 1
             else:
@@ -1607,7 +1608,14 @@ class EmtProblemDae(EmtProblemTemplate):
             is_vsc: bool = br.device_type == DeviceType.VscDevice
             vsc_index: int = vsc_idx_dict.get(br.idtag, -1)
 
-            self._assign_api_obj_mapping_branch(br=br, is_vsc=is_vsc, vsc_index=vsc_index)
+            # self._assign_api_obj_mapping_branch(br=br, is_vsc=is_vsc, vsc_index=vsc_index)
+
+            assign_static_api_object_mapping_for_device(
+                grid=grid,
+                device=br,
+                mdl=mdl,
+                logger=self.logger,
+            )
 
             if is_bergeron:
                 v_f_vars: List[Any] = _get_bus_v_list(
@@ -1828,12 +1836,18 @@ class EmtProblemDae(EmtProblemTemplate):
             mdl: Block = self._process_device_model(inj, sys_block)
             b: int = bus_dict[inj.bus]
 
-            if inj.device_type == DeviceType.LoadDevice:
-                self._assign_api_obj_mapping_load(inj)
-            elif inj.device_type == DeviceType.GeneratorDevice:
-                    self._assign_api_obj_mapping_generator(inj)
-            else:
-                pass
+            # if inj.device_type == DeviceType.LoadDevice:
+            #     self._assign_api_obj_mapping_load(inj)
+            # elif inj.device_type == DeviceType.GeneratorDevice:
+            #         self._assign_api_obj_mapping_generator(inj)
+            # else:
+            #     pass
+            assign_static_api_object_mapping_for_device(
+                grid=grid,
+                device=inj,
+                mdl=mdl,
+                logger=self.logger,
+            )
 
             if inj.bus.is_dc:
                 i_dc_expr: Any | None = mdl.E(VarPowerFlowRefferenceType.Idc)
@@ -5611,62 +5625,9 @@ class EmtProblemDae(EmtProblemTemplate):
 
         return df
 
-    def _assign_vsc_event_param_if_present(
-            self,
-            vsc: Any,
-            key: ParamPowerFlowRefferenceType,
-            value: Any,
-    ) -> None:
-        """
-        Assign a VSC EMT mapped parameter either to the event dictionary or to the
-        static parameter dictionary if the mapping exists.
 
-        :param vsc: VSC device whose EMT model receives the mapped value.
-        :param key: Power-flow reference enum used as API-object mapping key.
-        :param value: Numerical value to assign.
-        :return: None.
-        """
-        api_obj_mapping_local: Any = vsc.emt_model.api_obj_mapping
-        if not isinstance(api_obj_mapping_local, dict):
-            return
 
-        target_local: Any | None = api_obj_mapping_local.get(key, None)
-        if target_local is None:
-            return
 
-        if target_local in vsc.emt_model.event_dict:
-            vsc.emt_model.event_dict[target_local] = self._to_const(value)
-        else:
-            vsc.emt_model.parameters[target_local] = self._to_const(value)
-
-    def _assign_generator_param_if_present(
-            self,
-            gen: Any,
-            key: ParamPowerFlowRefferenceType,
-            value: Any,
-    ) -> None:
-        """
-        Assign a generator EMT mapped parameter if the mapping exists.
-
-        :param gen: Generator device whose EMT model receives the mapped value.
-        :param key: Parameter mapping key.
-        :param value: Numerical value to assign.
-        :return: None.
-        """
-        api_obj_mapping_local: Any = gen.emt_model.api_obj_mapping
-
-        if isinstance(api_obj_mapping_local, dict):
-            target_local: Any | None = api_obj_mapping_local.get(key, None)
-
-            if target_local is None:
-                pass
-            else:
-                if target_local in gen.emt_model.event_dict:
-                    gen.emt_model.event_dict[target_local] = self._to_const(value)
-                else:
-                    gen.emt_model.parameters[target_local] = self._to_const(value)
-        else:
-            pass
 
     def _assign_generator_sharing_targets_from_seed(
             self,
@@ -5699,18 +5660,18 @@ class EmtProblemDae(EmtProblemTemplate):
         else:
             share_enable_value = 0.0
 
-        self._assign_generator_param_if_present(
-            gen=inj,
+        self._assign_api_mapping_value_if_present(
+            mdl=inj.emt_model,
             key=ParamPowerFlowRefferenceType.generator_share_enable,
             value=share_enable_value,
         )
-        self._assign_generator_param_if_present(
-            gen=inj,
+        self._assign_api_mapping_value_if_present(
+            mdl=inj.emt_model,
             key=ParamPowerFlowRefferenceType.generator_share_p_ref,
             value=p_ref_value,
         )
-        self._assign_generator_param_if_present(
-            gen=inj,
+        self._assign_api_mapping_value_if_present(
+            mdl=inj.emt_model,
             key=ParamPowerFlowRefferenceType.generator_share_q_ref,
             value=q_ref_value,
         )
@@ -5761,45 +5722,45 @@ class EmtProblemDae(EmtProblemTemplate):
                 ConverterControlType.Imax: 8.0,
             }
 
-            self._assign_vsc_event_param_if_present(
-                vsc,
-                ParamPowerFlowRefferenceType.Sbase,
-                self.grid.Sbase,
+            self._assign_api_mapping_value_if_present(
+                mdl=vsc.emt_model,
+                key=ParamPowerFlowRefferenceType.Sbase,
+                value=self.grid.Sbase,
             )
-            self._assign_vsc_event_param_if_present(
-                vsc,
-                ParamPowerFlowRefferenceType.omega_base,
-                2.0 * np.pi * self.grid.fBase,
+            self._assign_api_mapping_value_if_present(
+                mdl=vsc.emt_model,
+                key=ParamPowerFlowRefferenceType.omega_base,
+                value=2.0 * np.pi * self.grid.fBase,
             )
-            self._assign_vsc_event_param_if_present(
-                vsc,
-                ParamPowerFlowRefferenceType.P0,
-                p0_vsc,
+            self._assign_api_mapping_value_if_present(
+                mdl=vsc.emt_model,
+                key=ParamPowerFlowRefferenceType.P0,
+                value=p0_vsc,
             )
-            self._assign_vsc_event_param_if_present(
-                vsc,
-                ParamPowerFlowRefferenceType.converter_loss_power_0,
-                p_loss0,
+            self._assign_api_mapping_value_if_present(
+                mdl=vsc.emt_model,
+                key=ParamPowerFlowRefferenceType.converter_loss_power_0,
+                value=p_loss0,
             )
-            self._assign_vsc_event_param_if_present(
-                vsc,
-                ParamPowerFlowRefferenceType.converter_control_mode_1,
-                control_code_dict[vsc.control1],
+            self._assign_api_mapping_value_if_present(
+                mdl=vsc.emt_model,
+                key=ParamPowerFlowRefferenceType.converter_control_mode_1,
+                value=control_code_dict[vsc.control1],
             )
-            self._assign_vsc_event_param_if_present(
-                vsc,
-                ParamPowerFlowRefferenceType.converter_control_mode_2,
-                control_code_dict[vsc.control2],
+            self._assign_api_mapping_value_if_present(
+                mdl=vsc.emt_model,
+                key=ParamPowerFlowRefferenceType.converter_control_mode_2,
+                value=control_code_dict[vsc.control2],
             )
-            self._assign_vsc_event_param_if_present(
-                vsc,
-                ParamPowerFlowRefferenceType.converter_control_target_1,
-                vsc.control1_val,
+            self._assign_api_mapping_value_if_present(
+                mdl=vsc.emt_model,
+                key=ParamPowerFlowRefferenceType.converter_control_target_1,
+                value=vsc.control1_val,
             )
-            self._assign_vsc_event_param_if_present(
-                vsc,
-                ParamPowerFlowRefferenceType.converter_control_target_2,
-                vsc.control2_val,
+            self._assign_api_mapping_value_if_present(
+                mdl=vsc.emt_model,
+                key=ParamPowerFlowRefferenceType.converter_control_target_2,
+                value=vsc.control2_val,
             )
             return
 
@@ -5811,9 +5772,9 @@ class EmtProblemDae(EmtProblemTemplate):
             eps_value: float = 1.0e-12
             r_dc_value: float = float(br.R_corrected)
             g_dc_value: float = 1.0 / max(abs(r_dc_value), eps_value)
-            self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.g, g_dc_value)
-            self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.b, 0.0)
-            self._assign_api_obj_param_if_present(br.emt_model, ParamPowerFlowRefferenceType.bsh, 0.0)
+            self._assign_api_mapping_value_if_present(br.emt_model, ParamPowerFlowRefferenceType.g, g_dc_value)
+            self._assign_api_mapping_value_if_present(br.emt_model, ParamPowerFlowRefferenceType.b, 0.0)
+            self._assign_api_mapping_value_if_present(br.emt_model, ParamPowerFlowRefferenceType.bsh, 0.0)
             return
 
         # -----------------------------
@@ -5871,129 +5832,129 @@ class EmtProblemDae(EmtProblemTemplate):
                 p_t_matrix: np.ndarray = _xfmr_phase_permutation_matrix(int(br.vector_group_number))
                 c_t_eff_matrix: np.ndarray = p_t_matrix @ c_t_matrix
 
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.omega_base,
                     w0,
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_rated_power_mva,
                     sn_value,
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_open_circuit_current_pct,
                     i0_pct_value,
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_open_circuit_loss_kw,
                     pfe_kw_value,
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_short_circuit_voltage_pct,
                     vsc_pct_value,
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_short_circuit_loss_kw,
                     pcu_kw_value,
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_tap_ratio,
                     tap_module_value,
                 )
 
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_aa,
                     float(c_f_matrix[0, 0]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_ab,
                     float(c_f_matrix[0, 1]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_ac,
                     float(c_f_matrix[0, 2]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_ba,
                     float(c_f_matrix[1, 0]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_bb,
                     float(c_f_matrix[1, 1]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_bc,
                     float(c_f_matrix[1, 2]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_ca,
                     float(c_f_matrix[2, 0]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_cb,
                     float(c_f_matrix[2, 1]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_from_connection_cc,
                     float(c_f_matrix[2, 2]),
                 )
 
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_aa,
                     float(c_t_eff_matrix[0, 0]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_ab,
                     float(c_t_eff_matrix[0, 1]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_ac,
                     float(c_t_eff_matrix[0, 2]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_ba,
                     float(c_t_eff_matrix[1, 0]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_bb,
                     float(c_t_eff_matrix[1, 1]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_bc,
                     float(c_t_eff_matrix[1, 2]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_ca,
                     float(c_t_eff_matrix[2, 0]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_cb,
                     float(c_t_eff_matrix[2, 1]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_to_connection_cc,
                     float(c_t_eff_matrix[2, 2]),
@@ -6088,37 +6049,37 @@ class EmtProblemDae(EmtProblemTemplate):
                         f"Transformer '{br.name}' has a non-physical inductance matrix determinant {det_value}."
                     )
 
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_winding1_resistance_pu,
                     r1_value,
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_winding2_resistance_pu,
                     r2_value,
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_winding1_inductance_pu_s,
                     l1_value,
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_winding2_inductance_pu_s,
                     l2_value,
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_mutual_inductance_pu_s,
                     mutual_inductance,
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_magnetizing_conductance_pu,
                     g_core,
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     ParamPowerFlowRefferenceType.transformer_tap_ratio,
                     total_ratio,
@@ -6312,23 +6273,23 @@ class EmtProblemDae(EmtProblemTemplate):
         # -----------------------------
         for i_glob in range(4):
             for j_glob in range(4):
-                self._assign_api_obj_param_if_present(br.emt_model, r_enums[i_glob][j_glob], 0.0)
-                self._assign_api_obj_param_if_present(br.emt_model, linv_enums[i_glob][j_glob], 0.0)
-                self._assign_api_obj_param_if_present(br.emt_model, c_enums[i_glob][j_glob], 0.0)
+                self._assign_api_mapping_value_if_present(br.emt_model, r_enums[i_glob][j_glob], 0.0)
+                self._assign_api_mapping_value_if_present(br.emt_model, linv_enums[i_glob][j_glob], 0.0)
+                self._assign_api_mapping_value_if_present(br.emt_model, c_enums[i_glob][j_glob], 0.0)
 
         for i_red, i_glob in enumerate(idx_global):
             for j_red, j_glob in enumerate(idx_global):
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     r_enums[i_glob][j_glob],
                     float(r_full[i_red, j_red]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     linv_enums[i_glob][j_glob],
                     float(l_inv_full[i_red, j_red]),
                 )
-                self._assign_api_obj_param_if_present(
+                self._assign_api_mapping_value_if_present(
                     br.emt_model,
                     c_enums[i_glob][j_glob],
                     float(c_full[i_red, j_red]),
@@ -6367,10 +6328,10 @@ class EmtProblemDae(EmtProblemTemplate):
 
         if not load.bus.is_dc:
             for idx in range(3):
-                self._assign_api_obj_param_if_present(load.emt_model, p_keys[idx], p_values[idx])
-                self._assign_api_obj_param_if_present(load.emt_model, q_keys[idx], q_values[idx])
+                self._assign_api_mapping_value_if_present(load.emt_model, p_keys[idx], p_values[idx])
+                self._assign_api_mapping_value_if_present(load.emt_model, q_keys[idx], q_values[idx])
 
-            self._assign_api_obj_param_if_present(load.emt_model, ParamPowerFlowRefferenceType.omega_base, w0)
+            self._assign_api_mapping_value_if_present(load.emt_model, ParamPowerFlowRefferenceType.omega_base, w0)
         else:
             dc_p_value: float = load.P / sbase
             dc_g_value: float = load.G / sbase
@@ -6381,8 +6342,8 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-            self._assign_api_obj_param_if_present(load.emt_model, ParamPowerFlowRefferenceType.Pl0, dc_p_value)
-            self._assign_api_obj_param_if_present(load.emt_model, ParamPowerFlowRefferenceType.g, dc_g_value)
+            self._assign_api_mapping_value_if_present(load.emt_model, ParamPowerFlowRefferenceType.Pl0, dc_p_value)
+            self._assign_api_mapping_value_if_present(load.emt_model, ParamPowerFlowRefferenceType.g, dc_g_value)
 
     def _assign_api_obj_mapping_generator(self, gen) -> None:
         """
@@ -6394,9 +6355,9 @@ class EmtProblemDae(EmtProblemTemplate):
         fbase: float = self.grid.fBase
         w0: float = 2.0 * np.pi * fbase
 
-        self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.omega_base, w0)
-        self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.R1, gen.R1)
-        self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.X1, gen.X1)
-        self._assign_api_obj_param_if_present(gen.emt_model, ParamPowerFlowRefferenceType.X0, gen.X0)
+        self._assign_api_mapping_value_if_present(gen.emt_model, ParamPowerFlowRefferenceType.omega_base, w0)
+        self._assign_api_mapping_value_if_present(gen.emt_model, ParamPowerFlowRefferenceType.R1, gen.R1)
+        self._assign_api_mapping_value_if_present(gen.emt_model, ParamPowerFlowRefferenceType.X1, gen.X1)
+        self._assign_api_mapping_value_if_present(gen.emt_model, ParamPowerFlowRefferenceType.X0, gen.X0)
 
 
