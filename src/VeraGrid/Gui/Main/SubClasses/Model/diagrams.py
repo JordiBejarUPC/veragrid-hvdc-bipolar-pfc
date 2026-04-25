@@ -24,8 +24,8 @@ from VeraGridEngine.Simulations.PowerFlow.power_flow_results_3ph import PowerFlo
 from VeraGridEngine.Simulations.StateEstimation.state_estimation_results import StateEstimationResults
 from VeraGridEngine.Utils.progress_bar import print_progress_bar
 from VeraGridEngine.basic_structures import Logger
-from VeraGridEngine.enumerations import (SimulationTypes, Colormaps, DeviceType, MethodShortCircuit,
-                                         SchematicAutoRouteStyle, DynamicSimulationMode)
+from VeraGridEngine.enumerations import (SimulationTypes, Colormaps, DeviceType, DynamicEventTransitionType,
+                                         MethodShortCircuit, SchematicAutoRouteStyle, DynamicSimulationMode)
 from VeraGridEngine.Devices.Diagrams.schematic_diagram import SchematicDiagram
 
 import VeraGridEngine.Devices as dev
@@ -2889,12 +2889,22 @@ class DiagramsMain(CompiledArraysMain):
                         events_data = emt_events_dialog.get_data()
                         events_list = list()
                         for i, event in enumerate(events_data["parameters"]):
+                            transition_type = events_data["transition_types"][i]
+                            end_time = events_data["end_times"][i]
+
+                            if transition_type == DynamicEventTransitionType.Ramp and end_time is None:
+                                end_time = float(events_data["target_times"][i])
+                            else:
+                                pass
+
                             events_list.append(dev.EmtEvent(device=target_device,
                                                             parameter=events_data["parameters"][i],
                                                             time=float(events_data["target_times"][i]),
+                                                            end_time=None if end_time is None else float(end_time),
                                                             value=float(events_data["values"][i]),
                                                             group=events_data["groups"][i],
-                                                            force_step_alignment=bool(events_data["force_step_alignment"][i])))
+                                                            force_step_alignment=bool(events_data["force_step_alignment"][i]),
+                                                            transition_type=transition_type))
 
                         for event in events_list:
                             self.circuit.add_emt_event(event)

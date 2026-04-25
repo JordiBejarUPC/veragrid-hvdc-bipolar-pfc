@@ -26,12 +26,13 @@ from VeraGridEngine.Devices.Branches.transformer import Transformer2W
 from VeraGridEngine.Simulations.driver_template import DummySignal
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
 from VeraGridEngine.Devices.types import ALL_DEV_TYPES
-from VeraGridEngine.Utils.Symbolic.symbolic import Var, piecewise, Const
+from VeraGridEngine.Utils.Symbolic.symbolic import Var, Expr, piecewise, Const, hard_sat, heaviside
 from VeraGridEngine.Utils.Symbolic.block import Block
 from VeraGridEngine.enumerations import (
     VarPowerFlowRefferenceType,
     ParamPowerFlowRefferenceType,
     DeviceType,
+    DynamicEventTransitionType,
     EmtLineTypes,
     ConverterControlType,
     WindingType,
@@ -91,6 +92,54 @@ def _xfmr_connection_matrix(winding_tpe: WindingType) -> np.ndarray:
             ], dtype=float) / np.sqrt(3.0)
         else:
             return np.eye(3, dtype=float)
+
+
+def _freeze_runtime_expr_at_time(expr: Any, time_var: Var, sample_time: float) -> Any:
+    """
+    Freeze one runtime expression at an explicit time value.
+
+    :param expr: Runtime expression to freeze.
+    :param time_var: Global symbolic time variable.
+    :param sample_time: Time used to evaluate the expression boundary.
+    :return: Time-frozen symbolic expression.
+    """
+    if isinstance(expr, (Expr, Var, Const)):
+        return expr.subs(dict({time_var: Const(float(sample_time))})).simplify()
+    else:
+        return expr
+
+
+def _build_ramp_runtime_expr(
+    time_var: Var,
+    start_time: float,
+    end_time: float,
+    before_expr: Any,
+    final_value: float,
+) -> Any:
+    """
+    Build one linear ramp transition on top of an existing runtime expression.
+
+    The expression keeps ``before_expr`` before ``start_time``, then transitions
+    linearly toward ``final_value`` until ``end_time``, and finally holds the
+    final value afterwards.
+
+    :param time_var: Global symbolic time variable.
+    :param start_time: Ramp start time.
+    :param end_time: Ramp end time.
+    :param before_expr: Expression active before the ramp starts.
+    :param final_value: Final runtime value after the ramp ends.
+    :return: Combined symbolic expression.
+    """
+    start_expr: Any = _freeze_runtime_expr_at_time(before_expr, time_var, start_time)
+    duration_expr: Const = Const(float(end_time - start_time))
+    time_offset_expr: Any = time_var - Const(float(start_time))
+    progress_expr: Any = hard_sat(time_offset_expr / duration_expr, Const(0.0), Const(1.0))
+    ramp_expr: Any = start_expr + progress_expr * (Const(float(final_value)) - start_expr)
+    started_expr: Any = heaviside(time_var - Const(float(start_time)))
+    ended_expr: Any = heaviside(time_var - Const(float(end_time)))
+    return (Const(1.0) - started_expr) * before_expr + started_expr * (
+        (Const(1.0) - ended_expr) * ramp_expr + ended_expr * Const(float(final_value))
+    )
 
 
 def _xfmr_phase_permutation_matrix(clock: int) -> np.ndarray:
@@ -2053,8 +2102,8 @@ class EmtProblemDae(EmtProblemTemplate):
 
         active_runtime_eqs: List[Any] = list(self._runtime_parameter_eqs0)
         scheduled_mode_events: Dict[int, List[Tuple[float, float, bool]]] = dict()
-        continuous_events: Dict[int, Dict[str, List[float]]] = {
-            parameter.uid: {"times": list(), "values": list()}
+        continuous_events: Dict[int, List[Dict[str, float | str | None]]] = {
+            parameter.uid: list()
             for parameter in self.get_runtime_continuous_parameters()
             if parameter.uid in self._continuous_event_parameter_uids
         }
@@ -2086,8 +2135,22 @@ class EmtProblemDae(EmtProblemTemplate):
                         )
                     else:
                         if parameter_uid in continuous_events:
-                            continuous_events[parameter_uid]["times"].append(float(evt.time))
-                            continuous_events[parameter_uid]["values"].append(float(evt.value))
+                            transition_type = getattr(evt, "transition_type", DynamicEventTransitionType.Step)
+                            end_time = getattr(evt, "end_time", None)
+
+                            if isinstance(transition_type, DynamicEventTransitionType):
+                                transition_text = transition_type.value
+                            else:
+                                transition_text = str(transition_type)
+
+                            continuous_events[parameter_uid].append(
+                                dict({
+                                    "time": float(evt.time),
+                                    "value": float(evt.value),
+                                    "end_time": None if end_time is None else float(end_time),
+                                    "transition_type": transition_text,
+                                })
+                            )
                         else:
                             pass
                 else:
@@ -2095,19 +2158,49 @@ class EmtProblemDae(EmtProblemTemplate):
             else:
                 pass
 
-        for parameter_uid, info in continuous_events.items():
-            if len(info["times"]) != 0:
+        for parameter_uid, event_specs in continuous_events.items():
+            if len(event_specs) != 0:
                 runtime_idx: int = self.uid2idx_event_params[parameter_uid]
-                sort_idx: np.ndarray = np.argsort(np.asarray(info["times"], dtype=np.float64), kind="stable")
-                t_events: np.ndarray = np.asarray(info["times"], dtype=np.float64)[sort_idx]
-                new_values: np.ndarray = np.asarray(info["values"], dtype=np.float64)[sort_idx]
-
-                active_runtime_eqs[runtime_idx] = piecewise(
-                    time_var=self._glob_time,
-                    t_events=t_events,
-                    new_values=new_values,
-                    default_value=active_runtime_eqs[runtime_idx],
+                sorted_specs: List[Dict[str, float | str | None]] = sorted(
+                    event_specs,
+                    key=lambda item: float(item["time"]),
                 )
+                active_expr: Any = active_runtime_eqs[runtime_idx]
+                event_spec: Dict[str, float | str | None]
+
+                for event_spec in sorted_specs:
+                    if str(event_spec["transition_type"]) == DynamicEventTransitionType.Ramp.value:
+                        start_time: float = float(event_spec["time"])
+                        end_time_raw: float | str | None = event_spec["end_time"]
+
+                        if end_time_raw is None:
+                            raise ValueError("Ramp EMT events require an end_time")
+                        else:
+                            pass
+
+                        end_time: float = float(end_time_raw)
+
+                        if end_time > start_time:
+                            pass
+                        else:
+                            raise ValueError("Ramp EMT events require end_time greater than time")
+
+                        active_expr = _build_ramp_runtime_expr(
+                            time_var=self._glob_time,
+                            start_time=start_time,
+                            end_time=end_time,
+                            before_expr=active_expr,
+                            final_value=float(event_spec["value"]),
+                        )
+                    else:
+                        active_expr = piecewise(
+                            time_var=self._glob_time,
+                            t_events=np.asarray([float(event_spec["time"])], dtype=np.float64),
+                            new_values=np.asarray([float(event_spec["value"])], dtype=np.float64),
+                            default_value=active_expr,
+                        )
+
+                active_runtime_eqs[runtime_idx] = active_expr
             else:
                 pass
 

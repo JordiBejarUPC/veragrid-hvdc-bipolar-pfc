@@ -11,7 +11,7 @@ from VeraGridEngine.Devices.multi_circuit import MultiCircuit
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 from VeraGridEngine.Devices.Events.rms_events_group import RmsEventsGroup
 from VeraGridEngine.Devices.Events.emt_events_group import EmtEventsGroup
-from VeraGridEngine.enumerations import DynamicSimulationMode
+from VeraGridEngine.enumerations import DynamicEventTransitionType, DynamicSimulationMode
 
 
 class EventRow:
@@ -59,19 +59,43 @@ class EventRow:
         self.value_spin.setSingleStep(0.01)
         table.setCellWidget(row, 3, self.value_spin)
 
+        self.transition_combo: QtWidgets.QComboBox | None = None
+        self.end_time_spin: QtWidgets.QDoubleSpinBox | None = None
+
+        if self.mode == DynamicSimulationMode.EMT:
+            self.transition_combo = QtWidgets.QComboBox()
+            self.transition_combo.addItem("Step", DynamicEventTransitionType.Step)
+            self.transition_combo.addItem("Ramp", DynamicEventTransitionType.Ramp)
+            table.setCellWidget(row, 4, self.transition_combo)
+
+            self.end_time_spin = QtWidgets.QDoubleSpinBox()
+            self.end_time_spin.setDecimals(4)
+            self.end_time_spin.setRange(0.0, 1e9)
+            self.end_time_spin.setSingleStep(0.1)
+            self.end_time_spin.setSuffix(" s")
+            self.end_time_spin.setEnabled(False)
+            table.setCellWidget(row, 5, self.end_time_spin)
+            self.transition_combo.currentIndexChanged.connect(self.on_transition_changed)
+        else:
+            pass
+
         # --- Event group selector ---
         self.group_combo = QtWidgets.QComboBox()
         for group in events_groups_list:
             self.group_combo.addItem(group.name, group)
-        table.setCellWidget(row, 4, self.group_combo)
+        if self.mode == DynamicSimulationMode.EMT:
+            table.setCellWidget(row, 6, self.group_combo)
+        else:
+            table.setCellWidget(row, 4, self.group_combo)
 
         self.force_alignment_check: QtWidgets.QCheckBox | None = None
         if self.mode == DynamicSimulationMode.EMT:
             self.force_alignment_check = QtWidgets.QCheckBox()
             self.force_alignment_check.setChecked(False)
             self.force_alignment_check.setEnabled(False)
-            table.setCellWidget(row, 5, self.force_alignment_check)
+            table.setCellWidget(row, 7, self.force_alignment_check)
             self.param_combo.currentIndexChanged.connect(self.on_parameter_changed)
+            self.on_transition_changed()
             self.on_parameter_changed()
         else:
             pass
@@ -90,17 +114,49 @@ class EventRow:
 
         t = self.time_spin.value()
         v = self.value_spin.value()
+        transition_type = DynamicEventTransitionType.Step
+        end_time = None
+
+        if self.transition_combo is not None:
+            transition_data = self.transition_combo.currentData()
+            if isinstance(transition_data, DynamicEventTransitionType):
+                transition_type = transition_data
+            else:
+                transition_type = DynamicEventTransitionType.Step
+        else:
+            pass
+
+        if self.end_time_spin is not None and self.end_time_spin.isEnabled():
+            end_time = self.end_time_spin.value()
+        else:
+            pass
 
         if self.force_alignment_check is not None:
             force_step_alignment = self.force_alignment_check.isChecked()
         else:
             force_step_alignment = False
 
-        return param, t, v, group, force_step_alignment
+        return param, t, end_time, v, group, force_step_alignment, transition_type
 
     def add_group(self, group):
         """Add a new group option to the combo."""
         self.group_combo.addItem(group.name, group)
+
+    def on_transition_changed(self) -> None:
+        """
+        Update EMT-only controls when the selected transition changes.
+
+        :return: None.
+        """
+        if self.transition_combo is None or self.end_time_spin is None:
+            return
+        else:
+            pass
+
+        if self.transition_combo.currentData() == DynamicEventTransitionType.Ramp:
+            self.end_time_spin.setEnabled(True)
+        else:
+            self.end_time_spin.setEnabled(False)
 
     def on_parameter_changed(self) -> None:
         """
@@ -153,9 +209,11 @@ class DynamicEventDialogue(QtWidgets.QDialog):
         self.data = {
             "parameters": [],
             "target_times": [],
+            "end_times": [],
             "values": [],
             "groups": [],
             "force_step_alignment": [],
+            "transition_types": [],
         }
 
         # ---- Main Layout ----
@@ -169,9 +227,9 @@ class DynamicEventDialogue(QtWidgets.QDialog):
 
         # --- Events Table ---
         if self.mode == DynamicSimulationMode.EMT:
-            self.table = QtWidgets.QTableWidget(0, 6)
+            self.table = QtWidgets.QTableWidget(0, 8)
             self.table.setHorizontalHeaderLabels(
-                ["", "Parameter", "Time", "New Value", "Group", "Align Step"]
+                ["", "Parameter", "Time", "New Value", "Transition", "End Time", "Group", "Align Step"]
             )
         else:
             self.table = QtWidgets.QTableWidget(0, 5)
@@ -335,14 +393,16 @@ class DynamicEventDialogue(QtWidgets.QDialog):
 
         parameters = []
         target_times = []
+        end_times = []
         values = []
         groups = []
         force_step_alignment_flags = []
+        transition_types = []
 
         for i, row in enumerate(self.rows):
 
             try:
-                param, t, v, group, force_step_alignment = row.get_data()
+                param, t, end_time, v, group, force_step_alignment, transition_type = row.get_data()
 
             except Exception as exc:
 
@@ -355,14 +415,18 @@ class DynamicEventDialogue(QtWidgets.QDialog):
 
             parameters.append(param)
             target_times.append(t)
+            end_times.append(end_time)
             values.append(v)
             groups.append(group)
             force_step_alignment_flags.append(force_step_alignment)
+            transition_types.append(transition_type)
         self.data["parameters"] = parameters
         self.data["target_times"] = target_times
+        self.data["end_times"] = end_times
         self.data["values"] = values
         self.data["groups"] = groups
         self.data["force_step_alignment"] = force_step_alignment_flags
+        self.data["transition_types"] = transition_types
         self.accept()
 
     def get_data(self) -> Dict[str, List]:

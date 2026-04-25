@@ -2740,6 +2740,32 @@ class DynamicIntegrationMethod(Enum):
         return list(enum_item.value for enum_item in cls)
 
 
+class DynamicEventTransitionType(Enum):
+    """
+    Transition profile used by one dynamic runtime event.
+    """
+
+    Step = "step"
+    Ramp = "ramp"
+
+    def __str__(self) -> str:
+        return str(self.value)
+
+    def __repr__(self):
+        return str(self)
+
+    @staticmethod
+    def argparse(s):
+        try:
+            return DynamicEventTransitionType[s]
+        except KeyError:
+            return s
+
+    @classmethod
+    def list(cls):
+        return list(enum_item.value for enum_item in cls)
+
+
 class EmtSolverTypes(Enum):
     """
     Jacobian construction backends for implicit solvers.
