@@ -147,6 +147,7 @@ class StateEstimationResults(ResultsTemplate):
         ResultsProperty(name='bus_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='branch_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='hvdc_names', tpe=StrVec, old_names=list(), expandable=False),
+        ResultsProperty(name='vsc_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='gen_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='batt_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='sh_names', tpe=StrVec, old_names=list(), expandable=False),

@@ -37,6 +37,7 @@ class PowerFlowResults3Ph(ResultsTemplate):
         ResultsProperty(name='bus_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='branch_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='hvdc_names', tpe=StrVec, old_names=list(), expandable=False),
+        ResultsProperty(name='vsc_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='gen_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='batt_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='sh_names', tpe=StrVec, old_names=list(), expandable=False),
@@ -108,6 +109,8 @@ class PowerFlowResults3Ph(ResultsTemplate):
         ResultsProperty(name='shunt_q_A', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='shunt_q_B', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='shunt_q_C', tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name='shunt_Vn', tpe=CxVec, old_names=list(), expandable=False),
+        ResultsProperty(name='load_Vn', tpe=CxVec, old_names=list(), expandable=False),
     )
 
     def __init__(
@@ -1691,4 +1694,3 @@ class PowerFlowResults3Ph(ResultsTemplate):
 
         else:
             raise Exception('Unsupported result type: ' + str(result_type))
-

@@ -145,6 +145,7 @@ class PowerFlowResults(ResultsTemplate):
         ResultsProperty(name='bus_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='branch_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='hvdc_names', tpe=StrVec, old_names=list(), expandable=False),
+        ResultsProperty(name='vsc_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='gen_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='batt_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='sh_names', tpe=StrVec, old_names=list(), expandable=False),
@@ -177,10 +178,11 @@ class PowerFlowResults(ResultsTemplate):
         ResultsProperty(name='If_vsc', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='It_vsc', tpe=CxVec, old_names=list(), expandable=False),
         ResultsProperty(name='loading_vsc', tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name='gen_p', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='gen_q', tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name='battery_p', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='battery_q', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='shunt_q', tpe=Vec, old_names=list(), expandable=False),
-        ResultsProperty(name='three_phase', tpe=bool, old_names=list(), expandable=False),
     )
 
     __slots__ = (
@@ -221,7 +223,6 @@ class PowerFlowResults(ResultsTemplate):
         "shunt_q",
         "plot_bars_limit",
         "convergence_reports",
-        "three_phase",
     )
 
     def __init__(
@@ -376,9 +377,6 @@ class PowerFlowResults(ResultsTemplate):
 
         self.plot_bars_limit: int = 100
         self.convergence_reports: List[ConvergenceReport] = list()
-
-        self.three_phase: bool = False
-
 
     def apply_new_rates(self, nc: NumericalCircuit):
         """

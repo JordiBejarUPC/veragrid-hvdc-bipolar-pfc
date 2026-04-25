@@ -19,6 +19,8 @@ class LinearAnalysisResults(ResultsTemplate):
     LOCAL_RESULTS_DECLARATIONS = (
         ResultsProperty(name='branch_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='bus_names', tpe=StrVec, old_names=list(), expandable=False),
+        ResultsProperty(name='hvdc_names', tpe=StrVec, old_names=list(), expandable=False),
+        ResultsProperty(name='vsc_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='bus_types', tpe=IntVec, old_names=list(), expandable=False),
         ResultsProperty(name='PTDF', tpe=Mat, old_names=list(), expandable=False),
         ResultsProperty(name='LODF', tpe=Mat, old_names=list(), expandable=False),
@@ -242,4 +244,3 @@ class LinearAnalysisResults(ResultsTemplate):
 
         else:
             raise Exception('Result type not understood:' + str(result_type))
-

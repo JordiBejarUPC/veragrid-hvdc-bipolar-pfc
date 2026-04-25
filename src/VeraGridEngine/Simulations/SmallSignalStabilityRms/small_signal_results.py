@@ -10,7 +10,7 @@ from typing import List, Any
 
 from VeraGridEngine.Simulations.results_table import ResultsTable
 from VeraGridEngine.Simulations.results_template import ResultsTemplate, ResultsProperty
-from VeraGridEngine.basic_structures import Vec, Mat
+from VeraGridEngine.basic_structures import Vec, Mat, StrVec
 from VeraGridEngine.enumerations import StudyResultsType, ResultTypes, DeviceType
 from VeraGridEngine.Utils.Symbolic.symbolic import Var
 
@@ -64,6 +64,7 @@ class SmallSignalStabilityRmsResults(ResultsTemplate):
     """
 
     LOCAL_RESULTS_DECLARATIONS = (
+        ResultsProperty(name='stat_vars_array', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='eigenvalues', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='participation_factors', tpe=Mat, old_names=list(), expandable=False),
         ResultsProperty(name='damping_ratios', tpe=Vec, old_names=list(), expandable=False),

@@ -37,6 +37,7 @@ class OptimalNetTransferCapacityResults(ResultsTemplate):
         ResultsProperty(name='dSbus', tpe=CxVec, old_names=list(), expandable=False),
         ResultsProperty(name='bus_shadow_prices', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='load_shedding', tpe=Vec, old_names=list(), expandable=False),
+        ResultsProperty(name='nodal_balance', tpe=Vec, old_names=list(), expandable=False),
         ResultsProperty(name='Sf', tpe=CxVec, old_names=list(), expandable=False),
         ResultsProperty(name='St', tpe=CxVec, old_names=list(), expandable=False),
         ResultsProperty(name='overloads', tpe=Vec, old_names=list(), expandable=False),

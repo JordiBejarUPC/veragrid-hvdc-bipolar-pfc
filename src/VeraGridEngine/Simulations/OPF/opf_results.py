@@ -24,6 +24,7 @@ class OptimalPowerFlowResults(ResultsTemplate):
         ResultsProperty(name='shunt_like_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='battery_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='hvdc_names', tpe=StrVec, old_names=list(), expandable=False),
+        ResultsProperty(name='vsc_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='fluid_node_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='fluid_path_names', tpe=StrVec, old_names=list(), expandable=False),
         ResultsProperty(name='fluid_inj_names', tpe=StrVec, old_names=list(), expandable=False),
