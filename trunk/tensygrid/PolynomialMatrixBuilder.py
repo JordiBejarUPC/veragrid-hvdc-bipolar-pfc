@@ -1,3 +1,8 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+# SPDX-License-Identifier: MPL-2.0
+
 import sympy as sp
 from scipy import sparse, linalg
 from enum import Enum
@@ -9,13 +14,28 @@ import itertools
 import concurrent.futures
 import time
 import numpy as np
+import json
 
+from scipy.optimize import linear_sum_assignment
 from scipy.sparse.linalg import splu, LinearOperator, eigs
 
+
+def _parallel_executor_cls():
+    """
+    Select executor class with Windows-safe default.
+
+    On Windows, ProcessPoolExecutor uses spawn and re-imports module-level code
+    in each child process. For these preprocessing stages, ThreadPoolExecutor
+    avoids repeated interpreter startup and recursive import storms.
+    """
+    if sys.platform.startswith("win"):
+        return concurrent.futures.ThreadPoolExecutor
+    return concurrent.futures.ProcessPoolExecutor
 
 
 class LoadingSpinner:
     """A threaded terminal spinner to show activity during blocking C/Fortran calls."""
+
     def __init__(self, message="Computing"):
         self.spinner = itertools.cycle(['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'])
         self.message = message
@@ -30,7 +50,7 @@ class LoadingSpinner:
     def stop(self):
         self.stop_event.set()
         self.thread.join()
-        sys.stdout.write('\r' + ' ' * (len(self.message) + 15) + '\r') # Clear line
+        sys.stdout.write('\r' + ' ' * (len(self.message) + 15) + '\r')  # Clear line
         sys.stdout.flush()
         return time.time() - self.start_time
 
@@ -85,6 +105,7 @@ def _sort_symbol(sym: sp.Symbol) -> tuple:
     else:
         return 1, name
 
+
 def _clean_name_fn(n):
     """
     Standardizes the string representation of a symbolic variable name by normalizing
@@ -131,6 +152,136 @@ def _safe_to_string(item: Any) -> str:
             return item.to_string()
         except AttributeError:
             return str(item)
+
+
+def _parse_single_equation(raw_eq, parsing_context, param_map):
+    """Isolated parser to run equation parsing in process workers."""
+
+    s = raw_eq if isinstance(raw_eq, str) else str(raw_eq)
+    s = s.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
+    s = re.sub(r'\bd_', 'dt_', s)
+
+    expr = sp.parsing.sympy_parser.parse_expr(s, local_dict=parsing_context, evaluate=False)
+
+    if param_map:
+        expr = expr.subs(param_map)
+
+    return expr
+
+
+def _process_equation_worker(raw_eq, parsing_context, param_map, sym_to_idx_snap, protected_params_snap):
+    """
+    Worker that combines equation parsing and monomial weight extraction.
+    Returns only primitive data (lists/tuples) to avoid SymPy pickling issues
+    when used with ProcessPoolExecutor.
+
+    This worker is designed for the second matrix_creation pass, after all
+    symbols (including aux variables) are already in sym_to_idx_snap. If a
+    symbol is not found in the snapshot, it is reported in new_aux_names so
+    the main thread can fall back to sequential processing for that equation.
+
+    Args:
+        raw_eq:               Raw equation string (post-lifting, via str(expr)).
+        parsing_context:      Dict mapping symbol names to SymPy objects.
+        param_map:            Dict mapping parameter names to values (pass {} if
+                              substitution was already done during parsing).
+        sym_to_idx_snap:      Snapshot of sym_to_idx (str -> int). Must be stable.
+        protected_params_snap: List/set of protected parameter name strings.
+
+    Returns:
+        phi_row:       list of (monom_tuple, coeff) pairs for this equation.
+                       monom_tuple = tuple of (var_idx, weight) sorted by var_idx.
+        new_aux_names: list of symbol names missing from sym_to_idx_snap.
+                       Should be empty when called after full symbol extraction.
+    """
+
+    s = raw_eq if isinstance(raw_eq, str) else str(raw_eq)
+    s = s.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
+    s = re.sub(r'\bd_', 'dt_', s)
+    expr = sp.parsing.sympy_parser.parse_expr(s, local_dict=parsing_context, evaluate=False)
+    if param_map:
+        expr = expr.subs(param_map)
+
+    protected_set = set(protected_params_snap)
+    phi_row: list = []
+    new_aux_names: list = []
+
+    def _extract_term(term):
+        coeff_sym, symbolic_part = term.as_coeff_mul()
+        factors = sp.Mul.make_args(sp.Mul(*symbolic_part))
+
+        if any(len(list(f.free_symbols)) > 1 for f in factors):
+            expanded = term.expand()
+            sub_terms = sp.Add.make_args(expanded)
+            if len(sub_terms) == 1 and sub_terms[0] == term:
+                raise ValueError(f"Irreducible non-linear term detected: {term}")
+            for sub_t in sub_terms:
+                _extract_term(sub_t)
+            return
+
+        global_phi = float(coeff_sym)
+        sparse_weights: dict = {}
+
+        for f in factors:
+            f_vars = list(f.free_symbols)
+            if len(f_vars) == 1:
+                sym = f_vars[0]
+                idx_val = sym_to_idx_snap.get(sym.name)
+
+                if idx_val is None:
+                    new_aux_names.append(sym.name)
+                    return
+
+                b_val_sym = sp.diff(f, sym)
+                deg = float(f.exp) if isinstance(f, sp.Pow) else float(sp.degree(f, sym))
+                is_sqrt = abs(deg - 0.5) < 1e-6
+                is_protected = sym.name in protected_set
+
+                if (deg > 1.0 or deg < 0.0) and not is_sqrt and not is_protected:
+                    is_positive = deg > 1.0
+                    num_aux = int(deg - 1.0) if is_positive else int(-deg + 1.0)
+                    prefix = "mulaux" if is_positive else "invaux"
+                    aux_names = [f"{sym.name}_{prefix}{i_aux}" for i_aux in range(num_aux)]
+                    missing = [a for a in aux_names if a not in sym_to_idx_snap]
+                    if missing:
+                        new_aux_names.extend(missing)
+                        return
+                    new_syms = [sp.Symbol(a) for a in aux_names]
+                    multilinear_f = sym
+                    for s_aux in new_syms:
+                        multilinear_f = multilinear_f * s_aux
+                    _extract_term((term / f) * multilinear_f)
+                    return
+
+                elif is_sqrt and not is_protected:
+                    aux_names_sqrt = [f"{sym.name}_sqrtaux0", f"{sym.name}_sqrtaux1"]
+                    missing = [a for a in aux_names_sqrt if a not in sym_to_idx_snap]
+                    if missing:
+                        new_aux_names.extend(missing)
+                        return
+                    _extract_term((term / f) * sp.Symbol(aux_names_sqrt[0]))
+                    return
+
+                b_val = float(b_val_sym)
+                a_val = float(f.subs(sym, 0))
+                scale = abs(a_val) + abs(b_val)
+                if scale == 0.0:
+                    scale = 1.0
+                sparse_weights[idx_val] = b_val / scale
+                global_phi *= scale
+
+            elif len(f_vars) == 0:
+                global_phi *= float(f)
+
+        monom_tuple = tuple(sorted(sparse_weights.items()))
+        phi_row.append((monom_tuple, global_phi))
+
+    terms = list(expr.args) if expr.is_Add else [expr]
+    for term in terms:
+        _extract_term(term)
+
+    return phi_row, list(set(new_aux_names))
+
 
 class PolynomialMatrixBuilder:
     """
@@ -291,8 +442,6 @@ class PolynomialMatrixBuilder:
         if ineqs is not None:
             processed_ineqs = list(ineqs)
 
-
-
         def _extract_mappings(var_list: list) -> None:
             """
             Extracts and maps base variables to their explicit time-derivative counterparts
@@ -372,7 +521,7 @@ class PolynomialMatrixBuilder:
         parsing_context['pi'] = sp.pi
 
         parsed_predefined: list[sp.Symbol] = []
-
+        print("Processing equations")
         # 2. Symbols Extraction
         for names, target_list in [(processed_state_vars, self.state_vars),
                                    (processed_algebraic_vars, self.algebraic_vars)]:
@@ -386,19 +535,28 @@ class PolynomialMatrixBuilder:
                     target_list.append(sym)
                     parsed_predefined.append(sym)
 
-        # 3. Expression parsing
-        for raw_exprs, target_list in [(processed_eqs, self.eqs), (processed_ineqs, self.ineqs)]:
-            for raw in raw_exprs:
-                s = raw if isinstance(raw, str) else str(raw)
-                s = s.replace('dt_1_', 'dt_').replace('d_1_', 'dt_')
-                s = re.sub(r'\bd_', 'dt_', s)
+        # 3. Expression parsing (parallelized)
+        executor_cls = _parallel_executor_cls()
+        with executor_cls() as executor:
+            self.eqs = list(
+                executor.map(
+                    _parse_single_equation,
+                    processed_eqs,
+                    itertools.repeat(parsing_context),
+                    itertools.repeat(self._param_map),
+                    chunksize=50,
+                )
+            )
 
-                expr = sp.parsing.sympy_parser.parse_expr(s, local_dict=parsing_context, evaluate=False)
-
-                if self._param_map:
-                    expr = expr.subs(self._param_map)
-
-                target_list.append(expr)
+            self.ineqs = list(
+                executor.map(
+                    _parse_single_equation,
+                    processed_ineqs,
+                    itertools.repeat(parsing_context),
+                    itertools.repeat(self._param_map),
+                    chunksize=50,
+                )
+            )
 
         # 4. Symbols' inizialization
         self.all_symbols = []
@@ -418,8 +576,8 @@ class PolynomialMatrixBuilder:
         self.matrix_creation(self.eqs)
         self._generate_lifting_equations(problem)
 
-        S_H_sp, Phi_H_sp = self.matrix_creation(self.eqs)
-        S_W_sp, Phi_W_sp = self.matrix_creation(self.ineqs)
+        S_H_sp, Phi_H_sp = self.matrix_creation(self.eqs, parallel=True)
+        S_W_sp, Phi_W_sp = self.matrix_creation(self.ineqs, parallel=True)
 
         self.S_H: sparse.csc_matrix = S_H_sp
         self.Phi_H: sparse.csr_matrix = Phi_H_sp
@@ -476,7 +634,7 @@ class PolynomialMatrixBuilder:
     # ------------------------------------------------------------------
     # Matrix creation
     # ------------------------------------------------------------------
-    def matrix_creation(self, all_exprs: list) -> tuple:
+    def matrix_creation(self, all_exprs: list, parallel: bool = False) -> tuple:
         """
         Assembles the sparse structural matrices S (monomial definitions) and Phi (coefficients)
         from a list of symbolic expressions.
@@ -489,9 +647,14 @@ class PolynomialMatrixBuilder:
 
         :param all_exprs: A list of symbolic expressions representing the system equations.
         :type all_exprs: list
+        :param parallel: If True, use ProcessPoolExecutor via _process_equation_worker.
+                         Only safe to use after full symbol extraction and lifting (stable sym_to_idx).
+        :type parallel: bool
         :return: A tuple containing the (S, Phi) sparse matrices.
         :rtype: tuple
         """
+        if parallel and len(all_exprs) > 0:
+            return self._matrix_creation_parallel(all_exprs)
         S_cols: list = []
         Phi_data: list = []
         monom_to_idx: dict = dict()
@@ -523,6 +686,101 @@ class PolynomialMatrixBuilder:
                     p_row.append(row_idx)
                     p_col.append(col_idx)
                     p_val.append(val)
+
+            Phi = sparse.csr_matrix((p_val, (p_row, p_col)), shape=(n_eqs, n_monoms))
+        else:
+            S = sparse.csc_matrix((n_vars, 0))
+            Phi = sparse.csr_matrix((n_eqs, 0))
+
+        return S, Phi
+
+    def _matrix_creation_parallel(self, all_exprs: list) -> tuple:
+        """
+        Parallel version of matrix_creation using _process_equation_worker.
+
+        Converts each equation to its string form, dispatches workers via
+        ProcessPoolExecutor, and merges primitive results into sparse matrices.
+        Called only when sym_to_idx is fully stable (after lifting and symbol extraction).
+
+        Equations whose worker signals new_aux_names (unexpected symbols) fall back
+        automatically to the sequential _get_monomial_weights path in the main thread.
+
+        :param all_exprs: List of SymPy expressions (post-lifting).
+        :type all_exprs: list
+        :return: A tuple containing the (S, Phi) sparse matrices.
+        :rtype: tuple
+        """
+        parsing_context_snap: dict = {sym.name: sym for sym in self.all_symbols}
+        parsing_context_snap.update({
+            'cos': sp.cos, 'sin': sp.sin, 'tan': sp.tan,
+            'exp': sp.exp, 'sqrt': sp.sqrt, 'pi': sp.pi,
+        })
+        sym_to_idx_snap: dict = dict(self.sym_to_idx)
+        protected_snap: list = list(self._protected_params)
+        raw_strings: list = [str(e) for e in all_exprs]
+
+        executor_cls = _parallel_executor_cls()
+        with executor_cls() as executor:
+            worker_results = list(executor.map(
+                _process_equation_worker,
+                raw_strings,
+                itertools.repeat(parsing_context_snap),
+                itertools.repeat({}),
+                itertools.repeat(sym_to_idx_snap),
+                itertools.repeat(protected_snap),
+                chunksize=50,
+            ))
+
+        S_cols: list = []
+        monom_to_idx: dict = {}
+        Phi_data: list = [None] * len(all_exprs)
+        fallback_indices: list = []
+
+        for eq_idx, (phi_row_prims, new_aux_names) in enumerate(worker_results):
+            if new_aux_names:
+                fallback_indices.append(eq_idx)
+                continue
+            eq_dict: dict = {}
+            for monom_tuple, coeff in phi_row_prims:
+                existing = monom_to_idx.get(monom_tuple)
+                if existing is None:
+                    final_idx = len(S_cols)
+                    monom_to_idx[monom_tuple] = final_idx
+                    S_cols.append(monom_tuple)
+                else:
+                    final_idx = existing
+                eq_dict[final_idx] = eq_dict.get(final_idx, 0.0) + coeff
+            Phi_data[eq_idx] = eq_dict
+
+        for eq_idx in fallback_indices:
+            eq = all_exprs[eq_idx]
+            terms = list(eq.args) if eq.is_Add else [eq]
+            current_eq_coeffs: dict = {}
+            for term in terms:
+                current_eq_coeffs = self._get_monomial_weights(term, S_cols, monom_to_idx, current_eq_coeffs)
+            Phi_data[eq_idx] = current_eq_coeffs
+
+        n_vars = len(self.all_symbols)
+        n_monoms = len(S_cols)
+        n_eqs = len(all_exprs)
+
+        if n_monoms > 0:
+            s_row, s_col, s_val = [], [], []
+            for col_idx, monom_tuple in enumerate(S_cols):
+                for row_idx, val in monom_tuple:
+                    s_row.append(row_idx)
+                    s_col.append(col_idx)
+                    s_val.append(val)
+
+            S = sparse.csc_matrix((s_val, (s_row, s_col)), shape=(n_vars, n_monoms))
+
+            p_row, p_col, p_val = [], [], []
+            for row_idx, eq_dict in enumerate(Phi_data):
+                if eq_dict:
+                    for col_idx, val in eq_dict.items():
+                        p_row.append(row_idx)
+                        p_col.append(col_idx)
+                        p_val.append(val)
 
             Phi = sparse.csr_matrix((p_val, (p_row, p_col)), shape=(n_eqs, n_monoms))
         else:
@@ -1092,7 +1350,6 @@ class PolynomialMatrixBuilder:
 
             # Optional: Save the symbol names so you know what the columns mean!
             if hasattr(self, 'all_symbols'):
-                import json
                 symbol_names = [s.name for s in self.all_symbols]
                 with open(f"{file_prefix}_symbols.json", "w") as f:
                     json.dump(symbol_names, f)
@@ -1205,17 +1462,19 @@ class PolynomialMatrixBuilder:
             n_states, n_modes = evecs_right.shape
             participation_matrix = np.zeros((n_states, n_modes), dtype=float)
 
-            # DAE FORMULA FIX: Mapping by Physical States (Columns), NOT Equations
+            # DAE FORMULA FIX: Element-wise product of left/right evec vectors mapping to Physical States
             for m in range(n_modes):
-                # P_k = V_k * (w^H * E)_k
                 w_H = evecs_left[:, m].conj()
-                w_H_E = w_H @ self.E  # This yields a row vector mapping to states
+                w_H_E = w_H @ E_dense
 
-                participation_raw = evecs_right[:, m] * w_H_E
-                normalization = np.sum(participation_raw)
+                participation_raw = w_H_E * evecs_right[:, m]
 
-                if abs(normalization) > 1e-16:
-                    participation_matrix[:, m] = np.abs(participation_raw / normalization)
+                # NORMALIZATION FIX: Sum the absolute magnitudes to guarantee 1.0 (100%) distribution limit
+                p_abs = np.abs(participation_raw)
+                normalization = np.sum(p_abs)
+
+                if normalization > 1e-16:
+                    participation_matrix[:, m] = p_abs / normalization
                 else:
                     participation_matrix[:, m] = 0.0
 
@@ -1286,7 +1545,6 @@ class PolynomialMatrixBuilder:
 
         print(f"    State-space dimension: {n_dims}")
 
-        # (Asegúrate de tener esta parte dentro de compute_stability_sparse)
         M_shift = A_csr - sigma * E_csr
 
         # Structural regularization (WITHOUT LIL MATRIX)
@@ -1343,7 +1601,6 @@ class PolynomialMatrixBuilder:
         evals_R = sigma + (1.0 / evals_nu_R)
         evals_L = sigma + (1.0 / evals_nu_L)
 
-        from scipy.optimize import linear_sum_assignment
         dist_matrix = np.abs(evals_R[:, None] - evals_L[None, :])
         row_ind, col_ind = linear_sum_assignment(dist_matrix)
 
@@ -1360,7 +1617,6 @@ class PolynomialMatrixBuilder:
         W = W[:, finite_mask]
 
         # --- DAE FORMULA FIX FOR SPARSE MATRICES ---
-        # Formula: P_ki = V_ki * (W_i^H * E)_k
         E_T = E_csr.T
         W_conj = np.conj(W)
 
@@ -1370,10 +1626,12 @@ class PolynomialMatrixBuilder:
         # Element-wise product ensures we map onto the states correctly
         participation_raw = V * E_T_W_conj
 
-        dot_products = np.sum(participation_raw, axis=0)
-        dot_products[np.abs(dot_products) < 1e-16] = 1.0  # Prevent div-by-zero
+        # NORMALIZATION FIX: Sum the absolute magnitudes to guarantee 1.0 (100%) distribution limit
+        p_abs = np.abs(participation_raw)
+        dot_products = np.sum(p_abs, axis=0)
+        dot_products[dot_products < 1e-16] = 1.0  # Prevent div-by-zero
 
-        participation_matrix = np.abs(participation_raw / dot_products)
+        participation_matrix = p_abs / dot_products
 
         margin = float(np.max(evals.real)) if len(evals) > 0 else 0.0
         stable = margin <= 1e-5
@@ -1384,7 +1642,7 @@ class PolynomialMatrixBuilder:
         return evals, V, W, participation_matrix, stable, margin
 
     def get_participation_mapping(self, evals: np.ndarray, participation_matrix: np.ndarray,
-                                  threshold: float = 0.05) -> dict:
+                                  threshold: float = 0.02) -> dict:
         """
         Maps the raw participation matrix to the exact physical state variables for each dynamic mode.
         Filters out derivative and input tokens to match the true dimensions of the state-space.
@@ -1392,30 +1650,36 @@ class PolynomialMatrixBuilder:
         mapping: dict = dict()
         if participation_matrix is None or evals is None: return mapping
 
-        state_symbols: list = list()
-        for s in self.all_symbols:
-            s_name: str = s.name
-            is_deriv: bool = s_name.startswith('dx') or s_name.startswith('xp') or s_name.startswith(
-                'd_') or s_name.startswith('dt_')
-            is_input: bool = s_name.startswith('u') and not s_name.startswith('u_')
-
-            if not is_deriv and not is_input:
-                state_symbols.append(s)
-
         n_modes: int = int(participation_matrix.shape[1])
         n_states: int = int(participation_matrix.shape[0])
 
         for m in range(n_modes):
             mode_eval: complex = evals[m]
             mode_pfs: list = list()
+            all_valid_pfs: list = list()
 
-            limit: int = min(n_states, len(state_symbols))
-            for i in range(limit):
-                pf_val: float = float(abs(participation_matrix[i, m]))
-                if pf_val >= threshold:
-                    mode_pfs.append((state_symbols[i].name, pf_val))
+            # INDEX BUG FIX: We must iterate exactly exactly over n_states which maps identically to self.all_symbols indices.
+            for i in range(n_states):
+                s_name = self.all_symbols[i].name
+                is_deriv = s_name.startswith('dx') or s_name.startswith('xp') or s_name.startswith(
+                    'd_') or s_name.startswith('dt_')
+                is_input = s_name.startswith('u') and not s_name.startswith('u_')
+
+                # Only map if it is an actual physical variable or proxy non-derivative
+                if not is_deriv and not is_input:
+                    pf_val = float(abs(participation_matrix[i, m]))
+                    all_valid_pfs.append((s_name, pf_val))
+                    if pf_val >= threshold:
+                        mode_pfs.append((s_name, pf_val))
 
             mode_pfs.sort(key=lambda x: x[1], reverse=True)
+
+            # If all physical variables were filtered out because their participations were highly dispersed
+            # (e.g. 50 variables at 0.019 PF each), just grab the top 5 largest ones unconditionally.
+            if not mode_pfs:
+                all_valid_pfs.sort(key=lambda x: x[1], reverse=True)
+                mode_pfs = [x for x in all_valid_pfs[:5] if x[1] > 1e-6]
+
             mapping[mode_eval] = mode_pfs
 
         return mapping

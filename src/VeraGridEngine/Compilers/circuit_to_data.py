@@ -318,6 +318,10 @@ def get_bus_data(bus_data: BusData,
         bus_data.is_dc[i] = bus.is_dc
         bus_data.is_grounded[i] = bus.is_grounded
 
+        # Grounded buses go to zero
+        if bus.is_grounded:
+            bus_data.Vbus[i] = 1e-20 * np.exp(1j * 1e-20)  # effectively zero
+
         bus_data.angle_min[i] = bus.angle_min
         bus_data.angle_max[i] = bus.angle_max
 
@@ -1284,10 +1288,12 @@ def fill_parent_branch(i: int,
     # that do have a significant virtual tap difference.
     # i.e. transformers for distribution systems
 
-    if not bus_voltage_used[f] and not use_stored_guess:
+    # Grounded buses carry a pinned ground-reference Vbus from get_bus_data
+    # and must not be overwritten by the virtual-tap default.
+    if not bus_voltage_used[f] and not use_stored_guess and not bus_data.is_grounded[f]:
         bus_data.Vbus[f] = data.virtual_tap_f[i]
 
-    if not bus_voltage_used[t] and not use_stored_guess:
+    if not bus_voltage_used[t] and not use_stored_guess and not bus_data.is_grounded[t]:
         bus_data.Vbus[t] = data.virtual_tap_t[i]
 
     return f, t

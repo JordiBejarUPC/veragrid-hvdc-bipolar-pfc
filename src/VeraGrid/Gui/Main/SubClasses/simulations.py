@@ -874,9 +874,7 @@ class SimulationsMain(TimeEventsMain):
 
         if info.logger.has_logs():
             # Show dialogue
-            dlg = LogsDialogue(name="Add selected DB objects to current diagram", logger=info.logger)
-            dlg.setModal(True)
-            dlg.exec()
+            self.show_logs(name="Add selected DB objects to current diagram", logger=info.logger)
 
         return info
 
@@ -3654,9 +3652,7 @@ class SimulationsMain(TimeEventsMain):
         if remote_job_driver is not None:
             if remote_job_driver.logger.has_logs():
                 # Show dialogue
-                dlg = LogsDialogue(name="Remote connection logs", logger=remote_job_driver.logger)
-                dlg.setModal(True)
-                dlg.exec()
+                self.show_logs(remote_job_driver.logger, name="Remote connection logs")
 
             self.update_available_results()
             self.colour_diagrams()

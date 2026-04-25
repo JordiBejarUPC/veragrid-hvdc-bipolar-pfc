@@ -90,6 +90,7 @@ class DataBaseTableMain(DiagramsMain):
         self.ui.actionDetect_facilities.triggered.connect(self.detect_facilities)
         self.ui.actionGrid_reduction.triggered.connect(self.grid_reduction_from_schematic_selection)
         self.ui.actionSubstation_wizard.triggered.connect(self.add_substation_with_wizard)
+        self.ui.actionSet_model_x_y_based_on_lat_lon.triggered.connect(self.set_model_x_y_based_on_lat_lon)
 
         # tree click
         self.ui.dataStructuresTreeView.clicked.connect(self.view_objects_data)
@@ -1579,3 +1580,21 @@ class DataBaseTableMain(DiagramsMain):
 
         else:
             return
+
+    def set_model_x_y_based_on_lat_lon(self):
+        """
+        Change values of x,y in the database using the latitude and longitude of the buses
+        :return:
+        """
+        ok = yes_no_question(text="Setting the database buses x,y position from their latitude and longitude "
+                                  "values will change the buses values but not the current diagrams. "
+                                  "New diagrams will use the new values",
+                             title="")
+
+        if ok:
+            logger = self.circuit.fill_xy_from_lat_lon()
+
+            if logger.has_logs():
+                self.show_logs(logger=logger, name="set (x,y) from (lat, lon)")
+            else:
+                self.show_info_toast("x, y changed!")
